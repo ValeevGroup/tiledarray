@@ -1,164 +1,239 @@
-# Software Stack
+# Software Stack:
 
-### Required
-* Apple Xcode 3.2 or later
+* C++ compiler with C++11 standard support. 
+  Supported compilers include:
+    * GCC 4.7 or later (Linux only)
+    * Clang 3.3 or later
+    * Apple Clang 5.0 or later (OS X only)  
+    * Intel 14 or later
+  Note, GCC is NOT supported on OS X. There are compatibility issues that arise
+  when mixing libraries compiled with clang (or system libraries) with those
+  compiled with GCC.
 * Cmake 2.8.8 or later
-* Git 1.8 or later
+* Git 1.8 or later (required to download TiledArray and MADNESS from GitHub)
 * Eigen 3.x or later
+  * Mercurial (required to download Eigen from Bitbucket)
 * MADNESS
-  * autoconf 2.59 or later
-  * automake 1.11 or later
-  * libtool 2.x or later (??? not sure on earliest working version)
-  * Subversion (svn)
-  * MPI-2 or MPI-3
-  * LAPACK and BLAS (included in the OS X Accelerate framework)
+  Only the MADworld and MADtensor library of MADNESS are required by TiledArray.
+  Requirements for MADNESS include:
+    * autoconf 2.59 or later
+    * automake 1.11 or later
+    * libtool 2.x or later (??? not sure on earliest working version)
+    * Intel TBB  4.x or later (4.3 Update 5 or later on BlueGene/Q)
+    * MPI-2 or MPI-3
+    * LAPACK and BLAS
+    * Elemental (optinal)
 
-### Recommended
-* MacPorts
+Optional:
+* Doxygen (required to generating documentation)
+* Boost 1.33.0 or later (required for unit tests)
 
-### Optional
-* Doxygen
-* Boost 1.33.0 or later (for unit tests only)
+Dependencies can be installed via the package manager of your choice, e.g.
+Homebrew on OS X or apt-get on Debian Linux distributions. See notes below for
+more details on installing MADNESS.
 
-If you already have all the dependencies installed, you can skip ahead to the
-Build TiledArray section.
+# Configure TiledArray
 
-# Install Dependencies
+TiledArray is configured and built with CMake, which is similar in function to
+the typical configure script. When configuring with CMake, you specify a set
+of cache variables where each variable argument is prepended with the '-D'
+option. Typically, you will need to specify the install path for TiledArray,
+build type, MPI Compiler wrappers, and BLAS and LAPACK libraries. Though other
+options my be necessary. Below are several common configure examples. Most of
+the dependencies can be installed with a package manager (except for MADNESS),
+which is the preferred method. Since configuring
+and building MADNESS can be difficult on some systems, we recommend letting the
+TiledArray configure script download and build MADNESS for you.
 
-## Installing Xcode
-### OS X 10.7 (Lion) and later
-1. Open Mac App Store
-2. Search for and “Buy” Xcode (it is free). Xcode will automatically start
-   downloading and install itself.
-3. Open Xcode
-4. Go to Xcode->Preferences...
-5. Select the Downloads and then the components tab
-6. Click “Install” next to “Command Line Tools”
-7. Check the “Check for and install updates automatically” box
+* Basic configuration. This will search for dependencies on your system. If the 
+  required dependencies are not found on your system, they will be downloaded 
+  and installed during the build process (this includes Eigen, Boost, Elemental,
+  and MADNESS, but not MPI or TBB). The CMAKE_PREFIX_PATH cache variables
+  is a semicolon separated list of search paths. 
 
-**Note:** Command-line tools are automatically installed with Xcode 4.2.x and 
-          earlier.
+$ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
+        -D CMAKE_BUILD_TYPE=Release \
+        -D CMAKE_PREFIX_PATH=/path/to/dependency;/path/to/another/dependency \
+        /path/to/tiledarray/source
+        
+* Basic configuration with unit tests.
 
-### Xcode Alternative for OS X 10.7 (Lion) and later
-If you do not want to install Xcode, you may install just Apple's Command-Line
-Tools package (the same package you would install with Xcode). You can download
-it from the [Apple Developer website](http://developer.apple.com). The only
-disadvantage to this method is you must update this software manually.
+$ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
+        -D CMAKE_BUILD_TYPE=Debug \
+        -D TA_BUILD_UNITTEST=ON \
+        -D BOOST_ROOT=/path/to/boost \
+        -D CMAKE_PREFIX_PATH=/path/to/dependency;/path/to/another/dependency \
+        /path/to/tiledarray/source
+        
+* Specify dependencies, w/o MADNESS installed on the system
 
-### Mac OS X 10.6 (Snow Leopard) and earlier
-1. Download Xcode 3.2.6 for Snow Leopard or 3.1.4 for Leopard from
-   [Apple’s Developer website](http://developer.apple.com). You will need to log
-   in with your Apple ID.
-2. Open the .dmg file
-3. Double click install package
-4. Follow the prompts
+$ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
+        -D CMAKE_BUILD_TYPE=Release \
+        -D EIGEN_INCLUDE_DIR=/path/to/eigen/include/eigen3 \
+        -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack" \
+        -D BLAS_LIBRARIES="-L/path/to/blas/lib -lblas" \
+        -D TBB_ROOT_DIR=/path/to/tbb \
+        -D CMAKE_C_COMPILER=gcc \
+        -D CMAKE_CXX_COMPILER=g++ \
+        -D MPI_C_COMPILER=mpicc \
+        -D MPI_CXX_COMPILER=mpicxx \
+        /path/to/tiledarray/source
 
-## MacPorts
-MacPorts is a command-line tool that automates the process of downloading, 
-configuring, installing, and updating open-source software in OS X. Most of the
-software required by TiledArray is available through MacPorts. To install
-MacPorts:
-1. Download the install package from: http://www.macports.org/
-2. Open the downloaded .dmg file.
-3. Double click the install package
-4. Follow the prompts
-5. Once MacPorts is installed, in Terminal run:
+* Specify dependencies, w/ MADNESS installed on the system
 
-    $ sudo port selfupdate
+$ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
+        -D CMAKE_BUILD_TYPE=Release \
+        -D EIGEN_INCLUDE_DIR=/path/to/eigen/include/eigen3 \
+        -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack" \
+        -D BLAS_LIBRARIES="-L/path/to/blas/lib -lblas" \
+        -D Madness_ROOT_DIR=/path/to/madness \
+        -D CMAKE_C_COMPILER=gcc \
+        -D CMAKE_CXX_COMPILER=g++ \
+        -D MPI_C_COMPILER=mpicc \
+        -D MPI_CXX_COMPILER=mpicxx \
+        /path/to/tiledarray/source
 
-**Note:** If you are behind a firewall or proxy and having trouble syncing
-          portfiles, you can use the alternate download method described
-          [here](https://trac.macports.org/wiki/howto/PortTreeTarball).
+Additional configure options are given below. You may also configure TiledArray
+with the accompanying "configure" script, which is a wrapper for CMake.
 
-You can install the remaining software need by TiledArray with MacPorts.
+# Common complier flags
 
-    $ sudo port install autoconf automake libtool cmake eigen3 +cmake boost subversion git-core doxygen
+* CMAKE_C_COMPILER -- The C compiler
+* CMAKE_CXX_COMPILER -- The C++ compiler
+* CMAKE_C_FLAGS -- The C compile flags (includes CPPFLAGS and CFLAGS)
+* CMAKE_CXX_FLAGS -- The C++ compile flags (includes CPPFLAGS and CXXFLAGS)
+* CMAKE_EXE_LINKER_FLAGS -- The executable compile flags
+* CMAKE_BUILD_TYPE -- Optimization/debug build type options include empty, 
+  Debug, Release, RelWithDebInfo and MinSizeRel.
+  
+It is typically not necessary to specify optimization or debug flags as the
+default values provided by CMake are usually correct.
 
-## Installing MPI
-You may choose either MPICH or OpenMPI. You do **NOT** need to install both. To
-install MPI on your computer you may:
-* Use a software management program such as [MacPorts](http://www.macports.org) 
-  or [HomeBrew](http://mxcl.github.io/homebrew/).
-* Build and install MPI manually. See the respective documentation for details.
-  * [MPICH documentation](http://www.mpich.org/documentation/guides/)
-  * [OpenMPI documentation](http://www.open-mpi.org/doc/)
+# MPI
 
-### Installing MPICH with MacPorts
-* OS X 10.7 (Lion) or later:
+You may choose from MPICH, MVAPICH, OpenMPI, Intel MPI, or your vendor provided 
+MPI implementation. Specify the C and C++ MPI compiler wrappers with the 
+following CMake cache variables:
 
-    `$ sudo port install mpich +clang`
+* MPI_C_COMPILER -- The MPI C compiler wrapper
+* MPI_CXX_COMPILER -- The MPI C++ compiler wrapper
 
-* Mac OS X 10.6 (Snow Leopard) or earlier:
+You can build TiledArray without MPI support by setting ENABLE_MPI to OFF.
+Though we strongly recommend compiling with MPI even if you do not intend
+to use TiledArray in a distributed memory environment. Note, if you
+build MADNESS yourself, you must also configure MADNESS with --enable-stub-mpi
+to enable this option.
 
-    `$ sudo port install mpich`
+# BLAS and LAPACK
 
-### Install OpenMPI with MacPorts
-    $ sudo port install openmpi +threads-gcc47
+TiledArray requires a serial BLAS implementation, either by linking with a
+serial version of the BLAS library or by setting the number of threads to one
+(1) with an environment variable. This is necessary because TiledArray handles
+parallelism with tasks, and attempting to run threaded BLAS function inside
+tasks will over subscribe the hardware cores. By default, TiledArray configure
+will search your system for compatible BLAS and LAPACK libraries. However, it is
+recommended you specify the BLAS and LAPACK libraries if there is a serial
+version available since CMake will prefer the threaded version of the library. 
+You may specify the necessary libraries and/or link flags with the following
+CMake cache variables:
 
-## MADNESS
-You have two options for installing MADNESS:
+* LAPACK_LIBRARIES -- LAPACK libraries (including dependencies)
+* BLAS_LIBRARIES -- BLAS libraries (including dependencies)
+* LAPACK_LINKER_FLAGS -- Linker flags required to link LAPACK
+* BLAS_LINKER_FLAGS -- Linker flags required to link BLAS
 
-1. Build and install MADNESS as a nested project. This is the default behavior 
-   if MADNESS is not found by the configure script. **RECOMMENDED**
-2. Build and install MADNESS manually as described
-   [here](https://code.google.com/p/m-a-d-n-e-s-s/wiki/BuildingMadnessonOSX).
+You may also need to specify the integer size for your BLAS library with
+
+* INTEGER4
+
+If INTEGER4 is set to TRUE (default), TiledArray uses Fortran integer*4 type are
+used for BLAS function calls. If INTEGER4 is set to FALSE, Fortran integer*8 
+type are used for BLAS function calls. You should use the default value unless
+you know it is necessary for your BLAS implementation.
+
+Common optimized libraries OpenBLAS/GotoBLAS, BLIS, MKL (on Intel platforms),
+Atlas, Accelerate (on OS X), ESSL (on BlueGene platforms), or ACML (on AMD 
+platforms). You can also use the Netlib reference implementation if nothing else
+is available, but this will be very slow.
+
+Example flags:
+
+* Accelerate on OS X
+
+  -D BLAS_LINKER_FLAGS="-framework Accelerate"
+
+* OpenBLAS with Netlib LAPACK
+
+  -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack"
+  -D BLAS_LIBRARIES="-L/path/to/openblas/lib -lopenblas -lpthread"
+
+* Netlib
+
+  -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack"
+  -D BLAS_LIBRARIES="-L/path/to/blas/lib -lblas"
+
+* MKL on Linux
+
+  -D BLAS_LIBRARIES="-L${MKLROOT}/lib/intel64 -Wl,--start-group -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -Wl,--end-group -lpthread -lm‚Äù
+  
+* MKL on OS X
+
+  -D BLAS_LIBRARIES="-L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm"
+
+For additional information on linking different versions of MKL, see the MKL
+Link Advisor page.
+
+    https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
+
+# Eigen 3
+
+You can specify the install location of Eigen 3 with the following CMake cache
+variable:
+
+* EIGEN_INCLUDE_DIR -- The path to the Eigen 3 include directory
+
+If Eigen is not found by the configure script, it will be downloaded from the
+hg repository on Bitbucket.
+
+# MADNESS
+
+TiledArray uses a non-release version of MADNESS. Therefore, you should NOT
+expect the most recent release of MADNESS to work with TiledArray. To ensure you
+are using the correct version of MADNESS, we recommend allowing CMake to
+automatically download, configure, and build MADNESS (this is the default
+behavior). When CMake is building MADNESS, the configure script will checkout
+the correct revision of MADNESS.
+
+The following CMake options may be used to modify build behavior or find
+MADNESS:
+
+* ENABLE_MPI -- Enable MPI [Default=ON]
+* ENABLE_ELEMENTAL -- Enable use of MADNESS provided Elemental [Default=OFF]
+* ENABLE_TBB -- Enable the use of TBB when building MADNESS [Default=ON]
+* TBB_ROOT_DIR -- The install directory for TBB
+* TBB_INCLUDE_DIR -- The include directory for TBB header files
+* TBB_LIBRARY -- The library directory for TBB shared libraries
+* ENABLE_SHARED_LIBRARIES -- Enable shared MADNESS libraries [Default=ON if 
+      supported by the platform]
+* MADNESS_SOURCE_DIR -- Path to the MADNESS source directory
+* MADNESS_BINARY_DIR -- Path to the MADNESS build directory
+* Madness_URL -- Path to the MADNESS repository [Default=MADNESS git repository]
+* Madness_TAG -- Revision hash or tag to use when building MADNESS (expert only)
+* MAD_EXTRA_CONFIGURE_FLAGS -- Extra configure flags passed to MADNESS configure
+
+If you wish to install MADNESS yourself, we recommend downloading the latest
+version from the MADNESS git repository. You should not expect the latest 
+release version to work correctly with TiledArray. You can specify the install
+directory with:
+
+* Madness_ROOT_DIR -- MADNESS install directory
+* CMAKE_INSTALL_PREFIX -- Semicolon separated list of directory CMake will use
+      to search for software dependencies.
 
 # Build TiledArray
 
-## Download
-In Terminal:
-
-    $ mkdir tiledarray
-    $ cd tiledarray
-    $ git clone https://github.com/ValeevGroup/TiledArray.git src
-
-## Configure
-
-The configure commands below assume that Eigen 3 and Boost were installed in 
-/opt/local with MacPorts.
-
-### Lion (OS X 10.7) and later
-    $ mkdir build
-    $ cd build
-    $ ../../src/tiledarray/configure \
-        --prefix=/path/to/tiledarray/install \
-        --debug \
-        --boost=/opt/local \
-        --search="/opt/local" \
-        --mpicc=/opt/local/bin/mpicc
-        CC=/usr/bin/clang \
-        CXX=/usr/bin/clang++ \
-        CPPFLAGS="-Wvexing-parse" 
-
-### Snow Leopard (OS X 10.6) and earlier
-
-    $ mkdir build
-    $ cd build
-    $ ../../src/tiledarray/configure \
-        --prefix=/path/to/tiledarray/install \
-        --debug \
-        --boost=/opt/local \
-        --search="/opt/local" \
-        --mpicc=/opt/local/bin/mpicc
-        CC=/usr/bin/gcc \
-        CXX=/usr/bin/g++
-
-### Build and Install
     $ make -j
     ... many lines omitted ...
+    $ make check
+    ... many lines omitted ...
     $ make install
-
-# Information about Compiler
-The following compiles have been tested with TiledArray on OS X and are known to
-work.
-* Apple's Clang 2.0 (svn 2.9) and later **(Preferred)**
-* LLVM Clang 2.9 and later (same as Apple's version)
-* Intel 11.x and 12.x
-* Apple's GCC 4.2.1 (deprecated by Apple)
-* Apple's LLVM GCC 4.2.1 (deprecated by Apple)
-
-**Note:** Do not use GNU GCC compilers that you build yourself or those provided
-          by MacPorts. They have significant compatibility issues on Macs and
-          may result in strange runtime behavior.
-
-
