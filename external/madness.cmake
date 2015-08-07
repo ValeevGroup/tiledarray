@@ -74,9 +74,9 @@ else()
   # Create a cache entry for MADNESS build variables.
   # Note: This will not overwrite user specified values.
   set(MADNESS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/src/madness" CACHE PATH 
-        "Path to the MADNESS source code")
+        "Path to the MADNESS source directory")
   set(MADNESS_BINARY_DIR "${PROJECT_BINARY_DIR}/external/build/madness" CACHE PATH 
-        "Path to the MADNESS source code")
+        "Path to the MADNESS build directory")
   set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
   set(Madness_TAG "5c08ce064a896e957b8f644aa76df12b727f23af" CACHE STRING 
