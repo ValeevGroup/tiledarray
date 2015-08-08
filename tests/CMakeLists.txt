@@ -100,7 +100,18 @@ target_link_libraries(${executable} ${TiledArray_LIBRARIES})
 
 # Add targets
 add_dependencies(${executable} External)
-add_dependencies(check ${executable})
+add_test(build_${executable} "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR} --target ${executable})
 
-# Add a test
-add_test(${executable} ${executable})
+# Add a test(s)
+if(ENABLE_MPI)
+  add_test(NAME ${executable}-np-1
+      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS} ${executable} ${MPIEXEC_POSTFLAGS})
+  add_test(NAME ${executable}-np-2
+      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS} ${executable} ${MPIEXEC_POSTFLAGS})
+  set_tests_properties(${executable}-np-1 PROPERTIES DEPENDS build_${executable})
+  set_tests_properties(${executable}-np-2 PROPERTIES DEPENDS build_${executable})
+else()
+  add_test(NAME ${executable}
+      COMMAND ${executable})
+  set_tests_properties(${executable} PROPERTIES DEPENDS build_${executable})
+endif()
