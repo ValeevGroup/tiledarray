@@ -126,7 +126,7 @@ namespace TiledArray {
       /// \param other The expression that will be added to this array
       template <typename D>
       TsrExpr_& operator+=(const Expr<D>& other) {
-        return operator=(AddExpr<TsrExpr<const array_type>, D>(*this, other.derived()));
+        return operator=(AddExpr<TsrExpr_, D>(*this, other.derived()));
       }
 
       /// Expression minus-assignment operator
@@ -135,7 +135,7 @@ namespace TiledArray {
       /// \param other The expression that will be subtracted from this array
       template <typename D>
       TsrExpr_& operator-=(const Expr<D>& other) {
-        return operator=(SubtExpr<TsrExpr<const array_type>, D>(*this, other.derived()));
+        return operator=(SubtExpr<TsrExpr_, D>(*this, other.derived()));
       }
 
       /// Expression multiply-assignment operator
@@ -144,7 +144,7 @@ namespace TiledArray {
       /// \param other The expression that will scale this array
       template <typename D>
       TsrExpr_& operator*=(const Expr<D>& other) {
-        return operator=(MultExpr<TsrExpr<const array_type>, D>(*this, other.derived()));
+        return operator=(MultExpr<TsrExpr_, D>(*this, other.derived()));
       }
 
 
