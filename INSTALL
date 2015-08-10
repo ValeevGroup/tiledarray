@@ -142,14 +142,13 @@ CMake cache variables:
 * LAPACK_LINKER_FLAGS -- Linker flags required to link LAPACK
 * BLAS_LINKER_FLAGS -- Linker flags required to link BLAS
 
-You may also need to specify the integer size for your BLAS library with
+You may also need to specify the integer size for your BLAS library with:
 
-* INTEGER4
+* INTEGER4 -- Specifies the integer size of BLAS function calls [Default=TRUE]
+      TRUE = Fortran integer*4, FALSE = Fortran integer*8
 
-If INTEGER4 is set to TRUE (default), TiledArray uses Fortran integer*4 type are
-used for BLAS function calls. If INTEGER4 is set to FALSE, Fortran integer*8 
-type are used for BLAS function calls. You should use the default value unless
-you know it is necessary for your BLAS implementation.
+You should use the default value unless you know it is necessary for your BLAS
+implementation.
 
 Common optimized libraries OpenBLAS/GotoBLAS, BLIS, MKL (on Intel platforms),
 Atlas, Accelerate (on OS X), ESSL (on BlueGene platforms), or ACML (on AMD 
@@ -229,6 +228,21 @@ directory with:
 * Madness_ROOT_DIR -- MADNESS install directory
 * CMAKE_INSTALL_PREFIX -- Semicolon separated list of directory CMake will use
       to search for software dependencies.
+
+# Advanced configure options:
+
+The following CMake cache variables are tuning parameters. You should only
+modify these values if you know the values for your patricular system.
+
+* VECTOR_ALIGNMENT -- The alignment of memory for Tensor in bytes [Default=16]
+* CACHE_LINE_SIZE -- The cache line size in bytes [Default=64]
+
+VECTOR_ALIGNMENT controls the alignment of Tensor data, and CACHE_LINE_SIZE
+controls the size of automatic loop unrolling for tensor operations. TiledArray
+does not currently use explicit vector instructions (i.e. intrensics), but
+the code is written in such a way that compilers can more easily autovectorize 
+the operations when supported. In a future version, explicit vectorization
+support may be added.
 
 # Build TiledArray
 
