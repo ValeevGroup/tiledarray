@@ -283,6 +283,22 @@ BOOST_AUTO_TEST_CASE( add )
   }
 }
 
+BOOST_AUTO_TEST_CASE( add_to )
+{
+  c("a,b,c") = a("a,b,c");
+  BOOST_REQUIRE_NO_THROW( a("a,b,c") += b("a,b,c") );
+
+  for(std::size_t i = 0ul; i < c.size(); ++i) {
+    Array3::value_type c_tile = c.find(i).get();
+    Array3::value_type a_tile = a.find(i).get();
+    Array3::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] + b_tile[j]);
+  }
+
+}
+
 BOOST_AUTO_TEST_CASE( scale_add )
 {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") + b("a,b,c")));
