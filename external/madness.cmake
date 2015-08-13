@@ -156,7 +156,7 @@ else()
 
   endif()
   
-  # Check that the MADNESS source director contains the 
+  # Check that the MADNESS source contains madness.h
   message(STATUS "Looking for madness.h")
   if(EXISTS ${MADNESS_SOURCE_DIR}/src/madness.h)
     message(STATUS "Looking for madness.h - found")
@@ -220,7 +220,7 @@ else()
     set(MAD_ELEMENTAL_FLAG "no")
   endif()
   
-    # Set compile flags required for Elemental
+  # Set compile flags required for Intel TBB
   if(ENABLE_TBB)
     if(TBB_INCLUDE_DIR AND EXISTS ${TBB_INCLUDE_DIR})
       append_flags(MAD_TBB_INCLUDE_FLAG "--with-tbb-include=${TBB_INCLUDE_DIR}")
