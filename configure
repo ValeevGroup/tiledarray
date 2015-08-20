@@ -50,7 +50,7 @@ Configuration:
   --unittest              build unit tests (TA_BUILD_UNITTEST=TRUE)
   --lapack=               LAPACK libraries (LAPACK_LIBRARIES=)
   --lapack=               LAPACK libraries (BLAS_LIBRARIES=)
-  --integer8              Assume integer*8 in Fortran (INTEGER4=TRUE), otherwise
+  --integer8              Assume integer*8 in Fortran (INTEGER4=FALSE), otherwise
                           integer*4 is the default Fortran integer size.
   --mpicc=                MPI C compiler to deduce MPI environment,
                           only needed if CXX is not set to an MPI compiler wrapper
@@ -128,7 +128,7 @@ while test $# != 0; do
                    args="$args -DLAPACK_LIBRARIES=\"$lapack\"" ;;
   --blas=*)        blas="`arg \"$1\"`"
                    args="$args -DBLAS_LIBRARIES=\"$blas\"" ;;
-  --integer8)      args="$args -DINTEGER4=FLASE" ;;
+  --integer8)      args="$args -DINTEGER4=FALSE" ;;
   --debug)         build="Debug" ;; #args="$args -DCMAKE_BUILD_TYPE=Debug" ;;
   --search=*)      search="`arg \"$1\"`"
                    args="$args -DCMAKE_PREFIX_PATH=\"$search\"" ;;
