@@ -350,7 +350,7 @@ else()
       RESULT_VARIABLE error_code)
   if(error_code)
     message(FATAL_ERROR "The MADNESS configure script failed.")
-  endif()
+  endif(error_code)
   
   include(${MADNESS_BINARY_DIR}/config/madness-project.cmake)
 
