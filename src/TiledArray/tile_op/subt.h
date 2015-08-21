@@ -87,14 +87,17 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute_op(first_argument_type first, second_argument_type second) const {
+        using TiledArray::subt;
         return subt(first, second, BinaryInterface_::permutation());
       }
 
       result_type permute_op(ZeroTensor, second_argument_type second) const {
+        using TiledArray::neg;
         return neg(second, BinaryInterface_::permutation());
       }
 
       result_type permute_op(first_argument_type first, ZeroTensor) const {
+        using TiledArray::permute;
         return permute(first, BinaryInterface_::permutation());
       }
 
@@ -105,36 +108,42 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename std::enable_if<!(LC || RC), result_type>::type
       no_permute_op(first_argument_type first, second_argument_type second) {
+        using TiledArray::subt;
         return subt(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
       no_permute_op(Left& first, second_argument_type second) {
+        using TiledArray::subt_to;
         return subt_to(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC && RC, result_type>::type
       no_permute_op(first_argument_type first, Right& second) {
+        using TiledArray::subt_to;
         return subt_to(second, first, -1);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!RC, result_type>::type
       no_permute_op(ZeroTensor, second_argument_type second) {
+        using TiledArray::neg;
         return neg(second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<RC, result_type>::type
       no_permute_op(ZeroTensor, Right& second) {
+        using TiledArray::neg_to;
         return neg_to(second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC, result_type>::type
       no_permute_op(first_argument_type first, ZeroTensor) {
+        using TiledArray::clone;
         return clone(first);
       }
 

@@ -89,14 +89,17 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute_op(const Left& first, const Right& second) const {
+        using TiledArray::add;
         return add(first, second, BinaryInterface_::permutation());
       }
 
       result_type permute_op(ZeroTensor, const Right& second) const {
+        using TiledArray::permute;
         return permute(second, BinaryInterface_::permutation());
       }
 
       result_type permute_op(const Left& first, ZeroTensor) const {
+        using TiledArray::permute;
         return permute(first, BinaryInterface_::permutation());
       }
 
@@ -107,24 +110,28 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename std::enable_if<!(LC || RC), result_type>::type
       no_permute_op(const Left& first, const Right& second) {
+        using TiledArray::add;
         return add(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
       no_permute_op(Left& first, const Right& second) {
+        using TiledArray::add_to;
         return add_to(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC && RC, result_type>::type
       no_permute_op(const Left& first, Right& second) {
+        using TiledArray::add_to;
         return add_to(second, first);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!RC, result_type>::type
       no_permute_op(ZeroTensor, const Right& second) {
+        using TiledArray::clone;
         return clone(second);
       }
 
@@ -137,6 +144,7 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename std::enable_if<!LC, result_type>::type
       no_permute_op(const Left& first, ZeroTensor) {
+        using TiledArray::clone;
         return clone(first);
       }
 

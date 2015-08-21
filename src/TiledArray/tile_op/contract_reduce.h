@@ -166,6 +166,7 @@ namespace TiledArray {
         if(! pimpl_->perm_)
           return temp;
 
+        using TiledArray::permute;
         return permute(temp, pimpl_->perm_);
       }
 
@@ -175,6 +176,7 @@ namespace TiledArray {
       /// \param[in,out] result The result object that will be the reduction target
       /// \param[in] arg The argument that will be added to \c result
       void operator()(result_type& result, const result_type& arg) const {
+        using TiledArray::add_to;
         add_to(result, arg);
       }
 
@@ -189,6 +191,7 @@ namespace TiledArray {
       {
         TA_ASSERT(pimpl_);
 
+        using TiledArray::gemm;
         if(empty(result))
           result = gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
         else
