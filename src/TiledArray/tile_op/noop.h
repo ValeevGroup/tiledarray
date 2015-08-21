@@ -80,6 +80,7 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute_op(const Arg& arg) const {
+        using TiledArray::permute;
         return permute(arg, UnaryInterface_::permutation());
       }
 
@@ -89,7 +90,10 @@ namespace TiledArray {
 
       template <bool C>
       static typename std::enable_if<!C, result_type>::type
-      no_permute_op(const Arg& arg) { return clone(arg); }
+      no_permute_op(const Arg& arg) {
+        using TiledArray::clone;
+        return clone(arg);
+      }
 
       template <bool C>
       static typename std::enable_if<C, result_type>::type

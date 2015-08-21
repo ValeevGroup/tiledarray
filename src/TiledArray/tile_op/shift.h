@@ -89,6 +89,8 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute_op(const Arg& arg) const {
+        using TiledArray::permute;
+        using TiledArray::shift;
         result_type result = permute(arg, UnaryInterface_::permutation());
         return shift(result, range_shift_);
       }
@@ -100,12 +102,14 @@ namespace TiledArray {
       template <bool C>
       typename std::enable_if<!C, result_type>::type
       no_permute_op(const Arg& arg) const {
+        using TiledArray::shift;
         return shift(arg, range_shift_);
       }
 
       template <bool C>
       typename std::enable_if<C, result_type>::type
       no_permute_op(Arg& arg) const {
+        using TiledArray::shift_to;
         shift_to(arg, range_shift_);
         return arg;
       }

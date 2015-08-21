@@ -89,6 +89,7 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute_op(first_argument_type first, second_argument_type second) const {
+        using TiledArray::mult;
         return mult(first, second, BinaryInterface_::permutation());
       }
 
@@ -109,12 +110,14 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename std::enable_if<!(LC || RC), result_type>::type
       no_permute_op(first_argument_type first, second_argument_type second) {
+        using TiledArray::mult;
         return mult(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
       no_permute_op(Left& first, second_argument_type second) {
+        using TiledArray::mult_to;
         mult_to(first,second);
         return first;
       }
@@ -122,6 +125,7 @@ namespace TiledArray {
       template <bool LC, bool RC>
       static typename std::enable_if<!LC && RC, result_type>::type
       no_permute_op(first_argument_type first, Right& second) {
+        using TiledArray::mult_to;
         mult_to(second, first);
         return second;
       }

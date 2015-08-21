@@ -107,14 +107,17 @@ namespace TiledArray {
       // requires temporary storage space.
 
       result_type permute_op(first_argument_type first, second_argument_type second) const {
+        using TiledArray::subt;
         return subt(first, second, factor_, BinaryInterface_::permutation());
       }
 
       result_type permute_op(ZeroTensor, second_argument_type second) const {
+        using TiledArray::scale;
         return scale(second, -factor_, BinaryInterface_::permutation());
       }
 
       result_type permute_op(first_argument_type first, ZeroTensor) const {
+        using TiledArray::scale;
         return scale(first, factor_, BinaryInterface_::permutation());
       }
 
@@ -125,18 +128,21 @@ namespace TiledArray {
       template <bool LC, bool RC>
       typename std::enable_if<!(LC || RC), result_type>::type
       no_permute_op(first_argument_type first, second_argument_type second) const {
+        using TiledArray::subt;
         return subt(first, second, factor_);
       }
 
       template <bool LC, bool RC>
       typename std::enable_if<LC, result_type>::type
       no_permute_op(Left& first, second_argument_type second) const {
+        using TiledArray::subt_to;
         return subt_to(first, second, factor_);
       }
 
       template <bool LC, bool RC>
       typename std::enable_if<!LC && RC, result_type>::type
       no_permute_op(first_argument_type first, Right& second) const {
+        using TiledArray::subt_to;
         return subt_to(second, first, -factor_);
       }
 
@@ -144,24 +150,28 @@ namespace TiledArray {
       template <bool LC, bool RC>
       typename std::enable_if<!RC, result_type>::type
       no_permute_op(ZeroTensor, second_argument_type second) const {
+        using TiledArray::scale;
         return scale(second, -factor_);
       }
 
       template <bool LC, bool RC>
       typename std::enable_if<RC, result_type>::type
       no_permute_op(ZeroTensor, Right& second) const {
+        using TiledArray::scale_to;
         return scale_to(second, -factor_);
       }
 
       template <bool LC, bool RC>
       typename std::enable_if<!LC, result_type>::type
       no_permute_op(first_argument_type first, ZeroTensor) const {
+        using TiledArray::scale;
         return scale(first, factor_);
       }
 
       template <bool LC, bool RC>
       typename std::enable_if<LC, result_type>::type
       no_permute_op(Left& first, ZeroTensor) const {
+        using TiledArray::scale_to;
         return scale_to(first, factor_);
       }
 
