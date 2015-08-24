@@ -22,8 +22,8 @@
 #  Jul 19, 2013
 #
 
-CMAKE := cmake-2.8.11.1
-URL := http://www.cmake.org/files/v2.8/$(CMAKE).tar.gz
+CMAKE := cmake-3.3.1
+URL := http://www.cmake.org/files/v3.3/$(CMAKE).tar.gz
 PREFIX := $(PWD)
 
 all: cmake
