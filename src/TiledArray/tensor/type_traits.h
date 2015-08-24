@@ -67,6 +67,9 @@ namespace TiledArray {
     struct is_tensor_helper<ShiftWrapper<T> > : public is_tensor_helper<T> { };
 
     template <typename T>
+    struct is_tensor_helper<ShiftWrapper<const T> > : public is_tensor_helper<T> { };
+
+    template <typename T>
     struct is_tensor_of_tensor_helper : public std::false_type { };
 
     template <typename T, typename A>
