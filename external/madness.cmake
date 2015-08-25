@@ -336,6 +336,7 @@ else()
                 "${MAD_TBB_LIB_FLAG}"
                 "--without-mkl"
                 "--without-libxc"
+                "--without-google-perf"
                 "${MAD_EXTRA_CONFIGURE_FLAGS}"
                 "MPICXX=${CMAKE_CXX_COMPILER}"
                 "MPICC=${CMAKE_C_COMPILER}"
