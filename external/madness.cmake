@@ -314,7 +314,6 @@ else()
     endif()
   endif()
 
-
   # Configure MADNESS
   set(error_code 1)
   execute_process(
@@ -397,10 +396,6 @@ else()
 #  message("Madness_LIBRARIES     = '${Madness_LIBRARIES}'")
 #  message("Madness_LINKER_FLAGS  = '${Madness_LINKER_FLAGS}'")
 
-  set(MAD_CPPFLAGS "${CMAKE_CPP_FLAGS}")
-  set(MAD_CFLAGS "${CMAKE_C_FLAGS}")
-  set(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS}")
-  set(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
