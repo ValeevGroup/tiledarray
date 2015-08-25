@@ -195,7 +195,7 @@ else()
     append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
   endif()
   
-  if(ENABLE_SHARED_LIBRARIES)
+  if(BUILD_SHARED_LIBS)
     set(MAD_ENABLE_SHARED "--enable-shared")
     set(MAD_ENABLE_STATIC "--disable-static")
   else()
@@ -272,6 +272,14 @@ else()
       append_flags(MAD_LIBS "-Wl,--end-group")
     endif()
   endif()
+  
+  # Set compile flags required for Gperftools
+  if(ENABLE_GPERFTOOLS)
+    foreach(_lib ${Gperftools_LIBRARIES} ${Libunwind_LIBRARIES})
+      append_flags(MAD_LIBS "${_lib}")
+    endforeach()
+  endif()
+  
   append_flags(MAD_LIBS "${CMAKE_THREAD_LIBS_INIT}")
   
   # Set the configuration flags for MADNESS

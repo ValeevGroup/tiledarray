@@ -212,8 +212,8 @@ MADNESS:
 * TBB_ROOT_DIR -- The install directory for TBB
 * TBB_INCLUDE_DIR -- The include directory for TBB header files
 * TBB_LIBRARY -- The library directory for TBB shared libraries
-* ENABLE_SHARED_LIBRARIES -- Enable shared MADNESS libraries [Default=ON if 
-      supported by the platform]
+* BUILD_SHARED_LIBS -- Enable shared MADNESS libraries [Default=ON if supported 
+      by the platform]
 * MADNESS_SOURCE_DIR -- Path to the MADNESS source directory
 * MADNESS_BINARY_DIR -- Path to the MADNESS build directory
 * Madness_URL -- Path to the MADNESS repository [Default=MADNESS git repository]

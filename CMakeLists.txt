@@ -27,6 +27,8 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (TiledArray)
 
+include(CMakeDependentOption)
+
 # Configure options
 option(ENABLE_MPI "Enable MPI" ON)
 option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
@@ -38,25 +40,28 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
 endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+
+# Enable shared library support options
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
-if(SUPPORTS_SHARED)
-  option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
+option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
+cmake_dependent_option(BUILD_SHARED_LIBS "Enable shared libraries" ON
+      "SUPPORTS_SHARED;ENABLE_SHARED_LIBRARIES" OFF)
+if(BUILD_SHARED_LIBS)
+  set(BLA_STATIC FALSE)
 else()
-  option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" OFF)
+  set(BLA_STATIC TRUE)
 endif()
-if(ENABLE_SHARED_LIBRARIES AND NOT SUPPORTS_SHARED)
-  message("TiledArray was configured to build shared libraries, but they are "
-          "not supported on the target platform: ENABLE_SHARED_LIBRARIES will "
-          "be set to OFF")
-  set(ENABLE_SHARED_LIBRARIES OFF CACHE BOOL "Enable shared libraries" FORCE)
-endif()
+
+set(CMAKE_MACOSX_RPATH TRUE)
+set(CMAKE_SKIP_RPATH FALSE)
+set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 
 # Set TiledArray version
 set(TILEDARRAY_MAJOR_VERSION 0)
 set(TILEDARRAY_MINOR_VERSION 5)
 set(TILEDARRAY_MICRO_VERSION 0)
 set(TILEDARRAY_BUILDID alpha)
-set(TILEDARRAY_VERSION "v${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
+set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
 
 # extra cmake files are shipped with TiledArray
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
@@ -100,9 +105,6 @@ set(TILEDARRAY_ALIGNMENT ${VECTOR_ALIGNMENT})
 set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
 mark_as_advanced(CACHE_LINE_SIZE)
 set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
-
-set(CMAKE_SKIP_RPATH FALSE)
-SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
 
 set(BUILD_TESTING FALSE CACHE BOOLEAN "BUILD_TESTING")
 set(BUILD_TESTING_STATIC FALSE CACHE BOOLEAN "BUILD_TESTING_STATIC")
