@@ -28,3 +28,4 @@ set(LAPACK_LIBRARIES "-Wl,--start-group" "${MKL_ROOT_DIR}/lib/intel64/libmkl_int
     "${MKL_ROOT_DIR}/lib/intel64/libmkl_core.a" "${MKL_ROOT_DIR}/lib/intel64/libmkl_sequential.a" 
     "-Wl,--end-group" "-lm" "-ldl" CACHE STRING "BLAS linker flags")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
+set(ENABLE_SHARED_LIBRARIES OFF CACHE BOOL "Enable shared libraries")
