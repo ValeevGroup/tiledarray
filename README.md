@@ -30,4 +30,4 @@ The following are example expressions written in C++ with TiledArray. TiledArray
 TiledArray is developed by the [Valeev Group](http://www.files.chem.vt.edu/chem-dept/valeev/) at [Virginia Tech](http://www.vt.edu/).
 
 ### Acknowledgements
-Development of TiledArray is made possible by past and present contributions from the National Science Foundation (CHE and OCI divisions), the Alfred P. Sloan Foundation, and the Camille and Henry Dreyfus Foundation.
+Development of TiledArray is made possible by past and present contributions from the National Science Foundation (awards CHE-0847295, CHE-0741927, OCI-1047696, CHE-1362655, ACI-1047696), the Alfred P. Sloan Foundation, and the Camille and Henry Dreyfus Foundation.
