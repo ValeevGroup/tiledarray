@@ -22,7 +22,7 @@
     * Intel TBB  4.x or later (4.3 Update 5 or later on BlueGene/Q)
     * MPI-2 or MPI-3
     * LAPACK and BLAS
-    * Elemental (optinal)
+    * Elemental (optional)
 
 Optional:
 * Doxygen (required to generating documentation)
