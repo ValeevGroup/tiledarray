@@ -36,8 +36,8 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG" CACHE STRING "Inital C++ minim
 set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG" CACHE STRING "Inital C++ release compile flags")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ release with debug info compile flags")
 
-set(BLAS_LIBRARIES "-Wl,--start-group" "${MKL_ROOT_DIR}/lib/intel64/libmkl_intel_lp64.a" 
+set(BLAS_LIBRARIES "${MKL_ROOT_DIR}/lib/intel64/libmkl_intel_lp64.a" 
     "${MKL_ROOT_DIR}/lib/intel64/libmkl_core.a" "${MKL_ROOT_DIR}/lib/intel64/libmkl_sequential.a" 
-    "-Wl,--end-group" "-lm" "-ldl" CACHE STRING "BLAS linker flags")
+    "-lm" "-ldl" CACHE STRING "BLAS linker flags")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
