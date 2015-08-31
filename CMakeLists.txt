@@ -27,24 +27,34 @@
 cmake_minimum_required (VERSION 2.8.8)
 project (TiledArray)
 
+include(CMakeDependentOption)
+
 # Configure options
 option(ENABLE_MPI "Enable MPI" ON)
 option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
+option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
+option(ENABLE_TCMALLOC_MINIMAL "Enable linking with tcmalloc_minimal" OFF)
+if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES "Linux")
+  set(ENABLE_LIBUNWIND ON)
+endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+
+# Enable shared library support options
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
-if(SUPPORTS_SHARED)
-  option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
+option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
+cmake_dependent_option(BUILD_SHARED_LIBS "Enable shared libraries" ON
+      "SUPPORTS_SHARED;ENABLE_SHARED_LIBRARIES" OFF)
+if(BUILD_SHARED_LIBS)
+  set(BLA_STATIC FALSE)
 else()
-  option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" OFF)
+  set(BLA_STATIC TRUE)
 endif()
-if(ENABLE_SHARED_LIBRARIES AND NOT SUPPORTS_SHARED)
-  message("TiledArray was configured to build shared libraries, but they are "
-          "not supported on the target platform: ENABLE_SHARED_LIBRARIES will "
-          "be set to OFF")
-  set(ENABLE_SHARED_LIBRARIES OFF CACHE BOOL "Enable shared libraries" FORCE)
-endif()
+
+set(CMAKE_MACOSX_RPATH TRUE)
+set(CMAKE_SKIP_RPATH FALSE)
+set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 
 # Set TiledArray version
 set(TILEDARRAY_MAJOR_VERSION 0)
@@ -96,9 +106,6 @@ set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (
 mark_as_advanced(CACHE_LINE_SIZE)
 set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
 
-set(CMAKE_SKIP_RPATH FALSE)
-SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
-
 set(BUILD_TESTING FALSE CACHE BOOLEAN "BUILD_TESTING")
 set(BUILD_TESTING_STATIC FALSE CACHE BOOLEAN "BUILD_TESTING_STATIC")
 set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
@@ -108,13 +115,17 @@ set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 # Get the git revision tag information
 ##########################
 
-find_package(Git REQUIRED)
-execute_process(
-    COMMAND ${GIT_EXECUTABLE} rev-parse -q HEAD
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE TILEDARRAY_REVISION )
-string(REGEX MATCH "[0-9a-f]*"
-    TILEDARRAY_REVISION "${TILEDARRAY_REVISION}")
+if(EXISTS ${PROJECT_SOURCE_DIR}/.git)
+  find_package(Git REQUIRED)
+  execute_process(
+      COMMAND ${GIT_EXECUTABLE} rev-parse -q HEAD
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      OUTPUT_VARIABLE TILEDARRAY_REVISION )
+  string(REGEX MATCH "[0-9a-f]*"
+      TILEDARRAY_REVISION "${TILEDARRAY_REVISION}")
+else()
+  set(TILEDARRAY_REVISION "${TILEDARRAY_VERSION}")
+endif()
 
 ##########################
 # Check C++11 features
@@ -144,8 +155,10 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 add_custom_target(External)
 
 include(external/pthread.cmake)
-include(external/mpi.cmake)
+include(external/libunwind.cmake)
+include(external/gperftools.cmake)
 include(external/lapack.cmake)
+include(external/mpi.cmake)
 include(external/eigen.cmake)
 include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
@@ -165,7 +178,7 @@ add_subdirectory(doc)
 ##########################
 enable_testing()
 if (TA_BUILD_UNITTEST)
-  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
+  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND} -V)
   add_subdirectory(tests)
 else()
   add_custom_target(check COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
@@ -231,7 +244,7 @@ CONFIGURE_FILE(
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
     DESTINATION lib/pkgconfig)
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
-    DESTINATION lib/CMake/TiledArray)
+    DESTINATION lib/cmake/TiledArray)
 
 
 # Add target to allow on-the-fly switching of build type

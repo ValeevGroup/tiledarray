@@ -78,24 +78,47 @@ namespace TiledArray {
     /// deleted only after the object has been deleted in all processes.
     /// \param pimpl The implementation pointer to be deleted.
     static void lazy_deleter(const impl_type* const pimpl) {
-      try {
-        if(pimpl) {
-          if(madness::initialized()) {
-            World& world = pimpl->get_world();
-            const madness::uniqueidT id = pimpl->id();
-            cleanup_counter_++;
+      if(pimpl) {
+        if(madness::initialized()) {
+          World& world = pimpl->get_world();
+          const madness::uniqueidT id = pimpl->id();
+          cleanup_counter_++;
+
+          try {
             world.gop.lazy_sync(id, [pimpl]() {
               delete pimpl;
               Array_::cleanup_counter_--;
             });
-          } else {
+          }
+          catch(madness::MadnessException& e) {
+            fprintf(stderr, "!! ERROR TiledArray: madness::MadnessException thrown in Array::lazy_deleter().\n"
+                            "%s\n"
+                            "!! ERROR TiledArray: The exception has been absorbed.\n"
+                            "!! ERROR TiledArray: rank=%i\n", e.what(), world.rank());
+
+            cleanup_counter_--;
             delete pimpl;
           }
+          catch(std::exception& e) {
+            fprintf(stderr, "!! ERROR TiledArray: std::exception thrown in Array::lazy_deleter().\n"
+                            "%s\n"
+                            "!! ERROR TiledArray: The exception has been absorbed.\n"
+                            "!! ERROR TiledArray: rank=%i\n", e.what(), world.rank());
+
+            cleanup_counter_--;
+            delete pimpl;
+          }
+          catch(...) {
+            fprintf(stderr, "!! ERROR TiledArray: An unknown exception was thrown in Array::lazy_deleter().\n"
+                            "!! ERROR TiledArray: The exception has been absorbed.\n"
+                            "!! ERROR TiledArray: rank=%i\n", world.rank());
+
+            cleanup_counter_--;
+            delete pimpl;
+          }
+        } else {
+          delete pimpl;
         }
-      } catch(...) {
-        fprintf(stderr, "!! ERROR TiledArray: An error occurred in Array::lazy_deleter()\n");
-        // Abort since we cannot throw from a destructor.
-        SafeMPI::COMM_WORLD.Abort(1);
       }
     }
 
@@ -321,36 +344,48 @@ namespace TiledArray {
     /// \code
     /// value_type op(const range_type&)
     /// \endcode
+    /// For example, in the following code, the array tiles are initialized with
+    /// random numbers from 0 to 1:
+    /// \code
+    /// array.init_local_tiles([] (const TiledArray::Range& range) -> TiledArray::Tensor<double>
+    ///     {
+    ///        // Initialize the tile with the given range object
+    ///        TiledArray::Tensor<double> tile(range);
+    ///
+    ///        // Initialize the random number generator
+    ///        std::default_random_engine generator;
+    ///        std::uniform_real_distribution<double> distribution(0.0,1.0);
+    ///
+    ///        // Fill the tile with random numbers
+    ///        for(auto& value : tile)
+    ///           value = distribution(generator);
+    ///
+    ///        return tile;
+    ///     });
+    /// \endcode
     /// \tparam Op Tile operation type
     /// \param op The operation used to generate tiles
-    /// \param wait Wait for all tiles to be set before proceeding
-    /// \note It is typically not necessary to wait for tile initialization
-    /// before using arrays in tensor arithmetic expressions.
     template <typename Op>
-    void init_local_tiles(Op&& op, const bool wait = false) {
+    void init_local_tiles(Op&& op) {
       check_pimpl();
-      madness::Range<typename pmap_interface::const_iterator>
-          range(pimpl_->pmap()->begin(), pimpl_->pmap()->end(), 8);
 
-      Array_ array(*this);
-
-      Future<bool> result = pimpl_->get_world().taskq.for_each(range,
-          [=] (const typename pmap_interface::const_iterator& it) mutable {
-            const size_type index = *it;
-            if(! array.is_zero(index))
-              array.set(index, op(array.trange().make_tile_range(*it)));
-            return true;
-          });
-
-      // Wait for all tiles to be set
-      if(wait)
-        result.get();
+      auto it = pimpl_->pmap()->begin();
+      const auto end = pimpl_->pmap()->end();
+      for(; it != end; ++it) {
+        const auto index = *it;
+        if(! pimpl_->is_zero(index)) {
+          Future<value_type> tile = pimpl_->get_world().taskq.add(
+              [] (Array_& array, const size_type index, const Op& op) -> value_type
+              { return op(array.trange().make_tile_range(index)); },
+              *this, index, op);
+          set(index, tile);
+        }
+      }
     }
 
     /// Tiled range accessor
 
     /// \return A const reference to the tiled range object for the array
-    /// \throw nothing
     const trange_type& trange() const {
       check_pimpl();
       return pimpl_->trange();
@@ -359,7 +394,6 @@ namespace TiledArray {
     /// Tile range accessor
 
     /// \return A const reference to the range object for the array tiles
-    /// \throw nothing
     const range_type& range() const {
       check_pimpl();
       return pimpl_->range();
@@ -368,7 +402,6 @@ namespace TiledArray {
     /// Element range accessor
 
     /// \return A const reference to the range object for the array elements
-    /// \throw nothing
     const typename trange_type::tile_range_type& elements() const {
       check_pimpl();
       return pimpl_->trange().elements();
@@ -463,14 +496,20 @@ namespace TiledArray {
     /// \tparam Index An index type
     /// \param i The index of a tile
     /// \return The process ID of the owner of a tile.
-    /// \note This does not indicate whether a tile exists or not. Only, who
-    /// would own it if it does exist.
+    /// \note This does not indicate whether a tile exists or not. Only, the
+    /// rank of the process that would own it if it does exist.
     template <typename Index>
     ProcessID owner(const Index& i) const {
       check_index(i);
       return pimpl_->owner(i);
     }
 
+    /// Check if the tile at index \c i is stored locally
+
+    /// \tparam Index A coordinate or ordinal index type
+    /// \param i The coordinate or ordinal index of the tile to be checked
+    /// \return \c true if \c owner(i) is equal to the MPI process rank,
+    /// otherwise \c false.
     template <typename Index>
     bool is_local(const Index& i) const {
       check_index(i);
@@ -519,6 +558,10 @@ namespace TiledArray {
     /// \note This function is a no-op for dense arrays.
     void truncate() { TiledArray::truncate(*this); }
 
+    /// Check if the array is initialized
+
+    /// \return \c false if the array has been default initialized, otherwise
+    /// \c true.
     bool is_initialized() const { return static_cast<bool>(pimpl_); }
 
   private:

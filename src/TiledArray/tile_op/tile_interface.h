@@ -44,8 +44,217 @@ namespace TiledArray {
   /**
    * \defgroup NonIntrusiveTileInterface Non-intrusive tile interface
    * @{
+   *
+   * \page NonIntrusiveTileInterfaceDetails
+   *
+   * \tableofcontents
+   *
+   * \section TileInterfaceIntroduction Introduction
+   *
+   * To use a user defined tile types in TiledArray expressions, users must
+   * define a set of interface function that define basic arithmetic and query
+   * operations. It is not necessary to define all operations, only those that
+   * are required for the algebraic tensor operations used in your application.
+   * However, more than one function may be necessary for a given expression
+   * operator. Each function has an intrusive and non-intrusive interface that
+   * may be used to implement the required functionality. Below is a
+   * description of each interface function, the intrusive and non-intrusive
+   * function signatures of the function, and, in some cases, a reference
+   * implementation. The reference implementation assumes that the tensor type
+   * has a \c range() member for convenience, but this is not necessary. Tensor
+   * implementations may have any arbitrary range interface function(s).
+   *
+   * \subsection TileInterfaceMinimumTileRequirements Minimum Tile Requirements
+   *
+   * The minimum requirements for user defined tile types are:
+   *
+   * \li An accessible copy constructor
+   * \li An accessible destructor
+   * \li Must be a shallow copy object
+   *
+   * TiledArray assumes tiles are shallow copy objects for efficiency when
+   * coping objects and to avoid unnecessary replication of data. A shallow
+   * copy object is an object that only copies a pointer (and updates a
+   * reference counter) instead of explicitly copying all elements of the
+   * tile. If your tile object is not a shallow copy object, you can use the
+   * \c TiledArray::Tile class to wrap the object.
+   *
+   * \subsection TileInterfaceConvenstion Interface and Naming Convention
+   *
+   * The naming convention used for interface functions is:
+   *
+   * \li \c xxxx - Base \c xxxx operation that creates a new tile object from
+   *     the input arguments.
+   * \li \c xxxx_to - Base \c xxxx operation that modifies the first argument or
+   *     calling object in-place (without constructing an new object).
+   *
+   * where \c xxxx represent the arithmetic/mutating operation performed by the
+   * interface function, which includes:
+   *
+   * \li \c add
+   * \li \c subt
+   * \li \c mult
+   * \li \c scal
+   * \li \c gemm
+   * \li \c neg
+   * \li \c shift
+   *
+   * There are multiple overloaded version of these function, which combine
+   * scaling, permuting, or scaling and permuting operations with the base
+   * arithmetic/mutating operation.
+   *
+   * In the following sections, \c TensorType is used to represent an arbitrary
+   * user-defined tile type that meets the minimum requirements specified above.
+   * \c ScalarType is used to represent an built-in scalar data type (e.g.
+   * \c int, \c float, etc.). The example code below is used for demonstration
+   * purposes and may not be the an optimal solution.
+   *
+   * \section TileRequiredInterface Required Functions
+   *
+   * The minimum set of functions required are:
+   *
+   * \li \c empty
+   * \li \c clone
+   * \li \c permute
+   * \li \c scale
+   *
+   * Theses functions are necessary for all tile operations.
+   *
+   * \subsection TileInterfaceEmpty Empty
+   *
+   * The empty function checks that the tile object has been initialized and is
+   * usable in arithmetic operations. It returns \c true if the tile has not
+   * been initialized, otherwise \c false. It is possible for empty to always
+   * return \c false, if the tile type does not support default construction
+   * (or uninitialized) objects.
+   *
+   * Non-intrusive interface:
+   *
+   * \code
+   * bool empty(const TensorType& tensor);
+   * \endcode
+   *
+   * Intrusive interface:
+   *
+   * \code
+   * bool TensorType::empty();
+   * \endcode
+   *
+   * \subsection TileInterfaceClone Clone
+   *
+   * The clone function creates a "deep" copy of a tensor, i.e. all data
+   * elements of the tile are explicitly copied to a new object.
+   *
+   * Non-intrusive interface:
+   *
+   * \code
+   * TensorType clone(const TensorType& tensor);
+   * \endcode
+   *
+   * Intrusive interface:
+   *
+   * \code
+   * TensorType TensorType::clone();
+   * \endcode
+   *
+   * \subsection TileInterfacePermute Permute
+   *
+   * The permute function reorders the data of an input tile by swapping the
+   * indices in the output tile. For example, the transpose of a matrix is the
+   * equivalent of permutation P(1,0), where indices 0 and 1 are swapped. The
+   * implementation of permute must support arbitrary permutations up to the
+   * highest rank supported by the tile type.
+   *
+   * Non-intrusive interface:
+   *
+   * \code
+   * TensorType permute(const TensorType& arg, const TiledArray::Permutation& perm);
+   * \endcode
+   *
+   * Intrusive interface:
+   *
+   * \code
+   * TensorType TensorType::permute(const TiledArray::Permutation& perm);
+   * \endcode
+   *
+   * Example:
+   *
+   * The following code constructs a permuted copy of the argument. The example
+   * code assumes \c TensorType has a \c range() member function that returns a
+   * \c TiledArray::Range object. However, this is an implementation detail that
+   * is not necessary.
+   *
+   * \code
+   * TensorType
+   * permute(const TensorType& arg, const TiledArray::Permutation& perm) {
+   *   // Get tile boundaries
+   *   const auto lobound = arg.range().lobound();
+   *   const auto upbound = arg.range().upbound();
+   *
+   *   // Construct the result tile with a permuted range
+   *   TensorType result(perm * arg.range());
+   *
+   *   // Iterate over tile elements
+   *   for(auto it = arg.range().begin(); it < arg.range().end(); ++it) {
+   *     // Get the coordinate index of the argument and the result element
+   *     const auto index = it.index();
+   *     const auto perm_index = perm * it.index();
+   *
+   *     result(perm_index) = arg(index);
+   *   }
+   *
+   *   return result;
+   * }
+   * \endcode
+   *
+   * \subsection TileInterfaceScale Scale
+   *
+   * The scale interface consists of two function groups \c scale and
+   * \c scale_to.
+   *
+   * Non-intrusive interface:
+   *
+   * \code
+   * TensorType scale(const TensorType& arg, const ScalarType factor); // (1)
+   * TensorType scale(const TensorType& arg, const ScalarType factor,  // (2)
+   *     const TiledArray::Permutation& perm);
+   * TensorType& scale_to(TensorType& arg, const ScalarType factor);   // (3)
+   * \endcode
+   *
+   * Intrusive interface:
+   *
+   * \code
+   * TensorType TensorType::scale(const ScalarType factor);       // (1)
+   * TensorType TensorType::scale(const ScalarType factor,        // (2)
+   *     const TiledArray::Permutation& perm);
+   * TensorType& TensorType::scale_to(const ScalarType factor);   // (3)
+   * \endcode
+   *
+   * Function (1) creates a copy of the argument tensor that is scaled by
+   * \c factor, (2) creates a copy of the argument tensor that is scaled by
+   * \c factor and permtued by \c perm, and (3) scales the argument tensor
+   * in-place (without creating a copy).
+   *
+   * Example:
+   *
+   * \code
+   * TensorType
+   * scale(const TensorType& arg, const ScalarType factor) {
+   *
+   *   // Construct the result tile
+   *   TensorType result(arg.range());
+   *   std::transform(arg.begin(), arg.end(), result.begin(),
+   *       [] (const TensorType& value) { return value * factor; });
+   *
+   *   return result;
+   * }
+   * \endcode
+   * \section TileAdditionInterface Tile Addition Interface
+   *
+   * The tile addition interface include several functions, which are required
+   * for to implement simple addition operations.
+   *
    */
-
 
 
   // Clone operations ----------------------------------------------------------

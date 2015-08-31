@@ -88,16 +88,19 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(const Left& first, const Right& second) const {
-        return TiledArray::add(first, second, BinaryInterface_::permutation());
+      result_type permute_op(const Left& first, const Right& second) const {
+        using TiledArray::add;
+        return add(first, second, BinaryInterface_::permutation());
       }
 
-      result_type permute(ZeroTensor, const Right& second) const {
-        return TiledArray::permute(second, BinaryInterface_::permutation());
+      result_type permute_op(ZeroTensor, const Right& second) const {
+        using TiledArray::permute;
+        return permute(second, BinaryInterface_::permutation());
       }
 
-      result_type permute(const Left& first, ZeroTensor) const {
-        return TiledArray::permute(first, BinaryInterface_::permutation());
+      result_type permute_op(const Left& first, ZeroTensor) const {
+        using TiledArray::permute;
+        return permute(first, BinaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -106,43 +109,48 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       static typename std::enable_if<!(LC || RC), result_type>::type
-      no_permute(const Left& first, const Right& second) {
-        return TiledArray::add(first, second);
+      no_permute_op(const Left& first, const Right& second) {
+        using TiledArray::add;
+        return add(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
-      no_permute(Left& first, const Right& second) {
-        return TiledArray::add_to(first, second);
+      no_permute_op(Left& first, const Right& second) {
+        using TiledArray::add_to;
+        return add_to(first, second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC && RC, result_type>::type
-      no_permute(const Left& first, Right& second) {
+      no_permute_op(const Left& first, Right& second) {
+        using TiledArray::add_to;
         return add_to(second, first);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!RC, result_type>::type
-      no_permute(ZeroTensor, const Right& second) {
-        return TiledArray::clone(second);
+      no_permute_op(ZeroTensor, const Right& second) {
+        using TiledArray::clone;
+        return clone(second);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<RC, result_type>::type
-      no_permute(ZeroTensor, Right& second) {
+      no_permute_op(ZeroTensor, Right& second) {
         return second;
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC, result_type>::type
-      no_permute(const Left& first, ZeroTensor) {
-        return TiledArray::clone(first);
+      no_permute_op(const Left& first, ZeroTensor) {
+        using TiledArray::clone;
+        return clone(first);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
-      no_permute(Left& first, ZeroTensor) {
+      no_permute_op(Left& first, ZeroTensor) {
         return first;
       }
 

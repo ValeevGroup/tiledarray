@@ -106,16 +106,17 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(first_argument_type first, second_argument_type second) const {
-        return TiledArray::mult(first, second, factor_, BinaryInterface_::permutation());
+      result_type permute_op(first_argument_type first, second_argument_type second) const {
+        using TiledArray::mult;
+        return mult(first, second, factor_, BinaryInterface_::permutation());
       }
 
-      result_type permute(ZeroTensor, const Right&) const {
+      result_type permute_op(ZeroTensor, const Right&) const {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
-      result_type permute(const Left&, ZeroTensor) const {
+      result_type permute_op(const Left&, ZeroTensor) const {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
@@ -126,46 +127,49 @@ namespace TiledArray {
 
       template <bool LC, bool RC>
       typename std::enable_if<!(LC || RC), result_type>::type
-      no_permute(first_argument_type first, second_argument_type second) const {
-        return TiledArray::mult(first, second, factor_);
+      no_permute_op(first_argument_type first, second_argument_type second) const {
+        using TiledArray::mult;
+        return mult(first, second, factor_);
       }
 
       template <bool LC, bool RC>
       typename std::enable_if<LC, result_type>::type
-      no_permute(Left& first, second_argument_type second) const {
-        return TiledArray::mult_to(first, second, factor_);
+      no_permute_op(Left& first, second_argument_type second) const {
+        using TiledArray::mult_to;
+        return mult_to(first, second, factor_);
       }
 
       template <bool LC, bool RC>
       typename std::enable_if<!LC && RC, result_type>::type
-      no_permute(first_argument_type first, Right& second) const {
-        return TiledArray::mult_to(second, first, factor_);
+      no_permute_op(first_argument_type first, Right& second) const {
+        using TiledArray::mult_to;
+        return mult_to(second, first, factor_);
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!RC, result_type>::type
-      no_permute(ZeroTensor, const Right&) {
+      no_permute_op(ZeroTensor, const Right&) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<RC, result_type>::type
-      no_permute(ZeroTensor, Right&) {
+      no_permute_op(ZeroTensor, Right&) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<!LC, result_type>::type
-      no_permute(const Left&, ZeroTensor) {
+      no_permute_op(const Left&, ZeroTensor) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }
 
       template <bool LC, bool RC>
       static typename std::enable_if<LC, result_type>::type
-      no_permute(Left&, ZeroTensor) {
+      no_permute_op(Left&, ZeroTensor) {
         TA_ASSERT(false); // Invalid arguments for this operation
         return result_type();
       }

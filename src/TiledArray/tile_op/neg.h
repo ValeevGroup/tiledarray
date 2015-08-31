@@ -79,8 +79,9 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      result_type permute(const Arg& arg) const {
-        return TiledArray::neg(arg, UnaryInterface_::permutation());
+      result_type permute_op(const Arg& arg) const {
+        using TiledArray::neg;
+        return neg(arg, UnaryInterface_::permutation());
       }
 
       // Non-permuting tile evaluation functions
@@ -89,14 +90,16 @@ namespace TiledArray {
 
       template <bool C>
       static typename std::enable_if<!C, result_type>::type
-      no_permute(const Arg& arg) {
-        return TiledArray::neg(arg);
+      no_permute_op(const Arg& arg) {
+        using TiledArray::neg;
+        return neg(arg);
       }
 
       template <bool C>
       static typename std::enable_if<C, result_type>::type
-      no_permute(Arg& arg) {
-        return TiledArray::neg_to(arg);
+      no_permute_op(Arg& arg) {
+        using TiledArray::neg_to;
+        return neg_to(arg);
       }
 
     }; // class Neg

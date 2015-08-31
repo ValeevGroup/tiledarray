@@ -136,9 +136,9 @@ namespace TiledArray {
       /// applied to \c arg.
       result_type operator()(argument_type arg) const {
         if(perm_)
-          return derived().permute(arg);
+          return derived().permute_op(arg);
 
-        return derived().template no_permute<is_consumable::value>(arg);
+        return derived().template no_permute_op<is_consumable::value>(arg);
       }
 
       /// Evaluate lazy tile arguments
@@ -246,9 +246,9 @@ namespace TiledArray {
       /// applied to \c arg.
       result_type operator()(argument_type arg) const {
         if(perm_)
-          return derived().permute(arg);
+          return derived().permute_op(arg);
 
-        return derived().template no_permute<false>(arg);
+        return derived().template no_permute_op<false>(arg);
       }
 
       /// Evaluate non-array lazy tile arguments
@@ -294,12 +294,12 @@ namespace TiledArray {
           result_type>::type
       operator()(A& arg, const bool consume) const {
         if(perm_)
-          return derived().permute(arg);
+          return derived().permute_op(arg);
 
         if(consume)
-          return derived().template no_permute<true>(arg);
+          return derived().template no_permute_op<true>(arg);
 
-        return derived().template no_permute<false>(arg);
+        return derived().template no_permute_op<false>(arg);
       }
 
       /// Evaluate array lazy tile arguments

@@ -194,6 +194,10 @@ BOOST_AUTO_TEST_CASE( make_groups )
 }
 
 #if 0
+// This test case us used to evaluate distribute statistics. This unit test
+// should only be enabled when changes are made to the ProcGrid algorithm, and
+// human eyes are examining the output.
+
 BOOST_AUTO_TEST_CASE( statistics )
 {
   GlobalFixture::world->srand(time(NULL));
@@ -227,6 +231,33 @@ BOOST_AUTO_TEST_CASE( statistics )
       it != unused_process_distribution.end(); ++it)
     std::cout << *it << "\n";
   std::cout << "\nAverage build time: " << total_time / double(count) << "\n";
+}
+#endif
+
+#if 0
+// This test case us used to evaluate quality of ProcGrid output. This unit test
+// should only be enabled when changes are made to the ProcGrid algorithm, and
+// human eyes are examining the output.
+
+BOOST_AUTO_TEST_CASE( generate )
+{
+  const std::size_t tile_size = 256;
+  const std::size_t row_size = 32768;
+  const std::size_t col_size = 32768;
+  const std::size_t rows = row_size / tile_size;
+  const std::size_t cols = col_size / tile_size;
+
+  std::cout << "\n Matrix size = " << row_size << "x" << col_size << "\n blocksize = "
+      << tile_size << "x" << tile_size << "\n";
+
+  for(ProcessID nprocs = 1; nprocs <= 16; ++nprocs) {
+
+    TiledArray::detail::ProcGrid proc_grid(*GlobalFixture::world, 0, nprocs,
+        rows, cols, row_size, col_size);
+
+    std::cout << "P = " << nprocs << "  P_rows = " << proc_grid.proc_rows()
+        << "  P_cols = " << proc_grid.proc_cols() << "\n";
+  }
 }
 #endif
 

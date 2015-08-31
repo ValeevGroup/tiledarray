@@ -74,12 +74,12 @@ else()
   # Create a cache entry for MADNESS build variables.
   # Note: This will not overwrite user specified values.
   set(MADNESS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/src/madness" CACHE PATH 
-        "Path to the MADNESS source code")
+        "Path to the MADNESS source directory")
   set(MADNESS_BINARY_DIR "${PROJECT_BINARY_DIR}/external/build/madness" CACHE PATH 
-        "Path to the MADNESS source code")
+        "Path to the MADNESS build directory")
   set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(Madness_TAG "8edb1d21d931208805d2b1ecbb848e419194ac6f" CACHE STRING 
+  set(Madness_TAG "c654ba4ea930e03b8c8cd6be176b80d0692d11e5" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${Madness_TAG}" STREQUAL "")
@@ -156,7 +156,7 @@ else()
 
   endif()
   
-  # Check that the MADNESS source director contains the 
+  # Check that the MADNESS source contains madness.h
   message(STATUS "Looking for madness.h")
   if(EXISTS ${MADNESS_SOURCE_DIR}/src/madness.h)
     message(STATUS "Looking for madness.h - found")
@@ -195,7 +195,7 @@ else()
     append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
   endif()
   
-  if(ENABLE_SHARED_LIBRARIES)
+  if(BUILD_SHARED_LIBS)
     set(MAD_ENABLE_SHARED "--enable-shared")
     set(MAD_ENABLE_STATIC "--disable-static")
   else()
@@ -220,7 +220,7 @@ else()
     set(MAD_ELEMENTAL_FLAG "no")
   endif()
   
-    # Set compile flags required for Elemental
+  # Set compile flags required for Intel TBB
   if(ENABLE_TBB)
     if(TBB_INCLUDE_DIR AND EXISTS ${TBB_INCLUDE_DIR})
       append_flags(MAD_TBB_INCLUDE_FLAG "--with-tbb-include=${TBB_INCLUDE_DIR}")
@@ -272,6 +272,14 @@ else()
       append_flags(MAD_LIBS "-Wl,--end-group")
     endif()
   endif()
+  
+  # Set compile flags required for Gperftools
+  if(ENABLE_GPERFTOOLS)
+    foreach(_lib ${Gperftools_LIBRARIES} ${Libunwind_LIBRARIES})
+      append_flags(MAD_LIBS "${_lib}")
+    endforeach()
+  endif()
+  
   append_flags(MAD_LIBS "${CMAKE_THREAD_LIBS_INIT}")
   
   # Set the configuration flags for MADNESS
@@ -314,7 +322,6 @@ else()
     endif()
   endif()
 
-
   # Configure MADNESS
   set(error_code 1)
   execute_process(
@@ -337,6 +344,7 @@ else()
                 "${MAD_TBB_LIB_FLAG}"
                 "--without-mkl"
                 "--without-libxc"
+                "--without-google-perf"
                 "${MAD_EXTRA_CONFIGURE_FLAGS}"
                 "MPICXX=${CMAKE_CXX_COMPILER}"
                 "MPICC=${CMAKE_C_COMPILER}"
@@ -350,7 +358,7 @@ else()
       RESULT_VARIABLE error_code)
   if(error_code)
     message(FATAL_ERROR "The MADNESS configure script failed.")
-  endif()
+  endif(error_code)
   
   include(${MADNESS_BINARY_DIR}/config/madness-project.cmake)
 
@@ -397,10 +405,6 @@ else()
 #  message("Madness_LIBRARIES     = '${Madness_LIBRARIES}'")
 #  message("Madness_LINKER_FLAGS  = '${Madness_LINKER_FLAGS}'")
 
-  set(MAD_CPPFLAGS "${CMAKE_CPP_FLAGS}")
-  set(MAD_CFLAGS "${CMAKE_C_FLAGS}")
-  set(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS}")
-  set(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)

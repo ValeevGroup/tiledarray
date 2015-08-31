@@ -27,6 +27,7 @@
 #define TILEDARRAY_TENSOR_H__INCLUDED
 
 #include <TiledArray/tensor/tensor.h>
+#include <TiledArray/tensor/tensor_map.h>
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tensor/shift_wrapper.h>
 #include <TiledArray/tensor/operators.h>

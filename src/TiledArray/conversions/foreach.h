@@ -18,7 +18,7 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  truncate.h
+ *  foreach.h
  *  Apr 15, 2015
  *
  */
@@ -43,15 +43,16 @@ namespace TiledArray {
 
   /// Apply a function to each tile of a dense Array
 
-  /// This function uses an \c Array object to generate a new \c Array with
-  /// modified tile data. Users must provide a function/functor that initializes
-  /// the tiles for the new \c Array object. For example, if we want to create a
-  /// new array with were each element is element is equal to the square root of
-  /// the original array:
+  /// This function uses an \c Array object to generate a new \c Array where the
+  /// output tiles are a function of the input tiles. Users must provide a
+  /// function/functor that initializes the tiles for the new \c Array object.
+  /// For example, if we want to create a new array with were each element is
+  /// equal to the square root of the corresponding element of the original
+  /// array:
   /// \code
   /// TiledArray::Array<2, double> out_array =
   ///     foreach(in_array, [=] (TiledArray::Tensor<double>& out_tile, const TiledArray::Tensor<double>& in_tile) {
-  ///       out_tile = TiledArray::Tensor<double>(in_tile, [=] (const double value) -> double
+  ///       out_tile = in_tile.unary([=] (const double value) -> double
   ///           { return std::sqrt(value); });
   ///     });
   /// \endcode
@@ -70,6 +71,7 @@ namespace TiledArray {
   inline Array<T, DIM, Tile, DensePolicy>
   foreach(const Array<T, DIM, Tile, DensePolicy>& arg, Op&& op) {
     typedef Array<T, DIM, Tile, DensePolicy> array_type;
+    typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
 
     World& world = arg.get_world();
@@ -77,21 +79,26 @@ namespace TiledArray {
     // Make an empty result array
     array_type result(world, arg.trange(), arg.get_pmap());
 
+    // Construct the task function used to construct result tiles.
+    auto task = [=] (const value_type& arg_tile) -> value_type {
+      typename array_type::value_type result_tile;
+      op(result_tile, arg_tile);
+      return result_tile;
+    };
+
     // Iterate over local tiles of arg
     typename array_type::pmap_interface::const_iterator
     it = arg.get_pmap()->begin(),
     end = arg.get_pmap()->end();
     for(; it != end; ++it) {
+      const size_type index = *it;
+
       // Spawn a task to evaluate the tile
       Future<typename array_type::value_type> tile =
-          world.taskq.add([=] (const typename array_type::value_type arg_tile) {
-            typename array_type::value_type result_tile;
-            op(result_tile, arg_tile);
-            return result_tile;
-          }, arg.find(*it));
+          world.taskq.add(task, arg.find(index));
 
       // Store result tile
-      result.set(*it, tile);
+      result.set(index, tile);
     }
 
     return result;
@@ -146,20 +153,24 @@ namespace TiledArray {
     // Make an empty result array
     array_type result(world, arg.trange(), arg.get_pmap());
 
+    // Construct the task function used to modify tiles.
+    auto task = [=] (value_type& arg_tile) -> value_type {
+      op(arg_tile);
+      return arg_tile;
+    };
+
     // Iterate over local tiles of arg
     typename array_type::pmap_interface::const_iterator
     it = arg.get_pmap()->begin(),
     end = arg.get_pmap()->end();
     for(; it != end; ++it) {
+      const size_type index = *it;
       // Spawn a task to evaluate the tile
       Future<value_type> tile =
-          world.taskq.add([=] (value_type& arg_tile) {
-            op(arg_tile);
-            return arg_tile;
-          }, arg.find(*it));
+          world.taskq.add(task, arg.find(index));
 
       // Store result tile
-      result.set(*it, tile);
+      result.set(index, tile);
     }
 
     // Set the arg with the new array
@@ -168,18 +179,19 @@ namespace TiledArray {
 
   /// Apply a function to each tile of a sparse Array
 
-  /// This function uses an \c Array object to generate a new \c Array with
-  /// modified tile data. Users must provide a function/functor that initializes
-  /// the tiles for the new \c Array object. For example, if we want to create a
-  /// new array with were each element is element is equal to the square root of
-  /// the original array:
+  /// This function uses an \c Array object to generate a new \c Array where the
+  /// output tiles are a function of the input tiles. Users must provide a
+  /// function/functor that initializes the tiles for the new \c Array object.
+  /// For example, if we want to create a new array with were each element is
+  /// equal to the square root of the corresponding element of the original
+  /// array:
   /// \code
   /// TiledArray::Array<2, double, Tensor<double>, SparsePolicy> out_array =
   ///     foreach(in_array, [] (TiledArray::Tensor<double>& out_tile,
   ///                           const TiledArray::Tensor<double>& in_tile) -> float
   ///     {
   ///       double norm_squared = 0.0;
-  ///       out_tile = TiledArray::Tensor<double>(in_tile, [&] (const double value) -> double {
+  ///       out_tile = in_tile.unary([&] (const double value) -> double {
   ///         const double result = std::sqrt(value);
   ///         norm_squared += result * result;
   ///         return result;
@@ -192,7 +204,10 @@ namespace TiledArray {
   /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& result_tile,
   ///     const typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& arg_tile);
   /// \endcode
-  /// where the return value of \c op is the 2-norm (Fibrinous norm).
+  /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
+  /// result tile.
+  /// \note This function should not be used to initialize the tiles of an array
+  /// object.
   /// \tparam Op Tile operation
   /// \tparam T Element type of the array
   /// \tparam DIM Dimension of the array
@@ -213,15 +228,15 @@ namespace TiledArray {
     std::vector<datum_type> tiles;
     tiles.reserve(arg.get_pmap()->size());
 
-    // Collect updated shape data.
+    // Construct a tensor to hold updated tile norms for the result shape.
     TiledArray::Tensor<typename shape_type::value_type,
         Eigen::aligned_allocator<typename shape_type::value_type> >
     tile_norms(arg.trange().tiles(), 0);
 
-    // Construct the new tile norms and
+    // Construct the task function used to construct the result tiles.
     madness::AtomicInt counter; counter = 0;
     int task_count = 0;
-    auto task = [&](const size_type index, const value_type& arg_tile) {
+    auto task = [&](const size_type index, const value_type& arg_tile) -> value_type {
       value_type result_tile;
       tile_norms[index] = op(result_tile, arg_tile);
       ++counter;
@@ -246,7 +261,7 @@ namespace TiledArray {
 
     // Wait for tile norm data to be collected.
     if(task_count > 0)
-      world.await([&counter,task_count] () {return counter == task_count; });
+      world.await([&counter,task_count] () -> bool { return counter == task_count; });
 
     // Construct the new array
     array_type result(world, arg.trange(),
@@ -264,9 +279,9 @@ namespace TiledArray {
   /// Modify each tile of a sparse Array
 
   /// This function modifies the tile data of \c Array object. Users must
-  /// provide a function/functor that modifies the tile data. For example, if we
-  /// want to modify the elements of the array to be equal to the the square
-  /// root of the original value:
+  /// provide a function/functor that modifies the tile data in place. For
+  /// example, if we want to modify the elements of the array to be equal to the
+  /// square root of the original value:
   /// \code
   /// foreach(array, [] (TiledArray::Tensor<double>& tile) -> float {
   ///   double norm_squared = 0.0;
@@ -281,7 +296,10 @@ namespace TiledArray {
   /// \code
   /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& tile);
   /// \endcode
-  /// where the return value of \c op is the 2-norm (Fibrinous norm).
+  /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
+  /// tile.
+  /// \note This function should not be used to initialize the tiles of an array
+  /// object.
   /// \tparam Op Tile operation
   /// \tparam T Element type of the array
   /// \tparam DIM Dimension of the array
@@ -313,15 +331,15 @@ namespace TiledArray {
     std::vector<datum_type> tiles;
     tiles.reserve(arg.get_pmap()->size());
 
-    // Collect updated shape data.
+    // Construct a tensor to hold updated tile norms for the result shape.
     TiledArray::Tensor<typename shape_type::value_type,
         Eigen::aligned_allocator<typename shape_type::value_type> >
     tile_norms(arg.trange().tiles(), 0);
 
-    // Construct the new tile norms and
+    // Construct the task function used to modify tiles.
     madness::AtomicInt counter; counter = 0;
     int task_count = 0;
-    auto task = [&](const size_type index, value_type& arg_tile) {
+    auto task = [&](const size_type index, value_type& arg_tile) -> value_type {
       tile_norms[index] = op(arg_tile);
       ++counter;
       return arg_tile;
@@ -350,7 +368,7 @@ namespace TiledArray {
 
     // Wait for tile norm data to be collected.
     if(task_count > 0)
-      world.await([&counter,task_count] () {return counter == task_count; });
+      world.await([&counter,task_count] () -> bool { return counter == task_count; });
 
     // Construct the new array
     array_type result(world, arg.trange(),

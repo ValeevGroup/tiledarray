@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
                 << " GB\nNumber of blocks    = " << block_count
                 << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
 
-    const double flop = 2.0 * double(matrix_size * matrix_size * matrix_size) / 1.0e9;
+    const double gflop = 2.0 * double(matrix_size * matrix_size * matrix_size) / 1.0e9;
 
     // Construct TiledRange
     std::vector<unsigned int> blocking;
@@ -93,6 +93,7 @@ int main(int argc, char** argv) {
       std::cout << "Starting iterations: " << "\n";
 
     double total_time = 0.0;
+    double total_gflop_rate = 0.0;
 
     // Do matrix multiplication
     for(int i = 0; i < repeat; ++i) {
@@ -101,15 +102,17 @@ int main(int argc, char** argv) {
 //      world.gop.fence();
       const double time = madness::wall_time() - start;
       total_time += time;
+      const double gflop_rate = gflop / time;
+      total_gflop_rate += gflop_rate;
       if(world.rank() == 0)
         std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
-            << flop / time <<"\n";
+            << gflop_rate <<"\n";
     }
 
     // Print results
     if(world.rank() == 0)
       std::cout << "Average wall time   = " << total_time / double(repeat)
-          << " sec\nAverage GFLOPS      = " << double(repeat) * flop / total_time << "\n";
+          << " sec\nAverage GFLOPS      = " << total_gflop_rate / double(repeat) << "\n";
 
     TiledArray::finalize();
 
