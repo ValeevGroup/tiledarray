@@ -86,6 +86,27 @@ BOOST_AUTO_TEST_CASE( accessor )
   // no write access.
 }
 
+BOOST_AUTO_TEST_CASE( cycles_decomposition )
+{
+  { // {0,2,1} = (1,2)
+    auto cycles = p021.cycles();
+    BOOST_CHECK_EQUAL(cycles.size(), 1u);
+    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({1u, 2u}));
+  }
+  { // {2,0,1} = (0,1,2)
+    auto cycles = p201.cycles();
+    BOOST_CHECK_EQUAL(cycles.size(), 1u);
+    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({0u, 1u, 2u}));
+  }
+  { // {0,2,1,5,3,4} = (1,2)(3,4,5)
+    auto p = Permutation{0,2,1,5,3,4};
+    auto cycles = p.cycles();
+    BOOST_CHECK_EQUAL(cycles.size(), 2u);
+    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({1u, 2u}));
+    BOOST_CHECK_EQUAL(cycles[1], std::vector<unsigned int>({3u, 4u, 5u}));
+  }
+}
+
 BOOST_AUTO_TEST_CASE( ostream )
 {
   boost::test_tools::output_test_stream output;

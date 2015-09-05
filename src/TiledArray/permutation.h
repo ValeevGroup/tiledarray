@@ -24,6 +24,7 @@
 #include <TiledArray/type_traits.h>
 #include <TiledArray/utility.h>
 #include <array>
+#include <numeric>
 
 namespace TiledArray {
 
@@ -76,8 +77,8 @@ namespace TiledArray {
   /// Permutation class is used as an argument in all permutation operations on
   /// other objects. Permutations are performed with the following syntax:
   /// \code
-  ///   b = p * a; // assign permeation of a into b given the permutation p.
-  ///   a *= p;    // permute a given the permutation p.
+  ///   b = p * a; // apply permutation p to a and assign the result to b.
+  ///   a *= p;    // apply permutation p (in-place) to a.
   /// \endcode
   class Permutation {
   public:
@@ -88,18 +89,22 @@ namespace TiledArray {
 
   private:
 
-    /// The permutation stored in an "image form," where the permutation
-    ///   ( 0 1 2 3 )
+    /// One-line representation of permutation
+
+    /// The permutation is stored in an "image form," where a permutation expressed in Cauchy's two-line notation as
+    /// \f[
+    ///   ( 0 1 2 3 ) \\
     ///   ( 3 2 1 0 )
-    /// is stored as { 3, 2, 1, 0 }
+    /// \f]
+    /// is represented as \f$ \{ 3, 2, 1, 0 \} \f$
     std::vector<index_type> p_;
 
-    /// Validate input permutation data
+    /// Validate input permutation
 
     /// \return \c false if each element of [first, last) is unique and less
     /// than the size of the list.
     template <typename InIter>
-    bool valid_(InIter first, InIter last) {
+    bool valid_permutation(InIter first, InIter last) {
       bool result = true;
       const unsigned int n = std::distance(first, last);
       for(; first != last; ++first) {
@@ -121,7 +126,7 @@ namespace TiledArray {
     Permutation& operator=(const Permutation&) = default;
     Permutation& operator=(Permutation&& other) = default;
 
-    /// Construct permutation from an iterator
+    /// Construct permutation from a range [first,last)
 
     /// \tparam InIter An input iterator type
     /// \param first The beginning of the iterator range
@@ -134,7 +139,7 @@ namespace TiledArray {
     Permutation(InIter first, InIter last) :
         p_(first, last)
     {
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
+      TA_ASSERT( valid_permutation(p_.begin(), p_.end()) );
     }
 
     /// Array constructor
@@ -144,7 +149,7 @@ namespace TiledArray {
     explicit Permutation(const std::vector<index_type>& a) :
         p_(a)
     {
-      TA_ASSERT( valid_(a.begin(), a.end()) );
+      TA_ASSERT( valid_permutation(a.begin(), a.end()) );
     }
 
     /// std::vector move constructor
@@ -154,7 +159,7 @@ namespace TiledArray {
     explicit Permutation(std::vector<index_type>&& a) :
         p_(std::move(a))
     {
-      TA_ASSERT( valid_(p_.begin(), p_.end()) );
+      TA_ASSERT( valid_permutation(p_.begin(), p_.end()) );
     }
 
     /// Construct permutation with an initializer list
@@ -174,11 +179,20 @@ namespace TiledArray {
     /// \return An iterator that points to the beginning of the element range
     const_iterator begin() const { return p_.begin(); }
 
+    /// Begin element iterator factory function
+
+    /// \return An iterator that points to the beginning of the element range
+    const_iterator cbegin() const { return p_.cbegin(); }
 
     /// End element iterator factory function
 
     /// \return An iterator that points to the end of the element range
     const_iterator end() const { return p_.end(); }
+
+    /// End element iterator factory function
+
+    /// \return An iterator that points to the end of the element range
+    const_iterator cend() const { return p_.cend(); }
 
     /// Element accessor
 
@@ -186,17 +200,57 @@ namespace TiledArray {
     /// \return The i-th element
     index_type operator[](unsigned int i) const { return p_[i]; }
 
+    /// Cycles decomposition
+
+    /// Certain algorithms are more efficient with permutations represented as a set of cyclic transpositions.
+    /// This function returns the set of cycles that represent this permutation. For example,
+    /// permutation \f$ \{3, 2, 1, 0 \} \f$ is represented as the following set of cycles: (0,3)(1,2).
+    /// The canonical format for the cycles is:
+    /// <ul>
+    ///  <li> Cycles of length 1 are skipped.
+    ///  <li> Each cycle is in order of increasing elements.
+    ///  <li> Cycles are in the order of increasing first elements.
+    /// </ul>
+    /// \return the set of cycles (in canonical format) that represent this permutation
+    std::vector<std::vector<index_type> > cycles() const {
+
+      std::vector<std::vector<index_type>> result;
+
+      std::vector<bool> placed_in_cycle(p_.size(), false);
+
+      // 1. for each i compute its orbit
+      // 2. if the orbit is longer than 1, sort and add to the list of cycles
+      for(index_type i=0; i!= p_.size(); ++i) {
+        if (not placed_in_cycle[i]) {
+          std::vector<index_type> cycle(1,i);
+          placed_in_cycle[i] = true;
+
+          index_type next_i = p_[i];
+          while (next_i != i) {
+            cycle.push_back(next_i);
+            placed_in_cycle[next_i] = true;
+            next_i = p_[next_i];
+          }
+
+          if (cycle.size() != 1) {
+            std::sort(cycle.begin(), cycle.end());
+            result.emplace_back(cycle);
+          }
+
+        } // this i already in a cycle
+      } // loop over i
+
+      return result;
+    }
 
     /// Identity permutation factory function
 
     /// \param dim The number of dimensions in the
     /// \return An identity permutation for \c dim elements
     static Permutation identity(const unsigned int dim) {
-      Permutation result;
-      result.p_.reserve(dim);
-      for(unsigned int i = 0u; i < dim; ++i)
-        result.p_.emplace_back(i);
-      return result;
+      Array I(dim);
+      std::iota(I.begin(), I.end(), 0);
+      return Permutation(I);
     }
 
     /// Identity permutation factory function
@@ -209,18 +263,16 @@ namespace TiledArray {
     /// \param other The right-hand argument
     /// \return The product of this permutation multiplied by \c other
     Permutation mult(const Permutation& other) const {
-      const unsigned int n = p_.size();
-      TA_ASSERT(n == other.p_.size());
-      Permutation result;
-      result.p_.reserve(n);
+      const unsigned int n = dim();
+      TA_ASSERT(n == other.dim());
 
+      Array result; result.reserve(n);
       for(unsigned int i = 0u; i < n; ++i) {
-        const index_type p_i = p_[i];
-        const index_type result_i = other.p_[p_i];
-        result.p_.emplace_back(result_i);
+        const index_type result_i = other[p_[i]];
+        result.emplace_back(result_i);
       }
 
-      return result;
+      return Permutation(result);
     }
 
     /// Construct the inverse of this permutation
@@ -230,13 +282,12 @@ namespace TiledArray {
     /// \return The inverse of this permutation
     Permutation inv() const {
       const index_type n = p_.size();
-      Permutation result;
-      result.p_.resize(n, 0ul);
+      Array result; result.resize(n, 0ul);
       for(index_type i = 0ul; i < n; ++i) {
         const index_type pi = p_[i];
-        result.p_[pi] = i;
+        result[pi] = i;
       }
-      return result;
+      return Permutation(result);
     }
 
     /// Raise this permutation to the n-th power
