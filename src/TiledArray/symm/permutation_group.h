@@ -128,7 +128,7 @@ namespace TiledArray {
 
     /// uses generators to compute all elements
     void init() {
-      using Permutation::index_type;
+      using index_type = Permutation::index_type;
 
       /// add generators to the elements
       for(const auto& g: generators_) {
