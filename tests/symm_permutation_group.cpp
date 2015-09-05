@@ -23,36 +23,29 @@
  *
  */
 
-#include "TiledArray/symm/symm_group.h"
+#include "TiledArray/symm/permutation_group.h"
 #include "unit_test_config.h"
 
-struct SymmGroupFixture {
+struct PermutationGroupFixture {
 
-  SymmGroupFixture() { }
+  PermutationGroupFixture() { }
 
-  ~SymmGroupFixture() { }
+  ~PermutationGroupFixture() { }
 
-}; // SymmGroupFixture
+}; // PermutationGroupFixture
 
-using TiledArray::SymmGroup;
+using TiledArray::PermutationGroup;
 using TiledArray::Permutation;
 
-BOOST_FIXTURE_TEST_SUITE( symm_group_suite, SymmGroupFixture )
+BOOST_FIXTURE_TEST_SUITE( symm_group_suite, PermutationGroupFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
 
   unsigned int order = 1u;
   for(unsigned int degree = 1u; degree < 5u; ++degree, order *= degree) {
-    BOOST_REQUIRE_NO_THROW(SymmGroup S(degree));
-    SymmGroup S(degree);
-
-//    std::cout << "S(" << S.degree() << ")\n"
-//        << "  order = " << S.order() << "\n"
-//        << "  elements = {\n";
-//    for(unsigned int i = 0u; i < S.order(); ++i)
-//      std::cout << "    " << S[i] << "\n";
-//    std::cout << "}\n";
+    BOOST_REQUIRE_NO_THROW(PermutationGroup S(degree));
+    PermutationGroup S(degree);
 
     // Check that the group has the correct degree
     BOOST_CHECK_EQUAL(S.degree(), degree);
