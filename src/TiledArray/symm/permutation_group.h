@@ -91,8 +91,9 @@ namespace TiledArray {
 
     /// General constructor
 
-    /// This constructs a permutation group from the set of generators.
+    /// This constructs a permutation group from a set of generators.
     /// \param degree The number of elements in the set whose symmetry this group describes
+    /// \param generators The generating set that defines this group
     PermutationGroup(unsigned int degree, std::vector<Permutation> generators) :
       generators_(std::move(generators)),
       elements_(1,Permutation::identity(degree)) // add the permutation
