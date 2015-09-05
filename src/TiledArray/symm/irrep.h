@@ -31,7 +31,7 @@
 
 namespace TiledArray {
 
-  /// Irrep of an \f$ S_n \f$ symmetry group
+  /// Irrep of an \f$ S_n \f$ symmetric group
 
   /// The data is represented using Yamanouchi symbol, \f$ M \f$ , which is a
   /// row of \f$ n \f$ numbers \f$ M_i \f$ \f$ (i = 0, \dots , n-1) \f$, where
