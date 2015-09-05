@@ -26,41 +26,38 @@
 #include "TiledArray/symm/permutation_group.h"
 #include "unit_test_config.h"
 
-struct PermutationGroupFixture {
-
-  PermutationGroupFixture() { }
-
-  ~PermutationGroupFixture() { }
-
-}; // PermutationGroupFixture
-
 using TiledArray::PermutationGroup;
 using TiledArray::Permutation;
 
-BOOST_FIXTURE_TEST_SUITE( symm_group_suite, PermutationGroupFixture )
+struct PermutationGroupFixture {
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+  PermutationGroupFixture() {
 
-  unsigned int order = 1u;
-  for(unsigned int degree = 1u; degree < 5u; ++degree, order *= degree) {
-    BOOST_REQUIRE_NO_THROW(PermutationGroup S(degree));
-    PermutationGroup S(degree);
+    { // construct set of generators for P4__01__23__02_13
+      // this group describes symmetries under permutations 0<->1, 2<->3, and {0,1}<->{2,3}
+      P4__01__23__02_13_generators.reserve(3);
+      P4__01__23__02_13_generators.emplace_back(Permutation{1,0,2,3});
+      P4__01__23__02_13_generators.emplace_back(Permutation{0,1,3,2});
+      P4__01__23__02_13_generators.emplace_back(Permutation{2,3,0,1});
+    }
 
-    // Check that the group has the correct degree
-    BOOST_CHECK_EQUAL(S.degree(), degree);
+  }
 
-    // Check that the number of elements in the group is correct
-    BOOST_CHECK_EQUAL(S.order(), order);
+  ~PermutationGroupFixture() { }
 
+  // for testing symmetric group
+  static const unsigned int max_degree = 5u;
 
-    // Check that the group has the identity property
-    BOOST_CHECK_EQUAL(S.identity(), Permutation::identity(degree));
+  std::vector<Permutation> P4__01__23__02_13_generators;
+
+  void validate_group(const PermutationGroup& S) {
+
+    // Check that the group includes the identity element
+    BOOST_CHECK_EQUAL(S.identity(), Permutation::identity(S.degree()));
     for(unsigned int i = 0u; i < S.order(); ++i) {
       BOOST_CHECK_EQUAL(S.identity() * S[i], S[i]);
       BOOST_CHECK_EQUAL(S[i] * S.identity(), S[i]);
     }
-
 
     // Check that the group forms a closed set
     for(unsigned int i = 0u; i < S.order(); ++i) {
@@ -68,13 +65,13 @@ BOOST_AUTO_TEST_CASE( constructor )
         Permutation e = S[i] * S[j];
 
         unsigned int k = 0u;
-        for(; k < order; ++k) {
+        for(; k < S.order(); ++k) {
           if(e == S[k])
             break;
         }
 
         // Check that e is a member of the group
-        BOOST_CHECK(k < order);
+        BOOST_CHECK(k < S.order());
       }
     }
 
@@ -88,7 +85,7 @@ BOOST_AUTO_TEST_CASE( constructor )
       }
     }
 
-    // Check that the group contains an inverse element for each element
+    // Check that the group contains the inverse of each element
     for(unsigned int i = 0u; i < S.order(); ++i) {
       Permutation inv = S[i].inv();
 
@@ -99,14 +96,44 @@ BOOST_AUTO_TEST_CASE( constructor )
           break;
 
       // Check that inv is a member of the group
-      BOOST_CHECK(j < order);
+      BOOST_CHECK(j < S.order());
 
       // Check that the any element multiplied by it's own inverse is the identity
       BOOST_CHECK_EQUAL(inv * S[i], S.identity());
       BOOST_CHECK_EQUAL(S[i] * inv, S.identity());
     }
-
   }
+
+}; // PermutationGroupFixture
+
+BOOST_FIXTURE_TEST_SUITE( symm_group_suite, PermutationGroupFixture )
+
+BOOST_AUTO_TEST_CASE( sn_constructor )
+{
+
+  unsigned int order = 1u;
+  for(unsigned int degree = 1u; degree <= max_degree; ++degree, order *= degree) {
+    BOOST_REQUIRE_NO_THROW(PermutationGroup S(degree));
+    PermutationGroup S(degree);
+
+    // Check that the group has the correct degree
+    BOOST_CHECK_EQUAL(S.degree(), degree);
+
+    // Check that the number of elements in the group is correct
+    BOOST_CHECK_EQUAL(S.order(), order);
+
+    validate_group(S);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( pn_constructor )
+{
+   PermutationGroup P4__01__23__02_13(4,P4__01__23__02_13_generators);
+
+   // Check that the number of elements in the group is correct
+   BOOST_CHECK_EQUAL(P4__01__23__02_13.order(), 8u);
+
+   validate_group(P4__01__23__02_13);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
