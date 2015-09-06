@@ -30,6 +30,7 @@
 #include "unit_test_config.h"
 
 using TiledArray::PermutationGroup;
+using TiledArray::SymmetricGroup;
 using TiledArray::Permutation;
 
 struct PermutationGroupFixture {
@@ -129,12 +130,12 @@ BOOST_FIXTURE_TEST_SUITE( symm_group_suite, PermutationGroupFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
 
-  // symmetric group constructors
+  // SymmetricGroup ctor
   {
     unsigned int order = 1u;
     for(unsigned int degree = 1u; degree <= max_degree; ++degree, order *= degree) {
-      BOOST_REQUIRE_NO_THROW(PermutationGroup S(degree));
-      PermutationGroup S(degree);
+      BOOST_REQUIRE_NO_THROW(SymmetricGroup S(degree));
+      SymmetricGroup S(degree);
 
       // Check that the group has the correct degree
       BOOST_CHECK_EQUAL(S.degree(), degree);
@@ -146,7 +147,7 @@ BOOST_AUTO_TEST_CASE( constructor )
     }
   }
 
-  // non-Sn permutation groups
+  // PermutationGroup ctor
   {
     PermutationGroup P4__01__23__02_13(4,P4__01__23__02_13_generators);
 
@@ -162,11 +163,7 @@ BOOST_AUTO_TEST_CASE( lexicographical_order )
 {
   { // check S5
     typedef std::array<int,5> index_type;
-    PermutationGroup S5(5);
-
-//    std::cout<<"Permutation group S5:" << std::endl;
-//    std::copy(S5.begin(), S5.end(), std::ostream_iterator<Permutation>(std::cout, "\n"));
-//    std::cout<<std::endl;
+    SymmetricGroup S5(5);
 
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4,5},S5), true);
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,1,300,300,500},S5), true);
@@ -179,10 +176,6 @@ BOOST_AUTO_TEST_CASE( lexicographical_order )
     typedef std::array<int,5> index_type;
     PermutationGroup P(5, std::vector<Permutation>{Permutation{4,3,0,1,2}});
 
-//    std::cout<<"Permutation group P5{(0,2,4)(1,3)}:" << std::endl;
-//    std::copy(P.begin(), P.end(), std::ostream_iterator<Permutation>(std::cout, "\n"));
-//    std::cout<<std::endl;
-
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4,5},P), true);
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,3,1,4,1},P), true);
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,1,1,1},P), false);
@@ -193,10 +186,6 @@ BOOST_AUTO_TEST_CASE( lexicographical_order )
   { // check P4{(0,1),(2,3),(0,2)(1,3)}
     typedef std::array<int,4> index_type;
     PermutationGroup P(4, P4__01__23__02_13_generators);
-
-//    std::cout<<"Permutation group P4{(0,1),(2,3),(0,2)(1,3)}:" << std::endl;
-//    std::copy(P.begin(), P.end(), std::ostream_iterator<Permutation>(std::cout, "\n"));
-//    std::cout<<std::endl;
 
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4},P), true);
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,3,2,4},P), true);
