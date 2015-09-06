@@ -158,7 +158,7 @@ namespace TiledArray {
 
   }; // class PermutationGroup
 
-  /// Symmetric group of degree \f$ n \f$ is a group of \em all permutations of set \f$ \{0, 1, dots n-1\} \f$
+  /// Symmetric group of degree \f$ n \f$ is a group of \em all permutations of set \f$ \{0, 1, \dots n-1\} \f$
   class SymmetricGroup final: public PermutationGroup {
     public:
       // Compiler generated functions
