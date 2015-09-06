@@ -72,7 +72,7 @@ namespace TiledArray {
    * @{
    */
 
-  /// Permutation
+  /// Permutation of set \f$ \{0, 1, 2 \dots n-1\} \f$ .
 
   /// Permutation class is used as an argument in all permutation operations on
   /// other objects. Permutations are performed with the following syntax:
@@ -171,7 +171,7 @@ namespace TiledArray {
 
     /// Permutation dimension accessor
 
-    /// \return The number of elements in the permutation
+    /// \return The number of elements in the permuted set
     unsigned int dim() const { return p_.size(); }
 
     /// Begin element iterator factory function

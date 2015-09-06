@@ -103,7 +103,7 @@ namespace TiledArray {
 
     /// Degree accessor
 
-    /// The degree of the group is the number of symmetry elements in the group.
+    /// The degree of the group is the number of elements in the set on which the group members act
     /// \return The degree of the group
     unsigned int degree() const { return elements_.front().dim(); }
 
@@ -114,12 +114,15 @@ namespace TiledArray {
     /// \return The order of the group
     unsigned int order() const { return elements_.size(); }
 
+    /// Idenity element accessor
+
+    /// \return the Identity element
     const Permutation& identity() const { return elements_.front(); }
 
     /// Group element accessor
 
-    /// \param i The group element to be returned
-    /// \return The a const reference to the i-th group element
+    /// \param i Index of the group element to be returned, \c 0<=i&&i<order()
+    /// \return A const reference to the i-th group element
     const Permutation& operator[](unsigned int i) const {
       TA_ASSERT(i < elements_.size());
       return elements_[i];
