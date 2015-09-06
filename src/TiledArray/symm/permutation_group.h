@@ -128,6 +128,44 @@ namespace TiledArray {
       return elements_[i];
     }
 
+    /// Elements vector accessor
+
+    /// \return A const reference to the vector of elements
+    const std::vector<Permutation>& elements() const { return elements_; }
+
+    /// Generators vector accessor
+
+    /// \return A const reference to the vector of generators
+    const std::vector<Permutation>& generators() const { return generators_; }
+
+    /// forward iterator over the group elements pointing to the first element
+
+    /// \return a std::vector<Permutation>::const_iterator object that points to the first element in the group
+    std::vector<Permutation>::const_iterator begin() const {
+      return elements_.begin();
+    }
+
+    /// forward iterator over the group elements pointing to the first element
+
+    /// \return a std::vector<Permutation>::const_iterator object that points to the first element in the group
+    std::vector<Permutation>::const_iterator cbegin() const {
+      return elements_.cbegin();
+    }
+
+    /// forward iterator over the group elements pointing past the last element
+
+    /// \return a std::vector<Permutation>::const_iterator object that points past the last element in the group
+    std::vector<Permutation>::const_iterator end() const {
+      return elements_.end();
+    }
+
+    /// forward iterator over the group elements pointing past the last element
+
+    /// \return a std::vector<Permutation>::const_iterator object that points past the last element in the group
+    std::vector<Permutation>::const_iterator cend() const {
+      return elements_.cend();
+    }
+
   private:
 
     /// uses generators to compute all elements
