@@ -202,9 +202,11 @@ namespace TiledArray {
 
     /// Cycles decomposition
 
-    /// Certain algorithms are more efficient with permutations represented as a set of cyclic transpositions.
-    /// This function returns the set of cycles that represent this permutation. For example,
-    /// permutation \f$ \{3, 2, 1, 0 \} \f$ is represented as the following set of cycles: (0,3)(1,2).
+    /// Certain algorithms are more efficient with permutations represented as a
+    /// set of cyclic transpositions. This function returns the set of cycles
+    /// that represent this permutation. For example, permutation
+    /// \f$ \{3, 2, 1, 0 \} \f$ is represented as the following set of cycles:
+    /// \c (0,3)(1,2).
     /// The canonical format for the cycles is:
     /// <ul>
     ///  <li> Cycles of length 1 are skipped.
@@ -315,6 +317,7 @@ namespace TiledArray {
 
       Permutation result = identity(p_.size());
 
+      // Compute the power of value with the exponentiation by squaring.
       while(power) {
           if(power & 1)
             result = result.mult(value);
