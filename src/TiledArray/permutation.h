@@ -248,9 +248,11 @@ namespace TiledArray {
     /// \param dim The number of dimensions in the
     /// \return An identity permutation for \c dim elements
     static Permutation identity(const unsigned int dim) {
-      Array I(dim);
-      std::iota(I.begin(), I.end(), 0);
-      return Permutation(I);
+      Permutation result;
+      result.p_.reserve(dim);
+      for(unsigned int i = 0u; i < dim; ++i)
+        result.p_.emplace_back(i);
+      return result;
     }
 
     /// Identity permutation factory function
@@ -263,16 +265,18 @@ namespace TiledArray {
     /// \param other The right-hand argument
     /// \return The product of this permutation multiplied by \c other
     Permutation mult(const Permutation& other) const {
-      const unsigned int n = dim();
-      TA_ASSERT(n == other.dim());
+      const unsigned int n = p_.size();
+      TA_ASSERT(n == other.p_.size());
+      Permutation result;
+      result.p_.reserve(n);
 
-      Array result; result.reserve(n);
       for(unsigned int i = 0u; i < n; ++i) {
-        const index_type result_i = other[p_[i]];
-        result.emplace_back(result_i);
+        const index_type p_i = p_[i];
+        const index_type result_i = other.p_[p_i];
+        result.p_.emplace_back(result_i);
       }
 
-      return Permutation(result);
+      return result;
     }
 
     /// Construct the inverse of this permutation
@@ -282,12 +286,13 @@ namespace TiledArray {
     /// \return The inverse of this permutation
     Permutation inv() const {
       const index_type n = p_.size();
-      Array result; result.resize(n, 0ul);
+      Permutation result;
+      result.p_.resize(n, 0ul);
       for(index_type i = 0ul; i < n; ++i) {
         const index_type pi = p_[i];
-        result[pi] = i;
+        result.p_[pi] = i;
       }
-      return Permutation(result);
+      return result;
     }
 
     /// Raise this permutation to the n-th power
