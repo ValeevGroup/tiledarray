@@ -132,12 +132,13 @@ namespace TiledArray {
     public:
       typedef Permutation Permutation_;
       typedef unsigned int index_type;
-      typedef std::map<index_type,index_type>::const_iterator const_iterator;
+      typedef std::map<index_type,index_type> Map;
+      typedef Map::const_iterator const_iterator;
 
     private:
 
       /// Two-line representation of permutation
-      std::map<index_type,index_type> p_;
+      Map p_;
 
       /// Validate permutation specified in one-line form as an iterator range
       /// \return \c true if each element of \c [first,last) is unique and less
@@ -162,11 +163,11 @@ namespace TiledArray {
         for(const auto& e: input) {
           const auto& key = e.first;
           const auto& value = e.second;
-          if (keys.find(key) != keys.end())
+          if (keys.find(key) == keys.end())
             keys.insert(key);
           else
             return false; // key is found more than once
-          if (values.find(value) != values.end())
+          if (values.find(value) == values.end())
             values.insert(value);
           else
             return false; // value is found more than once
@@ -218,7 +219,16 @@ namespace TiledArray {
       /// \param list An initializer list of integers
       explicit Permutation(std::initializer_list<index_type> list) :
           Permutation(list.begin(), list.end())
-      { }
+      {
+      }
+
+      /// Construct permutation using its compressed 2-line form given by std::map
+
+      /// \param p the map
+      Permutation(Map p) : p_(std::move(p))
+      {
+        TA_ASSERT(valid_permutation(p_));
+      }
 
       /// Permutation domain size
 
@@ -290,7 +300,7 @@ namespace TiledArray {
         std::set<index_type> placed_in_cycle;
 
         // safe to use non-const operator[] due to properties of Permutation (domain==image)
-        auto& p_nonconst_ = const_cast<std::map<index_type, index_type>&>(p_);
+        auto& p_nonconst_ = const_cast<Map&>(p_);
 
         // 1. for each i compute its orbit
         // 2. if the orbit is longer than 1, sort and add to the list of cycles
@@ -329,7 +339,7 @@ namespace TiledArray {
         auto other_domain = other.domain<iset>();
         product_domain.insert(other_domain.begin(), other_domain.end());
 
-        std::map<index_type,index_type> result;
+        Map result;
         for(const auto& d: product_domain) {
           const auto d_image = other[(*this)[d]];
           if (d_image != d)
@@ -345,7 +355,7 @@ namespace TiledArray {
       /// where \f$ I \f$ is the identity permutation.
       /// \return The inverse of this permutation
       Permutation inv() const {
-        std::map<index_type,index_type> result;
+        Map result;
         for(const auto& iter: p_) {
           const auto i = iter.first;
           const auto pi = iter.second;
@@ -387,7 +397,7 @@ namespace TiledArray {
       /// Data accessor
 
       /// \return \c std::map<index_type,index_type> object encoding the permutation in compressed two-line form
-      const std::map<index_type,index_type>& data() const { return p_; }
+      const Map& data() const { return p_; }
 
       /// Idenity permutation factory method
 
@@ -404,15 +414,6 @@ namespace TiledArray {
       template <typename Archive>
       void serialize(Archive& ar) {
         ar & p_;
-      }
-
-    private:
-
-      /// Construct permutation using its compressed 2-line form given by std::map
-
-      /// \param p the map
-      Permutation(std::map<index_type,index_type> p) : p_(std::move(p))
-      {
       }
 
     }; // class Permutation
