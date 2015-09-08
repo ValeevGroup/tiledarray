@@ -72,14 +72,62 @@ namespace TiledArray {
    * @{
    */
 
-  /// Permutation of set \f$ \{0, 1, 2 \dots n-1\} \f$ .
+  /// Permutation of a sequence of objects indexed by base-0 indices.
 
   /// Permutation class is used as an argument in all permutation operations on
-  /// other objects. Permutations are performed with the following syntax:
+  /// other objects. Permutations can be applied to sequences of objects:
   /// \code
-  ///   b = p * a; // apply permutation p to a and assign the result to b.
-  ///   a *= p;    // apply permutation p (in-place) to a.
+  ///   b = p * a; // apply permutation p to sequence a and assign the result to sequence b.
+  ///   a *= p;    // apply permutation p (in-place) to sequence a.
   /// \endcode
+  /// Permutations can also be composed, e.g. multiplied and inverted:
+  /// \code
+  ///   p3 = p1 * p2;      // computes product of permutations of p1 and p2
+  ///   p1_inv = p1.inv(); // computes inverse of p1
+  /// \endcode
+  ///
+  /// \note
+  ///
+  /// \par
+  /// Some Permutation objects is internally represented in one-line (image) form, e.g.
+  /// \f[
+  ///   ( 0 1 2 3 4) \\
+  ///   ( 0 2 3 1 4)
+  /// \f]
+  /// is represented in one-line form as \f$ \{0, 2, 3, 1, 4\} \f$. This means
+  /// that 0th element of a sequence is mapped by this permutation into the 0th element of the permuted
+  /// sequence (hence 0 is referred to as a <em>fixed point</em> of this permutation; so is 4);
+  /// similarly, 1st element of a sequence is mapped by this permutation into the 2nd element of
+  /// the permuted sequence (hence 2 is referred as the \em image of 1 under the action of this Permutation;
+  /// similarly, 1 is the image of 3, etc.). Set \f$ \{1, 2, 3\} \f$ is referred to
+  /// as \em domain  (or \em support) of this Permutation. Note that (by definition) Permutation
+  /// maps its domain into itself (i.e. it's a bijection).
+  ///
+  /// \par
+  /// Note that the one-line representation
+  /// is redundant as multiple distinct one-line representations correspond to the same
+  /// <em>compressed form</em>, e.g. \f$ \{0, 2, 3, 1, 4\} \f$ and \f$ \{0, 2, 3, 1\} \f$ correspond to the
+  /// same \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ compressed form.
+  /// Compressed two-line form is nothing but the Cauchy's two-line form with trivial entries omitted, e.g.
+  /// \f[
+  ///   ( 0 1 2 3 4) \\
+  ///   ( 0 2 3 1 4)
+  /// \f]
+  /// , is represented in compressed form as \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ .
+  ///
+  /// \par
+  /// Another non-redundant representation of Permutation is as a set of cycles. For example,
+  /// permutation \f$ \{0 \to 3, 1 \to 2, 2 \to 1, 0 \to 3 \} \f$ is represented uniquely as the
+  /// following set of cycles: (0,3)(1,2).
+  /// The canonical format for the cycle decomposition used by Permutation class is defined as follows:
+  /// <ul>
+  ///  <li> Cycles of length 1 are skipped.
+  ///  <li> Each cycle is in order of increasing elements.
+  ///  <li> Cycles are in the order of increasing first elements.
+  /// </ul>
+  /// Cycle representation is convenient for some operations, but is less efficient for others.
+  /// Thus cycle representation can be computed on request, but internally the 1-line form is used.
+  ///
   class Permutation {
   public:
     typedef Permutation Permutation_;
@@ -89,19 +137,10 @@ namespace TiledArray {
   private:
 
     /// One-line representation of permutation
-
-    /// The permutation is stored in an "image form," where a permutation expressed in Cauchy's two-line notation as
-    /// \f[
-    ///   ( 0 1 2 3 ) \\
-    ///   ( 3 2 1 0 )
-    /// \f]
-    /// is represented as \f$ \{ 3, 2, 1, 0 \} \f$
     std::vector<index_type> p_;
 
     /// Validate input permutation
-
-    /// \return \c false if each element of [first, last) is unique and less
-    /// than the size of the list.
+    /// \return \c false if each element of [first, last) is unique and less than the size of the domain.
     template <typename InIter>
     bool valid_permutation(InIter first, InIter last) {
       bool result = true;
@@ -118,7 +157,7 @@ namespace TiledArray {
 
   public:
 
-    Permutation() = default;
+    Permutation() = default; // constructs an invalid Permutation
     Permutation(const Permutation&) = default;
     Permutation(Permutation&&) = default;
     ~Permutation() = default;
@@ -168,10 +207,10 @@ namespace TiledArray {
         Permutation(list.begin(), list.end())
     { }
 
-    /// Permutation dimension accessor
+    /// Domain size accessor
 
-    /// \return The number of elements in the permuted set
-    unsigned int dim() const { return p_.size(); }
+    /// \return The domain size
+    index_type dim() const { return p_.size(); }
 
     /// Begin element iterator factory function
 
