@@ -455,7 +455,7 @@ namespace TiledArray {
   /// \param perm The base permutation
   /// \param n Exponent value
   /// \return This permutation raised to the n-th power
-  inline Permutation operator^(const Permutation perm, int n) {
+  inline Permutation operator^(const Permutation& perm, int n) {
     return perm.pow(n);
   }
 
