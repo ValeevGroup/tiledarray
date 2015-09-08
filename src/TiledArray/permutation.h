@@ -300,10 +300,10 @@ namespace TiledArray {
     /// \return An identity permutation
     Permutation identity() const { return identity(p_.size()); }
 
-    /// Multiplication of this permutation with \c other
+    /// Product of this permutation by \c other
 
-    /// \param other The right-hand argument
-    /// \return The product of this permutation multiplied by \c other
+    /// \param other a Permutation
+    /// \return \c other * \c this, i.e. this applied first, then other
     Permutation mult(const Permutation& other) const {
       const unsigned int n = p_.size();
       TA_ASSERT(n == other.p_.size());
