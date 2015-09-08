@@ -55,12 +55,12 @@ namespace TiledArray {
     /// \param[out] result The output array that will hold the permuted array
     template <typename Perm, typename Arg, typename Result>
     inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
-      TA_ASSERT(perm.dim() == size(arg));
-      TA_ASSERT(perm.dim() == size(result));
-
-      const unsigned int n = perm.dim();
+      TA_ASSERT(size(result) == size(arg));
+      const unsigned int n = size(arg);
       for(unsigned int i = 0u; i < n; ++i) {
         const typename Perm::index_type pi = perm[i];
+        TA_ASSERT(i < size(arg));
+        TA_ASSERT(pi < size(result));
         result[pi] = arg[i];
       }
     }
