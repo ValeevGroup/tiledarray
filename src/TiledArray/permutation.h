@@ -74,6 +74,8 @@ namespace TiledArray {
 
   /// Permutation of a sequence of objects indexed by base-0 indices.
 
+  /// \warning Unlike TiledArray::symmetry::Permutation, this fixes domain size.
+  ///
   /// Permutation class is used as an argument in all permutation operations on
   /// other objects. Permutations can be applied to sequences of objects:
   /// \code
@@ -89,7 +91,7 @@ namespace TiledArray {
   /// \note
   ///
   /// \par
-  /// Some Permutation objects is internally represented in one-line (image) form, e.g.
+  /// Permutation is internally represented in one-line (image) form, e.g.
   /// \f[
   ///   ( 0 1 2 3 4) \\
   ///   ( 0 2 3 1 4)
@@ -107,26 +109,8 @@ namespace TiledArray {
   /// Note that the one-line representation
   /// is redundant as multiple distinct one-line representations correspond to the same
   /// <em>compressed form</em>, e.g. \f$ \{0, 2, 3, 1, 4\} \f$ and \f$ \{0, 2, 3, 1\} \f$ correspond to the
-  /// same \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ compressed form.
-  /// Compressed two-line form is nothing but the Cauchy's two-line form with trivial entries omitted, e.g.
-  /// \f[
-  ///   ( 0 1 2 3 4) \\
-  ///   ( 0 2 3 1 4)
-  /// \f]
-  /// , is represented in compressed form as \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ .
-  ///
-  /// \par
-  /// Another non-redundant representation of Permutation is as a set of cycles. For example,
-  /// permutation \f$ \{0 \to 3, 1 \to 2, 2 \to 1, 0 \to 3 \} \f$ is represented uniquely as the
-  /// following set of cycles: (0,3)(1,2).
-  /// The canonical format for the cycle decomposition used by Permutation class is defined as follows:
-  /// <ul>
-  ///  <li> Cycles of length 1 are skipped.
-  ///  <li> Each cycle is in order of increasing elements.
-  ///  <li> Cycles are in the order of increasing first elements.
-  /// </ul>
-  /// Cycle representation is convenient for some operations, but is less efficient for others.
-  /// Thus cycle representation can be computed on request, but internally the 1-line form is used.
+  /// same \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ compressed form. For an implementation
+  /// using compressed form, and without fixed domain size, see TiledArray::symmetry::Permutation.
   ///
   class Permutation {
   public:
