@@ -184,10 +184,10 @@ namespace TiledArray {
 
     /// Construct permutation from an Array
     /// \param a The permutation array to be moved
-    explicit Permutation(const std::vector<index_type>& a) :
-        p_(a)
+    template <typename Integer>
+    explicit Permutation(const std::vector<Integer>& a) :
+        Permutation(a.begin(), a.end())
     {
-      TA_ASSERT( valid_permutation(a.begin(), a.end()) );
     }
 
     /// std::vector move constructor
