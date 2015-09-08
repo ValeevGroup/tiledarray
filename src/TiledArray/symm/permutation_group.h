@@ -18,7 +18,7 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  symm_group.h
+ *  permutation_group.h
  *  May 13, 2015
  *
  */
@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_SYMM_PERMUTATION_GROUP_H__INCLUDED
 #define TILEDARRAY_SYMM_PERMUTATION_GROUP_H__INCLUDED
 
-#include <TiledArray/permutation.h>
+#include <TiledArray/symm/permutation.h>
 
 namespace TiledArray {
 
@@ -40,6 +40,9 @@ namespace TiledArray {
   /// PermutationGroup is a group of permutations. A permutation group is specified compactly by
   /// a generating set (set of permutations that can multiplicatively generate the entire group).
   class PermutationGroup {
+  public:
+    using Permutation = TiledArray::symmetry::Permutation;
+
   protected:
 
     /// Group generators
@@ -60,18 +63,12 @@ namespace TiledArray {
     /// This constructs a permutation group from a set of generators.
     /// \param degree The number of elements in the set whose symmetry this group describes
     /// \param generators The generating set that defines this group
-    PermutationGroup(unsigned int degree, std::vector<Permutation> generators) :
+    PermutationGroup(std::vector<Permutation> generators) :
       generators_(std::move(generators)),
-      elements_(1,Permutation::identity(degree)) // add the permutation
+      elements_(1,Permutation()) // add the permutation
     {
       init();
     }
-
-    /// Degree accessor
-
-    /// The degree of the group is the number of elements in the set on which the group members act
-    /// \return The degree of the group
-    unsigned int degree() const { return elements_.front().dim(); }
 
     /// Order accessor
 
@@ -169,24 +166,18 @@ namespace TiledArray {
       SymmetricGroup& operator=(SymmetricGroup&&) = default;
 
       SymmetricGroup(unsigned int degree) :
-        PermutationGroup()
+        PermutationGroup(), degree_(degree)
       {
         typedef Permutation::index_type index_type;
 
-        Permutation id = Permutation::identity(degree);
-        elements_.push_back(id);
+        elements_.emplace_back();
 
         // Add generators to the list of elements
         if(degree > 2u) {
           for(unsigned int i = 0u; i < degree; ++i) {
-            // Construct the generator
-            std::vector<index_type> temp = id.data();
+            // Construct the generator and add to the list
             unsigned int i1 = (i + 1u) % degree;
-            temp[i] = i1;
-            temp[i1] = i;
-
-            // Add the generator to the list
-            generators_.emplace_back(std::move(temp));
+            generators_.emplace_back(Permutation::Map{{i,i1},{i1,i}});
           }
         } else if(degree == 2u) {
           // Construct the generator
@@ -195,6 +186,15 @@ namespace TiledArray {
 
         init();
       }
+
+      /// Degree accessor
+
+      /// The degree of the group is the number of elements in the set on which the group members act
+      /// \return The degree of the group
+      unsigned int degree() const { return degree_; }
+
+    private:
+      Permutation::index_type degree_;
 
   };
 
@@ -209,8 +209,7 @@ namespace TiledArray {
   template <typename Index>
   bool is_lexicographically_smallest(const Index& idx,
                                      const PermutationGroup& pg) {
-    using index_type = Permutation::index_type;
-    TA_ASSERT(idx.size() == pg.degree());
+    using index_type = PermutationGroup::Permutation::index_type;
     const auto idx_size = idx.size();
     for(const auto& p: pg) {
       for(size_t i=0; i!=idx_size; ++i) {
@@ -229,4 +228,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif // TILEDARRAY_SYMM_SYMM_GROUP_H__INCLUDED
+#endif // TILEDARRAY_SYMM_PERMUTATION_GROUP_H__INCLUDED

@@ -31,7 +31,7 @@
 
 using TiledArray::PermutationGroup;
 using TiledArray::SymmetricGroup;
-using TiledArray::Permutation;
+using TiledArray::symmetry::Permutation;
 
 struct PermutationGroupFixture {
 
@@ -72,7 +72,7 @@ struct PermutationGroupFixture {
   void validate_group(const PermutationGroup& S) {
 
     // Check that the group includes the identity element
-    BOOST_CHECK_EQUAL(S.identity(), Permutation::identity(S.degree()));
+    BOOST_CHECK_EQUAL(S.identity(), Permutation());
     for(unsigned int i = 0u; i < S.order(); ++i) {
       BOOST_CHECK_EQUAL(S.identity() * S[i], S[i]);
       BOOST_CHECK_EQUAL(S[i] * S.identity(), S[i]);
@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   // PermutationGroup ctor
   {
-    PermutationGroup P4__01__23__02_13(4,P4__01__23__02_13_generators);
+    PermutationGroup P4__01__23__02_13(P4__01__23__02_13_generators);
 
     // Check that the number of elements in the group is correct
     BOOST_CHECK_EQUAL(P4__01__23__02_13.order(), 8u);
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE( lexicographical_order )
 
   { // check P5{(0,2,4)(1,3)}
     typedef std::array<int,5> index_type;
-    PermutationGroup P(5, std::vector<Permutation>{Permutation{4,3,0,1,2}});
+    PermutationGroup P(std::vector<Permutation>{Permutation{4,3,0,1,2}});
 
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4,5},P), true);
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,3,1,4,1},P), true);
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE( lexicographical_order )
 
   { // check P4{(0,1),(2,3),(0,2)(1,3)}
     typedef std::array<int,4> index_type;
-    PermutationGroup P(4, P4__01__23__02_13_generators);
+    PermutationGroup P(P4__01__23__02_13_generators);
 
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4},P), true);
     BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,3,2,4},P), true);
