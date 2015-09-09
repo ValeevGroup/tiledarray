@@ -128,14 +128,14 @@ namespace TiledArray {
     std::vector<index_type> p_;
 
     /// Validate input permutation
-    /// \return \c false if each element of [first, last) is unique and less than the size of the domain.
+    /// \return \c false if each element of [first, last) is non-negiative, unique and less than the size of the domain.
     template <typename InIter>
     bool valid_permutation(InIter first, InIter last) {
       bool result = true;
       const unsigned int n = std::distance(first, last);
       for(; first != last; ++first) {
-        const unsigned int value = *first;
-        result = result && (value < n) && (std::count(first, last, *first) == 1ul);
+        const auto value = *first;
+        result = result && value >= 0 && (value < n) && (std::count(first, last, *first) == 1ul);
       }
       return result;
     }
@@ -165,7 +165,7 @@ namespace TiledArray {
     Permutation(InIter first, InIter last) :
         p_(first, last)
     {
-      TA_ASSERT( valid_permutation(p_.begin(), p_.end()) );
+      TA_ASSERT( valid_permutation(first, last) );
     }
 
     /// Array constructor
@@ -190,8 +190,11 @@ namespace TiledArray {
 
     /// Construct permutation with an initializer list
 
+    /// \tparam Integer an integral type
     /// \param list An initializer list of integers
-    explicit Permutation(std::initializer_list<index_type> list) :
+    template <typename Integer,
+              typename std::enable_if<std::is_integral<Integer>::value>::type* = nullptr>
+    explicit Permutation(std::initializer_list<Integer> list) :
         Permutation(list.begin(), list.end())
     { }
 
