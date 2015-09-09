@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE( constructor )
 BOOST_AUTO_TEST_CASE( domain )
 {
   { // symmetric group on a "sparse" index domain
-    auto domain{0, 7, 11, 15};
+    auto domain = {0, 7, 11, 15};
     SymmetricGroup S(domain);
 
     auto computed_domain = S.domain<std::set<unsigned int>>();
@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE( domain )
     std::vector<Permutation> gens;
     gens.emplace_back(Permutation{0,1,2,4,5,3});
     gens.emplace_back(Permutation{0,1,3,2});
-    auto ref_domain{2,3,4,5}; // this is the domain of the above 2 permutations
+    auto ref_domain = {2,3,4,5}; // this is the domain of the above 2 permutations
 
     PermutationGroup P(gens);
 
