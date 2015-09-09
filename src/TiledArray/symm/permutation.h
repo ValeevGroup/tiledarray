@@ -91,10 +91,14 @@ namespace TiledArray {
     /// TiledArray::symmetry::Permutation is internally
     /// represented in compressed two-line form.
     /// E.g. the following permutation in Cauchy's two-line form,
-    /// \f[
-    ///   ( 0 1 2 3 4) \\
-    ///   ( 0 2 3 1 4)
-    /// \f]
+    /// \f$
+    ///   \left(
+    ///   \begin{tabular}{ccccc}
+    ///     0 & 1 & 2 & 3 & 4 \\
+    ///     0 & 2 & 3 & 1 & 4
+    ///   \end{tabular}
+    ///   \right)
+    /// \f$
     /// , is represented in compressed form as \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ . This means
     /// that 0th element of a sequence is mapped by this permutation into the 0th element of the permuted
     /// sequence (hence 0 is referred to as a <em>fixed point</em> of this permutation; so is 4);
@@ -106,10 +110,14 @@ namespace TiledArray {
     ///
     /// \par
     /// As a reminder, permutation
-    /// \f[
-    ///   ( 0 1 2 3 4) \\
-    ///   ( 0 2 3 1 4)
-    /// \f]
+    /// \f$
+    ///   \left(
+    ///   \begin{tabular}{ccccc}
+    ///     0 & 1 & 2 & 3 & 4 \\
+    ///     0 & 2 & 3 & 1 & 4
+    ///   \end{tabular}
+    ///   \right)
+    /// \f$
     /// is represented in one-line form as \f$ \{0, 2, 3, 1, 4\} \f$. Note that the one-line representation
     /// is redundant as multiple distinct one-line representations correspond to the same
     /// compressed form, e.g. \f$ \{0, 2, 3, 1, 4\} \f$ and \f$ \{0, 2, 3, 1\} \f$ correspond to the
@@ -235,6 +243,13 @@ namespace TiledArray {
       /// \return The number of elements in the domain of permutation
       unsigned int domain_size() const { return p_.size(); }
 
+      /// @name Iterator accessors
+      ///
+      /// Permutation iterators dereference into \c std::pair<index_type,index_type>, where \c first is the domain index, \c second is its image
+      /// E.g. \c Permutation::begin() of \f$ \{1->3, 2->1, 3->2\} \f$ dereferences to \c std::pair {1,3} .
+      ///
+      /// @{
+
       /// Begin element iterator factory function
 
       /// \return An iterator that points to the beginning of the range
@@ -254,6 +269,8 @@ namespace TiledArray {
 
       /// \return An iterator that points to the end of the range
       const_iterator cend() const { return p_.cend(); }
+
+      /// @}
 
       /// Computes image of an element under this permutation
 

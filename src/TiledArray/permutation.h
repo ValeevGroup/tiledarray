@@ -92,10 +92,14 @@ namespace TiledArray {
   ///
   /// \par
   /// Permutation is internally represented in one-line (image) form, e.g.
-  /// \f[
-  ///   ( 0 1 2 3 4) \\
-  ///   ( 0 2 3 1 4)
-  /// \f]
+  /// \f$
+  ///   \left(
+  ///   \begin{tabular}{ccccc}
+  ///     0 & 1 & 2 & 3 & 4 \\
+  ///     0 & 2 & 3 & 1 & 4
+  ///   \end{tabular}
+  ///   \right)
+  /// \f$
   /// is represented in one-line form as \f$ \{0, 2, 3, 1, 4\} \f$. This means
   /// that 0th element of a sequence is mapped by this permutation into the 0th element of the permuted
   /// sequence (hence 0 is referred to as a <em>fixed point</em> of this permutation; so is 4);
