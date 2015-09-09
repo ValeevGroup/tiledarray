@@ -40,28 +40,28 @@ namespace detail {
   }
 }
 
+template <typename Perm>
+struct TPermutationFixture {
+    TPermutationFixture() = default;
+    ~TPermutationFixture() = default;
+
+    Perm p = Perm({2,0,1});
+    const Perm I = detail::identity<Perm>(3);
+    const Perm p102 = Perm({1,0,2});
+    const Perm p021 = Perm({0,2,1});
+    const Perm p120 = Perm({1,2,0});
+    const Perm p201 = Perm({2,0,1});
+    const Perm p210 = Perm({2,1,0});
+};
+
 struct PermutationFixture {
 
   PermutationFixture() {}
   ~PermutationFixture() {}
 
-  template <typename P>
-  struct Fixture {
-      Fixture() = default;
-      ~Fixture() = default;
-
-      P p = P({2,0,1});
-      const P I = detail::identity<P>(3);
-      const P p102 = P({1,0,2});
-      const P p021 = P({0,2,1});
-      const P p120 = P({1,2,0});
-      const P p201 = P({2,0,1});
-      const P p210 = P({2,1,0});
-  };
-
-  template <typename P> // permutation type
-  Fixture<P>& fixture() {
-    static Fixture<P> fixture_;
+  template <typename Perm> // permutation type
+  TPermutationFixture<Perm>& fixture() {
+    static TPermutationFixture<Perm> fixture_;
     return fixture_;
   }
 
