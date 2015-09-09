@@ -15,10 +15,10 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Justus Calvin
+ *  Edward Valeev, Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  symm_symm_group.cpp
+ *  symm_permutation_group.cpp
  *  May 14, 2015
  *
  */
@@ -65,7 +65,7 @@ struct PermutationGroupFixture {
   std::uniform_int_distribution<int> uniform_int_distribution;
 
   // for testing symmetric group
-  static const unsigned int max_degree = 5u;
+  static const unsigned int max_degree = 4u;
 
   std::vector<Permutation> P4__01__23__02_13_generators;
 
@@ -130,7 +130,7 @@ BOOST_FIXTURE_TEST_SUITE( symm_group_suite, PermutationGroupFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
 
-  // SymmetricGroup ctor
+  // SymmetricGroup "degree" ctor
   {
     unsigned int order = 1u;
     for(unsigned int degree = 1u; degree <= max_degree; ++degree, order *= degree) {
@@ -147,6 +147,21 @@ BOOST_AUTO_TEST_CASE( constructor )
     }
   }
 
+  // SymmetricGroup "domain" ctor
+  {
+    auto domain = {0, 7, 11, 15};
+    BOOST_REQUIRE_NO_THROW(SymmetricGroup S(domain));
+    SymmetricGroup S(domain.begin(), domain.end());
+
+    // Check that the group has the correct degree
+    BOOST_CHECK_EQUAL(S.degree(), 4);
+
+    // Check that the number of elements in the group is correct
+    BOOST_CHECK_EQUAL(S.order(), 4*3*2*1);
+
+    validate_group(S);
+  }
+
   // PermutationGroup ctor
   {
     PermutationGroup P4__01__23__02_13(P4__01__23__02_13_generators);
@@ -157,6 +172,34 @@ BOOST_AUTO_TEST_CASE( constructor )
     validate_group(P4__01__23__02_13);
   }
 
+}
+
+BOOST_AUTO_TEST_CASE( domain )
+{
+  { // symmetric group on a "sparse" index domain
+    auto domain{0, 7, 11, 15};
+    SymmetricGroup S(domain);
+
+    auto computed_domain = S.domain<std::set<unsigned int>>();
+    BOOST_CHECK(computed_domain.size() == domain.size());
+    for(auto e: computed_domain) {
+      BOOST_CHECK(std::find(domain.begin(), domain.end(), e) != domain.end());
+    }
+  }
+  { // permutation group on a sparse domain
+    std::vector<Permutation> gens;
+    gens.emplace_back(Permutation{0,1,2,4,5,3});
+    gens.emplace_back(Permutation{0,1,3,2});
+    auto ref_domain{2,3,4,5}; // this is the domain of the above 2 permutations
+
+    PermutationGroup P(gens);
+
+    auto computed_domain = P.domain<std::set<unsigned int>>();
+    BOOST_CHECK(computed_domain.size() == ref_domain.size());
+    for(auto e: computed_domain) {
+      BOOST_CHECK(std::find(ref_domain.begin(), ref_domain.end(), e) != ref_domain.end());
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE( lexicographical_order )

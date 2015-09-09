@@ -64,13 +64,12 @@ namespace TiledArray {
     /// \param degree The number of elements in the set whose symmetry this group describes
     /// \param generators The generating set that defines this group
     PermutationGroup(std::vector<Permutation> generators) :
-      generators_(std::move(generators)),
-      elements_(1,Permutation()) // add the permutation
+      generators_(std::move(generators))
     {
       init();
     }
 
-    /// Order accessor
+    /// Group order accessor
 
     /// The order of the group is the number of elements in the group.
     /// For symmetric group \c G the order is factorial of \c G->degree()
@@ -84,6 +83,7 @@ namespace TiledArray {
 
     /// Group element accessor
 
+    /// Element 0 is always the identity (trivial) permutation. The order of the rest is not defined.
     /// \param i Index of the group element to be returned, \c 0<=i&&i<order()
     /// \return A const reference to the i-th group element
     const Permutation& operator[](unsigned int i) const {
@@ -100,6 +100,13 @@ namespace TiledArray {
 
     /// \return A const reference to the vector of generators
     const std::vector<Permutation>& generators() const { return generators_; }
+
+    /// @name Iterator accessors
+
+    /// PermutationGroup iterators dereference to group elements, i.e. Permutation objects.
+    /// Iterators can be used to iterate over group elements in implementation-defined order;
+    /// the identity element is always at the beginning. \sa operator[]
+    /// @{
 
     /// forward iterator over the group elements pointing to the first element
 
@@ -129,6 +136,24 @@ namespace TiledArray {
       return elements_.cend();
     }
 
+    /// @}
+
+    /// Computes the domain of this group
+
+    /// \tparam Set a container type in which the result will be returned (e.g. \c std::set )
+    /// \return the domain of this permutation, as a sorted sequence
+    template <typename Set>
+    Set domain() const {
+      Set result;
+      // sufficient to loop over generators
+      for(const auto& e: generators_) {
+        const auto e_domain = e.domain<Set>();
+        result.insert(e_domain.begin(), e_domain.end());
+      }
+      return result;
+    }
+
+
   protected:
 
     PermutationGroup() {} // makes uninitialized group, all initialization is left to the derived class
@@ -136,6 +161,9 @@ namespace TiledArray {
     /// uses generators to compute all elements
     void init() {
       using index_type = Permutation::index_type;
+
+      // add the identity element first
+      elements_.emplace_back();
 
       /// add generators to the elements
       for(const auto& g: generators_) {
@@ -155,9 +183,14 @@ namespace TiledArray {
 
   }; // class PermutationGroup
 
-  /// Symmetric group of degree \f$ n \f$ is a group of \em all permutations of set \f$ \{0, 1, \dots n-1\} \f$
+  /// Symmetric group
+
+  /// Symmetric group of degree \f$ n \f$ is a group of \em all permutations of set \f$ \{x_0, x_1, \dots x_{n-1}\} \f$
+  /// where \f$ x_i \f$ are nonnegative integers.
   class SymmetricGroup final: public PermutationGroup {
     public:
+      using index_type = Permutation::index_type;
+
       // Compiler generated functions
       SymmetricGroup() = delete;
       SymmetricGroup(const SymmetricGroup&) = default;
@@ -165,36 +198,75 @@ namespace TiledArray {
       SymmetricGroup& operator=(const SymmetricGroup&) = default;
       SymmetricGroup& operator=(SymmetricGroup&&) = default;
 
+      /// Construct symmetric group on domain \f$ \{0, 1, \dots n-1\} \f$, where \f$ n \f$ = \c degree
+      /// \param degree the degree of this group
       SymmetricGroup(unsigned int degree) :
-        PermutationGroup(), degree_(degree)
+        SymmetricGroup(SymmetricGroup::iota_vector(degree))
       {
-        typedef Permutation::index_type index_type;
+      }
 
-        elements_.emplace_back();
+      /// Construct symmetric group on domain \c [begin,end)
+      /// \tparam InputIterator an input iterator type
+      /// \param begin iterator pointing to the beginning of the range
+      /// \param end iterator pointing to past the end of the range
+      template <typename InputIterator,
+                typename std::enable_if<detail::is_input_iterator<InputIterator>::value>::type* = nullptr>
+      SymmetricGroup(InputIterator begin, InputIterator end) :
+        PermutationGroup(), domain_(begin, end)
+      {
+        for(auto iter=begin; iter!=end; ++iter) {
+          TA_ASSERT(*iter >= 0);
+        }
+
+        const auto degree = domain_.size();
 
         // Add generators to the list of elements
         if(degree > 2u) {
           for(unsigned int i = 0u; i < degree; ++i) {
             // Construct the generator and add to the list
             unsigned int i1 = (i + 1u) % degree;
-            generators_.emplace_back(Permutation::Map{{i,i1},{i1,i}});
+            generators_.emplace_back(Permutation::Map{{domain_[i],domain_[i1]},{domain_[i1],domain_[i]}});
           }
         } else if(degree == 2u) {
           // Construct the generator
-          generators_.emplace_back(std::vector<index_type>({1, 0}));
+          generators_.emplace_back(std::vector<index_type>({domain_[1], domain_[0]}));
         }
 
         init();
+      }
+
+      /// Construct symmetric group using domain as an initializer list
+
+      /// \tparam Integer an integral type
+      /// \param list An initializer list of Integer
+      template <typename Integer,
+                typename std::enable_if<std::is_integral<Integer>::value>::type* = nullptr>
+      explicit SymmetricGroup(std::initializer_list<Integer> list) :
+          SymmetricGroup(list.begin(), list.end())
+      {
       }
 
       /// Degree accessor
 
       /// The degree of the group is the number of elements in the set on which the group members act
       /// \return The degree of the group
-      unsigned int degree() const { return degree_; }
+      unsigned int degree() const { return domain_.size(); }
 
     private:
-      Permutation::index_type degree_;
+      std::vector<index_type> domain_;
+
+      /// make vector {0, 1, ... n-1}
+      static std::vector<index_type> iota_vector(size_t n) {
+        std::vector<index_type> result(n);
+        std::iota(result.begin(), result.end(), 0);
+        return result;
+      }
+
+      SymmetricGroup(const std::vector<index_type>& domain) :
+        SymmetricGroup(domain.begin(), domain.end())
+      {
+      }
+
 
   };
 
