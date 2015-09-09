@@ -31,6 +31,8 @@
 #include <map>
 #include <set>
 
+#include <algorithm>
+
 #include <TiledArray/type_traits.h>
 #include <TiledArray/error.h>
 
