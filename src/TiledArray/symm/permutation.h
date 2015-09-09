@@ -149,15 +149,15 @@ namespace TiledArray {
       Map p_;
 
       /// Validate permutation specified in one-line form as an iterator range
-      /// \return \c true if each element of \c [first,last) is unique and less
+      /// \return \c true if each element of \c [first,last) is non-negative, unique, and less
       /// than \c last-first
       template <typename InIter>
       bool valid_permutation(InIter first, InIter last) {
         bool result = true;
         const unsigned int n = std::distance(first, last);
         for(; first != last; ++first) {
-          const unsigned int value = *first;
-          result = result && (value < n) && (std::count(first, last, *first) == 1ul);
+          const auto value = *first;
+          result = result && value >= 0 && (value < n) && (std::count(first, last, *first) == 1ul);
         }
         return result;
       }
