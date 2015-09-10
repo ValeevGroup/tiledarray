@@ -130,7 +130,7 @@ namespace TiledArray {
     /// Validate input permutation
     /// \return \c false if each element of [first, last) is non-negiative, unique and less than the size of the domain.
     template <typename InIter>
-    static bool valid_permutation(InIter first, InIter last) {
+    bool valid_permutation(InIter first, InIter last) {
       bool result = true;
       const unsigned int n = std::distance(first, last);
       for(; first != last; ++first) {
@@ -294,7 +294,7 @@ namespace TiledArray {
     /// Product of this permutation by \c other
 
     /// \param other a Permutation
-    /// \return \c other * \c this, i.e. \c this applied first, then \c other
+    /// \return \c other * \c this, i.e. this applied first, then other
     Permutation mult(const Permutation& other) const {
       const unsigned int n = p_.size();
       TA_ASSERT(n == other.p_.size());
@@ -312,7 +312,7 @@ namespace TiledArray {
 
     /// Construct the inverse of this permutation
 
-    /// The inverse of permutation \f$ P \f$ is defined as \f$ P \times P^{-1} = I \f$,
+    /// The inverse of the permutation is defined as \f$ P \times P^{-1} = I \f$,
     /// where \f$ I \f$ is the identity permutation.
     /// \return The inverse of this permutation
     Permutation inv() const {
