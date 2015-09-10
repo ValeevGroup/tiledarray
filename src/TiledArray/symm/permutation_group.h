@@ -61,6 +61,8 @@ namespace TiledArray {
     /// General constructor
 
     /// This constructs a permutation group from a set of generators.
+    /// The order of generators does not matter, and repeated generators
+    /// will be ignored (internally generators are stored as a sorted sequence).
     /// \param degree The number of elements in the set whose symmetry this group describes
     /// \param generators The generating set that defines this group
     PermutationGroup(std::vector<Permutation> generators) :
@@ -83,7 +85,7 @@ namespace TiledArray {
 
     /// Group element accessor
 
-    /// Element 0 is always the identity (trivial) permutation. The order of the rest is not defined.
+    /// \note Elements are ordered lexicograhically.
     /// \param i Index of the group element to be returned, \c 0<=i&&i<order()
     /// \return A const reference to the i-th group element
     const Permutation& operator[](unsigned int i) const {
@@ -93,19 +95,20 @@ namespace TiledArray {
 
     /// Elements vector accessor
 
+    /// \note Elements appear in lexicograhical order.
     /// \return A const reference to the vector of elements
     const std::vector<Permutation>& elements() const { return elements_; }
 
     /// Generators vector accessor
 
+    /// \note Generators appear in lexicograhical order.
     /// \return A const reference to the vector of generators
     const std::vector<Permutation>& generators() const { return generators_; }
 
     /// @name Iterator accessors
 
     /// PermutationGroup iterators dereference to group elements, i.e. Permutation objects.
-    /// Iterators can be used to iterate over group elements in implementation-defined order;
-    /// the identity element is always at the beginning. \sa operator[]
+    /// Iterators can be used to iterate over group elements in lexicographical order. \sa operator[]
     /// @{
 
     /// forward iterator over the group elements pointing to the first element
@@ -159,7 +162,18 @@ namespace TiledArray {
     PermutationGroup() {} // makes uninitialized group, all initialization is left to the derived class
 
     /// uses generators to compute all elements
+    /// \note generators that appear more than once are removed; generators are then resorted!
     void init() {
+
+      sort(generators_.begin(), generators_.end());
+      auto unique_last = std::unique(generators_.begin(), generators_.end());
+      generators_.erase(unique_last, generators_.end());
+      { // eliminate identity from the generator list
+        auto I_iter = std::find(generators_.begin(), generators_.end(), Permutation());
+        if (I_iter != generators_.end())
+          generators_.erase(I_iter);
+      }
+
       using index_type = Permutation::index_type;
 
       // add the identity element first
@@ -179,9 +193,42 @@ namespace TiledArray {
           }
         }
       }
+
+      sort(elements_.begin(), elements_.end());
     }
 
   }; // class PermutationGroup
+
+  /// PermutationGroup equality operator
+
+  /// \param p1 The left-hand permutation group to be compared
+  /// \param p2 The right-hand permutation group to be compared
+  /// \return \c true if all elements of \c p1 and \c p2 are equal, otherwise \c false.
+  inline bool operator==(const PermutationGroup& p1, const PermutationGroup& p2) {
+    return (p1.order() == p2.order())
+           && p1.elements() == p2.elements();
+  }
+
+  /// PermutationGroup inequality operator
+
+  /// \param p1 The left-hand permutation group to be compared
+  /// \param p2 The right-hand permutation group to be compared
+  /// \return \c true if any element of \c p1 is not equal to that of \c p2,
+  /// otherwise \c false.
+  inline bool operator!=(const PermutationGroup& p1, const PermutationGroup& p2) {
+    return ! operator==(p1, p2);
+  }
+
+  /// PermutationGroup less-than operator
+
+  /// \param p1 The left-hand permutation group to be compared
+  /// \param p2 The right-hand permutation group to be compared
+  /// \return \c true if the elements of \c p1 are lexicographically less than
+  /// that of \c p2, otherwise \c false.
+  inline bool operator<(const PermutationGroup& p1, const PermutationGroup& p2) {
+    return std::lexicographical_compare(p1.cbegin(), p1.cend(),
+        p2.cbegin(), p2.cend());
+  }
 
   /// Symmetric group
 

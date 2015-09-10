@@ -174,6 +174,41 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 }
 
+BOOST_AUTO_TEST_CASE( equality )
+{
+  { // make S1 in 2 different ways (this also checks that trivial generators are skipped)
+    SymmetricGroup S1(1);
+    auto I = Permutation{0,1};
+    PermutationGroup P(std::vector<Permutation>{I});
+    BOOST_CHECK(S1 == P);
+  }
+  { // make S2 in 2 different ways
+    SymmetricGroup S2(2);
+    auto p10 = Permutation{1,0};
+    PermutationGroup P(std::vector<Permutation>{p10});
+    BOOST_CHECK(S2 == P);
+  }
+  { // make S3 in 3 different ways
+    SymmetricGroup S3(3);
+    PermutationGroup P1(std::vector<Permutation>{Permutation{1,0},Permutation{2,1,0}});
+    PermutationGroup P2(std::vector<Permutation>{Permutation{1,2,0},Permutation{0,2,1}});
+    BOOST_CHECK(S3 == P1);
+    BOOST_CHECK(S3 == P2);
+    BOOST_CHECK(P1 == P2);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( comparison )
+{
+  {
+    SymmetricGroup S2(2);
+    PermutationGroup P1(std::vector<Permutation>{Permutation{1,2,0}}); // cyclic subgroup of S3
+    SymmetricGroup S3(3);
+    BOOST_CHECK(S2 < S3);
+    BOOST_CHECK(S3 < P1);
+  }
+}
+
 BOOST_AUTO_TEST_CASE( domain )
 {
   { // symmetric group on a "sparse" index domain
