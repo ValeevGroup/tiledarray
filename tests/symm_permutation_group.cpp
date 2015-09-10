@@ -25,6 +25,7 @@
 
 #include <random>
 #include <chrono>
+#include <iostream>
 
 #include "TiledArray/symm/permutation_group.h"
 #include "unit_test_config.h"
@@ -233,6 +234,51 @@ BOOST_AUTO_TEST_CASE( domain )
     BOOST_CHECK(computed_domain.size() == ref_domain.size());
     for(auto e: computed_domain) {
       BOOST_CHECK(std::find(ref_domain.begin(), ref_domain.end(), e) != ref_domain.end());
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( conjugate )
+{
+  { // symmetric group is invariant under any permutation in it
+    auto domain = {0, 2, 3, 5};
+    SymmetricGroup S(domain);
+    Permutation p({2,1,5,0,4,3,6,7});
+    BOOST_CHECK(TiledArray::conjugate(S, p) == S);
+  }
+  { // shift symmetric group to a different domain
+    auto domain = {0, 2, 3, 5};
+    SymmetricGroup S(domain);
+    // shift the domain to {1,2,4,7}
+    Permutation p({1,0,2,4,3,7,6,5});
+    auto new_domain = {1,2,4,7};
+    SymmetricGroup S_shifted_ref(new_domain);
+
+    auto S_shifted = TiledArray::conjugate(S, p);
+    BOOST_CHECK(S_shifted == S_shifted_ref);
+  }
+  { // another example
+    PermutationGroup P4__01__23__02_13(P4__01__23__02_13_generators);
+    // {0,1,2,3} -> {0,2,1,3}
+    Permutation p({0,2,1,3});
+    auto P4__02__13__01_23 = TiledArray::conjugate(P4__01__23__02_13, p);
+    BOOST_CHECK(P4__01__23__02_13 != P4__02__13__01_23);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( intersect )
+{
+  { // S2 is a subgroup of S3
+    SymmetricGroup S2(2);
+    SymmetricGroup S3(3);
+    BOOST_CHECK(TiledArray::intersect(S2, S3) == S2);
+    { // another S2 is a subgroup of S3
+      SymmetricGroup S2({0,2});
+      BOOST_CHECK(TiledArray::intersect(S2, S3) == S2);
+    }
+    { // yet another S2 is a subgroup of S3
+      SymmetricGroup S2{1,2};
+      BOOST_CHECK(TiledArray::intersect(S2, S3) == S2);
     }
   }
 }

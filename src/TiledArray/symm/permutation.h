@@ -150,16 +150,24 @@ namespace TiledArray {
       /// Two-line representation of permutation
       Map p_;
 
+      static std::ostream& print_map(std::ostream& output, const Map& p) {
+        for (auto i=p.cbegin(); i!=p.cend();) {
+          output << i->first << "->" << i->second;
+          if (++i != p.cend())
+            output << ", ";
+        }
+        return output;
+      }
+      friend inline std::ostream& operator<<(std::ostream& output, const Permutation& p);
+
       /// Validate permutation specified in one-line form as an iterator range
-      /// \return \c true if each element of \c [first,last) is non-negative, unique, and less
-      /// than \c last-first
+      /// \return \c true if each element of \c [first,last) is non-negative and unique
       template <typename InIter>
-      bool valid_permutation(InIter first, InIter last) {
+      static bool valid_permutation(InIter first, InIter last) {
         bool result = true;
-        const unsigned int n = std::distance(first, last);
         for(; first != last; ++first) {
           const auto value = *first;
-          result = result && value >= 0 && (value < n) && (std::count(first, last, *first) == 1ul);
+          result = result && value >= 0 && (std::count(first, last, *first) == 1ul);
         }
         return result;
       }
@@ -167,7 +175,7 @@ namespace TiledArray {
       /// Validate permutation specified in compressed two-line form as an index->index associative container
       /// \note Map can be std::map<index,index>, std::unordered_map<index,index>, or any similar container.
       template <typename Map>
-      bool valid_permutation(const Map& input) {
+      static bool valid_permutation(const Map& input) {
         std::set<index_type> keys;
         std::set<index_type> values;
         for(const auto& e: input) {
@@ -175,12 +183,16 @@ namespace TiledArray {
           const auto& value = e.second;
           if (keys.find(key) == keys.end())
             keys.insert(key);
-          else
+          else {
+            //print_map(std::cout, input);
             return false; // key is found more than once
+          }
           if (values.find(value) == values.end())
             values.insert(value);
-          else
+          else {
+            //print_map(std::cout, input);
             return false; // value is found more than once
+          }
         }
         return keys == values; // must map domain into itself
       }
@@ -289,7 +301,7 @@ namespace TiledArray {
       /// Computes the domain of this permutation
 
       /// \tparam Set a container type in which the result will be returned
-      /// \return the domain of this permutation, as a sorted sequence
+      /// \return the domain of this permutation, as a Set
       template <typename Set>
       Set domain() const {
         Set result;
@@ -298,6 +310,17 @@ namespace TiledArray {
         }
         //std::sort(result.begin(), result.end());
         return result;
+      }
+
+      /// Test if an index is in the domain of this permutation
+
+      /// \tparam Integer an integer type
+      /// \param i an index whose presence in domain is tested
+      /// \return \c true , if \c i is in the domain, \c false otherwise
+      template <typename Integer,
+                typename std::enable_if<std::is_integral<Integer>::value>::type* = nullptr>
+      bool is_in_domain(Integer i) const {
+        return p_.find(i) != p_.end();
       }
 
       /// Cycles decomposition
@@ -350,7 +373,7 @@ namespace TiledArray {
       /// Product of this permutation by \c other
 
       /// \param other a Permutation
-      /// \return \c other * \c this, i.e. this applied first, then other
+      /// \return \c other * \c this, i.e. \c this applied first, then \c other
       Permutation mult(const Permutation& other) const {
         // 1. domain of product = domain of this U domain of other
         using iset = std::set<index_type>;
@@ -370,7 +393,7 @@ namespace TiledArray {
 
       /// Construct the inverse of this permutation
 
-      /// The inverse of the permutation is defined as \f$ P \times P^{-1} = P^{-1} \times P = I \f$,
+      /// The inverse of permutation \f$ P \f$ is defined as \f$ P \times P^{-1} = P^{-1} \times P = I \f$,
       /// where \f$ I \f$ is the identity permutation.
       /// \return The inverse of this permutation
       Permutation inv() const {
@@ -415,6 +438,7 @@ namespace TiledArray {
 
       /// Data accessor
 
+      /// gives direct access to \c std::map that encodes the Permutation
       /// \return \c std::map<index_type,index_type> object encoding the permutation in compressed two-line form
       const Map& data() const { return p_; }
 
@@ -465,6 +489,7 @@ namespace TiledArray {
     /// \return \c true if the elements of \c p1 are lexicographically less than
     /// that of \c p2, otherwise \c false.
     inline bool operator<(const Permutation& p1, const Permutation& p2) {
+      if (&p1 == &p2) return false;
       return std::lexicographical_compare(p1.data().begin(), p1.data().end(),
           p2.data().begin(), p2.data().end());
     }
@@ -476,11 +501,7 @@ namespace TiledArray {
     /// \return The output stream
     inline std::ostream& operator<<(std::ostream& output, const Permutation& p) {
       output << "{";
-      for (auto i=p.cbegin(); i!=p.cend();) {
-        output << i->first << "->" << i->second;
-        if (++i != p.cend())
-          output << ", ";
-      }
+      Permutation::print_map(output, p.data());
       output << "}";
       return output;
     }
