@@ -405,8 +405,8 @@ namespace TiledArray {
   /// \return the fixed set subgroup of \c G
   template <typename Set>
   PermutationGroup
-  fixed_set_subgroup(const PermutationGroup& G, const Set& f) {
-    std::vector<PermutationGroup::Permutation> fixed_set_subgroup_generators;
+  stabilizer(const PermutationGroup& G, const Set& f) {
+    std::vector<PermutationGroup::Permutation> stabilizer_generators;
     for(const auto& generator: G.generators()) {
       bool fixes_set = true;
       for (const auto& i: f) {
@@ -416,9 +416,9 @@ namespace TiledArray {
         }
       }
       if (fixes_set)
-        fixed_set_subgroup_generators.push_back(generator);
+        stabilizer_generators.push_back(generator);
     }
-    return PermutationGroup{std::move(fixed_set_subgroup_generators)};
+    return PermutationGroup{std::move(stabilizer_generators)};
   }
 
   /** @}*/

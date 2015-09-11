@@ -283,31 +283,31 @@ BOOST_AUTO_TEST_CASE( intersect )
   }
 }
 
-BOOST_AUTO_TEST_CASE( fixed_set_subgroup )
+BOOST_AUTO_TEST_CASE( set_stabilizer )
 {
   { // S2{0,1} is a subgroup of S3{0,1,2} that fixes {2}
     SymmetricGroup S2(2);
     SymmetricGroup S3(3);
-    BOOST_CHECK(TiledArray::fixed_set_subgroup(S3, std::vector<int>{2}) == S2);
+    BOOST_CHECK(TiledArray::stabilizer(S3, std::vector<int>{2}) == S2);
     { // and another S2
       SymmetricGroup S2({0,2});
-      BOOST_CHECK(TiledArray::fixed_set_subgroup(S3, std::vector<int>{1}) == S2);
+      BOOST_CHECK(TiledArray::stabilizer(S3, std::vector<int>{1}) == S2);
     }
     { // and another S2
       SymmetricGroup S2({1,2});
-      BOOST_CHECK(TiledArray::fixed_set_subgroup(S3, std::vector<int>{0}) == S2);
+      BOOST_CHECK(TiledArray::stabilizer(S3, std::vector<int>{0}) == S2);
     }
 
     // S1{0} is a subgroup of S3{0,1,2} that fixes {1,2}
     SymmetricGroup S1(1);
-    BOOST_CHECK(TiledArray::fixed_set_subgroup(S3, std::vector<int>{1,2}) == S1);
+    BOOST_CHECK(TiledArray::stabilizer(S3, std::vector<int>{1,2}) == S1);
     { // and another S1
       SymmetricGroup S1({1});
-      BOOST_CHECK(TiledArray::fixed_set_subgroup(S3, std::vector<int>{0,2}) == S1);
+      BOOST_CHECK(TiledArray::stabilizer(S3, std::vector<int>{0,2}) == S1);
     }
     { // and another S1
       SymmetricGroup S2({2});
-      BOOST_CHECK(TiledArray::fixed_set_subgroup(S3, std::vector<int>{0,1}) == S1);
+      BOOST_CHECK(TiledArray::stabilizer(S3, std::vector<int>{0,1}) == S1);
     }
   }
 }
