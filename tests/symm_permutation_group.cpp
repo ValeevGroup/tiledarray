@@ -289,36 +289,36 @@ BOOST_AUTO_TEST_CASE( lexicographical_order )
     typedef std::array<int,5> index_type;
     SymmetricGroup S5(5);
 
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4,5},S5), true);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,1,300,300,500},S5), true);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{300,300,300,300,5},S5), false);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,1,0,0,5},S5), false);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4,0},S5), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,2,3,4,5}},S5), true);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,1,300,300,500}},S5), true);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{300,300,300,300,5}},S5), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,1,0,0,5}},S5), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,2,3,4,0}},S5), false);
   }
 
   { // check P5{(0,2,4)(1,3)}
     typedef std::array<int,5> index_type;
     PermutationGroup P(std::vector<Permutation>{Permutation{4,3,0,1,2}});
 
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4,5},P), true);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,3,1,4,1},P), true);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,1,1,1},P), false);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,1,2,0,3},P), false);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,2,3,1},P), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,2,3,4,5}},P), true);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,3,1,4,1}},P), true);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,2,1,1,1}},P), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,1,2,0,3}},P), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,2,2,3,1}},P), false);
   }
 
   { // check P4{(0,1),(2,3),(0,2)(1,3)}
     typedef std::array<int,4> index_type;
     PermutationGroup P(P4__01__23__02_13_generators);
 
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,4},P), true);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,3,2,4},P), true);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,2,4},P), true);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{2,3,2,3},P), true);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,2,3,2},P), false);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{2,1,3,4},P), false);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{1,3,1,2},P), false);
-    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{2,3,1,4},P), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,2,3,4}},P), true);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,3,2,4}},P), true);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,2,2,4}},P), true);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{2,3,2,3}},P), true);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,2,3,2}},P), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{2,1,3,4}},P), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{1,3,1,2}},P), false);
+    BOOST_CHECK_EQUAL(is_lexicographically_smallest(index_type{{2,3,1,4}},P), false);
   }
 
 }
