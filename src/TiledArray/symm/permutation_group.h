@@ -397,6 +397,30 @@ namespace TiledArray {
     return PermutationGroup{std::move(intersect_elements)};
   }
 
+  /// Computes the largest subgroup of a permutation group that leaves the given set of indices fixed.
+
+  /// \tparam Set a set of indices
+  /// \param G input PermutationGroup
+  /// \param f input Set
+  /// \return the fixed set subgroup of \c G
+  template <typename Set>
+  PermutationGroup
+  fixed_set_subgroup(const PermutationGroup& G, const Set& f) {
+    std::vector<PermutationGroup::Permutation> fixed_set_subgroup_generators;
+    for(const auto& generator: G.generators()) {
+      bool fixes_set = true;
+      for (const auto& i: f) {
+        if (generator.is_in_domain(i)) {
+          fixes_set = false;
+          break;
+        }
+      }
+      if (fixes_set)
+        fixed_set_subgroup_generators.push_back(generator);
+    }
+    return PermutationGroup{std::move(fixed_set_subgroup_generators)};
+  }
+
   /** @}*/
 
 } // namespace TiledArray
