@@ -49,4 +49,7 @@
 /* Define if MADNESS configured with Elemental support */
 #cmakedefine TILEDARRAY_HAS_ELEMENTAL 1
 
+/* Define if Mondriaan support has been enabled */
+#cmakedefine TILEDARRAY_HAS_MONDRIAAN 1
+
 #endif // TILEDARRAY_CONFIG_H__INCLUDED
