@@ -28,6 +28,7 @@
 
 #include <map>
 #include <vector>
+#include <memory>
 
 #include <TiledArray/error.h>
 

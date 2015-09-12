@@ -283,7 +283,7 @@ namespace TiledArray {
         /// \param begin iterator pointing to the beginning of the range
         /// \param end iterator pointing to past the end of the range
         template <typename InputIterator,
-                  typename std::enable_if<::TiledArray::detail::is_input_iterator<InputIterator>::value>::type* = nullptr>
+                  typename std::enable_if< ::TiledArray::detail::is_input_iterator<InputIterator>::value>::type* = nullptr>
         SymmetricGroup(InputIterator begin, InputIterator end) :
           PermutationGroup(), domain_(begin, end)
         {
