@@ -31,6 +31,9 @@
 #include <TiledArray/val_array.h>
 #include <TiledArray/tensor/shift_wrapper.h>
 #include <TiledArray/tensor/tensor_interface.h>
+#ifdef TILEDARRAY_HAS_MONDRIAAN
+#include <TiledArray/partition/hypergraph.h>
+#endif // TILEDARRAY_HAS_MONDRIAAN
 
 namespace TiledArray {
 
@@ -295,6 +298,13 @@ namespace TiledArray {
       return float(zero_tile_count_) / float(tile_norms_.size());
     }
 
+    /// Number of non-zero tiles
+
+    /// \return the number of non-zero tiles in the shape
+    size_type num_nonzeros() const {
+      return tile_norms_.size() - zero_tile_count_;
+    }
+
     /// Threshold accessor
 
     /// \return The current threshold
@@ -316,6 +326,13 @@ namespace TiledArray {
       return tile_norms_[index];
     }
 
+    /// TiledRange data accessor
+
+    /// \return A reference to the tiled range data
+    /// \note The data structure returned by this function is not a \c TiledRange
+    /// object, nor is it directly convertible to a \c TiledRange object.
+    std::shared_ptr<vector_type> tiled_range() const { return size_vectors_; }
+
     /// Data accessor
 
     /// \return A reference to the \c Tensor object that stores shape data
@@ -325,6 +342,193 @@ namespace TiledArray {
 
     /// \return \c true when this shape has been initialized.
     bool empty() const { return tile_norms_.empty(); }
+
+#ifdef TILEDARRAY_HAS_MONDRIAAN
+
+    detail::HyperGraph make_row_hypergraph(const SparseShape_& right,
+        const math::GemmHelper& gemm_helper) const
+    {
+      detail::HyperGraph hypergraph;
+
+      // Compute the outer and inner ranks
+      const auto m_rank =
+          gemm_helper.left_outer_end() - gemm_helper.left_outer_begin();
+      const auto n_rank =
+          gemm_helper.right_outer_end() - gemm_helper.right_outer_begin();
+      const auto k_rank =
+          gemm_helper.left_inner_end() - gemm_helper.left_inner_begin();
+
+      // Compute the outer size vectors
+      const vector_type m_sizes =
+          recursive_outer_product(size_vectors_.get() + gemm_helper.left_outer_begin(),
+              m_rank, [] (const vector_type& size_vector) -> const vector_type&
+              { return size_vector; });
+      const size_type M = m_sizes.size();
+      const vector_type n_sizes =
+          recursive_outer_product(right.size_vectors_.get() + gemm_helper.right_outer_begin(),
+              n_rank, [] (const vector_type& size_vector) -> const vector_type&
+              { return size_vector; });
+      const size_type N = n_sizes.size();
+
+      if(k_rank > 0u) {
+
+        // Compute the inner size vector
+        const vector_type k_sizes =
+            recursive_outer_product(size_vectors_.get() + gemm_helper.left_inner_begin(),
+                k_rank, [] (const vector_type& size_vector) -> const vector_type&
+                { return size_vector; });
+        const size_type K = k_sizes.size();
+
+        // Initialize the hypergraph
+        hypergraph = detail::HyperGraph(M, K, M * K - zero_tile_count_);
+
+        // Compute the nets weights, where net_weight[k] is equal to the sum of
+        // the block sizes in the k-th row of the right-hand matrix.
+        for(size_type net = 0ul; net < K; ++net) {
+          for(size_type n = 0ul; n < N; ++n) {
+            if(right.is_zero(net * N + n))
+              continue;
+
+            hypergraph.net_weights()[net] += n_sizes[n];
+          }
+
+          hypergraph.net_weights()[net] *= k_sizes[net];
+        }
+
+        // Add pins to the hypergraph, one per non-zero block of the left-hand
+        // matrix. The weight of each pin is proportional to the computational
+        // work associated with each block.
+        for(size_type cell = 0ul; cell < M; ++cell) {
+          for(size_type net = 0ul; net < K; ++net) {
+            if(is_zero(cell * K + net))
+              continue;
+
+            hypergraph.add_pin(cell, net,
+                hypergraph.net_weights()[net] * n_sizes[cell]);
+          }
+        }
+
+      } else {
+
+        // Initialize the hypergraph
+        hypergraph = detail::HyperGraph(M, 1ul, M - zero_tile_count_);
+
+        // Compute the net weight, which is equal to the sum of the non-zero
+        // blocks right-hand matrix.
+        for(size_type n = 0ul; n < N; ++n) {
+          if(right.is_zero(n))
+            continue;
+
+          hypergraph.net_weights()[0] += n_sizes[n];
+        }
+
+        // Add pins to the hypergraph, one per non-zero block of the left-hand
+        // matrix. The weight of each pin is proportional to the computational
+        // work associated with the block.
+        for(size_type cell = 0ul; cell < M; ++cell) {
+          if(is_zero(cell))
+            continue;
+
+          hypergraph.add_pin(cell, 0,
+              hypergraph.net_weights()[0] * n_sizes[cell]);
+        }
+      }
+
+      return hypergraph;
+    }
+
+    detail::HyperGraph make_col_hypergraph(const SparseShape_& left,
+        const math::GemmHelper& gemm_helper) const
+    {
+      detail::HyperGraph hypergraph;
+
+      // Compute the outer and inner ranks
+      const auto m_rank =
+          gemm_helper.left_outer_end() - gemm_helper.left_outer_begin();
+      const auto n_rank =
+          gemm_helper.right_outer_end() - gemm_helper.right_outer_begin();
+      const auto k_rank =
+          gemm_helper.left_inner_end() - gemm_helper.left_inner_begin();
+
+      // Compute the outer size vectors
+      const vector_type m_sizes =
+          recursive_outer_product(left.size_vectors_.get() + gemm_helper.left_outer_begin(),
+              m_rank, [] (const vector_type& size_vector) -> const vector_type&
+              { return size_vector; });
+      const size_type M = m_sizes.size();
+      const vector_type n_sizes =
+          recursive_outer_product(size_vectors_.get() + gemm_helper.right_outer_begin(),
+              n_rank, [] (const vector_type& size_vector) -> const vector_type&
+              { return size_vector; });
+      const size_type N = n_sizes.size();
+
+      vector_type k_sizes;
+      size_type K = 1;
+
+      if(k_rank > 0u) {
+
+        // Compute the inner size vector
+        const vector_type k_sizes =
+            recursive_outer_product(size_vectors_.get() + gemm_helper.left_inner_begin(),
+                k_rank, [] (const vector_type& size_vector) -> const vector_type&
+                { return size_vector; });
+        const size_type K = k_sizes.size();
+
+        // Initialize the hypergraph
+        hypergraph = detail::HyperGraph(M, K, M * K - zero_tile_count_);
+
+        // Compute the nets weights, where net_weight[k] is equal to the sum of
+        // the block sizes in the k-th column of the left-hand matrix.
+        for(size_type m = 0ul; m < M; ++m) {
+          for(size_type net = 0ul; net < K; ++net) {
+            if(left.is_zero(m * K + net))
+              continue;
+
+            hypergraph.net_weights()[net] += m_sizes[m] * k_sizes[net];
+          }
+        }
+
+        // Add pins to the hypergraph, one per non-zero block of the left-hand
+        // matrix. The weight of each pin is proportional to the computational
+        // work associated with each block.
+        for(size_type net = 0ul; net < K; ++net) {
+          for(size_type cell = 0ul; cell < N; ++cell) {
+            if(is_zero(net * N + cell))
+              continue;
+
+            hypergraph.add_pin(cell, net,
+                hypergraph.net_weights()[net] * m_sizes[cell]);
+          }
+        }
+
+      } else {
+
+        // Initialize the hypergraph
+        hypergraph = detail::HyperGraph(N, 1, N - zero_tile_count_);
+
+        // Compute the net weight, which is equal to the sum of the non-zero
+        // blocks left-hand matrix.
+        for(size_type m = 0ul; m < M; ++m) {
+          if(left.is_zero(m))
+            continue;
+
+          hypergraph.net_weights()[0] += m_sizes[m];
+        }
+
+        // Add pins to the hypergraph, one per non-zero block of the left-hand
+        // matrix. The weight of each pin is proportional to the computational
+        // work associated with the block.
+        for(size_type cell = 0ul; cell < N; ++cell) {
+          if(is_zero(cell))
+            continue;
+
+          hypergraph.add_pin(cell, 0,
+              hypergraph.net_weights()[0] * m_sizes[cell]);
+        }
+      }
+    }
+
+#endif // TILEDARRAY_HAS_MONDRIAAN
 
   private:
 

@@ -1108,4 +1108,27 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
   BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
+#ifdef TILEDARRAY_HAS_MONDRIAAN
+
+BOOST_AUTO_TEST_CASE( make_row_hypergraph )
+{
+  // Generate a gemm helper object that partitions the left and right shape
+  // dimensions.
+  math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
+      2u, left.data().range().rank(), right.data().range().rank());
+
+  BOOST_REQUIRE_NO_THROW(detail::HyperGraph hg = left.make_row_hypergraph(right, gemm_helper));
+  detail::HyperGraph hg = left.make_row_hypergraph(right, gemm_helper);
+
+  BOOST_REQUIRE_NO_THROW(hg.partition(4));
+
+  std::vector<long> part_map;
+
+  BOOST_REQUIRE_NO_THROW(part_map = hg.get_partition_map());
+
+  std::cout << part_map << "\n";
+}
+
+#endif // TILEDARRAY_HAS_MONDRIAAN
+
 BOOST_AUTO_TEST_SUITE_END()
