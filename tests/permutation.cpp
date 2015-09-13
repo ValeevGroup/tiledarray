@@ -196,7 +196,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( equality, Permutation, ptypes )
 
 BOOST_AUTO_TEST_CASE_TEMPLATE( inequality, Permutation, ptypes )
 {
-  const auto& p = fixture<Permutation>().p;
+//  const auto& p = fixture<Permutation>().p;
   const auto& p201 = fixture<Permutation>().p201;
   const auto& p102 = fixture<Permutation>().p102;
   const auto& p120 = fixture<Permutation>().p120;
@@ -279,7 +279,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( identity, Permutation, ptypes )
 
 BOOST_AUTO_TEST_CASE_TEMPLATE( mult, Permutation, ptypes )
 {
-  const auto& p = fixture<Permutation>().p;
+//  const auto& p = fixture<Permutation>().p;
   const auto& I = fixture<Permutation>().I;
   const auto& p102 = fixture<Permutation>().p102;
   const auto& p120 = fixture<Permutation>().p120;
@@ -457,13 +457,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( mult, Permutation, ptypes )
 
 BOOST_AUTO_TEST_CASE_TEMPLATE( pow, Permutation, ptypes )
 {
-  const auto& p = fixture<Permutation>().p;
-  const auto& I = fixture<Permutation>().I;
-  const auto& p102 = fixture<Permutation>().p102;
-  const auto& p120 = fixture<Permutation>().p120;
-  const auto& p021 = fixture<Permutation>().p021;
-  const auto& p201 = fixture<Permutation>().p201;
-  const auto& p210 = fixture<Permutation>().p210;
+//  const auto& p = fixture<Permutation>().p;
+//  const auto& I = fixture<Permutation>().I;
+//  const auto& p102 = fixture<Permutation>().p102;
+//  const auto& p120 = fixture<Permutation>().p120;
+//  const auto& p021 = fixture<Permutation>().p021;
+//  const auto& p201 = fixture<Permutation>().p201;
+//  const auto& p210 = fixture<Permutation>().p210;
   const Permutation p0231({0,2,3,1});
 
   // Check that powers of permutations are computed correctly
