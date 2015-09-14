@@ -117,8 +117,10 @@ namespace TiledArray {
       /// \param net The net of the pin
       /// \param weight The weight of the pin
       void add_pin(const size_type cell, const size_type net, long weight) {
+        TA_ASSERT(hypergraph_);
         TA_ASSERT(cell < hypergraph_->n);
         TA_ASSERT(net < hypergraph_->m);
+
         const long pin = hypergraph_->NrNzElts++;
 
         // Set pin data
@@ -133,37 +135,58 @@ namespace TiledArray {
       /// Pin count accessor
 
       /// \return Number of pins
-      size_type pins() const { return hypergraph_->NrNzElts; }
+      size_type pins() const {
+        TA_ASSERT(hypergraph_);
+        return hypergraph_->NrNzElts;
+      }
 
       /// Cells accessor
 
       /// \return The number of cells in the graph
-      size_type cells() const { return hypergraph_->n; }
+      size_type cells() const {
+        TA_ASSERT(hypergraph_);
+        return hypergraph_->n;
+      }
 
       /// Nets accessor
 
       /// \return The number of nets in the graph
-      size_type nets() const { return hypergraph_->m; }
+      size_type nets() const {
+        TA_ASSERT(hypergraph_);
+        return hypergraph_->m;
+      }
 
       /// Const cell weight accessor
 
       /// \return A const pointer to the net weights array
-      const long* cell_weights() const { return hypergraph_->ColWeights; }
+      const long* cell_weights() const {
+        TA_ASSERT(hypergraph_);
+        return hypergraph_->ColWeights;
+      }
 
       /// Cell weight accessor
 
       /// \return A pointer to the net weights array
-      long* cell_weights() { return hypergraph_->ColWeights; }
+      long* cell_weights() {
+        TA_ASSERT(hypergraph_);
+        return hypergraph_->ColWeights;
+      }
 
       /// Const net weight accessor
 
       /// \return A const pointer to the net weights array
-      const long* net_weights() const { return hypergraph_->RowWeights; }
+      const long* net_weights() const {
+        TA_ASSERT(hypergraph_);
+        return hypergraph_->RowWeights;
+      }
 
       /// Net weight accessor
 
       /// \return A pointer to the net weights array
-      long* net_weights() { return hypergraph_->RowWeights; }
+      long* net_weights() {
+        TA_ASSERT(hypergraph_);
+        return hypergraph_->RowWeights;
+      }
 
       /// Partition the hypergraph
 
@@ -171,6 +194,8 @@ namespace TiledArray {
       /// \param seed The seed value to the random number generator (default = 0)
       /// \param epsilon The maximum allowed load imbalance (default = 0.03 or 3%)
       void partition(const size_type k, const long seed = 0l, const double epsilon = 0.03) {
+        TA_ASSERT(hypergraph_);
+
         // Initialize the Mondriaan options object that controls partitioning.
         opts options;
         SetDefaultOptions(&options);
@@ -201,6 +226,7 @@ namespace TiledArray {
       }
 
       std::vector<size_type> get_partition_map() const {
+        TA_ASSERT(hypergraph_);
         TA_ASSERT(hypergraph_->NrProcs > 0l);
         TA_ASSERT(hypergraph_->Pstart != nullptr);
 
