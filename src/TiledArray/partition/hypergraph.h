@@ -255,6 +255,29 @@ namespace TiledArray {
         return result;
       }
 
+      /// Compute the total communication volume
+      long cut_set() const {
+        TA_ASSERT(hypergraph_);
+        TA_ASSERT(hypergraph_->NrProcs > 0l);
+
+        // Get the number of partitions per net
+        const long num_nets = hypergraph_->m;
+        std::unique_ptr<int, decltype(&free)>
+        parts_per_net(static_cast<int*>(malloc(num_nets * sizeof(int))), &free);
+        if(! InitNprocs(hypergraph_->get(), COL, parts_per_net.get())) {
+          TA_EXCEPTION("Unable to initialize processor array");
+        }
+
+        // Compute the total communication volume, which is equal to
+        // comm_volume = \sum_j w_j * (np_j - 1)
+        long comm_volume = 0l;
+        math::reduce_op([] (long& c, const long w, const int np)
+            { c += w * std::max(np - 1, 0); }, num_nets, comm_volume,
+            hypergraph_->RowWeights, parts_per_net.get());
+
+        return comm_volume;
+      }
+
     }; // class HyperGraph
 
   }  // namespace detail
