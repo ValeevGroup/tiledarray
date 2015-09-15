@@ -491,8 +491,8 @@ namespace TiledArray {
         // Add pins to the hypergraph, one per non-zero block of the left-hand
         // matrix. The weight of each pin is proportional to the computational
         // work associated with each block.
-        for(size_type net = 0ul; net < K; ++net) {
-          for(size_type cell = 0ul; cell < N; ++cell) {
+        for(size_type cell = 0ul; cell < N; ++cell) {
+          for(size_type net = 0ul; net < K; ++net) {
             if(is_zero(net * N + cell))
               continue;
 
