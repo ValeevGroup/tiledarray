@@ -1120,13 +1120,9 @@ BOOST_AUTO_TEST_CASE( make_row_hypergraph )
   BOOST_REQUIRE_NO_THROW(detail::HyperGraph hg = left.make_row_hypergraph(right, gemm_helper));
   detail::HyperGraph hg = left.make_row_hypergraph(right, gemm_helper);
 
-  BOOST_REQUIRE_NO_THROW(hg.partition(4));
-
-  std::vector<long> part_map;
-
-  BOOST_REQUIRE_NO_THROW(part_map = hg.get_partition_map());
-
-  std::cout << part_map << "\n";
+  std::cout << "Initial cut set = " << hg.init_cut_set(2) << "\n";
+  BOOST_REQUIRE_NO_THROW(hg.partition(2));
+  std::cout << "Final cut set = " << hg.cut_set() << "\n";
 }
 
 #endif // TILEDARRAY_HAS_MONDRIAAN
