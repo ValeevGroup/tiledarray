@@ -42,6 +42,68 @@ extern "C" {
 namespace TiledArray {
   namespace detail {
 
+    class HyperGraph;
+
+    class PartInfo {
+    public:
+      std::vector<long> part_start;///< procstart_[j] is the position in array
+                              ///< procindex_ of the first processor number of
+                              ///< net j, 0 <= j < hypergraph->m.
+                              ///< procstart[hypergraph->m] = total number of
+                              ///< processor numbers of all the columns
+                              ///< together.
+      std::vector<int> cellindex; ///< contains the processor numbers
+                              ///< occurring in the matrix columns. The
+                              ///< processor numbers for one column j are
+                              ///< stored consecutively.
+
+      // Compiler generated constructors/destructor
+      PartInfo() = default;
+      PartInfo(const PartInfo&) = default;
+      PartInfo(PartInfo&&) = default;
+      PartInfo& operator=(const PartInfo&) = default;
+      PartInfo& operator=(PartInfo&&) = default;
+      ~PartInfo() = default;
+
+
+      friend std::ostream& operator<<(std::ostream& os, const PartInfo& info) {
+        for(long p = 1l; p < info.part_start.size(); ++p) {
+          long first = info.part_start[p - 1];
+          const long last = info.part_start[p];
+          os  << "{";
+          for(; first < last; ++first)
+            os << " " << info.cellindex[first];
+          os << " } ";
+        }
+        return os;
+      }
+
+    };
+
+    class MatrixPartInfo {
+
+      PartInfo row_part_; ///< Row partitioning information
+      PartInfo col_part_; ///< Column partitioning information
+
+    public:
+      // Compiler generated constructors/destructor
+      MatrixPartInfo() = default;
+      MatrixPartInfo(const MatrixPartInfo&) = default;
+      MatrixPartInfo(MatrixPartInfo&&) = default;
+      MatrixPartInfo& operator=(const MatrixPartInfo&) = default;
+      MatrixPartInfo& operator=(MatrixPartInfo&&) = default;
+      ~MatrixPartInfo() = default;
+
+      inline void set_row_partition(const HyperGraph& hg);
+
+      inline void set_col_partition(const HyperGraph& hg);
+
+      friend std::ostream& operator<<(std::ostream& os, const MatrixPartInfo& info) {
+        os << info.row_part_ << "\n" << info.col_part_ << "\n";
+        return os;
+      }
+    };
+
     class HyperGraph {
     public:
       typedef long size_type;
@@ -188,6 +250,7 @@ namespace TiledArray {
         return hypergraph_->RowWeights;
       }
 
+
       /// Partition the hypergraph
 
       /// \param k The number of partitions
@@ -225,37 +288,42 @@ namespace TiledArray {
         //         The row partitions are in the j vector.
       }
 
-      std::vector<size_type> get_partition_map() const {
+      PartInfo get_partition_map() const {
         TA_ASSERT(hypergraph_);
         TA_ASSERT(hypergraph_->NrProcs > 0l);
         TA_ASSERT(hypergraph_->Pstart != nullptr);
 
-        // Get the number of partitions and cells
-        const size_type num_parts = hypergraph_->NrProcs;
+        const int num_parts = hypergraph_->NrProcs;
+        const long num_cells = hypergraph_->n;
 
-        std::vector<size_type> result;
-        result.reserve(hypergraph_->n);
+        // Allocate memory for the result partition info object
+        PartInfo result;
+        result.part_start.reserve(num_parts + 1);
+        result.cellindex.reserve(num_cells);
 
         for(size_type part = 0l; part < num_parts; ++part) {
-          // Get the start and end of the part range
+          // Get the start and end of the part range from the hypergraph
           size_type part_first = hypergraph_->Pstart[part];
           const size_type part_last = hypergraph_->Pstart[part + 1l];
 
-          const size_type part_start = result.size();
+          const size_type part_start = result.cellindex.size();
+          result.part_start.emplace_back(part_start);
 
+          // Collect add all cells that occur within part to the list
           for(; part_first < part_last; ++part_first) {
             const size_type cell = hypergraph_->j[part_first];
 
             // Add unique cells to the partition map
-            if(std::find(result.begin() + part_start, result.end(), cell) == result.end())
-              result.emplace_back(cell);
+            if(std::find(result.cellindex.begin() + part_start,
+                result.cellindex.end(), cell) == result.cellindex.end())
+              result.cellindex.emplace_back(cell);
           }
         }
 
         return result;
       }
 
-      /// Compute the total communication volume
+      /// Compute the cut set
       long cut_set() const {
         TA_ASSERT(hypergraph_);
         TA_ASSERT(hypergraph_->NrProcs > 0l);
@@ -264,21 +332,64 @@ namespace TiledArray {
         const long num_nets = hypergraph_->m;
         std::unique_ptr<int, decltype(&free)>
         parts_per_net(static_cast<int*>(malloc(num_nets * sizeof(int))), &free);
-        if(! InitNprocs(hypergraph_->get(), COL, parts_per_net.get())) {
+        if(! InitNprocs(hypergraph_.get(), COL, parts_per_net.get())) {
           TA_EXCEPTION("Unable to initialize processor array");
         }
 
         // Compute the total communication volume, which is equal to
         // comm_volume = \sum_j w_j * (np_j - 1)
-        long comm_volume = 0l;
+        long cut_size = 0l;
         math::reduce_op([] (long& c, const long w, const int np)
-            { c += w * std::max(np - 1, 0); }, num_nets, comm_volume,
+            { c += w * std::max(np - 1, 0); }, num_nets, cut_size,
             hypergraph_->RowWeights, parts_per_net.get());
 
-        return comm_volume;
+        return cut_size;
+      }
+
+
+      /// Compute the initial cut set
+
+      /// Here we assume a round robin distribution for the initial
+      /// partitioning.
+      long init_cut_set(long num_parts) const {
+        const long num_nets = hypergraph_->m;
+        const long num_pins = hypergraph_->NrNzElts;
+        std::vector<long> parts_per_net(num_nets * num_parts, 0);
+
+        long pin = 0l;
+        long part = 0l;
+        while(pin < num_pins) {
+          const long cell = hypergraph_->j[pin];
+          for(; cell == hypergraph_->j[pin] && pin < num_pins; ++pin) {
+            const long net = hypergraph_->i[pin];
+            parts_per_net[net * num_parts + part] |= 1l;
+          }
+          part = (part + 1) % num_parts;
+        }
+
+        long cut_size = 0l;
+        for(long net = 0; net < num_nets; ++net) {
+          long lambda = 0l;
+          for(long part = 0l; part < num_parts; ++part) {
+            lambda += parts_per_net[net * num_parts + part];
+          }
+
+          cut_size += hypergraph_->RowWeights[net] * std::max(lambda - 1l, 0l);
+        }
+
+        return cut_size;
       }
 
     }; // class HyperGraph
+
+
+    inline void MatrixPartInfo::set_row_partition(const HyperGraph& hg) {
+      row_part_ = hg.get_partition_map();
+    }
+
+    inline void MatrixPartInfo::set_col_partition(const HyperGraph& hg) {
+      col_part_ = hg.get_partition_map();
+    }
 
   }  // namespace detail
 } // namespace TiledArray
