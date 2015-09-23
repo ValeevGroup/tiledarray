@@ -110,8 +110,6 @@ namespace TiledArray {
       A make_array(World& world, const std::shared_ptr<typename A::pmap_interface>& pmap,
           const VariableList& target_vars) const
       {
-        typedef madness::Range<typename engine_type::pmap_interface::const_iterator> range_type;
-
         // Construct the expression engine
         engine_type engine(derived());
         engine.init(world, pmap, target_vars);
