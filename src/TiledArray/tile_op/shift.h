@@ -93,7 +93,8 @@ namespace TiledArray {
         using TiledArray::permute;
         using TiledArray::shift;
         result_type result = permute(arg, UnaryInterface_::permutation());
-        return shift(result, range_shift_);
+        shift_to(result, range_shift_);
+        return result;
       }
 
       // Non-permuting tile evaluation functions
