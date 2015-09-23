@@ -71,14 +71,15 @@ namespace TiledArray {
 
       /// Construct a no operation that permutes the result tensor
       /// \param perm The permutation to apply to the result tile
+      /// \note Assume the range_shift has already been permuted to the target
+      /// ordering.
       template <typename Index>
       Shift(const Index& range_shift, const Permutation& perm) :
         UnaryInterface_(perm),
-        range_shift_(TiledArray::detail::size(range_shift), 0l)
+        range_shift_(std::begin(range_shift), std::end(range_shift))
       {
         TA_ASSERT(perm);
         TA_ASSERT(perm.dim() == TiledArray::detail::size(range_shift));
-        TiledArray::detail::permute_array(perm, range_shift, range_shift_);
       }
 
       // Import interface from base class
