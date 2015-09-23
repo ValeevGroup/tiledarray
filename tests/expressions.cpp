@@ -201,15 +201,6 @@ BOOST_AUTO_TEST_CASE( block )
     }
   }
 }
-BOOST_AUTO_TEST_CASE(block_contract)
-{
-  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
-}
-
-BOOST_AUTO_TEST_CASE(block_permute_contract)
-{
-  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
-}
 
 BOOST_AUTO_TEST_CASE( const_block )
 {
@@ -273,6 +264,16 @@ BOOST_AUTO_TEST_CASE( scal_block )
       BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
     }
   }
+}
+
+BOOST_AUTO_TEST_CASE(block_contract)
+{
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
+}
+
+BOOST_AUTO_TEST_CASE(block_permute_contract)
+{
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
 }
 
 BOOST_AUTO_TEST_CASE( add )
