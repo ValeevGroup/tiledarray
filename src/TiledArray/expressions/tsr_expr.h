@@ -228,8 +228,8 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<A> block(const Index& lower_bound, const Index& upper_bound) const {
-        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+      BlkTsrExpr<const A> block(const Index& lower_bound, const Index& upper_bound) const {
+        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
       }
 
       /// Block expression
@@ -238,9 +238,9 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<A> block(const std::initializer_list<Index>& lower_bound,
+      BlkTsrExpr<const A> block(const std::initializer_list<Index>& lower_bound,
           const std::initializer_list<Index>& upper_bound) const {
-        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
       }
 
       /// Tensor variable string accessor

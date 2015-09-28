@@ -43,9 +43,24 @@ namespace TiledArray {
                                                           ///< Tile scalar type
     };
 
+    template <typename A>
+    struct ExprTrait<BlkTsrExpr<const A> > {
+      typedef A array_type; ///< The \c Array type
+      typedef BlkTsrEngine<A> engine_type; ///< Expression engine type
+      typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;
+                                                          ///< Tile scalar type
+    };
 
     template <typename A>
     struct ExprTrait<ScalBlkTsrExpr<A> > {
+      typedef A array_type; ///< The \c Array type
+      typedef ScalBlkTsrEngine<A> engine_type; ///< Expression engine type
+      typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;
+                                                          ///< Tile scalar type
+    };
+
+    template <typename A>
+    struct ExprTrait<ScalBlkTsrExpr<const A> > {
       typedef A array_type; ///< The \c Array type
       typedef ScalBlkTsrEngine<A> engine_type; ///< Expression engine type
       typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;

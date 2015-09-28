@@ -18,29 +18,62 @@
  */
 
 #include "TiledArray/permutation.h"
+#include "TiledArray/symm/permutation.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
-using namespace TiledArray;
+#include <boost/test/test_case_template.hpp>
+#include <boost/mpl/list.hpp>
+
+namespace detail {
+  template <typename P>
+  P identity(unsigned int d);
+
+  template <>
+  TiledArray::Permutation identity<TiledArray::Permutation>(unsigned int d) {
+    return TiledArray::Permutation::identity(d);
+  }
+
+  template <>
+  TiledArray::symmetry::Permutation identity<TiledArray::symmetry::Permutation>(unsigned int) {
+    return TiledArray::symmetry::Permutation();
+  }
+}
+
+template <typename Perm>
+struct TPermutationFixture {
+    TPermutationFixture() = default;
+    ~TPermutationFixture() = default;
+
+    Perm p = Perm({2,0,1});
+    const Perm I = detail::identity<Perm>(3);
+    const Perm p102 = Perm({1,0,2});
+    const Perm p021 = Perm({0,2,1});
+    const Perm p120 = Perm({1,2,0});
+    const Perm p201 = Perm({2,0,1});
+    const Perm p210 = Perm({2,1,0});
+};
 
 struct PermutationFixture {
 
   PermutationFixture() {}
   ~PermutationFixture() {}
 
-  Permutation p = Permutation({2,0,1});
+  template <typename Perm> // permutation type
+  TPermutationFixture<Perm>& fixture() {
+    static TPermutationFixture<Perm> fixture_;
+    return fixture_;
+  }
 
-  const Permutation I = Permutation::identity(3);
-  const Permutation p102 = Permutation({1,0,2});
-  const Permutation p021 = Permutation({0,2,1});
-  const Permutation p120 = Permutation({1,2,0});
-  const Permutation p201 = Permutation({2,0,1});
-  const Permutation p210 = Permutation({2,1,0});
-}; // struct Fixture
+}; // struct PermutationFixture
+
+typedef boost::mpl::list<TiledArray::Permutation,TiledArray::symmetry::Permutation> ptypes;
+typedef boost::mpl::list<TiledArray::Permutation> ptypes0;
+typedef boost::mpl::list<TiledArray::symmetry::Permutation> ptypes1;
 
 BOOST_FIXTURE_TEST_SUITE( permutation_suite, PermutationFixture )
 
-BOOST_AUTO_TEST_CASE( constructor )
+BOOST_AUTO_TEST_CASE_TEMPLATE( constructor, Permutation, ptypes0 )
 {
   // check default constructor
   BOOST_REQUIRE_NO_THROW( Permutation p0 );
@@ -70,24 +103,60 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_EQUAL(p3.data()[2], 2u);
 }
 
-BOOST_AUTO_TEST_CASE( iteration )
+BOOST_AUTO_TEST_CASE_TEMPLATE( iteration0, Permutation, ptypes0 )
 {
+  const auto& p = fixture<Permutation>().p;
   std::array<std::size_t,3> a = {{2, 0, 1}};
   std::array<std::size_t,3>::const_iterator a_it = a.begin();
-  for(Permutation::const_iterator it = p.begin(); it != p.end(); ++it, ++a_it)
+  for(typename Permutation::const_iterator it = p.begin(); it != p.end(); ++it, ++a_it)
     BOOST_CHECK_EQUAL(*it, *a_it); // check that basic iteration is correct
 }
 
-BOOST_AUTO_TEST_CASE( accessor )
+BOOST_AUTO_TEST_CASE_TEMPLATE( iteration1, Permutation, ptypes1 )
 {
+  const auto& p = fixture<Permutation>().p;
+  std::array<std::size_t,3> a = {{2, 0, 1}};
+  std::array<std::size_t,3>::const_iterator a_it = a.begin();
+  for(typename Permutation::const_iterator it = p.begin(); it != p.end(); ++it, ++a_it)
+    BOOST_CHECK_EQUAL(it->second, *a_it); // check that basic iteration is correct
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( accessor, Permutation, ptypes )
+{
+  const auto& p201 = fixture<Permutation>().p201;
   BOOST_CHECK_EQUAL(p201[0], 2u); // check that accessor is readable
   BOOST_CHECK_EQUAL(p201[1], 0u);
   BOOST_CHECK_EQUAL(p201[2], 1u);
   // no write access.
 }
 
-BOOST_AUTO_TEST_CASE( ostream )
+BOOST_AUTO_TEST_CASE_TEMPLATE( cycles_decomposition, Permutation, ptypes )
 {
+  const auto& p201 = fixture<Permutation>().p201;
+  const auto& p021 = fixture<Permutation>().p021;
+
+  { // {0,2,1} = (1,2)
+    auto cycles = p021.cycles();
+    BOOST_CHECK_EQUAL(cycles.size(), 1u);
+    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({1u, 2u}));
+  }
+  { // {2,0,1} = (0,1,2)
+    auto cycles = p201.cycles();
+    BOOST_CHECK_EQUAL(cycles.size(), 1u);
+    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({0u, 1u, 2u}));
+  }
+  { // {0,2,1,5,3,4} = (1,2)(3,4,5)
+    auto p = Permutation{0,2,1,5,3,4};
+    auto cycles = p.cycles();
+    BOOST_CHECK_EQUAL(cycles.size(), 2u);
+    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({1u, 2u}));
+    BOOST_CHECK_EQUAL(cycles[1], std::vector<unsigned int>({3u, 4u, 5u}));
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( ostream, Permutation, ptypes )
+{
+  const auto& p201 = fixture<Permutation>().p201;
   boost::test_tools::output_test_stream output;
   output << p201;
   BOOST_CHECK( !output.is_empty( false ) );
@@ -95,8 +164,11 @@ BOOST_AUTO_TEST_CASE( ostream )
   BOOST_CHECK( output.is_equal( "{0->2, 1->0, 2->1}" ) );
 }
 
-BOOST_AUTO_TEST_CASE( equality )
+BOOST_AUTO_TEST_CASE_TEMPLATE( equality, Permutation, ptypes )
 {
+  const auto& p = fixture<Permutation>().p;
+  const auto& p201 = fixture<Permutation>().p201;
+  const auto& p021 = fixture<Permutation>().p021;
   Permutation p0213({0,2,1,3});
 
   // Check that identical permutations are equal
@@ -109,14 +181,26 @@ BOOST_AUTO_TEST_CASE( equality )
   BOOST_CHECK( ! (p0213 == p201) );
   BOOST_CHECK( ! (p201 == p0213) );
 
-  // Check that permutations of different sizes with the same leading elements
-  // are not equal
-  BOOST_CHECK( ! (p0213 == p021) );
-  BOOST_CHECK( ! (p021 == p0213) );
+  // Compare permutations of different sizes with the same leading elements
+  // TA::Permutation has fixed domain size, hence these are not equal
+  if (std::is_same<Permutation,TiledArray::Permutation>::value) {
+    BOOST_CHECK( ! (p0213 == p021) );
+    BOOST_CHECK( ! (p021 == p0213) );
+  }
+  // TA::symmetry::Permutation does not fix the domain size, hence these are equal
+  if (std::is_same<Permutation,TiledArray::symmetry::Permutation>::value) {
+    BOOST_CHECK( p0213 == p021 );
+    BOOST_CHECK( p021 == p0213 );
+  }
 }
 
-BOOST_AUTO_TEST_CASE( inequality )
+BOOST_AUTO_TEST_CASE_TEMPLATE( inequality, Permutation, ptypes )
 {
+//  const auto& p = fixture<Permutation>().p;
+  const auto& p201 = fixture<Permutation>().p201;
+  const auto& p102 = fixture<Permutation>().p102;
+  const auto& p120 = fixture<Permutation>().p120;
+  const auto& p021 = fixture<Permutation>().p021;
   Permutation p0213({0,2,1,3});
 
   // Check that different permutations are not equal
@@ -130,33 +214,48 @@ BOOST_AUTO_TEST_CASE( inequality )
   BOOST_CHECK( p120 != p021);
   BOOST_CHECK( p021 != p120);
 
-  // Check that permutations of different sizes with the same leading elements
-  // are not equal
-  BOOST_CHECK( p021 != p0213);
-  BOOST_CHECK( p0213 != p021);
+  // Compare permutations of different sizes with the same leading elements
+  // TA::Permutation has fixed domain size, hence these are not equal
+  if (std::is_same<Permutation,TiledArray::Permutation>::value) {
+    BOOST_CHECK( p021 != p0213);
+    BOOST_CHECK( p0213 != p021);
+  }
+  // TA::symmetry::Permutation does not fix the domain size, hence these are equal
+  if (std::is_same<Permutation,TiledArray::symmetry::Permutation>::value) {
+    BOOST_CHECK( not (p021 != p0213));
+    BOOST_CHECK( not (p0213 != p021));
+  }
 }
 
-BOOST_AUTO_TEST_CASE( less_than )
+BOOST_AUTO_TEST_CASE_TEMPLATE( less_than, Permutation, ptypes )
 {
+  const auto& p210 = fixture<Permutation>().p210;
+  const auto& p120 = fixture<Permutation>().p120;
   Permutation p0213({0,2,1,3});
 
   // Check that a lexicographically smaller permutation is less than a larger
   // permutation
   BOOST_CHECK( p120 < p210 );
-  BOOST_CHECK( p0213 < p120 );
+  // TA::Permutation has fixed domain, hence this is true
+  if (std::is_same<Permutation,TiledArray::Permutation>::value)
+    BOOST_CHECK( p0213 < p120 );
+  // TA::symmetry::Permutation's domain is not fixed, hence this is false
+  if (std::is_same<Permutation,TiledArray::symmetry::Permutation>::value)
+    BOOST_CHECK( not (p0213 < p120) );
 
   BOOST_CHECK( ! (p210 < p120) );
 }
 
-BOOST_AUTO_TEST_CASE( permute_helper )
+BOOST_AUTO_TEST_CASE_TEMPLATE( permute_helper, Permutation, ptypes )
 {
+  const auto& p = fixture<Permutation>().p;
   {
     std::vector<int> a1({1, 2, 3});
     std::vector<int> ar({2, 3, 1});
     std::vector<int> a2(3);
 
-    // check permutation applied via detail::permute_array()
-    BOOST_CHECK_NO_THROW(detail::permute_array(p, a1, a2));
+    // check permutation applied via TA::detail::permute_array()
+    BOOST_CHECK_NO_THROW(TiledArray::detail::permute_array(p, a1, a2));
     BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), ar.begin(), ar.end());
   }
   {
@@ -165,20 +264,28 @@ BOOST_AUTO_TEST_CASE( permute_helper )
     std::array<int, 3> a2;
 
     // check permutation applied via detail::permute()
-    BOOST_CHECK_NO_THROW(detail::permute_array(p, a1, a2));
+    BOOST_CHECK_NO_THROW(TiledArray::detail::permute_array(p, a1, a2));
     BOOST_CHECK_EQUAL_COLLECTIONS(a2.begin(), a2.end(), ar.begin(), ar.end());
   }
 }
 
-BOOST_AUTO_TEST_CASE( identity )
+BOOST_AUTO_TEST_CASE_TEMPLATE( identity, Permutation, ptypes )
 {
+  const auto& p = fixture<Permutation>().p;
   Permutation reference({0,1,2});
-  BOOST_CHECK_EQUAL(Permutation::identity(3), reference);
+  BOOST_CHECK_EQUAL(detail::identity<Permutation>(3u), reference);
   BOOST_CHECK_EQUAL(p.identity(), reference);
 }
 
-BOOST_AUTO_TEST_CASE( mult )
+BOOST_AUTO_TEST_CASE_TEMPLATE( mult, Permutation, ptypes )
 {
+//  const auto& p = fixture<Permutation>().p;
+  const auto& I = fixture<Permutation>().I;
+  const auto& p102 = fixture<Permutation>().p102;
+  const auto& p120 = fixture<Permutation>().p120;
+  const auto& p021 = fixture<Permutation>().p021;
+  const auto& p201 = fixture<Permutation>().p201;
+  const auto& p210 = fixture<Permutation>().p210;
 
   // check permutation multiplication function
   BOOST_CHECK_EQUAL(   I.mult(   I),    I);
@@ -348,8 +455,15 @@ BOOST_AUTO_TEST_CASE( mult )
 }
 
 
-BOOST_AUTO_TEST_CASE( pow )
+BOOST_AUTO_TEST_CASE_TEMPLATE( pow, Permutation, ptypes )
 {
+//  const auto& p = fixture<Permutation>().p;
+//  const auto& I = fixture<Permutation>().I;
+//  const auto& p102 = fixture<Permutation>().p102;
+//  const auto& p120 = fixture<Permutation>().p120;
+//  const auto& p021 = fixture<Permutation>().p021;
+//  const auto& p201 = fixture<Permutation>().p201;
+//  const auto& p210 = fixture<Permutation>().p210;
   const Permutation p0231({0,2,3,1});
 
   // Check that powers of permutations are computed correctly
@@ -376,8 +490,15 @@ BOOST_AUTO_TEST_CASE( pow )
 
 }
 
-BOOST_AUTO_TEST_CASE( inverse )
+BOOST_AUTO_TEST_CASE_TEMPLATE( inverse, Permutation, ptypes )
 {
+  const auto& I = fixture<Permutation>().I;
+  const auto& p102 = fixture<Permutation>().p102;
+  const auto& p120 = fixture<Permutation>().p120;
+  const auto& p021 = fixture<Permutation>().p021;
+  const auto& p201 = fixture<Permutation>().p201;
+  const auto& p210 = fixture<Permutation>().p210;
+
   // check permutation inverse function
   BOOST_CHECK_EQUAL(   I.inv(),    I);
   BOOST_CHECK_EQUAL(p102.inv(), p102);
@@ -395,8 +516,9 @@ BOOST_AUTO_TEST_CASE( inverse )
   BOOST_CHECK_EQUAL(p210 ^ -1, p210);
 }
 
-BOOST_AUTO_TEST_CASE( array_permutation )
+BOOST_AUTO_TEST_CASE_TEMPLATE( array_permutation, Permutation, ptypes )
 {
+  const auto& p = fixture<Permutation>().p;
   std::array<int, 3> a1{{1, 2, 3}};
   std::array<int, 3> ar{{2, 3, 1}};
   std::array<int, 3> a2 = p * a1;
@@ -406,8 +528,9 @@ BOOST_AUTO_TEST_CASE( array_permutation )
   BOOST_CHECK_EQUAL_COLLECTIONS(a3.begin(), a3.end(), ar.begin(), ar.end()); // check in-place permutation
 }
 
-BOOST_AUTO_TEST_CASE( vector_permutation )
+BOOST_AUTO_TEST_CASE_TEMPLATE( vector_permutation, Permutation, ptypes )
 {
+  const auto& p = fixture<Permutation>().p;
   std::vector<int> a1{1, 2, 3};
   std::vector<int> ar{2, 3, 1};
   std::vector<int> a2 = p * a1;

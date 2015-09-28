@@ -428,8 +428,7 @@ namespace TiledArray {
 
     template <typename T>
     inline std::vector<T> operator*(const Permutation& perm, const SizeArray<T>& orig) {
-      TA_ASSERT(orig.size() == perm.dim());
-      std::vector<T> result(perm.dim());
+      std::vector<T> result(orig.size());
       permute_array(perm, orig, result);
       return result;
     }

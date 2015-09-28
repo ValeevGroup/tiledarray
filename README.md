@@ -37,6 +37,7 @@ Cite TiledArray as
 > "TiledArray: A general-purpose scalable block-sparse tensor library", Justus A. Calvin and Edward F. Valeev, https://github.com/valeevgroup/tiledarray .
 
 Inner workings of TiledArray are partially described in the following publications:
+* Justus A. Calvin, Cannada A. Lewis, and Edward F. Valeev, "Scalable Task-Based Algorithm for Multiplication of Block-Rank-Sparse Matrices." http://arxiv.org/abs/1509.00309 .
 * Justus A. Calvin and Edward F. Valeev, "Task-Based Algorithm for Matrix Multiplication: A Step Towards Block-Sparse Tensor Computing." http://arxiv.org/abs/1504.05046 .
 
 The MADNESS parallel runtime is described in the following publication:
