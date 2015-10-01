@@ -1115,13 +1115,13 @@ BOOST_AUTO_TEST_CASE( make_row_hypergraph )
   // Generate a gemm helper object that partitions the left and right shape
   // dimensions.
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-      2u, left.data().range().rank(), right.data().range().rank());
+      4u, left.data().range().rank(), right.data().range().rank());
 
   BOOST_REQUIRE_NO_THROW(detail::HyperGraph hg = left.make_row_hypergraph(right, gemm_helper));
   detail::HyperGraph hg = left.make_row_hypergraph(right, gemm_helper);
 
   std::cout << "Initial cut set = " << hg.init_cut_set(2) << "\n";
-  BOOST_REQUIRE_NO_THROW(hg.partition(2));
+  BOOST_REQUIRE_NO_THROW(hg.partition(4, 42));
   std::cout << "Final cut set = " << hg.cut_set() << "\n";
 }
 
