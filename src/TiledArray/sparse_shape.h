@@ -404,7 +404,7 @@ namespace TiledArray {
               continue;
 
             hypergraph.add_pin(cell, net,
-                hypergraph.net_weights()[net] * n_sizes[cell]);
+                hypergraph.net_weights()[net] * m_sizes[cell]);
           }
         }
 
@@ -430,7 +430,7 @@ namespace TiledArray {
             continue;
 
           hypergraph.add_pin(cell, 0,
-              hypergraph.net_weights()[0] * n_sizes[cell]);
+              hypergraph.net_weights()[0] * m_sizes[cell]);
         }
       }
 
@@ -497,7 +497,7 @@ namespace TiledArray {
               continue;
 
             hypergraph.add_pin(cell, net,
-                hypergraph.net_weights()[net] * m_sizes[cell]);
+                hypergraph.net_weights()[net] * n_sizes[cell]);
           }
         }
 
@@ -523,7 +523,7 @@ namespace TiledArray {
             continue;
 
           hypergraph.add_pin(cell, 0,
-              hypergraph.net_weights()[0] * m_sizes[cell]);
+              hypergraph.net_weights()[0] * n_sizes[cell]);
         }
       }
     }
