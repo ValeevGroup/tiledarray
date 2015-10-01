@@ -411,9 +411,7 @@ namespace TiledArray {
           parts_per_net[net * num_parts + part] |= 1l;
         }
 
-        long cut_size = 0l;
         for(long net = 0; net < num_nets; ++net) {
-          const long weight = hypergraph_->RowWeights[net];
           long lambda = 0l;
           for(long part = 0l; part < num_parts; ++part)
             lambda += parts_per_net[net * num_parts + part];
