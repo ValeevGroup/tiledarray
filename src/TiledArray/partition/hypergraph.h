@@ -263,6 +263,7 @@ namespace TiledArray {
         opts options;
         SetDefaultOptions(&options);
         SetOption(&options, "SplitStrategy", "onedimcol");
+//        SetOption(&options, "Coarsening_NrVertices", "4");
 
 #ifdef TILEDARRAY_HAS_PATOH
         SetOption(&options, "Partitioner", "patoh");
