@@ -526,6 +526,8 @@ namespace TiledArray {
               hypergraph.net_weights()[0] * n_sizes[cell]);
         }
       }
+
+      return hypergraph;
     }
 
 #endif // TILEDARRAY_HAS_MONDRIAAN
