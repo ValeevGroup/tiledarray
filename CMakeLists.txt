@@ -39,6 +39,8 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
   set(ENABLE_LIBUNWIND ON)
 endif()
 option(ENABLE_MONDRIAAN "Enable use of Mondriaan 4 for block sparse tensor redistribution in contractions" OFF)
+cmake_dependent_option(ENABLE_MONDRIAAN_PATOH "Enable use of PaToH with Mondriaan 4" OFF
+      "ENABLE_MONDRIAAN" OFF)
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 

@@ -52,4 +52,7 @@
 /* Define if Mondriaan support has been enabled */
 #cmakedefine TILEDARRAY_HAS_MONDRIAAN 1
 
+/* Define if Mondriaan with PaToH support has been enabled */
+#cmakedefine TILEDARRAY_HAS_PATOH 1
+
 #endif // TILEDARRAY_CONFIG_H__INCLUDED

@@ -1,6 +1,12 @@
 if(ENABLE_MONDRIAAN)
 
-  find_package(Mondriaan REQUIRED)
+  if(ENABLE_MONDRIAAN_PATOH)
+    find_package(Mondriaan REQUIRED PaToH)
+    set(TILEDARRAY_HAS_PATOH TRUE)
+  else()
+    find_package(Mondriaan REQUIRED)
+    set(TILEDARRAY_HAS_PATOH FALSE)
+  endif()
     
   # Set the  build variables
   include_directories(${Mondriaan_INCLUDE_DIRS})
