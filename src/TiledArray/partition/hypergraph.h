@@ -378,6 +378,49 @@ namespace TiledArray {
         return cut_size;
       }
 
+      void verify_lambdas() const {
+        TA_ASSERT(hypergraph_);
+
+        const auto* lambdas = hypergraph_->RowLambda;
+        const auto num_nets = hypergraph_->m;
+        const auto num_parts  = hypergraph_->NrProcs;
+        const auto num_pins = hypergraph_->NrNzElts;
+
+        /* Verification function of the calculated lambdas. */
+        long max_lambda = num_parts + 1;
+        std::vector<long> hist(max_lambda, 0l);
+        std::vector<long> ihist(max_lambda, 0l);
+        std::vector<long> parts_per_net(num_nets * num_parts, 0);
+
+
+        for(long t = 0; t < num_nets; t++) {
+          const long l = lambdas[t];
+          ++hist[l];
+        }
+
+        for(long pin = 0l; pin < num_pins; ++pin) {
+          const long cell = hypergraph_->j[pin];
+          const long net = hypergraph_->i[pin];
+          const long part = cell % num_parts;
+          parts_per_net[net * num_parts + part] |= 1l;
+        }
+
+        long cut_size = 0l;
+        for(long net = 0; net < num_nets; ++net) {
+          const long weight = hypergraph_->RowWeights[net];
+          long lambda = 0l;
+          for(long part = 0l; part < num_parts; ++part)
+            lambda += parts_per_net[net * num_parts + part];
+          ++ihist[lambda];
+        }
+
+
+        std::cout << "lambda histogram:\n";
+        for(long t = 0; t < max_lambda; t++)
+          std::cout << "    " << t << "\t" << ihist[t] << "\t" << hist[t] << "\n";
+
+      }
+
     }; // class HyperGraph
 
 
