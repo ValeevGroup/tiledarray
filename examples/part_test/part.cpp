@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
     TiledArray::detail::ProcGrid
     proc_grid(world, 0, num_procs, num_blocks, num_blocks, matrix_size, matrix_size);
 
-    for(unsigned int sparsity = 50u; sparsity > 0u; sparsity -= 2u) {
+    for(int sparsity = 25; sparsity > 0; sparsity -= 2) {
 
       // Compute the number of blocks and matrix size for the sparse matrix
       const double sparse_fraction = double(sparsity) / 100.0;
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
           b_tile_norms(trange.tiles(), 0.0f);
 
       // Fill tile norm tensors
-      if(sparsity == 100u) {
+      if(sparsity == 100) {
         std::fill(a_tile_norms.begin(), a_tile_norms.end(), tile_norm);
         std::fill(b_tile_norms.begin(), b_tile_norms.end(), tile_norm);
       } else {
