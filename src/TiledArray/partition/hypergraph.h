@@ -143,7 +143,7 @@ namespace TiledArray {
         //
         //   Symmetry = general, symmetric, skew-symmetric, or hermitian
         //   TypeCode[3] = G, S, K, H
-        hypergraph_->MMTypeCode[ 0 ] = 'M';
+        hypergraph_->MMTypeCode[ 0 ] = 'W';
         hypergraph_->MMTypeCode[ 1 ] = 'C';
         hypergraph_->MMTypeCode[ 2 ] = 'R';
         hypergraph_->MMTypeCode[ 3 ] = 'G';
