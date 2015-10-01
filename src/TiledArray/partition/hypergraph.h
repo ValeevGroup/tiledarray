@@ -328,20 +328,19 @@ namespace TiledArray {
         TA_ASSERT(hypergraph_);
         TA_ASSERT(hypergraph_->NrProcs > 0l);
 
-        // Get the number of partitions per net
-        const long num_nets = hypergraph_->m;
-        std::unique_ptr<int, decltype(&free)>
-        parts_per_net(static_cast<int*>(malloc(num_nets * sizeof(int))), &free);
-        if(! InitNprocs(hypergraph_.get(), COL, parts_per_net.get())) {
-          TA_EXCEPTION("Unable to initialize processor array");
-        }
-
         // Compute the total communication volume, which is equal to
         // comm_volume = \sum_j w_j * (np_j - 1)
         long cut_size = 0l;
-        math::reduce_op([] (long& c, const long w, const int np)
-            { c += w * std::max(np - 1, 0); }, num_nets, cut_size,
-            hypergraph_->RowWeights, parts_per_net.get());
+        math::reduce_op([] (long& c, const long weight, const int lambda)
+            { c += weight * std::max(lambda - 1, 0); }, hypergraph_->m, cut_size,
+            hypergraph_->RowWeights, hypergraph_->RowLambda);
+
+//        for(long net = 0ul; net < hypergraph_->m; ++net) {
+//          const long weight = hypergraph_->RowWeights[net];
+//          long lambda = hypergraph_->RowLambda[net];
+//
+//          std::cout << "  " << net << "  " << lambda << "  " << weight << "\n";
+//        }
 
         return cut_size;
       }
@@ -352,29 +351,28 @@ namespace TiledArray {
       /// Here we assume a round robin distribution for the initial
       /// partitioning.
       long init_cut_set(long num_parts) const {
+        TA_ASSERT(hypergraph_);
+
         const long num_nets = hypergraph_->m;
         const long num_pins = hypergraph_->NrNzElts;
         std::vector<long> parts_per_net(num_nets * num_parts, 0);
 
-        long pin = 0l;
-        long part = 0l;
-        while(pin < num_pins) {
+        for(long pin = 0l; pin < num_pins; ++pin) {
           const long cell = hypergraph_->j[pin];
-          for(; cell == hypergraph_->j[pin] && pin < num_pins; ++pin) {
-            const long net = hypergraph_->i[pin];
-            parts_per_net[net * num_parts + part] |= 1l;
-          }
-          part = (part + 1) % num_parts;
+          const long net = hypergraph_->i[pin];
+          const long part = cell % num_parts;
+          parts_per_net[net * num_parts + part] |= 1l;
         }
 
         long cut_size = 0l;
         for(long net = 0; net < num_nets; ++net) {
+          const long weight = hypergraph_->RowWeights[net];
           long lambda = 0l;
-          for(long part = 0l; part < num_parts; ++part) {
+          for(long part = 0l; part < num_parts; ++part)
             lambda += parts_per_net[net * num_parts + part];
-          }
 
-          cut_size += hypergraph_->RowWeights[net] * std::max(lambda - 1l, 0l);
+//          std::cout << "  " << net << "  " << lambda << "  " << weight << "\n";
+          cut_size += weight * std::max(lambda - 1l, 0l);
         }
 
         return cut_size;
