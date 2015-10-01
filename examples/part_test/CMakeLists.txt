@@ -19,17 +19,14 @@
 #  Department of Chemistry, Virginia Tech
 #
 #  CMakeLists.txt
-#  Sep 4, 2013
+#  Feb 4, 2014
 #
- 
-# Create example programs target so all examples programs
-add_custom_target(example)
 
-# Add Subdirectories
-add_subdirectory (cc)
-add_subdirectory (dgemm)
-add_subdirectory (fock)
-add_subdirectory (mpi_tests)
-add_subdirectory (pmap_test)
-add_subdirectory (vector_tests)
-add_subdirectory (part_test)
+# Create the ta_fock_build executable
+
+# Add the ta_fock_build executable
+add_executable(part EXCLUDE_FROM_ALL part.cpp)
+target_link_libraries(part ${TiledArray_LIBRARIES})
+add_dependencies(part External)
+add_dependencies(example part)
+
