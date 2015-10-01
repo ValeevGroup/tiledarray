@@ -263,6 +263,11 @@ namespace TiledArray {
         opts options;
         SetDefaultOptions(&options);
         SetOption(&options, "SplitStrategy", "onedimcol");
+
+#ifdef TILEDARRAY_HAS_PATOH
+        SetOption(&options, "Partitioner", "patoh");
+//        SetOption(&options, "Partitioner", "fullpatoh");
+#endif
         if(! ApplyOptions(&options))
           TA_EXCEPTION("Invalid options");
 
