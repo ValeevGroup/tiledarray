@@ -20,6 +20,20 @@
 #include <iostream>
 #include <tiledarray.h>
 
+bool to_bool(const char* str) {
+  if (not strcmp(str,"0") ||
+      not strcmp(str,"no") ||
+      not strcmp(str,"false"))
+    return false;
+  if (not strcmp(str,"1") ||
+      not strcmp(str,"yes") ||
+      not strcmp(str,"true"))
+    return true;
+  throw std::runtime_error("unrecognized string specification of bool");
+}
+template <typename T>
+void gemm(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat);
+
 int main(int argc, char** argv) {
   int rc = 0;
 
@@ -30,7 +44,7 @@ int main(int argc, char** argv) {
 
     // Get command line arguments
     if(argc < 2) {
-      std::cout << "Usage: ta_dense matrix_size block_size [repetitions]\n";
+      std::cout << "Usage: ta_dense matrix_size block_size [repetitions] [use_complex]\n";
       return 0;
     }
     const long matrix_size = atol(argv[1]);
@@ -52,6 +66,7 @@ int main(int argc, char** argv) {
       std::cerr << "Error: number of repetitions must greater than zero.\n";
       return 1;
     }
+    const bool use_complex = (argc >= 5 ? to_bool(argv[4]) : false);
 
     const std::size_t num_blocks = matrix_size / block_size;
     const std::size_t block_count = num_blocks * num_blocks;
@@ -64,9 +79,9 @@ int main(int argc, char** argv) {
                 << "\nBlock size          = " << block_size << "x" << block_size
                 << "\nMemory per matrix   = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
                 << " GB\nNumber of blocks    = " << block_count
-                << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
-
-    const double gflop = 2.0 * double(matrix_size * matrix_size * matrix_size) / 1.0e9;
+                << "\nAverage blocks/node = " << double(block_count) / double(world.size())
+                << "\nComplex             = " << (use_complex ? "true" : "false")
+                << "\n";
 
     // Construct TiledRange
     std::vector<unsigned int> blocking;
@@ -80,39 +95,10 @@ int main(int argc, char** argv) {
     TiledArray::TiledRange
       trange(blocking2.begin(), blocking2.end());
 
-    // Construct and initialize arrays
-    TiledArray::Array<double, 2> a(world, trange);
-    TiledArray::Array<double, 2> b(world, trange);
-    TiledArray::Array<double, 2> c(world, trange);
-    a.set_all_local(1.0);
-    b.set_all_local(1.0);
-
-    // Start clock
-    world.gop.fence();
-    if(world.rank() == 0)
-      std::cout << "Starting iterations: " << "\n";
-
-    double total_time = 0.0;
-    double total_gflop_rate = 0.0;
-
-    // Do matrix multiplication
-    for(int i = 0; i < repeat; ++i) {
-      const double start = madness::wall_time();
-      c("m,n") = a("m,k") * b("k,n");
-//      world.gop.fence();
-      const double time = madness::wall_time() - start;
-      total_time += time;
-      const double gflop_rate = gflop / time;
-      total_gflop_rate += gflop_rate;
-      if(world.rank() == 0)
-        std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
-            << gflop_rate <<"\n";
-    }
-
-    // Print results
-    if(world.rank() == 0)
-      std::cout << "Average wall time   = " << total_time / double(repeat)
-          << " sec\nAverage GFLOPS      = " << total_gflop_rate / double(repeat) << "\n";
+    if (use_complex)
+      gemm<std::complex<double>>(world, trange, repeat);
+    else
+      gemm<double>(world, trange, repeat);
 
     TiledArray::finalize();
 
@@ -134,4 +120,50 @@ int main(int argc, char** argv) {
   }
 
   return rc;
+}
+
+template <typename T>
+void
+gemm(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat) {
+
+  const auto n = trange.elements().extent()[0];
+  const auto complex_T = TiledArray::detail::is_complex<T>::value;
+  const double gflop = (complex_T ? 8 : 2) // 1 multiply takes 6/1 flops for complex/real
+                                           // 1 add takes 2/1 flops for complex/real
+                     * double(n*n*n) / 1.0e9;
+
+  // Construct and initialize arrays
+  TiledArray::Array<T, 2> a(world, trange);
+  TiledArray::Array<T, 2> b(world, trange);
+  TiledArray::Array<T, 2> c(world, trange);
+  a.set_all_local(1.0);
+  b.set_all_local(1.0);
+
+  // Start clock
+  world.gop.fence();
+  if(world.rank() == 0)
+    std::cout << "Starting iterations: " << "\n";
+
+  double total_time = 0.0;
+  double total_gflop_rate = 0.0;
+
+  // Do matrix multiplication
+  for(int i = 0; i < repeat; ++i) {
+    const double start = madness::wall_time();
+    c("m,n") = a("m,k") * b("k,n");
+//      world.gop.fence();
+    const double time = madness::wall_time() - start;
+    total_time += time;
+    const double gflop_rate = gflop / time;
+    total_gflop_rate += gflop_rate;
+    if(world.rank() == 0)
+      std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
+          << gflop_rate <<"\n";
+  }
+
+  // Print results
+  if(world.rank() == 0)
+    std::cout << "Average wall time   = " << total_time / double(repeat)
+        << " sec\nAverage GFLOPS      = " << total_gflop_rate / double(repeat) << "\n";
+
 }
