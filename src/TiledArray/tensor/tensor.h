@@ -23,6 +23,7 @@
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/tensor/kernels.h>
+#include <TiledArray/tensor/conjugate.h>
 
 namespace TiledArray {
 
@@ -620,8 +621,8 @@ namespace TiledArray {
 
     /// \tparam Scalar A scalar type
     /// \param factor The scaling factor
-    /// \return A new tensor where the elements are the sum of the elements of
-    /// \c this are scaled by \c factor
+    /// \return A new tensor where the elements of this tensor are scaled by
+    /// \c factor
     template <typename Scalar,
         typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_ scale(const Scalar factor) const {
@@ -634,8 +635,8 @@ namespace TiledArray {
     /// \tparam Scalar A scalar type
     /// \param factor The scaling factor
     /// \param perm The permutation to be applied to this tensor
-    /// \return A new tensor where the elements are the sum of the elements of
-    /// \c this are scaled by \c factor
+    /// \return A new tensor where the elements of this tensor are scaled by
+    /// \c factor and permuted
     template <typename Scalar,
         typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_ scale(const Scalar factor, const Permutation& perm) const {
@@ -652,6 +653,69 @@ namespace TiledArray {
         typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_& scale_to(const Scalar factor) {
       return inplace_unary([=] (numeric_type& restrict res) { res *= factor; });
+    }
+
+    // Complex conjugate operations
+
+    /// Construct a complex conjugated copy of this tensor
+
+    /// \return A new tensor where the elements are the complex conjugate of the
+    /// elements of this tensor
+    Tensor_ conj() const {
+      return scale(TiledArray::conj<numeric_type>());
+    }
+
+    /// Construct a permuted and complex conjugated copy of this tensor
+
+    /// \param perm The permutation to be applied to this tensor
+    /// \return A new tensor where the elements are the complex conjugate of the
+    /// elements of this tensor and permuted
+    Tensor_ conj(const Permutation& perm) const {
+      return scale(TiledArray::conj<numeric_type>(), perm);
+    }
+
+    /// Construct a scaled and complex conjugated copy of this tensor
+
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \return A new tensor where the elements are the complex conjugate of the
+    /// elements of this tensor and scaled by \c factor
+    template <typename Scalar,
+        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+    Tensor_ conj(const Scalar factor) const {
+      return scale(TiledArray::conj(factor));
+    }
+
+    /// Construct a scaled, permuted, and complex conjugated copy of this tensor
+
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param perm The permutation to be applied to this tensor
+    /// \return A new tensor where the elements are the complex conjugate of the
+    /// elements of this tensor, scaled by \c factor, and permuted
+    template <typename Scalar,
+        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+    Tensor_ conj(const Scalar factor, const Permutation& perm) const {
+      return scale(TiledArray::conj(factor), perm);
+    }
+
+    /// In-place complex conjugate this tensor
+
+    /// \param factor The scaling factor
+    /// \return A reference to this tensor
+    Tensor_& conj_to() {
+      return scale_to(TiledArray::conj<numeric_type>());
+    }
+
+    /// In-place scale and complex conjugate this tensor
+
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \return A reference to this tensor
+    template <typename Scalar,
+        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+    Tensor_& conj_to(const Scalar factor) {
+      return scale_to(TiledArray::conj(factor));
     }
 
     // Addition operations
