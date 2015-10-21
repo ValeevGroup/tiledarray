@@ -247,7 +247,7 @@ namespace TiledArray {
 
         // Create the result array
         A result(world, tsr.array().trange(),
-            tsr.array().shape().update_block(tsr.lower_bound(), tsr.upper_bound(),
+            tsr.array().get_shape().update_block(tsr.lower_bound(), tsr.upper_bound(),
             dist_eval.shape()), tsr.array().get_pmap());
 
         // NOTE: The tiles from the original array and the sub-block are copied

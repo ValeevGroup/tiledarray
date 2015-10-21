@@ -82,7 +82,7 @@ namespace TiledArray {
 
     private:
 
-      const array_type& array_; ///< The array that this expression
+      array_type& array_; ///< The array that this expression
       std::string vars_; ///< The tensor variable list
       std::vector<std::size_t> lower_bound_; ///< Lower bound of the tile block
       std::vector<std::size_t> upper_bound_; ///< Upper bound of the tile block
