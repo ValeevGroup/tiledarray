@@ -326,6 +326,39 @@ namespace TiledArray {
     /// \return \c true when this shape has been initialized.
     bool empty() const { return tile_norms_.empty(); }
 
+    /// Update sub-block of shape
+
+    /// Update a sub-block shape information with another shape object.
+    /// \tparam Index The bound index type
+    /// \param lower_bound The lower bound of the sub-block to be updated
+    /// \param upper_bound The upper bound of the sub-block to be updated
+    /// \param other The shape that will be used to update the sub-block
+    /// \return A new sparse shape object where the specified sub-block contains the data
+    /// result_tile_norms of \c other.
+    template <typename Index>
+    SparseShape update_block(const Index& lower_bound, const Index& upper_bound,
+        const SparseShape& other)
+    {
+      Tensor<value_type> result_tile_norms = tile_norms_.clone();
+
+      auto result_tile_norms_blk = result_tile_norms.block(lower_bound, upper_bound);
+      const value_type threshold = threshold_;
+      size_type zero_tile_count = zero_tile_count_;
+      result_tile_norms_blk.inplace_binary(other.tile_norms_,
+          [threshold,&zero_tile_count] (value_type& l, const value_type r) {
+            // Update the zero tile count for the result
+            if((l < threshold) && (r >= threshold))
+              ++zero_tile_count;
+            else if((l >= threshold) && (r < threshold))
+              --zero_tile_count;
+
+            // Update the tile norm value
+            l = r;
+          });
+
+      return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
+    }
+
   private:
 
     /// Create a copy of a sub-block of the shape

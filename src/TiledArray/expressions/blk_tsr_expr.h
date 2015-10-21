@@ -176,6 +176,51 @@ namespace TiledArray {
 #endif // NDEBUG
       }
 
+      /// Expression assignment operator
+
+      /// \param other The expression that will be assigned to this array
+      BlkTsrExpr_& operator=(BlkTsrExpr_& other) {
+        other.eval_to(*this);
+        return *this;
+      }
+
+      /// Expression assignment operator
+
+      /// \tparam D The derived expression type
+      /// \param other The expression that will be assigned to this array
+      template <typename D>
+      BlkTsrExpr_& operator=(const Expr<D>& other) {
+        other.derived().eval_to(*this);
+        return *this;
+      }
+
+      /// Expression plus-assignment operator
+
+      /// \tparam D The derived expression type
+      /// \param other The expression that will be added to this array
+      template <typename D>
+      BlkTsrExpr_& operator+=(const Expr<D>& other) {
+        return operator=(AddExpr<BlkTsrExpr_, D>(*this, other.derived()));
+      }
+
+      /// Expression minus-assignment operator
+
+      /// \tparam D The derived expression type
+      /// \param other The expression that will be subtracted from this array
+      template <typename D>
+      BlkTsrExpr_& operator-=(const Expr<D>& other) {
+        return operator=(SubtExpr<BlkTsrExpr_, D>(*this, other.derived()));
+      }
+
+      /// Expression multiply-assignment operator
+
+      /// \tparam D The derived expression type
+      /// \param other The expression that will scale this array
+      template <typename D>
+      BlkTsrExpr_& operator*=(const Expr<D>& other) {
+        return operator=(MultExpr<BlkTsrExpr_, D>(*this, other.derived()));
+      }
+
       /// Array accessor
 
       /// \return a const reference to this array

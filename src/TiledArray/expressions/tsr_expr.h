@@ -82,26 +82,6 @@ namespace TiledArray {
         array_(other.array_), vars_(other.vars_)
       { }
 
-      /// Array accessor
-
-      /// \return A reference to the array
-      array_type& array() { return array_; }
-
-      /// Array accessor
-
-      /// \return a const reference to this array
-      const array_type& array() const { return array_; }
-
-      /// Array type conversion operator
-
-      /// \return A reference to the array
-      operator array_type& () { return array_; }
-
-      /// Const array type conversion operator
-
-      /// \return A const reference to the array
-      operator const array_type& () const { return array_; }
-
       /// Expression assignment operator
 
       /// \param other The expression that will be assigned to this array
@@ -147,6 +127,25 @@ namespace TiledArray {
         return operator=(MultExpr<TsrExpr_, D>(*this, other.derived()));
       }
 
+      /// Array accessor
+
+      /// \return A reference to the array
+      array_type& array() { return array_; }
+
+      /// Array accessor
+
+      /// \return a const reference to this array
+      const array_type& array() const { return array_; }
+
+      /// Array type conversion operator
+
+      /// \return A reference to the array
+      operator array_type& () { return array_; }
+
+      /// Const array type conversion operator
+
+      /// \return A const reference to the array
+      operator const array_type& () const { return array_; }
 
       /// Block expression
 
