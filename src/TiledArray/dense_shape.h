@@ -168,6 +168,28 @@ namespace TiledArray {
 
   }; // class DenseShape
 
+  /// SymmetricDenseShape
+
+  /// SymmetricDenseShape is a refinement of DenseShape that also handles permutational and other symmetries.
+  /// Symmetry properties of a tensor are specified by the (irreducible) representation of the
+  /// group of symmetry operations.
+  template <typename SymmetryInfo>
+  class SymmetricDenseShape : public DenseShape {
+    public:
+      SymmetricDenseShape(const SymmetryInfo& symm) : symm_(symm) {
+      }
+
+      /// Check that a tile is symmetry-unique, i.e. its index is canonical
+
+      /// \tparam Index The type of the index
+      /// \return false
+      template <typename Index>
+      bool is_unique(const Index& idx) { return symm_.is_canonical(idx); }
+
+    private:
+      std::reference_wrapper<SymmetryInfo> symm_;
+  };
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_DENSE_SHAPE_H__INCLUDED
