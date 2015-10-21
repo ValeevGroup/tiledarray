@@ -41,6 +41,29 @@ namespace TiledArray {
   // Forward declarations
   class Permutation;
   template <typename, typename> class Tensor;
+  class Range;
+
+  namespace detail {
+      template <typename, typename>
+      class TensorInterface;
+  }
+
+  template <typename T, typename Index>
+  void remap(detail::TensorInterface<T, Range> &, T* const, const Index&, const Index&);
+
+  // template <typename T, typename Index>
+  // void remap(detail::TensorInterface<const T, Range> &, const T* const,
+  //         const Index&, const Index&);
+
+  template <typename T>
+  void remap(detail::TensorInterface<T, Range> &, T* const,
+          const std::initializer_list<std::size_t>&,
+          const std::initializer_list<std::size_t>&);
+
+  // template <typename T>
+  // void remap(detail::TensorInterface<const T, Range> &, const T* const,
+  //         const std::initializer_list<std::size_t>&,
+  //         const std::initializer_list<std::size_t>&);
 
   namespace detail {
 
