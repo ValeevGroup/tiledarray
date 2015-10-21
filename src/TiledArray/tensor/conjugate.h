@@ -77,24 +77,27 @@ namespace TiledArray {
 
     template <typename U,
         typename std::enable_if<std::is_floating_point<U>::value>::type* = nullptr>
-    auto operator()(const U value) const -> decltype(value * scalar_)
+    auto operator()(const U value) const -> decltype(value * std::declval<T>())
     { return value * scalar_; }
 
 
     template <typename U,
         typename std::enable_if<std::is_floating_point<U>::value>::type* = nullptr>
-    auto operator()(const std::complex<U> value) const -> decltype(std::conj(value) * scalar_)
+    auto operator()(const std::complex<U> value) const
+        -> decltype(std::conj(value) * std::declval<T>())
     { return std::conj(value) * scalar_; }
 
     template <typename U,
         typename std::enable_if<std::is_floating_point<U>::value>::type* = nullptr>
-    auto operator()(const Conjugate<U> conj) const -> decltype(conj.scalar_ * scalar_)
+    auto operator()(const Conjugate<U> conj) const
+        -> decltype(conj.scalar_ * std::declval<T>())
     { return conj.scalar_ * scalar_; }
 
 
     template <typename U,
         typename std::enable_if<std::is_floating_point<U>::value>::type* = nullptr>
-    auto operator()(const Conjugate<std::complex<U> > conj) const -> decltype(std::conj(conj.scalar_) * scalar_)
+    auto operator()(const Conjugate<std::complex<U> > conj) const
+        -> decltype(std::conj(conj.scalar_) * std::declval<T>())
     { return std::conj(conj.scalar_) * scalar_; }
 
   }; // Conjugate
