@@ -38,7 +38,7 @@ namespace TiledArray {
     /// identity for group of objects of type T
     template <typename T> T identity();
 
-    /// class Representation is a representation of Group in terms of Representatives (typically, (linear) operators)
+    /// class Representation is a representation of Group in terms of Representatives (linear operators)
     /// \tparam Group class describing the group of symmetry transformations
     /// \tparam Representative class describing the group representatives; in TiledArray these will
     ///         encode mathematical transformation of tiles under permutations, or symmetry transformations.
