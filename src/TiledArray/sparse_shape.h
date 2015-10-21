@@ -272,7 +272,7 @@ namespace TiledArray {
       return (range == tile_norms_.range());
     }
 
-    /// Check that a tile is zero
+    /// Check if tile is numerically zero
 
     /// \tparam Index The type of the index
     /// \return false
