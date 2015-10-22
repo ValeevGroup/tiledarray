@@ -83,7 +83,8 @@ set(ta_test_src_files  ta_test.cpp
     reduce_task.cpp
     proc_grid.cpp
     dist_eval_contraction_eval.cpp
-    expressions.cpp)
+    expressions.cpp
+    symm_dense_shape.cpp)
         
 if(NOT ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
