@@ -50,18 +50,22 @@ namespace TiledArray {
         using representative_type = Representative;
 
         // Compiler generated functions
-        Representation() = delete;
         Representation(const Representation&) = default;
         Representation(Representation&&) = default;
         Representation& operator=(const Representation&) = default;
         Representation& operator=(Representation&&) = default;
 
         /// Construct Representation from a set of {generator,operator} pairs construct operator representation of the permutation group
-        Representation(std::map<element_type,representative_type> generator_reps) :
+        Representation(std::map<element_type,representative_type> generator_reps = std::map<element_type,representative_type>{}) :
           generator_representatives_(std::move(generator_reps))
         {
           // N.B. this may mutate generator_reps, e.g. if it has an identity
           init(generator_representatives_, element_representatives_);
+        }
+
+        static std::shared_ptr<Representation> trivial() {
+          std::map<element_type,representative_type> empty_generator_list;
+          return std::make_shared<Representation>(empty_generator_list);
         }
 
         /// the order of the representation = the order of the group
