@@ -112,13 +112,13 @@ namespace TiledArray {
 #ifndef NDEBUG
         const unsigned int rank = array_.trange().tiles().rank();
         // Check the dimension of the lower block bound
-        if(TiledArray::detail::size(lower_bound) != rank) {
+        if(TiledArray::detail::size(lower_bound_) != rank) {
           if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The size lower bound of the block is not equal to rank of " \
                 "the array: " \
                 << "\n    array rank  = " << array_.trange().tiles().rank() \
-                << "\n    lower bound = " << lower_bound );
+                << "\n    lower bound = " << lower_bound_ );
 
             TA_EXCEPTION("The size lower bound of the block is not equal to " \
                 "rank of the array.");
@@ -126,13 +126,13 @@ namespace TiledArray {
         }
 
         // Check the dimension of the upper block bound
-        if(TiledArray::detail::size(upper_bound) != rank) {
+        if(TiledArray::detail::size(upper_bound_) != rank) {
           if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The size upper bound of the block is not equal to rank of " \
                 "the array: " \
                 << "\n    array rank  = " << rank \
-                << "\n    upper bound = " << upper_bound );
+                << "\n    upper bound = " << upper_bound_ );
 
             TA_EXCEPTION("The size upper bound of the block is not equal to " \
                 "rank of the array.");
@@ -140,34 +140,34 @@ namespace TiledArray {
         }
 
         const bool lower_bound_check =
-            std::equal(std::begin(lower_bound), std::end(lower_bound),
-                    tsr.array().trange().tiles().lobound_data(),
+            std::equal(std::begin(lower_bound_), std::end(lower_bound_),
+                    array_.trange().tiles().lobound_data(),
                     [] (std::size_t l, std::size_t r) { return l >= r; });
         const bool upper_bound_check =
-            std::equal(std::begin(upper_bound), std::end(upper_bound),
-                    tsr.array().trange().tiles().upbound_data(),
+            std::equal(std::begin(upper_bound_), std::end(upper_bound_),
+                    array_.trange().tiles().upbound_data(),
                     [] (std::size_t l, std::size_t r) { return l <= r; });
         if(! (lower_bound_check && upper_bound_check)) {
           if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The block range is not a sub-block of the array range: " \
                 << "\n    array range = " << array_.trange().tiles() \
-                << "\n    block range = [ " << lower_bound  << " , " << upper_bound << " )");
+                << "\n    block range = [ " << lower_bound_  << " , " << upper_bound_ << " )");
           }
 
           TA_EXCEPTION("The block range is not a sub-block of the array range.");
         }
 
         const bool lower_upper_bound_check =
-            std::equal(std::begin(lower_bound), std::end(lower_bound),
-                    std::begin(upper_bound),
+            std::equal(std::begin(lower_bound_), std::end(lower_bound_),
+                    std::begin(upper_bound_),
                     [] (std::size_t l, std::size_t r) { return l < r; });
         if(! lower_upper_bound_check) {
           if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The block lower bound is not less than the upper bound: " \
-                << "\n    lower bound = " << lower_bound \
-                << "\n    upper bound = " << upper_bound);
+                << "\n    lower bound = " << lower_bound_ \
+                << "\n    upper bound = " << upper_bound_);
           }
 
           TA_EXCEPTION("The block lower bound is not less than the upper bound.");

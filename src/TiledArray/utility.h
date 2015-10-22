@@ -166,14 +166,6 @@ namespace std {
     return os;
   }
 
-  /// Vector output stream operator
-  template <typename T>
-  inline std::ostream& operator<<(std::ostream& os, const std::initializer_list<T>& list) {
-    TiledArray::detail::print_array(os, TiledArray::detail::data(list),
-        TiledArray::detail::size(list));
-    return os;
-  }
-
 } // namespace std
 
 #endif // TILEDARRAY_UTILITY_H__INCLUDED
