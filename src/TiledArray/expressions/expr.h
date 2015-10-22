@@ -82,7 +82,7 @@ namespace TiledArray {
       /// \return The evaluated tile
       /// \param op The tile mutating operation
       template <typename R, typename T, typename Op>
-      static R eval_tile(const T& tile, const std::shared_ptr<Op>& op) {
+      static R eval_tile(T& tile, const std::shared_ptr<Op>& op) {
         return (*op)(tile);
       }
 
@@ -130,8 +130,7 @@ namespace TiledArray {
       /// \param tile The lazy tile
       /// \param op The tile mutating operation
       template <typename A, typename I, typename T, typename Op>
-      typename std::enable_if<TiledArray::detail::is_lazy_tile<T>::value>::type
-      set_tile(A& array, const I index, const Future<T>& tile,
+      void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
         array.set(index, array.get_world().taskq.add(

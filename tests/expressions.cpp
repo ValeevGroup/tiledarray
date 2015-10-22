@@ -285,6 +285,21 @@ BOOST_AUTO_TEST_CASE( assign_sub_block )
     }
   }
 }
+BOOST_AUTO_TEST_CASE(assign_subblock_block_contract)
+{
+  w.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
+      a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
+}
+
+BOOST_AUTO_TEST_CASE(assign_subblock_block_permute_contract)
+{
+  w.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
+      a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
+}
 
 BOOST_AUTO_TEST_CASE(block_contract)
 {
