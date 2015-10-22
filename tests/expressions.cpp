@@ -266,6 +266,26 @@ BOOST_AUTO_TEST_CASE( scal_block )
   }
 }
 
+BOOST_AUTO_TEST_CASE( assign_sub_block )
+{
+  c.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) = 2 * a("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
+    Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
+
+    BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
+
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE(block_contract)
 {
   BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
