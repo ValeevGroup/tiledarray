@@ -257,14 +257,12 @@ namespace TiledArray {
         // Copy tiles from the original array to the result array that are not
         // included in the sub-block assignment. There is no communication in
         // this step.
-        {
-          const BlockRange blk_range(tsr.array().trange().tiles(),
-              tsr.lower_bound(), tsr.upper_bound());
-          for(const auto index : *tsr.array().get_pmap()) {
-            if(! tsr.array().is_zero(index)) {
-              if(! blk_range.includes(tsr.array().trange().tiles().idx(index)))
-                result.set(index, tsr.array().find(index));
-            }
+        const BlockRange blk_range(tsr.array().trange().tiles(),
+            tsr.lower_bound(), tsr.upper_bound());
+        for(const auto index : *tsr.array().get_pmap()) {
+          if(! tsr.array().is_zero(index)) {
+            if(! blk_range.includes(tsr.array().trange().tiles().idx(index)))
+              result.set(index, tsr.array().find(index));
           }
         }
 
@@ -278,9 +276,9 @@ namespace TiledArray {
           std::shared_ptr<shift_op_type> shift_op =
               std::make_shared<shift_op_type>(shift);
 
-          for(const auto index : dist_eval.pmap()) {
+          for(const auto index : *dist_eval.pmap()) {
             if(! dist_eval.is_zero(index))
-              set_tile(result, index, dist_eval.get(index), shift_op);
+              set_tile(result, blk_range.ordinal(index), dist_eval.get(index), shift_op);
           }
         }
 
