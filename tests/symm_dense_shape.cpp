@@ -23,10 +23,10 @@
  *
  */
 
-#include "TiledArray/symm/dense_shape.h"
 #include "TiledArray/symm/permutation_group.h"
 #include "TiledArray/symm/representation.h"
 #include "TiledArray/symm/oper.h"
+#include "TiledArray/symm/dense_shape.h"
 #include "unit_test_config.h"
 
 using namespace TiledArray;
@@ -81,7 +81,10 @@ BOOST_AUTO_TEST_CASE( is_unique )
     auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{};
     BOOST_CHECK(shp.is_unique(std::vector<int>{}) == true);
     BOOST_CHECK(shp.is_unique(std::vector<int>{0,1,2}) == true);
+    BOOST_CHECK(shp.is_unique({0,1,2}) == true); // check initializer_list index
+    BOOST_CHECK(shp.is_unique({'a','b','c'}) == true); // check initializer_list<char>
     BOOST_CHECK(shp.is_unique(std::vector<int>{1,0,2,3}) == true);
+    BOOST_CHECK(shp.is_unique({1,0,2,3}) == true); // check initializer_list index
   }
   {
     auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{s01};
@@ -105,6 +108,14 @@ BOOST_AUTO_TEST_CASE( is_unique )
     BOOST_CHECK(shp.is_unique(std::vector<int>{0,0,1,2}) == true);
     BOOST_CHECK(shp.is_unique(std::vector<int>{0,1,2,3}) == true);
     BOOST_CHECK(shp.is_unique(std::vector<int>{1,0,3,2}) == false);
+  }
+}
+
+BOOST_AUTO_TEST_CASE( find_unique )
+{
+  {
+    auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{};
+//    BOOST_CHECK(shp.find_unique(std::vector<int>{}) == std::make_tuple(Permutation{}, identity<IKOper>()));
   }
 }
 

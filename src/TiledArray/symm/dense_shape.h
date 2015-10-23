@@ -33,28 +33,49 @@ namespace TiledArray {
 
   namespace symmetry {
 
-  /// SymmetricDenseShape
+    /// SymmetricDenseShape
 
-  /// SymmetricDenseShape is a refinement of DenseShape that also handles permutational and other symmetries.
-  /// Symmetry properties of a tensor are specified by the (irreducible) representation of the
-  /// group of symmetry operations.
-  template <typename SymmetryInfo>
-  class SymmetricDenseShape : public DenseShape {
-    public:
-      /// the default is no symmetry
-      SymmetricDenseShape(std::shared_ptr<SymmetryInfo> symm = SymmetryInfo::trivial()) : symm_(symm) {
-      }
+    /// SymmetricDenseShape is a refinement of DenseShape that also handles permutational and other symmetries.
+    /// Symmetry properties of a tensor are specified by the (irreducible) representation of the
+    /// group of symmetry operations.
+    template <typename SymmetryGroupRepresentation>
+    class SymmetricDenseShape : public DenseShape {
+      public:
+        typedef typename SymmetryGroupRepresentation::representative_type Op;
 
-      /// Check that a tile is symmetry-unique, i.e. its index is canonical
+        /// the default is no symmetry
+        SymmetricDenseShape(std::shared_ptr<SymmetryGroupRepresentation> symm =
+                            SymmetryGroupRepresentation::trivial()) : rep_(symm) {
+        }
 
-      /// \tparam Index The type of the index
-      /// \return false
-      template <typename Index>
-      bool is_unique(const Index& idx) { return is_lexicographically_smallest(idx,*symm_); }
+        /// Check that a tile index is symmetry-unique, i.e. it is canonically ordered.
 
-    private:
-      std::shared_ptr<SymmetryInfo> symm_;
-  };
+        /// As index is canonically ordered if no group element can reduces its lexicographic rank;
+        /// in other words, action of group elements never decreases it.
+        /// \tparam Index The type of the index
+        /// \return true if \c idx is canonically-ordered
+        template <typename Index>
+        bool is_unique(const Index& idx) { return is_orbit_minimum(idx,*rep_); }
+
+        /// Check that a tile index is symmetry-unique, i.e. it is canonically ordered. \sa is_unique(const Index&)
+        template <typename Token>
+        bool is_unique(const std::initializer_list<Token>& idx) { return is_unique<std::initializer_list<Token>>(idx); }
+
+        /// Canonicalizes an index
+
+        /// returns the unique Index + the Operator whose action on UniqueIndex produces the input Index
+        template <typename Index>
+        std::tuple<Index, Op>
+        to_unique(const Index& idx) {
+          Index unique_idx;
+          typename SymmetryGroupRepresentation::element_type to_unique_op;
+          std::tie(unique_idx, to_unique_op) = find_orbit_minimum(idx, *rep_);
+          return std::make_tuple(unique_idx, rep_->representatives()[to_unique_op]);
+        }
+
+      private:
+        std::shared_ptr<SymmetryGroupRepresentation> rep_;
+    };
 
   } // namespace TiledArray::symmetry
 } // namespace TiledArray
