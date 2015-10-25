@@ -171,9 +171,35 @@ namespace TiledArray {
 
     /// find the smallest element in the orbit of a MultiIndex
     template <typename MultiIndex, typename Group, typename Representative>
-    std::tuple<MultiIndex, typename Group::element_type>
+    std::tuple<MultiIndex, std::reference_wrapper<const typename Group::element_type>>
     find_orbit_minimum(const MultiIndex& idx, const Representation<Group,Representative>& rep) {
-      assert(false);
+      using op_type = typename Group::element_type;
+      const auto idx_size = idx.size();
+      MultiIndex min_idx{idx};
+      std::reference_wrapper<const op_type> min_op = std::cref(identity<op_type>());
+      if (rep.order() != 1) {
+        for(const auto& g_op_pair: rep.representatives()) {
+          MultiIndex g_idx{idx};
+          for(size_t i=0; i!=idx_size; ++i) {
+            const auto& g = g_op_pair.first;
+            const auto& min_idx_i = *(min_idx.begin() + i);
+            const auto& g_idx_i = *(idx.begin() + g[i]);
+            *(g_idx.begin() + i) = g_idx_i;
+            if (g_idx_i < min_idx_i) { // g(idx) < min_idx, hence set min_idx to g(idx)
+              min_op = std::cref(g);
+              for(++i;i!=idx_size; ++i) { // compute rest of g_idx
+                const auto& idx_g_i = *(idx.begin() + g[i]);
+                *(g_idx.begin() + i) = idx_g_i;
+              }
+              min_idx = g_idx;
+              break;
+            }
+            if (g_idx_i > min_idx_i) // g(idx) > min_idx, try next g
+              break;
+          }
+        }
+      }
+      return std::make_tuple(min_idx,min_op);
     }
 
   } // namespace symmetry

@@ -65,12 +65,12 @@ namespace TiledArray {
 
         /// returns the unique Index + the Operator whose action on UniqueIndex produces the input Index
         template <typename Index>
-        std::tuple<Index, Op>
+        std::tuple<Index, std::reference_wrapper<const Op>>
         to_unique(const Index& idx) {
           Index unique_idx;
           typename SymmetryGroupRepresentation::element_type to_unique_op;
           std::tie(unique_idx, to_unique_op) = find_orbit_minimum(idx, *rep_);
-          return std::make_tuple(unique_idx, rep_->representatives()[to_unique_op]);
+          return std::make_tuple(unique_idx, std::cref(rep_->representatives().find(to_unique_op)->second));
         }
 
       private:
