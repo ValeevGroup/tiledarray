@@ -22,6 +22,7 @@
 
 #include <TiledArray/config.h>
 #include <iterator>
+#include <limits>
 #include <madness/world/type_traits.h>
 #include <complex>
 
@@ -42,45 +43,7 @@ namespace TiledArray {
   namespace detail {
 
     template <typename T>
-    struct is_numeric : public std::false_type { };
-
-    template <>
-    struct is_numeric<short int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<unsigned int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<long int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<unsigned long int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<float> : public std::true_type { };
-
-    template <>
-    struct is_numeric<double> : public std::true_type { };
-
-#ifdef TILEDARRAY_HAS_LONG_DOUBLE
-
-    template <>
-    struct is_numeric<long double> : public std::true_type { };
-
-#endif //TILEDARRAY_HAS_LONG_DOUBLE
-
-#ifdef TILEDARRAY_HAS_LONG_LONG
-
-    template <>
-    struct is_numeric<long long int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<unsigned long long int> : public std::true_type { };
-
-#endif // TILEDARRAY_HAS_LONG_LONG
+    struct is_numeric : public std::integral_constant<bool, std::numeric_limits<T>::is_specialized> { };
 
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };

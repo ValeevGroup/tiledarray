@@ -28,12 +28,6 @@
 /* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
 #define TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@
 
-/* define if compiler supports long double, the value is sizeof(long double) */
-#cmakedefine TILEDARRAY_HAS_LONG_DOUBLE 1
-
-/* define if compiler supports long long, the value is sizeof(long long) */
-#cmakedefine TILEDARRAY_HAS_LONG_LONG 1
-
 /* define if compiler supports static_assert. */
 #cmakedefine TILEDARRAY_HAVE_STATIC_ASSERT 1
 
