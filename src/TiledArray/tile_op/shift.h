@@ -91,7 +91,7 @@ namespace TiledArray {
 
       result_type permute_op(const Arg& arg) const {
         using TiledArray::permute;
-        using TiledArray::shift;
+        using TiledArray::shift_to;
         result_type result = permute(arg, UnaryInterface_::permutation());
         shift_to(result, range_shift_);
         return result;
