@@ -296,7 +296,6 @@ namespace TiledArray {
   inline auto permute(const Tile<Arg>& arg, const Permutation& perm) ->
       Tile<decltype(permute(arg.tensor(), perm))>
   {
-    typedef decltype(permute(arg.tensor(), perm)) result_type;
     return Tile<Arg>(permute(arg.tensor(), perm));
   }
 

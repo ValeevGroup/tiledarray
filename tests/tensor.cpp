@@ -466,5 +466,70 @@ BOOST_AUTO_TEST_CASE( binary_perm_op ) {
 }
 
 
+BOOST_AUTO_TEST_CASE( conj_op ) {
+  Permutation perm = make_perm();
+  TensorZ s(r);
+  rand_fill(431, s.size(), s.data());
+
+  TensorZ t;
+  BOOST_REQUIRE_NO_THROW(t = s.conj());
+
+  BOOST_CHECK_EQUAL(t.range(), s.range());
+
+  for(std::size_t i = 0ul; i < t.size(); ++i) {
+    BOOST_CHECK_EQUAL(t[i].real(), s[i].real());
+    BOOST_CHECK_EQUAL(t[i].imag(), -s[i].imag());
+  }
+}
+
+BOOST_AUTO_TEST_CASE( conj_scal_op ) {
+  Permutation perm = make_perm();
+  TensorZ s(r);
+  rand_fill(431, s.size(), s.data());
+
+  TensorZ t;
+  BOOST_REQUIRE_NO_THROW(t = s.conj(3.0));
+
+  BOOST_CHECK_EQUAL(t.range(), s.range());
+
+  for(std::size_t i = 0ul; i < t.size(); ++i) {
+    BOOST_CHECK_EQUAL(t[i].real(), 3.0 * s[i].real());
+    BOOST_CHECK_EQUAL(t[i].imag(), -3.0 * s[i].imag());
+  }
+}
+
+
+BOOST_AUTO_TEST_CASE( inplace_conj_op ) {
+  Permutation perm = make_perm();
+  TensorZ s(r);
+  rand_fill(431, s.size(), s.data());
+
+  TensorZ t = s.clone();
+  BOOST_REQUIRE_NO_THROW(t.conj_to());
+
+  BOOST_CHECK_EQUAL(t.range(), s.range());
+
+  for(std::size_t i = 0ul; i < t.size(); ++i) {
+    BOOST_CHECK_EQUAL(t[i].real(), s[i].real());
+    BOOST_CHECK_EQUAL(t[i].imag(), -s[i].imag());
+  }
+}
+
+BOOST_AUTO_TEST_CASE( inplace_conj_scal_op ) {
+  Permutation perm = make_perm();
+  TensorZ s(r);
+  rand_fill(431, s.size(), s.data());
+
+  TensorZ t = s.clone();
+  BOOST_REQUIRE_NO_THROW(t.conj_to(3.0));
+
+  BOOST_CHECK_EQUAL(t.range(), s.range());
+
+  for(std::size_t i = 0ul; i < t.size(); ++i) {
+    BOOST_CHECK_EQUAL(t[i].real(), 3.0 * s[i].real());
+    BOOST_CHECK_EQUAL(t[i].imag(), -3.0 * s[i].imag());
+  }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 

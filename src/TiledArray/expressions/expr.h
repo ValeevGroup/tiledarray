@@ -31,6 +31,7 @@
 #include <TiledArray/tile_op/unary_reduction.h>
 #include <TiledArray/tile_op/binary_reduction.h>
 #include <TiledArray/tile_op/reduce_wrapper.h>
+#include <TiledArray/tile_op/shift.h>
 
 namespace TiledArray {
 
@@ -41,6 +42,8 @@ namespace TiledArray {
 
     // Forward declaration
     template <typename> struct ExprTrait;
+    template <typename> class TsrExpr;
+    template <typename> class BlkTsrExpr;
 
 
     /// Base class for expression evaluation
@@ -60,12 +63,27 @@ namespace TiledArray {
 
       /// Task function used to evaluate lazy tiles
 
+      /// \tparam R The result type
       /// \tparam T The lazy tile type
       /// \param tile The lazy tile
       /// \return The evaluated tile
-      template <typename T>
+      template <typename R, typename T>
       static typename TiledArray::eval_trait<T>::type eval_tile(const T& tile) {
         return tile;
+      }
+
+
+      /// Task function used to mutate result tiles tiles
+
+      /// \tparam R The result type
+      /// \tparam T The lazy tile type
+      /// \tparam Op Tile operation type
+      /// \param tile The lazy tile
+      /// \return The evaluated tile
+      /// \param op The tile mutating operation
+      template <typename R, typename T, typename Op>
+      static R eval_tile(T& tile, const std::shared_ptr<Op>& op) {
+        return (*op)(tile);
       }
 
       /// Set an array tile with a lazy tile
@@ -82,7 +100,7 @@ namespace TiledArray {
       typename std::enable_if<TiledArray::detail::is_lazy_tile<T>::value>::type
       set_tile(A& array, const I index, const Future<T>& tile) const {
         array.set(index, array.get_world().taskq.add(
-              & Expr_::template eval_tile<T>, tile));
+              & Expr_::template eval_tile<typename A::value_type, T>, tile));
       }
 
       /// Set the \c array tile at \c index with \c tile
@@ -99,44 +117,24 @@ namespace TiledArray {
         array.set(index, tile);
       }
 
-      /// Array factor function
+      /// Set an array tile with a lazy tile
 
-      /// Construct an array that will hold the result of this expression
-      /// \tparam A The output array type
-      /// \param world The world that will hold the result
-      /// \param pmap The process map for the result
-      /// \param target_vars The target variable list
-      template <typename A>
-      A make_array(World& world, const std::shared_ptr<typename A::pmap_interface>& pmap,
-          const VariableList& target_vars) const
+      /// Spawn a task to evaluate a lazy tile and set the \a array tile at
+      /// \c index with the result.
+      /// \tparam A The array type
+      /// \tparam I The index type
+      /// \tparam T The lazy tile type
+      /// \tparam Op Tile operation type
+      /// \param array The result array
+      /// \param index The tile index
+      /// \param tile The lazy tile
+      /// \param op The tile mutating operation
+      template <typename A, typename I, typename T, typename Op>
+      void set_tile(A& array, const I index, const Future<T>& tile,
+          const std::shared_ptr<Op>& op) const
       {
-        typedef madness::Range<typename engine_type::pmap_interface::const_iterator> range_type;
-
-        // Construct the expression engine
-        engine_type engine(derived());
-        engine.init(world, pmap, target_vars);
-
-        // Create the distributed evaluator from this expression
-        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
-        dist_eval.eval();
-
-        // Create the result array
-        A result(dist_eval.get_world(), dist_eval.trange(),
-            dist_eval.shape(), dist_eval.pmap());
-
-        // Move the data from dist_eval into the result array
-        auto it = dist_eval.pmap()->begin();
-        const auto end = dist_eval.pmap()->end();
-        for(; it != end; ++it) {
-          const auto index = *it;
-          if(! dist_eval.is_zero(index))
-            set_tile(result, index, dist_eval.get(index));
-        }
-
-        // Wait for child expressions of dist_eval
-        dist_eval.wait();
-
-        return result;
+        array.set(index, array.get_world().taskq.add(
+              & Expr_::template eval_tile<typename A::value_type, T, Op>, tile, op));
       }
 
     public:
@@ -156,6 +154,8 @@ namespace TiledArray {
       /// \param tsr The tensor to be assigned
       template <typename A>
       void eval_to(TsrExpr<A>& tsr) const {
+        static_assert(! TiledArray::detail::is_lazy_tile<typename A::value_type>::value,
+            "Assignment to an Array of lazy tiles is not supported.");
 
         // Get the target world.
         World& world = (tsr.array().is_initialized() ?
@@ -170,23 +170,123 @@ namespace TiledArray {
         // Get result variable list.
         VariableList target_vars(tsr.vars());
 
+        // Construct the expression engine
+        engine_type engine(derived());
+        engine.init(world, pmap, target_vars);
+
+        // Create the distributed evaluator from this expression
+        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
+        dist_eval.eval();
+
+        // Create the result array
+        A result(dist_eval.get_world(), dist_eval.trange(),
+            dist_eval.shape(), dist_eval.pmap());
+
+        // Move the data from dist_eval into the result array. There is no
+        // communication in this step.
+        for(const auto index : *dist_eval.pmap()) {
+          if(! dist_eval.is_zero(index))
+            set_tile(result, index, dist_eval.get(index));
+        }
+
+        // Wait for child expressions of dist_eval
+        dist_eval.wait();
+
         // Swap the new array with the result array object.
-        make_array<A>(world, pmap, target_vars).swap(tsr.array());
+        result.swap(tsr.array());
       }
 
-      /// Array conversion operator
 
-      /// \tparam T The array element type
-      /// \tparam DIM The array dimension
-      /// \tparam Tile The array tile type
-      /// \tparam Policy The array policy type
-      /// \return A array object that holds the result of this expression
-//      template <typename T, unsigned int DIM, typename Tile, typename Policy>
-//      explicit operator Array<T, DIM, Tile, Policy>() {
-//        return make_array<Array<T, DIM, Tile, Policy> >(World::get_default(),
-//            std::shared_ptr<typename Array<T, DIM, Tile, Policy>::pmap_interface>(),
-//            VariableList());
-//      }
+      /// Evaluate this object and assign it to \c tsr
+
+      /// This expression is evaluated in parallel in distributed environments,
+      /// where the content of \c tsr will be replace by the results of the
+      /// evaluated tensor expression.
+      /// \tparam A The array type
+      /// \param tsr The tensor to be assigned
+      template <typename A>
+      void eval_to(BlkTsrExpr<A>& tsr) const {
+        typedef TiledArray::math::Shift<typename A::value_type,
+            typename EngineTrait<engine_type>::eval_type,
+            EngineTrait<engine_type>::consumable> shift_op_type;
+        static_assert(! TiledArray::detail::is_lazy_tile<typename A::value_type>::value,
+            "Assignment to an Array of lazy tiles is not supported.");
+
+#ifndef NDEBUG
+        // Check that the array has been initialized.
+        if(! tsr.array().is_initialized()) {
+          if(World::get_default().rank() == 0) {
+            TA_USER_ERROR_MESSAGE( \
+                "Assignment to an uninitialized Array sub-block is not supported.");
+          }
+
+          TA_EXCEPTION("Assignment to an uninitialized Array sub-block is not supported.");
+        }
+
+        // Note: Unfortunately we cannot check that the array tiles have been
+        // set even though this is a requirement.
+#endif // NDEBUG
+
+        // Get the target world.
+        World& world = tsr.array().get_world();
+
+        // Get the output process map.
+        std::shared_ptr<typename TsrExpr<A>::array_type::pmap_interface> pmap;
+
+        // Get result variable list.
+        VariableList target_vars(tsr.vars());
+
+        // Construct the expression engine
+        engine_type engine(derived());
+        engine.init(world, pmap, target_vars);
+
+        // Create the distributed evaluator from this expression
+        typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
+        dist_eval.eval();
+
+        // Create the result array
+        A result(world, tsr.array().trange(),
+            tsr.array().get_shape().update_block(tsr.lower_bound(), tsr.upper_bound(),
+            dist_eval.shape()), tsr.array().get_pmap());
+
+        // NOTE: The tiles from the original array and the sub-block are copied
+        // in two separate steps because the two tensors have different data
+        // distribution.
+
+        // Copy tiles from the original array to the result array that are not
+        // included in the sub-block assignment. There is no communication in
+        // this step.
+        const BlockRange blk_range(tsr.array().trange().tiles(),
+            tsr.lower_bound(), tsr.upper_bound());
+        for(const auto index : *tsr.array().get_pmap()) {
+          if(! tsr.array().is_zero(index)) {
+            if(! blk_range.includes(tsr.array().trange().tiles().idx(index)))
+              result.set(index, tsr.array().find(index));
+          }
+        }
+
+        // Move the data from dist_eval into the sub-block of result array.
+        // This step may involve communication when the tiles are moved from the
+        // sub-block distribution to the array distribution.
+        {
+          const std::vector<long> shift =
+              tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound();
+
+          std::shared_ptr<shift_op_type> shift_op =
+              std::make_shared<shift_op_type>(shift);
+
+          for(const auto index : *dist_eval.pmap()) {
+            if(! dist_eval.is_zero(index))
+              set_tile(result, blk_range.ordinal(index), dist_eval.get(index), shift_op);
+          }
+        }
+
+        // Wait for child expressions of dist_eval
+        dist_eval.wait();
+
+        // Swap the new array with the result array object.
+        result.swap(tsr.array());
+      }
 
       /// Expression print
 

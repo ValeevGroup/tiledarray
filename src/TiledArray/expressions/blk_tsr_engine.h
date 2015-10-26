@@ -352,7 +352,7 @@ namespace TiledArray {
         const auto* restrict const trange = array_.trange().data().data();
         const auto* restrict const lower = lower_bound_.data();
 
-        // Construct the inverse permutation
+        // Initialize the range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {
           const auto lower_d = lower[d];
           const auto base_d = trange[d].tile(lower_d).first;
@@ -377,12 +377,11 @@ namespace TiledArray {
         const auto* restrict const trange = array_.trange().data().data();
         const auto* restrict const lower = lower_bound_.data();
 
-        // Construct the inverse permutation
-        const Permutation inv_perm = -perm;
+        // Initialize the permuted range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {
-          const auto inv_perm_d = inv_perm[d];
-          const auto lower_d = lower[inv_perm_d];
-          const auto base_d = trange[inv_perm_d].tile(lower_d).first;
+          const auto perm_d = perm[d];
+          const auto lower_d = lower[perm_d];
+          const auto base_d = trange[perm_d].tile(lower_d).first;
           range_shift.emplace_back(-base_d);
         }
 

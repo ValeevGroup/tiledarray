@@ -19,6 +19,11 @@ set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -march=native -DNDEBUG" CACHE STRING "In
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall -diag-disable remark,279,654,1125" CACHE STRING "Inital C++ release with debug info compile flags")
 
 # Set BLAS/LAPACK flags
-set(BLAS_LINKER_FLAGS "-L/opt/intel/mkl/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lm" CACHE STRING "BLAS linker flags")
+if(EXISTS $ENV{MKLROOT})
+  set(MKLROOT "$ENV{MKLROOT}")
+else()
+  set(MKLROOT "/opt/intel/mkl")
+endif()
+set(BLAS_LINKER_FLAGS "-L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lm" CACHE STRING "BLAS linker flags")
 set(LAPACK_LINKER_FLAGS "" CACHE STRING "LAPACK linker flags")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
