@@ -445,8 +445,9 @@ namespace TiledArray {
       /// Idenity permutation factory method
 
       /// \return the identity permutation
-      Permutation identity() const {
-        return Permutation();
+      static const Permutation& identity() {
+        static Permutation i;
+        return i;
       }
 
       /// Serialize permutation
@@ -460,6 +461,12 @@ namespace TiledArray {
       }
 
     }; // class Permutation
+
+    template <typename T> const T& identity();
+    template <>
+    inline const Permutation& identity<Permutation>() {
+      return Permutation::identity();
+    }
 
     /// Permutation equality operator
 

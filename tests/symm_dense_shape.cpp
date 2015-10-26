@@ -45,8 +45,13 @@ struct SymmetricDenseShapeFixture {
     triv = std::make_shared<Rep>();
     {
       std::map<Permutation, IKOper> genops;
-      genops[Permutation{1,0,2,3}] = IKOper::E();
+      genops[Permutation{1,0}] = IKOper::E();
       s01 = std::make_shared<Rep>(genops);
+    }
+    {
+      std::map<Permutation, IKOper> genops;
+      genops[Permutation{1,0}] = IKOper::I();
+      a01 = std::make_shared<Rep>(genops);
     }
     {
       std::map<Permutation, IKOper> genops;
@@ -61,6 +66,7 @@ struct SymmetricDenseShapeFixture {
 
   std::shared_ptr<Rep> triv; // trivial representation
   std::shared_ptr<Rep> s01;  // identity under permutation 0<->1
+  std::shared_ptr<Rep> a01;  // negation under permutation 0<->1
   std::shared_ptr<Rep> can2b;  // canonical symmetry of 2-body fermionic operator, negate under 0<->1, 2<->3, complex conjugate under {0,2}<->{1,3}
 
 }; // SymmetricDenseShapeFixture
@@ -72,6 +78,7 @@ BOOST_AUTO_TEST_CASE( constructor )
   BOOST_CHECK_NO_THROW(TiledArray::symmetry::SymmetricDenseShape<Rep>{});
   BOOST_CHECK_NO_THROW(TiledArray::symmetry::SymmetricDenseShape<Rep>{triv});
   BOOST_CHECK_NO_THROW(TiledArray::symmetry::SymmetricDenseShape<Rep>{s01});
+  BOOST_CHECK_NO_THROW(TiledArray::symmetry::SymmetricDenseShape<Rep>{a01});
   BOOST_CHECK_NO_THROW(TiledArray::symmetry::SymmetricDenseShape<Rep>{can2b});
 }
 
@@ -88,6 +95,12 @@ BOOST_AUTO_TEST_CASE( is_unique )
   }
   {
     auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{s01};
+    BOOST_CHECK(shp.is_unique(std::vector<int>{0,1}) == true);
+    BOOST_CHECK(shp.is_unique(std::vector<int>{0,0}) == true);
+    BOOST_CHECK(shp.is_unique(std::vector<int>{1,0}) == false);
+  }
+  {
+    auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{a01};
     BOOST_CHECK(shp.is_unique(std::vector<int>{0,1}) == true);
     BOOST_CHECK(shp.is_unique(std::vector<int>{0,0}) == true);
     BOOST_CHECK(shp.is_unique(std::vector<int>{1,0}) == false);
@@ -111,11 +124,55 @@ BOOST_AUTO_TEST_CASE( is_unique )
   }
 }
 
-BOOST_AUTO_TEST_CASE( find_unique )
+BOOST_AUTO_TEST_CASE( to_unique )
 {
   {
+    auto i_op = TiledArray::symmetry::identity<IKOper>();
     auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{};
-//    BOOST_CHECK(shp.find_unique(std::vector<int>{}) == std::make_tuple(Permutation{}, identity<IKOper>()));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{0}) ==
+                std::make_tuple(std::vector<int>{0}, std::cref(i_op)));
+  }
+  {
+    auto i_op = TiledArray::symmetry::identity<IKOper>();
+    auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{s01};
+    BOOST_CHECK(shp.to_unique(std::vector<int>{0,0}) ==
+                std::make_tuple(std::vector<int>{0,0}, std::cref(i_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{0,1}) ==
+                std::make_tuple(std::vector<int>{0,1}, std::cref(i_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{1,0}) ==
+                std::make_tuple(std::vector<int>{0,1}, std::cref(i_op)));
+  }
+  {
+    auto i_op = TiledArray::symmetry::identity<IKOper>();
+    auto negate_op = IKOper::I();
+    auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{a01};
+    BOOST_CHECK(shp.to_unique(std::vector<int>{0,0}) ==
+                std::make_tuple(std::vector<int>{0,0}, std::cref(i_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{0,1}) ==
+                std::make_tuple(std::vector<int>{0,1}, std::cref(i_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{1,0}) ==
+                std::make_tuple(std::vector<int>{0,1}, std::cref(negate_op)));
+  }
+  {
+    auto i_op = IKOper::E();
+    auto negate_op = IKOper::I();
+    auto cconj_op = IKOper::K();
+    auto negate_cconj_op = IKOper::IK();
+    auto shp = TiledArray::symmetry::SymmetricDenseShape<Rep>{can2b};
+    BOOST_CHECK(shp.to_unique(std::vector<int>{0,0,0,0}) ==
+                std::make_tuple(std::vector<int>{0,0,0,0}, std::cref(i_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{0,1,2,3}) ==
+                std::make_tuple(std::vector<int>{0,1,2,3}, std::cref(i_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{1,0,2,3}) ==
+                std::make_tuple(std::vector<int>{0,1,2,3}, std::cref(negate_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{2,3,0,1}) ==
+                std::make_tuple(std::vector<int>{0,1,2,3}, std::cref(cconj_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{3,2,0,1}) ==
+                std::make_tuple(std::vector<int>{0,1,2,3}, std::cref(negate_cconj_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{0,2,1,0}) ==
+                std::make_tuple(std::vector<int>{0,1,0,2}, std::cref(negate_cconj_op)));
+    BOOST_CHECK(shp.to_unique(std::vector<int>{2,0,1,0}) ==
+                std::make_tuple(std::vector<int>{0,1,0,2}, std::cref(cconj_op)));
   }
 }
 

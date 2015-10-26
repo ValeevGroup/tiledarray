@@ -88,7 +88,7 @@ namespace TiledArray {
       /// Idenity element accessor
 
       /// \return the Identity element
-      static Permutation identity() { return Permutation(); }
+      static const Permutation& identity() { static Permutation i; return i; }
 
       /// Group element accessor
 
@@ -363,10 +363,10 @@ namespace TiledArray {
       for(const auto& p: pg) {
         for(size_t i=0; i!=idx_size; ++i) {
           const auto& idx_i = *(idx.begin() + i);
-          const auto& idx_p_i = *(idx.begin() + p[i]);
-          if (idx_p_i < idx_i)
+          const auto& p_idx_i = *(idx.begin() + p[i]);
+          if (p_idx_i < idx_i)
             return false;
-          if (idx_p_i > idx_i)
+          if (p_idx_i > idx_i)
             break;
         }
       }

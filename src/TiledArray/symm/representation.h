@@ -36,7 +36,7 @@ namespace TiledArray {
   namespace symmetry {
 
     /// identity for group of objects of type T
-    template <typename T> T identity();
+    template <typename T> const T& identity();
 
     /// class Representation is a representation of Group in terms of Representatives (linear operators)
     /// \tparam Group class describing the group of symmetry transformations
@@ -159,10 +159,10 @@ namespace TiledArray {
         for(size_t i=0; i!=idx_size; ++i) {
           const auto& g = g_op_pair.first;
           const auto& idx_i = *(idx.begin() + i);
-          const auto& idx_g_i = *(idx.begin() + g[i]);
-          if (idx_g_i < idx_i)
+          const auto& g_idx_i = *(idx.begin() + g[i]);
+          if (g_idx_i < idx_i)
             return false;
-          if (idx_g_i > idx_i)
+          if (g_idx_i > idx_i)
             break;
         }
       }
