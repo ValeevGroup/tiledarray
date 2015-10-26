@@ -224,7 +224,6 @@ namespace TiledArray {
       BlkTsrExpr(const BlkTsrExpr_&) = default;
       BlkTsrExpr(BlkTsrExpr_&&) = default;
       ~BlkTsrExpr() = default;
-      BlkTsrExpr_& operator=(BlkTsrExpr_&&) = delete;
 
       /// Block expression constructor
 
@@ -245,6 +244,14 @@ namespace TiledArray {
 
       /// \param other The expression that will be assigned to this array
       BlkTsrExpr_& operator=(const BlkTsrExpr_& other) {
+        other.eval_to(*this);
+        return *this;
+      }
+
+      /// Expression assignment operator
+
+      /// \param other The expression that will be assigned to this array
+      BlkTsrExpr_& operator=(BlkTsrExpr_&& other) {
         other.eval_to(*this);
         return *this;
       }
