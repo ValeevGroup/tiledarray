@@ -126,35 +126,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     }
   }
 
-  // check construction with a with a tile offset.
-  {
-    BOOST_REQUIRE_NO_THROW(TiledRange1 r(a.begin(), a.end(), 2));
-    TiledRange1 r(a.begin(), a.end(), 2);
-    BOOST_CHECK_EQUAL(r.tiles().first, 2ul);
-    BOOST_CHECK_EQUAL(r.tiles().second, 1 + a.size());
-    BOOST_CHECK_EQUAL(r.elements().first, elements.first);
-    BOOST_CHECK_EQUAL(r.elements().second, elements.second);
-    for(std::size_t i = 0; i < a.size() - 1; ++i) {
-      BOOST_CHECK_EQUAL(r.tile(i + 2).first, a[i]);
-      BOOST_CHECK_EQUAL(r.tile(i + 2).second, a[i + 1]);
-    }
-  }
-
-
-  // check construction with a with a element offset.
-  {
-    BOOST_REQUIRE_NO_THROW(TiledRange1 r(a.begin() + 1, a.end()));
-    TiledRange1 r(a.begin() + 1, a.end());
-    BOOST_CHECK_EQUAL(r.tiles().first, 0ul);
-    BOOST_CHECK_EQUAL(r.tiles().second, a.size() - 2);
-    BOOST_CHECK_EQUAL(r.elements().first, a[1]);
-    BOOST_CHECK_EQUAL(r.elements().second, a.back());
-    for(std::size_t i = 1; i < a.size() - 1; ++i) {
-      BOOST_CHECK_EQUAL(r.tile(i - 1).first, a[i]);
-      BOOST_CHECK_EQUAL(r.tile(i - 1).second, a[i + 1]);
-    }
-  }
-
   // Check that invalid input throws an exception.
   {
 #ifndef NDEBUG
@@ -201,22 +172,13 @@ BOOST_AUTO_TEST_CASE( element2tile )
 
 BOOST_AUTO_TEST_CASE( comparison )
 {
-  TiledRange1 r1(tr1);
-  BOOST_CHECK(r1 == tr1);     // check equality operator
-  BOOST_CHECK(! (r1 != tr1)); // check not-equal operator
-  TiledRange1(a.begin(), a.end(), 3).swap(r1);
-  BOOST_CHECK(! (r1 == tr1)); // check for inequality with different start  point for tiles
-  BOOST_CHECK(r1 != tr1);
-  std::array<std::size_t, 6> a1 = a;
-  a1[2] = 8;
-  TiledRange1(a1.begin(), a1.end(), 0).swap(r1);
-  BOOST_CHECK(! (r1 == tr1)); // check for inequality with different tile boundaries.
-  BOOST_CHECK(r1 != tr1);
-  a1[2] = 7;
-  a1[4] = 50;
-  TiledRange1(a1.begin(), a1.end() - 1, 0).swap(r1);
-  BOOST_CHECK(! (r1 == tr1)); // check for inequality with different number of tiles.
-  BOOST_CHECK(r1 != tr1);
+  TiledRange1 r1{ 0, 2, 4, 6, 8, 10 };
+  TiledRange1 r2{ 0, 2, 4, 6, 8, 10 };
+  TiledRange1 r3{ 0, 3, 6, 9, 12, 15 };
+  BOOST_CHECK(r1 == r2);     // check equality operator
+  BOOST_CHECK(! (r1 != r2)); // check not-equal operator
+  BOOST_CHECK(! (r1 == r3)); // check for inequality with different number of tiles.
+  BOOST_CHECK(r1 != r3);
 }
 
 BOOST_AUTO_TEST_CASE( iteration )
