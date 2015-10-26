@@ -77,12 +77,11 @@ namespace TiledArray {
       ScalShift(const Index& range_shift, const Permutation& perm,
           const scalar_type factor) :
         UnaryInterface_(perm),
-        range_shift_(TiledArray::detail::size(range_shift), 0l),
+        range_shift_(std::begin(range_shift), std::end(range_shift)),
         factor_(factor)
       {
         TA_ASSERT(perm);
         TA_ASSERT(perm.dim() == TiledArray::detail::size(range_shift));
-        TiledArray::detail::permute_array(perm, range_shift, range_shift_);
       }
 
       // Import interface from base class
