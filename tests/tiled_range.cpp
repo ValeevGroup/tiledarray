@@ -50,11 +50,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     TiledRange r1(dims.begin(), dims.end());
     BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
     BOOST_CHECK_EQUAL(r1.elements(), element_range);
-
-    std::vector<TiledRange1> dims2;
-    for(std::size_t i = 0; i < GlobalFixture::dim; ++i)
-      dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
-    TiledRange::range_type t2(p1, p6);
   }
 
   // check initializer list of initializer list constructor
@@ -64,36 +59,6 @@ BOOST_AUTO_TEST_CASE( constructor )
                     {0,2,5,10,17,28} };
     BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
     BOOST_CHECK_EQUAL(r1.elements(), element_range);
-  }
-
-  // check ranges constructor w/ offset tile origin.
-  {
-
-    std::vector<TiledRange1> dims2;
-    for(std::size_t i = 0; i < GlobalFixture::dim; ++i)
-      dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
-    TiledRange::range_type t2(p1, p6);
-
-    BOOST_REQUIRE_NO_THROW(TiledRange r2(dims2.begin(), dims2.end()));
-    TiledRange r2(dims2.begin(), dims2.end());
-    BOOST_CHECK_EQUAL(r2.tiles(), t2);
-    BOOST_CHECK_EQUAL(r2.elements(), element_range);
-
-  }
-
-  // check ranges constructor w/ offset element origin.
-  {
-    std::array<std::size_t, 6> a3;
-    std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
-    std::vector<TiledRange1> dims3(GlobalFixture::dim, TiledRange1(a3.begin(), a3.end()));
-    TiledRange::tile_range_type e3 = TiledRange::tile_range_type(
-        tile_index(GlobalFixture::dim,a3[0]),
-        tile_index(GlobalFixture::dim,a3[5]));
-
-    BOOST_REQUIRE_NO_THROW(TiledRange r3(dims3.begin(), dims3.end()));
-    TiledRange r3(dims3.begin(), dims3.end());
-    BOOST_CHECK_EQUAL(r3.tiles(), tile_range);
-    BOOST_CHECK_EQUAL(r3.elements(), e3);
   }
 
   // check copy constructor
@@ -120,32 +85,16 @@ BOOST_AUTO_TEST_CASE( ostream )
 }
 
 BOOST_AUTO_TEST_CASE( comparison ) {
-  TiledRange r1(tr);
-
-  // check equality operator for identical ranges
-  BOOST_CHECK(r1 == tr);
-  // check that the inequality operator for identical ranges
-  BOOST_CHECK(! (r1 != tr));
-
-  std::vector<TiledRange1> dims2;
-  for(std::size_t i = 0; i < GlobalFixture::dim; ++i)
-    dims2.push_back(TiledRange1(a.begin(), a.end(), 1));
-  TiledRange r2(dims2.begin(), dims2.end());
-
-  // comparison w/ offset tile origin.
-  BOOST_CHECK(! (r2 == tr));
-  BOOST_CHECK(r2 != tr);
-
-  std::array<std::size_t, 6> a3;
-  std::copy(GlobalFixture::primes.begin(), GlobalFixture::primes.begin() + 6, a3.begin());
-  std::vector<TiledRange1> dims3(GlobalFixture::dim,
-      TiledRange1(a3.begin(), a3.end()));
-
-  TiledRange r3(dims3.begin(), dims3.end());
-
-  // comparison operators w/ offset elements and different tiling
-  BOOST_CHECK(! (r3 == tr));
-  BOOST_CHECK(r3 != tr);
+  TiledRange r1{{ 0, 2, 4, 6, 8, 10 },
+                { 0, 2, 4, 6, 8, 10 }};
+  TiledRange r2{{ 0, 2, 4, 6, 8, 10 },
+                { 0, 2, 4, 6, 8, 10 }};
+  TiledRange r3{{ 0, 3, 6, 9, 12, 15 },
+                { 0, 3, 6, 9, 12, 15 }};
+  BOOST_CHECK(r1 == r2);     // check equality operator
+  BOOST_CHECK(! (r1 != r2)); // check not-equal operator
+  BOOST_CHECK(! (r1 == r3)); // check for inequality with different number of tiles.
+  BOOST_CHECK(r1 != r3);
 }
 
 BOOST_AUTO_TEST_CASE( assignment )

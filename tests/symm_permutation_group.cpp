@@ -30,8 +30,8 @@
 #include "TiledArray/symm/permutation_group.h"
 #include "unit_test_config.h"
 
-using TiledArray::PermutationGroup;
-using TiledArray::SymmetricGroup;
+using TiledArray::symmetry::PermutationGroup;
+using TiledArray::symmetry::SymmetricGroup;
 using TiledArray::symmetry::Permutation;
 
 struct PermutationGroupFixture {
@@ -238,13 +238,13 @@ BOOST_AUTO_TEST_CASE( domain )
   }
 }
 
-BOOST_AUTO_TEST_CASE( conjugate )
+BOOST_AUTO_TEST_CASE( conjugation )
 {
   { // symmetric group is invariant under any permutation in it
     auto domain = {0, 2, 3, 5};
     SymmetricGroup S(domain);
     Permutation p({2,1,5,0,4,3,6,7});
-    BOOST_CHECK(TiledArray::conjugate(S, p) == S);
+    BOOST_CHECK(conjugate(S, p) == S);
   }
   { // shift symmetric group to a different domain
     auto domain = {0, 2, 3, 5};
@@ -254,31 +254,60 @@ BOOST_AUTO_TEST_CASE( conjugate )
     auto new_domain = {1,2,4,7};
     SymmetricGroup S_shifted_ref(new_domain);
 
-    auto S_shifted = TiledArray::conjugate(S, p);
+    auto S_shifted = conjugate(S, p);
     BOOST_CHECK(S_shifted == S_shifted_ref);
   }
   { // another example
     PermutationGroup P4__01__23__02_13(P4__01__23__02_13_generators);
     // {0,1,2,3} -> {0,2,1,3}
     Permutation p({0,2,1,3});
-    auto P4__02__13__01_23 = TiledArray::conjugate(P4__01__23__02_13, p);
+    auto P4__02__13__01_23 = conjugate(P4__01__23__02_13, p);
     BOOST_CHECK(P4__01__23__02_13 != P4__02__13__01_23);
   }
 }
 
-BOOST_AUTO_TEST_CASE( intersect )
+BOOST_AUTO_TEST_CASE( intersection )
 {
   { // S2 is a subgroup of S3
     SymmetricGroup S2(2);
     SymmetricGroup S3(3);
-    BOOST_CHECK(TiledArray::intersect(S2, S3) == S2);
+    BOOST_CHECK(intersect(S2, S3) == S2);
     { // another S2 is a subgroup of S3
       SymmetricGroup S2({0,2});
-      BOOST_CHECK(TiledArray::intersect(S2, S3) == S2);
+      BOOST_CHECK(intersect(S2, S3) == S2);
     }
     { // yet another S2 is a subgroup of S3
       SymmetricGroup S2{1,2};
-      BOOST_CHECK(TiledArray::intersect(S2, S3) == S2);
+      BOOST_CHECK(intersect(S2, S3) == S2);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( set_stabilizer )
+{
+  { // S2{0,1} is a subgroup of S3{0,1,2} that fixes {2}
+    SymmetricGroup S2(2);
+    SymmetricGroup S3(3);
+    BOOST_CHECK(stabilizer(S3, std::vector<int>{2}) == S2);
+    { // and another S2
+      SymmetricGroup S2({0,2});
+      BOOST_CHECK(stabilizer(S3, std::vector<int>{1}) == S2);
+    }
+    { // and another S2
+      SymmetricGroup S2({1,2});
+      BOOST_CHECK(stabilizer(S3, std::vector<int>{0}) == S2);
+    }
+
+    // S1{0} is a subgroup of S3{0,1,2} that fixes {1,2}
+    SymmetricGroup S1(1);
+    BOOST_CHECK(stabilizer(S3, std::vector<int>{1,2}) == S1);
+    { // and another S1
+      SymmetricGroup S1({1});
+      BOOST_CHECK(stabilizer(S3, std::vector<int>{0,2}) == S1);
+    }
+    { // and another S1
+      SymmetricGroup S2({2});
+      BOOST_CHECK(stabilizer(S3, std::vector<int>{0,1}) == S1);
     }
   }
 }

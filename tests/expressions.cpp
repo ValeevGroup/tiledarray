@@ -202,6 +202,39 @@ BOOST_AUTO_TEST_CASE( block )
   }
 }
 
+BOOST_AUTO_TEST_CASE( const_block )
+{
+  const Array3& ca = a;
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = ca("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
+    Tensor<int> result_tile = c.find(index).get();
+
+    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
+      BOOST_CHECK_EQUAL(result_tile.range().lobound_data()[r],
+          arg_tile.range().lobound_data()[r] - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().upbound_data()[r],
+          arg_tile.range().upbound_data()[r] - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().extent_data()[r],
+          arg_tile.range().extent_data()[r]);
+
+      BOOST_CHECK_EQUAL(result_tile.range().stride_data()[r],
+          arg_tile.range().stride_data()[r]);
+    }
+    BOOST_CHECK_EQUAL(result_tile.range().volume(), arg_tile.range().volume());
+
+    // Check that the data is correct for the result array.
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], arg_tile[j]);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE( scal_block )
 {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block({3,3,3}, {5,5,5}));
@@ -231,6 +264,51 @@ BOOST_AUTO_TEST_CASE( scal_block )
       BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
     }
   }
+}
+
+BOOST_AUTO_TEST_CASE( assign_sub_block )
+{
+  c.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) = 2 * a("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
+    Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
+
+    BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
+
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
+    }
+  }
+}
+BOOST_AUTO_TEST_CASE(assign_subblock_block_contract)
+{
+  w.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
+      a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
+}
+
+BOOST_AUTO_TEST_CASE(assign_subblock_block_permute_contract)
+{
+  w.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
+      a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
+}
+
+BOOST_AUTO_TEST_CASE(block_contract)
+{
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
+}
+
+BOOST_AUTO_TEST_CASE(block_permute_contract)
+{
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
 }
 
 BOOST_AUTO_TEST_CASE( add )

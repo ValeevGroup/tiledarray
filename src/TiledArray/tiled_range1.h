@@ -50,14 +50,12 @@ namespace TiledArray {
 
     /// Constructs a range with the boundaries provided by [first, last).
     /// Start_tile_index is the index of the first tile.
-    template <typename RandIter>
-    TiledRange1(RandIter first, RandIter last, const size_type start_tile_index = 0,
-        typename std::enable_if<detail::is_random_iterator<RandIter>::value, Enabler >::type = Enabler()) :
+    template <typename RandIter,
+        typename std::enable_if<detail::is_random_iterator<RandIter>::value>::type* = nullptr>
+    TiledRange1(RandIter first, RandIter last) :
         range_(), element_range_(), tile_ranges_(), elem2tile_()
     {
-      static_assert(detail::is_random_iterator<RandIter>::value,
-          "TiledRange1 constructor requires a random access iterator");
-      init_tiles_(first, last, start_tile_index);
+      init_tiles_(first, last, 0);
       init_map_();
     }
 
@@ -154,6 +152,8 @@ namespace TiledArray {
       // Verify at least 2 elements are present if the vector is not empty.
       TA_USER_ASSERT((std::distance(first, last) >= 2),
           "TiledRange1 construction failed: You need at least 2 elements in the tile boundary list.");
+      TA_USER_ASSERT(size_type(*first) == size_type(0),
+          "TiledRange1 construction failed: Tile boundary list must start at zero.");
       // Verify the requirement that a0 < a1 < a2 < ...
       for (; first != (last - 1); ++first)
         TA_USER_ASSERT(*first < *(first + 1),

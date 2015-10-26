@@ -82,26 +82,6 @@ namespace TiledArray {
         array_(other.array_), vars_(other.vars_)
       { }
 
-      /// Array accessor
-
-      /// \return A reference to the array
-      array_type& array() { return array_; }
-
-      /// Array accessor
-
-      /// \return a const reference to this array
-      const array_type& array() const { return array_; }
-
-      /// Array type conversion operator
-
-      /// \return A reference to the array
-      operator array_type& () { return array_; }
-
-      /// Const array type conversion operator
-
-      /// \return A const reference to the array
-      operator const array_type& () const { return array_; }
-
       /// Expression assignment operator
 
       /// \param other The expression that will be assigned to this array
@@ -147,6 +127,10 @@ namespace TiledArray {
         return operator=(MultExpr<TsrExpr_, D>(*this, other.derived()));
       }
 
+      /// Array accessor
+
+      /// \return a const reference to this array
+      array_type& array() const { return array_; }
 
       /// Block expression
 
@@ -154,7 +138,28 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<A> block(const Index& lower_bound, const Index& upper_bound) const {
+      BlkTsrExpr<const A>
+      block(const Index& lower_bound, const Index& upper_bound) const {
+        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
+      }
+
+      /// Block expression
+
+      /// \param lower_bound The lower_bound of the block
+      /// \param upper_bound The upper_bound of the block
+      BlkTsrExpr<const A>
+      block(const std::initializer_list<std::size_t>& lower_bound,
+          const std::initializer_list<std::size_t>& upper_bound) const {
+        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
+      }
+
+      /// Block expression
+
+      /// \tparam Index The bound index types
+      /// \param lower_bound The lower_bound of the block
+      /// \param upper_bound The upper_bound of the block
+      template <typename Index>
+      BlkTsrExpr<A> block(const Index& lower_bound, const Index& upper_bound) {
         return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
       }
 
@@ -163,7 +168,7 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       BlkTsrExpr<A> block(const std::initializer_list<std::size_t>& lower_bound,
-          const std::initializer_list<std::size_t>& upper_bound) const {
+          const std::initializer_list<std::size_t>& upper_bound) {
         return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
       }
 
@@ -228,8 +233,8 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<A> block(const Index& lower_bound, const Index& upper_bound) const {
-        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+      BlkTsrExpr<const A> block(const Index& lower_bound, const Index& upper_bound) const {
+        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
       }
 
       /// Block expression
@@ -238,9 +243,9 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<A> block(const std::initializer_list<Index>& lower_bound,
+      BlkTsrExpr<const A> block(const std::initializer_list<Index>& lower_bound,
           const std::initializer_list<Index>& upper_bound) const {
-        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
       }
 
       /// Tensor variable string accessor
@@ -248,7 +253,7 @@ namespace TiledArray {
       /// \return A const reference to the variable string for this tensor
       const std::string& vars() const { return vars_; }
 
-    }; // class TsrExpr<const Array<T, DIM, Tile, Policy> >
+    }; // class TsrExpr<const A>
 
   }  // namespace expressions
 } // namespace TiledArray

@@ -36,6 +36,7 @@ set(ta_test_src_files  ta_test.cpp
     permutation.cpp
     symm_permutation_group.cpp
     symm_irrep.cpp
+    symm_representation.cpp
     range.cpp
     block_range.cpp
     perm_index.cpp
