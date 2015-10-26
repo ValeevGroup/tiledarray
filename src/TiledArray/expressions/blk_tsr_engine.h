@@ -370,8 +370,7 @@ namespace TiledArray {
         const unsigned int rank = trange_.tiles().rank();
 
         // Construct and allocate memory for the shift range
-        std::vector<long> range_shift;
-        range_shift.reserve(rank);
+        std::vector<long> range_shift(rank, 0l);
 
         // Get temporary data pointers
         const auto* restrict const trange = array_.trange().data().data();
@@ -380,9 +379,9 @@ namespace TiledArray {
         // Initialize the permuted range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {
           const auto perm_d = perm[d];
-          const auto lower_d = lower[perm_d];
-          const auto base_d = trange[perm_d].tile(lower_d).first;
-          range_shift.emplace_back(-base_d);
+          const auto lower_d = lower[d];
+          const auto base_d = trange[d].tile(lower_d).first;
+          range_shift[perm_d] = -base_d;
         }
 
         return op_type(range_shift, perm);
@@ -495,20 +494,18 @@ namespace TiledArray {
         const unsigned int rank = trange_.tiles().rank();
 
         // Construct and allocate memory for the shift range
-        std::vector<long> range_shift;
-        range_shift.reserve(rank);
+        std::vector<long> range_shift(rank, 0l);
 
         // Get temporary data pointers
         const auto* restrict const trange = array_.trange().data().data();
         const auto* restrict const lower = lower_bound_.data();
 
-        // Construct the inverse permutation
-        const Permutation inv_perm = -perm;
+        // Initialize the permuted range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {
-          const auto inv_perm_d = inv_perm[d];
-          const auto lower_d = lower[inv_perm_d];
-          const auto base_d = trange[inv_perm_d].tile(lower_d).first;
-          range_shift.emplace_back(-base_d);
+          const auto perm_d = perm[d];
+          const auto lower_d = lower[d];
+          const auto base_d = trange[d].tile(lower_d).first;
+          range_shift[perm_d] = -base_d;
         }
 
         return op_type(range_shift, perm, factor_);
