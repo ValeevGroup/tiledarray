@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TEST_SPARSE_SHAPE_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_SPARSE_SHAPE_FIXTURE_H__INCLUDED
 
-#include "TiledArray/sparse_shape.h"
+#include "TiledArray/shape/sparse_shape.h"
 #include "range_fixture.h"
 
 namespace TiledArray {

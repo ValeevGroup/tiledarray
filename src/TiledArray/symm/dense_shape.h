@@ -27,7 +27,7 @@
 #define TILEDARRAY_SYMM_DENSE_SHAPE_H__INCLUDED
 
 #include <memory>
-#include <TiledArray/dense_shape.h>
+#include <TiledArray/shape/dense_shape.h>
 
 namespace TiledArray {
 

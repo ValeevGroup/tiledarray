@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_DENSE_SHAPE_H__INCLUDED
-#define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
+#ifndef TILEDARRAY_SHAPE_DENSE_SHAPE_H__INCLUDED
+#define TILEDARRAY_SHAPE_DENSE_SHAPE_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
 
@@ -173,4 +173,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif // TILEDARRAY_DENSE_SHAPE_H__INCLUDED
+#endif // TILEDARRAY_SHAPE_DENSE_SHAPE_H__INCLUDED

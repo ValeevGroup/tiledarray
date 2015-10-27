@@ -23,7 +23,7 @@
  *
  */
 
-#include "TiledArray/sparse_shape.h"
+#include "TiledArray/shape/sparse_shape.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 #include "sparse_shape_fixture.h"

@@ -30,7 +30,7 @@ TiledArray/array.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
-TiledArray/dense_shape.h
+TiledArray/shape/dense_shape.h
 TiledArray/distributed_storage.h
 TiledArray/elemental.h
 TiledArray/error.h
@@ -44,7 +44,7 @@ TiledArray/reduce_task.h
 TiledArray/replicator.h
 TiledArray/shape.h
 TiledArray/size_array.h
-TiledArray/sparse_shape.h
+TiledArray/shape/sparse_shape.h
 TiledArray/tensor.h
 TiledArray/tensor_impl.h
 TiledArray/tiled_range.h

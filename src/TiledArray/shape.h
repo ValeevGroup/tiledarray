@@ -20,8 +20,8 @@
 #ifndef TILEDARRAY_SHAPE_H__INCLUDED
 #define TILEDARRAY_SHAPE_H__INCLUDED
 
-#include <TiledArray/sparse_shape.h>
-#include <TiledArray/dense_shape.h>
+#include <TiledArray/shape/sparse_shape.h>
+#include <TiledArray/shape/dense_shape.h>
 
 namespace TiledArray {
 

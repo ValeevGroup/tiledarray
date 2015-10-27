@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_SPARSE_SHAPE_H__INCLUDED
-#define TILEDARRAY_SPARSE_SHAPE_H__INCLUDED
+#ifndef TILEDARRAY_SHAPE_SPARSE_SHAPE_H__INCLUDED
+#define TILEDARRAY_SHAPE_SPARSE_SHAPE_H__INCLUDED
 
 #include <TiledArray/tensor.h>
 #include <TiledArray/tiled_range.h>
@@ -976,4 +976,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif // TILEDARRAY_SPASE_SHAPE_H__INCLUDED
+#endif // TILEDARRAY_SHAPE_SPARSE_SHAPE_H__INCLUDED
