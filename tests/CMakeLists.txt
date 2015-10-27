@@ -58,6 +58,7 @@ set(ta_test_src_files  ta_test.cpp
     replicated_pmap.cpp
     dense_shape.cpp
     sparse_shape.cpp
+    generic_shape.cpp
     distributed_storage.cpp
     tensor_impl.cpp
     array_impl.cpp
