@@ -51,7 +51,7 @@ TiledArray/tiled_range.h
 TiledArray/tiled_range1.h
 TiledArray/transform_iterator.h
 TiledArray/type_traits.h
-TiledArray/utility.h
+TiledArray/utility/array.h
 TiledArray/val_array.h
 TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h

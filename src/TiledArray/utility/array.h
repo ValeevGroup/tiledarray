@@ -18,13 +18,13 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  utility.h
+ *  utility/array.h
  *  Oct 18, 2013
  *
  */
 
-#ifndef TILEDARRAY_UTILITY_H__INCLUDED
-#define TILEDARRAY_UTILITY_H__INCLUDED
+#ifndef TILEDARRAY_UTILITY_ARRAY_H__INCLUDED
+#define TILEDARRAY_UTILITY_ARRAY_H__INCLUDED
 
 #include <TiledArray/madness.h>
 #include <TiledArray/error.h>
@@ -168,4 +168,4 @@ namespace std {
 
 } // namespace std
 
-#endif // TILEDARRAY_UTILITY_H__INCLUDED
+#endif // TILEDARRAY_UTILITY_ARRAY_H__INCLUDED
