@@ -1046,7 +1046,7 @@ BOOST_AUTO_TEST_CASE( gemm )
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(result_norms.size()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( gemm_perm )
@@ -1105,7 +1105,7 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(result_norms.size()), tolerance);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
