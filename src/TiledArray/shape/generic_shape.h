@@ -179,15 +179,16 @@ namespace TiledArray {
     /// Check if tile is numerically zero
 
     /// \tparam Index The type of the index
+    /// \param idx tile index
     /// \return false
     template <typename Index>
-    bool is_zero(const Index& i) const {
+    bool is_zero(const Index& idx) const {
       TA_ASSERT(not empty());
       if (shape_type_ == dense) return false;
       if (shape_type_ == sparse_real)
-        return tile_norms_.template as<Tensor<Real>>()[i] < threshold_;
+        return tile_norms_.template as<Tensor<Real>>()[idx] < threshold_;
       if (shape_type_ == sparse_bool)
-        return tile_norms_.template as<Tensor<bool>>()[i] == false;
+        return tile_norms_.template as<Tensor<bool>>()[idx] == false;
       assert(false); // unreachanble
       return false;
     }
