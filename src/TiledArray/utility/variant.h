@@ -27,6 +27,7 @@
 #define TILEDARRAY_UTILITY_VARIANT_H__INCLUDED
 
 #include <typeindex>
+#include <type_traits>
 
 namespace TiledArray {
   namespace detail {
