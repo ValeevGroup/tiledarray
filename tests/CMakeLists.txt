@@ -59,7 +59,7 @@ set(ta_test_src_files  ta_test.cpp
     dense_shape.cpp
     sparse_shape.cpp
     sparse_shape_expt.cpp
-    generic_shape.cpp
+#    generic_shape.cpp
     distributed_storage.cpp
     tensor_impl.cpp
     array_impl.cpp
