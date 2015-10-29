@@ -39,7 +39,7 @@ namespace TiledArray {
     struct VariantHelper<T,Types...> {
         template <typename X>
         static void destroy(X* data, std::type_index type_idx) {
-          if (type_idx == typeid(T))
+          if (type_idx == std::type_index(typeid(T)))
             reinterpret_cast<T*>(data)->~T();
           else
             VariantHelper<Types...>::destroy(data, type_idx);
@@ -47,7 +47,7 @@ namespace TiledArray {
         template <typename X1, typename X2>
         static void copy(X1* dest_data, const X2* src_data,
                          std::type_index type_idx) {
-          if (type_idx == typeid(T))
+          if (type_idx == std::type_index(typeid(T)))
             new (dest_data) T(*(reinterpret_cast<T*>(src_data)));
           else
             VariantHelper<Types...>::copy(dest_data, src_data, type_idx);
@@ -55,7 +55,7 @@ namespace TiledArray {
         template <typename X1, typename X2>
         static void move(X1* dest_data, const X2* src_data,
                          std::type_index type_idx) {
-          if (type_idx == typeid(T))
+          if (type_idx == std::type_index(typeid(T)))
             new (dest_data) T(std::move(*(reinterpret_cast<T*>(src_data))));
           else
             VariantHelper<Types...>::copy(dest_data, src_data, type_idx);
@@ -100,7 +100,7 @@ namespace TiledArray {
         }
 
         template <typename T> T& as() {
-          if (typeid(T) == type_idx_)
+          if (std::type_index(typeid(T)) == type_idx_)
             return *reinterpret_cast<T*>(&data_);
           else
             throw std::bad_cast();
