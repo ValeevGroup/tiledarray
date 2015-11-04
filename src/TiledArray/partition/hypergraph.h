@@ -38,6 +38,8 @@ extern "C" {
 #include <Mondriaan.h>
 }
 #include <TiledArray/error.h>
+#include <TiledArray/math/vector_op.h>
+#include <vector>
 
 namespace TiledArray {
   namespace detail {
@@ -67,14 +69,16 @@ namespace TiledArray {
 
 
       friend std::ostream& operator<<(std::ostream& os, const PartInfo& info) {
+        os << "{\n";
         for(long p = 1l; p < info.part_start.size(); ++p) {
           long first = info.part_start[p - 1];
           const long last = info.part_start[p];
-          os  << "{";
+          os  << last - first << "  {";
           for(; first < last; ++first)
             os << " " << info.cellindex[first];
-          os << " } ";
+          os << " }\n";
         }
+        os << " }";
         return os;
       }
 
@@ -263,6 +267,8 @@ namespace TiledArray {
         opts options;
         SetDefaultOptions(&options);
         SetOption(&options, "SplitStrategy", "onedimcol");
+//        SetOption(&options, "Permute", "BBD");
+//        SetOption(&options, "Iterative_Refinement", "always");
 //        SetOption(&options, "Coarsening_NrVertices", "4");
 
 #ifdef TILEDARRAY_HAS_PATOH
@@ -315,7 +321,7 @@ namespace TiledArray {
           const size_type part_start = result.cellindex.size();
           result.part_start.emplace_back(part_start);
 
-          // Collect add all cells that occur within part to the list
+          // Add all cells that occur within part to the list
           for(; part_first < part_last; ++part_first) {
             const size_type cell = hypergraph_->j[part_first];
 
