@@ -27,6 +27,9 @@
 #define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
+#ifdef TILEDARRAY_HAS_MONDRIAAN
+#include <TiledArray/partition/hypergraph.h>
+#endif // TILEDARRAY_HAS_MONDRIAAN
 
 namespace madness {
   class World;
@@ -90,6 +93,21 @@ namespace TiledArray {
 
     /// \return Always \c false
     static constexpr bool empty() { return false; }
+#ifdef TILEDARRAY_HAS_MONDRIAAN
+
+    detail::HyperGraph make_row_hypergraph(const DenseShape& right,
+        const math::GemmHelper& gemm_helper) const
+    {
+      return detail::HyperGraph();
+    }
+
+    detail::HyperGraph make_col_hypergraph(const DenseShape&,
+        const math::GemmHelper&) const
+    {
+      return detail::HyperGraph();
+    }
+
+#endif // TILEDARRAY_HAS_MONDRIAAN
 
     template <typename Index>
     static DenseShape update_block(const Index&, const Index&, const DenseShape&)
