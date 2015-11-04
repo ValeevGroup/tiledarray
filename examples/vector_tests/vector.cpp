@@ -310,7 +310,7 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::vector_op([](double& x) { x *= 3.0; }, n, c);
+    TiledArray::math::inplace_vector_op([](double& x) { x *= 3.0; }, n, c);
   }
   stop = madness::wall_time();
 
