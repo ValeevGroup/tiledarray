@@ -184,6 +184,7 @@ int main(int argc, char** argv) {
                << "right shape = " << b.get_shape().data() << "\n";
             printf(ss.str().c_str());
           }
+          throw;
         }
 
         // Stop clock
