@@ -24,9 +24,14 @@
 
 # Create the ta_fock_build executable
 
-# Add the ta_fock_build executable
+# Add the executables
+
 add_executable(part EXCLUDE_FROM_ALL part.cpp)
 target_link_libraries(part ${TiledArray_LIBRARIES})
 add_dependencies(part External)
 add_dependencies(example part)
 
+add_executable(part_grow EXCLUDE_FROM_ALL part_grow.cpp)
+target_link_libraries(part_grow ${TiledArray_LIBRARIES})
+add_dependencies(part_grow External)
+add_dependencies(example part_grow)

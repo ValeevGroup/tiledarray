@@ -69,24 +69,29 @@ int main(int argc, char** argv) {
     TiledArray::detail::ProcGrid
     proc_grid(world, 0, num_procs, num_blocks, num_blocks, matrix_size, matrix_size);
 
-
-    // Construct TiledRange
-    std::vector<unsigned int> blocking;
-    blocking.reserve(num_blocks + 1);
-    for(long i = 0l; i <= matrix_size; i += block_size)
-      blocking.push_back(i);
-
-    const TiledArray::TiledRange
-      trange{ TiledArray::TiledRange1(blocking.begin(), blocking.end()),
-              TiledArray::TiledRange1(blocking.begin(), blocking.end())};
-
     for(int sparsity = 25; sparsity > 0; sparsity -= 2) {
 
       // Compute the number of blocks and matrix size for the sparse matrix
       const double sparse_fraction = double(sparsity) / 100.0;
-      const long sparse_block_count = sparse_fraction * double(block_count);
+      const long sparse_num_blocks =
+          std::sqrt(double(num_blocks * num_blocks) / sparse_fraction);
+      const long sparse_matrix_size = sparse_num_blocks * block_size;
+      const long sparse_block_count = sparse_fraction * double(sparse_num_blocks * sparse_num_blocks);
 
-      std::cout << "\nSparsity = " << sparsity << "%\n";
+      std::cout << "\nSparsity = " << sparsity << "%"
+          << "\nMatrix size = " << sparse_matrix_size << "x" << sparse_matrix_size << "\n";
+
+      // Construct TiledRange
+      std::vector<unsigned int> blocking;
+      blocking.reserve(sparse_num_blocks + 1);
+      for(long i = 0l; i <= sparse_matrix_size; i += block_size)
+        blocking.push_back(i);
+
+      const std::vector<TiledArray::TiledRange1> blocking2(2,
+          TiledArray::TiledRange1(blocking.begin(), blocking.end()));
+
+      const TiledArray::TiledRange
+        trange(blocking2.begin(), blocking2.end());
 
       // Construct tile norm tensors
       TiledArray::Tensor<float>
@@ -137,8 +142,6 @@ int main(int argc, char** argv) {
 
 
       row_hgraph.verify_lambdas();
-      TiledArray::detail::PartInfo row_pi = row_hgraph.get_partition_map();
-      std::cout << "Part info:\n" << row_pi << "\n";
       std::cout << "\n\nInitial cutset = " << init_row_cutset << "\n"
           << "Final cutset   = " << final_row_cutset << "\n"
           << "Comm decrease  = " << 100.0 * (1.0 - double(final_row_cutset) / double(init_row_cutset)) << "%\n"
@@ -159,8 +162,6 @@ int main(int argc, char** argv) {
 
 
       col_hgraph.verify_lambdas();
-      TiledArray::detail::PartInfo col_pi = col_hgraph.get_partition_map();
-      std::cout << "Part info:\n" << col_pi << "\n";
       std::cout << "\n\nInitial cutset = " << init_col_cutset << "\n"
           << "Final cutset   = " << final_col_cutset << "\n"
           << "Comm decrease  = " << 100.0 * (1.0 - double(final_col_cutset) / double(init_col_cutset)) << "%\n"
