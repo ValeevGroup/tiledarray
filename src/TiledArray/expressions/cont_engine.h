@@ -515,6 +515,71 @@ namespace TiledArray {
         typename left_type::dist_eval_type left = left_.make_dist_eval();
         typename right_type::dist_eval_type right = right_.make_dist_eval();
 
+        if(! shape_.is_dense()) {
+          if(world_->rank() == 0) {
+            std::cout << "\n\nProc grid = " << proc_grid_.proc_rows() << "x" << proc_grid_.proc_cols();
+            std::cout << "\n\n******** Row partition ********\n\n";
+          }
+
+          try {
+            TiledArray::detail::HyperGraph row_hgraph =
+                left.shape().make_row_hypergraph(right.shape(), op_.gemm_helper());
+
+            const long init_row_cutset = row_hgraph.init_cut_set(proc_grid_.proc_rows());
+
+            const double start_row_part = madness::wall_time();
+            row_hgraph.partition(proc_grid_.proc_rows(), 0l, 0.1);
+            const double finish_row_part = madness::wall_time();
+
+            const long final_row_cutset = row_hgraph.cut_set();
+            TiledArray::detail::PartInfo row_pi = row_hgraph.get_partition_map();
+
+            if(world_->rank() == 0) {
+              row_hgraph.verify_lambdas();
+              std::cout << "\nPart info:\n" << row_pi
+                  << "\n\nSparsty = " << left.shape().sparsity()
+                  << "\nInitial cutset = " << init_row_cutset
+                  << "\nFinal cutset   = " << final_row_cutset
+                  << "\nComm decrease  = " << 100.0 * (1.0 - double(final_row_cutset) / double(init_row_cutset))
+                  << "%\nPartition time = " << finish_row_part - start_row_part << " s\n";
+            }
+          } catch(...) {
+            if(world_->rank() == 0)
+              std::cout << "Row partition failed\n\n";
+          }
+
+
+          if(world_->rank() == 0)
+            std::cout << "\n\n******** Column partition ********\n\n";
+
+          try {
+            TiledArray::detail::HyperGraph col_hgraph =
+                right.shape().make_col_hypergraph(left.shape(), op_.gemm_helper());
+
+            const long init_col_cutset = col_hgraph.init_cut_set(proc_grid_.proc_cols());
+
+            const double start_col_part = madness::wall_time();
+            col_hgraph.partition(proc_grid_.proc_cols(), 0l, 0.1);
+            const double finish_col_part = madness::wall_time();
+
+            const long final_col_cutset = col_hgraph.cut_set();
+            TiledArray::detail::PartInfo col_pi = col_hgraph.get_partition_map();
+
+
+            if(world_->rank() == 0) {
+              col_hgraph.verify_lambdas();
+              std::cout << "Part info:\n" << col_pi
+                  << "\n\nSparsty = " << right.shape().sparsity()
+                  << "\nInitial cutset = " << init_col_cutset
+                  << "\nFinal cutset   = " << final_col_cutset
+                  << "\nComm decrease  = " << 100.0 * (1.0 - double(final_col_cutset) / double(init_col_cutset))
+                  << "%\nPartition time = " << finish_col_part - start_col_part << " s\n";
+            }
+          } catch(...) {
+            std::cout << "Col partition failed\n\n";
+          }
+        }
+
         std::shared_ptr<impl_type> pimpl(
             new impl_type(left, right, *world_, trange_, shape_, pmap_, perm_,
             op_, K_, proc_grid_));
