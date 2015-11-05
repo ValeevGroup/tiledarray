@@ -350,8 +350,7 @@ namespace TiledArray {
     class ArrayImpl : public TensorImpl<Policy> {
     public:
       typedef ArrayImpl<Tile, Policy> ArrayImpl_; ///< This object type
-      typedef TensorImpl<Policy> TensorImpl_;
-                                          ///< The base class of this object
+      typedef TensorImpl<Policy> TensorImpl_; ///< The base class of this object
       typedef typename TensorImpl_::size_type size_type; ///< Size type
       typedef typename TensorImpl_::trange_type trange_type; ///< Tiled range type for this object
       typedef typename TensorImpl_::range_type range_type; ///< Range type this tensor

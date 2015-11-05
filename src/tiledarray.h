@@ -20,12 +20,11 @@
 #ifndef TILEDARRAY_H__INCLUDED
 #define TILEDARRAY_H__INCLUDED
 
+#include <tiledarray_fwd.h>
+
 #include <TiledArray/madness.h>
 
 // Array class
-#include <TiledArray/array.h>
-
-// Tile type headers
 #include <TiledArray/tensor.h>
 #include <TiledArray/tile.h>
 
@@ -52,6 +51,7 @@
 
 // Linear algebra
 #include <TiledArray/algebra/conjgrad.h>
+#include "TiledArray/array.h"
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>

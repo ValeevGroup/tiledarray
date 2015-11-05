@@ -31,8 +31,8 @@
 
 namespace TiledArray {
 
-  template<typename T, unsigned int DIM, typename Tile>
-  elem::DistMatrix<T> array_to_elem(const Array<T,DIM, Tile> &array,
+  template<typename Tile>
+  elem::DistMatrix<T> array_to_elem(const DistArray<Tile> &array,
                                        const elem::Grid &grid){
     // Check that the Array is 2-d
     TA_USER_ASSERT(DIM == 2u,
@@ -49,12 +49,12 @@ namespace TiledArray {
     interface.Attach(elem::LOCAL_TO_GLOBAL, mat);
 
     // Get array iterators
-    typename Array<T,DIM,Tile>::iterator it = array.begin();
-    typename Array<T,DIM,Tile>::iterator end = array.end();
+    typename DistArray<Tile>::iterator it = array.begin();
+    typename DistArray<Tile>::iterator end = array.end();
 
     for(; it != end; ++it){
       // Get tile matrix location info
-      const typename Array<T,DIM,Tile>::value_type tile = *it;
+      const typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
       const auto* restrict const tile_lower = tile.range().lobound_data();
@@ -84,8 +84,8 @@ namespace TiledArray {
     return mat;
   }
 
-  template<typename T, unsigned int DIM, typename Tile>
-  void elem_to_array(Array<T,DIM,Tile> &array, elem::DistMatrix<T> &mat){
+  template<typename Tile>
+  void elem_to_array(DistArray<Tile> &array, elem::DistMatrix<T> &mat){
     TA_USER_ASSERT(DIM==2u, "TiledArray::elem_to_array(): requires the array to have dimension 2");
     TA_USER_ASSERT((array.trange().elements().extent()[0]==mat.Height()) &&
                    (array.trange().elements().extent()[1] == mat.Width()),
@@ -96,14 +96,14 @@ namespace TiledArray {
     interface.Attach(elem::GLOBAL_TO_LOCAL, mat);
 
     // Get iterators to array
-    typename Array<T,DIM, Tile>::iterator it = array.begin();
-    typename Array<T,DIM, Tile>::iterator end = array.end();
+    typename DistArray<Tile>::iterator it = array.begin();
+    typename DistArray<Tile>::iterator end = array.end();
 
     // Loop over tiles and improperly assign the data to them in column major
     // format.
     for(;it != end; ++it){
       // Get tile matrix location info
-      typename Array<T,DIM,Tile>::value_type tile = *it;
+      typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
       const auto* restrict const tile_lower = tile.range().lobound_data();
@@ -129,7 +129,7 @@ namespace TiledArray {
     it = array.begin();
     for(;it != end; ++it){
       // Get tile and size
-      typename Array<T,DIM,Tile>::value_type tile = *it;
+      typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
       const auto* restrict const tile_extent = tile.range().extent_data();

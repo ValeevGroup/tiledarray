@@ -137,13 +137,13 @@ int main(int argc, char** argv) {
   TiledArray::TiledRange temp_trange(temp_blocking2.begin(), temp_blocking2.end());
 
   // Construct and initialize arrays
-  TiledArray::Array<double, 2> C(world, coeff_trange);
-  TiledArray::Array<double, 2> G(world, matrix_trange);
-  TiledArray::Array<double, 2> H(world, matrix_trange);
-  TiledArray::Array<double, 2> D(world, matrix_trange);
-  TiledArray::Array<double, 2> F(world, matrix_trange);
-  TiledArray::Array<double, 3> Eri(world, df_trange);
-  TiledArray::Array<double, 3> K_temp(world, temp_trange);
+  TiledArray::TArrayD C(world, coeff_trange);
+  TiledArray::TArrayD G(world, matrix_trange);
+  TiledArray::TArrayD H(world, matrix_trange);
+  TiledArray::TArrayD D(world, matrix_trange);
+  TiledArray::TArrayD F(world, matrix_trange);
+  TiledArray::TArrayD Eri(world, df_trange);
+  TiledArray::TArrayD K_temp(world, temp_trange);
   C.set_all_local(1.0);
   D.set_all_local(1.0);
   H.set_all_local(1.0);

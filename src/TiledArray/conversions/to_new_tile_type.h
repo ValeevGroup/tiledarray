@@ -13,12 +13,11 @@ using result_of_t = typename std::result_of<T>::type;
 
 /// Function to convert an array to a new array with a different tile type.
 
-template <typename T, unsigned int DIM, typename Tile, typename Policy,
-          typename Op>
-Array<T, DIM, detail::result_of_t<Op(Tile)>, Policy> to_new_tile_type(
-    Array<T, DIM, Tile, Policy> const &old_array, Op &&op) {
+template <typename Tile, typename Policy, typename Op>
+DistArray<detail::result_of_t<Op(Tile)>, Policy> to_new_tile_type(
+    DistArray<Tile, Policy> const &old_array, Op &&op) {
     using OutTileType = detail::result_of_t<Op(Tile)>;
-    using OutArray = Array<T, DIM, OutTileType, Policy>;
+    using OutArray = DistArray<OutTileType, Policy>;
 
     static_assert(!std::is_same<Tile, OutTileType>::value,
                   "Can't call new tile type if tile type does not change.");

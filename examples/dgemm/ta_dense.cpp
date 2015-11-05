@@ -135,9 +135,9 @@ gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange, long repea
                      * double(n*n*n) / 1.0e9;
 
   // Construct and initialize arrays
-  TiledArray::Array<T, 2> a(world, trange);
-  TiledArray::Array<T, 2> b(world, trange);
-  TiledArray::Array<T, 2> c(world, trange);
+  TiledArray::TArrayD a(world, trange);
+  TiledArray::TArrayD b(world, trange);
+  TiledArray::TArrayD c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
 

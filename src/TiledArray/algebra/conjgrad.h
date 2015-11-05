@@ -27,9 +27,9 @@
 #define TILEDARRAY_ALGEBRA_CONJGRAD_H__INCLUDED
 
 #include <sstream>
-#include <TiledArray/array.h>
 #include <TiledArray/algebra/diis.h>
 #include <TiledArray/algebra/utils.h>
+#include <TiledArray/array.h>
 
 namespace TiledArray {
 

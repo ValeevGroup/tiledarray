@@ -104,9 +104,9 @@ int main(int argc, char** argv) {
     trange_b(blocking_colxrow.begin(), blocking_colxrow.end());
 
   // Construct and initialize arrays
-  TiledArray::Array<double, 2> a(world, trange_a);
-  TiledArray::Array<double, 2> b(world, trange_b);
-  TiledArray::Array<double, 2> c(world, trange);
+  TiledArray::TArrayD a(world, trange_a);
+  TiledArray::TArrayD b(world, trange_b);
+  TiledArray::TArrayD c(world, trange);
   a.set_all_local(1.0);
   b.set_all_local(1.0);
 

@@ -30,10 +30,6 @@
 #include <TiledArray/block_range.h>
 
 namespace TiledArray {
-
-  // Forward declarations
-  template <typename, unsigned int, typename, typename> class Array;
-
   namespace detail {
 
     /// Lazy tile for on-the-fly evaluation of array tiles.

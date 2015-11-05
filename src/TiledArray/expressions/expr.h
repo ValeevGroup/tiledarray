@@ -34,10 +34,6 @@
 #include <TiledArray/tile_op/shift.h>
 
 namespace TiledArray {
-
-  // Forward declaration
-  template <typename, unsigned int, typename, typename> class Array;
-
   namespace expressions {
 
     // Forward declaration

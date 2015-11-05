@@ -23,17 +23,18 @@
  *
  */
 
+#include <array_fixture.h>
+
 #include "TiledArray/dist_eval/array_eval.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "array_fixture.h"
 
 
 using namespace TiledArray;
 
 // Array evaluator fixture
 struct ArrayEvalImplFixture : public TiledRangeFixture {
-  typedef Array<int, GlobalFixture::dim> ArrayN;
+  typedef TArrayI ArrayN;
   typedef math::Scal<ArrayN::value_type,
       ArrayN::value_type, false> op_type;
   typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
@@ -53,18 +54,18 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
 
   ~ArrayEvalImplFixture() { }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
-  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
+  template <typename Tile, typename Policy, typename Op>
+  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename DistArray<Tile, Policy>::value_type, Op>, Policy>
   make_array_eval(
-      const Array<T, DIM, Tile, Policy>& array,
+      const DistArray<Tile, Policy>& array,
       TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
       const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm,
       const Op& op)
   {
-    typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
-    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+    typedef TiledArray::detail::ArrayEvalImpl<DistArray<Tile, Policy>, Op, Policy> impl_type;
+    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::DistArray<Tile, Policy>::value_type, Op>, Policy>(
         std::shared_ptr<impl_type>(new impl_type(array, world,
         (perm ? perm * array.trange() : array.trange()), shape, pmap, perm, op)));
   }

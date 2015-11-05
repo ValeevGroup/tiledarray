@@ -32,7 +32,7 @@
 namespace TiledArray {
 
   // Forward declaration
-  template <typename, unsigned int, typename, typename> class Array;
+  template <typename, typename> class DistArray;
 
   namespace expressions {
 
@@ -40,10 +40,10 @@ namespace TiledArray {
     template <typename> class TsrExpr;
     template <typename> class TsrEngine;
 
-    template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    struct EngineTrait<TsrEngine<Array<T, DIM, Tile, Policy> > > {
+    template <typename Tile, typename Policy>
+    struct EngineTrait<TsrEngine<DistArray<Tile, Policy> > > {
       // Argument typedefs
-      typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
+      typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
       // Note: the consumable flag is true for noop to avoid necessary copies.
@@ -53,7 +53,7 @@ namespace TiledArray {
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<Array<T, DIM, Tile, Policy> >::type scalar_type;
+      typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 

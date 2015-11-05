@@ -39,7 +39,7 @@ InputData::make_trange1(const obs_mosym::const_iterator& begin, obs_mosym::const
   return TiledArray::TiledRange1(tiles.begin(), tiles.end());
 }
 
-TArray2s::trange_type
+TiledArray::TSpArrayD::trange_type
 InputData::trange(const Spin s, const RangeOV ov1, const RangeOV ov2) const {
 
   const obs_mosym& spin = (s == alpha ? obs_mosym_alpha_ : obs_mosym_beta_);
@@ -56,7 +56,7 @@ InputData::trange(const Spin s, const RangeOV ov1, const RangeOV ov2) const {
   return TiledArray::TiledRange(tr_list.begin(), tr_list.end());
 }
 
-TArray4s::trange_type
+TiledArray::TSpArrayD::trange_type
 InputData::trange(const Spin s1, const Spin s2, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) const {
 
   const obs_mosym& spin1 = (s1 == alpha ? obs_mosym_alpha_ : obs_mosym_beta_);
@@ -142,19 +142,19 @@ InputData::InputData(std::ifstream& input) {
   } while(! input.eof());
 }
 
-TArray2s
+TiledArray::TSpArrayD
 InputData::make_f(TiledArray::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2) {
   // Construct the array
   TiledArray::TiledRange tr = trange(s, ov1, ov2);
 //  std::cout << tr << "\n";
 
-  TArray2s f(w, tr, make_sparse_shape(tr, f_));
+  TiledArray::TSpArrayD f(w, tr, make_sparse_shape(tr, f_));
 
   // Initialize tiles
   f.set_all_local(0.0);
 
   // Set the tile data
-  TArray2s::range_type::index index;
+  TiledArray::TSpArrayD::range_type::index index;
   for(array2d::const_iterator it = f_.begin(); it != f_.end(); ++it) {
     if(f.trange().elements().includes(it->first)) {
       index = f.trange().element_to_tile(it->first);
@@ -166,18 +166,18 @@ InputData::make_f(TiledArray::World& w, const Spin s, const RangeOV ov1, const R
   return f;
 }
 
-TArray4s
+TiledArray::TSpArrayD
 InputData::make_v_ab(TiledArray::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4) {
   // Construct the array
   TiledArray::TiledRange tr = trange(alpha, beta, ov1, ov2, ov3, ov4);
 //  std::cout << tr << "\n";
-  TArray4s v_ab(w, tr,make_sparse_shape(tr, v_ab_));
+  TiledArray::TSpArrayD v_ab(w, tr,make_sparse_shape(tr, v_ab_));
 
   // Initialize tiles
   v_ab.set_all_local(0.0);
 
   // Set the tile data
-  TArray4s::range_type::index index;
+  TiledArray::TSpArrayD::range_type::index index;
   for(array4d::const_iterator it = v_ab_.begin(); it != v_ab_.end(); ++it) {
     if(v_ab.trange().elements().includes(it->first)) {
       index = v_ab.trange().element_to_tile(it->first);

@@ -145,18 +145,15 @@ int main(int argc, char** argv) {
             b_shape(world, b_tile_norms, trange);
 
 
-        typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
-            TiledArray::SparsePolicy > SpTArray2;
-
         // Construct and initialize arrays
-        SpTArray2 a(world, trange, a_shape);
-        SpTArray2 b(world, trange, b_shape);
-        SpTArray2 c;
+        TiledArray::TSpArrayD a(world, trange, a_shape);
+        TiledArray::TSpArrayD b(world, trange, b_shape);
+        TiledArray::TSpArrayD c;
         a.set_all_local(1.0);
         b.set_all_local(1.0);
 
         // Start clock
-        SpTArray2::wait_for_lazy_cleanup(world);
+        TiledArray::TSpArrayD::wait_for_lazy_cleanup(world);
         world.gop.fence();
         if(world.rank() == 0)
           std::cout << "Starting iterations:\n";

@@ -23,16 +23,17 @@
  *
  */
 
+#include <array_fixture.h>
+
 #include "TiledArray/dist_eval/contraction_eval.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "array_fixture.h"
 #include "sparse_shape_fixture.h"
 
 using namespace TiledArray;
 
 struct ContractionEvalFixture : public SparseShapeFixture {
-  typedef Array<int, GlobalFixture::dim> ArrayN;
+  typedef TArrayI ArrayN;
   typedef math::Noop<ArrayN::value_type,
       ArrayN::value_type, true> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
@@ -70,13 +71,13 @@ struct ContractionEvalFixture : public SparseShapeFixture {
     GlobalFixture::world->gop.fence();
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  static void rand_fill_array(Array<T, DIM, Tile, Policy>& array) {
+  template <typename Tile, typename Policy>
+  static void rand_fill_array(DistArray<Tile, Policy>& array) {
     // Iterate over local, non-zero tiles
-    for(typename Array<T, DIM, Tile, Policy>::iterator it = array.begin(); it != array.end(); ++it) {
+    for(typename DistArray<Tile, Policy>::iterator it = array.begin(); it != array.end(); ++it) {
       // Construct a new tile with random data
-      typename Array<T, DIM, Tile, Policy>::value_type tile(array.trange().make_tile_range(it.index()));
-      for(typename Array<T, DIM, Tile, Policy>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
+      typename DistArray<Tile, Policy>::value_type tile(array.trange().make_tile_range(it.index()));
+      for(typename DistArray<Tile, Policy>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 27;
 
       // Set array tile
@@ -84,8 +85,8 @@ struct ContractionEvalFixture : public SparseShapeFixture {
     }
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  static matrix_type copy_to_matrix(const Array<T, DIM, Tile, Policy>& array, const int middle) {
+  template <typename Tile, typename Policy>
+  static matrix_type copy_to_matrix(const DistArray<Tile, Policy>& array, const int middle) {
 
     // Compute the number of rows and columns in the matrix, and a new weight
     // that is bisected the row and column dimensions.
@@ -207,18 +208,18 @@ struct ContractionEvalFixture : public SparseShapeFixture {
         shape, pmap, perm, op, K, proc_grid)));
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
-  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
+  template <typename Tile, typename Policy, typename Op>
+  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename DistArray<Tile, Policy>::value_type, Op>, Policy>
   make_array_eval(
-      const Array<T, DIM, Tile, Policy>& array,
+      const DistArray<Tile, Policy>& array,
       TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
       const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm,
       const Op& op)
   {
-    typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
-    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+    typedef TiledArray::detail::ArrayEvalImpl<DistArray<Tile, Policy>, Op, Policy> impl_type;
+    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::DistArray<Tile, Policy>::value_type, Op>, Policy>(
         std::shared_ptr<impl_type>(new impl_type(array, world,
         (perm ? perm * array.trange() : array.trange()), shape, pmap, perm, op)));
   }
@@ -349,7 +350,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 BOOST_AUTO_TEST_CASE( sparse_eval )
 {
   typedef detail::DistEval<op_type::result_type, SparsePolicy> dist_eval_type1;
-  typedef Array<int, GlobalFixture::dim, Tensor<int>, SparsePolicy> array_type;
+  typedef TSpArrayI array_type;
   typedef detail::DistEval<detail::LazyArrayTile<array_type::value_type, array_op_type>,
       SparsePolicy> array_eval_type;
 

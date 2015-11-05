@@ -6,10 +6,10 @@
 
 namespace TiledArray {
 
-  template <typename T, unsigned int DIM, typename Tile>
-  Array<T, DIM, Tile, DensePolicy>
-  to_dense(Array<T, DIM, Tile, SparsePolicy> const& sparse_array) {
-      typedef Array<T, DIM, Tile, DensePolicy> ArrayType;
+  template <typename Tile>
+  DistArray<Tile, DensePolicy>
+  to_dense(DistArray<Tile, SparsePolicy> const& sparse_array) {
+      typedef DistArray<Tile, DensePolicy> ArrayType;
       ArrayType dense_array(sparse_array.get_world(), sparse_array.trange());
 
       typedef typename ArrayType::pmap_interface pmap_interface;
@@ -29,7 +29,7 @@ namespace TiledArray {
               // This is how Array::set_all_local() sets tiles to a value,
               // This likely means that what ever type Tile is must be
               // constructible from a type T
-              dense_array.set(ord, T(0.0));  // This is how Array::set_all_local()
+              dense_array.set(ord, 0);  // This is how Array::set_all_local()
           }
       }
 
@@ -37,9 +37,9 @@ namespace TiledArray {
   }
 
   // If array is already dense just use the copy constructor.
-  template <typename T, unsigned int DIM, typename Tile>
-  Array<T, DIM, Tile, DensePolicy>
-  to_dense(Array<T, DIM, Tile, DensePolicy> const& other) {
+  template <typename Tile>
+  DistArray<Tile, DensePolicy>
+  to_dense(DistArray<Tile, DensePolicy> const& other) {
       return other;
   }
 
