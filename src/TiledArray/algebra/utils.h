@@ -113,7 +113,7 @@ namespace TiledArray {
   inline void axpy(DistArray<Tile,Policy>& y,
                    typename DistArray<Tile,Policy>::element_type a,
                    const DistArray<Tile,Policy>& x) {
-    const std::string vars = detail::dummy_annotation(a.trange().tiles().rank());
+    const std::string vars = detail::dummy_annotation(y.trange().tiles().rank());
     y(vars) = y(vars) + a * x(vars);
   }
 
