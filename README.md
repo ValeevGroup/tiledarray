@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
   TA::TArrayD C;
   
   // Perform a distributed matrix multiplication
-  C("i,j") = A("i,k") * B("k,j);
+  C("i,j") = A("i,k") * B("k,j");
   
   // Tear down the parallel runtime. 
   TA::finalize();
