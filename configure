@@ -49,7 +49,7 @@ Configuration:
   --debug                 debug build (CMAKE_BUILD_TYPE=Debug)
   --unittest              build unit tests (TA_BUILD_UNITTEST=TRUE)
   --lapack=               LAPACK libraries (LAPACK_LIBRARIES=)
-  --lapack=               LAPACK libraries (BLAS_LIBRARIES=)
+  --blas=                 BLAS libraries (BLAS_LIBRARIES=)
   --integer8              Assume integer*8 in Fortran (INTEGER4=FALSE), otherwise
                           integer*4 is the default Fortran integer size.
   --mpicc=                MPI C compiler to deduce MPI environment,
