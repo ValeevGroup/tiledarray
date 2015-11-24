@@ -146,7 +146,10 @@ namespace TiledArray {
         BinaryEngine_::right_.init_vars();
 
         if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
-          BinaryEngine_::init_vars();
+          if(left_type::leaves <= right_type::leaves)
+            ExprEngine_::vars_ = BinaryEngine_::left_.vars();
+          else
+            ExprEngine_::vars_ = BinaryEngine_::right_.vars();
         } else {
           contract_ = true;
           ContEngine_::init_vars();
