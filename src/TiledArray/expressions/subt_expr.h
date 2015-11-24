@@ -34,11 +34,13 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename Left, typename Right>
-    struct ExprTrait<SubtExpr<Left, Right> > : public BinaryExprTrait<Left, Right, SubtEngine>
+    struct ExprTrait<SubtExpr<Left, Right> > :
+        public BinaryExprTrait<Left, Right, void, SubtEngine>
     { };
 
-    template <typename Left, typename Right>
-    struct ExprTrait<ScalSubtExpr<Left, Right> > : public BinaryExprTrait<Left, Right, ScalSubtEngine>
+    template <typename Left, typename Right, typename Scalar>
+    struct ExprTrait<ScalSubtExpr<Left, Right, Scalar> > :
+        public BinaryExprTrait<Left, Right, Scalar, ScalSubtEngine>
     { };
 
     /// Subtraction expression
@@ -79,10 +81,10 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right>
-    class ScalSubtExpr : public BinaryExpr<ScalSubtExpr<Left, Right> > {
+    template <typename Left, typename Right, typename Scalar>
+    class ScalSubtExpr : public BinaryExpr<ScalSubtExpr<Left, Right, Scalar> > {
     public:
-      typedef ScalSubtExpr<Left, Right> ScalSubtExpr_; ///< This class type
+      typedef ScalSubtExpr<Left, Right, Scalar> ScalSubtExpr_; ///< This class type
       typedef BinaryExpr<ScalSubtExpr_> BinaryExpr_; ///< Binary base class type
       typedef typename ExprTrait<ScalSubtExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<ScalSubtExpr_>::right_type right_type; ///< The right-hand expression type
@@ -111,7 +113,7 @@ namespace TiledArray {
       /// \param arg The scaled expression
       /// \param factor The scaling factor
       ScalSubtExpr(const ScalSubtExpr_& arg, const scalar_type factor) :
-        BinaryExpr_(arg), factor_(factor * arg.factor_)
+        BinaryExpr_(arg), factor_(arg.factor_ * factor)
       { }
 
       /// Copy constructor
@@ -128,6 +130,8 @@ namespace TiledArray {
 
     }; // class ScalSubtExpr
 
+
+    using TiledArray::detail::mult_t;
 
     /// Subtraction expression factor
 
@@ -149,11 +153,13 @@ namespace TiledArray {
     /// \param expr The subtraction expression object
     /// \param factor The scaling factor
     /// \return A scaled-subtraction expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalSubtExpr<Left, Right> >::type
+    template <typename Left, typename Right, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalSubtExpr<Left, Right, Scalar>
     operator*(const SubtExpr<Left, Right>& expr, const Scalar& factor) {
-      return ScalSubtExpr<Left, Right>(expr, factor);
+      return ScalSubtExpr<Left, Right, Scalar>(expr, factor);
     }
 
     /// Scaled-subtraction expression factor
@@ -164,11 +170,13 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param expr The subtraction expression object
     /// \return A scaled-subtraction expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalSubtExpr<Left, Right> >::type
+    template <typename Left, typename Right, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalSubtExpr<Left, Right, Scalar>
     operator*(const Scalar& factor, const SubtExpr<Left, Right>& expr) {
-      return ScalSubtExpr<Left, Right>(expr, factor);
+      return ScalSubtExpr<Left, Right, Scalar>(expr, factor);
     }
 
     /// Scaled-subtraction expression factor
@@ -179,11 +187,13 @@ namespace TiledArray {
     /// \param expr The scaled-subtraction expression object
     /// \param factor The scaling factor
     /// \return A scaled-subtraction expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalSubtExpr<Left, Right> >::type
-    operator*(const ScalSubtExpr<Left, Right>& expr, const Scalar& factor) {
-      return ScalSubtExpr<Left, Right>(expr, factor);
+    template <typename Left, typename Right, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalSubtExpr<Left, Right, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalSubtExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
+      return ScalSubtExpr<Left, Right, mult_t<Scalar1, Scalar2> >(expr, factor);
     }
 
     /// Scaled-subtraction expression factor
@@ -194,11 +204,13 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param expr The scaled-subtraction expression object
     /// \return A scaled-subtraction expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalSubtExpr<Left, Right> >::type
-    operator*(const Scalar& factor, const ScalSubtExpr<Left, Right>& expr) {
-      return ScalSubtExpr<Left, Right>(expr, factor);
+    template <typename Left, typename Right, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalSubtExpr<Left, Right, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalSubtExpr<Left, Right, Scalar2>& expr) {
+      return ScalSubtExpr<Left, Right, mult_t<Scalar2, Scalar1> >(expr, factor);
     }
 
 
@@ -209,8 +221,10 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right>
-    inline ScalSubtExpr<Left, Right> operator-(const SubtExpr<Left, Right>& expr) {
-      return ScalSubtExpr<Left, Right>(expr, -1);
+    inline ScalSubtExpr<Left, Right, typename ExprTrait<SubtExpr<Left, Right> >::scalar_type>
+    operator-(const SubtExpr<Left, Right>& expr) {
+      return ScalSubtExpr<Left, Right,
+          typename SubtExpr<Left, Right>::scalar_type>(expr, -1);
     }
 
     /// Negated scaled-addition expression factor
@@ -220,8 +234,9 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
-    inline ScalSubtExpr<Left, Right> operator-(const ScalSubtExpr<Left, Right>& expr) {
-      return ScalSubtExpr<Left, Right>(expr, -1);
+    inline ScalSubtExpr<Left, Right, Scalar>
+    operator-(const ScalSubtExpr<Left, Right, Scalar>& expr) {
+      return ScalSubtExpr<Left, Right, Scalar>(expr, -1);
     }
 
   }  // namespace expressions

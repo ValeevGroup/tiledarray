@@ -33,11 +33,13 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename Left, typename Right>
-    struct ExprTrait<AddExpr<Left, Right> > : public BinaryExprTrait<Left, Right, AddEngine>
+    struct ExprTrait<AddExpr<Left, Right> > :
+        public BinaryExprTrait<Left, Right, void, AddEngine>
     { };
 
-    template <typename Left, typename Right>
-    struct ExprTrait<ScalAddExpr<Left, Right> > : public BinaryExprTrait<Left, Right, ScalAddEngine>
+    template <typename Left, typename Right, typename Scalar>
+    struct ExprTrait<ScalAddExpr<Left, Right, Scalar> > :
+        public BinaryExprTrait<Left, Right, Scalar, ScalAddEngine>
     { };
 
 
@@ -73,10 +75,10 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right>
-    class ScalAddExpr : public BinaryExpr<ScalAddExpr<Left, Right> > {
+    template <typename Left, typename Right, typename Scalar>
+    class ScalAddExpr : public BinaryExpr<ScalAddExpr<Left, Right, Scalar> > {
     public:
-      typedef ScalAddExpr<Left, Right> ScalAddExpr_; ///< This class type
+      typedef ScalAddExpr<Left, Right, Scalar> ScalAddExpr_; ///< This class type
       typedef BinaryExpr<ScalAddExpr_> BinaryExpr_; ///< Binary base class type
       typedef typename ExprTrait<ScalAddExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<ScalAddExpr_>::right_type right_type; ///< The right-hand expression type
@@ -103,7 +105,7 @@ namespace TiledArray {
       /// \param arg The scaled expression
       /// \param factor The scaling factor
       ScalAddExpr(const ScalAddExpr_& arg, const scalar_type factor) :
-        BinaryExpr_(arg), factor_(factor * arg.factor_)
+        BinaryExpr_(arg), factor_(arg.factor_ * factor)
       { }
 
       /// Copy constructor
@@ -121,6 +123,8 @@ namespace TiledArray {
     }; // class ScalAddExpr
 
 
+    using TiledArray::detail::mult_t;
+
     /// Addition expression factor
 
     /// \tparam Left The left-hand expression type
@@ -129,7 +133,8 @@ namespace TiledArray {
     /// \param right The right-hand expression object
     /// \return An addition expression object
     template <typename Left, typename Right>
-    inline AddExpr<Left, Right> operator+(const Expr<Left>& left, const Expr<Right>& right) {
+    inline AddExpr<Left, Right>
+    operator+(const Expr<Left>& left, const Expr<Right>& right) {
       return AddExpr<Left, Right>(left.derived(), right.derived());
     }
 
@@ -143,9 +148,9 @@ namespace TiledArray {
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
     inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalAddExpr<Left, Right> >::type
+        ScalAddExpr<Left, Right, Scalar> >::type
     operator*(const AddExpr<Left, Right>& expr, const Scalar& factor) {
-      return ScalAddExpr<Left, Right>(expr, factor);
+      return ScalAddExpr<Left, Right, Scalar>(expr, factor);
     }
 
     /// Scaled-addition expression factor
@@ -158,9 +163,9 @@ namespace TiledArray {
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
     inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalAddExpr<Left, Right> >::type
+        ScalAddExpr<Left, Right, Scalar> >::type
     operator*(const Scalar& factor, const AddExpr<Left, Right>& expr) {
-      return ScalAddExpr<Left, Right>(expr, factor);
+      return ScalAddExpr<Left, Right, Scalar>(expr, factor);
     }
 
     /// Scaled-addition expression factor
@@ -171,11 +176,13 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \param factor The scaling factor
     /// \return A scaled-addition expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalAddExpr<Left, Right> >::type
-    operator*(const ScalAddExpr<Left, Right>& expr, const Scalar& factor) {
-      return ScalAddExpr<Left, Right>(expr, factor);
+    template <typename Left, typename Right, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalAddExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
+      return ScalAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >(expr, factor);
     }
 
     /// Scaled-addition expression factor
@@ -186,11 +193,13 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalAddExpr<Left, Right> >::type
-    operator*(const Scalar& factor, const ScalAddExpr<Left, Right>& expr) {
-      return ScalAddExpr<Left, Right>(expr, factor);
+    template <typename Left, typename Right, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalAddExpr<Left, Right, Scalar2>& expr) {
+      return ScalAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >(expr, factor);
     }
 
     /// Negated addition expression factor
@@ -200,8 +209,10 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right>
-    inline ScalAddExpr<Left, Right> operator-(const AddExpr<Left, Right>& expr) {
-      return ScalAddExpr<Left, Right>(expr, -1);
+    inline ScalAddExpr<Left, Right, typename ExprTrait<AddExpr<Left, Right> >::scalar_type>
+    operator-(const AddExpr<Left, Right>& expr) {
+      return ScalAddExpr<Left, Right,
+          typename ExprTrait<AddExpr<Left, Right> >::scalar_type>(expr, -1);
     }
 
     /// Negated scaled-addition expression factor
@@ -211,8 +222,9 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
-    inline ScalAddExpr<Left, Right> operator-(const ScalAddExpr<Left, Right>& expr) {
-      return ScalAddExpr<Left, Right>(expr, -1);
+    inline ScalAddExpr<Left, Right, Scalar>
+    operator-(const ScalAddExpr<Left, Right, Scalar>& expr) {
+      return ScalAddExpr<Left, Right, Scalar>(expr, -1);
     }
 
   }  // namespace expressions

@@ -36,7 +36,7 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename, typename> class MultExpr;
-    template <typename, typename> class ScalMultExpr;
+    template <typename, typename, typename> class ScalMultExpr;
     template <typename, typename> class MultEngine;
     template <typename, typename> class ScalMultEngine;
 
@@ -298,9 +298,10 @@ namespace TiledArray {
 
       /// \tparam L The left-hand argument expression type
       /// \tparam R The right-hand argument expression type
+      /// \tparam S The expression scalar type
       /// \param expr The parent expression
-      template <typename L, typename R>
-      ScalMultEngine(const ScalMultExpr<L, R>& expr) : ContEngine_(expr), contract_(false) { }
+      template <typename L, typename R, typename S>
+      ScalMultEngine(const ScalMultExpr<L, R, S>& expr) : ContEngine_(expr), contract_(false) { }
 
       /// Set the variable list for this expression
 

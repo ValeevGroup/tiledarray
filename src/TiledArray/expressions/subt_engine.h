@@ -35,7 +35,7 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename, typename> class SubtExpr;
-    template <typename, typename> class ScalSubtExpr;
+    template <typename, typename, typename> class ScalSubtExpr;
     template <typename, typename> class SubtEngine;
     template <typename, typename> class ScalSubtEngine;
 
@@ -159,9 +159,10 @@ namespace TiledArray {
 
       /// \tparam L The left-hand argument expression type
       /// \tparam R The right-hand argument expression type
+      /// \tparam S The expression scalar type
       /// \param expr The parent expression
-      template <typename L, typename R>
-      ScalSubtEngine(const ScalSubtExpr<L, R>& expr) :
+      template <typename L, typename R, typename S>
+      ScalSubtEngine(const ScalSubtExpr<L, R, S>& expr) :
         BinaryEngine_(expr), factor_(expr.factor())
       { }
 

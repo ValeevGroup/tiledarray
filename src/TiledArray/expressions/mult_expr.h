@@ -34,12 +34,12 @@ namespace TiledArray {
 
     template <typename Left, typename Right>
     struct ExprTrait<MultExpr<Left, Right> > :
-        public BinaryExprTrait<Left, Right, MultEngine>
+        public BinaryExprTrait<Left, Right, void, MultEngine>
     { };
 
-    template <typename Left, typename Right>
-    struct ExprTrait<ScalMultExpr<Left, Right> > :
-        public BinaryExprTrait<Left, Right, ScalMultEngine>
+    template <typename Left, typename Right, typename Scalar>
+    struct ExprTrait<ScalMultExpr<Left, Right, Scalar> > :
+        public BinaryExprTrait<Left, Right, Scalar, ScalMultEngine>
     { };
 
 
@@ -81,10 +81,10 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right>
-    class ScalMultExpr : public BinaryExpr<ScalMultExpr<Left, Right> > {
+    template <typename Left, typename Right, typename Scalar>
+    class ScalMultExpr : public BinaryExpr<ScalMultExpr<Left, Right, Scalar> > {
     public:
-      typedef ScalMultExpr<Left, Right> ScalMultExpr_; ///< This class type
+      typedef ScalMultExpr<Left, Right, Scalar> ScalMultExpr_; ///< This class type
       typedef BinaryExpr<ScalMultExpr_> BinaryExpr_; ///< Binary expression base type
       typedef typename ExprTrait<ScalMultExpr_>::left_type left_type; ///< The left-hand expression type
       typedef typename ExprTrait<ScalMultExpr_>::right_type right_type; ///< The right-hand expression type
@@ -113,7 +113,7 @@ namespace TiledArray {
       /// \param arg The scaled expression
       /// \param factor The scaling factor
       ScalMultExpr(const ScalMultExpr_& arg, const scalar_type factor) :
-        BinaryExpr_(arg), factor_(factor * arg.factor_)
+        BinaryExpr_(arg), factor_(arg.factor_ * factor)
       { }
 
       /// Copy constructor
@@ -131,6 +131,8 @@ namespace TiledArray {
     }; // class ScalMultExpr
 
 
+    using TiledArray::detail::mult_t;
+
     /// Multiplication expression factor
 
     /// \tparam Left The left-hand expression type
@@ -139,7 +141,8 @@ namespace TiledArray {
     /// \param right The right-hand expression object
     /// \return An multiplication expression object
     template <typename Left, typename Right>
-    inline MultExpr<Left, Right> operator*(const Expr<Left>& left, const Expr<Right>& right) {
+    inline MultExpr<Left, Right>
+    operator*(const Expr<Left>& left, const Expr<Right>& right) {
       return MultExpr<Left, Right>(left.derived(), right.derived());
     }
 
@@ -151,11 +154,13 @@ namespace TiledArray {
     /// \param expr The multiplication expression object
     /// \param factor The scaling factor
     /// \return A scaled-multiplication expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalMultExpr<Left, Right> >::type
+    template <typename Left, typename Right, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalMultExpr<Left, Right, Scalar>
     operator*(const MultExpr<Left, Right>& expr, const Scalar& factor) {
-      return ScalMultExpr<Left, Right>(expr, factor);
+      return ScalMultExpr<Left, Right, Scalar>(expr, factor);
     }
 
     /// Scaled-multiplication expression factor
@@ -166,11 +171,13 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param expr The multiplication expression object
     /// \return A scaled-multiplication expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalMultExpr<Left, Right> >::type
+    template <typename Left, typename Right, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalMultExpr<Left, Right, Scalar>
     operator*(const Scalar& factor, const MultExpr<Left, Right>& expr) {
-      return ScalMultExpr<Left, Right>(expr, factor);
+      return ScalMultExpr<Left, Right, Scalar>(expr, factor);
     }
 
     /// Scaled-multiplication expression factor
@@ -181,11 +188,13 @@ namespace TiledArray {
     /// \param expr The multiplication expression object
     /// \param factor The scaling factor
     /// \return A scaled-multiplication expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalMultExpr<Left, Right> >::type
-    operator*(const ScalMultExpr<Left, Right>& expr, const Scalar& factor) {
-      return ScalMultExpr<Left, Right>(expr, factor);
+    template <typename Left, typename Right, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalMultExpr<Left, Right, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalMultExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
+      return ScalMultExpr<Left, Right, mult_t<Scalar1, Scalar2> >(expr, factor);
     }
 
     /// Scaled-multiplication expression factor
@@ -196,11 +205,13 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param expr The multiplication expression object
     /// \return A scaled-multiplication expression object
-    template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalMultExpr<Left, Right> >::type
-    operator*(const Scalar& factor, const ScalMultExpr<Left, Right>& expr) {
-      return ScalMultExpr<Left, Right>(expr, factor);
+    template <typename Left, typename Right, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalMultExpr<Left, Right, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalMultExpr<Left, Right, Scalar2>& expr) {
+      return ScalMultExpr<Left, Right, mult_t<Scalar2, Scalar1> >(expr, factor);
     }
 
     /// Negated multiplication expression factor
@@ -210,8 +221,10 @@ namespace TiledArray {
     /// \param expr The multiplication expression object
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right>
-    inline ScalMultExpr<Left, Right> operator-(const MultExpr<Left, Right>& expr) {
-      return ScalMultExpr<Left, Right>(expr, -1);
+    inline ScalMultExpr<Left, Right, typename ExprTrait<MultExpr<Left, Right> >::scalar_type>
+    operator-(const MultExpr<Left, Right>& expr) {
+      return ScalMultExpr<Left, Right, typename ExprTrait<MultExpr<Left,
+          Right> >::scalar_type>(expr, -1);
     }
 
     /// Negated scaled-multiplication expression factor
@@ -221,8 +234,9 @@ namespace TiledArray {
     /// \param expr The multiplication expression object
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar>
-    inline ScalMultExpr<Left, Right> operator-(const ScalMultExpr<Left, Right>& expr) {
-      return ScalMultExpr<Left, Right>(expr, -1);
+    inline ScalMultExpr<Left, Right, Scalar>
+    operator-(const ScalMultExpr<Left, Right, Scalar>& expr) {
+      return ScalMultExpr<Left, Right, Scalar>(expr, -1);
     }
 
   }  // namespace expressions

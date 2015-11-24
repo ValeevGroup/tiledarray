@@ -31,13 +31,15 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename Left, typename Right, template <typename, typename> class Engine>
+    template <typename Left, typename Right, typename Scalar,
+        template <typename, typename> class Engine>
     struct BinaryExprTrait {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
       typedef Engine<typename ExprTrait<Left>::engine_type,
           typename ExprTrait<Right>::engine_type> engine_type; ///< Expression engine type
-      typedef typename ExprTrait<Left>::scalar_type scalar_type;  ///< Tile scalar type
+      typedef typename std::conditional<std::is_void<Scalar>::value,
+          typename ExprTrait<Left>::scalar_type, Scalar>::type scalar_type;  ///< Tile scalar type
     };
 
     /// Binary expression object
