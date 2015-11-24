@@ -240,6 +240,19 @@ namespace TiledArray {
         public std::is_base_of<std::random_access_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
 
+
+
+    template <typename Scalar1, typename Scalar2>
+    using add_t = decltype(std::declval<Scalar1>() + std::declval<Scalar2>());
+
+
+    template <typename Scalar1, typename Scalar2>
+    using subt_t = decltype(std::declval<Scalar1>() - std::declval<Scalar2>());
+
+    template <typename Scalar1, typename Scalar2>
+    using mult_t = decltype(std::declval<Scalar1>() * std::declval<Scalar2>());
+
+
   } // namespace detail
 } // namespace TiledArray
 #endif // TILEDARRAY_TYPE_TRAITS_H__INCLUDED
