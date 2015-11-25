@@ -33,8 +33,8 @@ namespace TiledArray {
   namespace expressions {
 
     // Forward declarations
-    template <typename> class ScalExpr;
-    template <typename Arg> class ScalEngine;
+    template <typename, typename> class ScalExpr;
+    template <typename> class ScalEngine;
 
 
     template <typename Arg>
@@ -79,9 +79,10 @@ namespace TiledArray {
       /// Constructor
 
       /// \tparam A The argument expression type
+      /// \tparam S The expression scalar type
       /// \param expr The parent expression
-      template <typename A>
-      ScalEngine(const ScalExpr<A>& expr) : UnaryEngine_(expr), factor_(expr.factor()) { }
+      template <typename A, typename S>
+      ScalEngine(const ScalExpr<A, S>& expr) : UnaryEngine_(expr), factor_(expr.factor()) { }
 
       /// Non-permuting shape factory function
 

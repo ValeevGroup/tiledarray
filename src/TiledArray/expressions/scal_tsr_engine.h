@@ -32,7 +32,7 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename> class ScalTsrExpr;
+    template <typename, typename> class ScalTsrExpr;
     template <typename> class ScalTsrEngine;
 
 
@@ -66,11 +66,11 @@ namespace TiledArray {
     /// Scaled tensor expression engine
 
     /// \tparam A The \c Array type
-    template <typename A>
-    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<A> > {
+    template <typename Array>
+    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalTsrEngine<A> ScalTsrEngine_; ///< This class type
+      typedef ScalTsrEngine<Array> ScalTsrEngine_; ///< This class type
       typedef LeafEngine<ScalTsrEngine_> LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
 
@@ -96,7 +96,8 @@ namespace TiledArray {
 
     public:
 
-      ScalTsrEngine(const ScalTsrExpr<array_type>& expr) :
+      template <typename A, typename S>
+      ScalTsrEngine(const ScalTsrExpr<A, S>& expr) :
         LeafEngine_(expr), factor_(expr.factor())
       { }
 
