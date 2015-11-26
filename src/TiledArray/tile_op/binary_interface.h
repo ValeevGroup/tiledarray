@@ -313,7 +313,7 @@ namespace TiledArray {
     /// \return The result tile from the binary operation applied to the
     /// evaluated \c first and \c second .
     template <typename L, typename R>
-    typename std::enable_if<detail::is_lazy_tile<L>::value && detail::is_lazy_tile<R>::value,
+    typename std::enable_if<is_lazy_tile<L>::value && is_lazy_tile<R>::value,
         result_type>::type
     operator()(const L& first, const R& second) const {
       typename eval_trait<L>::type eval_first(first);
@@ -334,8 +334,8 @@ namespace TiledArray {
     /// evaluated \c first and \c second .
     template <typename L, typename R>
     typename std::enable_if<
-        detail::is_lazy_tile<L>::value &&
-        (! detail::is_lazy_tile<typename std::remove_const<R>::type >::value),
+        is_lazy_tile<L>::value &&
+        (! is_lazy_tile<typename std::remove_const<R>::type >::value),
         result_type>::type
     operator()(const L& first, R& second) const {
       typename eval_trait<L>::type eval_first(first);
@@ -355,8 +355,8 @@ namespace TiledArray {
     /// evaluated \c first and \c second .
     template <typename L, typename R>
     typename std::enable_if<
-        (! detail::is_lazy_tile<typename std::remove_const<L>::type>::value) &&
-        detail::is_lazy_tile<R>::value,
+        (! is_lazy_tile<typename std::remove_const<L>::type>::value) &&
+        is_lazy_tile<R>::value,
         result_type>::type
     operator()(L& first, const R& second) const {
       typename eval_trait<R>::type eval_second(second);
@@ -470,7 +470,7 @@ namespace TiledArray {
     template <typename L, typename R>
     typename std::enable_if<
         detail::is_array_tile<L>::value &&
-        (! detail::is_lazy_tile<typename std::remove_const<R>::type>::value),
+        (! is_lazy_tile<typename std::remove_const<R>::type>::value),
         result_type>::type
     operator()(const L& first, R& second) const {
       typename eval_trait<L>::type eval_first(first);
@@ -487,7 +487,7 @@ namespace TiledArray {
 
     template <typename L, typename R>
     typename std::enable_if<
-        (! detail::is_lazy_tile<typename std::remove_const<L>::type>::value) &&
+        (! is_lazy_tile<typename std::remove_const<L>::type>::value) &&
         detail::is_array_tile<R>::value,
         result_type>::type
     operator()(L& first, const R& second) const {

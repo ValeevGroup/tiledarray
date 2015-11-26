@@ -207,7 +207,7 @@ namespace TiledArray {
       /// \return \c tile
       template <typename Arg>
       static typename std::enable_if<
-          ! TiledArray::detail::is_lazy_tile<typename Arg::value_type>::value,
+          ! is_lazy_tile<typename Arg::value_type>::value,
           Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
 
@@ -222,7 +222,7 @@ namespace TiledArray {
       /// \return A future to the evaluated tile
       template <typename Arg>
       static typename std::enable_if<
-          TiledArray::detail::is_lazy_tile<typename Arg::value_type>::value,
+          is_lazy_tile<typename Arg::value_type>::value,
           Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) {
         return arg.get_world().taskq.add(

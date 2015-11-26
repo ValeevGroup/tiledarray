@@ -93,7 +93,7 @@ namespace TiledArray {
       /// \param index The tile index
       /// \param tile The lazy tile
       template <typename A, typename I, typename T>
-      typename std::enable_if<TiledArray::detail::is_lazy_tile<T>::value>::type
+      typename std::enable_if<is_lazy_tile<T>::value>::type
       set_tile(A& array, const I index, const Future<T>& tile) const {
         array.set(index, array.get_world().taskq.add(
               & Expr_::template eval_tile<typename A::value_type, T>, tile));
@@ -108,7 +108,7 @@ namespace TiledArray {
       /// \param index The tile index
       /// \param tile The tile
       template <typename A, typename I, typename T>
-      typename std::enable_if<! TiledArray::detail::is_lazy_tile<T>::value>::type
+      typename std::enable_if<! is_lazy_tile<T>::value>::type
       set_tile(A& array, const I index, const Future<T>& tile) const {
         array.set(index, tile);
       }
@@ -150,8 +150,8 @@ namespace TiledArray {
       /// \param tsr The tensor to be assigned
       template <typename A>
       void eval_to(TsrExpr<A>& tsr) const {
-        static_assert(! TiledArray::detail::is_lazy_tile<typename A::value_type>::value,
-            "Assignment to an Array of lazy tiles is not supported.");
+        static_assert(! is_lazy_tile<typename A::value_type>::value,
+            "Assignment to an array of lazy tiles is not supported.");
 
         // Get the target world.
         World& world = (tsr.array().is_initialized() ?
@@ -205,18 +205,18 @@ namespace TiledArray {
         typedef TiledArray::math::Shift<typename A::value_type,
             typename EngineTrait<engine_type>::eval_type,
             EngineTrait<engine_type>::consumable> shift_op_type;
-        static_assert(! TiledArray::detail::is_lazy_tile<typename A::value_type>::value,
-            "Assignment to an Array of lazy tiles is not supported.");
+        static_assert(! is_lazy_tile<typename A::value_type>::value,
+            "Assignment to an array of lazy tiles is not supported.");
 
 #ifndef NDEBUG
         // Check that the array has been initialized.
         if(! tsr.array().is_initialized()) {
           if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
-                "Assignment to an uninitialized Array sub-block is not supported.");
+                "Assignment to an uninitialized array sub-block is not supported.");
           }
 
-          TA_EXCEPTION("Assignment to an uninitialized Array sub-block is not supported.");
+          TA_EXCEPTION("Assignment to an uninitialized array sub-block is not supported.");
         }
 
         // Note: Unfortunately we cannot check that the array tiles have been

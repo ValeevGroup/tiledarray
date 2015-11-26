@@ -150,7 +150,7 @@ namespace TiledArray {
       /// \return The result tile with the unary operation applied to the
       /// evaluated \c arg
       template <typename A>
-      typename std::enable_if<detail::is_lazy_tile<A>::value, result_type>::type
+      typename std::enable_if<is_lazy_tile<A>::value, result_type>::type
       operator()(const A& arg) const {
         typename eval_trait<A>::type eval_arg(arg);
         return operator()(eval_arg);
@@ -275,7 +275,7 @@ namespace TiledArray {
       /// \return The result tile with the unary operation (and permuation)
       /// applied to \c arg.
       template <typename A>
-      typename std::enable_if<! detail::is_lazy_tile<A>::value, result_type>::type
+      typename std::enable_if<! is_lazy_tile<A>::value, result_type>::type
       operator()(const A& arg, const bool) const {
         operator()(arg);
       }
@@ -290,7 +290,7 @@ namespace TiledArray {
       /// \return The result tile with the unary operation (and permuation)
       /// applied to \c arg.
       template <typename A>
-      typename std::enable_if<! detail::is_lazy_tile<typename std::remove_const<A>::type>::value,
+      typename std::enable_if<! is_lazy_tile<typename std::remove_const<A>::type>::value,
           result_type>::type
       operator()(A& arg, const bool consume) const {
         if(perm_)

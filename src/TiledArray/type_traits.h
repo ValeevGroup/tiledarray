@@ -55,7 +55,7 @@ namespace TiledArray {
 
   /// This trait class allows user to specify the object type used in an
   /// expression by providing a (partial) template specialization of this class
-  /// for a user defined tile class. This allows users to use lazy tile
+  /// for a user defined tile types. This allows users to use lazy tile
   /// construction inside tensor expressions. If no evaluation type is
   /// specified, the lazy tile evaluation is disabled.
   /// \tparam T The lazy tile type
@@ -76,6 +76,36 @@ namespace TiledArray {
   struct eval_trait<T, typename std::enable_if<detail::is_type<typename T::eval_type>::value>::type>  {
     typedef typename T::eval_type type;
   }; // struct eval_trait
+
+
+  /// Detect lazy evaluation tiles
+
+  /// \c is_lazy_type evaluates to \c std::true_type when T is a tile that
+  /// uses the lazy evaluation mechanism (i.e. when <tt>T != T::eval_type</tt>),
+  /// otherwise it evaluates to \c std::false_type .
+  /// \tparam T The tile type to test
+  template <typename T>
+  struct is_lazy_tile :
+      public std::integral_constant<bool, ! std::is_same<T, typename eval_trait<T>::type>::value>
+  { }; // struct is_lazy_tile
+
+  template <typename Tile, typename Policy>
+  struct is_lazy_tile<DistArray<Tile, Policy> > : public std::false_type { };
+
+
+  /// Consumable tile type trait
+
+  /// This trait is used to determine if a tile type is consumable in tensor
+  /// arithmetic operations. That is, temporary tiles may appear on the left-
+  /// hand side of add-to (+=), subtract-to (-=), and multiply-to (*=)
+  /// operations. By default, all tile types are assumed to be
+  /// consumable except lazy tiles. Users should provide a (partial)
+  /// specialization of this `struct` to disable consumable tile operations.
+  /// \tparam T The tile type
+  template <typename T>
+  struct is_consumable_tile :
+      public std::integral_constant<bool, ! is_lazy_tile<T>::value>
+  { };
 
 
   /** @}*/
@@ -133,20 +163,6 @@ namespace TiledArray {
     template <typename T>
     struct is_complex<std::complex<T> > : public std::true_type { };
 
-
-    /// Detect lazy evaluation tiles
-
-    /// \c is_lazy_type evaluates to \c std::true_type when T is a tile that
-    /// uses the lazy evaluation mechanism (i.e. when <tt>T != T::eval_type</tt>),
-    /// otherwise it evaluates to \c std::false_type .
-    /// \tparam T The tile type to test
-    template <typename T>
-    struct is_lazy_tile :
-        public std::integral_constant<bool, ! std::is_same<T, typename eval_trait<T>::type>::value>
-    { }; // struct is_lazy_tile
-
-    template <typename Tile, typename Policy>
-    struct is_lazy_tile<DistArray<Tile, Policy> > : public std::false_type { };
 
     /// Detect tiles used by \c ArrayEvalImpl
 
@@ -328,7 +344,8 @@ namespace TiledArray {
         public std::is_base_of<std::random_access_iterator_tag, typename is_iterator<T>::iterator_category>
     { };
 
-
+    // Type traits used to determine the result of arithmetic operations between
+    // two types.
 
     template <typename Scalar1, typename Scalar2>
     using add_t = decltype(std::declval<Scalar1>() + std::declval<Scalar2>());
@@ -342,5 +359,6 @@ namespace TiledArray {
 
 
   } // namespace detail
+
 } // namespace TiledArray
 #endif // TILEDARRAY_TYPE_TRAITS_H__INCLUDED
