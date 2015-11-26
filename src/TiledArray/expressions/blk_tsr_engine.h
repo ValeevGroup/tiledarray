@@ -39,7 +39,7 @@ namespace TiledArray {
 
     // Forward declaration
     template <typename> class BlkTsrExpr;
-    template <typename> class ScalBlkTsrExpr;
+    template <typename, typename> class ScalBlkTsrExpr;
     template <typename> class BlkTsrEngine;
     template <typename> class ScalBlkTsrEngine;
 
@@ -137,22 +137,14 @@ namespace TiledArray {
 
     public:
 
-      BlkTsrEngineBase(const BlkTsrExpr<array_type>& expr) :
+      template <typename A>
+      BlkTsrEngineBase(const BlkTsrExpr<A>& expr) :
         LeafEngine_(expr),
         lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
       { }
 
-      BlkTsrEngineBase(const BlkTsrExpr<const array_type>& expr) :
-        LeafEngine_(expr),
-        lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
-      { }
-
-      BlkTsrEngineBase(const ScalBlkTsrExpr<array_type>& expr) :
-        LeafEngine_(expr),
-        lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
-      { }
-
-      BlkTsrEngineBase(const ScalBlkTsrExpr<const array_type>& expr) :
+      template <typename A, typename S>
+      BlkTsrEngineBase(const ScalBlkTsrExpr<A, S>& expr) :
         LeafEngine_(expr),
         lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
       { }
@@ -272,12 +264,12 @@ namespace TiledArray {
 
     /// Tensor expression engine
 
-    /// \tparam A The array type
-    template <typename A>
-    class BlkTsrEngine : public BlkTsrEngineBase<BlkTsrEngine<A> > {
+    /// \tparam Array The array type
+    template <typename Array>
+    class BlkTsrEngine : public BlkTsrEngineBase<BlkTsrEngine<Array> > {
     public:
       // Class hierarchy typedefs
-      typedef BlkTsrEngine<A> BlkTsrEngine_; ///< This class type
+      typedef BlkTsrEngine<Array> BlkTsrEngine_; ///< This class type
       typedef BlkTsrEngineBase<BlkTsrEngine_> BlkTsrEngineBase_; ///< Block tensor base class type
       typedef typename BlkTsrEngineBase_::LeafEngine_ LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
@@ -313,14 +305,10 @@ namespace TiledArray {
 
     public:
 
-      BlkTsrEngine(const BlkTsrExpr<array_type>& expr) :
+      template <typename A>
+      BlkTsrEngine(const BlkTsrExpr<A>& expr) :
         BlkTsrEngineBase_(expr)
       { }
-
-      BlkTsrEngine(const BlkTsrExpr<const array_type>& expr) :
-        BlkTsrEngineBase_(expr)
-      { }
-
 
       /// Non-permuting shape factory function
 
@@ -333,8 +321,7 @@ namespace TiledArray {
 
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
-      shape_type
-      make_shape(const Permutation& perm) {
+      shape_type make_shape(const Permutation& perm) {
         return array_.get_shape().block(lower_bound_, upper_bound_, perm);
       }
 
@@ -393,12 +380,12 @@ namespace TiledArray {
 
     /// Scaled tensor block expression engine
 
-    /// \tparam A The array type
-    template <typename A>
-    class ScalBlkTsrEngine : public BlkTsrEngineBase<ScalBlkTsrEngine<A> > {
+    /// \tparam Array The array type
+    template <typename Array>
+    class ScalBlkTsrEngine : public BlkTsrEngineBase<ScalBlkTsrEngine<Array> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalBlkTsrEngine<A> ScalBlkTsrEngine_; ///< This class type
+      typedef ScalBlkTsrEngine<Array> ScalBlkTsrEngine_; ///< This class type
       typedef BlkTsrEngineBase<ScalBlkTsrEngine_> BlkTsrEngineBase_; ///< Block tensor base class type
       typedef typename BlkTsrEngineBase_::LeafEngine_ LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
@@ -437,14 +424,10 @@ namespace TiledArray {
 
     public:
 
-      ScalBlkTsrEngine(const ScalBlkTsrExpr<array_type>& expr) :
+      template <typename A, typename S>
+      ScalBlkTsrEngine(const ScalBlkTsrExpr<A, S>& expr) :
         BlkTsrEngineBase_(expr), factor_(expr.factor())
       { }
-
-      ScalBlkTsrEngine(const ScalBlkTsrExpr<const array_type>& expr) :
-        BlkTsrEngineBase_(expr), factor_(expr.factor())
-      { }
-
 
       /// Non-permuting shape factory function
 

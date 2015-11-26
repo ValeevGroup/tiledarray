@@ -34,6 +34,8 @@ namespace TiledArray {
 
     // Forward declaration
     template <typename> class TsrExpr;
+    template <typename> class BlkTsrExpr;
+    template <typename, typename> class ScalBlkTsrExpr;
 
     template <typename Array>
     struct ExprTrait<BlkTsrExpr<Array> > {
@@ -53,22 +55,20 @@ namespace TiledArray {
                                                           ///< Tile scalar type
     };
 
-    template <typename Array>
-    struct ExprTrait<ScalBlkTsrExpr<Array> > {
+    template <typename Array, typename Scalar>
+    struct ExprTrait<ScalBlkTsrExpr<Array, Scalar> > {
       typedef Array array_type; ///< The \c Array type
       typedef const Array& reference; ///< \c Array reference type
       typedef ScalBlkTsrEngine<Array> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<Array>::type scalar_type;
-                                                          ///< Tile scalar type
+      typedef Scalar scalar_type; ///< Tile scalar type
     };
 
-    template <typename Array>
-    struct ExprTrait<ScalBlkTsrExpr<const Array> > {
+    template <typename Array, typename Scalar>
+    struct ExprTrait<ScalBlkTsrExpr<const Array, Scalar> > {
       typedef Array array_type; ///< The \c Array type
       typedef const Array& reference; ///< \c Array reference type
       typedef ScalBlkTsrEngine<Array> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<Array>::type scalar_type;
-                                                          ///< Tile scalar type
+      typedef Scalar scalar_type; ///< Tile scalar type
     };
 
     /// Block expression
@@ -349,11 +349,11 @@ namespace TiledArray {
     /// Block expression
 
     /// \tparam Array The array type
-    template <typename Array>
-    class ScalBlkTsrExpr : public BlkTsrExprBase<ScalBlkTsrExpr<Array> > {
+    template <typename Array, typename Scalar>
+    class ScalBlkTsrExpr : public BlkTsrExprBase<ScalBlkTsrExpr<Array, Scalar> > {
     public:
-      typedef ScalBlkTsrExpr<Array> ScalBlkTsrExpr_; ///< This class type
-      typedef BlkTsrExprBase<ScalBlkTsrExpr<Array> > BlkTsrExprBase_;
+      typedef ScalBlkTsrExpr<Array, Scalar> ScalBlkTsrExpr_; ///< This class type
+      typedef BlkTsrExprBase<ScalBlkTsrExpr_> BlkTsrExprBase_;
                                                  ///< Block expresion base type
       typedef typename ExprTrait<ScalBlkTsrExpr_>::engine_type engine_type;
                                                     ///< Expression engine type
@@ -399,6 +399,7 @@ namespace TiledArray {
     }; // class ScalBlkTsrExpr
 
 
+    using TiledArray::detail::mult_t;
 
     /// Scaled-block expression factor
 
@@ -407,11 +408,13 @@ namespace TiledArray {
     /// \param expr The block expression object
     /// \param factor The scaling factor
     /// \return Array scaled-block expression object
-    template <typename Array, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalBlkTsrExpr<Array> >::type
+    template <typename Array, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalBlkTsrExpr<Array, Scalar>
     operator*(const BlkTsrExpr<Array>& expr, const Scalar& factor) {
-      return ScalBlkTsrExpr<Array>(expr, factor);
+      return ScalBlkTsrExpr<Array, Scalar>(expr, factor);
     }
 
     /// Scaled-block expression factor
@@ -421,39 +424,47 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param expr The block expression object
     /// \return A scaled-block expression object
-    template <typename Array, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalBlkTsrExpr<Array> >::type
+    template <typename Array, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalBlkTsrExpr<Array, Scalar>
     operator*(const Scalar& factor, const BlkTsrExpr<Array>& expr) {
-      return ScalBlkTsrExpr<Array>(expr, factor);
+      return ScalBlkTsrExpr<Array, Scalar>(expr, factor);
     }
 
     /// Scaled-block expression factor
 
     /// \tparam Array The array type
-    /// \tparam Scalar A scalar type
+    /// \tparam Scalar1 A scalar factor type
+    /// \tparam Scalar2 A scalar factor type
     /// \param expr The block expression object
     /// \param factor The scaling factor
     /// \return A scaled-block expression object
-    template <typename Array, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalBlkTsrExpr<Array> >::type
-    operator*(const ScalBlkTsrExpr<Array>& expr, const Scalar& factor) {
-      return ScalBlkTsrExpr<Array>(expr, factor);
+    template <typename Array, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalBlkTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
+      return ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2> >(expr, factor);
     }
 
     /// Scaled-block expression factor
 
     /// \tparam Array The array type
-    /// \tparam Scalar A scalar type
+    /// \tparam Scalar1 A scalar factor type
+    /// \tparam Scalar2 A scalar factor type
     /// \param factor The scaling factor
     /// \param expr The block expression object
     /// \return A scaled-block expression object
-    template <typename Array, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalBlkTsrExpr<Array> >::type
-    operator*(const Scalar& factor, const ScalBlkTsrExpr<Array>& expr) {
-      return ScalBlkTsrExpr<Array>(expr, factor);
+    template <typename Array, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type * = nullptr>
+    inline ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalBlkTsrExpr<Array, Scalar2>& expr) {
+      return ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1> >(expr, factor);
     }
 
     /// Negated block expression factor
@@ -462,18 +473,22 @@ namespace TiledArray {
     /// \param expr The block expression object
     /// \return A scaled-block expression object
     template <typename Array>
-    inline ScalBlkTsrExpr<Array> operator-(const BlkTsrExpr<Array>& expr) {
-      return ScalBlkTsrExpr<Array>(expr, -1);
+    inline ScalBlkTsrExpr<Array, typename ExprTrait<BlkTsrExpr<Array> >::scalar_type>
+    operator-(const BlkTsrExpr<Array>& expr) {
+      return ScalBlkTsrExpr<Array,
+          typename ExprTrait<BlkTsrExpr<Array> >::scalar_type>(expr, -1);
     }
 
     /// Negated scaled-block expression factor
 
     /// \tparam Array The array type
+    /// \tparam Scalar A scalar factor type
     /// \param expr The block expression object
     /// \return A scaled-block expression object
     template <typename Array, typename Scalar>
-    inline ScalBlkTsrExpr<Array> operator-(const ScalBlkTsrExpr<Array>& expr) {
-      return ScalBlkTsrExpr<Array>(expr, -1);
+    inline ScalBlkTsrExpr<Array, Scalar>
+    operator-(const ScalBlkTsrExpr<Array, Scalar>& expr) {
+      return ScalBlkTsrExpr<Array, Scalar>(expr, -1);
     }
 
   } // namespace expressions
