@@ -34,12 +34,16 @@ namespace TiledArray {
 
     template <typename Left, typename Right>
     struct ExprTrait<AddExpr<Left, Right> > :
-        public BinaryExprTrait<Left, Right, void, AddEngine>
+        public BinaryExprTrait<Left, Right, void,
+        AddEngine<typename ExprTrait<Left>::engine_type,
+                  typename ExprTrait<Right>::engine_type> >
     { };
 
     template <typename Left, typename Right, typename Scalar>
     struct ExprTrait<ScalAddExpr<Left, Right, Scalar> > :
-        public BinaryExprTrait<Left, Right, Scalar, ScalAddEngine>
+        public BinaryExprTrait<Left, Right, Scalar,
+        ScalAddEngine<typename ExprTrait<Left>::engine_type,
+                      typename ExprTrait<Right>::engine_type, Scalar> >
     { };
 
 

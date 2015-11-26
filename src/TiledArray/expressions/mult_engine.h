@@ -38,16 +38,16 @@ namespace TiledArray {
     template <typename, typename> class MultExpr;
     template <typename, typename, typename> class ScalMultExpr;
     template <typename, typename> class MultEngine;
-    template <typename, typename> class ScalMultEngine;
+    template <typename, typename, typename> class ScalMultEngine;
 
     template <typename Left, typename Right>
     struct EngineTrait<MultEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::Mult>
+      public BinaryEngineTrait<Left, Right, void, TiledArray::math::Mult>
     { };
 
-    template <typename Left, typename Right>
-    struct EngineTrait<ScalMultEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalMult>
+    template <typename Left, typename Right, typename Scalar>
+    struct EngineTrait<ScalMultEngine<Left, Right, Scalar> > :
+      public BinaryEngineTrait<Left, Right, Scalar, TiledArray::math::ScalMult>
     { };
 
 
@@ -261,11 +261,11 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand engine type
     /// \tparam Right The Right-hand engine type
-    template <typename Left, typename Right>
-    class ScalMultEngine : public ContEngine<ScalMultEngine<Left, Right> > {
+    template <typename Left, typename Right, typename Scalar>
+    class ScalMultEngine : public ContEngine<ScalMultEngine<Left, Right, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalMultEngine<Left, Right> ScalMultEngine_; ///< This class type
+      typedef ScalMultEngine<Left, Right, Scalar> ScalMultEngine_; ///< This class type
       typedef ContEngine<ScalMultEngine_> ContEngine_; ///< Contraction engine base class
       typedef BinaryEngine<ScalMultEngine_> BinaryEngine_; ///< Binary base class type
       typedef BinaryEngine<ScalMultEngine_> ExprEngine_; ///< Expression engine base class type

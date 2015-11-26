@@ -37,16 +37,16 @@ namespace TiledArray {
     template <typename, typename> class AddExpr;
     template <typename, typename, typename> class ScalAddExpr;
     template <typename, typename> class AddEngine;
-    template <typename, typename> class ScalAddEngine;
+    template <typename, typename, typename> class ScalAddEngine;
 
     template <typename Left, typename Right>
     struct EngineTrait<AddEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::Add>
+      public BinaryEngineTrait<Left, Right, void, TiledArray::math::Add>
     { };
 
-    template <typename Left, typename Right>
-    struct EngineTrait<ScalAddEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalAdd>
+    template <typename Left, typename Right, typename Scalar>
+    struct EngineTrait<ScalAddEngine<Left, Right, Scalar> > :
+      public BinaryEngineTrait<Left, Right, Scalar, TiledArray::math::ScalAdd>
     { };
 
     /// Addition expression engine
@@ -123,11 +123,12 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right>
-    class ScalAddEngine : public BinaryEngine<ScalAddEngine<Left, Right> > {
+    /// \tparam Scalar The scaling factor type
+    template <typename Left, typename Right, typename Scalar>
+    class ScalAddEngine : public BinaryEngine<ScalAddEngine<Left, Right, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalAddEngine<Left, Right> ScalAddEngine_; ///< This class type
+      typedef ScalAddEngine<Left, Right, Scalar> ScalAddEngine_; ///< This class type
       typedef BinaryEngine<ScalAddEngine_> BinaryEngine_; ///< Binary expression engine base type
       typedef ExprEngine<ScalAddEngine_> ExprEngine_; ///< Expression engine base type
 

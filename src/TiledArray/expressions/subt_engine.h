@@ -37,16 +37,16 @@ namespace TiledArray {
     template <typename, typename> class SubtExpr;
     template <typename, typename, typename> class ScalSubtExpr;
     template <typename, typename> class SubtEngine;
-    template <typename, typename> class ScalSubtEngine;
+    template <typename, typename, typename> class ScalSubtEngine;
 
     template <typename Left, typename Right>
     struct EngineTrait<SubtEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::Subt>
+      public BinaryEngineTrait<Left, Right, void, TiledArray::math::Subt>
     { };
 
-    template <typename Left, typename Right>
-    struct EngineTrait<ScalSubtEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalSubt>
+    template <typename Left, typename Right, typename Scalar>
+    struct EngineTrait<ScalSubtEngine<Left, Right, Scalar> > :
+      public BinaryEngineTrait<Left, Right, Scalar, TiledArray::math::ScalSubt>
     { };
 
 
@@ -124,12 +124,12 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right>
-    class ScalSubtEngine : public BinaryEngine<ScalSubtEngine<Left, Right> > {
+    template <typename Left, typename Right, typename Scalar>
+    class ScalSubtEngine : public BinaryEngine<ScalSubtEngine<Left, Right, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalSubtEngine<Left, Right> ScalSubtEngine_; ///< This class type
-      typedef BinaryEngine<ScalSubtEngine<Left, Right> > BinaryEngine_; ///< Binary expression engine base type
+      typedef ScalSubtEngine<Left, Right, Scalar> ScalSubtEngine_; ///< This class type
+      typedef BinaryEngine<ScalSubtEngine_> BinaryEngine_; ///< Binary expression engine base type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
