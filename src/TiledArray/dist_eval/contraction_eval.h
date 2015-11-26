@@ -23,7 +23,7 @@
 #include <TiledArray/dist_eval/dist_eval.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/reduce_task.h>
-#include <TiledArray/tile_op/type_traits.h>
+#include <TiledArray/type_traits.h>
 #include <TiledArray/shape.h>
 
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL 1

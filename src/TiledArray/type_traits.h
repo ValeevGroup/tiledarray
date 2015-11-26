@@ -37,6 +37,48 @@ namespace TiledArray {
 
   // Forward declaration
   template <typename> class Tile;
+  template <typename, typename> class DistArray;
+  namespace detail {
+    template <typename, typename> class LazyArrayTile;
+
+    // helps to implement other metafunctions
+    template<typename> struct is_type : public std::true_type { };
+
+  }  // namespace detail
+
+  /**
+   * \addtogroup TileInterface
+   * @{
+   */
+
+  /// Determine the object type used in the evaluation of tensor expressions
+
+  /// This trait class allows user to specify the object type used in an
+  /// expression by providing a (partial) template specialization of this class
+  /// for a user defined tile class. This allows users to use lazy tile
+  /// construction inside tensor expressions. If no evaluation type is
+  /// specified, the lazy tile evaluation is disabled.
+  /// \tparam T The lazy tile type
+  /// \tparam Enabler Internal use only
+  template <typename T, typename Enabler = void>
+  struct eval_trait {
+    typedef T type;
+  }; // struct eval_trait
+
+  /// Determine the object type used in the evaluation of tensor expressions
+
+  /// This trait class allows user to specify the object type used in an
+  /// expression by providing a member type <tt>T::eval_type</tt>. This allows
+  /// users to use lazy tile  construction inside tensor expressions. If no
+  /// evaluation type is specified, the lazy tile evaluation is disabled.
+  /// \tparam T The lazy tile type
+  template <typename T>
+  struct eval_trait<T, typename std::enable_if<detail::is_type<typename T::eval_type>::value>::type>  {
+    typedef typename T::eval_type type;
+  }; // struct eval_trait
+
+
+  /** @}*/
 
 
   namespace detail {
@@ -91,8 +133,47 @@ namespace TiledArray {
     template <typename T>
     struct is_complex<std::complex<T> > : public std::true_type { };
 
-    // helps to implement other metafunctions
-    template<typename> struct is_type : public std::true_type { };
+
+    /// Detect lazy evaluation tiles
+
+    /// \c is_lazy_type evaluates to \c std::true_type when T is a tile that
+    /// uses the lazy evaluation mechanism (i.e. when <tt>T != T::eval_type</tt>),
+    /// otherwise it evaluates to \c std::false_type .
+    /// \tparam T The tile type to test
+    template <typename T>
+    struct is_lazy_tile :
+        public std::integral_constant<bool, ! std::is_same<T, typename eval_trait<T>::type>::value>
+    { }; // struct is_lazy_tile
+
+    template <typename Tile, typename Policy>
+    struct is_lazy_tile<DistArray<Tile, Policy> > : public std::false_type { };
+
+    /// Detect tiles used by \c ArrayEvalImpl
+
+    /// \c is_lazy_type evaluates to \c std::true_type when T is a tile from
+    /// \c ArrayEvalImpl (i.e. when <tt>T != LazyArrayTile</tt>),
+    /// otherwise it evaluates to \c std::false_type .
+    /// \tparam T The tile type to test
+    template <typename T>
+    struct is_array_tile : public std::false_type { };
+
+    template <typename T, typename Op>
+    struct is_array_tile<TiledArray::detail::LazyArrayTile<T, Op> > :
+        public std::true_type
+    { }; // struct is_array_tile
+
+    /// Detect a lazy evaluation tile that are not a \c LazyArrayTile
+
+    /// \c is_non_array_lazy_tile evaluates to \c std::true_type when T is a
+    /// tile that uses the lazy evaluation mechanism (i.e. when
+    /// <tt>T != T::eval_type</tt>), and not a \c LazyArrayTile , otherwise it
+    /// evaluates to \c std::false_type .
+    /// \tparam T The tile type to test
+    template <typename T>
+    struct is_non_array_lazy_tile :
+        public std::integral_constant<bool, is_lazy_tile<T>::value && (! is_array_tile<T>::value)>
+    { }; // struct is_non_array_lazy_tile
+
 
     /// Type trait for extracting the scalar numeric type of tensors and arrays.
 
@@ -113,6 +194,13 @@ namespace TiledArray {
     struct scalar_type<T, typename std::enable_if<is_type<typename T::value_type>::value
           && ! is_numeric<T>::value>::type> :
         public scalar_type<typename T::value_type>
+    { };
+
+
+    template <typename T>
+    struct scalar_type<T, typename std::enable_if<is_lazy_tile<T>::value
+          && ! is_numeric<T>::value>::type> :
+        public scalar_type<typename eval_trait<T>::type>
     { };
 
     template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>

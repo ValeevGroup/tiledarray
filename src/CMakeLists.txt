@@ -132,7 +132,6 @@ TiledArray/tile_op/scal_subt.h
 TiledArray/tile_op/shift.h
 TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h
-TiledArray/tile_op/type_traits.h
 TiledArray/tile_op/unary_interface.h
 TiledArray/tile_op/unary_reduction.h)
 

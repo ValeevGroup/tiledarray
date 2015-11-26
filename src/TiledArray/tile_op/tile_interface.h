@@ -27,7 +27,6 @@
 #define TILEDARRAY_NONINTRUSIVE_API_TENSOR_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
-#include <TiledArray/tile_op/eval_trait.h>
 
 namespace TiledArray {
 

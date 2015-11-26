@@ -27,7 +27,7 @@
 #define TILEDARRAY_UNARY_INTERFACE_H__INCLUDED
 
 #include <TiledArray/tile_op/tile_interface.h>
-#include <TiledArray/tile_op/type_traits.h>
+#include <TiledArray/type_traits.h>
 #include <TiledArray/permutation.h>
 
 namespace TiledArray {

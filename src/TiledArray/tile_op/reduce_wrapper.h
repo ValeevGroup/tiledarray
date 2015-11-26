@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TILE_OP_REDUCE_INTERFACE_H__INCLUDED
 #define TILEDARRAY_TILE_OP_REDUCE_INTERFACE_H__INCLUDED
 
-#include <TiledArray/tile_op/type_traits.h>
+#include <TiledArray/type_traits.h>
 #include <TiledArray/madness.h>
 
 namespace TiledArray {
