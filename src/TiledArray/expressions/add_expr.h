@@ -33,18 +33,22 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename Left, typename Right>
-    struct ExprTrait<AddExpr<Left, Right> > :
-        public BinaryExprTrait<Left, Right, void,
-        AddEngine<typename ExprTrait<Left>::engine_type,
-                  typename ExprTrait<Right>::engine_type> >
-    { };
+    struct ExprTrait<AddExpr<Left, Right> > {
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<Left>::scalar_type scalar_type; ///< Tile scalar type
+      typedef AddEngine<typename ExprTrait<Left>::engine_type,
+          typename ExprTrait<Right>::engine_type> engine_type; ///< Expression engine type
+    };
 
     template <typename Left, typename Right, typename Scalar>
-    struct ExprTrait<ScalAddExpr<Left, Right, Scalar> > :
-        public BinaryExprTrait<Left, Right, Scalar,
-        ScalAddEngine<typename ExprTrait<Left>::engine_type,
-                      typename ExprTrait<Right>::engine_type, Scalar> >
-    { };
+    struct ExprTrait<ScalAddExpr<Left, Right, Scalar> > {
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+      typedef Scalar scalar_type;  ///< Tile scalar type
+      typedef ScalAddEngine<typename ExprTrait<Left>::engine_type,
+          typename ExprTrait<Right>::engine_type, Scalar> engine_type; ///< Expression engine type
+    };
 
 
     /// Addition expression

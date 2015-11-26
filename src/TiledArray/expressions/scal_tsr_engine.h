@@ -33,21 +33,21 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename, typename> class ScalTsrExpr;
-    template <typename> class ScalTsrEngine;
+    template <typename, typename> class ScalTsrEngine;
 
 
-    template <typename Tile, typename Policy>
-    struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy> > > {
+    template <typename Tile, typename Policy, typename Scalar>
+    struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar> > {
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
+      typedef Scalar scalar_type;
       typedef TiledArray::math::Scal<typename array_type::eval_type,
           typename array_type::eval_type, false> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -57,8 +57,8 @@ namespace TiledArray {
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
 
-      static const bool consumable = false;
-      static const unsigned int leaves = 1;
+      static constexpr bool consumable = false;
+      static constexpr unsigned int leaves = 1;
 
     };
 
@@ -66,11 +66,11 @@ namespace TiledArray {
     /// Scaled tensor expression engine
 
     /// \tparam A The \c Array type
-    template <typename Array>
-    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array> > {
+    template <typename Array, typename Scalar>
+    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalTsrEngine<Array> ScalTsrEngine_; ///< This class type
+      typedef ScalTsrEngine<Array, Scalar> ScalTsrEngine_; ///< This class type
       typedef LeafEngine<ScalTsrEngine_> LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
 

@@ -41,7 +41,7 @@ namespace TiledArray {
     template <typename> class BlkTsrExpr;
     template <typename, typename> class ScalBlkTsrExpr;
     template <typename> class BlkTsrEngine;
-    template <typename> class ScalBlkTsrEngine;
+    template <typename, typename> class ScalBlkTsrEngine;
 
     template <typename Tile, typename Policy>
     struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy> > > {
@@ -49,12 +49,12 @@ namespace TiledArray {
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
+      typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
       typedef TiledArray::math::Shift<typename array_type::eval_type,
           typename array_type::eval_type, false> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -69,18 +69,18 @@ namespace TiledArray {
     };
 
 
-    template <typename Tile, typename Policy>
-    struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy> > > {
+    template <typename Tile, typename Policy, typename Scalar>
+    struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar> > {
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
+      typedef Scalar scalar_type;
       typedef TiledArray::math::ScalShift<typename array_type::eval_type,
           typename array_type::eval_type, false> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -381,11 +381,11 @@ namespace TiledArray {
     /// Scaled tensor block expression engine
 
     /// \tparam Array The array type
-    template <typename Array>
-    class ScalBlkTsrEngine : public BlkTsrEngineBase<ScalBlkTsrEngine<Array> > {
+    template <typename Array, typename Scalar>
+    class ScalBlkTsrEngine : public BlkTsrEngineBase<ScalBlkTsrEngine<Array, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalBlkTsrEngine<Array> ScalBlkTsrEngine_; ///< This class type
+      typedef ScalBlkTsrEngine<Array, Scalar> ScalBlkTsrEngine_; ///< This class type
       typedef BlkTsrEngineBase<ScalBlkTsrEngine_> BlkTsrEngineBase_; ///< Block tensor base class type
       typedef typename BlkTsrEngineBase_::LeafEngine_ LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class

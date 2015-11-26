@@ -35,27 +35,27 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename A>
-    struct ExprTrait<TsrExpr<A> > {
-      typedef A array_type; ///< The \c Array type
-      typedef TsrEngine<A> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;  ///< Tile scalar type
+    template <typename Array>
+    struct ExprTrait<TsrExpr<Array> > {
+      typedef Array array_type; ///< The \c Array type
+      typedef TsrEngine<Array> engine_type; ///< Expression engine type
+      typedef typename TiledArray::detail::scalar_type<typename Array::value_type>::type scalar_type;  ///< Tile scalar type
     };
 
-    template <typename A>
-    struct ExprTrait<TsrExpr<const A> > {
-      typedef A array_type; ///< The \c Array type
-      typedef TsrEngine<A> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;  ///< Tile scalar type
+    template <typename Array>
+    struct ExprTrait<TsrExpr<const Array> > {
+      typedef Array array_type; ///< The \c Array type
+      typedef TsrEngine<Array> engine_type; ///< Expression engine type
+      typedef typename TiledArray::detail::scalar_type<typename Array::value_type>::type scalar_type;  ///< Tile scalar type
     };
 
     /// Expression wrapper for array objects
 
-    /// \tparam A The \c TiledArray::Array type
-    template <typename A>
-    class TsrExpr : public Expr<TsrExpr<A> > {
+    /// \tparam Array The \c TiledArray::Array type
+    template <typename Array>
+    class TsrExpr : public Expr<TsrExpr<Array> > {
     public:
-      typedef TsrExpr<A> TsrExpr_; ///< This class type
+      typedef TsrExpr<Array> TsrExpr_; ///< This class type
       typedef Expr<TsrExpr_> Expr_; ///< Base class type
       typedef typename ExprTrait<TsrExpr_>::array_type array_type; ///< The array type
       typedef typename ExprTrait<TsrExpr_>::engine_type engine_type; ///< Expression engine type
@@ -138,19 +138,19 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<const A>
+      BlkTsrExpr<const Array>
       block(const Index& lower_bound, const Index& upper_bound) const {
-        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<const Array>(*this, lower_bound, upper_bound);
       }
 
       /// Block expression
 
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
-      BlkTsrExpr<const A>
+      BlkTsrExpr<const Array>
       block(const std::initializer_list<std::size_t>& lower_bound,
           const std::initializer_list<std::size_t>& upper_bound) const {
-        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<const Array>(*this, lower_bound, upper_bound);
       }
 
       /// Block expression
@@ -159,17 +159,19 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<A> block(const Index& lower_bound, const Index& upper_bound) {
-        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+      BlkTsrExpr<Array>
+      block(const Index& lower_bound, const Index& upper_bound) {
+        return BlkTsrExpr<Array>(*this, lower_bound, upper_bound);
       }
 
       /// Block expression
 
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
-      BlkTsrExpr<A> block(const std::initializer_list<std::size_t>& lower_bound,
+      BlkTsrExpr<Array>
+      block(const std::initializer_list<std::size_t>& lower_bound,
           const std::initializer_list<std::size_t>& upper_bound) {
-        return BlkTsrExpr<A>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<Array>(*this, lower_bound, upper_bound);
       }
 
       /// Tensor variable string accessor
@@ -183,14 +185,14 @@ namespace TiledArray {
     /// Expression wrapper for const array objects
 
     /// \tparam A The \c TiledArray::Array type
-    template <typename A>
-    class TsrExpr<const A> :
-        public Expr<TsrExpr<const A> >
+    template <typename Array>
+    class TsrExpr<const Array> :
+        public Expr<TsrExpr<const Array> >
     {
     public:
-      typedef TsrExpr<const A> TsrExpr_; ///< This class type
+      typedef TsrExpr<const Array> TsrExpr_; ///< This class type
       typedef Expr<TsrExpr_> Expr_; ///< Expression base type
-      typedef A array_type; ///< The array type
+      typedef typename ExprTrait<TsrExpr_>::array_type array_type; ///< The array type
       typedef typename ExprTrait<TsrExpr_>::engine_type engine_type; ///< Expression engine type
 
     private:
@@ -233,8 +235,9 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<const A> block(const Index& lower_bound, const Index& upper_bound) const {
-        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
+      BlkTsrExpr<const Array>
+      block(const Index& lower_bound, const Index& upper_bound) const {
+        return BlkTsrExpr<const Array>(*this, lower_bound, upper_bound);
       }
 
       /// Block expression
@@ -243,9 +246,10 @@ namespace TiledArray {
       /// \param lower_bound The lower_bound of the block
       /// \param upper_bound The upper_bound of the block
       template <typename Index>
-      BlkTsrExpr<const A> block(const std::initializer_list<Index>& lower_bound,
+      BlkTsrExpr<const Array>
+      block(const std::initializer_list<Index>& lower_bound,
           const std::initializer_list<Index>& upper_bound) const {
-        return BlkTsrExpr<const A>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<const Array>(*this, lower_bound, upper_bound);
       }
 
       /// Tensor variable string accessor

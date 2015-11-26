@@ -32,13 +32,6 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename Arg, typename Scalar, template <typename> class Engine>
-    struct UnaryExprTrait {
-      typedef Arg argument_type; ///< The argument expression type
-      typedef Engine<typename Arg::engine_type> engine_type; ///< Expression engine type
-      typedef Scalar scalar_type;  ///< Tile scalar type
-    };
-
     template <typename Derived>
     class UnaryExpr : public Expr<Derived> {
     public:

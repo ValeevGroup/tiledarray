@@ -34,10 +34,10 @@ namespace TiledArray {
 
     template <typename, typename> class ScalTsrExpr;
 
-    template <typename A, typename Scalar>
-    struct ExprTrait<ScalTsrExpr<A, Scalar> > {
-      typedef A array_type; ///< The \c Array type
-      typedef ScalTsrEngine<A> engine_type; ///< Expression engine type
+    template <typename Array, typename Scalar>
+    struct ExprTrait<ScalTsrExpr<Array, Scalar> > {
+      typedef Array array_type; ///< The \c Array type
+      typedef ScalTsrEngine<Array, Scalar> engine_type; ///< Expression engine type
       typedef Scalar scalar_type;  ///< Tile scalar type
     };
 

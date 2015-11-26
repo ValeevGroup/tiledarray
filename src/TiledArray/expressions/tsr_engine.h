@@ -63,8 +63,8 @@ namespace TiledArray {
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
 
-      static const bool consumable = false;
-      static const unsigned int leaves = 1;
+      static constexpr bool consumable = false;
+      static constexpr unsigned int leaves = 1;
     };
 
     /// Tensor expression engine

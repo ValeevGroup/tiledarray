@@ -57,8 +57,8 @@ namespace TiledArray {
       typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Tensor shape type
       typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
-      static const bool consumable = EngineTrait<Derived>::consumable;
-      static const unsigned int leaves = EngineTrait<Derived>::leaves;
+      static constexpr bool consumable = EngineTrait<Derived>::consumable;
+      static constexpr unsigned int leaves = EngineTrait<Derived>::leaves;
 
     protected:
 

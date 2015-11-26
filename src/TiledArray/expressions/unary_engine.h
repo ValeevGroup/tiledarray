@@ -36,29 +36,6 @@ namespace TiledArray {
     // Forward declarations
     template <typename> class UnaryExpr;
 
-    template <typename Arg, template <typename, typename, bool> class Op>
-    struct UnaryEngineTrait {
-      // Argument typedefs
-      typedef Arg argument_type; ///< The argument expression engine type
-
-      // Operational typedefs
-      typedef typename EngineTrait<Arg>::eval_type value_type; ///< The result tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef Op<eval_type, typename EngineTrait<Arg>::eval_type, EngineTrait<Arg>::consumable> op_type; ///< The tile operation type
-      typedef typename EngineTrait<Arg>::scalar_type scalar_type; ///< Tile scalar type
-      typedef typename argument_type::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
-
-      // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
-
-      static const bool consumable = true;
-      static const unsigned int leaves = EngineTrait<Arg>::leaves;
-    };
-
 
     template <typename Derived>
     class UnaryEngine : ExprEngine<Derived> {
@@ -84,8 +61,8 @@ namespace TiledArray {
       typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
 
 
-      static const bool consumable = true;
-      static const unsigned int leaves = argument_type::leaves;
+      static constexpr bool consumable = true;
+      static constexpr unsigned int leaves = argument_type::leaves;
 
     protected:
 

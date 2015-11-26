@@ -41,14 +41,66 @@ namespace TiledArray {
     template <typename, typename, typename> class ScalMultEngine;
 
     template <typename Left, typename Right>
-    struct EngineTrait<MultEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, void, TiledArray::math::Mult>
-    { };
+    struct EngineTrait<MultEngine<Left, Right> > {
+      static_assert(std::is_same<typename EngineTrait<Left>::policy,
+          typename EngineTrait<Right>::policy>::value,
+          "The left- and right-hand expressions must use the same policy class");
+
+      // Argument typedefs
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef typename EngineTrait<Left>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+      typedef TiledArray::math::Mult<value_type, typename EngineTrait<Left>::eval_type,
+          typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
+          EngineTrait<Right>::consumable> op_type; ///< The tile operation type
+      typedef typename Left::policy policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static constexpr bool consumable = true;
+      static constexpr unsigned int leaves =
+          EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
+    };
 
     template <typename Left, typename Right, typename Scalar>
-    struct EngineTrait<ScalMultEngine<Left, Right, Scalar> > :
-      public BinaryEngineTrait<Left, Right, Scalar, TiledArray::math::ScalMult>
-    { };
+    struct EngineTrait<ScalMultEngine<Left, Right, Scalar> > {
+      static_assert(std::is_same<typename EngineTrait<Left>::policy,
+          typename EngineTrait<Right>::policy>::value,
+          "The left- and right-hand expressions must use the same policy class");
+
+      // Argument typedefs
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef Scalar scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+      typedef TiledArray::math::ScalMult<value_type, typename EngineTrait<Left>::eval_type,
+          typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
+          EngineTrait<Right>::consumable> op_type; ///< The tile operation type
+      typedef typename Left::policy policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static constexpr bool consumable = true;
+      static constexpr unsigned int leaves =
+          EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
+    };
 
 
     /// Multiplication expression engine

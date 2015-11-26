@@ -302,6 +302,9 @@ namespace TiledArray {
 
     public:
 
+      template <typename T>
+      using reduce_t = typename TiledArray::detail::scalar_type<typename ExprTrait<T>::engine_type::value_type>::type;
+
       template <typename Op>
       Future<typename Op::result_type>
       reduce(const Op& op, World& world = World::get_default()) const {
@@ -405,25 +408,25 @@ namespace TiledArray {
             local_reduce_task.submit(), op);
       }
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       trace(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::TraceReduction<value_type>(), world);
       }
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       sum(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::SumReduction<value_type>(), world);
       }
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       product(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::ProductReduction<value_type>(), world);
       }
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       squared_norm(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::SquaredNormReduction<value_type>(), world);
@@ -436,38 +439,38 @@ namespace TiledArray {
 
     public:
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       norm(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::scalar_type scalar_type;
         return world.taskq.add(Expr_::template sqrt<scalar_type>, squared_norm(world));
       }
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       min(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::MinReduction<value_type>(), world);
       }
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       max(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::MaxReduction<value_type>(), world);
       }
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       abs_min(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::AbsMinReduction<value_type>(), world);
       }
 
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       abs_max(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::math::AbsMaxReduction<value_type>(), world);
       }
 
       template <typename D>
-      Future<typename ExprTrait<Derived>::scalar_type>
+      Future<reduce_t<Derived> >
       dot(const Expr<D>& right_expr, World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type left_value_type;
         typedef typename EngineTrait<typename D::engine_type>::eval_type right_value_type;

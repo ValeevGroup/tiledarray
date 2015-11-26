@@ -31,14 +31,6 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename Left, typename Right, typename Scalar, typename Engine>
-    struct BinaryExprTrait {
-      typedef Left left_type; ///< The left-hand expression type
-      typedef Right right_type; ///< The right-hand expression type
-      typedef Scalar scalar_type;  ///< Tile scalar type
-      typedef Engine engine_type; ///< Expression engine type
-    };
-
     /// Binary expression object
 
     /// \tparam Derived The derived class type
