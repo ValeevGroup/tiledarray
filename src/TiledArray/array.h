@@ -206,6 +206,13 @@ namespace TiledArray {
     /// destroyed.
     ~DistArray() { }
 
+    /// Create a deep copy of this array
+
+    /// \return An array that is equal to this array
+    DistArray_ clone() const {
+      return TiledArray::clone(*this);
+    }
+
     static void wait_for_lazy_cleanup(World& world, const double timeout = 60.0) {
       try {
         madness::ThreadPool::await([&]() { return (cleanup_counter_ == 0); }, true);
