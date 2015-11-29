@@ -26,6 +26,7 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/array_impl.h>
 #include <TiledArray/conversions/truncate.h>
+#include <TiledArray/conversions/clone.h>
 
 namespace TiledArray {
 
@@ -205,6 +206,13 @@ namespace TiledArray {
     /// after the last reference to the world object on all nodes has been
     /// destroyed.
     ~DistArray() { }
+
+    /// Create a deep copy of this array
+
+    /// \return An array that is equal to this array
+    DistArray_ clone() const {
+      return TiledArray::clone(*this);
+    }
 
     static void wait_for_lazy_cleanup(World& world, const double timeout = 60.0) {
       try {
