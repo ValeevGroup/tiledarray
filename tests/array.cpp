@@ -23,6 +23,7 @@
 #include "unit_test_config.h"
 #include "../src/TiledArray/array.h"
 #include <random>
+#include <chrono>
 
 using namespace TiledArray;
 
