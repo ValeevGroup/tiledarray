@@ -22,6 +22,7 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 #include "../src/TiledArray/array.h"
+#include <random>
 
 using namespace TiledArray;
 
