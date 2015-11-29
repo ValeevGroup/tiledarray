@@ -26,6 +26,7 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/array_impl.h>
 #include <TiledArray/conversions/truncate.h>
+#include <TiledArray/conversions/clone.h>
 
 namespace TiledArray {
 
