@@ -204,6 +204,53 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
   }
 }
 
+BOOST_AUTO_TEST_CASE( clone )
+{
+  std::vector<int> data;
+  ArrayN a(world, tr);
+
+  // Init tiles with random data
+  a.init_local_tiles([](const Range& range) -> TensorI {
+    std::default_random_engine generator(std::chrono::system_clock::now().time_since_epoch().count());
+    std::uniform_int_distribution<int> distribution(0,100);
+
+    TensorI tile(range);
+    tile.inplace_unary([&] (int& value) { value = distribution(generator); });
+    return tile;
+  });
+
+  ArrayN ca;
+  BOOST_REQUIRE_NO_THROW(ca = TiledArray::clone(a));
+
+  // Check array data are equal
+  BOOST_CHECK(!(ca.id() == a.id()));
+  BOOST_CHECK_EQUAL(ca.get_world().id(), a.get_world().id());
+  BOOST_CHECK_EQUAL(ca.trange(), a.trange());
+  BOOST_CHECK_EQUAL_COLLECTIONS(ca.get_pmap()->begin(), ca.get_pmap()->end(),
+      a.get_pmap()->begin(), a.get_pmap()->end());
+
+  // Check that array tiles are equal
+  for(typename ArrayN::size_type index = 0ul; index < a.size(); ++index) {
+    // Check that per-tile information is the same
+    BOOST_CHECK_EQUAL(ca.owner(index), a.owner(index));
+    BOOST_CHECK_EQUAL(ca.is_local(index), a.is_local(index));
+    BOOST_CHECK_EQUAL(ca.is_zero(index), a.is_zero(index));
+
+    // Skip non-local tiles
+    if(! a.is_local(index))
+      continue;
+
+    const TensorI t = a.find(index).get();
+    const TensorI ct = ca.find(index).get();
+
+    // Check that tile data is the same but held in different memory locations
+    BOOST_CHECK_NE(ct.data(), t.data());
+    BOOST_CHECK_EQUAL(ct.range(), t.range());
+    BOOST_CHECK_EQUAL_COLLECTIONS(ct.begin(), ct.end(), t.begin(), t.end());
+
+  }
+}
+
 BOOST_AUTO_TEST_CASE( make_replicated )
 {
   // Get a copy of the original process map
