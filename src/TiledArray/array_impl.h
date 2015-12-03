@@ -249,7 +249,7 @@ namespace TiledArray {
       /// \return A reference to this object
       template <typename R>
       ArrayIterator_& operator=(const ArrayIiterator<Impl, R>& other) {
-        array_ = other.tensor_;
+        array_ = other.array_;
         it_ = other.it_;
 
         return *this;
