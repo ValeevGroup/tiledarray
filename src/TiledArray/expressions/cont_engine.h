@@ -56,9 +56,10 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
       typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
-      typedef TiledArray::math::ContractReduce<value_type,
+      typedef TiledArray::ContractReduce<
           typename eval_trait<typename left_type::value_type>::type,
-          typename eval_trait<typename right_type::value_type>::type> op_type; ///< The tile operation type
+          typename eval_trait<typename right_type::value_type>::type,
+          scalar_type> op_type; ///< The tile operation type
       typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
       typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 

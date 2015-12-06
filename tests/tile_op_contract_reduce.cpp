@@ -78,14 +78,14 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_contract_reduce_suite, ContractReduceFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW((ContractReduce<tensor_type, tensor_type, tensor_type>( \
+  BOOST_REQUIRE_NO_THROW((ContractReduce<tensor_type, tensor_type, int>( \
       madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, 2u, 2u)));
 }
 
 BOOST_AUTO_TEST_CASE( make_result )
 {
   // Check the seed operation produces an empty tensor.
-  ContractReduce<tensor_type, tensor_type, tensor_type>
+  ContractReduce<tensor_type, tensor_type, int>
   op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, 2u, 2u);
   tensor_type result;
   BOOST_REQUIRE_NO_THROW(result = op());
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE( make_result )
 BOOST_AUTO_TEST_CASE( permute_empty )
 {
   // Check the seed operation produces an empty tensor.
-  ContractReduce<tensor_type, tensor_type, tensor_type>
+  ContractReduce<tensor_type, tensor_type, int>
   op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, 2u, 2u);
   tensor_type t, result;
   BOOST_REQUIRE_THROW(result = op(t), TiledArray::Exception);
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   ////////////////////////
   // Test NoTrans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 3, 2u, 2u, 2u);
 
     // Do contraction operation
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   ////////////////////////
   // Test Trans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::Trans, madness::cblas::NoTrans, 3, 2u, 2u, 2u);
 
     // Do contraction operation
@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   ////////////////////////
   // Test NoTrans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::NoTrans, madness::cblas::Trans, 3, 2u, 2u, 2u);
 
     // Do contraction operation
@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   ////////////////////////
   // Test Trans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::Trans, madness::cblas::Trans, 3, 2u, 2u, 2u);
 
     // Do contraction operation
@@ -243,7 +243,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   ////////////////////////
   // Test NoTrans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 3, 2u, 3u, 3u);
 
     // Do contraction operation
@@ -266,7 +266,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   ////////////////////////
   // Test Trans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::Trans, madness::cblas::NoTrans, 3, 2u, 3u, 3u);
 
     // Do contraction operation
@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   ////////////////////////
   // Test NoTrans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::NoTrans, madness::cblas::Trans, 3, 2u, 3u, 3u);
 
     // Do contraction operation
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   ////////////////////////
   // Test Trans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::Trans, madness::cblas::Trans, 3, 2u, 3u, 3u);
 
     // Do contraction operation
@@ -360,7 +360,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   ////////////////////////
   // Test NoTrans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 3, 4u, 3u, 3u);
 
     // Do contraction operation
@@ -389,7 +389,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   ////////////////////////
   // Test Trans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::Trans, madness::cblas::NoTrans, 3, 4u, 3u, 3u);
 
     // Do contraction operation
@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   ////////////////////////
   // Test NoTrans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::NoTrans, madness::cblas::Trans, 3, 4u, 3u, 3u);
 
     // Do contraction operation
@@ -445,7 +445,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   ////////////////////////
   // Test Trans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, tensor_type>
+    ContractReduce<tensor_type, tensor_type, int>
     op(madness::cblas::Trans, madness::cblas::Trans, 3, 4u, 3u, 3u);
 
     // Do contraction operation

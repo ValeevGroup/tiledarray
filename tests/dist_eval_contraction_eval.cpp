@@ -38,8 +38,6 @@ struct ContractionEvalFixture : public SparseShapeFixture {
       ArrayN::value_type, true> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
       DensePolicy> array_eval_type;
-  typedef math::ContractReduce<ArrayN::value_type, ArrayN::value_type, ArrayN::value_type> op_type;
-  typedef detail::Summa<array_eval_type, array_eval_type, op_type, DensePolicy> impl_type;
   typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
   ContractionEvalFixture() :
@@ -53,8 +51,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
     right_arg(make_array_eval(right, right.get_world(), DenseShape(),
         proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[tr.tiles().rank() - 1u]),
         Permutation(), array_op_type())),
-    result_tr(),
-    op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().rank(), tr.tiles().rank())
+    result_tr()
   {
     // Fill arrays with random data
     rand_fill_array(left);
@@ -62,13 +59,23 @@ struct ContractionEvalFixture : public SparseShapeFixture {
 
     std::array<TiledRange1, 2ul> tranges =
         {{ left.trange().data().front(), right.trange().data().back() }};
-    result_tr = impl_type::trange_type(tranges.begin(), tranges.end());
+    result_tr = TiledRange(tranges.begin(), tranges.end());
 
     pmap.reset(new detail::BlockedPmap(* GlobalFixture::world, result_tr.tiles().volume()));
   }
 
   ~ContractionEvalFixture() {
     GlobalFixture::world->gop.fence();
+  }
+
+
+  static ContractReduce<TArrayI::value_type, TArrayI::value_type, int>
+  make_contract(const unsigned int result_rank, const unsigned int left_rank,
+      const unsigned int right_rank, const Permutation& perm = Permutation())
+  {
+    return ContractReduce<TArrayI::value_type, TArrayI::value_type, int>(
+        madness::cblas::NoTrans, madness::cblas::NoTrans, 1, result_rank,
+        left_rank, right_rank, perm);
   }
 
   template <typename Tile, typename Policy>
@@ -86,7 +93,8 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   }
 
   template <typename Tile, typename Policy>
-  static matrix_type copy_to_matrix(const DistArray<Tile, Policy>& array, const int middle) {
+  static matrix_type
+  copy_to_matrix(const DistArray<Tile, Policy>& array, const int middle) {
 
     // Compute the number of rows and columns in the matrix, and a new weight
     // that is bisected the row and column dimensions.
@@ -113,7 +121,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
         continue;
 
       // Get tile for index
-      const ArrayN::value_type tile = array.find(index);
+      const TArrayI::value_type tile = array.find(index);
 
       // Compute block start and size
       std::size_t start[2] = { 0ul, 0ul }, size[2] = { 1ul, 1ul };
@@ -150,7 +158,8 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   /// \param perm The permutation applied to the tensor
   /// \param op The contraction/reduction tile operation
   template <typename LeftTile, typename RightTile, typename Policy, typename Op>
-  TiledArray::detail::DistEval<typename Op::result_type, Policy> make_contract_eval(
+  TiledArray::detail::DistEval<typename Op::result_type, Policy>
+  make_contract_eval(
       const TiledArray::detail::DistEval<LeftTile, Policy>& left,
       const TiledArray::detail::DistEval<RightTile, Policy>& right,
       TiledArray::World& world,
@@ -224,29 +233,28 @@ struct ContractionEvalFixture : public SparseShapeFixture {
         (perm ? perm * array.trange() : array.trange()), shape, pmap, perm, op)));
   }
 
-  ArrayN left;
-  ArrayN right;
+  TArrayI left;
+  TArrayI right;
   detail::ProcGrid proc_grid;
   array_eval_type left_arg;
   array_eval_type right_arg;
-  impl_type::trange_type result_tr;
-  std::shared_ptr<impl_type::pmap_interface> pmap;
-  op_type op;
-
+  TiledRange result_tr;
+  std::shared_ptr<Pmap> pmap;
 }; // ContractionEvalFixture
 
 BOOST_FIXTURE_TEST_SUITE( dist_eval_contraction_eval_suite, ContractionEvalFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
 
   BOOST_REQUIRE_NO_THROW(make_contract_eval(left_arg, right_arg, left.get_world(),
-      DenseShape(), pmap, Permutation(), op));
+      DenseShape(), pmap, Permutation(), make_contract(2u,
+      left_arg.trange().tiles().rank(), right_arg.trange().tiles().rank())));
 
 
-  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
-      left_arg.get_world(), DenseShape(), pmap, Permutation(), op);
+  auto contract = make_contract_eval(left_arg, right_arg,
+      left_arg.get_world(), DenseShape(), pmap, Permutation(), make_contract(2u,
+      left_arg.trange().tiles().rank(), right_arg.trange().tiles().rank()));
 
   BOOST_CHECK_EQUAL(& contract.get_world(), GlobalFixture::world);
   BOOST_CHECK(contract.pmap() == pmap);
@@ -262,10 +270,11 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( eval )
 {
-  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
+  auto contract = make_contract_eval(left_arg, right_arg,
+      left_arg.get_world(), DenseShape(), pmap, Permutation(), make_contract(2u,
+      left_arg.trange().tiles().rank(), right_arg.trange().tiles().rank()));
+  using dist_eval_type = decltype(contract);
 
-  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
-      left_arg.get_world(), DenseShape(), pmap, Permutation(), op);
 
   // Check evaluation
   BOOST_REQUIRE_NO_THROW(contract.eval());
@@ -276,24 +285,21 @@ BOOST_AUTO_TEST_CASE( eval )
   const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
   const matrix_type reference = l * r;
 
-  dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
-  const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
-
   // Check that each tile has been properly scaled.
-  for(; it != end; ++it) {
+  for(auto index : * contract.pmap()) {
 
     // Get the array evaluator tile.
-    Future<dist_eval_type1::value_type> tile;
-    BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
+    Future<dist_eval_type::value_type> tile;
+    BOOST_REQUIRE_NO_THROW(tile = contract.get(index));
 
     // Force the evaluation of the tile
-    dist_eval_type1::eval_type eval_tile;
+    dist_eval_type::eval_type eval_tile;
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
     BOOST_CHECK(! eval_tile.empty());
 
     if(!eval_tile.empty()) {
       // Check that the result tile is correctly modified.
-      BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+      BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(index));
       BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound_data()[0],
           eval_tile.range().lobound_data()[1], eval_tile.range().extent_data()[0], eval_tile.range().extent_data()[1]));
     }
@@ -304,12 +310,13 @@ BOOST_AUTO_TEST_CASE( eval )
 
 BOOST_AUTO_TEST_CASE( perm_eval )
 {
-  typedef detail::DistEval<op_type::result_type, DensePolicy> dist_eval_type1;
   Permutation perm({1,0});
-  op_type pop(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, tr.tiles().rank(), tr.tiles().rank(), perm);
 
-  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
-      left_arg.get_world(), DenseShape(), pmap, perm, pop);
+  auto contract = make_contract_eval(left_arg, right_arg,
+      left_arg.get_world(), DenseShape(), pmap, perm, make_contract(2u,
+      left_arg.trange().tiles().rank(), right_arg.trange().tiles().rank(),
+      perm));
+  using dist_eval_type = decltype(contract);
 
   // Check evaluation
   BOOST_REQUIRE_NO_THROW(contract.eval());
@@ -320,24 +327,21 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
   const matrix_type reference = (l * r).transpose();
 
-  dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
-  const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
-
   // Check that each tile has been properly scaled.
-  for(; it != end; ++it) {
+  for(auto index : * contract.pmap()) {
 
     // Get the array evaluator tile.
-    Future<dist_eval_type1::value_type> tile;
-    BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
+    Future<dist_eval_type::value_type> tile;
+    BOOST_REQUIRE_NO_THROW(tile = contract.get(index));
 
     // Force the evaluation of the tile
-    dist_eval_type1::eval_type eval_tile;
+    dist_eval_type::eval_type eval_tile;
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
     BOOST_CHECK(! eval_tile.empty());
 
     if(!eval_tile.empty()) {
       // Check that the result tile is correctly modified.
-      BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+      BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(index));
       BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound_data()[0],
           eval_tile.range().lobound_data()[1], eval_tile.range().extent_data()[0], eval_tile.range().extent_data()[1]));
     }
@@ -349,14 +353,9 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
 BOOST_AUTO_TEST_CASE( sparse_eval )
 {
-  typedef detail::DistEval<op_type::result_type, SparsePolicy> dist_eval_type1;
-  typedef TSpArrayI array_type;
-  typedef detail::DistEval<detail::LazyArrayTile<array_type::value_type, array_op_type>,
-      SparsePolicy> array_eval_type;
+  TSpArrayI left(*GlobalFixture::world, tr, make_shape(tr, 0.4, 23));
 
-  array_type left(*GlobalFixture::world, tr, make_shape(tr, 0.4, 23));
-
-  array_type right(*GlobalFixture::world, tr, make_shape(tr, 0.4, 42));
+  TSpArrayI right(*GlobalFixture::world, tr, make_shape(tr, 0.4, 42));
 
   // Fill arrays with random data
   rand_fill_array(left);
@@ -364,17 +363,20 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   rand_fill_array(right);
   right.truncate();
 
-  array_eval_type left_arg(make_array_eval(left, left.get_world(), left.get_shape(),
+  auto left_arg = make_array_eval(left, left.get_world(), left.get_shape(),
       proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[0]),
-      Permutation(), array_op_type()));
-  array_eval_type right_arg(make_array_eval(right, right.get_world(), right.get_shape(),
+      Permutation(), array_op_type());
+  auto right_arg = make_array_eval(right, right.get_world(), right.get_shape(),
       proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[tr.tiles().rank() - 1]),
-      Permutation(), array_op_type()));
+      Permutation(), array_op_type());
+  auto op = make_contract(2u, left_arg.trange().tiles().rank(),
+      right_arg.trange().tiles().rank());
 
   const SparseShape<float> result_shape = left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
 
-  dist_eval_type1 contract = make_contract_eval(left_arg, right_arg,
+  auto contract = make_contract_eval(left_arg, right_arg,
       left_arg.get_world(), result_shape, pmap, Permutation(), op);
+  using dist_eval_type = decltype(contract);
 
   // Check evaluation
   BOOST_REQUIRE_NO_THROW(contract.eval());
@@ -384,31 +386,28 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
   const matrix_type reference = l * r;
 
-  dist_eval_type1::pmap_interface::const_iterator it = contract.pmap()->begin();
-  const dist_eval_type1::pmap_interface::const_iterator end = contract.pmap()->end();
-
   // Check that each tile has been properly scaled.
-  for(; it != end; ++it) {
+  for(auto index : * contract.pmap()) {
     // Skip zero tiles
-    if(contract.is_zero(*it)) {
-      dist_eval_type1::range_type range = contract.trange().make_tile_range(*it);
+    if(contract.is_zero(index)) {
+      dist_eval_type::range_type range = contract.trange().make_tile_range(index);
 
       BOOST_CHECK((reference.block(range.lobound_data()[0], range.lobound_data()[1],
           range.extent_data()[0], range.extent_data()[1]).array() == 0).all());
 
     } else {
       // Get the array evaluator tile.
-      Future<dist_eval_type1::value_type> tile;
-      BOOST_REQUIRE_NO_THROW(tile = contract.get(*it));
+      Future<dist_eval_type::value_type> tile;
+      BOOST_REQUIRE_NO_THROW(tile = contract.get(index));
 
       // Force the evaluation of the tile
-      dist_eval_type1::eval_type eval_tile;
+      dist_eval_type::eval_type eval_tile;
       BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
       BOOST_CHECK(! eval_tile.empty());
 
       if(!eval_tile.empty()) {
         // Check that the result tile is correctly modified.
-        BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(*it));
+        BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(index));
         BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound_data()[0],
             eval_tile.range().lobound_data()[1], eval_tile.range().extent_data()[0], eval_tile.range().extent_data()[1]));
       }
