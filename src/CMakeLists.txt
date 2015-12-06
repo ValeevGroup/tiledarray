@@ -126,8 +126,6 @@ TiledArray/tile_op/noop.h
 TiledArray/tile_op/reduce_wrapper.h
 TiledArray/tile_op/scal.h
 TiledArray/tile_op/scal_shift.h
-TiledArray/tile_op/scal_mult.h
-TiledArray/tile_op/scal_subt.h
 TiledArray/tile_op/shift.h
 TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h

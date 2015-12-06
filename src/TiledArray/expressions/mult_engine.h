@@ -28,7 +28,7 @@
 
 #include <TiledArray/expressions/cont_engine.h>
 #include <TiledArray/tile_op/mult.h>
-#include <TiledArray/tile_op/scal_mult.h>
+#include <TiledArray/tile_op/binary_wrapper.h>
 
 
 namespace TiledArray {
@@ -52,11 +52,12 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<Left>::scalar_type scalar_type; ///< Tile scalar type
-      typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef TiledArray::math::Mult<value_type, typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::Mult<typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
-          EngineTrait<Right>::consumable> op_type; ///< The tile operation type
+          EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
+      typedef typename op_type::result_type value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
       typedef typename Left::policy policy; ///< The result policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -66,7 +67,7 @@ namespace TiledArray {
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
 
-      static constexpr bool consumable = true;
+      static constexpr bool consumable = is_consumable_tile<eval_type>::value;
       static constexpr unsigned int leaves =
           EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
     };
@@ -85,9 +86,10 @@ namespace TiledArray {
       typedef Scalar scalar_type; ///< Tile scalar type
       typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef TiledArray::math::ScalMult<value_type, typename EngineTrait<Left>::eval_type,
-          typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
-          EngineTrait<Right>::consumable> op_type; ///< The tile operation type
+      typedef TiledArray::ScalMult<typename EngineTrait<Left>::eval_type,
+          typename EngineTrait<Right>::eval_type, scalar_type,
+          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
       typedef typename Left::policy policy; ///< The result policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -97,7 +99,7 @@ namespace TiledArray {
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
 
-      static constexpr bool consumable = true;
+      static constexpr bool consumable = is_consumable_tile<eval_type>::value;
       static constexpr unsigned int leaves =
           EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
     };
@@ -123,6 +125,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<MultEngine_>::value_type value_type; ///< The result tile type
       typedef typename EngineTrait<MultEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<MultEngine_>::op_base_type op_base_type; ///< The tile operation type
       typedef typename EngineTrait<MultEngine_>::op_type op_type; ///< The tile operation type
       typedef typename EngineTrait<MultEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<MultEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
@@ -272,13 +275,13 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      static op_type make_tile_op() { return op_type(); }
+      static op_type make_tile_op() { return op_type(op_base_type()); }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
-      static op_type make_tile_op(const Permutation& perm) { return op_type(perm); }
+      static op_type make_tile_op(const Permutation& perm) { return op_type(op_base_type(), perm); }
 
       /// Construct the distributed evaluator for this expression
 
@@ -329,6 +332,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<ScalMultEngine_>::value_type value_type; ///< The result tile type
       typedef typename EngineTrait<ScalMultEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalMultEngine_>::op_base_type op_base_type; ///< The tile operation type
       typedef typename EngineTrait<ScalMultEngine_>::op_type op_type; ///< The tile operation type
       typedef typename EngineTrait<ScalMultEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<ScalMultEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
@@ -490,14 +494,14 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      op_type make_tile_op() const { return op_type(ContEngine_::factor_); }
+      op_type make_tile_op() const { return op_type(op_base_type(ContEngine_::factor_)); }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
       op_type make_tile_op(const Permutation& perm) const {
-        return op_type(perm, ContEngine_::factor_);
+        return op_type(op_base_type(ContEngine_::factor_), perm);
       }
 
 
