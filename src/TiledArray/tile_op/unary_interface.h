@@ -72,8 +72,8 @@ namespace TiledArray {
           result_type; ///< The result tile type
 
 
-      typedef typename UnaryTileOpTrait<Derived>::is_consumable
-          is_consumable; ///< Left is consumable type trait
+      static constexpr bool is_consumable =
+          UnaryTileOpTrait<Derived>::is_consumable::value; ///< Result tile is consumable flag
 
     private:
 
@@ -138,7 +138,7 @@ namespace TiledArray {
         if(perm_)
           return derived().permute_op(arg);
 
-        return derived().template no_permute_op<is_consumable::value>(arg);
+        return derived().template no_permute_op<is_consumable>(arg);
       }
 
       /// Evaluate lazy tile arguments
@@ -187,6 +187,9 @@ namespace TiledArray {
           argument_type; ///< The argument type
       typedef typename UnaryTileOpTrait<Op<Result, Arg, false> >::result_type
           result_type; ///< The result tile type
+
+
+      static constexpr bool is_consumable = false; ///< Result tile is consumable flag
 
     private:
 

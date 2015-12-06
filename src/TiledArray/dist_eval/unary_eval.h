@@ -98,9 +98,9 @@ namespace TiledArray {
 
       /// The argument must be a non-const reference if the input tile is
       /// a consumable resource, otherwise a const reference is sufficient.
-      typedef typename std::conditional<std::is_const<typename op_type::argument_type>::value,
-          const typename arg_type::value_type&,
-                typename arg_type::value_type&>::type
+      typedef typename std::conditional<op_type::is_consumable,
+                typename arg_type::value_type&,
+          const typename arg_type::value_type&>::type
               tile_argument_type;
 
       /// Task function for evaluating tiles
