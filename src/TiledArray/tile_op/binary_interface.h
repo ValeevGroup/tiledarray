@@ -79,10 +79,10 @@ namespace TiledArray {
       typedef typename BinaryTileOpPolicy<Derived>::result_type
           result_type; ///< The result tile type
 
-      typedef typename BinaryTileOpPolicy<Derived>::left_is_consumable
-          left_is_consumable; ///< Left is consumable type trait
-      typedef typename BinaryTileOpPolicy<Derived>::right_is_consumable
-          right_is_consumable; ///< Right is consumable type trait
+      static constexpr bool left_is_consumable =
+          BinaryTileOpPolicy<Derived>::left_is_consumable::value; ///< Left is consumable type trait
+      static constexpr bool right_is_consumable =
+          BinaryTileOpPolicy<Derived>::right_is_consumable::value; ///< Right is consumable type trait
 
     protected:
 
@@ -105,8 +105,8 @@ namespace TiledArray {
         if(derived().permutation())
           return derived().permute_op(first, second);
 
-        return derived().template no_permute_op<left_is_consumable::value,
-            right_is_consumable::value>(first, second);
+        return derived().template no_permute_op<left_is_consumable,
+            right_is_consumable>(first, second);
       }
 
       /// Evaluate a zero tile to a non-zero tiles and possibly permute
@@ -121,8 +121,8 @@ namespace TiledArray {
         if(derived().permutation())
           return derived().permute_op(first, second);
 
-        return derived().template no_permute_op<left_is_consumable::value,
-            right_is_consumable::value>(first, second);
+        return derived().template no_permute_op<left_is_consumable,
+            right_is_consumable>(first, second);
       }
 
       /// Evaluate a non-zero tiles to a zero tile and possibly permute
@@ -137,8 +137,8 @@ namespace TiledArray {
         if(derived().permutation())
           return derived().permute_op(first, second);
 
-        return derived().template no_permute_op<left_is_consumable::value,
-            right_is_consumable::value>(first, second);
+        return derived().template no_permute_op<left_is_consumable,
+            right_is_consumable>(first, second);
       }
 
     }; // class BinaryInterfaceBase
