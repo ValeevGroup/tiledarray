@@ -37,6 +37,7 @@ namespace TiledArray {
 
   // Forward declaration
   template <typename> class Tile;
+  struct ZeroTensor;
   template <typename, typename> class DistArray;
   namespace detail {
     template <typename, typename> class LazyArrayTile;
@@ -106,6 +107,10 @@ namespace TiledArray {
   struct is_consumable_tile :
       public std::integral_constant<bool, ! is_lazy_tile<T>::value>
   { };
+
+  template <>
+  struct is_consumable_tile<ZeroTensor> : public std::false_type { };
+
 
 
   /** @}*/
