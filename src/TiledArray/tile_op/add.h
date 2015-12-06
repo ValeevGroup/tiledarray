@@ -26,137 +26,372 @@
 #ifndef TILEDARRAY_TILE_OP_ADD_H__INCLUDED
 #define TILEDARRAY_TILE_OP_ADD_H__INCLUDED
 
-#include <TiledArray/tile_op/binary_interface.h>
+#include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/zero_tensor.h>
 
 namespace TiledArray {
-  namespace math {
 
-    /// Tile addition operation
+  /// Tile addition operation
 
-    /// This addition operation will add the content two tiles and apply a
-    /// permutation to the result tensor. If no permutation is given or the
-    /// permutation is null, then the result is not permuted.
-    /// \tparam Result The result type
-    /// \tparam Left The left-hand argument type
-    /// \tparam Right The right-hand argument type
-    /// \tparam LeftConsumable A flag that is \c true when the left-hand
-    /// argument is consumable.
-    /// \tparam RightConsumable A flag that is \c true when the right-hand
-    /// argument is consumable.
-    template <typename Result, typename Left, typename Right, bool LeftConsumable,
-        bool RightConsumable>
-    class Add : public BinaryInterface<Add<Result, Left, Right, LeftConsumable,
-        RightConsumable> >
+  /// This addition operation will add the content two tiles, and accepts an
+  /// optional permute argument.
+  /// \tparam Left The left-hand argument type
+  /// \tparam Right The right-hand argument type
+  /// \tparam LeftConsumable A flag that is \c true when the left-hand
+  /// argument is consumable.
+  /// \tparam RightConsumable A flag that is \c true when the right-hand
+  /// argument is consumable.
+  template <typename Left, typename Right, bool LeftConsumable,
+      bool RightConsumable>
+  class Add {
+  public:
+
+    typedef Add<Left, Right, LeftConsumable, RightConsumable> Add_;
+    typedef Left left_type; ///< Left-hand argument base type
+    typedef Right right_type; ///< Right-hand argument base type
+//    typedef Left result_type;
+    typedef decltype(add(std::declval<left_type>(), std::declval<right_type>()))
+        result_type;
+
+    static constexpr bool left_is_consumable =
+        LeftConsumable && std::is_same<result_type, left_type>::value;
+    static constexpr bool right_is_consumable =
+        RightConsumable && std::is_same<result_type, right_type>::value;
+
+  private:
+
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
+
+    static result_type eval(const left_type& first, const right_type& second,
+        const Permutation& perm)
     {
-    public:
-      typedef Add<Result, Left, Right, LeftConsumable, RightConsumable> Add_; ///< This object type
-      typedef BinaryInterface<Add_> BinaryInterface_; ///< Interface base class type
-      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
-      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
-      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
+      using TiledArray::add;
+      return add(first, second, perm);
+    }
 
-    public:
-      /// Default constructor
+    static result_type eval(ZeroTensor, const right_type& second,
+        const Permutation& perm)
+    {
+      using TiledArray::permute;
+      return permute(second, perm);
+    }
 
-      /// Construct an addition operation that does not permute the result tile
-      Add() : BinaryInterface_() { }
+    static result_type eval(const left_type& first, ZeroTensor,
+        const Permutation& perm)
+    {
+      using TiledArray::permute;
+      return permute(first, perm);
+    }
 
-      /// Permute constructor
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the consumability
+    // of the arguments.
 
-      /// Construct an addition operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      explicit Add(const Permutation& perm) : BinaryInterface_(perm) { }
+    template <bool LC, bool RC,
+        typename std::enable_if<!(LC || RC)>::type* = nullptr>
+    static result_type eval(const left_type& first, const right_type& second) {
+      using TiledArray::add;
+      return add(first, second);
+    }
 
-      /// Copy constructor
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    static result_type eval(left_type& first, const right_type& second) {
+      using TiledArray::add_to;
+      return add_to(first, second);
+    }
 
-      /// \param other The addition operation object to be copied
-      Add(const Add_& other) : BinaryInterface_(other) { }
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC && RC>::type* = nullptr>
+    static result_type eval(const left_type& first, right_type& second) {
+      using TiledArray::add_to;
+      return add_to(second, first);
+    }
 
-      /// Copy assignment
+    template <bool LC, bool RC,
+        typename std::enable_if<!RC>::type* = nullptr>
+    static result_type eval(const ZeroTensor&, const right_type& second) {
+      using TiledArray::clone;
+      return clone(second);
+    }
 
-      /// \param other The addition operation object to be copied
-      /// \return A reference to this object
-      Add_& operator=(const Add_& other) {
-        BinaryInterface_::operator =(other);
-        return *this;
-      }
+    template <bool LC, bool RC,
+        typename std::enable_if<RC>::type* = nullptr>
+    static result_type eval(const ZeroTensor&, right_type& second) {
+      return second;
+    }
 
-      // Import interface from base class
-      using BinaryInterface_::operator();
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC>::type* = nullptr>
+    static result_type eval(const left_type& first, const ZeroTensor&) {
+      using TiledArray::clone;
+      return clone(first);
+    }
 
-      // Permuting tile evaluation function
-      // These operations cannot consume the argument tile since this operation
-      // requires temporary storage space.
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    static result_type eval(left_type& first, const ZeroTensor&) {
+      return first;
+    }
 
-      result_type permute_op(const Left& first, const Right& second) const {
-        using TiledArray::add;
-        return add(first, second, BinaryInterface_::permutation());
-      }
+  public:
 
-      result_type permute_op(ZeroTensor, const Right& second) const {
-        using TiledArray::permute;
-        return permute(second, BinaryInterface_::permutation());
-      }
+    /// Add-and-permute operator
 
-      result_type permute_op(const Left& first, ZeroTensor) const {
-        using TiledArray::permute;
-        return permute(first, BinaryInterface_::permutation());
-      }
+    /// Compute the sum of two tiles and permute the result. One of the argument
+    /// tiles may be replaced with `ZeroTensor` argument, in which case the
+    /// argument's element values are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return The permuted and scaled sum of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+      return eval(left, right, perm);
+    }
 
-      // Non-permuting tile evaluation functions
-      // The compiler will select the correct functions based on the consumability
-      // of the arguments.
+    /// Add operator
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!(LC || RC), result_type>::type
-      no_permute_op(const Left& first, const Right& second) {
-        using TiledArray::add;
-        return add(first, second);
-      }
+    /// Compute the sum of two tiles. One of the argument tiles may be replaced
+    /// with `ZeroTensor` argument, in which case the argument's element values
+    /// are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The scaled sum of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right) const {
+      return Add_::template eval<left_is_consumable, right_is_consumable>(left,
+          right);
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<LC, result_type>::type
-      no_permute_op(Left& first, const Right& second) {
-        using TiledArray::add_to;
-        return add_to(first, second);
-      }
+    /// Add right to left
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!LC && RC, result_type>::type
-      no_permute_op(const Left& first, Right& second) {
-        using TiledArray::add_to;
-        return add_to(second, first);
-      }
+    /// Add the right tile to the left. The right tile may be replaced with
+    /// `ZeroTensor` argument, in which case the argument's element values are
+    /// assumed to be `0`.
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The sum of `left` and `right`.
+    template <typename R>
+    result_type consume_left(left_type& left, R&& right) const {
+      return Add_::template eval<is_consumable_tile<left_type>::value,
+          false>(left, right);
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!RC, result_type>::type
-      no_permute_op(ZeroTensor, const Right& second) {
-        using TiledArray::clone;
-        return clone(second);
-      }
+    /// Add left to right
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<RC, result_type>::type
-      no_permute_op(ZeroTensor, Right& second) {
-        return second;
-      }
+    /// Add the left tile to the right. The left tile may be replaced with
+    /// `ZeroTensor` argument, in which case the argument's element values are
+    /// assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The sum of `left` and `right`.
+    template <typename L>
+    result_type consume_right(L&& left, right_type& right) const {
+      return Add_::template eval<false,
+          is_consumable_tile<right_type>::value>(left, right);
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!LC, result_type>::type
-      no_permute_op(const Left& first, ZeroTensor) {
-        using TiledArray::clone;
-        return clone(first);
-      }
+  }; // class Add
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<LC, result_type>::type
-      no_permute_op(Left& first, ZeroTensor) {
-        return first;
-      }
+  /// Tile scale-addition operation
 
-    }; // class Add
+  /// This addition operation will add the content two tiles and apply a
+  /// permutation to the result tensor. If no permutation is given or the
+  /// permutation is null, then the result is not permuted.
+  /// \tparam Left The left-hand argument type
+  /// \tparam Right The right-hand argument type
+  /// \tparam Scalar The scaling factor type
+  /// \tparam LeftConsumable A flag that is \c true when the left-hand
+  /// argument is consumable.
+  /// \tparam RightConsumable A flag that is \c true when the right-hand
+  /// argument is consumable.
+  template <typename Left, typename Right, typename Scalar, bool LeftConsumable,
+      bool RightConsumable>
+  class ScalAdd {
+  public:
 
-  } // namespace math
+    typedef ScalAdd<Left, Right, Scalar, LeftConsumable, RightConsumable> ScalAdd_;
+    typedef Left left_type; ///< Left-hand argument base type
+    typedef Right right_type; ///< Right-hand argument base type
+    typedef Scalar scalar_type; ///< Scaling factor type
+//    typedef Left result_type;
+    typedef decltype(add(std::declval<left_type>(), std::declval<right_type>(),
+        std::declval<scalar_type>())) result_type;
+
+    static constexpr bool left_is_consumable =
+        LeftConsumable && std::is_same<result_type, left_type>::value;
+    static constexpr bool right_is_consumable =
+        RightConsumable && std::is_same<result_type, right_type>::value;
+
+  private:
+
+    scalar_type factor_;
+
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
+
+    result_type eval(const left_type& first, const right_type& second,
+        const Permutation& perm) const
+    {
+      using TiledArray::add;
+      return add(first, second, factor_, perm);
+    }
+
+    result_type eval(ZeroTensor, const right_type& second,
+        const Permutation& perm) const
+    {
+      using TiledArray::scale;
+      return scale(second, factor_, perm);
+    }
+
+    result_type eval(const left_type& first, ZeroTensor,
+        const Permutation& perm) const
+    {
+      using TiledArray::scale;
+      return scale(first, factor_, perm);
+    }
+
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the consumability
+    // of the arguments.
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!(LC || RC)>::type* = nullptr>
+    result_type eval(const left_type& first, const right_type& second) const {
+      using TiledArray::add;
+      return add(first, second, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    result_type eval(left_type& first, const right_type& second) const {
+      using TiledArray::add_to;
+      return add_to(first, second, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC && RC>::type* = nullptr>
+    result_type eval(const left_type& first, right_type& second) const {
+      using TiledArray::add_to;
+      return add_to(second, first, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!RC>::type* = nullptr>
+    result_type eval(const ZeroTensor&, const right_type& second) const {
+      using TiledArray::scale;
+      return scale(second, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<RC>::type* = nullptr>
+    result_type eval(const ZeroTensor&, right_type& second) const {
+      using TiledArray::scale_to;
+      return scale_to(second, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC>::type* = nullptr>
+    result_type eval(const left_type& first, const ZeroTensor&) const {
+      using TiledArray::scale;
+      return scale(first, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    result_type eval(left_type& first, const ZeroTensor&) const {
+      using TiledArray::scale_to;
+      return scale_to(first, factor_);
+    }
+
+  public:
+
+    // Compiler generated functions
+    ScalAdd(const ScalAdd_&) = default;
+    ScalAdd(ScalAdd_&&) = default;
+    ~ScalAdd() = default;
+    ScalAdd_& operator=(const ScalAdd_&) = default;
+    ScalAdd_& operator=(ScalAdd_&&) = default;
+
+    /// Constructor
+
+    /// \param factor The scaling factor applied to result tiles
+    explicit ScalAdd(const Scalar factor) : factor_(factor) { }
+
+    /// Scale-add-and-permute operator
+
+    /// Compute the scaled sum of two tiles and permute the result. One of the
+    /// argument tiles may be replaced with `ZeroTensor` argument, in which
+    /// case the argument's element values are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return The permuted and scaled sum of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
+    }
+
+    /// Scale-and-add operator
+
+    /// Compute the scaled sum of two tiles. One of the argument tiles may be
+    /// replaced with `ZeroTensor` argument, in which case the argument's
+    /// element values are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The scaled sum of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right) const {
+      return ScalAdd_::template eval<left_is_consumable,
+          right_is_consumable>(left, right);
+    }
+
+    /// Add right to left and scale the result
+
+    /// Add the right tile to the left. The right tile may be replaced with
+    /// `ZeroTensor` argument, in which case the argument's element values are
+    /// assumed to be `0`.
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The sum of `left` and `right`.
+    template <typename R>
+    result_type consume_left(left_type& left, R&& right) const {
+      return ScalAdd_::template eval<is_consumable_tile<left_type>::value,
+          false>(left, right);
+    }
+
+    /// Add left to right and scale the result
+
+    /// Add the left tile to the right, and scale the resulting left tile. The
+    /// left tile may be replaced with `ZeroTensor` argument, in which case the
+    /// argument's element values are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The sum of `left` and `right`.
+    template <typename L>
+    result_type consume_right(L&& left, right_type& right) const {
+      return ScalAdd_::template eval<false,
+          is_consumable_tile<right_type>::value>(left, right);
+    }
+
+  }; // class ScalAdd
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_ADD_H__INCLUDED
