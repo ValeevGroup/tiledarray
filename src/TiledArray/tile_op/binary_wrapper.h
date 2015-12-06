@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_TILE_OP_BINARY_INTERFACE_H__INCLUDED
-#define TILEDARRAY_TILE_OP_BINARY_INTERFACE_H__INCLUDED
+#ifndef TILEDARRAY_TILE_OP_BINARY_WRAPPER_H__INCLUDED
+#define TILEDARRAY_TILE_OP_BINARY_WRAPPER_H__INCLUDED
 
 #include <TiledArray/tile_op/tile_interface.h>
 #include <TiledArray/permutation.h>
@@ -375,4 +375,4 @@ namespace TiledArray {
   } // namespace detail
 } // namespace TiledArray
 
-#endif // TILEDARRAY_TILE_OP_BINARY_INTERFACE_H__INCLUDED
+#endif // TILEDARRAY_TILE_OP_BINARY_WRAPPER_H__INCLUDED
