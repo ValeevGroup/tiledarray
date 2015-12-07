@@ -117,7 +117,6 @@ TiledArray/tensor/type_traits.h
 TiledArray/tensor/unary.h
 TiledArray/tensor/utility.h
 TiledArray/tile_op/add.h
-TiledArray/tile_op/binary_interface.h
 TiledArray/tile_op/binary_reduction.h
 TiledArray/tile_op/contract_reduce.h
 TiledArray/tile_op/mult.h
