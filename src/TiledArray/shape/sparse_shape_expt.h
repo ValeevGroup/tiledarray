@@ -45,7 +45,7 @@ namespace TiledArray {
   /// exceeded a threshold, this Shape defines as nonzero blocks with Frobenius norm
   /// greater than the threshold.
   ///
-  /// \tparam T The sparse element value type; can be a real floating-point type or bool.
+  /// \tparam T The sparse element value type; can be any arithemtic type.
   template <typename T>
   class SparseShape {
   public:
@@ -353,12 +353,15 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| (\rm{this})_{ij...}
     /// \f]
+    /// \tparam U arithmetic type
     /// \param factor The scaling factor
     /// \return A new, scaled shape
-    SparseShape_ scale(const value_type factor) const {
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    scale(U factor) const {
       TA_ASSERT(! tile_norms_.empty());
-      const value_type threshold = threshold_;
-      const value_type abs_factor = std::abs(factor);
+      const auto threshold = threshold_;
+      const U abs_factor = std::abs(factor);
       size_type zero_tile_count = 0ul;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
         value *= abs_factor;
@@ -380,13 +383,16 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ji...} = \rm{perm}(j,i) |(\rm{factor})| (\rm{this})_{ij...}
     /// \f]
+    /// \tparam U arithmetic type
     /// \param factor The scaling factor
     /// \param perm The permutation that will be applied to this tensor.
     /// \return A new, scaled-and-permuted shape
-    SparseShape_ scale(const value_type factor, const Permutation& perm) const {
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    scale(U factor, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
-      const value_type threshold = threshold_;
-      const value_type abs_factor = std::abs(factor);
+      const auto threshold = threshold_;
+      const U abs_factor = std::abs(factor);
       size_type zero_tile_count = 0ul;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
         value *= abs_factor;
@@ -469,13 +475,16 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...})
     /// \f]
+    /// \tparam U arithmetic type
     /// \param other The shape to be added to this shape
     /// \param factor The scaling factor
     /// \return A scaled sum of shapes
-    SparseShape_ add(const SparseShape_& other, value_type factor) const {
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    add(const SparseShape_& other, U factor) const {
       TA_ASSERT(! tile_norms_.empty());
-      const value_type threshold = threshold_;
-      const value_type abs_factor = std::abs(factor);
+      const auto threshold = threshold_;
+      const U abs_factor = std::abs(factor);
       size_type zero_tile_count = 0ul;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type left,
           const value_type right)
@@ -501,16 +510,19 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...})
     /// \f]
+    /// \tparam U arithmetic type
     /// \param other The shape to be added to this shape
     /// \param factor The scaling factor
     /// \param perm The permutation that is applied to the result
     /// \return A scaled and permuted sum of shapes
-    SparseShape_ add(const SparseShape_& other, const value_type factor,
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    add(const SparseShape_& other, U factor,
         const Permutation& perm) const
     {
       TA_ASSERT(! tile_norms_.empty());
-      const value_type threshold = threshold_;
-      const value_type abs_factor = std::abs(factor);
+      const auto threshold = threshold_;
+      const U abs_factor = std::abs(factor);
       size_type zero_tile_count = 0ul;
       auto op = [threshold, &zero_tile_count, abs_factor]
                  (value_type left, const value_type right)
@@ -539,12 +551,16 @@ namespace TiledArray {
       return add(other, perm);
     }
 
-    SparseShape_ subt(const SparseShape_& other, const value_type factor) const {
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    subt(const SparseShape_& other, U factor) const {
       return add(other, factor);
     }
 
-    SparseShape_ subt(const SparseShape_& other, const value_type factor,
-        const Permutation& perm) const
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    subt(const SparseShape_& other, U factor,
+         const Permutation& perm) const
     {
       return add(other, factor, perm);
     }
@@ -566,25 +582,33 @@ namespace TiledArray {
       return SparseShape_(result_tile_norms);
     }
 
-    SparseShape_ mult(const SparseShape_& other, const value_type factor) const {
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    mult(const SparseShape_& other, U factor) const {
       // TODO: Optimize this function so that the tensor arithmetic and
       // scale_by_size operations are performed in one step instead of two.
 
       TA_ASSERT(! tile_norms_.empty());
-      auto result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor));
+      auto result_tile_norms = tile_norms_.mult(other.tile_norms_, static_cast<U>(std::abs(factor)));
       return SparseShape_(result_tile_norms);
     }
 
-    SparseShape_ mult(const SparseShape_& other, const value_type factor,
-        const Permutation& perm) const
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    mult(const SparseShape_& other,
+         U factor,
+         const Permutation& perm) const
     {
       TA_ASSERT(! tile_norms_.empty());
-      auto result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor), perm);
+      auto result_tile_norms = tile_norms_.mult(other.tile_norms_, static_cast<U>(std::abs(factor)), perm);
       return SparseShape_(result_tile_norms);
     }
 
-    SparseShape_ gemm(const SparseShape_& other, value_type factor,
-        const math::GemmHelper& gemm_helper) const
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    gemm(const SparseShape_& other,
+         U factor,
+         const math::GemmHelper& gemm_helper) const
     {
       TA_ASSERT(! tile_norms_.empty());
 
@@ -600,8 +624,10 @@ namespace TiledArray {
       assert(false); // not yet implemented
     }
 
-    SparseShape_ gemm(const SparseShape_& other, const value_type factor,
-                      const math::GemmHelper& gemm_helper, const Permutation& perm) const
+    template <typename U, typename = typename std::enable_if<std::is_arithmetic<U>::value>::type>
+    SparseShape_
+    gemm(const SparseShape_& other, U factor,
+         const math::GemmHelper& gemm_helper, const Permutation& perm) const
     {
       return gemm(other, factor, gemm_helper).perm(perm);
     }
@@ -609,6 +635,8 @@ namespace TiledArray {
   }; // class SparseShape
 
   // Static member initialization
+  template <>
+  typename SparseShape<bool>::value_type SparseShape<bool>::default_threshold_ = true;
   template <typename T>
   typename SparseShape<T>::value_type SparseShape<T>::default_threshold_ = std::numeric_limits<T>::epsilon();
 
