@@ -30,36 +30,34 @@
 #include "unit_test_config.h"
 
 struct BinaryEvalFixture : public TiledRangeFixture {
-  typedef TArrayI ArrayN;
-  typedef Noop<ArrayN::value_type, true> array_base_op_type;
-  typedef TiledArray::detail::UnaryWrapper<array_base_op_type> array_op_type;
-  typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
-      DensePolicy> array_eval_type;
 
   BinaryEvalFixture() :
     left(*GlobalFixture::world, tr),
-    right(*GlobalFixture::world, tr),
-    left_arg(make_array_eval(left, left.get_world(), DenseShape(),
-        left.get_pmap(), Permutation(), array_op_type(array_base_op_type()))),
-    right_arg(make_array_eval(right, right.get_world(), DenseShape(),
-        left.get_pmap(), Permutation(), array_op_type(array_base_op_type())))
+    right(*GlobalFixture::world, tr)
   {
     // Fill array with random data
-    for(ArrayN::iterator it = left.begin(); it != left.end(); ++it) {
-      ArrayN::value_type tile(left.trange().make_tile_range(it.index()));
-      for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
+    for(TArrayI::iterator it = left.begin(); it != left.end(); ++it) {
+      TArrayI::value_type tile(left.trange().make_tile_range(it.index()));
+      for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
     }
-    for(ArrayN::iterator it = right.begin(); it != right.end(); ++it) {
-      ArrayN::value_type tile(right.trange().make_tile_range(it.index()));
-      for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
+    for(TArrayI::iterator it = right.begin(); it != right.end(); ++it) {
+      TArrayI::value_type tile(right.trange().make_tile_range(it.index()));
+      for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
     }
   }
 
   ~BinaryEvalFixture() { }
+
+
+  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  make_array_noop(const Permutation& perm = Permutation()) {
+    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
+        Noop<TensorI, true>(), perm);
+  }
 
 
   static TiledArray::detail::BinaryWrapper<
@@ -105,16 +103,18 @@ struct BinaryEvalFixture : public TiledRangeFixture {
         (perm ? perm * left.trange() : left.trange()), shape, pmap, perm, op)));
   }
 
-   ArrayN left;
-   ArrayN right;
-   array_eval_type left_arg;
-   array_eval_type right_arg;
+   TArrayI left;
+   TArrayI right;
 }; // Fixture
 
 BOOST_FIXTURE_TEST_SUITE( dist_eval_binary_eval_suite, BinaryEvalFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
+  auto left_arg = make_array_eval(left, left.get_world(), DenseShape(),
+      left.get_pmap(), Permutation(), make_array_noop());
+  auto right_arg = make_array_eval(right, right.get_world(), DenseShape(),
+      left.get_pmap(), Permutation(), make_array_noop());
 
   BOOST_REQUIRE_NO_THROW(make_binary_eval(left_arg, right_arg, left.get_world(),
       DenseShape(), left_arg.pmap(), Permutation(), make_add()));
@@ -134,6 +134,10 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( eval )
 {
+  auto left_arg = make_array_eval(left, left.get_world(), DenseShape(),
+      left.get_pmap(), Permutation(), make_array_noop());
+  auto right_arg = make_array_eval(right, right.get_world(), DenseShape(),
+      left.get_pmap(), Permutation(), make_array_noop());
 
   auto dist_eval = make_binary_eval(left_arg, right_arg,
       left_arg.get_world(), DenseShape(), left_arg.pmap(), Permutation(), make_add());
@@ -168,6 +172,10 @@ BOOST_AUTO_TEST_CASE( eval )
 
 BOOST_AUTO_TEST_CASE( perm_eval )
 {
+  auto left_arg = make_array_eval(left, left.get_world(), DenseShape(),
+      left.get_pmap(), Permutation(), make_array_noop());
+  auto right_arg = make_array_eval(right, right.get_world(), DenseShape(),
+      left.get_pmap(), Permutation(), make_array_noop());
 
   // Create permutation to be applied in the array evaluations
   std::array<std::size_t, GlobalFixture::dim> p;
