@@ -32,6 +32,7 @@
 #include <TiledArray/tile_op/binary_reduction.h>
 #include <TiledArray/tile_op/reduce_wrapper.h>
 #include <TiledArray/tile_op/shift.h>
+#include <TiledArray/tile_op/unary_wrapper.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -202,9 +203,9 @@ namespace TiledArray {
       /// \param tsr The tensor to be assigned
       template <typename A>
       void eval_to(BlkTsrExpr<A>& tsr) const {
-        typedef TiledArray::math::Shift<typename A::value_type,
-            typename EngineTrait<engine_type>::eval_type,
+        typedef TiledArray::Shift<typename EngineTrait<engine_type>::eval_type,
             EngineTrait<engine_type>::consumable> shift_op_type;
+        typedef TiledArray::detail::UnaryWrapper<shift_op_type> op_type;
         static_assert(! is_lazy_tile<typename A::value_type>::value,
             "Assignment to an array of lazy tiles is not supported.");
 
@@ -268,8 +269,8 @@ namespace TiledArray {
           const std::vector<long> shift =
               tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound();
 
-          std::shared_ptr<shift_op_type> shift_op =
-              std::make_shared<shift_op_type>(shift);
+          std::shared_ptr<op_type> shift_op =
+              std::make_shared<op_type>(shift_op_type(shift));
 
           for(const auto index : *dist_eval.pmap()) {
             if(! dist_eval.is_zero(index))

@@ -28,7 +28,6 @@
 
 #include <TiledArray/expressions/leaf_engine.h>
 #include <TiledArray/tile_op/shift.h>
-#include <TiledArray/tile_op/scal_shift.h>
 
 namespace TiledArray {
 
@@ -50,8 +49,9 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
-      typedef TiledArray::math::Shift<typename array_type::eval_type,
-          typename array_type::eval_type, false> op_type; ///< The tile operation
+      typedef TiledArray::Shift<typename array_type::eval_type,
+          false> op_base_type; ///< The base tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
@@ -76,8 +76,9 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type;
-      typedef TiledArray::math::ScalShift<typename array_type::eval_type,
-          typename array_type::eval_type, false> op_type; ///< The tile operation
+      typedef TiledArray::ScalShift<typename array_type::eval_type,
+          scalar_type, false> op_base_type; ///< The base tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
@@ -279,6 +280,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<BlkTsrEngine_>::value_type value_type; ///< Tensor value type
+      typedef typename EngineTrait<BlkTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<BlkTsrEngine_>::op_type op_type; ///< Tile operation type
       typedef typename EngineTrait<BlkTsrEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<BlkTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
@@ -346,7 +348,7 @@ namespace TiledArray {
           range_shift.emplace_back(-base_d);
         }
 
-        return op_type(range_shift);
+        return op_type(op_base_type(range_shift));
       }
 
       /// Permuting tile operation factory function
@@ -371,7 +373,7 @@ namespace TiledArray {
           range_shift[perm_d] = -base_d;
         }
 
-        return op_type(range_shift, perm);
+        return op_type(op_base_type(range_shift), perm);
       }
 
     }; // class BlkTsrEngine
@@ -396,6 +398,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<ScalBlkTsrEngine_>::value_type value_type; ///< Tensor value type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalBlkTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::op_type op_type; ///< Tile operation type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
@@ -466,7 +469,7 @@ namespace TiledArray {
           range_shift.emplace_back(-base_d);
         }
 
-        return op_type(range_shift, factor_);
+        return op_type(op_base_type(range_shift, factor_));
       }
 
       /// Permuting tile operation factory function
@@ -491,7 +494,7 @@ namespace TiledArray {
           range_shift[perm_d] = -base_d;
         }
 
-        return op_type(range_shift, perm, factor_);
+        return op_type(op_base_type(range_shift, factor_), perm);
       }
 
 
