@@ -54,6 +54,13 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
 
   ~ArrayEvalImplFixture() { }
 
+
+  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  make_array_noop(const Permutation& perm = Permutation()) {
+    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
+        Noop<TensorI, true>(), perm);
+  }
+
   template <typename Tile, typename Policy, typename Op>
   static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename DistArray<Tile, Policy>::value_type, Op>, Policy>
   make_array_eval(
@@ -133,14 +140,11 @@ BOOST_AUTO_TEST_CASE( eval_permute )
     p[i] = (i + p.size() - 1) % p.size();
   const Permutation perm(p.begin(), p.end());
 
-  // Redefine the types for the new operation.
-  typedef math::Noop<ArrayN::value_type, ArrayN::value_type, false> op_type;
-  typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type,
-      op_type>, DensePolicy> dist_eval_type;
-
   // Construct and evaluate
-  dist_eval_type dist_eval = make_array_eval(array, array.get_world(),
-      DenseShape(), array.get_pmap(), perm, op_type(perm));
+  auto dist_eval = make_array_eval(array, array.get_world(),
+      DenseShape(), array.get_pmap(), perm, make_array_noop(perm));
+  using dist_eval_type = decltype(dist_eval);
+
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
 
   // Check that each tile has been moved to the correct location and has been

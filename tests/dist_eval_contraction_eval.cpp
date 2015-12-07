@@ -34,8 +34,8 @@ using namespace TiledArray;
 
 struct ContractionEvalFixture : public SparseShapeFixture {
   typedef TArrayI ArrayN;
-  typedef math::Noop<ArrayN::value_type,
-      ArrayN::value_type, true> array_op_type;
+  typedef Noop<ArrayN::value_type, true> array_base_op_type;
+  typedef detail::UnaryWrapper<array_base_op_type> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
       DensePolicy> array_eval_type;
   typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
@@ -47,10 +47,10 @@ struct ContractionEvalFixture : public SparseShapeFixture {
         tr.elements().extent_data()[0], tr.elements().extent_data()[tr.elements().rank() - 1u]),
     left_arg(make_array_eval(left, left.get_world(), DenseShape(),
         proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[0]),
-        Permutation(), array_op_type())),
+        Permutation(), array_op_type(array_base_op_type()))),
     right_arg(make_array_eval(right, right.get_world(), DenseShape(),
         proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[tr.tiles().rank() - 1u]),
-        Permutation(), array_op_type())),
+        Permutation(), array_op_type(array_base_op_type()))),
     result_tr()
   {
     // Fill arrays with random data
@@ -365,10 +365,10 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
 
   auto left_arg = make_array_eval(left, left.get_world(), left.get_shape(),
       proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[0]),
-      Permutation(), array_op_type());
+      Permutation(), array_op_type(array_base_op_type()));
   auto right_arg = make_array_eval(right, right.get_world(), right.get_shape(),
       proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[tr.tiles().rank() - 1]),
-      Permutation(), array_op_type());
+      Permutation(), array_op_type(array_base_op_type()));
   auto op = make_contract(2u, left_arg.trange().tiles().rank(),
       right_arg.trange().tiles().rank());
 

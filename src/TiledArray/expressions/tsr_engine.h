@@ -28,6 +28,7 @@
 
 #include <TiledArray/expressions/leaf_engine.h>
 #include <TiledArray/tile_op/noop.h>
+#include <TiledArray/tile_op/unary_wrapper.h>
 
 namespace TiledArray {
 
@@ -48,8 +49,9 @@ namespace TiledArray {
       // Operational typedefs
       // Note: the consumable flag is true for noop to avoid necessary copies.
       // This is OK because the result consumable flag is set to false.
-      typedef TiledArray::math::Noop<typename array_type::eval_type,
-          typename array_type::eval_type, true> op_type; ///< The tile operation
+      typedef TiledArray::Noop<typename array_type::eval_type, true>
+          op_base_type; ///< The tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type;
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
@@ -83,6 +85,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<TsrEngine_>::value_type value_type; ///< Tensor value type
+      typedef typename EngineTrait<TsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<TsrEngine_>::op_type op_type; ///< Tile operation type
       typedef typename EngineTrait<TsrEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<TsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
@@ -99,13 +102,17 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      static op_type make_tile_op() { return op_type(); }
+      static op_type make_tile_op() {
+        return op_type(op_base_type());
+      }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
-      static op_type make_tile_op(const Permutation& perm) { return op_type(perm); }
+      static op_type make_tile_op(const Permutation& perm) {
+        return op_type(op_base_type(), perm);
+      }
 
     }; // class TsrEngine
 

@@ -35,7 +35,8 @@ using namespace TiledArray::expressions;
 // Array evaluator fixture
 struct UnaryEvalImplFixture : public TiledRangeFixture {
   typedef TArrayI ArrayN;
-  typedef math::Noop<ArrayN::value_type, ArrayN::value_type, true> array_op_type;
+  typedef Noop<ArrayN::value_type, true> array_op_base_type;
+  typedef TiledArray::detail::UnaryWrapper<array_op_base_type> array_op_type;
   typedef TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<ArrayN::value_type,
       array_op_type>, DensePolicy> dist_eval_type;
   typedef math::Scal<ArrayN::value_type, ArrayN::value_type, false> op_type;
@@ -45,7 +46,7 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   UnaryEvalImplFixture() :
     array(*GlobalFixture::world, tr),
     arg(make_array_eval(array, array.get_world(), DenseShape(),
-        array.get_pmap(), Permutation(), array_op_type()))
+        array.get_pmap(), Permutation(), array_op_type(array_op_base_type())))
   {
     // Fill array with random data
     for(ArrayN::iterator it = array.begin(); it != array.end(); ++it) {

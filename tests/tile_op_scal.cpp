@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE( unary_scale_runtime_consume )
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = scal_op(a, true));
+  BOOST_CHECK_NO_THROW(b = scal_op.consume(a, true));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(b.range(), a.range());

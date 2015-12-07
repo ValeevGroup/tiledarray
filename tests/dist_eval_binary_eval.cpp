@@ -31,8 +31,8 @@
 
 struct BinaryEvalFixture : public TiledRangeFixture {
   typedef TArrayI ArrayN;
-  typedef math::Noop<ArrayN::value_type,
-      ArrayN::value_type, true> array_op_type;
+  typedef Noop<ArrayN::value_type, true> array_base_op_type;
+  typedef TiledArray::detail::UnaryWrapper<array_base_op_type> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
       DensePolicy> array_eval_type;
 
@@ -40,9 +40,9 @@ struct BinaryEvalFixture : public TiledRangeFixture {
     left(*GlobalFixture::world, tr),
     right(*GlobalFixture::world, tr),
     left_arg(make_array_eval(left, left.get_world(), DenseShape(),
-        left.get_pmap(), Permutation(), array_op_type())),
+        left.get_pmap(), Permutation(), array_op_type(array_base_op_type()))),
     right_arg(make_array_eval(right, right.get_world(), DenseShape(),
-        left.get_pmap(), Permutation(), array_op_type()))
+        left.get_pmap(), Permutation(), array_op_type(array_base_op_type())))
   {
     // Fill array with random data
     for(ArrayN::iterator it = left.begin(); it != left.end(); ++it) {

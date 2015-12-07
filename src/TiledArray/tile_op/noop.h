@@ -26,82 +26,82 @@
 #ifndef TILEDARRAY_TILE_OP_NOOP_H__INCLUDED
 #define TILEDARRAY_TILE_OP_NOOP_H__INCLUDED
 
-#include <TiledArray/tile_op/unary_interface.h>
+#include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {
-  namespace math {
 
-    /// Tile no operation (noop)
+  /// Tile no operation (noop)
 
-    /// This no operation will return the original or apply a permutation to the
-    /// result tensor. If no permutation is given or the permutation is null,
-    /// then the result is not permuted.
-    /// \tparam Result The result type
-    /// \tparam Arg The argument type
-    /// \tparam Consumable Flag that is \c true when Arg is consumable
-    template <typename Result, typename Arg, bool Consumable>
-    class Noop : public UnaryInterface<Noop<Result, Arg, Consumable> >  {
-    public:
-      typedef Noop<Result, Arg, Consumable> Noop_; ///< This object type
-      typedef UnaryInterface<Noop_> UnaryInterface_;
-      typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
-      typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
+  /// This no operation will return the original or apply a permutation to the
+  /// result tensor. If no permutation is given or the permutation is null,
+  /// then the result is not permuted.
+  /// \tparam Arg The argument type
+  /// \tparam Consumable Flag that is \c true when Arg is consumable
+  template <typename Arg, bool Consumable>
+  class Noop {
+  public:
+    typedef Noop<Arg, Consumable> Noop_; ///< This object type
+    typedef Arg argument_type; ///< The argument type
+    typedef Arg result_type; ///< The result tile type
 
-      /// Default constructor
+    static constexpr bool is_consumable = Consumable;
 
-      /// Construct a no operation that does not permute the result tile
-      Noop() : UnaryInterface_() { }
+  private:
 
-      /// Permute constructor
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
 
-      /// Construct a no operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Noop(const Permutation& perm) : UnaryInterface_(perm) { }
+    static result_type eval(const Arg& arg, const Permutation& perm) {
+      using TiledArray::permute;
+      return permute(arg, perm);
+    }
 
-      /// Copy constructor
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the
+    // consumability of the arguments.
 
-      /// \param other The no operation object to be copied
-      Noop(const Noop_& other) : UnaryInterface_(other) { }
+    template <bool C, typename std::enable_if<!C>::type* = nullptr>
+    static result_type eval(const Arg& arg) {
+      using TiledArray::clone;
+      return clone(arg);
+    }
 
-      /// Copy assignment
+    template <bool C, typename std::enable_if<C>::type* = nullptr>
+    static result_type eval(Arg& arg) { return arg; }
 
-      /// \param other The no operation object to be copied
-      /// \return A reference to this object
-      Noop_& operator=(const Noop_& other) {
-        UnaryInterface_::operator =(other);
-        return *this;
-      }
+  public:
 
-      // Import interface from base class
-      using UnaryInterface_::operator();
+    /// Permute operator
 
-      // Permuting tile evaluation function
-      // These operations cannot consume the argument tile since this operation
-      // requires temporary storage space.
+    /// \tparam A The tile argument type
+    /// \param arg The tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return A permuted copy of `arg`
+    result_type operator()(const argument_type& arg, const Permutation& perm) const {
+      return eval(arg, perm);
+    }
 
-      result_type permute_op(const Arg& arg) const {
-        using TiledArray::permute;
-        return permute(arg, UnaryInterface_::permutation());
-      }
+    /// Clone operator
 
-      // Non-permuting tile evaluation functions
-      // The compiler will select the correct functions based on the consumability
-      // of the arguments.
+    /// \tparam A The tile argument type
+    /// \param arg The tile argument
+    /// \return A clone of the `arg`
+    template <typename A>
+    result_type operator()(A&& arg) const {
+      return Noop_::template eval<is_consumable>(arg);
+    }
 
-      template <bool C>
-      static typename std::enable_if<!C, result_type>::type
-      no_permute_op(const Arg& arg) {
-        using TiledArray::clone;
-        return clone(arg);
-      }
+    /// Pass-through operations (shallow copy)
 
-      template <bool C>
-      static typename std::enable_if<C, result_type>::type
-      no_permute_op(Arg& arg) { return arg; }
+    /// \param arg The tile argument
+    /// \return `arg`
+    result_type consume(argument_type& arg) const {
+      return Noop_::template eval<is_consumable_tile<Arg>::value>(arg);
+    }
 
-    }; // class Noop
+  }; // class Noop
 
-  } // namespace math
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_NOOP_H__INCLUDED

@@ -279,7 +279,7 @@ namespace TiledArray {
       /// applied to \c arg.
       template <typename A>
       typename std::enable_if<! is_lazy_tile<A>::value, result_type>::type
-      operator()(const A& arg, const bool) const {
+      consume(const A& arg, const bool) const {
         operator()(arg);
       }
 
@@ -295,7 +295,7 @@ namespace TiledArray {
       template <typename A>
       typename std::enable_if<! is_lazy_tile<typename std::remove_const<A>::type>::value,
           result_type>::type
-      operator()(A& arg, const bool consume) const {
+      consume(A& arg, const bool consume) const {
         if(perm_)
           return derived().permute_op(arg);
 
@@ -317,7 +317,7 @@ namespace TiledArray {
       typename std::enable_if<detail::is_array_tile<A>::value, result_type>::type
       operator()(const A& arg) const {
         typename eval_trait<A>::type eval_arg(arg);
-        return operator()(eval_arg, arg.is_consumable());
+        return consume(eval_arg, arg.is_consumable());
       }
 
       /// Evaluate non-array lazy tile arguments
@@ -333,7 +333,7 @@ namespace TiledArray {
       typename std::enable_if<detail::is_non_array_lazy_tile<A>::value, result_type>::type
       operator()(const A& arg, const bool consume) const {
         typename eval_trait<A>::type eval_arg(arg);
-        return operator()(eval_arg, consume);
+        return consume(eval_arg, consume);
       }
 
     }; // class UnaryInterface
