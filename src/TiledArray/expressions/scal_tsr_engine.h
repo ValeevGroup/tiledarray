@@ -28,6 +28,7 @@
 
 #include <TiledArray/expressions/leaf_engine.h>
 #include <TiledArray/tile_op/scal.h>
+#include <TiledArray/tile_op/unary_wrapper.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -43,8 +44,9 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type;
-      typedef TiledArray::math::Scal<typename array_type::eval_type,
-          typename array_type::eval_type, false> op_type; ///< The tile operation
+      typedef TiledArray::Scal<typename array_type::eval_type,
+          scalar_type, false> op_base_type; ///< The tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type;
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
@@ -80,6 +82,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<ScalTsrEngine_>::value_type value_type; ///< Tensor value type
       typedef typename EngineTrait<ScalTsrEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<ScalTsrEngine_>::op_type op_type; ///< Tile operation type
       typedef typename EngineTrait<ScalTsrEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<ScalTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
@@ -117,13 +120,17 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      op_type make_tile_op() const { return op_type(factor_); }
+      op_type make_tile_op() const {
+        return op_type(op_base_type(factor_));
+      }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
-      op_type make_tile_op(const Permutation& perm) const { return op_type(perm, factor_); }
+      op_type make_tile_op(const Permutation& perm) const {
+        return op_type(op_base_type(factor_), perm);
+      }
 
       /// Expression identification tag
 

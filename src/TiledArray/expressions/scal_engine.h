@@ -28,6 +28,7 @@
 
 #include <TiledArray/expressions/unary_engine.h>
 #include <TiledArray/tile_op/scal.h>
+#include <TiledArray/tile_op/unary_wrapper.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -47,8 +48,9 @@ namespace TiledArray {
           typename EngineTrait<Arg>::scalar_type, Scalar>::type scalar_type; ///< Tile scalar type
       typedef typename EngineTrait<Arg>::eval_type value_type; ///< The result tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef TiledArray::math::Scal<eval_type,
-          typename EngineTrait<Arg>::eval_type, EngineTrait<Arg>::consumable> op_type; ///< The tile operation type
+      typedef TiledArray::Scal<typename EngineTrait<Arg>::eval_type,
+          scalar_type, EngineTrait<Arg>::consumable> op_base_type; ///< The tile base operation type
+      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type; ///< The tile operation type
       typedef typename argument_type::policy policy; ///< The result policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
