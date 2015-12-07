@@ -26,85 +26,91 @@
 #ifndef TILEDARRAY_TILE_OP_NEG_H__INCLUDED
 #define TILEDARRAY_TILE_OP_NEG_H__INCLUDED
 
-#include <TiledArray/tile_op/unary_interface.h>
+#include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {
-  namespace math {
 
-    /// Tile negation operation
+  /// Tile negation operation
 
-    /// This negation operation will negate the content a tile and apply a
-    /// permutation to the result tensor. If no permutation is given or the
-    /// permutation is null, then the result is not permuted.
-    /// \tparam Result The result type
-    /// \tparam Arg The argument type
-    /// \tparam Consumable Flag that is \c true when Arg is consumable
-    template <typename Result, typename Arg, bool Consumable>
-    class Neg : public UnaryInterface<Neg<Result, Arg, Consumable> > {
-    public:
-      typedef Neg<Result, Arg, Consumable> Neg_; ///< This object type
-      typedef UnaryInterface<Neg_> UnaryInterface_;
-      typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
-      typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
+  /// This negation operation will negate the content a tile and apply a
+  /// permutation to the result tensor. If no permutation is given or the
+  /// permutation is null, then the result is not permuted.
+  /// \tparam Result The result type
+  /// \tparam Arg The argument type
+  /// \tparam Consumable Flag that is \c true when Arg is consumable
+  template <typename Arg, bool Consumable>
+  class Neg {
+  public:
+    typedef Neg<Arg, Consumable> Neg_; ///< This object type
+    typedef Arg argument_type; ///< The argument type
+    typedef decltype(neg(std::declval<argument_type>()))
+        result_type; ///< The result tile type
 
-      /// Default constructor
+    static constexpr bool is_consumable =
+        Consumable && std::is_same<result_type, argument_type>::value;
 
-      /// Construct a negation operation that does not permute the result tile
-      Neg() : UnaryInterface_() { }
+  private:
 
-      /// Permute constructor
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
 
-      /// Construct a negation operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      Neg(const Permutation& perm) : UnaryInterface_(perm) { }
+    result_type eval(const Arg& arg, const Permutation& perm) const {
+      using TiledArray::neg;
+      return neg(arg, perm);
+    }
 
-      /// Copy constructor
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the
+    // consumability of the arguments.
 
-      /// \param other The negation operation object to be copied
-      Neg(const Neg_& other) : UnaryInterface_(other) { }
+    template <bool C, typename std::enable_if<!C>::type* = nullptr>
+    static result_type eval(const Arg& arg) {
+      using TiledArray::neg;
+      return neg(arg);
+    }
 
-      /// Copy assignment
+    template <bool C, typename std::enable_if<C>::type* = nullptr>
+    static result_type eval(Arg& arg) {
+      using TiledArray::neg_to;
+      return neg_to(arg);
+    }
 
-      /// \param other The negation operation object to be copied
-      /// \return A reference to this object
-      Neg_& operator=(const Neg_& other) {
-        UnaryInterface_::operator =(other);
-        return *this;
-      }
+  public:
 
-      // Import interface from base class
-      using UnaryInterface_::operator();
+    /// Negate and permute operator
 
-      // Permuting tile evaluation function
-      // These operations cannot consume the argument tile since this operation
-      // requires temporary storage space.
+    /// \tparam A The tile argument type
+    /// \param arg The tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return A permuted and negated copy of `arg`
+    template <typename A>
+    result_type operator()(A&& arg, const Permutation& perm) const {
+      return eval(arg, perm);
+    }
 
-      result_type permute_op(const Arg& arg) const {
-        using TiledArray::neg;
-        return neg(arg, UnaryInterface_::permutation());
-      }
+    /// Consuming negate operation
 
-      // Non-permuting tile evaluation functions
-      // The compiler will select the correct functions based on the consumability
-      // of the arguments.
+    /// \tparam A The tile argument type
+    /// \param arg The tile argument
+    /// \return A negated copy of `arg`
+    template <typename A>
+    result_type operator()(A&& arg) const {
+      return Neg_::template eval<is_consumable>(arg);
+    }
 
-      template <bool C>
-      static typename std::enable_if<!C, result_type>::type
-      no_permute_op(const Arg& arg) {
-        using TiledArray::neg;
-        return neg(arg);
-      }
+    /// Explicit consuming negate operation
 
-      template <bool C>
-      static typename std::enable_if<C, result_type>::type
-      no_permute_op(Arg& arg) {
-        using TiledArray::neg_to;
-        return neg_to(arg);
-      }
+    /// \tparam A The tile argument type
+    /// \param arg The tile argument
+    /// \return In-place negated `arg`
+    template <typename A>
+    result_type consume(A& arg) const {
+      return Neg_::template eval<is_consumable_tile<Arg>::value>(arg);
+    }
 
-    }; // class Neg
+  }; // class Neg
 
-  } // namespace math
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_NEG_H__INCLUDED

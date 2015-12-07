@@ -56,15 +56,13 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_neg_suite, NegFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((math::Neg<Tensor<int>, Tensor<int>, false>()));
-  BOOST_CHECK_NO_THROW((math::Neg<Tensor<int>, Tensor<int>, false>(perm)));
-  BOOST_CHECK_NO_THROW((math::Neg<Tensor<int>, Tensor<int>, true>()));
-  BOOST_CHECK_NO_THROW((math::Neg<Tensor<int>, Tensor<int>, true>(perm)));
+  BOOST_CHECK_NO_THROW((Neg<Tensor<int>, false>()));
+  BOOST_CHECK_NO_THROW((Neg<Tensor<int>, true>()));
 }
 
 BOOST_AUTO_TEST_CASE( unary_neg )
 {
-  math::Neg<Tensor<int>, Tensor<int>, false> neg_op;
+  Neg<Tensor<int>, false> neg_op;
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = neg_op(a));
@@ -83,10 +81,10 @@ BOOST_AUTO_TEST_CASE( unary_neg )
 
 BOOST_AUTO_TEST_CASE( unary_neg_perm )
 {
-  math::Neg<Tensor<int>, Tensor<int>, false> neg_op(perm);
+  Neg<Tensor<int>, false> neg_op;
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = neg_op(a));
+  BOOST_CHECK_NO_THROW(b = neg_op(a, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(b.range(), a.range());
@@ -102,7 +100,7 @@ BOOST_AUTO_TEST_CASE( unary_neg_perm )
 
 BOOST_AUTO_TEST_CASE( unary_neg_consume )
 {
-  math::Neg<Tensor<int>, Tensor<int>, true> neg_op;
+  Neg<Tensor<int>, true> neg_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
@@ -122,11 +120,11 @@ BOOST_AUTO_TEST_CASE( unary_neg_consume )
 
 BOOST_AUTO_TEST_CASE( unary_neg_runtime_consume )
 {
-  math::Neg<Tensor<int>, Tensor<int>, false> neg_op;
+  Neg<Tensor<int>, false> neg_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = neg_op.consume(a, true));
+  BOOST_CHECK_NO_THROW(b = neg_op.consume(a));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(b.range(), a.range());
@@ -140,32 +138,12 @@ BOOST_AUTO_TEST_CASE( unary_neg_runtime_consume )
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_neg_runtime_no_consume )
-{
-  math::Neg<Tensor<int>, Tensor<int>, true> neg_op;
-  const Tensor<int> ax(a.range(), a.begin());
-
-  // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = neg_op(a, false));
-
-  // Check that the result range is correct
-  BOOST_CHECK_EQUAL(b.range(), ax.range());
-
-  // Check that a nor b were consumed
-  BOOST_CHECK_EQUAL(b.data(), a.data());
-
-  // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(b[i], -ax[i]);
-  }
-}
-
 BOOST_AUTO_TEST_CASE( unary_neg_perm_consume )
 {
-  math::Neg<Tensor<int>, Tensor<int>, true> neg_op(perm);
+  Neg<Tensor<int>, true> neg_op;
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = neg_op(a));
+  BOOST_CHECK_NO_THROW(b = neg_op(a, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(b.range(), a.range());
