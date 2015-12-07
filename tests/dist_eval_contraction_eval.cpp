@@ -23,20 +23,19 @@
  *
  */
 
-#include <array_fixture.h>
+#include "array_fixture.h"
 
-#include "TiledArray/dist_eval/contraction_eval.h"
-#include "tiledarray.h"
+#include "../src/TiledArray/dist_eval/contraction_eval.h"
+#include "../src/tiledarray.h"
 #include "unit_test_config.h"
 #include "sparse_shape_fixture.h"
 
 using namespace TiledArray;
 
 struct ContractionEvalFixture : public SparseShapeFixture {
-  typedef TArrayI ArrayN;
-  typedef Noop<ArrayN::value_type, true> array_base_op_type;
+  typedef Noop<TensorI, true> array_base_op_type;
   typedef detail::UnaryWrapper<array_base_op_type> array_op_type;
-  typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type, array_op_type>,
+  typedef detail::DistEval<detail::LazyArrayTile<TensorI, array_op_type>,
       DensePolicy> array_eval_type;
   typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
@@ -47,10 +46,10 @@ struct ContractionEvalFixture : public SparseShapeFixture {
         tr.elements().extent_data()[0], tr.elements().extent_data()[tr.elements().rank() - 1u]),
     left_arg(make_array_eval(left, left.get_world(), DenseShape(),
         proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[0]),
-        Permutation(), array_op_type(array_base_op_type()))),
+        Permutation(), make_array_noop())),
     right_arg(make_array_eval(right, right.get_world(), DenseShape(),
         proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[tr.tiles().rank() - 1u]),
-        Permutation(), array_op_type(array_base_op_type()))),
+        Permutation(), make_array_noop())),
     result_tr()
   {
     // Fill arrays with random data
@@ -69,14 +68,23 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   }
 
 
-  static ContractReduce<TArrayI::value_type, TArrayI::value_type, int>
+  static ContractReduce<TensorI, TensorI, int>
   make_contract(const unsigned int result_rank, const unsigned int left_rank,
       const unsigned int right_rank, const Permutation& perm = Permutation())
   {
-    return ContractReduce<TArrayI::value_type, TArrayI::value_type, int>(
+    return ContractReduce<TensorI, TensorI, int>(
         madness::cblas::NoTrans, madness::cblas::NoTrans, 1, result_rank,
         left_rank, right_rank, perm);
   }
+
+
+
+  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  make_array_noop(const Permutation& perm = Permutation()) {
+    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
+        Noop<TensorI, true>(), perm);
+  }
+
 
   template <typename Tile, typename Policy>
   static void rand_fill_array(DistArray<Tile, Policy>& array) {
@@ -121,7 +129,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
         continue;
 
       // Get tile for index
-      const TArrayI::value_type tile = array.find(index);
+      const TensorI tile = array.find(index);
 
       // Compute block start and size
       std::size_t start[2] = { 0ul, 0ul }, size[2] = { 1ul, 1ul };
@@ -282,11 +290,12 @@ BOOST_AUTO_TEST_CASE( eval )
 
 
   // Compute the reference contraction
-  const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
+  const matrix_type l = copy_to_matrix(left, 1),
+                    r = copy_to_matrix(right, GlobalFixture::dim - 1);
   const matrix_type reference = l * r;
 
   // Check that each tile has been properly scaled.
-  for(auto index : * contract.pmap()) {
+  for(auto index : *contract.pmap()) {
 
     // Get the array evaluator tile.
     Future<dist_eval_type::value_type> tile;
@@ -324,11 +333,12 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
 
   // Compute the reference contraction
-  const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
+  const matrix_type l = copy_to_matrix(left, 1),
+                    r = copy_to_matrix(right, GlobalFixture::dim - 1);
   const matrix_type reference = (l * r).transpose();
 
   // Check that each tile has been properly scaled.
-  for(auto index : * contract.pmap()) {
+  for(auto index : *contract.pmap()) {
 
     // Get the array evaluator tile.
     Future<dist_eval_type::value_type> tile;
@@ -349,8 +359,6 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
 }
 
-#ifndef TILEDARRAY_ENABLE_OLD_SUMMA
-
 BOOST_AUTO_TEST_CASE( sparse_eval )
 {
   TSpArrayI left(*GlobalFixture::world, tr, make_shape(tr, 0.4, 23));
@@ -365,14 +373,15 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
 
   auto left_arg = make_array_eval(left, left.get_world(), left.get_shape(),
       proc_grid.make_row_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[0]),
-      Permutation(), array_op_type(array_base_op_type()));
+      Permutation(), make_array_noop());
   auto right_arg = make_array_eval(right, right.get_world(), right.get_shape(),
       proc_grid.make_col_phase_pmap(tr.tiles().volume() / tr.tiles().extent_data()[tr.tiles().rank() - 1]),
-      Permutation(), array_op_type(array_base_op_type()));
+      Permutation(), make_array_noop());
   auto op = make_contract(2u, left_arg.trange().tiles().rank(),
       right_arg.trange().tiles().rank());
 
-  const SparseShape<float> result_shape = left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
+  const SparseShape<float> result_shape =
+      left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
 
   auto contract = make_contract_eval(left_arg, right_arg,
       left_arg.get_world(), result_shape, pmap, Permutation(), op);
@@ -383,11 +392,12 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   BOOST_REQUIRE_NO_THROW(contract.wait());
 
   // Compute the reference contraction
-  const matrix_type l = copy_to_matrix(left, 1), r = copy_to_matrix(right, GlobalFixture::dim - 1);
+  const matrix_type l = copy_to_matrix(left, 1),
+                    r = copy_to_matrix(right, GlobalFixture::dim - 1);
   const matrix_type reference = l * r;
 
   // Check that each tile has been properly scaled.
-  for(auto index : * contract.pmap()) {
+  for(auto index : *contract.pmap()) {
     // Skip zero tiles
     if(contract.is_zero(index)) {
       dist_eval_type::range_type range = contract.trange().make_tile_range(index);
@@ -415,7 +425,5 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
   }
 
 }
-
-#endif // TILEDARRAY_ENABLE_OLD_SUMMA
 
 BOOST_AUTO_TEST_SUITE_END()
