@@ -5,13 +5,13 @@ TiledArray is a scalable, block-sparse tensor library that is designed to aid in
 
 TiledArray is built on top of MADNESS parallel runtime (MADWorld), part of [MADNESS numerical calculus framework](https://github.com/m-a-d-n-e-s-s/madness).
 
-TiledArray is a work in progress.
+TiledArray is a work in progress. Its development has been possible thanks to generous support from the U.S. National Science Foundation, the Alfred P. Sloan Foundation, and the Camille and Henry Dreyfus Foundation.
 
 ### Design Goals
-* Simple implementation of tensor algebra in C++
-* Dense, and structured/unstructured sparse tensors
-* Intra- and inter-node scalability
-* General purpose
+* General-purpose arithmetic on dense and block-sparse tensors;
+* High-level (math-like) composition as well as full access to low-level data and algorithms, both from C++
+* Massive shared- and distributed-memory parallelism
+* Deeply-reusable framework: everything can be customized, from tile types (e.g. to support on-disk or compute-on-the-fly tensors) to how the structure of sparse tensors is described.
 
 ### Example Code
 
@@ -25,7 +25,7 @@ The following example expressions are written in C++ with TiledArray. TiledArray
 
     C("n") = A("k") * B("k,n");
 
-* Complex tensor expression
+* A more complex tensor expression
  
     E("m,n") = 2.0 * A("m,k") * B("k,n") + C("k,n") * D("k,m");
 
@@ -73,20 +73,19 @@ int main(int argc, char** argv) {
   * GCC 4.7.2 and later, 
   * Clang 3.4 and later, 
   * Apple Clang 5.0 and later, and
-  * Intel Compiler 15 and later.
+  * Intel C/C++ Compiler 15 and later.
 * **Cmake** 2.8.8 or later
-* **Git** 1.8 or later (included in with Xcode)
 * **Eigen** - Version 3.0 and later. http://eigen.tuxfamily.org
-* **MADNESS** - We recommend using the HEAD revision from the git repository, which contains several bug fixes that are necessary for TiledArray. See the [MADNESS GitHub page](https://github.com/m-a-d-n-e-s-s/madness) for details.
+* **MADNESS** - While it is possible to compile MADNESS separately, we recommend compiling MADNESS automatically as part of TiledArray. Compilation of MADNESS requires the following additional prerequisites (see the [MADNESS GitHub page](https://github.com/m-a-d-n-e-s-s/madness) for details):
   * **autoconf** 2.59 or later
   * **automake** 1.11 or later
   * **libtool** 2.x or later
   * **Pthreads**
-  * **MPI-2 or MPI-3 library** - [MPICH](http://www.mpich.org), [MVAPICH](http://mvapich.cse.ohio-state.edu), and [Intel MPI](https://software.intel.com/en-us/intel-mpi-library) have been tested and are preferred. We do not recommend OpenMPI as `MPI_THREAD_MULTIPLE` support is [broken](https://github.com/open-mpi/ompi/issues/157).
-  * **LAPACK** and **BLAS** - A serial version of these libraries is required. Do NOT use a threaded version of these libraries.
+  * **MPI-2 or MPI-3 library** - [MPICH](http://www.mpich.org), [MVAPICH](http://mvapich.cse.ohio-state.edu), and [Intel MPI](https://software.intel.com/en-us/intel-mpi-library) have been tested. Intel MPI is recommended on x86/Infiniband hardware, but any of these libraries will do. We do not recommend OpenMPI as `MPI_THREAD_MULTIPLE` support is [broken](https://github.com/open-mpi/ompi/issues/157).
+  * **LAPACK** and **BLAS** - Serial (sequential, or 1-thread) versions of these libraries is recommended. If you have to use threaded version of these libraries, to avoid poor performance (or even errors) due to non-interoperable threading runtimes it is recommended to configure these libraries to use single thread at runtime before entering the block of TiledArray code.
   * **Intel Threading Building Blocks** (optional) Version 4.3 Update 4 or later. 
 * **Doxygen** (optional) - Used to generate for documentation only
-* **Boost** (optional) - Version 1.33.0 or later for unit tests only)
+* **Boost** (optional) - Version 1.33.0 or later for unit tests only
  
 #### Build
 
@@ -141,10 +140,10 @@ TiledArray is developed by the [Valeev Group](http://research.valeyev.net) at [V
 ### How to Cite
 
 Cite TiledArray as
-> "TiledArray: A general-purpose scalable block-sparse tensor library", Justus A. Calvin and Edward F. Valeev, https://github.com/valeevgroup/tiledarray .
+> "TiledArray: A general-purpose scalable block-sparse tensor framework", Justus A. Calvin and Edward F. Valeev, https://github.com/valeevgroup/tiledarray .
 
 Inner workings of TiledArray are partially described in the following publications:
-* Justus A. Calvin, Cannada A. Lewis, and Edward F. Valeev, "Scalable Task-Based Algorithm for Multiplication of Block-Rank-Sparse Matrices." http://arxiv.org/abs/1509.00309 .
+* Justus A. Calvin, Cannada A. Lewis, and Edward F. Valeev, "Scalable Task-Based Algorithm for Multiplication of Block-Rank-Sparse Matrices.", Proceedings of the 5th Workshop on Irregular Applications: Architectures and Algorithms, http://dx.doi.org/10.1145/2833179.2833186.
 * Justus A. Calvin and Edward F. Valeev, "Task-Based Algorithm for Matrix Multiplication: A Step Towards Block-Sparse Tensor Computing." http://arxiv.org/abs/1504.05046 .
 
 The MADNESS parallel runtime is described in the following publication:

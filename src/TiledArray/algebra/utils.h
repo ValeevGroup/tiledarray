@@ -54,11 +54,6 @@ namespace TiledArray {
   }
 
   template <typename Tile, typename Policy>
-  inline DistArray<Tile,Policy> clone(const DistArray<Tile,Policy>& a) {
-    return a;
-  }
-
-  template <typename Tile, typename Policy>
   inline DistArray<Tile,Policy> copy(const DistArray<Tile,Policy>& a) {
     return a;
   }

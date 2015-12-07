@@ -47,21 +47,26 @@ namespace TiledArray {
   // TiledArray Arrays
   template <typename, typename> class DistArray;
 
+
   // Dense Array Typedefs
-  typedef DistArray<TensorD, DensePolicy> TArrayD;
-  typedef DistArray<TensorI, DensePolicy> TArrayI;
-  typedef DistArray<TensorF, DensePolicy> TArrayF;
-  typedef DistArray<TensorL, DensePolicy> TArrayL;
-  typedef DistArray<TensorZ, DensePolicy> TArrayZ;
-  typedef DistArray<TensorC, DensePolicy> TArrayC;
+  template <typename T>
+  using TArray = DistArray<Tensor<T, Eigen::aligned_allocator<T> >, DensePolicy>;
+  typedef TArray<double>                  TArrayD;
+  typedef TArray<int>                     TArrayI;
+  typedef TArray<float>                   TArrayF;
+  typedef TArray<long>                    TArrayL;
+  typedef TArray<std::complex<double> >   TArrayZ;
+  typedef TArray<std::complex<float> >    TArrayC;
 
   // Sparse Array Typedefs
-  typedef DistArray<TensorD, SparsePolicy> TSpArrayD;
-  typedef DistArray<TensorI, SparsePolicy> TSpArrayI;
-  typedef DistArray<TensorF, SparsePolicy> TSpArrayF;
-  typedef DistArray<TensorL, SparsePolicy> TSpArrayL;
-  typedef DistArray<TensorZ, SparsePolicy> TSpArrayZ;
-  typedef DistArray<TensorC, SparsePolicy> TSpArrayC;
+  template <typename T>
+  using TSpArray = DistArray<Tensor<T, Eigen::aligned_allocator<T> >, SparsePolicy>;
+  typedef TSpArray<double>                TSpArrayD;
+  typedef TSpArray<int>                   TSpArrayI;
+  typedef TSpArray<float>                 TSpArrayF;
+  typedef TSpArray<long>                  TSpArrayL;
+  typedef TSpArray<std::complex<double> > TSpArrayZ;
+  typedef TSpArray<std::complex<float> >  TSpArrayC;
 
   template <typename T, unsigned int, typename Tile = Tensor<T, Eigen::aligned_allocator<T> >, typename Policy = DensePolicy>
   using Array = DistArray<Tile, Policy>;
