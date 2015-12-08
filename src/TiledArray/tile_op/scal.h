@@ -26,7 +26,8 @@
 #ifndef TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
 
-#include <TiledArray/tile_op/unary_interface.h>
+#include <type_traits>
+#include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {
 

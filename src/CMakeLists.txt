@@ -118,18 +118,18 @@ TiledArray/tensor/unary.h
 TiledArray/tensor/utility.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_reduction.h
+TiledArray/tile_op/binary_wrapper.h
 TiledArray/tile_op/contract_reduce.h
 TiledArray/tile_op/mult.h
 TiledArray/tile_op/neg.h
 TiledArray/tile_op/noop.h
 TiledArray/tile_op/reduce_wrapper.h
 TiledArray/tile_op/scal.h
-TiledArray/tile_op/scal_shift.h
 TiledArray/tile_op/shift.h
 TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h
-TiledArray/tile_op/unary_interface.h
-TiledArray/tile_op/unary_reduction.h)
+TiledArray/tile_op/unary_reduction.h
+TiledArray/tile_op/unary_wrapper.h)
 
 # Install header files
 install(

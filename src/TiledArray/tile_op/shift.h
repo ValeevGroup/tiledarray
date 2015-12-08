@@ -26,8 +26,6 @@
 #ifndef TILEDARRAY_TILE_OP_SHIFT_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SHIFT_H__INCLUDED
 
-#include <TiledArray/tile_op/unary_interface.h>
-
 namespace TiledArray {
 
   /// Tile shift operation
