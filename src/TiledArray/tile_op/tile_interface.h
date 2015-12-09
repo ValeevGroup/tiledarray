@@ -735,6 +735,85 @@ namespace TiledArray {
   { return result.neg_to(); }
 
 
+  // Complex conjugate operations ---------------------------------------------
+
+  /// Create a complex conjugated copy of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The tile to be conjugated
+  /// \return A complex conjugated copy of `arg`
+  template <typename Arg>
+  inline auto conj(const Arg& arg) ->
+      decltype(arg.conj())
+  { return arg.conj(); }
+
+  /// Create a complex conjugated and scaled copy of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \tparam Scalar A scalar type
+  /// \param arg The tile to be conjugated
+  /// \param factor The scaling factor
+  /// \return A complex conjugated and scaled copy of `arg`
+  template <typename Arg, typename Scalar,
+      typename std::enable_if<
+          TiledArray::detail::is_numeric<Scalar>::value
+      >::type* = nullptr>
+  inline auto conj(const Arg& arg, const Scalar factor) ->
+      decltype(arg.conj(factor))
+  { return arg.conj(factor); }
+
+  /// Create a complex conjugated and permuted copy of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The tile to be conjugated
+  /// \param perm The permutation to be applied to `arg`
+  /// \return A complex conjugated and permuted copy of `arg`
+  template <typename Arg>
+  inline auto conj(const Arg& arg, const Permutation& perm) ->
+      decltype(arg.conj(perm))
+  { return arg.conj(perm); }
+
+  /// Create a complex conjugated, scaled, and permuted copy of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \tparam Scalar A scalar type
+  /// \param arg The argument to be conjugated
+  /// \param factor The scaling factor
+  /// \param perm The permutation to be applied to `arg`
+  /// \return A complex conjugated, scaled, and permuted copy of `arg`
+  template <typename Arg, typename Scalar,
+      typename std::enable_if<
+          TiledArray::detail::is_numeric<Scalar>::value
+      >::type* = nullptr>
+  inline auto conj(const Arg& arg, const Scalar factor, const Permutation& perm) ->
+      decltype(arg.conj(factor, perm))
+  { return arg.conj(factor, perm); }
+
+  /// In-place complex conjugate a tile
+
+  /// \tparam Result The tile type
+  /// \param result The tile to be conjugated
+  /// \return A reference to `result`
+  template <typename Result>
+  inline Result& conj_to(Result& result) {
+    return result.conj_to();
+  }
+
+  /// In-place complex conjugate and scale a tile
+
+  /// \tparam Result The tile type
+  /// \tparam Scalar A scalar type
+  /// \param result The tile to be conjugated
+  /// \param factor The scaling factor
+  /// \return A reference to `result`
+  template <typename Result, typename Scalar,
+      typename std::enable_if<
+          TiledArray::detail::is_numeric<Scalar>::value
+      >::type* = nullptr>
+  inline Result& conj_to(Result& result, const Scalar factor) {
+    return result.conj_to(factor);
+  }
+
   // Contraction operations ----------------------------------------------------
 
 

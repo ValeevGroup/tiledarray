@@ -410,68 +410,6 @@ namespace TiledArray {
         return inplace_unary([=] (numeric_type& restrict res) { res *= factor; });
       }
 
-      // Complex conjugate operations
-
-      /// Construct a complex conjugated copy of this tensor
-
-      /// \return A new tensor where the elements are the complex conjugate of the
-      /// elements of this tensor
-      result_tensor conj() const {
-        return scale(TiledArray::conj<numeric_type>());
-      }
-
-      /// Construct a permuted and complex conjugated copy of this tensor
-
-      /// \param perm The permutation to be applied to this tensor
-      /// \return A new tensor where the elements are the complex conjugate of the
-      /// elements of this tensor and permuted
-      result_tensor conj(const Permutation& perm) const {
-        return scale(TiledArray::conj<numeric_type>(), perm);
-      }
-
-      /// Construct a scaled and complex conjugated copy of this tensor
-
-      /// \tparam Scalar A scalar type
-      /// \param factor The scaling factor
-      /// \return A new tensor where the elements are the complex conjugate of the
-      /// elements of this tensor and scaled by \c factor
-      template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-      result_tensor conj(const Scalar factor) const {
-        return scale(TiledArray::conj(factor));
-      }
-
-      /// Construct a scaled, permuted, and complex conjugated copy of this tensor
-
-      /// \tparam Scalar A scalar type
-      /// \param factor The scaling factor
-      /// \param perm The permutation to be applied to this tensor
-      /// \return A new tensor where the elements are the complex conjugate of the
-      /// elements of this tensor, scaled by \c factor, and permuted
-      template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-      result_tensor conj(const Scalar factor, const Permutation& perm) const {
-        return scale(TiledArray::conj(factor), perm);
-      }
-
-      /// In-place complex conjugate this tensor
-
-      /// \param factor The scaling factor
-      /// \return A reference to this tensor
-      TensorInterface_& conj_to() {
-        return scale_to(TiledArray::conj<numeric_type>());
-      }
-
-      /// In-place scale and complex conjugate this tensor
-
-      /// \tparam Scalar A scalar type
-      /// \param factor The scaling factor
-      /// \return A reference to this tensor
-      template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-      TensorInterface_& conj_to(const Scalar factor) {
-        return scale_to(TiledArray::conj(factor));
-      }
 
       // Addition operations
 
@@ -844,6 +782,79 @@ namespace TiledArray {
       }
 
 
+      /// Create a complex conjugated copy of this tensor
+
+      /// \return A copy of this tensor that contains the complex conjugate the
+      /// values
+      result_tensor conj() const {
+        return unary([] (const numeric_type l) -> numeric_type {
+          return TiledArray::detail::conj(l);
+        });
+      }
+
+      /// Create a complex conjugated and scaled copy of this tensor
+
+      /// \tparam Scalar A scalar type
+      /// \param factor The scaling factor
+      /// \return A copy of this tensor that contains the scaled complex
+      /// conjugate the values
+      template <typename Scalar,
+          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+      result_tensor conj(const Scalar factor) const {
+        return unary([=] (const numeric_type l) -> numeric_type {
+          return TiledArray::detail::conj(l) * factor;
+        });
+      }
+
+      /// Create a complex conjugated and permuted copy of this tensor
+
+      /// \param perm The permutation to be applied to this tensor
+      /// \return A permuted copy of this tensor that contains the complex
+      /// conjugate values
+      result_tensor conj(const Permutation& perm) const {
+        return unary([] (const numeric_type l) -> numeric_type {
+          return TiledArray::detail::conj(l);
+        }, perm);
+      }
+
+      /// Create a complex conjugated, scaled, and permuted copy of this tensor
+
+      /// \tparam Scalar A scalar type
+      /// \param factor The scaling factor
+      /// \param perm The permutation to be applied to this tensor
+      /// \return A permuted copy of this tensor that contains the complex
+      /// conjugate values
+      template <typename Scalar,
+          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+      result_tensor conj(const Scalar factor, const Permutation& perm) const {
+        return unary([=] (const numeric_type l) -> numeric_type {
+          return TiledArray::detail::conj(l) * factor;
+        }, perm);
+      }
+
+      /// Complex conjugate this tensor
+
+      /// \return A reference to this tensor
+      TensorInterface_& conj_to() {
+        return inplace_unary([] (numeric_type& l) {
+          l = TiledArray::detail::conj(l);
+        });
+      }
+
+      /// Complex conjugate and scale this tensor
+
+      /// \tparam Scalar A scalar type
+      /// \param factor The scaling factor
+      /// \return A reference to this tensor
+      template <typename Scalar,
+          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+      TensorInterface_& conj_to(const Scalar factor) {
+        return inplace_unary([=] (numeric_type& l) -> numeric_type {
+          l = TiledArray::detail::conj(l) * factor;
+        });
+      }
+
+
       /// Unary reduction operation
 
       /// Perform an element-wise reduction of the tile data.
@@ -902,7 +913,7 @@ namespace TiledArray {
       /// \return The vector norm of this tensor
       numeric_type squared_norm() const {
         auto square_op = [] (numeric_type& restrict res, const numeric_type arg)
-                { res += arg * arg; };
+                { res += arg * TiledArray::detail::conj(arg); };
         auto sum_op = [] (numeric_type& restrict res, const numeric_type arg)
                 { res += arg; };
         return reduce(square_op, sum_op, numeric_type(0));
