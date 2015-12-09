@@ -57,83 +57,104 @@ namespace TiledArray {
   /// arithmetic types via the \c * operator
   template <typename T>
   class Conjugate {
-    static_assert(detail::is_float_or_complex<T>::value,
-        "Conjugate scalar type must be a floating point or complex type.");
 
-    T scalar_;
+    T factor_; ///< Scaling factor
 
   public:
-    Conjugate() : scalar_(1) { }
-    Conjugate(const T scalar) : scalar_(scalar) { }
+    Conjugate(const T factor) : factor_(scalar) { }
 
-    // Compiler generated functions
-    Conjugate(const Conjugate&) = default;
-    Conjugate(Conjugate&&) = default;
-    ~Conjugate() = default;
-    Conjugate& operator=(const Conjugate&) = default;
-    Conjugate& operator=(Conjugate&&) = default;
+    T scalar() const { return factor_; }
 
-    T scalar() const { return scalar_; }
-
-    template <typename U,
-        typename std::enable_if<std::is_floating_point<U>::value>::type* = nullptr>
-    auto operator()(const U value) const -> decltype(value * std::declval<T>())
-    { return value * scalar_; }
+    template <typename A,
+        typename std::enable_if<
+            ! detail::is_complex<A>::value
+        >::type* = nullptr>
+    A apply(const A arg) const {
+      return arg * factor_;
+    }
 
 
-    template <typename U,
-        typename std::enable_if<std::is_floating_point<U>::value>::type* = nullptr>
-    auto operator()(const std::complex<U> value) const
-        -> decltype(std::conj(value) * std::declval<T>())
-    { return std::conj(value) * scalar_; }
+    template <typename A>
+    std::complex<A> apply(const std::complex<A> arg) const {
+      return std::conj(arg) * factor_;
+    }
 
-    template <typename U,
-        typename std::enable_if<std::is_floating_point<U>::value>::type* = nullptr>
-    auto operator()(const Conjugate<U> conj) const
-        -> decltype(conj.scalar_ * std::declval<T>())
-    { return conj.scalar_ * scalar_; }
+    template <typename A,
+        typename std::enable_if<
+            ! detail::is_complex<A>::value
+        >::type* = nullptr>
+    A& inplace_apply(A& arg) const {
+      arg *= factor_;
+      return arg;
+    }
 
 
-    template <typename U,
-        typename std::enable_if<std::is_floating_point<U>::value>::type* = nullptr>
-    auto operator()(const Conjugate<std::complex<U> > conj) const
-        -> decltype(std::conj(conj.scalar_) * std::declval<T>())
-    { return std::conj(conj.scalar_) * scalar_; }
+    template <typename A>
+    std::complex<A>& inplace_apply(std::complex<A>& arg) const {
+      arg = std::conj(arg) * factor_;
+      return arg;
+    }
 
   }; // Conjugate
 
-  inline Conjugate<double> conj() { return Conjugate<double>(); }
+  /// Complex conjugate operator
 
-  template <typename T>
-  inline Conjugate<T> conj() { return Conjugate<T>(); }
+  /// This object defines a complex conjugate operator that may be applied to
+  /// arithmetic types via the \c * operator
+  template <>
+  class Conjugate<void> {
+  public:
+
+    template <typename A,
+        typename std::enable_if<
+            ! detail::is_complex<A>::value
+        >::type* = nullptr>
+    A apply(const A arg) const {
+      return arg;
+    }
+
+
+    template <typename A>
+    std::complex<A> apply(const std::complex<A> arg) const {
+      return std::conj(arg);
+    }
+
+    template <typename A,
+        typename std::enable_if<
+            ! detail::is_complex<A>::value
+        >::type* = nullptr>
+    A& inplace_apply(A& arg) const {
+      return arg;
+    }
+
+
+    template <typename A>
+    std::complex<A>& inplace_apply(const std::complex<A> arg) const {
+      arg.imag(-arg.imag());
+      return arg;
+    }
+
+  }; // class Conjugate<void>
+
+  inline Conjugate<void> conj() { return Conjugate<void>(); }
 
   template <typename T>
   inline Conjugate<T> conj(const T scalar) { return Conjugate<T>(scalar); }
 
-  template <typename L, typename R,
-      typename std::enable_if<detail::is_float_or_complex<R>::value>::type* = nullptr>
-  inline auto operator*(const Conjugate<L> left, const R right) ->
-      decltype(TiledArray::conj(left.scalar() * right))
-  { return TiledArray::conj(left.scalar() * right); }
-
-  template <typename L, typename R,
-      typename std::enable_if<detail::is_float_or_complex<L>::value>::type* = nullptr>
-  inline auto operator*(const L left, const Conjugate<R> right) ->
-      decltype(right(left))
-  { return right(left); }
-
-
-  template <typename L, typename R,
-      typename std::enable_if<detail::is_float_or_complex<L>::value>::type* = nullptr>
-  inline L& operator*=(L& left, const Conjugate<R> right) {
-    left = right(left);
-    return left;
-  }
+  template <typename L, typename R>
+  inline auto operator*(const Conjugate<L> op, const R value) ->
+      decltype(op.apply(value))
+  { return op.apply(value); }
 
   template <typename L, typename R>
-  inline auto operator*(const Conjugate<L> left, const Conjugate<R> right) ->
-      decltype(left(right))
-  { return left(right); }
+  inline auto operator*(const L value, const Conjugate<R> op) ->
+      decltype(op.apply(value))
+  { return op.apply(value); }
+
+  template <typename L, typename R>
+  inline auto operator*=(L& value, const Conjugate<R> op) ->
+      decltype(op.implace_apply(value))
+  { return op.inplace_apply(value); }
 
 
 } // namespace TiledArray
