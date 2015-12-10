@@ -68,7 +68,7 @@ namespace TiledArray {
       /// Construct a scaled tensor expression
 
       /// \param array The array object
-      /// \param vars The annotation variables
+      /// \param vars The array annotation variables
       /// \param factor The scaling factor
       ScalTsrExpr(const array_type& array, const std::string& vars,
           const scalar_type factor) :
@@ -298,7 +298,7 @@ namespace TiledArray {
     inline ScalTsrExpr<A, S>
     conj(const ScalConjTsrExpr<A, S>& expr) {
       return ScalTsrExpr<A, S>(expr.array(), expr.vars(),
-          TiledArray::detail::conj(expr.factor()));
+          TiledArray::detail::conj(expr.factor().factor()));
     }
 
     /// Scaled-tensor expression factor
