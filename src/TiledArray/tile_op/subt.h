@@ -155,7 +155,7 @@ namespace TiledArray {
     /// \return The permuted and scaled difference of `left` and `right`.
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right, const Permutation& perm) const {
-      return eval(left, right, perm);
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
     }
 
     /// Subtract operator
@@ -170,7 +170,8 @@ namespace TiledArray {
     /// \return The scaled difference of `left` and `right`.
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right) const {
-      return Subt_::template eval<left_is_consumable, right_is_consumable>(left, right);
+      return Subt_::template eval<left_is_consumable, right_is_consumable>(
+          std::forward<L>(left), std::forward<R>(right));
     }
 
     /// Subtract right to left
@@ -184,7 +185,8 @@ namespace TiledArray {
     /// \return The difference of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      return Subt_::template eval<is_consumable_tile<left_type>::value, false>(left, right);
+      return Subt_::template eval<is_consumable_tile<left_type>::value, false>(
+          left, std::forward<R>(right));
     }
 
     /// Subtract left to right
@@ -198,7 +200,8 @@ namespace TiledArray {
     /// \return The difference of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      return Subt_::template eval<false, is_consumable_tile<right_type>::value>(left, right);
+      return Subt_::template eval<false, is_consumable_tile<right_type>::value>(
+          std::forward<L>(left), right);
     }
 
   }; // class Subt
@@ -342,7 +345,7 @@ namespace TiledArray {
     /// \return The permuted and scaled difference of `left` and `right`.
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right, const Permutation& perm) const {
-      return eval(left, right, perm);
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
     }
 
     /// Scale-and-subtract operator
@@ -357,7 +360,8 @@ namespace TiledArray {
     /// \return The scaled difference of `left` and `right`.
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right) const {
-      return ScalSubt_::template eval<left_is_consumable, right_is_consumable>(left, right);
+      return ScalSubt_::template eval<left_is_consumable, right_is_consumable>(
+          std::forward<L>(left), std::forward<R>(right));
     }
 
     /// Subtract right to left and scale the result
@@ -371,7 +375,8 @@ namespace TiledArray {
     /// \return The difference of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      return ScalSubt_::template eval<is_consumable_tile<left_type>::value, false>(left, right);
+      return ScalSubt_::template eval<is_consumable_tile<left_type>::value, false>(
+          left, std::forward<R>(right));
     }
 
     /// Subtract left to right and scale the result
@@ -385,7 +390,8 @@ namespace TiledArray {
     /// \return The difference of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      return ScalSubt_::template eval<false, is_consumable_tile<right_type>::value>(left, right);
+      return ScalSubt_::template eval<false, is_consumable_tile<right_type>::value>(
+          std::forward<L>(left), right);
     }
 
   }; // class ScalSubt

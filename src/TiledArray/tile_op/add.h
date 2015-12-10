@@ -151,7 +151,7 @@ namespace TiledArray {
     /// \return The permuted and scaled sum of `left` and `right`.
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right, const Permutation& perm) const {
-      return eval(left, right, perm);
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
     }
 
     /// Add operator
@@ -166,8 +166,8 @@ namespace TiledArray {
     /// \return The scaled sum of `left` and `right`.
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right) const {
-      return Add_::template eval<left_is_consumable, right_is_consumable>(left,
-          right);
+      return Add_::template eval<left_is_consumable, right_is_consumable>(
+          std::forward<L>(left), std::forward<R>(right));
     }
 
     /// Add right to left
@@ -182,7 +182,7 @@ namespace TiledArray {
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
       return Add_::template eval<is_consumable_tile<left_type>::value,
-          false>(left, right);
+          false>(left, std::forward<R>(right));
     }
 
     /// Add left to right
@@ -197,7 +197,7 @@ namespace TiledArray {
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
       return Add_::template eval<false,
-          is_consumable_tile<right_type>::value>(left, right);
+          is_consumable_tile<right_type>::value>(std::forward<L>(left), right);
     }
 
   }; // class Add
@@ -357,7 +357,7 @@ namespace TiledArray {
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right) const {
       return ScalAdd_::template eval<left_is_consumable,
-          right_is_consumable>(left, right);
+          right_is_consumable>(std::forward<L>(left), std::forward<R>(right));
     }
 
     /// Add right to left and scale the result
@@ -372,7 +372,7 @@ namespace TiledArray {
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
       return ScalAdd_::template eval<is_consumable_tile<left_type>::value,
-          false>(left, right);
+          false>(left, std::forward<R>(right));
     }
 
     /// Add left to right and scale the result
@@ -387,7 +387,7 @@ namespace TiledArray {
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
       return ScalAdd_::template eval<false,
-          is_consumable_tile<right_type>::value>(left, right);
+          is_consumable_tile<right_type>::value>(std::forward<L>(left), right);
     }
 
   }; // class ScalAdd

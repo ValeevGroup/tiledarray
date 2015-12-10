@@ -155,7 +155,7 @@ namespace TiledArray {
     /// \return The permuted and scaled product of `left` and `right`.
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right, const Permutation& perm) const {
-      return eval(left, right, perm);
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
     }
 
     /// Multiply operator
@@ -168,7 +168,8 @@ namespace TiledArray {
     /// \return The scaled product of `left` and `right`.
     template <typename L, typename R>
     result_type operator()(L&& left, R&& right) const {
-      return Mult_::template eval<left_is_consumable, right_is_consumable>(left, right);
+      return Mult_::template eval<left_is_consumable, right_is_consumable>(
+          std::forward<L>(left), std::forward<R>(right));
     }
 
     /// Multiply right to left
@@ -180,7 +181,8 @@ namespace TiledArray {
     /// \return The product of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      return Mult_::template eval<is_consumable_tile<left_type>::value, false>(left, right);
+      return Mult_::template eval<is_consumable_tile<left_type>::value, false>(
+          left, std::forward<R>(right));
     }
 
     /// Multiply left to right
@@ -192,7 +194,8 @@ namespace TiledArray {
     /// \return The product of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      return Mult_::template eval<false, is_consumable_tile<right_type>::value>(left, right);
+      return Mult_::template eval<false, is_consumable_tile<right_type>::value>(
+          std::forward<L>(left), right);
     }
 
   }; // class Mult
