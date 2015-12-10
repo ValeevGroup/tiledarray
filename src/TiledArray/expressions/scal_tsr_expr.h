@@ -65,31 +65,14 @@ namespace TiledArray {
 
     public:
 
-      /// Construct a scaled tensor expression from a tensor expression
+      /// Construct a scaled tensor expression
 
-      /// \param tsr_expr The tensor expression
+      /// \param array The array object
+      /// \param vars The annotation variables
       /// \param factor The scaling factor
-      template <typename A, typename S>
-      ScalTsrExpr(const TsrExpr<A>& tsr_expr, const S factor) :
-        Expr_(), array_(tsr_expr.array()), vars_(tsr_expr.vars()), factor_(factor)
-      { }
-//
-//      /// Construct a scaled tensor expression from a const tensor expression
-//
-//      /// \param tsr_expr The const tensor expression
-//      /// \param factor The scaling factor
-//      template <typename S>
-//      ScalTsrExpr(const TsrExpr<const array_type>& tsr_expr, const S factor) :
-//        Expr_(), array_(tsr_expr.array()), vars_(tsr_expr.vars()), factor_(factor)
-//      { }
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      /// \param factor The scaling factor applied to the new expression
-      template <typename A, typename S1, typename S2>
-      ScalTsrExpr(const ScalTsrExpr<A, S1>& other, const S2 factor) :
-        Expr_(), array_(other.array()), vars_(other.vars()), factor_(other.factor() * factor)
+      ScalTsrExpr(const array_type& array, const std::string& vars,
+          const scalar_type factor) :
+        Expr_(), array_(array), vars_(vars), factor_(factor)
       { }
 
       /// Copy constructor
@@ -133,7 +116,7 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalTsrExpr<A, Scalar>
     operator*(const TsrExpr<A>& expr, const Scalar& factor) {
-      return ScalTsrExpr<A, Scalar>(expr, factor);
+      return ScalTsrExpr<A, Scalar>(expr.array(), expr.vars(), factor);
     }
 
     /// Scaled-tensor expression factor
@@ -149,7 +132,7 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalTsrExpr<A, Scalar>
     operator*(const TsrExpr<const A>& expr, const Scalar& factor) {
-      return ScalTsrExpr<A, Scalar>(expr, factor);
+      return ScalTsrExpr<A, Scalar>(expr.array(), expr.vars(), factor);
     }
 
     /// Scaled-tensor expression factor
@@ -165,7 +148,7 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalTsrExpr<A, Scalar>
     operator*(const Scalar& factor, const TsrExpr<A>& expr) {
-      return ScalTsrExpr<A, Scalar>(expr, factor);
+      return ScalTsrExpr<A, Scalar>(expr.array(), expr.vars(), factor);
     }
 
     /// Scaled-tensor expression factor
@@ -181,7 +164,7 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalTsrExpr<A, Scalar>
     operator*(const Scalar& factor, const TsrExpr<const A>& expr) {
-      return ScalTsrExpr<A, Scalar>(expr, factor);
+      return ScalTsrExpr<A, Scalar>(expr.array(), expr.vars(), factor);
     }
 
     /// Scaled-tensor expression factor
@@ -197,7 +180,8 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalTsrExpr<A, mult_t<Scalar1, Scalar2> >
     operator*(const ScalTsrExpr<A, Scalar1>& expr, const Scalar2& factor) {
-      return ScalTsrExpr<A, mult_t<Scalar1, Scalar2> >(expr, factor);
+      return ScalTsrExpr<A, mult_t<Scalar1, Scalar2> >(expr.array(),
+          expr.vars(), expr.factor() * factor);
     }
 
     /// Scaled-tensor expression factor
@@ -213,7 +197,8 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalTsrExpr<A, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalTsrExpr<A, Scalar2>& expr) {
-      return ScalTsrExpr<A, mult_t<Scalar2, Scalar1> >(expr, factor);
+      return ScalTsrExpr<A, mult_t<Scalar2, Scalar1> >(expr.array(),
+          expr.vars(), expr.factor() * factor);
     }
 
     /// Negated-tensor expression factor
@@ -224,7 +209,8 @@ namespace TiledArray {
     template <typename A>
     inline ScalTsrExpr<A, typename ExprTrait<TsrExpr<A> >::scalar_type>
     operator-(const TsrExpr<A>& expr) {
-      return ScalTsrExpr<A, typename ExprTrait<TsrExpr<A> >::scalar_type>(expr, -1);
+      return ScalTsrExpr<A, typename ExprTrait<TsrExpr<A> >::scalar_type>(
+          expr.array(), expr.vars(), -1);
     }
 
     /// Negated-tensor expression factor
@@ -235,17 +221,19 @@ namespace TiledArray {
     template <typename A>
     inline ScalTsrExpr<A, typename ExprTrait<TsrExpr<const A> >::scalar_type>
     operator-(const TsrExpr<const A>& expr) {
-      return ScalTsrExpr<A, typename ExprTrait<TsrExpr<const A> >::scalar_type>(expr, -1);
+      return ScalTsrExpr<A, typename ExprTrait<TsrExpr<const A> >::scalar_type>(
+          expr.array(), expr.vars(), -1);
     }
 
     /// Negated-tensor expression factor
 
     /// \tparam A An array type
+    /// \tparam S A scalar type
     /// \param expr The scaled-tensor expression object
     /// \return A scaled-tensor expression object
-    template <typename A, typename Scalar>
-    inline ScalTsrExpr<A, Scalar> operator-(const ScalTsrExpr<A, Scalar>& expr) {
-      return ScalTsrExpr<A, Scalar>(expr, -1);
+    template <typename A, typename S>
+    inline ScalTsrExpr<A, S> operator-(const ScalTsrExpr<A, S>& expr) {
+      return ScalTsrExpr<A, S>(expr.array(), expr.vars(), -expr.factor());
     }
 
   }  // namespace expressions
