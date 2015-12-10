@@ -162,7 +162,7 @@ namespace TiledArray {
       template <typename Index>
       BlkTsrExpr<Array>
       block(const Index& lower_bound, const Index& upper_bound) {
-        return BlkTsrExpr<Array>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<Array>(array_, vars_, lower_bound, upper_bound);
       }
 
       /// Block expression
@@ -172,7 +172,7 @@ namespace TiledArray {
       BlkTsrExpr<Array>
       block(const std::initializer_list<std::size_t>& lower_bound,
           const std::initializer_list<std::size_t>& upper_bound) {
-        return BlkTsrExpr<Array>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<Array>(array_, vars_, lower_bound, upper_bound);
       }
 
       /// Conjugated-tensor expression factor
@@ -245,7 +245,7 @@ namespace TiledArray {
       template <typename Index>
       BlkTsrExpr<const Array>
       block(const Index& lower_bound, const Index& upper_bound) const {
-        return BlkTsrExpr<const Array>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<const Array>(array_, vars_, lower_bound, upper_bound);
       }
 
       /// Block expression
@@ -257,7 +257,7 @@ namespace TiledArray {
       BlkTsrExpr<const Array>
       block(const std::initializer_list<Index>& lower_bound,
           const std::initializer_list<Index>& upper_bound) const {
-        return BlkTsrExpr<const Array>(*this, lower_bound, upper_bound);
+        return BlkTsrExpr<const Array>(array_, vars_, lower_bound, upper_bound);
       }
 
       /// Conjugated-tensor expression factor

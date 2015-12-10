@@ -37,6 +37,15 @@ namespace TiledArray {
     template <typename> class BlkTsrExpr;
     template <typename, typename> class ScalBlkTsrExpr;
 
+    template <typename A>
+    using ConjBlkTsrExpr = ScalBlkTsrExpr<A, TiledArray::detail::ComplexConjugate<void> >;
+
+    template <typename A, typename S>
+    using ScalConjBlkTsrExpr = ScalBlkTsrExpr<A, TiledArray::detail::ComplexConjugate<S> >;
+
+    using TiledArray::detail::conj_op;
+
+
     template <typename Array>
     struct ExprTrait<BlkTsrExpr<Array> > {
       typedef Array array_type; ///< The \c Array type
@@ -168,22 +177,22 @@ namespace TiledArray {
 
       /// Block expression constructor
 
-      /// \param tsr The argument expression
+      /// \tparam Index A coordinate index type
+      /// \param array The array object
+      /// \param vars The array annotation variables
       /// \param lower_bound The lower bound of the tile block
       /// \param upper_bound The upper bound of the tile block
-      template <typename A, typename Index>
-      BlkTsrExprBase(const TsrExpr<A>& tsr, const Index& lower_bound,
-          const Index& upper_bound) :
-        Expr_(), array_(tsr.array()), vars_(tsr.vars()),
+      template <typename Index>
+      BlkTsrExprBase(reference array, const std::string& vars,
+          const Index& lower_bound, const Index& upper_bound) :
+        Expr_(), array_(array), vars_(vars),
         lower_bound_(std::begin(lower_bound), std::end(lower_bound)),
         upper_bound_(std::begin(upper_bound), std::end(upper_bound))
-      { }
-
-      template <typename D>
-      BlkTsrExprBase(const BlkTsrExprBase<D>& tsr) :
-        Expr_(), array_(tsr.array()), vars_(tsr.vars()),
-        lower_bound_(tsr.lower_bound()), upper_bound_(tsr.upper_bound())
-      { }
+      {
+#ifndef NDEBUG
+        check_valid();
+#endif // NDEBUG
+      }
 
       /// Array accessor
 
@@ -218,6 +227,10 @@ namespace TiledArray {
                                                  ///< Block expresion base type
       typedef typename ExprTrait<BlkTsrExpr_>::engine_type engine_type;
                                                     ///< Expression engine type
+      typedef typename ExprTrait<BlkTsrExpr_>::array_type array_type;
+                                                            ///< The array type
+      typedef typename ExprTrait<BlkTsrExpr_>::reference reference;
+                                                  ///< The array reference type
 
       // Compiler generated functions
       BlkTsrExpr() = delete;
@@ -227,18 +240,16 @@ namespace TiledArray {
 
       /// Block expression constructor
 
-      /// \param tsr The argument expression
+      /// \tparam Index A coordinate index type
+      /// \param array The array object
+      /// \param vars The array annotation variables
       /// \param lower_bound The lower bound of the tile block
       /// \param upper_bound The upper bound of the tile block
       template <typename Index>
-      BlkTsrExpr(const TsrExpr<Array>& tsr, const Index& lower_bound,
-          const Index& upper_bound) :
-        BlkTsrExprBase_(tsr, lower_bound, upper_bound)
-      {
-#ifndef NDEBUG
-        BlkTsrExprBase_::check_valid();
-#endif // NDEBUG
-      }
+      BlkTsrExpr(reference array, const std::string& vars,
+          const Index& lower_bound, const Index& upper_bound) :
+        BlkTsrExprBase_(array, vars, lower_bound, upper_bound)
+      { }
 
       /// Expression assignment operator
 
@@ -293,6 +304,16 @@ namespace TiledArray {
         return operator=(MultExpr<BlkTsrExpr_, D>(*this, other.derived()));
       }
 
+
+      /// Conjugated block tensor expression factory
+
+      /// \return A conjugated block expression object
+      ConjBlkTsrExpr<array_type> conj() const {
+        return ConjBlkTsrExpr<array_type>(BlkTsrExprBase_::array(),
+            BlkTsrExprBase_::vars(), conj_op(),
+            BlkTsrExprBase_::lower_bound(), BlkTsrExprBase_::upper_bound());
+      }
+
     }; // class BlkTsrExpr
 
     /// Block expression
@@ -306,6 +327,10 @@ namespace TiledArray {
                                                  ///< Block expresion base type
       typedef typename ExprTrait<BlkTsrExpr_>::engine_type engine_type;
                                                     ///< Expression engine type
+      typedef typename ExprTrait<BlkTsrExpr_>::array_type array_type;
+                                                            ///< The array type
+      typedef typename ExprTrait<BlkTsrExpr_>::reference reference;
+                                                  ///< The array reference type
 
       // Compiler generated functions
       BlkTsrExpr() = delete;
@@ -315,35 +340,30 @@ namespace TiledArray {
       BlkTsrExpr_& operator=(const BlkTsrExpr_&) = delete;
       BlkTsrExpr_& operator=(BlkTsrExpr_&&) = delete;
 
-      /// Block expression constructor
-
-      /// \param tsr The argument expression
-      /// \param lower_bound The lower bound of the tile block
-      /// \param upper_bound The upper bound of the tile block
-      template <typename Index>
-      BlkTsrExpr(const TsrExpr<const Array>& tsr, const Index& lower_bound,
-          const Index& upper_bound) :
-        BlkTsrExprBase_(tsr, lower_bound, upper_bound)
-      {
-#ifndef NDEBUG
-        BlkTsrExprBase_::check_valid();
-#endif // NDEBUG
-      }
 
       /// Block expression constructor
 
-      /// \param tsr The argument expression
+      /// \tparam Index A coordinate index type
+      /// \param array The array object
+      /// \param vars The array annotation variables
       /// \param lower_bound The lower bound of the tile block
       /// \param upper_bound The upper bound of the tile block
       template <typename Index>
-      BlkTsrExpr(const TsrExpr<Array>& tsr, const Index& lower_bound,
-          const Index& upper_bound) :
-        BlkTsrExprBase_(tsr, lower_bound, upper_bound)
-      {
-#ifndef NDEBUG
-        BlkTsrExprBase_::check_valid();
-#endif // NDEBUG
+      BlkTsrExpr(reference array, const std::string& vars,
+          const Index& lower_bound, const Index& upper_bound) :
+        BlkTsrExprBase_(array, vars, lower_bound, upper_bound)
+      { }
+
+
+      /// Conjugated block tensor expression factory
+
+      /// \return A conjugated block expression object
+      ConjBlkTsrExpr<array_type> conj() const {
+        return ConjBlkTsrExpr<array_type>(BlkTsrExprBase_::array(),
+            BlkTsrExprBase_::vars(), conj_op(),
+            BlkTsrExprBase_::lower_bound(), BlkTsrExprBase_::upper_bound());
       }
+
     }; // class BlkTsrExpr<const Array>
 
     /// Block expression
@@ -357,6 +377,10 @@ namespace TiledArray {
                                                  ///< Block expresion base type
       typedef typename ExprTrait<ScalBlkTsrExpr_>::engine_type engine_type;
                                                     ///< Expression engine type
+      typedef typename ExprTrait<ScalBlkTsrExpr_>::array_type array_type;
+                                                            ///< The array type
+      typedef typename ExprTrait<ScalBlkTsrExpr_>::reference reference;
+                                                  ///< The array reference type
       typedef typename ExprTrait<ScalBlkTsrExpr_>::scalar_type scalar_type;
                                                                ///< Scalar type
 
@@ -375,20 +399,19 @@ namespace TiledArray {
       ScalBlkTsrExpr_& operator=(ScalBlkTsrExpr_&&) = delete;
 
 
-      /// Expression constructor
+      /// Block expression constructor
 
-      /// \param tsr The block tensor expression
+      /// \tparam Index A coordinate index type
+      /// \param array The array object
+      /// \param vars The array annotation variables
       /// \param factor The scaling factor
-      ScalBlkTsrExpr(const BlkTsrExpr<Array>& tsr, const scalar_type factor) :
-        BlkTsrExprBase_(tsr), factor_(factor)
-      { }
-
-      /// Expression constructor
-
-      /// \param tsr The scaled block tensor expression
-      /// \param factor The scaling factor
-      ScalBlkTsrExpr(const ScalBlkTsrExpr_& tsr, const scalar_type factor) :
-        BlkTsrExprBase_(tsr), factor_(factor * tsr.factor_)
+      /// \param lower_bound The lower bound of the tile block
+      /// \param upper_bound The upper bound of the tile block
+      template <typename Index>
+      ScalBlkTsrExpr(reference array, const std::string& vars,
+          const scalar_type factor,
+          const Index& lower_bound, const Index& upper_bound) :
+        BlkTsrExprBase_(array, vars, lower_bound, upper_bound), factor_(factor)
       { }
 
       /// Scaling factor accessor
@@ -414,7 +437,8 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalBlkTsrExpr<Array, Scalar>
     operator*(const BlkTsrExpr<Array>& expr, const Scalar& factor) {
-      return ScalBlkTsrExpr<Array, Scalar>(expr, factor);
+      return ScalBlkTsrExpr<Array, Scalar>(expr.array(), expr.vars(), factor,
+          expr.lower_bound(), expr.upper_bound());
     }
 
     /// Scaled-block expression factor
@@ -430,7 +454,8 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalBlkTsrExpr<Array, Scalar>
     operator*(const Scalar& factor, const BlkTsrExpr<Array>& expr) {
-      return ScalBlkTsrExpr<Array, Scalar>(expr, factor);
+      return ScalBlkTsrExpr<Array, Scalar>(expr.array(), expr.vars(), factor,
+          expr.lower_bound(), expr.upper_bound());
     }
 
     /// Scaled-block expression factor
@@ -447,7 +472,9 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2> >
     operator*(const ScalBlkTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
-      return ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2> >(expr, factor);
+      return ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2> >(expr.array(),
+          expr.vars(), expr.factor() * factor, expr.lower_bound(),
+          expr.upper_bound());
     }
 
     /// Scaled-block expression factor
@@ -464,7 +491,9 @@ namespace TiledArray {
         >::type * = nullptr>
     inline ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalBlkTsrExpr<Array, Scalar2>& expr) {
-      return ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1> >(expr, factor);
+      return ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1> >(expr.array(),
+          expr.vars(), expr.factor() * factor, expr.lower_bound(),
+          expr.upper_bound());
     }
 
     /// Negated block expression factor
@@ -476,7 +505,8 @@ namespace TiledArray {
     inline ScalBlkTsrExpr<Array, typename ExprTrait<BlkTsrExpr<Array> >::scalar_type>
     operator-(const BlkTsrExpr<Array>& expr) {
       return ScalBlkTsrExpr<Array,
-          typename ExprTrait<BlkTsrExpr<Array> >::scalar_type>(expr, -1);
+          typename ExprTrait<BlkTsrExpr<Array> >::scalar_type>(expr.array(),
+              expr.vars(), -1, expr.lower_bound(), expr.upper_bound());
     }
 
     /// Negated scaled-block expression factor
@@ -488,8 +518,168 @@ namespace TiledArray {
     template <typename Array, typename Scalar>
     inline ScalBlkTsrExpr<Array, Scalar>
     operator-(const ScalBlkTsrExpr<Array, Scalar>& expr) {
-      return ScalBlkTsrExpr<Array, Scalar>(expr, -1);
+      return ScalBlkTsrExpr<Array, Scalar>(expr.array(), expr.vars(), -expr.factor(),
+          expr.lower_bound(), expr.upper_bound());
     }
+
+
+    /// Conjugated block tensor expression factory
+
+    /// \tparam A A `DistArray` type
+    /// \param expr The block tensor expression object
+    /// \return A conjugated expression object
+    template <typename A>
+    inline ConjBlkTsrExpr<A> conj(const BlkTsrExpr<A>& expr) {
+      return ConjBlkTsrExpr<A>(expr.array(), expr.vars(), conj_op(),
+          expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Conjugated block tensor expression factory
+
+    /// \tparam A A `DistArray` type
+    /// \param expr The block tensor expression object
+    /// \return A conjugated expression object
+    template <typename A>
+    inline ConjBlkTsrExpr<A> conj(const BlkTsrExpr<const A>& expr) {
+      return ConjBlkTsrExpr<A>(expr.array(), expr.vars(), conj_op(),
+          expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Conjugate-conjugate block tensor expression factory
+
+    /// \tparam A A `DistArray` type
+    /// \param expr The tensor expression object
+    /// \return A tensor expression object
+    template <typename A>
+    inline BlkTsrExpr<const A> conj(const ConjBlkTsrExpr<A>& expr) {
+      return BlkTsrExpr<const A>(expr.array(), expr.vars(),
+          expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Conjugated block tensor expression factor
+
+    /// \tparam A A `DistArray` type
+    /// \tparam S A scalar type
+    /// \param expr The block tensor expression object
+    /// \return A conjugated expression object
+    template <typename A, typename S>
+    inline ScalConjBlkTsrExpr<A, S> conj(const ScalBlkTsrExpr<A, S>& expr) {
+      return ScalConjBlkTsrExpr<A, S>(expr.array(), expr.vars(),
+          conj_op(TiledArray::detail::conj(expr.factor())),
+          expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Conjugate-conjugate tensor expression factory
+
+    /// \tparam A A `DistArray` type
+    /// \tparam S A scalar type
+    /// \param expr The scaled conjugate tensor expression object
+    /// \return A conjugated expression object
+    template <typename A, typename S>
+    inline ScalBlkTsrExpr<A, S>
+    conj(const ScalConjBlkTsrExpr<A, S>& expr) {
+      return ScalBlkTsrExpr<A, S>(expr.array(), expr.vars(),
+          TiledArray::detail::conj(expr.factor().factor()),
+          expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Scaled block tensor expression factor
+
+    /// \tparam A A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param expr The block tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalConjBlkTsrExpr<A, Scalar>
+    operator*(const ConjBlkTsrExpr<const A>& expr, const Scalar& factor) {
+      return ScalConjBlkTsrExpr<A, Scalar>(expr.array(), expr.vars(),
+          conj_op(factor), expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Scaled block tensor expression factor
+
+    /// \tparam A A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param expr The block tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalConjBlkTsrExpr<A, Scalar>
+    operator*(const Scalar& factor, const ConjBlkTsrExpr<A>& expr) {
+      return ScalConjBlkTsrExpr<A, Scalar>(expr.array(), expr.vars(),
+          conj_op(factor), expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Scaled block tensor expression factor
+
+    /// \tparam A A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param expr The scaled block tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalConjBlkTsrExpr<A, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalConjBlkTsrExpr<A, Scalar1>& expr, const Scalar2& factor) {
+      return ScalConjBlkTsrExpr<A, mult_t<Scalar1, Scalar2> >(expr.array(),
+          expr.vars(), conj_op(expr.factor().factor() * factor),
+          expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam A A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param expr The scaled block tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalConjBlkTsrExpr<A, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalConjBlkTsrExpr<A, Scalar2>& expr) {
+      return ScalConjBlkTsrExpr<A, mult_t<Scalar2, Scalar1> >(expr.array(),
+          expr.vars(), conj_op(expr.factor().factor() * factor),
+          expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Negated-conjugated-tensor expression factor
+
+    /// \tparam A A `DistArray` type
+    /// \param expr The block tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A>
+    inline ScalConjBlkTsrExpr<A, typename ExprTrait<ConjBlkTsrExpr<A> >::scalar_type>
+    operator-(const ConjBlkTsrExpr<A>& expr) {
+      return ScalConjBlkTsrExpr<A, typename ExprTrait<ConjBlkTsrExpr<A> >::scalar_type>(
+          expr.array(), expr.vars(),
+          conj_op<typename ExprTrait<ConjBlkTsrExpr<A> >::scalar_type>(-1),
+          expr.lower_bound(), expr.upper_bound());
+    }
+
+    /// Negated-conjugated-tensor expression factor
+
+    /// \tparam A A `DistArray` type
+    /// \tparam S A scalar type
+    /// \param expr The scaled-conjugated block tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A, typename S>
+    inline ScalConjBlkTsrExpr<A, S>
+    operator-(const ScalConjBlkTsrExpr<A, S>& expr) {
+      return ScalConjBlkTsrExpr<A, S>(expr.array(), expr.vars(),
+          conj_op(-expr.factor().factor()));
+    }
+
 
   } // namespace expressions
 } // namespace TiledArray
