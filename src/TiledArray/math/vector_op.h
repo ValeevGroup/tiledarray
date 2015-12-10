@@ -28,55 +28,9 @@
 
 #include <TiledArray/type_traits.h>
 #include <TiledArray/madness.h>
-
-#ifndef TILEARRAY_ALIGNMENT
-#define TILEARRAY_ALIGNMENT 16
-#endif // TILEARRAY_ALIGNMENT
-
-#ifndef TILEDARRAY_CACHELINE_SIZE
-#define TILEDARRAY_CACHELINE_SIZE 64
-#endif // TILEDARRAY_CACHELINE_SIZE
+#include <TiledArray/config.h>
 
 #define TILEDARRAY_LOOP_UNWIND ::TiledArray::math::LoopUnwind::value
-
-// Add macro TILEDARRAY_FORCE_INLINE which does as the name implies.
-#if (defined _MSC_VER) || (defined __INTEL_COMPILER)
-
-#define TILEDARRAY_FORCE_INLINE __forceinline
-
-#elif(__clang__)
-
-#define TILEDARRAY_FORCE_INLINE __attribute__((always_inline)) inline
-
-#elif defined(__GNUC__)
-
-#if (__GNUC__ >= 4)
-#define TILEDARRAY_FORCE_INLINE __attribute__((always_inline)) inline
-#else
-#define TILEDARRAY_FORCE_INLINE inline
-#endif // (__GNUC__ >= 4)
-
-#else
-
-#define TILEDARRAY_FORCE_INLINE inline
-
-#endif
-
-
-#if (defined __GNUC__) || (defined __PGI) || (defined __IBMCPP__) || (defined __ARMCC_VERSION)
-
-#define TILEDARRAY_ALIGNED_STORAGE __attribute__((aligned(TILEARRAY_ALIGNMENT)))
-
-#elif (defined _MSC_VER)
-
-#define TILEDARRAY_ALIGNED_STORAGE __declspec(align(TILEARRAY_ALIGNMENT))
-
-#else
-
-#define TILEDARRAY_ALIGNED_STORAGE
-#warning FIXEME!!! TiledArray alignment attribute is not definded for this platform.
-
-#endif
 
 
 namespace TiledArray {
