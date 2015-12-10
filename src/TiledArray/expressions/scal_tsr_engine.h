@@ -59,7 +59,7 @@ namespace TiledArray {
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
 
-      static constexpr bool consumable = false;
+      static constexpr bool consumable = true;
       static constexpr unsigned int leaves = 1;
 
     };
