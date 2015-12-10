@@ -337,6 +337,105 @@ namespace TiledArray {
       return tensor1.empty() && empty(tensors...);
     }
 
+    /// Wrapper function for `std::conj`
+
+    /// This function disables the call to `std::conj` for real values to
+    /// prevent the result from being converted into a complex value.
+    /// \tparam R A real scalar type
+    /// \param r The real scalar
+    /// \return `r`
+    template <typename R,
+        typename std::enable_if<! is_complex<R>::value>::type* = nullptr>
+    TILEDARRAY_FORCE_INLINE R conj(const R r) {
+      return r;
+    }
+
+    /// Wrapper function for std::conj
+
+    /// \tparam R The scalar type
+    /// \param z The complex scalar
+    /// \return The complex conjugate of `z`
+    template <typename R>
+    TILEDARRAY_FORCE_INLINE std::complex<R> conj(const std::complex<R> z) {
+      return std::conj(z);
+    }
+
+    template <typename S>
+    class ComplexConjugate {
+      S factor_;
+
+    public:
+      ComplexConjugate(const S factor) : factor_(factor) { }
+
+      TILEDARRAY_FORCE_INLINE S factor() const { return factor_; }
+    };
+
+
+    template <>
+    class ComplexConjugate<void> { };
+
+    template <typename S>
+    struct is_numeric<ComplexConjugate<S> > : public std::true_type { };
+
+    /// ComplexConjugate operator factory function
+
+    /// \tparam S The scalar type
+    /// \param factor The scaling factor
+    /// \return A scaling complex conjugate operator
+    template <typename S>
+    inline ComplexConjugate<S> conj_op(const S factor) {
+      return ComplexConjugate<S>(factor);
+    }
+
+    /// ComplexConjugate operator factory function
+
+    /// \return A complex conjugate operator
+    inline ComplexConjugate<void> conj_op() {
+      return ComplexConjugate<void>();
+    }
+
+    template <typename L, typename R,
+        typename std::enable_if<! std::is_void<R>::value>::type* = nullptr>
+    TILEDARRAY_FORCE_INLINE auto
+    operator*(const L value, const ComplexConjugate<R> op) ->
+        decltype(TiledArray::detail::conj(value) * op.factor())
+    { return TiledArray::detail::conj(value) * op.factor(); }
+
+    template <typename L>
+    TILEDARRAY_FORCE_INLINE auto
+    operator*(const L value, const ComplexConjugate<void>&) ->
+        decltype(TiledArray::detail::conj(value))
+    { return TiledArray::detail::conj(value); }
+
+
+    template <typename L, typename R,
+        typename std::enable_if<! std::is_void<L>::value>::type* = nullptr>
+    TILEDARRAY_FORCE_INLINE auto
+    operator*(const ComplexConjugate<L> op, const R value) ->
+        decltype(TiledArray::detail::conj(value) * op.factor())
+    { return TiledArray::detail::conj(value) * op.factor(); }
+
+    template <typename R>
+    TILEDARRAY_FORCE_INLINE auto
+    operator*(const ComplexConjugate<void>, const R value) ->
+        decltype(TiledArray::detail::conj(value))
+    { return TiledArray::detail::conj(value); }
+
+
+    template <typename L, typename R,
+        typename std::enable_if<! std::is_void<R>::value>::type* = nullptr>
+    TILEDARRAY_FORCE_INLINE L&
+    operator*=(L& value, const ComplexConjugate<R> op) {
+      value = TiledArray::detail::conj(value) * op.factor();
+      return value;
+    }
+
+    template <typename L>
+    TILEDARRAY_FORCE_INLINE L&
+    operator*=(L& value, const ComplexConjugate<void>&) {
+      value = TiledArray::detail::conj(value);
+      return value;
+    }
 
   }  // namespace detail
 } // namespace TiledArray

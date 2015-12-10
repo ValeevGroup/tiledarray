@@ -23,7 +23,6 @@
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/tensor/kernels.h>
-#include <TiledArray/tensor/conjugate.h>
 
 namespace TiledArray {
 
@@ -1031,9 +1030,7 @@ namespace TiledArray {
     /// values
     Tensor_ conj() const {
       TA_ASSERT(pimpl_);
-      return unary([] (const numeric_type l) -> numeric_type {
-        return TiledArray::detail::conj(l);
-      });
+      return scale(detail::conj_op());
     }
 
     /// Create a complex conjugated and scaled copy of this tensor
@@ -1046,9 +1043,7 @@ namespace TiledArray {
         typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_ conj(const Scalar factor) const {
       TA_ASSERT(pimpl_);
-      return unary([=] (const numeric_type l) -> numeric_type {
-        return TiledArray::detail::conj(l) * factor;
-      });
+      return scale(detail::conj_op(factor));
     }
 
     /// Create a complex conjugated and permuted copy of this tensor
@@ -1058,9 +1053,7 @@ namespace TiledArray {
     /// conjugate values
     Tensor_ conj(const Permutation& perm) const {
       TA_ASSERT(pimpl_);
-      return unary([] (const numeric_type l) -> numeric_type {
-        return TiledArray::detail::conj(l);
-      }, perm);
+      return scale(detail::conj_op(), perm);
     }
 
     /// Create a complex conjugated, scaled, and permuted copy of this tensor
@@ -1074,9 +1067,7 @@ namespace TiledArray {
         typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_ conj(const Scalar factor, const Permutation& perm) const {
       TA_ASSERT(pimpl_);
-      return unary([=] (const numeric_type l) -> numeric_type {
-        return TiledArray::detail::conj(l) * factor;
-      }, perm);
+      return scale(detail::conj_op(factor), perm);
     }
 
     /// Complex conjugate this tensor
@@ -1084,9 +1075,7 @@ namespace TiledArray {
     /// \return A reference to this tensor
     Tensor_& conj_to() {
       TA_ASSERT(pimpl_);
-      return inplace_unary([] (numeric_type& l) {
-        l = TiledArray::detail::conj(l);
-      });
+      return scale_to(detail::conj_op());
     }
 
     /// Complex conjugate and scale this tensor
@@ -1098,9 +1087,7 @@ namespace TiledArray {
         typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_& conj_to(const Scalar factor) {
       TA_ASSERT(pimpl_);
-      return inplace_unary([=] (numeric_type& l) {
-        l = TiledArray::detail::conj(l) * factor;
-      });
+      return scale_to(detail::conj_op(factor));
     }
 
     // GEMM operations

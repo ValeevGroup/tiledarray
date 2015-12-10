@@ -27,7 +27,6 @@
 #define TILEDARRAY_TENSOR_TENSOR_VIEW_H__INCLUDED
 
 #include <TiledArray/tensor/kernels.h>
-#include <TiledArray/tensor/conjugate.h>
 
 namespace Eigen {
 
@@ -786,11 +785,7 @@ namespace TiledArray {
 
       /// \return A copy of this tensor that contains the complex conjugate the
       /// values
-      result_tensor conj() const {
-        return unary([] (const numeric_type l) -> numeric_type {
-          return TiledArray::detail::conj(l);
-        });
-      }
+      result_tensor conj() const { return scale(conj_op()); }
 
       /// Create a complex conjugated and scaled copy of this tensor
 
@@ -801,9 +796,7 @@ namespace TiledArray {
       template <typename Scalar,
           typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
       result_tensor conj(const Scalar factor) const {
-        return unary([=] (const numeric_type l) -> numeric_type {
-          return TiledArray::detail::conj(l) * factor;
-        });
+        return scale(conj_op(factor));
       }
 
       /// Create a complex conjugated and permuted copy of this tensor
@@ -812,9 +805,7 @@ namespace TiledArray {
       /// \return A permuted copy of this tensor that contains the complex
       /// conjugate values
       result_tensor conj(const Permutation& perm) const {
-        return unary([] (const numeric_type l) -> numeric_type {
-          return TiledArray::detail::conj(l);
-        }, perm);
+        return scale(conj_op(), perm);
       }
 
       /// Create a complex conjugated, scaled, and permuted copy of this tensor
@@ -827,18 +818,14 @@ namespace TiledArray {
       template <typename Scalar,
           typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
       result_tensor conj(const Scalar factor, const Permutation& perm) const {
-        return unary([=] (const numeric_type l) -> numeric_type {
-          return TiledArray::detail::conj(l) * factor;
-        }, perm);
+        return scale(conj_op(factor), perm);
       }
 
       /// Complex conjugate this tensor
 
       /// \return A reference to this tensor
       TensorInterface_& conj_to() {
-        return inplace_unary([] (numeric_type& l) {
-          l = TiledArray::detail::conj(l);
-        });
+        return scale_to(conj_op());
       }
 
       /// Complex conjugate and scale this tensor
@@ -849,9 +836,7 @@ namespace TiledArray {
       template <typename Scalar,
           typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
       TensorInterface_& conj_to(const Scalar factor) {
-        return inplace_unary([=] (numeric_type& l) -> numeric_type {
-          l = TiledArray::detail::conj(l) * factor;
-        });
+        return scale_to(conj_op(factor));
       }
 
 
