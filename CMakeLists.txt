@@ -93,7 +93,7 @@ if (NOT CMAKE_CXX_COMPILER)
 endif()
 
 # Set the default fortran integer type. This is only used by MADNESS.
-set(INTEGER4 "FALSE" CACHE BOOL "Set the default Fortran integer type to integer*4")
+set(INTEGER4 TRUE CACHE BOOL "If TRUE, use integer*4 Fortran integers in BLAS calls. Otherwise use integer*8.")
 mark_as_advanced(INTEGER4)
 
 # Set the CPU L1 cache line size.
