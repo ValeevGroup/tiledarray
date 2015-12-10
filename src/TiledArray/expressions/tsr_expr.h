@@ -31,6 +31,7 @@
 #include <TiledArray/expressions/mult_expr.h>
 #include <TiledArray/expressions/tsr_engine.h>
 #include <TiledArray/expressions/blk_tsr_expr.h>
+#include <TiledArray/expressions/scal_tsr_expr.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -174,6 +175,13 @@ namespace TiledArray {
         return BlkTsrExpr<Array>(*this, lower_bound, upper_bound);
       }
 
+      /// Conjugated-tensor expression factor
+
+      /// \return A conjugated expression object
+      ConjTsrExpr<Array> conj() const {
+        return ConjTsrExpr<Array>(array_, vars_, conj_op());
+      }
+
       /// Tensor variable string accessor
 
       /// \return A const reference to the variable string for this tensor
@@ -251,6 +259,14 @@ namespace TiledArray {
           const std::initializer_list<Index>& upper_bound) const {
         return BlkTsrExpr<const Array>(*this, lower_bound, upper_bound);
       }
+
+      /// Conjugated-tensor expression factor
+
+      /// \return A conjugated expression object
+      ConjTsrExpr<Array> conj() const {
+        return ConjTsrExpr<Array>(array_, vars_, conj_op());
+      }
+
 
       /// Tensor variable string accessor
 

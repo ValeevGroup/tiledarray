@@ -236,6 +236,165 @@ namespace TiledArray {
       return ScalTsrExpr<A, S>(expr.array(), expr.vars(), -expr.factor());
     }
 
+
+    template <typename A>
+    using ConjTsrExpr = ScalTsrExpr<A, TiledArray::detail::ComplexConjugate<void> >;
+
+    template <typename A, typename S>
+    using ScalConjTsrExpr = ScalTsrExpr<A, TiledArray::detail::ComplexConjugate<S> >;
+
+    using TiledArray::detail::conj_op;
+
+
+    /// Conjugated tensor expression factory
+
+    /// \tparam A A `DistArray` type
+    /// \param expr The tensor expression object
+    /// \return A conjugated expression object
+    template <typename A>
+    inline ConjTsrExpr<A> conj(const TsrExpr<A>& expr) {
+      return ConjTsrExpr<A>(expr.array(), expr.vars(), conj_op());
+    }
+
+    /// Conjugated tensor expression factory
+
+    /// \tparam A A `DistArray` type
+    /// \param expr The tensor expression object
+    /// \return A conjugated expression object
+    template <typename A>
+    inline ConjTsrExpr<A> conj(const TsrExpr<const A>& expr) {
+      return ConjTsrExpr<A>(expr.array(), expr.vars(), conj_op());
+    }
+
+    /// Conjugate-conjugate tensor expression factory
+
+    /// \tparam A A `DistArray` type
+    /// \param expr The tensor expression object
+    /// \return A tensor expression object
+    template <typename A>
+    inline TsrExpr<const A> conj(const ConjTsrExpr<A>& expr) {
+      return TsrExpr<const A>(expr.array(), expr.vars());
+    }
+
+    /// Conjugated-tensor expression factor
+
+    /// \tparam A A `DistArray` type
+    /// \tparam S A scalar type
+    /// \param expr The tensor expression object
+    /// \return A conjugated expression object
+    template <typename A, typename S>
+    inline ScalConjTsrExpr<A, S> conj(const ScalTsrExpr<A, S>& expr) {
+      return ScalConjTsrExpr<A, S>(expr.array(), expr.vars(),
+          conj_op(TiledArray::detail::conj(expr.factor())));
+    }
+
+    /// Conjugate-conjugate tensor expression factory
+
+    /// \tparam A An array type
+    /// \tparam S A scalar type
+    /// \param expr The scaled conjugate tensor expression object
+    /// \return A conjugated expression object
+    template <typename A, typename S>
+    inline ScalTsrExpr<A, S>
+    conj(const ScalConjTsrExpr<A, S>& expr) {
+      return ScalTsrExpr<A, S>(expr.array(), expr.vars(),
+          TiledArray::detail::conj(expr.factor()));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam A An array type
+    /// \tparam Scalar A scalar type
+    /// \param expr The tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalConjTsrExpr<A, Scalar>
+    operator*(const ConjTsrExpr<const A>& expr, const Scalar& factor) {
+      return ScalConjTsrExpr<A, Scalar>(expr.array(), expr.vars(),
+          conj_op(factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam A An array type
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param expr The tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalConjTsrExpr<A, Scalar>
+    operator*(const Scalar& factor, const ConjTsrExpr<A>& expr) {
+      return ScalConjTsrExpr<A, Scalar>(expr.array(), expr.vars(),
+          conj_op(factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam A An array type
+    /// \tparam Scalar A scalar type
+    /// \param expr The scaled-tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalConjTsrExpr<A, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalConjTsrExpr<A, Scalar1>& expr, const Scalar2& factor) {
+      return ScalConjTsrExpr<A, mult_t<Scalar1, Scalar2> >(expr.array(),
+          expr.vars(), conj_op(expr.factor().factor() * factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam A An array type
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param expr The scaled-tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalConjTsrExpr<A, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalConjTsrExpr<A, Scalar2>& expr) {
+      return ScalConjTsrExpr<A, mult_t<Scalar2, Scalar1> >(expr.array(),
+          expr.vars(), conj_op(expr.factor().factor() * factor));
+    }
+
+    /// Negated-conjugated-tensor expression factor
+
+    /// \tparam A An array type
+    /// \param expr The tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A>
+    inline ScalConjTsrExpr<A, typename ExprTrait<ConjTsrExpr<A> >::scalar_type>
+    operator-(const ConjTsrExpr<A>& expr) {
+      return ScalConjTsrExpr<A, typename ExprTrait<ConjTsrExpr<A> >::scalar_type>(
+          expr.array(), expr.vars(),
+          conj_op<typename ExprTrait<ConjTsrExpr<A> >::scalar_type>(-1));
+    }
+
+    /// Negated-conjugated-tensor expression factor
+
+    /// \tparam A An array type
+    /// \tparam S A scalar type
+    /// \param expr The scaled-conjugated-tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename A, typename S>
+    inline ScalConjTsrExpr<A, S>
+    operator-(const ScalConjTsrExpr<A, S>& expr) {
+      return ScalConjTsrExpr<A, S>(expr.array(), expr.vars(),
+          conj_op(-expr.factor().factor()));
+    }
+
   }  // namespace expressions
 } // namespace TiledArray
 
