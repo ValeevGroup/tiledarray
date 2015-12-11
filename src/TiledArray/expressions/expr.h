@@ -445,8 +445,8 @@ namespace TiledArray {
 
       Future<scalar_t<Derived> >
       norm(World& world = World::get_default()) const {
-        typedef typename EngineTrait<engine_type>::scalar_type scalar_type;
-        return world.taskq.add(Expr_::template sqrt<scalar_type>, squared_norm(world));
+        return world.taskq.add(Expr_::template sqrt<scalar_t<Derived> >,
+            squared_norm(world));
       }
 
       Future<numeric_t<Derived> >

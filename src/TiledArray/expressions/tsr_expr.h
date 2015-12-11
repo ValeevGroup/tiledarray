@@ -40,14 +40,12 @@ namespace TiledArray {
     struct ExprTrait<TsrExpr<Array> > {
       typedef Array array_type; ///< The \c Array type
       typedef TsrEngine<Array> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<typename Array::value_type>::type scalar_type;  ///< Tile scalar type
     };
 
     template <typename Array>
     struct ExprTrait<TsrExpr<const Array> > {
       typedef Array array_type; ///< The \c Array type
       typedef TsrEngine<Array> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<typename Array::value_type>::type scalar_type;  ///< Tile scalar type
     };
 
     /// Expression wrapper for array objects

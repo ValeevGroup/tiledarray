@@ -37,7 +37,6 @@ namespace TiledArray {
     struct ExprTrait<SubtExpr<Left, Right> > {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
-      typedef typename ExprTrait<Left>::scalar_type scalar_type; ///< Tile scalar type
       typedef SubtEngine<typename ExprTrait<Left>::engine_type,
           typename ExprTrait<Right>::engine_type> engine_type; ///< Expression engine type
     };
