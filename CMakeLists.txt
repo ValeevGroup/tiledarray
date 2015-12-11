@@ -154,11 +154,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 ##########################
 add_custom_target(External)
 
-include(external/pthread.cmake)
-include(external/libunwind.cmake)
-include(external/gperftools.cmake)
 include(external/lapack.cmake)
-include(external/mpi.cmake)
 include(external/eigen.cmake)
 include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
