@@ -136,7 +136,6 @@ else()
     execute_process(
       COMMAND "${GIT_EXECUTABLE}" fetch
       COMMAND "${GIT_EXECUTABLE}" checkout ${Madness_TAG}
-      COMMAND "./autogen.sh"
       WORKING_DIRECTORY "${MADNESS_SOURCE_DIR}"
       RESULT_VARIABLE error_code)
     if(error_code)
@@ -150,7 +149,6 @@ else()
     add_custom_target(madness-update
       COMMAND ${GIT_EXECUTABLE} fetch
       COMMAND ${GIT_EXECUTABLE} checkout ${Madness_TAG}
-      COMMAND "./autogen.sh"
       WORKING_DIRECTORY ${MADNESS_SOURCE_DIR}
       COMMENT "Updating source for 'madness' from ${MADNESS_URL}")
 
@@ -166,140 +164,6 @@ else()
     message("You can download the MADNESS source with:")
     message("$ git clone https://github.com/m-a-d-n-e-s-s/madness.git madness")
     message(FATAL_ERROR "MADNESS source not found.")
-  endif()
-  
-  # Generate the MADNESS configure script if not present
-  if(NOT EXISTS ${MADNESS_SOURCE_DIR}/configure)
-    set(error_code 1)
-    execute_process(
-      COMMAND "./autogen.sh"
-      WORKING_DIRECTORY "${MADNESS_SOURCE_DIR}"
-      RESULT_VARIABLE error_code)
-    if(error_code)
-      message(FATAL_ERROR "Failed to generate MADNESS configure script.")
-    endif()
-  endif()
-
-  
-  # Setup configure variables
-  
-  # Set compile flags
-  set(MAD_CPPFLAGS "${CMAKE_CPP_FLAGS}")
-  set(MAD_CFLAGS "${CMAKE_C_FLAGS}")
-  set(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS}")
-  set(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-
-  if(CMAKE_BUILD_TYPE)
-    string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
-    append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
-    append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
-  endif()
-  
-  if(BUILD_SHARED_LIBS)
-    set(MAD_ENABLE_SHARED "--enable-shared")
-    set(MAD_ENABLE_STATIC "--disable-static")
-  else()
-    set(MAD_ENABLE_SHARED "--disable-shared")
-    set(MAD_ENABLE_STATIC "--enable-static")
-  endif()
-  
-#  message("${MAD_ENABLE_SHARED} ${MAD_ENABLE_STATIC}")
-
-  # Set compile flags required for Elemental
-  if(ENABLE_ELEMENTAL)
-    include(external/elemental.cmake)
-    
-    foreach(_inc_dir ${Elemental_INCLUDE_DIRS})
-      append_flags(MAD_CPPFLAGS "-I${_inc_dir}")
-    endforeach()
-    foreach(_lib ${Elemental_LIBRARIES})
-      append_flags(MAD_LIBS "${_lib}")
-    endforeach()
-    set(MAD_ELEMENTAL_FLAG "yes")
-  else()
-    set(MAD_ELEMENTAL_FLAG "no")
-  endif()
-  
-  # Set compile flags required for Intel TBB
-  if(ENABLE_TBB)
-    if(TBB_INCLUDE_DIR AND EXISTS ${TBB_INCLUDE_DIR})
-      append_flags(MAD_TBB_INCLUDE_FLAG "--with-tbb-include=${TBB_INCLUDE_DIR}")
-    endif()
-    if(TBB_LIBRARY AND EXISTS ${TBB_LIBRARY})
-      append_flags(MAD_TBB_LIB_FLAG "--with-tbb-lib=${TBB_LIBRARY}")
-    endif()
-    if(TBB_ROOT_DIR AND EXISTS ${TBB_ROOT_DIR})
-      append_flags(MAD_TBB_FLAG "--with-tbb=${TBB_ROOT_DIR}")
-    endif()
-    if("${MAD_TBB_FLAG}" STREQUAL "")
-      set(MAD_TBB_FLAG "--with-tbb=yes")
-    endif()
-  else()
-    set(MAD_TBB_FLAG "--with-tbb=no")
-  endif()
-  
-  
-  # Set compile flags required for MPI
-  if(ENABLE_MPI)
-    foreach(_inc_dir ${MPI_INCLUDE_PATH})
-      append_flags(MAD_CPPFLAGS "-I${_inc_dir}")
-    endforeach()
-    foreach(_lib ${MPI_LIBRARIES})
-      append_flags(MAD_LIBS "${_lib}")
-    endforeach()
-#    append_flags(MAD_CFLAGS "${MPI_COMPILE_FLAGS}")
-    append_flags(MAD_CXXFLAGS "${MPI_COMPILE_FLAGS}")
-    append_flags(MAD_LDFLAGS "${MPI_LINK_FLAGS}") 
-    set(MAD_STUB_MPI "no")
-  else()
-    set(MAD_STUB_MPI "yes")
-  endif()
-  
-  # Set compile flags required for LAPACK, BLAS, and Pthreads
-#  append_flags(MAD_LDFLAGS "${LAPACK_LINKER_FLAGS}")
-#  append_flags(MAD_LDFLAGS "${BLAS_LINKER_FLAGS}")
-  if(LAPACK_LIBRARIES OR BLAS_LIBRARIES)
-    if(UNIX AND BLA_STATIC)
-      append_flags(MAD_LIBS "-Wl,--start-group")
-    endif()
-      foreach(_lib ${LAPACK_LIBRARIES})
-        append_flags(MAD_LIBS "${_lib}")
-      endforeach()
-      foreach(_lib ${BLAS_LIBRARIES})
-        append_flags(MAD_LIBS "${_lib}")
-      endforeach()
-    if(UNIX AND BLA_STATIC)
-      append_flags(MAD_LIBS "-Wl,--end-group")
-    endif()
-  endif()
-  
-  # Set compile flags required for Gperftools
-  if(ENABLE_GPERFTOOLS)
-    foreach(_lib ${Gperftools_LIBRARIES} ${Libunwind_LIBRARIES})
-      append_flags(MAD_LIBS "${_lib}")
-    endforeach()
-  endif()
-  
-  append_flags(MAD_LIBS "${CMAKE_THREAD_LIBS_INIT}")
-  
-  # Set the configuration flags for MADNESS
-  
-  # Set Fortran integer size
-  if(INTEGER4) 
-    set(MAD_F77_INT32 yes)
-  else()
-    set (MAD_F77_INT32 no)
-  endif()
-  
-  # Set error handling method
-  if(TA_ERROR STREQUAL none)
-    set(MAD_EXCEPTION disable)
-  elseif(TA_ERROR STREQUAL throw)
-    set(MAD_EXCEPTION throw)
-  elseif(TA_ERROR STREQUAL assert)
-    set(MAD_EXCEPTION assert)
-  else()
-    set(MAD_EXCEPTION throw)
   endif()
   
   # Create or clean the build directory
