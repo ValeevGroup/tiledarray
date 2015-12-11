@@ -39,7 +39,7 @@ namespace TiledArray {
     class SumReduction {
     public:
       // typedefs
-      typedef typename Tile::numeric_type result_type;
+      typedef typename TiledArray::detail::numeric_type<Tile>::type result_type;
       typedef Tile argument_type;
 
       // Reduction functions
@@ -70,7 +70,7 @@ namespace TiledArray {
     class ProductReduction {
     public:
       // typedefs
-      typedef typename Tile::numeric_type result_type;
+      typedef typename TiledArray::detail::numeric_type<Tile>::type result_type;
       typedef Tile argument_type;
 
       // Reduction functions
@@ -136,7 +136,7 @@ namespace TiledArray {
     class SquaredNormReduction {
     public:
       // typedefs
-      typedef typename Tile::numeric_type result_type;
+      typedef typename TiledArray::detail::scalar_type<Tile>::type result_type;
       typedef Tile argument_type;
 
       // Reduction functions
@@ -145,7 +145,9 @@ namespace TiledArray {
       result_type operator()() const { return result_type(0); }
 
       // Post process the result
-      const result_type& operator()(const result_type& result) const { return result; }
+      const result_type& operator()(const result_type& result) const {
+        return result;
+      }
 
       // Reduce two result objects
       void operator()(result_type& result, const result_type& arg) const {
@@ -168,7 +170,7 @@ namespace TiledArray {
     class MinReduction {
     public:
       // typedefs
-      typedef typename Tile::numeric_type result_type;
+      typedef typename TiledArray::detail::numeric_type<Tile>::type result_type;
       typedef Tile argument_type;
 
       // Reduction functions
@@ -200,7 +202,7 @@ namespace TiledArray {
     class MaxReduction {
     public:
       // typedefs
-      typedef typename Tile::numeric_type result_type;
+      typedef typename TiledArray::detail::numeric_type<Tile>::type result_type;
       typedef Tile argument_type;
 
       // Reduction functions
@@ -233,7 +235,7 @@ namespace TiledArray {
     class AbsMinReduction {
     public:
       // typedefs
-      typedef typename Tile::numeric_type result_type;
+      typedef typename TiledArray::detail::numeric_type<Tile>::type result_type;
       typedef Tile argument_type;
 
       // Reduction functions
@@ -265,7 +267,7 @@ namespace TiledArray {
     class AbsMaxReduction {
     public:
       // typedefs
-      typedef typename Tile::numeric_type result_type;
+      typedef typename TiledArray::detail::numeric_type<Tile>::type result_type;
       typedef Tile argument_type;
 
       // Reduction functions

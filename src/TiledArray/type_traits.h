@@ -119,54 +119,67 @@ namespace TiledArray {
   namespace detail {
 
     template <typename T>
-    struct is_numeric : public std::false_type { };
-
-    template <>
-    struct is_numeric<short int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<unsigned int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<long int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<unsigned long int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<float> : public std::true_type { };
-
-    template <>
-    struct is_numeric<double> : public std::true_type { };
-
-#ifdef TILEDARRAY_HAS_LONG_DOUBLE
-
-    template <>
-    struct is_numeric<long double> : public std::true_type { };
-
-#endif //TILEDARRAY_HAS_LONG_DOUBLE
-
-#ifdef TILEDARRAY_HAS_LONG_LONG
-
-    template <>
-    struct is_numeric<long long int> : public std::true_type { };
-
-    template <>
-    struct is_numeric<unsigned long long int> : public std::true_type { };
-
-#endif // TILEDARRAY_HAS_LONG_LONG
-
-    template <typename T>
-    struct is_numeric<std::complex<T> > : public is_numeric<T> { };
-
-    template <typename T>
     struct is_complex : public std::false_type { };
 
     template <typename T>
     struct is_complex<std::complex<T> > : public std::true_type { };
+
+    template <typename T>
+    struct is_char : public std::false_type { };
+
+    template <>
+    struct is_char<char> : public std::true_type { };
+
+    template <>
+    struct is_char<char16_t> : public std::true_type { };
+
+    template <>
+    struct is_char<char32_t> : public std::true_type { };
+
+    template <>
+    struct is_char<wchar_t> : public std::true_type { };
+
+    template <>
+    struct is_char<signed char> : public std::true_type { };
+
+    template <typename T>
+    struct is_bool : public std::false_type { };
+
+    template <>
+    struct is_bool<bool> : public std::true_type { };
+
+    template <typename T>
+    struct is_numeric : public std::is_arithmetic<T> { };
+
+    template <typename T>
+    struct is_numeric<std::complex<T> > : public is_numeric<T> { };
+
+    template <>
+    struct is_numeric<char> : public std::false_type { };
+
+    template <>
+    struct is_numeric<char16_t> : public std::false_type { };
+
+    template <>
+    struct is_numeric<char32_t> : public std::false_type { };
+
+    template <>
+    struct is_numeric<wchar_t> : public std::false_type { };
+
+    template <>
+    struct is_numeric<signed char> : public std::false_type { };
+
+    template <>
+    struct is_numeric<bool> : public std::false_type { };
+
+    template <typename T>
+    struct is_scalar : public is_numeric<T> { };
+
+    template <typename T>
+    struct is_scalar<std::complex<T> > : public std::false_type { };
+
+
+
 
 
     /// Detect tiles used by \c ArrayEvalImpl
@@ -196,7 +209,7 @@ namespace TiledArray {
     { }; // struct is_non_array_lazy_tile
 
 
-    /// Type trait for extracting the scalar numeric type of tensors and arrays.
+    /// Type trait for extracting the numeric type of tensors and arrays.
 
     /// \tparam T The type to extract a numeric type from
     /// \tparam Enabler Type used to selectively implement partial specializations
@@ -204,45 +217,54 @@ namespace TiledArray {
     /// -# if T is not numeric and T::value_type is a valid type, will evaluate to scalar_type<T::value_type>::type,
     ///   and so on recursively
     /// -# otherwise it's undefined
-    template <typename T, typename Enabler = void> struct scalar_type;
+    template <typename T, typename Enabler = void> struct numeric_type;
 
     template <typename T>
-    struct scalar_type<T, typename std::enable_if<is_numeric<T>::value>::type> {
+    struct numeric_type<T,
+        typename std::enable_if<is_numeric<T>::value>::type>
+    {
       typedef T type;
     };
 
     template <typename T>
-    struct scalar_type<T, typename std::enable_if<is_type<typename T::value_type>::value
+    struct numeric_type<T, typename std::enable_if<is_type<typename T::value_type>::value
           && ! is_numeric<T>::value>::type> :
-        public scalar_type<typename T::value_type>
+        public numeric_type<typename T::value_type>
     { };
 
 
     template <typename T>
-    struct scalar_type<T, typename std::enable_if<is_lazy_tile<T>::value
+    struct numeric_type<T, typename std::enable_if<is_lazy_tile<T>::value
           && ! is_numeric<T>::value>::type> :
-        public scalar_type<typename eval_trait<T>::type>
+        public numeric_type<typename eval_trait<T>::type>
     { };
 
     template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
-    struct scalar_type<Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
-        public scalar_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
+    struct numeric_type<Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
+        public numeric_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
     { };
 
     template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
-    struct scalar_type<Eigen::Array<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
-        public scalar_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
+    struct numeric_type<Eigen::Array<T, Rows, Cols, Opts, MaxRows, MaxCols>, void> :
+        public numeric_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
     { };
 
     template <typename T>
-    struct scalar_type<Tile<T>, void> :
-        public scalar_type<typename Tile<T>::tensor_type>
+    struct numeric_type<Tile<T>, void> :
+        public numeric_type<typename Tile<T>::tensor_type>
     { };
 
     template <typename PlainObjectType, int MapOptions, typename StrideType>
-    struct scalar_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
-        public scalar_type<PlainObjectType>
+    struct numeric_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
+        public numeric_type<PlainObjectType>
     { };
+
+    template <typename T>
+    struct scalar_type : public numeric_type<T> { };
+
+    template <typename T>
+    struct scalar_type<std::complex<T> > : public scalar_type<T> { };
+
 
     template <typename...> struct is_integral_list_helper;
 

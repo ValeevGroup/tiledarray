@@ -1243,11 +1243,11 @@ namespace TiledArray {
           // Compute the average memory requirement per iteration of this process
           const std::size_t local_memory_per_iter_left =
               (left_.trange().elements().volume() / left_.trange().tiles().volume()) *
-              sizeof(typename scalar_type<typename left_type::eval_type>::type) *
+              sizeof(typename numeric_type<typename left_type::eval_type>::type) *
               proc_grid_.local_rows() * (1.0f - left_sparsity);
           const std::size_t local_memory_per_iter_right =
               (right_.trange().elements().volume() / right_.trange().tiles().volume()) *
-              sizeof(typename scalar_type<typename right_type::eval_type>::type) *
+              sizeof(typename numeric_type<typename right_type::eval_type>::type) *
               proc_grid_.local_cols() * (1.0f - right_sparsity);
 
           // Compute the maximum number of iterations based on available memory

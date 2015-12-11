@@ -50,15 +50,21 @@ namespace TiledArray {
       typedef Right right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename EngineTrait<Left>::scalar_type scalar_type; ///< Tile scalar type
       typedef TiledArray::Add<typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
-          EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
-      typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
-      typedef typename op_type::result_type value_type; ///< The result tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+          EngineTrait<Right>::consumable>
+          op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type>
+          op_type; ///< The tile operation type
+      typedef typename op_type::result_type
+          value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type;  ///< Evaluation tile type
+      typedef typename TiledArray::detail::scalar_type<value_type>::type
+          scalar_type; ///< Tile scalar type
       typedef typename Left::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
