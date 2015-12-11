@@ -56,6 +56,13 @@ set(CMAKE_MACOSX_RPATH TRUE)
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 
+if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+  # look for frameworks and appbundles last
+  set(CMAKE_FIND_FRAMEWORK LAST)
+  set(CMAKE_FIND_APPBUNDLE LAST)
+endif()
+
+
 # Set TiledArray version
 set(TILEDARRAY_MAJOR_VERSION 0)
 set(TILEDARRAY_MINOR_VERSION 5)
