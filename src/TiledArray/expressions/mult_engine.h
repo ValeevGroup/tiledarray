@@ -131,7 +131,6 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<MultEngine_>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<MultEngine_>::scalar_type scalar_type; ///< Tile scalar type
       typedef typename EngineTrait<MultEngine_>::op_base_type op_base_type; ///< The tile operation type
       typedef typename EngineTrait<MultEngine_>::op_type op_type; ///< The tile operation type
       typedef typename EngineTrait<MultEngine_>::policy policy; ///< The result policy type

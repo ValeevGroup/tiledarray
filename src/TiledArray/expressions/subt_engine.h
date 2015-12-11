@@ -60,8 +60,6 @@ namespace TiledArray {
           value_type; ///< The result tile type
       typedef typename eval_trait<value_type>::type
           eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<value_type>::type
-          scalar_type; ///< Tile scalar type
       typedef typename Left::policy policy; ///< The result policy type
       typedef TiledArray::detail::DistEval<value_type, policy>
           dist_eval_type; ///< The distributed evaluator type
