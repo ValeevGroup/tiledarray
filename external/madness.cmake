@@ -286,7 +286,7 @@ else()
   list(REMOVE_ITEM Madness_LIBRARIES 
     ${Madness_chem_LIBRARY} ${Madness_mra_LIBRARY}
     ${Madness_tinyxml_LIBRARY} ${Madness_muparser_LIBRARY}
-    ${Madness_linalg_LIBRARY}
+    ${Madness_linalg_LIBRARY} ${Madness_tensor_LIBRARY}
     ${Madness_misc_LIBRARY})
   
   if(CMAKE_BUILD_TYPE)
@@ -295,7 +295,7 @@ else()
     append_flags(MAD_CXXFLAGS "")
   endif()
   add_custom_target(madness-build ALL
-      COMMAND ${CMAKE_COMMAND} --build . --target MADworld --target MADtensor
+      COMMAND ${CMAKE_COMMAND} --build . --target MADworld
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 
@@ -310,7 +310,7 @@ else()
   install(CODE
       "
       execute_process(
-          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-tensor\" \"install-world\" 
+          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-world\"
           WORKING_DIRECTORY \"${MADNESS_BINARY_DIR}\"
           RESULT_VARIABLE error_code)
       if(error_code)
