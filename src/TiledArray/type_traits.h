@@ -125,49 +125,10 @@ namespace TiledArray {
     struct is_complex<std::complex<T> > : public std::true_type { };
 
     template <typename T>
-    struct is_char : public std::false_type { };
-
-    template <>
-    struct is_char<char> : public std::true_type { };
-
-    template <>
-    struct is_char<char16_t> : public std::true_type { };
-
-    template <>
-    struct is_char<char32_t> : public std::true_type { };
-
-    template <>
-    struct is_char<wchar_t> : public std::true_type { };
-
-    template <>
-    struct is_char<signed char> : public std::true_type { };
-
-    template <typename T>
-    struct is_bool : public std::false_type { };
-
-    template <>
-    struct is_bool<bool> : public std::true_type { };
-
-    template <typename T>
     struct is_numeric : public std::is_arithmetic<T> { };
 
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };
-
-    template <>
-    struct is_numeric<char> : public std::false_type { };
-
-    template <>
-    struct is_numeric<char16_t> : public std::false_type { };
-
-    template <>
-    struct is_numeric<char32_t> : public std::false_type { };
-
-    template <>
-    struct is_numeric<wchar_t> : public std::false_type { };
-
-    template <>
-    struct is_numeric<signed char> : public std::false_type { };
 
     template <>
     struct is_numeric<bool> : public std::false_type { };
@@ -177,9 +138,6 @@ namespace TiledArray {
 
     template <typename T>
     struct is_scalar<std::complex<T> > : public std::false_type { };
-
-
-
 
 
     /// Detect tiles used by \c ArrayEvalImpl

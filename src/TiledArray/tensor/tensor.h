@@ -1110,7 +1110,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When this tensor is empty.
     /// \throw TiledArray::Exception When \c other is empty.
     template <typename U, typename AU>
-    Tensor_ gemm(const Tensor<U, AU>& other, const scalar_type factor,
+    Tensor_ gemm(const Tensor<U, AU>& other, const numeric_type factor,
         const math::GemmHelper& gemm_helper) const
     {
       // Check that this tensor is not empty and has the correct rank
@@ -1186,7 +1186,7 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When this tensor is empty.
     template <typename U, typename AU, typename V, typename AV>
     Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
-        const scalar_type factor, const math::GemmHelper& gemm_helper)
+        const numeric_type factor, const math::GemmHelper& gemm_helper)
     {
       // Check that this tensor is not empty and has the correct rank
       TA_ASSERT(pimpl_);
