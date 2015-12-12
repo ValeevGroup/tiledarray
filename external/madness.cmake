@@ -79,7 +79,7 @@ else()
         "Path to the MADNESS build directory")
   set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(Madness_TAG "HEAD" CACHE STRING 
+  set(Madness_TAG "master" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${Madness_TAG}" STREQUAL "")
@@ -95,8 +95,8 @@ else()
 
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
-    list(APPEND MAD_CFLAGS ${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}})
-    list(APPEND MAD_CXXFLAGS ${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}})
+    set(MAD_CFLAGS "${MAD_CFLAGS} ${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
+    set(MAD_CXXFLAGS "${MAD_CXXFLAGS} ${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
   endif()
   
   # Set Fortran integer size
@@ -228,8 +228,9 @@ else()
       -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-      -DCMAKE_C_FLAGS=${MAD_CFLAGS}
+      "-DCMAKE_C_FLAGS=${MAD_CFLAGS}"
       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+      "-DCMAKE_CXX_FLAGS=${MAD_CXXFLAGS}"
 # F Fortran, assume we can link without its runtime
 #      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
 #      -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
@@ -243,9 +244,7 @@ else()
       -DENABLE_LIBXC=FALSE
       -DENABLE_GPERFTOOLS=FALSE
       -DASSERTION_TYPE=${MAD_EXCEPTION}
-#      -DCMAKE_CXX_FLAGS=${MAD_CXXFLAGS}
-#      -DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}
-#      -DCMAKE_REQUIRED_LIBRARIES=${MAD_LIBS}
+      "-DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}"
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)
   if(error_code)
@@ -275,8 +274,6 @@ else()
         Madness_LINKER_FLAGS "${Madness_LINKER_FLAGS}")
   string(REPLACE "${MAD_LDFLAGS}" "" 
         Madness_LINKER_FLAGS "${Madness_LINKER_FLAGS}")
-  string(REPLACE "${MAD_LIBS}" "" 
-        Madness_LIBRARIES "${Madness_LIBRARIES}")
   string(STRIP "${Madness_LIBRARIES}" Madness_LIBRARIES)
   string(STRIP "${Madness_LINKER_FLAGS}" Madness_LINKER_FLAGS)
   
