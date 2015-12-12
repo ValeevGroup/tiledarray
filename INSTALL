@@ -218,7 +218,7 @@ MADNESS:
 * MADNESS_BINARY_DIR -- Path to the MADNESS build directory
 * Madness_URL -- Path to the MADNESS repository [Default=MADNESS git repository]
 * Madness_TAG -- Revision hash or tag to use when building MADNESS (expert only)
-* MAD_EXTRA_CONFIGURE_FLAGS -- Extra configure flags passed to MADNESS configure
+* MAD_EXTRA_CMAKE_FLAGS -- Extra flags passed to MADNESS cmake command
 
 If you wish to install MADNESS yourself, we recommend downloading the latest
 version from the MADNESS git repository. You should not expect the latest 

@@ -79,11 +79,43 @@ else()
         "Path to the MADNESS build directory")
   set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(Madness_TAG "a62db8ac775573ced45095736cda85c8fda36935" CACHE STRING 
+  set(Madness_TAG "HEAD" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${Madness_TAG}" STREQUAL "")
     message(FATAL_ERROR "Invalid value given for Madness_TAG; specify a valid hash or tag.")
+  endif()
+  
+  # Setup configure variables
+  
+  # Set compile flags
+  set(MAD_CPPFLAGS ${CMAKE_CPP_FLAGS})
+  set(MAD_CFLAGS ${CMAKE_C_FLAGS})
+  set(MAD_CXXFLAGS ${CMAKE_CXX_FLAGS})
+  set(MAD_LDFLAGS ${CMAKE_EXE_LINKER_FLAGS})
+
+  if(CMAKE_BUILD_TYPE)
+    string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
+    list(APPEND MAD_CFLAGS ${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}})
+    list(APPEND MAD_CXXFLAGS ${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}})
+  endif()
+  
+  # Set Fortran integer size
+  if(INTEGER4) 
+    set(F77_INT_SIZE 4)
+  else(INTEGER4)
+    set (F77_INT_SIZE 8)
+  endif(INTEGER4)
+  
+  # Set error handling method
+  if(TA_ERROR STREQUAL none)
+    set(MAD_EXCEPTION disable)
+  elseif(TA_ERROR STREQUAL throw)
+    set(MAD_EXCEPTION throw)
+  elseif(TA_ERROR STREQUAL assert)
+    set(MAD_EXCEPTION assert)
+  else()
+    set(MAD_EXCEPTION throw)
   endif()
   
   # Check the MADNESS source directory to make sure it contains the source files
@@ -186,60 +218,52 @@ else()
     endif()
   endif()
 
-  # Configure MADNESS
+  
   set(error_code 1)
+  message (STATUS "** Configuring MADNESS")
   execute_process(
-      COMMAND "${MADNESS_SOURCE_DIR}/configure"
-                "--prefix=${CMAKE_INSTALL_PREFIX}"
-                "${MAD_ENABLE_SHARED}"
-                "${MAD_ENABLE_STATIC}"
-                "--disable-debugging"
-                "--disable-optimization"
-                "--disable-optimal"
-                "--disable-warning"
-                "--enable-madex=${MAD_EXCEPTION}"
-                "--enable-dependency-tracking"
-                "--with-mpi-thread=multiple"
-                "--with-fortran-int32=${MAD_F77_INT32}"
-                "--with-stubmpi=${MAD_STUB_MPI}"
-                "--with-elemental=${MAD_ELEMENTAL_FLAG}"
-                "${MAD_TBB_FLAG}" 
-                "${MAD_TBB_INCLUDE_FLAG}"
-                "${MAD_TBB_LIB_FLAG}"
-                "--without-mkl"
-                "--without-libxc"
-                "--without-google-perf"
-                "${MAD_EXTRA_CONFIGURE_FLAGS}"
-                "MPICXX=${CMAKE_CXX_COMPILER}"
-                "MPICC=${CMAKE_C_COMPILER}"
-                "CPPFLAGS=${MAD_CPPFLAGS}"
-                "CC=${CMAKE_C_COMPILER}" "CFLAGS=${MAD_CFLAGS}"
-                "CXX=${CMAKE_CXX_COMPILER}" "CXXFLAGS=${MAD_CXXFLAGS}"
-                "F77=${CMAKE_Fortran_COMPILER}" "FFLAGS=${CMAKE_Fortran_FLAGS}"
-                "LDFLAGS=${MAD_LDFLAGS}"
-                "LIBS=${MAD_LIBS}"
+      COMMAND ${CMAKE_COMMAND}
+      ARGS
+      ${MADNESS_SOURCE_DIR}
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+      -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_CPP_FLAGS=${MAD_CPPFLAGS}
+      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+      -DCMAKE_C_FLAGS=${MAD_CFLAGS}
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+# F Fortran, assume we can link without its runtime
+#      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+#      -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
+      -DENABLE_MPI=${ENABLE_MPI}
+      -DMPI_THREAD=multiple
+      -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER}
+      -DMPI_C_COMPILER=${MPI_C_COMPILER}
+      -DENABLE_ELEMENTAL=${ENABLE_ELEMENTAL}
+      -DENABLE_MKL=${ENABLE_MKL}
+      -DFORTRAN_INTEGER_SIZE=${F77_INT_SIZE}
+      -DENABLE_LIBXC=FALSE
+      -DENABLE_GPERFTOOLS=FALSE
+      -DASSERTION_TYPE=${MAD_EXCEPTION}
+#      -DCMAKE_CXX_FLAGS=${MAD_CXXFLAGS}
+#      -DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}
+#      -DCMAKE_REQUIRED_LIBRARIES=${MAD_LIBS}
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)
   if(error_code)
     message(FATAL_ERROR "The MADNESS configure script failed.")
+  else(error_code)
+    message (STATUS "** Done configuring MADNESS")
   endif(error_code)
-  
-  include(${MADNESS_BINARY_DIR}/config/madness-project.cmake)
 
-#  message("Madness_INCLUDE_DIRS        = ${Madness_INCLUDE_DIRS}")
-#  message("Madness_LIBRARIES           = ${Madness_LIBRARIES}")
-#  message("Madness_MADchem_LIBRARY     = ${Madness_MADchem_LIBRARY}")
-#  message("Madness_MADmra_LIBRARY      = ${Madness_MADmra_LIBRARY}")
-#  message("Madness_MADtinyxml_LIBRARY  = ${Madness_MADtinyxml_LIBRARY}")
-#  message("Madness_MADmuparser_LIBRARY = ${Madness_MADmuparser_LIBRARY}")
-#  message("Madness_MADlinalg_LIBRARY   = ${Madness_MADlinalg_LIBRARY}")
-#  message("Madness_MADtensor_LIBRARY   = ${Madness_MADtensor_LIBRARY}")
-#  message("Madness_MADmisc_LIBRARY     = ${Madness_MADmisc_LIBRARY}")
-#  message("Madness_MADworld_LIBRARY    = ${Madness_MADworld_LIBRARY}")
-#  message("Madness_COMPILE_FLAGS       = ${Madness_COMPILE_FLAGS}")
-#  message("Madness_LINKER_FLAGS        = ${Madness_LINKER_FLAGS}")
-#  message("Madness_VERSION             = ${Madness_VERSION}")
-#  message("Madness_F77_INTEGER_SIZE    = ${Madness_F77_INTEGER_SIZE}")
+  set(MADNESS_DIR ${MADNESS_BINARY_DIR})
+  find_package(MADNESS 0.10.0 REQUIRED
+               COMPONENTS world)
+
+ message("Madness_VERSION             = ${Madness_VERSION}")
+ message("Madness_INCLUDE_DIRS        = ${Madness_INCLUDE_DIRS}")
+ message("Madness_LIBRARIES           = ${Madness_LIBRARIES}")
+ message("Madness_F77_INTEGER_SIZE    = ${Madness_F77_INTEGER_SIZE}")
   
   # Removed all the flags passed to MADNESS configure
   string(REGEX REPLACE "-(O[0-9s]|g[0-9]?)([ ]+|$)" "" MAD_CXXFLAGS "${MAD_CXXFLAGS}")
@@ -260,23 +284,18 @@ else()
   
   # Removed the MADNESS libraries that are not needed by TiledArray.
   list(REMOVE_ITEM Madness_LIBRARIES 
-    ${Madness_MADchem_LIBRARY} ${Madness_MADmra_LIBRARY}
-    ${Madness_MADtinyxml_LIBRARY} ${Madness_MADmuparser_LIBRARY}
-    ${Madness_MADlinalg_LIBRARY} ${Madness_MADtensor_LIBRARY}
-    ${Madness_MADmisc_LIBRARY})
+    ${Madness_chem_LIBRARY} ${Madness_mra_LIBRARY}
+    ${Madness_tinyxml_LIBRARY} ${Madness_muparser_LIBRARY}
+    ${Madness_linalg_LIBRARY}
+    ${Madness_misc_LIBRARY})
   
-#  message("Madness_COMPILE_FLAGS = '${Madness_COMPILE_FLAGS}'")
-#  message("Madness_LIBRARIES     = '${Madness_LIBRARIES}'")
-#  message("Madness_LINKER_FLAGS  = '${Madness_LINKER_FLAGS}'")
-
-
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
     append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
     append_flags(MAD_CXXFLAGS "")
   endif()
   add_custom_target(madness-build ALL
-      COMMAND $(MAKE) world V=0
+      COMMAND ${CMAKE_COMMAND} --build . --target MADworld --target MADtensor
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 
