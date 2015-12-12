@@ -182,12 +182,22 @@ if [ -n "$CPPFLAGS" ]; then
     args="$args -DCMAKE_CPP_FLAGS=\"$CPPFLAGS\""
 fi
 
+# to add CPPFLAGS properly in cmake would need to parse it into defines and includes, etc.
+# easiest to just merge all into CFLAGS/CXXFLAGS
 if [ -n "$CFLAGS" ]; then
+  if [ -n "$CPPFLAGS" ]; then
+    args="$args -DCMAKE_C_FLAGS=\"$CFLAGS $CPPFLAGS\""
+  else
     args="$args -DCMAKE_C_FLAGS=\"$CFLAGS\""
+  fi
 fi
 
 if [ -n "$CXXFLAGS" ]; then
+  if [ -n "$CPPFLAGS" ]; then
+    args="$args -DCMAKE_CXX_FLAGS=\"$CXXFLAGS $CPPFLAGS\""
+  else
     args="$args -DCMAKE_CXX_FLAGS=\"$CXXFLAGS\""
+  fi
 fi
 
 if [ -n "$FFLAGS" ]; then
