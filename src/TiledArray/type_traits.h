@@ -218,10 +218,16 @@ namespace TiledArray {
     { };
 
     template <typename T>
+    using numeric_t = typename TiledArray::detail::numeric_type<T>::type;
+
+    template <typename T>
     struct scalar_type : public numeric_type<T> { };
 
     template <typename T>
     struct scalar_type<std::complex<T> > : public scalar_type<T> { };
+
+    template <typename T>
+    using scalar_t = typename TiledArray::detail::scalar_type<T>::type;
 
 
     template <typename...> struct is_integral_list_helper;
