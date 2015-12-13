@@ -32,6 +32,7 @@
 namespace TiledArray {
   namespace expressions {
 
+    using TiledArray::detail::mult_t;
     using TiledArray::detail::numeric_t;
     using TiledArray::detail::scalar_t;
 
@@ -40,7 +41,8 @@ namespace TiledArray {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
       typedef MultEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type> engine_type; ///< Expression engine type
+          typename ExprTrait<Right>::engine_type>
+          engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Multiplication result numeric type
       typedef scalar_t<typename EngineTrait<engine_type>::eval_type>
@@ -141,8 +143,6 @@ namespace TiledArray {
 
     }; // class ScalMultExpr
 
-
-    using TiledArray::detail::mult_t;
 
     /// Multiplication expression factor
 

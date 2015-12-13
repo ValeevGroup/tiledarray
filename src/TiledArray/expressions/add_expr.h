@@ -32,6 +32,7 @@
 namespace TiledArray {
   namespace expressions {
 
+    using TiledArray::detail::mult_t;
     using TiledArray::detail::numeric_t;
     using TiledArray::detail::scalar_t;
 
@@ -40,7 +41,8 @@ namespace TiledArray {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
       typedef AddEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type> engine_type; ///< Expression engine type
+          typename ExprTrait<Right>::engine_type>
+          engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Addition result numeric type
       typedef scalar_t<typename EngineTrait<engine_type>::eval_type>
@@ -52,7 +54,8 @@ namespace TiledArray {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
       typedef ScalAddEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, Scalar> engine_type; ///< Expression engine type
+          typename ExprTrait<Right>::engine_type, Scalar>
+          engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Addition numeric type
       typedef Scalar scalar_type;  ///< Expression scalar type
@@ -67,10 +70,14 @@ namespace TiledArray {
     class AddExpr : public BinaryExpr<AddExpr<Left, Right> > {
     public:
       typedef AddExpr<Left, Right> AddExpr_; ///< This class type
-      typedef BinaryExpr<AddExpr<Left, Right> > BinaryExpr_; ///< Binary base class type
-      typedef typename ExprTrait<AddExpr_>::left_type left_type; ///< The left-hand expression type
-      typedef typename ExprTrait<AddExpr_>::right_type right_type; ///< The right-hand expression type
-      typedef typename ExprTrait<AddExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef BinaryExpr<AddExpr<Left, Right> >
+          BinaryExpr_; ///< Binary base class type
+      typedef typename ExprTrait<AddExpr_>::left_type
+          left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<AddExpr_>::right_type
+          right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<AddExpr_>::engine_type
+          engine_type; ///< Expression engine type
 
 
       /// Expression constructor
@@ -94,12 +101,18 @@ namespace TiledArray {
     template <typename Left, typename Right, typename Scalar>
     class ScalAddExpr : public BinaryExpr<ScalAddExpr<Left, Right, Scalar> > {
     public:
-      typedef ScalAddExpr<Left, Right, Scalar> ScalAddExpr_; ///< This class type
-      typedef BinaryExpr<ScalAddExpr_> BinaryExpr_; ///< Binary base class type
-      typedef typename ExprTrait<ScalAddExpr_>::left_type left_type; ///< The left-hand expression type
-      typedef typename ExprTrait<ScalAddExpr_>::right_type right_type; ///< The right-hand expression type
-      typedef typename ExprTrait<ScalAddExpr_>::engine_type engine_type; ///< Expression engine type
-      typedef typename ExprTrait<ScalAddExpr_>::scalar_type scalar_type; ///< Scalar type
+      typedef ScalAddExpr<Left, Right, Scalar>
+          ScalAddExpr_; ///< This class type
+      typedef BinaryExpr<ScalAddExpr_>
+          BinaryExpr_; ///< Binary base class type
+      typedef typename ExprTrait<ScalAddExpr_>::left_type
+          left_type; ///< The left-hand expression type
+      typedef typename ExprTrait<ScalAddExpr_>::right_type
+          right_type; ///< The right-hand expression type
+      typedef typename ExprTrait<ScalAddExpr_>::engine_type
+          engine_type; ///< Expression engine type
+      typedef typename ExprTrait<ScalAddExpr_>::scalar_type
+          scalar_type; ///< Scalar type
 
 
     private:
@@ -138,8 +151,6 @@ namespace TiledArray {
 
     }; // class ScalAddExpr
 
-
-    using TiledArray::detail::mult_t;
 
     /// Addition expression factor
 

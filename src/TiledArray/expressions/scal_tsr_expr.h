@@ -32,6 +32,14 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename Array>
+    using ConjTsrExpr = ScalTsrExpr<Array, TiledArray::detail::ComplexConjugate<void> >;
+
+    template <typename Array, typename Scalar>
+    using ScalConjTsrExpr = ScalTsrExpr<Array, TiledArray::detail::ComplexConjugate<Scalar> >;
+
+    using TiledArray::detail::conj_op;
+    using TiledArray::detail::mult_t;
     using TiledArray::detail::numeric_t;
 
     template <typename, typename> class ScalTsrExpr;
@@ -104,8 +112,6 @@ namespace TiledArray {
 
     }; // class ScalTsrExpr
 
-
-    using TiledArray::detail::mult_t;
 
     /// Scaled-tensor expression factor
 
@@ -239,15 +245,6 @@ namespace TiledArray {
     inline ScalTsrExpr<A, S> operator-(const ScalTsrExpr<A, S>& expr) {
       return ScalTsrExpr<A, S>(expr.array(), expr.vars(), -expr.factor());
     }
-
-
-    template <typename A>
-    using ConjTsrExpr = ScalTsrExpr<A, TiledArray::detail::ComplexConjugate<void> >;
-
-    template <typename A, typename S>
-    using ScalConjTsrExpr = ScalTsrExpr<A, TiledArray::detail::ComplexConjugate<S> >;
-
-    using TiledArray::detail::conj_op;
 
 
     /// Conjugated tensor expression factory
