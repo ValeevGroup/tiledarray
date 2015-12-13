@@ -32,6 +32,13 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename L, typename R>
+    using ConjAddExpr = ScalAddExpr<L, R, TiledArray::detail::ComplexConjugate<void> >;
+
+    template <typename L, typename R, typename S>
+    using ScalConjAddExpr = ScalAddExpr<L, R, TiledArray::detail::ComplexConjugate<S> >;
+
+    using TiledArray::detail::conj_op;
     using TiledArray::detail::mult_t;
     using TiledArray::detail::numeric_t;
     using TiledArray::detail::scalar_t;
@@ -79,17 +86,20 @@ namespace TiledArray {
       typedef typename ExprTrait<AddExpr_>::engine_type
           engine_type; ///< Expression engine type
 
+      // Compiler generated functions
+      AddExpr(const AddExpr_&) = default;
+      AddExpr(AddExpr_&&) = default;
+      ~AddExpr() = default;
+      AddExpr_& operator=(const AddExpr_&) = delete;
+      AddExpr_& operator=(AddExpr_&&) = delete;
 
       /// Expression constructor
 
       /// \param left The left-hand expression
       /// \param right The right-hand expression
-      AddExpr(const left_type& left, const right_type& right) : BinaryExpr_(left, right) { }
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      AddExpr(const AddExpr_& other) : BinaryExpr_(other) { }
+      AddExpr(const left_type& left, const right_type& right) :
+        BinaryExpr_(left, right)
+      { }
 
     }; // class AddExpr
 
@@ -121,28 +131,22 @@ namespace TiledArray {
 
     public:
 
+      // Compiler generated functions
+      ScalAddExpr(const ScalAddExpr_&) = default;
+      ScalAddExpr(ScalAddExpr_&&) = default;
+      ~ScalAddExpr() = default;
+      ScalAddExpr_& operator=(const ScalAddExpr_&) = delete;
+      ScalAddExpr_& operator=(ScalAddExpr_&&) = delete;
+
       /// Expression constructor
 
       /// \param arg The argument expression
       /// \param factor The scaling factor
-      ScalAddExpr(const AddExpr<Left, Right>& arg, const scalar_type factor) :
-        BinaryExpr_(arg.left(), arg.right()), factor_(factor)
+      ScalAddExpr(const left_type& left, const right_type& right,
+          const scalar_type factor) :
+        BinaryExpr_(left, right), factor_(factor)
       { }
 
-      /// Expression constructor
-
-      /// \param arg The scaled expression
-      /// \param factor The scaling factor
-      ScalAddExpr(const ScalAddExpr_& arg, const scalar_type factor) :
-        BinaryExpr_(arg), factor_(arg.factor_ * factor)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      ScalAddExpr(const ScalAddExpr_& other) :
-        BinaryExpr_(other), factor_(other.factor_)
-      { }
 
       /// Scaling factor accessor
 
@@ -177,7 +181,8 @@ namespace TiledArray {
     inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
         ScalAddExpr<Left, Right, Scalar> >::type
     operator*(const AddExpr<Left, Right>& expr, const Scalar& factor) {
-      return ScalAddExpr<Left, Right, Scalar>(expr, factor);
+      return ScalAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
+          factor);
     }
 
     /// Scaled-addition expression factor
@@ -192,7 +197,8 @@ namespace TiledArray {
     inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
         ScalAddExpr<Left, Right, Scalar> >::type
     operator*(const Scalar& factor, const AddExpr<Left, Right>& expr) {
-      return ScalAddExpr<Left, Right, Scalar>(expr, factor);
+      return ScalAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
+          factor);
     }
 
     /// Scaled-addition expression factor
@@ -209,7 +215,8 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >
     operator*(const ScalAddExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
-      return ScalAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >(expr, factor);
+      return ScalAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >(expr.left(),
+          expr.right(), expr.factor() * factor);
     }
 
     /// Scaled-addition expression factor
@@ -226,7 +233,8 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalAddExpr<Left, Right, Scalar2>& expr) {
-      return ScalAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >(expr, factor);
+      return ScalAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >(expr.left(),
+          expr.right(), expr.factor() * factor);
     }
 
     /// Negated addition expression factor
@@ -236,22 +244,179 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right>
-    inline ScalAddExpr<Left, Right, typename ExprTrait<AddExpr<Left, Right> >::scalar_type>
+    inline ScalAddExpr<Left, Right,
+        typename ExprTrait<AddExpr<Left, Right> >::numeric_type>
     operator-(const AddExpr<Left, Right>& expr) {
       return ScalAddExpr<Left, Right,
-          typename ExprTrait<AddExpr<Left, Right> >::scalar_type>(expr, -1);
+          typename ExprTrait<AddExpr<Left, Right> >::numeric_type>(
+              expr.left(), expr.right(), -1);
     }
 
     /// Negated scaled-addition expression factor
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
+    /// \tparam Scalar A scalar type
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
     inline ScalAddExpr<Left, Right, Scalar>
     operator-(const ScalAddExpr<Left, Right, Scalar>& expr) {
-      return ScalAddExpr<Left, Right, Scalar>(expr, -1);
+      return ScalAddExpr<Left, Right, Scalar>(expr.left(), expr.right(), -1);
+    }
+
+    /// Conjugated addition expression factory
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \param expr The addition expression object
+    /// \return A conjugated addition expression object
+    template <typename Left, typename Right>
+    inline ConjAddExpr<Left, Right> conj(const AddExpr<Left, Right>& expr) {
+      return ConjAddExpr<Left, Right>(expr.left(), expr.right(), conj_op());
+    }
+
+    /// Conjugate-conjugate addition expression factory
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \param expr The addition expression object
+    /// \return A tensor expression object
+    template <typename Left, typename Right>
+    inline AddExpr<Left, Right> conj(const ConjAddExpr<Left, Right>& expr) {
+      return ConjAddExpr<Left, Right>(expr.left(), expr.right());
+    }
+
+    /// Conjugated addition expression factor
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \tparam Scalar A scalar type
+    /// \param expr The addition expression object
+    /// \return A conjugated addition expression object
+    template <typename Left, typename Right, typename Scalar>
+    inline ScalConjAddExpr<Left, Right, Scalar>
+    conj(const ScalAddExpr<Left, Right, Scalar>& expr) {
+      return ScalConjAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
+          conj_op(TiledArray::detail::conj(expr.factor())));
+    }
+
+    /// Conjugate-conjugate addition expression factory
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \tparam Scalar A scalar type
+    /// \param expr The scaled conjugate tensor expression object
+    /// \return A conjugated expression object
+    template <typename Left, typename Right, typename Scalar>
+    inline ScalAddExpr<Left, Right, Scalar>
+    conj(const ScalConjAddExpr<Left, Right, Scalar>& expr) {
+      return ScalAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
+          TiledArray::detail::conj(expr.factor().factor()));
+    }
+
+    /// Scaled conjugate addition expression factor
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \tparam Scalar A scalar type
+    /// \param expr The tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-tensor expression object
+    template <typename Left, typename Right, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalConjAddExpr<Left, Right, Scalar>
+    operator*(const ConjAddExpr<Left, Right>& expr, const Scalar& factor) {
+      return ScalConjAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
+          conj_op(factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param expr The tensor expression object
+    /// \return A scaled-conjugated addition expression object
+    template <typename Left, typename Right, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalConjAddExpr<Left, Right, Scalar>
+    operator*(const Scalar& factor, const ConjAddExpr<Left, Right>& expr) {
+      return ScalConjAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
+          conj_op(factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \tparam Scalar1 The expression scaling factor type
+    /// \tparam Scalar2 The scaling factor type
+    /// \param expr The scaled-tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-conjugated addition expression object
+    template <typename Left, typename Right, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalConjAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalConjAddExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
+      return ScalConjAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >(expr.left(),
+          expr.right(), conj_op(expr.factor().factor() * factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \tparam Scalar1 The scaling factor type
+    /// \tparam Scalar2 The expression scaling factor type
+    /// \param factor The scaling factor
+    /// \param expr The scaled-conjugated addition expression object
+    /// \return A scaled-conjugated addition expression object
+    template <typename Left, typename Right, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalConjAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalConjAddExpr<Left, Right, Scalar2>& expr) {
+      return ScalConjAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >(
+          expr.left(), expr.right(), conj_op(expr.factor().factor() * factor));
+    }
+
+    /// Negated-conjugated addition expression factor
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \param expr The tensor expression object
+    /// \return A scaled-addition expression object
+    template <typename Left, typename Right>
+    inline ScalConjAddExpr<Left, Right,
+        typename ExprTrait<ConjAddExpr<Left, Right> >::numeric_type>
+    operator-(const ConjAddExpr<Left, Right>& expr) {
+      typedef typename ExprTrait<ConjAddExpr<Left, Right> >::numeric_type
+          scalar_type;
+      return ScalConjAddExpr<Left, Right, scalar_type>(expr.left(),
+          expr.right(), conj_op<scalar_type>(-1));
+    }
+
+    /// Negated-conjugated-tensor expression factor
+
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \tparam Scalar A scalar type
+    /// \param expr The scaled-conjugated-tensor expression object
+    /// \return A scaled-conjugated addition expression object
+    template <typename Left, typename Right, typename Scalar>
+    inline ScalConjAddExpr<Left, Right, Scalar>
+    operator-(const ScalConjAddExpr<Left, Right, Scalar>& expr) {
+      return ScalConjAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
+          conj_op(-expr.factor().factor()));
     }
 
   }  // namespace expressions
