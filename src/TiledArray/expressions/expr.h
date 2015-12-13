@@ -448,7 +448,7 @@ namespace TiledArray {
       norm(World& world = World::get_default()) const {
         return world.taskq.add(Expr_::template sqrt<
             typename TiledArray::SquaredNormReduction<
-            typename EngineTrait<engine_type>::eval_type>::result_typ>,
+            typename EngineTrait<engine_type>::eval_type>::result_type>,
             squared_norm(world));
       }
 
