@@ -44,24 +44,26 @@ namespace TiledArray {
     using ScalConjBlkTsrExpr = ScalBlkTsrExpr<A, TiledArray::detail::ComplexConjugate<S> >;
 
     using TiledArray::detail::conj_op;
+    using TiledArray::detail::numeric_t;
+    using TiledArray::detail::scalar_t;
 
 
     template <typename Array>
     struct ExprTrait<BlkTsrExpr<Array> > {
       typedef Array array_type; ///< The \c Array type
       typedef Array& reference; ///< \c Array reference type
+      typedef numeric_t<Array> numeric_type; ///< Array base numeric type
+      typedef scalar_t<Array> scalar_type; ///< Array base scalar type
       typedef BlkTsrEngine<Array> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<Array>::type scalar_type;
-                                                          ///< Tile scalar type
     };
 
     template <typename Array>
     struct ExprTrait<BlkTsrExpr<const Array> > {
       typedef Array array_type; ///< The \c Array type
       typedef const Array& reference; ///< \c Array reference type
+      typedef numeric_t<Array> numeric_type; ///< Array base numeric type
+      typedef scalar_t<Array> scalar_type; ///< Array base scalar type
       typedef BlkTsrEngine<Array> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<Array>::type scalar_type;
-                                                          ///< Tile scalar type
     };
 
     template <typename Array, typename Scalar>
@@ -69,6 +71,7 @@ namespace TiledArray {
       typedef Array array_type; ///< The \c Array type
       typedef const Array& reference; ///< \c Array reference type
       typedef ScalBlkTsrEngine<Array, Scalar> engine_type; ///< Expression engine type
+      typedef numeric_t<Array> numeric_type; ///< Array base numeric type
       typedef Scalar scalar_type; ///< Tile scalar type
     };
 
@@ -77,6 +80,7 @@ namespace TiledArray {
       typedef Array array_type; ///< The \c Array type
       typedef const Array& reference; ///< \c Array reference type
       typedef ScalBlkTsrEngine<Array, Scalar> engine_type; ///< Expression engine type
+      typedef numeric_t<Array> numeric_type; ///< Array base numeric type
       typedef Scalar scalar_type; ///< Tile scalar type
     };
 

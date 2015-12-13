@@ -36,15 +36,26 @@
 namespace TiledArray {
   namespace expressions {
 
+    using TiledArray::detail::numeric_t;
+    using TiledArray::detail::scalar_t;
+
     template <typename Array>
     struct ExprTrait<TsrExpr<Array> > {
       typedef Array array_type; ///< The \c Array type
+      typedef TiledArray::detail::numeric_t<Array>
+          numeric_type; ///< Array base numeric type
+      typedef TiledArray::detail::scalar_t<Array>
+          scalar_type; ///< Array base scalar type
       typedef TsrEngine<Array> engine_type; ///< Expression engine type
     };
 
     template <typename Array>
     struct ExprTrait<TsrExpr<const Array> > {
       typedef Array array_type; ///< The \c Array type
+      typedef TiledArray::detail::numeric_t<Array>
+          numeric_type; ///< Array base numeric type
+      typedef TiledArray::detail::scalar_t<Array>
+          scalar_type; ///< Array base scalar type
       typedef TsrEngine<Array> engine_type; ///< Expression engine type
     };
 

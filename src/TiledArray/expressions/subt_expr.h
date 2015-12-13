@@ -33,21 +33,30 @@
 namespace TiledArray {
   namespace expressions {
 
+    using TiledArray::detail::numeric_t;
+    using TiledArray::detail::scalar_t;
+
     template <typename Left, typename Right>
     struct ExprTrait<SubtExpr<Left, Right> > {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
       typedef SubtEngine<typename ExprTrait<Left>::engine_type,
           typename ExprTrait<Right>::engine_type> engine_type; ///< Expression engine type
+      typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
+          numeric_type; ///< Subtraction result numeric type
+      typedef scalar_t<typename EngineTrait<engine_type>::eval_type>
+          scalar_type; ///< Subtraction result scalar type
     };
 
     template <typename Left, typename Right, typename Scalar>
     struct ExprTrait<ScalSubtExpr<Left, Right, Scalar> > {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
-      typedef Scalar scalar_type;  ///< Tile scalar type
       typedef ScalSubtEngine<typename ExprTrait<Left>::engine_type,
           typename ExprTrait<Right>::engine_type, Scalar> engine_type; ///< Expression engine type
+      typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
+          numeric_type; ///< Subtraction result numeric type
+      typedef Scalar scalar_type;  ///< Tile scalar type
     };
 
 

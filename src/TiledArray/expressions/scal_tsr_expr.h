@@ -32,13 +32,17 @@
 namespace TiledArray {
   namespace expressions {
 
+    using TiledArray::detail::numeric_t;
+
     template <typename, typename> class ScalTsrExpr;
 
     template <typename Array, typename Scalar>
     struct ExprTrait<ScalTsrExpr<Array, Scalar> > {
       typedef Array array_type; ///< The \c Array type
       typedef ScalTsrEngine<Array, Scalar> engine_type; ///< Expression engine type
-      typedef Scalar scalar_type;  ///< Tile scalar type
+      typedef TiledArray::detail::numeric_t<Array>
+          numeric_type; ///< Array base numeric type
+      typedef Scalar scalar_type;  ///< Expression scalar type
     };
 
     /// Expression wrapper for scaled array objects
