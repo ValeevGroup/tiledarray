@@ -303,12 +303,6 @@ namespace TiledArray {
 
     public:
 
-      template <typename T>
-      using numeric_t = typename TiledArray::detail::numeric_type<typename ExprTrait<T>::engine_type::value_type>::type;
-
-      template <typename T>
-      using scalar_t = typename TiledArray::detail::scalar_type<typename ExprTrait<T>::engine_type::value_type>::type;
-
       template <typename Op>
       Future<typename Op::result_type>
       reduce(const Op& op, World& world = World::get_default()) const {
@@ -412,28 +406,33 @@ namespace TiledArray {
             local_reduce_task.submit(), op);
       }
 
-      Future<numeric_t<Derived> >
+      Future<typename TiledArray::TraceReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       trace(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::TraceReduction<value_type>(), world);
+        return reduce(TiledArray::TraceReduction<value_type>(), world);
       }
 
-      Future<numeric_t<Derived> >
+      Future<typename TiledArray::SumReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       sum(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::SumReduction<value_type>(), world);
+        return reduce(TiledArray::SumReduction<value_type>(), world);
       }
 
-      Future<numeric_t<Derived> >
+      Future<typename TiledArray::ProductReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       product(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::ProductReduction<value_type>(), world);
+        return reduce(TiledArray::ProductReduction<value_type>(), world);
       }
 
-      Future<scalar_t<Derived> >
+      Future<typename TiledArray::SquaredNormReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       squared_norm(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::SquaredNormReduction<value_type>(), world);
+        return reduce(TiledArray::SquaredNormReduction<value_type>(),
+            world);
       }
 
     private:
@@ -443,42 +442,51 @@ namespace TiledArray {
 
     public:
 
-      Future<scalar_t<Derived> >
+      Future<typename TiledArray::SquaredNormReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       norm(World& world = World::get_default()) const {
-        return world.taskq.add(Expr_::template sqrt<scalar_t<Derived> >,
+        return world.taskq.add(Expr_::template sqrt<
+            typename TiledArray::SquaredNormReduction<
+            typename EngineTrait<engine_type>::eval_type>::result_typ>,
             squared_norm(world));
       }
 
-      Future<numeric_t<Derived> >
+      Future<typename TiledArray::MinReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       min(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::MinReduction<value_type>(), world);
+        return reduce(TiledArray::MinReduction<value_type>(), world);
       }
 
-      Future<numeric_t<Derived> >
+      Future<typename TiledArray::MaxReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       max(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::MaxReduction<value_type>(), world);
+        return reduce(TiledArray::MaxReduction<value_type>(), world);
       }
 
-      Future<numeric_t<Derived> >
+      Future<typename TiledArray::AbsMinReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       abs_min(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::AbsMinReduction<value_type>(), world);
+        return reduce(TiledArray::AbsMinReduction<value_type>(), world);
       }
 
-      Future<numeric_t<Derived> >
+      Future<typename TiledArray::AbsMaxReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
       abs_max(World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
-        return reduce(TiledArray::math::AbsMaxReduction<value_type>(), world);
+        return reduce(TiledArray::AbsMaxReduction<value_type>(), world);
       }
 
       template <typename D>
-      Future<numeric_t<Derived> >
+      Future<typename TiledArray::DotReduction<
+          typename EngineTrait<engine_type>::eval_type,
+          typename EngineTrait<typename D::engine_type>::eval_type>::result_type>
       dot(const Expr<D>& right_expr, World& world = World::get_default()) const {
         typedef typename EngineTrait<engine_type>::eval_type left_value_type;
         typedef typename EngineTrait<typename D::engine_type>::eval_type right_value_type;
-        return reduce(right_expr, TiledArray::math::DotReduction<left_value_type,
+        return reduce(right_expr, TiledArray::DotReduction<left_value_type,
             right_value_type>(), world);
       }
 
