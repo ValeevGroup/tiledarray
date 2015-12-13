@@ -241,10 +241,10 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right>
-    inline ScalSubtExpr<Left, Right, typename ExprTrait<SubtExpr<Left, Right> >::scalar_type>
+    inline ScalSubtExpr<Left, Right, typename ExprTrait<SubtExpr<Left, Right> >::numeric_type>
     operator-(const SubtExpr<Left, Right>& expr) {
       return ScalSubtExpr<Left, Right,
-          typename SubtExpr<Left, Right>::scalar_type>(expr, -1);
+          typename SubtExpr<Left, Right>::numeric_type>(expr, -1);
     }
 
     /// Negated scaled-addition expression factor

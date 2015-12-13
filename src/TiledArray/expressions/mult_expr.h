@@ -242,10 +242,10 @@ namespace TiledArray {
     /// \param expr The multiplication expression object
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right>
-    inline ScalMultExpr<Left, Right, typename ExprTrait<MultExpr<Left, Right> >::scalar_type>
+    inline ScalMultExpr<Left, Right, typename ExprTrait<MultExpr<Left, Right> >::numeric_type>
     operator-(const MultExpr<Left, Right>& expr) {
       return ScalMultExpr<Left, Right, typename ExprTrait<MultExpr<Left,
-          Right> >::scalar_type>(expr.left(), expr.right(), -1);
+          Right> >::numeric_type>(expr.left(), expr.right(), -1);
     }
 
     /// Negated scaled-multiplication expression factor
