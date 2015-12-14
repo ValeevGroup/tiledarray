@@ -28,15 +28,25 @@ cmake_minimum_required (VERSION 2.8.8)
 project (TiledArray)
 
 include(CMakeDependentOption)
+include(FeatureSummary)
 
 # Configure options
 option(ENABLE_MPI "Enable MPI" ON)
-option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
+add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-memory parallel programs")
+
+option(ENABLE_ELEMENTAL "Enable use of MADNESS-provided Elemental" OFF)
+add_feature_info(Elemental ENABLE_ELEMENTAL "Elemental provides parallel linear algebra")
+
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
+add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks support shared-memory parallel programs")
+
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
+add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
 option(ENABLE_TCMALLOC_MINIMAL "Enable linking with tcmalloc_minimal" OFF)
+
 if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES "Linux")
   set(ENABLE_LIBUNWIND ON)
+  add_feature_info(Libunwind ENABLE_LIBUNWIND "Libunwind provides stack unwinding")
 endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
@@ -262,4 +272,7 @@ ADD_CUSTOM_TARGET(release
   COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
   COMMENT "Switch CMAKE_BUILD_TYPE to Release"
   )
+
+feature_summary(WHAT ALL
+                DESCRIPTION "=== TiledArray Package/Feature Info ===")
 
