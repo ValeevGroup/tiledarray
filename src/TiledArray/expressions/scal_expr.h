@@ -32,15 +32,18 @@
 namespace TiledArray {
   namespace expressions {
 
+    using TiledArray::detail::mult_t;
+    using TiledArray::detail::numeric_t;
+    using TiledArray::detail::scalar_t;
+
     template <typename Arg, typename Scalar>
     struct ExprTrait<ScalExpr<Arg, Scalar> > {
       typedef Arg argument_type; ///< The argument expression type
       typedef ScalEngine<typename ExprTrait<Arg>::engine_type, Scalar>
           engine_type; ///< Expression engine type
-      typedef TiledArray::detail::numeric_t<typename engine_type::eval_type>
-          numeric_type; ///< Scaled result numeric type
-      typedef TiledArray::detail::scalar_t<typename engine_type::eval_type>
-          scalar_type; ///< Scaled result scalar type
+      typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
+          numeric_type; ///< Addition result numeric type
+      typedef Scalar scalar_type; ///< Addition result scalar type
     };
 
     /// Scaling expression
@@ -179,7 +182,6 @@ namespace TiledArray {
     inline ScalExpr<Arg, Scalar> operator-(const ScalExpr<Arg, Scalar>& expr) {
       return ScalExpr<Arg, Scalar>(expr, -1);
     }
-
 
   }  // namespace expressions
 } // namespace TiledArray
