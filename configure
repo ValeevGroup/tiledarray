@@ -61,7 +61,7 @@ Configuration:
                           (MPI_CXX_COMPILER=)
   --disable-mpi           Disable checks and inclusion of MPI (DISABLE_MPI) 
   --boost=                Boost path, only needed if --unittest is set also (BOOST_ROOT=)
-  --madness=              MADNESS path (Madness_ROOT_DIR=)
+  --madness=              MADNESS path (MADNESS_ROOT_DIR=)
   --tbb=                  Threading Building Blocks path (TBB_ROOT_DIR=)
   --tbb-include=          Threading Building Blocks include path (TBB_INCLUDE_DIR=)
   --tbb-library=          Threading Building Blocks library path (TBB_LIBRARY=)
@@ -138,7 +138,7 @@ while test $# != 0; do
   --disable-mpi)   args="$args -DENABLE_MPI=OFF" ;;
   --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
   --boost=*)       args="$args -DBOOST_ROOT=`arg \"$1\"`" ;;
-  --madness=*)     args="$args -DMadness_ROOT_DIR=`arg \"$1\"`" ;;
+  --madness=*)     args="$args -DMADNESS_ROOT_DIR=`arg \"$1\"`" ;;
   --tbb=*)         args="$args -DTBB_ROOT_DIR=`arg \"$1\"`" ;;
   --tbb-include=*) args="$args -DTBB_INCLUDE_DIR=`arg \"$1\"`" ;;
   --tbb-library=*) args="$args -DTBB_LIBRARY=`arg \"$1\"`" ;;
