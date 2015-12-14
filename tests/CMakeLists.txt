@@ -94,7 +94,9 @@ add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
-    ${Boost_INCLUDE_DIRS})
+    ${Boost_INCLUDE_DIRS}
+    ${MADNESS_BUILD_INCLUDE_DIRS}
+    )
 set_target_properties(${executable} PROPERTIES
     COMPILE_DEFINITIONS "TILEDARRAY_NO_USER_ERROR_MESSAGES=1")
 target_link_libraries(${executable} ${TiledArray_LIBRARIES})
