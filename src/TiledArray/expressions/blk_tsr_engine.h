@@ -376,6 +376,16 @@ namespace TiledArray {
         return op_type(op_base_type(range_shift), perm);
       }
 
+
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      std::string make_tag() const {
+        std::stringstream ss;
+        ss << "[block] ";
+        return BlkTsrEngineBase_::make_tag() + ss.str();
+      }
+
     }; // class BlkTsrEngine
 
 
@@ -503,7 +513,7 @@ namespace TiledArray {
       /// \return An expression tag used to identify this expression
       std::string make_tag() const {
         std::stringstream ss;
-        ss << "[" << factor_ << "] ";
+        ss << "[block] [" << factor_ << "] ";
         return BlkTsrEngineBase_::make_tag() + ss.str();
       }
 

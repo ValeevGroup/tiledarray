@@ -95,6 +95,11 @@ namespace TiledArray {
       TILEDARRAY_FORCE_INLINE ComplexConjugate<S> operator-() const {
         return ComplexConjugate<S>(-factor_);
       }
+
+      friend std::ostream& operator<<(std::ostream& os, const ComplexConjugate<S>& cc) {
+        os << "conj()] [" << cc.factor_;
+        return os;
+      }
     };
 
 
@@ -105,6 +110,12 @@ namespace TiledArray {
     public:
 
       inline ComplexConjugate<ComplexNegTag> operator-() const;
+
+      friend std::ostream&
+      operator<<(std::ostream& os, const ComplexConjugate<void>& cc) {
+        os << "conj()";
+        return os;
+      }
     };
 
     template <>
@@ -112,6 +123,12 @@ namespace TiledArray {
     public:
 
       inline ComplexConjugate<void> operator-() const;
+
+      friend std::ostream&
+      operator<<(std::ostream& os, const ComplexConjugate<ComplexNegTag>& cc) {
+        os << "conj()] [-1";
+        return os;
+      }
     };
 
 
