@@ -256,7 +256,7 @@ else()
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)
   if(error_code)
-    message(FATAL_ERROR "The MADNESS configure script failed.")
+    message(FATAL_ERROR "The MADNESS cmake configuration failed.")
   else(error_code)
     message (STATUS "** Done configuring MADNESS")
   endif(error_code)
