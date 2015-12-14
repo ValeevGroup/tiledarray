@@ -93,7 +93,7 @@ namespace TiledArray {
       /// Create an default reduction object
       result_type operator()() const { return op_(); }
 
-      result_type operator()(const result_type temp) const { return op_(temp); }
+      result_type operator()(result_type& temp) const { return op_(temp); }
 
       /// Reduce two result objects
 
