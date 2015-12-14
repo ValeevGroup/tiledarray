@@ -81,7 +81,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "a6d2af99bd44e15aa801d94395e302781e487080" CACHE STRING 
+  set(MADNESS_TAG "2383898aa6701beb1205d86ac2cf424cf8611933" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -286,6 +286,8 @@ else()
     ${MADNESS_tinyxml_LIBRARY} ${MADNESS_muparser_LIBRARY}
     ${MADNESS_linalg_LIBRARY} ${MADNESS_tensor_LIBRARY}
     ${MADNESS_misc_LIBRARY})
+  # TODO should only need to make world
+  #set(MADNESS_LIBRARIES ${MADNESS_world_LIBRARY})
   
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
@@ -293,7 +295,8 @@ else()
     append_flags(MAD_CXXFLAGS "")
   endif()
   add_custom_target(madness-build ALL
-      COMMAND ${CMAKE_COMMAND} --build . --target MADworld
+      # TODO should only need to build MADworld here!
+      COMMAND ${CMAKE_COMMAND} --build . --target madness
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 
