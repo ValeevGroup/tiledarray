@@ -219,6 +219,11 @@ else()
     endif()
   endif()
 
+  # if ELEMENTAL_TAG provided, package pass it on to MADNESS
+  set(MAD_ELEMENTAL_OPTIONS -DENABLE_ELEMENTAL=${ENABLE_ELEMENTAL})
+  if (DEFINED ELEMENTAL_TAG)
+    set(MAD_ELEMENTAL_OPTIONS -DELEMENTAL_TAG=${ELEMENTAL_TAG} ${MAD_ELEMENTAL_OPTIONS})
+  endif (DEFINED ELEMENTAL_TAG)
   
   set(error_code 1)
   message (STATUS "** Configuring MADNESS")
@@ -234,13 +239,14 @@ else()
       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
       "-DCMAKE_CXX_FLAGS=${MAD_CXXFLAGS}"
 # F Fortran, assume we can link without its runtime
+# if you need Fortran checks enable Elemental
 #      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
 #      -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
       -DENABLE_MPI=${ENABLE_MPI}
       -DMPI_THREAD=multiple
       -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER}
       -DMPI_C_COMPILER=${MPI_C_COMPILER}
-      -DENABLE_ELEMENTAL=${ENABLE_ELEMENTAL}
+      ${MAD_ELEMENTAL_OPTIONS}
       -DENABLE_MKL=${ENABLE_MKL}
       -DFORTRAN_INTEGER_SIZE=${F77_INT_SIZE}
       -DENABLE_LIBXC=FALSE

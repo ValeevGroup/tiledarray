@@ -65,7 +65,8 @@ Configuration:
   --tbb=                  Threading Building Blocks path (TBB_ROOT_DIR=)
   --tbb-include=          Threading Building Blocks include path (TBB_INCLUDE_DIR=)
   --tbb-library=          Threading Building Blocks library path (TBB_LIBRARY=)
-  --elemental=            Elemental path (Elemental_ROOT_DIR=) 
+  --elemental=            compile Elemental as part of MADNESS (ENABLE_ELEMENTAL=TRUE,
+                          ELEMENTAL_TAG=) 
   --error-checking=       specify the default error reporting style,
                           allowed values: none, throw (default), assert
                           (TA_ERROR=)
@@ -142,7 +143,8 @@ while test $# != 0; do
   --tbb=*)         args="$args -DTBB_ROOT_DIR=`arg \"$1\"`" ;;
   --tbb-include=*) args="$args -DTBB_INCLUDE_DIR=`arg \"$1\"`" ;;
   --tbb-library=*) args="$args -DTBB_LIBRARY=`arg \"$1\"`" ;;
-  --elemental=*)   args="$args -DElemental_ROOT_DIR=`arg \"$1\"` -DENABLE_ELEMENTAL=1" ;;
+  --elemental)     args="$args -DENABLE_ELEMENTAL=1" ;;
+  --elemental=*)   args="$args -DENABLE_ELEMENTAL=1 -DELEMENTAL_TAG=`arg \"$1\"`" ;;
   --error-checking=*)   args="$args -DTA_ERROR=`arg \"$1\"`" ;;
   --expert)        args="$args -DTA_EXPERT=TRUE" ;;
   -D*) args="$args $1" ;; # raw  cmake arg
