@@ -32,11 +32,13 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename L, typename R>
-    using ConjAddExpr = ScalAddExpr<L, R, TiledArray::detail::ComplexConjugate<void> >;
+    template <typename Left, typename Right>
+    using ConjAddExpr =
+        ScalAddExpr<Left, Right, TiledArray::detail::ComplexConjugate<void> >;
 
-    template <typename L, typename R, typename S>
-    using ScalConjAddExpr = ScalAddExpr<L, R, TiledArray::detail::ComplexConjugate<S> >;
+    template <typename Left, typename Right, typename Scalar>
+    using ScalConjAddExpr =
+        ScalAddExpr<Left, Right, TiledArray::detail::ComplexConjugate<Scalar> >;
 
     using TiledArray::detail::conj_op;
     using TiledArray::detail::mult_t;
@@ -205,7 +207,8 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    /// \tparam Scalar A scalar type
+    /// \tparam Scalar1 The expression scaling factor type
+    /// \tparam Scalar2 The scaling factor type
     /// \param expr The addition expression object
     /// \param factor The scaling factor
     /// \return A scaled-addition expression object
@@ -223,7 +226,8 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    /// \tparam Scalar A scalar type
+    /// \tparam Scalar1 The scaling factor type
+    /// \tparam Scalar2 The expression scaling factor type
     /// \param factor The scaling factor
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
@@ -276,7 +280,7 @@ namespace TiledArray {
       return ConjAddExpr<Left, Right>(expr.left(), expr.right(), conj_op());
     }
 
-    /// Conjugate-conjugate addition expression factory
+    /// Conjugated-conjugate addition expression factory
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
@@ -284,7 +288,7 @@ namespace TiledArray {
     /// \return A tensor expression object
     template <typename Left, typename Right>
     inline AddExpr<Left, Right> conj(const ConjAddExpr<Left, Right>& expr) {
-      return ConjAddExpr<Left, Right>(expr.left(), expr.right());
+      return AddExpr<Left, Right>(expr.left(), expr.right());
     }
 
     /// Conjugated addition expression factor
@@ -301,7 +305,7 @@ namespace TiledArray {
           conj_op(TiledArray::detail::conj(expr.factor())));
     }
 
-    /// Conjugate-conjugate addition expression factory
+    /// Conjugated-conjugate addition expression factory
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
@@ -315,7 +319,7 @@ namespace TiledArray {
           TiledArray::detail::conj(expr.factor().factor()));
     }
 
-    /// Scaled conjugate addition expression factor
+    /// Scaled-conjugated addition expression factor
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
@@ -333,7 +337,7 @@ namespace TiledArray {
           conj_op(factor));
     }
 
-    /// Scaled-tensor expression factor
+    /// Scaled-conjugated addition expression factor
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
@@ -351,7 +355,7 @@ namespace TiledArray {
           conj_op(factor));
     }
 
-    /// Scaled-tensor expression factor
+    /// Scaled-conjugated addition expression factor
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
@@ -370,7 +374,7 @@ namespace TiledArray {
           expr.right(), conj_op(expr.factor().factor() * factor));
     }
 
-    /// Scaled-tensor expression factor
+    /// Scaled-conjugated addition expression factor
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
@@ -405,7 +409,7 @@ namespace TiledArray {
           expr.right(), conj_op<scalar_type>(-1));
     }
 
-    /// Negated-conjugated-tensor expression factor
+    /// Negated-conjugated addition expression factor
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
