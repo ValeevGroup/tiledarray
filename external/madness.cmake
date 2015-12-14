@@ -265,11 +265,6 @@ else()
   find_package(MADNESS 0.10.0 REQUIRED
                COMPONENTS world)
 
-  message("MADNESS_VERSION             = ${MADNESS_VERSION}")
-  message("MADNESS_INCLUDE_DIRS        = ${MADNESS_INCLUDE_DIRS}")
-  message("MADNESS_LIBRARIES           = ${MADNESS_LIBRARIES}")
-  message("MADNESS_F77_INTEGER_SIZE    = ${MADNESS_F77_INTEGER_SIZE}")
-  
   # Removed all the flags passed to MADNESS configure
   string(REGEX REPLACE "-(O[0-9s]|g[0-9]?)([ ]+|$)" "" MAD_CXXFLAGS "${MAD_CXXFLAGS}")
   string(STRIP "${MAD_CXXFLAGS}" MAD_CXXFLAGS)

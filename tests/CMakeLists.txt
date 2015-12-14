@@ -85,7 +85,7 @@ set(ta_test_src_files  ta_test.cpp
     dist_eval_contraction_eval.cpp
     expressions.cpp)
         
-if(NOT ENABLE_ELEMENTAL)
+if(ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
 endif()
 add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
