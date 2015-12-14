@@ -271,14 +271,15 @@ namespace TiledArray {
       /// <tt>op(result, *this[i], arg[i])</tt>.
       /// \tparam Arg The right-hand argument type
       /// \tparam Result The reduction result type
-      /// \tparam Op The binary operation type
+      /// \tparam ReduceOp The binary reduction operation type
+      /// \tparam JoinOp The join operation type
       /// \param arg The right-hand argument
       /// \param result The initial value of the reduction
       /// \param op The binary reduction operation
       /// \return The reduced value
-      template <typename Arg, typename Result, typename Op>
-      Result reduce(const Arg* const arg, Result result, const Op& op) const {
-        math::reduce_op(op, last_ - first_, result, first_, arg);
+      template <typename Arg, typename Result, typename ReduceOp, typename JoinOp>
+      Result reduce(const Arg* const arg, Result result, const ReduceOp& reduce_op, const JoinOp& join_op) const {
+        math::reduce_op(reduce_op, join_op, last_ - first_, result, first_, arg);
         return result;
       }
 
@@ -287,13 +288,14 @@ namespace TiledArray {
       /// Unary reduction operation where this object is the argument. The
       /// reduced result is computed by <tt>op(result, *this[i])</tt>.
       /// \tparam Result The reduction result type
-      /// \tparam Op The binary reduction operation type
+      /// \tparam ReduceOp The binary reduction operation type
+      /// \tparam JoinOp The join operation type
       /// \param result The initial value of the reduction
       /// \param op The unary reduction operation
       /// \return The reduced value
-      template <typename Result, typename Op>
-      Result reduce(Result result, const Op& op) const {
-        math::reduce_op(op, last_ - first_, result, first_);
+      template <typename Result, typename ReduceOp, typename JoinOp>
+      Result reduce(Result result, const ReduceOp& reduce_op, const JoinOp& join_op) const {
+        math::reduce_op(reduce_op, join_op, last_ - first_, result, first_);
         return result;
       }
 

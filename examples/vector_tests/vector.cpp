@@ -353,6 +353,7 @@ int main(int, char**) {
   double x = 0.0;
   for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::reduce_op([](double& x, const double a) { x = std::max(x, std::abs(a)); },
+                                [](double& x ,const double a){x=std::max(x,a);},
         n, x, a);
   }
   stop = madness::wall_time();
