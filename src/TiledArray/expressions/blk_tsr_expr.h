@@ -679,7 +679,8 @@ namespace TiledArray {
     inline ScalConjBlkTsrExpr<Array, Scalar>
     operator-(const ScalConjBlkTsrExpr<Array, Scalar>& expr) {
       return ScalConjBlkTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
-          conj_op(-expr.factor().factor()));
+          conj_op(-expr.factor().factor()), expr.lower_bound(),
+          expr.upper_bound());
     }
 
 
