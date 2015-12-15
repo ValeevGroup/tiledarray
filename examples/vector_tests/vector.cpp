@@ -86,9 +86,9 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
-    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::ArrayXd, Eigen::AutoAlign> C(c, n);
     C = A + B;
   }
   stop = madness::wall_time();
@@ -137,9 +137,9 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
-    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::ArrayXd, Eigen::AutoAlign> C(c, n);
     C = (A + B) * 3.0;
   }
   stop = madness::wall_time();
@@ -189,9 +189,9 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
-    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::ArrayXd, Eigen::AutoAlign> C(c, n);
     C = A * B;
   }
   stop = madness::wall_time();
@@ -240,9 +240,9 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
-    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::ArrayXd, Eigen::AutoAlign> C(c, n);
     C = (A * B) * 3.0;
   }
   stop = madness::wall_time();
@@ -291,9 +291,9 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> A(a, n);
-    Eigen::Map<const Eigen::VectorXd, Eigen::AutoAlign> B(b, n);
-    Eigen::Map<Eigen::VectorXd, Eigen::AutoAlign> C(c, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> A(a, n);
+    Eigen::Map<const Eigen::ArrayXd, Eigen::AutoAlign> B(b, n);
+    Eigen::Map<Eigen::ArrayXd, Eigen::AutoAlign> C(c, n);
     C *= 3.0;
   }
   stop = madness::wall_time();
