@@ -30,10 +30,6 @@
 #include <TiledArray/madness.h>
 #include <TiledArray/config.h>
 
-#ifdef HAVE_INTEL_TBB
-#include <tbb/tbb.h>
-#endif
-
 #define TILEDARRAY_LOOP_UNWIND ::TiledArray::math::LoopUnwind::value
 
 

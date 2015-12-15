@@ -587,7 +587,7 @@ namespace TiledArray {
       Scalar result = identity;
       for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride) {
         Scalar temp = identity;
-        math::reduce_op(reduce_op,join_op, stride, temp,
+        math::reduce_op(reduce_op,join_op, identity, stride, temp,
             tensor1.data() + tensor1.range().ordinal(i),
             (tensors.data() + tensors.range().ordinal(i))...);
         join_op(result, temp);

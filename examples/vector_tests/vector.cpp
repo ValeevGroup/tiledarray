@@ -31,7 +31,6 @@
 #include "TiledArray/math/vector_op.h"
 #include "TiledArray/error.h"
 #include "TiledArray/math/blas.h"
-//#include <tbb/cache_aligned_allocator.h>
 
 #define EIGEN_NO_MALLOC
 
@@ -51,9 +50,6 @@ int main(int argc, char** argv) {
     return 1;
   if(posix_memalign(reinterpret_cast<void**>(&c), 128, sizeof(double) * n) != 0)
     return 1;
-//  a = tbb::cache_aligned_allocator<double>().allocate(n);
-//  b = tbb::cache_aligned_allocator<double>().allocate(n);
-//  c = tbb::cache_aligned_allocator<double>().allocate(n);
 
   // Init memory
   std::fill_n(a, n, 2.0);
@@ -527,9 +523,6 @@ int main(int argc, char** argv) {
   free(a);
   free(b);
   free(c);
-//  tbb::cache_aligned_allocator<double>().deallocate(a,n);
-//  tbb::cache_aligned_allocator<double>().deallocate(b,n);
-//  tbb::cache_aligned_allocator<double>().deallocate(c,n);
 
   madness::finalize();
 
