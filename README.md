@@ -34,7 +34,7 @@ The following application is a minimual example of a distributed-memory matrix m
 ```c++
 #include <tiledarray.h>
 
-using TA = TiledArray;
+namespace TA = TiledArray;
 
 int main(int argc, char** argv) {
   // Initialize the parallel runtime
