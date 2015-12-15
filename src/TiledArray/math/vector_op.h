@@ -500,13 +500,13 @@ namespace TiledArray {
         SizeTRange range(0, n);
 
       // if support lambda variadic
-        auto apply_vector_op = [op, result, args...](SizeTRange &range) {
-          size_t offset = range.begin();
-          size_t n_range = range.size();
-          vector_op_serial(op, n_range, result + offset, (args + offset)...);
-        };
+//        auto apply_vector_op = [op, result, args...](SizeTRange &range) {
+//          size_t offset = range.begin();
+//          size_t n_range = range.size();
+//          vector_op_serial(op, n_range, result + offset, (args + offset)...);
+//        };
       // else
-//      auto apply_vector_op = ApplyVectorOp<Op,Result,Args...>(op, result, args...);
+      auto apply_vector_op = ApplyVectorOp<Op,Result,Args...>(op, result, args...);
 
       tbb::parallel_for(range, apply_vector_op, tbb::auto_partitioner());
       #else
