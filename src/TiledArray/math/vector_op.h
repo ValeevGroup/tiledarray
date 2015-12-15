@@ -661,7 +661,8 @@ namespace TiledArray {
         tbb::parallel_reduce(range,apply_reduce_op, tbb::auto_partitioner());
 
         result = apply_reduce_op.result();
-//        reduce_op_serial(reduce_op,n,result,args...);
+      #else
+        reduce_op_serial(reduce_op,n,result,args...);
       #endif
     }
 
