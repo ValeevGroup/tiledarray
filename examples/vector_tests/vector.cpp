@@ -34,7 +34,10 @@
 
 #define EIGEN_NO_MALLOC
 
-int main(int, char**) {
+int main(int argc, char** argv) {
+
+  madness::World& world = madness::initialize(argc,argv);
+
   const std::size_t repeat = 100;
   // Allocate some memory for tests
   const std::size_t n = 10000000;
@@ -320,13 +323,14 @@ int main(int, char**) {
   ////==========================================================================
   std::cout << "\nMaxabs:\n";
   double temp = 0.0;
+  a[10] = 100.5;
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r)
     for(std::size_t i = 0ul; i < n; ++i)
       temp = std::max(temp, std::abs(a[i]));
   stop = madness::wall_time();
 
-  std::cout << "base:   " << stop - start << " s\n";
+  std::cout << "base:   " << stop - start << " s " << temp << " \n";
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
@@ -347,7 +351,7 @@ int main(int, char**) {
   }
   stop = madness::wall_time();
 
-  std::cout << "unwind: " << stop - start << " s\n";
+  std::cout << "unwind: " << stop - start << " s " << temp << " \n";
 
   start = madness::wall_time();
   double x = 0.0;
@@ -357,13 +361,14 @@ int main(int, char**) {
         n, x, a);
   }
   stop = madness::wall_time();
-  x += 1.0;
-  std::cout << "vector: " << stop - start << " s\n" << x;
+  std::cout << "vector: " << stop - start << " s " << x << " \n";
 
   // Deallocate memory
   free(a);
   free(b);
   free(c);
+
+  madness::finalize();
 
   return 0;
 }

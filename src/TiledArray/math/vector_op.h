@@ -413,7 +413,7 @@ namespace TiledArray {
                                   const Args* const... args)
     {
       #ifdef HAVE_INTEL_TBB
-        //std::cout << "INPLACE_TBB_VECTOR_OP" << std::endl;
+//        std::cout << "INPLACE_TBB_VECTOR_OP" << std::endl;
         SizeTRange range(0, n);
 
         // if support lambda variadic
@@ -494,7 +494,7 @@ namespace TiledArray {
                    const Args* const... args)
     {
       #ifdef HAVE_INTEL_TBB
-        //std::cout << "TBB_VECTOR_OP" << std::endl;
+//        std::cout << "TBB_VECTOR_OP" << std::endl;
         SizeTRange range(0, n);
 
       // if support lambda variadic
@@ -561,7 +561,7 @@ namespace TiledArray {
     void vector_ptr_op(Op&& op, const std::size_t n, Result* const result,
                        const Args* const... args){
       #ifdef HAVE_INTEL_TBB
-      //std::cout << "TBB_VECTOR_PTR_OP_2" << std::endl;
+//        std::cout << "TBB_VECTOR_PTR_OP" << std::endl;
         SizeTRange range(0, n);
 
         // if support lambda variadic
@@ -597,72 +597,72 @@ namespace TiledArray {
       reduce_block_n(op, n - i, result, (args + i)...);
     }
 
-//#ifdef HAVE_INTEL_TBB
-//    template<typename ReduceOp, typename JoinOp, typename Result, typename... Args>
-//    class ApplyReduceOp{
-//
-//    public:
-//      ApplyReduceOp(const ReduceOp& reduce_op, const JoinOp& join_op, Result result, const Args* const... args)
-//              :reduce_op_(reduce_op),
-//               join_op_(join_op),
-//               identity_(result),
-//               result_(result),
-//               args_(args...){}
-//
-//      ApplyReduceOp(ApplyReduceOp& rhs, tbb::split) :
-//        reduce_op_(rhs.reduce_op_),
-//        join_op_(rhs.join_op_),
-//        identity_(rhs.identity_),
-//        result_(rhs.identity_),
-//        args_(rhs.args_) { }
-//
-//      ~ApplyReduceOp(){}
-//
-//      template<std::size_t... Is>
-//      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
-//        std::size_t offset = range.begin();
-//        std::size_t n_range = range.size();
-//        reduce_op_serial(reduce_op_, n_range, result_, (std::get<Is>(args_)+offset)...);
-//      }
-//
-//      void operator()(SizeTRange& range) const {
-//        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
-//      }
-//
-//      void join(ApplyReduceOp& rhs){
-//        join_op_(result_, rhs.result_);
-//      }
-//
-//      const Result result() const{
-//        return result_;
-//      }
-//
-//    private:
-//
-//      const ReduceOp& reduce_op_;
-//      const JoinOp& join_op_;
-//      Result identity_;
-//      Result result_;
-//      std::tuple<const Args * const ...> args_;
-//
-//    };
-//#endif
+#ifdef HAVE_INTEL_TBB
+    template<typename ReduceOp, typename JoinOp, typename Result, typename... Args>
+    class ApplyReduceOp{
+
+    public:
+      ApplyReduceOp(const ReduceOp& reduce_op, const JoinOp& join_op, Result& result, const Args* const... args)
+              :reduce_op_(reduce_op),
+               join_op_(join_op),
+               identity_(result),
+               result_(result),
+               args_(args...){}
+
+      ApplyReduceOp(ApplyReduceOp& rhs, tbb::split) :
+        reduce_op_(rhs.reduce_op_),
+        join_op_(rhs.join_op_),
+        identity_(rhs.identity_),
+        result_(rhs.identity_),
+        args_(rhs.args_) { }
+
+      ~ApplyReduceOp(){}
+
+      template<std::size_t... Is>
+      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
+        std::size_t offset = range.begin();
+        std::size_t n_range = range.size();
+        reduce_op_serial(reduce_op_, n_range, result_, (std::get<Is>(args_)+offset)...);
+      }
+
+      void operator()(SizeTRange& range) const {
+        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+      }
+
+      void join(ApplyReduceOp& rhs){
+        join_op_(result_, rhs.result_);
+      }
+
+      const Result result() const{
+        return result_;
+      }
+
+    private:
+
+      const ReduceOp& reduce_op_;
+      const JoinOp& join_op_;
+      Result identity_;
+      Result& result_;
+      std::tuple<const Args * const ...> args_;
+
+    };
+#endif
+
     template <typename ReduceOp, typename JoinOp, typename Result, typename... Args>
     void reduce_op(ReduceOp&& reduce_op, JoinOp&& join_op, const std::size_t n, Result& result,
                    const Args* const... args)
     {
       //TODO implement reduce operation with TBB
       #ifdef HAVE_INTEL_TBB
-//        SizeTRange range(0, n);
-//
-//        auto apply_reduce_op = ApplyReduceOp<ReduceOp,JoinOp,Result,Args...>(reduce_op, join_op, result, args...);
-//
-//        tbb::parallel_reduce(range,apply_reduce_op);
-//
-//        result = apply_reduce_op.result();
-        reduce_op_serial(reduce_op,n,result,args...);
-      #else
-        reduce_op_serial(reduce_op,n,result,args...);
+//      std::cout << "TBB_Reduce_OP" << std::endl;
+        SizeTRange range(0, n);
+
+        auto apply_reduce_op = ApplyReduceOp<ReduceOp,JoinOp,Result,Args...>(reduce_op, join_op, result, args...);
+
+        tbb::parallel_reduce(range,apply_reduce_op);
+
+        result = apply_reduce_op.result();
+//        reduce_op_serial(reduce_op,n,result,args...);
       #endif
     }
 
