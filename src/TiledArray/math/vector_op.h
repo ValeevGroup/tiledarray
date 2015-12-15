@@ -296,6 +296,8 @@ namespace TiledArray {
 
       static constexpr std::size_t block_size = TILEDARRAY_LOOP_UNWIND;
 
+      // GRAIN_SIZE is set to 8 to trigger TiledArray Unit Test
+      // in reality, partition is controled by tbb::auto_partitioner instead of GRAIN_SIZE
       static constexpr std::size_t GRAIN_SIZE = 8ul;
 
       size_t lower;
