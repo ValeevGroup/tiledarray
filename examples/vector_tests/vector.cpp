@@ -358,10 +358,54 @@ int main(int argc, char** argv) {
   for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::reduce_op([](double& x, const double a) { x = std::max(x, std::abs(a)); },
                                 [](double& x ,const double a){x=std::max(x,a);},
-        n, x, a);
+        std::numeric_limits<double>::min(),n, x, a);
   }
   stop = madness::wall_time();
   std::cout << "vector: " << stop - start << " s " << x << " \n";
+
+  ////==========================================================================
+  std::cout << "\nReduce Sum:\n";
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r)
+    temp = 0.0;
+    for(std::size_t i = 0ul; i < n; ++i)
+      temp += b[i];
+  stop = madness::wall_time();
+
+  std::cout << "base:   " << stop - start << " s " << temp << " \n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    temp = 0.0;
+    const std::size_t n4 = n - (n % 8);
+    std::size_t i = 0ul;
+    for(; i < n4; i += 8) {
+      temp += b[i];
+      temp += b[i+1];
+      temp += b[i+2];
+      temp += b[i+3];
+      temp += b[i+4];
+      temp += b[i+5];
+      temp += b[i+6];
+      temp += b[i+7];
+    }
+    for(; i < n; ++i)
+      temp += b[i];
+  }
+  stop = madness::wall_time();
+
+  std::cout << "unwind: " << stop - start << " s " << temp << " \n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    x = 0.0;
+    TiledArray::math::reduce_op([](double& x, const double a) { x += a; },
+                                [](double& x ,const double a){x += a;},
+                                0.0, n, x, b);
+  }
+  stop = madness::wall_time();
+  std::cout << "vector: " << stop - start << " s " << x << " \n";
+
 
   // Deallocate memory
   free(a);

@@ -296,7 +296,7 @@ namespace TiledArray {
 
       static constexpr std::size_t block_size = TILEDARRAY_LOOP_UNWIND;
 
-      std::size_t GRAIN_SIZE = 1024ul;
+      static constexpr std::size_t GRAIN_SIZE = 8ul;
 
       size_t lower;
       size_t upper;
@@ -312,9 +312,9 @@ namespace TiledArray {
 
       ~SizeTRange() { }
 
-      void set_grain_size(std::size_t grain_size){
-        GRAIN_SIZE = grain_size;
-      }
+//      void set_grain_size(std::size_t grain_size){
+//        GRAIN_SIZE = grain_size;
+//      }
 
       bool empty() const { return lower > upper; }
 
@@ -380,7 +380,7 @@ namespace TiledArray {
     class ApplyInplaceVectorOp{
 
     public:
-      ApplyInplaceVectorOp(const Op& op, Result* const result, const Args* const... args)
+      ApplyInplaceVectorOp(Op& op, Result* const result, const Args* const... args)
               :op_(op), result_(result), args_(args...){}
 
       ~ApplyInplaceVectorOp(){}
@@ -398,8 +398,8 @@ namespace TiledArray {
 
     private:
 
-      const Op& op_;
-      Result* result_;
+      Op& op_;
+      Result* const result_;
       std::tuple<const Args * const ...> args_;
 
     };
@@ -425,7 +425,7 @@ namespace TiledArray {
       // else
        auto apply_inplace_vector_op = ApplyInplaceVectorOp<Op, Result, Args...>(op, result, args...);
 
-        tbb::parallel_for(range, apply_inplace_vector_op);
+        tbb::parallel_for(range, apply_inplace_vector_op, tbb::auto_partitioner());
       #else
         inplace_vector_op_serial(op, n, result, args...);
       #endif
@@ -461,7 +461,7 @@ namespace TiledArray {
     class ApplyVectorOp{
 
     public:
-      ApplyVectorOp(const Op& op, Result* const result, const Args* const... args)
+      ApplyVectorOp(Op& op, Result* const result, const Args* const... args)
               :op_(op), result_(result), args_(args...){}
 
       ~ApplyVectorOp(){}
@@ -479,8 +479,8 @@ namespace TiledArray {
 
     private:
 
-      const Op& op_;
-      Result* result_;
+      Op& op_;
+      Result* const result_;
       std::tuple<const Args * const ...> args_;
 
     };
@@ -498,15 +498,15 @@ namespace TiledArray {
         SizeTRange range(0, n);
 
       // if support lambda variadic
-//        auto apply_vector_op = [op, result, args...](SizeTRange &range) {
-//          size_t offset = range.begin();
-//          size_t n_range = range.size();
-//          vector_op_serial(op, n_range, result + offset, (args + offset)...);
-//        };
+        auto apply_vector_op = [op, result, args...](SizeTRange &range) {
+          size_t offset = range.begin();
+          size_t n_range = range.size();
+          vector_op_serial(op, n_range, result + offset, (args + offset)...);
+        };
       // else
-      auto apply_vector_op = ApplyVectorOp<Op,Result,Args...>(op, result, args...);
+//      auto apply_vector_op = ApplyVectorOp<Op,Result,Args...>(op, result, args...);
 
-      tbb::parallel_for(range, apply_vector_op);
+      tbb::parallel_for(range, apply_vector_op, tbb::auto_partitioner());
       #else
         vector_op_serial(op, n, result, args...);
       #endif
@@ -532,7 +532,7 @@ namespace TiledArray {
     class ApplyVectorPtrOp{
 
     public:
-      ApplyVectorPtrOp(const Op& op, Result* const result, const Args* const... args)
+      ApplyVectorPtrOp(Op& op, Result* const result, const Args* const... args)
               :op_(op), result_(result), args_(args...){}
 
       ~ApplyVectorPtrOp(){}
@@ -550,8 +550,8 @@ namespace TiledArray {
 
     private:
 
-      const Op& op_;
-      Result* result_;
+      Op& op_;
+      Result* const result_;
       std::tuple<const Args * const ...> args_;
 
     };
@@ -572,7 +572,7 @@ namespace TiledArray {
 //        };
         // else
         auto apply_vector_ptr_op = ApplyVectorPtrOp<Op,Result,Args...>(op, result, args...);
-        tbb::parallel_for(range, apply_vector_ptr_op);
+        tbb::parallel_for(range, apply_vector_ptr_op,tbb::auto_partitioner());
       #else
         vector_ptr_op_serial(op,n,result,args...);
       #endif
@@ -602,10 +602,10 @@ namespace TiledArray {
     class ApplyReduceOp{
 
     public:
-      ApplyReduceOp(const ReduceOp& reduce_op, const JoinOp& join_op, Result& result, const Args* const... args)
+      ApplyReduceOp(ReduceOp& reduce_op, JoinOp& join_op, const Result& identity, const Result& result, const Args* const... args)
               :reduce_op_(reduce_op),
                join_op_(join_op),
-               identity_(result),
+               identity_(identity),
                result_(result),
                args_(args...){}
 
@@ -614,22 +614,23 @@ namespace TiledArray {
         join_op_(rhs.join_op_),
         identity_(rhs.identity_),
         result_(rhs.identity_),
-        args_(rhs.args_) { }
+        args_(rhs.args_)
+      { }
 
       ~ApplyReduceOp(){}
 
       template<std::size_t... Is>
-      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
+      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) {
         std::size_t offset = range.begin();
         std::size_t n_range = range.size();
         reduce_op_serial(reduce_op_, n_range, result_, (std::get<Is>(args_)+offset)...);
       }
 
-      void operator()(SizeTRange& range) const {
+      void operator()(SizeTRange& range) {
         helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
       }
 
-      void join(ApplyReduceOp& rhs){
+      void join(const ApplyReduceOp& rhs){
         join_op_(result_, rhs.result_);
       }
 
@@ -639,17 +640,17 @@ namespace TiledArray {
 
     private:
 
-      const ReduceOp& reduce_op_;
-      const JoinOp& join_op_;
-      Result identity_;
-      Result& result_;
+      ReduceOp& reduce_op_;
+      JoinOp& join_op_;
+      const Result identity_;
+      Result result_;
       std::tuple<const Args * const ...> args_;
 
     };
 #endif
 
     template <typename ReduceOp, typename JoinOp, typename Result, typename... Args>
-    void reduce_op(ReduceOp&& reduce_op, JoinOp&& join_op, const std::size_t n, Result& result,
+    void reduce_op(ReduceOp&& reduce_op, JoinOp&& join_op, const Result& identity, const std::size_t n, Result& result,
                    const Args* const... args)
     {
       //TODO implement reduce operation with TBB
@@ -657,9 +658,9 @@ namespace TiledArray {
 //      std::cout << "TBB_Reduce_OP" << std::endl;
         SizeTRange range(0, n);
 
-        auto apply_reduce_op = ApplyReduceOp<ReduceOp,JoinOp,Result,Args...>(reduce_op, join_op, result, args...);
+        auto apply_reduce_op = ApplyReduceOp<ReduceOp,JoinOp,Result,Args...>(reduce_op, join_op, identity, result, args...);
 
-        tbb::parallel_reduce(range,apply_reduce_op);
+        tbb::parallel_reduce(range,apply_reduce_op, tbb::auto_partitioner());
 
         result = apply_reduce_op.result();
 //        reduce_op_serial(reduce_op,n,result,args...);

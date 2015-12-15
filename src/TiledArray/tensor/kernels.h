@@ -516,7 +516,7 @@ namespace TiledArray {
 
       const auto volume = tensor1.range().volume();
 
-      math::reduce_op(reduce_op, join_op,volume, identity,
+      math::reduce_op(reduce_op, join_op, identity, volume, identity,
           tensor1.data(), tensors.data()...);
 
       return identity;
