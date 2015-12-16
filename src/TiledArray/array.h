@@ -348,7 +348,7 @@ namespace TiledArray {
     /// Fill all local tiles
 
     /// \param value The fill value
-    void set_all_local(const element_type& value = element_type()) {
+    void fill(const element_type& value = element_type()) {
       fill_local(value);
     }
 
