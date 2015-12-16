@@ -30,6 +30,9 @@ $CXX --version
 #make -j2
 #sudo make install
 
-# Install packages
-sudo apt-get -yq --no-install-suggests --no-install-recommends --force-yes install cmake cmake-data
+# Install CMake 3
+sudo apt-get -y -qq --no-install-suggests --no-install-recommends --force-yes install cmake cmake-data
+cmake --version
+
+# Install the rest
 sudo apt-get install -qq -y libblas-dev liblapack-dev mpich2 libtbb-dev libeigen3-dev libboost1.48-dev
