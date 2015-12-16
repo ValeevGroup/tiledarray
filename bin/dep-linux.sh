@@ -31,5 +31,5 @@ $CXX --version
 #sudo make install
 
 # Install packages
-sudo apt-get install -V -y cmake
+sudo apt-get -yq --no-install-suggests --no-install-recommends --force-yes install cmake cmake-data
 sudo apt-get install -qq -y libblas-dev liblapack-dev mpich2 libtbb-dev libeigen3-dev libboost1.48-dev
