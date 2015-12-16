@@ -81,7 +81,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "0e5ab139a3e5879dec72fc0b978a364de2dc66b3" CACHE STRING 
+  set(MADNESS_TAG "ce7c6a025061287c32852ca41155b67bf284106a" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -287,7 +287,7 @@ else()
   # BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
   # these headers depend on LAPACK which is a dependency of MADlinalg, hence
   # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
-  append_flags(MADNESS_LINKER_FLAGS "${LAPACK_LIBRARIES}")
+  list(APPEND MADNESS_LIBRARIES "${LAPACK_LIBRARIES}")
   # this is probably not necessary since we use nested #include paths in build and install trees,
   # hence dependence on MADworld should provide proper include paths for ALL madness libs ...
   list(APPEND MADNESS_INCLUDE_DIRS $<TARGET_PROPERTY:MADlinalg,INTERFACE_INCLUDE_DIRECTORIES>)
