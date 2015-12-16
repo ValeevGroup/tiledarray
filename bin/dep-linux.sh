@@ -23,7 +23,7 @@ $CC --version
 $CXX --version
 
 # Install very recent CMAKE
-curl -O http://www.cmake.org/files/v3.4/cmake-3.4.1.tar.gz
+curl -O https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz
 tar -xzf cmake-3.4.1.tar.gz
 cd ./cmake-3.4.1
 ./configure --prefix=/usr/local
