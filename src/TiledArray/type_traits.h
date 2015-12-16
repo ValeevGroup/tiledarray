@@ -37,6 +37,7 @@ namespace TiledArray {
 
   // Forward declaration
   template <typename> class Tile;
+  class DensePolicy;
   struct ZeroTensor;
   template <typename, typename> class DistArray;
   namespace detail {
@@ -348,6 +349,33 @@ namespace TiledArray {
     template <typename Scalar1, typename Scalar2>
     using mult_t = decltype(std::declval<Scalar1>() * std::declval<Scalar2>());
 
+
+    /// Test if `T` is a dense array type
+    template <typename T>
+    struct is_dense : public std::false_type { };
+
+    template <typename Tile>
+    struct is_dense<DistArray<Tile, DensePolicy> > : public std::true_type { };
+
+    template <typename T>
+    using trange_t = typename T::trange_type;
+
+    template <typename T>
+    using shape_t = typename T::shape_type;
+
+    template <typename T>
+    using pmap_t = typename T::pmap_interface;
+
+    template <typename Array>
+    struct policy_type;
+
+    template <typename Tile, typename Policy>
+    struct policy_type<DistArray<Tile, Policy> > {
+      typedef Policy type;
+    };
+
+    template <typename T>
+    using policy_t = typename policy_type<T>::type;
 
   } // namespace detail
 

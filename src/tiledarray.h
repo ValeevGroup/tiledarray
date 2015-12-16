@@ -40,6 +40,7 @@
 #include <TiledArray/conversions/to_new_tile_type.h>
 #include <TiledArray/conversions/truncate.h>
 #include <TiledArray/conversions/foreach.h>
+#include <TiledArray/conversions/make_array.h>
 
 // Process maps
 #include <TiledArray/pmap/hash_pmap.h>
