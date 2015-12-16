@@ -32,14 +32,15 @@
 namespace TiledArray {
 
   template<typename Tile>
-  elem::DistMatrix<T> array_to_elem(const DistArray<Tile> &array,
+  elem::DistMatrix<typename Tile::value_type> array_to_elem(const DistArray<Tile> &array,
                                        const elem::Grid &grid){
     // Check that the Array is 2-d
-    TA_USER_ASSERT(DIM == 2u,
+    TA_USER_ASSERT(array.range().rank() == 2u,
       "TiledArray::array_to_elem(): The array dimension must be 2.");
 
     // Construct the elemental matrix
-    std::vector<std::size_t> sizes = array.trange().elements().extent_data();
+    using T = typename Tile::value_type;
+    auto sizes = array.trange().elements().extent_data();
     elem::DistMatrix<T> mat(sizes[0], sizes[1], grid);
     elem::Zero(mat);
 
@@ -85,8 +86,9 @@ namespace TiledArray {
   }
 
   template<typename Tile>
-  void elem_to_array(DistArray<Tile> &array, elem::DistMatrix<T> &mat){
-    TA_USER_ASSERT(DIM==2u, "TiledArray::elem_to_array(): requires the array to have dimension 2");
+  void elem_to_array(DistArray<Tile> &array, elem::DistMatrix<typename Tile::value_type> &mat){
+	using T = typename Tile::value_type;
+    TA_USER_ASSERT(array.range().rank()==2u, "TiledArray::elem_to_array(): requires the array to have dimension 2");
     TA_USER_ASSERT((array.trange().elements().extent()[0]==mat.Height()) &&
                    (array.trange().elements().extent()[1] == mat.Width()),
                    "TiledArray::elem_to_array(): requires the shape of the elem matrix and the array to be the same.");
