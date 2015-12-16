@@ -158,6 +158,12 @@ namespace TiledArray {
 
   public:
     /// Default constructor
+
+    /// Constructs an uninitialized array object. Uninitialized arrays contain
+    /// no tile or meta data. Most of the functions are not available when the
+    /// array is uninitialized, but these arrays may be assign via a tensor
+    /// expression assignment or the copy construction.
+
     DistArray() : pimpl_() { }
 
     /// Copy constructor
@@ -168,6 +174,9 @@ namespace TiledArray {
 
     /// Dense array constructor
 
+    /// Constructs an array with the given meta data. This constructor only
+    /// initializes the array meta data; the array tiles are empty and must be
+    /// assigned by the user.
     /// \param world The world where the array will live.
     /// \param trange The tiled range object that will be used to set the array tiling.
     /// \param pmap The tile index -> process map
@@ -178,6 +187,9 @@ namespace TiledArray {
 
     /// Sparse array constructor
 
+    /// Constructs an array with the given meta data. This constructor only
+    /// initializes the array meta data; the array tiles are empty and must be
+    /// assigned by the user.
     /// \param world The world where the array will live.
     /// \param trange The tiled range object that will be used to set the array tiling.
     /// \param shape The array shape that defines zero and non-zero tiles
@@ -190,8 +202,10 @@ namespace TiledArray {
 
     /// Unary mutating constructor
 
-    /// Created a mutated copy of other, where each tile is mutated by \c op.
-    ///
+    /// This constructor uses the meta data of `other` to initialize the meta
+    /// data of the new array. In addition, the tiles of the new array are also
+    /// initialized using the `op` function/functor, which creates a mutated
+    /// copy of the tiles in `other`.
     /// \param other The array to be copied
     template <typename Op>
     DistArray(const DistArray_& other, Op&& op) :
