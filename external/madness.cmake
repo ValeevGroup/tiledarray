@@ -8,16 +8,16 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(Madness CONFIG QUIET COMPONENTS MADworld MADlinalg HINTS ${Madness_ROOT_DIR})
+find_package(MADNESS CONFIG QUIET COMPONENTS MADworld HINTS ${MADNESS_ROOT_DIR})
 
-if(Madness_FOUND)
+if(MADNESS_FOUND)
 
   cmake_push_check_state()
   
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${Madness_INCLUDE_DIRS} ${TiledArray_CONFIG_INCLUDE_DIRS})
-  list(APPEND CMAKE_REQUIRED_LIBRARIES "${Madness_LINKER_FLAGS}" ${Madness_LIBRARIES}
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INCLUDE_DIRS} ${TiledArray_CONFIG_INCLUDE_DIRS})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES "${MADNESS_LINKER_FLAGS}" ${MADNESS_LIBRARIES}
       "${CMAKE_EXE_LINKER_FLAGS}" ${TiledArray_CONFIG_LIBRARIES})
-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${Madness_COMPILE_FLAGS} ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${MADNESS_COMPILE_FLAGS} ${CMAKE_CXX_FLAGS}")
 
   # sanity check: try compiling a simple program
   CHECK_CXX_SOURCE_COMPILES(
@@ -28,9 +28,9 @@ if(Madness_FOUND)
       madness::finalize();
       return 0;
     }
-    "  Madness_COMPILES)
+    "  MADNESS_COMPILES)
 
-  if (NOT Madness_COMPILES)
+  if (NOT MADNESS_COMPILES)
     message(FATAL_ERROR "MADNESS found, but does not compile correctly.")
   endif()
     
@@ -44,7 +44,9 @@ if(Madness_FOUND)
         # error MADNESS does not have Elemental
         #endif
         int main(int, char**) { return 0; }
-        "  MADNESS_HAS_ELEMENTAL_SUPPORT)
+        "
+        MADNESS_HAS_ELEMENTAL_SUPPORT
+     )
         
     if(NOT MADNESS_HAS_ELEMENTAL_SUPPORT)
       message(FATAL_ERROR "MADNESS does not include Elemental support.")
@@ -56,9 +58,9 @@ if(Madness_FOUND)
   cmake_pop_check_state()
 
   # Set config variables
-  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${Madness_INCLUDE_DIRS})
-  set(TiledArray_CONFIG_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_CONFIG_LIBRARIES})
-  set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
+  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${MADNESS_INCLUDE_DIRS})
+  set(TiledArray_CONFIG_LIBRARIES ${MADNESS_LIBRARIES} ${TiledArray_CONFIG_LIBRARIES})
+  set(TiledArray_LIBRARIES ${MADNESS_LIBRARIES} ${TiledArray_LIBRARIES})
 
   
 elseif(TA_EXPERT)
@@ -77,13 +79,44 @@ else()
         "Path to the MADNESS source directory")
   set(MADNESS_BINARY_DIR "${PROJECT_BINARY_DIR}/external/build/madness" CACHE PATH 
         "Path to the MADNESS build directory")
-  set(Madness_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
+  set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(Madness_TAG "a62db8ac775573ced45095736cda85c8fda36935" CACHE STRING 
+  set(MADNESS_TAG "3f811d507b3d4ece68988b94d39d328b718061d4" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
-  if("${Madness_TAG}" STREQUAL "")
-    message(FATAL_ERROR "Invalid value given for Madness_TAG; specify a valid hash or tag.")
+  if("${MADNESS_TAG}" STREQUAL "")
+    message(FATAL_ERROR "Invalid value given for MADNESS_TAG; specify a valid hash or tag.")
+  endif()
+  
+  # Setup configure variables
+  
+  # Set compile flags
+  set(MAD_CFLAGS ${CMAKE_C_FLAGS})
+  set(MAD_CXXFLAGS ${CMAKE_CXX_FLAGS})
+  set(MAD_LDFLAGS ${CMAKE_EXE_LINKER_FLAGS})
+
+  if(CMAKE_BUILD_TYPE)
+    string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
+    set(MAD_CFLAGS "${MAD_CFLAGS} ${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
+    set(MAD_CXXFLAGS "${MAD_CXXFLAGS} ${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
+  endif()
+  
+  # Set Fortran integer size
+  if(INTEGER4) 
+    set(F77_INT_SIZE 4)
+  else(INTEGER4)
+    set (F77_INT_SIZE 8)
+  endif(INTEGER4)
+  
+  # Set error handling method
+  if(TA_ERROR STREQUAL none)
+    set(MAD_EXCEPTION disable)
+  elseif(TA_ERROR STREQUAL throw)
+    set(MAD_EXCEPTION throw)
+  elseif(TA_ERROR STREQUAL assert)
+    set(MAD_EXCEPTION assert)
+  else()
+    set(MAD_EXCEPTION throw)
   endif()
   
   # Check the MADNESS source directory to make sure it contains the source files
@@ -105,12 +138,12 @@ else()
 
     # Clone the MADNESS repository
     if(NOT EXISTS ${MADNESS_SOURCE_DIR}/.git)
-      message(STATUS "Pulling MADNESS from: ${Madness_URL}")
+      message(STATUS "Pulling MADNESS from: ${MADNESS_URL}")
       set(error_code 1)
       set(number_of_tries 0)
       while(error_code AND number_of_tries LESS 3)
         execute_process(
-            COMMAND ${GIT_EXECUTABLE} clone ${Madness_URL} madness
+            COMMAND ${GIT_EXECUTABLE} clone ${MADNESS_URL} madness
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/external/src
             RESULT_VARIABLE error_code)
         math(EXPR number_of_tries "${number_of_tries} + 1")
@@ -119,7 +152,7 @@ else()
         message(STATUS "Had to git clone more than once: ${number_of_tries} times.")
       endif()
       if(error_code)
-        message(FATAL_ERROR "Failed to clone repository: '${Madness_URL}'")
+        message(FATAL_ERROR "Failed to clone repository: '${MADNESS_URL}'")
       endif()
     endif()
   
@@ -135,22 +168,20 @@ else()
     set(error_code 1)
     execute_process(
       COMMAND "${GIT_EXECUTABLE}" fetch
-      COMMAND "${GIT_EXECUTABLE}" checkout ${Madness_TAG}
-      COMMAND "./autogen.sh"
+      COMMAND "${GIT_EXECUTABLE}" checkout ${MADNESS_TAG}
       WORKING_DIRECTORY "${MADNESS_SOURCE_DIR}"
       RESULT_VARIABLE error_code)
     if(error_code)
-      message(FATAL_ERROR "Failed to checkout tag: '${Madness_TAG}'")
+      message(FATAL_ERROR "Failed to checkout tag: '${MADNESS_TAG}'")
     endif()
         
-    # Add madness-update target that will pull updates to the madness source 
+    # Add update-madness target that will pull updates to the madness source 
     # from the git repository. This is done outside ExternalProject_add to 
     # prevent madness from doing a full pull, configure, and build everytime the 
     # project is built.
-    add_custom_target(madness-update
+    add_custom_target(update-madness
       COMMAND ${GIT_EXECUTABLE} fetch
-      COMMAND ${GIT_EXECUTABLE} checkout ${Madness_TAG}
-      COMMAND "./autogen.sh"
+      COMMAND ${GIT_EXECUTABLE} checkout ${MADNESS_TAG}
       WORKING_DIRECTORY ${MADNESS_SOURCE_DIR}
       COMMENT "Updating source for 'madness' from ${MADNESS_URL}")
 
@@ -166,140 +197,6 @@ else()
     message("You can download the MADNESS source with:")
     message("$ git clone https://github.com/m-a-d-n-e-s-s/madness.git madness")
     message(FATAL_ERROR "MADNESS source not found.")
-  endif()
-  
-  # Generate the MADNESS configure script if not present
-  if(NOT EXISTS ${MADNESS_SOURCE_DIR}/configure)
-    set(error_code 1)
-    execute_process(
-      COMMAND "./autogen.sh"
-      WORKING_DIRECTORY "${MADNESS_SOURCE_DIR}"
-      RESULT_VARIABLE error_code)
-    if(error_code)
-      message(FATAL_ERROR "Failed to generate MADNESS configure script.")
-    endif()
-  endif()
-
-  
-  # Setup configure variables
-  
-  # Set compile flags
-  set(MAD_CPPFLAGS "${CMAKE_CPP_FLAGS}")
-  set(MAD_CFLAGS "${CMAKE_C_FLAGS}")
-  set(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS}")
-  set(MAD_LDFLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-
-  if(CMAKE_BUILD_TYPE)
-    string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
-    append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
-    append_flags(MAD_CXXFLAGS "${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
-  endif()
-  
-  if(BUILD_SHARED_LIBS)
-    set(MAD_ENABLE_SHARED "--enable-shared")
-    set(MAD_ENABLE_STATIC "--disable-static")
-  else()
-    set(MAD_ENABLE_SHARED "--disable-shared")
-    set(MAD_ENABLE_STATIC "--enable-static")
-  endif()
-  
-#  message("${MAD_ENABLE_SHARED} ${MAD_ENABLE_STATIC}")
-
-  # Set compile flags required for Elemental
-  if(ENABLE_ELEMENTAL)
-    include(external/elemental.cmake)
-    
-    foreach(_inc_dir ${Elemental_INCLUDE_DIRS})
-      append_flags(MAD_CPPFLAGS "-I${_inc_dir}")
-    endforeach()
-    foreach(_lib ${Elemental_LIBRARIES})
-      append_flags(MAD_LIBS "${_lib}")
-    endforeach()
-    set(MAD_ELEMENTAL_FLAG "yes")
-  else()
-    set(MAD_ELEMENTAL_FLAG "no")
-  endif()
-  
-  # Set compile flags required for Intel TBB
-  if(ENABLE_TBB)
-    if(TBB_INCLUDE_DIR AND EXISTS ${TBB_INCLUDE_DIR})
-      append_flags(MAD_TBB_INCLUDE_FLAG "--with-tbb-include=${TBB_INCLUDE_DIR}")
-    endif()
-    if(TBB_LIBRARY AND EXISTS ${TBB_LIBRARY})
-      append_flags(MAD_TBB_LIB_FLAG "--with-tbb-lib=${TBB_LIBRARY}")
-    endif()
-    if(TBB_ROOT_DIR AND EXISTS ${TBB_ROOT_DIR})
-      append_flags(MAD_TBB_FLAG "--with-tbb=${TBB_ROOT_DIR}")
-    endif()
-    if("${MAD_TBB_FLAG}" STREQUAL "")
-      set(MAD_TBB_FLAG "--with-tbb=yes")
-    endif()
-  else()
-    set(MAD_TBB_FLAG "--with-tbb=no")
-  endif()
-  
-  
-  # Set compile flags required for MPI
-  if(ENABLE_MPI)
-    foreach(_inc_dir ${MPI_INCLUDE_PATH})
-      append_flags(MAD_CPPFLAGS "-I${_inc_dir}")
-    endforeach()
-    foreach(_lib ${MPI_LIBRARIES})
-      append_flags(MAD_LIBS "${_lib}")
-    endforeach()
-#    append_flags(MAD_CFLAGS "${MPI_COMPILE_FLAGS}")
-    append_flags(MAD_CXXFLAGS "${MPI_COMPILE_FLAGS}")
-    append_flags(MAD_LDFLAGS "${MPI_LINK_FLAGS}") 
-    set(MAD_STUB_MPI "no")
-  else()
-    set(MAD_STUB_MPI "yes")
-  endif()
-  
-  # Set compile flags required for LAPACK, BLAS, and Pthreads
-#  append_flags(MAD_LDFLAGS "${LAPACK_LINKER_FLAGS}")
-#  append_flags(MAD_LDFLAGS "${BLAS_LINKER_FLAGS}")
-  if(LAPACK_LIBRARIES OR BLAS_LIBRARIES)
-    if(UNIX AND BLA_STATIC)
-      append_flags(MAD_LIBS "-Wl,--start-group")
-    endif()
-      foreach(_lib ${LAPACK_LIBRARIES})
-        append_flags(MAD_LIBS "${_lib}")
-      endforeach()
-      foreach(_lib ${BLAS_LIBRARIES})
-        append_flags(MAD_LIBS "${_lib}")
-      endforeach()
-    if(UNIX AND BLA_STATIC)
-      append_flags(MAD_LIBS "-Wl,--end-group")
-    endif()
-  endif()
-  
-  # Set compile flags required for Gperftools
-  if(ENABLE_GPERFTOOLS)
-    foreach(_lib ${Gperftools_LIBRARIES} ${Libunwind_LIBRARIES})
-      append_flags(MAD_LIBS "${_lib}")
-    endforeach()
-  endif()
-  
-  append_flags(MAD_LIBS "${CMAKE_THREAD_LIBS_INIT}")
-  
-  # Set the configuration flags for MADNESS
-  
-  # Set Fortran integer size
-  if(INTEGER4) 
-    set(MAD_F77_INT32 yes)
-  else()
-    set (MAD_F77_INT32 no)
-  endif()
-  
-  # Set error handling method
-  if(TA_ERROR STREQUAL none)
-    set(MAD_EXCEPTION disable)
-  elseif(TA_ERROR STREQUAL throw)
-    set(MAD_EXCEPTION throw)
-  elseif(TA_ERROR STREQUAL assert)
-    set(MAD_EXCEPTION assert)
-  else()
-    set(MAD_EXCEPTION throw)
   endif()
   
   # Create or clean the build directory
@@ -322,112 +219,112 @@ else()
     endif()
   endif()
 
-  # Configure MADNESS
+  # if ELEMENTAL_TAG provided, package pass it on to MADNESS
+  set(MAD_ELEMENTAL_OPTIONS -DENABLE_ELEMENTAL=${ENABLE_ELEMENTAL})
+  if (DEFINED ELEMENTAL_TAG)
+    set(MAD_ELEMENTAL_OPTIONS -DELEMENTAL_TAG=${ELEMENTAL_TAG} ${MAD_ELEMENTAL_OPTIONS})
+  endif (DEFINED ELEMENTAL_TAG)
+  
   set(error_code 1)
+  message (STATUS "** Configuring MADNESS")
   execute_process(
-      COMMAND "${MADNESS_SOURCE_DIR}/configure"
-                "--prefix=${CMAKE_INSTALL_PREFIX}"
-                "${MAD_ENABLE_SHARED}"
-                "${MAD_ENABLE_STATIC}"
-                "--disable-debugging"
-                "--disable-optimization"
-                "--disable-optimal"
-                "--disable-warning"
-                "--enable-madex=${MAD_EXCEPTION}"
-                "--enable-dependency-tracking"
-                "--with-mpi-thread=multiple"
-                "--with-fortran-int32=${MAD_F77_INT32}"
-                "--with-stubmpi=${MAD_STUB_MPI}"
-                "--with-elemental=${MAD_ELEMENTAL_FLAG}"
-                "${MAD_TBB_FLAG}" 
-                "${MAD_TBB_INCLUDE_FLAG}"
-                "${MAD_TBB_LIB_FLAG}"
-                "--without-mkl"
-                "--without-libxc"
-                "--without-google-perf"
-                "${MAD_EXTRA_CONFIGURE_FLAGS}"
-                "MPICXX=${CMAKE_CXX_COMPILER}"
-                "MPICC=${CMAKE_C_COMPILER}"
-                "CPPFLAGS=${MAD_CPPFLAGS}"
-                "CC=${CMAKE_C_COMPILER}" "CFLAGS=${MAD_CFLAGS}"
-                "CXX=${CMAKE_CXX_COMPILER}" "CXXFLAGS=${MAD_CXXFLAGS}"
-                "F77=${CMAKE_Fortran_COMPILER}" "FFLAGS=${CMAKE_Fortran_FLAGS}"
-                "LDFLAGS=${MAD_LDFLAGS}"
-                "LIBS=${MAD_LIBS}"
+      COMMAND ${CMAKE_COMMAND}
+      ARGS
+      ${MADNESS_SOURCE_DIR}
+      -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+      -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+      -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+      -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+      "-DCMAKE_C_FLAGS=${MAD_CFLAGS}"
+      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+      "-DCMAKE_CXX_FLAGS=${MAD_CXXFLAGS}"
+# F Fortran, assume we can link without its runtime
+# if you need Fortran checks enable Elemental
+#      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
+#      -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
+      -DENABLE_MPI=${ENABLE_MPI}
+      -DMPI_THREAD=multiple
+      -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER}
+      -DMPI_C_COMPILER=${MPI_C_COMPILER}
+      ${MAD_ELEMENTAL_OPTIONS}
+      -DENABLE_MKL=${ENABLE_MKL}
+      -DFORTRAN_INTEGER_SIZE=${F77_INT_SIZE}
+      -DENABLE_LIBXC=FALSE
+      -DENABLE_GPERFTOOLS=FALSE
+      -DASSERTION_TYPE=${MAD_EXCEPTION}
+      "-DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}"
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)
   if(error_code)
-    message(FATAL_ERROR "The MADNESS configure script failed.")
+    message(FATAL_ERROR "The MADNESS cmake configuration failed.")
+  else(error_code)
+    message (STATUS "** Done configuring MADNESS")
   endif(error_code)
-  
-  include(${MADNESS_BINARY_DIR}/config/madness-project.cmake)
 
-#  message("Madness_INCLUDE_DIRS        = ${Madness_INCLUDE_DIRS}")
-#  message("Madness_LIBRARIES           = ${Madness_LIBRARIES}")
-#  message("Madness_MADchem_LIBRARY     = ${Madness_MADchem_LIBRARY}")
-#  message("Madness_MADmra_LIBRARY      = ${Madness_MADmra_LIBRARY}")
-#  message("Madness_MADtinyxml_LIBRARY  = ${Madness_MADtinyxml_LIBRARY}")
-#  message("Madness_MADmuparser_LIBRARY = ${Madness_MADmuparser_LIBRARY}")
-#  message("Madness_MADlinalg_LIBRARY   = ${Madness_MADlinalg_LIBRARY}")
-#  message("Madness_MADtensor_LIBRARY   = ${Madness_MADtensor_LIBRARY}")
-#  message("Madness_MADmisc_LIBRARY     = ${Madness_MADmisc_LIBRARY}")
-#  message("Madness_MADworld_LIBRARY    = ${Madness_MADworld_LIBRARY}")
-#  message("Madness_COMPILE_FLAGS       = ${Madness_COMPILE_FLAGS}")
-#  message("Madness_LINKER_FLAGS        = ${Madness_LINKER_FLAGS}")
-#  message("Madness_VERSION             = ${Madness_VERSION}")
-#  message("Madness_F77_INTEGER_SIZE    = ${Madness_F77_INTEGER_SIZE}")
-  
+  set(MADNESS_DIR ${MADNESS_BINARY_DIR})
+  find_package(MADNESS 0.10.0 REQUIRED
+               COMPONENTS world)
+  set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
+
   # Removed all the flags passed to MADNESS configure
   string(REGEX REPLACE "-(O[0-9s]|g[0-9]?)([ ]+|$)" "" MAD_CXXFLAGS "${MAD_CXXFLAGS}")
   string(STRIP "${MAD_CXXFLAGS}" MAD_CXXFLAGS)
   string(REPLACE "${MAD_CXXFLAGS}" "" 
-        Madness_COMPILE_FLAGS "${Madness_COMPILE_FLAGS}")
+        MADNESS_COMPILE_FLAGS "${MADNESS_COMPILE_FLAGS}")
   string(REPLACE "${MAD_CPPFLAGS}" "" 
-        Madness_COMPILE_FLAGS "${Madness_COMPILE_FLAGS}")
-  string(STRIP "${Madness_COMPILE_FLAGS}" Madness_COMPILE_FLAGS)
+        MADNESS_COMPILE_FLAGS "${MADNESS_COMPILE_FLAGS}")
+  string(STRIP "${MADNESS_COMPILE_FLAGS}" MADNESS_COMPILE_FLAGS)
   string(REPLACE "${MAD_CXXFLAGS}" "" 
-        Madness_LINKER_FLAGS "${Madness_LINKER_FLAGS}")
+        MADNESS_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")
   string(REPLACE "${MAD_LDFLAGS}" "" 
-        Madness_LINKER_FLAGS "${Madness_LINKER_FLAGS}")
-  string(REPLACE "${MAD_LIBS}" "" 
-        Madness_LIBRARIES "${Madness_LIBRARIES}")
-  string(STRIP "${Madness_LIBRARIES}" Madness_LIBRARIES)
-  string(STRIP "${Madness_LINKER_FLAGS}" Madness_LINKER_FLAGS)
+        MADNESS_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")
+  string(STRIP "${MADNESS_LIBRARIES}" MADNESS_LIBRARIES)
+  string(STRIP "${MADNESS_LINKER_FLAGS}" MADNESS_LINKER_FLAGS)
   
-  # Removed the MADNESS libraries that are not needed by TiledArray.
-  list(REMOVE_ITEM Madness_LIBRARIES 
-    ${Madness_MADchem_LIBRARY} ${Madness_MADmra_LIBRARY}
-    ${Madness_MADtinyxml_LIBRARY} ${Madness_MADmuparser_LIBRARY}
-    ${Madness_MADlinalg_LIBRARY} ${Madness_MADtensor_LIBRARY}
-    ${Madness_MADmisc_LIBRARY})
+  # TiledArray only needs MADworld library compiled to be ...
+  # as long as you mark dependence on it correcty its target properties
+  # will be used correctly (header locations, etc.)
+  set(MADNESS_LIBRARIES ${MADNESS_world_LIBRARY})
+  # BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
+  # these headers depend on LAPACK which is a dependency of MADlinalg, hence
+  # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
+  list(APPEND MADNESS_LIBRARIES "${LAPACK_LIBRARIES}")
+  # this is probably not necessary since we use nested #include paths in build and install trees,
+  # hence dependence on MADworld should provide proper include paths for ALL madness libs ...
+  list(APPEND MADNESS_INCLUDE_DIRS $<TARGET_PROPERTY:MADlinalg,INTERFACE_INCLUDE_DIRECTORIES>)
   
-#  message("Madness_COMPILE_FLAGS = '${Madness_COMPILE_FLAGS}'")
-#  message("Madness_LIBRARIES     = '${Madness_LIBRARIES}'")
-#  message("Madness_LINKER_FLAGS  = '${Madness_LINKER_FLAGS}'")
-
-
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
     append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
     append_flags(MAD_CXXFLAGS "")
   endif()
-  add_custom_target(madness-build ALL
-      COMMAND $(MAKE) world V=0
+  
+  # build MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
+  add_custom_target(build-madness ALL
+      COMMAND ${CMAKE_COMMAND} --build . --target MADworld
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 
-  # Add madness-clean target that will delete files generated by MADNESS build.
-  add_custom_target(madness-clean
-    COMMAND ${CMAKE_MAKE_PROGRAM} clean
+  if (ENABLE_ELEMENTAL)
+    set(ELEMENTAL_CLEAN_TARGET clean-elemental)
+    set(ELEMENTAL_INSTALL_TARGET \"install-elemental\")
+  else (ENABLE_ELEMENTAL)
+    set(ELEMENTAL_CLEAN_TARGET )
+    set(ELEMENTAL_INSTALL_TARGET )
+  endif (ENABLE_ELEMENTAL)
+
+  # Add clean-madness target that will delete files generated by MADNESS build.
+  add_custom_target(clean-madness
+    COMMAND ${CMAKE_MAKE_PROGRAM} clean ${ELEMENTAL_CLEAN_TARGET}
     WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
     COMMENT Cleaning build directory for 'madness')
   
-  # Since 'madness-install' target cannot be linked to the 'install' target,
+  # Since 'install-madness' target cannot be linked to the 'install' target,
   # we will do it manually here.
   install(CODE
       "
       execute_process(
-          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-tensor\" \"install-world\" 
+          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-world\" \"install-clapack\" \"install-common\" ${ELEMENTAL_INSTALL_TARGET}
           WORKING_DIRECTORY \"${MADNESS_BINARY_DIR}\"
           RESULT_VARIABLE error_code)
       if(error_code)
@@ -437,17 +334,16 @@ else()
       )
 
   # Set build dependencies and compiler arguments
-  add_dependencies(External madness-build)
+  add_dependencies(External build-madness)
 
   # Set config variables 
-  set(TiledArray_CONFIG_LIBRARIES ${Madness_LIBRARIES}
-      ${TiledArray_CONFIG_LIBRARIES})
+  list(APPEND TiledArray_CONFIG_LIBRARIES ${MADNESS_LIBRARIES})
 
 endif()
 
 
-include_directories(${Madness_INCLUDE_DIRS})
-set(TiledArray_LIBRARIES ${Madness_LIBRARIES} ${TiledArray_LIBRARIES})
-append_flags(CMAKE_CXX_FLAGS "${Madness_COMPILE_FLAGS}")
-append_flags(CMAKE_EXE_LINKER_FLAGS "${Madness_LINKER_FLAGS}")
+include_directories(${MADNESS_INCLUDE_DIRS})
+list (APPEND TiledArray_LIBRARIES ${MADNESS_LIBRARIES})
+append_flags(CMAKE_CXX_FLAGS "${MADNESS_COMPILE_FLAGS}")
+append_flags(CMAKE_EXE_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")
 

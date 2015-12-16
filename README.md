@@ -121,7 +121,7 @@ Common CMake cache variables that you may want to define include:
 
 ##### Library Variables
 ```
--D Madness_ROOT_DIR=/path/to/madness/root/dir
+-D MADNESS_ROOT_DIR=/path/to/madness/root/dir
 -D TBB_ROOT_DIR=/path/to/tbb/root/dir
 -D LAPACK_LIBRARIES=(semicolon seperated list of LAPACK libraries)
 -D BLAS_LIBRARIES=(semicolon seperated list of BLAS libraries)

@@ -19,7 +19,7 @@ export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:$LD_LIBRARY_PATH
 mkdir _build
 mkdir _install
 cd _build
-cmake -DCMAKE_INSTALL_PREFIX=../_install -DTA_BUILD_UNITTEST=ON -DCMAKE_BUILD_TYPE=Debug ..
+cmake -DCMAKE_INSTALL_PREFIX=../_install -DCMAKE_CXX_COMPILER=$CXX -DCMAKE_C_COMPILER=$CC -DMPI_CXX_COMPILER=$MPICXX -DMPI_C_COMPILER=$MPICC -DTA_BUILD_UNITTEST=ON -DCMAKE_BUILD_TYPE=Debug ..
 
 # Build all libraries, examples, and applications
 make -j2 all VERBOSE=1

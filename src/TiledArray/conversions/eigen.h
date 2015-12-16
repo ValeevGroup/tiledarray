@@ -20,16 +20,15 @@
 #ifndef TILEDARRAY_EIGEN_H__INCLUDED
 #define TILEDARRAY_EIGEN_H__INCLUDED
 
+#include <tiledarray_fwd.h>
+#include <TiledArray/array.h>
+#include <TiledArray/tensor.h>
 #include <TiledArray/error.h>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/madness.h>
 #include <TiledArray/pmap/replicated_pmap.h>
 
 namespace TiledArray {
-
-  // Forward declarations
-  template <typename, typename> class DistArray;
-  template <typename, typename> class Tensor;
 
   // Convenience typedefs
   typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXd;

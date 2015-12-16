@@ -86,7 +86,7 @@ $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
         -D EIGEN_INCLUDE_DIR=/path/to/eigen/include/eigen3 \
         -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack" \
         -D BLAS_LIBRARIES="-L/path/to/blas/lib -lblas" \
-        -D Madness_ROOT_DIR=/path/to/madness \
+        -D MADNESS_ROOT_DIR=/path/to/madness \
         -D CMAKE_C_COMPILER=gcc \
         -D CMAKE_CXX_COMPILER=g++ \
         -D MPI_C_COMPILER=mpicc \
@@ -216,16 +216,16 @@ MADNESS:
       by the platform]
 * MADNESS_SOURCE_DIR -- Path to the MADNESS source directory
 * MADNESS_BINARY_DIR -- Path to the MADNESS build directory
-* Madness_URL -- Path to the MADNESS repository [Default=MADNESS git repository]
-* Madness_TAG -- Revision hash or tag to use when building MADNESS (expert only)
-* MAD_EXTRA_CONFIGURE_FLAGS -- Extra configure flags passed to MADNESS configure
+* MADNESS_URL -- Path to the MADNESS repository [Default=MADNESS git repository]
+* MADNESS_TAG -- Revision hash or tag to use when building MADNESS (expert only)
+* MAD_EXTRA_CMAKE_FLAGS -- Extra flags passed to MADNESS cmake command
 
 If you wish to install MADNESS yourself, we recommend downloading the latest
 version from the MADNESS git repository. You should not expect the latest 
 release version to work correctly with TiledArray. You can specify the install
 directory with:
 
-* Madness_ROOT_DIR -- MADNESS install directory
+* MADNESS_ROOT_DIR -- MADNESS install directory
 * CMAKE_INSTALL_PREFIX -- Semicolon separated list of directory CMake will use
       to search for software dependencies.
 
