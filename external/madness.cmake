@@ -264,7 +264,7 @@ else()
   set(MADNESS_DIR ${MADNESS_BINARY_DIR})
   find_package(MADNESS 0.10.0 REQUIRED
                COMPONENTS world)
-  set(TILEDARRAY_HAS_ELEMENTAL TRUE)
+  set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
 
   # Removed all the flags passed to MADNESS configure
   string(REGEX REPLACE "-(O[0-9s]|g[0-9]?)([ ]+|$)" "" MAD_CXXFLAGS "${MAD_CXXFLAGS}")
