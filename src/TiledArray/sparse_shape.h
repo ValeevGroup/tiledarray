@@ -104,7 +104,8 @@ namespace TiledArray {
       const value_type threshold = threshold_;
       const unsigned int dim = tile_norms_.range().rank();
       const vector_type* restrict const size_vectors = size_vectors_.get();
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
 
       if(dim == 1u) {
         auto normalize_op = [threshold, &zero_tile_count] (value_type& norm, const value_type size) {
@@ -343,7 +344,8 @@ namespace TiledArray {
 
       auto result_tile_norms_blk = result_tile_norms.block(lower_bound, upper_bound);
       const value_type threshold = threshold_;
-      size_type zero_tile_count = zero_tile_count_;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = zero_tile_count_;
       result_tile_norms_blk.inplace_binary(other.tile_norms_,
           [threshold,&zero_tile_count] (value_type& l, const value_type r) {
             // Update the zero tile count for the result
@@ -412,7 +414,8 @@ namespace TiledArray {
 
       // Copy the data from arg to result
       const value_type threshold = threshold_;
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       auto copy_op = [threshold,&zero_tile_count] (value_type& restrict result,
           const value_type arg)
       {
@@ -446,7 +449,8 @@ namespace TiledArray {
 
       // Copy the data from arg to result
       const value_type threshold = threshold_;
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       auto copy_op = [factor,threshold,&zero_tile_count] (value_type& restrict result,
               const value_type arg)
       {
@@ -510,7 +514,8 @@ namespace TiledArray {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
       const value_type abs_factor = std::abs(factor);
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
         value *= abs_factor;
         if(value < threshold) {
@@ -538,7 +543,8 @@ namespace TiledArray {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
       const value_type abs_factor = std::abs(factor);
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
         value *= abs_factor;
         if(value < threshold) {
@@ -565,7 +571,8 @@ namespace TiledArray {
     SparseShape_ add(const SparseShape_& other) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count] (value_type left,
           const value_type right)
       {
@@ -595,7 +602,8 @@ namespace TiledArray {
     SparseShape_ add(const SparseShape_& other, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count] (value_type left,
           const value_type right)
       {
@@ -627,7 +635,8 @@ namespace TiledArray {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
       const value_type abs_factor = std::abs(factor);
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type left,
           const value_type right)
       {
@@ -662,7 +671,8 @@ namespace TiledArray {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
       const value_type abs_factor = std::abs(factor);
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor]
                  (value_type left, const value_type right)
       {
@@ -685,7 +695,8 @@ namespace TiledArray {
     SparseShape_ add(value_type value) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
 
       Tensor<T> result_tile_norms(tile_norms_.range());
 
@@ -780,7 +791,8 @@ namespace TiledArray {
     {
       const unsigned int dim = tile_norms.range().rank();
       const value_type threshold = threshold_;
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
 
       if(dim == 1u) {
         // This is the easy case where the data is a vector and can be
@@ -884,7 +896,8 @@ namespace TiledArray {
 
       factor = std::abs(factor);
       const value_type threshold = threshold_;
-      size_type zero_tile_count = 0ul;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = 0;
       integer M = 0, N = 0, K = 0;
       gemm_helper.compute_matrix_sizes(M, N, K, tile_norms_.range(), other.tile_norms_.range());
 

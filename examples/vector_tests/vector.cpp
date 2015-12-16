@@ -34,7 +34,10 @@
 
 #define EIGEN_NO_MALLOC
 
-int main(int, char**) {
+int main(int argc, char** argv) {
+
+  madness::World& world = madness::initialize(argc,argv);
+
   const std::size_t repeat = 100;
   // Allocate some memory for tests
   const std::size_t n = 10000000;
@@ -97,12 +100,21 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::vector_op_serial([](const double x, const double y) { return x + y; },
+                                n, c, a, b);
+  }
+  stop = madness::wall_time();
+
+  std::cout << "vector serial: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::vector_op([](const double x, const double y) { return x + y; },
         n, c, a, b);
   }
   stop = madness::wall_time();
 
-  std::cout << "vector: " << stop - start << " s\n";
+  std::cout << "vector parallel: " << stop - start << " s\n";
 
   ////==========================================================================
   std::cout << "\nScale Sum:\n";
@@ -148,12 +160,70 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::vector_op_serial([](const double x, const double y) { return (x + y) * 3.0; },
+                                n, c, a, b);
+  }
+  stop = madness::wall_time();
+
+  std::cout << "vector serial: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::vector_op([](const double x, const double y) { return (x + y) * 3.0; },
         n, c, a, b);
   }
   stop = madness::wall_time();
 
-  std::cout << "vector: " << stop - start << " s\n";
+  std::cout << "vector parallel: " << stop - start << " s\n";
+
+////==========================================================================
+  std::cout << "\nPower Sum:\n";
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r)
+    for(std::size_t i = 0ul; i < n; ++i)
+      c[i] = (std::pow(a[i],3) + std::pow(b[i],3)) * 3.0;
+  stop = madness::wall_time();
+
+  std::cout << "base:   " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    const std::size_t n4 = n - (n % 8);
+    std::size_t i = 0ul;
+    for(; i < n4; i += 8) {
+      c[i]   = (std::pow(a[i],3)  + std::pow(b[i],3)) * 3.0;
+      c[i+1]   = (std::pow(a[i+1],3)  + std::pow(b[i+1],3)) * 3.0;
+      c[i+2]   = (std::pow(a[i+2],3)  + std::pow(b[i+2],3)) * 3.0;
+      c[i+3]   = (std::pow(a[i+3],3)  + std::pow(b[i+3],3)) * 3.0;
+      c[i+4]   = (std::pow(a[i+4],3)  + std::pow(b[i+4],3)) * 3.0;
+      c[i+5]   = (std::pow(a[i+5],3)  + std::pow(b[i+5],3)) * 3.0;
+      c[i+6]   = (std::pow(a[i+6],3)  + std::pow(b[i+6],3)) * 3.0;
+      c[i+7]   = (std::pow(a[i+7],3)  + std::pow(b[i+7],3)) * 3.0;
+    }
+    for(; i < n; ++i)
+      c[i] = (std::pow(a[i],3) + std::pow(b[i],3)) * 3.0;
+  }
+  stop = madness::wall_time();
+
+  std::cout << "unwind: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::vector_op_serial([](const double x, const double y) { return (std::pow(x,3) + std::pow(y,3)) * 3.0; },
+                                n, c, a, b);
+  }
+  stop = madness::wall_time();
+
+  std::cout << "vector serial: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::vector_op([](const double x, const double y) { return (std::pow(x,3) + std::pow(y,3)) * 3.0; },
+                                n, c, a, b);
+  }
+  stop = madness::wall_time();
+
+  std::cout << "vector parallel: " << stop - start << " s\n";
 
 
   ////==========================================================================
@@ -200,12 +270,21 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::vector_op_serial([](const double x, const double y) { return x * y; },
+                                n, c, a, b);
+  }
+  stop = madness::wall_time();
+
+  std::cout << "vector serial: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::vector_op([](const double x, const double y) { return x * y; },
         n, c, a, b);
   }
   stop = madness::wall_time();
 
-  std::cout << "vector: " << stop - start << " s\n";
+  std::cout << "vector parallel: " << stop - start << " s\n";
 
   ////==========================================================================
   std::cout << "\nScale Multiply:\n";
@@ -251,12 +330,21 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::vector_op_serial([](const double x, const double y) { return (x * y) * 3.0; },
+                                n, c, a, b);
+  }
+  stop = madness::wall_time();
+
+  std::cout << "vector serial: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::vector_op([](const double x, const double y) { return (x * y) * 3.0; },
         n, c, a, b);
   }
   stop = madness::wall_time();
 
-  std::cout << "vector: " << stop - start << " s\n";
+  std::cout << "vector parallel: " << stop - start << " s\n";
 
   ////==========================================================================
   std::cout << "\nScale:\n";
@@ -310,23 +398,32 @@ int main(int, char**) {
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::inplace_vector_op_serial([](double& x) { x *= 3.0; }, n, c);
+  }
+  stop = madness::wall_time();
+
+  std::cout << "vector serial: " << stop - start << " s\n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
     TiledArray::math::inplace_vector_op([](double& x) { x *= 3.0; }, n, c);
   }
   stop = madness::wall_time();
 
-  std::cout << "vector: " << stop - start << " s\n";
+  std::cout << "vector parallel: " << stop - start << " s\n";
 
 
   ////==========================================================================
   std::cout << "\nMaxabs:\n";
   double temp = 0.0;
+  a[10] = 100.5;
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r)
     for(std::size_t i = 0ul; i < n; ++i)
       temp = std::max(temp, std::abs(a[i]));
   stop = madness::wall_time();
 
-  std::cout << "base:   " << stop - start << " s\n";
+  std::cout << "base:   " << stop - start << " s " << temp << " \n";
 
   start = madness::wall_time();
   for(std::size_t r = 0ul; r < repeat; ++r) {
@@ -347,22 +444,87 @@ int main(int, char**) {
   }
   stop = madness::wall_time();
 
-  std::cout << "unwind: " << stop - start << " s\n";
+  std::cout << "unwind: " << stop - start << " s " << temp << " \n";
 
   start = madness::wall_time();
   double x = 0.0;
   for(std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::math::reduce_op([](double& x, const double a) { x = std::max(x, std::abs(a)); },
-        n, x, a);
+    TiledArray::math::reduce_op_serial([](double& x, const double a) { x = std::max(x, std::abs(a)); },
+                                n, x, a);
   }
   stop = madness::wall_time();
-  x += 1.0;
-  std::cout << "vector: " << stop - start << " s\n" << x;
+  std::cout << "vector serial: " << stop - start << " s " << x << " \n";
+
+  start = madness::wall_time();
+  x = 0.0;
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    TiledArray::math::reduce_op([](double& x, const double a) { x = std::max(x, std::abs(a)); },
+                                [](double& x ,const double a){x=std::max(x,a);},
+        std::numeric_limits<double>::min(),n, x, a);
+  }
+  stop = madness::wall_time();
+  std::cout << "vector parallel: " << stop - start << " s " << x << " \n";
+
+  ////==========================================================================
+  std::cout << "\nReduce Sum:\n";
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    temp = 0.0;
+    for (std::size_t i = 0ul; i < n; ++i)
+      temp += b[i];
+  }
+  stop = madness::wall_time();
+
+  std::cout << "base:   " << stop - start << " s " << temp << " \n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    temp = 0.0;
+    const std::size_t n4 = n - (n % 8);
+    std::size_t i = 0ul;
+    for(; i < n4; i += 8) {
+      temp += b[i];
+      temp += b[i+1];
+      temp += b[i+2];
+      temp += b[i+3];
+      temp += b[i+4];
+      temp += b[i+5];
+      temp += b[i+6];
+      temp += b[i+7];
+    }
+    for(; i < n; ++i)
+      temp += b[i];
+  }
+  stop = madness::wall_time();
+
+  std::cout << "unwind: " << stop - start << " s " << temp << " \n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    x = 0.0;
+    TiledArray::math::reduce_op_serial([](double& x, const double a) { x += a; },
+                                 n, x, b);
+  }
+  stop = madness::wall_time();
+  std::cout << "vector serial: " << stop - start << " s " << x << " \n";
+
+  start = madness::wall_time();
+  for(std::size_t r = 0ul; r < repeat; ++r) {
+    x = 0.0;
+    TiledArray::math::reduce_op([](double& x, const double a) { x += a; },
+                                [](double& x ,const double a){x += a;},
+                                0.0, n, x, b);
+  }
+  stop = madness::wall_time();
+  std::cout << "vector parallel: " << stop - start << " s " << x << " \n";
+
 
   // Deallocate memory
   free(a);
   free(b);
   free(c);
+
+  madness::finalize();
 
   return 0;
 }

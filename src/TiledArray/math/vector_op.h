@@ -286,11 +286,75 @@ namespace TiledArray {
 
     }; // class Block
 
+#ifdef HAVE_INTEL_TBB
+
+    struct SizeTRange {
+
+      static constexpr std::size_t block_size = TILEDARRAY_LOOP_UNWIND;
+
+      // GRAIN_SIZE is set to 8 to trigger TiledArray Unit Test
+      // in reality, partition is controled by tbb::auto_partitioner instead of GRAIN_SIZE
+      static constexpr std::size_t GRAIN_SIZE = 8ul;
+
+      size_t lower;
+      size_t upper;
+
+      SizeTRange(const size_t start, const size_t end)
+              : lower(start), upper(end) { }
+
+//      SizeTRange(const size_t n, const size_t g_size)
+//              : lower(0), upper(n - 1), grain_size(g_size) { }
+
+      SizeTRange() = default;
+      SizeTRange(const SizeTRange &r) = default;
+
+      ~SizeTRange() { }
+
+//      void set_grain_size(std::size_t grain_size){
+//        GRAIN_SIZE = grain_size;
+//      }
+
+      bool empty() const { return lower > upper; }
+
+      bool is_divisible() const { return size() >= 2 * GRAIN_SIZE; }
+
+      size_t begin() const { return lower; }
+
+      size_t end() const { return upper; }
+
+      size_t size() const { return upper - lower; }
+
+      SizeTRange(SizeTRange &r, tbb::split) {
+        size_t nblock = (r.upper - r.lower) / block_size;
+        nblock = (nblock + 1) / 2;
+        lower = r.lower + nblock * block_size;
+        upper = r.upper;
+        r.upper = lower;
+      }
+
+    };
+
+//    SizeTRange::set_grain_size(1024ul);
+
+    //forward compatibility
+    namespace cxx14{
+      template<std::size_t...>
+      struct index_sequence{};
+
+      template<std::size_t N, std::size_t... Is>
+      struct make_index_sequence : public make_index_sequence<N-1, N-1, Is...>{};
+
+      template<std::size_t... Is>
+      struct make_index_sequence<0, Is...> : public index_sequence<Is...>{};
+
+    }
+
+#endif
 
     template <typename Op, typename Result, typename... Args,
         typename std::enable_if<std::is_void<typename std::result_of<Op(Result&,
         Args...)>::type>::value>::type* = nullptr>
-    void inplace_vector_op(Op&& op, const std::size_t n, Result* const result,
+    void inplace_vector_op_serial(Op&& op, const std::size_t n, Result* const result,
         const Args* const... args)
     {
       std::size_t i = 0ul;
@@ -308,10 +372,67 @@ namespace TiledArray {
       for_each_block_n(op, n - i, result + i, (args + i)...);
     }
 
+#ifdef HAVE_INTEL_TBB
+
+    template<typename Op, typename Result, typename... Args>
+    class ApplyInplaceVectorOp{
+
+    public:
+      ApplyInplaceVectorOp(Op& op, Result* const result, const Args* const... args)
+              :op_(op), result_(result), args_(args...){}
+
+      ~ApplyInplaceVectorOp(){}
+
+      template<std::size_t... Is>
+      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
+        std::size_t offset = range.begin();
+        std::size_t n_range = range.size();
+        inplace_vector_op_serial(op_, n_range, result_+offset, (std::get<Is>(args_)+offset)...);
+      }
+
+      void operator()(SizeTRange& range) const {
+        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+      }
+
+    private:
+
+      Op& op_;
+      Result* const result_;
+      std::tuple<const Args * const ...> args_;
+
+    };
+
+#endif
+
+    template <typename Op, typename Result, typename... Args,
+            typename std::enable_if<std::is_void<typename std::result_of<Op(Result&,
+            Args...)>::type>::value>::type* = nullptr>
+    void inplace_vector_op(Op&& op, const std::size_t n, Result* const result,
+                                  const Args* const... args)
+    {
+      #ifdef HAVE_INTEL_TBB
+//        std::cout << "INPLACE_TBB_VECTOR_OP" << std::endl;
+        SizeTRange range(0, n);
+
+        // if support lambda variadic
+//      auto apply_inplace_vector_op = [op, result, args...](SizeTRange &range) {
+//          size_t offset = range.begin();
+//          size_t n_range = range.size();
+//          inplace_vector_op_serial(op, n_range, result + offset, (args + offset)...);
+//        };
+      // else
+       auto apply_inplace_vector_op = ApplyInplaceVectorOp<Op, Result, Args...>(op, result, args...);
+
+        tbb::parallel_for(range, apply_inplace_vector_op, tbb::auto_partitioner());
+      #else
+        inplace_vector_op_serial(op, n, result, args...);
+      #endif
+    }
+
     template <typename Op, typename Result, typename... Args,
         typename std::enable_if<! std::is_void<typename std::result_of<Op(
         Args...)>::type>::value>::type* = nullptr>
-    void vector_op(Op&& op, const std::size_t n, Result* const result,
+    void vector_op_serial(Op&& op, const std::size_t n, Result* const result,
         const Args* const... args)
     {
       auto wrapper_op = [&op] (Result& res, param_type<Args>... a)
@@ -332,8 +453,65 @@ namespace TiledArray {
       for_each_block_n(wrapper_op, n - i, result + i, (args + i)...);
     }
 
+#ifdef HAVE_INTEL_TBB
+
+    template<typename Op, typename Result, typename... Args>
+    class ApplyVectorOp{
+
+    public:
+      ApplyVectorOp(Op& op, Result* const result, const Args* const... args)
+              :op_(op), result_(result), args_(args...){}
+
+      ~ApplyVectorOp(){}
+
+      template<std::size_t... Is>
+      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
+        std::size_t offset = range.begin();
+        std::size_t n_range = range.size();
+        vector_op_serial(op_, n_range, result_+offset, (std::get<Is>(args_)+offset)...);
+      }
+
+      void operator()(SizeTRange& range) const {
+        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+      }
+
+    private:
+
+      Op& op_;
+      Result* const result_;
+      std::tuple<const Args * const ...> args_;
+
+    };
+
+#endif
+
+    template <typename Op, typename Result, typename... Args,
+            typename std::enable_if<! std::is_void<typename std::result_of<Op(
+                    Args...)>::type>::value>::type* = nullptr>
+    void vector_op(Op&& op, const std::size_t n, Result* const result,
+                   const Args* const... args)
+    {
+      #ifdef HAVE_INTEL_TBB
+//        std::cout << "TBB_VECTOR_OP" << std::endl;
+        SizeTRange range(0, n);
+
+      // if support lambda variadic
+//        auto apply_vector_op = [op, result, args...](SizeTRange &range) {
+//          size_t offset = range.begin();
+//          size_t n_range = range.size();
+//          vector_op_serial(op, n_range, result + offset, (args + offset)...);
+//        };
+      // else
+      auto apply_vector_op = ApplyVectorOp<Op,Result,Args...>(op, result, args...);
+
+      tbb::parallel_for(range, apply_vector_op, tbb::auto_partitioner());
+      #else
+        vector_op_serial(op, n, result, args...);
+      #endif
+    }
+
     template <typename Op, typename Result, typename... Args>
-    void vector_ptr_op(Op&& op, const std::size_t n, Result* const result,
+    void vector_ptr_op_serial(Op&& op, const std::size_t n, Result* const result,
         const Args* const... args)
     {
       std::size_t i = 0ul;
@@ -347,8 +525,59 @@ namespace TiledArray {
       for_each_block_ptr_n(op, n - i, result + i, (args + i)...);
     }
 
+#ifdef HAVE_INTEL_TBB
+    template<typename Op, typename Result, typename... Args>
+    class ApplyVectorPtrOp{
+
+    public:
+      ApplyVectorPtrOp(Op& op, Result* const result, const Args* const... args)
+              :op_(op), result_(result), args_(args...){}
+
+      ~ApplyVectorPtrOp(){}
+
+      template<std::size_t... Is>
+      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
+        std::size_t offset = range.begin();
+        std::size_t n_range = range.size();
+        vector_ptr_op_serial(op_, n_range, result_+offset, (std::get<Is>(args_)+offset)...);
+      }
+
+      void operator()(SizeTRange& range) const {
+        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+      }
+
+    private:
+
+      Op& op_;
+      Result* const result_;
+      std::tuple<const Args * const ...> args_;
+
+    };
+#endif
+
     template <typename Op, typename Result, typename... Args>
-    void reduce_op(Op&& op, const std::size_t n, Result& result,
+    void vector_ptr_op(Op&& op, const std::size_t n, Result* const result,
+                       const Args* const... args){
+      #ifdef HAVE_INTEL_TBB
+//        std::cout << "TBB_VECTOR_PTR_OP" << std::endl;
+        SizeTRange range(0, n);
+
+        // if support lambda variadic
+//        auto apply_vector_ptr_op = [op, result, args...](SizeTRange &range) {
+//          size_t offset = range.begin();
+//          size_t n_range = range.size();
+//          vector_ptr_op_serial(op, n_range, result + offset, (args + offset)...);
+//        };
+        // else
+        auto apply_vector_ptr_op = ApplyVectorPtrOp<Op,Result,Args...>(op, result, args...);
+        tbb::parallel_for(range, apply_vector_ptr_op,tbb::auto_partitioner());
+      #else
+        vector_ptr_op_serial(op,n,result,args...);
+      #endif
+    }
+
+    template <typename Op, typename Result, typename... Args>
+    void reduce_op_serial(Op&& op, const std::size_t n, Result& result,
         const Args* const... args)
     {
       std::size_t i = 0ul;
@@ -364,6 +593,77 @@ namespace TiledArray {
       }
 
       reduce_block_n(op, n - i, result, (args + i)...);
+    }
+
+#ifdef HAVE_INTEL_TBB
+    template<typename ReduceOp, typename JoinOp, typename Result, typename... Args>
+    class ApplyReduceOp{
+
+    public:
+      ApplyReduceOp(ReduceOp& reduce_op, JoinOp& join_op, const Result& identity, const Result& result, const Args* const... args)
+              :reduce_op_(reduce_op),
+               join_op_(join_op),
+               identity_(identity),
+               result_(result),
+               args_(args...){}
+
+      ApplyReduceOp(ApplyReduceOp& rhs, tbb::split) :
+        reduce_op_(rhs.reduce_op_),
+        join_op_(rhs.join_op_),
+        identity_(rhs.identity_),
+        result_(rhs.identity_),
+        args_(rhs.args_)
+      { }
+
+      ~ApplyReduceOp(){}
+
+      template<std::size_t... Is>
+      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) {
+        std::size_t offset = range.begin();
+        std::size_t n_range = range.size();
+        reduce_op_serial(reduce_op_, n_range, result_, (std::get<Is>(args_)+offset)...);
+      }
+
+      void operator()(SizeTRange& range) {
+        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+      }
+
+      void join(const ApplyReduceOp& rhs){
+        join_op_(result_, rhs.result_);
+      }
+
+      const Result result() const{
+        return result_;
+      }
+
+    private:
+
+      ReduceOp& reduce_op_;
+      JoinOp& join_op_;
+      const Result identity_;
+      Result result_;
+      std::tuple<const Args * const ...> args_;
+
+    };
+#endif
+
+    template <typename ReduceOp, typename JoinOp, typename Result, typename... Args>
+    void reduce_op(ReduceOp&& reduce_op, JoinOp&& join_op, const Result& identity, const std::size_t n, Result& result,
+                   const Args* const... args)
+    {
+      //TODO implement reduce operation with TBB
+      #ifdef HAVE_INTEL_TBB
+//      std::cout << "TBB_Reduce_OP" << std::endl;
+        SizeTRange range(0, n);
+
+        auto apply_reduce_op = ApplyReduceOp<ReduceOp,JoinOp,Result,Args...>(reduce_op, join_op, identity, result, args...);
+
+        tbb::parallel_reduce(range,apply_reduce_op, tbb::auto_partitioner());
+
+        result = apply_reduce_op.result();
+      #else
+        reduce_op_serial(reduce_op,n,result,args...);
+      #endif
     }
 
     template <typename Arg, typename Result>

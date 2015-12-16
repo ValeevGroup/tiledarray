@@ -508,7 +508,7 @@ namespace TiledArray {
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
     typename std::enable_if<is_numeric<Scalar>::value && is_tensor<T1, Ts...>::value
              && is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
-    Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&&,
+    Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         Scalar identity, const T1& tensor1, const Ts&... tensors)
     {
       TA_ASSERT(! empty(tensor1, tensors...));
@@ -516,7 +516,7 @@ namespace TiledArray {
 
       const auto volume = tensor1.range().volume();
 
-      math::reduce_op(reduce_op, volume, identity,
+      math::reduce_op(reduce_op, join_op, identity, volume, identity,
           tensor1.data(), tensors.data()...);
 
       return identity;
@@ -587,7 +587,7 @@ namespace TiledArray {
       Scalar result = identity;
       for(decltype(tensor1.range().volume()) i = 0ul; i < volume; i += stride) {
         Scalar temp = identity;
-        math::reduce_op(reduce_op, stride, temp,
+        math::reduce_op(reduce_op,join_op, identity, stride, temp,
             tensor1.data() + tensor1.range().ordinal(i),
             (tensors.data() + tensors.range().ordinal(i))...);
         join_op(result, temp);
