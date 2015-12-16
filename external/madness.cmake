@@ -314,7 +314,7 @@ else()
   install(CODE
       "
       execute_process(
-          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-world\" \"install-clapack\"
+          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-world\" \"install-clapack\" \"install-common\"
           WORKING_DIRECTORY \"${MADNESS_BINARY_DIR}\"
           RESULT_VARIABLE error_code)
       if(error_code)
