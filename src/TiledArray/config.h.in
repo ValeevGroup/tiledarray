@@ -34,12 +34,6 @@
 /* define if compiler supports long long, the value is sizeof(long long) */
 #cmakedefine TILEDARRAY_HAS_LONG_LONG 1
 
-/* define if compiler supports static_assert. */
-#cmakedefine TILEDARRAY_HAVE_STATIC_ASSERT 1
-
-/* define if compiler supports variadic templates. */
-#cmakedefine TILEDARRAY_HAVE_VARIADIC_TEMPLATES 1
-
 /* Define the default alignment for arrays required by vector operations. */
 #cmakedefine TILEDARRAY_ALIGNMENT @TILEDARRAY_ALIGNMENT@
 
