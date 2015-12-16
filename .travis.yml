@@ -26,6 +26,7 @@ before_install: ./bin/dep-$TRAVIS_OS_NAME.sh
 script: ./bin/build-$TRAVIS_OS_NAME.sh
 after_failure:
   - cat ./_build/external/build/madness/CMakeFiles/CMakeOutput.log
-  - cat ./_build/external/build/madness//CMakeFiles/CMakeError.log
+  - cat ./_build/external/build/madness/CMakeFiles/CMakeError.log
+  - cat ./_build/external/build/madness/src/madness/config.h
   - cat ./_build/CMakeFiles/CMakeOutput.log
   - cat ./_build/CMakeFiles/CMakeError.log
