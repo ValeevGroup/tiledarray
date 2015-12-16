@@ -341,7 +341,7 @@ namespace TiledArray {
 
     /// \param value The fill value
     void fill_local(const element_type& value = element_type()) {
-      init_local_tiles([=] (const range_type& range)
+      init_tiles([=] (const range_type& range)
           { return value_type(range, value); });
     }
 
@@ -383,7 +383,7 @@ namespace TiledArray {
     /// \tparam Op Tile operation type
     /// \param op The operation used to generate tiles
     template <typename Op>
-    void init_local_tiles(Op&& op) {
+    void init_tiles(Op&& op) {
       check_pimpl();
 
       auto it = pimpl_->pmap()->begin();
