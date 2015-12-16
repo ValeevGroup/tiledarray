@@ -41,7 +41,7 @@
 #cmakedefine TILEDARRAY_HAVE_VARIADIC_TEMPLATES 1
 
 /* Define the default alignment for arrays required by vector operations. */
-#cmakedefine TILEDARRAY_ALIGNMENT @TILEARRAY_ALIGNMENT@
+#cmakedefine TILEDARRAY_ALIGNMENT @TILEDARRAY_ALIGNMENT@
 
 /* Define the size of the CPU L1 cache lines. */
 #cmakedefine TILEDARRAY_CACHELINE_SIZE @TILEDARRAY_CACHELINE_SIZE@
