@@ -279,7 +279,7 @@ namespace TiledArray {
       /// \c false.
       template <typename R>
       bool operator==(const ArrayIiterator<Impl, R>& other) const {
-        return (array_ == other.tensor_) && (it_ == other.it_);
+        return (array_ == other.array_) && (it_ == other.it_);
       }
 
       /// Inequality operator
