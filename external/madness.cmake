@@ -8,7 +8,7 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(MADNESS CONFIG QUIET COMPONENTS MADworld MADlinalg HINTS ${MADNESS_ROOT_DIR})
+find_package(MADNESS CONFIG QUIET COMPONENTS MADworld HINTS ${MADNESS_ROOT_DIR})
 
 if(MADNESS_FOUND)
 
@@ -81,7 +81,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "2383898aa6701beb1205d86ac2cf424cf8611933" CACHE STRING 
+  set(MADNESS_TAG "0e5ab139a3e5879dec72fc0b978a364de2dc66b3" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -280,14 +280,17 @@ else()
   string(STRIP "${MADNESS_LIBRARIES}" MADNESS_LIBRARIES)
   string(STRIP "${MADNESS_LINKER_FLAGS}" MADNESS_LINKER_FLAGS)
   
-  # Removed the MADNESS libraries that are not needed by TiledArray.
-  list(REMOVE_ITEM MADNESS_LIBRARIES 
-    ${MADNESS_chem_LIBRARY} ${MADNESS_mra_LIBRARY}
-    ${MADNESS_tinyxml_LIBRARY} ${MADNESS_muparser_LIBRARY}
-    ${MADNESS_linalg_LIBRARY} ${MADNESS_tensor_LIBRARY}
-    ${MADNESS_misc_LIBRARY})
-  # TODO should only need to make world
-  #set(MADNESS_LIBRARIES ${MADNESS_world_LIBRARY})
+  # TiledArray only needs MADworld library compiled to be ...
+  # as long as you mark dependence on it correcty its target properties
+  # will be used correctly (header locations, etc.)
+  set(MADNESS_LIBRARIES ${MADNESS_world_LIBRARY})
+  # BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
+  # these headers depend on LAPACK which is a dependency of MADlinalg, hence
+  # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
+  append_flags(MADNESS_LINKER_FLAGS "${LAPACK_LIBRARIES}")
+  # this is probably not necessary since we use nested #include paths in build and install trees,
+  # hence dependence on MADworld should provide proper include paths for ALL madness libs ...
+  list(APPEND MADNESS_INCLUDE_DIRS $<TARGET_PROPERTY:MADlinalg,INTERFACE_INCLUDE_DIRECTORIES>)
   
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
@@ -295,8 +298,8 @@ else()
     append_flags(MAD_CXXFLAGS "")
   endif()
   add_custom_target(madness-build ALL
-      # TODO should only need to build MADworld here!
-      COMMAND ${CMAKE_COMMAND} --build . --target madness
+      # only need to compile MADworld here! Headers from MADlinalg do not need compilation, but must be instaled
+      COMMAND ${CMAKE_COMMAND} --build . --target MADworld
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 
@@ -311,7 +314,7 @@ else()
   install(CODE
       "
       execute_process(
-          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-world\"
+          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-world\" \"install-clapack\"
           WORKING_DIRECTORY \"${MADNESS_BINARY_DIR}\"
           RESULT_VARIABLE error_code)
       if(error_code)
@@ -324,14 +327,13 @@ else()
   add_dependencies(External madness-build)
 
   # Set config variables 
-  set(TiledArray_CONFIG_LIBRARIES ${MADNESS_LIBRARIES}
-      ${TiledArray_CONFIG_LIBRARIES})
+  list(APPEND TiledArray_CONFIG_LIBRARIES ${MADNESS_LIBRARIES})
 
 endif()
 
 
 include_directories(${MADNESS_INCLUDE_DIRS})
-set(TiledArray_LIBRARIES ${MADNESS_LIBRARIES} ${TiledArray_LIBRARIES})
+list (APPEND TiledArray_LIBRARIES ${MADNESS_LIBRARIES})
 append_flags(CMAKE_CXX_FLAGS "${MADNESS_COMPILE_FLAGS}")
 append_flags(CMAKE_EXE_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")
 
