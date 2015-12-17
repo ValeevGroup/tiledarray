@@ -26,8 +26,18 @@
 #ifndef TILEDARRAY_ELEMENTAL_H__INCLUDED
 #define TILEDARRAY_ELEMENTAL_H__INCLUDED
 
+#include <TiledArray/config.h>
+
+#if TILEDARRAY_HAS_ELEMENTAL
+
 #include <TiledArray/conversions/eigen.h>
-#include <elemental.hpp>
+#if HAVE_EL_H
+# include <El.hpp>
+#elif HAVE_ELEMENTAL_H
+# include <elemental.hpp>
+#else
+# error "MADNESS_HAS_ELEMENTAL set but neither HAVE_EL_H nor HAVE_ELEMENTAL_H set: file an issue at " MADNESS_PACKAGE_URL
+#endif
 
 namespace TiledArray {
 
@@ -149,5 +159,7 @@ namespace TiledArray {
   }
 
 } // namespace TiledArray
+
+#endif // MADNESS_HAS_ELEMENTAL
 
 #endif // TILEDARRAY_ELEMENTAL_H__INCLUDED
