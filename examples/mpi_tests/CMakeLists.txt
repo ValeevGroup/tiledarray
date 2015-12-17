@@ -27,11 +27,11 @@
 if(NOT DISABLE_MPI)
   # Add the mpi_bandwidth executable
   add_executable(mpi_bandwidth EXCLUDE_FROM_ALL mpi_bandwidth.c)
-  target_link_libraries(mpi_bandwidth ${MPI_C_LIBRARIES})
+  target_link_libraries(mpi_bandwidth ${MADNESS_LIBRARIES})
   add_dependencies(example mpi_bandwidth)
 
   # Add the mpi_latency executable
   add_executable(mpi_latency EXCLUDE_FROM_ALL mpi_latency.c)
-  target_link_libraries(mpi_latency ${MPI_C_LIBRARIES})
+  target_link_libraries(mpi_latency ${MADNESS_LIBRARIES})
   add_dependencies(example mpi_latency)
 endif()
