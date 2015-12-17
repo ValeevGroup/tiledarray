@@ -8,7 +8,7 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-find_package(MADNESS CONFIG QUIET COMPONENTS MADworld HINTS ${MADNESS_ROOT_DIR})
+find_package(MADNESS 0.10.1 CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
 
 if(MADNESS_FOUND)
 
@@ -81,7 +81,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "3f811d507b3d4ece68988b94d39d328b718061d4" CACHE STRING 
+  set(MADNESS_TAG "327e406c9028087ebfb3b970f1bec0b8f70c7d1e" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -89,17 +89,6 @@ else()
   endif()
   
   # Setup configure variables
-  
-  # Set compile flags
-  set(MAD_CFLAGS ${CMAKE_C_FLAGS})
-  set(MAD_CXXFLAGS ${CMAKE_CXX_FLAGS})
-  set(MAD_LDFLAGS ${CMAKE_EXE_LINKER_FLAGS})
-
-  if(CMAKE_BUILD_TYPE)
-    string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
-    set(MAD_CFLAGS "${MAD_CFLAGS} ${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
-    set(MAD_CXXFLAGS "${MAD_CXXFLAGS} ${CMAKE_CXX_FLAGS_${MAD_BUILD_TYPE}}")
-  endif()
   
   # Set Fortran integer size
   if(INTEGER4) 
@@ -167,7 +156,7 @@ else()
     # Checkout the correct MADNESS revision
     set(error_code 1)
     execute_process(
-      COMMAND "${GIT_EXECUTABLE}" fetch
+      COMMAND "${GIT_EXECUTABLE}" fetch origin master
       COMMAND "${GIT_EXECUTABLE}" checkout ${MADNESS_TAG}
       WORKING_DIRECTORY "${MADNESS_SOURCE_DIR}"
       RESULT_VARIABLE error_code)
@@ -180,7 +169,7 @@ else()
     # prevent madness from doing a full pull, configure, and build everytime the 
     # project is built.
     add_custom_target(update-madness
-      COMMAND ${GIT_EXECUTABLE} fetch
+      COMMAND ${GIT_EXECUTABLE} fetch origin master
       COMMAND ${GIT_EXECUTABLE} checkout ${MADNESS_TAG}
       WORKING_DIRECTORY ${MADNESS_SOURCE_DIR}
       COMMENT "Updating source for 'madness' from ${MADNESS_URL}")
@@ -235,13 +224,25 @@ else()
       -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
       -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
       -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
-      "-DCMAKE_C_FLAGS=${MAD_CFLAGS}"
+      "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
+      "-DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}"
+      "-DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}"
+      "-DCMAKE_C_FLAGS_RELWITHDEBINFO=${CMAKE_C_FLAGS_RELWITHDEBINFO}"
+      "-DCMAKE_C_FLAGS_MINSIZEREL=${CMAKE_C_FLAGS_MINSIZEREL}"
       -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-      "-DCMAKE_CXX_FLAGS=${MAD_CXXFLAGS}"
+      "-DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}"
+      "-DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}"
+      "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
+      "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${CMAKE_CXX_FLAGS_RELWITHDEBINFO}"
+      "-DCMAKE_CXX_FLAGS_MINSIZEREL=${CMAKE_CXX_FLAGS_MINSIZEREL}"
 # F Fortran, assume we can link without its runtime
 # if you need Fortran checks enable Elemental
 #      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
-#      -DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}
+#      "-DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}"
+#      "-DCMAKE_Fortran_FLAGS_DEBUG=${CMAKE_Fortran_FLAGS_DEBUG}"
+#      "-DCMAKE_Fortran_FLAGS_RELEASE=${CMAKE_Fortran_FLAGS_RELEASE}"
+#      "-DCMAKE_Fortran_FLAGS_RELWITHDEBINFO=${CMAKE_Fortran_FLAGS_RELWITHDEBINFO}"
+#      "-DCMAKE_Fortran_FLAGS_MINSIZEREL=${CMAKE_Fortran_FLAGS_MINSIZEREL}"
       -DENABLE_MPI=${ENABLE_MPI}
       -DMPI_THREAD=multiple
       -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER}
@@ -262,24 +263,9 @@ else()
   endif(error_code)
 
   set(MADNESS_DIR ${MADNESS_BINARY_DIR})
-  find_package(MADNESS 0.10.0 REQUIRED
-               COMPONENTS world)
+  find_package(MADNESS 0.10.1 CONFIG REQUIRED
+               COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
   set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
-
-  # Removed all the flags passed to MADNESS configure
-  string(REGEX REPLACE "-(O[0-9s]|g[0-9]?)([ ]+|$)" "" MAD_CXXFLAGS "${MAD_CXXFLAGS}")
-  string(STRIP "${MAD_CXXFLAGS}" MAD_CXXFLAGS)
-  string(REPLACE "${MAD_CXXFLAGS}" "" 
-        MADNESS_COMPILE_FLAGS "${MADNESS_COMPILE_FLAGS}")
-  string(REPLACE "${MAD_CPPFLAGS}" "" 
-        MADNESS_COMPILE_FLAGS "${MADNESS_COMPILE_FLAGS}")
-  string(STRIP "${MADNESS_COMPILE_FLAGS}" MADNESS_COMPILE_FLAGS)
-  string(REPLACE "${MAD_CXXFLAGS}" "" 
-        MADNESS_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")
-  string(REPLACE "${MAD_LDFLAGS}" "" 
-        MADNESS_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")
-  string(STRIP "${MADNESS_LIBRARIES}" MADNESS_LIBRARIES)
-  string(STRIP "${MADNESS_LINKER_FLAGS}" MADNESS_LINKER_FLAGS)
   
   # TiledArray only needs MADworld library compiled to be ...
   # as long as you mark dependence on it correcty its target properties
@@ -292,12 +278,6 @@ else()
   # this is probably not necessary since we use nested #include paths in build and install trees,
   # hence dependence on MADworld should provide proper include paths for ALL madness libs ...
   list(APPEND MADNESS_INCLUDE_DIRS $<TARGET_PROPERTY:MADlinalg,INTERFACE_INCLUDE_DIRECTORIES>)
-  
-  if(CMAKE_BUILD_TYPE)
-    string(TOUPPER "${CMAKE_BUILD_TYPE}" MAD_BUILD_TYPE)
-    append_flags(MAD_CFLAGS "${CMAKE_C_FLAGS_${MAD_BUILD_TYPE}}")
-    append_flags(MAD_CXXFLAGS "")
-  endif()
   
   # build MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
   add_custom_target(build-madness ALL

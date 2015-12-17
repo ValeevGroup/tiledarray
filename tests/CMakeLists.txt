@@ -95,7 +95,6 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     ${Boost_INCLUDE_DIRS}
-    ${MADNESS_BUILD_INCLUDE_DIRS}
     )
 set_target_properties(${executable} PROPERTIES
     COMPILE_DEFINITIONS "TILEDARRAY_NO_USER_ERROR_MESSAGES=1")
