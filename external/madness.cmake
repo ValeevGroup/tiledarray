@@ -281,6 +281,11 @@ else()
   # this is probably not necessary since we use nested #include paths in build and install trees,
   # hence dependence on MADworld should provide proper include paths for ALL madness libs ...
   list(APPEND MADNESS_INCLUDE_DIRS $<TARGET_PROPERTY:MADlinalg,INTERFACE_INCLUDE_DIRECTORIES>)
+  # external Elemental is *installed* to be usable, hence need to add the path to the install tree
+  if (DEFINED ELEMENTAL_TAG)
+    list(APPEND MADNESS_INCLUDE_DIRS ${CMAKE_INSTALL_PREFIX}/include)
+  endif (DEFINED ELEMENTAL_TAG)
+  
   
   # build MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
   add_custom_target(build-madness ALL
