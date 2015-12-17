@@ -149,8 +149,8 @@ int main(int argc, char** argv) {
         TiledArray::TSpArrayD a(world, trange, a_shape);
         TiledArray::TSpArrayD b(world, trange, b_shape);
         TiledArray::TSpArrayD c;
-        a.set_all_local(1.0);
-        b.set_all_local(1.0);
+        a.fill(1.0);
+        b.fill(1.0);
 
         // Start clock
         TiledArray::TSpArrayD::wait_for_lazy_cleanup(world);

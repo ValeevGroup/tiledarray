@@ -109,8 +109,8 @@ int main(int argc, char** argv) {
         TiledArray::TArrayD a_check(world, trange);
         TiledArray::TArrayD b_check(world, trange);
         TiledArray::TArrayD c_check(world, trange);
-        a_check.set_all_local(1.0);
-        b_check.set_all_local(1.0);
+        a_check.fill(1.0);
+        b_check.fill(1.0);
 
         // Start clock
         world.gop.fence();

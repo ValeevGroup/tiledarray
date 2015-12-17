@@ -151,7 +151,7 @@ InputData::make_f(TiledArray::World& w, const Spin s, const RangeOV ov1, const R
   TiledArray::TSpArrayD f(w, tr, make_sparse_shape(tr, f_));
 
   // Initialize tiles
-  f.set_all_local(0.0);
+  f.fill(0.0);
 
   // Set the tile data
   TiledArray::TSpArrayD::range_type::index index;
@@ -174,7 +174,7 @@ InputData::make_v_ab(TiledArray::World& w, const RangeOV ov1, const RangeOV ov2,
   TiledArray::TSpArrayD v_ab(w, tr,make_sparse_shape(tr, v_ab_));
 
   // Initialize tiles
-  v_ab.set_all_local(0.0);
+  v_ab.fill(0.0);
 
   // Set the tile data
   TiledArray::TSpArrayD::range_type::index index;

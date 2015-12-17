@@ -107,8 +107,8 @@ int main(int argc, char** argv) {
   TiledArray::TArrayD a(world, trange_a);
   TiledArray::TArrayD b(world, trange_b);
   TiledArray::TArrayD c(world, trange);
-  a.set_all_local(1.0);
-  b.set_all_local(1.0);
+  a.fill(1.0);
+  b.fill(1.0);
 
   // Start clock
   world.gop.fence();
