@@ -22,6 +22,8 @@
 
 #include <madness/madness_config.h>
 
+#define TILEDARRAY_PACKAGE_URL "https://github.com/ValeevGroup/tiledarray"
+
 /* Defines a string with the Git SHA1 revision hash tag of TiledArray */
 #define TILEDARRAY_REVISION "@TILEDARRAY_REVISION@"
 
