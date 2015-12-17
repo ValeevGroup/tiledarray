@@ -138,8 +138,8 @@ gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange, long repea
   TiledArray::TArrayD a(world, trange);
   TiledArray::TArrayD b(world, trange);
   TiledArray::TArrayD c(world, trange);
-  a.set_all_local(1.0);
-  b.set_all_local(1.0);
+  a.fill(1.0);
+  b.fill(1.0);
 
   // Start clock
   world.gop.fence();
