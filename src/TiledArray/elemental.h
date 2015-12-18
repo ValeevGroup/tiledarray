@@ -129,7 +129,7 @@ namespace TiledArray {
       std::fill(ElemBlock.Buffer(), ElemBlock.Buffer()+tile_extent_0*tile_extent_1, 0.0);
 
       // Attach elem local matrix to elem global matrix
-      interface.Axpy(1.0, ElemBlock, tile_lower_0, tile_lower_0);
+      interface.Axpy(1.0, ElemBlock, tile_lower_0, tile_lower_1);
     }
     interface.Detach(); // Does communication using elemental
 
