@@ -96,10 +96,10 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements().extent_data()[0]);
   BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements().extent_data()[1]);
 
-  // Reassign elemental matrix to something else
+  // Re-fill elemental matrix with other random values
   for(int i = 0; i < matrix.Width(); ++i){
     for(int j = 0; j < matrix.Height(); ++j){
-      matrix.Set(i,j, i+j);
+      matrix.Set(i,j, GlobalFixture::world->rand() );
     }
   }
 
