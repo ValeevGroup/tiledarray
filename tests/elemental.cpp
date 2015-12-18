@@ -54,23 +54,14 @@ void check_equal(Array<int,2> &array, elem::DistMatrix<int> &matrix){
 BOOST_FIXTURE_TEST_SUITE(elemental_suite, ElemFixture)
 
 BOOST_AUTO_TEST_CASE(array_to_elem_test) {
-  if(false){
-      volatile int i = 0;
-      char hostname[256];
-      gethostname(hostname, sizeof(hostname));
-      printf("PID %d on %s ready for attach\n", getpid(), hostname);
-      fflush(stdout);
-      while (0 == i)
-          sleep(5);
-  }
   GlobalFixture::world->gop.fence();
 
   // Fill array with random data
   GlobalFixture::world->srand(27);
   for(Array<int,2>::iterator it = array.begin(); it != array.end(); ++it) {
     Array<int, 2>::value_type tile(it.make_range());
-    for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
-      *tile_it = GlobalFixture::world->rand();
+    for(auto& v : tile) {
+      v = GlobalFixture::world->rand();
     }
     *it = tile;
   }
@@ -84,7 +75,6 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
 
   check_equal(array, matrix);
   GlobalFixture::world->gop.fence();
-
 }
 
 
