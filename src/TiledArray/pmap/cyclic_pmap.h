@@ -31,10 +31,18 @@
 namespace TiledArray {
   namespace detail {
 
-    /// Map processes using a 2D cyclic decomposition
+    /// Maps cyclically a sequence of indices onto a 2-d matrix of processes
 
-    /// This map cyclicly distributes a two-dimensional grid of tiles among a
-    /// two-dimensional grid of processes.
+    /// Consider a sequence of indices \f$ \{ k | k \in [0,N) \} \f$,
+    /// organized into a matrix, \f$ \{ \{i,j\} | i \in [0,N_\text{row}),j\in[0,N_\text{col})\} \f$,
+    /// in row-major form, i.e. index \f$ k \f$ corresponds to
+    /// \f$ \{ k_\text{row}, k_\text{col} \} \equiv \{ k / N_\text{col}, k \% N_\text{col} \} \f$.
+    /// Similarly, a sequence of processes is organized into a matrix with \f$ P_\text{row} \f$ rows
+    /// and \f$ P_\text{cols} \f$ columns, i.e process \f$ p \equiv \{ p_\text{row}, p_\text{col} \} \f$.
+    /// Then index \f$ \{ k_\text{row}, k_\text{col} \} \f$ maps to process
+    /// \f$ \{ p_\text{row}, p_\text{col} \} = \{ k_\text{row} % N_\text{row}, k_\text{col} % N_\text{col} \} \f$
+    ///
+    /// \note This class is used to map <em>tile</em> indices to processes.
     class CyclicPmap : public Pmap {
     protected:
 
@@ -104,6 +112,15 @@ namespace TiledArray {
       }
 
       virtual ~CyclicPmap() { }
+
+      /// Access number of rows in the tile index matrix
+      size_type nrows() const { return rows_; }
+      /// Access number of columns in the tile index matrix
+      size_type ncols() const { return cols_; }
+      /// Access number of rows in the process matrix
+      size_type nrows_proc() const { return proc_rows_; }
+      /// Access number of columns in the process matrix
+      size_type ncols_proc() const { return proc_cols_; }
 
       /// Maps \c tile to the processor that owns it
 
