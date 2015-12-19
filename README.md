@@ -76,12 +76,9 @@ int main(int argc, char** argv) {
   * Clang 3.4 and later, 
   * Apple Clang 5.0 and later, and
   * Intel C/C++ Compiler 15 and later.
-* **Cmake** 2.8.8 or later
+* **Cmake** 3.0 or later
 * **Eigen** - Version 3.0 and later. http://eigen.tuxfamily.org
 * **MADNESS** - While it is possible to compile MADNESS separately, we recommend compiling MADNESS automatically as part of TiledArray. Compilation of MADNESS requires the following additional prerequisites (see the [MADNESS GitHub page](https://github.com/m-a-d-n-e-s-s/madness) for details):
-  * **autoconf** 2.59 or later
-  * **automake** 1.11 or later
-  * **libtool** 2.x or later
   * **Pthreads**
   * **MPI-2 or MPI-3 library** - [MPICH](http://www.mpich.org), [MVAPICH](http://mvapich.cse.ohio-state.edu), and [Intel MPI](https://software.intel.com/en-us/intel-mpi-library) have been tested. Intel MPI is recommended on x86/Infiniband hardware, but any of these libraries will do. We do not recommend OpenMPI as `MPI_THREAD_MULTIPLE` support is [broken](https://github.com/open-mpi/ompi/issues/157).
   * **LAPACK** and **BLAS** - Serial (sequential, or 1-thread) versions of these libraries is recommended. If you have to use threaded version of these libraries, to avoid poor performance (or even errors) due to non-interoperable threading runtimes it is recommended to configure these libraries to use single thread at runtime before entering the block of TiledArray code.
