@@ -117,7 +117,7 @@ namespace TiledArray {
    * \li \c permute
    * \li \c scale
    *
-   * Theses functions are necessary for all tile operations.
+   * These functions are necessary for all tile operations.
    *
    * \subsection TileInterfaceEmpty Empty
    *

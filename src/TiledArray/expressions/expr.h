@@ -71,7 +71,7 @@ namespace TiledArray {
       }
 
 
-      /// Task function used to mutate result tiles tiles
+      /// Task function used to mutate result tiles
 
       /// \tparam R The result type
       /// \tparam T The lazy tile type
