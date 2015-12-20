@@ -517,7 +517,7 @@ namespace TiledArray {
     template <typename... Index>
     typename std::enable_if<(sizeof...(Index) > 1ul), size_type>::type
     includes(const Index&... index) const {
-      const size_type i[sizeof...(Index)] = {index...};
+      const size_type i[sizeof...(Index)] = {static_cast<size_type>(index)...};
       return includes(i);
     }
 
@@ -656,7 +656,7 @@ namespace TiledArray {
     template <typename... Index,
         typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
     size_type ordinal(const Index&... index) const {
-      const size_type temp_index[sizeof...(Index)] = { index... };
+      const size_type temp_index[sizeof...(Index)] = { static_cast<size_type>(index)... };
       return ordinal(temp_index);
     }
 
