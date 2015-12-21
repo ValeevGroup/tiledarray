@@ -68,7 +68,7 @@ namespace TiledArray {
   template <typename Array, typename Op,
       typename std::enable_if<is_dense<Array>::value>::type* = nullptr>
   inline Array
-  make_array(World& world, detail::trange_t<Array> trange,
+  make_array(World& world, const detail::trange_t<Array>& trange,
       const std::shared_ptr<detail::pmap_t<Array> >& pmap, Op&& op)
   {
     typedef typename Array::value_type value_type;
@@ -132,7 +132,7 @@ namespace TiledArray {
   template <typename Array, typename Op,
       typename std::enable_if<! is_dense<Array>::value>::type* = nullptr>
   inline Array
-  make_array(World& world, detail::trange_t<Array> trange,
+  make_array(World& world, const detail::trange_t<Array>& trange,
       const std::shared_ptr<detail::pmap_t<Array> >& pmap, Op&& op)
   {
     typedef typename Array::value_type value_type;
@@ -216,7 +216,7 @@ namespace TiledArray {
   /// \return An array object of type `Array`
   template <typename Array, typename Op>
   inline Array
-  make_array(World& world, detail::trange_t<Array> trange, Op&& op) {
+  make_array(World& world, const detail::trange_t<Array>& trange, Op&& op) {
     return make_array(world, trange,
         detail::policy_t<Array>::default_pmap(world,
         trange.tiling().volume()), op);
