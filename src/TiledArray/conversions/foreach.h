@@ -58,8 +58,8 @@ namespace TiledArray {
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// void op(typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& result_tile,
-  ///     const typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& arg_tile);
+  /// void op(typename TiledArray::DistArray<Tile,DensePolicy>::value_type& result_tile,
+  ///     const typename TiledArray::DistArray<Tile,DensePolicy>::value_type& arg_tile);
   /// \endcode
   /// \tparam Op Tile operation
   /// \tparam T Element type of the array
@@ -111,13 +111,13 @@ namespace TiledArray {
   /// want to modify the elements of the array to be equal to the the square
   /// root of the original value:
   /// \code
-  /// foreach(array, [] (TiledArray::Tensor<double>& tile) {
+  /// foreach(array, [] (TiledArray::TensorD& tile) {
   ///   tile.inplace_unary([&] (double& value) { value = std::sqrt(value); });
   /// });
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// void op(typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& tile);
+  /// void op(typename TiledArray::DistArray<Tile,DensePolicy>::value_type& tile);
   /// \endcode
   /// \tparam Op Mutating tile operation
   /// \tparam T Element type of the array
@@ -201,8 +201,8 @@ namespace TiledArray {
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& result_tile,
-  ///     const typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& arg_tile);
+  /// float op(typename TiledArray::DistArray<Tile,SparsePolicy>::value_type& result_tile,
+  ///     const typename TiledArray::DistArray<Tile,SparsePolicy>::value_type& arg_tile);
   /// \endcode
   /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
   /// result tile.
@@ -294,7 +294,7 @@ namespace TiledArray {
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& tile);
+  /// float op(typename TiledArray::DistArray<Tile,SparsePolicy>::value_type& tile);
   /// \endcode
   /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
   /// tile.
