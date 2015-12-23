@@ -3,7 +3,7 @@
 include(CMakePushCheckState)
 
 # Check for Eigen
-find_package(Eigen 3.0)
+find_package(Eigen 3.1)
 
 if (EIGEN_FOUND)
 
@@ -14,6 +14,7 @@ if (EIGEN_FOUND)
   CHECK_CXX_SOURCE_COMPILES("
     #include <Eigen/Core>
     #include <Eigen/Dense>
+    #include <Eigen/SparseCore>
     #include <iostream>
     int main(int argc, char* argv[]){
       Eigen::MatrixXd m = Eigen::MatrixXd::Random(5, 5);

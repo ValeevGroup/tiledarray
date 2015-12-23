@@ -7,6 +7,8 @@ set -ev
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
 # Add PPA for newer cmake (3.2.3)
 sudo add-apt-repository ppa:george-edison55/precise-backports -y
+# Add Eigen 3.2
+sudo add-apt-repository ppa:kalakris/eigen -y
 
 # Update package list
 sudo apt-get update -qq
