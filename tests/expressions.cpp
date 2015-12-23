@@ -85,7 +85,7 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
     GlobalFixture::world->srand(seed);
 
-    // Iterate over locall tiles
+    // Iterate over local tiles
     for(typename A::iterator it = array.begin(); it != array.end(); ++it) {
       typename A::value_type tile(array.trange().make_tile_range(it.index()));
       for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
