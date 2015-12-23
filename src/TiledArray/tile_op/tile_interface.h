@@ -954,6 +954,37 @@ namespace TiledArray {
   inline auto dot(const Left& left, const Right& right) -> decltype(left.dot(right))
   { return left.dot(right); }
 
+
+
+  /// Generalized unary operation braits = "behavioral traits" (similar to policies, but live in global scope)
+
+  /// \tparam From The input tile type
+  /// \tparam To The output tile type
+  template<typename From, typename To>
+    struct UnaryBrait {
+
+      /// Cast: copies \c arg
+
+      /// \tparam Input The input tile type, must be convertible to \c From
+      /// \param arg The tile argument to be "converted"
+      /// \return \c arg , cast to \c To
+      template<typename Input>
+	static To
+	cast (
+	    const Input& arg,
+	    typename std::enable_if<
+		(std::is_same<typename std::decay<Input>::type, From>::value
+		    || std::is_convertible<Input, From>::value)
+		    && std::is_convertible<From, To>::value>::type* = nullptr) {
+	  return arg;
+	}
+
+      /// other unary ops come here
+      /// e.g. scale(), etc.
+
+    };
+
+
   /** @}*/
 
 } // namespace TiledArray

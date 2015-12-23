@@ -66,8 +66,8 @@ namespace TiledArray {
       /// \param tile The lazy tile
       /// \return The evaluated tile
       template <typename R, typename T>
-      static typename TiledArray::eval_trait<T>::type eval_tile(const T& tile) {
-        return tile;
+      static R eval_tile(T tile) {
+        return TiledArray::UnaryBrait<typename TiledArray::eval_trait<T>::type,R>::cast(tile);
       }
 
 
