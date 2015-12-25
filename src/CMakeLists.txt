@@ -119,6 +119,7 @@ TiledArray/tensor/utility.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_reduction.h
 TiledArray/tile_op/binary_wrapper.h
+TiledArray/tile_op/cast.h
 TiledArray/tile_op/contract_reduce.h
 TiledArray/tile_op/mult.h
 TiledArray/tile_op/neg.h
