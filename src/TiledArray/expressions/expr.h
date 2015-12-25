@@ -32,6 +32,7 @@
 #include <TiledArray/tile_op/binary_reduction.h>
 #include <TiledArray/tile_op/reduce_wrapper.h>
 #include <TiledArray/tile_op/shift.h>
+#include <TiledArray/tile_op/cast.h>
 #include <TiledArray/tile_op/unary_wrapper.h>
 
 namespace TiledArray {
@@ -65,11 +66,10 @@ namespace TiledArray {
       /// \tparam T The lazy tile type
       /// \param tile The lazy tile
       /// \return The evaluated tile
-      template <typename R, typename T>
-      static R eval_tile(T tile) {
-        return TiledArray::UnaryBrait<typename TiledArray::eval_trait<T>::type,R>::cast(tile);
+      template <typename R, typename T, typename C, typename Op>
+      static R eval_tile(T tile, const C& cast, const std::shared_ptr<Op>& op) {
+        return (*op)(cast(tile));
       }
-
 
       /// Task function used to mutate result tiles
 
@@ -84,6 +84,7 @@ namespace TiledArray {
         return (*op)(tile);
       }
 
+
       /// Set an array tile with a lazy tile
 
       /// Spawn a task to evaluate a lazy tile and set the \a array tile at
@@ -94,12 +95,16 @@ namespace TiledArray {
       /// \param array The result array
       /// \param index The tile index
       /// \param tile The lazy tile
-      template <typename A, typename I, typename T>
+      template <typename A, typename I, typename T,
+          typename std::enable_if<
+              ! std::is_same<typename A::value_type, T>::value
+          >::type* = nullptr>
       typename std::enable_if<is_lazy_tile<T>::value>::type
       set_tile(A& array, const I index, const Future<T>& tile) const {
         array.set(index, array.get_world().taskq.add(
-              & Expr_::template eval_tile<typename A::value_type, T>, tile));
+              Cast<typename A::value_type, T>(), tile));
       }
+
 
       /// Set the \c array tile at \c index with \c tile
 
@@ -109,11 +114,39 @@ namespace TiledArray {
       /// \param array The result array
       /// \param index The tile index
       /// \param tile The tile
-      template <typename A, typename I, typename T>
-      typename std::enable_if<! is_lazy_tile<T>::value>::type
-      set_tile(A& array, const I index, const Future<T>& tile) const {
+      template <typename A, typename I, typename T,
+          typename std::enable_if<
+              std::is_same<typename A::value_type, T>::value
+          >::type* = nullptr>
+      void set_tile(A& array, const I index, const Future<T>& tile) const {
         array.set(index, tile);
       }
+
+
+      /// Set an array tile with a lazy tile
+
+      /// Spawn a task to evaluate a lazy tile and set the \a array tile at
+      /// \c index with the result.
+      /// \tparam A The array type
+      /// \tparam I The index type
+      /// \tparam T The lazy tile type
+      /// \param array The result array
+      /// \param index The tile index
+      /// \param tile The lazy tile
+      template <typename A, typename I, typename T, typename Op,
+          typename std::enable_if<
+              ! std::is_same<typename A::value_type, T>::value
+          >::type* = nullptr>
+      typename std::enable_if<is_lazy_tile<T>::value>::type
+      set_tile(A& array, const I index, const Future<T>& tile,
+          const std::shared_ptr<Op>& op) const
+      {
+        array.set(index, array.get_world().taskq.add(
+              & Expr_::template eval_tile<typename A::value_type, T,
+              Cast<typename A::value_type, T>, Op>, tile,
+              Cast<typename A::value_type, T>(), op));
+      }
+
 
       /// Set an array tile with a lazy tile
 
@@ -127,7 +160,10 @@ namespace TiledArray {
       /// \param index The tile index
       /// \param tile The lazy tile
       /// \param op The tile mutating operation
-      template <typename A, typename I, typename T, typename Op>
+      template <typename A, typename I, typename T, typename Op,
+          typename std::enable_if<
+              std::is_same<typename A::value_type, T>::value
+          >::type* = nullptr>
       void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
@@ -205,7 +241,9 @@ namespace TiledArray {
       template <typename A>
       void eval_to(BlkTsrExpr<A>& tsr) const {
         typedef TiledArray::Shift<typename EngineTrait<engine_type>::eval_type,
-            EngineTrait<engine_type>::consumable> shift_op_type;
+            EngineTrait<engine_type>::consumable ||
+            ! std::is_same<typename EngineTrait<engine_type>::eval_type,
+            typename A::value_type>::value> shift_op_type;
         typedef TiledArray::detail::UnaryWrapper<shift_op_type> op_type;
         static_assert(! is_lazy_tile<typename A::value_type>::value,
             "Assignment to an array of lazy tiles is not supported.");

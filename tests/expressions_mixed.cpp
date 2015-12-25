@@ -23,10 +23,10 @@
  *
  */
 
-#include "sparse_tile.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
+#include "sparse_tile.h"
 
 using namespace TiledArray;
 
