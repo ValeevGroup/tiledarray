@@ -1,4 +1,4 @@
-set(CMAKE_SYSTEM_NAME Darwin)
+#set(CMAKE_SYSTEM_NAME Darwin)
 
 # Set compilers (assumes the compilers are in the PATH)
 set(CMAKE_C_COMPILER clang)
