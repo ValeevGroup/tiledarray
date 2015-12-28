@@ -379,12 +379,6 @@ abs_min(const EigenSparseTile<T, TagType>& arg);
 
 namespace TiledArray {
 
-  // MyTensor is used directly evaluate expressions (see also Lazy Tiles section below)
-  template <typename T, typename TagType>
-  struct eval_trait<EigenSparseTile<T, TagType> > {
-    typedef EigenSparseTile<T, TagType> type;
-  };
-
   // convert TiledArray::Tensor<T> to EigenSparseTile<T>
   template <typename T, typename TagType>
   class Cast<EigenSparseTile<T, TagType>, TiledArray::Tensor<T> > {
