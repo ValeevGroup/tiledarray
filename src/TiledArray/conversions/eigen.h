@@ -15,6 +15,12 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  eigen.h
+ *  May 02, 2015
+ *
  */
 
 #ifndef TILEDARRAY_EIGEN_H__INCLUDED
