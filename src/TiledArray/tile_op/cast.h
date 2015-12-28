@@ -43,7 +43,7 @@ namespace TiledArray {
     typedef Tile tile_type;
 
     result_type operator()(const tile_type& arg) const {
-      return arg;
+      return static_cast<result_type>(arg);
     }
 
   }; // class Cast
@@ -56,7 +56,7 @@ namespace TiledArray {
     typedef TiledArray::detail::LazyArrayTile<Tile, Op> tile_type;
 
     result_type operator()(const tile_type& arg) const {
-      return arg;
+      return static_cast<result_type>(arg);
     }
 
   }; // class Cast
