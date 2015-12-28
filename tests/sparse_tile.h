@@ -97,9 +97,18 @@ public:
 
   // copies
   template <typename AnotherTagType>
-  operator EigenSparseTile<T,AnotherTagType>() const {
-    abort();
+  explicit operator EigenSparseTile<T,AnotherTagType>() const {
     return EigenSparseTile<T, AnotherTagType> {this->data(), this->range()};
+  }
+
+  explicit operator TiledArray::Tensor<T>() const {
+    TiledArray::Tensor<T> result(this->range(), T(0));
+    auto nrows = range().extent()[0];
+    auto ncols = range().extent()[1];
+    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
+      result_view(result.data(), nrows, ncols);
+    result_view = data();
+    return result;
   }
 
   // Tile range accessor
@@ -187,13 +196,18 @@ private:
 }; // class EigenSparseTile
 
 
-#if 0
   // Permutation operation
 
   // returns a tile for which result[perm ^ i] = tile[i]
-  MyTensor permute(const MyTensor& tile,
-      const TiledArray::Permutation& perm);
+  template <typename T, typename TagType>
+  EigenSparseTile<T, TagType> permute(const EigenSparseTile<T, TagType>& tile,
+				      const TiledArray::Permutation& perm) {
+    TA_ASSERT(perm[0] != 0);
+    return EigenSparseTile<T, TagType>(tile.data().transpose(),
+				       perm * tile.range());
+  }
 
+#if 0
   // Addition operations
 
   // result[i] = arg1[i] + arg2[i]

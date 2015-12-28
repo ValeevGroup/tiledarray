@@ -155,7 +155,8 @@ BOOST_AUTO_TEST_CASE( tensor_factories )
   const std::array<int,2> upbound{{5,5}};
 
   BOOST_CHECK_NO_THROW(w("a,b") = u("b,a"));
-  BOOST_CHECK_NO_THROW(v("a,b") = u("b,a"));
+  BOOST_CHECK_NO_THROW(v("a,b") = w("b,a"));
+  BOOST_CHECK_NO_THROW(u("a,b") = v("b,a"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
