@@ -59,8 +59,6 @@ namespace TiledArray {
         LeftConsumable && std::is_same<result_type, left_type>::value;
     static constexpr bool right_is_consumable =
         RightConsumable && std::is_same<result_type, right_type>::value;
-    static_assert(not LeftConsumable || left_is_consumable, "LeftConsumable=true but cannot consume left tile");
-    static_assert(not RightConsumable || right_is_consumable, "LeftConsumable=true but cannot consume tile");
 
   private:
 
