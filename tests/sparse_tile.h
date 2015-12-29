@@ -207,12 +207,60 @@ private:
 				       perm * tile.range());
   }
 
-#if 0
   // Addition operations
 
-  // result[i] = arg1[i] + arg2[i]
-  MyTensor add(const MyTensor& arg1,
-      const MyTensor& arg2);
+  // sparse_result[i] = sparse_arg1[i] + sparse_arg2[i]
+  template <typename T, typename TagType>
+  EigenSparseTile<T, TagType> add(const EigenSparseTile<T, TagType>& arg1,
+				  const EigenSparseTile<T, TagType>& arg2) {
+    TA_ASSERT(arg1.range() == arg2.range());
+
+    return EigenSparseTile<T, TagType>(arg1.data() + arg2.data(), arg1.range());
+  }
+
+  // dense_result[i] = dense_arg1[i] + sparse_arg2[i]
+  template <typename T, typename TagType>
+  TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
+			    const EigenSparseTile<T, TagType>& arg2) {
+    TA_ASSERT(arg1.range() == arg2.range());
+
+    // this could be done better ...
+    return TiledArray::add(arg1,static_cast<TiledArray::Tensor<T>>(arg2));
+  }
+
+  // dense_result[i] = sparse_arg1[i] + dense_arg2[i]
+  template <typename T, typename TagType>
+  TiledArray::Tensor<T> add(const EigenSparseTile<T, TagType>& arg1,
+			    const TiledArray::Tensor<T>& arg2) {
+    return TiledArray::add(arg2,arg1);
+  }
+
+  // dense_result[perm ^ i] = dense_arg1[i] + sparse_arg2[i]
+  template <typename T, typename TagType>
+  TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
+			    const EigenSparseTile<T, TagType>& arg2,
+			    const TiledArray::Permutation& perm) {
+    TA_ASSERT(arg1.range() == arg2.range());
+
+    // this could be done better ...
+    return TiledArray::permute(TiledArray::add(arg1,static_cast<TiledArray::Tensor<T>>(arg2)), perm);
+  }
+
+  // dense_result[i] += sparse_arg[i]
+  template <typename T, typename TagType>
+  TiledArray::Tensor<T>& add_to(TiledArray::Tensor<T>& result,
+				const EigenSparseTile<T, TagType>& arg) {
+    TA_ASSERT(result.range() == arg.range());
+
+    auto nrows = result.range().extent()[0];
+    auto ncols = result.range().extent()[1];
+    Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
+      result_view(result.data(), nrows, ncols);
+    result_view += arg.data();
+    return result;
+  }
+
+#if 0
   // result[i] = (arg1[i] + arg2[i]) * factor
   MyTensor add(const MyTensor& arg1,
       const MyTensor& arg2,
@@ -221,10 +269,6 @@ private:
   MyTensor add(const MyTensor& arg,
       const MyTensor::value_type& value);
 
-  // result[perm ^ i] = arg1[i] + arg2[i]
-  MyTensor add(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const TiledArray::Permutation& perm);
   // result[perm ^ i] = (arg1[i] + arg2[i]) * factor
   MyTensor add(const MyTensor& arg1,
       const MyTensor& arg2,
@@ -235,9 +279,6 @@ private:
       const MyTensor::value_type& value,
       const TiledArray::Permutation& perm);
 
-  // result[i] += arg[i]
-  void add_to(MyTensor& result,
-      const MyTensor& arg);
   // (result[i] += arg[i]) *= factor
   void add_to(MyTensor& result,
       const MyTensor& arg,

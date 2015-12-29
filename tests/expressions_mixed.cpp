@@ -135,6 +135,7 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
   const static TiledRange trange1;
   const static TiledRange trange2;
   TArrayD u;
+  TArrayD u1;
   TArrayDS1 v;
   TArrayDS2 w;
 }; // MixedExpressionsFixture
@@ -157,6 +158,16 @@ BOOST_AUTO_TEST_CASE( tensor_factories )
   BOOST_CHECK_NO_THROW(w("a,b") = u("b,a"));
   BOOST_CHECK_NO_THROW(v("a,b") = w("b,a"));
   BOOST_CHECK_NO_THROW(u("a,b") = v("b,a"));
+}
+
+BOOST_AUTO_TEST_CASE( add_factories )
+{
+  // compile error: adding dense + sparse = dense
+  // BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") + v("a,b"));
+
+  // ok
+  BOOST_CHECK_NO_THROW(u1("a,b") = u("a,b") + v("a,b"));
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()
