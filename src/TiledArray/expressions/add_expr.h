@@ -106,7 +106,7 @@ namespace TiledArray {
     }; // class AddExpr
 
 
-    /// Addition expression
+    /// Add-then-scale expression
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
