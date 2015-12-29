@@ -31,10 +31,6 @@
 
 namespace TiledArray {
 
-  namespace detail {
-    template <typename> class BinaryWrapper;
-  } // namespace detail
-
   /// Tile subtraction operation
 
   /// This subtraction operation will subtract the content two tiles, and accepts

@@ -32,10 +32,6 @@
 
 namespace TiledArray {
 
-  namespace detail {
-    template <typename> class BinaryWrapper;
-  } // namespace detail
-
   /// Tile multiplication operation
 
   /// This multiplication will multiply the content two tiles, and accepts
