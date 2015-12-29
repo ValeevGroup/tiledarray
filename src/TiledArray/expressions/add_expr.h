@@ -423,6 +423,30 @@ namespace TiledArray {
           conj_op(-expr.factor().factor()));
     }
 
+
+    namespace experimental {
+      template <typename Left, typename Right>
+      struct ExprTrait<AddExpr<Left, Right>> {
+	typedef Left left_type; ///< The left-hand expression type
+	typedef Right right_type; ///< The right-hand expression type
+
+	///< Expression engine type
+	template <typename Result>
+	struct engine {
+	  typedef AddEngine<Result,
+	      typename TiledArray::expressions::ExprTrait<Left>::engine_type,
+	      typename TiledArray::expressions::ExprTrait<Right>::engine_type>
+	      type;
+
+	  typedef numeric_t<typename EngineTrait<type>::eval_type>
+	      numeric_type; ///< Addition result numeric type
+	  typedef scalar_t<typename EngineTrait<type>::eval_type>
+	      scalar_type; ///< Addition result scalar type
+	};
+      };
+
+    } // namespace experimental
+
   }  // namespace expressions
 } // namespace TiledArray
 

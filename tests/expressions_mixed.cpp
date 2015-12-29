@@ -149,25 +149,24 @@ const TiledRange MixedExpressionsFixture::trange2 =
 
 BOOST_FIXTURE_TEST_SUITE( mixed_expressions_suite, MixedExpressionsFixture )
 
-BOOST_AUTO_TEST_CASE( tensor_factories )
-{
-  const auto& ca = a;
-  const std::array<int,2> lobound{{3,3}};
-  const std::array<int,2> upbound{{5,5}};
-
-  BOOST_CHECK_NO_THROW(w("a,b") = u("b,a"));
-  BOOST_CHECK_NO_THROW(v("a,b") = w("b,a"));
-  BOOST_CHECK_NO_THROW(u("a,b") = v("b,a"));
-}
+//BOOST_AUTO_TEST_CASE( tensor_factories )
+//{
+//  const auto& ca = a;
+//  const std::array<int,2> lobound{{3,3}};
+//  const std::array<int,2> upbound{{5,5}};
+//
+//  BOOST_CHECK_NO_THROW(w("a,b") = u("b,a"));
+//  BOOST_CHECK_NO_THROW(v("a,b") = w("b,a"));
+//  BOOST_CHECK_NO_THROW(u("a,b") = v("b,a"));
+//}
 
 BOOST_AUTO_TEST_CASE( add_factories )
 {
   // compile error: adding dense + sparse = dense
-  // BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") + v("a,b"));
+  BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") + v("a,b"));
 
   // ok
   BOOST_CHECK_NO_THROW(u1("a,b") = u("a,b") + v("a,b"));
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

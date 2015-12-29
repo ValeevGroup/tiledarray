@@ -274,6 +274,125 @@ namespace TiledArray {
 
     }; // class ScalAddEngine
 
+
+    namespace experimental {
+      // Forward declarations
+      template <typename, typename, typename> class AddEngine;
+    }
+
+    template <typename Result, typename Left, typename Right>
+    struct EngineTrait<experimental::AddEngine<Result, Left, Right> > {
+      static_assert(std::is_same<typename EngineTrait<Left>::policy,
+	  typename EngineTrait<Right>::policy>::value,
+	  "The left- and right-hand expressions must use the same policy class");
+
+      // Argument typedefs
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef TiledArray::experimental::Add<typename Result::value_type,
+	  typename EngineTrait<Left>::eval_type,
+	  typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
+	  EngineTrait<Right>::consumable>
+	  op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type>
+	  op_type; ///< The tile operation type
+      typedef typename op_type::result_type
+	  value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type
+	  eval_type;  ///< Evaluation tile type
+      typedef typename Result::policy_type policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+	  dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static constexpr bool consumable = true;
+      static constexpr unsigned int leaves =
+	  EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
+    };
+
+    namespace experimental {
+
+      /// Addition expression engine
+
+      /// \tparam Left The left-hand expression type
+      /// \tparam Right The right-hand expression type
+      template <typename Result, typename Left, typename Right>
+      class AddEngine : public BinaryEngine<AddEngine<Result, Left, Right>> {
+      public:
+        // Class hierarchy typedefs
+        typedef AddEngine<Result, Left, Right> AddEngine_; ///< This class type
+        typedef BinaryEngine<AddEngine_> BinaryEngine_; ///< Binary expression engine base type
+        typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
+
+        // Argument typedefs
+        typedef typename EngineTrait<AddEngine_>::left_type left_type; ///< The left-hand expression type
+        typedef typename EngineTrait<AddEngine_>::right_type right_type; ///< The right-hand expression type
+
+        // Operational typedefs
+        typedef typename EngineTrait<AddEngine_>::value_type value_type; ///< The result tile type
+        typedef typename EngineTrait<AddEngine_>::op_base_type op_base_type; ///< The tile operation type
+        typedef typename EngineTrait<AddEngine_>::op_type op_type; ///< The tile operation type
+        typedef typename EngineTrait<AddEngine_>::policy policy; ///< The result policy type
+        typedef typename EngineTrait<AddEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+
+        // Meta data typedefs
+        typedef typename EngineTrait<AddEngine_>::size_type size_type; ///< Size type
+        typedef typename EngineTrait<AddEngine_>::trange_type trange_type; ///< Tiled range type
+        typedef typename EngineTrait<AddEngine_>::shape_type shape_type; ///< Shape type
+        typedef typename EngineTrait<AddEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+
+        /// Constructor
+
+        /// \tparam L The left-hand argument expression type
+        /// \tparam R The right-hand argument expression type
+        /// \param expr The parent expression
+        template <typename L, typename R>
+        AddEngine(const AddExpr<L, R>& expr) : BinaryEngine_(expr) { }
+
+        /// Non-permuting shape factory function
+
+        /// \return The result shape
+        shape_type make_shape() const {
+          return BinaryEngine_::left_.shape().add(BinaryEngine_::right_.shape());
+        }
+
+        /// Permuting shape factory function
+
+        /// \param perm The permutation to be applied to the array
+        /// \return The result shape
+        shape_type make_shape(const Permutation& perm) const {
+          return BinaryEngine_::left_.shape().add(BinaryEngine_::right_.shape(), perm);
+        }
+
+        /// Non-permuting tile operation factory function
+
+        /// \return The tile operation
+        static op_type make_tile_op() { return op_type(op_base_type()); }
+
+        /// Permuting tile operation factory function
+
+        /// \param perm The permutation to be applied to tiles
+        /// \return The tile operation
+        static op_type make_tile_op(const Permutation& perm) {
+          return op_type(op_base_type(), perm);
+        }
+
+        /// Expression identification tag
+
+        /// \return An expression tag used to identify this expression
+        const char* make_tag() const { return "[+] "; }
+
+      }; // class AddEngine
+
+    } // namespace experimental
+
   }  // namespace expressions
 } // namespace TiledArray
 

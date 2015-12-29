@@ -52,6 +52,7 @@ namespace TiledArray {
     typedef DistArray<Tile, Policy> DistArray_; ///< This object's type
     typedef TiledArray::detail::ArrayImpl<Tile, Policy> impl_type;
     typedef typename detail::numeric_type<Tile>::type element_type; ///< The tile element type
+    typedef Policy policy_type; ///< Policy type
     typedef typename impl_type::trange_type trange_type; ///< Tile range type
     typedef typename impl_type::range_type range_type; ///< Range type for array tiling
     typedef typename impl_type::shape_type shape_type; ///< Shape type for array tiling
