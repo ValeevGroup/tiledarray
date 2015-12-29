@@ -39,10 +39,9 @@ namespace TiledArray {
   /// optional permute argument.
   /// \tparam Left The left-hand argument type
   /// \tparam Right The right-hand argument type
-  /// \tparam LeftConsumable A flag that is \c true when the left-hand
-  /// argument is consumable.
-  /// \tparam RightConsumable A flag that is \c true when the right-hand
-  /// argument is consumable.
+  /// \tparam LeftConsumable If \c true , will try to consume the left-hand argument when necessary.
+  /// \tparam RightConsumable If \c true , will try to consume the right-hand argument when necessary.
+  /// \note Input tiles can be consumed only if their type matches the result type.
   template <typename Left, typename Right, bool LeftConsumable,
       bool RightConsumable>
   class Add {
@@ -51,12 +50,13 @@ namespace TiledArray {
     typedef Add<Left, Right, LeftConsumable, RightConsumable> Add_;
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
-//    typedef Left result_type;
     typedef decltype(add(std::declval<left_type>(), std::declval<right_type>()))
-        result_type;
+        result_type; ///< result type is uniquely determined by return of freestanding add(Left,Right) function
 
+    /// indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =
         LeftConsumable && std::is_same<result_type, left_type>::value;
+    /// indicates whether it is *possible* to consume the right tile
     static constexpr bool right_is_consumable =
         RightConsumable && std::is_same<result_type, right_type>::value;
 
