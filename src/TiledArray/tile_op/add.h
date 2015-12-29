@@ -57,6 +57,8 @@ namespace TiledArray {
         LeftConsumable && std::is_same<result_type, left_type>::value;
     static constexpr bool right_is_consumable =
         RightConsumable && std::is_same<result_type, right_type>::value;
+    static_assert(not LeftConsumable || left_is_consumable, "LeftConsumable=true but cannot consume left tile");
+    static_assert(not RightConsumable || right_is_consumable, "LeftConsumable=true but cannot consume tile");
 
   private:
 
@@ -181,8 +183,8 @@ namespace TiledArray {
     /// \return The sum of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      return Add_::template eval<is_consumable_tile<left_type>::value,
-          false>(left, std::forward<R>(right));
+      constexpr auto can_consume = is_consumable_tile<left_type>::value && std::is_same<result_type,left_type>::value;
+      return Add_::template eval<can_consume,false>(left, std::forward<R>(right));
     }
 
     /// Add left to right
@@ -196,8 +198,8 @@ namespace TiledArray {
     /// \return The sum of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      return Add_::template eval<false,
-          is_consumable_tile<right_type>::value>(std::forward<L>(left), right);
+      constexpr auto can_consume = is_consumable_tile<right_type>::value && std::is_same<result_type,right_type>::value;
+      return Add_::template eval<false,can_consume>(std::forward<L>(left), right);
     }
 
   }; // class Add
