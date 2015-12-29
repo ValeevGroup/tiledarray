@@ -44,7 +44,10 @@ namespace TiledArray {
     template <typename> struct ExprTrait;
     template <typename> class TsrExpr;
     template <typename> class BlkTsrExpr;
-
+    namespace experimental {
+      // Forward declaration
+      template <typename> struct ExprTrait;
+    }
 
     /// Base class for expression evaluation
 
@@ -188,8 +191,9 @@ namespace TiledArray {
       /// evaluated tensor expression.
       /// \tparam A The array type
       /// \param tsr The tensor to be assigned
+      /// \note this version assumes \c engine_type computes \c A
       template <typename A>
-      void eval_to(TsrExpr<A>& tsr) const {
+      void eval_to(TsrExpr<A>& tsr, typename std::enable_if<std::is_same<typename EngineTrait<engine_type>::eval_type,typename A::value_type>::value>::type* = nullptr) const {
         static_assert(! is_lazy_tile<typename A::value_type>::value,
             "Assignment to an array of lazy tiles is not supported.");
 
@@ -212,6 +216,62 @@ namespace TiledArray {
 
         // Create the distributed evaluator from this expression
         typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
+        dist_eval.eval();
+
+        // Create the result array
+        A result(dist_eval.get_world(), dist_eval.trange(),
+            dist_eval.shape(), dist_eval.pmap());
+
+        // Move the data from dist_eval into the result array. There is no
+        // communication in this step.
+        for(const auto index : *dist_eval.pmap()) {
+          if(! dist_eval.is_zero(index))
+            set_tile(result, index, dist_eval.get(index));
+        }
+
+        // Wait for child expressions of dist_eval
+        dist_eval.wait();
+
+        // Swap the new array with the result array object.
+        result.swap(tsr.array());
+      }
+
+      /// Evaluate this object and assign it to \c tsr
+
+      /// This expression is evaluated in parallel in distributed environments,
+      /// where the content of \c tsr will be replace by the results of the
+      /// evaluated tensor expression.
+      /// \tparam A The array type
+      /// \param tsr The tensor to be assigned
+      /// \note this version assumes \c engine_type does not compute \c A ,
+      ///       hence constructs a new engine with result type fixed to \c A::value_type
+      template <typename A, typename = typename std::enable_if<not std::is_same<typename EngineTrait<engine_type>::eval_type,typename A::value_type>::value>::type>
+      void eval_to(TsrExpr<A>& tsr) const {
+        static_assert(! is_lazy_tile<typename A::value_type>::value,
+            "Assignment to an array of lazy tiles is not supported.");
+
+        // Get the target world.
+        World& world = (tsr.array().is_initialized() ?
+            tsr.array().get_world() :
+            World::get_default());
+
+        // Get the output process map.
+        std::shared_ptr<typename TsrExpr<A>::array_type::pmap_interface> pmap;
+        if(tsr.array().is_initialized())
+          pmap = tsr.array().get_pmap();
+
+        // Get result variable list.
+        VariableList target_vars(tsr.vars());
+
+        // Construct the expression engine with result type forced to A
+
+        typedef typename experimental::ExprTrait<Derived>::template engine<A>::type
+            A_engine_type; ///< type of expression engine producing A
+        A_engine_type engine(derived());
+        engine.init(world, pmap, target_vars);
+
+        // Create the distributed evaluator from this expression
+        typename A_engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
         dist_eval.eval();
 
         // Create the result array

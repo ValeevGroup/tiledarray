@@ -72,6 +72,52 @@ namespace TiledArray {
 
     }; // class BinaryExpr
 
+
+    namespace experimental {
+
+      /// Binary expression object
+
+      /// \tparam Derived The derived class type
+      template <typename Derived>
+      class BinaryExpr : public Expr<Derived> {
+      public:
+        typedef typename ExprTrait<Derived>::left_type left_type; ///< The left-hand expression type
+        typedef typename ExprTrait<Derived>::right_type right_type; ///< The right-hand expression type
+
+      private:
+
+        left_type left_; ///< The left-hand argument
+        right_type right_; ///< The right-hand argument
+
+        // Not allowed
+        BinaryExpr<Derived>& operator=(const BinaryExpr<Derived>&);
+
+      public:
+
+        /// Binary expression constructor
+        BinaryExpr(const left_type& left, const right_type& right) :
+          left_(left), right_(right)
+        { }
+
+        /// Copy constructor
+        BinaryExpr(const BinaryExpr<Derived>& other) :
+          left_(other.left()), right_(other.right())
+        { }
+
+        /// Left-hand expression argument accessor
+
+        /// \return A const reference to the left-hand expression object
+        const left_type& left() const { return left_; }
+
+        /// Right-hand expression argument accessor
+
+        /// \return A const reference to the right-hand expression object
+        const right_type& right() const { return right_; }
+
+      }; // class BinaryExpr
+
+    } // namespace experimental
+
   }  // namespace expressions
 } // namespace TiledArray
 
