@@ -446,6 +446,11 @@ namespace TiledArray {
     return result.add_to(value);
   }
 
+  template <typename... T>
+  using result_of_add_t = decltype(add(std::declval<T>()...));
+
+  template <typename... T>
+  using result_of_add_to_t = decltype(add_to(std::declval<T>()...));
 
   // Subtraction ---------------------------------------------------------------
 
