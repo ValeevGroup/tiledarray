@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TILE_OP_CAST_H__INCLUDED
 #define TILEDARRAY_TILE_OP_CAST_H__INCLUDED
 
-#include <type_traits>
+#include <TiledArray/type_traits.h>
 
 namespace TiledArray {
 
@@ -48,30 +48,36 @@ namespace TiledArray {
 
   }; // class Cast
 
-  template <typename Tile, typename Op>
-  class Cast<Tile, TiledArray::detail::LazyArrayTile<Tile, Op>, void> {
+  template <typename Tile>
+  class Cast<typename TiledArray::eval_trait<Tile>::type, Tile,
+      typename std::enable_if<is_lazy_tile<Tile>::value>::type>
+  {
   public:
 
-    typedef Tile result_type;
-    typedef TiledArray::detail::LazyArrayTile<Tile, Op> tile_type;
+    typedef typename TiledArray::eval_trait<Tile>::type result_type;
+    typedef Tile tile_type;
 
     result_type operator()(const tile_type& arg) const {
-      return static_cast<result_type>(arg);
+      return static_cast<typename TiledArray::eval_trait<Tile>::type>(arg);
     }
 
   }; // class Cast
 
-  template <typename Result, typename Tile, typename Op>
-  class Cast<Result, TiledArray::detail::LazyArrayTile<Tile, Op>,
-      typename std::enable_if<! std::is_same<Result, Tile>::value>::type> :
-      public Cast<Result, Tile>
+  template <typename Result, typename Tile>
+  class Cast<Result, Tile,
+      typename std::enable_if<
+          is_lazy_tile<Tile>::value &&
+          ! std::is_same<Result, typename TiledArray::eval_trait<Tile>::type>::value
+      >::type> :
+      public Cast<Result, typename TiledArray::eval_trait<Tile>::type>
   {
   public:
     typedef Result result_type;
-    typedef TiledArray::detail::LazyArrayTile<Tile, Op> tile_type;
+    typedef Tile tile_type;
 
     result_type operator()(const tile_type& arg) const {
-      return Cast<Result, Tile>::operator()(arg);
+      return Cast<Result, typename TiledArray::eval_trait<Tile>::type>::operator()(
+          static_cast<typename TiledArray::eval_trait<Tile>::type>(arg));
     }
 
   }; // class Cast
