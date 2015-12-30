@@ -578,6 +578,12 @@ namespace TiledArray {
   { return result.subt_to(value); }
 
 
+  template <typename... T>
+  using result_of_subt_t = decltype(subt(std::declval<T>()...));
+
+  template <typename... T>
+  using result_of_subt_to_t = decltype(subt_to(std::declval<T>()...));
+
   // Multiplication operations -------------------------------------------------
 
 
@@ -666,6 +672,12 @@ namespace TiledArray {
   { return result.mult_to(arg, factor); }
 
 
+  template <typename... T>
+  using result_of_mult_t = decltype(mult(std::declval<T>()...));
+
+  template <typename... T>
+  using result_of_mult_to_t = decltype(mult_to(std::declval<T>()...));
+
   // Scaling operations --------------------------------------------------------
 
   /// Scalar the tile argument
@@ -708,6 +720,12 @@ namespace TiledArray {
   { return result.scale_to(factor); }
 
 
+  template <typename... T>
+  using result_of_scale_t = decltype(scale(std::declval<T>()...));
+
+  template <typename... T>
+  using result_of_scale_to_t = decltype(scale_to(std::declval<T>()...));
+
   // Negation operations -------------------------------------------------------
 
   /// Negate the tile argument
@@ -738,6 +756,13 @@ namespace TiledArray {
   template <typename Result>
   inline Result& neg_to(Result& result)
   { return result.neg_to(); }
+
+
+  template <typename... T>
+  using result_of_neg_t = decltype(neg(std::declval<T>()...));
+
+  template <typename... T>
+  using result_of_neg_to_t = decltype(neg_to(std::declval<T>()...));
 
 
   // Complex conjugate operations ---------------------------------------------
@@ -819,6 +844,13 @@ namespace TiledArray {
     return result.conj_to(factor);
   }
 
+
+  template <typename... T>
+  using result_of_conj_t = decltype(conj(std::declval<T>()...));
+
+  template <typename... T>
+  using result_of_conj_to_t = decltype(conj_to(std::declval<T>()...));
+
   // Contraction operations ----------------------------------------------------
 
 
@@ -863,6 +895,9 @@ namespace TiledArray {
     return result.gemm(left, right, factor, gemm_config);
   }
 
+
+  template <typename... T>
+  using result_of_gemm_t = decltype(gemm(std::declval<T>()...));
 
   // Reduction operations ------------------------------------------------------
 
@@ -958,6 +993,37 @@ namespace TiledArray {
   template <typename Left, typename Right>
   inline auto dot(const Left& left, const Right& right) -> decltype(left.dot(right))
   { return left.dot(right); }
+
+
+  template <typename T>
+  using result_of_trace_t = decltype(mult(std::declval<T>()));
+
+  template <typename T>
+  using result_of_sum_t = decltype(sum(std::declval<T>()));
+
+  template <typename T>
+  using result_of_product_t = decltype(product(std::declval<T>()));
+
+  template <typename T>
+  using result_of_squared_norm_t = decltype(squared_norm(std::declval<T>()));
+
+  template <typename T>
+  using result_of_norm_t = decltype(norm(std::declval<T>()));
+
+  template <typename T>
+  using result_of_max_t = decltype(max(std::declval<T>()));
+
+  template <typename T>
+  using result_of_min_t = decltype(min(std::declval<T>()));
+
+  template <typename T>
+  using result_of_abs_max_t = decltype(abs_max(std::declval<T>()));
+
+  template <typename T>
+  using result_of_abs_min_t = decltype(abs_min(std::declval<T>()));
+
+  template <typename L, typename R>
+  using result_of_dot_t = decltype(dot(std::declval<L>(), std::declval<R>()));
 
   /** @}*/
 
