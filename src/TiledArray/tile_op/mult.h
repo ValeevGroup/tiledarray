@@ -177,8 +177,8 @@ namespace TiledArray {
     /// \return The product of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      return Mult_::template eval<is_consumable_tile<left_type>::value, false>(
-          left, std::forward<R>(right));
+      constexpr auto can_consume = is_consumable_tile<left_type>::value && std::is_same<result_type,left_type>::value;
+      return Mult_::template eval<can_consume, false>(left, std::forward<R>(right));
     }
 
     /// Multiply left to right
@@ -190,8 +190,8 @@ namespace TiledArray {
     /// \return The product of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      return Mult_::template eval<false, is_consumable_tile<right_type>::value>(
-          std::forward<L>(left), right);
+      constexpr auto can_consume = is_consumable_tile<right_type>::value && std::is_same<result_type,right_type>::value;
+      return Mult_::template eval<false, can_consume>(std::forward<L>(left), right);
     }
 
   }; // class Mult
@@ -359,8 +359,8 @@ namespace TiledArray {
     /// \return The product of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      return ScalMult_::template eval<is_consumable_tile<left_type>::value, false>(left,
-          std::forward<R>(right));
+      constexpr auto can_consume = is_consumable_tile<left_type>::value && std::is_same<result_type,left_type>::value;
+      return ScalMult_::template eval<can_consume, false>(left, std::forward<R>(right));
     }
 
     /// Multiply left to right and scale the result
@@ -372,8 +372,8 @@ namespace TiledArray {
     /// \return The product of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      return ScalMult_::template eval<false, is_consumable_tile<right_type>::value>(std::forward<L>(left),
-          right);
+      constexpr auto can_consume = is_consumable_tile<right_type>::value && std::is_same<result_type,right_type>::value;
+      return ScalMult_::template eval<false, can_consume>(std::forward<L>(left), right);
     }
 
   }; // class ScalMult
