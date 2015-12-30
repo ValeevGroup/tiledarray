@@ -37,21 +37,25 @@ namespace TiledArray {
 
   /// This addition operation will add the content two tiles, and accepts an
   /// optional permute argument.
+  /// \tparam Result The result tile type
   /// \tparam Left The left-hand argument type
   /// \tparam Right The right-hand argument type
-  /// \tparam LeftConsumable If \c true , will try to consume the left-hand argument when necessary.
-  /// \tparam RightConsumable If \c true , will try to consume the right-hand argument when necessary.
+  /// \tparam LeftConsumable If `true`, the left-hand tile is a temporary and
+  /// may be consumed
+  /// \tparam RightConsumable If `true`, the right-hand tile is a temporary and
+  /// may be consumed
   /// \note Input tiles can be consumed only if their type matches the result type.
-  template <typename Left, typename Right, bool LeftConsumable,
+  template <typename Result, typename Left, typename Right, bool LeftConsumable,
       bool RightConsumable>
   class Add {
   public:
 
-    typedef Add<Left, Right, LeftConsumable, RightConsumable> Add_;
+    typedef Add<Result, Left, Right, LeftConsumable, RightConsumable> Add_;
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
-    typedef decltype(add(std::declval<left_type>(), std::declval<right_type>()))
-        result_type; ///< result type is uniquely determined by return of freestanding add(Left,Right) function
+    typedef Result result_type; ///< The result tile type
+//    typedef decltype(add(std::declval<left_type>(), std::declval<right_type>()))
+//        result_type;
 
     /// indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =
@@ -211,24 +215,27 @@ namespace TiledArray {
   /// This addition operation will add the content two tiles and apply a
   /// permutation to the result tensor. If no permutation is given or the
   /// permutation is null, then the result is not permuted.
+  /// \tparam Result The result tile type
   /// \tparam Left The left-hand argument type
   /// \tparam Right The right-hand argument type
   /// \tparam Scalar The scaling factor type
-  /// \tparam LeftConsumable If \c true , will try to consume the left-hand argument when necessary.
-  /// \tparam RightConsumable If \c true , will try to consume the right-hand argument when necessary.
+  /// \tparam LeftConsumable If `true`, the left-hand tile is a temporary and
+  /// may be consumed
+  /// \tparam RightConsumable If `true`, the right-hand tile is a temporary and
+  /// may be consumed
   /// \note Input tiles can be consumed only if their type matches the result type.
-  template <typename Left, typename Right, typename Scalar, bool LeftConsumable,
-      bool RightConsumable>
+  template <typename Result, typename Left, typename Right, typename Scalar,
+      bool LeftConsumable, bool RightConsumable>
   class ScalAdd {
   public:
 
-    typedef ScalAdd<Left, Right, Scalar, LeftConsumable, RightConsumable> ScalAdd_;
+    typedef ScalAdd<Result, Left, Right, Scalar, LeftConsumable, RightConsumable> ScalAdd_;
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
     typedef Scalar scalar_type; ///< Scaling factor type
-    /// result type is uniquely determined by return of freestanding add(Left,Right,scalar_type) function
-    typedef decltype(add(std::declval<left_type>(), std::declval<right_type>(),
-        std::declval<scalar_type>())) result_type;
+    typedef Result result_type;
+//    typedef decltype(add(std::declval<left_type>(), std::declval<right_type>(),
+//        std::declval<scalar_type>())) result_type;
 
     /// indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =

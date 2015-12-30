@@ -61,11 +61,11 @@ struct BinaryEvalFixture : public TiledRangeFixture {
 
 
   static TiledArray::detail::BinaryWrapper<
-      Add<TArrayI::value_type, TArrayI::value_type, false, false> >
+      Add<TArrayI::value_type, TArrayI::value_type, TArrayI::value_type, false, false> >
   make_add(const Permutation& perm = Permutation()) {
     return TiledArray::detail::BinaryWrapper<
-          Add<TArrayI::value_type, TArrayI::value_type, false, false> >(
-          Add<TArrayI::value_type, TArrayI::value_type, false, false>(), perm);
+          Add<TArrayI::value_type, TArrayI::value_type, TArrayI::value_type, false, false> >(
+          Add<TArrayI::value_type, TArrayI::value_type, TArrayI::value_type, false, false>(), perm);
   }
 
   template <typename Tile, typename Policy, typename Op>

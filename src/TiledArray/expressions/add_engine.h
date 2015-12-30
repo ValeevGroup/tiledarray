@@ -36,11 +36,11 @@ namespace TiledArray {
     // Forward declarations
     template <typename, typename> class AddExpr;
     template <typename, typename, typename> class ScalAddExpr;
-    template <typename, typename> class AddEngine;
-    template <typename, typename, typename> class ScalAddEngine;
+    template <typename, typename, typename> class AddEngine;
+    template <typename, typename, typename, typename> class ScalAddEngine;
 
-    template <typename Left, typename Right>
-    struct EngineTrait<AddEngine<Left, Right> > {
+    template <typename Left, typename Right, typename Result>
+    struct EngineTrait<AddEngine<Left, Right, Result> > {
       static_assert(std::is_same<typename EngineTrait<Left>::policy,
           typename EngineTrait<Right>::policy>::value,
           "The left- and right-hand expressions must use the same policy class");
@@ -50,7 +50,7 @@ namespace TiledArray {
       typedef Right right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef TiledArray::Add<typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::Add<Result, typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
           EngineTrait<Right>::consumable>
           op_base_type; ///< The base tile operation type
@@ -75,8 +75,8 @@ namespace TiledArray {
           EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
     };
 
-    template <typename Left, typename Right, typename Scalar>
-    struct EngineTrait<ScalAddEngine<Left, Right, Scalar> > {
+    template <typename Left, typename Right, typename Scalar, typename Result>
+    struct EngineTrait<ScalAddEngine<Left, Right, Scalar, Result> > {
       static_assert(std::is_same<typename EngineTrait<Left>::policy,
           typename EngineTrait<Right>::policy>::value,
           "The left- and right-hand expressions must use the same policy class");
@@ -87,7 +87,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type; ///< Tile scalar type
-      typedef TiledArray::ScalAdd<typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::ScalAdd<Result, typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, scalar_type,
           EngineTrait<Left>::consumable, EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
       typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
@@ -111,11 +111,11 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right>
-    class AddEngine : public BinaryEngine<AddEngine<Left, Right> > {
+    template <typename Left, typename Right, typename Result>
+    class AddEngine : public BinaryEngine<AddEngine<Left, Right, Result> > {
     public:
       // Class hierarchy typedefs
-      typedef AddEngine<Left, Right> AddEngine_; ///< This class type
+      typedef AddEngine<Left, Right, Result> AddEngine_; ///< This class type
       typedef BinaryEngine<AddEngine_> BinaryEngine_; ///< Binary expression engine base type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
@@ -185,11 +185,11 @@ namespace TiledArray {
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
     /// \tparam Scalar The scaling factor type
-    template <typename Left, typename Right, typename Scalar>
-    class ScalAddEngine : public BinaryEngine<ScalAddEngine<Left, Right, Scalar> > {
+    template <typename Left, typename Right, typename Scalar, typename Result>
+    class ScalAddEngine : public BinaryEngine<ScalAddEngine<Left, Right, Scalar, Result> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalAddEngine<Left, Right, Scalar> ScalAddEngine_; ///< This class type
+      typedef ScalAddEngine<Left, Right, Scalar, Result> ScalAddEngine_; ///< This class type
       typedef BinaryEngine<ScalAddEngine_> BinaryEngine_; ///< Binary expression engine base type
       typedef ExprEngine<ScalAddEngine_> ExprEngine_; ///< Expression engine base type
 
