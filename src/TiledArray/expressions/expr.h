@@ -99,10 +99,10 @@ namespace TiledArray {
       /// \param tile The lazy tile
       template <typename A, typename I, typename T,
           typename std::enable_if<
-              ! std::is_same<typename A::value_type, T>::value
+              ! std::is_same<typename A::value_type, T>::value &&
+              is_lazy_tile<T>::value
           >::type* = nullptr>
-      typename std::enable_if<is_lazy_tile<T>::value>::type
-      set_tile(A& array, const I index, const Future<T>& tile) const {
+      void set_tile(A& array, const I index, const Future<T>& tile) const {
         array.set(index, array.get_world().taskq.add(
               Cast<typename A::value_type, T>(), tile));
       }
@@ -139,8 +139,7 @@ namespace TiledArray {
           typename std::enable_if<
               ! std::is_same<typename A::value_type, T>::value
           >::type* = nullptr>
-      typename std::enable_if<is_lazy_tile<T>::value>::type
-      set_tile(A& array, const I index, const Future<T>& tile,
+      void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
         array.set(index, array.get_world().taskq.add(
