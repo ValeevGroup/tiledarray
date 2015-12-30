@@ -37,7 +37,7 @@
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/policies/sparse_policy.h>
 
-// sparse 2-dimensional matrix type
+// sparse 2-dimensional matrix type, with tag type thrown in to make expression engine work harder
 template <typename T, typename TagType = std::tuple<> >
 class EigenSparseTile {
 public:
@@ -47,7 +47,7 @@ public:
   typedef T numeric_type; // The scalar type that is compatible with value_type
   typedef size_t size_type; // Size type
   // other typedefs
-  typedef Eigen::SparseMatrix<T> matrix_type;
+  typedef Eigen::SparseMatrix<T, Eigen::RowMajor> matrix_type;
 
   typedef std::tuple<matrix_type, range_type> impl_type;
 public:
@@ -116,8 +116,13 @@ public:
     return std::get < 1 > (*impl_);
   }
 
-  // data matrix access
+  // const data matrix access
   const matrix_type& data() const {
+    return std::get < 0 > (*impl_);
+  }
+
+  // const data matrix access
+  matrix_type& data() {
     return std::get < 0 > (*impl_);
   }
 
@@ -135,7 +140,7 @@ public:
 
   // Initialization check. False if the tile is fully initialized.
   bool empty() const {
-    return impl_;
+    return impl_.get() == nullptr;
   }
 
   // MADNESS compliant serialization
@@ -149,7 +154,8 @@ public:
       auto mat = this->data();
       std::vector < Eigen::Triplet < T >> datavec;
       datavec.reserve(mat.size());
-      for(size_t k = 0; k < mat.outerSize(); ++k)
+      typedef typename matrix_type::Index idx_t;
+      for(idx_t k = 0; k < mat.outerSize(); ++k)
         for(typename matrix_type::InnerIterator it(mat, k); it; ++it) {
           datavec.push_back(Eigen::Triplet < T > (it.row(), it.col(), it.value()));
         }
@@ -246,6 +252,17 @@ private:
     return TiledArray::permute(TiledArray::add(arg1,static_cast<TiledArray::Tensor<T>>(arg2)), perm);
   }
 
+  // sparse_result[i] += sparse_arg[i]
+  template <typename T, typename TagType>
+  EigenSparseTile<T, TagType>&
+  add_to(EigenSparseTile<T, TagType>& result,
+	 const EigenSparseTile<T, TagType>& arg) {
+    TA_ASSERT(result.range() == arg.range());
+
+    result.data() += arg.data();
+    return result;
+  }
+
   // dense_result[i] += sparse_arg[i]
   template <typename T, typename TagType>
   TiledArray::Tensor<T>& add_to(TiledArray::Tensor<T>& result,
@@ -258,6 +275,93 @@ private:
       result_view(result.data(), nrows, ncols);
     result_view += arg.data();
     return result;
+  }
+
+  // Multiplication operations (Hadamard product)
+
+  // sparse_result[perm ^ i] = dense_arg1[i] * sparse_arg2[i]
+  template <typename T, typename TagType>
+  EigenSparseTile<T, TagType>
+  mult(const TiledArray::Tensor<T>& arg1,
+       const EigenSparseTile<T, TagType>& arg2,
+       const Permutation& perm) {
+    TA_ASSERT(arg1.range() == arg2.range());
+    TA_ASSERT(perm.dim() == 2);
+    const auto identity_perm = (perm[0] == 0);
+
+    typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
+    typedef typename matrix_type::Index idx_t;
+    auto arg2_mat = arg2.data();
+    auto lobound = arg2.range().lobound_data();
+    std::vector < Eigen::Triplet < T >> datavec;
+    // drive Hadamard by the sparse matrix
+    for(idx_t k = 0; k < arg2_mat.outerSize(); ++k)
+      for(typename matrix_type::InnerIterator it(arg2_mat, k); it; ++it) {
+	auto row = it.row();
+	auto col = it.col();
+        datavec.push_back(Eigen::Triplet < T > (row, col, it.value() * arg1(row+lobound[0],col+lobound[1])));
+      }
+    matrix_type result(arg2_mat.rows(),arg2_mat.cols());
+    result.setFromTriplets(datavec.begin(), datavec.end());
+    if (not identity_perm) result = result.transpose();
+    return EigenSparseTile<T, TagType>(result, arg2.range());
+  }
+
+  // sparse_result[i] = dense_arg1[i] * sparse_arg2[i]
+  template <typename T, typename TagType>
+  EigenSparseTile<T, TagType>
+    mult(const TiledArray::Tensor<T>& arg1,
+	 const EigenSparseTile<T, TagType>& arg2) {
+    auto iperm = Permutation::identity(2);
+    return mult(arg1, arg2, iperm);
+  }
+
+  // sparse_result[i] *= dense_arg1[i]
+  template <typename T, typename TagType>
+  EigenSparseTile<T, TagType>&
+  mult_to(EigenSparseTile<T, TagType>& result,
+	  const TiledArray::Tensor<T>& arg1) {
+    TA_ASSERT(result.range() == arg1.range());
+
+    typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
+    auto mat = result.data();
+    auto lobound = result.range().lobound_data();
+    typedef typename matrix_type::Index idx_t;
+    // drive Hadamard by the sparse matrix
+    for(idx_t k = 0; k < mat.outerSize(); ++k)
+      for(typename matrix_type::InnerIterator it(mat, k); it; ++it) {
+	auto row = it.row();
+	auto col = it.col();
+        it.valueRef() *= arg1(row+lobound[0],col+lobound[1]);
+      }
+    return result;
+  }
+
+  // Contraction operation
+
+  // GEMM operation with fused indices as defined by gemm_config:
+  // sparse_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
+  template <typename T, typename TagType>
+  EigenSparseTile<T, TagType>
+  gemm(const TiledArray::Tensor<T>& arg1,
+       const EigenSparseTile<T, TagType>& arg2,
+       const typename std::common_type<typename TiledArray::Tensor<T>::numeric_type,
+                                       typename EigenSparseTile<T, TagType>::numeric_type>::type factor,
+       const TiledArray::math::GemmHelper& gemm_config) {
+    abort();
+    return EigenSparseTile<T, TagType>();
+  }
+
+  // GEMM operation with fused indices as defined by gemm_config:
+  // sparse_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
+  template <typename T, typename TagType>
+  void gemm(EigenSparseTile<T, TagType>& result,
+	    const TiledArray::Tensor<T>& arg1,
+	    const EigenSparseTile<T, TagType>& arg2,
+	    const typename std::common_type<typename TiledArray::Tensor<T>::numeric_type,
+	    typename EigenSparseTile<T, TagType>::numeric_type>::type factor,
+	    const TiledArray::math::GemmHelper& gemm_config) {
+    abort();
   }
 
 #if 0

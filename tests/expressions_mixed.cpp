@@ -137,6 +137,7 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
   TArrayD u;
   TArrayD u1;
   TArrayDS1 v;
+  TArrayDS1 v1;
   TArrayDS2 w;
 }; // MixedExpressionsFixture
 
@@ -162,11 +163,24 @@ BOOST_AUTO_TEST_CASE( tensor_factories )
 
 BOOST_AUTO_TEST_CASE( add_factories )
 {
-  // compile error: adding dense + sparse = dense
+  // compile error: dense + sparse = dense, not sparse
   // BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") + v("a,b"));
 
   // ok
   BOOST_CHECK_NO_THROW(u1("a,b") = u("a,b") + v("a,b"));
+
+}
+
+BOOST_AUTO_TEST_CASE( mult_factories )
+{
+  // compile error: dense * sparse = sparse, not dense
+  // BOOST_CHECK_NO_THROW(u1("a,b") = u("a,b") * v("a,b"));
+
+  // compile error: dense * sparse2 = sparse1, not sparse2
+  //BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") * v("a,b"));
+
+  // ok
+  BOOST_CHECK_NO_THROW(v1("a,b") = u("a,b") * v("a,b"));
 
 }
 
