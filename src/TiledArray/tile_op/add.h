@@ -44,18 +44,18 @@ namespace TiledArray {
   /// may be consumed
   /// \tparam RightConsumable If `true`, the right-hand tile is a temporary and
   /// may be consumed
-  /// \note Input tiles can be consumed only if their type matches the result type.
-  template <typename Result, typename Left, typename Right, bool LeftConsumable,
-      bool RightConsumable>
+  /// \note Input tiles can be consumed only if their type matches the result
+  /// type.
+  template <typename Result, typename Left, typename Right,
+      bool LeftConsumable, bool RightConsumable>
   class Add {
   public:
 
-    typedef Add<Result, Left, Right, LeftConsumable, RightConsumable> Add_;
+    typedef Add<Result, Left, Right, LeftConsumable, RightConsumable>
+        Add_; ///< This class type
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
     typedef Result result_type; ///< The result tile type
-//    typedef decltype(add(std::declval<left_type>(), std::declval<right_type>()))
-//        result_type;
 
     /// indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =
