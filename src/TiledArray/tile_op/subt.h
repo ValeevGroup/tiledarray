@@ -33,27 +33,31 @@ namespace TiledArray {
 
   /// Tile subtraction operation
 
-  /// This subtraction operation will subtract the content two tiles, and accepts
-  /// an optional permute argument.
+  /// This subtraction operation will subtract the content two tiles, and
+  /// accepts an optional permute argument.
+  /// \tparam Result The result tile type
   /// \tparam Left The left-hand argument base type
   /// \tparam Right The right-hand argument base type
-  /// \tparam LeftConsumable A flag that is \c true when the left-hand
-  /// argument is consumable.
-  /// \tparam RightConsumable A flag that is \c true when the right-hand
-  /// argument is consumable.
-  template <typename Left, typename Right, bool LeftConsumable,
-      bool RightConsumable>
+  /// \tparam LeftConsumable If `true`, the left-hand tile is a temporary and
+  /// may be consumed
+  /// \tparam RightConsumable If `true`, the right-hand tile is a temporary and
+  /// may be consumed
+  /// \note Input tiles can be consumed only if their type matches the result
+  /// type.
+  template <typename Result, typename Left, typename Right,
+      bool LeftConsumable, bool RightConsumable>
   class Subt {
   public:
 
-    typedef Subt<Left, Right, LeftConsumable, RightConsumable> Subt_;
+    typedef Subt<Result, Left, Right, LeftConsumable, RightConsumable> Subt_;
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
-//    typedef Left result_type;
-    typedef decltype(subt(std::declval<left_type>(), std::declval<right_type>())) result_type;
+    typedef Result result_type; ///< The result tile type
 
+    /// Indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =
         LeftConsumable && std::is_same<result_type, left_type>::value;
+    /// Indicates whether it is *possible* to consume the right tile
     static constexpr bool right_is_consumable =
         RightConsumable && std::is_same<result_type, right_type>::value;
 
@@ -207,25 +211,27 @@ namespace TiledArray {
   /// This subtraction operation will subtract the content two tiles and apply a
   /// permutation to the result tensor. If no permutation is given or the
   /// permutation is null, then the result is not permuted.
+  /// \tparam Result The result tile type
   /// \tparam Left The left-hand argument type
   /// \tparam Right The right-hand argument type
   /// \tparam Scalar The scaling factor type
-  /// \tparam LeftConsumable A flag that is \c true when the left-hand
-  /// argument is consumable.
-  /// \tparam RightConsumable A flag that is \c true when the right-hand
-  /// argument is consumable.
-  template <typename Left, typename Right, typename Scalar, bool LeftConsumable,
-      bool RightConsumable>
+  /// \tparam LeftConsumable If `true`, the left-hand tile is a temporary and
+  /// may be consumed
+  /// \tparam RightConsumable If `true`, the right-hand tile is a temporary and
+  /// may be consumed
+  /// \note Input tiles can be consumed only if their type matches the result
+  /// type.
+  template <typename Result, typename Left, typename Right, typename Scalar,
+      bool LeftConsumable, bool RightConsumable>
   class ScalSubt {
   public:
 
-    typedef ScalSubt<Left, Right, Scalar, LeftConsumable, RightConsumable> ScalSubt_;
+    typedef ScalSubt<Result, Left, Right, Scalar, LeftConsumable,
+        RightConsumable> ScalSubt_; ///< This class type
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
     typedef Scalar scalar_type; ///< Scaling factor type
-//    typedef Left result_type;
-    typedef decltype(subt(std::declval<left_type>(), std::declval<right_type>(),
-        std::declval<scalar_type>())) result_type;
+    typedef Result result_type; ///< The result tile type
 
     static constexpr bool left_is_consumable =
         LeftConsumable && std::is_same<result_type, left_type>::value;
