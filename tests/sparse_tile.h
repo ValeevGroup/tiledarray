@@ -277,210 +277,233 @@ private:
     return result;
   }
 
-  // Multiplication operations (Hadamard product)
+#define MULT_DENSE_SPARSE_TO_SPARSE 0
 
-  // sparse_result[perm ^ i] = dense_arg1[i] * sparse_arg2[i]
-  template <typename T, typename TagType>
-  EigenSparseTile<T, TagType>
-  mult(const TiledArray::Tensor<T>& arg1,
-       const EigenSparseTile<T, TagType>& arg2,
-       const Permutation& perm) {
+#if MULT_DENSE_SPARSE_TO_SPARSE
+// Multiplication operations (Hadamard product)
+
+// sparse_result[perm ^ i] = dense_arg1[i] * sparse_arg2[i]
+template <typename T, typename TagType>
+EigenSparseTile<T, TagType>
+mult(const TiledArray::Tensor<T>& arg1,
+    const EigenSparseTile<T, TagType>& arg2,
+    const Permutation& perm) {
+  TA_ASSERT(arg1.range() == arg2.range());
+  TA_ASSERT(perm.dim() == 2);
+  const auto identity_perm = (perm[0] == 0);
+
+  typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
+  typedef typename matrix_type::Index idx_t;
+  auto arg2_mat = arg2.data();
+  auto lobound = arg2.range().lobound_data();
+  std::vector < Eigen::Triplet < T >> datavec;
+  // drive Hadamard by the sparse matrix
+  for(idx_t k = 0; k < arg2_mat.outerSize(); ++k)
+  for(typename matrix_type::InnerIterator it(arg2_mat, k); it; ++it) {
+    auto row = it.row();
+    auto col = it.col();
+    datavec.push_back(Eigen::Triplet < T > (row, col, it.value() * arg1(row+lobound[0],col+lobound[1])));
+  }
+  matrix_type result(arg2_mat.rows(),arg2_mat.cols());
+  result.setFromTriplets(datavec.begin(), datavec.end());
+  if (not identity_perm) result = result.transpose();
+  return EigenSparseTile<T, TagType>(result, arg2.range());
+}
+
+// sparse_result[i] = dense_arg1[i] * sparse_arg2[i]
+template <typename T, typename TagType>
+EigenSparseTile<T, TagType>
+mult(const TiledArray::Tensor<T>& arg1,
+    const EigenSparseTile<T, TagType>& arg2) {
+  auto iperm = Permutation::identity(2);
+  return mult(arg1, arg2, iperm);
+}
+
+// sparse_result[i] *= dense_arg1[i]
+template <typename T, typename TagType>
+EigenSparseTile<T, TagType>&
+mult_to(EigenSparseTile<T, TagType>& result,
+    const TiledArray::Tensor<T>& arg1) {
+  TA_ASSERT(result.range() == arg1.range());
+
+  typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
+  auto mat = result.data();
+  auto lobound = result.range().lobound_data();
+  typedef typename matrix_type::Index idx_t;
+  // drive Hadamard by the sparse matrix
+  for(idx_t k = 0; k < mat.outerSize(); ++k)
+  for(typename matrix_type::InnerIterator it(mat, k); it; ++it) {
+    auto row = it.row();
+    auto col = it.col();
+    it.valueRef() *= arg1(row+lobound[0],col+lobound[1]);
+  }
+  return result;
+}
+
+// Contraction operation
+
+// GEMM operation with fused indices as defined by gemm_config:
+// sparse_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
+template <typename T, typename TagType>
+EigenSparseTile<T, TagType>
+gemm(const TiledArray::Tensor<T>& arg1,
+    const EigenSparseTile<T, TagType>& arg2,
+    const typename std::common_type<typename TiledArray::Tensor<T>::numeric_type,
+    typename EigenSparseTile<T, TagType>::numeric_type>::type factor,
+    const TiledArray::math::GemmHelper& gemm_config) {
+  abort();
+  return EigenSparseTile<T, TagType>();
+}
+
+// GEMM operation with fused indices as defined by gemm_config:
+// sparse_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
+template <typename T, typename TagType>
+void gemm(EigenSparseTile<T, TagType>& result,
+    const TiledArray::Tensor<T>& arg1,
+    const EigenSparseTile<T, TagType>& arg2,
+    const typename std::common_type<typename TiledArray::Tensor<T>::numeric_type,
+    typename EigenSparseTile<T, TagType>::numeric_type>::type factor,
+    const TiledArray::math::GemmHelper& gemm_config) {
+  abort();
+}
+
+#else // not MULT_DENSE_SPARSE_TO_SPARSE
+
+// Multiplication operations (Hadamard product)
+
+// dense_result[perm ^ i] = dense_arg1[i] * sparse_arg2[i]
+template<typename T, typename TagType>
+  TiledArray::Tensor<T>
+  mult (const TiledArray::Tensor<T>& arg1,
+        const EigenSparseTile<T, TagType>& arg2, const Permutation& perm) {
     TA_ASSERT(arg1.range() == arg2.range());
     TA_ASSERT(perm.dim() == 2);
     const auto identity_perm = (perm[0] == 0);
 
     typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
     typedef typename matrix_type::Index idx_t;
-    auto arg2_mat = arg2.data();
-    auto lobound = arg2.range().lobound_data();
-    std::vector < Eigen::Triplet < T >> datavec;
+    auto arg2_mat = arg2.data ();
+    auto lobound = arg2.range ().lobound_data ();
+    TiledArray::Tensor<T> result (perm * arg1.range (), 0);
+
     // drive Hadamard by the sparse matrix
-    for(idx_t k = 0; k < arg2_mat.outerSize(); ++k)
-      for(typename matrix_type::InnerIterator it(arg2_mat, k); it; ++it) {
-	auto row = it.row();
-	auto col = it.col();
-        datavec.push_back(Eigen::Triplet < T > (row, col, it.value() * arg1(row+lobound[0],col+lobound[1])));
+    for (idx_t k = 0; k < arg2_mat.outerSize (); ++k)
+      for (typename matrix_type::InnerIterator it (arg2_mat, k); it; ++it) {
+        auto row = it.row ();
+        auto col = it.col ();
+        auto drow = row + lobound[0];
+        auto dcol = col + lobound[1];
+        if (identity_perm)
+          result (drow, dcol) = arg1 (drow, dcol) * it.value ();
+        else
+          result (dcol, drow) = arg1 (drow, dcol) * it.value ();
       }
-    matrix_type result(arg2_mat.rows(),arg2_mat.cols());
-    result.setFromTriplets(datavec.begin(), datavec.end());
-    if (not identity_perm) result = result.transpose();
-    return EigenSparseTile<T, TagType>(result, arg2.range());
+
+    return result;
   }
 
-  // sparse_result[i] = dense_arg1[i] * sparse_arg2[i]
-  template <typename T, typename TagType>
-  EigenSparseTile<T, TagType>
-    mult(const TiledArray::Tensor<T>& arg1,
-	 const EigenSparseTile<T, TagType>& arg2) {
-    auto iperm = Permutation::identity(2);
-    return mult(arg1, arg2, iperm);
+// dense_result[i] = dense_arg1[i] * sparse_arg2[i]
+template<typename T, typename TagType>
+  TiledArray::Tensor<T>
+  mult (const TiledArray::Tensor<T>& arg1,
+        const EigenSparseTile<T, TagType>& arg2) {
+    auto iperm = Permutation::identity (2);
+    return mult (arg1, arg2, iperm);
   }
 
-  // sparse_result[i] *= dense_arg1[i]
-  template <typename T, typename TagType>
-  EigenSparseTile<T, TagType>&
-  mult_to(EigenSparseTile<T, TagType>& result,
-	  const TiledArray::Tensor<T>& arg1) {
+// dense_result[i] *= sparse_arg1[i]
+template<typename T, typename TagType>
+  TiledArray::Tensor<T>&
+  mult_to (TiledArray::Tensor<T>& result,
+           const EigenSparseTile<T, TagType>& arg1) {
     TA_ASSERT(result.range() == arg1.range());
 
     typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
-    auto mat = result.data();
-    auto lobound = result.range().lobound_data();
+    auto mat = arg1.data ();
+    auto lobound = arg1.range ().lobound_data ();
     typedef typename matrix_type::Index idx_t;
     // drive Hadamard by the sparse matrix
-    for(idx_t k = 0; k < mat.outerSize(); ++k)
-      for(typename matrix_type::InnerIterator it(mat, k); it; ++it) {
-	auto row = it.row();
-	auto col = it.col();
-        it.valueRef() *= arg1(row+lobound[0],col+lobound[1]);
+    for (idx_t k = 0; k < mat.outerSize (); ++k)
+      for (typename matrix_type::InnerIterator it (mat, k); it; ++it) {
+        auto row = it.row ();
+        auto col = it.col ();
+        result (row + lobound[0], col + lobound[1]) *= it.value ();
       }
     return result;
   }
 
-  // Contraction operation
+// Contraction operation
 
-  // GEMM operation with fused indices as defined by gemm_config:
-  // sparse_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
-  template <typename T, typename TagType>
-  EigenSparseTile<T, TagType>
-  gemm(const TiledArray::Tensor<T>& arg1,
-       const EigenSparseTile<T, TagType>& arg2,
-       const typename std::common_type<typename TiledArray::Tensor<T>::numeric_type,
-                                       typename EigenSparseTile<T, TagType>::numeric_type>::type factor,
-       const TiledArray::math::GemmHelper& gemm_config) {
-    abort();
-    return EigenSparseTile<T, TagType>();
+// GEMM operation with fused indices as defined by gemm_config:
+// dense_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
+template<typename T, typename TagType>
+  TiledArray::Tensor<T>
+  gemm (
+      const TiledArray::Tensor<T>& arg1,
+      const EigenSparseTile<T, TagType>& arg2,
+      const typename std::common_type<
+          typename TiledArray::Tensor<T>::numeric_type,
+          typename EigenSparseTile<T, TagType>::numeric_type>::type factor,
+      const TiledArray::math::GemmHelper& gemm_config) {
+    // only simple outer product implemented at the moment
+    TA_ASSERT(
+        gemm_config.result_rank() == gemm_config.left_rank() + gemm_config.right_rank());
+    TA_ASSERT(gemm_config.left_rank() == arg1.range().rank());
+    TA_ASSERT(gemm_config.right_rank() == arg2.range().rank());
+
+    auto result_range = gemm_config.make_result_range<TiledArray::Range> (
+        arg1.range (), arg2.range ());
+    TiledArray::Tensor<T> result (result_range, 0);
+
+    auto arg1_lobound = arg1.range ().lobound_data ();
+    auto arg1_upbound = arg1.range ().upbound_data ();
+    auto arg1_data = arg1.data ();
+    typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
+    typedef typename matrix_type::Index idx_t;
+    auto arg2_mat = arg2.data ();
+    auto arg2_lobound = arg2.range ().lobound_data ();
+
+    // drive outer product by the sparse matrix
+    for (idx_t k = 0; k < arg2_mat.outerSize (); ++k)
+      for (typename matrix_type::InnerIterator it (arg2_mat, k); it; ++it) {
+        auto row = it.row ();
+        auto col = it.col ();
+        auto value = it.value ();
+        auto drow = row + arg2_lobound[0];
+        auto dcol = col + arg2_lobound[1];
+
+        // make a slice of the result ...
+        // TODO can this be done via outer product of TensorInterfaces?
+//	auto result_slice = result.block(
+//	  {arg1_lobound[0],arg1_lobound[1],drow,dcol},
+//	  {arg1_upbound[0],arg1_upbound[1],drow+1,dcol+1}
+//	);
+
+        // and evaluate the result slice
+        for (auto i0 = arg1_lobound[0]; i0 != arg1_upbound[0]; ++i0) {
+          for (auto i1 = arg1_lobound[1]; i1 != arg1_upbound[1]; ++i1) {
+            result (i0, i1, drow, dcol) = arg1 (i0, i1) * value;
+          }
+        }
+      }
+
+    return result;
   }
 
-  // GEMM operation with fused indices as defined by gemm_config:
-  // sparse_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
-  template <typename T, typename TagType>
-  void gemm(EigenSparseTile<T, TagType>& result,
-	    const TiledArray::Tensor<T>& arg1,
-	    const EigenSparseTile<T, TagType>& arg2,
-	    const typename std::common_type<typename TiledArray::Tensor<T>::numeric_type,
-	    typename EigenSparseTile<T, TagType>::numeric_type>::type factor,
-	    const TiledArray::math::GemmHelper& gemm_config) {
-    abort();
+// GEMM operation with fused indices as defined by gemm_config:
+// dense_result[i,j] = dense_arg1[i,k] * sparse_arg2[k,j]
+template<typename T, typename TagType>
+  void
+  gemm (
+      TiledArray::Tensor<T>& result,
+      const TiledArray::Tensor<T>& arg1,
+      const EigenSparseTile<T, TagType>& arg2,
+      const typename std::common_type<
+          typename TiledArray::Tensor<T>::numeric_type,
+          typename EigenSparseTile<T, TagType>::numeric_type>::type factor,
+      const TiledArray::math::GemmHelper& gemm_config) {
+    abort ();
   }
-
-#if 0
-  // result[i] = (arg1[i] + arg2[i]) * factor
-  MyTensor add(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const MyTensor::value_type factor);
-  // result[i] = arg[i] + value
-  MyTensor add(const MyTensor& arg,
-      const MyTensor::value_type& value);
-
-  // result[perm ^ i] = (arg1[i] + arg2[i]) * factor
-  MyTensor add(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const MyTensor::numeric_type factor,
-      const TiledArray::Permutation& perm);
-  // result[perm ^ i] = arg[i] + value
-  MyTensor add(const MyTensor& arg,
-      const MyTensor::value_type& value,
-      const TiledArray::Permutation& perm);
-
-  // (result[i] += arg[i]) *= factor
-  void add_to(MyTensor& result,
-      const MyTensor& arg,
-      const MyTensor::numeric_type factor);
-  // result[i] += value
-  void add_to(MyTensor& result,
-      const MyTensor::value_type& value);
-
-  // Subtraction operations
-
-  // result[i] = arg1[i] - arg2[i]
-  MyTensor subt(const MyTensor& arg1,
-      const MyTensor& arg2);
-  // result[i] = (arg1[i] - arg2[i]) * factor
-  MyTensor subt(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const MyTensor::numeric_type factor);
-  // result[i] = arg[i] - value
-  MyTensor subt(const MyTensor& arg,
-      const MyTensor::value_type& value);
-
-  // result[perm ^ i] = arg1[i] - arg2[i]
-  MyTensor subt(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const TiledArray::Permutation& perm);
-  // result[perm ^ i] = (arg1[i] - arg2[i]) * factor
-  MyTensor subt(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const MyTensor::numeric_type factor,
-      const TiledArray::Permutation& perm);
-  // result[perm ^ i] = arg[i] - value
-  MyTensor subt(const MyTensor& arg,
-      const MyTensor::value_type value,
-      const TiledArray::Permutation& perm);
-
-  // result[i] -= arg[i]
-  void subt_to(MyTensor& result,
-      const MyTensor& arg);
-  // (result[i] -= arg[i]) *= factor
-  void subt_to(MyTensor& result,
-      const MyTensor& arg,
-      const MyTensor::numeric_type factor);
-  // result[i] -= value
-  void subt_to(MyTensor& result,
-      const MyTensor::value_type& value);
-
-  // Multiplication operations
-
-  // result[i] = arg1[i] * arg2[i]
-  MyTensor mult(const MyTensor& arg1,
-      const MyTensor& arg2);
-  // result[i] = (arg1[i] * arg2[i]) * factor
-  MyTensor mult(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const MyTensor::numeric_type factor);
-
-  // result[perm ^ i] = arg1[i] * arg2[i]
-  MyTensor mult(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const TiledArray::Permutation& perm);
-  // result[perm^ i] = (arg1[i] * arg2[i]) * factor
-  MyTensor mult(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const MyTensor::numeric_type factor,
-      const TiledArray::Permutation& perm);
-
-  // result[i] *= arg[i]
-  void mult_to(MyTensor& result,
-      const MyTensor& arg);
-  // (result[i] *= arg[i]) *= factor
-  void mult_to(MyTensor& result,
-      const MyTensor& arg,
-      const MyTensor::numeric_type factor);
-
-  // Negation operations
-
-  // result[i] = -(arg[i])
-  MyTensor neg(const MyTensor& arg);
-  // result[perm ^ i] = -(arg[i])
-  MyTensor neg(const MyTensor& arg,
-      const TiledArray::Permutation& perm);
-  // result[i] = -(result[i])
-  void neg_to(MyTensor& result);
-
-  // Contraction operations
-
-  // GEMM operation with fused indices as defined by gemm_config; multiply arg1 by arg2, return the result
-  MyTensor gemm(const MyTensor& arg1,
-      const MyTensor& arg2,
-      const MyTensor::numeric_type factor,
-      const TiledArray::math::GemmHelper& gemm_config);
-
-  // GEMM operation with fused indices as defined by gemm_config; multiply left by right, store to result
-  void gemm(MyTensor& result,
-      const MyTensor& arg1,
-      const MyTensor& arg2,
-      const MyTensor::numeric_type factor,
-      const TiledArray::math::GemmHelper& gemm_config);
 #endif
 
 // Reduction operations

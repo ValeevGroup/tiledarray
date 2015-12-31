@@ -42,10 +42,12 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
   MixedExpressionsFixture() :
     u(*GlobalFixture::world, trange2),
     v(*GlobalFixture::world, trange2),
-    w(*GlobalFixture::world, trange2)
+    w(*GlobalFixture::world, trange2),
+    u2(*GlobalFixture::world, trange4)
   {
     random_fill(u);
     random_fill(v);
+    u2.fill(0);
     GlobalFixture::world->gop.fence();
   }
 
@@ -134,8 +136,10 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
 
   const static TiledRange trange1;
   const static TiledRange trange2;
+  const static TiledRange trange4;
   TArrayD u;
   TArrayD u1;
+  TArrayD u2;
   TArrayDS1 v;
   TArrayDS1 v1;
   TArrayDS2 w;
@@ -147,6 +151,8 @@ const TiledRange MixedExpressionsFixture::trange1 =
 const TiledRange MixedExpressionsFixture::trange2 =
     { {0, 2, 5, 10, 17, 28, 41},
       {0, 3, 6, 11, 18, 29, 42} };
+const TiledRange MixedExpressionsFixture::trange4 =
+    { trange2.data()[0], trange2.data()[1], trange2.data()[0], trange2.data()[1] };
 
 BOOST_FIXTURE_TEST_SUITE( mixed_expressions_suite, MixedExpressionsFixture )
 
@@ -173,15 +179,30 @@ BOOST_AUTO_TEST_CASE( add_factories )
 
 BOOST_AUTO_TEST_CASE( mult_factories )
 {
+#if MULT_DENSE_SPARSE_TO_SPARSE
   // compile error: dense * sparse = sparse, not dense
-  // BOOST_CHECK_NO_THROW(u1("a,b") = u("a,b") * v("a,b"));
-
-  // compile error: dense * sparse2 = sparse1, not sparse2
-  //BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") * v("a,b"));
+  //BOOST_CHECK_NO_THROW(u1("a,b") = u("a,b") * v("a,b"));
 
   // ok
   BOOST_CHECK_NO_THROW(v1("a,b") = u("a,b") * v("a,b"));
+#else
+  // ok
+  BOOST_CHECK_NO_THROW(u1("a,b") = u("a,b") * v("a,b"));
 
+  // compile error: dense * sparse = dense, not sparse
+  //BOOST_CHECK_NO_THROW(v1("a,b") = u("a,b") * v("a,b"));
+#endif
+
+  // compile error: dense * sparse1 != sparse2
+  //BOOST_CHECK_NO_THROW(w("a,b") = u("a,b") * v("a,b"));
+}
+
+BOOST_AUTO_TEST_CASE( outer_product_factories )
+{
+#if !MULT_DENSE_SPARSE_TO_SPARSE
+  // ok
+  BOOST_CHECK_NO_THROW(u2("a,b,c,d") += u("a,b") * v("c,d"));
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
