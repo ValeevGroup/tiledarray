@@ -36,26 +36,29 @@ namespace TiledArray {
 
   /// This multiplication will multiply the content two tiles, and accepts
   /// an optional permute argument.
+  /// \tparam Result The result tile type
   /// \tparam Left The left-hand argument type
   /// \tparam Right The right-hand argument type
-  /// \tparam LeftConsumable If \c true , will try to consume the left-hand argument when necessary.
-  /// \tparam RightConsumable If \c true , will try to consume the right-hand argument when necessary.
-  /// \note Input tiles can be consumed only if their type matches the result type.
-  template <typename Left, typename Right, bool LeftConsumable,
-      bool RightConsumable>
+  /// \tparam LeftConsumable If `true`, the left-hand tile is a temporary and
+  /// may be consumed
+  /// \tparam RightConsumable If `true`, the right-hand tile is a temporary and
+  /// may be consumed
+  /// \note Input tiles can be consumed only if their type matches the result
+  /// type.
+  template <typename Result, typename Left, typename Right,
+      bool LeftConsumable, bool RightConsumable>
   class Mult {
   public:
 
-    typedef Mult<Left, Right, LeftConsumable, RightConsumable> Mult_;
+    typedef Mult<Result, Left, Right, LeftConsumable, RightConsumable> Mult_;
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
-    /// result type is uniquely determined by return of freestanding mult(Left,Right) function
-    typedef decltype(mult(std::declval<left_type>(), std::declval<right_type>())) result_type;
+    typedef Result result_type; ///< The result tile type
 
-    /// indicates whether it is *possible* to consume the left tile
+    /// Indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =
         LeftConsumable && std::is_same<result_type, left_type>::value;
-    /// indicates whether it is *possible* to consume the right tile
+    /// Indicates whether it is *possible* to consume the right tile
     static constexpr bool right_is_consumable =
         RightConsumable && std::is_same<result_type, right_type>::value;
 
@@ -87,8 +90,8 @@ namespace TiledArray {
     }
 
     // Non-permuting tile evaluation functions
-    // The compiler will select the correct functions based on the consumability
-    // of the arguments.
+    // The compiler will select the correct functions based on the
+    // consumability of the arguments.
 
     template <bool LC, bool RC,
         typename std::enable_if<!(LC || RC)>::type* = nullptr>
@@ -199,38 +202,41 @@ namespace TiledArray {
 
   /// Tile scale-multiplication operation
 
-  /// This multiplication operation will multiply the content two tiles and apply a
-  /// permutation to the result tensor. If no permutation is given or the
-  /// permutation is null, then the result is not permuted.
+  /// This multiplication operation will multiply the content two tiles and
+  /// apply a permutation to the result tensor. If no permutation is given or
+  /// the permutation is null, then the result is not permuted.
+  /// \tparam Result The result tile type
   /// \tparam Left The left-hand argument type
   /// \tparam Right The right-hand argument type
   /// \tparam Scalar The scaling factor type
-  /// \tparam LeftConsumable If \c true , will try to consume the left-hand argument when necessary.
-  /// \tparam RightConsumable If \c true , will try to consume the right-hand argument when necessary.
-  /// \note Input tiles can be consumed only if their type matches the result type.
-  template <typename Left, typename Right, typename Scalar, bool LeftConsumable,
-      bool RightConsumable>
+  /// \tparam LeftConsumable If `true`, the left-hand tile is a temporary and
+  /// may be consumed
+  /// \tparam RightConsumable If `true`, the right-hand tile is a temporary and
+  /// may be consumed
+  /// \note Input tiles can be consumed only if their type matches the result
+  /// type.
+  template <typename Result, typename Left, typename Right, typename Scalar,
+      bool LeftConsumable, bool RightConsumable>
   class ScalMult {
   public:
 
-    typedef ScalMult<Left, Right, Scalar, LeftConsumable, RightConsumable> ScalMult_;
+    typedef ScalMult<Result, Left, Right, Scalar, LeftConsumable,
+        RightConsumable> ScalMult_; ///< This class type
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
     typedef Scalar scalar_type; ///< Scaling factor type
-    /// result type is uniquely determined by return of freestanding mult(Left,Right,scalar_type) function
-    typedef decltype(mult(std::declval<left_type>(), std::declval<right_type>(),
-        std::declval<scalar_type>())) result_type;
+    typedef Result result_type; ///< Result tile type
 
-    /// indicates whether it is *possible* to consume the left tile
+    /// Indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =
         LeftConsumable && std::is_same<result_type, left_type>::value;
-    /// indicates whether it is *possible* to consume the right tile
+    /// Indicates whether it is *possible* to consume the right tile
     static constexpr bool right_is_consumable =
         RightConsumable && std::is_same<result_type, right_type>::value;
 
   private:
 
-    scalar_type factor_;
+    scalar_type factor_; ///< The scaling factor
 
     // Permuting tile evaluation function
     // These operations cannot consume the argument tile since this operation
@@ -258,8 +264,8 @@ namespace TiledArray {
     }
 
     // Non-permuting tile evaluation functions
-    // The compiler will select the correct functions based on the consumability
-    // of the arguments.
+    // The compiler will select the correct functions based on the
+    // consumability of the arguments.
 
     template <bool LC, bool RC,
         typename std::enable_if<!(LC || RC)>::type* = nullptr>
