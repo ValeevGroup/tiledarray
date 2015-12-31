@@ -69,7 +69,6 @@ set(ta_test_src_files  ta_test.cpp
     dist_op_communicator.cpp
     tile_op_noop.cpp
     tile_op_scal.cpp
-    tile_op_neg.cpp
     dist_eval_array_eval.cpp
     dist_eval_unary_eval.cpp
     tile_op_add.cpp

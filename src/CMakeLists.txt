@@ -122,7 +122,6 @@ TiledArray/tile_op/binary_wrapper.h
 TiledArray/tile_op/cast.h
 TiledArray/tile_op/contract_reduce.h
 TiledArray/tile_op/mult.h
-TiledArray/tile_op/neg.h
 TiledArray/tile_op/noop.h
 TiledArray/tile_op/reduce_wrapper.h
 TiledArray/tile_op/scal.h
