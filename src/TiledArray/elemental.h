@@ -160,7 +160,7 @@ namespace TiledArray {
 
 # include <El.hpp>
 
-# error "TA<->Elemental conversions have not been reimplemented for recent Elemental API; check back soon at " TILEDARRAY_PACKAGE_URL
+//# error "TA<->Elemental conversions have not been reimplemented for recent Elemental API; check back soon"
 
 #else
 # error "TILEDARRAY_HAS_ELEMENTAL set but neither HAVE_EL_H nor HAVE_ELEMENTAL_H set: file an issue at " TILEDARRAY_PACKAGE_URL
