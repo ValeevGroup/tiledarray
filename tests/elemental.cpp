@@ -21,6 +21,8 @@
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 
+#ifdef HAVE_ELEMENTAL_H
+
 #include "TiledArray/elemental.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
@@ -111,5 +113,11 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#else // HAVE_ELEMENTAL_H
+
+# warning "TA<->Elemental conversions have not been reimplemented for recent Elemental API; check back soon"
+
+#endif // HAVE_EL_H
 
 #endif // TILEDARRAY_HAS_ELEMENTAL
