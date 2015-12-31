@@ -57,10 +57,10 @@ namespace TiledArray {
     typedef Right right_type; ///< Right-hand argument base type
     typedef Result result_type; ///< The result tile type
 
-    /// indicates whether it is *possible* to consume the left tile
+    /// Indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =
         LeftConsumable && std::is_same<result_type, left_type>::value;
-    /// indicates whether it is *possible* to consume the right tile
+    /// Indicates whether it is *possible* to consume the right tile
     static constexpr bool right_is_consumable =
         RightConsumable && std::is_same<result_type, right_type>::value;
 
@@ -229,24 +229,23 @@ namespace TiledArray {
   class ScalAdd {
   public:
 
-    typedef ScalAdd<Result, Left, Right, Scalar, LeftConsumable, RightConsumable> ScalAdd_;
+    typedef ScalAdd<Result, Left, Right, Scalar, LeftConsumable,
+        RightConsumable> ScalAdd_; ///< This class type
     typedef Left left_type; ///< Left-hand argument base type
     typedef Right right_type; ///< Right-hand argument base type
     typedef Scalar scalar_type; ///< Scaling factor type
-    typedef Result result_type;
-//    typedef decltype(add(std::declval<left_type>(), std::declval<right_type>(),
-//        std::declval<scalar_type>())) result_type;
+    typedef Result result_type; ///< Result tile type
 
-    /// indicates whether it is *possible* to consume the left tile
+    /// Indicates whether it is *possible* to consume the left tile
     static constexpr bool left_is_consumable =
         LeftConsumable && std::is_same<result_type, left_type>::value;
-    /// indicates whether it is *possible* to consume the right tile
+    /// Indicates whether it is *possible* to consume the right tile
     static constexpr bool right_is_consumable =
         RightConsumable && std::is_same<result_type, right_type>::value;
 
   private:
 
-    scalar_type factor_;
+    scalar_type factor_; ///< The scaling factor
 
     // Permuting tile evaluation function
     // These operations cannot consume the argument tile since this operation
@@ -274,8 +273,8 @@ namespace TiledArray {
     }
 
     // Non-permuting tile evaluation functions
-    // The compiler will select the correct functions based on the consumability
-    // of the arguments.
+    // The compiler will select the correct functions based on the
+    // consumability of the arguments.
 
     template <bool LC, bool RC,
         typename std::enable_if<!(LC || RC)>::type* = nullptr>

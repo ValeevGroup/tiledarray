@@ -68,7 +68,8 @@ namespace TiledArray {
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = true;
       static constexpr unsigned int leaves =
@@ -87,20 +88,27 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type; ///< Tile scalar type
-      typedef TiledArray::ScalAdd<Result, typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::ScalAdd<Result,
+          typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, scalar_type,
-          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
-      typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
-      typedef typename op_type::result_type value_type; ///< The result tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable>
+          op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type>
+          op_type; ///< The tile operation type
+      typedef typename op_type::result_type
+          value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type;  ///< Evaluation tile type
       typedef typename Left::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = is_consumable_tile<eval_type>::value;
       static constexpr unsigned int leaves =
