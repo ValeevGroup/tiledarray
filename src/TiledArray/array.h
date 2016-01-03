@@ -228,10 +228,21 @@ namespace TiledArray {
       return TiledArray::clone(*this);
     }
 
-    static void wait_for_lazy_cleanup(World& world, const double timeout = 60.0) {
+    /// Wait for lazy tile cleanup
+
+    /// This function will wait for cleanup of tile data that has been
+    /// scheduled for lazy deletion. Ready tasks will be executed by this
+    /// function while waiting for cleanup. This function will timeout if
+    /// the wait time exceeds the timeout specified in the `MAD_WAIT_TIMEOUT`
+    /// environment variable. The default timeout is 900 seconds.
+    /// \param world The world that to be used to execute ready tasks.
+    /// \throw madness::MadnessException When timeout has been exceeded.
+    static void wait_for_lazy_cleanup(World& world = World::get_default(),
+        const double = 60.0)
+    {
       try {
-        madness::ThreadPool::await([&]() { return (cleanup_counter_ == 0); }, true);
-      } catch(std::runtime_error& e) {
+        world.await([&]() { return (cleanup_counter_ == 0); }, true);
+      } catch(...) {
         printf("%i: Array lazy cleanup timeout with %i pending cleanup(s)\n",
             world.rank(), int(cleanup_counter_));
         throw;
