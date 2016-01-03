@@ -30,19 +30,21 @@ namespace TiledArray {
 
   /// Tile shift operation
 
-  /// This no operation will shift the range of the tile and/or apply a
+  /// This tile operation will shift the range of the tile and/or apply a
   /// permutation to the result tensor.
-  /// \tparam Result The result type
+  /// \tparam Result The tile result type
   /// \tparam Arg The argument type
-  /// \tparam Consumable Flag that is \c true when Arg is consumable
-  template <typename Arg, bool Consumable>
+  /// \tparam Consumable If `true`, the tile is a temporary and may be consumed
+  /// \note Input tiles can be consumed only if their type matches the result
+  /// type.
+  template <typename Result, typename Arg, bool Consumable>
   class Shift {
   public:
-    typedef Shift<Arg, Consumable> Shift_; ///< This object type
+    typedef Shift<Result, Arg, Consumable> Shift_; ///< This object type
     typedef Arg argument_type; ///< The argument type
-    typedef decltype(shift(std::declval<argument_type>(), std::declval<std::vector<long> >()))
-        result_type; ///< The result tile type
+    typedef Result result_type; ///< The result tile type
 
+    /// Indicates whether it is *possible* to consume the left tile
     static constexpr bool is_consumable =
         Consumable && std::is_same<result_type, argument_type>::value;
 
@@ -133,20 +135,20 @@ namespace TiledArray {
 
   /// Tile shift operation
 
-  /// This no operation will shift the range of the tile and/or apply a
+  /// This tile operation will shift the range of the tile and/or apply a
   /// permutation to the result tensor.
   /// \tparam Result The result type
   /// \tparam Arg The argument type
+  /// \tparam Scalar The scaling factor type
   /// \tparam Consumable Flag that is \c true when Arg is consumable
-  template <typename Arg, typename Scalar, bool Consumable>
+  template <typename Result, typename Arg, typename Scalar, bool Consumable>
   class ScalShift {
   public:
-    typedef ScalShift<Arg, Scalar, Consumable> ScalShift_; ///< This object type
+    typedef ScalShift<Result, Arg, Scalar, Consumable>
+        ScalShift_; ///< This object type
     typedef Arg argument_type; ///< The argument type
     typedef Scalar scalar_type; ///< The scaling factor type
-    typedef decltype(shift(scale(std::declval<argument_type>(),
-        std::declval<scalar_type>()), std::declval<std::vector<long> >()))
-        result_type; ///< The result tile type
+    typedef Result result_type; ///< The result tile type
 
     static constexpr bool is_consumable =
         Consumable && std::is_same<result_type, argument_type>::value;
