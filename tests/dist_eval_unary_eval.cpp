@@ -35,7 +35,7 @@ using namespace TiledArray::expressions;
 // Array evaluator fixture
 struct UnaryEvalImplFixture : public TiledRangeFixture {
   typedef TArrayI ArrayN;
-  typedef Noop<ArrayN::value_type, true> array_op_base_type;
+  typedef Noop<ArrayN::value_type, ArrayN::value_type, true> array_op_base_type;
   typedef TiledArray::detail::UnaryWrapper<array_op_base_type> array_op_type;
   typedef TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<ArrayN::value_type,
       array_op_type>, DensePolicy> dist_eval_type;
@@ -57,10 +57,10 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
 
   ~UnaryEvalImplFixture() { }
 
-  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  static TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >
   make_array_noop(const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
-        Noop<TensorI, true>(), perm);
+    return TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >(
+        Noop<TensorI, TensorI, true>(), perm);
   }
 
 

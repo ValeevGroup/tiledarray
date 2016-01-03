@@ -35,14 +35,15 @@ namespace TiledArray {
   /// This no operation will return the original or apply a permutation to the
   /// result tensor. If no permutation is given or the permutation is null,
   /// then the result is not permuted.
+  /// \tparam Result The result tile type
   /// \tparam Arg The argument type
   /// \tparam Consumable Flag that is \c true when Arg is consumable
-  template <typename Arg, bool Consumable>
+  template <typename Result, typename Arg, bool Consumable>
   class Noop {
   public:
-    typedef Noop<Arg, Consumable> Noop_; ///< This object type
+    typedef Noop<Result, Arg, Consumable> Noop_; ///< This object type
     typedef Arg argument_type; ///< The argument type
-    typedef Arg result_type; ///< The result tile type
+    typedef Result result_type; ///< The result tile type
 
     static constexpr bool is_consumable = Consumable;
 

@@ -33,7 +33,7 @@
 using namespace TiledArray;
 
 struct ContractionEvalFixture : public SparseShapeFixture {
-  typedef Noop<TensorI, true> array_base_op_type;
+  typedef Noop<TensorI, TensorI, true> array_base_op_type;
   typedef detail::UnaryWrapper<array_base_op_type> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<TensorI, array_op_type>,
       DensePolicy> array_eval_type;
@@ -79,10 +79,10 @@ struct ContractionEvalFixture : public SparseShapeFixture {
 
 
 
-  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  static TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >
   make_array_noop(const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
-        Noop<TensorI, true>(), perm);
+    return TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >(
+        Noop<TensorI, TensorI, true>(), perm);
   }
 
 

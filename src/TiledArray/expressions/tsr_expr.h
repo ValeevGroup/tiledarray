@@ -46,7 +46,8 @@ namespace TiledArray {
           numeric_type; ///< Array base numeric type
       typedef TiledArray::detail::scalar_t<Array>
           scalar_type; ///< Array base scalar type
-      typedef TsrEngine<Array> engine_type; ///< Expression engine type
+      typedef TsrEngine<Array, typename Array::eval_type>
+          engine_type; ///< Expression engine type
     };
 
     template <typename Array>
@@ -56,7 +57,8 @@ namespace TiledArray {
           numeric_type; ///< Array base numeric type
       typedef TiledArray::detail::scalar_t<Array>
           scalar_type; ///< Array base scalar type
-      typedef TsrEngine<Array> engine_type; ///< Expression engine type
+      typedef TsrEngine<Array, typename Array::eval_type>
+          engine_type; ///< Expression engine type
     };
 
     /// Expression wrapper for array objects
@@ -67,8 +69,10 @@ namespace TiledArray {
     public:
       typedef TsrExpr<Array> TsrExpr_; ///< This class type
       typedef Expr<TsrExpr_> Expr_; ///< Base class type
-      typedef typename ExprTrait<TsrExpr_>::array_type array_type; ///< The array type
-      typedef typename ExprTrait<TsrExpr_>::engine_type engine_type; ///< Expression engine type
+      typedef typename ExprTrait<TsrExpr_>::array_type
+          array_type; ///< The array type
+      typedef typename ExprTrait<TsrExpr_>::engine_type
+          engine_type; ///< Expression engine type
 
     private:
 

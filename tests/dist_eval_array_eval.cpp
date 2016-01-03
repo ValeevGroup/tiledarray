@@ -48,10 +48,10 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
   ~ArrayEvalImplFixture() { }
 
 
-  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  static TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >
   make_array_noop(const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
-        Noop<TensorI, true>(), perm);
+    return TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >(
+        Noop<TensorI, TensorI, true>(), perm);
   }
 
 
