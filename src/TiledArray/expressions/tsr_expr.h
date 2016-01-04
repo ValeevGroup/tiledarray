@@ -66,6 +66,12 @@ namespace TiledArray {
       typedef TsrEngine<Array, true> engine_type; ///< Expression engine type
     };
 
+
+    // This is here to catch errors in expression types. It should not be
+    // possible to construct this type.
+    template <typename Array>
+    struct ExprTrait<TsrExpr<const Array, false> >; // <----- This should never happen!
+
     /// Expression wrapper for array objects
 
     /// \tparam Array The \c TiledArray::Array type

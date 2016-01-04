@@ -1359,6 +1359,65 @@ BOOST_AUTO_TEST_CASE( cont_plus_reduce )
   }
 }
 
+BOOST_AUTO_TEST_CASE( no_alias_plus_reduce )
+{
+  // Construct the tiled range
+  std::array<std::size_t, 6> tiling1 = {{ 0, 1, 2, 3, 4, 5 }};
+  std::array<std::size_t, 2> tiling2 = {{ 0, 40 }};
+  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
+  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
+  std::array<TiledRange1, 4> tiling4 = {{ tr1_1, tr1_2, tr1_1, tr1_1 }};
+  TiledRange trange(tiling4.begin(), tiling4.end());
+
+  const std::size_t m = 5;
+  const std::size_t k = 40 * 5 * 5;
+  const std::size_t n = 5;
+
+  // Construct the test arrays
+  TArrayI arg1(*GlobalFixture::world, trange);
+  TArrayI arg2(*GlobalFixture::world, trange);
+  TArrayI arg3(*GlobalFixture::world, trange);
+  TArrayI arg4(*GlobalFixture::world, trange);
+
+  // Construct the reference matrices
+  TiledArray::EigenMatrixXi arg1_ref(m, k);
+  TiledArray::EigenMatrixXi arg2_ref(n, k);
+  TiledArray::EigenMatrixXi arg3_ref(m, k);
+  TiledArray::EigenMatrixXi arg4_ref(n, k);
+
+  // Initialize input
+  rand_fill_matrix_and_array(arg1_ref, arg1, 23);
+  rand_fill_matrix_and_array(arg2_ref, arg2, 42);
+  rand_fill_matrix_and_array(arg3_ref, arg3, 79);
+  rand_fill_matrix_and_array(arg4_ref, arg4, 19);
+
+  // Compute the reference result
+  TiledArray::EigenMatrixXi result_ref = 2 * (arg1_ref * arg2_ref.transpose() +
+                                              arg1_ref * arg4_ref.transpose() +
+                                              arg3_ref * arg4_ref.transpose() +
+                                              arg3_ref * arg2_ref.transpose());
+
+  // Compute the result to be tested
+  TArrayI result;
+  result("x,y") =             arg1("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y").no_alias() += arg3("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y").no_alias() += arg1("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y").no_alias() += arg3("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y").no_alias() += arg3("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y").no_alias() += arg1("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y").no_alias() += arg3("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y").no_alias() += arg1("x,i,j,k") * arg4("y,i,j,k");
+
+  // Check the result
+  for(TArrayI::iterator it = result.begin(); it != result.end(); ++it) {
+    const TArrayI::value_type tile = *it;
+    for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
+      const std::size_t elem_index = result.elements().ordinal(*rit);
+      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE( outer_product )
 {
   // Generate Eigen matrices from input arrays.
