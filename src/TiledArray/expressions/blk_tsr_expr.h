@@ -271,17 +271,17 @@ namespace TiledArray {
       /// Expression assignment operator
 
       /// \param other The expression that will be assigned to this array
-      BlkTsrExpr_& operator=(const BlkTsrExpr_& other) {
+      reference operator=(const BlkTsrExpr_& other) {
         other.eval_to(*this);
-        return *this;
+        return BlkTsrExprBase_::array_;
       }
 
       /// Expression assignment operator
 
       /// \param other The expression that will be assigned to this array
-      BlkTsrExpr_& operator=(BlkTsrExpr_&& other) {
+      reference operator=(BlkTsrExpr_&& other) {
         other.eval_to(*this);
-        return *this;
+        return BlkTsrExprBase_::array_;
       }
 
       /// Expression assignment operator
@@ -289,12 +289,12 @@ namespace TiledArray {
       /// \tparam D The derived expression type
       /// \param other The expression that will be assigned to this array
       template <typename D>
-      BlkTsrExpr_& operator=(const Expr<D>& other) {
+      reference operator=(const Expr<D>& other) {
         static_assert(TiledArray::expressions::is_aliased<D>::value,
             "no_alias() expressions are not allowed on the right-hand side of "
             "the assignment operator.");
         other.derived().eval_to(*this);
-        return *this;
+        return BlkTsrExprBase_::array_;
       }
 
       /// Expression plus-assignment operator
@@ -302,7 +302,7 @@ namespace TiledArray {
       /// \tparam D The derived expression type
       /// \param other The expression that will be added to this array
       template <typename D>
-      BlkTsrExpr_& operator+=(const Expr<D>& other) {
+      reference operator+=(const Expr<D>& other) {
         static_assert(TiledArray::expressions::is_aliased<D>::value,
             "no_alias() expressions are not allowed on the right-hand side of "
             "the assignment operator.");
@@ -314,7 +314,7 @@ namespace TiledArray {
       /// \tparam D The derived expression type
       /// \param other The expression that will be subtracted from this array
       template <typename D>
-      BlkTsrExpr_& operator-=(const Expr<D>& other) {
+      reference operator-=(const Expr<D>& other) {
         static_assert(TiledArray::expressions::is_aliased<D>::value,
             "no_alias() expressions are not allowed on the right-hand side of "
             "the assignment operator.");
@@ -326,7 +326,7 @@ namespace TiledArray {
       /// \tparam D The derived expression type
       /// \param other The expression that will scale this array
       template <typename D>
-      BlkTsrExpr_& operator*=(const Expr<D>& other) {
+      reference operator*=(const Expr<D>& other) {
         static_assert(TiledArray::expressions::is_aliased<D>::value,
             "no_alias() expressions are not allowed on the right-hand side of "
             "the assignment operator.");
