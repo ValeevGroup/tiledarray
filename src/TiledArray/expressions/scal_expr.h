@@ -111,6 +111,9 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalExpr<Arg, Scalar>
     operator*(const Expr<Arg>& expr, const Scalar& factor) {
+      static_assert(TiledArray::expressions::is_aliased<Arg>::value,
+          "no_alias() expressions are not allowed on the right-hand side of "
+          "the assignment operator.");
       return ScalExpr<Arg, Scalar>(expr.derived(), factor);
     }
 
@@ -127,6 +130,9 @@ namespace TiledArray {
         >::type* = nullptr>
     inline ScalExpr<Arg, Scalar>
     operator*(const Scalar& factor, const Expr<Arg>& expr) {
+      static_assert(TiledArray::expressions::is_aliased<Arg>::value,
+          "no_alias() expressions are not allowed on the right-hand side of "
+          "the assignment operator.");
       return ScalExpr<Arg, Scalar>(expr.derived(), factor);
     }
 
@@ -170,6 +176,9 @@ namespace TiledArray {
     template <typename Arg>
     inline ScalExpr<Arg, typename ExprTrait<Arg>::scalar_type>
     operator-(const Expr<Arg>& expr) {
+      static_assert(TiledArray::expressions::is_aliased<Arg>::value,
+          "no_alias() expressions are not allowed on the right-hand side of "
+          "the assignment operator.");
       return ScalExpr<Arg, typename ExprTrait<Arg>::scalar_type>(expr.derived(), -1);
     }
 

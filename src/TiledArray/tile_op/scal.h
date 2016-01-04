@@ -99,7 +99,7 @@ namespace TiledArray {
 
     /// \param arg The tile argument
     /// \param perm The permutation applied to the result tile
-    /// \return A permuted and negated copy of `arg`
+    /// \return A permuted and scaled copy of `arg`
     result_type
     operator()(const argument_type& arg, const Permutation& perm) const {
       return eval(arg, perm);
@@ -109,7 +109,7 @@ namespace TiledArray {
 
     /// \tparam A The tile argument type
     /// \param arg The tile argument
-    /// \return A negated copy of `arg`
+    /// \return A scaled copy of `arg`
     template <typename A>
     result_type operator()(A&& arg) const {
       return Scal_::template eval<is_consumable &&
@@ -120,7 +120,7 @@ namespace TiledArray {
     /// Explicit consuming scale operation
 
     /// \param arg The tile argument
-    /// \return In-place negated `arg`
+    /// \return In-place scaled `arg`
     result_type consume(argument_type& arg) const {
       return Scal_::template eval<is_consumable_tile<Arg>::value>(arg);
     }

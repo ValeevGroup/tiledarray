@@ -42,8 +42,9 @@ namespace TiledArray {
 
     // Forward declaration
     template <typename> struct ExprTrait;
-    template <typename> class TsrExpr;
-    template <typename> class BlkTsrExpr;
+    template <typename, bool> class TsrExpr;
+    template <typename, bool> class BlkTsrExpr;
+    template <typename> struct is_aliased;
 
 
     /// Base class for expression evaluation
@@ -60,7 +61,7 @@ namespace TiledArray {
 
     private:
 
-      Expr<Derived>& operator=(const Expr<Derived>&);
+      Expr<Derived>& operator=(const Expr<Derived>&) = delete;
 
       /// Task function used to evaluate lazy tiles
 
@@ -186,9 +187,10 @@ namespace TiledArray {
       /// where the content of \c tsr will be replace by the results of the
       /// evaluated tensor expression.
       /// \tparam A The array type
+      /// \tparam Alias Tile alias flag
       /// \param tsr The tensor to be assigned
-      template <typename A>
-      void eval_to(TsrExpr<A>& tsr) const {
+      template <typename A, bool Alias>
+      void eval_to(TsrExpr<A, Alias>& tsr) const {
         static_assert(! is_lazy_tile<typename A::value_type>::value,
             "Assignment to an array of lazy tiles is not supported.");
 
@@ -198,7 +200,7 @@ namespace TiledArray {
             World::get_default());
 
         // Get the output process map.
-        std::shared_ptr<typename TsrExpr<A>::array_type::pmap_interface> pmap;
+        std::shared_ptr<typename TsrExpr<A, Alias>::array_type::pmap_interface> pmap;
         if(tsr.array().is_initialized())
           pmap = tsr.array().get_pmap();
 
@@ -238,9 +240,10 @@ namespace TiledArray {
       /// where the content of \c tsr will be replaced by the results of the
       /// evaluated tensor expression.
       /// \tparam A The array type
+      /// \tparam Alias Tile alias flag
       /// \param tsr The tensor to be assigned
-      template <typename A>
-      void eval_to(BlkTsrExpr<A>& tsr) const {
+      template <typename A, bool Alias>
+      void eval_to(BlkTsrExpr<A, Alias>& tsr) const {
         typedef TiledArray::Shift<typename std::decay<A>::type::value_type,
             typename EngineTrait<engine_type>::eval_type,
             EngineTrait<engine_type>::consumable> shift_op_type;
@@ -267,7 +270,7 @@ namespace TiledArray {
         World& world = tsr.array().get_world();
 
         // Get the output process map.
-        std::shared_ptr<typename TsrExpr<A>::array_type::pmap_interface> pmap;
+        std::shared_ptr<typename BlkTsrExpr<A, Alias>::array_type::pmap_interface> pmap;
 
         // Get result variable list.
         VariableList target_vars(tsr.vars());
@@ -381,6 +384,10 @@ namespace TiledArray {
       reduce(const Expr<D>& right_expr, const Op& op,
           World& world = World::get_default()) const
       {
+        static_assert(is_aliased<D>::value,
+            "no_alias() expressions are not allowed on the right-hand side of "
+            "the assignment operator.");
+
         // Typedefs
         typedef madness::TaggedKey<madness::uniqueidT, ExpressionReduceTag> key_type;
         typedef TiledArray::math::BinaryReduceWrapper<typename engine_type::value_type,

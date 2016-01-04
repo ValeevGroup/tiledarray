@@ -33,39 +33,45 @@ namespace TiledArray {
   namespace expressions {
 
     // Forward declaration
-    template <typename> class TsrExpr;
-    template <typename> class BlkTsrExpr;
+    template <typename, bool> class TsrExpr;
+    template <typename, bool> class BlkTsrExpr;
     template <typename, typename> class ScalBlkTsrExpr;
 
     template <typename Array>
-    using ConjBlkTsrExpr = ScalBlkTsrExpr<Array, TiledArray::detail::ComplexConjugate<void> >;
+    using ConjBlkTsrExpr =
+        ScalBlkTsrExpr<Array, TiledArray::detail::ComplexConjugate<void> >;
 
     template <typename Array, typename Scalar>
-    using ScalConjBlkTsrExpr = ScalBlkTsrExpr<Array, TiledArray::detail::ComplexConjugate<Scalar> >;
+    using ScalConjBlkTsrExpr =
+        ScalBlkTsrExpr<Array, TiledArray::detail::ComplexConjugate<Scalar> >;
 
     using TiledArray::detail::conj_op;
     using TiledArray::detail::mult_t;
     using TiledArray::detail::numeric_t;
     using TiledArray::detail::scalar_t;
 
+    template <typename> struct is_aliased;
+    template <typename Array, bool Alias>
+    struct is_aliased<BlkTsrExpr<Array, Alias> > :
+        public std::integral_constant<bool, Alias> { };
 
-    template <typename Array>
-    struct ExprTrait<BlkTsrExpr<Array> > {
+    template <typename Array, bool Alias>
+    struct ExprTrait<BlkTsrExpr<Array, Alias> > {
       typedef Array array_type; ///< The \c Array type
       typedef Array& reference; ///< \c Array reference type
       typedef numeric_t<Array> numeric_type; ///< Array base numeric type
       typedef scalar_t<Array> scalar_type; ///< Array base scalar type
-      typedef BlkTsrEngine<Array, typename Array::eval_type>
+      typedef BlkTsrEngine<Array, typename Array::eval_type, Alias>
           engine_type; ///< Expression engine type
     };
 
-    template <typename Array>
-    struct ExprTrait<BlkTsrExpr<const Array> > {
+    template <typename Array, bool Alias>
+    struct ExprTrait<BlkTsrExpr<const Array, Alias> > {
       typedef Array array_type; ///< The \c Array type
       typedef const Array& reference; ///< \c Array reference type
       typedef numeric_t<Array> numeric_type; ///< Array base numeric type
       typedef scalar_t<Array> scalar_type; ///< Array base scalar type
-      typedef BlkTsrEngine<Array, typename Array::eval_type>
+      typedef BlkTsrEngine<Array, typename Array::eval_type, Alias>
           engine_type; ///< Expression engine type
     };
 
@@ -228,12 +234,14 @@ namespace TiledArray {
     /// Block expression
 
     /// \tparam Array The array type
-    template <typename Array>
-    class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array> > {
+    /// \tparam Alias Indicates the array tiles should be computed as a
+    /// temporary before assignment
+    template <typename Array, bool Alias>
+    class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array, Alias> > {
     public:
-      typedef BlkTsrExpr<Array> BlkTsrExpr_; ///< This class type
-      typedef BlkTsrExprBase<BlkTsrExpr<Array> > BlkTsrExprBase_;
-                                                 ///< Block expresion base type
+      typedef BlkTsrExpr<Array, Alias> BlkTsrExpr_; ///< This class type
+      typedef BlkTsrExprBase<BlkTsrExpr_>
+          BlkTsrExprBase_; ///< Block expression base type
       typedef typename ExprTrait<BlkTsrExpr_>::engine_type engine_type;
                                                     ///< Expression engine type
       typedef typename ExprTrait<BlkTsrExpr_>::array_type array_type;
@@ -263,17 +271,17 @@ namespace TiledArray {
       /// Expression assignment operator
 
       /// \param other The expression that will be assigned to this array
-      BlkTsrExpr_& operator=(const BlkTsrExpr_& other) {
+      reference operator=(const BlkTsrExpr_& other) {
         other.eval_to(*this);
-        return *this;
+        return BlkTsrExprBase_::array_;
       }
 
       /// Expression assignment operator
 
       /// \param other The expression that will be assigned to this array
-      BlkTsrExpr_& operator=(BlkTsrExpr_&& other) {
+      reference operator=(BlkTsrExpr_&& other) {
         other.eval_to(*this);
-        return *this;
+        return BlkTsrExprBase_::array_;
       }
 
       /// Expression assignment operator
@@ -281,9 +289,12 @@ namespace TiledArray {
       /// \tparam D The derived expression type
       /// \param other The expression that will be assigned to this array
       template <typename D>
-      BlkTsrExpr_& operator=(const Expr<D>& other) {
+      reference operator=(const Expr<D>& other) {
+        static_assert(TiledArray::expressions::is_aliased<D>::value,
+            "no_alias() expressions are not allowed on the right-hand side of "
+            "the assignment operator.");
         other.derived().eval_to(*this);
-        return *this;
+        return BlkTsrExprBase_::array_;
       }
 
       /// Expression plus-assignment operator
@@ -291,7 +302,10 @@ namespace TiledArray {
       /// \tparam D The derived expression type
       /// \param other The expression that will be added to this array
       template <typename D>
-      BlkTsrExpr_& operator+=(const Expr<D>& other) {
+      reference operator+=(const Expr<D>& other) {
+        static_assert(TiledArray::expressions::is_aliased<D>::value,
+            "no_alias() expressions are not allowed on the right-hand side of "
+            "the assignment operator.");
         return operator=(AddExpr<BlkTsrExpr_, D>(*this, other.derived()));
       }
 
@@ -300,7 +314,10 @@ namespace TiledArray {
       /// \tparam D The derived expression type
       /// \param other The expression that will be subtracted from this array
       template <typename D>
-      BlkTsrExpr_& operator-=(const Expr<D>& other) {
+      reference operator-=(const Expr<D>& other) {
+        static_assert(TiledArray::expressions::is_aliased<D>::value,
+            "no_alias() expressions are not allowed on the right-hand side of "
+            "the assignment operator.");
         return operator=(SubtExpr<BlkTsrExpr_, D>(*this, other.derived()));
       }
 
@@ -309,8 +326,20 @@ namespace TiledArray {
       /// \tparam D The derived expression type
       /// \param other The expression that will scale this array
       template <typename D>
-      BlkTsrExpr_& operator*=(const Expr<D>& other) {
+      reference operator*=(const Expr<D>& other) {
+        static_assert(TiledArray::expressions::is_aliased<D>::value,
+            "no_alias() expressions are not allowed on the right-hand side of "
+            "the assignment operator.");
         return operator=(MultExpr<BlkTsrExpr_, D>(*this, other.derived()));
+      }
+
+      /// Flag this tensor expression for a non-aliasing assignment
+
+      /// \return A non-aliased block tensor expression
+      BlkTsrExpr<Array, false>
+      no_alias() const {
+        return BlkTsrExpr<Array, false>(BlkTsrExprBase_::array_,
+            BlkTsrExprBase_::vars_);
       }
 
 
@@ -329,11 +358,13 @@ namespace TiledArray {
 
     /// \tparam Array The array type
     template <typename Array>
-    class BlkTsrExpr<const Array> : public BlkTsrExprBase<BlkTsrExpr<const Array> > {
+    class BlkTsrExpr<const Array, true> :
+        public BlkTsrExprBase<BlkTsrExpr<const Array, true> >
+    {
     public:
-      typedef BlkTsrExpr<const Array> BlkTsrExpr_; ///< This class type
-      typedef BlkTsrExprBase<BlkTsrExpr<const Array> > BlkTsrExprBase_;
-                                                 ///< Block expresion base type
+      typedef BlkTsrExpr<const Array, true> BlkTsrExpr_; ///< This class type
+      typedef BlkTsrExprBase<BlkTsrExpr_>
+          BlkTsrExprBase_; ///< Block expression base type
       typedef typename ExprTrait<BlkTsrExpr_>::engine_type engine_type;
                                                     ///< Expression engine type
       typedef typename ExprTrait<BlkTsrExpr_>::array_type array_type;
@@ -378,6 +409,7 @@ namespace TiledArray {
     /// Block expression
 
     /// \tparam Array The array type
+    /// \tparam Scalar The scaling factor type
     template <typename Array, typename Scalar>
     class ScalBlkTsrExpr : public BlkTsrExprBase<ScalBlkTsrExpr<Array, Scalar> > {
     public:
@@ -434,15 +466,16 @@ namespace TiledArray {
 
     /// \tparam Array The array type
     /// \tparam Scalar Array scalar type
+    /// \tparam Alias Tiles alias flag
     /// \param expr The block expression object
     /// \param factor The scaling factor
     /// \return Array scaled-block expression object
-    template <typename Array, typename Scalar,
+    template <typename Array, typename Scalar, bool Alias,
         typename std::enable_if<
             TiledArray::detail::is_numeric<Scalar>::value
         >::type* = nullptr>
     inline ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>
-    operator*(const BlkTsrExpr<Array>& expr, const Scalar& factor) {
+    operator*(const BlkTsrExpr<Array, Alias>& expr, const Scalar& factor) {
       return ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>(
           expr.array(), expr.vars(), factor, expr.lower_bound(),
           expr.upper_bound());
@@ -452,15 +485,16 @@ namespace TiledArray {
 
     /// \tparam Array The array type
     /// \tparam Scalar A scalar type
+    /// \tparam Alias Tiles alias flag
     /// \param factor The scaling factor
     /// \param expr The block expression object
     /// \return A scaled-block expression object
-    template <typename Array, typename Scalar,
+    template <typename Array, typename Scalar, bool Alias,
         typename std::enable_if<
             TiledArray::detail::is_numeric<Scalar>::value
         >::type* = nullptr>
     inline ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>
-    operator*(const Scalar& factor, const BlkTsrExpr<Array>& expr) {
+    operator*(const Scalar& factor, const BlkTsrExpr<Array, Alias>& expr) {
       return ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>(
           expr.array(), expr.vars(), factor, expr.lower_bound(),
           expr.upper_bound());
@@ -511,9 +545,9 @@ namespace TiledArray {
     /// \return A scaled-block expression object
     template <typename Array>
     inline ScalBlkTsrExpr<typename std::remove_const<Array>::type,
-        typename ExprTrait<BlkTsrExpr<Array> >::numeric_type>
-    operator-(const BlkTsrExpr<Array>& expr) {
-      typedef typename ExprTrait<BlkTsrExpr<Array> >::numeric_type
+        typename ExprTrait<BlkTsrExpr<Array, true> >::numeric_type>
+    operator-(const BlkTsrExpr<Array, true>& expr) {
+      typedef typename ExprTrait<BlkTsrExpr<Array, true> >::numeric_type
           numeric_type;
       return ScalBlkTsrExpr<typename std::remove_const<Array>::type,
           numeric_type>(expr.array(), expr.vars(), -1, expr.lower_bound(),
@@ -537,11 +571,12 @@ namespace TiledArray {
     /// Conjugated block tensor expression factory
 
     /// \tparam Array A `DistArray` type
+    /// \tparam Alias Tiles alias flag
     /// \param expr The block tensor expression object
     /// \return A conjugated expression object
-    template <typename Array>
+    template <typename Array, bool Alias>
     inline ConjBlkTsrExpr<typename std::remove_const<Array>::type>
-    conj(const BlkTsrExpr<Array>& expr) {
+    conj(const BlkTsrExpr<Array, Alias>& expr) {
       return ConjBlkTsrExpr<typename std::remove_const<Array>::type>(
           expr.array(), expr.vars(), conj_op(), expr.lower_bound(),
           expr.upper_bound());
@@ -553,8 +588,9 @@ namespace TiledArray {
     /// \param expr The tensor expression object
     /// \return A tensor expression object
     template <typename Array>
-    inline BlkTsrExpr<const Array> conj(const ConjBlkTsrExpr<Array>& expr) {
-      return BlkTsrExpr<const Array>(expr.array(), expr.vars(),
+    inline BlkTsrExpr<const Array, true>
+    conj(const ConjBlkTsrExpr<Array>& expr) {
+      return BlkTsrExpr<const Array, true>(expr.array(), expr.vars(),
           expr.lower_bound(), expr.upper_bound());
     }
 

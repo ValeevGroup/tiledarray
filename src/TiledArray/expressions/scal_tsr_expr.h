@@ -124,7 +124,7 @@ namespace TiledArray {
             TiledArray::detail::is_numeric<Scalar>::value
         >::type* = nullptr>
     inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>
-    operator*(const TsrExpr<Array>& expr, const Scalar& factor) {
+    operator*(const TsrExpr<Array, true>& expr, const Scalar& factor) {
       return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
           expr.array(), expr.vars(), factor);
     }
@@ -141,7 +141,7 @@ namespace TiledArray {
             TiledArray::detail::is_numeric<Scalar>::value
         >::type* = nullptr>
     inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>
-    operator*(const Scalar& factor, const TsrExpr<Array>& expr) {
+    operator*(const Scalar& factor, const TsrExpr<Array, true>& expr) {
       return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
           expr.array(), expr.vars(), factor);
     }
@@ -149,7 +149,8 @@ namespace TiledArray {
     /// Scaled-tensor expression factor
 
     /// \tparam Array A `DistArray` type
-    /// \tparam Scalar A scalar type
+    /// \tparam Scalar1 A scalar type
+    /// \tparam Scalar2 A scalar type
     /// \param expr The scaled-tensor expression object
     /// \param factor The scaling factor
     /// \return A scaled-tensor expression object
@@ -166,7 +167,8 @@ namespace TiledArray {
     /// Scaled-tensor expression factor
 
     /// \tparam Array A `DistArray` type
-    /// \tparam Scalar A scalar type
+    /// \tparam Scalar1 A scalar type
+    /// \tparam Scalar2 A scalar type
     /// \param factor The scaling factor
     /// \param expr The scaled-tensor expression object
     /// \return A scaled-tensor expression object
@@ -187,11 +189,11 @@ namespace TiledArray {
     /// \return A scaled-tensor expression object
     template <typename Array>
     inline ScalTsrExpr<typename std::remove_const<Array>::type,
-        typename ExprTrait<TsrExpr<Array> >::numeric_type>
-    operator-(const TsrExpr<Array>& expr) {
+        typename ExprTrait<TsrExpr<Array, true> >::numeric_type>
+    operator-(const TsrExpr<Array, true>& expr) {
       return ScalTsrExpr<typename std::remove_const<Array>::type,
-          typename ExprTrait<TsrExpr<Array> >::numeric_type>(expr.array(),
-              expr.vars(), -1);
+          typename ExprTrait<TsrExpr<Array, true> >::numeric_type>(
+              expr.array(), expr.vars(), -1);
     }
 
     /// Negated-tensor expression factor
@@ -213,7 +215,7 @@ namespace TiledArray {
     /// \return A conjugated expression object
     template <typename Array>
     inline ConjTsrExpr<typename std::remove_const<Array>::type>
-    conj(const TsrExpr<Array>& expr) {
+    conj(const TsrExpr<Array, true>& expr) {
       return ConjTsrExpr<typename std::remove_const<Array>::type>(expr.array(),
           expr.vars(), conj_op());
     }
@@ -224,8 +226,8 @@ namespace TiledArray {
     /// \param expr The tensor expression object
     /// \return A tensor expression object
     template <typename Array>
-    inline TsrExpr<const Array> conj(const ConjTsrExpr<Array>& expr) {
-      return TsrExpr<const Array>(expr.array(), expr.vars());
+    inline TsrExpr<const Array, true> conj(const ConjTsrExpr<Array>& expr) {
+      return TsrExpr<const Array, true>(expr.array(), expr.vars());
     }
 
     /// Conjugated-tensor expression factor

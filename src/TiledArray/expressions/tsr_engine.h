@@ -38,11 +38,11 @@ namespace TiledArray {
   namespace expressions {
 
     // Forward declaration
-    template <typename> class TsrExpr;
-    template <typename, typename> class TsrEngine;
+    template <typename, bool> class TsrExpr;
+    template <typename, typename, bool> class TsrEngine;
 
-    template <typename Tile, typename Policy, typename Result>
-    struct EngineTrait<TsrEngine<DistArray<Tile, Policy>, Result> > {
+    template <typename Tile, typename Policy, typename Result, bool Alias>
+    struct EngineTrait<TsrEngine<DistArray<Tile, Policy>, Result, Alias> > {
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
@@ -65,19 +65,21 @@ namespace TiledArray {
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
 
-      static constexpr bool consumable = false;
+      static constexpr bool consumable = ! Alias;
       static constexpr unsigned int leaves = 1;
     };
 
     /// Tensor expression engine
 
-    /// \tparam Array The array type
+    /// \tparam Array The `DistArray` type
+    /// \tparam Alias Indicates the array tiles should be computed as a
+    /// temporary before assignment
     /// \tparam Result The result tile type
-    template <typename Array, typename Result>
-    class TsrEngine : public LeafEngine<TsrEngine<Array, Result> > {
+    template <typename Array, typename Result, bool Alias>
+    class TsrEngine : public LeafEngine<TsrEngine<Array, Result, Alias> > {
     public:
       // Class hierarchy typedefs
-      typedef TsrEngine<Array, Result> TsrEngine_; ///< This class type
+      typedef TsrEngine<Array, Result, Alias> TsrEngine_; ///< This class type
       typedef LeafEngine<TsrEngine_> LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_
           ExprEngine_; ///< Expression engine base class
@@ -108,8 +110,8 @@ namespace TiledArray {
       typedef typename EngineTrait<TsrEngine_>::pmap_interface
           pmap_interface; ///< Process map interface type
 
-      TsrEngine(const TsrExpr<array_type>& expr) : LeafEngine_(expr) { }
-      TsrEngine(const TsrExpr<const array_type>& expr) : LeafEngine_(expr) { }
+      template <typename A>
+      TsrEngine(const TsrExpr<A, Alias>& expr) : LeafEngine_(expr) { }
 
       /// Non-permuting tile operation factory function
 

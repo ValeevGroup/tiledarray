@@ -37,21 +37,22 @@ namespace TiledArray {
   namespace expressions {
 
     // Forward declaration
-    template <typename> class BlkTsrExpr;
+    template <typename, bool> class BlkTsrExpr;
     template <typename, typename> class ScalBlkTsrExpr;
-    template <typename, typename> class BlkTsrEngine;
+    template <typename, typename, bool> class BlkTsrEngine;
     template <typename, typename, typename> class ScalBlkTsrEngine;
 
-    template <typename Tile, typename Policy, typename Result>
-    struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result> > {
+    template <typename Tile, typename Policy, typename Result, bool Alias>
+    struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias> > {
+
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
       typedef typename TiledArray::detail::scalar_type<DistArray<Tile,
-          Policy> >::type scalar_type;
-      typedef TiledArray::Shift<Result, typename array_type::eval_type, false>
-          op_base_type; ///< The base tile operation
+            Policy> >::type scalar_type;
+      typedef TiledArray::Shift<Result, typename array_type::eval_type,
+          ! Alias> op_base_type; ///< The base tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type>
           op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
@@ -157,14 +158,14 @@ namespace TiledArray {
 
     public:
 
-      template <typename A>
-      BlkTsrEngineBase(const BlkTsrExpr<A>& expr) :
+      template <typename Array, bool Alias>
+      BlkTsrEngineBase(const BlkTsrExpr<Array, Alias>& expr) :
         LeafEngine_(expr),
         lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
       { }
 
-      template <typename A, typename S>
-      BlkTsrEngineBase(const ScalBlkTsrExpr<A, S>& expr) :
+      template <typename Array, typename Scalar>
+      BlkTsrEngineBase(const ScalBlkTsrExpr<Array, Scalar>& expr) :
         LeafEngine_(expr),
         lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
       { }
@@ -286,13 +287,14 @@ namespace TiledArray {
 
     /// \tparam Array The array type
     /// \tparam Result The result tile type
-    template <typename Array, typename Result>
-    class BlkTsrEngine :
-        public BlkTsrEngineBase<BlkTsrEngine<Array, Result> >
-    {
+    /// \tparam Alias Indicates the array tiles should be computed as a
+    /// temporary before assignment
+    template <typename Array, typename Result, bool Alias>
+    class BlkTsrEngine : public BlkTsrEngineBase<BlkTsrEngine<Array, Result, Alias> > {
     public:
       // Class hierarchy typedefs
-      typedef BlkTsrEngine<Array, Result> BlkTsrEngine_; ///< This class type
+      typedef BlkTsrEngine<Array, Result, Alias>
+          BlkTsrEngine_; ///< This class type
       typedef BlkTsrEngineBase<BlkTsrEngine_>
           BlkTsrEngineBase_; ///< Block tensor base class type
       typedef typename BlkTsrEngineBase_::LeafEngine_
@@ -343,7 +345,7 @@ namespace TiledArray {
     public:
 
       template <typename A>
-      BlkTsrEngine(const BlkTsrExpr<A>& expr) :
+      BlkTsrEngine(const BlkTsrExpr<A, Alias>& expr) :
         BlkTsrEngineBase_(expr)
       { }
 

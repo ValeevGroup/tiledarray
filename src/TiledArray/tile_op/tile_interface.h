@@ -274,7 +274,7 @@ namespace TiledArray {
   /// Check that \c arg is empty (no data)
 
   /// \tparam Arg The tile argument type
-  /// \param arg The tile argument to be permuted
+  /// \param arg The tile argument to be checked
   /// \return \c true if \c arg is empty, otherwise \c false.
   template <typename Arg>
   inline bool empty(const Arg& arg) {
@@ -993,7 +993,6 @@ namespace TiledArray {
   template <typename Left, typename Right>
   inline auto dot(const Left& left, const Right& right) -> decltype(left.dot(right))
   { return left.dot(right); }
-
 
   template <typename T>
   using result_of_trace_t = decltype(mult(std::declval<T>()));

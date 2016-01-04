@@ -21,15 +21,21 @@ The following example expressions are written in C++ with TiledArray. TiledArray
 
 * Matrix-matrix multiplication
 
+    ```c++
     C("m,n") = 2.0 * A("m,k") * B("k,n");
+    ```
 
 * Matrix-vector multiplication
 
+    ```c++
     C("n") = A("k") * B("k,n");
+    ```
 
 * A more complex tensor expression
  
+    ```c++
     E("m,n") = 2.0 * A("m,k") * B("k,n") + C("k,n") * D("k,m");
+    ```
 
 The following application is a minimual example of a distributed-memory matrix multiplcation.
 
@@ -90,7 +96,7 @@ int main(int argc, char** argv) {
 
 TiledArray includes several tool chain files for common platforms. These files contain system specific settings that have been tested on the various platforms. We recommend using one of these 
 
-```
+```shell
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ mkdir build
@@ -104,7 +110,7 @@ $ cmake \
 Common CMake cache variables that you may want to define include:
 
 ##### Compiler Variables
-```
+```cmake
 -D CMAKE_C_COMPILER=/path/to/bin/cc
 -D CMAKE_CXX_COMPILER=/path/to/bin/c++
 -D MPI_C_COMPILER=/path/to/bin/mpicc
@@ -112,20 +118,20 @@ Common CMake cache variables that you may want to define include:
 ```
 
 ##### Option Variables
-```
+```cmake
 -D CMAKE_BUILD_TYPE=(Release|Debug|RelWithDebInfo)
 -D BUILD_SHARED_LIBS=(TRUE|FALSE)
 -D TA_ERROR=(none|throw|assert)
 ```
 
 ##### Library Variables
-```
+```cmake
 -D MADNESS_ROOT_DIR=/path/to/madness/root/dir
 -D TBB_ROOT_DIR=/path/to/tbb/root/dir
 -D LAPACK_LIBRARIES=(semicolon seperated list of LAPACK libraries)
 -D BLAS_LIBRARIES=(semicolon seperated list of BLAS libraries)
 -D BLA_STATIC=(TRUE|FALSE)
--D INTEGER4=(TRUE|FLASE)
+-D INTEGER4=(TRUE|FALSE)
 -D EIGEN_INCLUDE_DIR=/path/to/eigen3/include
 ```
 
