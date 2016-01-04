@@ -38,11 +38,11 @@ namespace TiledArray {
   namespace expressions {
 
     // Forward declaration
-    template <typename> class TsrExpr;
-    template <typename> class TsrEngine;
+    template <typename, bool> class TsrExpr;
+    template <typename, bool> class TsrEngine;
 
-    template <typename Tile, typename Policy>
-    struct EngineTrait<TsrEngine<DistArray<Tile, Policy> > > {
+    template <typename Tile, typename Policy, bool Alias>
+    struct EngineTrait<TsrEngine<DistArray<Tile, Policy>, Alias> > {
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
@@ -65,18 +65,20 @@ namespace TiledArray {
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
 
-      static constexpr bool consumable = false;
+      static constexpr bool consumable = ! Alias;
       static constexpr unsigned int leaves = 1;
     };
 
     /// Tensor expression engine
 
     /// \tparam A The array type
-    template <typename A>
-    class TsrEngine : public LeafEngine<TsrEngine<A> > {
+    /// \tparam Alias Indicates the array tiles should be computed as a
+    /// temporary before assignment
+    template <typename A, bool Alias>
+    class TsrEngine : public LeafEngine<TsrEngine<A, Alias> > {
     public:
       // Class hierarchy typedefs
-      typedef TsrEngine<A> TsrEngine_; ///< This class type
+      typedef TsrEngine<A, Alias> TsrEngine_; ///< This class type
       typedef LeafEngine<TsrEngine_> LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
 
@@ -96,8 +98,8 @@ namespace TiledArray {
       typedef typename EngineTrait<TsrEngine_>::shape_type shape_type; ///< Tensor shape type
       typedef typename EngineTrait<TsrEngine_>::pmap_interface pmap_interface; ///< Process map interface type
 
-      TsrEngine(const TsrExpr<array_type>& expr) : LeafEngine_(expr) { }
-      TsrEngine(const TsrExpr<const array_type>& expr) : LeafEngine_(expr) { }
+      TsrEngine(const TsrExpr<array_type, Alias>& expr) : LeafEngine_(expr) { }
+      TsrEngine(const TsrExpr<const array_type, Alias>& expr) : LeafEngine_(expr) { }
 
       /// Non-permuting tile operation factory function
 

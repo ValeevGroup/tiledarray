@@ -33,7 +33,7 @@ namespace TiledArray {
   // Forward declarations
   template <typename, typename> class Tensor;
   namespace expressions {
-    template <typename> class TsrExpr;
+    template <typename, bool> class TsrExpr;
   } // namespace expressions
 
 
@@ -444,7 +444,7 @@ namespace TiledArray {
 
     /// \param vars A string with a comma-separated list of variables
     /// \return A const tensor expression object
-    TiledArray::expressions::TsrExpr<const DistArray_>
+    TiledArray::expressions::TsrExpr<const DistArray_, true>
     operator ()(const std::string& vars) const {
 #ifndef NDEBUG
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
@@ -460,14 +460,14 @@ namespace TiledArray {
         TA_EXCEPTION("The number of array annotation variables is not equal to the array dimension.");
       }
 #endif // NDEBUG
-      return TiledArray::expressions::TsrExpr<const DistArray_>(*this, vars);
+      return TiledArray::expressions::TsrExpr<const DistArray_, true>(*this, vars);
     }
 
     /// Create a tensor expression
 
     /// \param vars A string with a comma-separated list of variables
     /// \return A non-const tensor expression object
-    TiledArray::expressions::TsrExpr<DistArray_>
+    TiledArray::expressions::TsrExpr<DistArray_, true>
     operator ()(const std::string& vars) {
 #ifndef NDEBUG
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
@@ -483,7 +483,7 @@ namespace TiledArray {
         TA_EXCEPTION("The number of array annotation variables is not equal to the array dimension.");
       }
 #endif // NDEBUG
-      return TiledArray::expressions::TsrExpr<DistArray_>(*this, vars);
+      return TiledArray::expressions::TsrExpr<DistArray_, true>(*this, vars);
     }
 
     /// World accessor

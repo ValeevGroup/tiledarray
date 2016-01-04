@@ -155,6 +155,12 @@ namespace TiledArray {
     template <typename Left, typename Right>
     inline MultExpr<Left, Right>
     operator*(const Expr<Left>& left, const Expr<Right>& right) {
+      static_assert(TiledArray::expressions::is_aliased<Left>::value,
+          "no_alias() expressions are not allowed on the right-hand side of the "
+          "assignment operator.");
+      static_assert(TiledArray::expressions::is_aliased<Right>::value,
+          "no_alias() expressions are not allowed on the right-hand side of the "
+          "assignment operator.");
       return MultExpr<Left, Right>(left.derived(), right.derived());
     }
 

@@ -94,6 +94,12 @@ namespace TiledArray {
   inline typename TiledArray::expressions::ExprTrait<Left>::scalar_type
   dot(const TiledArray::expressions::Expr<Left>& a1,
       const TiledArray::expressions::Expr<Right>& a2) {
+    static_assert(TiledArray::expressions::is_aliased<Left>::value,
+        "no_alias() expressions are not allowed on the right-hand side of the "
+        "assignment operator.");
+    static_assert(TiledArray::expressions::is_aliased<Right>::value,
+        "no_alias() expressions are not allowed on the right-hand side of the "
+        "assignment operator.");
     return a1.dot(a2).get();
   }
 
