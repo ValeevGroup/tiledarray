@@ -58,7 +58,7 @@ namespace TiledArray {
 
     private:
 
-      Expr<Derived>& operator=(const Expr<Derived>&);
+      Expr<Derived>& operator=(const Expr<Derived>&) = delete;
 
       /// Task function used to evaluate lazy tiles
 
