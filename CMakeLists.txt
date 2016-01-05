@@ -51,6 +51,23 @@ endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
+# define behavior of TA_ASSERT: throw by default, disable if compiling for release
+set(TA_ERROR throw CACHE STRING "Controls behavior of TA_ASSERT (valid values: throw, assert, none)")
+if (CMAKE_BUILD_TYPE STREQUAL Release OR
+    CMAKE_BUILD_TYPE STREQUAL RelWithDebugInfo OR
+    CMAKE_BUILD_TYPE STREQUAL MinSizeRel)
+  set (TA_ERROR none)
+endif()
+add_feature_info("TA_ERROR=${TA_ERROR}" TRUE "Define how TiledArray assertion (TA_ASSERT) behaves")
+# convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
+if (TA_ERROR STREQUAL none)
+  set (TA_DEFAULT_ERROR 0)
+elseif (TA_ERROR STREQUAL throw)
+  set (TA_DEFAULT_ERROR 1)
+elseif (TA_ERROR STREQUAL assert)
+  set (TA_DEFAULT_ERROR 2)
+endif()
+
 # Enable shared library support options
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
 option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
@@ -127,7 +144,6 @@ set(BUILD_TESTING FALSE CACHE BOOLEAN "BUILD_TESTING")
 set(BUILD_TESTING_STATIC FALSE CACHE BOOLEAN "BUILD_TESTING_STATIC")
 set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 
-
 ##########################
 # Get the git revision tag information
 ##########################
@@ -147,7 +163,6 @@ endif()
 ##########################
 # Check C++11 features
 ##########################
-
 
 include(CheckCXX11Support)
 check_cxx11_support(TILEDARRAY_HAS_CXX11)
@@ -194,18 +209,6 @@ if (TA_BUILD_UNITTEST)
   add_subdirectory(tests)
 else()
   add_custom_target(check COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
-endif()
-
-##########################
-# convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
-##########################
-set (TA_DEFAULT_ERROR 1)
-if (TA_ERROR STREQUAL none)
-  set (TA_DEFAULT_ERROR 0)
-elseif (TA_ERROR STREQUAL throw)
-  set (TA_DEFAULT_ERROR 1)
-elseif (TA_ERROR STREQUAL assert)
-  set (TA_DEFAULT_ERROR 2)
 endif()
 
 ##########################
