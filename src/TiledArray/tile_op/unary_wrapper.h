@@ -198,11 +198,7 @@ namespace TiledArray {
       }
 
 
-      template <typename A,
-          typename std::enable_if<
-              std::is_same<typename std::decay<A>::type, argument_type>::value &&
-              is_consumable
-          >::type* = nullptr>
+      template <typename A>
       result_type consume(A&& arg) const {
         if(perm_)
           return op_(std::forward<A>(arg), perm_);
@@ -210,34 +206,12 @@ namespace TiledArray {
         return op_.consume(std::forward<A>(arg));
       }
 
-      template <typename A,
-          typename std::enable_if<
-              std::is_same<typename std::decay<A>::type, argument_type>::value &&
-              (! is_consumable)
-          >::type* = nullptr>
-      result_type consume(A&& arg) const {
-        return UnaryWrapper_::operator()(std::forward<A>(arg));
-      }
-
-      template <typename A,
-          typename std::enable_if<
-              std::is_same<typename std::decay<A>::type, argument_type>::value &&
-              is_consumable
-          >::type* = nullptr>
-      result_type consume(A&& arg, const bool) const {
-        return UnaryWrapper_::template consume(std::forward<A>(arg));
-      }
-
-      template <typename A,
-          typename std::enable_if<
-              std::is_same<typename std::decay<A>::type, argument_type>::value &&
-              (! is_consumable)
-          >::type* = nullptr>
+      template <typename A>
       result_type consume(A&& arg, const bool consume_tile) const {
         if(perm_)
           return op_(std::forward<A>(arg), perm_);
 
-        if(consume_tile)
+        if((! is_consumable) && consume_tile)
           return op_.consume(std::forward<A>(arg));
 
         return op_(std::forward<A>(arg));

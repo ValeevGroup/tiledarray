@@ -186,14 +186,17 @@ namespace TiledArray {
     };
 
     template <typename T>
-    struct numeric_type<T, typename std::enable_if<is_type<typename T::value_type>::value
-          && ! is_numeric<T>::value>::type> :
+    struct numeric_type<T, typename std::enable_if<
+          is_type<typename T::value_type>::value &&
+          (! is_lazy_tile<T>::value) &&
+          (! is_numeric<T>::value)>::type> :
         public numeric_type<typename T::value_type>
     { };
 
 
     template <typename T>
-    struct numeric_type<T, typename std::enable_if<is_lazy_tile<T>::value
+    struct numeric_type<T, typename std::enable_if<
+          is_lazy_tile<T>::value
           && ! is_numeric<T>::value>::type> :
         public numeric_type<typename eval_trait<T>::type>
     { };
