@@ -28,7 +28,21 @@ cmake_minimum_required (VERSION 3.0.0)
 project (TiledArray)
 
 include(CMakeDependentOption)
+include(CMakePackageConfigHelpers)
 include(FeatureSummary)
+
+# Set install paths ============================================================
+
+set(TILEDARRAY_INSTALL_BINDIR "bin" 
+    CACHE PATH "TiledArray binary install directory")
+set(TILEDARRAY_INSTALL_INCLUDEDIR "include" 
+    CACHE PATH "TiledArray INCLUDE install directory")
+set(TILEDARRAY_INSTALL_LIBDIR "lib"
+    CACHE PATH "TiledArray LIB install directory")
+set(TILEDARRAY_INSTALL_DOCDIR "share/tiledarray/${TILEDARRAY_VERSION}/doc"
+    CACHE PATH "TiledArray DOC install directory")
+set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
+    CACHE PATH "TiledArray CMAKE install directory")
 
 # Configure options
 option(ENABLE_MPI "Enable MPI" ON)
@@ -255,8 +269,36 @@ CONFIGURE_FILE(
 # install config files
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
     DESTINATION lib/pkgconfig)
-install(FILES ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
-    DESTINATION lib/cmake/TiledArray)
+#install(FILES ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
+#    DESTINATION lib/cmake/TiledArray)
+
+
+# Create the version file
+write_basic_package_version_file(tiledarray-config-version.cmake
+  VERSION ${TILEDARRAY_VERSION} COMPATIBILITY AnyNewerVersion)
+
+# Create the targets file
+export(EXPORT tiledarray
+  FILE "${PROJECT_BINARY_DIR}/tiledarray-targets.cmake")
+
+# Create the configure file
+configure_package_config_file(cmake/tiledarray-config.cmake.in
+    "${PROJECT_BINARY_DIR}/tiledarray-config.cmake"
+  INSTALL_DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
+  PATH_VARS CMAKE_INSTALL_PREFIX TILEDARRAY_INSTALL_BINDIR 
+            TILEDARRAY_INSTALL_INCLUDEDIR TILEDARRAY_INSTALL_LIBDIR
+            TILEDARRAY_INSTALL_DOCDIR TILEDARRAY_INSTALL_CMAKEDIR)
+
+# Install config, version, and target files
+install(EXPORT tiledarray
+    FILE "tiledarray-targets.cmake"
+    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}" 
+    COMPONENT tiledarray)
+install(FILES
+    "${PROJECT_BINARY_DIR}/tiledarray-config.cmake"
+    "${PROJECT_BINARY_DIR}/tiledarray-config-version.cmake"
+    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}" 
+    COMPONENT tiledarray)
 
 
 # Add target to allow on-the-fly switching of build type
