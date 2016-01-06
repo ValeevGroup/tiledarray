@@ -47,6 +47,7 @@ TiledArray/size_array.h
 TiledArray/sparse_shape.h
 TiledArray/tensor.h
 TiledArray/tensor_impl.h
+TiledArray/tile.h
 TiledArray/tiled_range.h
 TiledArray/tiled_range1.h
 TiledArray/transform_iterator.h
@@ -57,9 +58,11 @@ TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h
 TiledArray/algebra/utils.h
+TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
 TiledArray/conversions/eigen.h
 TiledArray/conversions/foreach.h
+TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
@@ -72,8 +75,8 @@ TiledArray/expressions/add_engine.h
 TiledArray/expressions/add_expr.h
 TiledArray/expressions/binary_engine.h
 TiledArray/expressions/binary_expr.h
-TiledArray/expressions/blk_engine.h
-TiledArray/expressions/blk_expr.h
+TiledArray/expressions/blk_tsr_engine.h
+TiledArray/expressions/blk_tsr_expr.h
 TiledArray/expressions/cont_engine.h
 TiledArray/expressions/expr.h
 TiledArray/expressions/expr_engine.h
@@ -95,8 +98,8 @@ TiledArray/expressions/variable_list.h
 TiledArray/math/blas.h
 TiledArray/math/eigen.h
 TiledArray/math/gemm_helper.h
-TiledArray/math/math.h
 TiledArray/math/outer.h
+TiledArray/math/parallel_gemm.h
 TiledArray/math/partial_reduce.h
 TiledArray/math/transpose.h
 TiledArray/math/vector_op.h
@@ -107,14 +110,19 @@ TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
-TiledArray/symm/symm_group.h
 TiledArray/symm/irrep.h
-TiledArray/tensor/binary.h
+TiledArray/symm/permutation.h
+TiledArray/symm/permutation_group.h
+TiledArray/symm/representation.h
+TiledArray/tensor/complex.h
+TiledArray/tensor/kernels.h
+TiledArray/tensor/operators.h
 TiledArray/tensor/permute.h
 TiledArray/tensor/shift_wrapper.h
-TiledArray/tensor/tesnor_interface.h
+TiledArray/tensor/tensor.h
+TiledArray/tensor/tensor_interface.h
+TiledArray/tensor/tensor_map.h
 TiledArray/tensor/type_traits.h
-TiledArray/tensor/unary.h
 TiledArray/tensor/utility.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_reduction.h
@@ -131,24 +139,16 @@ TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
-# Install header files
-install(
-  DIRECTORY
-      ${PROJECT_SOURCE_DIR}/src/
-      ${PROJECT_BINARY_DIR}/src/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING PATTERN "*.h"
-  PATTERN "CMakeFiles" EXCLUDE
-)
-
-###########################################
-# Create the TiledArray header-only library
-###########################################
-add_library(tiledarray INTERFACE)
+# Create the TiledArray header-only library 
+add_library(tiledarray ${tiledarray_header_files})
 target_include_directories(tiledarray INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
 )
+set_target_properties(tiledarray PROPERTIES
+    LINKER_LANGUAGE CXX
+    PUBLIC_HEADER "${tiledarray_header_files}")
   
 target_compile_definitions(tiledarray INTERFACE 
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
@@ -158,8 +158,10 @@ target_include_directories(tiledarray INTERFACE
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
 target_compile_options(tiledarray INTERFACE 
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>;${CMAKE_CXX_FLAG_LIST})
-target_link_libraries(tiledarray INTERFACE MADworld)
+target_link_libraries(tiledarray INTERFACE MADworld "${LAPACK_LIBRARIES}")
 
 # Add library to the list of installed components
-install(TARGETS tiledarray EXPORT tiledarray
-        COMPONENT tiledarray)
+install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
+    PUBLIC_HEADER DESTINATION "${TILEDARRAY_INSTALL_INCLUDEDIR}/TiledArray"
+    LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")

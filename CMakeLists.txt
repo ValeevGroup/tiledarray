@@ -27,6 +27,33 @@
 cmake_minimum_required (VERSION 3.0.0)
 project (TiledArray)
 
+# Set TiledArray version =======================================================
+
+set(TILEDARRAY_MAJOR_VERSION 0)
+set(TILEDARRAY_MINOR_VERSION 5)
+set(TILEDARRAY_MICRO_VERSION 0)
+set(TILEDARRAY_BUILDID alpha)
+set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
+
+# Set install paths ============================================================
+
+set(TILEDARRAY_INSTALL_BINDIR "bin" 
+    CACHE PATH "TiledArray binary install directory")
+set(TILEDARRAY_INSTALL_INCLUDEDIR "include" 
+    CACHE PATH "TiledArray INCLUDE install directory")
+set(TILEDARRAY_INSTALL_LIBDIR "lib"
+    CACHE PATH "TiledArray LIB install directory")
+set(TILEDARRAY_INSTALL_SHAREDIR "share/tiledarray/${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}"
+    CACHE PATH "TiledArray DATA install directory")
+set(TILEDARRAY_INSTALL_DATADIR "${TILEDARRAY_INSTALL_SHAREDIR}/data"
+    CACHE PATH "TiledArray DATA install directory")
+set(TILEDARRAY_INSTALL_DOCDIR "${TILEDARRAY_INSTALL_SHAREDIR}/doc"
+    CACHE PATH "TiledArray DOC install directory")
+set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
+    CACHE PATH "TiledArray CMAKE install directory")
+
+# User features ===============================================================
+
 include(CMakeDependentOption)
 include(CMakePackageConfigHelpers)
 include(FeatureSummary)
@@ -88,12 +115,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 endif()
 
 
-# Set TiledArray version
-set(TILEDARRAY_MAJOR_VERSION 0)
-set(TILEDARRAY_MINOR_VERSION 5)
-set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_BUILDID alpha)
-set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
 
 # extra cmake files are shipped with TiledArray
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
