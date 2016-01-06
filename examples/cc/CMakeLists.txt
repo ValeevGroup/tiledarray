@@ -28,16 +28,22 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_library(inputlib EXCLUDE_FROM_ALL OBJECT input_data.cpp)
+target_compile_definitions(inputlib PRIVATE 
+   $<TARGET_PROPERTY:tiledarray,INTERFACE_COMPILE_DEFINITIONS>)
+target_include_directories(inputlib PRIVATE 
+   $<TARGET_PROPERTY:tiledarray,INTERFACE_INCLUDE_DIRECTORIES>;${EIGEN_INCLUDE_DIR})
+target_compile_options(inputlib PRIVATE 
+   $<TARGET_PROPERTY:tiledarray,INTERFACE_COMPILE_OPTIONS>)
 add_dependencies(inputlib External)
 
 # Add the ccd executable
 add_executable(ccd EXCLUDE_FROM_ALL ccd.cpp $<TARGET_OBJECTS:inputlib>)
-target_link_libraries(ccd ${TiledArray_LIBRARIES})
+target_link_libraries(ccd PRIVATE tiledarray)
 add_dependencies(ccd External)
 add_dependencies(example ccd)
 
 # Add the ccsd executable
 add_executable(ccsd EXCLUDE_FROM_ALL ccsd.cpp $<TARGET_OBJECTS:inputlib>)
-target_link_libraries(ccsd ${TiledArray_LIBRARIES})
+target_link_libraries(ccsd PRIVATE tiledarray)
 add_dependencies(ccsd External)
 add_dependencies(example ccsd)

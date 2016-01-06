@@ -26,6 +26,6 @@
 
 # Add the pmap executable
 add_executable(pmap EXCLUDE_FROM_ALL pmap.cpp)
-target_link_libraries(pmap ${TiledArray_LIBRARIES})
+target_link_libraries(pmap PRIVATE tiledarray)
 add_dependencies(pmap External)
 add_dependencies(example pmap)
