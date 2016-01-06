@@ -280,9 +280,9 @@ else()
   # these headers depend on LAPACK which is a dependency of MADlinalg, hence
   # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
   list(APPEND MADNESS_LIBRARIES "${LAPACK_LIBRARIES}")
-  # this is probably not necessary since we use nested #include paths in build and install trees,
+  # this is not necessary since we use nested #include paths in build and install trees,
   # hence dependence on MADworld should provide proper include paths for ALL madness libs ...
-  list(APPEND MADNESS_INCLUDE_DIRS $<TARGET_PROPERTY:MADlinalg,INTERFACE_INCLUDE_DIRECTORIES>)
+  #list(APPEND MADNESS_INCLUDE_DIRS $<TARGET_PROPERTY:MADlinalg,INTERFACE_INCLUDE_DIRECTORIES>)
   # external Elemental is *installed* to be usable, hence need to add the path to the install tree
   if (DEFINED ELEMENTAL_TAG)
     list(APPEND MADNESS_INCLUDE_DIRS ${CMAKE_INSTALL_PREFIX}/include)
@@ -314,7 +314,7 @@ else()
   install(CODE
       "
       execute_process(
-          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-world\" \"install-clapack\" \"install-common\" ${ELEMENTAL_INSTALL_TARGET}
+          COMMAND \"${CMAKE_MAKE_PROGRAM}\" \"install-world\" \"install-clapack\" \"install-config\" \"install-common\" ${ELEMENTAL_INSTALL_TARGET}
           WORKING_DIRECTORY \"${MADNESS_BINARY_DIR}\"
           RESULT_VARIABLE error_code)
       if(error_code)

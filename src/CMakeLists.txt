@@ -141,9 +141,23 @@ install(
   PATTERN "CMakeFiles" EXCLUDE
 )
 
-# Create the TiledArray library
-#file(GLOB_RECURSE tiledarray_src_files RELATIVE_PATH *.cpp)
-#add_library(tiledarray ${tiledarray_src_files} ${tiledarray_header_files})
+###########################################
+# Create the TiledArray header-only library
+###########################################
+add_library(tiledarray INTERFACE)
+target_include_directories(tiledarray INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
+  $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
+)
+  
+target_compile_definitions(tiledarray INTERFACE 
+   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
+target_include_directories(tiledarray INTERFACE 
+   $<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>)
+target_compile_options(tiledarray INTERFACE 
+   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>)
+target_link_libraries(tiledarray INTERFACE MADworld)
 
-# Install library
-#install(TARGETS tiledarray DESTINATION lib)
+# Add library to the list of installed components
+install(TARGETS tiledarray EXPORT tiledarray
+        COMPONENT tiledarray)
