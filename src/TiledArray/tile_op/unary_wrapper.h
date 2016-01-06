@@ -141,10 +141,7 @@ namespace TiledArray {
       /// \return The result tile from the unary operation applied to the
       /// \c left and \c right arguments.
       result_type operator()(argument_type& arg) const {
-        if(perm_)
-          return op_(arg, perm_);
-
-        return op_(arg);
+        return (perm_ ? op_(arg, perm_) : op_(arg) );
       }
 
       /// Apply operator to `arg` and possibly permute the result
@@ -153,10 +150,7 @@ namespace TiledArray {
       /// \return The result tile from the unary operation applied to the
       /// \c left and \c right arguments.
       result_type operator()(const argument_type& arg) const {
-        if(perm_)
-          return op_(arg, perm_);
-
-        return op_(arg);
+        return (perm_ ? op_(arg, perm_) : op_(arg) );
       }
 
       // The following operators will evaluate lazy tile and use the base class
@@ -176,7 +170,7 @@ namespace TiledArray {
           >::type* = nullptr>
       result_type operator()(A&& arg) const {
         eval_t<A> eval_arg(arg);
-        return UnaryWrapper_::operator()(eval_arg);
+        return (perm_ ? op_(eval_arg, perm_) : op_(eval_arg) );
       }
 
 
@@ -194,29 +188,32 @@ namespace TiledArray {
           >::type* = nullptr>
       result_type operator()(A&& arg) const {
         eval_t<A> eval_arg(arg);
-        return UnaryWrapper_::consume(eval_arg, arg.is_consumable());
+        return (perm_ ?
+           op_(eval_arg, perm_) :
+           (arg.is_consumable() ? op_.consume(eval_arg) : op_(eval_arg) ));
       }
 
-
-      template <typename A>
+      /// Consume lazy tile
+      template <typename A,
+          typename std::enable_if<
+              is_lazy_tile_t<A>::value
+          >::type* = nullptr>
       result_type consume(A&& arg) const {
-        if(perm_)
-          return op_(std::forward<A>(arg), perm_);
-
-        return op_.consume(std::forward<A>(arg));
+        eval_t<A> eval_arg(arg);
+        return (perm_ ?
+            op_(eval_arg, perm_) :
+            op_.consume(eval_arg) );
       }
 
-      template <typename A>
-      result_type consume(A&& arg, const bool consume_tile) const {
-        if(perm_)
-          return op_(std::forward<A>(arg), perm_);
-
-        if((! is_consumable) && consume_tile)
-          return op_.consume(std::forward<A>(arg));
-
-        return op_(std::forward<A>(arg));
+      template <typename A,
+          typename std::enable_if<
+              ! is_lazy_tile_t<A>::value
+          >::type* = nullptr>
+      result_type consume(A&& arg) const {
+        return (perm_ ?
+           op_(std::forward<A>(arg), perm_) :
+           op_.consume(std::forward<A>(arg)) );
       }
-
 
     }; // class UnaryWrapper
 
