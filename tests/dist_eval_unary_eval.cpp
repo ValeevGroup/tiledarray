@@ -64,17 +64,17 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   }
 
 
-  static TiledArray::detail::UnaryWrapper<Scal<TensorI, int, true> >
+  static TiledArray::detail::UnaryWrapper<Scal<TensorI, TensorI, int, true> >
   make_scal1(const int factor, const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Scal<TensorI, int, true> >(
-        Scal<TensorI, int, true>(factor), perm);
+    return TiledArray::detail::UnaryWrapper<Scal<TensorI, TensorI, int, true> >(
+        Scal<TensorI, TensorI, int, true>(factor), perm);
   }
 
 
-  static TiledArray::detail::UnaryWrapper<Scal<TensorI, int, false> >
+  static TiledArray::detail::UnaryWrapper<Scal<TensorI, TensorI, int, false> >
   make_scal0(const int factor, const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Scal<TensorI, int, false> >(
-        Scal<TensorI, int, false>(factor), perm);
+    return TiledArray::detail::UnaryWrapper<Scal<TensorI, TensorI, int, false> >(
+        Scal<TensorI, TensorI, int, false>(factor), perm);
   }
 
   template <typename Tile, typename Policy, typename Op>

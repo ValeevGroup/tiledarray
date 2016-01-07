@@ -38,15 +38,15 @@ namespace TiledArray {
   /// permutation is null, then the result is not permuted.
   /// \tparam Result The result type
   /// \tparam Arg The argument type
+  /// \tparam Scalar The scaling factor type
   /// \tparam Consumable Flag that is \c true when Arg is consumable
-  template <typename Arg, typename Scalar, bool Consumable>
+  template <typename Result, typename Arg, typename Scalar, bool Consumable>
   class Scal {
   public:
-    typedef Scal<Arg, Scalar, Consumable> Scal_; ///< This object type
+    typedef Scal<Result, Arg, Scalar, Consumable> Scal_; ///< This object type
     typedef Arg argument_type; ///< The argument type
     typedef Scalar scalar_type; ///< The scaling factor type
-    typedef decltype(scale(std::declval<argument_type>(),
-        std::declval<scalar_type>())) result_type; ///< The result tile type
+    typedef Result result_type; ///< The result tile type
 
     static constexpr bool is_consumable =
         Consumable && std::is_same<result_type, argument_type>::value;
@@ -112,9 +112,7 @@ namespace TiledArray {
     /// \return A scaled copy of `arg`
     template <typename A>
     result_type operator()(A&& arg) const {
-      return Scal_::template eval<is_consumable &&
-          ! std::is_const<typename std::remove_reference<A>::type>::value>(
-          std::forward<A>(arg));
+      return Scal_::template eval<is_consumable>(std::forward<A>(arg));
     }
 
     /// Explicit consuming scale operation
@@ -122,7 +120,9 @@ namespace TiledArray {
     /// \param arg The tile argument
     /// \return In-place scaled `arg`
     result_type consume(argument_type& arg) const {
-      return Scal_::template eval<is_consumable_tile<Arg>::value>(arg);
+      constexpr bool can_consume = is_consumable_tile<argument_type>::value &&
+          std::is_same<result_type, argument_type>::value;
+      return Scal_::template eval<can_consume>(arg);
     }
 
   }; // class Scal

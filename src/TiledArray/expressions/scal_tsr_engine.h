@@ -34,17 +34,17 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename, typename> class ScalTsrExpr;
-    template <typename, typename> class ScalTsrEngine;
+    template <typename, typename, typename> class ScalTsrEngine;
 
 
-    template <typename Tile, typename Policy, typename Scalar>
-    struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar> > {
+    template <typename Tile, typename Policy, typename Scalar, typename Result>
+    struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result> > {
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
       typedef Scalar scalar_type;
-      typedef TiledArray::Scal<typename array_type::eval_type,
+      typedef TiledArray::Scal<Result, typename array_type::eval_type,
           scalar_type, false> op_base_type; ///< The tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type;
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
@@ -68,11 +68,11 @@ namespace TiledArray {
     /// Scaled tensor expression engine
 
     /// \tparam A The \c Array type
-    template <typename Array, typename Scalar>
-    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar> > {
+    template <typename Array, typename Scalar, typename Result>
+    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar, Result> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalTsrEngine<Array, Scalar> ScalTsrEngine_; ///< This class type
+      typedef ScalTsrEngine<Array, Scalar, Result> ScalTsrEngine_; ///< This class type
       typedef LeafEngine<ScalTsrEngine_> LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
 

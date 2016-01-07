@@ -71,7 +71,8 @@ namespace TiledArray {
       /// \return The evaluated tile
       template <typename R, typename T, typename C, typename Op>
       static R eval_tile(T tile, const C& cast, const std::shared_ptr<Op>& op) {
-        return (*op)(cast(tile));
+        auto cast_tile = cast(tile);
+        return (*op)(cast_tile);
       }
 
       /// Task function used to mutate result tiles
@@ -286,8 +287,8 @@ namespace TiledArray {
 
         // Create the result array
         A result(world, tsr.array().trange(),
-            tsr.array().get_shape().update_block(tsr.lower_bound(), tsr.upper_bound(),
-            dist_eval.shape()), tsr.array().get_pmap());
+            tsr.array().get_shape().update_block(tsr.lower_bound(),
+            tsr.upper_bound(), dist_eval.shape()), tsr.array().get_pmap());
 
         // NOTE: The tiles from the original array and the sub-block are copied
         // in two separate steps because the two tensors have different data
@@ -317,7 +318,8 @@ namespace TiledArray {
 
           for(const auto index : *dist_eval.pmap()) {
             if(! dist_eval.is_zero(index))
-              set_tile(result, blk_range.ordinal(index), dist_eval.get(index), shift_op);
+              set_tile(result, blk_range.ordinal(index), dist_eval.get(index),
+                  shift_op);
           }
         }
 
