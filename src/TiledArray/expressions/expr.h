@@ -228,8 +228,7 @@ namespace TiledArray {
         }
 
         // Wait for child expressions of dist_eval
-        // needed for throttling???
-        //dist_eval.wait();
+        dist_eval.wait();
 
         // Swap the new array with the result array object.
         result.swap(tsr.array());
@@ -324,8 +323,7 @@ namespace TiledArray {
         }
 
         // Wait for child expressions of dist_eval
-        // needed for throttling??
-        //dist_eval.wait();
+        dist_eval.wait();
 
         // Swap the new array with the result array object.
         result.swap(tsr.array());
