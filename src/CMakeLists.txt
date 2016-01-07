@@ -142,15 +142,12 @@ TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
 # Create the TiledArray header-only library 
-add_library(tiledarray ${tiledarray_header_files})
+add_library(tiledarray INTERFACE)
 target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
 )
-set_target_properties(tiledarray PROPERTIES
-    LINKER_LANGUAGE CXX
-    PUBLIC_HEADER "${tiledarray_header_files}")
   
 target_compile_definitions(tiledarray INTERFACE 
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
