@@ -141,6 +141,16 @@ TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
+# Install header files
+install(
+  DIRECTORY
+      ${PROJECT_SOURCE_DIR}/src/
+      ${PROJECT_BINARY_DIR}/src/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN "CMakeFiles" EXCLUDE
+)
+
 # Create the TiledArray header-only library 
 add_library(tiledarray INTERFACE)
 target_include_directories(tiledarray INTERFACE
