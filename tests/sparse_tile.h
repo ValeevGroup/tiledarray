@@ -55,10 +55,10 @@ public:
   /// makes an uninitialized matrix
   EigenSparseTile() = default;
 
-  /// Shallow copy constructor; see MyTensor::clone() for deep copy
+  /// Shallow copy constructor; see EigenSparseTile::clone() for deep copy
   EigenSparseTile(const EigenSparseTile&) = default;
 
-  /// Shallow assignment operator; see MyTensor::clone() for deep copy
+  /// Shallow assignment operator; see EigenSparseTile::clone() for deep copy
   EigenSparseTile&
   operator=(const EigenSparseTile& other) = default;
 

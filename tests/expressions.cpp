@@ -1215,7 +1215,7 @@ BOOST_AUTO_TEST_CASE( scale_cont )
 
 BOOST_AUTO_TEST_CASE( cont_non_uniform1 )
 {
-  // Construc the tiled range
+  // Construct the tiled range
   std::array<std::size_t, 6> tiling1 = {{ 0, 1, 2, 3, 4, 5 }};
   std::array<std::size_t, 2> tiling2 = {{ 0, 40 }};
   TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
@@ -1259,7 +1259,7 @@ BOOST_AUTO_TEST_CASE( cont_non_uniform1 )
 
 BOOST_AUTO_TEST_CASE( cont_non_uniform2 )
 {
-  // Construc the tiled range
+  // Construct the tiled range
   std::array<std::size_t, 6> tiling1 = {{ 0, 1, 2, 3, 4, 5 }};
   std::array<std::size_t, 2> tiling2 = {{ 0, 40 }};
   TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
