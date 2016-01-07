@@ -115,9 +115,7 @@ namespace TiledArray {
     /// \return A shifted copy of `arg`
     template <typename A>
     result_type operator()(A&& arg) const {
-      return Shift_::template eval<is_consumable &&
-          ! std::is_const<typename std::remove_reference<A>::type>::value>(
-          std::forward<A>(arg));
+      return Shift_::template eval<is_consumable>(std::forward<A>(arg));
     }
 
     /// Explicit consuming shift operation
@@ -127,7 +125,9 @@ namespace TiledArray {
     /// \return In-place shifted `arg`
     template <typename A>
     result_type consume(A& arg) const {
-      return Shift_::template eval<is_consumable_tile<argument_type>::value>(arg);
+      constexpr bool can_consume = is_consumable_tile<argument_type>::value &&
+          std::is_same<result_type, argument_type>::value;
+      return Shift_::template eval<can_consume>(arg);
     }
 
   }; // class Shift
@@ -217,7 +217,8 @@ namespace TiledArray {
     /// \param arg The tile argument
     /// \param perm The permutation applied to the result tile
     /// \return A permuted and shifted copy of `arg`
-    result_type operator()(const argument_type& arg, const Permutation& perm) const {
+    result_type
+    operator()(const argument_type& arg, const Permutation& perm) const {
       return eval(arg, perm);
     }
 
@@ -228,10 +229,7 @@ namespace TiledArray {
     /// \return A shifted copy of `arg`
     template <typename A>
     result_type operator()(A&& arg) const {
-      return ScalShift_::template eval<is_consumable>(arg);
-      return ScalShift_::template eval<is_consumable &&
-          ! std::is_const<typename std::remove_reference<A>::type>::value>(
-          std::forward<A>(arg));
+      return ScalShift_::template eval<is_consumable>(std::forward<A>(arg));
     }
 
     /// Explicit consuming shift operation
@@ -239,7 +237,9 @@ namespace TiledArray {
     /// \param arg The tile argument
     /// \return In-place shifted `arg`
     result_type consume(argument_type& arg) const {
-      return ScalShift_::template eval<is_consumable_tile<argument_type>::value>(arg);
+      constexpr bool can_consume = is_consumable_tile<argument_type>::value &&
+          std::is_same<result_type, argument_type>::value;
+      return ScalShift_::template eval<can_consume>(arg);
     }
 
   }; // class Shift

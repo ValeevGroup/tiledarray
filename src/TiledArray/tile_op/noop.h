@@ -98,7 +98,9 @@ namespace TiledArray {
     /// \param arg The tile argument
     /// \return `arg`
     result_type consume(argument_type& arg) const {
-      return Noop_::template eval<is_consumable_tile<Arg>::value>(arg);
+      constexpr bool can_consume = is_consumable_tile<argument_type>::value &&
+          std::is_same<result_type, argument_type>::value;
+      return Noop_::template eval<can_consume>(arg);
     }
 
   }; // class Noop
