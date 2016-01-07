@@ -149,7 +149,8 @@ namespace TiledArray {
         }
 
         // Wait for local tiles of argument to be evaluated
-        arg_.wait();
+        // needed for throttling???
+        //arg_.wait();
 
         return task_count;
       }
