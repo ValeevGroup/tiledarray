@@ -142,6 +142,10 @@ Note, when configuring TiledArray, CMake will download and build MADNESS, Eigen,
 ### Developers
 TiledArray is developed by the [Valeev Group](http://research.valeyev.net) at [Virginia Tech](http://www.vt.edu).
 
+### License
+
+TiledArray is freely available under the terms of the GPL v3+ licence. See the the included LICENSE file for details. If you are interested in using TiledArray under different licensing terms, please contact us.
+
 ### How to Cite
 
 Cite TiledArray as
