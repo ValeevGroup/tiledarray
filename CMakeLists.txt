@@ -283,17 +283,9 @@ CONFIGURE_FILE(
   ${PROJECT_BINARY_DIR}/tiledarray.pc
 )
 
-CONFIGURE_FILE(
-  ${PROJECT_SOURCE_DIR}/tiledarray-config.cmake.in
-  ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
-  @ONLY)
-
 # install config files
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
     DESTINATION lib/pkgconfig)
-#install(FILES ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
-#    DESTINATION lib/cmake/TiledArray)
-
 
 # Create the version file
 write_basic_package_version_file(tiledarray-config-version.cmake
