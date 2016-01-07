@@ -185,8 +185,12 @@ namespace TiledArray {
     /// \return The difference of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      return Subt_::template eval<is_consumable_tile<left_type>::value, false>(
-          left, std::forward<R>(right));
+      constexpr bool can_consume_left = is_consumable_tile<left_type>::value &&
+          std::is_same<result_type, left_type>::value;
+      constexpr bool can_consume_right = right_is_consumable &&
+          ! (std::is_const<R>::value || can_consume_left);
+      return Subt_::template eval<can_consume_left, can_consume_right>(left,
+          std::forward<R>(right));
     }
 
     /// Subtract left to right
@@ -200,7 +204,11 @@ namespace TiledArray {
     /// \return The difference of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      return Subt_::template eval<false, is_consumable_tile<right_type>::value>(
+      constexpr bool can_consume_right = is_consumable_tile<right_type>::value &&
+          std::is_same<result_type, right_type>::value;
+      constexpr bool can_consume_left = left_is_consumable &&
+          ! (std::is_const<L>::value || can_consume_right);
+      return Subt_::template eval<can_consume_left, can_consume_right>(
           std::forward<L>(left), right);
     }
 
@@ -377,8 +385,12 @@ namespace TiledArray {
     /// \return The difference of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      return ScalSubt_::template eval<is_consumable_tile<left_type>::value, false>(
-          left, std::forward<R>(right));
+      constexpr bool can_consume_left = is_consumable_tile<left_type>::value &&
+          std::is_same<result_type, left_type>::value;
+      constexpr bool can_consume_right = right_is_consumable &&
+          ! (std::is_const<R>::value || can_consume_left);
+      return ScalSubt_::template eval<can_consume_left, can_consume_right>(left,
+          std::forward<R>(right));
     }
 
     /// Subtract left to right and scale the result
@@ -392,7 +404,11 @@ namespace TiledArray {
     /// \return The difference of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      return ScalSubt_::template eval<false, is_consumable_tile<right_type>::value>(
+      constexpr bool can_consume_right = is_consumable_tile<right_type>::value &&
+          std::is_same<result_type, right_type>::value;
+      constexpr bool can_consume_left = left_is_consumable &&
+          ! (std::is_const<L>::value || can_consume_right);
+      return ScalSubt_::template eval<can_consume_left, can_consume_right>(
           std::forward<L>(left), right);
     }
 

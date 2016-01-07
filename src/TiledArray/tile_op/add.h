@@ -187,9 +187,12 @@ namespace TiledArray {
     /// \return The sum of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      constexpr auto can_consume = is_consumable_tile<left_type>::value &&
-          std::is_same<result_type,left_type>::value;
-      return Add_::template eval<can_consume,false>(left, std::forward<R>(right));
+      constexpr bool can_consume_left = is_consumable_tile<left_type>::value &&
+          std::is_same<result_type, left_type>::value;
+      constexpr bool can_consume_right = right_is_consumable &&
+          ! (std::is_const<R>::value || can_consume_left);
+      return Add_::template eval<can_consume_left, can_consume_right>(left,
+          std::forward<R>(right));
     }
 
     /// Add left to right
@@ -203,9 +206,12 @@ namespace TiledArray {
     /// \return The sum of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      constexpr auto can_consume = is_consumable_tile<right_type>::value &&
-          std::is_same<result_type,right_type>::value;
-      return Add_::template eval<false,can_consume>(std::forward<L>(left), right);
+      constexpr bool can_consume_right = is_consumable_tile<right_type>::value &&
+          std::is_same<result_type, right_type>::value;
+      constexpr bool can_consume_left = left_is_consumable &&
+          ! (std::is_const<L>::value || can_consume_right);
+      return Add_::template eval<can_consume_left, can_consume_right>(
+          std::forward<L>(left), right);
     }
 
   }; // class Add
@@ -382,9 +388,11 @@ namespace TiledArray {
     /// \return The sum of `left` and `right`.
     template <typename R>
     result_type consume_left(left_type& left, R&& right) const {
-      constexpr auto can_consume = is_consumable_tile<left_type>::value &&
+      constexpr bool can_consume_left = is_consumable_tile<left_type>::value &&
           std::is_same<result_type, left_type>::value;
-      return ScalAdd_::template eval<can_consume, false>(left,
+      constexpr bool can_consume_right = right_is_consumable &&
+          ! (std::is_const<R>::value || can_consume_left);
+      return ScalAdd_::template eval<can_consume_left, can_consume_right>(left,
           std::forward<R>(right));
     }
 
@@ -399,10 +407,12 @@ namespace TiledArray {
     /// \return The sum of `left` and `right`.
     template <typename L>
     result_type consume_right(L&& left, right_type& right) const {
-      constexpr auto can_consume = is_consumable_tile<right_type>::value &&
-          std::is_same<result_type,right_type>::value;
-      return ScalAdd_::template eval<false, can_consume>(std::forward<L>(left),
-          right);
+      constexpr bool can_consume_right = is_consumable_tile<right_type>::value &&
+          std::is_same<result_type, right_type>::value;
+      constexpr bool can_consume_left = left_is_consumable &&
+          ! (std::is_const<L>::value || can_consume_right);
+      return ScalAdd_::template eval<can_consume_left, can_consume_right>(
+          std::forward<L>(left), right);
     }
 
   }; // class ScalAdd
