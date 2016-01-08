@@ -29,34 +29,34 @@
 
 using namespace TiledArray;
 using namespace TiledArray::math;
+using TiledArray::detail::ContractReduce;
 
 struct ContractReduceFixture {
-  typedef TiledArray::Tensor<int> tensor_type;
   typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
 
   ContractReduceFixture() { }
 
   ~ContractReduceFixture() { }
 
-  static tensor_type make_tensor(const std::size_t i0, const std::size_t j0,
+  static TensorI make_tensor(const std::size_t i0, const std::size_t j0,
       const std::size_t i, const std::size_t j)
   {
     std::size_t start[2] = {i0, j0}, finish[2] = {i, j};
-    tensor_type result(tensor_type::range_type(start, finish));
+    TensorI result(TensorI::range_type(start, finish));
     rand_fill(result);
     return result;
   }
 
-  static tensor_type make_tensor(const std::size_t i0, const std::size_t j0, const std::size_t k0,
+  static TensorI make_tensor(const std::size_t i0, const std::size_t j0, const std::size_t k0,
       const std::size_t i, const std::size_t j, const std::size_t k)
   {
     std::size_t start[3] = {i0, j0, k0}, finish[3] = {i, j, k};
-    tensor_type result(tensor_type::range_type(start, finish));
+    TensorI result(TensorI::range_type(start, finish));
     rand_fill(result);
     return result;
   }
 
-  static void rand_fill(tensor_type& tensor) {
+  static void rand_fill(TensorI& tensor) {
     for(std::size_t i = 0ul; i < tensor.size(); ++i)
       tensor[i] = GlobalFixture::world->rand() % 27;
   }
@@ -78,16 +78,16 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_contract_reduce_suite, ContractReduceFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW((ContractReduce<tensor_type, tensor_type, int>( \
+  BOOST_REQUIRE_NO_THROW((ContractReduce<TensorI, TensorI, TensorI, int>( \
       madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, 2u, 2u)));
 }
 
 BOOST_AUTO_TEST_CASE( make_result )
 {
   // Check the seed operation produces an empty tensor.
-  ContractReduce<tensor_type, tensor_type, int>
+  ContractReduce<TensorI, TensorI, TensorI, int>
   op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, 2u, 2u);
-  tensor_type result;
+  TensorI result;
   BOOST_REQUIRE_NO_THROW(result = op());
   BOOST_CHECK(result.empty());
 
@@ -98,9 +98,9 @@ BOOST_AUTO_TEST_CASE( make_result )
 BOOST_AUTO_TEST_CASE( permute_empty )
 {
   // Check the seed operation produces an empty tensor.
-  ContractReduce<tensor_type, tensor_type, int>
+  ContractReduce<TensorI, TensorI, TensorI, int>
   op(madness::cblas::NoTrans, madness::cblas::NoTrans, 1, 2u, 2u, 2u);
-  tensor_type t, result;
+  TensorI t, result;
   BOOST_REQUIRE_THROW(result = op(t), TiledArray::Exception);
 }
 #endif // TA_EXCEPTION_ERROR
@@ -116,10 +116,10 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
       right_outer_start = 4, right_outer_finish = 40;
 
   // Construct tensors
-  tensor_type left = make_tensor(left_outer_start, inner_start, left_outer_finish, inner_finish);
-  tensor_type leftT = make_tensor(inner_start, left_outer_start, inner_finish, left_outer_finish);
-  tensor_type right = make_tensor(inner_start, right_outer_start, inner_finish, right_outer_finish);
-  tensor_type rightT = make_tensor(right_outer_start, inner_start, right_outer_finish, inner_finish);
+  TensorI left = make_tensor(left_outer_start, inner_start, left_outer_finish, inner_finish);
+  TensorI leftT = make_tensor(inner_start, left_outer_start, inner_finish, left_outer_finish);
+  TensorI right = make_tensor(inner_start, right_outer_start, inner_finish, right_outer_finish);
+  TensorI rightT = make_tensor(right_outer_start, inner_start, right_outer_finish, inner_finish);
 
   const std::size_t m = left_outer_finish - left_outer_start;
   const std::size_t n = right_outer_finish - right_outer_start;
@@ -130,12 +130,12 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
     A(left.data(), m, k), B(right.data(), k, n),
     AT(leftT.data(), k, m), BT(rightT.data(), n, k);
 
-  tensor_type result;
+  TensorI result;
 
   ////////////////////////
   // Test NoTrans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 3, 2u, 2u, 2u);
 
     // Do contraction operation
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   ////////////////////////
   // Test Trans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::Trans, madness::cblas::NoTrans, 3, 2u, 2u, 2u);
 
     // Do contraction operation
@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   ////////////////////////
   // Test NoTrans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::NoTrans, madness::cblas::Trans, 3, 2u, 2u, 2u);
 
     // Do contraction operation
@@ -194,7 +194,7 @@ BOOST_AUTO_TEST_CASE( matrix_multiply )
   ////////////////////////
   // Test Trans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::Trans, madness::cblas::Trans, 3, 2u, 2u, 2u);
 
     // Do contraction operation
@@ -224,10 +224,10 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
       right_outer_start = 5, right_outer_finish = 50;
 
   // Construct tensors
-  tensor_type left = make_tensor(left_outer_start, inner1_start, inner2_start, left_outer_finish, inner1_finish, inner2_finish);
-  tensor_type right = make_tensor(inner1_start, inner2_start, right_outer_start, inner1_finish, inner2_finish, right_outer_finish);
-  tensor_type leftT = make_tensor(inner1_start, inner2_start, left_outer_start, inner1_finish, inner2_finish, left_outer_finish);
-  tensor_type rightT = make_tensor(right_outer_start, inner1_start, inner2_start, right_outer_finish, inner1_finish, inner2_finish);
+  TensorI left = make_tensor(left_outer_start, inner1_start, inner2_start, left_outer_finish, inner1_finish, inner2_finish);
+  TensorI right = make_tensor(inner1_start, inner2_start, right_outer_start, inner1_finish, inner2_finish, right_outer_finish);
+  TensorI leftT = make_tensor(inner1_start, inner2_start, left_outer_start, inner1_finish, inner2_finish, left_outer_finish);
+  TensorI rightT = make_tensor(right_outer_start, inner1_start, inner2_start, right_outer_finish, inner1_finish, inner2_finish);
 
   const std::size_t m = left_outer_finish - left_outer_start;
   const std::size_t n = right_outer_finish - right_outer_start;
@@ -238,12 +238,12 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
     A(left.data(), m, k), B(right.data(), k, n),
     AT(leftT.data(), k, m), BT(rightT.data(), n, k);
 
-  tensor_type result;
+  TensorI result;
 
   ////////////////////////
   // Test NoTrans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 3, 2u, 3u, 3u);
 
     // Do contraction operation
@@ -266,7 +266,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   ////////////////////////
   // Test Trans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::Trans, madness::cblas::NoTrans, 3, 2u, 3u, 3u);
 
     // Do contraction operation
@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   ////////////////////////
   // Test NoTrans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::NoTrans, madness::cblas::Trans, 3, 2u, 3u, 3u);
 
     // Do contraction operation
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract1 )
   ////////////////////////
   // Test Trans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::Trans, madness::cblas::Trans, 3, 2u, 3u, 3u);
 
     // Do contraction operation
@@ -341,10 +341,10 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
       right_outer2_start = 5, right_outer2_finish = 50;
 
   // Construct tensors
-  tensor_type left = make_tensor(left_outer1_start, left_outer2_start, inner_start, left_outer1_finish, left_outer2_finish, inner_finish);
-  tensor_type right = make_tensor(inner_start, right_outer1_start, right_outer2_start, inner_finish, right_outer1_finish, right_outer2_finish);
-  tensor_type leftT = make_tensor(inner_start, left_outer1_start, left_outer2_start, inner_finish, left_outer1_finish, left_outer2_finish);
-  tensor_type rightT = make_tensor(right_outer1_start, right_outer2_start, inner_start, right_outer1_finish, right_outer2_finish, inner_finish);
+  TensorI left = make_tensor(left_outer1_start, left_outer2_start, inner_start, left_outer1_finish, left_outer2_finish, inner_finish);
+  TensorI right = make_tensor(inner_start, right_outer1_start, right_outer2_start, inner_finish, right_outer1_finish, right_outer2_finish);
+  TensorI leftT = make_tensor(inner_start, left_outer1_start, left_outer2_start, inner_finish, left_outer1_finish, left_outer2_finish);
+  TensorI rightT = make_tensor(right_outer1_start, right_outer2_start, inner_start, right_outer1_finish, right_outer2_finish, inner_finish);
 
   const std::size_t m = (left_outer1_finish - left_outer1_start) * (left_outer2_finish - left_outer2_start);
   const std::size_t n = (right_outer1_finish - right_outer1_start) * (right_outer2_finish - right_outer2_start);
@@ -355,12 +355,12 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
     A(left.data(), m, k), B(right.data(), k, n),
     AT(leftT.data(), k, m), BT(rightT.data(), n, k);
 
-  tensor_type result;
+  TensorI result;
 
   ////////////////////////
   // Test NoTrans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::NoTrans, madness::cblas::NoTrans, 3, 4u, 3u, 3u);
 
     // Do contraction operation
@@ -389,7 +389,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   ////////////////////////
   // Test Trans, NoTrans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::Trans, madness::cblas::NoTrans, 3, 4u, 3u, 3u);
 
     // Do contraction operation
@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   ////////////////////////
   // Test NoTrans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::NoTrans, madness::cblas::Trans, 3, 4u, 3u, 3u);
 
     // Do contraction operation
@@ -445,7 +445,7 @@ BOOST_AUTO_TEST_CASE( tensor_contract2 )
   ////////////////////////
   // Test Trans, Trans
   {
-    ContractReduce<tensor_type, tensor_type, int>
+    ContractReduce<TensorI, TensorI, TensorI, int>
     op(madness::cblas::Trans, madness::cblas::Trans, 3, 4u, 3u, 3u);
 
     // Do contraction operation

@@ -32,6 +32,7 @@
 
 using namespace TiledArray;
 using TiledArray::detail::Noop;
+using TiledArray::detail::ContractReduce;
 using TiledArray::detail::UnaryWrapper;
 
 struct ContractionEvalFixture : public SparseShapeFixture {
@@ -70,11 +71,11 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   }
 
 
-  static ContractReduce<TensorI, TensorI, int>
+  static ContractReduce<TensorI, TensorI, TensorI, int>
   make_contract(const unsigned int result_rank, const unsigned int left_rank,
       const unsigned int right_rank, const Permutation& perm = Permutation())
   {
-    return ContractReduce<TensorI, TensorI, int>(
+    return ContractReduce<TensorI, TensorI, TensorI, int>(
         madness::cblas::NoTrans, madness::cblas::NoTrans, 1, result_rank,
         left_rank, right_rank, perm);
   }

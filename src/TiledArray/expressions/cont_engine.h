@@ -47,27 +47,37 @@ namespace TiledArray {
       // Class hierarchy typedefs
       typedef ContEngine<Derived> ContEngine_; ///< This class type
       typedef BinaryEngine<Derived> BinaryEngine_; ///< Binary base class type
-      typedef ExprEngine<Derived> ExprEngine_; ///< Expression engine base class type
+      typedef ExprEngine<Derived>
+          ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
-      typedef typename EngineTrait<Derived>::left_type left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<Derived>::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<Derived>::left_type
+          left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<Derived>::right_type
+          right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
-      typedef TiledArray::ContractReduce<
+      typedef typename EngineTrait<Derived>::value_type
+          value_type; ///< The result tile type
+      typedef typename EngineTrait<Derived>::scalar_type
+          scalar_type; ///< Tile scalar type
+      typedef TiledArray::detail::ContractReduce<value_type,
           typename eval_trait<typename left_type::value_type>::type,
           typename eval_trait<typename right_type::value_type>::type,
           scalar_type> op_type; ///< The tile operation type
-      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<Derived>::policy
+          policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type
-      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Shape type
-      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<Derived>::trange_type
+          trange_type; ///< Tiled range type
+      typedef typename EngineTrait<Derived>::shape_type
+          shape_type; ///< Shape type
+      typedef typename EngineTrait<Derived>::pmap_interface
+          pmap_interface; ///< Process map interface type
 
     protected:
 
