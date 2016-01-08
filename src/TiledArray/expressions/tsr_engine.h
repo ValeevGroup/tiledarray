@@ -49,21 +49,25 @@ namespace TiledArray {
       // Operational typedefs
       // Note: the consumable flag is true for noop to avoid necessary copies.
       // This is OK because the result consumable flag is set to false.
-      typedef TiledArray::Noop<Result, typename array_type::eval_type, true>
-          op_base_type; ///< The tile operation
+      typedef TiledArray::detail::Noop<Result, typename array_type::eval_type,
+          true> op_base_type; ///< The tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type;
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
+      typedef typename eval_trait<value_type>::type
+          eval_type; ///< Evaluation tile type
+      typedef typename TiledArray::detail::scalar_type<DistArray<Tile,
+          Policy> >::type scalar_type; ///< Scalar type of tile
       typedef Policy policy; ///< Policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = ! Alias;
       static constexpr unsigned int leaves = 1;

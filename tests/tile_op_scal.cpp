@@ -29,6 +29,7 @@
 #include "range_fixture.h"
 
 using namespace TiledArray;
+using TiledArray::detail::Scal;
 
 struct ScalFixture : public RangeFixture {
 

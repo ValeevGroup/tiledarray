@@ -51,7 +51,8 @@ namespace TiledArray {
       typedef Right right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef TiledArray::Mult<Result, typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::detail::Mult<Result,
+          typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
           EngineTrait<Right>::consumable>
           op_base_type; ///< The base tile operation type
@@ -91,7 +92,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type; ///< Tile scalar type
-      typedef TiledArray::ScalMult<Result,
+      typedef TiledArray::detail::ScalMult<Result,
           typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, scalar_type,
           EngineTrait<Left>::consumable, EngineTrait<Right>::consumable>

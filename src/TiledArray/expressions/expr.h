@@ -245,7 +245,7 @@ namespace TiledArray {
       /// \param tsr The tensor to be assigned
       template <typename A, bool Alias>
       void eval_to(BlkTsrExpr<A, Alias>& tsr) const {
-        typedef TiledArray::Shift<typename std::decay<A>::type::value_type,
+        typedef TiledArray::detail::Shift<typename std::decay<A>::type::value_type,
             typename EngineTrait<engine_type>::eval_type,
             EngineTrait<engine_type>::consumable> shift_op_type;
         typedef TiledArray::detail::UnaryWrapper<shift_op_type> op_type;

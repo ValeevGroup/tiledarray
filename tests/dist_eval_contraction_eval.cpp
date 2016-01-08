@@ -31,10 +31,12 @@
 #include "sparse_shape_fixture.h"
 
 using namespace TiledArray;
+using TiledArray::detail::Noop;
+using TiledArray::detail::UnaryWrapper;
 
 struct ContractionEvalFixture : public SparseShapeFixture {
   typedef Noop<TensorI, TensorI, true> array_base_op_type;
-  typedef detail::UnaryWrapper<array_base_op_type> array_op_type;
+  typedef UnaryWrapper<array_base_op_type> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<TensorI, array_op_type>,
       DensePolicy> array_eval_type;
   typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;

@@ -44,14 +44,16 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type;
-      typedef TiledArray::Scal<Result, typename array_type::eval_type,
+      typedef TiledArray::detail::Scal<Result, typename array_type::eval_type,
           scalar_type, false> op_base_type; ///< The tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type;
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type; ///< Evaluation tile type
       typedef Policy policy; ///< Policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type

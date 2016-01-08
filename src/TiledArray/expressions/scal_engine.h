@@ -45,8 +45,9 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type; ///< Tile scalar type
-      typedef TiledArray::Scal<Result, typename EngineTrait<Arg>::eval_type,
-          scalar_type, EngineTrait<Arg>::consumable>
+      typedef TiledArray::detail::Scal<Result,
+          typename EngineTrait<Arg>::eval_type, scalar_type,
+          EngineTrait<Arg>::consumable>
           op_base_type; ///< The tile base operation type
       typedef TiledArray::detail::UnaryWrapper<op_base_type>
           op_type; ///< The tile operation type

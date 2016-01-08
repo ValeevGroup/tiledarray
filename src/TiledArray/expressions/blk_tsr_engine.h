@@ -51,7 +51,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename TiledArray::detail::scalar_type<DistArray<Tile,
             Policy> >::type scalar_type;
-      typedef TiledArray::Shift<Result, typename array_type::eval_type,
+      typedef TiledArray::detail::Shift<Result, typename array_type::eval_type,
           ! Alias> op_base_type; ///< The base tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type>
           op_type; ///< The tile operation
@@ -82,8 +82,9 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type;
-      typedef TiledArray::ScalShift<Result, typename array_type::eval_type,
-          scalar_type, false> op_base_type; ///< The base tile operation
+      typedef TiledArray::detail::ScalShift<Result,
+          typename array_type::eval_type, scalar_type, false>
+          op_base_type; ///< The base tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type>
           op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<
