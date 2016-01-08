@@ -88,7 +88,7 @@ namespace TiledArray {
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
       /// Convert tile to evaluation type
-      operator eval_type() const {
+      explicit operator eval_type() const {
         return (consume_ ? op_->consume(tile_) : (*op_)(tile_));
       }
 

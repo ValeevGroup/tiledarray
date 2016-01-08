@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE( eval_scale )
 
     // Force the evaluation of the tile
     dist_eval_type::eval_type eval_tile;
-    BOOST_REQUIRE_NO_THROW(eval_tile = impl_tile.get());
+    BOOST_REQUIRE_NO_THROW(eval_tile = static_cast<dist_eval_type::eval_type>(impl_tile.get()));
 
     // Check that the result tile is correctly modified.
     BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
@@ -169,7 +169,7 @@ BOOST_AUTO_TEST_CASE( eval_permute )
 
     // Force the evaluation of the tile
     dist_eval_type::eval_type eval_tile;
-    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get(););
+    BOOST_REQUIRE_NO_THROW(eval_tile = static_cast<dist_eval_type::eval_type>(tile.get()););
 
     // Check that the result tile is correctly modified.
     BOOST_CHECK_EQUAL(eval_tile.range(), perm * array_tile.range());
