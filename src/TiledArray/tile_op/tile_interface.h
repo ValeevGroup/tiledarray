@@ -27,18 +27,19 @@
 #define TILEDARRAY_NONINTRUSIVE_API_TENSOR_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
+#include <vector>
 
 namespace TiledArray {
 
   // Forward declaration
   class Permutation;
-
   namespace math {
-
-    // Forward declaration
     class GemmHelper;
-
   }  // namespace math
+  namespace detail {
+    template <typename, typename> class LazyArrayTile;
+    template <typename, typename> class Cast;
+  }  // namespace detail
 
   /**
    * \defgroup NonIntrusiveTileInterface Non-intrusive tile interface
@@ -256,7 +257,95 @@ namespace TiledArray {
    */
 
 
+  // Empty operations ----------------------------------------------------------
+
+  /// Check that `arg` is empty (no data)
+
+  /// \tparam Arg The tile argument type
+  /// \param arg The tile argument to be checked
+  /// \return `true` if `arg` is empty, otherwise `false`.
+  template <typename Arg>
+  inline bool empty(const Arg& arg) {
+    return arg.empty();
+  }
+
+  // Cast operations -----------------------------------------------------------
+
+  template <typename, typename> class Cast;
+
+  namespace tile_interface {
+
+    /// Internal cast implementation
+
+    /// This class is used to define internal tile cast operations. Users may
+    /// specialize the `TiledArray::Cast` class.
+    /// \tparam Result The output tile type
+    /// \tparam Arg The input tile type
+    /// \tparam Enabler Enabler type used to select (partial) specializations
+    template <typename Result, typename Arg, typename Enabler = void>
+    class Cast {
+    public:
+
+      typedef Result result_type; ///< Result tile type
+      typedef Arg argument_type; ///< Argument tile type
+
+      result_type operator()(const argument_type& arg) const {
+        return static_cast<result_type>(arg);
+      }
+
+    }; // class CastBase
+
+    /// Internal cast implementation
+
+    /// This class is used to define internal tile cast operations. This
+    /// specialization handles casting of lazy tiles to a type other than the
+    /// evaluation type.
+    /// \tparam Result The output tile type
+    /// \tparam Arg The input tile type
+    template <typename Result, typename Arg>
+    class Cast<Result, Arg,
+        typename std::enable_if<
+            is_lazy_tile<Arg>::value &&
+            ! std::is_same<Result, typename TiledArray::eval_trait<Arg>::type>::value
+        >::type> :
+        public TiledArray::Cast<Result, typename TiledArray::eval_trait<Arg>::type>
+    {
+    private:
+      typedef Cast<Result, typename TiledArray::eval_trait<Arg>::type>
+          Cast_; ///< Base class type
+      typedef typename TiledArray::eval_trait<Arg>::type
+          eval_type; ///< Lazy tile evaluation type
+    public:
+
+      typedef Result result_type; ///< Result tile type
+      typedef Arg argument_type; ///< Argument tile type
+
+      /// Tile cast operation
+
+      /// Cast arg to a `result_type` tile
+      /// \param arg The tile to be cast
+      /// \return A cast copy of `arg`
+      result_type operator()(const argument_type& arg) const {
+        return Cast_::operator()(static_cast<eval_type>(arg));
+      }
+
+    }; // class Cast
+
+  } // namespace tile_interface
+
+
+  /// Tile cast operation
+
+  /// This class is used to define tile cast operations. Users may specialize
+  /// this class for arbitrary tile type conversion operations.
+  /// \tparam Result The output tile type
+  /// \tparam Arg The input tile type
+  template <typename Result, typename Arg>
+  class Cast : public TiledArray::tile_interface::Cast<Result, Arg> { };
+
+
   // Clone operations ----------------------------------------------------------
+
 
   /// Create a copy of \c arg
 
@@ -264,22 +353,52 @@ namespace TiledArray {
   /// \param arg The tile argument to be permuted
   /// \return A (deep) copy of \c arg
   template <typename Arg>
-  inline Arg clone(const Arg& arg) {
+  inline auto clone(const Arg& arg) -> decltype(arg.clone()) {
     return arg.clone();
   }
 
+  namespace tile_interface {
 
-  // Empty operations ----------------------------------------------------------
+    using TiledArray::clone;
 
-  /// Check that \c arg is empty (no data)
+    template <typename T>
+    using result_of_clone_t = typename std::decay<decltype(clone(std::declval<T>()))>::type;
 
-  /// \tparam Arg The tile argument type
-  /// \param arg The tile argument to be checked
-  /// \return \c true if \c arg is empty, otherwise \c false.
-  template <typename Arg>
-  inline bool empty(const Arg& arg) {
-    return arg.empty();
-  }
+    template <typename Result, typename Arg, typename Enabler = void>
+    class Clone {
+    public:
+
+      typedef Result result_type; ///< Result tile type
+      typedef Arg argument_type; ///< Argument tile type
+
+      result_type operator()(const argument_type& arg) const {
+        return clone(arg);
+      }
+    };
+
+    template <typename Result, typename Arg>
+    class Clone<Result, Arg,
+        typename std::enable_if<
+            ! std::is_same<Result, result_of_clone_t<Arg> >::value
+        >::type> :
+        public TiledArray::Cast<Result, result_of_clone_t<Arg> >
+    { };
+
+  } // namespace tile_interface
+
+
+  /// Create a deep copy of a tile
+
+  /// This operation creates a deep copy of a tile. The copy operation may
+  /// optionally perform a clone or cast operation. If the `Result` and `Arg`
+  /// types are the same, the argument tile is copied using the `clone()`
+  /// operation is performed, otherwise the argument tile is cast to the
+  /// `Result` type using the `TiledArray::Cast<Result, Arg>` functor.
+  /// \tparam Result The result tile type
+  /// \tparam Argument The argument tile type
+  template <typename Result, typename Arg>
+  class Clone : public TiledArray::tile_interface::Clone<Result, Arg> { };
+
 
   // Shift operations ----------------------------------------------------------
 
@@ -295,6 +414,7 @@ namespace TiledArray {
       decltype(arg.shift(range_shift))
   { return arg.shift(range_shift); }
 
+
   /// Shift the range of \c arg in place
 
   /// \tparam Arg The tile argument type
@@ -306,6 +426,130 @@ namespace TiledArray {
   inline auto shift_to(Arg& arg, const Index& range_shift) ->
       decltype(arg.shift_to(range_shift))
   { return arg.shift_to(range_shift); }
+
+
+  namespace tile_interface {
+
+    using TiledArray::shift;
+    using TiledArray::shift_to;
+
+    template <typename T>
+    using result_of_shift_t = typename std::decay<
+        decltype(shift(std::declval<T>(),
+        std::declval<std::vector<long> >()))>::type;
+
+    template <typename T>
+    using result_of_shift_to_t = typename std::decay<
+        decltype(shift_to(std::declval<T>(),
+        std::declval<std::vector<long> >()))>::type;
+
+    template <typename Result, typename Arg, typename Enabler = void>
+    class Shift {
+    public:
+
+      typedef Result result_type; ///< Result tile type
+      typedef Arg argument_type; ///< Argument tile type
+
+      template <typename Index>
+      result_type operator()(const argument_type& arg,
+          const Index& range_shift) const
+      { return shift(arg, range_shift); }
+    };
+
+    template <typename Result, typename Arg>
+    class Shift<Result, Arg,
+        typename std::enable_if<
+            ! std::is_same<Result, result_of_shift_t<Arg> >::value
+        >::type> :
+        public TiledArray::Cast<Result, result_of_shift_t<Arg> >
+    {
+    private:
+      typedef TiledArray::Cast<Result, result_of_shift_t<Arg> > Cast_;
+    public:
+
+      typedef Result result_type; ///< Result tile type
+      typedef Arg argument_type; ///< Argument tile type
+
+      template <typename Index>
+      result_type operator()(const argument_type& arg,
+          const Index& range_shift) const
+      { return Cast_::operator()(shift(arg, range_shift)); }
+
+    };
+
+    template <typename Result, typename Arg, typename Enabler = void>
+    class ShiftTo {
+    public:
+
+      typedef Result result_type; ///< Result tile type
+      typedef Arg argument_type; ///< Argument tile type
+
+      template <typename Index>
+      result_type operator()(argument_type& arg,
+          const Index& range_shift) const
+      { return shift_to(arg, range_shift); }
+    };
+
+
+    template <typename Result, typename Arg>
+    class ShiftTo<Result, Arg,
+        typename std::enable_if<
+            ! std::is_same<Result, result_of_shift_to_t<Arg> >::value
+        >::type> :
+        public TiledArray::Cast<Result, result_of_shift_to_t<Arg> >
+    {
+    private:
+      typedef TiledArray::Cast<Result, result_of_shift_to_t<Arg> > Cast_;
+    public:
+
+      typedef Result result_type; ///< Result tile type
+      typedef Arg argument_type; ///< Argument tile type
+
+      template <typename Index>
+      result_type operator()(argument_type& arg,
+          const Index& range_shift) const
+      { return Cast_::operator()(shift_to(arg, range_shift)); }
+
+    };
+
+
+    template <typename Arg, typename Enabler = void>
+    struct shift_trait {
+      typedef Arg type;
+    };
+
+
+    template <typename Arg>
+    struct shift_trait<Arg,
+        typename std::enable_if<
+            TiledArray::detail::is_type<result_of_shift_t<Arg> >::value
+        >::type>
+    {
+      typedef result_of_shift_t<Arg> type;
+    };
+
+  } // namespace tile_interface
+
+
+  /// Shift the range of tile
+
+  /// This operation creates a deep copy of a tile and shifts the lower and
+  /// upper bounds of the range.
+  /// \tparam Result The result tile type
+  /// \tparam Argument The argument tile type
+  template <typename Result, typename Arg>
+  class Shift : public TiledArray::tile_interface::Shift<Result, Arg> { };
+
+
+  /// Shift the range of tile in place
+
+  /// This operation shifts the range of a tile without copying or otherwise
+  /// modifying the tile data.
+  /// \tparam Result The result tile type
+  /// \tparam Argument The argument tile type
+  template <typename Result, typename Arg>
+  class ShiftTo : public TiledArray::tile_interface::ShiftTo<Result, Arg> { };
+
 
   // Permutation operations ----------------------------------------------------
 

@@ -32,8 +32,6 @@
 #include <TiledArray/tile_op/binary_reduction.h>
 #include <TiledArray/tile_op/reduce_wrapper.h>
 #include <TiledArray/tile_op/shift.h>
-#include <TiledArray/tile_op/cast.h>
-#include <TiledArray/tile_op/clone.h>
 #include <TiledArray/tile_op/permute.h>
 #include <TiledArray/tile_op/unary_wrapper.h>
 

@@ -53,32 +53,46 @@ namespace TiledArray {
    * @{
    */
 
+
+  template <typename> struct eval_trait;
+
+  namespace detail {
+
+    template <typename T, typename Enabler = void>
+    struct eval_trait_base {
+      typedef T type;
+      static constexpr bool is_consumable = false;
+    }; // struct eval_trait
+
+    template <typename Tile, typename Op>
+    struct eval_trait_base<LazyArrayTile<Tile, Op>, void> :
+      public eval_trait<Tile>
+    { }; // struct eval_trait
+
+    template <typename T>
+    struct eval_trait_base<T, typename std::enable_if<
+        detail::is_type<typename T::eval_type>::value>::type>
+    {
+      typedef typename T::eval_type type;
+      static constexpr bool is_consumable = false;
+    }; // struct eval_trait
+
+  } // namespace detail
+
+
   /// Determine the object type used in the evaluation of tensor expressions
 
   /// This trait class allows user to specify the object type used in an
   /// expression by providing a (partial) template specialization of this class
-  /// for a user defined tile types. This allows users to use lazy tile
-  /// construction inside tensor expressions. If no evaluation type is
-  /// specified, the lazy tile evaluation is disabled.
-  /// \tparam T The lazy tile type
-  /// \tparam Enabler Internal use only
-  template <typename T, typename Enabler = void>
-  struct eval_trait {
-    typedef T type;
-  }; // struct eval_trait
-
-  /// Determine the object type used in the evaluation of tensor expressions
-
-  /// This trait class allows user to specify the object type used in an
-  /// expression by providing a member type <tt>T::eval_type</tt>. This allows
-  /// users to use lazy tile  construction inside tensor expressions. If no
-  /// evaluation type is specified, the lazy tile evaluation is disabled.
+  /// for a user defined tile types. The default implementation uses
+  /// `T::eval_type` the evaluation type, if no specialization has been
+  /// provided. If no specialization is provided and the tile does not define
+  /// an `eval_type`, the tile is not treated as a lazy tile. This class also
+  /// provides the `is_consumable` flag that indicates if the evaluated tile
+  /// object is consumable.
   /// \tparam T The lazy tile type
   template <typename T>
-  struct eval_trait<T, typename std::enable_if<detail::is_type<typename T::eval_type>::value>::type>  {
-    typedef typename T::eval_type type;
-  }; // struct eval_trait
-
+  struct eval_trait : public TiledArray::detail::eval_trait_base<T> { };
 
   /// Detect lazy evaluation tiles
 
