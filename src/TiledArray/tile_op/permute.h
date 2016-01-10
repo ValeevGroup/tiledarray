@@ -46,7 +46,7 @@ namespace TiledArray {
       // inefficient: first permute, then cast
       using TiledArray::permute;
       auto perm_arg = permute(arg,perm);
-      Cast<Result,Tile> cast;
+      TiledArray::Cast<Result,Tile> cast;
       return cast(perm_arg);
     }
   };

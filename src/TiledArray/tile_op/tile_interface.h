@@ -293,7 +293,7 @@ namespace TiledArray {
         return static_cast<result_type>(arg);
       }
 
-    }; // class CastBase
+    }; // class Cast
 
     /// Internal cast implementation
 

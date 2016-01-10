@@ -104,7 +104,7 @@ namespace TiledArray {
           >::type* = nullptr>
       void set_tile(A& array, const I index, const Future<T>& tile) const {
         array.set(index, array.get_world().taskq.add(
-              Cast<typename A::value_type, T>(), tile));
+            TiledArray::Cast<typename A::value_type, T>(), tile));
       }
 
 
@@ -144,8 +144,8 @@ namespace TiledArray {
       {
         array.set(index, array.get_world().taskq.add(
               & Expr_::template eval_tile<typename A::value_type, T,
-              Cast<typename A::value_type, T>, Op>, tile,
-              Cast<typename A::value_type, T>(), op));
+              TiledArray::Cast<typename A::value_type, T>, Op>, tile,
+              TiledArray::Cast<typename A::value_type, T>(), op));
       }
 
 

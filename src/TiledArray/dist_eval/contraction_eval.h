@@ -196,7 +196,7 @@ namespace TiledArray {
       /// \return The evaluated version of the lazy tile
       template <typename Tile>
       static typename eval_trait<Tile>::type convert_tile_task(const Tile& tile) {
-        Cast<typename eval_trait<Tile>::type, Tile> cast;
+        TiledArray::Cast<typename eval_trait<Tile>::type, Tile> cast;
         return cast(tile);
       }
 
