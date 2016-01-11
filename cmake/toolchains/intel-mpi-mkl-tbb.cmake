@@ -39,5 +39,6 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ relea
 set(BLAS_LIBRARIES "${MKL_ROOT_DIR}/lib/intel64/libmkl_intel_lp64.a" 
     "${MKL_ROOT_DIR}/lib/intel64/libmkl_core.a" "${MKL_ROOT_DIR}/lib/intel64/libmkl_sequential.a" 
     "-lm" "-ldl" CACHE STRING "BLAS linker flags")
+set(MADNESS_CMAKE_EXTRA_ARGS "-DLAPACK_LIBRARIES='-Wl,--start-group ${MKL_ROOT_DIR}/lib/intel64/libmkl_intel_lp64.a ${MKL_ROOT_DIR}/lib/intel64/libmkl_core.a ${MKL_ROOT_DIR}/lib/intel64/libmkl_sequential.a -Wl,--end-group -lm -ldl'" "-DTBB_ROOT_DIR='${TBB_ROOT_DIR}'")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
