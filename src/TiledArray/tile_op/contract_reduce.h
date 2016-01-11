@@ -29,6 +29,7 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/tile_op/tile_interface.h>
+#include "../tile_interface/permute.h"
 #include <TiledArray/tensor/complex.h>
 
 namespace TiledArray {
@@ -229,7 +230,7 @@ namespace TiledArray {
         if(! ContractReduceBase_::perm())
           return temp;
 
-        using TiledArray::permute;
+        TiledArray::Permute<result_type, result_type> permute;
         return permute(temp, ContractReduceBase_::perm());
       }
 

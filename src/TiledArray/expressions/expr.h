@@ -26,14 +26,14 @@
 #ifndef TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 
-#include <TiledArray/expressions/expr_engine.h>
-#include <TiledArray/reduce_task.h>
-#include <TiledArray/tile_op/unary_reduction.h>
-#include <TiledArray/tile_op/binary_reduction.h>
-#include <TiledArray/tile_op/reduce_wrapper.h>
-#include <TiledArray/tile_op/shift.h>
-#include <TiledArray/tile_op/permute.h>
-#include <TiledArray/tile_op/unary_wrapper.h>
+#include "expr_engine.h"
+#include "../reduce_task.h"
+#include "../tile_interface/cast.h"
+#include "../tile_op/shift.h"
+#include "../tile_op/unary_wrapper.h"
+#include "../tile_op/unary_reduction.h"
+#include "../tile_op/binary_reduction.h"
+#include "../tile_op/reduce_wrapper.h"
 
 namespace TiledArray {
   namespace expressions {

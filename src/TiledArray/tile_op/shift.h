@@ -26,6 +26,9 @@
 #ifndef TILEDARRAY_TILE_OP_SHIFT_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SHIFT_H__INCLUDED
 
+#include "../tile_interface/shift.h"
+#include "../tile_interface/permute.h"
+
 namespace TiledArray {
   namespace detail {
 
@@ -60,8 +63,8 @@ namespace TiledArray {
 
       result_type
       eval(const argument_type& arg, const Permutation& perm) const {
-        using TiledArray::permute;
-        using TiledArray::shift_to;
+        TiledArray::Permute<result_type, argument_type> permute;
+        TiledArray::ShiftTo<result_type, result_type> shift_to;
         result_type result = permute(arg, perm);
         shift_to(result, range_shift_);
         return result;
@@ -73,13 +76,13 @@ namespace TiledArray {
 
       template <bool C, typename std::enable_if<!C>::type* = nullptr>
       result_type eval(const argument_type& arg) const {
-        using TiledArray::shift;
+        TiledArray::Shift<result_type, argument_type> shift;
         return shift(arg, range_shift_);
       }
 
       template <bool C, typename std::enable_if<C>::type* = nullptr>
       result_type eval(argument_type& arg) const {
-        using TiledArray::shift_to;
+        TiledArray::ShiftTo<result_type, argument_type> shift_to;
         shift_to(arg, range_shift_);
         return arg;
       }

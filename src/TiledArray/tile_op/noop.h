@@ -26,7 +26,8 @@
 #ifndef TILEDARRAY_TILE_OP_NOOP_H__INCLUDED
 #define TILEDARRAY_TILE_OP_NOOP_H__INCLUDED
 
-#include <TiledArray/tile_op/tile_interface.h>
+#include "../tile_interface/permute.h"
+#include "../tile_interface/clone.h"
 
 namespace TiledArray {
   namespace detail {
@@ -54,8 +55,8 @@ namespace TiledArray {
       // These operations cannot consume the argument tile since this operation
       // requires temporary storage space.
 
-      static result_type eval(const Arg& arg, const Permutation& perm) {
-        using TiledArray::permute;
+      result_type eval(const Arg& arg, const Permutation& perm) const {
+        TiledArray::Permute<Result, Arg> permute;
         return permute(arg, perm);
       }
 
@@ -64,13 +65,13 @@ namespace TiledArray {
       // consumability of the arguments.
 
       template <bool C, typename std::enable_if<!C>::type* = nullptr>
-      static result_type eval(const Arg& arg) {
-        using TiledArray::clone;
+      result_type eval(const Arg& arg) const {
+        TiledArray::Clone<Result, Arg> clone;
         return clone(arg);
       }
 
       template <bool C, typename std::enable_if<C>::type* = nullptr>
-      static result_type eval(Arg& arg) { return arg; }
+      result_type eval(Arg& arg) const { return arg; }
 
     public:
 

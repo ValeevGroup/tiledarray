@@ -26,9 +26,10 @@
 #ifndef TILEDARRAY_TILE_OP_ADD_H__INCLUDED
 #define TILEDARRAY_TILE_OP_ADD_H__INCLUDED
 
-#include <TiledArray/tile_op/tile_interface.h>
-#include <TiledArray/tile_op/permute.h>
-#include <TiledArray/zero_tensor.h>
+#include "tile_interface.h"
+#include "../tile_interface/permute.h"
+#include "../tile_interface/clone.h"
+#include "../zero_tensor.h"
 
 namespace TiledArray {
   namespace detail {
@@ -80,14 +81,14 @@ namespace TiledArray {
       static result_type eval(ZeroTensor, const right_type& second,
           const Permutation& perm)
       {
-        Permute<result_type,right_type> permute;
+        TiledArray::Permute<result_type, right_type> permute;
         return permute(second, perm);
       }
 
       static result_type eval(const left_type& first, ZeroTensor,
           const Permutation& perm)
       {
-        Permute<result_type,left_type> permute;
+        TiledArray::Permute<result_type, left_type> permute;
         return permute(first, perm);
       }
 

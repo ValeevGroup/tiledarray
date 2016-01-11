@@ -27,6 +27,8 @@
 #define TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
 
 #include <TiledArray/tile_op/tile_interface.h>
+#include "../tile_interface/permute.h"
+#include "../tile_interface/clone.h"
 #include <TiledArray/zero_tensor.h>
 
 namespace TiledArray {
@@ -131,7 +133,7 @@ namespace TiledArray {
       template <bool LC, bool RC,
           typename std::enable_if<!LC>::type* = nullptr>
       static result_type eval(const left_type& first, ZeroTensor) {
-        using TiledArray::clone;
+        TiledArray::Clone<result_type, left_type> clone;
         return clone(first);
       }
 
