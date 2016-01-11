@@ -35,7 +35,9 @@ generate a tile, such as the tile range information or external data.
 
 ## Arithmetic Tiles
 
-The default arithmatic tile type used in `DistArray` is `Tensor`. 
+The default arithmatic tile type used in `DistArray` is `Tensor`. However, 
+TiledArray also supports user-defined tile types, by replacing the `Tile`
+template parameter of `DistArray` with a custom tile type. 
 ```c++
 namespace TiledArray {
 
@@ -46,11 +48,10 @@ namespace TiledArray {
   
 }
 ```
-However, TiledArray also supports user-defined tile types. There are few 
-scenarios where one would like to provide a non-standard type as a tile; for 
-example, users may want to provide a more efficient implementation of certain
-tile operations. An arithmatic tile represent an n-th order tensor object, 
-and may use any arbitrary data representation. 
+There are few scenarios where one would like to provide a non-standard type as a
+tile; for example, users may want to provide a more efficient implementation of
+certain tile operations. An arithmatic tile represent an n-th order tensor
+object, and may use any arbitrary data representation. 
 
 * Tile objects must define a shallow copy constructor and assignment operator.
 If you would like to use a tile object type that is not or cannot be converted
@@ -76,8 +77,9 @@ To mark a the output of a lazy tile as consumable, set the `is_consumable`
 member variable of the `TiledArray::eval_trait` class to `true`. See the example
 below.
 
-#### Examples:
+##### Interface:
 ```c++
+// User-defined lazy tile class
 class LazyTile {
 public:
   // ...
@@ -88,22 +90,11 @@ public:
   
   // ...
 };
-```
 
-```c++
-class LazyTile {
-  // ...
-  
-  operator eval_type() const;
-  
-  // ...
-};
-
-  
 namespace TiledArray {
 
   template <>
-  struct evail_trait<LazyTile> {
+  struct eval_trait<LazyTile> {
     typedef ... type;
     static constexpr bool is_consumable = true;
   };
@@ -114,60 +105,44 @@ namespace TiledArray {
 
 # Tile Interface
 
-When implementing a user-defined tile type, tile arithmatic operations must also
-be implement so that the tiles may be used in TiledArray tensor expressions.
-Below is a list of all tile interface functions, functors, and classes that will
-need to be implemented.
+When implementing a user-defined tile type, tile arithmatic operations must also be implement so that the tiles may be used in TiledArray tensor expressions. Below is a list of all tile interface functions, functors, and classes that will need to be implemented.
 
 ## Empty
 
-The empty functions are used to check that a tile has been initialized and may
-be used in tile algebraic operations. The empty function returns `true` if the
-tile is not usable in tile algebraic operations, otherwise `false`. Tile empty
-functions can be implemented with any one of the following methods:
+The empty function is used to check that a tile has been initialized and may be used in tile algebraic operations. The empty function returns `true` if the tile is not usable in tile algebraic operations, otherwise `false`. Tile empty functions can be implemented with any one of the following methods:
 
-### `empty` Member Fuction
+### Member Fuction
 
 A tile class may define a member function named `empty`.
 
-#### Example: 
+##### Interface: 
 ```c++
 class Tile {
 public:
 
   // ...
   
-  bool empty();
+  bool empty() const;
   
   // ...
 }; // class Tile 
 ```
 
-### `empty` Free Function
+### Free Function
 
 The empty function may be a non-member function `empty`. The function must be in
 the same namespace as the tile class.
 
-#### Example: 
+##### Interface: 
 ```c++
-namespace foo {
-
-  class Tile {
-  public:
-
-    // ...
+class Tile; 
   
-  }; // class Tile 
-  
-  bool empty(const Tile&);
-  
-} // namespace foo
+bool empty(const Tile&);
 ```
 
 ## Cast
 
-Tile cast operations convert a tile from one type to another. Tile cast can be
-implemented with any one of the following methods:
+Tile cast operations convert a tile from one type to another. By default, TiledArray will use the cast functor to modify the return type of other arithmatic functions when the return type does not match the default return type. Tile cast can be implemented with any one of the following methods:
 
 ### Type Conversion Constructor
 
@@ -175,7 +150,7 @@ The output tile type may define a type conversion constructor that accept the
 input tile as an argument. The constructor may be marked as `explicit`, if
 reqired.
 
-#### Example:
+##### Interface:
 ```c++
 class ToTile {
 public:
@@ -186,13 +161,16 @@ public:
 ### Type Conversion Operator
 
 The input tile type may define a type conversion operator for the output tile
-type.  for the input tile class
-  ```c++
-  class FromTile {
-  public:
-    operator ToTile() const;
-  };
-  ```
+type.
+
+##### Interface:
+```c++
+class FromTile {
+public:
+  operator ToTile() const;
+};
+```
+
 ### Define `TiledArray::Cast` Functor
 
 In some cases it is not possible, or undesirable, to define a type conversion
@@ -201,10 +179,19 @@ this case, it is neccessary to provdied a (partial) specialization of the the
 `TiledArray::Cast` functor. The cast functor is constructed by TiledArray and,
 therefore, may not define any constructors, other than the default constructor.
 
-#### Example:
+##### Interface:
 ```c++
+// User-defined tile classes
+class ToTile;
+class FromTile;
+
 namespace TiledArray {
 
+  template <typename Result, typename Arg>
+  class Cast;
+
+  // User-defined tile cast operation
+  //   ToTile <- FromTile
   template <>
   class Cast<ToTile, FromTile> {
   public:
@@ -222,17 +209,16 @@ namespace TiledArray {
 
 Tile clone operations create a deep copy of a tile. The input tile object may 
 not share any mutable data with the output tile object. A tile clone operation
-can be implemented with any one of the following methods:
+can be implemented with `clone` member function, `clone` free function, or by specializing the `TiledArray::Clone` class.
 
 ### `clone` Member Fuction
 
 A tile class may define a member function named `clone`.
 
-#### Example: 
+##### Interface:
 ```c++
 class Tile {
 public:
-
   // ...
   
   Tile clone();
@@ -244,33 +230,33 @@ public:
 ### `clone` Free Function
 
 The clone function may be a non-member function `clone`. The function must be in
-the same namespace as the tile class.
+the same namespace as the tile class.<br>
 
-#### Example: 
+##### Interface:
 ```c++
-namespace foo {
-
-  class Tile {
-  public:
-
-    // ...
-  
-  }; // class Tile 
-  
-  Tile clone(const Tile&);
-  
-} // namespace foo
+class Tile; 
+ 
+Tile clone(const Tile&);
 ```
 
-### Define `TiledArray::Clone` Functor
+### Specialize `TiledArray::Clone` Functor
 
-The Clone functor may be used to define the clone operation, in the same way the
-member and non-member `clone` functions given above.
+The Clone functor may be used to define the clone operation, in the same way the member and non-member `clone` functions given above. In addition, the `TiledArray::Clone` may also be used to combine cast and clone operations into a single step. By default, TiledArray will [cast](#Cast) the input tile instead of cloning it. This behavior may be overridden by providing a (partial) specialization for `TiledArray::Clone`.
 
-#### Example:
+##### Interface:
+
+Clone tile operation
+
 ```c++
+// User defined tile types
+class Tile;
+
 namespace TiledArray {
 
+  template <typename Result, typename Arg>
+  class Clone;
+  
+  // User-defined tile cast operation
   template <>
   class Clone<Tile, Tile> {
   public:
@@ -284,15 +270,20 @@ namespace TiledArray {
 } // namespace TiledArray
 ```
 
-`TiledArray::Clone` may also be used to combine cast and clone operations into a
-single step. By default, TiledArray will [cast](#Cast) the input tile instead of
-cloning it. This behavior may be overridden by providing a (partial) 
-specialization for `TiledArray::Clone`.
+Combine clone and cast interface:
 
-#### Example:
 ```c++
+// User defined tile types
+class FromTile;
+class ToTile;
+
 namespace TiledArray {
 
+  template <typename Result, typename Arg>
+  class Clone;
+  
+  // User-defined tile clone operation
+  //   ToTile <- FromTile
   template <>
   class Clone<ToTile, FromTile> {
   public:
