@@ -48,7 +48,8 @@ namespace TiledArray {
     struct ExprTrait<ScalTsrExpr<Array, Scalar> > {
       typedef Array array_type; ///< The \c Array type
       typedef Scalar scalar_type; ///< Expression scalar type
-      typedef result_of_scale_t<typename Array::eval_type, scalar_type>
+      typedef TiledArray::tile_interface::result_of_scale_t<
+          typename Array::eval_type, scalar_type>
           result_type; ///< Result tile type
       typedef ScalTsrEngine<Array, scalar_type, result_type>
           engine_type; ///< Expression engine type

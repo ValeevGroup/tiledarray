@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
 
 #include <TiledArray/tile_op/tile_interface.h>
+#include "../tile_interface/scale.h"
 #include "../tile_interface/permute.h"
 #include "../tile_interface/clone.h"
 #include <TiledArray/zero_tensor.h>

@@ -29,6 +29,7 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/tile_op/tile_interface.h>
+#include "../tile_interface/add.h"
 #include "../tile_interface/permute.h"
 #include <TiledArray/tensor/complex.h>
 

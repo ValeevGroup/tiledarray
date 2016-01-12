@@ -49,7 +49,7 @@ namespace TiledArray {
     struct ExprTrait<AddExpr<Left, Right> > {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
-      typedef result_of_add_t<
+      typedef TiledArray::tile_interface::result_of_add_t<
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type>
           result_type; ///< Result tile type
@@ -67,7 +67,7 @@ namespace TiledArray {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
       typedef Scalar scalar_type;  ///< Expression scalar type
-      typedef result_of_add_t<
+      typedef TiledArray::tile_interface::result_of_add_t<
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type,
           scalar_type> result_type; ///< Result tile type

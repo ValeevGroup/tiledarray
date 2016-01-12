@@ -27,6 +27,8 @@
 #define TILEDARRAY_TILE_OP_ADD_H__INCLUDED
 
 #include "tile_interface.h"
+#include "../tile_interface/add.h"
+#include "../tile_interface/scale.h"
 #include "../tile_interface/permute.h"
 #include "../tile_interface/clone.h"
 #include "../zero_tensor.h"

@@ -38,7 +38,6 @@ namespace TiledArray {
   }  // namespace math
   namespace detail {
     template <typename, typename> class LazyArrayTile;
-    template <typename, typename> class Cast;
   }  // namespace detail
 
   /**
@@ -270,137 +269,6 @@ namespace TiledArray {
   }
 
 
-  // Addition operations -------------------------------------------------------
-
-  /// Add tile arguments
-
-  /// \tparam Left The left-hand tile type
-  /// \tparam Right The right-hand tile type
-  /// \param left The left-hand argument to be added
-  /// \param right The right-hand argument to be added
-  /// \return A tile that is equal to <tt>(left + right)</tt>
-  template <typename Left, typename Right>
-  inline auto add(const Left& left, const Right& right) ->
-      decltype(left.add(right))
-  { return left.add(right); }
-
-  /// Add and scale tile arguments
-
-  /// \tparam Left The left-hand tile type
-  /// \tparam Right The right-hand tile type
-  /// \tparam Scalar A scalar type
-  /// \param left The left-hand argument to be added
-  /// \param right The right-hand argument to be added
-  /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>(left + right) * factor</tt>
-  template <typename Left, typename Right, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto add(const Left& left, const Right& right, const Scalar factor) ->
-      decltype(left.add(right, factor))
-  { return left.add(right, factor); }
-
-  /// Add and permute tile arguments
-
-  /// \tparam Left The left-hand tile type
-  /// \tparam Right The right-hand tile type
-  /// \param left The left-hand argument to be added
-  /// \param right The right-hand argument to be added
-  /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ (left + right)</tt>
-  template <typename Left, typename Right>
-  inline auto add(const Left& left, const Right& right, const Permutation& perm) ->
-      decltype(left.add(right, perm))
-  { return left.add(right, perm); }
-
-  /// Add, scale, and permute tile arguments
-
-  /// \tparam Left The left-hand tile type
-  /// \tparam Right The right-hand tile type
-  /// \tparam Scalar A scalar type
-  /// \param left The left-hand argument to be added
-  /// \param right The right-hand argument to be added
-  /// \param factor The scaling factor
-  /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
-  template <typename Left, typename Right, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto add(const Left& left, const Right& right, const Scalar factor,
-      const Permutation& perm) ->
-      decltype(left.add(right, factor, perm))
-  { return left.add(right, factor, perm); }
-
-  /// Add a constant scalar to tile argument
-
-  /// \tparam Arg The tile argument type
-  /// \tparam Scalar A scalar type
-  /// \param arg The left-hand argument to be added
-  /// \param value The constant scalar to be added
-  /// \return A tile that is equal to <tt>arg + value</tt>
-  template <typename Arg, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto
-  add(const Arg& arg, const Scalar value) -> decltype(arg.add(value))
-  { return arg.add(value); }
-
-  /// Add a constant scalar and permute tile argument
-
-  /// \tparam Arg The tile argument type
-  /// \tparam Scalar A scalar type
-  /// \param arg The left-hand argument to be added
-  /// \param value The constant scalar value to be added
-  /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ (arg + value)</tt>
-  template <typename Arg, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto
-  add(const Arg& arg, const Scalar value, const Permutation& perm) ->
-      decltype(arg.add(value,perm))
-  { return arg.add(value,perm); }
-
-  /// Add to the result tile
-
-  /// \tparam Result The result tile type
-  /// \tparam Arg The argument tile type
-  /// \param result The result tile
-  /// \param arg The argument to be added to the result
-  /// \return A tile that is equal to <tt>result[i] += arg[i]</tt>
-  template <typename Result, typename Arg>
-  inline Result& add_to(Result& result, const Arg& arg)
-  { return result.add_to(arg); }
-
-  /// Add and scale to the result tile
-
-  /// \tparam Result The result tile type
-  /// \tparam Arg The argument tile type
-  /// \tparam Scalar A scalar type
-  /// \param result The result tile
-  /// \param arg The argument to be added to \c result
-  /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
-  template <typename Result, typename Arg, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline Result& add_to(Result& result, const Arg& arg, const Scalar factor)
-  { return result.add_to(arg, factor); }
-
-  /// Add constant scalar to the result tile
-
-  /// \tparam Result The result tile type
-  /// \tparam Scalar A scalar type
-  /// \param result The result tile
-  /// \param value The constant scalar to be added to \c result
-  /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
-  template <typename Result, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline Result& add_to(Result& result, const Scalar value) {
-    return result.add_to(value);
-  }
-
-  template <typename... T>
-  using result_of_add_t = decltype(add(std::declval<T>()...));
-
-  template <typename... T>
-  using result_of_add_to_t = decltype(add_to(std::declval<T>()...));
-
   // Subtraction ---------------------------------------------------------------
 
   /// Subtract tile arguments
@@ -628,52 +496,6 @@ namespace TiledArray {
   using result_of_mult_to_t = decltype(mult_to(std::declval<T>()...));
 
   // Scaling operations --------------------------------------------------------
-
-  /// Scalar the tile argument
-
-  /// \tparam Arg The tile argument type
-  /// \tparam Scalar A scalar type
-  /// \param arg The left-hand argument to be scaled
-  /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>arg * factor</tt>
-  template <typename Arg, typename Scalar,
-      typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto scale(const Arg& arg, const Scalar factor) ->
-      decltype(arg.scale(factor))
-  { return arg.scale(factor); }
-
-  /// Scale and permute tile argument
-
-  /// \tparam Arg The tile argument type
-  /// \tparam Scalar A scalar type
-  /// \param arg The left-hand argument to be scaled
-  /// \param factor The scaling factor
-  /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
-  template <typename Arg, typename Scalar,
-      typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto scale(const Arg& arg, const Scalar factor, const Permutation& perm) ->
-      decltype(arg.scale(factor, perm))
-  { return arg.scale(factor, perm); }
-
-  /// Scale to the result tile
-
-  /// \tparam Result The result tile type
-  /// \tparam Scalar A scalar type
-  /// \param result The result tile to be scaled
-  /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>result *= factor</tt>
-  template <typename Result, typename Scalar,
-      typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline Result& scale_to(Result& result, const Scalar factor)
-  { return result.scale_to(factor); }
-
-
-  template <typename... T>
-  using result_of_scale_t = decltype(scale(std::declval<T>()...));
-
-  template <typename... T>
-  using result_of_scale_to_t = decltype(scale_to(std::declval<T>()...));
 
   // Negation operations -------------------------------------------------------
 
