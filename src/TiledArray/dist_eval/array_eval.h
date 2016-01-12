@@ -44,6 +44,7 @@ namespace TiledArray {
       typedef LazyArrayTile<Tile, Op> LazyArrayTile_; ///< This class type
       typedef Op op_type; ///< The operation that will modify this tile
       typedef Tile tile_type; ///< The input tile type
+      typedef tile_type eval_type;
 
     private:
       mutable tile_type tile_; ///< The input tile
@@ -87,7 +88,7 @@ namespace TiledArray {
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
       /// Convert tile to evaluation type
-      operator tile_type() const {
+      explicit operator tile_type() const {
         return (consume_ ? op_->consume(tile_) : (*op_)(tile_));
       }
 
