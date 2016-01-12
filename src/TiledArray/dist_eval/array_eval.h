@@ -43,12 +43,16 @@ namespace TiledArray {
     public:
       typedef LazyArrayTile<Tile, Op> LazyArrayTile_; ///< This class type
       typedef Op op_type; ///< The operation that will modify this tile
+      typedef typename op_type::result_type eval_type;
       typedef Tile tile_type; ///< The input tile type
 
     private:
       mutable tile_type tile_; ///< The input tile
       std::shared_ptr<op_type> op_; ///< The operation that will be applied to argument tiles
       bool consume_; ///< If true, \c tile_ is consumable
+
+      template <typename T>
+      using eval_t = typename eval_trait<typename std::decay<T>::type>::type;
 
     public:
       /// Default constructor
@@ -86,9 +90,12 @@ namespace TiledArray {
       /// \return \c true if this tile is consumable, otherwise \c false .
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
+
       /// Convert tile to evaluation type
-      operator tile_type() const {
-        return (consume_ ? op_->consume(tile_) : (*op_)(tile_));
+      operator eval_type() const {
+        return (eval_trait<Tile>::is_consumable || consume_ ?
+            op_->consume(tile_) :
+            (*op_)(tile_));
       }
 
       /// return ref to input tile
