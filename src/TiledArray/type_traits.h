@@ -64,11 +64,6 @@ namespace TiledArray {
       static constexpr bool is_consumable = false;
     }; // struct eval_trait
 
-    template <typename Tile, typename Op>
-    struct eval_trait_base<LazyArrayTile<Tile, Op>, void> :
-      public eval_trait<Tile>
-    { }; // struct eval_trait
-
     template <typename T>
     struct eval_trait_base<T, typename std::enable_if<
         detail::is_type<typename T::eval_type>::value>::type>
