@@ -70,7 +70,7 @@ namespace TiledArray {
         public TiledArray::Cast<Result, typename TiledArray::eval_trait<Arg>::type>
     {
     private:
-      typedef Cast<Result, typename TiledArray::eval_trait<Arg>::type>
+      typedef TiledArray::Cast<Result, typename TiledArray::eval_trait<Arg>::type>
           Cast_; ///< Base class type
       typedef typename TiledArray::eval_trait<Arg>::type
           eval_type; ///< Lazy tile evaluation type
