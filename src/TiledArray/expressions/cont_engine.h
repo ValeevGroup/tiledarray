@@ -65,8 +65,8 @@ namespace TiledArray {
           typename eval_trait<typename left_type::value_type>::type,
           typename eval_trait<typename right_type::value_type>::type,
           scalar_type> op_type; ///< The tile operation type
-      typedef typename EngineTrait<Derived>::policy
-          policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::policy_type
+          policy_type; ///< The result policy type
       typedef typename EngineTrait<Derived>::dist_eval_type
           dist_eval_type; ///< The distributed evaluator type
 
@@ -522,7 +522,7 @@ namespace TiledArray {
       dist_eval_type make_dist_eval() const {
         // Define the impl type
         typedef TiledArray::detail::Summa<typename left_type::dist_eval_type,
-            typename right_type::dist_eval_type, op_type, typename Derived::policy> impl_type;
+            typename right_type::dist_eval_type, op_type, typename Derived::policy_type> impl_type;
 
         typename left_type::dist_eval_type left = left_.make_dist_eval();
         typename right_type::dist_eval_type right = right_.make_dist_eval();

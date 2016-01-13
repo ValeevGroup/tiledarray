@@ -41,9 +41,9 @@ namespace TiledArray {
 
     template <typename Left, typename Right, typename Result>
     struct EngineTrait<SubtEngine<Left, Right, Result> > {
-      static_assert(std::is_same<typename EngineTrait<Left>::policy,
-          typename EngineTrait<Right>::policy>::value,
-          "The left- and right-hand expressions must use the same policy class");
+      static_assert(std::is_same<typename EngineTrait<Left>::policy_type,
+          typename EngineTrait<Right>::policy_type>::value,
+          "The left- and right-hand expressions must (for now) use the same policy type");
 
       // Argument typedefs
       typedef Left left_type; ///< The left-hand expression type
@@ -61,15 +61,15 @@ namespace TiledArray {
           value_type; ///< The result tile type
       typedef typename eval_trait<value_type>::type
           eval_type;  ///< Evaluation tile type
-      typedef typename Left::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy>
+      typedef typename Left::policy_type policy_type; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy_type>
           dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface
+      typedef typename policy_type::size_type size_type; ///< Size type
+      typedef typename policy_type::trange_type trange_type; ///< Tiled range type
+      typedef typename policy_type::shape_type shape_type; ///< Shape type
+      typedef typename policy_type::pmap_interface
           pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = is_consumable_tile<eval_type>::value;
@@ -79,9 +79,9 @@ namespace TiledArray {
 
     template <typename Left, typename Right, typename Scalar, typename Result>
     struct EngineTrait<ScalSubtEngine<Left, Right, Scalar, Result> > {
-      static_assert(std::is_same<typename EngineTrait<Left>::policy,
-          typename EngineTrait<Right>::policy>::value,
-          "The left- and right-hand expressions must use the same policy class");
+      static_assert(std::is_same<typename EngineTrait<Left>::policy_type,
+          typename EngineTrait<Right>::policy_type>::value,
+          "The left- and right-hand expressions must (for now) use the same policy type");
 
       // Argument typedefs
       typedef Left left_type; ///< The left-hand expression type
@@ -100,15 +100,15 @@ namespace TiledArray {
           value_type; ///< The result tile type
       typedef typename eval_trait<value_type>::type
           eval_type;  ///< Evaluation tile type
-      typedef typename Left::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy>
+      typedef typename Left::policy_type policy_type; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy_type>
           dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface
+      typedef typename policy_type::size_type size_type; ///< Size type
+      typedef typename policy_type::trange_type trange_type; ///< Tiled range type
+      typedef typename policy_type::shape_type shape_type; ///< Shape type
+      typedef typename policy_type::pmap_interface
           pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = is_consumable_tile<eval_type>::value;
@@ -145,8 +145,8 @@ namespace TiledArray {
           op_base_type; ///< The tile operation type
       typedef typename EngineTrait<SubtEngine_>::op_type
           op_type; ///< The tile operation type
-      typedef typename EngineTrait<SubtEngine_>::policy
-          policy; ///< The result policy type
+      typedef typename EngineTrait<SubtEngine_>::policy_type
+          policy_type; ///< The result policy type
       typedef typename EngineTrait<SubtEngine_>::dist_eval_type
           dist_eval_type; ///< The distributed evaluator type
 
@@ -236,8 +236,8 @@ namespace TiledArray {
           op_base_type; ///< The tile operation type
       typedef typename EngineTrait<ScalSubtEngine_>::op_type
           op_type; ///< The tile operation type
-      typedef typename EngineTrait<ScalSubtEngine_>::policy
-          policy; ///< The result policy type
+      typedef typename EngineTrait<ScalSubtEngine_>::policy_type
+          policy_type; ///< The result policy type
       typedef typename EngineTrait<ScalSubtEngine_>::dist_eval_type
           dist_eval_type; ///< The distributed evaluator type
 
