@@ -140,8 +140,8 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
     return matrix;
   }
 
-  template <typename Tile>
-  static void init_kronecker_delta(DistArray<Tile>& array) {
+  template <typename Tile, typename Policy>
+  static void init_kronecker_delta(DistArray<Tile,Policy>& array) {
     auto trange_ptr = std::make_shared<TiledArray::TiledRange>(array.trange());
     auto it = array.begin();
     const auto end = array.end();

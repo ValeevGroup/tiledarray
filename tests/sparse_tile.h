@@ -139,9 +139,9 @@ public:
   }
 
   // Initialization check. False if the tile is fully initialized.
-  bool empty() const {
-    return impl_.get() == nullptr;
-  }
+  //bool empty() const {
+  //  return impl_.get() == nullptr;
+  //}
 
   // MADNESS compliant serialization
 
