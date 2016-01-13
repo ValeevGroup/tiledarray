@@ -27,6 +27,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include "sparse_tile.h"
+#include "TiledArray/special/kronecker_delta.h"
 
 using namespace TiledArray;
 
@@ -38,16 +39,25 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
 
   typedef DistArray<EigenSparseTile<double, tag<0>>, DensePolicy> TArrayDS1;
   typedef DistArray<EigenSparseTile<double, tag<1>>, DensePolicy> TArrayDS2;
+  typedef DistArray<LazyKroneckerDeltaTile<1>, DensePolicy> ArrayKronDelta1; // will be turned into SparsePolicy next
 
   MixedExpressionsFixture() :
     u(*GlobalFixture::world, trange2),
     v(*GlobalFixture::world, trange2),
     w(*GlobalFixture::world, trange2),
-    u2(*GlobalFixture::world, trange4)
+    u2(*GlobalFixture::world, trange4),
+    e2(*GlobalFixture::world, trange2e),
+    e4(*GlobalFixture::world, trange4e),
+    delta1(*GlobalFixture::world, trange2),
+    delta1e(*GlobalFixture::world, trange2e)
   {
     random_fill(u);
     random_fill(v);
     u2.fill(0);
+    random_fill(e2);
+    e4.fill(0);
+    init_kronecker_delta(delta1);
+    init_kronecker_delta(delta1e);
     GlobalFixture::world->gop.fence();
   }
 
@@ -130,6 +140,18 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
     return matrix;
   }
 
+  template <typename Tile>
+  static void init_kronecker_delta(DistArray<Tile>& array) {
+    auto trange_ptr = std::make_shared<TiledArray::TiledRange>(array.trange());
+    auto it = array.begin();
+    const auto end = array.end();
+    const auto idx = it.index();
+    assert(idx.size()==2);
+    std::array<int,2> idx_array; std::copy(idx.begin(),idx.end(),idx_array.begin());
+    for(; it != end; ++it)
+      array.set(it.ordinal(), array.get_world().taskq.add([trange_ptr,idx_array]() -> Tile { return Tile(trange_ptr, idx_array);}));
+  }
+
   ~MixedExpressionsFixture() {
     GlobalFixture::world->gop.fence();
   }
@@ -137,12 +159,18 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
   const static TiledRange trange1;
   const static TiledRange trange2;
   const static TiledRange trange4;
+  const static TiledRange trange2e; // all dimensions are equivalent, to make easier testing delta and permutations
+  const static TiledRange trange4e; // all dimensions are equivalent
   TArrayD u;
   TArrayD u1;
   TArrayD u2;
+  TArrayD e2;
+  TArrayD e4;
   TArrayDS1 v;
   TArrayDS1 v1;
   TArrayDS2 w;
+  ArrayKronDelta1 delta1;
+  ArrayKronDelta1 delta1e;
 }; // MixedExpressionsFixture
 
 // Instantiate static variables for fixture
@@ -153,6 +181,10 @@ const TiledRange MixedExpressionsFixture::trange2 =
       {0, 3, 6, 11, 18, 29, 42} };
 const TiledRange MixedExpressionsFixture::trange4 =
     { trange2.data()[0], trange2.data()[1], trange2.data()[0], trange2.data()[1] };
+const TiledRange MixedExpressionsFixture::trange2e =
+    { trange2.data()[0], trange2.data()[0] };
+const TiledRange MixedExpressionsFixture::trange4e =
+    { trange2.data()[0], trange2.data()[0], trange2.data()[0], trange2.data()[0] };
 
 BOOST_FIXTURE_TEST_SUITE( mixed_expressions_suite, MixedExpressionsFixture )
 
@@ -203,6 +235,18 @@ BOOST_AUTO_TEST_CASE( outer_product_factories )
   // ok
   BOOST_CHECK_NO_THROW(u2("a,b,c,d") += u("a,b") * v("c,d"));
 #endif
+
+//  typedef TiledArray::detail::LazyArrayTile<LazyKroneckerDeltaTile<1>,
+//      TiledArray::detail::UnaryWrapper<TiledArray::detail::Noop<KroneckerDeltaTile<1>,
+//      KroneckerDeltaTile<1>, true> > > lazy_type;
+//  static_assert(is_lazy_tile<lazy_type>::value, "");
+//  static_assert(!std::is_same<KroneckerDeltaTile<1>, typename TiledArray::eval_trait<lazy_type>::type>::value, "");
+
+  // ok
+  BOOST_CHECK_NO_THROW(u2("a,b,c,d") = delta1("a,b") * u("c,d"));
+
+  // ok
+  BOOST_CHECK_NO_THROW(e4("a,b,c,d") += delta1e("a,b") * e2("c,d"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
