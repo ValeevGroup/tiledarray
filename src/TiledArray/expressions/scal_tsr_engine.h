@@ -38,14 +38,17 @@ namespace TiledArray {
 
 
     template <typename Tile, typename Policy, typename Scalar, typename Result>
-    struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result> > {
+    struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result> >
+    {
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
       typedef Scalar scalar_type;
-      typedef TiledArray::detail::Scal<Result, typename array_type::eval_type,
-          scalar_type, false> op_base_type; ///< The tile operation
+      typedef TiledArray::detail::Scal<Result, typename TiledArray::eval_trait<
+          typename array_type::value_type>::type, scalar_type,
+          TiledArray::eval_trait<typename array_type::value_type>::is_consumable
+          > op_base_type; ///< The tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type;
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type

@@ -69,7 +69,8 @@ namespace TiledArray {
       typedef typename policy::pmap_interface
           pmap_interface; ///< Process map interface type
 
-      static constexpr bool consumable = ! Alias;
+      static constexpr bool consumable = (! Alias) ||
+          eval_trait<typename array_type::value_type>::is_consumable;
       static constexpr unsigned int leaves = 1;
     };
 

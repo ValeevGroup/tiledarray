@@ -51,8 +51,10 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename TiledArray::detail::scalar_type<DistArray<Tile,
             Policy> >::type scalar_type;
-      typedef TiledArray::detail::Shift<Result, typename array_type::eval_type,
-          ! Alias> op_base_type; ///< The base tile operation
+      typedef TiledArray::detail::Shift<Result, typename TiledArray::eval_trait<
+          typename array_type::value_type>::type, (! Alias) ||
+          TiledArray::eval_trait<typename array_type::value_type>::is_consumable
+          > op_base_type; ///< The base tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type>
           op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
@@ -76,14 +78,17 @@ namespace TiledArray {
 
 
     template <typename Tile, typename Policy, typename Scalar, typename Result>
-    struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar, Result> > {
+    struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar, Result> >
+    {
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
       typedef Scalar scalar_type;
       typedef TiledArray::detail::ScalShift<Result,
-          typename array_type::eval_type, scalar_type, false>
+          typename TiledArray::eval_trait<typename array_type::value_type>::type,
+          scalar_type,
+          TiledArray::eval_trait<typename array_type::value_type>::is_consumable>
           op_base_type; ///< The base tile operation
       typedef TiledArray::detail::UnaryWrapper<op_base_type>
           op_type; ///< The tile operation
