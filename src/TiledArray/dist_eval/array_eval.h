@@ -92,7 +92,7 @@ namespace TiledArray {
 
 
       /// Convert tile to evaluation type
-      operator eval_type() const {
+      explicit operator eval_type() const {
         return (eval_trait<Tile>::is_consumable || consume_ ?
             op_->consume(tile_) :
             (*op_)(tile_));
