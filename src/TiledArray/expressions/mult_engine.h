@@ -42,16 +42,13 @@ namespace TiledArray {
 
     template <typename Left, typename Right, typename Result>
     struct EngineTrait<MultEngine<Left, Right, Result> > {
-      static_assert(std::is_same<typename EngineTrait<Left>::policy_type,
-          typename EngineTrait<Right>::policy_type>::value,
-          "The left- and right-hand expressions must (for now) use the same policy type");
 
       // Argument typedefs
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef TiledArray::detail::Mult<Result,
+      typedef TiledArray::detail::Mult<typename Result::tile_type,
           typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
           EngineTrait<Right>::consumable>
@@ -64,7 +61,7 @@ namespace TiledArray {
           eval_type;  ///< Evaluation tile type
       typedef typename TiledArray::detail::numeric_type<value_type>::type
           scalar_type; ///< Tile scalar type
-      typedef typename Left::policy_type policy_type; ///< The result policy type
+      typedef typename Result::policy_type policy_type; ///< The result policy type
       typedef TiledArray::detail::DistEval<value_type, policy_type>
           dist_eval_type; ///< The distributed evaluator type
 
@@ -82,9 +79,6 @@ namespace TiledArray {
 
     template <typename Left, typename Right, typename Scalar, typename Result>
     struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result> > {
-      static_assert(std::is_same<typename EngineTrait<Left>::policy_type,
-          typename EngineTrait<Right>::policy_type>::value,
-          "The left- and right-hand expressions must (for now) use the same policy type");
 
       // Argument typedefs
       typedef Left left_type; ///< The left-hand expression type
@@ -92,7 +86,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type; ///< Tile scalar type
-      typedef TiledArray::detail::ScalMult<Result,
+      typedef TiledArray::detail::ScalMult<typename Result::tile_type,
           typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, scalar_type,
           EngineTrait<Left>::consumable, EngineTrait<Right>::consumable>
@@ -124,7 +118,7 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand engine type
     /// \tparam Right The Right-hand engine type
-    /// \tparam Result The result tile type
+    /// \tparam Result The result "array" type
     template <typename Left, typename Right, typename Result>
     class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
     public:
@@ -348,7 +342,7 @@ namespace TiledArray {
     /// \tparam Left The left-hand engine type
     /// \tparam Right The Right-hand engine type
     /// \tparam Scalar The scaling factor type
-    /// \tparam Result The result tile type
+    /// \tparam Result The result "array" type
     template <typename Left, typename Right, typename Scalar, typename Result>
     class ScalMultEngine :
         public ContEngine<ScalMultEngine<Left, Right, Scalar, Result> >

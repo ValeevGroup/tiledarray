@@ -30,7 +30,35 @@
 #include <TiledArray/expressions/mult_engine.h>
 
 namespace TiledArray {
+
+  class DensePolicy;
+  class SparsePolicy;
+
+  namespace detail {
+    template <typename Tile, typename Policy>
+    struct engine_result_trait {
+        typedef Tile tile_type;
+        typedef Policy policy_type;
+    };
+  }
   namespace expressions {
+
+    template <typename LeftPolicy, typename RightPolicy>
+    struct mult_policy_trait;
+    template <typename Policy>
+    struct mult_policy_trait<Policy,Policy> {
+        typedef Policy type;
+    };
+
+    template <>
+    struct mult_policy_trait<DensePolicy,SparsePolicy> {
+        typedef DensePolicy type;
+    };
+    template <>
+    struct mult_policy_trait<SparsePolicy,DensePolicy> {
+        typedef DensePolicy type;
+    };
+
 
     template <typename Left, typename Right>
     using ConjMultExpr =
@@ -52,9 +80,13 @@ namespace TiledArray {
       typedef result_of_mult_t<
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type>
-          result_type; ///< Result tile type
+          result_tile_type; ///< Result tile type
+      typedef typename mult_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::policy_type>::type
+          result_policy_type; ///< Result policy type
       typedef MultEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, result_type>
+          typename ExprTrait<Right>::engine_type,
+          TiledArray::detail::engine_result_trait<result_tile_type,result_policy_type>>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Multiplication result numeric type
@@ -70,9 +102,13 @@ namespace TiledArray {
       typedef result_of_mult_t<
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type,
-          scalar_type> result_type; ///< Result tile type
+          scalar_type> result_tile_type; ///< Result tile type
+      typedef typename mult_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::policy_type>::type
+          result_policy_type; ///< Result policy type
       typedef ScalMultEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, Scalar, result_type>
+          typename ExprTrait<Right>::engine_type, Scalar,
+          TiledArray::detail::engine_result_trait<result_tile_type,result_policy_type>>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Multiplication result numeric type
