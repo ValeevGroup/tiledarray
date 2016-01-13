@@ -58,19 +58,18 @@ template<unsigned _N = 1>
       typedef size_t size_type; // Size type
 
     private:
-      std::array<int, N> begin_;
-      std::array<int, N> extent_; // if extent_[0] < 0 the tile is empty (off-diagonal)
+      range_type range_;
+      bool empty_;
 
     public:
 
-      /// default constructor makes a zero tile
-      KroneckerDeltaTile() {
-        extent_[0] = -1;
+      /// default constructor makes an empty tile
+      KroneckerDeltaTile() : empty_(true) {
       }
 
       /// Productive ctor 1
-      KroneckerDeltaTile(const std::array<int, N>& begin, const std::array<int, N>& extent) :
-        begin_(begin), extent_(extent) {}
+      KroneckerDeltaTile(const range_type& range) : range_(range), empty_(is_empty(range_)) {
+      }
 
       /// copy constructor (= deep copy)
       KroneckerDeltaTile(const KroneckerDeltaTile&) = default;
@@ -87,15 +86,7 @@ template<unsigned _N = 1>
 
       range_type
       range() const {
-        std::array<int, 2*N> lobound, upbound;
-        for(auto i=0, ii=0; i!=N; ++i) {
-          lobound[ii] = begin_[i];
-          upbound[ii] = lobound[ii] + extent_[i];
-          lobound[ii+1] = lobound[ii];
-          upbound[ii+1] = upbound[ii];
-          ii += 2;
-        }
-        return range_type(lobound, upbound);
+        return range_;
       }
 
       /// MADNESS compliant serialization
@@ -103,6 +94,18 @@ template<unsigned _N = 1>
       void
       serialize(Archive& ar) {
         abort(); // should never travel
+      }
+
+    private:
+      /// @return true if contains any nonzeros
+      static bool is_empty(const range_type& range) {
+        bool empty = true;
+        TA_ASSERT(range.rank() == 2*N);
+        auto lobound = range.lobound_data();
+        auto upbound = range.upbound_data();
+        for(auto i=0; i!=2*N && not empty; i+=2)
+          empty = empty && upbound[i] > lobound[i+1] && upbound[i+1] > lobound[i]; // assumes extents > 0
+        return empty;
       }
 
   }; // class KroneckerDeltaTile
@@ -204,8 +207,9 @@ template<typename T, unsigned N>
   auto arg2_volume = arg2_range.volume();
   switch (N) {
     case 1:
-      for(auto i0=0; i0!=arg1_extents[0]; ++i0) {
-        auto result_i0i0_ptr = result_data + (i0*arg1_extents[0] + i0) * arg2_volume;
+      auto i0_range = std::min(arg1_extents[0],arg1_extents[1]);
+      for(auto i0=0; i0!=i0_range; ++i0) {
+        auto result_i0i0_ptr = result_data + (i0*arg1_extents[1] + i0) * arg2_volume;
         std::copy(arg2_data, arg2_data+arg2_volume, result_i0i0_ptr);
       }
 
@@ -229,56 +233,5 @@ template<typename T, unsigned N>
       const TiledArray::math::GemmHelper& gemm_config) {
   abort();
   }
-
-template<unsigned _N = 1>
-  class LazyKroneckerDeltaTile {
-    public:
-      // Constants
-      static constexpr unsigned N = _N;
-      // typedefs
-      typedef KroneckerDeltaTile<N> eval_type;
-
-      // Default constructor
-      LazyKroneckerDeltaTile() = default;
-
-      // Productive ctor
-      LazyKroneckerDeltaTile(const std::shared_ptr<TiledRange>& trange,
-                             const std::array<int, 2*N>& tile_index // only needs to feed "diagonal" tile indices
-                            ) : trange_(trange), tile_index_(tile_index) {}
-
-      // Copy constructor
-      LazyKroneckerDeltaTile(const LazyKroneckerDeltaTile& other) = default;
-
-      // Assignment operator
-      LazyKroneckerDeltaTile& operator=(const LazyKroneckerDeltaTile& other) = default;
-
-      // Convert lazy tile to data tile
-      explicit operator KroneckerDeltaTile<N>() const {
-        bool is_zero = false;
-        for(auto i=0; i!=2*N && not is_zero; i+=2)
-          is_zero = is_zero && tile_index_[i] != tile_index_[i+1];
-        if (is_zero)
-          return KroneckerDeltaTile<N>();
-        else {
-          auto tile_range = trange_->make_tile_range(tile_index_);
-          auto tile_lobound = tile_range.lobound_data();
-          auto tile_extent = tile_range.extent_data();
-          std::array<int,N> begin; for(auto i=0; i!=N; ++i) begin[i] = tile_lobound[2*i];
-          std::array<int,N> extent; for(auto i=0; i!=N; ++i) extent[i] = tile_extent[2*i];
-          return KroneckerDeltaTile<N>(begin, extent);
-        }
-      }
-
-      // MADNESS compliant serialization
-      template <typename Archive>
-      void serialize(const Archive&) {
-        abort(); // should never travel
-      }
-
-    private:
-      std::shared_ptr<TiledRange> trange_;
-      std::array<int, 2*N> tile_index_;
-
-  }; // class KroneckerDeltaTile
 
 #endif // TILEDARRAY_TEST_SPARSE_TILE_H__INCLUDED

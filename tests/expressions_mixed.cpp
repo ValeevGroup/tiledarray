@@ -39,7 +39,7 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
 
   typedef DistArray<EigenSparseTile<double, tag<0>>, DensePolicy> TArrayDS1;
   typedef DistArray<EigenSparseTile<double, tag<1>>, DensePolicy> TArrayDS2;
-  typedef DistArray<LazyKroneckerDeltaTile<1>, DensePolicy> ArrayKronDelta1; // will be turned into SparsePolicy next
+  typedef DistArray<KroneckerDeltaTile<1>, DensePolicy> ArrayKronDelta1; // will be turned into SparsePolicy next
 
   MixedExpressionsFixture() :
     u(*GlobalFixture::world, trange2),
@@ -147,9 +147,13 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
     const auto end = array.end();
     const auto idx = it.index();
     assert(idx.size()==2);
-    std::array<int,2> idx_array; std::copy(idx.begin(),idx.end(),idx_array.begin());
     for(; it != end; ++it)
-      array.set(it.ordinal(), array.get_world().taskq.add([trange_ptr,idx_array]() -> Tile { return Tile(trange_ptr, idx_array);}));
+      array.set(it.ordinal(),
+                array.get_world().taskq.add(
+                    [trange_ptr,idx]() -> Tile {
+                  return Tile(trange_ptr->make_tile_range(idx));
+                })
+               );
   }
 
   ~MixedExpressionsFixture() {
@@ -182,9 +186,9 @@ const TiledRange MixedExpressionsFixture::trange2 =
 const TiledRange MixedExpressionsFixture::trange4 =
     { trange2.data()[0], trange2.data()[1], trange2.data()[0], trange2.data()[1] };
 const TiledRange MixedExpressionsFixture::trange2e =
-    { trange2.data()[0], trange2.data()[0] };
+    { trange1.data()[0], trange1.data()[0] };
 const TiledRange MixedExpressionsFixture::trange4e =
-    { trange2.data()[0], trange2.data()[0], trange2.data()[0], trange2.data()[0] };
+    { trange2e.data()[0], trange2e.data()[1], trange2e.data()[0], trange2e.data()[1] };
 
 BOOST_FIXTURE_TEST_SUITE( mixed_expressions_suite, MixedExpressionsFixture )
 
@@ -236,14 +240,8 @@ BOOST_AUTO_TEST_CASE( outer_product_factories )
   BOOST_CHECK_NO_THROW(u2("a,b,c,d") += u("a,b") * v("c,d"));
 #endif
 
-//  typedef TiledArray::detail::LazyArrayTile<LazyKroneckerDeltaTile<1>,
-//      TiledArray::detail::UnaryWrapper<TiledArray::detail::Noop<KroneckerDeltaTile<1>,
-//      KroneckerDeltaTile<1>, true> > > lazy_type;
-//  static_assert(is_lazy_tile<lazy_type>::value, "");
-//  static_assert(!std::is_same<KroneckerDeltaTile<1>, typename TiledArray::eval_trait<lazy_type>::type>::value, "");
-
   // ok
-  BOOST_CHECK_NO_THROW(u2("a,b,c,d") = delta1("a,b") * u("c,d"));
+  BOOST_CHECK_NO_THROW(u2("a,b,c,d") += delta1("a,b") * u("c,d"));
 
   // ok
   BOOST_CHECK_NO_THROW(e4("a,b,c,d") += delta1e("a,b") * e2("c,d"));
