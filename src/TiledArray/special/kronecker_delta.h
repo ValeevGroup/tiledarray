@@ -207,13 +207,14 @@ template<typename T, unsigned N>
   auto arg2_volume = arg2_range.volume();
   switch (N) {
     case 1:
+    {
       auto i0_range = std::min(arg1_extents[0],arg1_extents[1]);
       for(auto i0=0; i0!=i0_range; ++i0) {
         auto result_i0i0_ptr = result_data + (i0*arg1_extents[1] + i0) * arg2_volume;
         std::copy(arg2_data, arg2_data+arg2_volume, result_i0i0_ptr);
       }
-
-      break;
+    }
+    break;
 
     default:
       abort(); // not implemented
