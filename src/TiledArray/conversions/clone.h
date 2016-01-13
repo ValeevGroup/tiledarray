@@ -36,7 +36,7 @@ namespace TiledArray {
   /// Create a deep copy of an array
 
   /// \tparam Tile The tile type of the array
-  /// \tparam Policy The policy of the array
+  /// \tparam Policy The policy type of the array
   /// \param arg The array to be cloned
   template <typename Tile, typename Policy>
   inline DistArray<Tile, Policy>

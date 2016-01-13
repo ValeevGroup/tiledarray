@@ -40,7 +40,7 @@ namespace TiledArray {
     /// \tparam Left The left-hand argument evaluator type
     /// \tparam Right The right-hand argument evaluator type
     /// \tparam Op The contraction/reduction operation type
-    /// \tparam Policy The tensor policy class
+    /// \tparam Policy The tensor policy type
     /// \note The algorithms in this class assume that the arguments have a two-
     /// dimensional cyclic distribution, and that the row phase of the left-hand
     /// argument and the column phase of the right-hand argument are equal to

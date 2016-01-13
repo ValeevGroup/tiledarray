@@ -46,7 +46,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<Derived>::value_type value_type; ///< Tensor value type
       typedef typename EngineTrait<Derived>::op_type op_type; ///< Tile operation type
-      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::policy_type policy_type; ///< The result policy type
       typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
 
       // Meta data typedefs

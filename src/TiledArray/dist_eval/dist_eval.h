@@ -35,7 +35,7 @@ namespace TiledArray {
     /// used by derived classes to implement the distributed evaluate. This
     /// class can also handles permutation of result tiles if necessary.
     /// \tparam Tile The output tile type
-    /// \tparam Policy The tensor policy class
+    /// \tparam Policy The tensor policy type
     template <typename Tile, typename Policy>
     class DistEvalImpl : public TensorImpl<Policy>, public madness::CallbackInterface {
     public:
@@ -222,7 +222,7 @@ namespace TiledArray {
     /// of tensor expressions that depend on the pimpl used to construct the
     /// expression.
     /// \tparam Tile The output tile type
-    /// \tparam Policy The tensor policy class
+    /// \tparam Policy The tensor policy type
     template <typename Tile, typename Policy>
     class DistEval {
     public:

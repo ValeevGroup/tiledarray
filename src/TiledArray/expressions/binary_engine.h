@@ -50,7 +50,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
       typedef typename EngineTrait<Derived>::op_type op_type; ///< The tile operation type
-      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::policy_type policy_type; ///< The result policy type
       typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
@@ -201,7 +201,7 @@ namespace TiledArray {
       /// \return The distributed evaluator that will evaluate this expression
       dist_eval_type make_dist_eval() const {
         typedef TiledArray::detail::BinaryEvalImpl<typename left_type::dist_eval_type,
-            typename right_type::dist_eval_type, op_type, policy> impl_type;
+            typename right_type::dist_eval_type, op_type, policy_type> impl_type;
 
         // Construct left and right distributed evaluators
         const typename left_type::dist_eval_type left = left_.make_dist_eval();

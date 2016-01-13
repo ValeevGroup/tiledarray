@@ -54,15 +54,15 @@ namespace TiledArray {
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type
           eval_type; ///< Evaluation tile type
-      typedef Policy policy; ///< Policy type
-      typedef TiledArray::detail::DistEval<value_type, policy>
+      typedef Policy policy_type; ///< Policy type
+      typedef TiledArray::detail::DistEval<value_type, policy_type>
           dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy_type::size_type size_type; ///< Size type
+      typedef typename policy_type::trange_type trange_type; ///< Tiled range type
+      typedef typename policy_type::shape_type shape_type; ///< Shape type
+      typedef typename policy_type::pmap_interface pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = true;
       static constexpr unsigned int leaves = 1;
@@ -89,7 +89,7 @@ namespace TiledArray {
       typedef typename EngineTrait<ScalTsrEngine_>::scalar_type scalar_type; ///< Tile scalar type
       typedef typename EngineTrait<ScalTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<ScalTsrEngine_>::op_type op_type; ///< Tile operation type
-      typedef typename EngineTrait<ScalTsrEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<ScalTsrEngine_>::policy_type policy_type; ///< The result policy type
       typedef typename EngineTrait<ScalTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
 
       // Meta data typedefs

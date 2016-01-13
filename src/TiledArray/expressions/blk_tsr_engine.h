@@ -61,15 +61,15 @@ namespace TiledArray {
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type
           eval_type; ///< Evaluation tile type
-      typedef Policy policy; ///< Policy type
-      typedef TiledArray::detail::DistEval<value_type, policy>
+      typedef Policy policy_type; ///< Policy type
+      typedef TiledArray::detail::DistEval<value_type, policy_type>
           dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface
+      typedef typename policy_type::size_type size_type; ///< Size type
+      typedef typename policy_type::trange_type trange_type; ///< Tiled range type
+      typedef typename policy_type::shape_type shape_type; ///< Shape type
+      typedef typename policy_type::pmap_interface
           pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = true;
@@ -96,15 +96,15 @@ namespace TiledArray {
           typename array_type::value_type, op_type> value_type; ///< Tile type
       typedef typename eval_trait<value_type>::type
           eval_type; ///< Evaluation tile type
-      typedef Policy policy; ///< Policy type
-      typedef TiledArray::detail::DistEval<value_type, policy>
+      typedef Policy policy_type; ///< Policy type
+      typedef TiledArray::detail::DistEval<value_type, policy_type>
           dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface
+      typedef typename policy_type::size_type size_type; ///< Size type
+      typedef typename policy_type::trange_type trange_type; ///< Tiled range type
+      typedef typename policy_type::shape_type shape_type; ///< Shape type
+      typedef typename policy_type::pmap_interface
           pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = true;
@@ -132,8 +132,8 @@ namespace TiledArray {
           value_type; ///< Tensor value type
       typedef typename EngineTrait<Derived>::op_type
           op_type; ///< Tile operation type
-      typedef typename EngineTrait<Derived>::policy
-          policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::policy_type
+          policy_type; ///< The result policy type
       typedef typename EngineTrait<Derived>::dist_eval_type
           dist_eval_type; ///< This expression's distributed evaluator type
 
@@ -257,13 +257,13 @@ namespace TiledArray {
           const std::shared_ptr<pmap_interface>& pmap)
       {
         ExprEngine_::init_distribution(world,
-            (pmap ? pmap : policy::default_pmap(*world, trange_.tiles().volume())));
+            (pmap ? pmap : policy_type::default_pmap(*world, trange_.tiles().volume())));
       }
 
       /// Construct the distributed evaluator for array
       dist_eval_type make_dist_eval() const {
         // Define the distributed evaluator implementation type
-        typedef TiledArray::detail::ArrayEvalImpl<array_type, op_type, policy> impl_type;
+        typedef TiledArray::detail::ArrayEvalImpl<array_type, op_type, policy_type> impl_type;
 
         /// Create the pimpl for the distributed evaluator
         std::shared_ptr<impl_type> pimpl(
@@ -319,8 +319,8 @@ namespace TiledArray {
           op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<BlkTsrEngine_>::op_type
           op_type; ///< Tile operation type
-      typedef typename EngineTrait<BlkTsrEngine_>::policy
-          policy; ///< The result policy type
+      typedef typename EngineTrait<BlkTsrEngine_>::policy_type
+          policy_type; ///< The result policy type
       typedef typename EngineTrait<BlkTsrEngine_>::dist_eval_type
           dist_eval_type; ///< This expression's distributed evaluator type
 
@@ -462,7 +462,7 @@ namespace TiledArray {
       typedef typename EngineTrait<ScalBlkTsrEngine_>::scalar_type scalar_type; ///< Tile scalar type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::op_type op_type; ///< Tile operation type
-      typedef typename EngineTrait<ScalBlkTsrEngine_>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<ScalBlkTsrEngine_>::policy_type policy_type; ///< The result policy type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
 
       // Meta data typedefs

@@ -33,7 +33,7 @@ namespace TiledArray {
     /// \tparam Left The left argument type
     /// \tparam Right The right argument type
     /// \tparam Op The binary transform operator type
-    /// \tparam Policy The tensor policy class
+    /// \tparam Policy The tensor policy type
     template <typename Left, typename Right, typename Op, typename Policy>
     class BinaryEvalImpl :
       public DistEvalImpl<typename Op::result_type, Policy>,
