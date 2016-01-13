@@ -34,13 +34,6 @@ namespace TiledArray {
   class DensePolicy;
   class SparsePolicy;
 
-  namespace detail {
-    template <typename Tile, typename Policy>
-    struct engine_result_trait {
-        typedef Tile tile_type;
-        typedef Policy policy_type;
-    };
-  }
   namespace expressions {
 
     template <typename LeftPolicy, typename RightPolicy>
@@ -58,7 +51,6 @@ namespace TiledArray {
     struct mult_policy_trait<SparsePolicy,DensePolicy> {
         typedef DensePolicy type;
     };
-
 
     template <typename Left, typename Right>
     using ConjMultExpr =
