@@ -33,6 +33,22 @@
 namespace TiledArray {
   namespace expressions {
 
+    template <typename LeftPolicy, typename RightPolicy>
+    struct subt_policy_trait;
+    template <typename Policy>
+    struct subt_policy_trait<Policy,Policy> {
+        typedef Policy type;
+    };
+
+    template <>
+    struct subt_policy_trait<DensePolicy,SparsePolicy> {
+        typedef DensePolicy type;
+    };
+    template <>
+    struct subt_policy_trait<SparsePolicy,DensePolicy> {
+        typedef DensePolicy type;
+    };
+
     template <typename Left, typename Right>
     using ConjSubtExpr =
         ScalSubtExpr<Left, Right, TiledArray::detail::ComplexConjugate<void> >;
@@ -53,9 +69,13 @@ namespace TiledArray {
       typedef result_of_subt_t<
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type>
-          result_type; ///< Result tile type
+          result_tile_type; ///< Result tile type
+      typedef typename subt_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::policy_type>::type
+          result_policy_type; ///< Result policy type
       typedef SubtEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, result_type>
+          typename ExprTrait<Right>::engine_type,
+          TiledArray::detail::engine_result_trait<result_tile_type,result_policy_type>>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Subtraction result numeric type
@@ -71,9 +91,13 @@ namespace TiledArray {
       typedef result_of_subt_t<
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type,
-          scalar_type> result_type; ///< Result tile type
+          scalar_type> result_tile_type; ///< Result tile type
+      typedef typename subt_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::policy_type>::type
+          result_policy_type; ///< Result policy type
       typedef ScalSubtEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, Scalar, result_type>
+          typename ExprTrait<Right>::engine_type, Scalar,
+          TiledArray::detail::engine_result_trait<result_tile_type,result_policy_type>>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Subtraction result numeric type

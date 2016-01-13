@@ -30,7 +30,24 @@
 #include <TiledArray/expressions/binary_expr.h>
 
 namespace TiledArray {
+
   namespace expressions {
+
+    template <typename LeftPolicy, typename RightPolicy>
+    struct add_policy_trait;
+    template <typename Policy>
+    struct add_policy_trait<Policy,Policy> {
+        typedef Policy type;
+    };
+
+    template <>
+    struct add_policy_trait<DensePolicy,SparsePolicy> {
+        typedef DensePolicy type;
+    };
+    template <>
+    struct add_policy_trait<SparsePolicy,DensePolicy> {
+        typedef DensePolicy type;
+    };
 
     template <typename Left, typename Right>
     using ConjAddExpr =
@@ -52,9 +69,13 @@ namespace TiledArray {
       typedef TiledArray::tile_interface::result_of_add_t<
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type>
-          result_type; ///< Result tile type
+          result_tile_type; ///< Result tile type
+      typedef typename add_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::policy_type>::type
+          result_policy_type; ///< Result policy type
       typedef AddEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, result_type>
+          typename ExprTrait<Right>::engine_type,
+          TiledArray::detail::engine_result_trait<result_tile_type,result_policy_type>>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Addition result numeric type
@@ -70,9 +91,13 @@ namespace TiledArray {
       typedef TiledArray::tile_interface::result_of_add_t<
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type,
-          scalar_type> result_type; ///< Result tile type
+          scalar_type> result_tile_type; ///< Result tile type
+      typedef typename add_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::policy_type>::type
+          result_policy_type; ///< Result policy type
       typedef ScalAddEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, Scalar, result_type>
+          typename ExprTrait<Right>::engine_type, Scalar,
+          TiledArray::detail::engine_result_trait<result_tile_type,result_policy_type>>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Addition numeric type

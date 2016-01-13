@@ -30,6 +30,15 @@
 #include <TiledArray/dist_eval/binary_eval.h>
 
 namespace TiledArray {
+
+  namespace detail {
+    template <typename Tile, typename Policy>
+    struct engine_result_trait {
+        typedef Tile tile_type;
+        typedef Policy policy_type;
+    };
+  }
+
   namespace expressions {
 
     // Forward declarations
