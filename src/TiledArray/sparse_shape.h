@@ -223,7 +223,7 @@ namespace TiledArray {
     /// Collective constructor
 
     /// This constructor will sum the tile_norms data across all processes (via
-    /// an all reduce). After the norms have been summed, it will be normalized.
+    /// an allreduce). After the norms have been summed, they will be normalized.
     /// The normalization constant for each tile is the inverse of the number of
     /// elements in the tile.
     /// \param world The world where the shape will live
