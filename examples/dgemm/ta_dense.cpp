@@ -31,8 +31,10 @@ bool to_bool(const char* str) {
     return true;
   throw std::runtime_error("unrecognized string specification of bool");
 }
+
+// Leave as underscore for now since without it is broken on gcc 11/03/2015 Drew
 template <typename T>
-void gemm(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat);
+void gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat);
 
 int main(int argc, char** argv) {
   int rc = 0;
@@ -96,9 +98,9 @@ int main(int argc, char** argv) {
       trange(blocking2.begin(), blocking2.end());
 
     if (use_complex)
-      gemm<std::complex<double>>(world, trange, repeat);
+      gemm_<std::complex<double>>(world, trange, repeat);
     else
-      gemm<double>(world, trange, repeat);
+      gemm_<double>(world, trange, repeat);
 
     TiledArray::finalize();
 
@@ -124,7 +126,7 @@ int main(int argc, char** argv) {
 
 template <typename T>
 void
-gemm(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat) {
+gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat) {
 
   const auto n = trange.elements().extent()[0];
   const auto complex_T = TiledArray::detail::is_complex<T>::value;
@@ -133,11 +135,11 @@ gemm(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat
                      * double(n*n*n) / 1.0e9;
 
   // Construct and initialize arrays
-  TiledArray::Array<T, 2> a(world, trange);
-  TiledArray::Array<T, 2> b(world, trange);
-  TiledArray::Array<T, 2> c(world, trange);
-  a.set_all_local(1.0);
-  b.set_all_local(1.0);
+  TiledArray::TArrayD a(world, trange);
+  TiledArray::TArrayD b(world, trange);
+  TiledArray::TArrayD c(world, trange);
+  a.fill(1.0);
+  b.fill(1.0);
 
   // Start clock
   world.gop.fence();

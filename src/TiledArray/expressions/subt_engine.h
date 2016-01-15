@@ -28,26 +28,85 @@
 
 #include <TiledArray/expressions/binary_engine.h>
 #include <TiledArray/tile_op/subt.h>
-#include <TiledArray/tile_op/scal_subt.h>
+#include <TiledArray/tile_op/binary_wrapper.h>
 
 namespace TiledArray {
   namespace expressions {
 
     // Forward declarations
     template <typename, typename> class SubtExpr;
-    template <typename, typename> class ScalSubtExpr;
+    template <typename, typename, typename> class ScalSubtExpr;
     template <typename, typename> class SubtEngine;
-    template <typename, typename> class ScalSubtEngine;
+    template <typename, typename, typename> class ScalSubtEngine;
 
     template <typename Left, typename Right>
-    struct EngineTrait<SubtEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::Subt>
-    { };
+    struct EngineTrait<SubtEngine<Left, Right> > {
+      static_assert(std::is_same<typename EngineTrait<Left>::policy,
+          typename EngineTrait<Right>::policy>::value,
+          "The left- and right-hand expressions must use the same policy class");
 
-    template <typename Left, typename Right>
-    struct EngineTrait<ScalSubtEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalSubt>
-    { };
+      // Argument typedefs
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef TiledArray::Subt<typename EngineTrait<Left>::eval_type,
+          typename EngineTrait<Right>::eval_type,
+          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable>
+          op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type>
+          op_type; ///< The tile operation type
+      typedef typename op_type::result_type
+          value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type;  ///< Evaluation tile type
+      typedef typename Left::policy policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
+
+      static constexpr bool consumable = is_consumable_tile<eval_type>::value;
+      static constexpr unsigned int leaves =
+          EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
+    }; // struct EngineTrait<SubtEngine<Left, Right> >
+
+    template <typename Left, typename Right, typename Scalar>
+    struct EngineTrait<ScalSubtEngine<Left, Right, Scalar> > {
+      static_assert(std::is_same<typename EngineTrait<Left>::policy,
+          typename EngineTrait<Right>::policy>::value,
+          "The left- and right-hand expressions must use the same policy class");
+
+      // Argument typedefs
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef Scalar scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+      typedef TiledArray::ScalSubt<typename EngineTrait<Left>::eval_type,
+          typename EngineTrait<Right>::eval_type, scalar_type,
+          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
+      typedef typename Left::policy policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static constexpr bool consumable = is_consumable_tile<eval_type>::value;
+      static constexpr unsigned int leaves =
+          EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
+    }; // struct EngineTrait<ScalSubtEngine<Left, Right, Scalar> >
 
 
     /// Subtraction expression engine
@@ -68,6 +127,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<SubtEngine_>::value_type value_type; ///< The result tile type
+      typedef typename EngineTrait<SubtEngine_>::op_base_type op_base_type; ///< The tile operation type
       typedef typename EngineTrait<SubtEngine_>::op_type op_type; ///< The tile operation type
       typedef typename EngineTrait<SubtEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<SubtEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
@@ -104,13 +164,13 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      static op_type make_tile_op() { return op_type(); }
+      static op_type make_tile_op() { return op_type(op_base_type()); }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
-      static op_type make_tile_op(const Permutation& perm) { return op_type(perm); }
+      static op_type make_tile_op(const Permutation& perm) { return op_type(op_base_type(), perm); }
 
       /// Expression identification tag
 
@@ -124,12 +184,12 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right>
-    class ScalSubtEngine : public BinaryEngine<ScalSubtEngine<Left, Right> > {
+    template <typename Left, typename Right, typename Scalar>
+    class ScalSubtEngine : public BinaryEngine<ScalSubtEngine<Left, Right, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalSubtEngine<Left, Right> ScalSubtEngine_; ///< This class type
-      typedef BinaryEngine<ScalSubtEngine<Left, Right> > BinaryEngine_; ///< Binary expression engine base type
+      typedef ScalSubtEngine<Left, Right, Scalar> ScalSubtEngine_; ///< This class type
+      typedef BinaryEngine<ScalSubtEngine_> BinaryEngine_; ///< Binary expression engine base type
       typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
@@ -139,6 +199,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<ScalSubtEngine_>::value_type value_type; ///< The result tile type
       typedef typename EngineTrait<ScalSubtEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalSubtEngine_>::op_base_type op_base_type; ///< The tile operation type
       typedef typename EngineTrait<ScalSubtEngine_>::op_type op_type; ///< The tile operation type
       typedef typename EngineTrait<ScalSubtEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<ScalSubtEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
@@ -159,9 +220,10 @@ namespace TiledArray {
 
       /// \tparam L The left-hand argument expression type
       /// \tparam R The right-hand argument expression type
+      /// \tparam S The expression scalar type
       /// \param expr The parent expression
-      template <typename L, typename R>
-      ScalSubtEngine(const ScalSubtExpr<L, R>& expr) :
+      template <typename L, typename R, typename S>
+      ScalSubtEngine(const ScalSubtExpr<L, R, S>& expr) :
         BinaryEngine_(expr), factor_(expr.factor())
       { }
 
@@ -185,13 +247,15 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      op_type make_tile_op() const { return op_type(factor_); }
+      op_type make_tile_op() const { return op_type(op_base_type(factor_)); }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
-      op_type make_tile_op(const Permutation& perm) const { return op_type(perm, factor_); }
+      op_type make_tile_op(const Permutation& perm) const {
+        return op_type(op_base_type(factor_), perm);
+      }
 
       /// Expression identification tag
 

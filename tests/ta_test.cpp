@@ -40,4 +40,4 @@ const std::array<std::size_t, 20> GlobalFixture::primes =
 
 
 // This line will initialize mpi and madness.
-BOOST_GLOBAL_FIXTURE( GlobalFixture )
+BOOST_GLOBAL_FIXTURE( GlobalFixture );

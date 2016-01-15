@@ -26,103 +26,107 @@
 #ifndef TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SCAL_H__INCLUDED
 
-#include <TiledArray/tile_op/unary_interface.h>
+#include <type_traits>
+#include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {
-  namespace math {
 
-    /// Tile scaling operation
+  /// Tile scaling operation
 
-    /// This scaling operation will scale the content a tile and apply a
-    /// permutation to the result tensor. If no permutation is given or the
-    /// permutation is null, then the result is not permuted.
-    /// \tparam Result The result type
-    /// \tparam Arg The argument type
-    /// \tparam Consumable Flag that is \c true when Arg is consumable
-    template <typename Result, typename Arg, bool Consumable>
-    class Scal : public UnaryInterface<Scal<Result, Arg, Consumable> > {
-    public:
-      typedef Scal<Result, Arg, Consumable> Scal_; ///< This object type
-      typedef UnaryInterface<Scal_> UnaryInterface_;
-      typedef typename UnaryInterface_::argument_type argument_type; ///< The argument type
-      typedef typename UnaryInterface_::result_type result_type; ///< The result tile type
-      typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type; ///< Scalar type
+  /// This scaling operation will scale the content a tile and apply a
+  /// permutation to the result tensor. If no permutation is given or the
+  /// permutation is null, then the result is not permuted.
+  /// \tparam Result The result type
+  /// \tparam Arg The argument type
+  /// \tparam Consumable Flag that is \c true when Arg is consumable
+  template <typename Arg, typename Scalar, bool Consumable>
+  class Scal {
+  public:
+    typedef Scal<Arg, Scalar, Consumable> Scal_; ///< This object type
+    typedef Arg argument_type; ///< The argument type
+    typedef Scalar scalar_type; ///< The scaling factor type
+    typedef decltype(scale(std::declval<argument_type>(),
+        std::declval<scalar_type>())) result_type; ///< The result tile type
 
-    private:
+    static constexpr bool is_consumable =
+        Consumable && std::is_same<result_type, argument_type>::value;
 
-      scalar_type factor_; ///< Scaling factor
+  private:
 
-    public:
-      /// Default constructor
+    scalar_type factor_; ///< Scaling factor
 
-      /// Construct a scaling operation that does not permute the result tile
-      /// and has a scaling factor of 1.
-      Scal() : UnaryInterface_(), factor_(1) { }
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
 
-      /// Permute constructor
+    result_type eval(const Arg& arg, const Permutation& perm) const {
+      using TiledArray::scale;
+      return scale(arg, factor_, perm);
+    }
 
-      /// Construct a scaling operation that scales the result tensor
-      /// \param factor The scaling factor for the operation
-      explicit Scal(const scalar_type factor) :
-        UnaryInterface_(), factor_(factor)
-      { }
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the consumability
+    // of the arguments.
 
-      /// Permute constructor
+    template <bool C, typename std::enable_if<!C>::type* = nullptr>
+    result_type eval(const argument_type& arg) const {
+      using TiledArray::scale;
+      return scale(arg, factor_);
+    }
 
-      /// Construct a scaling operation that permutes and scales the result tensor.
-      /// \param perm The permutation to apply to the result tile
-      /// \param factor The scaling factor for the operation
-      Scal(const Permutation& perm, const scalar_type factor) :
-        UnaryInterface_(perm), factor_(factor)
-      { }
+    template <bool C, typename std::enable_if<C>::type* = nullptr>
+    result_type eval(argument_type& arg) const {
+      using TiledArray::scale_to;
+      return scale_to(arg, factor_);
+    }
 
-      /// Copy constructor
+  public:
 
-      /// \param other The scaling operation object to be copied
-      Scal(const Scal_& other) : UnaryInterface_(other), factor_(other.factor_) { }
+    // Compiler generated functions
+    Scal(const Scal_&) = default;
+    Scal(Scal_&&) = default;
+    ~Scal() = default;
+    Scal_& operator=(const Scal_&) = default;
+    Scal_& operator=(Scal_&&) = default;
 
-      /// Copy assignment
+    /// Constructor
 
-      /// \param other The scaling operation object to be copied
-      /// \return A reference to this object
-      Scal_& operator=(const Scal_& other) {
-        UnaryInterface_::operator =(other);
-        factor_ = other.factor_;
-        return *this;
-      }
+    /// Construct a scaling operation that scales the result tensor
+    /// \param factor The scaling factor for the operation
+    explicit Scal(const scalar_type factor) : factor_(factor) { }
 
-      // Import interface from base class
-      using UnaryInterface_::operator();
-      // Permuting tile evaluation function
-      // These operations cannot consume the argument tile since this operation
-      // requires temporary storage space.
+    /// Scale and permute operator
 
-      result_type permute_op(const Arg& arg) const {
-        using TiledArray::scale;
-        return scale(arg, factor_, UnaryInterface_::permutation());
-      }
+    /// \param arg The tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return A permuted and scaled copy of `arg`
+    result_type
+    operator()(const argument_type& arg, const Permutation& perm) const {
+      return eval(arg, perm);
+    }
 
-      // Non-permuting tile evaluation functions
-      // The compiler will select the correct functions based on the consumability
-      // of the arguments.
+    /// Consuming scale operation
 
-      template <bool C>
-      typename std::enable_if<!C, result_type>::type
-      no_permute_op(const Arg& arg) const {
-        using TiledArray::scale;
-        return scale(arg, factor_);
-      }
+    /// \tparam A The tile argument type
+    /// \param arg The tile argument
+    /// \return A scaled copy of `arg`
+    template <typename A>
+    result_type operator()(A&& arg) const {
+      return Scal_::template eval<is_consumable &&
+          ! std::is_const<typename std::remove_reference<A>::type>::value>(
+          std::forward<A>(arg));
+    }
 
-      template <bool C>
-      typename std::enable_if<C, result_type>::type
-      no_permute_op(Arg& arg) const {
-        using TiledArray::scale_to;
-        return scale_to(arg, factor_);
-      }
+    /// Explicit consuming scale operation
 
-    }; // class Scal
+    /// \param arg The tile argument
+    /// \return In-place scaled `arg`
+    result_type consume(argument_type& arg) const {
+      return Scal_::template eval<is_consumable_tile<Arg>::value>(arg);
+    }
 
-  } // namespace math
+  }; // class Scal
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_SCAL_H__INCLUDED

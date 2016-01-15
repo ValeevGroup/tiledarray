@@ -101,11 +101,11 @@ int main(int argc, char** argv) {
       trangeB(blockingB.begin(), blockingB.end());
 
     // Construct and initialize arrays
-    TiledArray::Array<double, 2> a(world, trangeA);
-    TiledArray::Array<double, 2> b(world, trangeB);
-    TiledArray::Array<double, 2> c;
-    a.set_all_local(1.0);
-    b.set_all_local(1.0);
+    TiledArray::TArrayD a(world, trangeA);
+    TiledArray::TArrayD b(world, trangeB);
+    TiledArray::TArrayD c;
+    a.fill(1.0);
+    b.fill(1.0);
 
     // Start clock
     world.gop.fence();

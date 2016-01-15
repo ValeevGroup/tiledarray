@@ -36,7 +36,7 @@ namespace Eigen {
 namespace TiledArray {
 
   /// Forward declarations
-  template <typename, unsigned int, typename, typename> class Array;
+  template <typename, typename> class DistArray;
   template <typename, typename> class Tensor;
   class DensePolicy;
   class SparsePolicy;
@@ -58,8 +58,8 @@ namespace TiledArray {
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// void op(typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& result_tile,
-  ///     const typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& arg_tile);
+  /// void op(typename TiledArray::DistArray<Tile,DensePolicy>::value_type& result_tile,
+  ///     const typename TiledArray::DistArray<Tile,DensePolicy>::value_type& arg_tile);
   /// \endcode
   /// \tparam Op Tile operation
   /// \tparam T Element type of the array
@@ -67,10 +67,10 @@ namespace TiledArray {
   /// \tparam Tile The tile type of the array
   /// \param op The tile function
   /// \param arg The argument array
-  template <typename T, unsigned int DIM, typename Tile, typename Op>
-  inline Array<T, DIM, Tile, DensePolicy>
-  foreach(const Array<T, DIM, Tile, DensePolicy>& arg, Op&& op) {
-    typedef Array<T, DIM, Tile, DensePolicy> array_type;
+  template <typename Tile, typename Op>
+  inline DistArray<Tile, DensePolicy>
+  foreach(const DistArray<Tile, DensePolicy>& arg, Op&& op) {
+    typedef DistArray<Tile, DensePolicy> array_type;
     typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
 
@@ -111,13 +111,13 @@ namespace TiledArray {
   /// want to modify the elements of the array to be equal to the the square
   /// root of the original value:
   /// \code
-  /// foreach(array, [] (TiledArray::Tensor<double>& tile) {
+  /// foreach(array, [] (TiledArray::TensorD& tile) {
   ///   tile.inplace_unary([&] (double& value) { value = std::sqrt(value); });
   /// });
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// void op(typename TiledArray::Array<T,DIM,Tile,DensePolicy>::value_type& tile);
+  /// void op(typename TiledArray::DistArray<Tile,DensePolicy>::value_type& tile);
   /// \endcode
   /// \tparam Op Mutating tile operation
   /// \tparam T Element type of the array
@@ -136,10 +136,10 @@ namespace TiledArray {
   /// of a tile is held in a \c std::shared_ptr. If you need to ensure other
   /// copies of the data are not modified or this behavior causes problems in
   /// your application, use the \c TiledArray::foreach function instead.
-  template <typename T, unsigned int DIM, typename Tile, typename Op>
+  template <typename Tile, typename Op>
   inline void
-  foreach_inplace(Array<T, DIM, Tile, DensePolicy>& arg, Op&& op, bool fence = true) {
-    typedef Array<T, DIM, Tile, DensePolicy> array_type;
+  foreach_inplace(DistArray<Tile, DensePolicy>& arg, Op&& op, bool fence = true) {
+    typedef DistArray<Tile, DensePolicy> array_type;
     typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
 
@@ -201,8 +201,8 @@ namespace TiledArray {
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& result_tile,
-  ///     const typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& arg_tile);
+  /// float op(typename TiledArray::DistArray<Tile,SparsePolicy>::value_type& result_tile,
+  ///     const typename TiledArray::DistArray<Tile,SparsePolicy>::value_type& arg_tile);
   /// \endcode
   /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
   /// result tile.
@@ -214,10 +214,10 @@ namespace TiledArray {
   /// \tparam Tile The tile type of the array
   /// \param op The tile function
   /// \param arg The argument array
-  template <typename T, unsigned int DIM, typename Tile, typename Op>
-  inline Array<T, DIM, Tile, SparsePolicy>
-  foreach(const Array<T, DIM, Tile, SparsePolicy> arg, Op&& op) {
-    typedef Array<T, DIM, Tile, SparsePolicy> array_type;
+  template <typename Tile, typename Op>
+  inline DistArray<Tile, SparsePolicy>
+  foreach(const DistArray<Tile, SparsePolicy> arg, Op&& op) {
+    typedef DistArray<Tile, SparsePolicy> array_type;
     typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
     typedef typename array_type::shape_type shape_type;
@@ -294,7 +294,7 @@ namespace TiledArray {
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// float op(typename TiledArray::Array<T,DIM,Tile,SparsePolicy>::value_type& tile);
+  /// float op(typename TiledArray::DistArray<Tile,SparsePolicy>::value_type& tile);
   /// \endcode
   /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
   /// tile.
@@ -317,10 +317,10 @@ namespace TiledArray {
   /// of a tile is held in a \c std::shared_ptr. If you need to ensure other
   /// copies of the data are not modified or this behavior causes problems in
   /// your application, use the \c TiledArray::foreach function instead.
-  template <typename T, unsigned int DIM, typename Tile, typename Op>
+  template <typename Tile, typename Op>
   inline void
-  foreach_inplace(Array<T, DIM, Tile, SparsePolicy>& arg, Op&& op, bool fence = true) {
-    typedef Array<T, DIM, Tile, SparsePolicy> array_type;
+  foreach_inplace(DistArray<Tile, SparsePolicy>& arg, Op&& op, bool fence = true) {
+    typedef DistArray<Tile, SparsePolicy> array_type;
     typedef typename array_type::value_type value_type;
     typedef typename array_type::size_type size_type;
     typedef typename array_type::shape_type shape_type;

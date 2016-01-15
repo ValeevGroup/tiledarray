@@ -337,7 +337,6 @@ namespace TiledArray {
       return tensor1.empty() && empty(tensors...);
     }
 
-
   }  // namespace detail
 } // namespace TiledArray
 

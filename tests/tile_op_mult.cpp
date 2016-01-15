@@ -59,19 +59,15 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_mult_suite, MultFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false>()));
-  BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false>(perm)));
-  BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false>()));
-  BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false>(perm)));
-  BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
-  BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(perm)));
-  BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
-  BOOST_CHECK_NO_THROW((math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm)));
+  BOOST_CHECK_NO_THROW((Mult<Tensor<int>, Tensor<int>, false, false>()));
+  BOOST_CHECK_NO_THROW((Mult<Tensor<int>, Tensor<int>, true, false>()));
+  BOOST_CHECK_NO_THROW((Mult<Tensor<int>, Tensor<int>, false, true>()));
+  BOOST_CHECK_NO_THROW((Mult<Tensor<int>, Tensor<int>, true, true>()));
 }
 
 BOOST_AUTO_TEST_CASE( binary_mult )
 {
-  math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false> mult_op;
+  Mult<Tensor<int>, Tensor<int>, false, false> mult_op;
 
   // Store the multiplication of a and b in c
   BOOST_CHECK_NO_THROW(c = mult_op(a, b));
@@ -91,10 +87,10 @@ BOOST_AUTO_TEST_CASE( binary_mult )
 
 BOOST_AUTO_TEST_CASE( binary_mult_perm )
 {
-  math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false> mult_op(perm);
+  Mult<Tensor<int>, Tensor<int>, false, false> mult_op;
 
   // Store the multiplication of a and b in c
-  BOOST_CHECK_NO_THROW(c = mult_op(a, b));
+  BOOST_CHECK_NO_THROW(c = mult_op(a, b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -111,7 +107,7 @@ BOOST_AUTO_TEST_CASE( binary_mult_perm )
 
 BOOST_AUTO_TEST_CASE( binary_mult_consume_left )
 {
-  math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false> mult_op;
+  Mult<Tensor<int>, Tensor<int>, true, false> mult_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the multiplication of a and b in c
@@ -132,10 +128,10 @@ BOOST_AUTO_TEST_CASE( binary_mult_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_left )
 {
-  math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false> mult_op(perm);
+  Mult<Tensor<int>, Tensor<int>, true, false> mult_op;
 
   // Store the multiplication of a and b in c
-  BOOST_CHECK_NO_THROW(c = mult_op(a, b));
+  BOOST_CHECK_NO_THROW(c = mult_op(a, b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -152,7 +148,7 @@ BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_mult_consume_right )
 {
-  math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true> mult_op;
+  Mult<Tensor<int>, Tensor<int>, false, true> mult_op;
   const Tensor<int> bx(b.range(), b.begin());
 
   // Store the multiplication of a and b in c
@@ -173,10 +169,10 @@ BOOST_AUTO_TEST_CASE( binary_mult_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_right )
 {
-  math::Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true> mult_op(perm);
+  Mult<Tensor<int>, Tensor<int>, false, true> mult_op;
 
   // Store the multiplication of a and b in c
-  BOOST_CHECK_NO_THROW(c = mult_op(a, b));
+  BOOST_CHECK_NO_THROW(c = mult_op(a, b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());

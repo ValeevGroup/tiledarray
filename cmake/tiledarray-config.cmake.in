@@ -1,0 +1,38 @@
+# - CMAKE Config file for the TiledArray package
+# The following variables are defined:
+#  TILEDARRAY_FOUND                - System has the TiledArray package
+#  TILEDARRAY_INCLUDE_DIRS         - The TiledArray include directory
+#  TILEDARRAY_LIBRARIES            - The TiledArray libraries and their dependencies
+
+# Set package version
+set(TILEDARRAY_VERSION "@TILEDARRAY_VERSION@")
+
+@PACKAGE_INIT@
+
+# Include library IMPORT targets
+if(NOT TARGET tiledarray)
+  include("${CMAKE_CURRENT_LIST_DIR}/tiledarray-targets.cmake")
+endif()
+if(NOT TARGET MADworld)
+  find_package(MADNESS 0.10.1 CONFIG QUIET REQUIRED COMPONENTS world HINTS "${CMAKE_CURRENT_LIST_DIR}/../madness")
+endif()
+
+# Set the madness libraries target
+set(TILEDARRAY_LIBRARIES tiledarray)
+
+set(TILEDARRAY_SOURCE_DIR "@TILEDARRAY_SOURCE_DIR@")
+set(TILEDARRAY_BINARY_DIR "@TILEDARRAY_BINARY_DIR@")
+
+set(TILEDARRAY_BUILD_INCLUDE_DIRS "${TILEDARRAY_SOURCE_DIR}/src" "${TILEDARRAY_BINARY_DIR}/src")
+set(TILEDARRAY_INSTALL_INCLUDE_DIRS "@PACKAGE_TILEDARRAY_INSTALL_INCLUDEDIR@"
+      "@PACKAGE_TILEDARRAY_INSTALL_INCLUDEDIR@/TiledArray/external")
+
+# define TILEDARRAY_INCLUDE_DIRS according to where we are compiling: TA build tree or outside
+# external packages should use TILEDARRAY_BUILD_INCLUDE_DIRS and TILEDARRAY_INSTALL_INCLUDE_DIRS directly
+if(CMAKE_CURRENT_LIST_DIR EQUAL TILEDARRAY_BINARY_DIR)
+  set(TILEDARRAY_INCLUDE_DIRS "${TILEDARRAY_BUILD_INCLUDE_DIRS}")
+else()
+  set(TILEDARRAY_INCLUDE_DIRS "${TILEDARRAY_INSTALL_INCLUDE_DIRS}")
+endif()
+
+set(TILEDARRAY_FOUND TRUE)

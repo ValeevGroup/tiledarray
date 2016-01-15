@@ -29,44 +29,43 @@
 #include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {
-  namespace math {
 
-    /// Vector dot product tile reduction
+  /// Vector dot product tile reduction
 
-    /// This reduction operation computes the vector dot product of a tile.
-    /// \tparam Left The left-hand tile type
-    /// \tparam Right The right-hand tile type
-    template <typename Left, typename Right>
-    class DotReduction {
-    public:
-      // typedefs
-      typedef typename Left::numeric_type result_type;
-      typedef Left first_argument_type;
-      typedef Right second_argument_type;
+  /// This reduction operation computes the vector dot product of a tile.
+  /// \tparam Left The left-hand tile type
+  /// \tparam Right The right-hand tile type
+  template <typename Left, typename Right>
+  class DotReduction {
+  public:
+    // typedefs
+    using result_type = decltype(dot(std::declval<Left>(),
+        std::declval<Right>()));
+    typedef Left first_argument_type;
+    typedef Right second_argument_type;
 
-      // Reduction functions
+    // Reduction functions
 
-      // Make an empty result object
-      result_type operator()() const { return result_type(0); }
+    // Make an empty result object
+    result_type operator()() const { return result_type(0); }
 
-      // Post process the result
-      const result_type& operator()(const result_type& result) const { return result; }
+    // Post process the result
+    const result_type& operator()(const result_type& result) const { return result; }
 
-      // Reduce two result objects
-      void operator()(result_type& result, const result_type& arg) const {
-        result += arg;
-      }
+    // Reduce two result objects
+    void operator()(result_type& result, const result_type& arg) const {
+      result += arg;
+    }
 
-      // Reduce an argument pair
-      void operator()(result_type& result, const first_argument_type& left,
-          const second_argument_type& right) const {
-        using TiledArray::dot;
-        result += dot(left, right);
-      }
+    // Reduce an argument pair
+    void operator()(result_type& result, const first_argument_type& left,
+        const second_argument_type& right) const {
+      using TiledArray::dot;
+      result += dot(left, right);
+    }
 
-    }; // class DotReduction
+  }; // class DotReduction
 
-  }  // namespace math
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_BINARY_REDUCTION_H__INCLUDED

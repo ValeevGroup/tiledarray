@@ -56,17 +56,13 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_scal_neg_suite, ScalFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((math::Scal<Tensor<int>, Tensor<int>, false>()));
-  BOOST_CHECK_NO_THROW((math::Scal<Tensor<int>, Tensor<int>, false>(7)));
-  BOOST_CHECK_NO_THROW((math::Scal<Tensor<int>, Tensor<int>, false>(perm, 7)));
-  BOOST_CHECK_NO_THROW((math::Scal<Tensor<int>, Tensor<int>, true>()));
-  BOOST_CHECK_NO_THROW((math::Scal<Tensor<int>, Tensor<int>, true>(7)));
-  BOOST_CHECK_NO_THROW((math::Scal<Tensor<int>, Tensor<int>, true>(perm, 7)));
+  BOOST_CHECK_NO_THROW((Scal<Tensor<int>, int, false>(7)));
+  BOOST_CHECK_NO_THROW((Scal<Tensor<int>, int, true>(7)));
 }
 
 BOOST_AUTO_TEST_CASE( unary_scale )
 {
-  math::Scal<Tensor<int>, Tensor<int>, false> scal_op(7);
+  Scal<Tensor<int>, int, false> scal_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = scal_op(a));
@@ -85,10 +81,10 @@ BOOST_AUTO_TEST_CASE( unary_scale )
 
 BOOST_AUTO_TEST_CASE( unary_scale_perm )
 {
-  math::Scal<Tensor<int>, Tensor<int>, false> scal_op(perm, 7);
+  Scal<Tensor<int>, int, false> scal_op(7);
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = scal_op(a));
+  BOOST_CHECK_NO_THROW(b = scal_op(a, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(b.range(), a.range());
@@ -104,7 +100,7 @@ BOOST_AUTO_TEST_CASE( unary_scale_perm )
 
 BOOST_AUTO_TEST_CASE( unary_scale_consume )
 {
-  math::Scal<Tensor<int>, Tensor<int>, true> scal_op(7);
+  Scal<Tensor<int>, int, true> scal_op(7);
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
@@ -124,31 +120,11 @@ BOOST_AUTO_TEST_CASE( unary_scale_consume )
 
 BOOST_AUTO_TEST_CASE( unary_scale_runtime_consume )
 {
-  math::Scal<Tensor<int>, Tensor<int>, false> scal_op(7);
+  Scal<Tensor<int>, int, false> scal_op(7);
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = scal_op(a, true));
-
-  // Check that the result range is correct
-  BOOST_CHECK_EQUAL(b.range(), a.range());
-
-  // Check that a nor b were consumed
-  BOOST_CHECK_EQUAL(b.data(), a.data());
-
-  // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
-    BOOST_CHECK_EQUAL(b[i], 7 * ax[i]);
-  }
-}
-
-BOOST_AUTO_TEST_CASE( unary_scale_runtime_no_consume )
-{
-  math::Scal<Tensor<int>, Tensor<int>, true> scal_op(7);
-  const Tensor<int> ax(a.range(), a.begin());
-
-  // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = scal_op(a, false));
+  BOOST_CHECK_NO_THROW(b = scal_op.consume(a));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(b.range(), a.range());
@@ -164,10 +140,10 @@ BOOST_AUTO_TEST_CASE( unary_scale_runtime_no_consume )
 
 BOOST_AUTO_TEST_CASE( unary_scale_perm_consume )
 {
-  math::Scal<Tensor<int>, Tensor<int>, true> scal_op(perm, 7);
+  Scal<Tensor<int>, int, true> scal_op(7);
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(b = scal_op(a));
+  BOOST_CHECK_NO_THROW(b = scal_op(a, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(b.range(), a.range());

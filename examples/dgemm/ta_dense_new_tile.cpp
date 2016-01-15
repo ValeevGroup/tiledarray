@@ -21,7 +21,7 @@
 #include <tiledarray.h>
 
 using Tile_t = TiledArray::Tile<TiledArray::Tensor<double>>;
-using Array_t = TiledArray::Array<double, 2, Tile_t>;
+using Array_t = TiledArray::DistArray<Tile_t>;
 
 void set_tiles(double val, Array_t& a) {
     auto const& trange = a.trange();
@@ -106,11 +106,11 @@ int main(int argc, char** argv) {
         set_tiles(1.0, a);
         set_tiles(1.0, b);
 
-        TiledArray::Array<double, 2> a_check(world, trange);
-        TiledArray::Array<double, 2> b_check(world, trange);
-        TiledArray::Array<double, 2> c_check(world, trange);
-        a_check.set_all_local(1.0);
-        b_check.set_all_local(1.0);
+        TiledArray::TArrayD a_check(world, trange);
+        TiledArray::TArrayD b_check(world, trange);
+        TiledArray::TArrayD c_check(world, trange);
+        a_check.fill(1.0);
+        b_check.fill(1.0);
 
         // Start clock
         world.gop.fence();

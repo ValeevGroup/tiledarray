@@ -23,7 +23,7 @@
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/tensor/kernels.h>
-#include <TiledArray/tensor/conjugate.h>
+#include <TiledArray/tensor/complex.h>
 
 namespace TiledArray {
 
@@ -46,10 +46,15 @@ namespace TiledArray {
     typedef typename allocator_type::difference_type difference_type; ///< Difference type
     typedef pointer iterator; ///< Element iterator type
     typedef const_pointer const_iterator; ///< Element const iterator type
-    typedef typename TiledArray::detail::scalar_type<T>::type
+    typedef typename TiledArray::detail::numeric_type<T>::type
         numeric_type; ///< the numeric type that supports T
+    typedef typename TiledArray::detail::scalar_type<T>::type
+        scalar_type; ///< the scalar type that supports T
 
   private:
+
+    template <typename X>
+    using numeric_t = typename TiledArray::detail::numeric_type<X>::type;
 
     /// Evaluation tensor
 
@@ -179,7 +184,7 @@ namespace TiledArray {
       pimpl_(new Impl(detail::clone_range(other)))
     {
       auto op =
-          [] (const typename T1::numeric_type arg) -> typename T1::numeric_type
+          [] (const numeric_t<T1> arg) -> numeric_t<T1>
       { return arg; };
 
       detail::tensor_init(op, *this, other);
@@ -196,7 +201,7 @@ namespace TiledArray {
       pimpl_(new Impl(perm * other.range()))
     {
       auto op =
-          [] (const typename T1::numeric_type arg) -> typename T1::numeric_type
+          [] (const numeric_t<T1> arg) -> numeric_t<T1>
       { return arg; };
 
       detail::tensor_init(op, perm, *this, other);
@@ -655,69 +660,6 @@ namespace TiledArray {
       return inplace_unary([=] (numeric_type& restrict res) { res *= factor; });
     }
 
-    // Complex conjugate operations
-
-    /// Construct a complex conjugated copy of this tensor
-
-    /// \return A new tensor where the elements are the complex conjugate of the
-    /// elements of this tensor
-    Tensor_ conj() const {
-      return scale(TiledArray::conj<numeric_type>());
-    }
-
-    /// Construct a permuted and complex conjugated copy of this tensor
-
-    /// \param perm The permutation to be applied to this tensor
-    /// \return A new tensor where the elements are the complex conjugate of the
-    /// elements of this tensor and permuted
-    Tensor_ conj(const Permutation& perm) const {
-      return scale(TiledArray::conj<numeric_type>(), perm);
-    }
-
-    /// Construct a scaled and complex conjugated copy of this tensor
-
-    /// \tparam Scalar A scalar type
-    /// \param factor The scaling factor
-    /// \return A new tensor where the elements are the complex conjugate of the
-    /// elements of this tensor and scaled by \c factor
-    template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-    Tensor_ conj(const Scalar factor) const {
-      return scale(TiledArray::conj(factor));
-    }
-
-    /// Construct a scaled, permuted, and complex conjugated copy of this tensor
-
-    /// \tparam Scalar A scalar type
-    /// \param factor The scaling factor
-    /// \param perm The permutation to be applied to this tensor
-    /// \return A new tensor where the elements are the complex conjugate of the
-    /// elements of this tensor, scaled by \c factor, and permuted
-    template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-    Tensor_ conj(const Scalar factor, const Permutation& perm) const {
-      return scale(TiledArray::conj(factor), perm);
-    }
-
-    /// In-place complex conjugate this tensor
-
-    /// \param factor The scaling factor
-    /// \return A reference to this tensor
-    Tensor_& conj_to() {
-      return scale_to(TiledArray::conj<numeric_type>());
-    }
-
-    /// In-place scale and complex conjugate this tensor
-
-    /// \tparam Scalar A scalar type
-    /// \param factor The scaling factor
-    /// \return A reference to this tensor
-    template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-    Tensor_& conj_to(const Scalar factor) {
-      return scale_to(TiledArray::conj(factor));
-    }
-
     // Addition operations
 
     /// Add this and \c other to construct a new tensors
@@ -730,7 +672,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_ add(const Right& right) const {
       return binary(right, [] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return l + r; });
     }
 
@@ -745,7 +687,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_ add(const Right& right, const Permutation& perm) const {
       return binary(right, [] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return l + r; }, perm);
     }
 
@@ -762,7 +704,7 @@ namespace TiledArray {
         detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_ add(const Right& right, const Scalar factor) const {
       return binary(right, [=] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return (l + r) * factor; });
     }
 
@@ -782,8 +724,8 @@ namespace TiledArray {
         const Permutation& perm) const
     {
       return binary(right,  [=] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
-          -> numeric_type { return (l + r) * factor; }, perm);
+          const numeric_t<Right> r) -> numeric_type
+          { return (l + r) * factor; }, perm);
     }
 
     /// Add a constant to a copy of this tensor
@@ -803,7 +745,8 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value, const Permutation& perm) const {
-      return unary([=] (const numeric_type a) -> numeric_type { return a + value; }, perm);
+      return unary([=] (const numeric_type a) -> numeric_type
+          { return a + value; }, perm);
     }
 
     /// Add \c other to this tensor
@@ -815,8 +758,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_& add_to(const Right& right) {
       return inplace_binary(right, [] (numeric_type& restrict l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
-          { l += r; });
+          const numeric_t<Right> r) { l += r; });
     }
 
     /// Add \c other to this tensor, and scale the result
@@ -831,7 +773,7 @@ namespace TiledArray {
         detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_& add_to(const Right& right, const Scalar factor) {
       return inplace_binary(right, [=] (numeric_type& restrict l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           { (l += r) *= factor; });
     }
 
@@ -855,7 +797,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_ subt(const Right& right) const {
       return binary(right, [] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return l - r; });
     }
 
@@ -870,7 +812,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_ subt(const Right& right, const Permutation& perm) const {
       return binary(right, [] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return l - r; }, perm);
     }
 
@@ -887,7 +829,7 @@ namespace TiledArray {
         detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_ subt(const Right& right, const Scalar factor) const {
       return binary(right, [=] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return (l - r) * factor; });
     }
 
@@ -907,7 +849,7 @@ namespace TiledArray {
         const Permutation& perm) const
     {
       return binary(right, [=] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return (l - r) * factor; }, perm);
     }
 
@@ -938,7 +880,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_& subt_to(const Right& right) {
       return inplace_binary(right, [] (numeric_type& restrict l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           { l -= r; });
     }
 
@@ -954,7 +896,7 @@ namespace TiledArray {
         detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_& subt_to(const Right& right, const Scalar factor) {
       return inplace_binary(right, [=] (numeric_type& restrict l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           { (l -= r) *= factor; });
     }
 
@@ -977,7 +919,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_ mult(const Right& right) const {
       return binary(right, [] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return l * r; });
     }
 
@@ -992,7 +934,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_ mult(const Right& right, const Permutation& perm) const {
       return binary(right, [] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return l * r; }, perm);
     }
 
@@ -1009,7 +951,7 @@ namespace TiledArray {
         detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_ mult(const Right& right, const Scalar factor) const {
       return binary(right, [=] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return (l * r) * factor; });
     }
 
@@ -1029,7 +971,7 @@ namespace TiledArray {
         const Permutation& perm) const
     {
       return binary(right,  [=] (const numeric_type l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           -> numeric_type { return (l * r) * factor; }, perm);
     }
 
@@ -1042,7 +984,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     Tensor_& mult_to(const Right& right) {
       return inplace_binary(right, [] (numeric_type& restrict l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           { l *= r; });
     }
 
@@ -1058,7 +1000,7 @@ namespace TiledArray {
         detail::is_numeric<Scalar>::value>::type* = nullptr>
     Tensor_& mult_to(const Right& right, const Scalar factor) {
       return inplace_binary(right, [=] (numeric_type& restrict l,
-          const typename TiledArray::detail::scalar_type<Right>::type r)
+          const numeric_t<Right> r)
           { (l *= r) *= factor; });
     }
 
@@ -1085,6 +1027,73 @@ namespace TiledArray {
     /// \return A reference to this tensor
     Tensor_& neg_to() {
       return inplace_unary([] (numeric_type& restrict l) { l = -l; });
+    }
+
+
+    /// Create a complex conjugated copy of this tensor
+
+    /// \return A copy of this tensor that contains the complex conjugate the
+    /// values
+    Tensor_ conj() const {
+      TA_ASSERT(pimpl_);
+      return scale(detail::conj_op());
+    }
+
+    /// Create a complex conjugated and scaled copy of this tensor
+
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \return A copy of this tensor that contains the scaled complex
+    /// conjugate the values
+    template <typename Scalar,
+        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+    Tensor_ conj(const Scalar factor) const {
+      TA_ASSERT(pimpl_);
+      return scale(detail::conj_op(factor));
+    }
+
+    /// Create a complex conjugated and permuted copy of this tensor
+
+    /// \param perm The permutation to be applied to this tensor
+    /// \return A permuted copy of this tensor that contains the complex
+    /// conjugate values
+    Tensor_ conj(const Permutation& perm) const {
+      TA_ASSERT(pimpl_);
+      return scale(detail::conj_op(), perm);
+    }
+
+    /// Create a complex conjugated, scaled, and permuted copy of this tensor
+
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param perm The permutation to be applied to this tensor
+    /// \return A permuted copy of this tensor that contains the complex
+    /// conjugate values
+    template <typename Scalar,
+        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+    Tensor_ conj(const Scalar factor, const Permutation& perm) const {
+      TA_ASSERT(pimpl_);
+      return scale(detail::conj_op(factor), perm);
+    }
+
+    /// Complex conjugate this tensor
+
+    /// \return A reference to this tensor
+    Tensor_& conj_to() {
+      TA_ASSERT(pimpl_);
+      return scale_to(detail::conj_op());
+    }
+
+    /// Complex conjugate and scale this tensor
+
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \return A reference to this tensor
+    template <typename Scalar,
+        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+    Tensor_& conj_to(const Scalar factor) {
+      TA_ASSERT(pimpl_);
+      return scale_to(detail::conj_op(factor));
     }
 
     // GEMM operations
@@ -1130,7 +1139,7 @@ namespace TiledArray {
       const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          pimpl_->data_, lda, other.data(), ldb, numeric_type(0), result.data(), n);
+          pimpl_->data_, lda, other.data(), ldb, scalar_type(0), result.data(), n);
 
       return result;
     }
@@ -1226,7 +1235,7 @@ namespace TiledArray {
           (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
+          left.data(), lda, right.data(), ldb, scalar_type(1), pimpl_->data_, n);
 
       return *this;
     }
@@ -1338,12 +1347,12 @@ namespace TiledArray {
     /// Square of vector 2-norm
 
     /// \return The vector norm of this tensor
-    numeric_type squared_norm() const {
-      auto square_op = [] (numeric_type& restrict res, const numeric_type arg)
-              { res += arg * arg; };
-      auto sum_op = [] (numeric_type& restrict res, const numeric_type arg)
+    scalar_type squared_norm() const {
+      auto square_op = [] (scalar_type& restrict res, const numeric_type arg)
+              { res += TiledArray::detail::norm(arg); };
+      auto sum_op = [] (scalar_type& restrict res, const scalar_type arg)
               { res += arg; };
-      return reduce(square_op, sum_op, numeric_type(0));
+      return detail::tensor_reduce(square_op, sum_op, scalar_type(0), *this);
     }
 
     /// Vector 2-norm
@@ -1402,7 +1411,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     numeric_type dot(const Right& other) const {
       auto mult_add_op = [] (numeric_type& res, const numeric_type l,
-                const typename TiledArray::detail::scalar_type<Right>::type r)
+                const numeric_t<Right> r)
                 { res += l * r; };
       auto add_op = [] (numeric_type& restrict res, const numeric_type value)
             { res += value; };

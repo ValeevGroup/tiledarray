@@ -187,6 +187,7 @@ namespace TiledArray {
     typedef PartialReduceUnwind<TILEDARRAY_LOOP_UNWIND - 1> PartialReduceUnwindN;
 
 
+    //TODO reduce_op
     /// Reduce the rows of a matrix
 
     /// <tt>op(result[i], left[i][j], right[j])</tt>.
@@ -252,7 +253,7 @@ namespace TiledArray {
 
         // Load result block
         Result result_block = result[i];
-        reduce_op(op, n, result_block, left + (i * n), right);
+        reduce_op_serial(op, n, result_block, left + (i * n), right);
         result[i] = result_block;
       }
     }
@@ -313,7 +314,7 @@ namespace TiledArray {
 
         // Load result block
         Result result_block = result[i];
-        reduce_op(op, n, result_block, arg + (i * n));
+        reduce_op_serial(op, n, result_block, arg + (i * n));
         result[i] = result_block;
       }
     }

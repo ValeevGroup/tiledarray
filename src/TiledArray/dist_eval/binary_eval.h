@@ -138,13 +138,13 @@ namespace TiledArray {
         right_.eval();
 
         // Task function argument types
-        typedef typename std::conditional<std::is_const<typename op_type::first_argument_type>::value,
-            const typename left_type::value_type,
-                  typename left_type::value_type>::type &
+        typedef typename std::conditional<op_type::left_is_consumable,
+                  typename left_type::value_type,
+            const typename left_type::value_type>::type &
                 left_argument_type;
-        typedef typename std::conditional<std::is_const<typename op_type::second_argument_type>::value,
-            const typename right_type::value_type,
-                  typename right_type::value_type>::type &
+        typedef typename std::conditional<op_type::right_is_consumable,
+                  typename right_type::value_type,
+            const typename right_type::value_type>::type &
                 right_argument_type;
 
         size_type task_count = 0ul;

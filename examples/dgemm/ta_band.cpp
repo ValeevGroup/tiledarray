@@ -103,15 +103,12 @@ int main(int argc, char** argv) {
 
     TiledArray::SparseShape<float> shape(shape_tensor, trange);
 
-    typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>,
-        TiledArray::SparsePolicy > SpTArray2;
-
     // Construct and initialize arrays
-    SpTArray2 a(world, trange, shape);
-    SpTArray2 b(world, trange, shape);
-    SpTArray2 c(world, trange);
-    a.set_all_local(1.0);
-    b.set_all_local(1.0);
+    TiledArray::TSpArrayD a(world, trange, shape);
+    TiledArray::TSpArrayD b(world, trange, shape);
+    TiledArray::TSpArrayD c(world, trange);
+    a.fill(1.0);
+    b.fill(1.0);
 
     // Start clock
     world.gop.fence();

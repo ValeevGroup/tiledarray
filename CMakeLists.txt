@@ -24,19 +24,70 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 2.8.8)
+cmake_minimum_required (VERSION 3.0.0)
 project (TiledArray)
 
+# Set TiledArray version =======================================================
+
+set(TILEDARRAY_MAJOR_VERSION 0)
+set(TILEDARRAY_MINOR_VERSION 5)
+set(TILEDARRAY_MICRO_VERSION 0)
+set(TILEDARRAY_BUILDID alpha)
+set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
+
+# Set install paths ============================================================
+
+set(TILEDARRAY_INSTALL_BINDIR "bin" 
+    CACHE PATH "TiledArray binary install directory")
+set(TILEDARRAY_INSTALL_INCLUDEDIR "include" 
+    CACHE PATH "TiledArray INCLUDE install directory")
+set(TILEDARRAY_INSTALL_LIBDIR "lib"
+    CACHE PATH "TiledArray LIB install directory")
+set(TILEDARRAY_INSTALL_SHAREDIR "share/tiledarray/${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}"
+    CACHE PATH "TiledArray DATA install directory")
+set(TILEDARRAY_INSTALL_DATADIR "${TILEDARRAY_INSTALL_SHAREDIR}/data"
+    CACHE PATH "TiledArray DATA install directory")
+set(TILEDARRAY_INSTALL_DOCDIR "${TILEDARRAY_INSTALL_SHAREDIR}/doc"
+    CACHE PATH "TiledArray DOC install directory")
+set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
+    CACHE PATH "TiledArray CMAKE install directory")
+
+# User features ===============================================================
+
 include(CMakeDependentOption)
+include(CMakePackageConfigHelpers)
+include(FeatureSummary)
+
+# Set install paths ============================================================
+
+set(TILEDARRAY_INSTALL_BINDIR "bin" 
+    CACHE PATH "TiledArray binary install directory")
+set(TILEDARRAY_INSTALL_INCLUDEDIR "include" 
+    CACHE PATH "TiledArray INCLUDE install directory")
+set(TILEDARRAY_INSTALL_LIBDIR "lib"
+    CACHE PATH "TiledArray LIB install directory")
+set(TILEDARRAY_INSTALL_DOCDIR "share/tiledarray/${TILEDARRAY_VERSION}/doc"
+    CACHE PATH "TiledArray DOC install directory")
+set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
+    CACHE PATH "TiledArray CMAKE install directory")
 
 # Configure options
 option(ENABLE_MPI "Enable MPI" ON)
-option(ENABLE_ELEMENTAL "Enable use of MADNESS provided Elemental" OFF)
+add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-memory parallel programs")
+
+option(ENABLE_ELEMENTAL "Enable use of MADNESS-provided Elemental" OFF)
+add_feature_info(Elemental ENABLE_ELEMENTAL "Elemental provides parallel linear algebra")
+
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
+add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks support shared-memory parallel programs")
+
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
+add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
 option(ENABLE_TCMALLOC_MINIMAL "Enable linking with tcmalloc_minimal" OFF)
+
 if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES "Linux")
   set(ENABLE_LIBUNWIND ON)
+  add_feature_info(Libunwind ENABLE_LIBUNWIND "Libunwind provides stack unwinding")
 endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
@@ -48,20 +99,22 @@ cmake_dependent_option(BUILD_SHARED_LIBS "Enable shared libraries" ON
       "SUPPORTS_SHARED;ENABLE_SHARED_LIBRARIES" OFF)
 if(BUILD_SHARED_LIBS)
   set(BLA_STATIC FALSE)
+  set(CMAKE_MACOSX_RPATH TRUE)
 else()
   set(BLA_STATIC TRUE)
+  set(CMAKE_MACOSX_RPATH FALSE)
 endif()
 
-set(CMAKE_MACOSX_RPATH TRUE)
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 
-# Set TiledArray version
-set(TILEDARRAY_MAJOR_VERSION 0)
-set(TILEDARRAY_MINOR_VERSION 5)
-set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_BUILDID alpha)
-set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
+if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+  # look for frameworks and appbundles last
+  set(CMAKE_FIND_FRAMEWORK LAST)
+  set(CMAKE_FIND_APPBUNDLE LAST)
+endif()
+
+
 
 # extra cmake files are shipped with TiledArray
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
@@ -93,7 +146,7 @@ if (NOT CMAKE_CXX_COMPILER)
 endif()
 
 # Set the default fortran integer type. This is only used by MADNESS.
-set(INTEGER4 "FALSE" CACHE BOOL "Set the default Fortran integer type to integer*4")
+set(INTEGER4 TRUE CACHE BOOL "If TRUE, use integer*4 Fortran integers in BLAS calls. Otherwise use integer*8.")
 mark_as_advanced(INTEGER4)
 
 # Set the CPU L1 cache line size.
@@ -148,11 +201,6 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 ##########################
 add_custom_target(External)
 
-include(external/pthread.cmake)
-include(external/libunwind.cmake)
-include(external/gperftools.cmake)
-include(external/lapack.cmake)
-include(external/mpi.cmake)
 include(external/eigen.cmake)
 include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
@@ -229,16 +277,36 @@ CONFIGURE_FILE(
   ${PROJECT_BINARY_DIR}/tiledarray.pc
 )
 
-CONFIGURE_FILE(
-  ${PROJECT_SOURCE_DIR}/tiledarray-config.cmake.in
-  ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
-  @ONLY)
-
 # install config files
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
     DESTINATION lib/pkgconfig)
-install(FILES ${PROJECT_BINARY_DIR}/tiledarray-config.cmake
-    DESTINATION lib/cmake/TiledArray)
+
+# Create the version file
+write_basic_package_version_file(tiledarray-config-version.cmake
+  VERSION ${TILEDARRAY_VERSION} COMPATIBILITY AnyNewerVersion)
+
+# Create the targets file
+export(EXPORT tiledarray
+  FILE "${PROJECT_BINARY_DIR}/tiledarray-targets.cmake")
+
+# Create the configure file
+configure_package_config_file(cmake/tiledarray-config.cmake.in
+    "${PROJECT_BINARY_DIR}/tiledarray-config.cmake"
+  INSTALL_DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
+  PATH_VARS CMAKE_INSTALL_PREFIX TILEDARRAY_INSTALL_BINDIR 
+            TILEDARRAY_INSTALL_INCLUDEDIR TILEDARRAY_INSTALL_LIBDIR
+            TILEDARRAY_INSTALL_DOCDIR TILEDARRAY_INSTALL_CMAKEDIR)
+
+# Install config, version, and target files
+install(EXPORT tiledarray
+    FILE "tiledarray-targets.cmake"
+    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}" 
+    COMPONENT tiledarray)
+install(FILES
+    "${PROJECT_BINARY_DIR}/tiledarray-config.cmake"
+    "${PROJECT_BINARY_DIR}/tiledarray-config-version.cmake"
+    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}" 
+    COMPONENT tiledarray)
 
 
 # Add target to allow on-the-fly switching of build type
@@ -254,4 +322,7 @@ ADD_CUSTOM_TARGET(release
   COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target all
   COMMENT "Switch CMAKE_BUILD_TYPE to Release"
   )
+
+feature_summary(WHAT ALL
+                DESCRIPTION "=== TiledArray Package/Feature Info ===")
 

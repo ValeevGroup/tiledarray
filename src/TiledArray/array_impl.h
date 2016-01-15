@@ -30,7 +30,6 @@
 #include <TiledArray/distributed_storage.h>
 #include <TiledArray/transform_iterator.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/tile_op/eval_trait.h>
 
 namespace TiledArray {
   namespace detail {
@@ -249,7 +248,7 @@ namespace TiledArray {
       /// \return A reference to this object
       template <typename R>
       ArrayIterator_& operator=(const ArrayIiterator<Impl, R>& other) {
-        array_ = other.tensor_;
+        array_ = other.array_;
         it_ = other.it_;
 
         return *this;
@@ -280,7 +279,7 @@ namespace TiledArray {
       /// \c false.
       template <typename R>
       bool operator==(const ArrayIiterator<Impl, R>& other) const {
-        return (array_ == other.tensor_) && (it_ == other.it_);
+        return (array_ == other.array_) && (it_ == other.it_);
       }
 
       /// Inequality operator
@@ -350,8 +349,7 @@ namespace TiledArray {
     class ArrayImpl : public TensorImpl<Policy> {
     public:
       typedef ArrayImpl<Tile, Policy> ArrayImpl_; ///< This object type
-      typedef TensorImpl<Policy> TensorImpl_;
-                                          ///< The base class of this object
+      typedef TensorImpl<Policy> TensorImpl_; ///< The base class of this object
       typedef typename TensorImpl_::size_type size_type; ///< Size type
       typedef typename TensorImpl_::trange_type trange_type; ///< Tiled range type for this object
       typedef typename TensorImpl_::range_type range_type; ///< Range type this tensor
@@ -359,7 +357,7 @@ namespace TiledArray {
       typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
       typedef Tile value_type; ///< Tile or data type
       typedef typename eval_trait<Tile>::type eval_type; ///< The tile evaluation type
-      typedef typename scalar_type<value_type>::type
+      typedef typename numeric_type<value_type>::type
           numeric_type; ///< the numeric type that supports Tile
       typedef DistributedStorage<value_type> storage_type; ///< The data container type
       typedef typename storage_type::future future; ///< Future tile type

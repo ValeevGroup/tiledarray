@@ -37,9 +37,6 @@ typedef enum {
   vir = 1
 } RangeOV;
 
-typedef TiledArray::Array<double, 2, TiledArray::Tensor<double>, TiledArray::SparsePolicy> TArray2s;
-typedef TiledArray::Array<double, 4, TiledArray::Tensor<double>, TiledArray::SparsePolicy> TArray4s;
-
 /// Read input file and generate tensors for the algorithm
 class InputData {
 public:
@@ -101,15 +98,15 @@ public:
 
   std::string name() const { return name_; }
 
-  TArray2s
+  TiledArray::TSpArrayD
   make_f(TiledArray::World& w, const Spin s, const RangeOV ov1, const RangeOV ov2);
 
-  TArray4s
+  TiledArray::TSpArrayD
   make_v_ab(TiledArray::World& w, const RangeOV ov1, const RangeOV ov2, const RangeOV ov3, const RangeOV ov4);
 
-  TArray2s::value_type
-  make_D_vo_tile(const TiledArray::Array<double, 2>::trange_type::tile_range_type& range) const {
-    typedef TiledArray::Array<double, 2>::value_type tile_type;
+  TiledArray::TSpArrayD::value_type
+  make_D_vo_tile(const TiledArray::Range& range) const {
+    typedef TiledArray::TSpArrayD::value_type tile_type;
     typedef tile_type::range_type range_type;
 
     // computes tiles of  D(v,v,o,o)
@@ -120,9 +117,9 @@ public:
     return tile;
   }
 
-  TArray4s::value_type
-  make_D_vvoo_tile(const TiledArray::Array<double, 4>::trange_type::tile_range_type& range) const {
-    typedef TiledArray::Array<double, 4>::value_type tile_type;
+  TiledArray::TSpArrayD::value_type
+  make_D_vvoo_tile(const TiledArray::Range& range) const {
+    typedef TiledArray::TSpArrayD::value_type tile_type;
     typedef tile_type::range_type range_type;
 
     // computes tiles of  D(v,v,o,o)

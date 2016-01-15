@@ -11,10 +11,10 @@ namespace TiledArray {
   /// If the input array is dense then create a copy by checking the norms of the
   /// tiles in the dense array and then cloning the significant tiles into the
   /// sparse array.
-  template <typename T, unsigned int DIM, typename Tile>
-  Array<T, DIM, Tile, SparsePolicy>
-  to_sparse(Array<T, DIM, Tile, DensePolicy> const &dense_array) {
-      typedef Array<T, DIM, Tile, SparsePolicy> ArrayType;  // return type
+  template <typename Tile>
+  DistArray<Tile, SparsePolicy>
+  to_sparse(DistArray<Tile, DensePolicy> const &dense_array) {
+      typedef DistArray<Tile, SparsePolicy> ArrayType;  // return type
 
       // Constructing a tensor to hold the norm of each tile in the Dense Array
       TiledArray::Tensor<float> tile_norms(dense_array.trange().tiles(), 0.0);
@@ -48,9 +48,9 @@ namespace TiledArray {
   }
 
   /// If the array is already sparse return a copy of the array.
-  template <typename T, unsigned int DIM, typename Tile>
-  Array<T, DIM, Tile, SparsePolicy>
-  to_sparse(Array<T, DIM, Tile, SparsePolicy> const &sparse_array) {
+  template <typename Tile>
+  DistArray<Tile, SparsePolicy>
+  to_sparse(DistArray<Tile, SparsePolicy> const &sparse_array) {
       return sparse_array;
   }
 

@@ -88,19 +88,20 @@ set(ta_test_src_files  ta_test.cpp
     expressions.cpp
     symm_dense_shape.cpp)
         
-if(NOT ENABLE_ELEMENTAL)
+if(ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
 endif()
 add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
 
 # Add include directories and compiler flags for ta_test
-include_directories(
+target_include_directories(${executable} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
-    ${Boost_INCLUDE_DIRS})
+    ${Boost_INCLUDE_DIRS}
+    )
 set_target_properties(${executable} PROPERTIES
     COMPILE_DEFINITIONS "TILEDARRAY_NO_USER_ERROR_MESSAGES=1")
-target_link_libraries(${executable} ${TiledArray_LIBRARIES})
+target_link_libraries(${executable} PUBLIC tiledarray)
 
 # Add targets
 add_dependencies(${executable} External)
@@ -109,9 +110,9 @@ add_test(build_${executable} "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR} --ta
 # Add a test(s)
 if(ENABLE_MPI)
   add_test(NAME ${executable}-np-1
-      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS} ${executable} ${MPIEXEC_POSTFLAGS})
+      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> ${MPIEXEC_POSTFLAGS})
   add_test(NAME ${executable}-np-2
-      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS} ${executable} ${MPIEXEC_POSTFLAGS})
+      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> ${MPIEXEC_POSTFLAGS})
   set_tests_properties(${executable}-np-1 PROPERTIES DEPENDS build_${executable})
   set_tests_properties(${executable}-np-2 PROPERTIES DEPENDS build_${executable})
 else()

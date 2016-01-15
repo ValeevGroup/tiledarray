@@ -32,22 +32,35 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename> class ScalTsrExpr;
+    template <typename Array>
+    using ConjTsrExpr = ScalTsrExpr<Array, TiledArray::detail::ComplexConjugate<void> >;
 
-    template <typename A>
-    struct ExprTrait<ScalTsrExpr<A> > {
-      typedef A array_type; ///< The \c Array type
-      typedef ScalTsrEngine<A> engine_type; ///< Expression engine type
-      typedef typename TiledArray::detail::scalar_type<A>::type scalar_type;  ///< Tile scalar type
+    template <typename Array, typename Scalar>
+    using ScalConjTsrExpr = ScalTsrExpr<Array, TiledArray::detail::ComplexConjugate<Scalar> >;
+
+    using TiledArray::detail::conj_op;
+    using TiledArray::detail::mult_t;
+    using TiledArray::detail::numeric_t;
+
+    template <typename, typename> class ScalTsrExpr;
+
+    template <typename Array, typename Scalar>
+    struct ExprTrait<ScalTsrExpr<Array, Scalar> > {
+      typedef Array array_type; ///< The \c Array type
+      typedef ScalTsrEngine<Array, Scalar> engine_type; ///< Expression engine type
+      typedef TiledArray::detail::numeric_t<Array>
+          numeric_type; ///< Array base numeric type
+      typedef Scalar scalar_type;  ///< Expression scalar type
     };
 
     /// Expression wrapper for scaled array objects
 
-    /// \tparam A The \c TiledArray::Array type
-    template <typename A>
-    class ScalTsrExpr : public Expr<ScalTsrExpr<A> > {
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar The scaling factor type
+    template <typename Array, typename Scalar>
+    class ScalTsrExpr : public Expr<ScalTsrExpr<Array, Scalar> > {
     public:
-      typedef ScalTsrExpr<A> ScalTsrExpr_; ///< This class type
+      typedef ScalTsrExpr<Array, Scalar> ScalTsrExpr_; ///< This class type
       typedef Expr<ScalTsrExpr_> Expr_; ///< Expression base type
       typedef typename ExprTrait<ScalTsrExpr_>::array_type array_type; ///< The array type
       typedef typename ExprTrait<ScalTsrExpr_>::engine_type engine_type; ///< Expression engine type
@@ -64,35 +77,21 @@ namespace TiledArray {
 
     public:
 
-      /// Construct a scaled tensor expression from a tensor expression
+      /// Construct a scaled tensor expression
 
-      /// \param tsr_expr The tensor expression
+      /// \param array The array object
+      /// \param vars The array annotation variables
       /// \param factor The scaling factor
-      ScalTsrExpr(const TsrExpr<array_type>& tsr_expr, const scalar_type factor) :
-        Expr_(), array_(tsr_expr.array()), vars_(tsr_expr.vars()), factor_(factor)
-      { }
-
-      /// Construct a scaled tensor expression from a const tensor expression
-
-      /// \param tsr_expr The const tensor expression
-      /// \param factor The scaling factor
-      ScalTsrExpr(const TsrExpr<const array_type>& tsr_expr, const scalar_type factor) :
-        Expr_(), array_(tsr_expr.array()), vars_(tsr_expr.vars()), factor_(factor)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      /// \param factor The scaling factor applied to the new expression
-      ScalTsrExpr(const ScalTsrExpr_& other, const scalar_type factor) :
-        Expr_(other), array_(other.array_), vars_(other.vars_), factor_(other.factor_ * factor)
+      ScalTsrExpr(const array_type& array, const std::string& vars,
+          const scalar_type factor) :
+        Expr_(), array_(array), vars_(vars), factor_(factor)
       { }
 
       /// Copy constructor
 
       /// \param other The expression to be copied
       ScalTsrExpr(const ScalTsrExpr_& other) :
-        Expr_(other), array_(other.array_), vars_(other.vars_), factor_(other.factor_)
+        Expr_(), array_(other.array_), vars_(other.vars_), factor_(other.factor_)
       { }
 
       /// Array accessor
@@ -113,119 +112,242 @@ namespace TiledArray {
 
     }; // class ScalTsrExpr
 
-
     /// Scaled-tensor expression factor
 
-    /// \tparam A An array type
+    /// \tparam Array A `DistArray` type
     /// \tparam Scalar A scalar type
     /// \param expr The tensor expression object
     /// \param factor The scaling factor
     /// \return A scaled-tensor expression object
-    template <typename A, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalTsrExpr<A> >::type
-    operator*(const TsrExpr<A>& expr, const Scalar& factor) {
-      return ScalTsrExpr<A>(expr, factor);
+    template <typename Array, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>
+    operator*(const TsrExpr<Array, true>& expr, const Scalar& factor) {
+      return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
+          expr.array(), expr.vars(), factor);
     }
 
     /// Scaled-tensor expression factor
 
-    /// \tparam A An array type
-    /// \tparam Scalar A scalar type
-    /// \param expr The tensor expression object
-    /// \param factor The scaling factor
-    /// \return A scaled-tensor expression object
-    template <typename A, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalTsrExpr<A> >::type
-    operator*(const TsrExpr<const A>& expr, const Scalar& factor) {
-      return ScalTsrExpr<A>(expr, factor);
-    }
-
-    /// Scaled-tensor expression factor
-
-    /// \tparam A An array type
+    /// \tparam Array A `DistArray` type
     /// \tparam Scalar A scalar type
     /// \param factor The scaling factor
     /// \param expr The tensor expression object
     /// \return A scaled-tensor expression object
-    template <typename A, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalTsrExpr<A> >::type
-    operator*(const Scalar& factor, const TsrExpr<A>& expr) {
-      return ScalTsrExpr<A>(expr, factor);
+    template <typename Array, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>
+    operator*(const Scalar& factor, const TsrExpr<Array, true>& expr) {
+      return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
+          expr.array(), expr.vars(), factor);
     }
 
     /// Scaled-tensor expression factor
 
-    /// \tparam A An array type
-    /// \tparam Scalar A scalar type
-    /// \param factor The scaling factor
-    /// \param expr The tensor expression object
-    /// \return A scaled-tensor expression object
-    template <typename A, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalTsrExpr<A> >::type
-    operator*(const Scalar& factor, const TsrExpr<const A>& expr) {
-      return ScalTsrExpr<A>(expr, factor);
-    }
-
-    /// Scaled-tensor expression factor
-
-    /// \tparam A An array type
-    /// \tparam Scalar A scalar type
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar1 A scalar type
+    /// \tparam Scalar2 A scalar type
     /// \param expr The scaled-tensor expression object
     /// \param factor The scaling factor
     /// \return A scaled-tensor expression object
-    template <typename A, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalTsrExpr<A> >::type
-    operator*(const ScalTsrExpr<A>& expr, const Scalar& factor) {
-      return ScalTsrExpr<A>(expr, factor);
+    template <typename Array, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalTsrExpr<Array, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
+      return ScalTsrExpr<Array, mult_t<Scalar1, Scalar2> >(expr.array(),
+          expr.vars(), expr.factor() * factor);
     }
 
     /// Scaled-tensor expression factor
 
-    /// \tparam A An array type
-    /// \tparam Scalar A scalar type
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar1 A scalar type
+    /// \tparam Scalar2 A scalar type
     /// \param factor The scaling factor
     /// \param expr The scaled-tensor expression object
     /// \return A scaled-tensor expression object
-    template <typename A, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalTsrExpr<A> >::type
-    operator*(const Scalar& factor, const ScalTsrExpr<A>& expr) {
-      return ScalTsrExpr<A>(expr, factor);
+    template <typename Array, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalTsrExpr<Array, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalTsrExpr<Array, Scalar2>& expr) {
+      return ScalTsrExpr<Array, mult_t<Scalar2, Scalar1> >(expr.array(),
+          expr.vars(), expr.factor() * factor);
     }
 
     /// Negated-tensor expression factor
 
-    /// \tparam A An array type
+    /// \tparam Array A `DistArray` type
     /// \param expr The tensor expression object
     /// \return A scaled-tensor expression object
-    template <typename A>
-    inline ScalTsrExpr<A> operator-(const TsrExpr<A>& expr) {
-      return ScalTsrExpr<A>(expr, -1);
+    template <typename Array>
+    inline ScalTsrExpr<typename std::remove_const<Array>::type,
+        typename ExprTrait<TsrExpr<Array, true> >::numeric_type>
+    operator-(const TsrExpr<Array, true>& expr) {
+      return ScalTsrExpr<typename std::remove_const<Array>::type,
+          typename ExprTrait<TsrExpr<Array, true> >::numeric_type>(
+              expr.array(), expr.vars(), -1);
     }
 
     /// Negated-tensor expression factor
 
-    /// \tparam A An array type
-    /// \param expr The tensor expression object
-    /// \return A scaled-tensor expression object
-    template <typename A>
-    inline ScalTsrExpr<A> operator-(const TsrExpr<const A>& expr) {
-      return ScalTsrExpr<A>(expr, -1);
-    }
-
-    /// Negated-tensor expression factor
-
-    /// \tparam A An array type
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar A scalar type
     /// \param expr The scaled-tensor expression object
     /// \return A scaled-tensor expression object
-    template <typename A>
-    inline ScalTsrExpr<A> operator-(const ScalTsrExpr<A>& expr) {
-      return ScalTsrExpr<A>(expr, -1);
+    template <typename Array, typename Scalar>
+    inline ScalTsrExpr<Array, Scalar>
+    operator-(const ScalTsrExpr<Array, Scalar>& expr) {
+      return ScalTsrExpr<Array, Scalar>(expr.array(), expr.vars(), -expr.factor());
+    }
+
+    /// Conjugated tensor expression factory
+
+    /// \tparam Array A `DistArray` type
+    /// \param expr The tensor expression object
+    /// \return A conjugated expression object
+    template <typename Array>
+    inline ConjTsrExpr<typename std::remove_const<Array>::type>
+    conj(const TsrExpr<Array, true>& expr) {
+      return ConjTsrExpr<typename std::remove_const<Array>::type>(expr.array(),
+          expr.vars(), conj_op());
+    }
+
+    /// Conjugate-conjugate tensor expression factory
+
+    /// \tparam Array A `DistArray` type
+    /// \param expr The tensor expression object
+    /// \return A tensor expression object
+    template <typename Array>
+    inline TsrExpr<const Array, true> conj(const ConjTsrExpr<Array>& expr) {
+      return TsrExpr<const Array, true>(expr.array(), expr.vars());
+    }
+
+    /// Conjugated-tensor expression factor
+
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param expr The tensor expression object
+    /// \return A conjugated expression object
+    template <typename Array, typename Scalar>
+    inline ScalConjTsrExpr<Array, Scalar> conj(const ScalTsrExpr<Array, Scalar>& expr) {
+      return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+          conj_op(TiledArray::detail::conj(expr.factor())));
+    }
+
+    /// Conjugate-conjugate tensor expression factory
+
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param expr The scaled conjugate tensor expression object
+    /// \return A conjugated expression object
+    template <typename Array, typename Scalar>
+    inline ScalTsrExpr<Array, Scalar>
+    conj(const ScalConjTsrExpr<Array, Scalar>& expr) {
+      return ScalTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+          TiledArray::detail::conj(expr.factor().factor()));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param expr The tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-tensor expression object
+    template <typename Array, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalConjTsrExpr<Array, Scalar>
+    operator*(const ConjTsrExpr<const Array>& expr, const Scalar& factor) {
+      return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+          conj_op(factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param expr The tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename Array, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalConjTsrExpr<Array, Scalar>
+    operator*(const Scalar& factor, const ConjTsrExpr<Array>& expr) {
+      return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+          conj_op(factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param expr The scaled-tensor expression object
+    /// \param factor The scaling factor
+    /// \return A scaled-tensor expression object
+    template <typename Array, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalConjTsrExpr<Array, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalConjTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
+      return ScalConjTsrExpr<Array, mult_t<Scalar1, Scalar2> >(expr.array(),
+          expr.vars(), conj_op(expr.factor().factor() * factor));
+    }
+
+    /// Scaled-tensor expression factor
+
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param factor The scaling factor
+    /// \param expr The scaled-tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename Array, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalConjTsrExpr<Array, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalConjTsrExpr<Array, Scalar2>& expr) {
+      return ScalConjTsrExpr<Array, mult_t<Scalar2, Scalar1> >(expr.array(),
+          expr.vars(), conj_op(expr.factor().factor() * factor));
+    }
+
+    /// Negated-conjugated-tensor expression factor
+
+    /// \tparam Array A `DistArray` type
+    /// \param expr The tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename Array>
+    inline ScalConjTsrExpr<Array, typename ExprTrait<ConjTsrExpr<Array> >::numeric_type>
+    operator-(const ConjTsrExpr<Array>& expr) {
+      typedef typename ExprTrait<ConjTsrExpr<Array> >::numeric_type
+          numeric_type;
+      return ScalConjTsrExpr<Array, numeric_type>(expr.array(), expr.vars(),
+          conj_op<numeric_type>(-1));
+    }
+
+    /// Negated-conjugated-tensor expression factor
+
+    /// \tparam Array A `DistArray` type
+    /// \tparam Scalar A scalar type
+    /// \param expr The scaled-conjugated-tensor expression object
+    /// \return A scaled-tensor expression object
+    template <typename Array, typename Scalar>
+    inline ScalConjTsrExpr<Array, Scalar>
+    operator-(const ScalConjTsrExpr<Array, Scalar>& expr) {
+      return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+          conj_op(-expr.factor().factor()));
     }
 
   }  // namespace expressions

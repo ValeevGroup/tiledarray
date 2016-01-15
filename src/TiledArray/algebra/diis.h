@@ -27,9 +27,9 @@
 #define TILEDARRAY_ALGEBRA_DIIS_H__INCLUDED
 
 #include <deque>
-#include <TiledArray/array.h>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/algebra/utils.h>
+#include <TiledArray/array.h>
 
 namespace TiledArray {
 

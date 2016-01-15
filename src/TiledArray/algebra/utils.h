@@ -27,6 +27,7 @@
 #define TILEDARRAY_ALGEBRA_UTILS_H__INCLUDED
 
 #include <sstream>
+
 #include <TiledArray/array.h>
 
 namespace TiledArray {
@@ -43,8 +44,8 @@ namespace TiledArray {
 
   } // namespace detail
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline size_t size(const TiledArray::Array<T, DIM, Tile, Policy>& a) {
+  template <typename Tile, typename Policy>
+  inline size_t size(const DistArray<Tile, Policy>& a) {
     // this is the number of tiles
     if (a.size() > 0) // assuming dense shape
       return a.trange().elements().volume();
@@ -52,46 +53,40 @@ namespace TiledArray {
       return 0;
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline TiledArray::Array<T,DIM,Tile,Policy> clone(const TiledArray::Array<T,DIM,Tile,Policy>& a) {
+  template <typename Tile, typename Policy>
+  inline DistArray<Tile,Policy> copy(const DistArray<Tile,Policy>& a) {
     return a;
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline TiledArray::Array<T,DIM,Tile,Policy> copy(const TiledArray::Array<T,DIM,Tile,Policy>& a) {
-    return a;
+  template <typename Tile, typename Policy>
+  inline void zero(DistArray<Tile,Policy>& a) {
+    const std::string vars = detail::dummy_annotation(a.trange().tiles().rank());
+    a(vars) = typename DistArray<Tile,Policy>::element_type(0) * a(vars);
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline void zero(TiledArray::Array<T,DIM,Tile,Policy>& a) {
-    const std::string vars = detail::dummy_annotation(DIM);
-    a(vars) = typename TiledArray::Array<T,DIM,Tile,Policy>::element_type(0) * a(vars);
+  template <typename Tile, typename Policy>
+  typename DistArray<Tile,Policy>::element_type
+  inline minabs_value(const DistArray<Tile,Policy>& a) {
+    return a(detail::dummy_annotation(a.trange().tiles().rank())).abs_min();
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  typename TiledArray::Array<T,DIM,Tile,Policy>::element_type
-  inline minabs_value(const TiledArray::Array<T,DIM,Tile,Policy>& a) {
-    return a(detail::dummy_annotation(DIM)).abs_min();
+  template <typename Tile, typename Policy>
+  inline typename DistArray<Tile,Policy>::element_type
+  maxabs_value(const DistArray<Tile,Policy>& a) {
+    return a(detail::dummy_annotation(a.trange().tiles().rank())).abs_max();
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline typename TiledArray::Array<T,DIM,Tile,Policy>::element_type
-  maxabs_value(const TiledArray::Array<T,DIM,Tile,Policy>& a) {
-    return a(detail::dummy_annotation(DIM)).abs_max();
-  }
-
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline void vec_multiply(TiledArray::Array<T,DIM,Tile,Policy>& a1,
-                           const TiledArray::Array<T,DIM,Tile,Policy>& a2) {
-    const std::string vars = detail::dummy_annotation(DIM);
+  template <typename Tile, typename Policy>
+  inline void vec_multiply(DistArray<Tile,Policy>& a1,
+                           const DistArray<Tile,Policy>& a2) {
+    const std::string vars = detail::dummy_annotation(a1.trange().tiles().rank());
     a1(vars) = a1(vars) * a2(vars);
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline typename TiledArray::Array<T,DIM,Tile,Policy>::element_type
-  dot_product(const TiledArray::Array<T,DIM,Tile,Policy>& a1,
-              const TiledArray::Array<T,DIM,Tile,Policy>& a2) {
-    const std::string vars = detail::dummy_annotation(DIM);
+  template <typename Tile, typename Policy>
+  inline typename DistArray<Tile,Policy>::element_type
+  dot_product(const DistArray<Tile,Policy>& a1, const DistArray<Tile,Policy>& a2) {
+    const std::string vars = detail::dummy_annotation(a1.trange().tiles().rank());
     return a1(vars).dot(a2(vars)).get();
   }
 
@@ -99,38 +94,44 @@ namespace TiledArray {
   inline typename TiledArray::expressions::ExprTrait<Left>::scalar_type
   dot(const TiledArray::expressions::Expr<Left>& a1,
       const TiledArray::expressions::Expr<Right>& a2) {
+    static_assert(TiledArray::expressions::is_aliased<Left>::value,
+        "no_alias() expressions are not allowed on the right-hand side of the "
+        "assignment operator.");
+    static_assert(TiledArray::expressions::is_aliased<Right>::value,
+        "no_alias() expressions are not allowed on the right-hand side of the "
+        "assignment operator.");
     return a1.dot(a2).get();
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline void scale(TiledArray::Array<T,DIM,Tile,Policy>& a,
-                    typename TiledArray::Array<T,DIM,Tile,Policy>::element_type scaling_factor) {
-    const std::string vars = detail::dummy_annotation(DIM);
+  template <typename Tile, typename Policy>
+  inline void scale(DistArray<Tile,Policy>& a,
+                    typename DistArray<Tile,Policy>::element_type scaling_factor) {
+    const std::string vars = detail::dummy_annotation(a.trange().tiles().rank());
     a(vars) = scaling_factor * a(vars);
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline void axpy(TiledArray::Array<T,DIM,Tile,Policy>& y,
-                   typename TiledArray::Array<T,DIM,Tile,Policy>::element_type a,
-                   const TiledArray::Array<T,DIM,Tile,Policy>& x) {
-    const std::string vars = detail::dummy_annotation(DIM);
+  template <typename Tile, typename Policy>
+  inline void axpy(DistArray<Tile,Policy>& y,
+                   typename DistArray<Tile,Policy>::element_type a,
+                   const DistArray<Tile,Policy>& x) {
+    const std::string vars = detail::dummy_annotation(y.trange().tiles().rank());
     y(vars) = y(vars) + a * x(vars);
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline void assign(TiledArray::Array<T,DIM,Tile,Policy>& m1,
-                     const TiledArray::Array<T,DIM,Tile,Policy>& m2) {
+  template <typename Tile, typename Policy>
+  inline void assign(DistArray<Tile,Policy>& m1,
+                     const DistArray<Tile,Policy>& m2) {
     m1 = m2;
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline typename TiledArray::Array<T,DIM,Tile,Policy>::element_type
-  norm2(const TiledArray::Array<T,DIM,Tile,Policy>& a) {
-    return std::sqrt(a(detail::dummy_annotation(DIM)).squared_norm());
+  template <typename Tile, typename Policy>
+  inline typename DistArray<Tile,Policy>::element_type
+  norm2(const DistArray<Tile,Policy>& a) {
+    return std::sqrt(a(detail::dummy_annotation(a.trange().tiles().rank())).squared_norm());
   }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  inline void print(const TiledArray::Array<T,DIM,Tile,Policy>& a, const char* label) {
+  template <typename Tile, typename Policy>
+  inline void print(const DistArray<Tile,Policy>& a, const char* label) {
     std::cout << label << ":\n" << a << "\n";
   }
 

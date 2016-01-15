@@ -34,8 +34,8 @@ struct EigenFixture : public TiledRangeFixture {
 
   TiledRange trange;
   TiledRange trange1;
-  Array<int, 2> array;
-  Array<int, 1> array1;
+  TArrayI array;
+  TArrayI array1;
   Eigen::MatrixXi matrix;
   Eigen::VectorXi vector;
 };
@@ -145,22 +145,22 @@ BOOST_AUTO_TEST_CASE( matrix_to_array ) {
 
   if(GlobalFixture::world->size() == 1) {
     // Copy matrix to array
-    BOOST_CHECK_NO_THROW((array = eigen_to_array<Array<int, 2> >(*GlobalFixture::world, trange, matrix)));
+    BOOST_CHECK_NO_THROW((array = eigen_to_array<TArrayI>(*GlobalFixture::world, trange, matrix)));
   } else {
     // Check that eigen_to_array does not work in distributed environments
-    BOOST_CHECK_THROW((eigen_to_array<Array<int, 2> >(*GlobalFixture::world, trange, matrix)), TiledArray::Exception);
+    BOOST_CHECK_THROW((eigen_to_array<TArrayI>(*GlobalFixture::world, trange, matrix)), TiledArray::Exception);
 
     // Note: The following tests constructs a replicated array, but the data may
     // not be identical. That is OK here since we are check the local data, but
     // in real applications the data should be identical.
 
     // Copy matrix to a replicated array
-    BOOST_CHECK_NO_THROW((array = eigen_to_array<Array<int, 2> >(*GlobalFixture::world, trange, matrix, true)));
+    BOOST_CHECK_NO_THROW((array = eigen_to_array<TArrayI>(*GlobalFixture::world, trange, matrix, true)));
   }
 
   // Check that the data in array is equal to that in matrix
   for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-    Future<Array<int, 2>::value_type > tile = array.find(*it);
+    Future<TArrayI::value_type > tile = array.find(*it);
     for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
       BOOST_CHECK_EQUAL(tile.get()[*tile_it], matrix((*tile_it)[0], (*tile_it)[1]));
     }
@@ -175,23 +175,23 @@ BOOST_AUTO_TEST_CASE( vector_to_array ) {
   if(GlobalFixture::world->size() == 1) {
 
     // Convert the vector to an array
-    BOOST_CHECK_NO_THROW((array1 = eigen_to_array<Array<int, 1> >(*GlobalFixture::world, trange1, vector)));
+    BOOST_CHECK_NO_THROW((array1 = eigen_to_array<TArrayI>(*GlobalFixture::world, trange1, vector)));
 
   } else {
     // Check that eigen_to_array does not work in distributed environments
-    BOOST_CHECK_THROW((eigen_to_array<Array<int, 1> >(*GlobalFixture::world, trange1, vector)), TiledArray::Exception);
+    BOOST_CHECK_THROW((eigen_to_array<TArrayI>(*GlobalFixture::world, trange1, vector)), TiledArray::Exception);
 
     // Note: The following tests constructs a replicated array, but the data may
     // not be identical. That is OK here since we are check the local data, but
     // in real applications the data should be identical.
 
     // Convert the vector to an array
-    BOOST_CHECK_NO_THROW((array1 = eigen_to_array<Array<int, 1> >(*GlobalFixture::world, trange1, vector, true)));
+    BOOST_CHECK_NO_THROW((array1 = eigen_to_array<TArrayI>(*GlobalFixture::world, trange1, vector, true)));
   }
 
   // Check that the data in array matches the data in vector
   for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
-    Future<Array<int, 1>::value_type > tile = array1.find(*it);
+    Future<TArrayI::value_type > tile = array1.find(*it);
     for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
       BOOST_CHECK_EQUAL(tile.get()[*tile_it], vector((*tile_it)[0]));
     }
@@ -203,8 +203,8 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     // Fill the array with random data
     GlobalFixture::world->srand(27);
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-      Array<int, 2>::value_type tile(array.trange().make_tile_range(*it));
-      for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
+      TArrayI::value_type tile(array.trange().make_tile_range(*it));
+      for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
         *tile_it = GlobalFixture::world->rand();
       }
       array.set(*it, tile);
@@ -220,7 +220,7 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
 
     // Check that the data in matrix matches the data in array
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-      Future<Array<int, 2>::value_type > tile = array.find(*it);
+      Future<TArrayI::value_type> tile = array.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(matrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
       }
@@ -231,11 +231,11 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
-    Array<int, 1>::pmap_interface::const_iterator it = array.get_pmap()->begin();
-    Array<int, 1>::pmap_interface::const_iterator end = array.get_pmap()->end();
+    TArrayI::pmap_interface::const_iterator it = array.get_pmap()->begin();
+    TArrayI::pmap_interface::const_iterator end = array.get_pmap()->end();
     for(; it != end; ++it) {
-      Array<int, 2>::value_type tile(array.trange().make_tile_range(*it));
-      for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
+      TArrayI::value_type tile(array.trange().make_tile_range(*it));
+      for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
         *tile_it = GlobalFixture::world->rand();
       }
       array.set(*it, tile);
@@ -258,7 +258,7 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
       BOOST_CHECK(array.is_local(*it));
 
-      Future<Array<int, 1>::value_type > tile = array.find(*it);
+      Future<TArrayI::value_type > tile = array.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(matrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
       }
@@ -271,8 +271,8 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
     // Fill the array with random data
     GlobalFixture::world->srand(27);
     for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
-      Array<int, 1>::value_type tile(array1.trange().make_tile_range(*it));
-      for(Array<int, 1>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
+      TArrayI::value_type tile(array1.trange().make_tile_range(*it));
+      for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
         *tile_it = GlobalFixture::world->rand();
       }
       array1.set(*it, tile);
@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
     // Check that the data in vector matches the data in array
     for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
-      Future<Array<int, 1>::value_type > tile = array1.find(*it);
+      Future<TArrayI::value_type > tile = array1.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(vector((*tile_it)[0]), tile.get()[*tile_it]);
       }
@@ -299,11 +299,11 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
-    Array<int, 1>::pmap_interface::const_iterator it = array1.get_pmap()->begin();
-    Array<int, 1>::pmap_interface::const_iterator end = array1.get_pmap()->end();
+    TArrayI::pmap_interface::const_iterator it = array1.get_pmap()->begin();
+    TArrayI::pmap_interface::const_iterator end = array1.get_pmap()->end();
     for(; it != end; ++it) {
-      Array<int, 1>::value_type tile(array1.trange().make_tile_range(*it));
-      for(Array<int, 1>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
+      TArrayI::value_type tile(array1.trange().make_tile_range(*it));
+      for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
         *tile_it = GlobalFixture::world->rand();
       }
       array1.set(*it, tile);
@@ -326,7 +326,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
     for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
       BOOST_CHECK(array1.is_local(*it));
 
-      Future<Array<int, 1>::value_type > tile = array1.find(*it);
+      Future<TArrayI::value_type > tile = array1.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(vector((*tile_it)[0]), tile.get()[*tile_it]);
       }

@@ -20,12 +20,11 @@
 #ifndef TILEDARRAY_H__INCLUDED
 #define TILEDARRAY_H__INCLUDED
 
+#include <tiledarray_fwd.h>
+
 #include <TiledArray/madness.h>
 
 // Array class
-#include <TiledArray/array.h>
-
-// Tile type headers
 #include <TiledArray/tensor.h>
 #include <TiledArray/tile.h>
 
@@ -36,12 +35,12 @@
 // Expression functionality
 #include <TiledArray/expressions/scal_expr.h>
 #include <TiledArray/expressions/tsr_expr.h>
-#include <TiledArray/expressions/scal_tsr_expr.h>
 #include <TiledArray/conversions/sparse_to_dense.h>
 #include <TiledArray/conversions/dense_to_sparse.h>
 #include <TiledArray/conversions/to_new_tile_type.h>
 #include <TiledArray/conversions/truncate.h>
 #include <TiledArray/conversions/foreach.h>
+#include <TiledArray/conversions/make_array.h>
 
 // Process maps
 #include <TiledArray/pmap/hash_pmap.h>
@@ -52,6 +51,7 @@
 
 // Linear algebra
 #include <TiledArray/algebra/conjgrad.h>
+#include "TiledArray/array.h"
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>

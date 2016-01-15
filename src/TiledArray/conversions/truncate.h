@@ -31,8 +31,7 @@
 namespace TiledArray {
 
   /// Forward declarations
-  template <typename, unsigned int, typename, typename>
-  class Array;
+  template <typename, typename> class DistArray;
   class DensePolicy;
   class SparsePolicy;
 
@@ -43,8 +42,8 @@ namespace TiledArray {
   /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param[in,out] array The array object to be truncated
-  template <typename T, unsigned int DIM, typename Tile>
-  inline void truncate(Array<T, DIM, Tile, DensePolicy>& array) { }
+  template <typename Tile>
+  inline void truncate(DistArray<Tile, DensePolicy>& array) { }
 
   /// Truncate a sparse Array
 
@@ -52,9 +51,9 @@ namespace TiledArray {
   /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param[in,out] array The array object to be truncated
-  template <typename T, unsigned int DIM, typename Tile>
-  inline void truncate(Array<T, DIM, Tile, SparsePolicy>& array) {
-    typedef typename Array<T, DIM, Tile, SparsePolicy>::value_type value_type;
+  template <typename Tile>
+  inline void truncate(DistArray<Tile, SparsePolicy>& array) {
+    typedef typename DistArray<Tile, SparsePolicy>::value_type value_type;
     array =
         foreach(array, [] (value_type& result_tile, const value_type& arg_tile) {
           typename detail::scalar_type<value_type>::type norm = arg_tile.norm();

@@ -272,7 +272,7 @@ namespace TiledArray {
 
       madness::cblas::CBLAS_TRANSPOSE left_op() const { return left_op_; }
       madness::cblas::CBLAS_TRANSPOSE right_op() const { return right_op_; }
-    }; // class ContractReduce
+    }; // class GemmHelper
 
   }  // namespace math
 } // namespace TiledArray

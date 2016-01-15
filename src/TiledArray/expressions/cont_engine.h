@@ -36,7 +36,7 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename, typename> class MultExpr;
-    template <typename, typename> class ScalMultExpr;
+    template <typename, typename, typename> class ScalMultExpr;
 
     /// Multiplication expression engine
 
@@ -56,9 +56,10 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
       typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
-      typedef TiledArray::math::ContractReduce<value_type,
+      typedef TiledArray::ContractReduce<
           typename eval_trait<typename left_type::value_type>::type,
-          typename eval_trait<typename right_type::value_type>::type> op_type; ///< The tile operation type
+          typename eval_trait<typename right_type::value_type>::type,
+          scalar_type> op_type; ///< The tile operation type
       typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
       typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
 
@@ -133,9 +134,10 @@ namespace TiledArray {
 
       /// \tparam L The left-hand argument expression type
       /// \tparam R The right-hand argument expression type
+      /// \tparam S The expression scalar type
       /// \param expr The parent expression
-      template <typename L, typename R>
-      ContEngine(const ScalMultExpr<L, R>& expr) :
+      template <typename L, typename R, typename S>
+      ContEngine(const ScalMultExpr<L, R, S>& expr) :
         BinaryEngine_(expr), factor_(expr.factor()), left_vars_(), right_vars_(),
         left_op_(permute_to_no_trans), right_op_(permute_to_no_trans), op_(),
         proc_grid_(), K_(1u)

@@ -28,33 +28,33 @@
 
 #include <TiledArray/expressions/leaf_engine.h>
 #include <TiledArray/tile_op/shift.h>
-#include <TiledArray/tile_op/scal_shift.h>
 
 namespace TiledArray {
 
   // Forward declaration
-  template <typename, unsigned int, typename, typename> class Array;
+  template <typename, typename> class DistArray;
 
   namespace expressions {
 
     // Forward declaration
-    template <typename> class BlkTsrExpr;
-    template <typename> class ScalBlkTsrExpr;
-    template <typename> class BlkTsrEngine;
-    template <typename> class ScalBlkTsrEngine;
+    template <typename, bool> class BlkTsrExpr;
+    template <typename, typename> class ScalBlkTsrExpr;
+    template <typename, bool> class BlkTsrEngine;
+    template <typename, typename> class ScalBlkTsrEngine;
 
-    template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    struct EngineTrait<BlkTsrEngine<Array<T, DIM, Tile, Policy> > > {
+    template <typename Tile, typename Policy, bool Alias>
+    struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Alias> > {
       // Argument typedefs
-      typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
+      typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
-      typedef TiledArray::math::Shift<typename array_type::eval_type,
-          typename array_type::eval_type, false> op_type; ///< The tile operation
+      typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
+      typedef TiledArray::Shift<typename array_type::eval_type,
+          ! Alias> op_base_type; ///< The base tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<Array<T, DIM, Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -69,18 +69,19 @@ namespace TiledArray {
     };
 
 
-    template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    struct EngineTrait<ScalBlkTsrEngine<Array<T, DIM, Tile, Policy> > > {
+    template <typename Tile, typename Policy, typename Scalar>
+    struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar> > {
       // Argument typedefs
-      typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
+      typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
-      typedef TiledArray::math::ScalShift<typename array_type::eval_type,
-          typename array_type::eval_type, false> op_type; ///< The tile operation
+      typedef Scalar scalar_type;
+      typedef TiledArray::ScalShift<typename array_type::eval_type,
+          scalar_type, false> op_base_type; ///< The base tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<Array<T, DIM, Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -137,22 +138,14 @@ namespace TiledArray {
 
     public:
 
-      BlkTsrEngineBase(const BlkTsrExpr<array_type>& expr) :
+      template <typename Array, bool Alias>
+      BlkTsrEngineBase(const BlkTsrExpr<Array, Alias>& expr) :
         LeafEngine_(expr),
         lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
       { }
 
-      BlkTsrEngineBase(const BlkTsrExpr<const array_type>& expr) :
-        LeafEngine_(expr),
-        lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
-      { }
-
-      BlkTsrEngineBase(const ScalBlkTsrExpr<array_type>& expr) :
-        LeafEngine_(expr),
-        lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
-      { }
-
-      BlkTsrEngineBase(const ScalBlkTsrExpr<const array_type>& expr) :
+      template <typename Array, typename Scalar>
+      BlkTsrEngineBase(const ScalBlkTsrExpr<Array, Scalar>& expr) :
         LeafEngine_(expr),
         lower_bound_(expr.lower_bound()), upper_bound_(expr.upper_bound())
       { }
@@ -272,12 +265,14 @@ namespace TiledArray {
 
     /// Tensor expression engine
 
-    /// \tparam A The array type
-    template <typename A>
-    class BlkTsrEngine : public BlkTsrEngineBase<BlkTsrEngine<A> > {
+    /// \tparam Array The array type
+    /// \tparam Alias Indicates the array tiles should be computed as a
+    /// temporary before assignment
+    template <typename Array, bool Alias>
+    class BlkTsrEngine : public BlkTsrEngineBase<BlkTsrEngine<Array, Alias> > {
     public:
       // Class hierarchy typedefs
-      typedef BlkTsrEngine<A> BlkTsrEngine_; ///< This class type
+      typedef BlkTsrEngine<Array, Alias> BlkTsrEngine_; ///< This class type
       typedef BlkTsrEngineBase<BlkTsrEngine_> BlkTsrEngineBase_; ///< Block tensor base class type
       typedef typename BlkTsrEngineBase_::LeafEngine_ LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
@@ -287,6 +282,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<BlkTsrEngine_>::value_type value_type; ///< Tensor value type
+      typedef typename EngineTrait<BlkTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<BlkTsrEngine_>::op_type op_type; ///< Tile operation type
       typedef typename EngineTrait<BlkTsrEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<BlkTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
@@ -313,14 +309,10 @@ namespace TiledArray {
 
     public:
 
-      BlkTsrEngine(const BlkTsrExpr<array_type>& expr) :
+      template <typename A>
+      BlkTsrEngine(const BlkTsrExpr<A, Alias>& expr) :
         BlkTsrEngineBase_(expr)
       { }
-
-      BlkTsrEngine(const BlkTsrExpr<const array_type>& expr) :
-        BlkTsrEngineBase_(expr)
-      { }
-
 
       /// Non-permuting shape factory function
 
@@ -333,8 +325,7 @@ namespace TiledArray {
 
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
-      shape_type
-      make_shape(const Permutation& perm) {
+      shape_type make_shape(const Permutation& perm) {
         return array_.get_shape().block(lower_bound_, upper_bound_, perm);
       }
 
@@ -359,7 +350,7 @@ namespace TiledArray {
           range_shift.emplace_back(-base_d);
         }
 
-        return op_type(range_shift);
+        return op_type(op_base_type(range_shift));
       }
 
       /// Permuting tile operation factory function
@@ -370,8 +361,7 @@ namespace TiledArray {
         const unsigned int rank = trange_.tiles().rank();
 
         // Construct and allocate memory for the shift range
-        std::vector<long> range_shift;
-        range_shift.reserve(rank);
+        std::vector<long> range_shift(rank, 0l);
 
         // Get temporary data pointers
         const auto* restrict const trange = array_.trange().data().data();
@@ -380,12 +370,22 @@ namespace TiledArray {
         // Initialize the permuted range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {
           const auto perm_d = perm[d];
-          const auto lower_d = lower[perm_d];
-          const auto base_d = trange[perm_d].tile(lower_d).first;
-          range_shift.emplace_back(-base_d);
+          const auto lower_d = lower[d];
+          const auto base_d = trange[d].tile(lower_d).first;
+          range_shift[perm_d] = -base_d;
         }
 
-        return op_type(range_shift, perm);
+        return op_type(op_base_type(range_shift), perm);
+      }
+
+
+      /// Expression identification tag
+
+      /// \return An expression tag used to identify this expression
+      std::string make_tag() const {
+        std::stringstream ss;
+        ss << "[block] ";
+        return BlkTsrEngineBase_::make_tag() + ss.str();
       }
 
     }; // class BlkTsrEngine
@@ -394,12 +394,12 @@ namespace TiledArray {
 
     /// Scaled tensor block expression engine
 
-    /// \tparam A The array type
-    template <typename A>
-    class ScalBlkTsrEngine : public BlkTsrEngineBase<ScalBlkTsrEngine<A> > {
+    /// \tparam Array The array type
+    template <typename Array, typename Scalar>
+    class ScalBlkTsrEngine : public BlkTsrEngineBase<ScalBlkTsrEngine<Array, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalBlkTsrEngine<A> ScalBlkTsrEngine_; ///< This class type
+      typedef ScalBlkTsrEngine<Array, Scalar> ScalBlkTsrEngine_; ///< This class type
       typedef BlkTsrEngineBase<ScalBlkTsrEngine_> BlkTsrEngineBase_; ///< Block tensor base class type
       typedef typename BlkTsrEngineBase_::LeafEngine_ LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
@@ -410,6 +410,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<ScalBlkTsrEngine_>::value_type value_type; ///< Tensor value type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalBlkTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::op_type op_type; ///< Tile operation type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<ScalBlkTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
@@ -438,14 +439,10 @@ namespace TiledArray {
 
     public:
 
-      ScalBlkTsrEngine(const ScalBlkTsrExpr<array_type>& expr) :
+      template <typename A, typename S>
+      ScalBlkTsrEngine(const ScalBlkTsrExpr<A, S>& expr) :
         BlkTsrEngineBase_(expr), factor_(expr.factor())
       { }
-
-      ScalBlkTsrEngine(const ScalBlkTsrExpr<const array_type>& expr) :
-        BlkTsrEngineBase_(expr), factor_(expr.factor())
-      { }
-
 
       /// Non-permuting shape factory function
 
@@ -484,7 +481,7 @@ namespace TiledArray {
           range_shift.emplace_back(-base_d);
         }
 
-        return op_type(range_shift, factor_);
+        return op_type(op_base_type(range_shift, factor_));
       }
 
       /// Permuting tile operation factory function
@@ -495,23 +492,21 @@ namespace TiledArray {
         const unsigned int rank = trange_.tiles().rank();
 
         // Construct and allocate memory for the shift range
-        std::vector<long> range_shift;
-        range_shift.reserve(rank);
+        std::vector<long> range_shift(rank, 0l);
 
         // Get temporary data pointers
         const auto* restrict const trange = array_.trange().data().data();
         const auto* restrict const lower = lower_bound_.data();
 
-        // Construct the inverse permutation
-        const Permutation inv_perm = -perm;
+        // Initialize the permuted range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {
-          const auto inv_perm_d = inv_perm[d];
-          const auto lower_d = lower[inv_perm_d];
-          const auto base_d = trange[inv_perm_d].tile(lower_d).first;
-          range_shift.emplace_back(-base_d);
+          const auto perm_d = perm[d];
+          const auto lower_d = lower[d];
+          const auto base_d = trange[d].tile(lower_d).first;
+          range_shift[perm_d] = -base_d;
         }
 
-        return op_type(range_shift, perm, factor_);
+        return op_type(op_base_type(range_shift, factor_), perm);
       }
 
 
@@ -520,7 +515,7 @@ namespace TiledArray {
       /// \return An expression tag used to identify this expression
       std::string make_tag() const {
         std::stringstream ss;
-        ss << "[" << factor_ << "] ";
+        ss << "[block] [" << factor_ << "] ";
         return BlkTsrEngineBase_::make_tag() + ss.str();
       }
 

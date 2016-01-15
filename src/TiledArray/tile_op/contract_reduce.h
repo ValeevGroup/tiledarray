@@ -29,180 +29,422 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/tensor/complex.h>
 
 namespace TiledArray {
-  namespace math {
 
-    /// Contract and reduce operation
+  /// Contract and reduce base
 
-    /// This object uses a tile contraction operation to form a pair reduction
-    /// operation.
-    template <typename Result, typename Left, typename Right>
-    class ContractReduce {
-    public:
-      typedef ContractReduce ContractReduce_; ///< This class type
-      typedef const Left& first_argument_type; ///< The left tile type
-      typedef const Right& second_argument_type; ///< The right tile type
-      typedef Result result_type; ///< The result tile type.
-      typedef typename TiledArray::detail::scalar_type<result_type>::type scalar_type;
+  /// This object uses a tile contraction operation to form a pair reduction
+  /// operation.
+  template <typename Left, typename Right, typename Scalar>
+  class ContractReduceBase {
+  public:
+    typedef ContractReduceBase<Left, Right, Scalar>
+        ContractReduceBase_; ///< This class type
+    typedef const Left& first_argument_type; ///< The left tile type
+    typedef const Right& second_argument_type; ///< The right tile type
+    typedef Scalar scalar_type;
 
-    private:
+  private:
 
-      struct Impl {
-        Impl(const madness::cblas::CBLAS_TRANSPOSE left_op,
-            const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
-            const unsigned int result_rank, const unsigned int left_rank,
-            const unsigned int right_rank, const Permutation& perm = Permutation()) :
-          gemm_helper_(left_op, right_op, result_rank, left_rank, right_rank),
-          alpha_(alpha), perm_(perm)
-        { }
-
-        GemmHelper gemm_helper_; ///< Gemm helper object
-        scalar_type alpha_; ///< Scaling factor applied to the contraction of the left- and right-hand arguments
-        Permutation perm_; ///< Permutation that is applied to the final result tensor
-      };
-
-      std::shared_ptr<Impl> pimpl_;
-
-    public:
-
-      /// Default constructor
-      ContractReduce() : pimpl_() { }
-
-      /// Construct contract/reduce functor
-
-      /// \param left_op The left-hand BLAS matrix operation
-      /// \param right_op The right-hand BLAS matrix operation
-      /// \param alpha The scaling factor applied to the contracted tiles
-      /// \param result_rank The rank of the result tensor
-      /// \param left_rank The rank of the left-hand tensor
-      /// \param right_rank The rank of the right-hand tensor
-      /// \param perm The permutation to be applied to the result tensor
-      /// (default = no permute)
-      ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
+    struct Impl {
+      Impl(const madness::cblas::CBLAS_TRANSPOSE left_op,
           const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
           const unsigned int result_rank, const unsigned int left_rank,
           const unsigned int right_rank, const Permutation& perm = Permutation()) :
-        pimpl_(new Impl(left_op, right_op, alpha, result_rank, left_rank, right_rank, perm))
+        gemm_helper_(left_op, right_op, result_rank, left_rank, right_rank),
+        alpha_(alpha), perm_(perm)
       { }
 
-      /// Functor copy constructor
+      math::GemmHelper gemm_helper_; ///< Gemm helper object
+      scalar_type alpha_; ///< Scaling factor applied to the contraction of the left- and right-hand arguments
+      Permutation perm_; ///< Permutation that is applied to the final result tensor
+    };
 
-      /// Shallow copy of this functor
-      /// \param other The functor to be copied
-      ContractReduce(const ContractReduce_& other) :
-        pimpl_(other.pimpl_)
-      { }
+    std::shared_ptr<Impl> pimpl_;
 
-      /// Functor assignment operator
+  public:
 
-      /// Shallow copy of this functor
-      /// \param other The functor to be copied
-      ContractReduce_& operator=(const ContractReduce_& other) {
-        pimpl_ = other.pimpl_;
-        return *this;
-      }
+    /// Compiler generated functions
+    ContractReduceBase() = default;
+    ContractReduceBase(const ContractReduceBase_&) = default;
+    ContractReduceBase(ContractReduceBase_&&) = default;
+    ~ContractReduceBase() = default;
+    ContractReduceBase_& operator=(const ContractReduceBase_&) = default;
+    ContractReduceBase_& operator=(ContractReduceBase_&&) = default;
 
-      /// Gemm meta data accessor
+    /// Construct contract/reduce functor
 
-      /// \return A const reference to the gemm helper object
-      const GemmHelper& gemm_helper() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->gemm_helper_;
-      }
+    /// \param left_op The left-hand BLAS matrix operation
+    /// \param right_op The right-hand BLAS matrix operation
+    /// \param alpha The scaling factor applied to the contracted tiles
+    /// \param result_rank The rank of the result tensor
+    /// \param left_rank The rank of the left-hand tensor
+    /// \param right_rank The rank of the right-hand tensor
+    /// \param perm The permutation to be applied to the result tensor
+    /// (default = no permute)
+    ContractReduceBase(const madness::cblas::CBLAS_TRANSPOSE left_op,
+        const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
+        const unsigned int result_rank, const unsigned int left_rank,
+        const unsigned int right_rank, const Permutation& perm = Permutation()) :
+      pimpl_(new Impl(left_op, right_op, alpha, result_rank, left_rank, right_rank, perm))
+    { }
 
-      /// Permutation accessor
 
-      /// \return A const reference to the permutation for this operation
-      const Permutation& perm() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->perm_;
-      }
+    /// Gemm meta data accessor
 
-      /// Compute the number of contracted ranks
+    /// \return A const reference to the gemm helper object
+    const math::GemmHelper& gemm_helper() const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->gemm_helper_;
+    }
 
-      /// \return The number of ranks that are summed by this operation
-      unsigned int num_contract_ranks() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->gemm_helper_.num_contract_ranks();
-      }
+    /// Permutation accessor
 
-      /// Result rank accessor
+    /// \return A const reference to the permutation for this operation
+    const Permutation& perm() const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->perm_;
+    }
 
-      /// \return The rank of the result tile
-      unsigned int result_rank() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->gemm_helper_.result_rank();
-      }
 
-      /// Left-hand argument rank accessor
+    /// Scaling factor accessor
 
-      /// \return The rank of the left-hand tile
-      unsigned int left_rank() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->gemm_helper_.left_rank();
-      }
+    /// \return The scaling factor for this operation
+    scalar_type factor() const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->alpha_;
+    }
 
-      /// Right-hand argument rank accessor
+    /// Compute the number of contracted ranks
 
-      /// \return The rank of the right-hand tile
-      unsigned int right_rank() const {
-        TA_ASSERT(pimpl_);
-        return pimpl_->gemm_helper_.right_rank();
-      }
+    /// \return The number of ranks that are summed by this operation
+    unsigned int num_contract_ranks() const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->gemm_helper_.num_contract_ranks();
+    }
 
-      /// Create a result type object
+    /// Result rank accessor
 
-      /// Initialize a result object for subsequent reductions
-      result_type operator()() const {
-        return result_type();
-      }
+    /// \return The rank of the result tile
+    unsigned int result_rank() const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->gemm_helper_.result_rank();
+    }
 
-      /// Post processing step
-      result_type operator()(const result_type& temp) const {
-        TA_ASSERT(pimpl_);
-        using TiledArray::empty;
-        TA_ASSERT(! empty(temp));
+    /// Left-hand argument rank accessor
 
-        if(! pimpl_->perm_)
-          return temp;
+    /// \return The rank of the left-hand tile
+    unsigned int left_rank() const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->gemm_helper_.left_rank();
+    }
 
-        using TiledArray::permute;
-        return permute(temp, pimpl_->perm_);
-      }
+    /// Right-hand argument rank accessor
 
-      /// Reduce two result objects
+    /// \return The rank of the right-hand tile
+    unsigned int right_rank() const {
+      TA_ASSERT(pimpl_);
+      return pimpl_->gemm_helper_.right_rank();
+    }
 
-      /// Add \c arg to \c result .
-      /// \param[in,out] result The result object that will be the reduction target
-      /// \param[in] arg The argument that will be added to \c result
-      void operator()(result_type& result, const result_type& arg) const {
-        using TiledArray::add_to;
-        add_to(result, arg);
-      }
+  }; // class ContractReduceBase
 
-      /// Contract a pair of tiles and add to a target tile
+  /// Contract and reduce operation
 
-      /// Contract \c left and \c right and add the result to \c result.
-      /// \param[in,out] result The result object that will be the reduction target
-      /// \param[in] left The left-hand tile to be contracted
-      /// \param[in] right The right-hand tile to be contracted
-      void operator()(result_type& result, first_argument_type left,
-          second_argument_type right) const
-      {
-        TA_ASSERT(pimpl_);
+  /// This object uses a tile contraction operation to form a pair reduction
+  /// operation.
+  template <typename Left, typename Right, typename Scalar>
+  class ContractReduce : public ContractReduceBase<Left, Right, Scalar> {
+  public:
+    typedef ContractReduce<Left, Right, Scalar>
+        ContractReduce_; ///< This class type
+    typedef ContractReduceBase<Left, Right, Scalar>
+        ContractReduceBase_; ///< This class type
+    typedef typename ContractReduceBase_::first_argument_type
+        first_argument_type; ///< The left tile type
+    typedef typename ContractReduceBase_::second_argument_type
+        second_argument_type; ///< The right tile type
+    typedef decltype(gemm(std::declval<Left>(), std::declval<Right>(),
+        std::declval<Scalar>(), std::declval<math::GemmHelper>()))
+        result_type; ///< The result tile type.
+    typedef Scalar scalar_type;
 
-        using TiledArray::empty;
-        using TiledArray::gemm;
-        if(empty(result))
-          result = gemm(left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
-        else
-          gemm(result, left, right, pimpl_->alpha_, pimpl_->gemm_helper_);
-      }
+    /// Compiler generated functions
+    ContractReduce() = default;
+    ContractReduce(const ContractReduce_&) = default;
+    ContractReduce(ContractReduce_&&) = default;
+    ~ContractReduce() = default;
+    ContractReduce_& operator=(const ContractReduce_&) = default;
+    ContractReduce_& operator=(ContractReduce_&&) = default;
 
-    }; // class ContractReduce
+    /// Construct contract/reduce functor
 
-  }  // namespace math
+    /// \param left_op The left-hand BLAS matrix operation
+    /// \param right_op The right-hand BLAS matrix operation
+    /// \param alpha The scaling factor applied to the contracted tiles
+    /// \param result_rank The rank of the result tensor
+    /// \param left_rank The rank of the left-hand tensor
+    /// \param right_rank The rank of the right-hand tensor
+    /// \param perm The permutation to be applied to the result tensor
+    /// (default = no permute)
+    ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
+        const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
+        const unsigned int result_rank, const unsigned int left_rank,
+        const unsigned int right_rank, const Permutation& perm = Permutation()) :
+      ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
+          right_rank, perm)
+    { }
+
+
+    /// Create a result type object
+
+    /// Initialize a result object for subsequent reductions
+    result_type operator()() const {
+      return result_type();
+    }
+
+    /// Post processing step
+    result_type operator()(const result_type& temp) const {
+      using TiledArray::empty;
+      TA_ASSERT(! empty(temp));
+
+      if(! ContractReduceBase_::perm())
+        return temp;
+
+      using TiledArray::permute;
+      return permute(temp, ContractReduceBase_::perm());
+    }
+
+    /// Reduce two result objects
+
+    /// Add \c arg to \c result .
+    /// \param[in,out] result The result object that will be the reduction target
+    /// \param[in] arg The argument that will be added to \c result
+    void operator()(result_type& result, const result_type& arg) const {
+      using TiledArray::add_to;
+      add_to(result, arg);
+    }
+
+    /// Contract a pair of tiles and add to a target tile
+
+    /// Contract \c left and \c right and add the result to \c result.
+    /// \param[in,out] result The result object that will be the reduction target
+    /// \param[in] left The left-hand tile to be contracted
+    /// \param[in] right The right-hand tile to be contracted
+    void operator()(result_type& result, first_argument_type left,
+        second_argument_type right) const
+    {
+      using TiledArray::empty;
+      using TiledArray::gemm;
+      if(empty(result))
+        result = gemm(left, right, ContractReduceBase_::factor(),
+            ContractReduceBase_::gemm_helper());
+      else
+        gemm(result, left, right, ContractReduceBase_::factor(),
+            ContractReduceBase_::gemm_helper());
+    }
+
+  }; // class ContractReduce
+
+
+  /// Contract and reduce operation
+
+  /// This object uses a tile contraction operation to form a pair reduction
+  /// operation.
+  template <typename Left, typename Right>
+  class ContractReduce<Left, Right, TiledArray::detail::ComplexConjugate<void> > :
+      public ContractReduceBase<Left, Right, TiledArray::detail::ComplexConjugate<void> >
+  {
+  public:
+    typedef ContractReduce<Left, Right, TiledArray::detail::ComplexConjugate<void>>
+        ContractReduce_; ///< This class type
+    typedef ContractReduceBase<Left, Right, TiledArray::detail::ComplexConjugate<void>>
+        ContractReduceBase_; ///< This class type
+    typedef typename ContractReduceBase_::first_argument_type
+        first_argument_type; ///< The left tile type
+    typedef typename ContractReduceBase_::second_argument_type
+        second_argument_type; ///< The right tile type
+    typedef decltype(gemm(std::declval<Left>(), std::declval<Right>(), 1,
+        std::declval<math::GemmHelper>()))
+        result_type; ///< The result tile type.
+    typedef TiledArray::detail::ComplexConjugate<void> scalar_type;
+
+    /// Compiler generated functions
+    ContractReduce() = default;
+    ContractReduce(const ContractReduce_&) = default;
+    ContractReduce(ContractReduce_&&) = default;
+    ~ContractReduce() = default;
+    ContractReduce_& operator=(const ContractReduce_&) = default;
+    ContractReduce_& operator=(ContractReduce_&&) = default;
+
+    /// Construct contract/reduce functor
+
+    /// \param left_op The left-hand BLAS matrix operation
+    /// \param right_op The right-hand BLAS matrix operation
+    /// \param alpha The scaling factor applied to the contracted tiles
+    /// \param result_rank The rank of the result tensor
+    /// \param left_rank The rank of the left-hand tensor
+    /// \param right_rank The rank of the right-hand tensor
+    /// \param perm The permutation to be applied to the result tensor
+    /// (default = no permute)
+    ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
+        const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
+        const unsigned int result_rank, const unsigned int left_rank,
+        const unsigned int right_rank, const Permutation& perm = Permutation()) :
+      ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
+          right_rank, perm)
+    { }
+
+
+    /// Create a result type object
+
+    /// Initialize a result object for subsequent reductions
+    result_type operator()() const {
+      return result_type();
+    }
+
+    /// Post processing step
+    result_type operator()(result_type& temp) const {
+      using TiledArray::conj;
+      using TiledArray::empty;
+      TA_ASSERT(! empty(temp));
+
+      if(! ContractReduceBase_::perm())
+        return conj_to(temp);
+
+      return conj(temp, ContractReduceBase_::perm());
+    }
+
+    /// Reduce two result objects
+
+    /// Add \c arg to \c result .
+    /// \param[in,out] result The result object that will be the reduction target
+    /// \param[in] arg The argument that will be added to \c result
+    void operator()(result_type& result, const result_type& arg) const {
+      using TiledArray::add_to;
+      add_to(result, arg);
+    }
+
+    /// Contract a pair of tiles and add to a target tile
+
+    /// Contract \c left and \c right and add the result to \c result.
+    /// \param[in,out] result The result object that will be the reduction target
+    /// \param[in] left The left-hand tile to be contracted
+    /// \param[in] right The right-hand tile to be contracted
+    void operator()(result_type& result, first_argument_type left,
+        second_argument_type right) const
+    {
+      using TiledArray::empty;
+      using TiledArray::gemm;
+      if(empty(result))
+        result = gemm(left, right, 1, ContractReduceBase_::gemm_helper());
+      else
+        gemm(result, left, right, 1, ContractReduceBase_::gemm_helper());
+    }
+
+  }; // class ContractReduce
+
+
+  /// Contract and reduce operation
+
+  /// This object uses a tile contraction operation to form a pair reduction
+  /// operation.
+  template <typename Left, typename Right, typename Scalar>
+  class ContractReduce<Left, Right, TiledArray::detail::ComplexConjugate<Scalar> > :
+      public ContractReduceBase<Left, Right, TiledArray::detail::ComplexConjugate<Scalar> >
+  {
+  public:
+    typedef ContractReduce<Left, Right, TiledArray::detail::ComplexConjugate<Scalar> >
+        ContractReduce_; ///< This class type
+    typedef ContractReduceBase<Left, Right, TiledArray::detail::ComplexConjugate<Scalar> >
+        ContractReduceBase_; ///< This class type
+    typedef typename ContractReduceBase_::first_argument_type
+        first_argument_type; ///< The left tile type
+    typedef typename ContractReduceBase_::second_argument_type
+        second_argument_type; ///< The right tile type
+    typedef decltype(gemm(std::declval<Left>(), std::declval<Right>(), 1,
+        std::declval<math::GemmHelper>()))
+        result_type; ///< The result tile type.
+    typedef TiledArray::detail::ComplexConjugate<Scalar> scalar_type;
+
+    /// Compiler generated functions
+    ContractReduce() = default;
+    ContractReduce(const ContractReduce_&) = default;
+    ContractReduce(ContractReduce_&&) = default;
+    ~ContractReduce() = default;
+    ContractReduce_& operator=(const ContractReduce_&) = default;
+    ContractReduce_& operator=(ContractReduce_&&) = default;
+
+    /// Construct contract/reduce functor
+
+    /// \param left_op The left-hand BLAS matrix operation
+    /// \param right_op The right-hand BLAS matrix operation
+    /// \param alpha The scaling factor applied to the contracted tiles
+    /// \param result_rank The rank of the result tensor
+    /// \param left_rank The rank of the left-hand tensor
+    /// \param right_rank The rank of the right-hand tensor
+    /// \param perm The permutation to be applied to the result tensor
+    /// (default = no permute)
+    ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
+        const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
+        const unsigned int result_rank, const unsigned int left_rank,
+        const unsigned int right_rank, const Permutation& perm = Permutation()) :
+      ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
+          right_rank, perm)
+    { }
+
+
+    /// Create a result type object
+
+    /// Initialize a result object for subsequent reductions
+    result_type operator()() const {
+      return result_type();
+    }
+
+    /// Post processing step
+    result_type operator()(result_type& temp) const {
+      using TiledArray::conj;
+      using TiledArray::empty;
+      TA_ASSERT(! empty(temp));
+
+      if(! ContractReduceBase_::perm())
+        return conj_to(temp, ContractReduceBase_::factor().factor());
+
+      return conj(temp, ContractReduceBase_::factor().factor(),
+          ContractReduceBase_::perm());
+    }
+
+    /// Reduce two result objects
+
+    /// Add \c arg to \c result .
+    /// \param[in,out] result The result object that will be the reduction target
+    /// \param[in] arg The argument that will be added to \c result
+    void operator()(result_type& result, const result_type& arg) const {
+      using TiledArray::add_to;
+      add_to(result, arg);
+    }
+
+    /// Contract a pair of tiles and add to a target tile
+
+    /// Contract \c left and \c right and add the result to \c result.
+    /// \param[in,out] result The result object that will be the reduction target
+    /// \param[in] left The left-hand tile to be contracted
+    /// \param[in] right The right-hand tile to be contracted
+    void operator()(result_type& result, first_argument_type left,
+        second_argument_type right) const
+    {
+      using TiledArray::empty;
+      using TiledArray::gemm;
+      if(empty(result))
+        result = gemm(left, right, 1, ContractReduceBase_::gemm_helper());
+      else
+        gemm(result, left, right, 1, ContractReduceBase_::gemm_helper());
+    }
+
+  }; // class ContractReduce
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_CONTRACT_REDUCE_H__INCLUDED

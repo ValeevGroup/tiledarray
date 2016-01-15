@@ -33,7 +33,7 @@ namespace TiledArray {
   namespace expressions {
 
     template <typename> class Expr;
-    template <typename> class TsrExpr;
+    template <typename, bool> class TsrExpr;
 
     /// Expression output stream
     class ExprOStream {
@@ -123,11 +123,12 @@ namespace TiledArray {
     /// Expression trace factory function
 
     /// \tparam A An \c Array object
+    /// \tparam Alias Tiles alias flag
     /// \param os The output stream for the expression trace
     /// \param tsr The tensor that will be the target of the expression
     /// \return The expression trace object
-    template <typename A>
-    inline ExprTraceTarget operator<<(std::ostream& os, const TsrExpr<A>& tsr) {
+    template <typename A, bool Alias>
+    inline ExprTraceTarget operator<<(std::ostream& os, const TsrExpr<A, Alias>& tsr) {
       return ExprTraceTarget(os, tsr.vars());
     }
 

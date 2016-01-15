@@ -23,7 +23,7 @@
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/permutation.h>
 #include <TiledArray/perm_index.h>
-#include <TiledArray/tile_op/eval_trait.h>
+#include <TiledArray/type_traits.h>
 
 namespace TiledArray {
   namespace detail {

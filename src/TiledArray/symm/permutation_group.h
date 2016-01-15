@@ -183,8 +183,6 @@ namespace TiledArray {
             generators.erase(I_iter);
         }
 
-        using index_type = Permutation::index_type;
-
         // add the identity element first
         elements.emplace_back();
 
@@ -358,7 +356,6 @@ namespace TiledArray {
     template <typename MultiIndex>
     bool is_orbit_minimum(const MultiIndex& idx,
                           const PermutationGroup& pg) {
-      using index_type = PermutationGroup::Permutation::index_type;
       const auto idx_size = idx.size();
       for(const auto& p: pg) {
         for(size_t i=0; i!=idx_size; ++i) {

@@ -27,12 +27,12 @@ void random_tile_task(it iter, tiletype tile){
   *iter = tile;
 }
 
-TiledArray::Array<double, 2>
+TiledArray::TArrayD
 make_random_array(TiledArray::World &world, TiledArray::TiledRange &trange){
-  TiledArray::Array<double, 2> array(world, trange);
-  typename TiledArray::Array<double, 2>::iterator it = array.begin();
+  TiledArray::TArrayD array(world, trange);
+  typename TiledArray::TArrayD::iterator it = array.begin();
   for(; it != array.end(); ++it){
-    typename TiledArray::Array<double, 2>::value_type tile(
+    typename TiledArray::TArrayD::value_type tile(
                                 array.trange().make_tile_range(it.ordinal()));
     world.taskq.add(&random_tile_task<decltype(it), decltype(tile)>, it, tile);
   }
@@ -94,9 +94,9 @@ int main(int argc, char** argv) {
     trange(blocking2.begin(), blocking2.end());
 
   // Construct and initialize arrays
-  TiledArray::Array<double, 2> a = make_random_array(world, trange);
-  TiledArray::Array<double, 2> b = make_random_array(world, trange);
-  TiledArray::Array<double, 2> c(world, trange);
+  TiledArray::TArrayD a = make_random_array(world, trange);
+  TiledArray::TArrayD b = make_random_array(world, trange);
+  TiledArray::TArrayD c(world, trange);
   if(world.rank() == 0 && matrix_size < 11){
     std::cout << "a = \n" << a << std::endl;
     std::cout << "b = \n" << b << std::endl;

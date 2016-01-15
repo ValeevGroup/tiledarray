@@ -20,14 +20,14 @@
 #ifndef TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED
 
-#include "TiledArray/array.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
+#include "TiledArray/array.h"
 
 struct ArrayFixture : public TiledRangeFixture {
-  typedef Array<int, GlobalFixture::dim> ArrayN;
-  typedef Array<int, GlobalFixture::dim, Tensor<int>, SparsePolicy> SpArrayN;
+  typedef TArrayI ArrayN;
+  typedef TSpArrayI SpArrayN;
   typedef ArrayN::index index;
   typedef ArrayN::size_type size_type;
   typedef ArrayN::value_type tile_type;

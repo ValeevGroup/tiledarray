@@ -59,19 +59,15 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_add_suite, AddFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, false>()));
-  BOOST_CHECK_NO_THROW((math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, false>(perm)));
-  BOOST_CHECK_NO_THROW((math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, false>()));
-  BOOST_CHECK_NO_THROW((math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, false>(perm)));
-  BOOST_CHECK_NO_THROW((math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
-  BOOST_CHECK_NO_THROW((math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, true>(perm)));
-  BOOST_CHECK_NO_THROW((math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
-  BOOST_CHECK_NO_THROW((math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, true>(perm)));
+  BOOST_CHECK_NO_THROW((Add<Tensor<int>, Tensor<int>, false, false>()));
+  BOOST_CHECK_NO_THROW((Add<Tensor<int>, Tensor<int>, true, false>()));
+  BOOST_CHECK_NO_THROW((Add<Tensor<int>, Tensor<int>, false, true>()));
+  BOOST_CHECK_NO_THROW((Add<Tensor<int>, Tensor<int>, true, true>()));
 }
 
 BOOST_AUTO_TEST_CASE( binary_add )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, false> add_op;
+  Add<Tensor<int>, Tensor<int>, false, false> add_op;
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b));
@@ -91,7 +87,7 @@ BOOST_AUTO_TEST_CASE( binary_add )
 
 BOOST_AUTO_TEST_CASE( binary_add_left_zero )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, false> add_op;
+  Add<Tensor<int>, Tensor<int>, false, false> add_op;
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
@@ -110,7 +106,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero )
 
 BOOST_AUTO_TEST_CASE( binary_add_right_zero )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, false> add_op;
+  Add<Tensor<int>, Tensor<int>, false, false> add_op;
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
@@ -129,10 +125,10 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero )
 
 BOOST_AUTO_TEST_CASE( binary_add_perm )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, false> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, false, false> add_op;
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(c = add_op(a, b));
+  BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -149,10 +145,10 @@ BOOST_AUTO_TEST_CASE( binary_add_perm )
 
 BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, false> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, false, false> add_op;
 
   // Store the sum of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
+  BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), b.range());
@@ -168,10 +164,10 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm )
 
 BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, false> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, false, false> add_op;
 
   // Store the sum of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
+  BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -187,7 +183,7 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm )
 
 BOOST_AUTO_TEST_CASE( binary_add_consume_left )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, false> add_op;
+  Add<Tensor<int>, Tensor<int>, true, false> add_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
@@ -208,7 +204,7 @@ BOOST_AUTO_TEST_CASE( binary_add_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_add_left_zero_consume_left )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, false> add_op;
+  Add<Tensor<int>, Tensor<int>, true, false> add_op;
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
@@ -227,7 +223,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_add_right_zero_consume_left )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, false> add_op;
+  Add<Tensor<int>, Tensor<int>, true, false> add_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and 0 in c
@@ -247,10 +243,10 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_add_perm_consume_left )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, false> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, true, false> add_op;
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(c = add_op(a, b));
+  BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -267,10 +263,10 @@ BOOST_AUTO_TEST_CASE( binary_add_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm_consume_left )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, false> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, true, false> add_op;
 
   // Store the sum of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
+  BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), b.range());
@@ -286,10 +282,10 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm_consume_left )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, true, false> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, true, false> add_op;
 
   // Store the sum of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
+  BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -305,7 +301,7 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_add_consume_right )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, true> add_op;
+  Add<Tensor<int>, Tensor<int>, false, true> add_op;
   const Tensor<int> bx(b.range(), b.begin());
 
   // Store the sum of a and b in c
@@ -326,7 +322,7 @@ BOOST_AUTO_TEST_CASE( binary_add_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_add_left_zero_consume_right )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, true> add_op;
+  Add<Tensor<int>, Tensor<int>, false, true> add_op;
   const Tensor<int> bx(b.range(), b.begin());
 
   // Store the sum of 0 and b in c
@@ -346,7 +342,7 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_add_right_zero_consume_right )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, true> add_op;
+  Add<Tensor<int>, Tensor<int>, false, true> add_op;
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
@@ -365,10 +361,10 @@ BOOST_AUTO_TEST_CASE( binary_add_right_zero_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_add_perm_consume_right )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, true> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, false, true> add_op;
 
   // Store the sum of a and b in c
-  BOOST_CHECK_NO_THROW(c = add_op(a, b));
+  BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());
@@ -385,10 +381,10 @@ BOOST_AUTO_TEST_CASE( binary_add_perm_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm_consume_right )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, true> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, false, true> add_op;
 
   // Store the sum of 0 and b in c
-  BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
+  BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), b.range());
@@ -404,10 +400,10 @@ BOOST_AUTO_TEST_CASE( binary_add_left_zero_perm_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_add_right_zero_perm_consume_right )
 {
-  math::Add<Tensor<int>, Tensor<int>, Tensor<int>, false, true> add_op(perm);
+  Add<Tensor<int>, Tensor<int>, false, true> add_op;
 
   // Store the sum of a and 0 in c
-  BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
+  BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));
 
   // Check that the result range is correct
   BOOST_CHECK_EQUAL(c.range(), a.range());

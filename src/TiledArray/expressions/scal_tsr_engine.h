@@ -28,26 +28,28 @@
 
 #include <TiledArray/expressions/leaf_engine.h>
 #include <TiledArray/tile_op/scal.h>
+#include <TiledArray/tile_op/unary_wrapper.h>
 
 namespace TiledArray {
   namespace expressions {
 
-    template <typename> class ScalTsrExpr;
-    template <typename> class ScalTsrEngine;
+    template <typename, typename> class ScalTsrExpr;
+    template <typename, typename> class ScalTsrEngine;
 
 
-    template <typename T, unsigned int DIM, typename Tile, typename Policy>
-    struct EngineTrait<ScalTsrEngine<Array<T, DIM, Tile, Policy> > > {
+    template <typename Tile, typename Policy, typename Scalar>
+    struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar> > {
       // Argument typedefs
-      typedef Array<T, DIM, Tile, Policy> array_type; ///< The array type
+      typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
-      typedef TiledArray::math::Scal<typename array_type::eval_type,
-          typename array_type::eval_type, false> op_type; ///< The tile operation
+      typedef Scalar scalar_type;
+      typedef TiledArray::Scal<typename array_type::eval_type,
+          scalar_type, false> op_base_type; ///< The tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type;
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
       typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef typename TiledArray::detail::scalar_type<Array<T, DIM, Tile, Policy> >::type scalar_type;
       typedef Policy policy; ///< Policy type
       typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
 
@@ -57,8 +59,8 @@ namespace TiledArray {
       typedef typename policy::shape_type shape_type; ///< Shape type
       typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
 
-      static const bool consumable = false;
-      static const unsigned int leaves = 1;
+      static constexpr bool consumable = true;
+      static constexpr unsigned int leaves = 1;
 
     };
 
@@ -66,11 +68,11 @@ namespace TiledArray {
     /// Scaled tensor expression engine
 
     /// \tparam A The \c Array type
-    template <typename A>
-    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<A> > {
+    template <typename Array, typename Scalar>
+    class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalTsrEngine<A> ScalTsrEngine_; ///< This class type
+      typedef ScalTsrEngine<Array, Scalar> ScalTsrEngine_; ///< This class type
       typedef LeafEngine<ScalTsrEngine_> LeafEngine_; ///< Leaf base class type
       typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
 
@@ -80,6 +82,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<ScalTsrEngine_>::value_type value_type; ///< Tensor value type
       typedef typename EngineTrait<ScalTsrEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
       typedef typename EngineTrait<ScalTsrEngine_>::op_type op_type; ///< Tile operation type
       typedef typename EngineTrait<ScalTsrEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<ScalTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
@@ -96,7 +99,8 @@ namespace TiledArray {
 
     public:
 
-      ScalTsrEngine(const ScalTsrExpr<array_type>& expr) :
+      template <typename A, typename S>
+      ScalTsrEngine(const ScalTsrExpr<A, S>& expr) :
         LeafEngine_(expr), factor_(expr.factor())
       { }
 
@@ -116,13 +120,17 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      op_type make_tile_op() const { return op_type(factor_); }
+      op_type make_tile_op() const {
+        return op_type(op_base_type(factor_));
+      }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
-      op_type make_tile_op(const Permutation& perm) const { return op_type(perm, factor_); }
+      op_type make_tile_op(const Permutation& perm) const {
+        return op_type(op_base_type(factor_), perm);
+      }
 
       /// Expression identification tag
 

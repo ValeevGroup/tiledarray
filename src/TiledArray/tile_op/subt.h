@@ -26,136 +26,376 @@
 #ifndef TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SUBT_H__INCLUDED
 
-#include <TiledArray/tile_op/binary_interface.h>
+#include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/zero_tensor.h>
 
 namespace TiledArray {
-  namespace math {
 
-    /// Tile subtraction operation
+  namespace detail {
+    template <typename> class BinaryWrapper;
+  } // namespace detail
 
-    /// This subtraction operation will compute the difference of two tiles and
-    /// apply a permutation to the result tensor. If no permutation is given or
-    /// the permutation is null, then the result is not permuted.
-    /// \tparam Result The result type
-    /// \tparam Left The left-hand argument type
-    /// \tparam Right The right-hand argument type
-    /// \tparam LeftConsumable A flag that is \c true when the left-hand
-    /// argument is consumable.
-    /// \tparam RightConsumable A flag that is \c true when the right-hand
-    /// argument is consumable.
-    template <typename Result, typename Left, typename Right, bool LeftConsumable,
-        bool RightConsumable>
-    class Subt : public BinaryInterface<Subt<Result, Left, Right, LeftConsumable,
-        RightConsumable> >
+  /// Tile subtraction operation
+
+  /// This subtraction operation will subtract the content two tiles, and accepts
+  /// an optional permute argument.
+  /// \tparam Left The left-hand argument base type
+  /// \tparam Right The right-hand argument base type
+  /// \tparam LeftConsumable A flag that is \c true when the left-hand
+  /// argument is consumable.
+  /// \tparam RightConsumable A flag that is \c true when the right-hand
+  /// argument is consumable.
+  template <typename Left, typename Right, bool LeftConsumable,
+      bool RightConsumable>
+  class Subt {
+  public:
+
+    typedef Subt<Left, Right, LeftConsumable, RightConsumable> Subt_;
+    typedef Left left_type; ///< Left-hand argument base type
+    typedef Right right_type; ///< Right-hand argument base type
+//    typedef Left result_type;
+    typedef decltype(subt(std::declval<left_type>(), std::declval<right_type>())) result_type;
+
+    static constexpr bool left_is_consumable =
+        LeftConsumable && std::is_same<result_type, left_type>::value;
+    static constexpr bool right_is_consumable =
+        RightConsumable && std::is_same<result_type, right_type>::value;
+
+  private:
+
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
+
+    static result_type eval(const left_type& first, const right_type& second,
+        const Permutation& perm)
     {
-    public:
-      typedef Subt<Result, Left, Right, LeftConsumable, RightConsumable> Subt_; ///< This object type
-      typedef BinaryInterface<Subt_> BinaryInterface_; ///< Interface base class type
-      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
-      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
-      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
+      using TiledArray::subt;
+      return subt(first, second, perm);
+    }
 
-      /// Default constructor
+    static result_type eval(ZeroTensor, const right_type& second,
+        const Permutation& perm)
+    {
+      using TiledArray::neg;
+      return neg(second, perm);
+    }
 
-      /// Construct an subtraction operation that does not permute the result tile
-      Subt() : BinaryInterface_() { }
+    static result_type eval(const left_type& first, ZeroTensor,
+        const Permutation& perm)
+    {
+      using TiledArray::permute;
+      return permute(first, perm);
+    }
 
-      /// Permute constructor
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the consumability
+    // of the arguments.
 
-      /// Construct an subtraction operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      explicit Subt(const Permutation& perm) : BinaryInterface_(perm) { }
+    template <bool LC, bool RC,
+        typename std::enable_if<!(LC || RC)>::type* = nullptr>
+    static result_type eval(const left_type& first, const right_type& second) {
+      using TiledArray::subt;
+      return subt(first, second);
+    }
 
-      /// Copy constructor
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    static result_type eval(left_type& first, const right_type& second) {
+      using TiledArray::subt_to;
+      return subt_to(first, second);
+    }
 
-      /// \param other The subtraction operation object to be copied
-      Subt(const Subt_& other) : BinaryInterface_(other) { }
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC && RC>::type* = nullptr>
+    static result_type eval(const left_type& first, right_type& second) {
+      using TiledArray::subt_to;
+      return subt_to(second, first, -1);
+    }
 
-      /// Copy assignment
+    template <bool LC, bool RC,
+        typename std::enable_if<!RC>::type* = nullptr>
+    static result_type eval(ZeroTensor, const right_type& second) {
+      using TiledArray::neg;
+      return neg(second);
+    }
 
-      /// \param other The subtraction operation object to be copied
-      /// \return A reference to this object
-      Subt_& operator=(const Subt_& other) {
-        BinaryInterface_::operator =(other);
-        return *this;
-      }
+    template <bool LC, bool RC,
+        typename std::enable_if<RC>::type* = nullptr>
+    static result_type eval(ZeroTensor, right_type& second) {
+      using TiledArray::neg_to;
+      return neg_to(second);
+    }
 
-      using BinaryInterface_::operator();
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC>::type* = nullptr>
+    static result_type eval(const left_type& first, ZeroTensor) {
+      using TiledArray::clone;
+      return clone(first);
+    }
 
-      // Permuting tile evaluation function
-      // These operations cannot consume the argument tile since this operation
-      // requires temporary storage space.
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    static result_type eval(left_type& first, ZeroTensor) {
+      return first;
+    }
 
-      result_type permute_op(first_argument_type first, second_argument_type second) const {
-        using TiledArray::subt;
-        return subt(first, second, BinaryInterface_::permutation());
-      }
+  public:
 
-      result_type permute_op(ZeroTensor, second_argument_type second) const {
-        using TiledArray::neg;
-        return neg(second, BinaryInterface_::permutation());
-      }
+    /// Subtract-and-permute operator
 
-      result_type permute_op(first_argument_type first, ZeroTensor) const {
-        using TiledArray::permute;
-        return permute(first, BinaryInterface_::permutation());
-      }
+    /// Compute the difference of two tiles and permute the result. One of the argument
+    /// tiles may be replaced with `ZeroTensor` argument, in which case the
+    /// argument's element values are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return The permuted and scaled difference of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
+    }
 
-      // Non-permuting tile evaluation functions
-      // The compiler will select the correct functions based on the consumability
-      // of the arguments.
+    /// Subtract operator
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!(LC || RC), result_type>::type
-      no_permute_op(first_argument_type first, second_argument_type second) {
-        using TiledArray::subt;
-        return subt(first, second);
-      }
+    /// Compute the difference of two tiles. One of the argument tiles may be replaced
+    /// with `ZeroTensor` argument, in which case the argument's element values
+    /// are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The scaled difference of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right) const {
+      return Subt_::template eval<left_is_consumable, right_is_consumable>(
+          std::forward<L>(left), std::forward<R>(right));
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<LC, result_type>::type
-      no_permute_op(Left& first, second_argument_type second) {
-        using TiledArray::subt_to;
-        return subt_to(first, second);
-      }
+    /// Subtract right to left
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!LC && RC, result_type>::type
-      no_permute_op(first_argument_type first, Right& second) {
-        using TiledArray::subt_to;
-        return subt_to(second, first, -1);
-      }
+    /// Subtract the right tile to the left. The right tile may be replaced with
+    /// `ZeroTensor` argument, in which case the argument's element values are
+    /// assumed to be `0`.
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The difference of `left` and `right`.
+    template <typename R>
+    result_type consume_left(left_type& left, R&& right) const {
+      return Subt_::template eval<is_consumable_tile<left_type>::value, false>(
+          left, std::forward<R>(right));
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!RC, result_type>::type
-      no_permute_op(ZeroTensor, second_argument_type second) {
-        using TiledArray::neg;
-        return neg(second);
-      }
+    /// Subtract left to right
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<RC, result_type>::type
-      no_permute_op(ZeroTensor, Right& second) {
-        using TiledArray::neg_to;
-        return neg_to(second);
-      }
+    /// Subtract the left tile to the right. The left tile may be replaced with
+    /// `ZeroTensor` argument, in which case the argument's element values are
+    /// assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The difference of `left` and `right`.
+    template <typename L>
+    result_type consume_right(L&& left, right_type& right) const {
+      return Subt_::template eval<false, is_consumable_tile<right_type>::value>(
+          std::forward<L>(left), right);
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!LC, result_type>::type
-      no_permute_op(first_argument_type first, ZeroTensor) {
-        using TiledArray::clone;
-        return clone(first);
-      }
+  }; // class Subt
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<LC, result_type>::type
-      no_permute_op(Left& first, ZeroTensor) {
-        return first;
-      }
+  /// Tile scale-subtraction operation
 
-    }; // class Subt
+  /// This subtraction operation will subtract the content two tiles and apply a
+  /// permutation to the result tensor. If no permutation is given or the
+  /// permutation is null, then the result is not permuted.
+  /// \tparam Left The left-hand argument type
+  /// \tparam Right The right-hand argument type
+  /// \tparam Scalar The scaling factor type
+  /// \tparam LeftConsumable A flag that is \c true when the left-hand
+  /// argument is consumable.
+  /// \tparam RightConsumable A flag that is \c true when the right-hand
+  /// argument is consumable.
+  template <typename Left, typename Right, typename Scalar, bool LeftConsumable,
+      bool RightConsumable>
+  class ScalSubt {
+  public:
 
-  } // namespace math
+    typedef ScalSubt<Left, Right, Scalar, LeftConsumable, RightConsumable> ScalSubt_;
+    typedef Left left_type; ///< Left-hand argument base type
+    typedef Right right_type; ///< Right-hand argument base type
+    typedef Scalar scalar_type; ///< Scaling factor type
+//    typedef Left result_type;
+    typedef decltype(subt(std::declval<left_type>(), std::declval<right_type>(),
+        std::declval<scalar_type>())) result_type;
+
+    static constexpr bool left_is_consumable =
+        LeftConsumable && std::is_same<result_type, left_type>::value;
+    static constexpr bool right_is_consumable =
+        RightConsumable && std::is_same<result_type, right_type>::value;
+
+  private:
+
+    scalar_type factor_;
+
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
+
+    result_type eval(const left_type& first, const right_type& second,
+        const Permutation& perm) const
+    {
+      using TiledArray::subt;
+      return subt(first, second, factor_, perm);
+    }
+
+    result_type eval(ZeroTensor, const right_type& second,
+        const Permutation& perm) const
+    {
+      using TiledArray::scale;
+      return scale(second, -factor_, perm);
+    }
+
+    result_type eval(const left_type& first, ZeroTensor,
+        const Permutation& perm) const
+    {
+      using TiledArray::scale;
+      return scale(first, factor_, perm);
+    }
+
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the consumability
+    // of the arguments.
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!(LC || RC)>::type* = nullptr>
+    result_type eval(const left_type& first, const right_type& second) const {
+      using TiledArray::subt;
+      return subt(first, second, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    result_type eval(left_type& first, const right_type& second) const {
+      using TiledArray::subt_to;
+      return subt_to(first, second, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC && RC>::type* = nullptr>
+    result_type eval(const left_type& first, right_type& second) const {
+      using TiledArray::subt_to;
+      return subt_to(second, first, -factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!RC>::type* = nullptr>
+    result_type eval(ZeroTensor, const right_type& second) const {
+      using TiledArray::scale;
+      return scale(second, -factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<RC>::type* = nullptr>
+    result_type eval(ZeroTensor, right_type& second) const {
+      using TiledArray::scale_to;
+      return scale_to(second, -factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC>::type* = nullptr>
+    result_type eval(const left_type& first, ZeroTensor) const {
+      using TiledArray::scale;
+      return scale(first, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    result_type eval(left_type& first, ZeroTensor) const {
+      using TiledArray::scale_to;
+      return scale_to(first, factor_);
+    }
+
+  public:
+
+    // Compiler generated functions
+    ScalSubt(const ScalSubt_&) = default;
+    ScalSubt(ScalSubt_&&) = default;
+    ~ScalSubt() = default;
+    ScalSubt_& operator=(const ScalSubt_&) = default;
+    ScalSubt_& operator=(ScalSubt_&&) = default;
+
+    /// Constructor
+
+    /// \param factor The scaling factor applied to result tiles
+    explicit ScalSubt(const Scalar factor) : factor_(factor) { }
+
+    /// Scale-subtract-and-permute operator
+
+    /// Compute the scaled difference of two tiles and permute the result. One of the
+    /// argument tiles may be replaced with `ZeroTensor` argument, in which case
+    /// the argument's element values are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return The permuted and scaled difference of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
+    }
+
+    /// Scale-and-subtract operator
+
+    /// Compute the scaled difference of two tiles. One of the argument tiles may be
+    /// replaced with `ZeroTensor` argument, in which case the argument's
+    /// element values are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The scaled difference of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right) const {
+      return ScalSubt_::template eval<left_is_consumable, right_is_consumable>(
+          std::forward<L>(left), std::forward<R>(right));
+    }
+
+    /// Subtract right to left and scale the result
+
+    /// Subtract the right tile to the left. The right tile may be replaced with
+    /// `ZeroTensor` argument, in which case the argument's element values are
+    /// assumed to be `0`.
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The difference of `left` and `right`.
+    template <typename R>
+    result_type consume_left(left_type& left, R&& right) const {
+      return ScalSubt_::template eval<is_consumable_tile<left_type>::value, false>(
+          left, std::forward<R>(right));
+    }
+
+    /// Subtract left to right and scale the result
+
+    /// Subtract the left tile to the right, and scale the resulting left tile.
+    /// The left tile may be replaced with `ZeroTensor` argument, in which case
+    /// the argument's element values are assumed to be `0`.
+    /// \tparam L The left-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The difference of `left` and `right`.
+    template <typename L>
+    result_type consume_right(L&& left, right_type& right) const {
+      return ScalSubt_::template eval<false, is_consumable_tile<right_type>::value>(
+          std::forward<L>(left), right);
+    }
+
+  }; // class ScalSubt
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_SUBT_H__INCLUDED

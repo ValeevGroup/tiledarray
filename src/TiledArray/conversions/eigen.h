@@ -15,21 +15,26 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Justus Calvin
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  eigen.h
+ *  May 02, 2015
+ *
  */
 
 #ifndef TILEDARRAY_EIGEN_H__INCLUDED
 #define TILEDARRAY_EIGEN_H__INCLUDED
 
+#include <tiledarray_fwd.h>
+#include <TiledArray/array.h>
+#include <TiledArray/tensor.h>
 #include <TiledArray/error.h>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/madness.h>
 #include <TiledArray/pmap/replicated_pmap.h>
 
 namespace TiledArray {
-
-  // Forward declarations
-  template <typename, unsigned int, typename, typename> class Array;
-  template <typename, typename> class Tensor;
 
   // Convenience typedefs
   typedef Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixXd;
@@ -423,11 +428,16 @@ namespace TiledArray {
   /// \throw TiledArray::Exception When the number of dimensions of \c array
   /// is not equal to 1 or 2.
   /// \note This function will only work in non-distributed environments.
-  template <typename T, unsigned int DIM, typename Tile, typename Policy>
-  Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
-  array_to_eigen(const Array<T, DIM, Tile, Policy>& array) {
+  template <typename Tile, typename Policy>
+  Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic>
+  array_to_eigen(const DistArray<Tile, Policy>& array) {
+    typedef Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic>
+        EigenMatrix;
+
+    const auto rank = array.trange().tiles().rank();
+
     // Check that the array will fit in a matrix or vector
-    TA_USER_ASSERT((DIM == 2u) || (DIM == 1u),
+    TA_USER_ASSERT((rank == 2u) || (rank == 1u),
         "TiledArray::array_to_eigen(): The array dimensions must be equal to 1 or 2.");
 
     // Check that this is not a distributed computing environment or that the
@@ -438,8 +448,7 @@ namespace TiledArray {
 
     // Construct the Eigen matrix
     const auto* restrict const array_extent = array.trange().elements().extent_data();
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
-        matrix(array_extent[0], (DIM == 2 ? array_extent[1] : 1));
+    EigenMatrix matrix(array_extent[0], (rank == 2 ? array_extent[1] : 1));
 
     // Spawn tasks to copy array tiles to the Eigen matrix
     madness::AtomicInt counter;
@@ -448,8 +457,8 @@ namespace TiledArray {
     for(std::size_t i = 0; i < array.size(); ++i) {
       if(! array.is_zero(i)) {
         array.get_world().taskq.add(
-            & detail::counted_tensor_to_eigen_submatrix<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>,
-            typename Array<T, DIM, Tile, Policy>::value_type>,
+            & detail::counted_tensor_to_eigen_submatrix<EigenMatrix,
+            typename DistArray<Tile, Policy>::value_type>,
             array.find(i), &matrix, &counter);
         ++n;
       }

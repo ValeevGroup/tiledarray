@@ -26,142 +26,362 @@
 #ifndef TILEDARRAY_TILE_OP_MULT_H__INCLUDED
 #define TILEDARRAY_TILE_OP_MULT_H__INCLUDED
 
-#include <TiledArray/tile_op/binary_interface.h>
+#include <TiledArray/error.h>
+#include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/zero_tensor.h>
 
 namespace TiledArray {
-  namespace math {
 
-    /// Tile multiplication operation
+  namespace detail {
+    template <typename> class BinaryWrapper;
+  } // namespace detail
 
-    /// This multiplication operation will multiply the content two tiles and
-    /// apply a permutation to the result tensor. If no permutation is given or
-    /// the permutation is null, then the result is not permuted.
-    /// \tparam Result The result type
-    /// \tparam Left The left-hand argument type
-    /// \tparam Right The right-hand argument type
-    /// \tparam LeftConsumable A flag that is \c true when the left-hand
-    /// argument is consumable.
-    /// \tparam RightConsumable A flag that is \c true when the right-hand
-    /// argument is consumable.
-    template <typename Result, typename Left, typename Right, bool LeftConsumable,
-        bool RightConsumable>
-    class Mult : public BinaryInterface<Mult<Result, Left, Right, LeftConsumable,
-        RightConsumable> >
+  /// Tile multiplication operation
+
+  /// This multiplication will multiply the content two tiles, and accepts
+  /// an optional permute argument.
+  /// \tparam Left The left-hand argument type
+  /// \tparam Right The right-hand argument type
+  /// \tparam LeftConsumable A flag that is \c true when the left-hand
+  /// argument is consumable.
+  /// \tparam RightConsumable A flag that is \c true when the right-hand
+  /// argument is consumable.
+  template <typename Left, typename Right, bool LeftConsumable,
+      bool RightConsumable>
+  class Mult {
+  public:
+
+    typedef Mult<Left, Right, LeftConsumable, RightConsumable> Mult_;
+    typedef Left left_type; ///< Left-hand argument base type
+    typedef Right right_type; ///< Right-hand argument base type
+//    typedef Left result_type;
+    typedef decltype(mult(std::declval<left_type>(), std::declval<right_type>())) result_type;
+
+    static constexpr bool left_is_consumable =
+        LeftConsumable && std::is_same<result_type, left_type>::value;
+    static constexpr bool right_is_consumable =
+        RightConsumable && std::is_same<result_type, right_type>::value;
+
+  private:
+
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
+
+    static result_type eval(const left_type& first, const right_type& second,
+        const Permutation& perm)
     {
-    public:
-      typedef Mult<Result, Left, Right, LeftConsumable, RightConsumable> Mult_; ///< This object type
-      typedef BinaryInterface<Mult_> BinaryInterface_; ///< Interface base class type
-      typedef typename BinaryInterface_::first_argument_type first_argument_type; ///< The left-hand argument type
-      typedef typename BinaryInterface_::second_argument_type second_argument_type; ///< The right-hand argument type
-      typedef typename BinaryInterface_::result_type result_type; ///< The result tile type
+      using TiledArray::mult;
+      return mult(first, second, perm);
+    }
 
-    public:
-      /// Default constructor
+    static result_type eval(ZeroTensor, const right_type& second,
+        const Permutation& perm)
+    {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
 
-      /// Construct a multiplication operation that does not permute the result tile
-      Mult() : BinaryInterface_() { }
+    static result_type eval(const left_type& first, ZeroTensor,
+        const Permutation& perm)
+    {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
 
-      /// Permute constructor
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the consumability
+    // of the arguments.
 
-      /// Construct a multiplication operation that permutes the result tensor
-      /// \param perm The permutation to apply to the result tile
-      explicit Mult(const Permutation& perm) : BinaryInterface_(perm) { }
+    template <bool LC, bool RC,
+        typename std::enable_if<!(LC || RC)>::type* = nullptr>
+    static result_type eval(const left_type& first, const right_type& second) {
+      using TiledArray::mult;
+      return mult(first, second);
+    }
 
-      /// Copy constructor
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    static result_type eval(left_type& first, const right_type& second) {
+      using TiledArray::mult_to;
+      return mult_to(first, second);
+    }
 
-      /// \param other The multiplication operation object to be copied
-      Mult(const Mult_& other) : BinaryInterface_(other) { }
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC && RC>::type* = nullptr>
+    static result_type eval(const left_type& first, right_type& second) {
+      using TiledArray::mult_to;
+      return mult_to(second, first);
+    }
 
-      /// Copy assignment
+    template <bool LC, bool RC,
+        typename std::enable_if<!RC>::type* = nullptr>
+    static result_type eval(ZeroTensor, const right_type& second) {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
 
-      /// \param other The multiplication operation object to be copied
-      /// \return A reference to this object
-      Mult_& operator=(const Mult_& other) {
-        BinaryInterface_::operator =(other);
-        return *this;
-      }
+    template <bool LC, bool RC,
+        typename std::enable_if<RC>::type* = nullptr>
+    static result_type eval(ZeroTensor, right_type& second) {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
 
-      // Import interface from base class
-      using BinaryInterface_::operator();
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC>::type* = nullptr>
+    static result_type eval(const left_type& first, ZeroTensor) {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
 
-      // Permuting tile evaluation function
-      // These operations cannot consume the argument tile since this operation
-      // requires temporary storage space.
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    static result_type eval(left_type& first, ZeroTensor) {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
 
-      result_type permute_op(first_argument_type first, second_argument_type second) const {
-        using TiledArray::mult;
-        return mult(first, second, BinaryInterface_::permutation());
-      }
+  public:
 
-      result_type permute_op(ZeroTensor, const Right&) const {
-        TA_ASSERT(false); // Invalid arguments for this operation
-        return result_type();
-      }
+    /// Multiply-and-permute operator
 
-      result_type permute_op(const Left&, ZeroTensor) const {
-        TA_ASSERT(false); // Invalid arguments for this operation
-        return result_type();
-      }
+    /// Compute the product of two tiles and permute the result.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return The permuted and scaled product of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
+    }
 
-      // Non-permuting tile evaluation functions
-      // The compiler will select the correct functions based on the consumability
-      // of the arguments.
+    /// Multiply operator
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!(LC || RC), result_type>::type
-      no_permute_op(first_argument_type first, second_argument_type second) {
-        using TiledArray::mult;
-        return mult(first, second);
-      }
+    /// Compute the product of two tiles.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The scaled product of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right) const {
+      return Mult_::template eval<left_is_consumable, right_is_consumable>(
+          std::forward<L>(left), std::forward<R>(right));
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<LC, result_type>::type
-      no_permute_op(Left& first, second_argument_type second) {
-        using TiledArray::mult_to;
-        mult_to(first,second);
-        return first;
-      }
+    /// Multiply right to left
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!LC && RC, result_type>::type
-      no_permute_op(first_argument_type first, Right& second) {
-        using TiledArray::mult_to;
-        mult_to(second, first);
-        return second;
-      }
+    /// Multiply the right tile to the left.
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The product of `left` and `right`.
+    template <typename R>
+    result_type consume_left(left_type& left, R&& right) const {
+      return Mult_::template eval<is_consumable_tile<left_type>::value, false>(
+          left, std::forward<R>(right));
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!RC, result_type>::type
-      no_permute_op(ZeroTensor, const Right&) {
-        TA_ASSERT(false); // Invalid arguments for this operation
-        return result_type();
-      }
+    /// Multiply left to right
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<RC, result_type>::type
-      no_permute_op(ZeroTensor, Right&) {
-        TA_ASSERT(false); // Invalid arguments for this operation
-        return result_type();
-      }
+    /// Multiply the left tile to the right.
+    /// \tparam L The left-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The product of `left` and `right`.
+    template <typename L>
+    result_type consume_right(L&& left, right_type& right) const {
+      return Mult_::template eval<false, is_consumable_tile<right_type>::value>(
+          std::forward<L>(left), right);
+    }
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<!LC, result_type>::type
-      no_permute_op(const Left&, ZeroTensor) {
-        TA_ASSERT(false); // Invalid arguments for this operation
-        return result_type();
-      }
+  }; // class Mult
 
-      template <bool LC, bool RC>
-      static typename std::enable_if<LC, result_type>::type
-      no_permute_op(Left&, ZeroTensor) {
-        TA_ASSERT(false); // Invalid arguments for this operation
-        return result_type();
-      }
+  /// Tile scale-multiplication operation
 
+  /// This multiplication operation will multiply the content two tiles and apply a
+  /// permutation to the result tensor. If no permutation is given or the
+  /// permutation is null, then the result is not permuted.
+  /// \tparam Left The left-hand argument type
+  /// \tparam Right The right-hand argument type
+  /// \tparam Scalar The scaling factor type
+  /// \tparam LeftConsumable A flag that is \c true when the left-hand
+  /// argument is consumable.
+  /// \tparam RightConsumable A flag that is \c true when the right-hand
+  /// argument is consumable.
+  template <typename Left, typename Right, typename Scalar, bool LeftConsumable,
+      bool RightConsumable>
+  class ScalMult {
+  public:
 
-    }; // class Mult
+    typedef ScalMult<Left, Right, Scalar, LeftConsumable, RightConsumable> ScalMult_;
+    typedef Left left_type; ///< Left-hand argument base type
+    typedef Right right_type; ///< Right-hand argument base type
+    typedef Scalar scalar_type; ///< Scaling factor type
+//    typedef Left result_type;
+    typedef decltype(mult(std::declval<left_type>(), std::declval<right_type>(),
+        std::declval<scalar_type>())) result_type;
 
-  } // namespace math
+    static constexpr bool left_is_consumable =
+        LeftConsumable && std::is_same<result_type, left_type>::value;
+    static constexpr bool right_is_consumable =
+        RightConsumable && std::is_same<result_type, right_type>::value;
+
+  private:
+
+    scalar_type factor_;
+
+    // Permuting tile evaluation function
+    // These operations cannot consume the argument tile since this operation
+    // requires temporary storage space.
+
+    result_type eval(const left_type& first, const right_type& second,
+        const Permutation& perm) const
+    {
+      using TiledArray::mult;
+      return mult(first, second, factor_, perm);
+    }
+
+    result_type eval(ZeroTensor, const right_type& second,
+        const Permutation& perm) const
+    {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
+
+    result_type eval(const left_type& first, ZeroTensor,
+        const Permutation& perm) const
+    {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
+
+    // Non-permuting tile evaluation functions
+    // The compiler will select the correct functions based on the consumability
+    // of the arguments.
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!(LC || RC)>::type* = nullptr>
+    result_type eval(const left_type& first, const right_type& second) const {
+      using TiledArray::mult;
+      return mult(first, second, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    result_type eval(left_type& first, const right_type& second) const {
+      using TiledArray::mult_to;
+      return mult_to(first, second, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC && RC>::type* = nullptr>
+    result_type eval(const left_type& first, right_type& second) const {
+      using TiledArray::mult_to;
+      return mult_to(second, first, factor_);
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!RC>::type* = nullptr>
+    result_type eval(ZeroTensor, const right_type& second) const {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<RC>::type* = nullptr>
+    result_type eval(ZeroTensor, right_type& second) const {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<!LC>::type* = nullptr>
+    result_type eval(const left_type& first, ZeroTensor) const {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
+
+    template <bool LC, bool RC,
+        typename std::enable_if<LC>::type* = nullptr>
+    result_type eval(left_type& first, ZeroTensor) const {
+      TA_ASSERT(false); // Invalid arguments for this operation
+      return result_type();
+    }
+
+  public:
+
+    // Compiler generated functions
+    ScalMult(const ScalMult_&) = default;
+    ScalMult(ScalMult_&&) = default;
+    ~ScalMult() = default;
+    ScalMult_& operator=(const ScalMult_&) = default;
+    ScalMult_& operator=(ScalMult_&&) = default;
+
+    /// Constructor
+
+    /// \param factor The scaling factor applied to result tiles
+    explicit ScalMult(const Scalar factor) : factor_(factor) { }
+
+    /// Scale-multiply-and-permute operator
+
+    /// Compute the scaled product of two tiles and permute the result.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \param perm The permutation applied to the result tile
+    /// \return The permuted and scaled product of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+      return eval(std::forward<L>(left), std::forward<R>(right), perm);
+    }
+
+    /// Scale-and-multiply operator
+
+    /// Compute the scaled product of two tiles.
+    /// \tparam L The left-hand tile argument type
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The scaled product of `left` and `right`.
+    template <typename L, typename R>
+    result_type operator()(L&& left, R&& right) const {
+      return ScalMult_::template eval<left_is_consumable,
+          right_is_consumable>(std::forward<L>(left), std::forward<R>(right));
+    }
+
+    /// Multiply right to left and scale the result
+
+    /// Multiply the right tile to the left.
+    /// \tparam R The right-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The product of `left` and `right`.
+    template <typename R>
+    result_type consume_left(left_type& left, R&& right) const {
+      return ScalMult_::template eval<is_consumable_tile<left_type>::value, false>(left,
+          std::forward<R>(right));
+    }
+
+    /// Multiply left to right and scale the result
+
+    /// Multiply the left tile to the right, and scale the resulting left tile.
+    /// \tparam L The left-hand tile argument type
+    /// \param left The left-hand tile argument
+    /// \param right The right-hand tile argument
+    /// \return The product of `left` and `right`.
+    template <typename L>
+    result_type consume_right(L&& left, right_type& right) const {
+      return ScalMult_::template eval<false, is_consumable_tile<right_type>::value>(std::forward<L>(left),
+          right);
+    }
+
+  }; // class ScalMult
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_MULT_H__INCLUDED

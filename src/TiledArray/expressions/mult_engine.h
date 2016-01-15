@@ -28,7 +28,7 @@
 
 #include <TiledArray/expressions/cont_engine.h>
 #include <TiledArray/tile_op/mult.h>
-#include <TiledArray/tile_op/scal_mult.h>
+#include <TiledArray/tile_op/binary_wrapper.h>
 
 
 namespace TiledArray {
@@ -36,19 +36,80 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename, typename> class MultExpr;
-    template <typename, typename> class ScalMultExpr;
+    template <typename, typename, typename> class ScalMultExpr;
     template <typename, typename> class MultEngine;
-    template <typename, typename> class ScalMultEngine;
+    template <typename, typename, typename> class ScalMultEngine;
 
     template <typename Left, typename Right>
-    struct EngineTrait<MultEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::Mult>
-    { };
+    struct EngineTrait<MultEngine<Left, Right> > {
+      static_assert(std::is_same<typename EngineTrait<Left>::policy,
+          typename EngineTrait<Right>::policy>::value,
+          "The left- and right-hand expressions must use the same policy class");
 
-    template <typename Left, typename Right>
-    struct EngineTrait<ScalMultEngine<Left, Right> > :
-      public BinaryEngineTrait<Left, Right, TiledArray::math::ScalMult>
-    { };
+      // Argument typedefs
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef TiledArray::Mult<typename EngineTrait<Left>::eval_type,
+          typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
+          EngineTrait<Right>::consumable>
+          op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type>
+          op_type; ///< The tile operation type
+      typedef typename op_type::result_type
+          value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type;  ///< Evaluation tile type
+      typedef typename TiledArray::detail::numeric_type<value_type>::type
+          scalar_type; ///< Tile scalar type
+      typedef typename Left::policy policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
+
+      static constexpr bool consumable = is_consumable_tile<eval_type>::value;
+      static constexpr unsigned int leaves =
+          EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
+    };
+
+    template <typename Left, typename Right, typename Scalar>
+    struct EngineTrait<ScalMultEngine<Left, Right, Scalar> > {
+      static_assert(std::is_same<typename EngineTrait<Left>::policy,
+          typename EngineTrait<Right>::policy>::value,
+          "The left- and right-hand expressions must use the same policy class");
+
+      // Argument typedefs
+      typedef Left left_type; ///< The left-hand expression type
+      typedef Right right_type; ///< The right-hand expression type
+
+      // Operational typedefs
+      typedef Scalar scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+      typedef TiledArray::ScalMult<typename EngineTrait<Left>::eval_type,
+          typename EngineTrait<Right>::eval_type, scalar_type,
+          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
+      typedef typename Left::policy policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+
+      // Meta data typedefs
+      typedef typename policy::size_type size_type; ///< Size type
+      typedef typename policy::trange_type trange_type; ///< Tiled range type
+      typedef typename policy::shape_type shape_type; ///< Shape type
+      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+
+      static constexpr bool consumable = is_consumable_tile<eval_type>::value;
+      static constexpr unsigned int leaves =
+          EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
+    };
 
 
     /// Multiplication expression engine
@@ -70,7 +131,7 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef typename EngineTrait<MultEngine_>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<MultEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<MultEngine_>::op_base_type op_base_type; ///< The tile operation type
       typedef typename EngineTrait<MultEngine_>::op_type op_type; ///< The tile operation type
       typedef typename EngineTrait<MultEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<MultEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
@@ -146,7 +207,10 @@ namespace TiledArray {
         BinaryEngine_::right_.init_vars();
 
         if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
-          BinaryEngine_::init_vars();
+          if(left_type::leaves <= right_type::leaves)
+            ExprEngine_::vars_ = BinaryEngine_::left_.vars();
+          else
+            ExprEngine_::vars_ = BinaryEngine_::right_.vars();
         } else {
           contract_ = true;
           ContEngine_::init_vars();
@@ -217,13 +281,13 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      static op_type make_tile_op() { return op_type(); }
+      static op_type make_tile_op() { return op_type(op_base_type()); }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
-      static op_type make_tile_op(const Permutation& perm) { return op_type(perm); }
+      static op_type make_tile_op(const Permutation& perm) { return op_type(op_base_type(), perm); }
 
       /// Construct the distributed evaluator for this expression
 
@@ -258,11 +322,11 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand engine type
     /// \tparam Right The Right-hand engine type
-    template <typename Left, typename Right>
-    class ScalMultEngine : public ContEngine<ScalMultEngine<Left, Right> > {
+    template <typename Left, typename Right, typename Scalar>
+    class ScalMultEngine : public ContEngine<ScalMultEngine<Left, Right, Scalar> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalMultEngine<Left, Right> ScalMultEngine_; ///< This class type
+      typedef ScalMultEngine<Left, Right, Scalar> ScalMultEngine_; ///< This class type
       typedef ContEngine<ScalMultEngine_> ContEngine_; ///< Contraction engine base class
       typedef BinaryEngine<ScalMultEngine_> BinaryEngine_; ///< Binary base class type
       typedef BinaryEngine<ScalMultEngine_> ExprEngine_; ///< Expression engine base class type
@@ -274,6 +338,7 @@ namespace TiledArray {
       // Operational typedefs
       typedef typename EngineTrait<ScalMultEngine_>::value_type value_type; ///< The result tile type
       typedef typename EngineTrait<ScalMultEngine_>::scalar_type scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalMultEngine_>::op_base_type op_base_type; ///< The tile operation type
       typedef typename EngineTrait<ScalMultEngine_>::op_type op_type; ///< The tile operation type
       typedef typename EngineTrait<ScalMultEngine_>::policy policy; ///< The result policy type
       typedef typename EngineTrait<ScalMultEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
@@ -295,9 +360,10 @@ namespace TiledArray {
 
       /// \tparam L The left-hand argument expression type
       /// \tparam R The right-hand argument expression type
+      /// \tparam S The expression scalar type
       /// \param expr The parent expression
-      template <typename L, typename R>
-      ScalMultEngine(const ScalMultExpr<L, R>& expr) : ContEngine_(expr), contract_(false) { }
+      template <typename L, typename R, typename S>
+      ScalMultEngine(const ScalMultExpr<L, R, S>& expr) : ContEngine_(expr), contract_(false) { }
 
       /// Set the variable list for this expression
 
@@ -434,14 +500,14 @@ namespace TiledArray {
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
-      op_type make_tile_op() const { return op_type(ContEngine_::factor_); }
+      op_type make_tile_op() const { return op_type(op_base_type(ContEngine_::factor_)); }
 
       /// Permuting tile operation factory function
 
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
       op_type make_tile_op(const Permutation& perm) const {
-        return op_type(perm, ContEngine_::factor_);
+        return op_type(op_base_type(ContEngine_::factor_), perm);
       }
 
 

@@ -47,11 +47,11 @@ int main(int argc, char** argv) {
       std::cout << " done.\nConstructing Fock tensors...";
 
     // Construct Fock tensor
-    TArray2s f_a_oo = data.make_f(world, alpha, occ, occ);
-    TArray2s f_a_vv = data.make_f(world, alpha, vir, vir);
+    TiledArray::TSpArrayD f_a_oo = data.make_f(world, alpha, occ, occ);
+    TiledArray::TSpArrayD f_a_vv = data.make_f(world, alpha, vir, vir);
     // Just make references to the data since the input is closed shell.
-    TArray2s& f_b_oo = f_a_oo;
-    TArray2s& f_b_vv = f_a_vv;
+    TiledArray::TSpArrayD& f_b_oo = f_a_oo;
+    TiledArray::TSpArrayD& f_b_vv = f_a_vv;
 
     // Fence to make sure Fock tensors are initialized on all nodes
     world.gop.fence();
@@ -60,14 +60,14 @@ int main(int argc, char** argv) {
       std::cout << " done.\nConstructing v_ab tensors...";
 
     // Construct the integral tensors
-    TArray4s v_ab_oooo = data.make_v_ab(world, occ, occ, occ, occ);
-    TArray4s v_ab_vvoo = data.make_v_ab(world, vir, vir, occ, occ);
-    TArray4s v_ab_oovv = data.make_v_ab(world, occ, occ, vir, vir);
-    TArray4s v_ab_vovo = data.make_v_ab(world, vir, occ, vir, occ);
-    TArray4s v_ab_ovov = data.make_v_ab(world, occ, vir, occ, vir);
-    TArray4s v_ab_voov = data.make_v_ab(world, vir, occ, occ, vir);
-    TArray4s v_ab_ovvo = data.make_v_ab(world, occ, vir, vir, occ);
-    TArray4s v_ab_vvvv = data.make_v_ab(world, vir, vir, vir, vir);
+    TiledArray::TSpArrayD v_ab_oooo = data.make_v_ab(world, occ, occ, occ, occ);
+    TiledArray::TSpArrayD v_ab_vvoo = data.make_v_ab(world, vir, vir, occ, occ);
+    TiledArray::TSpArrayD v_ab_oovv = data.make_v_ab(world, occ, occ, vir, vir);
+    TiledArray::TSpArrayD v_ab_vovo = data.make_v_ab(world, vir, occ, vir, occ);
+    TiledArray::TSpArrayD v_ab_ovov = data.make_v_ab(world, occ, vir, occ, vir);
+    TiledArray::TSpArrayD v_ab_voov = data.make_v_ab(world, vir, occ, occ, vir);
+    TiledArray::TSpArrayD v_ab_ovvo = data.make_v_ab(world, occ, vir, vir, occ);
+    TiledArray::TSpArrayD v_ab_vvvv = data.make_v_ab(world, vir, vir, vir, vir);
 
     // Fence to make sure data on all nodes has been initialized
     world.gop.fence();
@@ -75,22 +75,22 @@ int main(int argc, char** argv) {
     if(world.rank() == 0)
       std::cout << " done.\nConstructing v_aa and v_bb tensors...";
 
-    TArray4s v_aa_oooo;
+    TiledArray::TSpArrayD v_aa_oooo;
     v_aa_oooo("i,j,k,l") = v_ab_oooo("i,j,k,l") - v_ab_oooo("i,j,l,k");
-    TArray4s v_aa_vvoo;
+    TiledArray::TSpArrayD v_aa_vvoo;
     v_aa_vvoo("a,b,i,j") = v_ab_vvoo("a,b,i,j") - v_ab_vvoo("a,b,j,i");
-    TArray4s v_aa_vovo;
+    TiledArray::TSpArrayD v_aa_vovo;
     v_aa_vovo("a,i,b,j") = v_ab_vovo("a,i,b,j") - v_ab_voov("a,i,j,b");
-    TArray4s v_aa_oovv;
+    TiledArray::TSpArrayD v_aa_oovv;
     v_aa_oovv("i,j,a,b") = v_ab_oovv("i,j,a,b") - v_ab_oovv("i,j,b,a");
-    TArray4s v_aa_vvvv;
+    TiledArray::TSpArrayD v_aa_vvvv;
     v_aa_vvvv("a,b,c,d") = v_ab_vvvv("a,b,c,d") - v_ab_vvvv("a,b,d,c");
     // Just make references to the data since the input is closed shell.
-    TArray4s& v_bb_oooo = v_aa_oooo;
-    TArray4s& v_bb_vvoo = v_aa_vvoo;
-    TArray4s& v_bb_vovo = v_aa_vovo;
-    TArray4s& v_bb_oovv = v_aa_oovv;
-    TArray4s& v_bb_vvvv = v_aa_vvvv;
+    TiledArray::TSpArrayD& v_bb_oooo = v_aa_oooo;
+    TiledArray::TSpArrayD& v_bb_vvoo = v_aa_vvoo;
+    TiledArray::TSpArrayD& v_bb_vovo = v_aa_vovo;
+    TiledArray::TSpArrayD& v_bb_oovv = v_aa_oovv;
+    TiledArray::TSpArrayD& v_bb_vvvv = v_aa_vvvv;
 
     // Fence again to make sure data all the integral tensors have been initialized
     world.gop.fence();
@@ -98,23 +98,23 @@ int main(int argc, char** argv) {
     if(world.rank() == 0)
       std::cout << " done.\n";
 
-    TArray4s t_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.get_shape());
-    for(TArray4s::range_type::const_iterator it = t_aa_vvoo.range().begin(); it != t_aa_vvoo.range().end(); ++it)
+    TiledArray::TSpArrayD t_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.get_shape());
+    for(auto it = t_aa_vvoo.range().begin(); it != t_aa_vvoo.range().end(); ++it)
       if(t_aa_vvoo.is_local(*it) && (! t_aa_vvoo.is_zero(*it)))
         t_aa_vvoo.set(*it, 0.0);
 
-    TArray4s t_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
-    for(TArray4s::range_type::const_iterator it = t_ab_vvoo.range().begin(); it != t_ab_vvoo.range().end(); ++it)
+    TiledArray::TSpArrayD t_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
+    for(auto it = t_ab_vvoo.range().begin(); it != t_ab_vvoo.range().end(); ++it)
       if(t_ab_vvoo.is_local(*it) && (! t_ab_vvoo.is_zero(*it)))
         t_ab_vvoo.set(*it, 0.0);
 
-    TArray4s t_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
-    for(TArray4s::range_type::const_iterator it = t_bb_vvoo.range().begin(); it != t_bb_vvoo.range().end(); ++it)
+    TiledArray::TSpArrayD t_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
+    for(auto it = t_bb_vvoo.range().begin(); it != t_bb_vvoo.range().end(); ++it)
       if(t_bb_vvoo.is_local(*it) && (! t_bb_vvoo.is_zero(*it)))
         t_bb_vvoo.set(*it, 0.0);
 
-    TArray4s D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
-    for(TArray4s::range_type::const_iterator it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
+    TiledArray::TSpArrayD D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
+    for(auto it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
       if(D_vvoo.is_local(*it) && (! D_vvoo.is_zero(*it)))
         D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_vvoo_tile, D_vvoo.trange().make_tile_range(*it)));
 
@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
       if(world.rank() == 0)
         std::cout << "Iteration " << i << "\n";
 
-      TArray4s r_aa_vvoo;
+      TiledArray::TSpArrayD r_aa_vvoo;
       r_aa_vvoo("p1a,p2a,h1a,h2a") =
           v_aa_vvoo("p1a,p2a,h1a,h2a")
           -f_a_vv("p1a,p3a")*t_aa_vvoo("p2a,p3a,h1a,h2a")
@@ -171,7 +171,7 @@ int main(int argc, char** argv) {
 
       world.gop.fence();
 
-      TArray4s r_ab_vvoo;
+      TiledArray::TSpArrayD r_ab_vvoo;
       r_ab_vvoo("p1a,p2b,h1a,h2b") =
           v_ab_vvoo("p1a,p2b,h1a,h2b")
           +f_a_vv("p1a,p3a")*t_ab_vvoo("p3a,p2b,h1a,h2b")
@@ -203,7 +203,7 @@ int main(int argc, char** argv) {
 
       world.gop.fence();
 
-      TArray4s r_bb_vvoo;
+      TiledArray::TSpArrayD r_bb_vvoo;
       r_bb_vvoo("p1b,p2b,h1b,h2b") =
           v_bb_vvoo("p1b,p2b,h1b,h2b")
           -f_b_vv("p1b,p3b")*t_bb_vvoo("p2b,p3b,h1b,h2b")

@@ -23,29 +23,23 @@
  *
  */
 
+#include <array_fixture.h>
+
 #include "TiledArray/dist_eval/array_eval.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "array_fixture.h"
 
 
 using namespace TiledArray;
 
 // Array evaluator fixture
 struct ArrayEvalImplFixture : public TiledRangeFixture {
-  typedef Array<int, GlobalFixture::dim> ArrayN;
-  typedef math::Scal<ArrayN::value_type,
-      ArrayN::value_type, false> op_type;
-  typedef detail::ArrayEvalImpl<ArrayN, op_type, DensePolicy> impl_type;
-  typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type,
-      op_type>, DensePolicy> dist_eval_type;
 
-
-  ArrayEvalImplFixture() : op(3), array(*GlobalFixture::world, tr) {
+  ArrayEvalImplFixture() : array(*GlobalFixture::world, tr) {
     // Fill array with random data
-    for(ArrayN::iterator it = array.begin(); it != array.end(); ++it) {
-      ArrayN::value_type tile(array.trange().make_tile_range(it.index()));
-      for(ArrayN::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
+    for(TArrayI::iterator it = array.begin(); it != array.end(); ++it) {
+      TArrayI::value_type tile(array.trange().make_tile_range(it.index()));
+      for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
     }
@@ -53,35 +47,56 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
 
   ~ArrayEvalImplFixture() { }
 
-  template <typename T, unsigned int DIM, typename Tile, typename Policy, typename Op>
-  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>
+
+  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  make_array_noop(const Permutation& perm = Permutation()) {
+    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
+        Noop<TensorI, true>(), perm);
+  }
+
+
+  static TiledArray::detail::UnaryWrapper<Scal<TensorI, int, true> >
+  make_array_scal(const int factor, const Permutation& perm = Permutation()) {
+    return TiledArray::detail::UnaryWrapper<Scal<TensorI, int, true> >(
+        Scal<TensorI, int, true>(factor), perm);
+  }
+
+
+  static TiledArray::detail::UnaryWrapper<Scal<TensorI, int, false> >
+  make_scal(const int factor, const Permutation& perm = Permutation()) {
+    return TiledArray::detail::UnaryWrapper<Scal<TensorI, int, false> >(
+        Scal<TensorI, int, false>(factor), perm);
+  }
+
+
+  template <typename Tile, typename Policy, typename Op>
+  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename DistArray<Tile, Policy>::value_type, Op>, Policy>
   make_array_eval(
-      const Array<T, DIM, Tile, Policy>& array,
+      const DistArray<Tile, Policy>& array,
       TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type& shape,
       const std::shared_ptr<typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm,
       const Op& op)
   {
-    typedef TiledArray::detail::ArrayEvalImpl<Array<T, DIM, Tile, Policy>, Op, Policy> impl_type;
-    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::Array<T, DIM, Tile, Policy>::value_type, Op>, Policy>(
+    typedef TiledArray::detail::ArrayEvalImpl<DistArray<Tile, Policy>, Op, Policy> impl_type;
+    return TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename TiledArray::DistArray<Tile, Policy>::value_type, Op>, Policy>(
         std::shared_ptr<impl_type>(new impl_type(array, world,
         (perm ? perm * array.trange() : array.trange()), shape, pmap, perm, op)));
   }
 
-   op_type op;
-   ArrayN array;
+   TArrayI array;
 }; // ArrayEvalFixture
 
 BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(impl_type(array, array.get_world(), array.trange(),
-      DenseShape(), array.get_pmap(), Permutation(), op));
+  BOOST_REQUIRE_NO_THROW(make_array_eval(array, array.get_world(),
+      DenseShape(), array.get_pmap(), Permutation(), make_array_scal(3)));
 
-  dist_eval_type dist_eval = make_array_eval(array, array.get_world(),
-      DenseShape(), array.get_pmap(), Permutation(), op);
+  auto dist_eval = make_array_eval(array, array.get_world(),
+      DenseShape(), array.get_pmap(), Permutation(), make_array_scal(3));
 
   BOOST_CHECK_EQUAL(& dist_eval.get_world(), GlobalFixture::world);
   BOOST_CHECK(dist_eval.pmap() == array.get_pmap());
@@ -95,21 +110,20 @@ BOOST_AUTO_TEST_CASE( constructor )
 
 BOOST_AUTO_TEST_CASE( eval_scale )
 {
-  dist_eval_type dist_eval = make_array_eval(array, array.get_world(),
-      DenseShape(), array.get_pmap(), Permutation(), op);
+  auto dist_eval = make_array_eval(array, array.get_world(),
+      DenseShape(), array.get_pmap(), Permutation(), make_scal(3));
+  using dist_eval_type = decltype(dist_eval);
+
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
 
-  dist_eval_type::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
-  const dist_eval_type::pmap_interface::const_iterator end = dist_eval.pmap()->end();
-
   // Check that each tile has been properly scaled.
-  for(; it != end; ++it) {
+  for(auto index : * dist_eval.pmap()) {
     // Get the original type
-    ArrayN::value_type array_tile = array.find(*it);
+    TArrayI::value_type array_tile = array.find(index);
 
     // Get the array evaluator tile.
     Future<dist_eval_type::value_type> impl_tile;
-    BOOST_REQUIRE_NO_THROW(impl_tile = dist_eval.get(*it));
+    BOOST_REQUIRE_NO_THROW(impl_tile = dist_eval.get(index));
 
     // Force the evaluation of the tile
     dist_eval_type::eval_type eval_tile;
@@ -132,28 +146,23 @@ BOOST_AUTO_TEST_CASE( eval_permute )
     p[i] = (i + p.size() - 1) % p.size();
   const Permutation perm(p.begin(), p.end());
 
-  // Redefine the types for the new operation.
-  typedef math::Noop<ArrayN::value_type, ArrayN::value_type, false> op_type;
-  typedef detail::DistEval<detail::LazyArrayTile<ArrayN::value_type,
-      op_type>, DensePolicy> dist_eval_type;
-
   // Construct and evaluate
-  dist_eval_type dist_eval = make_array_eval(array, array.get_world(),
-      DenseShape(), array.get_pmap(), perm, op_type(perm));
+  auto dist_eval = make_array_eval(array, array.get_world(),
+      DenseShape(), array.get_pmap(), perm, make_array_noop(perm));
+  using dist_eval_type = decltype(dist_eval);
+
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
 
   // Check that each tile has been moved to the correct location and has been
   // properly permuted.
-  dist_eval_type::pmap_interface::const_iterator it = dist_eval.pmap()->begin();
-  const dist_eval_type::pmap_interface::const_iterator end = dist_eval.pmap()->end();
   const Permutation inv_perm = -perm;
-  for(; it != end; ++it) {
+  for(auto index : * dist_eval.pmap()) {
     // Get the original type
-    ArrayN::value_type array_tile = array.find(inv_perm * dist_eval.range().idx(*it));
+    TArrayI::value_type array_tile = array.find(inv_perm * dist_eval.range().idx(index));
 
     // Get the corresponding array evaluator tile.
     Future<dist_eval_type::value_type> tile;
-    BOOST_REQUIRE_NO_THROW(tile = dist_eval.get(*it));
+    BOOST_REQUIRE_NO_THROW(tile = dist_eval.get(index));
 
     // Force the evaluation of the tile
     dist_eval_type::eval_type eval_tile;

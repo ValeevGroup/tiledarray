@@ -26,20 +26,27 @@
 #ifndef TILEDARRAY_ELEMENTAL_H__INCLUDED
 #define TILEDARRAY_ELEMENTAL_H__INCLUDED
 
-#include <TiledArray/conversions/eigen.h>
-#include <elemental.hpp>
+#include <TiledArray/config.h>
+
+#if TILEDARRAY_HAS_ELEMENTAL
+
+#if HAVE_ELEMENTAL_H
+
+# include <TiledArray/conversions/eigen.h>
+# include <elemental.hpp>
 
 namespace TiledArray {
 
-  template<typename T, unsigned int DIM, typename Tile>
-  elem::DistMatrix<T> array_to_elem(const Array<T,DIM, Tile> &array,
+  template<typename Tile>
+  elem::DistMatrix<typename Tile::value_type> array_to_elem(const DistArray<Tile> &array,
                                        const elem::Grid &grid){
     // Check that the Array is 2-d
-    TA_USER_ASSERT(DIM == 2u,
+    TA_USER_ASSERT(array.range().rank() == 2u,
       "TiledArray::array_to_elem(): The array dimension must be 2.");
 
     // Construct the elemental matrix
-    std::vector<std::size_t> sizes = array.trange().elements().extent_data();
+    using T = typename Tile::value_type;
+    auto sizes = array.trange().elements().extent_data();
     elem::DistMatrix<T> mat(sizes[0], sizes[1], grid);
     elem::Zero(mat);
 
@@ -49,12 +56,12 @@ namespace TiledArray {
     interface.Attach(elem::LOCAL_TO_GLOBAL, mat);
 
     // Get array iterators
-    typename Array<T,DIM,Tile>::iterator it = array.begin();
-    typename Array<T,DIM,Tile>::iterator end = array.end();
+    typename DistArray<Tile>::iterator it = array.begin();
+    typename DistArray<Tile>::iterator end = array.end();
 
     for(; it != end; ++it){
       // Get tile matrix location info
-      const typename Array<T,DIM,Tile>::value_type tile = *it;
+      const typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
       const auto* restrict const tile_lower = tile.range().lobound_data();
@@ -84,9 +91,10 @@ namespace TiledArray {
     return mat;
   }
 
-  template<typename T, unsigned int DIM, typename Tile>
-  void elem_to_array(Array<T,DIM,Tile> &array, elem::DistMatrix<T> &mat){
-    TA_USER_ASSERT(DIM==2u, "TiledArray::elem_to_array(): requires the array to have dimension 2");
+  template<typename Tile>
+  void elem_to_array(DistArray<Tile> &array, elem::DistMatrix<typename Tile::value_type> &mat){
+	using T = typename Tile::value_type;
+    TA_USER_ASSERT(array.range().rank()==2u, "TiledArray::elem_to_array(): requires the array to have dimension 2");
     TA_USER_ASSERT((array.trange().elements().extent()[0]==mat.Height()) &&
                    (array.trange().elements().extent()[1] == mat.Width()),
                    "TiledArray::elem_to_array(): requires the shape of the elem matrix and the array to be the same.");
@@ -96,14 +104,14 @@ namespace TiledArray {
     interface.Attach(elem::GLOBAL_TO_LOCAL, mat);
 
     // Get iterators to array
-    typename Array<T,DIM, Tile>::iterator it = array.begin();
-    typename Array<T,DIM, Tile>::iterator end = array.end();
+    typename DistArray<Tile>::iterator it = array.begin();
+    typename DistArray<Tile>::iterator end = array.end();
 
     // Loop over tiles and improperly assign the data to them in column major
     // format.
     for(;it != end; ++it){
       // Get tile matrix location info
-      typename Array<T,DIM,Tile>::value_type tile = *it;
+      typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
       const auto* restrict const tile_lower = tile.range().lobound_data();
@@ -121,7 +129,7 @@ namespace TiledArray {
       std::fill(ElemBlock.Buffer(), ElemBlock.Buffer()+tile_extent_0*tile_extent_1, 0.0);
 
       // Attach elem local matrix to elem global matrix
-      interface.Axpy(1.0, ElemBlock, tile_lower_0, tile_lower_0);
+      interface.Axpy(1.0, ElemBlock, tile_lower_0, tile_lower_1);
     }
     interface.Detach(); // Does communication using elemental
 
@@ -129,7 +137,7 @@ namespace TiledArray {
     it = array.begin();
     for(;it != end; ++it){
       // Get tile and size
-      typename Array<T,DIM,Tile>::value_type tile = *it;
+      typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
       const auto* restrict const tile_extent = tile.range().extent_data();
@@ -147,5 +155,17 @@ namespace TiledArray {
   }
 
 } // namespace TiledArray
+
+#elif HAVE_EL_H // end of HAVE_ELEMENTAL_H
+
+# include <El.hpp>
+
+//# error "TA<->Elemental conversions have not been reimplemented for recent Elemental API; check back soon"
+
+#else
+# error "TILEDARRAY_HAS_ELEMENTAL set but neither HAVE_EL_H nor HAVE_ELEMENTAL_H set: file an issue at " TILEDARRAY_PACKAGE_URL
+#endif
+
+#endif // TILEDARRAY_HAS_ELEMENTAL
 
 #endif // TILEDARRAY_ELEMENTAL_H__INCLUDED

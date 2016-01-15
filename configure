@@ -49,9 +49,10 @@ Configuration:
   --debug                 debug build (CMAKE_BUILD_TYPE=Debug)
   --unittest              build unit tests (TA_BUILD_UNITTEST=TRUE)
   --lapack=               LAPACK libraries (LAPACK_LIBRARIES=)
-  --lapack=               LAPACK libraries (BLAS_LIBRARIES=)
-  --integer8              Assume integer*8 in Fortran (INTEGER4=FALSE), otherwise
-                          integer*4 is the default Fortran integer size.
+  --blas=                 BLAS libraries (BLAS_LIBRARIES=)
+  --integer8              Use integer*8 Fortran integers in BLAS calls. If this option
+                          is not given, integer*4 Fortran integers are used in BLAS
+                          calls. (INTEGER4=FALSE)
   --mpicc=                MPI C compiler to deduce MPI environment,
                           only needed if CXX is not set to an MPI compiler wrapper
                           (MPI_C_COMPILER=)
@@ -60,11 +61,12 @@ Configuration:
                           (MPI_CXX_COMPILER=)
   --disable-mpi           Disable checks and inclusion of MPI (DISABLE_MPI) 
   --boost=                Boost path, only needed if --unittest is set also (BOOST_ROOT=)
-  --madness=              MADNESS path (Madness_ROOT_DIR=)
+  --madness=              MADNESS path (MADNESS_ROOT_DIR=)
   --tbb=                  Threading Building Blocks path (TBB_ROOT_DIR=)
   --tbb-include=          Threading Building Blocks include path (TBB_INCLUDE_DIR=)
   --tbb-library=          Threading Building Blocks library path (TBB_LIBRARY=)
-  --elemental=            Elemental path (Elemental_ROOT_DIR=) 
+  --elemental=            compile Elemental as part of MADNESS (ENABLE_ELEMENTAL=TRUE,
+                          ELEMENTAL_TAG=) 
   --error-checking=       specify the default error reporting style,
                           allowed values: none, throw (default), assert
                           (TA_ERROR=)
@@ -137,11 +139,12 @@ while test $# != 0; do
   --disable-mpi)   args="$args -DENABLE_MPI=OFF" ;;
   --unittest)      args="$args -DTA_BUILD_UNITTEST=TRUE" ;;
   --boost=*)       args="$args -DBOOST_ROOT=`arg \"$1\"`" ;;
-  --madness=*)     args="$args -DMadness_ROOT_DIR=`arg \"$1\"`" ;;
+  --madness=*)     args="$args -DMADNESS_ROOT_DIR=`arg \"$1\"`" ;;
   --tbb=*)         args="$args -DTBB_ROOT_DIR=`arg \"$1\"`" ;;
   --tbb-include=*) args="$args -DTBB_INCLUDE_DIR=`arg \"$1\"`" ;;
   --tbb-library=*) args="$args -DTBB_LIBRARY=`arg \"$1\"`" ;;
-  --elemental=*)   args="$args -DElemental_ROOT_DIR=`arg \"$1\"` -DENABLE_ELEMENTAL=1" ;;
+  --elemental)     args="$args -DENABLE_ELEMENTAL=1" ;;
+  --elemental=*)   args="$args -DENABLE_ELEMENTAL=1 -DELEMENTAL_TAG=`arg \"$1\"`" ;;
   --error-checking=*)   args="$args -DTA_ERROR=`arg \"$1\"`" ;;
   --expert)        args="$args -DTA_EXPERT=TRUE" ;;
   -D*) args="$args $1" ;; # raw  cmake arg
@@ -181,12 +184,22 @@ if [ -n "$CPPFLAGS" ]; then
     args="$args -DCMAKE_CPP_FLAGS=\"$CPPFLAGS\""
 fi
 
+# to add CPPFLAGS properly in cmake would need to parse it into defines and includes, etc.
+# easiest to just merge all into CFLAGS/CXXFLAGS
 if [ -n "$CFLAGS" ]; then
+  if [ -n "$CPPFLAGS" ]; then
+    args="$args -DCMAKE_C_FLAGS=\"$CFLAGS $CPPFLAGS\""
+  else
     args="$args -DCMAKE_C_FLAGS=\"$CFLAGS\""
+  fi
 fi
 
 if [ -n "$CXXFLAGS" ]; then
+  if [ -n "$CPPFLAGS" ]; then
+    args="$args -DCMAKE_CXX_FLAGS=\"$CXXFLAGS $CPPFLAGS\""
+  else
     args="$args -DCMAKE_CXX_FLAGS=\"$CXXFLAGS\""
+  fi
 fi
 
 if [ -n "$FFLAGS" ]; then

@@ -23,7 +23,7 @@
 #include <TiledArray/dist_eval/dist_eval.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/reduce_task.h>
-#include <TiledArray/tile_op/type_traits.h>
+#include <TiledArray/type_traits.h>
 #include <TiledArray/shape.h>
 
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL 1
@@ -207,7 +207,7 @@ namespace TiledArray {
       /// \return \c tile
       template <typename Arg>
       static typename std::enable_if<
-          ! TiledArray::detail::is_lazy_tile<typename Arg::value_type>::value,
+          ! is_lazy_tile<typename Arg::value_type>::value,
           Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) { return arg.get(index); }
 
@@ -222,7 +222,7 @@ namespace TiledArray {
       /// \return A future to the evaluated tile
       template <typename Arg>
       static typename std::enable_if<
-          TiledArray::detail::is_lazy_tile<typename Arg::value_type>::value,
+          is_lazy_tile<typename Arg::value_type>::value,
           Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) {
         return arg.get_world().taskq.add(
@@ -1243,11 +1243,11 @@ namespace TiledArray {
           // Compute the average memory requirement per iteration of this process
           const std::size_t local_memory_per_iter_left =
               (left_.trange().elements().volume() / left_.trange().tiles().volume()) *
-              sizeof(typename scalar_type<typename left_type::eval_type>::type) *
+              sizeof(typename numeric_type<typename left_type::eval_type>::type) *
               proc_grid_.local_rows() * (1.0f - left_sparsity);
           const std::size_t local_memory_per_iter_right =
               (right_.trange().elements().volume() / right_.trange().tiles().volume()) *
-              sizeof(typename scalar_type<typename right_type::eval_type>::type) *
+              sizeof(typename numeric_type<typename right_type::eval_type>::type) *
               proc_grid_.local_cols() * (1.0f - right_sparsity);
 
           // Compute the maximum number of iterations based on available memory

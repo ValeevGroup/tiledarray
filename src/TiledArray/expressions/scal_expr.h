@@ -32,18 +32,27 @@
 namespace TiledArray {
   namespace expressions {
 
-    template <typename Arg>
-    struct ExprTrait<ScalExpr<Arg> > :
-      public UnaryExprTrait<Arg, ScalEngine>
-    { };
+    using TiledArray::detail::mult_t;
+    using TiledArray::detail::numeric_t;
+    using TiledArray::detail::scalar_t;
+
+    template <typename Arg, typename Scalar>
+    struct ExprTrait<ScalExpr<Arg, Scalar> > {
+      typedef Arg argument_type; ///< The argument expression type
+      typedef ScalEngine<typename ExprTrait<Arg>::engine_type, Scalar>
+          engine_type; ///< Expression engine type
+      typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
+          numeric_type; ///< Addition result numeric type
+      typedef Scalar scalar_type; ///< Addition result scalar type
+    };
 
     /// Scaling expression
 
     /// \tparam Arg The argument expression type
-    template <typename Arg>
-    class ScalExpr : public UnaryExpr<ScalExpr<Arg> > {
+    template <typename Arg, typename Scalar>
+    class ScalExpr : public UnaryExpr<ScalExpr<Arg, Scalar> > {
     public:
-      typedef ScalExpr<Arg> ScalExpr_; ///< This class type
+      typedef ScalExpr<Arg, Scalar> ScalExpr_; ///< This class type
       typedef UnaryExpr<ScalExpr_> UnaryExpr_; ///< Unary base class type
       typedef typename ExprTrait<ScalExpr_>::argument_type argument_type; ///< The argument expression type
       typedef typename ExprTrait<ScalExpr_>::engine_type engine_type; ///< Expression engine type
@@ -87,32 +96,44 @@ namespace TiledArray {
     }; // class ScalExpr
 
 
+    using TiledArray::detail::mult_t;
+
     /// Scaled expression factor
 
-    /// \tparam D The expression type
+    /// \tparam Arg The expression type
     /// \tparam Scalar A scalar type
     /// \param expr The expression object
     /// \param factor The scaling factor
     /// \return A scaled expression object
-    template <typename D, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalExpr<D> >::type
-    operator*(const Expr<D>& expr, const Scalar& factor) {
-      return ScalExpr<D>(expr.derived(), factor);
+    template <typename Arg, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalExpr<Arg, Scalar>
+    operator*(const Expr<Arg>& expr, const Scalar& factor) {
+      static_assert(TiledArray::expressions::is_aliased<Arg>::value,
+          "no_alias() expressions are not allowed on the right-hand side of "
+          "the assignment operator.");
+      return ScalExpr<Arg, Scalar>(expr.derived(), factor);
     }
 
     /// Scaled expression factor
 
-    /// \tparam D The expression type
+    /// \tparam Arg The expression type
     /// \tparam Scalar A scalar type
     /// \param factor The scaling factor
     /// \param expr The expression object
     /// \return A scaled expression object
-    template <typename D, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalExpr<D> >::type
-    operator*(const Scalar& factor, const Expr<D>& expr) {
-      return ScalExpr<D>(expr.derived(), factor);
+    template <typename Arg, typename Scalar,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar>::value
+        >::type* = nullptr>
+    inline ScalExpr<Arg, Scalar>
+    operator*(const Scalar& factor, const Expr<Arg>& expr) {
+      static_assert(TiledArray::expressions::is_aliased<Arg>::value,
+          "no_alias() expressions are not allowed on the right-hand side of "
+          "the assignment operator.");
+      return ScalExpr<Arg, Scalar>(expr.derived(), factor);
     }
 
     /// Scaled expression factor
@@ -122,11 +143,13 @@ namespace TiledArray {
     /// \param expr The scaled expression object
     /// \param factor The scaling factor
     /// \return A scaled expression object
-    template <typename Arg, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalExpr<Arg> >::type
-    operator*(const ScalExpr<Arg>& expr, const Scalar& factor) {
-      return ScalExpr<Arg>(expr, factor);
+    template <typename Arg, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar2>::value
+        >::type* = nullptr>
+    inline ScalExpr<Arg, mult_t<Scalar1, Scalar2> >
+    operator*(const ScalExpr<Arg, Scalar1>& expr, const Scalar2& factor) {
+      return ScalExpr<Arg, mult_t<Scalar1, Scalar2> >(expr, factor);
     }
 
     /// Scaled expression factor
@@ -136,33 +159,38 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \param expr The scaled expression object
     /// \return A scaled expression object
-    template <typename Arg, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
-        ScalExpr<Arg> >::type
-    operator*(const Scalar& factor, const ScalExpr<Arg>& expr) {
-      return ScalExpr<Arg>(expr, factor);
+    template <typename Arg, typename Scalar1, typename Scalar2,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Scalar1>::value
+        >::type* = nullptr>
+    inline ScalExpr<Arg, mult_t<Scalar2, Scalar1> >
+    operator*(const Scalar1& factor, const ScalExpr<Arg, Scalar2>& expr) {
+      return ScalExpr<Arg, mult_t<Scalar2, Scalar1> >(expr, factor);
     }
 
     /// Negated expression factor
 
-    /// \tparam D The expression type
+    /// \tparam Arg The expression type
     /// \param expr The expression object
-    /// \return A scaled expression object
-    template <typename D>
-    inline ScalExpr<D> operator-(const Expr<D>& expr) {
-      return ScalExpr<D>(expr.derived(), -1);
-    }
-
-    /// Negated expression factor
-
-    /// \tparam Arg The argument expression type
-    /// \param expr The scaled expression object
     /// \return A scaled expression object
     template <typename Arg>
-    inline ScalExpr<Arg> operator-(const ScalExpr<Arg>& expr) {
-      return ScalExpr<Arg>(expr, -1);
+    inline ScalExpr<Arg, typename ExprTrait<Arg>::scalar_type>
+    operator-(const Expr<Arg>& expr) {
+      static_assert(TiledArray::expressions::is_aliased<Arg>::value,
+          "no_alias() expressions are not allowed on the right-hand side of "
+          "the assignment operator.");
+      return ScalExpr<Arg, typename ExprTrait<Arg>::scalar_type>(expr.derived(), -1);
     }
 
+    /// Negated expression factor
+
+    /// \tparam Arg The argument expression type
+    /// \param expr The scaled expression object
+    /// \return A scaled expression object
+    template <typename Arg, typename Scalar>
+    inline ScalExpr<Arg, Scalar> operator-(const ScalExpr<Arg, Scalar>& expr) {
+      return ScalExpr<Arg, Scalar>(expr, -1);
+    }
 
   }  // namespace expressions
 } // namespace TiledArray
