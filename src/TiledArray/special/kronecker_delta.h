@@ -82,6 +82,7 @@ template<unsigned _N = 1>
       KroneckerDeltaTile
       clone() const {
         KroneckerDeltaTile result(*this);
+        return result;
       }
 
       range_type
@@ -89,22 +90,25 @@ template<unsigned _N = 1>
         return range_;
       }
 
+      bool empty() const { return empty_; }
+
       /// MADNESS compliant serialization
       template<typename Archive>
       void
       serialize(Archive& ar) {
+        std::cout << "KroneckerDelta::serialize not implemented by design!" << std::endl;
         abort(); // should never travel
       }
 
     private:
-      /// @return true if contains any nonzeros
+      /// @return false if contains any nonzeros
       static bool is_empty(const range_type& range) {
-        bool empty = true;
+        bool empty = false;
         TA_ASSERT(range.rank() == 2*N);
         auto lobound = range.lobound_data();
         auto upbound = range.upbound_data();
         for(auto i=0; i!=2*N && not empty; i+=2)
-          empty = empty && upbound[i] > lobound[i+1] && upbound[i+1] > lobound[i]; // assumes extents > 0
+          empty = (upbound[i] > lobound[i+1] && upbound[i+1] > lobound[i]) ? true : false; // assumes extents > 0
         return empty;
       }
 
@@ -205,19 +209,37 @@ template<typename T, unsigned N>
   auto arg1_extents = arg1_range.extent_data();
   auto arg2_data = arg2.data();
   auto arg2_volume = arg2_range.volume();
-  switch (N) {
-    case 1:
-    {
-      auto i0_range = std::min(arg1_extents[0],arg1_extents[1]);
-      for(auto i0=0; i0!=i0_range; ++i0) {
-        auto result_i0i0_ptr = result_data + (i0*arg1_extents[1] + i0) * arg2_volume;
-        std::copy(arg2_data, arg2_data+arg2_volume, result_i0i0_ptr);
-      }
-    }
-    break;
 
-    default:
-      abort(); // not implemented
+  if (not arg1.empty ()) {
+    switch (N) {
+      case 1: {
+        auto i0_range = std::min (arg1_extents[0], arg1_extents[1]);
+        for (auto i0 = 0; i0 != i0_range; ++i0) {
+          auto result_i0i0_ptr = result_data
+              + (i0 * arg1_extents[1] + i0) * arg2_volume;
+          std::copy (arg2_data, arg2_data + arg2_volume, result_i0i0_ptr);
+        }
+      }
+        break;
+      case 2: {
+        auto i0_range = std::min (arg1_extents[0], arg1_extents[1]);
+        auto i1_range = std::min (arg1_extents[2], arg1_extents[3]);
+        auto ndim23 = arg1_extents[2] * arg1_extents[3];
+        for (auto i0 = 0; i0 != i0_range; ++i0) {
+          auto result_i0i0i1i1_ptr_offset = result_data
+              + (i0 * arg1_extents[1] + i0) * ndim23 * arg2_volume;
+          for (auto i1 = 0; i1 != i1_range; ++i1) {
+            auto result_i0i0i1i1_ptr = result_i0i0i1i1_ptr_offset
+                + (i1 * arg1_extents[3] + i1) * arg2_volume;
+            std::copy (arg2_data, arg2_data + arg2_volume, result_i0i0i1i1_ptr);
+          }
+        }
+      }
+        break;
+
+      default:
+        abort (); // not implemented
+    }
   }
 
   return result;

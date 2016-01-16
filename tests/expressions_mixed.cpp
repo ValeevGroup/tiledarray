@@ -48,8 +48,14 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
     u2(*GlobalFixture::world, trange4),
     e2(*GlobalFixture::world, trange2e),
     e4(*GlobalFixture::world, trange4e),
-    delta1(*GlobalFixture::world, trange2),
-    delta1e(*GlobalFixture::world, trange2e)
+    delta1(*GlobalFixture::world, trange2,
+           DenseShape(),
+           std::make_shared<detail::ReplicatedPmap>(*GlobalFixture::world, trange2.tiles().volume())
+          ),
+    delta1e(*GlobalFixture::world, trange2e,
+            DenseShape(),
+            std::make_shared<detail::ReplicatedPmap>(*GlobalFixture::world, trange2e.tiles().volume())
+           )
   {
     random_fill(u);
     random_fill(v);
@@ -142,18 +148,8 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
 
   template <typename Tile, typename Policy>
   static void init_kronecker_delta(DistArray<Tile,Policy>& array) {
-    auto trange_ptr = std::make_shared<TiledArray::TiledRange>(array.trange());
-    auto it = array.begin();
-    const auto end = array.end();
-    const auto idx = it.index();
-    assert(idx.size()==2);
-    for(; it != end; ++it)
-      array.set(it.ordinal(),
-                array.get_world().taskq.add(
-                    [trange_ptr,idx]() -> Tile {
-                  return Tile(trange_ptr->make_tile_range(idx));
-                })
-               );
+    array.init_tiles([=] (const TiledArray::Range& range)
+                     { return Tile(range); });
   }
 
   ~MixedExpressionsFixture() {
@@ -244,7 +240,7 @@ BOOST_AUTO_TEST_CASE( outer_product_factories )
   BOOST_CHECK_NO_THROW(u2("a,b,c,d") += delta1("a,b") * u("c,d"));
 
   // ok
-  BOOST_CHECK_NO_THROW(e4("a,b,c,d") += delta1e("a,b") * e2("c,d"));
+  BOOST_CHECK_NO_THROW(e4("a,c,b,d") += delta1e("a,b") * e2("c,d"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
