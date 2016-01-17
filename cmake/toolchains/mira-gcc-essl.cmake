@@ -13,7 +13,9 @@ set(LAPACK_DIR "/soft/libraries/alcf/current/xl/LAPACK")
 #set(MPI_DIR   "/bgsys/drivers/ppcfloor/comm/gcc")
 #set(PAMI_DIR  "/bgsys/drivers/ppcfloor/comm/sys")
 # V1R2M1
-set(GCC_DIR    "/bgsys/drivers/toolchain/V1R2M2_base_4.7.2/gnu-linux-4.7.2")
+#set(GCC_DIR    "/bgsys/drivers/toolchain/V1R2M2_base_4.7.2/gnu-linux-4.7.2")
+# V1R2M2
+set(GCC_DIR    "/bgsys/drivers/toolchain/V1R2M2_base_4.7.2-efix14/gnu-linux-4.7.2-efix014")
 set(MPI_DIR    "/bgsys/drivers/ppcfloor/comm")
 set(PAMI_DIR   "/bgsys/drivers/ppcfloor/comm")
 set(SPI_DIR    "/bgsys/drivers/ppcfloor/spi")
