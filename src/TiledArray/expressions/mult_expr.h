@@ -43,11 +43,11 @@ namespace TiledArray {
 
   template <>
   struct mult_policy_trait<DensePolicy,SparsePolicy> {
-      typedef DensePolicy type;
+      typedef SparsePolicy type;
   };
   template <>
   struct mult_policy_trait<SparsePolicy,DensePolicy> {
-      typedef DensePolicy type;
+      typedef SparsePolicy type;
   };
 
   namespace expressions {
