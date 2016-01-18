@@ -236,11 +236,14 @@ BOOST_AUTO_TEST_CASE( outer_product_factories )
   BOOST_CHECK_NO_THROW(u2("a,b,c,d") += u("a,b") * v("c,d"));
 #endif
 
-  // ok
-  BOOST_CHECK_NO_THROW(u2("a,b,c,d") += delta1("a,b") * u("c,d"));
+  // these can only work if nproc == 1 since KroneckerDelta does not travel, and SUMMA does not support replicated args
+  if (GlobalFixture::world->nproc() == 1) {
+    // ok
+    BOOST_CHECK_NO_THROW(u2("a,b,c,d") += delta1("a,b") * u("c,d"));
 
-  // ok
-  BOOST_CHECK_NO_THROW(e4("a,c,b,d") += delta1e("a,b") * e2("c,d"));
+    // ok
+    BOOST_CHECK_NO_THROW(e4("a,c,b,d") += delta1e("a,b") * e2("c,d"));
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
