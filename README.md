@@ -7,7 +7,7 @@ TiledArray is a scalable, block-sparse tensor framework for rapid composition of
 
 TiledArray is built on top of MADNESS parallel runtime (MADWorld), part of [MADNESS numerical calculus framework](https://github.com/m-a-d-n-e-s-s/madness).
 
-TiledArray is a work in progress. Its development has been possible thanks to generous support from the U.S. National Science Foundation, the Alfred P. Sloan Foundation, and the Camille and Henry Dreyfus Foundation.
+TiledArray is a work in progress. Its development has been possible thanks to generous support from the U.S. National Science Foundation, the Alfred P. Sloan Foundation, the Camille and Henry Dreyfus Foundation, and the Department of Energy.
 
 ### Design Goals
 * General-purpose arithmetic on dense and block-sparse tensors;
@@ -79,9 +79,13 @@ Parallel performance of TiledArray for multiplication of dense square matrices o
 
 ![MM:TA-vs-CTF-vs-SCALAPACK](https://github.com/ValeevGroup/tiledarray/wiki/images/BGQtime_TA_CTF_ScaLAPACK.png)
 
-Excellent parallel scalability is also possible for much more complicated expressions than just a single GEMM, as demonstrated below for the coupled-cluster singles and doubles (CCSD) wave function solver. Parallel speed-up of 1 iteration of CCSD solver for uracil trimer in 6-31G* AO basis was measured on ("BlueRidge" cluster)[https://secure.hosting.vt.edu/www.arc.vt.edu/computing/blueridge-sandy-bridge/] at Advanced Research Computing of Virginia Tech (wall time on one 16-core node = 1290 sec):
+This figure was obtained with the help of an award from [the Department of Energy INCITE program](http://www.doeleadershipcomputing.org/incite-program/).
+
+Excellent parallel scalability is also possible for much more complicated expressions than just a single GEMM, as demonstrated below for the coupled-cluster singles and doubles (CCSD) wave function solver. Parallel speed-up of 1 iteration of CCSD solver for uracil trimer in 6-31G* AO basis was measured on ("BlueRidge" cluster)[https://secure.hosting.vt.edu/www.arc.vt.edu/computing/blueridge-sandy-bridge/] at Virginia Tech (wall time on one 16-core node = 1290 sec):
 
 ![CCSD:UracilTrimer-speedup](https://github.com/ValeevGroup/tiledarray/wiki/images/uracil-trimer-ccsd-blueridge-speedup.png)
+
+This figure was obtained with the help of an allocation from [Advanced Research Computing](https://secure.hosting.vt.edu/www.arc.vt.edu/) at Virginia Tech.
 
 ### Installing TiledArray
 
@@ -169,4 +173,4 @@ The MADNESS parallel runtime is described in the following publication:
 * Robert J. Harrison, Gregory Beylkin, Florian A. Bischoff, Justus A. Calvin, George I. Fann, Jacob Fosso-Tande, Diego Galindo, Jeff R. Hammond, Rebecca Hartman-Baker, Judith C. Hill, Jun Jia, Jakob S. Kottmann, M-J. Yvonne Ou, Junchen Pei, Laura E. Ratcliff, Matthew G. Reuter, Adam C. Richie-Halford, Nichols A. Romero, Hideo Sekino, William A. Shelton, Bryan E. Sundahl, W. Scott Thornton, Edward F. Valeev, Álvaro Vázquez-Mayagoitia, Nicholas Vence and Yukina Yokoi, "madness: A Multiresolution, Adaptive Numerical Environment for Scientific Simulation.", http://arxiv.org/abs/1507.01888 .
 
 ### Acknowledgements
-Development of TiledArray is made possible by past and present contributions from the National Science Foundation (awards CHE-0847295, CHE-0741927, OCI-1047696, CHE-1362655, ACI-1047696), the Alfred P. Sloan Foundation, and the Camille and Henry Dreyfus Foundation.
+Development of TiledArray is made possible by past and present contributions from the National Science Foundation (awards CHE-0847295, CHE-0741927, OCI-1047696, CHE-1362655, ACI-1047696), the Alfred P. Sloan Foundation, the Camille and Henry Dreyfus Foundation, and the Department of Energy INCITE Program.
