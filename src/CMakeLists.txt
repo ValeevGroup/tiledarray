@@ -165,7 +165,7 @@ target_include_directories(tiledarray INTERFACE
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
 target_compile_options(tiledarray INTERFACE 
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>;${CMAKE_CXX_FLAG_LIST})
-target_link_libraries(tiledarray INTERFACE MADworld "${LAPACK_LIBRARIES}")
+target_link_libraries(tiledarray INTERFACE "${LAPACK_LIBRARIES}" MADworld)
 
 # Add library to the list of installed components
 install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
