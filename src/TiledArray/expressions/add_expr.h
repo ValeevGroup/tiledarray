@@ -31,23 +31,23 @@
 
 namespace TiledArray {
 
+  template <typename LeftPolicy, typename RightPolicy>
+  struct add_policy_trait;
+  template <typename Policy>
+  struct add_policy_trait<Policy,Policy> {
+      typedef Policy type;
+  };
+
+  template <>
+  struct add_policy_trait<DensePolicy,SparsePolicy> {
+      typedef DensePolicy type;
+  };
+  template <>
+  struct add_policy_trait<SparsePolicy,DensePolicy> {
+      typedef DensePolicy type;
+  };
+
   namespace expressions {
-
-    template <typename LeftPolicy, typename RightPolicy>
-    struct add_policy_trait;
-    template <typename Policy>
-    struct add_policy_trait<Policy,Policy> {
-        typedef Policy type;
-    };
-
-    template <>
-    struct add_policy_trait<DensePolicy,SparsePolicy> {
-        typedef DensePolicy type;
-    };
-    template <>
-    struct add_policy_trait<SparsePolicy,DensePolicy> {
-        typedef DensePolicy type;
-    };
 
     template <typename Left, typename Right>
     using ConjAddExpr =
@@ -70,7 +70,7 @@ namespace TiledArray {
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type>
           result_tile_type; ///< Result tile type
-      typedef typename add_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
+      typedef typename TiledArray::add_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::policy_type>::type
           result_policy_type; ///< Result policy type
       typedef AddEngine<typename ExprTrait<Left>::engine_type,
@@ -92,7 +92,7 @@ namespace TiledArray {
           typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type,
           scalar_type> result_tile_type; ///< Result tile type
-      typedef typename add_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
+      typedef typename TiledArray::add_policy_trait<typename EngineTrait<typename ExprTrait<Left>::engine_type>::policy_type,
           typename EngineTrait<typename ExprTrait<Right>::engine_type>::policy_type>::type
           result_policy_type; ///< Result policy type
       typedef ScalAddEngine<typename ExprTrait<Left>::engine_type,
