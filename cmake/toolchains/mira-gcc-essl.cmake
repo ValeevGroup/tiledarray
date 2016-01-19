@@ -24,9 +24,10 @@ set(SPI_DIR    "/bgsys/drivers/ppcfloor/spi")
 set(CMAKE_C_COMPILER   ${GCC_DIR}/bin/powerpc64-bgq-linux-gcc)
 set(CMAKE_CXX_COMPILER ${GCC_DIR}/bin/powerpc64-bgq-linux-g++)
 set(MPI_C_COMPILER mpicc)
+set(MPI_CXX_COMPILER mpicxx)
 
 # Set compile flags
-set(CMAKE_C_FLAGS_INIT             "-std=c99" CACHE STRING "Inital C compile flags")
+set(CMAKE_C_FLAGS_INIT             "-std=c99 -mcpu=a2 -mtune=a2" CACHE STRING "Inital C compile flags")
 set(CMAKE_C_FLAGS_DEBUG            "-g -Wall" CACHE STRING "Inital C debug compile flags")
 set(CMAKE_C_FLAGS_MINSIZEREL       "-Os  -DNDEBUG" CACHE STRING "Inital C minimum size release compile flags")
 set(CMAKE_C_FLAGS_RELEASE          "-O3  -DNDEBUG" CACHE STRING "Inital C release compile flags")
