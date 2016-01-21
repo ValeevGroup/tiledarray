@@ -219,7 +219,7 @@ namespace TiledArray {
   make_array(World& world, const detail::trange_t<Array>& trange, Op&& op) {
     return make_array(world, trange,
         detail::policy_t<Array>::default_pmap(world,
-        trange.tiling().volume()), op);
+        trange.tiles().volume()), op);
   }
 
 } // namespace TiledArray
