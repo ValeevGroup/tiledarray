@@ -160,7 +160,7 @@ target_include_directories(tiledarray INTERFACE
 target_compile_definitions(tiledarray INTERFACE 
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
 target_include_directories(tiledarray INTERFACE 
-   $<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>;${EIGEN_INCLUDE_DIR})
+   "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN_INCLUDE_DIR}")
 # append current CMAKE_CXX_FLAGS
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
 target_compile_options(tiledarray INTERFACE 
