@@ -107,6 +107,32 @@ namespace TiledArray {
         BinaryExpr_(left, right)
       { }
 
+
+      /// Dot product
+
+      /// \tparam Numeric A numeric type
+      /// \return The dot product of this expression.
+      template <typename Numeric,
+          typename std::enable_if<
+              TiledArray::detail::is_numeric<Numeric>::value
+          >::type* = nullptr>
+      operator Numeric() const {
+        auto result = BinaryExpr_::left().dot(BinaryExpr_::right());
+        return result.get();
+      }
+
+      /// Dot product
+
+      /// \tparam Numeric A numeric type
+      /// \return The dot product of this expression.
+      template <typename Numeric,
+          typename std::enable_if<
+              TiledArray::detail::is_numeric<Numeric>::value
+          >::type* = nullptr>
+      operator Future<Numeric>() const {
+        return BinaryExpr_::left().dot(BinaryExpr_::right());
+      }
+
     }; // class MultExpr
 
 
@@ -430,6 +456,62 @@ namespace TiledArray {
       return ScalConjMultExpr<Left, Right, Scalar>(expr.left(), expr.right(),
           conj_op(-expr.factor().factor()));
     }
+
+
+    /// Dot product add-to operator
+
+    /// \tparam Numeric The numeric result type
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \param result The result that the dot product will be added to.
+    /// \param expr The multiply expression object
+    /// \return A reference to result
+    template <typename Numeric, typename Left, typename Right,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Numeric>::value
+        >::type* = nullptr>
+    inline Numeric&
+    operator +=(Numeric& result, const MultExpr<Left, Right>& expr) {
+      result += expr.left().dot(expr.right()).get();
+      return result;
+    }
+
+    /// Dot product subtract-to operator
+
+    /// \tparam Numeric The numeric result type
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \param result The result that the dot product will be subtracted from.
+    /// \param expr The multiply expression object
+    /// \return A reference to result
+    template <typename Numeric, typename Left, typename Right,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Numeric>::value
+        >::type* = nullptr>
+    inline Numeric&
+    operator -=(Numeric& result, const MultExpr<Left, Right>& expr) {
+      result -= expr.left().dot(expr.right()).get();
+      return result;
+    }
+
+    /// Dot product multiply-to operator
+
+    /// \tparam Numeric The numeric result type
+    /// \tparam Left The left-hand expression type
+    /// \tparam Right The right-hand expression type
+    /// \param result The result that the dot product will be multiplied by.
+    /// \param expr The multiply expression object
+    /// \return A reference to result
+    template <typename Numeric, typename Left, typename Right,
+        typename std::enable_if<
+            TiledArray::detail::is_numeric<Numeric>::value
+        >::type* = nullptr>
+    inline Numeric&
+    operator *=(Numeric& result, const MultExpr<Left, Right>& expr) {
+      result *= expr.left().dot(expr.right()).get();
+      return result;
+    }
+
 
   }  // namespace expressions
 } // namespace TiledArray
