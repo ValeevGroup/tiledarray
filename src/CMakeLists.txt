@@ -139,33 +139,25 @@ TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
-# Install header files
-install(
-  DIRECTORY
-      ${PROJECT_SOURCE_DIR}/src/
-      ${PROJECT_BINARY_DIR}/src/
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-  FILES_MATCHING PATTERN "*.h"
-  PATTERN "CMakeFiles" EXCLUDE
-)
-
-# Create the TiledArray header-only library 
-add_library(tiledarray INTERFACE)
+# Create the TiledArray header-only library
+add_library(tiledarray tiledarray.cpp ${tiledarray_header_files})
+set_target_properties(tiledarray PROPERTIES PUBLIC_HEADER "${tiledarray_header_files}")
 target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
 )
   
-target_compile_definitions(tiledarray INTERFACE 
+target_compile_definitions(tiledarray PUBLIC 
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
-target_include_directories(tiledarray INTERFACE 
+target_include_directories(tiledarray PUBLIC 
    "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN_INCLUDE_DIR}")
+add_dependencies(tiledarray build-madness)
 # append current CMAKE_CXX_FLAGS
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
-target_compile_options(tiledarray INTERFACE 
+target_compile_options(tiledarray PUBLIC 
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>;${CMAKE_CXX_FLAG_LIST})
-target_link_libraries(tiledarray INTERFACE "${LAPACK_LIBRARIES}" MADworld)
+target_link_libraries(tiledarray PUBLIC "${LAPACK_LIBRARIES}" MADworld)
 
 # Add library to the list of installed components
 install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
