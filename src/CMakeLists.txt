@@ -23,9 +23,8 @@
 #
 
 # library headers
-set(tiledarray_header_files 
-tiledarray.h
-tiledarray_fwd.h
+set(tiledarray_header_files
+TiledArray/config.h
 TiledArray/array.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
@@ -164,3 +163,6 @@ install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
     PUBLIC_HEADER DESTINATION "${TILEDARRAY_INSTALL_INCLUDEDIR}/TiledArray"
     LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
+install(FILES tiledarray.h tiledarray_fwd.h 
+    DESTINATION "${TILEDARRAY_INSTALL_INCLUDEDIR}"
+    COMPONENT tiledarray)
