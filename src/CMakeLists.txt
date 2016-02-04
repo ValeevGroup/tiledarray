@@ -24,6 +24,8 @@
 
 # library headers
 set(tiledarray_header_files
+tiledarray.h
+tiledarray_fwd.h
 TiledArray/config.h
 TiledArray/array.h
 TiledArray/array_impl.h
@@ -140,7 +142,6 @@ TiledArray/tile_op/unary_wrapper.h)
 
 # Create the TiledArray header-only library
 add_library(tiledarray tiledarray.cpp ${tiledarray_header_files})
-set_target_properties(tiledarray PROPERTIES PUBLIC_HEADER "${tiledarray_header_files}")
 target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
@@ -160,9 +161,16 @@ target_link_libraries(tiledarray PUBLIC "${LAPACK_LIBRARIES}" MADworld)
 
 # Add library to the list of installed components
 install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
-    PUBLIC_HEADER DESTINATION "${TILEDARRAY_INSTALL_INCLUDEDIR}/TiledArray"
     LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
-install(FILES tiledarray.h tiledarray_fwd.h 
-    DESTINATION "${TILEDARRAY_INSTALL_INCLUDEDIR}"
-    COMPONENT tiledarray)
+# Install header files
+install(
+  DIRECTORY
+      ${PROJECT_SOURCE_DIR}/src/
+      ${PROJECT_BINARY_DIR}/src/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  FILES_MATCHING PATTERN "*.h"
+  PATTERN "CMakeFiles" EXCLUDE
+)
+
+    
