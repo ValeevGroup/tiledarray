@@ -987,6 +987,12 @@ namespace TiledArray {
   template <typename T>
   typename SparseShape<T>::value_type SparseShape<T>::threshold_ = std::numeric_limits<T>::epsilon();
 
+#ifndef TILEDARRAY_HEADER_ONLY
+
+  extern template class SparseShape<float>;
+
+#endif // TILEDARRAY_HEADER_ONLY
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_SPASE_SHAPE_H__INCLUDED

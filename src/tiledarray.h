@@ -51,52 +51,10 @@
 
 // Linear algebra
 #include <TiledArray/algebra/conjgrad.h>
-#include "TiledArray/array.h"
+#include "TiledArray/dist_array.h"
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>
 #endif
-
-namespace TiledArray {
-
-  extern template
-  class Tensor<double, Eigen::aligned_allocator<double> >;
-  extern template
-  class Tensor<float, Eigen::aligned_allocator<float> >;
-  extern template
-  class Tensor<int, Eigen::aligned_allocator<int> >;
-  extern template
-  class Tensor<long, Eigen::aligned_allocator<long> >;
-//  extern template
-//  class Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >;
-//  extern template
-//  class Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >;
-
-  extern template
-  class DistArray<Tensor<double, Eigen::aligned_allocator<double> >, DensePolicy>;
-  extern template
-  class DistArray<Tensor<float, Eigen::aligned_allocator<float> >, DensePolicy>;
-  extern template
-  class DistArray<Tensor<int, Eigen::aligned_allocator<int> >, DensePolicy>;
-  extern template
-  class DistArray<Tensor<long, Eigen::aligned_allocator<long> >, DensePolicy>;
-//  extern template
-//  class DistArray<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>;
-//  extern template
-//  class DistArray<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>;
-  extern template
-  class DistArray<Tensor<double, Eigen::aligned_allocator<double> >, SparsePolicy>;
-  extern template
-  class DistArray<Tensor<float, Eigen::aligned_allocator<float> >, SparsePolicy>;
-  extern template
-  class DistArray<Tensor<int, Eigen::aligned_allocator<int> >, SparsePolicy>;
-  extern template
-  class DistArray<Tensor<long, Eigen::aligned_allocator<long> >, SparsePolicy>;
-//  extern template
-//  class DistArray<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>;
-//  extern template
-//  class DistArray<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
-
-} // namespace TiledArray
 
 #endif // TILEDARRAY_H__INCLUDED

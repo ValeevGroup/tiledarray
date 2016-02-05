@@ -27,12 +27,12 @@
 #define TILEDARRAY_EIGEN_H__INCLUDED
 
 #include <tiledarray_fwd.h>
-#include <TiledArray/array.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/error.h>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/madness.h>
 #include <TiledArray/pmap/replicated_pmap.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 

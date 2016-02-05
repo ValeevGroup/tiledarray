@@ -20,8 +20,10 @@
 #ifndef TILEDARRAY_TENSOR_IMPL_H__INCLUDED
 #define TILEDARRAY_TENSOR_IMPL_H__INCLUDED
 
-#include <TiledArray/error.h>
-#include <TiledArray/madness.h>
+#include "error.h"
+#include "madness.h"
+#include "policies/dense_policy.h"
+#include "policies/sparse_policy.h"
 
 namespace TiledArray {
   namespace detail {
@@ -163,6 +165,16 @@ namespace TiledArray {
       World& get_world() const { return world_; }
 
     }; // class TensorImpl
+
+
+#ifndef TILEDARRAY_HEADER_ONLY
+
+    extern template
+    class TensorImpl<DensePolicy>;
+    extern template
+    class TensorImpl<SparsePolicy>;
+
+#endif // TILEDARRAY_HEADER_ONLY
 
   }  // namespace detail
 }  // namespace TiledArray

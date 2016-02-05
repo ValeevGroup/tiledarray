@@ -15,15 +15,16 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Justus Calvin
+ *  justus
  *  Department of Chemistry, Virginia Tech
  *
- *  tiledarray.cpp
- *  Jan 6, 2016
+ *  tensor.cpp
+ *  Feb 5, 2016
  *
  */
 
-#include <tiledarray.h>
+#include "tensor.h"
+#include "tensor_interface.h"
 
 namespace TiledArray {
 
@@ -33,18 +34,5 @@ namespace TiledArray {
   template class Tensor<long, Eigen::aligned_allocator<long> >;
 //  template class Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >;
 //  template class Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >;
-
-  template class DistArray<Tensor<double, Eigen::aligned_allocator<double> >, DensePolicy>;
-  template class DistArray<Tensor<float, Eigen::aligned_allocator<float> >, DensePolicy>;
-  template class DistArray<Tensor<int, Eigen::aligned_allocator<int> >, DensePolicy>;
-  template class DistArray<Tensor<long, Eigen::aligned_allocator<long> >, DensePolicy>;
-//  template class DistArray<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>;
-//  template class DistArray<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > > >, DensePolicy>;
-  template class DistArray<Tensor<double, Eigen::aligned_allocator<double> >, SparsePolicy>;
-  template class DistArray<Tensor<float, Eigen::aligned_allocator<float> >, SparsePolicy>;
-  template class DistArray<Tensor<int, Eigen::aligned_allocator<int> >, SparsePolicy>;
-  template class DistArray<Tensor<long, Eigen::aligned_allocator<long> >, SparsePolicy>;
-//  template class DistArray<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>;
-//  template class DistArray<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > > >, SparsePolicy>;
 
 } // namespace TiledArray

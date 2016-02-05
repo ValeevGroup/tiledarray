@@ -99,14 +99,14 @@ namespace TiledArray {
       template <typename, typename>
       friend class ArrayIiterator;
 
-      Impl* tensor_; ///< The tensor that owns the referenced tile
+      const Impl* tensor_; ///< The tensor that owns the referenced tile
       typename Impl::size_type index_; ///< The index of the tensor
 
       // Not allowed
       TileConstReference<Impl>& operator=(const TileConstReference<Impl>&);
     public:
 
-      TileConstReference(Impl* tensor, const typename Impl::size_type index) :
+      TileConstReference(const Impl* tensor, const typename Impl::size_type index) :
         tensor_(tensor), index_(index)
       { }
 
@@ -225,8 +225,12 @@ namespace TiledArray {
 
       /// \tparam R Iterator reference type
       /// \param other The transform iterator to copy
-      template <typename R>
-      ArrayIiterator(const ArrayIiterator<Impl, R>& other) :
+      template <typename I, typename R,
+          typename std::enable_if<
+              !((! std::is_const<Impl>::value) &&
+              std::is_const<I>::value)
+          >::type* = nullptr>
+      ArrayIiterator(const ArrayIiterator<I, R>& other) :
         array_(other.array_), it_(other.it_)
       { }
 
@@ -277,8 +281,8 @@ namespace TiledArray {
       /// \param other The iterator to compare to this iterator.
       /// \return \c true when the iterators are equal to each other, otherwise
       /// \c false.
-      template <typename R>
-      bool operator==(const ArrayIiterator<Impl, R>& other) const {
+      template <typename I, typename R>
+      bool operator==(const ArrayIiterator<I, R>& other) const {
         return (array_ == other.array_) && (it_ == other.it_);
       }
 
@@ -288,8 +292,8 @@ namespace TiledArray {
       /// \param other The iterator to compare to this iterator.
       /// \return \c true when the iterators are not equal to each other,
       /// otherwise \c false.
-      template <typename R>
-      bool operator!=(const ArrayIiterator<Impl, R>& other) const {
+      template <typename I, typename R>
+      bool operator!=(const ArrayIiterator<I, R>& other) const {
         return (array_ != other.array_) || (it_ != other.it_);
       }
 
@@ -364,7 +368,7 @@ namespace TiledArray {
       typedef TileReference<ArrayImpl_> reference; ///< Tile reference type
       typedef TileConstReference<ArrayImpl_> const_reference; ///< Tile constant reference type
       typedef ArrayIiterator<ArrayImpl_, reference> iterator; ///< Iterator type
-      typedef ArrayIiterator<ArrayImpl_, const_reference> const_iterator; ///< Constant iterator type
+      typedef ArrayIiterator<const ArrayImpl_, const_reference> const_iterator; ///< Constant iterator type
 
     private:
 
@@ -432,11 +436,19 @@ namespace TiledArray {
         return iterator(this, it);
       }
 
-      /// Array end iterator
+      /// Array begin iterator
 
-      /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const {
-        return iterator(this, TensorImpl_::pmap()->end());
+      /// \return A const iterator to the first element of the array.
+      const_iterator cbegin() const {
+        // Get the pmap iterator
+        typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
+
+        // Find the fist non-zero iterator
+        const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
+        while((it != end) && TensorImpl_::is_zero(*it)) ++it;
+
+        // Construct and return the iterator
+        return const_iterator(this, it);
       }
 
       /// Array end iterator
@@ -446,12 +458,50 @@ namespace TiledArray {
         return iterator(this, TensorImpl_::pmap()->end());
       }
 
+      /// Array end iterator
+
+      /// \return A const iterator to one past the last element of the array.
+      const_iterator cend() const {
+        return const_iterator(this, TensorImpl_::pmap()->end());
+      }
+
       /// Unique object id accessor
 
       /// \return A const reference to this object unique id
       const madness::uniqueidT& id() const { return data_.id(); }
 
-    }; // class TensorImpl
+    }; // class ArrayImpl
+
+
+#ifndef TILEDARRAY_HEADER_ONLY
+
+    extern template
+    class ArrayImpl<Tensor<double, Eigen::aligned_allocator<double> >, DensePolicy>;
+    extern template
+    class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float> >, DensePolicy>;
+    extern template
+    class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int> >, DensePolicy>;
+    extern template
+    class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long> >, DensePolicy>;
+//    extern template
+//    class ArrayImpl<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>;
+//    extern template
+//    class ArrayImpl<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>;
+
+    extern template
+    class ArrayImpl<Tensor<double, Eigen::aligned_allocator<double> >, SparsePolicy>;
+    extern template
+    class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float> >, SparsePolicy>;
+    extern template
+    class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int> >, SparsePolicy>;
+    extern template
+    class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long> >, SparsePolicy>;
+//    extern template
+//    class ArrayImpl<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>;
+//    extern template
+//    class ArrayImpl<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
+
+#endif // TILEDARRAY_HEADER_ONLY
 
   }  // namespace detail
 }  // namespace TiledArray

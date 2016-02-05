@@ -23,15 +23,15 @@
 #
 
 # library headers
-set(tiledarray_header_files
+set(TILEDARRAY_HEADER_FILES
 tiledarray.h
 tiledarray_fwd.h
 TiledArray/config.h
-TiledArray/array.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
 TiledArray/dense_shape.h
+TiledArray/dist_array.h
 TiledArray/distributed_storage.h
 TiledArray/elemental.h
 TiledArray/error.h
@@ -140,8 +140,15 @@ TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
+set(TILEDARRAY_SOURCE_FILES
+TiledArray/tensor/tensor.cpp
+TiledArray/sparse_shape.cpp
+TiledArray/tensor_impl.cpp
+TiledArray/array_impl.cpp
+TiledArray/dist_array.cpp)
+
 # Create the TiledArray header-only library
-add_library(tiledarray tiledarray.cpp ${tiledarray_header_files})
+add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
 target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>

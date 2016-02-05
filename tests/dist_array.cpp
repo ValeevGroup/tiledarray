@@ -21,7 +21,7 @@
 
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "../src/TiledArray/array.h"
+#include "../src/TiledArray/dist_array.h"
 #include <random>
 #include <chrono>
 

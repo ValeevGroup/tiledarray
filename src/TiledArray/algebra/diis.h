@@ -29,7 +29,7 @@
 #include <deque>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/algebra/utils.h>
-#include <TiledArray/array.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 

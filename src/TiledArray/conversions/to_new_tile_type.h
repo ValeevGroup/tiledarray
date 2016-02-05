@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_CONVERSIONS_TO_NEW_TILE_TYPE_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_TO_NEW_TILE_TYPE_H__INCLUDED
 
-#include <TiledArray/array.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 

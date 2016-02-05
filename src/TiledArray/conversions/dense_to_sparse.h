@@ -2,7 +2,7 @@
 #ifndef TILEDARRAY_DENSETOSPARSE_H__INCLUDED
 #define TILEDARRAY_DENSETOSPARSE_H__INCLUDED
 
-#include <TiledArray/array.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 
