@@ -56,8 +56,8 @@ namespace TiledArray {
     interface.Attach(elem::LOCAL_TO_GLOBAL, mat);
 
     // Get array iterators
-    typename DistArray<Tile>::iterator it = array.begin();
-    typename DistArray<Tile>::iterator end = array.end();
+    typename DistArray<Tile>::const_iterator it = array.begin();
+    typename DistArray<Tile>::const_iterator end = array.end();
 
     for(; it != end; ++it){
       // Get tile matrix location info
