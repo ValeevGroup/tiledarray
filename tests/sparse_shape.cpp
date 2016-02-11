@@ -438,6 +438,41 @@ BOOST_AUTO_TEST_CASE( block_scale_perm )
     }
   }
 }
+
+BOOST_AUTO_TEST_CASE( mask )
+{
+  SparseShape<float> result;
+  BOOST_REQUIRE_NO_THROW(result = left.mask(right));
+
+  size_type zero_tile_count = 0ul;
+  for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
+      if(left.is_zero(i)){
+          ++zero_tile_count;
+      }
+  }
+
+  // Check that all the tiles have been normalized correctly
+  for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
+    auto threshold = SparseShape<float>::threshold();
+    float expected = left[i];
+    if(left[i] >= threshold && right[i] < threshold){
+      expected = 0.f;
+      ++zero_tile_count;
+    }
+
+    BOOST_CHECK_CLOSE(result[i], expected, tolerance);
+
+    // Check zero threshold
+    if(result[i] < SparseShape<float>::threshold()) {
+      BOOST_CHECK(result.is_zero(i));
+    } else {
+      BOOST_CHECK(! result.is_zero(i));
+    }
+  }
+
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
+}
+
 BOOST_AUTO_TEST_CASE( scale )
 {
   SparseShape<float> result;

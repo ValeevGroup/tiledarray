@@ -90,6 +90,10 @@ namespace TiledArray {
 
     /// \return Always \c false
     static constexpr bool empty() { return false; }
+   
+    DenseShape mask(const DenseShape &) const {
+      return DenseShape{};
+    };
 
     template <typename Index>
     static DenseShape update_block(const Index&, const Index&, const DenseShape&)
