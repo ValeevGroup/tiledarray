@@ -43,6 +43,10 @@ namespace TiledArray {
     template <typename, bool> class BlkTsrExpr;
     template <typename> struct is_aliased;
 
+    template <typename Policy>
+    struct StructOverride {
+       typename Policy::shape_type shape;
+    };
 
     /// Base class for expression evaluation
 
@@ -55,6 +59,29 @@ namespace TiledArray {
       typedef Derived derived_type; ///< The derived object type
       typedef typename ExprTrait<Derived>::engine_type
           engine_type; ///< Expression engine type
+      typedef StructOverride<typename engine_type::policy> 
+          override_type; ///< Expression engine type
+
+
+
+    private:
+
+
+      template <typename D>
+      friend class ExprEngine;
+
+      std::shared_ptr<override_type> struct_override_ptr_;
+
+    public:
+      Expr<Derived> &set_shape(typename engine_type::shape_type const &shape) {
+          if(struct_override_ptr_ != nullptr){
+            struct_override_ptr_->shape = shape;
+          } else {
+              struct_override_ptr_ = std::make_shared<override_type>();
+              struct_override_ptr_->shape = shape;
+          }
+          return derived();
+      }
 
     private:
 

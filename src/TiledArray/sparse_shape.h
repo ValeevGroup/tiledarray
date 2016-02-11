@@ -327,6 +327,35 @@ namespace TiledArray {
     /// \return \c true when this shape has been initialized.
     bool empty() const { return tile_norms_.empty(); }
 
+    /// Compute union of two shapes
+
+    /// \param mask The input shape, hard zeros are used to mask the output.
+    /// \return A shape that is masked by the mask.
+    SparseShape_ mask(const SparseShape_ &mask_shape) const {
+      TA_ASSERT(!tile_norms_.empty());
+      TA_ASSERT(!mask_shape.empty());
+      TA_ASSERT(tile_norms_.range() == mask_shape.tile_norms_.range());
+
+      const value_type threshold = threshold_;
+      madness::AtomicInt zero_tile_count;
+      zero_tile_count = zero_tile_count_;
+      auto op = [threshold, &zero_tile_count] (value_type left,
+          const value_type right)
+      {
+        if(left >= threshold && right < threshold) {
+          left = value_type(0);
+          ++zero_tile_count;
+        }
+
+        return left;
+      };
+
+      Tensor<value_type> result_tile_norms =
+          tile_norms_.binary(mask_shape.tile_norms_, op);
+
+      return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
+    }
+
     /// Update sub-block of shape
 
     /// Update a sub-block shape information with another shape object.
