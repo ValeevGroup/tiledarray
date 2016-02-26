@@ -1,5 +1,5 @@
 #
-# Generic Toolchain for Intel MPI + MKL + TBB
+# Generic Toolchain for MVAPICH + MKL 
 #
 # REQUIREMENTS:
 # - in PATH:
@@ -34,7 +34,6 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -march=native -DNDEBUG" CACHE STRING "In
 set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -march=native -DNDEBUG" CACHE STRING "Inital C++ release compile flags")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ release with debug info compile flags")
 
-set(BLAS_LIBRARIES "${MKL_ROOT_DIR}/lib/intel64/libmkl_intel_lp64.a" "${MKL_ROOT_DIR}/lib/intel64/libmkl_core.a" "${MKL_ROOT_DIR}/lib/intel64/libmkl_sequential.a" "-lm" "-ldl" CACHE STRING "BLAS linker flags")
-#set(LAPACK_LIBRARIES "${BLAS_LIBRARIES};-ldl" CACHE STRING "LAPACK linker flags") 
+set(LAPACK_LIBRARIES "-Wl,--start-group" "${MKL_ROOT_DIR}/lib/intel64/libmkl_intel_lp64.a" "${MKL_ROOT_DIR}/lib/intel64/libmkl_core.a" "${MKL_ROOT_DIR}/lib/intel64/libmkl_sequential.a" "-lm" "-ldl" "-Wl,--end-group" CACHE STRING "BLAS linker flags")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
