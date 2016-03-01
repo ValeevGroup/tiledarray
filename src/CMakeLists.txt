@@ -159,7 +159,9 @@ target_compile_definitions(tiledarray PUBLIC
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
 target_include_directories(tiledarray PUBLIC 
    "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN_INCLUDE_DIR}")
-add_dependencies(tiledarray build-madness)
+if(TARGET build-madness)
+  add_dependencies(tiledarray build-madness)
+endif()
 # append current CMAKE_CXX_FLAGS
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
 target_compile_options(tiledarray PUBLIC 
