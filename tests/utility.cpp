@@ -23,7 +23,7 @@
  *
  */
 
-#include "TiledArray/utility.h"
+#include "TiledArray/utility/array.h"
 #include "unit_test_config.h"
 #include "TiledArray/size_array.h"
 

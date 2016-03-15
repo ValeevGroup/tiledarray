@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_DENSE_SHAPE_H__INCLUDED
-#define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
+#ifndef TILEDARRAY_SHAPE_DENSE_SHAPE_H__INCLUDED
+#define TILEDARRAY_SHAPE_DENSE_SHAPE_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
 
@@ -65,14 +65,14 @@ namespace TiledArray {
     /// Validate shape range
 
     /// \return \c true when range matches the range of this shape
-    static constexpr bool validate(const Range&) { return true; }
+    constexpr bool validate(const Range&) const { return true; }
 
-    /// Check that a tile is zero
+    /// Check that a tile is numerically zero
 
     /// \tparam Index The type of the index
     /// \return false
     template <typename Index>
-    static constexpr bool is_zero(const Index&) { return false; }
+    constexpr bool is_zero(const Index&) const { return false; }
 
     /// Check density
 
@@ -177,4 +177,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif // TILEDARRAY_DENSE_SHAPE_H__INCLUDED
+#endif // TILEDARRAY_SHAPE_DENSE_SHAPE_H__INCLUDED

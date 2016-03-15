@@ -22,6 +22,7 @@
 
 #include <TiledArray/config.h>
 #include <iterator>
+#include <limits>
 #include <madness/world/type_traits.h>
 #include <complex>
 
@@ -113,7 +114,6 @@ namespace TiledArray {
   struct is_consumable_tile<ZeroTensor> : public std::false_type { };
 
 
-
   /** @}*/
 
 
@@ -126,13 +126,10 @@ namespace TiledArray {
     struct is_complex<std::complex<T> > : public std::true_type { };
 
     template <typename T>
-    struct is_numeric : public std::is_arithmetic<T> { };
+    struct is_numeric : public std::integral_constant<bool, std::numeric_limits<T>::is_specialized> { };
 
     template <typename T>
     struct is_numeric<std::complex<T> > : public is_numeric<T> { };
-
-    template <>
-    struct is_numeric<bool> : public std::false_type { };
 
     template <typename T>
     struct is_scalar : public is_numeric<T> { };

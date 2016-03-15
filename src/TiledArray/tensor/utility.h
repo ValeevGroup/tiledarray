@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TENSOR_UTILITY_H__INCLUDED
 #define TILEDARRAY_TENSOR_UTILITY_H__INCLUDED
 
-#include <TiledArray/utility.h>
+#include <TiledArray/utility/array.h>
 #include <TiledArray/range.h>
 #include <TiledArray/block_range.h>
 #include <TiledArray/size_array.h>

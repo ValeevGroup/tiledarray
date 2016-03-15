@@ -23,19 +23,19 @@
  *
  */
 
-#include "TiledArray/shape/sparse_shape.h"
+#include "TiledArray/shape/generic_shape.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "sparse_shape_fixture.h"
+#include "generic_shape_fixture.h"
 
 using namespace TiledArray;
 
-BOOST_FIXTURE_TEST_SUITE( sparse_shape_suite, SparseShapeFixture )
+BOOST_FIXTURE_TEST_SUITE( generic_shape_suite, GenericShapeFixture )
 
 BOOST_AUTO_TEST_CASE( default_constructor )
 {
-  BOOST_CHECK_NO_THROW(SparseShape<float> x);
-  SparseShape<float> x, y;
+  BOOST_CHECK_NO_THROW(GenericShape<> x);
+  GenericShape<> x, y;
   Permutation perm;
   math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
       2u, 2u, 2u);
@@ -44,6 +44,7 @@ BOOST_AUTO_TEST_CASE( default_constructor )
   BOOST_CHECK(! x.is_dense());
   BOOST_CHECK(! x.validate(tr.tiles()));
 
+#if 0
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(x[0], Exception);
 
@@ -74,8 +75,10 @@ BOOST_AUTO_TEST_CASE( default_constructor )
   BOOST_CHECK_THROW(x.gemm(y, 2.0, gemm_helper), Exception);
   BOOST_CHECK_THROW(x.gemm(y, 2.0, gemm_helper, perm), Exception);
 #endif // TA_EXCEPTION_ERROR
+#endif
 }
 
+#if 0
 BOOST_AUTO_TEST_CASE( non_comm_constructor )
 {
   // Construct test tile norms
@@ -438,41 +441,6 @@ BOOST_AUTO_TEST_CASE( block_scale_perm )
     }
   }
 }
-
-BOOST_AUTO_TEST_CASE( mask )
-{
-  SparseShape<float> result;
-  BOOST_REQUIRE_NO_THROW(result = left.mask(right));
-
-  size_type zero_tile_count = 0ul;
-  for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
-      if(left.is_zero(i)){
-          ++zero_tile_count;
-      }
-  }
-
-  // Check that all the tiles have been normalized correctly
-  for(Tensor<float>::size_type i = 0ul; i < tr.tiles().volume(); ++i) {
-    auto threshold = SparseShape<float>::threshold();
-    float expected = left[i];
-    if(left[i] >= threshold && right[i] < threshold){
-      expected = 0.f;
-      ++zero_tile_count;
-    }
-
-    BOOST_CHECK_CLOSE(result[i], expected, tolerance);
-
-    // Check zero threshold
-    if(result[i] < SparseShape<float>::threshold()) {
-      BOOST_CHECK(result.is_zero(i));
-    } else {
-      BOOST_CHECK(! result.is_zero(i));
-    }
-  }
-
-  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
-}
-
 BOOST_AUTO_TEST_CASE( scale )
 {
   SparseShape<float> result;
@@ -1081,7 +1049,7 @@ BOOST_AUTO_TEST_CASE( gemm )
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(result_norms.size()), tolerance);
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
 
 BOOST_AUTO_TEST_CASE( gemm_perm )
@@ -1140,7 +1108,8 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
     }
   }
 
-  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(result_norms.size()), tolerance);
+  BOOST_CHECK_CLOSE(result.sparsity(), float(zero_tile_count) / float(tr.tiles().volume()), tolerance);
 }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

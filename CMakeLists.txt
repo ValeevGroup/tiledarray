@@ -192,12 +192,6 @@ if (NOT TILEDARRAY_HAS_CXX11)
   message(FATAL_ERROR "${CMAKE_CXX_COMPILER} does not support C++11.")
 endif()
 
-# Check type support
-include(CheckTypeSize)
-check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
-check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
-
-
 ##########################
 # Include source dirctories
 ##########################

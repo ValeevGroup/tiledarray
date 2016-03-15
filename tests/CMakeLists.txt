@@ -58,6 +58,8 @@ set(ta_test_src_files  ta_test.cpp
     replicated_pmap.cpp
     dense_shape.cpp
     sparse_shape.cpp
+    sparse_shape_expt.cpp
+#    generic_shape.cpp
     distributed_storage.cpp
     tensor_impl.cpp
     array_impl.cpp
@@ -83,7 +85,8 @@ set(ta_test_src_files  ta_test.cpp
     reduce_task.cpp
     proc_grid.cpp
     dist_eval_contraction_eval.cpp
-    expressions.cpp)
+    expressions.cpp
+    symm_dense_shape.cpp)
         
 if(ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)

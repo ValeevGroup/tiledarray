@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2013  Virginia Tech
+ *  Copyright (C) 2015  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,30 +15,33 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  Ed Valeyev
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  generic_shape_fixture.h
+ *  Oct 26, 2015
+ *
  */
 
-#ifndef TILEDARRAY_SHAPE_H__INCLUDED
-#define TILEDARRAY_SHAPE_H__INCLUDED
+#ifndef TILEDARRAY_TEST_GENERIC_SHAPE_FIXTURE_H__INCLUDED
+#define TILEDARRAY_TEST_GENERIC_SHAPE_FIXTURE_H__INCLUDED
 
-#include <TiledArray/shape/sparse_shape.h>
-#include <TiledArray/shape/dense_shape.h>
+#include "TiledArray/shape/generic_shape.h"
+#include "sparse_shape_fixture.h"
 
 namespace TiledArray {
 
-  template <typename, typename> class DistArray;
 
-  /// Type trait to detect dense shape types
-  template <typename S>
-  struct is_dense : public std::false_type { };
+  struct GenericShapeFixture : public SparseShapeFixture {
 
-  template <>
-  struct is_dense<DenseShape> : public std::true_type { };
+    GenericShapeFixture() : SparseShapeFixture()
+    {
+    }
 
-  template <typename Tile, typename Policy>
-  struct is_dense<DistArray<Tile, Policy> > :
-      public is_dense<typename DistArray<Tile, Policy>::shape_type>
-  { };
+    ~GenericShapeFixture() { }
 
-}  // namespace TiledArray
+  }; // GenericShapeFixture
 
-#endif // TILEDARRAY_SHAPE_H__INCLUDED
+} // namespace TiledArray
+
+#endif // TILEDARRAY_TEST_GENERIC_SHAPE_FIXTURE_H__INCLUDED

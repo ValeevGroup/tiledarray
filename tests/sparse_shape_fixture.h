@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TEST_SPARSE_SHAPE_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_SPARSE_SHAPE_FIXTURE_H__INCLUDED
 
-#include "TiledArray/sparse_shape.h"
+#include "TiledArray/shape/sparse_shape.h"
 #include "range_fixture.h"
 
 namespace TiledArray {
@@ -49,27 +49,36 @@ namespace TiledArray {
 
     ~SparseShapeFixture() { }
 
-
-    static Tensor<float> make_norm_tensor(const TiledRange& trange, const float fill_percent, const int seed) {
+    template <typename Real = float>
+    static Tensor<Real> make_norm_tensor(const TiledRange& trange, const float fill_fraction, const int seed) {
+      assert(fill_fraction <= 1.0 && fill_fraction >= 0.0);
       GlobalFixture::world->srand(seed);
-      Tensor<float> norms(trange.tiles());
-      for(Tensor<float>::size_type i = 0ul; i < norms.size(); ++i) {
+      Tensor<Real> norms(trange.tiles());
+      for(typename Tensor<Real>::size_type i = 0ul; i < norms.size(); ++i) {
         const Range range = trange.make_tile_range(i);
-        norms[i] = (GlobalFixture::world->rand() % 101);
-        norms[i] = std::sqrt(norms[i] * norms[i] * range.volume());
+        // make sure nonzero tile norms are MUCH greater than threshold since SparseShape scales norms by 1/volume
+        norms[i] = SparseShape<Real>::threshold() * (100 + (GlobalFixture::world->rand() % 1000));
       }
 
-      const std::size_t n = float(norms.size()) * (1.0 - fill_percent);
-      for(std::size_t i = 0ul; i < n; ++i) {
-        norms[GlobalFixture::world->rand() % norms.size()] = SparseShape<float>::threshold() * 0.1;
+      const std::size_t target_num_zeroes = std::min(norms.size(), static_cast<std::size_t>(double(norms.size()) * (1.0 - fill_fraction)));
+      std::size_t num_zeroes = 0ul;
+      while (num_zeroes != target_num_zeroes) {
+        const Real zero_norm = SparseShape<Real>::threshold() / 2;
+        const size_t rand_idx = GlobalFixture::world->rand() % norms.size();
+        if (norms[rand_idx] != zero_norm) {
+          norms[rand_idx] = zero_norm;
+          ++num_zeroes;
+        }
       }
-
       return norms;
+
     }
 
-    static SparseShape<float> make_shape(const TiledRange& trange, const float fill_percent, const int seed) {
-      Tensor<float> tile_norms = make_norm_tensor(trange, fill_percent, seed);
-      return SparseShape<float>(tile_norms, trange);
+    template <typename Real = float>
+    static SparseShape<Real> make_shape(const TiledRange& trange, const float fill_percent, const int seed) {
+      Tensor<Real> tile_norms = make_norm_tensor<Real>(trange, fill_percent, seed);
+      auto result = SparseShape<Real>(tile_norms, trange);
+      return result;
     }
 
     static Permutation make_perm() {

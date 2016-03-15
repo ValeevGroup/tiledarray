@@ -27,7 +27,7 @@
 #define TILEDARRAY_MATH_OUTER_H__INCLUDED
 
 #include <TiledArray/math/vector_op.h>
-#include <TiledArray/utility.h>
+#include <TiledArray/utility/array.h>
 
 namespace TiledArray {
   namespace math {

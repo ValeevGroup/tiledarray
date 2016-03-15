@@ -28,7 +28,7 @@
 
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/pmap/blocked_pmap.h>
-#include <TiledArray/sparse_shape.h>
+#include <TiledArray/shape/sparse_shape.h>
 
 namespace TiledArray {
 

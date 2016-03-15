@@ -30,7 +30,6 @@ TiledArray/config.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
-TiledArray/dense_shape.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
 TiledArray/elemental.h
@@ -45,7 +44,6 @@ TiledArray/reduce_task.h
 TiledArray/replicator.h
 TiledArray/shape.h
 TiledArray/size_array.h
-TiledArray/sparse_shape.h
 TiledArray/tensor.h
 TiledArray/tensor_impl.h
 TiledArray/tile.h
@@ -53,7 +51,7 @@ TiledArray/tiled_range.h
 TiledArray/tiled_range1.h
 TiledArray/transform_iterator.h
 TiledArray/type_traits.h
-TiledArray/utility.h
+TiledArray/utility/array.h
 TiledArray/val_array.h
 TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
@@ -111,6 +109,8 @@ TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
+TiledArray/shape/dense_shape.h
+TiledArray/shape/sparse_shape.h
 TiledArray/symm/irrep.h
 TiledArray/symm/permutation.h
 TiledArray/symm/permutation_group.h
@@ -142,7 +142,7 @@ TiledArray/tile_op/unary_wrapper.h)
 
 set(TILEDARRAY_SOURCE_FILES
 TiledArray/tensor/tensor.cpp
-TiledArray/sparse_shape.cpp
+TiledArray/shape/sparse_shape.cpp
 TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp)

@@ -23,7 +23,7 @@
  *
  */
 
-#include "TiledArray/dense_shape.h"
+#include "TiledArray/shape/dense_shape.h"
 #include "unit_test_config.h"
 
 struct DenseShapeFixture {

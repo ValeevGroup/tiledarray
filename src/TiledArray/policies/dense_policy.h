@@ -28,7 +28,7 @@
 
 #include <TiledArray/tiled_range.h>
 #include <TiledArray/pmap/blocked_pmap.h>
-#include <TiledArray/dense_shape.h>
+#include <TiledArray/shape/dense_shape.h>
 
 namespace TiledArray {
 

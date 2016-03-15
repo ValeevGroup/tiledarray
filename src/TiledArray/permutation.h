@@ -22,7 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
-#include <TiledArray/utility.h>
+#include <TiledArray/utility/array.h>
 #include <array>
 #include <numeric>
 
