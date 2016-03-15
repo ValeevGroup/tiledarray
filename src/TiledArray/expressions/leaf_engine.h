@@ -80,6 +80,7 @@ namespace TiledArray {
       /// \param expr The argument expression
       template <typename D>
       LeafEngine(const Expr<D>& expr) :
+        ExprEngine_(expr),
         array_(expr.derived().array())
       {
         vars_ = VariableList(expr.derived().vars());

@@ -1441,7 +1441,31 @@ BOOST_AUTO_TEST_CASE( dot )
 {
   // Test the dot expression function
   int result = 0;
+  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("a,b,c") );
+  BOOST_REQUIRE_NO_THROW(result *= a("a,b,c") * b("a,b,c") );
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c").dot(b("a,b,c")).get() );
+
+  // Compute the expected value for the dot function.
+  int expected = 0;
+  for(std::size_t i = 0ul; i < a.size(); ++i) {
+    TArrayI::value_type a_tile = a.find(i).get();
+    TArrayI::value_type b_tile = b.find(i).get();
+
+    for(std::size_t j = 0ul; j < a_tile.size(); ++j)
+      expected += a_tile[j] * b_tile[j];
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_EQUAL(result, expected);
+}
+
+BOOST_AUTO_TEST_CASE( dot_expr )
+{
+  // Test the dot expression function
+  int result = 0;
+  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("a,b,c") );
 
   // Compute the expected value for the dot function.
   int expected = 0;

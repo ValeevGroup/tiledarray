@@ -28,7 +28,7 @@
 
 #include <sstream>
 
-#include <TiledArray/array.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 

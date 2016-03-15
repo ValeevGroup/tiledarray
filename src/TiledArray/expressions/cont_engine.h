@@ -375,6 +375,10 @@ namespace TiledArray {
           trange_ = ContEngine_::make_trange();
           shape_ = ContEngine_::make_shape();
         }
+
+        if(ExprEngine_::struct_override_ptr_ != nullptr){
+            shape_ = shape_.mask(ExprEngine_::struct_override_ptr_->shape);
+        } 
       }
 
       /// Initialize result tensor distribution

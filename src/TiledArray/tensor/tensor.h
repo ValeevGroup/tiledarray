@@ -106,12 +106,18 @@ namespace TiledArray {
   public:
 
     // Compiler generated functions
-    Tensor() = default;
-    Tensor(const Tensor_&) = default;
-    Tensor(Tensor_&&) = default;
-    ~Tensor() = default;
-    Tensor_& operator=(const Tensor_& other) = default;
-    Tensor_& operator=(Tensor_&&) = default;
+    Tensor() : pimpl_() { }
+    Tensor(const Tensor_& other) : pimpl_(other.pimpl_) { }
+    Tensor(Tensor_&& other) : pimpl_(std::move(other.pimpl_)) { }
+    ~Tensor() { }
+    Tensor_& operator=(const Tensor_& other) {
+      pimpl_ = other.pimpl_;
+      return *this;
+    }
+    Tensor_& operator=(Tensor_&& other)  {
+      pimpl_ = std::move(other.pimpl_);
+      return *this;
+    }
 
     /// Construct tensor
 
@@ -1422,6 +1428,23 @@ namespace TiledArray {
 
   template <typename T, typename A>
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
+
+#ifndef TILEDARRAY_HEADER_ONLY
+
+  extern template
+  class Tensor<double, Eigen::aligned_allocator<double> >;
+  extern template
+  class Tensor<float, Eigen::aligned_allocator<float> >;
+  extern template
+  class Tensor<int, Eigen::aligned_allocator<int> >;
+  extern template
+  class Tensor<long, Eigen::aligned_allocator<long> >;
+//  extern template
+//  class Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >;
+//  extern template
+//  class Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >;
+
+#endif // TILEDARRAY_HEADER_ONLY
 
 } // namespace TiledArray
 

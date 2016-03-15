@@ -86,7 +86,7 @@ namespace TiledArray {
 
       template <typename D>
       UnaryEngine(const UnaryExpr<D>& expr) :
-        ExprEngine_(), arg_(expr.arg())
+        ExprEngine_(expr), arg_(expr.arg())
       { }
 
       // Pull base class functions into this class.

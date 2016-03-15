@@ -107,6 +107,7 @@ endif()
 
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
+set(CMAKE_SKIP_INSTALL_RPATH FALSE)
 
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
   # look for frameworks and appbundles last

@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2013  Virginia Tech
+ *  Copyright (C) 2016  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -15,30 +15,18 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ *  justus
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  sparse_shape.cpp
+ *  Feb 5, 2016
+ *
  */
 
-#ifndef TILEDARRAY_SHAPE_H__INCLUDED
-#define TILEDARRAY_SHAPE_H__INCLUDED
-
-#include <TiledArray/shape/sparse_shape.h>
-#include <TiledArray/shape/dense_shape.h>
+#include "sparse_shape.h"
 
 namespace TiledArray {
 
-  template <typename, typename> class DistArray;
+  template class SparseShape<float>;
 
-  /// Type trait to detect dense shape types
-  template <typename S>
-  struct is_dense : public std::false_type { };
-
-  template <>
-  struct is_dense<DenseShape> : public std::true_type { };
-
-  template <typename Tile, typename Policy>
-  struct is_dense<DistArray<Tile, Policy> > :
-      public is_dense<typename DistArray<Tile, Policy>::shape_type>
-  { };
-
-}  // namespace TiledArray
-
-#endif // TILEDARRAY_SHAPE_H__INCLUDED
+} // namespace TiledArray

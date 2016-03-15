@@ -23,14 +23,14 @@
 #
 
 # library headers
-set(tiledarray_header_files 
+set(TILEDARRAY_HEADER_FILES
 tiledarray.h
 tiledarray_fwd.h
-TiledArray/array.h
+TiledArray/config.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
-TiledArray/shape/dense_shape.h
+TiledArray/dist_array.h
 TiledArray/distributed_storage.h
 TiledArray/elemental.h
 TiledArray/error.h
@@ -44,7 +44,6 @@ TiledArray/reduce_task.h
 TiledArray/replicator.h
 TiledArray/shape.h
 TiledArray/size_array.h
-TiledArray/shape/sparse_shape.h
 TiledArray/tensor.h
 TiledArray/tensor_impl.h
 TiledArray/tile.h
@@ -110,6 +109,8 @@ TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
+TiledArray/shape/dense_shape.h
+TiledArray/shape/sparse_shape.h
 TiledArray/symm/irrep.h
 TiledArray/symm/permutation.h
 TiledArray/symm/permutation_group.h
@@ -139,6 +140,38 @@ TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
+set(TILEDARRAY_SOURCE_FILES
+TiledArray/tensor/tensor.cpp
+TiledArray/shape/sparse_shape.cpp
+TiledArray/tensor_impl.cpp
+TiledArray/array_impl.cpp
+TiledArray/dist_array.cpp)
+
+# Create the TiledArray header-only library
+add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+target_include_directories(tiledarray INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
+)
+  
+target_compile_definitions(tiledarray PUBLIC 
+   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
+target_include_directories(tiledarray PUBLIC 
+   "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN_INCLUDE_DIR}")
+if(TARGET build-madness)
+  add_dependencies(tiledarray build-madness)
+endif()
+# append current CMAKE_CXX_FLAGS
+string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
+target_compile_options(tiledarray PUBLIC 
+   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>;${CMAKE_CXX_FLAG_LIST})
+target_link_libraries(tiledarray PUBLIC "${LAPACK_LIBRARIES}" MADworld)
+
+# Add library to the list of installed components
+install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
+    LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
 # Install header files
 install(
   DIRECTORY
@@ -149,26 +182,4 @@ install(
   PATTERN "CMakeFiles" EXCLUDE
 )
 
-# Create the TiledArray header-only library 
-add_library(tiledarray INTERFACE)
-target_include_directories(tiledarray INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
-)
-  
-target_compile_definitions(tiledarray INTERFACE 
-   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
-target_include_directories(tiledarray INTERFACE 
-   $<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>;${EIGEN_INCLUDE_DIR})
-# append current CMAKE_CXX_FLAGS
-string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
-target_compile_options(tiledarray INTERFACE 
-   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>;${CMAKE_CXX_FLAG_LIST})
-target_link_libraries(tiledarray INTERFACE MADworld "${LAPACK_LIBRARIES}")
-
-# Add library to the list of installed components
-install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
-    PUBLIC_HEADER DESTINATION "${TILEDARRAY_INSTALL_INCLUDEDIR}/TiledArray"
-    LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
-    ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
+    

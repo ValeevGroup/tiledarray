@@ -279,7 +279,7 @@ namespace TiledArray {
     /// \return A const iterator to the first local tile.
     const_iterator begin() const {
       check_pimpl();
-      return pimpl_->begin();
+      return pimpl_->cbegin();
     }
 
     /// End iterator factory function
@@ -295,7 +295,7 @@ namespace TiledArray {
     /// \return A const iterator to one past the last local tile.
     const_iterator end() const {
       check_pimpl();
-      return pimpl_->end();
+      return pimpl_->cend();
     }
 
     /// Find local or remote tile
@@ -623,6 +623,36 @@ namespace TiledArray {
 
   template <typename Tile, typename Policy>
   madness::AtomicInt DistArray<Tile, Policy>::cleanup_counter_;
+
+#ifndef TILEDARRAY_HEADER_ONLY
+
+  extern template
+  class DistArray<Tensor<double, Eigen::aligned_allocator<double> >, DensePolicy>;
+  extern template
+  class DistArray<Tensor<float, Eigen::aligned_allocator<float> >, DensePolicy>;
+  extern template
+  class DistArray<Tensor<int, Eigen::aligned_allocator<int> >, DensePolicy>;
+  extern template
+  class DistArray<Tensor<long, Eigen::aligned_allocator<long> >, DensePolicy>;
+//  extern template
+//  class DistArray<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>;
+//  extern template
+//  class DistArray<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>
+
+  extern template
+  class DistArray<Tensor<double, Eigen::aligned_allocator<double> >, SparsePolicy>;
+  extern template
+  class DistArray<Tensor<float, Eigen::aligned_allocator<float> >, SparsePolicy>;
+  extern template
+  class DistArray<Tensor<int, Eigen::aligned_allocator<int> >, SparsePolicy>;
+  extern template
+  class DistArray<Tensor<long, Eigen::aligned_allocator<long> >, SparsePolicy>;
+//  extern template
+//  class DistArray<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>;
+//  extern template
+//  class DistArray<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
+
+#endif // TILEDARRAY_HEADER_ONLY
 
   /// Add the tensor to an output stream
 

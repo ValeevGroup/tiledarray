@@ -33,6 +33,7 @@ namespace TiledArray {
   namespace expressions {
 
     // Forward declarations
+    template <typename> struct StructOverride;
     template <typename> class Expr;
     template <typename> struct EngineTrait;
 
@@ -66,15 +67,17 @@ namespace TiledArray {
       trange_type trange_; ///< The tiled range of the result tensor
       shape_type shape_; ///< The shape of the result tensor
       std::shared_ptr<pmap_interface> pmap_; ///< The process map for the result tensor
+      std::shared_ptr<StructOverride<policy> > struct_override_ptr_; ///< The structure used to override array member variables.
 
     public:
 
       /// Default constructor
 
       /// All data members are initialized to NULL values.
-      ExprEngine() :
+      template <typename D>
+      ExprEngine(const Expr<D> &expr) :
         world_(NULL), vars_(), permute_tiles_(true), perm_(), trange_(), shape_(),
-        pmap_()
+        pmap_(), struct_override_ptr_(expr.struct_override_ptr_)
       { }
 
       /// Construct and initialize the expression engine
@@ -128,6 +131,10 @@ namespace TiledArray {
           trange_ = derived().make_trange();
           shape_ = derived().make_shape();
         }
+
+        if(struct_override_ptr_ != nullptr){
+            shape_ = shape_.mask(struct_override_ptr_->shape);
+        } 
       }
 
       /// Initialize result tensor distribution

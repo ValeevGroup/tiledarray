@@ -421,7 +421,7 @@ namespace TiledArray {
 
     /// Range extent accessor
 
-    /// \return A \c extent_type that contains theextents for each dimension of
+    /// \return A \c extent_type that contains the extent for each dimension of
     /// the block range.
     /// \throw nothing
     extent_type extent() const {

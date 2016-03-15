@@ -64,7 +64,7 @@ set(ta_test_src_files  ta_test.cpp
     tensor_impl.cpp
     array_impl.cpp
     variable_list.cpp
-    array.cpp
+    dist_array.cpp
     eigen.cpp
     dist_op_dist_cache.cpp
     dist_op_group.cpp

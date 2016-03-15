@@ -81,7 +81,7 @@ namespace TiledArray {
 
       template <typename D>
       BinaryEngine(const BinaryExpr<D>& expr) :
-        ExprEngine_(), left_(expr.left()), right_(expr.right())
+        ExprEngine_(expr), left_(expr.left()), right_(expr.right())
       { }
 
       /// Set the variable list for this expression

@@ -51,7 +51,7 @@
 
 // Linear algebra
 #include <TiledArray/algebra/conjgrad.h>
-#include "TiledArray/array.h"
+#include "TiledArray/dist_array.h"
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>
