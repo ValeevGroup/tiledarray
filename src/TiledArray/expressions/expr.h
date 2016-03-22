@@ -62,10 +62,7 @@ namespace TiledArray {
       typedef StructOverride<typename engine_type::policy> 
           override_type; ///< Expression engine type
 
-
-
     private:
-
 
       template <typename D>
       friend class ExprEngine;
@@ -84,8 +81,6 @@ namespace TiledArray {
       }
 
     private:
-
-      Expr<Derived>& operator=(const Expr<Derived>&) = delete;
 
       /// Task function used to evaluate lazy tiles
 
@@ -164,6 +159,14 @@ namespace TiledArray {
       }
 
     public:
+
+      // Compiler generated functions
+      Expr() = default;
+      Expr(const Expr_&) = default;
+      Expr(Expr_&&) = default;
+      ~Expr() = default;
+      Expr_& operator=(const Expr_&) = delete;
+      Expr_& operator=(Expr_&&) = delete;
 
       /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }

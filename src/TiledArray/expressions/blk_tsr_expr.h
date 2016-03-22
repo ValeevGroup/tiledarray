@@ -183,7 +183,6 @@ namespace TiledArray {
     public:
 
       // Compiler generated functions
-      BlkTsrExprBase() = delete;
       BlkTsrExprBase(const BlkTsrExprBase_&) = default;
       BlkTsrExprBase(BlkTsrExprBase_&&) = default;
       ~BlkTsrExprBase() = default;
