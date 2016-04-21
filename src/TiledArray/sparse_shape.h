@@ -317,6 +317,25 @@ namespace TiledArray {
       return tile_norms_[index];
     }
 
+    /// Deep Copy of Norms
+
+    /// \return A deep copy of the norms of the object
+    SparseShape_ clone() const { 
+        return SparseShape_(tile_norms_.clone(), size_vectors_, 
+                            zero_tile_count_); 
+    }
+    //
+    /// Deep Copy with operation
+
+    /// \return A deep copy of the norms of the object having 
+    /// performed the operation Op.  
+    /// Op should take a Tensor<T> and return a Tensor<T>
+    template<typename Op>
+    SparseShape_ clone(Op &&op) const { 
+        return SparseShape_(op(tile_norms_.clone()), size_vectors_, 
+                            zero_tile_count_); 
+    }
+
     /// Data accessor
 
     /// \return A reference to the \c Tensor object that stores shape data
