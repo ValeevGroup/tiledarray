@@ -559,7 +559,7 @@ namespace TiledArray {
     /// \param other The array to be swapped with this array.
     void swap(DistArray_& other) { std::swap(pimpl_, other.pimpl_); }
 
-    /// Convert a distributed \c Array into a replicated array
+    /// Convert a distributed array into a replicated array
     void make_replicated() {
       check_pimpl();
       if((! pimpl_->pmap()->is_replicated()) && (get_world().size() > 1)) {

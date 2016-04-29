@@ -114,8 +114,8 @@ namespace TiledArray {
           // The data is ready so send it now.
           send(); // Replication is done
         } else {
-          // The data local data is not ready to be sent so create a task that
-          // will send the data when it is ready.
+          // The local data is not ready to be sent, so create a task that will
+          // send it when it is ready.
           DelaySend* delay_send_task = new DelaySend(*this);
           world_.taskq.add(delay_send_task);
         }
