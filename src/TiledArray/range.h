@@ -26,14 +26,16 @@
 
 namespace TiledArray {
 
-  /// Range data of an N-dimensional block
+  /// \brief A (hyperrectangular) interval on \f$ \mathbb{Z}^n \f$, space of integer n-indices
 
-  /// This object represents an N-dimension, orthogonal block of elements. It
-  /// provides information on the rank (number of dimensions), lower bound,
-  /// upper bound, extent (size), and stride of block. It can also be used to
+  /// This object represents an n-dimensional, hyperrectangular array
+  /// of integers. It provides information on the rank (number of dimensions),
+  /// (nonnegative) lower bound, upper bound, extent (size), and stride of
+  /// each dimension. It can also be used to
   /// test if an element is included in the range with a coordinate index or
   /// ordinal offset. Finally, it can be used to convert coordinate indices to
   /// ordinal offsets and vice versa.
+  /// TODO add Range support for negative indices
   class Range {
   public:
     typedef Range Range_; ///< This object type
