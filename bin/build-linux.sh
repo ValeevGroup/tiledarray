@@ -8,6 +8,9 @@ export CXXFLAGS="-mno-avx"
 if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
+else
+    export CC=/usr/bin/clang-3.7
+    export CXX=/usr/bin/clang++-3.7
 fi
 export MPICH_CC=$CC
 export MPICH_CXX=$CXX
