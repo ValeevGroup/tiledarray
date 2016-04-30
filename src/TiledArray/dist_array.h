@@ -37,13 +37,12 @@ namespace TiledArray {
   } // namespace expressions
 
 
-  /// An n-dimensional, tiled array
+  /// A (multidimensional) tiled array
 
   /// DistArray is the local representation of a global object. This means that
   /// the local array object will only contain a portion of the data. It may be
   /// used to construct distributed tensor algebraic operations.
   /// \tparam T The element type of for array tiles
-  /// \tparam DIM The number of dimensions for this array object
   /// \tparam Tile The tile type [ Default = \c Tensor<T> ]
   template <typename Tile = Tensor<double, Eigen::aligned_allocator<double> >,
       typename Policy = DensePolicy>
@@ -660,7 +659,6 @@ namespace TiledArray {
   /// tiles. It will wait for each tile to be evaluated (i.e. it is a blocking
   /// function). Tasks will continue to be processed.
   /// \tparam T The element type of Array
-  /// \tparam DIM The number of dimensions
   /// \tparam Tile The Tile type
   /// \param os The output stream
   /// \param a The array to be put in the output stream
