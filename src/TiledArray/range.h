@@ -26,7 +26,7 @@
 
 namespace TiledArray {
 
-  /// \brief A (hyperrectangular) interval on \f$ \mathbb{Z}^n \f$, space of integer n-indices
+  /// \brief A (hyperrectangular) interval on \f$ Z^n \f$, space of integer n-indices
 
   /// This object represents an n-dimensional, hyperrectangular array
   /// of integers. It provides information on the rank (number of dimensions),

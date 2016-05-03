@@ -34,13 +34,13 @@ namespace TiledArray {
     /// Maps cyclically a sequence of indices onto a 2-d matrix of processes
 
     /// Consider a sequence of indices \f$ \{ k | k \in [0,N) \} \f$,
-    /// organized into a matrix, \f$ \{ \{i,j\} | i \in [0,N_\text{row}),j\in[0,N_\text{col})\} \f$,
+    /// organized into a matrix, \f$ \{ \{i,j\} | i \in [0,N_{\rm row}),j\in[0,N_{\rm col})\} \f$,
     /// in row-major form, i.e. index \f$ k \f$ corresponds to
-    /// \f$ \{ k_\text{row}, k_\text{col} \} \equiv \{ k / N_\text{col}, k \% N_\text{col} \} \f$.
-    /// Similarly, a sequence of processes is organized into a matrix with \f$ P_\text{row} \f$ rows
-    /// and \f$ P_\text{cols} \f$ columns, i.e process \f$ p \equiv \{ p_\text{row}, p_\text{col} \} \f$.
-    /// Then index \f$ \{ k_\text{row}, k_\text{col} \} \f$ maps to process
-    /// \f$ \{ p_\text{row}, p_\text{col} \} = \{ k_\text{row} % N_\text{row}, k_\text{col} % N_\text{col} \} \f$
+    /// \f$ \{ k_{\rm row}, k_{\rm col} \} \equiv \{ k / N_{\rm col}, k \% N_{\rm col} \} \f$.
+    /// Similarly, a sequence of processes is organized into a matrix with \f$ P_{\rm row} \f$ rows
+    /// and \f$ P_{\rm cols} \f$ columns, i.e process \f$ p \equiv \{ p_{\rm row}, p_{\rm col} \} \f$.
+    /// Then index \f$ \{ k_{\rm row}, k_{\rm col} \} \f$ maps to process
+    /// \f$ \{ p_{\rm row}, p_{\rm col} \} = \{ k_{\rm row} \% N_{\rm row}, k_{\rm col} \% N_{\rm col} \} \f$
     ///
     /// \note This class is used to map <em>tile</em> indices to processes.
     class CyclicPmap : public Pmap {
