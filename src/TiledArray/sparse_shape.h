@@ -317,6 +317,38 @@ namespace TiledArray {
       return tile_norms_[index];
     }
 
+    /// Transform the norm tensor with an operation
+
+    /// \return A deep copy of the norms of the object having 
+    /// performed the operation Op.  
+    /// Op should take a const ref to a Tensor<T> and return a Tensor<T>
+    /// Since the input tile norms have already been normalized the output
+    /// norms will avoid normalization, which is neccesary for correct behavior.  
+    /// One example is when Op is an identity operation the output
+    /// SparseShape data will have the same values as this.
+    template<typename Op>
+    SparseShape_ transform(Op &&op) const { 
+
+        Tensor<T> new_norms = op(tile_norms_);
+        madness::AtomicInt zero_tile_count;
+        zero_tile_count = 0;
+
+        const value_type threshold = threshold_;
+        auto apply_threshold = [threshold, &zero_tile_count](value_type &norm){
+            TA_ASSERT(norm >= value_type(0));
+            if(norm < threshold){
+                norm = value_type(0);
+                ++zero_tile_count;
+            }
+        };
+
+        math::inplace_vector_op(apply_threshold, new_norms.range().volume(), 
+                new_norms.data());
+
+        return SparseShape_(std::move(new_norms), size_vectors_, 
+                            zero_tile_count); 
+    }
+
     /// Data accessor
 
     /// \return A reference to the \c Tensor object that stores shape data
