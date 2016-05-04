@@ -419,8 +419,6 @@ namespace TiledArray {
   ///
   /// Eigen::MatrixXd m = array_to_eigen(array);
   /// \endcode
-  /// \tparam T The element type of the array
-  /// \tparam DIM The array dimension
   /// \tparam Tile The array tile type
   /// \param array The array to be converted
   /// \throw TiledArray::Exception When world size is greater than 1 and

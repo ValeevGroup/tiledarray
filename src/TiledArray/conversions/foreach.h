@@ -62,8 +62,6 @@ namespace TiledArray {
   ///     const typename TiledArray::DistArray<Tile,DensePolicy>::value_type& arg_tile);
   /// \endcode
   /// \tparam Op Tile operation
-  /// \tparam T Element type of the array
-  /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param op The tile function
   /// \param arg The argument array
@@ -120,8 +118,6 @@ namespace TiledArray {
   /// void op(typename TiledArray::DistArray<Tile,DensePolicy>::value_type& tile);
   /// \endcode
   /// \tparam Op Mutating tile operation
-  /// \tparam T Element type of the array
-  /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param op The mutating tile function
   /// \param arg The argument array to be modified
@@ -209,8 +205,6 @@ namespace TiledArray {
   /// \note This function should not be used to initialize the tiles of an array
   /// object.
   /// \tparam Op Tile operation
-  /// \tparam T Element type of the array
-  /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param op The tile function
   /// \param arg The argument array
@@ -301,8 +295,6 @@ namespace TiledArray {
   /// \note This function should not be used to initialize the tiles of an array
   /// object.
   /// \tparam Op Tile operation
-  /// \tparam T Element type of the array
-  /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param op The mutating tile function
   /// \param arg The argument array to be modified

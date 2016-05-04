@@ -38,8 +38,6 @@ namespace TiledArray {
   /// Truncate a dense Array
 
   /// This is a no op
-  /// \tparam T Element type of the array
-  /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param[in,out] array The array object to be truncated
   template <typename Tile>
@@ -47,8 +45,6 @@ namespace TiledArray {
 
   /// Truncate a sparse Array
 
-  /// \tparam T Element type of the array
-  /// \tparam DIM Dimension of the array
   /// \tparam Tile The tile type of the array
   /// \param[in,out] array The array object to be truncated
   template <typename Tile>

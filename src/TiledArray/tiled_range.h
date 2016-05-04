@@ -25,7 +25,9 @@
 
 namespace TiledArray {
 
-  /// Range data of an N-dimensional, tiled tensor.
+  /// Range data of a tiled array
+
+  /// TiledRange is a direct (Cartesian) product of 1-dimensional tiled ranges (TiledRange1)
   class TiledRange {
   private:
 
