@@ -41,7 +41,7 @@ namespace TiledArray {
 
       typename pmap_interface::const_iterator end = pmap->end();
 
-      // iteratate over sparse tiles
+      // iterate over sparse tiles
       for (typename pmap_interface::const_iterator it = pmap->begin(); it != end;
            ++it) {
           const std::size_t ord = *it;
@@ -50,10 +50,8 @@ namespace TiledArray {
               Tile tile(sparse_array.find(ord).get().clone());
               dense_array.set(ord, tile);
           } else {
-              // This is how Array::set_all_local() sets tiles to a value,
-              // This likely means that what ever type Tile is must be
-              // constructible from a type T
-              dense_array.set(ord, 0);  // This is how Array::set_all_local()
+              // see DistArray::set(ordinal, element_type)
+              dense_array.set(ord, 0);
           }
       }
 
