@@ -139,6 +139,12 @@ namespace TiledArray {
     }
 
 
+    // State accessor ----------------------------------------------------------
+
+    bool empty() const {
+      return not bool(pimpl_);
+    }
+
     // Tile accessor -----------------------------------------------------------
 
     tensor_type& tensor() { return *pimpl_; }
@@ -298,7 +304,7 @@ namespace TiledArray {
   /// \return \c true if \c arg is empty, otherwise \c false.
   template <typename Arg>
   inline bool empty(const Tile<Arg>& arg) {
-    return empty(arg.tensor());
+    return arg.empty() || empty(arg.tensor());
   }
 
 
