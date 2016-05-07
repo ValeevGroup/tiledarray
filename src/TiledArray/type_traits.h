@@ -380,6 +380,16 @@ namespace TiledArray {
     template <typename T>
     using policy_t = typename policy_type<T>::type;
 
+    /// If \c Base is a base of \c Derived, \c if_same_or_derived::value is \c true.
+    /// \tparam Base supposed base class
+    /// \tparam Derived supposed derived class
+    template<typename Base, typename Derived>
+    struct is_same_or_derived : std::conditional<
+          std::is_base_of<Base,typename std::remove_reference<Derived>::type>::value,
+          std::true_type, std::false_type
+        >::type {};
+
+
   } // namespace detail
 
 } // namespace TiledArray

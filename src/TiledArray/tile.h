@@ -103,6 +103,24 @@ namespace TiledArray {
       pimpl_(std::make_shared<tensor_type>(std::move(tensor)))
     { }
 
+    // to simplify construction, Tile provides ctors that all forward their args
+    // to T. To avoid clashing with copy and move ctors need conditional instantiation --
+    // e.g. see http://ericniebler.com/2013/08/07/universal-references-and-the-copy-constructo/
+
+    template <typename Arg,
+      typename = typename std::enable_if<detail::is_same_or_derived<T,Arg>::value>::type
+    >
+    Tile(Arg arg) :
+      pimpl_(std::make_shared<tensor_type>(std::forward<Arg>(arg)))
+    { }
+
+    template <typename Arg1, typename Arg2, typename ... Args>
+    Tile(Arg1 arg1, Arg2 arg2, Args... args) :
+      pimpl_(std::make_shared<tensor_type>(std::forward<Arg1>(arg1),
+                                           std::forward<Arg2>(arg2),
+                                           std::forward<Args>(args)...))
+    { }
+
     ~Tile() = default;
 
     // Assignment operators ----------------------------------------------------
