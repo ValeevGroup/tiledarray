@@ -95,27 +95,24 @@ namespace TiledArray {
     Tile(const Tile_&) = default;
     Tile(Tile_&&) = default;
 
-    explicit Tile(const tensor_type& tensor) :
-      pimpl_(std::make_shared<tensor_type>(tensor))
-    { }
+    /// Forwarding ctor
 
-    explicit Tile(tensor_type&& tensor) :
-      pimpl_(std::make_shared<tensor_type>(std::move(tensor)))
-    { }
-
-    // to simplify construction, Tile provides ctors that all forward their args
-    // to T. To avoid clashing with copy and move ctors need conditional instantiation --
-    // e.g. see http://ericniebler.com/2013/08/07/universal-references-and-the-copy-constructo/
-
+    /// To simplify construction, Tile provides ctors that all forward their args
+    /// to T. To avoid clashing with copy and move ctors need conditional instantiation --
+    /// e.g. see http://ericniebler.com/2013/08/07/universal-references-and-the-copy-constructo/
+    /// NB For Arg that can be converted to Tile also use the copy/move ctors.
     template <typename Arg,
-      typename = typename std::enable_if<detail::is_same_or_derived<T,Arg>::value>::type
+      typename = typename std::enable_if<
+        not detail::is_same_or_derived<Tile_,Arg>::value &&
+        not std::is_convertible<Arg,Tile_>::value
+      >::type
     >
-    Tile(Arg arg) :
+    explicit Tile(Arg&& arg) :
       pimpl_(std::make_shared<tensor_type>(std::forward<Arg>(arg)))
     { }
 
     template <typename Arg1, typename Arg2, typename ... Args>
-    Tile(Arg1 arg1, Arg2 arg2, Args... args) :
+    Tile(Arg1&& arg1, Arg2&& arg2, Args&&... args) :
       pimpl_(std::make_shared<tensor_type>(std::forward<Arg1>(arg1),
                                            std::forward<Arg2>(arg2),
                                            std::forward<Args>(args)...))
