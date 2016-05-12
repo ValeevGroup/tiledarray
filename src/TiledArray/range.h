@@ -495,8 +495,9 @@ namespace TiledArray {
       const size_type* restrict const upper = lower + rank_;
 
       bool result = (rank_ > 0u);
-      for(unsigned int i = 0u; result && (i < rank_); ++i) {
-        const size_type index_i = index[i];
+      auto it = std::begin(index); // TODO C++14 switch to std::cbegin
+      for(unsigned int i = 0u; result && (i < rank_); ++i, ++it) {
+        const size_type index_i = *it;
         const size_type lower_i = lower[i];
         const size_type upper_i = upper[i];
         result = result && (index_i >= lower_i) && (index_i < upper_i);

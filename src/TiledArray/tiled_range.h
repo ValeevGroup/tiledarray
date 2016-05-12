@@ -187,19 +187,32 @@ namespace TiledArray {
     template <typename Index>
     typename std::enable_if<! std::is_integral<Index>::value, tile_range_type>::type
     tile(const Index& index) const {
-      const unsigned int rank = range_.rank();
+      const auto rank = range_.rank();
       TA_ASSERT(index.size() == rank);
       TA_ASSERT(range_.includes(index));
       typename tile_range_type::index lower;
       typename tile_range_type::index upper;
       lower.reserve(rank);
       upper.reserve(rank);
-      for(unsigned int i = 0; i < rank; ++i) {
-        lower.push_back(data()[i].tile(index[i]).first);
-        upper.push_back(data()[i].tile(index[i]).second);
+      unsigned d = 0;
+      for(const auto& index_d: index) {
+        lower.push_back(data()[d].tile(index_d).first);
+        upper.push_back(data()[d].tile(index_d).second);
+        ++d;
       }
 
       return tile_range_type(lower, upper);
+    }
+
+    /// Construct a range for the given tile index.
+
+    /// \param index The tile index, given as a \c std::initializer_list
+    /// \throw std::runtime_error Throws if i is not included in the range
+    /// \return The constructed range object
+    template <typename Integer>
+    tile_range_type
+    tile(const std::initializer_list<Integer>& index) const {
+      return tile<std::initializer_list<Integer>>(index);
     }
 
     /// Convert an element index to a tile index
