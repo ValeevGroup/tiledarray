@@ -159,19 +159,19 @@ namespace TiledArray {
         const size_type* restrict const other_upper_bound)
     {
       // Create temporary pointers to this range data
-      size_type* restrict const lower  = data_;
-      size_type* restrict const upper  = lower + rank_;
-      size_type* restrict const extent = upper + rank_;
-      size_type* restrict const stride = extent + rank_;
+      auto* restrict const lower  = data_;
+      auto* restrict const upper  = lower + rank_;
+      auto* restrict const extent = upper + rank_;
+      auto* restrict const stride = extent + rank_;
 
       // Copy the permuted lower, upper, and extent into this range.
       for(unsigned int i = 0u; i < rank_; ++i) {
-        const size_type perm_i = perm[i];
+        const auto perm_i = perm[i];
 
         // Get the lower bound, upper bound, and extent from other for rank i.
-        const size_type other_lower_bound_i = other_lower_bound[i];
-        const size_type other_upper_bound_i = other_upper_bound[i];
-        const size_type other_extent_i = other_upper_bound_i - other_lower_bound_i;
+        const auto other_lower_bound_i = other_lower_bound[i];
+        const auto other_upper_bound_i = other_upper_bound[i];
+        const auto other_extent_i = other_upper_bound_i - other_lower_bound_i;
 
         // Store the permuted lower bound, upper bound, and extent
         lower[perm_i]  = other_lower_bound_i;
@@ -183,8 +183,8 @@ namespace TiledArray {
       volume_ = 1ul;
       offset_ = 0ul;
       for(int i = int(rank_) - 1; i >= 0; --i) {
-        const size_type lower_i = lower[i];
-        const size_type extent_i = extent[i];
+        const auto lower_i = lower[i];
+        const auto extent_i = extent[i];
         stride[i] = volume_;
         offset_ += lower_i * volume_;
         volume_ *= extent_i;
@@ -449,19 +449,19 @@ namespace TiledArray {
 
     /// \return The total number of elements in the range.
     /// \throw nothing
-    size_type volume() const { return volume_; }
+    ordinal_type volume() const { return volume_; }
 
     /// alias to volume() to conform to the Tensor Working Group specification
     /// \return The total number of elements in the range.
     /// \throw nothing
-    size_type area() const { return volume_; }
+    ordinal_type area() const { return volume_; }
 
     /// Range offset
 
     /// The range ordinal offset is equal to the dot product of the lower bound
     /// and stride vector. It is used internally to compute ordinal offsets.
     /// \return The ordinal index offset
-    size_type offset() const { return offset_; }
+    ordinal_type offset() const { return offset_; }
 
     /// Index iterator factory
 
@@ -618,7 +618,7 @@ namespace TiledArray {
     /// \param index Ordinal index
     /// \return \c index (unchanged)
     /// \throw When \c index is not included in this range
-    size_type ordinal(const size_type index) const {
+    ordinal_type ordinal(const ordinal_type index) const {
       TA_ASSERT(includes(index));
       return index;
     }
@@ -632,7 +632,7 @@ namespace TiledArray {
     /// \throw When \c index is not included in this range.
     template <typename Index,
         typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
-    size_type ordinal(const Index& index) const {
+    ordinal_type ordinal(const Index& index) const {
       TA_ASSERT(detail::size(index) == rank_);
       TA_ASSERT(includes(index));
 
@@ -700,7 +700,7 @@ namespace TiledArray {
     /// calculate the index of \c i
 
     /// This function is just a pass-through so the user can call \c idx() on
-    /// a template parameter that can be an index or a size_type.
+    /// a template parameter that can be an index or an ordinal_type.
     /// \param i The index
     /// \return \c i (unchanged)
     template <typename Index,

@@ -65,9 +65,9 @@ namespace TiledArray {
             throw std::bad_alloc();
 
           // Construct restricted pointers to the input data
-          const Permutation::index_type* restrict const inv_perm = & inv_perm_.data().front();
-          const Range::size_type* restrict const range_size = range.extent_data();
-          const Range::size_type* restrict const range_weight = range.stride_data();
+          const auto* restrict const inv_perm = & inv_perm_.data().front();
+          const auto* restrict const range_size = range.extent_data();
+          const auto* restrict const range_weight = range.stride_data();
 
           // Construct restricted pointers to the object data
           std::size_t* restrict const input_weight = weights_;
@@ -77,9 +77,9 @@ namespace TiledArray {
           std::size_t volume = 1ul;
           for(int i = int(ndim_) - 1; i >= 0; --i) {
             // Load input data for iteration i.
-            const Permutation::index_type inv_perm_i = inv_perm[i];
-            const Range::size_type weight = range_weight[i];
-            const Range::size_type size = range_size[inv_perm_i];
+            const auto inv_perm_i = inv_perm[i];
+            const auto weight = range_weight[i];
+            const auto size = range_size[inv_perm_i];
 
             // Store the input and output weights
             output_weight[inv_perm_i] = volume;
