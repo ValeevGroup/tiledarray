@@ -485,7 +485,7 @@ namespace TiledArray {
     /// \param index The coordinate index to check for inclusion in the range
     /// \return \c true when <tt>i >= start</tt> and <tt>i < finish</tt>,
     /// otherwise \c false
-    /// \throw TildedArray::Exception When the rank of this range is not
+    /// \throw TiledArray::Exception When the rank of this range is not
     /// equal to the size of the index.
     template <typename Index,
         typename std::enable_if<! std::is_integral<Index>::value, bool>::type* = nullptr>
@@ -530,7 +530,7 @@ namespace TiledArray {
 
     /// \param perm The permutation to be applied to this range
     /// \return A reference to this range
-    /// \throw TildedArray::Exception When the rank of this range is not
+    /// \throw TiledArray::Exception When the rank of this range is not
     /// equal to the rank of the permutation.
     /// \throw std::bad_alloc When memory allocation fails.
     Range_& operator *=(const Permutation& perm);
