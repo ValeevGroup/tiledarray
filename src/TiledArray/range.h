@@ -640,10 +640,10 @@ namespace TiledArray {
       size_type* restrict const stride = data_ + rank_ + rank_ + rank_;
 
       size_type result = 0ul;
-      for(unsigned int i = 0u; i < rank_; ++i) {
-        const auto index_i = index[i];
+      auto index_it = std::begin(index);
+      for(unsigned int i = 0u; i < rank_; ++i, ++index_it) {
         const size_type stride_i = stride[i];
-        result += index_i * stride_i;
+        result += *(index_it) * stride_i;
       }
 
       return result - offset_;

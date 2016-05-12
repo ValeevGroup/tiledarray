@@ -406,6 +406,17 @@ namespace TiledArray {
         return data_.get(TensorImpl_::trange().tiles().ordinal(i));
       }
 
+      /// Tile future accessor
+
+      /// \tparam Integer An integer type
+      /// \param i The tile index, as an \c std::initializer_list<Integer>
+      /// \return A \c future to tile \c i
+      /// \throw TiledArray::Exception When tile \c i is zero
+      template <typename Integer>
+      future get(const std::initializer_list<Integer>& i) const {
+        return get<std::initializer_list<Integer>>(i);
+      }
+
       /// Set tile
 
       /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,

@@ -300,10 +300,24 @@ namespace TiledArray {
     /// Find local or remote tile
 
     /// \tparam Index The index type
+    /// \param i The tile index
+    /// \return A \c future to tile \c i
+    /// \throw TiledArray::Exception When tile \c i is zero
     template <typename Index>
     Future<value_type> find(const Index& i) const {
       check_index(i);
       return pimpl_->get(i);
+    }
+
+    /// Find local or remote tile
+
+    /// \tparam Integer An integer type
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \return A \c future to tile \c i
+    /// \throw TiledArray::Exception When tile \c i is zero
+    template <typename Integer>
+    Future<value_type> find(const std::initializer_list<Integer>& i) const {
+      return find<std::initializer_list<Integer>>(i);
     }
 
     /// Set the data of tile \c i
