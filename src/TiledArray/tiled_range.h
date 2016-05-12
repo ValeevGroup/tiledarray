@@ -117,39 +117,76 @@ namespace TiledArray {
       return *this;
     }
 
-    /// Access the range information on the tiles
+    /// Access the tile range
 
     /// \return A const reference to the tile range object
-    const range_type& tiles() const {
+    const range_type& tile_range() const {
       return range_;
     }
 
-    /// Access the range information on the elements
+    /// Access the tile range
+
+    /// \return A const reference to the tile range object
+    /// \deprecated use TiledRange::tiles() instead
+    const range_type& tiles() const {
+      return tile_range();
+    }
+
+    /// Access the element range
 
     /// \return A const reference to the element range object
-    const tile_range_type& elements() const {
+    const tile_range_type& element_range() const {
       return element_range_;
     }
 
+    /// Access the element range
 
-    /// Construct a range for the given index.
+    /// \return A const reference to the element range object
+    /// \deprecated use TiledRange::element_range() instead
+    const tile_range_type& elements() const {
+      return element_range();
+    }
+
+    /// Construct a range for the given ordinal index.
 
     /// \param i The ordinal index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
+    /// \deprecated use TiledRange::tile() instead
     tile_range_type make_tile_range(const size_type& i) const {
+      return tile(i);
+    }
+
+    /// Construct a range for the given ordinal index.
+
+    /// \param i The ordinal index of the tile range to be constructed
+    /// \throw std::runtime_error Throws if i is not included in the range
+    /// \return The constructed range object
+    tile_range_type tile(const size_type& i) const {
       TA_ASSERT(range_.includes(i));
       return make_tile_range(tiles().idx(i));
     }
 
-    /// Construct a range for the given tile.
+    /// Construct a range for the given tile index.
+
+    /// \param index The index of the tile range to be constructed
+    /// \throw std::runtime_error Throws if i is not included in the range
+    /// \return The constructed range object
+    /// \deprecated use TiledRange::tile() instead
+    template <typename Index>
+    typename std::enable_if<! std::is_integral<Index>::value, tile_range_type>::type
+    make_tile_range(const Index& index) const {
+      return tile(index);
+    }
+
+    /// Construct a range for the given tile index.
 
     /// \param index The index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
     template <typename Index>
     typename std::enable_if<! std::is_integral<Index>::value, tile_range_type>::type
-    make_tile_range(const Index& index) const {
+    tile(const Index& index) const {
       const unsigned int rank = range_.rank();
       TA_ASSERT(index.size() == rank);
       TA_ASSERT(range_.includes(index));
