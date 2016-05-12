@@ -320,12 +320,12 @@ namespace TiledArray {
       return find<std::initializer_list<Integer>>(i);
     }
 
-    /// Set the data of tile \c i
+    /// Set a tile and fill it using a sequence
 
-    /// \tparam Index \c index or an integral type
+    /// \tparam Index An index or integral type
     /// \tparam InIter An input iterator
-    /// \param i The index of the tile to be set
-    /// \param first The iterator that points to the new tile data
+    /// \param i The index or the ordinal of the tile to be set
+    /// \param first The iterator that points to the start of the input sequence
     template <typename Index, typename InIter>
     typename std::enable_if<detail::is_input_iterator<InIter>::value>::type
     set(const Index& i, InIter first) {
@@ -333,16 +333,46 @@ namespace TiledArray {
       pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
     }
 
-    template <typename Index>
-    void set(const Index& index, const element_type& value = element_type()) {
-      check_index(index);
-      pimpl_->set(index, value_type(pimpl_->trange().make_tile_range(index), value));
+    /// Set a tile and fill it using a sequence
+
+    /// \tparam Integer An integral type
+    /// \tparam InIter An input iterator
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \param first The iterator that points to the new tile data
+    template <typename Integer, typename InIter>
+    typename std::enable_if<detail::is_input_iterator<InIter>::value>::type
+    set(const std::initializer_list<Integer>& i, InIter first) {
+      set<std::initializer_list<Integer>>(i, first);
     }
 
-    /// Set tile \c i with future \c f
+    /// Set a tile and fill it using a value
 
-    /// \tparam Index The index type (i.e. index or size_type)
-    /// \param i The tile index to be set
+    /// \tparam Index An index or integral type
+    /// \tparam InIter An input iterator
+    /// \param i The index or the ordinal of the tile to be set
+    /// \param value the value used to fill the tile
+    template <typename Index>
+    void set(const Index& i, const element_type& value = element_type()) {
+      check_index(i);
+      pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
+    }
+
+    /// Set a tile and fill it using a value
+
+    /// \tparam Integer An integral type
+    /// \tparam InIter An input iterator
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \param value the value used to fill the tile
+    template <typename Integer>
+    void set(const std::initializer_list<Integer>& i,
+             const element_type& value = element_type()) {
+      set<std::initializer_list<Integer>>(i, value);
+    }
+
+    /// Set a tile directly using a future
+
+    /// \tparam Index An index or integral type
+    /// \param i The index or the ordinal of the tile to be set
     /// \param f A future to the tile
     template <typename Index>
     void set(const Index& i, const Future<value_type>& f) {
@@ -350,15 +380,36 @@ namespace TiledArray {
       pimpl_->set(i, f);
     }
 
-    /// Set tile \c i to value \c v
+    /// Set a tile directly using a future
 
-    /// \tparam Index The index type (i.e. index or size_type)
+    /// \tparam Integer An integral type
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \param f A future to the tile
+    template <typename Integer>
+    void set(const std::initializer_list<Integer>& i,
+             const Future<value_type>& f) {
+      set<std::initializer_list<Integer>>(i, f);
+    }
+
+    /// Set a tile using a Tile object
+
+    /// \tparam Index An index or integral type
     /// \param i The tile index to be set
     /// \param v The tile value
     template <typename Index>
     void set(const Index& i, const value_type& v) {
       check_index(i);
       pimpl_->set(i, v);
+    }
+
+    /// Set a tile using a Tile object
+
+    /// \tparam Integer An integral type
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \param v The tile value
+    template <typename Integer>
+    void set(const std::initializer_list<Integer>& i, const value_type& v) {
+      set<std::initializer_list<Integer>>(i, v);
     }
 
     /// Fill all local tiles
