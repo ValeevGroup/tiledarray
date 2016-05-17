@@ -673,7 +673,7 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Non-copyabe
+      /// Non-copyable
       ReducePairTask(const ReducePairTask<opT>&) = delete;
       ReducePairTask<opT> operator=(const ReducePairTask<opT>&) = delete;
 
