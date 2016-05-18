@@ -146,7 +146,7 @@ Common CMake cache variables that you may want to define include:
 -D BLAS_LIBRARIES=(semicolon seperated list of BLAS libraries)
 -D BLA_STATIC=(TRUE|FALSE)
 -D INTEGER4=(TRUE|FALSE)
--D EIGEN_INCLUDE_DIR=/path/to/eigen3/include
+-D EIGEN3_INCLUDE_DIR=/path/to/eigen3/include
 ```
 
 `BLA_STATIC` indicates static LAPACK and BLAS libraries will be perferred. `INTEGER4` indicated the Fortran integer width used by BLAS and LAPACK; if `TRUE` (the default), the integer size is `integer*4`, otherwise `integer*8` is used.
