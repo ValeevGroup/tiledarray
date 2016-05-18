@@ -257,6 +257,10 @@ namespace TiledArray {
       typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
     };
 
+    /// prepends \c const to \c T if \c B is \c true
+    template <bool B, typename T>
+    using const_if_t = typename std::conditional<B, const T, T>::type;
+
     template <typename T, typename Enabler = void>
     struct param {
       typedef typename std::add_lvalue_reference<typename std::add_const<T>::type>::type type;
