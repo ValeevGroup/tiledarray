@@ -206,11 +206,11 @@ namespace TiledArray {
     /// initialized using the `op` function/functor, which creates a mutated
     /// copy of the tiles in `other`.
     /// \param other The array to be copied
-    template <typename Op>
-    DistArray(const DistArray_& other, Op&& op) :
+    template <typename OtherTile, typename Op>
+    DistArray(const DistArray<OtherTile,Policy>& other, Op&& op) :
       pimpl_()
     {
-      *this = foreach(other, op);
+      *this = foreach<Tile,OtherTile,Op>(other, op);
     }
 
     /// Destructor
