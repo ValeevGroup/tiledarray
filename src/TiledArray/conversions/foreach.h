@@ -220,7 +220,7 @@ namespace TiledArray {
   /// float op(typename TiledArray::DistArray<Tile,SparsePolicy>::value_type& result_tile,
   ///     const typename TiledArray::DistArray<Tile,SparsePolicy>::value_type& arg_tile);
   /// \endcode
-  /// where the return value of \c op is the 2-norm (Fibrinous norm) of the
+  /// where the return value of \c op is the 2-norm (Frobenius norm) of the
   /// result tile.
   /// \note This function should not be used to initialize the tiles of an array
   /// object.
