@@ -41,6 +41,44 @@ namespace TiledArray {
   class DensePolicy;
   class SparsePolicy;
 
+  namespace detail {
+    template <typename ResultTile, typename ArgTile, typename Op>
+    inline DistArray<ResultTile, DensePolicy> foreach (
+        const DistArray<ArgTile, DensePolicy>& arg, Op && op) {
+      typedef DistArray<ArgTile, DensePolicy> arg_array_type;
+      typedef DistArray<ResultTile, DensePolicy> result_array_type;
+      typedef typename result_array_type::size_type size_type;
+
+      World& world = arg.get_world();
+
+      // Make an empty result array
+      result_array_type result(world, arg.trange(), arg.get_pmap());
+
+      // Construct the task function used to construct result tiles.
+      auto task = [=](const typename arg_array_type::value_type& arg_tile)
+          -> typename result_array_type::value_type {
+        typename result_array_type::value_type result_tile;
+        op(result_tile, arg_tile);
+        return result_tile;
+      };
+
+      // Iterate over local tiles of arg
+      auto it = arg.get_pmap()->begin(), end = arg.get_pmap()->end();
+      for (; it != end; ++it) {
+        const size_type index = *it;
+
+        // Spawn a task to evaluate the tile
+        Future<typename result_array_type::value_type> tile =
+            world.taskq.add(task, arg.find(index));
+
+        // Store result tile
+        result.set(index, tile);
+      }
+
+      return result;
+    }
+  } // namespace TiledArray::detail
+
   /// Apply a function to each tile of a dense Array
 
   /// This function uses an \c Array object to generate a new \c Array where the
@@ -51,55 +89,37 @@ namespace TiledArray {
   /// array:
   /// \code
   /// TiledArray::Array<2, double> out_array =
-  ///     foreach(in_array, [=] (TiledArray::Tensor<double>& out_tile, const TiledArray::Tensor<double>& in_tile) {
+  ///     foreach(in_array, [=] (TiledArray::Tensor<double>& out_tile,
+  ///                            const TiledArray::Tensor<double>& in_tile) {
   ///       out_tile = in_tile.unary([=] (const double value) -> double
   ///           { return std::sqrt(value); });
   ///     });
   /// \endcode
   /// The expected signature of the tile operation is:
   /// \code
-  /// void op(typename TiledArray::DistArray<Tile,DensePolicy>::value_type& result_tile,
-  ///     const typename TiledArray::DistArray<Tile,DensePolicy>::value_type& arg_tile);
+  /// void op(      typename TiledArray::DistArray<ResultTile,DensePolicy>::value_type& result_tile,
+  ///         const typename TiledArray::DistArray<ArgTile,DensePolicy>::value_type& arg_tile);
   /// \endcode
   /// \tparam Op Tile operation
-  /// \tparam Tile The tile type of the array
+  /// \tparam ResultTile The tile type of the result array
+  /// \tparam ArgTile The tile type of \c arg
   /// \param op The tile function
   /// \param arg The argument array
+  template <typename ResultTile, typename ArgTile, typename Op,
+            typename = typename std::enable_if<!std::is_same<ResultTile,ArgTile>::value>::type>
+  inline DistArray<ResultTile, DensePolicy>
+  foreach(const DistArray<ArgTile, DensePolicy>& arg, Op&& op) {
+    return detail::foreach<ResultTile,ArgTile,Op>(arg,op);
+  }
+
+  /// Apply a function to each tile of a dense Array
+
+  /// Specialization of foreach<ResultTile,ArgTile,Op> for
+  /// the case \c ResultTile == \c ArgTile
   template <typename Tile, typename Op>
   inline DistArray<Tile, DensePolicy>
   foreach(const DistArray<Tile, DensePolicy>& arg, Op&& op) {
-    typedef DistArray<Tile, DensePolicy> array_type;
-    typedef typename array_type::value_type value_type;
-    typedef typename array_type::size_type size_type;
-
-    World& world = arg.get_world();
-
-    // Make an empty result array
-    array_type result(world, arg.trange(), arg.get_pmap());
-
-    // Construct the task function used to construct result tiles.
-    auto task = [=] (const value_type& arg_tile) -> value_type {
-      typename array_type::value_type result_tile;
-      op(result_tile, arg_tile);
-      return result_tile;
-    };
-
-    // Iterate over local tiles of arg
-    typename array_type::pmap_interface::const_iterator
-    it = arg.get_pmap()->begin(),
-    end = arg.get_pmap()->end();
-    for(; it != end; ++it) {
-      const size_type index = *it;
-
-      // Spawn a task to evaluate the tile
-      Future<typename array_type::value_type> tile =
-          world.taskq.add(task, arg.find(index));
-
-      // Store result tile
-      result.set(index, tile);
-    }
-
-    return result;
+    return detail::foreach<Tile,Tile,Op>(arg,op);
   }
 
   /// Modify each tile of a dense Array
