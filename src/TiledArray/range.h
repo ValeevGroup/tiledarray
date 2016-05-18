@@ -506,6 +506,21 @@ namespace TiledArray {
       return result;
     }
 
+    /// Check the coordinate to make sure it is within the range.
+
+    /// \tparam Integer An integer type
+    /// \param index The element index to check for inclusion in the range,
+    ///              as an \c std::initializer_list<Integer>
+    /// \return \c true when <tt>i >= start</tt> and <tt>i < finish</tt>,
+    /// otherwise \c false
+    /// \throw TiledArray::Exception When the rank of this range is not
+    /// equal to the size of the index.
+    template <typename Integer>
+    bool includes(const std::initializer_list<Integer>& index) const {
+      return includes<std::initializer_list<Integer>>(index);
+    }
+
+
     /// Check the ordinal index to make sure it is within the range.
 
     /// \param i The ordinal index to check for inclusion in the range
