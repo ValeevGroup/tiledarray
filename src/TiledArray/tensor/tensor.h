@@ -1109,10 +1109,10 @@ namespace TiledArray {
     /// \tparam U The other tensor element type
     /// \tparam AU The other tensor allocator type
     /// \param other The tensor that will be contracted with this tensor
-    /// \param factor The scaling factor
+    /// \param factor Multiply the result by this constant
     /// \param gemm_helper The *GEMM operation meta data
     /// \return A new tensor which is the result of contracting this tensor with
-    /// \c other
+    /// \c other and scaled by \c factor
     /// \throw TiledArray::Exception When this tensor is empty.
     /// \throw TiledArray::Exception When \c other is empty.
     template <typename U, typename AU>
