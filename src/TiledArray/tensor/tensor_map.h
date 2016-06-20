@@ -94,6 +94,22 @@ namespace TiledArray {
   inline TensorConstMap<T> make_const_map(const T* const data, const Range& range)
   { return TensorConstMap<T>(range, data); }
 
+  template <typename T, typename Index>
+  inline TensorConstMap<T> make_const_map(T* const data, const Index& lower_bound,
+      const Index& upper_bound)
+  { return TensorConstMap<T>(Range(lower_bound, upper_bound), const_cast<const T*>(data)); }
+
+
+  template <typename T>
+  inline TensorConstMap<T> make_const_map(T* const data,
+      const std::initializer_list<std::size_t>& lower_bound,
+      const std::initializer_list<std::size_t>& upper_bound)
+  { return TensorConstMap<T>(Range(lower_bound, upper_bound), const_cast<const T*>(data)); }
+
+  template <typename T>
+  inline TensorConstMap<T> make_const_map(T* const data, const Range& range)
+  { return TensorConstMap<T>(range, const_cast<const T*>(data)); }
+
   /// For reusing map without allocating new ranges . . . maybe. 
   template <typename T, typename Index>
   void remap(TensorMap<T> &map, T* data, const Index &lower_bound, 
@@ -103,31 +119,29 @@ namespace TiledArray {
       map.data_ = data;
   }
 
-  // template <typename T, typename Index>
-  // void remap(TensorConstMap<T> &map, const T* data, const Index &lower_bound, 
-  //         const Index &upper_bound)
-  // {
-  //     map.range_.resize(lower_bound, upper_bound);
-  //     map.data_ = data;
-  // }
+  template <typename T, typename Index>
+  void remap(TensorConstMap<T>& map, T* data, const Index& lower_bound,
+             const Index& upper_bound) {
+    map.range_.resize(lower_bound, upper_bound);
+    map.data_ = const_cast<const T*>(data);
+   }
 
   template <typename T>
-  void remap(TensorMap<T> &map, T* data, 
-          const std::initializer_list<std::size_t> &lower_bound, 
+  void remap(TensorMap<T> &map, T* const data,
+          const std::initializer_list<std::size_t> &lower_bound,
           const std::initializer_list<std::size_t> &upper_bound)
   {
       map.range_.resize(lower_bound, upper_bound);
       map.data_ = data;
   }
 
-  // template <typename T>
-  // void remap(TensorConstMap<T> &map, const T* data, 
-  //         const std::initializer_list<std::size_t> &lower_bound, 
-  //         const std::initializer_list<std::size_t> &upper_bound)
-  // {
-  //     map.range_.resize(lower_bound, upper_bound);
-  //     map.data_ = data;
-  // }
+  template <typename T>
+  void remap(TensorConstMap<T>& map, T* const data,
+             const std::initializer_list<std::size_t>& lower_bound,
+             const std::initializer_list<std::size_t>& upper_bound) {
+    map.range_.resize(lower_bound, upper_bound);
+    map.data_ = const_cast<const T*>(data);
+   }
 
 } // namespace TiledArray
 

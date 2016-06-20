@@ -48,17 +48,17 @@ namespace TiledArray {
   }
   template <typename T, typename Index>
   void remap(detail::TensorInterface<T, Range> &, T* const, const Index&, const Index&);
-//  template <typename T, typename Index>
-//  void remap(detail::TensorInterface<const T, Range> &, const T* const,
-//          const Index&, const Index&);
+  template <typename T, typename Index>
+  void remap(detail::TensorInterface<const T, Range> &, T* const,
+          const Index&, const Index&);
   template <typename T>
   void remap(detail::TensorInterface<T, Range> &, T* const,
           const std::initializer_list<std::size_t>&,
           const std::initializer_list<std::size_t>&);
-//  template <typename T>
-//  void remap(detail::TensorInterface<const T, Range> &, const T* const,
-//      const std::initializer_list<std::size_t>&,
-//      const std::initializer_list<std::size_t>&);
+  template <typename T>
+  void remap(detail::TensorInterface<const T, Range> &, T* const,
+      const std::initializer_list<std::size_t>&,
+      const std::initializer_list<std::size_t>&);
 
   namespace detail {
 
@@ -109,26 +109,27 @@ namespace TiledArray {
       friend class TensorInterface;
 
       template <typename U, typename Index>
-      friend void TiledArray::remap(detail::TensorInterface<U, Range> &, U*,
-              const Index&, const Index&);
+      friend void TiledArray::remap(detail::TensorInterface<U, Range>&,
+                                    U* const, const Index&, const Index&);
 
-      // template <typename U, typename Index>
-      // friend void TiledArray::remap(detail::TensorInterface<const U, Range> &, const U*,
-      //         const Index&, const Index&);
+      template <typename U, typename Index>
+      friend void TiledArray::remap(detail::TensorInterface<const U, Range>&,
+                                    U* const, const Index&, const Index&);
 
       template <typename U>
       friend void TiledArray::remap(detail::TensorInterface<U, Range> &,
-              U*,
+              U* const,
               const std::initializer_list<std::size_t>&,
               const std::initializer_list<std::size_t>&);
 
-      // template <typename U>
-      // friend void TiledArray::remap(detail::TensorInterface<const U, Range> &,
-      //         const U*, const std::initializer_list<std::size_t>&,
-      //         const std::initializer_list<std::size_t>&);
+      template <typename U>
+      friend void TiledArray::remap(detail::TensorInterface<const U, Range>&,
+                                    U* const,
+                                    const std::initializer_list<std::size_t>&,
+                                    const std::initializer_list<std::size_t>&);
 
-      range_type range_; ///< View sub-block range
-      pointer data_; ///< Pointer to the original tensor data
+      range_type range_;  ///< View sub-block range
+      pointer data_;  ///< Pointer to the original tensor data
 
     public:
 
