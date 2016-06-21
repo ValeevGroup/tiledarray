@@ -27,10 +27,11 @@
 #define TILEDARRAY_TENSOR_TENSOR_MAP_H__INCLUDED
 
 #include <initializer_list>
+#include <type_traits>
+
+#include <TiledArray/range.h>
 
 namespace TiledArray {
-
-  class Range;
 
   namespace detail {
 
@@ -112,7 +113,7 @@ namespace TiledArray {
 
   /// For reusing map without allocating new ranges . . . maybe. 
   template <typename T, typename Index>
-  void remap(TensorMap<T> &map, T* data, const Index &lower_bound, 
+  inline void remap(TensorMap<T> &map, T* const data, const Index &lower_bound,
           const Index &upper_bound)
   {
       map.range_.resize(lower_bound, upper_bound);
@@ -120,14 +121,14 @@ namespace TiledArray {
   }
 
   template <typename T, typename Index>
-  void remap(TensorConstMap<T>& map, T* data, const Index& lower_bound,
+  inline void remap(TensorConstMap<T>& map, T* const data, const Index& lower_bound,
              const Index& upper_bound) {
     map.range_.resize(lower_bound, upper_bound);
     map.data_ = const_cast<const T*>(data);
    }
 
   template <typename T>
-  void remap(TensorMap<T> &map, T* const data,
+  inline void remap(TensorMap<T> &map, T* const data,
           const std::initializer_list<std::size_t> &lower_bound,
           const std::initializer_list<std::size_t> &upper_bound)
   {
@@ -136,7 +137,7 @@ namespace TiledArray {
   }
 
   template <typename T>
-  void remap(TensorConstMap<T>& map, T* const data,
+  inline void remap(TensorConstMap<T>& map, T* const data,
              const std::initializer_list<std::size_t>& lower_bound,
              const std::initializer_list<std::size_t>& upper_bound) {
     map.range_.resize(lower_bound, upper_bound);
