@@ -14,6 +14,7 @@ else
 fi
 export MPICC=$HOME/mpich/bin/mpicc
 export MPICXX=$HOME/mpich/bin/mpicxx
+export MPIRUN=$HOME/mpich/bin/mpirun
 export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:$LD_LIBRARY_PATH
 
 # Configure TiledArray
@@ -31,3 +32,4 @@ make -j2 ta_test VERBOSE=1
 cd tests
 export MAD_NUM_THREADS=2
 ./ta_test --show_progress
+$MPIRUN -n 2 ./ta_test --show_progress
