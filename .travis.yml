@@ -41,7 +41,8 @@ addons:
       - liblapack-dev
       #- mpich2 # disallowed - build from source
       - libtbb-dev
-      #- cmake
+      - cmake
+      - cmake-data
 #notifications:
 #  email:
 #    recipients:
