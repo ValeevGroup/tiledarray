@@ -25,8 +25,8 @@
 # Create the ta_fock_build executable
 
 # Add the ta_fock_build executable
-add_executable(ta_fock_build EXCLUDE_FROM_ALL ta_fock_build.cpp)
-target_link_libraries(ta_fock_build PRIVATE tiledarray)
-add_dependencies(ta_fock_build External)
-add_dependencies(example ta_fock_build)
+add_executable(ta_k_build EXCLUDE_FROM_ALL ta_k_build.cpp)
+target_link_libraries(ta_k_build PRIVATE tiledarray)
+add_dependencies(ta_k_build External)
+add_dependencies(example ta_k_build)
 

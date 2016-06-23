@@ -112,6 +112,11 @@ int main(int argc, char** argv) {
     2, TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end())
   );
 
+  // Create M^-1 blocking
+  std::vector<TiledArray::TiledRange1> df_matrix_blocking2(
+    2, TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end())
+  );
+
   // Create C^T blocking
   std::vector<TiledArray::TiledRange1> coeff_blocking2;
   coeff_blocking2.reserve(2);
@@ -130,69 +135,110 @@ int main(int argc, char** argv) {
   temp_blocking2.push_back(TiledArray::TiledRange1(matrix_blocking.begin(), matrix_blocking.end()));
   temp_blocking2.push_back(TiledArray::TiledRange1(df_blocking.begin(), df_blocking.end()));
 
-
   TiledArray::TiledRange matrix_trange(matrix_blocking2.begin(), matrix_blocking2.end());
+  TiledArray::TiledRange df_matrix_trange(df_matrix_blocking2.begin(), df_matrix_blocking2.end());
   TiledArray::TiledRange coeff_trange(coeff_blocking2.begin(), coeff_blocking2.end());
   TiledArray::TiledRange df_trange(df_blocking2.begin(), df_blocking2.end());
   TiledArray::TiledRange temp_trange(temp_blocking2.begin(), temp_blocking2.end());
 
   // Construct and initialize arrays
   TiledArray::TArrayD C(world, coeff_trange);
-  TiledArray::TArrayD G(world, matrix_trange);
-  TiledArray::TArrayD H(world, matrix_trange);
-  TiledArray::TArrayD D(world, matrix_trange);
-  TiledArray::TArrayD F(world, matrix_trange);
+  TiledArray::TArrayD K(world, matrix_trange);
+  TiledArray::TArrayD M_oh_inv(world, df_matrix_trange);
   TiledArray::TArrayD Eri(world, df_trange);
   TiledArray::TArrayD K_temp(world, temp_trange);
   C.fill(1.0);
-  D.fill(1.0);
-  H.fill(1.0);
-  F.fill(1.0);
-  G.fill(1.0);
+  M_oh_inv.fill(1.0);
+  K.fill(1.0);
   Eri.fill(1.0);
   world.gop.fence();
 
 
-  // Start clock
+  // Time first part of exchange build
+  if(world.rank() == 0){
+    std::cout << "\nStarting K1" << std::endl; 
+  }
   world.gop.fence();
-  const double wall_time_start = madness::wall_time();
-
-  // Do fock build
+  const double k1_time_start = madness::wall_time();
+  
+  // Do K build
   for(int i = 0; i < repeat; ++i) {
-
+  
     K_temp("j,Z,P") = C("m,Z") * Eri("m,j,P");
+    world.gop.fence();
+    if(world.rank() == 0)
+      std::cout << "Iteration: "  << i + 1 << "   " << "\r" << std::flush;
+  }
+  std::cout << std::endl;
+  const double k1_time_stop = madness::wall_time();
 
-    // Compute coulomb and exchange
-    G("i,j") = 2.0 * ( Eri("i,j,P") * ( C("m,Z") * K_temp("m,Z,P") ) )
-                   - ( K_temp("i,Z,P") * K_temp("j,Z,P") );
-    D("mu,nu") = C("mu,i") * C("nu,i");
+  double k1_time = k1_time_stop - k1_time_start;
+  double k1_gflops = 2.0 * double(coeff_size * matrix_size * matrix_size * df_size); // C("Z,m") * Eri("m,n,P") = K_temp("Z,n,P")
+  k1_gflops *= repeat;
+  k1_gflops /= (1e9 * k1_time);
+  
+  if(world.rank() == 0){
+    std::cout << "Average K1 time = " << double(k1_time) / double(repeat) << std::endl;
+    std::cout << "K1 GFlops = " << k1_gflops << std::endl;
+  }
 
-    F("i,j") = G("i,j") + H("i,j");
+  // Starting K2 
+  if(world.rank() == 0){
+    std::cout << "\nStarting K2" << std::endl; 
+  }
+  world.gop.fence();
+  const double k2_time_start = madness::wall_time();
+  
+  // Do K build
+  for(int i = 0; i < repeat; ++i) {
+  
+    K_temp("j,Z,P") = K_temp("j, Z, X") * M_oh_inv("X,P");
+    world.gop.fence();
+    if(world.rank() == 0)
+      std::cout << "Iteration: "  << i + 1 << "   " << "\r" << std::flush;
+  }
+  std::cout << std::endl;
+  const double k2_time_stop = madness::wall_time();
+
+  double k2_time = k2_time_stop - k2_time_start;
+  double k2_gflops = 2.0 * double(df_size * df_size * matrix_size * coeff_size); // K_temp("j,Z,P") = K_temp("j, Z, X") * M_oh_size("X,P")
+  k2_gflops *= repeat;
+  k2_gflops /= (1e9 * k2_time);
+  
+  if(world.rank() == 0){
+    std::cout << "Average K2 time = " << double(k2_time) / double(repeat) << std::endl;
+    std::cout << "K2 GFlops = " << k2_gflops << std::endl;
+  }
+
+  // STARTING K2 
+  if(world.rank() == 0){
+    std::cout << "\nStarting K3" << std::endl; 
+  }
+  world.gop.fence();
+  const double k3_time_start = madness::wall_time();
+  
+  // Do K build
+  for(int i = 0; i < repeat; ++i) {
+  
+    K("i,j") = K_temp("i,Z,P") * K_temp("j,Z,P");
 
     world.gop.fence();
     if(world.rank() == 0)
-      std::cout << "Iteration " << i + 1 << "\n";
+      std::cout << "Iteration: "  << i + 1 << "   " << "\r" << std::flush;
   }
+  std::cout << std::endl;
+  const double k3_time_stop = madness::wall_time();
 
-  // Stop clock
-  const double wall_time_stop = madness::wall_time();
+  double k3_time = k3_time_stop - k3_time_start;
+  double k3_gflops = 2.0 * double(coeff_size * matrix_size * matrix_size * df_size); // C("Z,m") * Eri("m,n,P") = K_temp("Z,n,P")
+  k3_gflops *= repeat;
+  k3_gflops /= (1e9 * k3_time);
 
-  const double total_time = wall_time_stop - wall_time_start;
-
-  double gflops = 2.0 * double(coeff_size * matrix_size * matrix_size * df_size); // C("Z,m") * Eri("m,n,P") = K_temp("Z,n,P")
-  gflops += 2.0 * double(coeff_size * matrix_size * df_size); // C("Z,n") * K_temp("Z,n,P") = temp("P")
-  gflops += 2.0 * double(matrix_size * matrix_size * df_size); // Eri("i,j,P") * temp("P") = Final("i,j")
-  gflops += 2.0 * double(coeff_size * matrix_size * matrix_size * df_size); // K_temp("Z,i,P") * K_temp("Z,j,P")
-  gflops += 1.0 * double(matrix_size * matrix_size); // 2 * J("i,j") - K("i,j")
-  gflops += 2.0 * double(coeff_size * matrix_size * matrix_size); // C("Z,mu") * C("Z,nu")
-  gflops += double(matrix_size); // G("i,j") + H("i,j")
-  gflops = double(repeat * gflops)/(1e9 * total_time);
-
+  world.gop.fence();
+  
   if(world.rank() == 0){
-    std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat) << std::endl;
-    std::cout << "Memory needed (not including undeclared temporaries) = " <<
-            4 * matrix_memory + coeff_memory + tensor_memory + co_tensor_memory << " GB" << std::endl;
-    std::cout << "GFlops = " << gflops << std::endl;
+    std::cout << "Average K3 time = " << double(k3_time) / double(repeat) << std::endl;
+    std::cout << "K3 GFlops = " << k3_gflops << std::endl;
   }
 
   TiledArray::finalize();
