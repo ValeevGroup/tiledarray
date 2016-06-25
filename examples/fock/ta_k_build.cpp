@@ -159,15 +159,22 @@ int main(int argc, char** argv) {
     std::cout << "\nStarting K1" << std::endl; 
   }
   world.gop.fence();
-  const double k1_time_start = madness::wall_time();
+  double k1_time_start = madness::wall_time();
   
   // Do K build
-  for(int i = 0; i < repeat; ++i) {
+  // NB 1 extra iteration to warm up
+  for(int i = 0; i < repeat+1; ++i) {
+    if (i == 1)
+      k1_time_start = madness::wall_time();
   
     K_temp("j,Z,P") = C("m,Z") * Eri("m,j,P");
     world.gop.fence();
-    if(world.rank() == 0)
-      std::cout << "Iteration: "  << i + 1 << "   " << "\r" << std::flush;
+    if(world.rank() == 0) {
+      if (i == 0)
+        std::cout << "Warmup ... ready to work now" << std::endl;
+      else
+        std::cout << "Iteration: "  << i << "   " << "\r" << std::flush;
+    }
   }
   std::cout << std::endl;
   const double k1_time_stop = madness::wall_time();
