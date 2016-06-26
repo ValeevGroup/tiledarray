@@ -64,7 +64,7 @@ namespace TiledArray {
     typedef detail::ValArray<value_type> vector_type;
 
     Tensor<value_type> tile_norms_; ///< Tile magnitude data
-    std::shared_ptr<vector_type> size_vectors_; ///< Tile volume data
+    std::shared_ptr<vector_type> size_vectors_; ///< Tile size information
     size_type zero_tile_count_; ///< Number of zero tiles
     static value_type threshold_; ///< The zero threshold
 
@@ -453,10 +453,9 @@ namespace TiledArray {
         TA_ASSERT(lower_i < upper_i);
         TA_ASSERT(upper_i <= tile_norms_.range().upbound_data()[i]);
 
-        // Compute the trange data for the result shape
+        // Construct the size vector for rank i
         size_vectors.get()[i] = vector_type(extent_i,
-            size_vectors_.get()[i].data() + lower_i,
-            [=] (const size_type j) { return j - lower_i; });
+            size_vectors_.get()[i].data() + lower_i);
       }
 
       return size_vectors;
