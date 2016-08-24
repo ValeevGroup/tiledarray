@@ -154,7 +154,7 @@ namespace TiledArray {
       Replicator(const A& source, const A destination) :
         wobj_type(source.get_world()), madness::Spinlock(),
         destination_(destination), indices_(), data_(), sent_(),
-        world_(source.get_world()), callbacks_()
+        world_(source.get_world()), callbacks_(), probe_(false)
       {
         sent_ = 0;
 
