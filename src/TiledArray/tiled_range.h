@@ -86,7 +86,7 @@ namespace TiledArray {
       init();
     }
 
-    /// Constructed with an initializer_list of TiledRange1s
+    /// Constructed with an initializer_list of TiledRange1's
     TiledRange(const std::initializer_list<TiledRange1>& list) :
       range_(), element_range_(), ranges_(list.begin(), list.end())
     {
