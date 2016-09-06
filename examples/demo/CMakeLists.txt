@@ -1,6 +1,6 @@
 #
 #  This file is a part of TiledArray.
-#  Copyright (C) 2013  Virginia Tech
+#  Copyright (C) 2016  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,21 +15,12 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#  Justus Calvin
-#  Department of Chemistry, Virginia Tech
-#
-#  CMakeLists.txt
-#  Sep 4, 2013
-#
- 
-# Create example programs target so all examples programs
-add_custom_target(example)
 
-# Add Subdirectories
-add_subdirectory (cc)
-add_subdirectory (dgemm)
-add_subdirectory (demo)
-add_subdirectory (fock)
-add_subdirectory (mpi_tests)
-add_subdirectory (pmap_test)
-add_subdirectory (vector_tests)
+# Create the ta_fock_build executable
+
+# Add the demo executable
+add_executable(demo EXCLUDE_FROM_ALL demo.cpp)
+target_link_libraries(demo PRIVATE tiledarray)
+add_dependencies(demo External)
+add_dependencies(example demo)
+
