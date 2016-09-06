@@ -69,7 +69,7 @@ namespace TiledArray {
   typedef TSpArray<std::complex<float> >  TSpArrayC;
 
   // type alias for backward compatibility: the old Array has static type, DistArray is rank-polymorphic
-  template <typename T, unsigned int, typename Tile = Tensor<T, Eigen::aligned_allocator<T> >, typename Policy = DensePolicy>
+  template <typename T, unsigned int = 0, typename Tile = Tensor<T, Eigen::aligned_allocator<T> >, typename Policy = DensePolicy>
   using Array = DistArray<Tile, Policy>;
 
 } // namespace TiledArray
