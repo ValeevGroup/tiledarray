@@ -82,8 +82,8 @@ int main(int argc, char** argv) {
               << "Number of nodes     = " << world.size()
               << "\nAO size         = " << ao_size << "x" << ao_size
               << "\nocc size         = " << occ_size << "x" << ao_size
-              << "\(ao ao|df) tensor ranks         = " << ao_size << "x" << ao_size << "x" << df_size
-              << "\(ao ao|df) tensor block ranks          = " << ao_blk_size << "x" << ao_blk_size << "x" << df_blk_size
+              << "\n(ao ao|df) tensor ranks         = " << ao_size << "x" << ao_size << "x" << df_size
+              << "\n(ao ao|df) tensor block ranks          = " << ao_blk_size << "x" << ao_blk_size << "x" << df_blk_size
               << "\n(ao ao|df) tensor storage = " << tensor_memory
               << " GB\n(ao occ|df) tensor storage   = " << co_tensor_memory
               << " GB\n";
