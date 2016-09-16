@@ -33,7 +33,7 @@ namespace TiledArray {
 
     /// Constructed with a set of ranges pointed to by [ first, last ).
     void init() {
-      const std::size_t rank = ranges_.size();
+      const std::size_t rank = this->rank();
 
       // Indices used to store range start and finish.
       std::vector<size_type> start;
@@ -230,6 +230,20 @@ namespace TiledArray {
         result.push_back(ranges_[i].element2tile(index[i]));
 
       return result;
+    }
+
+    /// The rank accessor
+
+    /// \return the rank (=number of dimensions) of this object
+    std::size_t rank() const { return ranges_.size(); }
+
+    /// Accessor of the tiled range for one of the dimensions
+
+    /// \param d the dimension index, a nonnegative integer less than rank()
+    /// \return TIledRange1 object for dimension \c d
+    const TiledRange1& dim(std::size_t d) const {
+      TA_ASSERT(d < rank());
+      return ranges_[d];
     }
 
     /// Tile dimension boundary array accessor

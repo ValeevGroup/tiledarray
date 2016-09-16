@@ -27,7 +27,7 @@
 
 namespace TiledArray {
 
-  /// TiledRange1 class defines a non-uniformly-tiled, continuous, one-dimensional
+  /// TiledRange1 class defines a non-uniformly-tiled, contiguous, one-dimensional
   /// range. The tiling data is constructed with and stored in an array with
   /// the format {a0, a1, a2, ...}, where 0 <= a0 < a1 < a2 < ... Each tile is
   /// defined as [a0,a1), [a1,a2), ... The number of tiles in the range will be
@@ -119,6 +119,12 @@ namespace TiledArray {
 
     /// Elements range accessor
     const range_type& elements() const { return element_range_; }
+
+    /// Tile range extent accessor
+    size_type tile_extent() const { return range_.second - range_.first; }
+
+    /// Elements range extent accessor
+    size_type extent() const { return element_range_.second - element_range_.first; }
 
     /// Tile range accessor
 
