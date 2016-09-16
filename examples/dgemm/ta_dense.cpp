@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     TiledArray::World& world = TiledArray::initialize(argc, argv);
 
     // Get command line arguments
-    if(argc < 2) {
+    if(argc < 3) {
       std::cout << "Usage: ta_dense matrix_size block_size [repetitions] [use_complex]\n";
       return 0;
     }
