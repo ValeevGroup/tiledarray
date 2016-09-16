@@ -52,8 +52,12 @@ namespace TiledArray {
       template <typename>
       friend class TileConstReference;
 
+      typedef typename Impl::range_type range_type;
+      typedef typename Impl::range_type::index index_type;
+      typedef typename Impl::size_type ordinal_type;
+
       Impl* tensor_; ///< The tensor that owns the referenced tile
-      typename Impl::size_type index_; ///< The index of the tensor
+      ordinal_type index_; ///< The ordinal index of the tile
 
       // Not allowed
       TileReference<Impl>& operator=(const TileReference<Impl>&);
@@ -84,9 +88,32 @@ namespace TiledArray {
         return future().get();
       }
 
-      operator typename Impl::future() const { return tensor_->get(index_); }
+      operator typename Impl::future() const { return this->future(); }
 
       operator typename Impl::value_type() const { return get(); }
+
+      /// Tile coordinate index accessor
+
+      /// \return The coordinate index of the current tile
+      index_type index() const {
+        TA_ASSERT(tensor_);
+        return tensor_->range().idx(index_);
+      }
+
+      /// Tile ordinal index accessor
+
+      /// \return The ordinal index of the current tile
+      ordinal_type ordinal() const {
+        return index_;
+      }
+
+      /// Tile range factory function
+
+      /// Construct a range object for the current tile
+      range_type make_range() const {
+        TA_ASSERT(tensor_);
+        return tensor_->trange().make_tile_range(index_);
+      }
     }; // class TileReference
 
     /// Tensor tile reference
