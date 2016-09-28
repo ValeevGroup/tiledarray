@@ -207,7 +207,7 @@ namespace TiledArray {
           const_cast<ArrayEvalImpl_*>(this)->notify();
           return result;
         } else {
-          // Spawn a task to set the tile the input tile is ready.
+          // Spawn a task to set the tile when the input tile is ready.
           Future<value_type> result =
               TensorImpl_::get_world().taskq.add(shared_from_this(),
               & ArrayEvalImpl_::make_tile, tile, consumable_tile,
