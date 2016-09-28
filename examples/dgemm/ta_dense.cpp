@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <tiledarray.h>
+#include <madness/world/worldmem.h>
 
 bool to_bool(const char* str) {
   if (not strcmp(str,"0") ||
@@ -128,44 +129,60 @@ template <typename T>
 void
 gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat) {
 
+  const bool do_memtrace = false;
+
   const auto n = trange.elements().extent()[0];
   const auto complex_T = TiledArray::detail::is_complex<T>::value;
   const double gflop = (complex_T ? 8 : 2) // 1 multiply takes 6/1 flops for complex/real
                                            // 1 add takes 2/1 flops for complex/real
                      * double(n*n*n) / 1.0e9;
 
-  // Construct and initialize arrays
-  TiledArray::TArrayD a(world, trange);
-  TiledArray::TArrayD b(world, trange);
-  TiledArray::TArrayD c(world, trange);
-  a.fill(1.0);
-  b.fill(1.0);
+  auto memtrace = [do_memtrace,&world](const std::string& str) -> void {
+    if (do_memtrace) {
+      world.gop.fence();
+      madness::print_meminfo(world.rank(),str);
+    }
+  };
 
-  // Start clock
-  world.gop.fence();
-  if(world.rank() == 0)
-    std::cout << "Starting iterations: " << "\n";
+  memtrace("start");
+  {  // array lifetime scope
+    // Construct and initialize arrays
+    TiledArray::TArrayD a(world, trange);
+    TiledArray::TArrayD b(world, trange);
+    TiledArray::TArrayD c(world, trange);
+    a.fill(1.0);
+    b.fill(1.0);
+    memtrace("allocated a and b");
 
-  double total_time = 0.0;
-  double total_gflop_rate = 0.0;
+    // Start clock
+    world.gop.fence();
+    if (world.rank() == 0)
+      std::cout << "Starting iterations: "
+                << "\n";
 
-  // Do matrix multiplication
-  for(int i = 0; i < repeat; ++i) {
-    const double start = madness::wall_time();
-    c("m,n") = a("m,k") * b("k,n");
-//      world.gop.fence();
-    const double time = madness::wall_time() - start;
-    total_time += time;
-    const double gflop_rate = gflop / time;
-    total_gflop_rate += gflop_rate;
-    if(world.rank() == 0)
-      std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
-          << gflop_rate <<"\n";
-  }
+    double total_time = 0.0;
+    double total_gflop_rate = 0.0;
 
-  // Print results
-  if(world.rank() == 0)
-    std::cout << "Average wall time   = " << total_time / double(repeat)
-        << " sec\nAverage GFLOPS      = " << total_gflop_rate / double(repeat) << "\n";
+    // Do matrix multiplication
+    for (int i = 0; i < repeat; ++i) {
+      const double start = madness::wall_time();
+      c("m,n") = a("m,k") * b("k,n");
+      memtrace("c=a*b");
+      const double time = madness::wall_time() - start;
+      total_time += time;
+      const double gflop_rate = gflop / time;
+      total_gflop_rate += gflop_rate;
+      if (world.rank() == 0)
+        std::cout << "Iteration " << i + 1 << "   time=" << time
+                  << "   GFLOPS=" << gflop_rate << "\n";
+    }
 
+    // Print results
+    if (world.rank() == 0)
+      std::cout << "Average wall time   = " << total_time / double(repeat)
+                << " sec\nAverage GFLOPS      = "
+                << total_gflop_rate / double(repeat) << "\n";
+
+  }  // array lifetime scope
+  memtrace("stop");
 }
