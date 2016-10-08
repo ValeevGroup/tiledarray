@@ -158,8 +158,6 @@ namespace TiledArray {
       // Verify at least 2 elements are present if the vector is not empty.
       TA_USER_ASSERT((std::distance(first, last) >= 2),
           "TiledRange1 construction failed: You need at least 2 elements in the tile boundary list.");
-      TA_USER_ASSERT(size_type(*first) == size_type(0),
-          "TiledRange1 construction failed: Tile boundary list must start at zero.");
       // Verify the requirement that a0 < a1 < a2 < ...
       for (; first != (last - 1); ++first)
         TA_USER_ASSERT(*first < *(first + 1),
