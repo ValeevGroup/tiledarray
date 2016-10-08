@@ -83,8 +83,11 @@ private:
     TiledArray::Tensor<float> tile_norms(r.tiles(), 0.0f);
 
     // Find and store the tile for each element in the tensor.
-    for(typename T::const_iterator it = t.begin(); it != t.end(); ++it)
+    for(typename T::const_iterator it = t.begin(); it != t.end(); ++it) {
+      if (r.elements().includes(it->first)) {
         tile_norms[r.element_to_tile(it->first)] += it->second * it->second;
+      }
+    }
 
     tile_norms.inplace_unary([](float& x) { x = std::sqrt(x); });
 
