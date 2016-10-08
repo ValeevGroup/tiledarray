@@ -1161,17 +1161,18 @@ namespace TiledArray {
 
       /// \param left The left-hand argument evaluator
       /// \param right The right-hand argument evaluator
-      /// \param world The world where the tensor lives
-      /// \param trange The tiled range object
-      /// \param shape The tensor shape object
-      /// \param pmap The tile-process map
-      /// \param perm The permutation that is applied to tile indices
+      /// \param world The world where the result lives
+      /// \param trange The tiled range object for the result
+      /// \param shape The tensor shape object for the result
+      /// \param pmap The tile-process map for the result
+      /// \param perm The permutation that is applied to result tile indices
       /// \param op The tile transform operation
       /// \param k The number of tiles in the inner dimension
       /// \param proc_grid The process grid that defines the layout of the tiles
-      /// during the contraction evaluation
-      /// \note The trange, shape, and pmap are assumed to be in the final,
-      /// permuted, state for the result.
+      ///                  during the contraction evaluation
+      /// \note The trange, shape, and pmap refer to the final,
+      ///       permuted, state for the result, NOT to the result during
+      ///       the SUMMA evaluation.
       Summa(const left_type& left, const right_type& right,
           World& world, const trange_type trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,

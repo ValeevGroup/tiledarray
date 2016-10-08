@@ -199,12 +199,12 @@ namespace TiledArray {
     { }
 
 
-    /// Unary mutating constructor
+    /// Unary transform constructor
 
     /// This constructor uses the meta data of `other` to initialize the meta
     /// data of the new array. In addition, the tiles of the new array are also
-    /// initialized using the `op` function/functor, which creates a mutated
-    /// copy of the tiles in `other`.
+    /// initialized using the `op` function/functor, which creates transfroms
+    /// each tile in `other` using `op`
     /// \param other The array to be copied
     template <typename OtherTile, typename Op>
     DistArray(const DistArray<OtherTile,Policy>& other, Op&& op) :
