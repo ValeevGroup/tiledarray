@@ -112,7 +112,7 @@ namespace TiledArray {
 
       /// Initialize max_memory_ limit for SUMMA
       static size_type init_max_memory() {
-        const char* max_memory = getenv("TA__SUMMA__MAX_MEMORY");
+        const char* max_memory = getenv("TA_SUMMA_MAX_MEMORY");
         if(max_memory) {
             // Convert the string into bytes
             std::stringstream ss(max_memory);
@@ -122,17 +122,23 @@ namespace TiledArray {
                     std::string unit;
                     if(ss >> unit) { // Failure == assume bytes
                         if(unit == "KB" || unit == "kB") {
-                            memory *= 1024.0;
+                          memory *= 1000.0;
+                        } else if(unit == "KiB" || unit == "kiB") {
+                          memory *= 1024.0;
                         } else if(unit == "MB") {
-                            memory *= 1048576.0;
+                          memory *= 1000000.0;
+                        } else if(unit == "MiB") {
+                          memory *= 1048576.0;
                         } else if(unit == "GB") {
-                            memory *= 1073741824.0;
+                          memory *= 1000000000.0;
+                        } else if(unit == "GiB") {
+                          memory *= 1073741824.0;
                         }
                     }
                 }
             }
 
-            memory = std::max(memory, 10485760.0); // Minimum 10 MB
+            memory = std::max(memory, 104857600.0); // Minimum 100 MiB
             return memory;
         }
 
@@ -141,7 +147,7 @@ namespace TiledArray {
 
 
       static size_type init_max_depth() {
-        const char* max_depth = getenv("TA__SUMMA__MAX_DEPTH");
+        const char* max_depth = getenv("TA_SUMMA_MAX_DEPTH");
         if(max_depth)
           return std::stoul(max_depth);
         return 0ul;
