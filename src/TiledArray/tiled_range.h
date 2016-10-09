@@ -127,8 +127,8 @@ namespace TiledArray {
     /// Access the tile range
 
     /// \return A const reference to the tile range object
-    /// \deprecated use TiledRange::tiles() instead
-    const range_type& tiles() const {
+    /// \deprecated use TiledRange::tile_range() instead
+    DEPRECATED const range_type& tiles() const {
       return tile_range();
     }
 
@@ -143,7 +143,7 @@ namespace TiledArray {
 
     /// \return A const reference to the element range object
     /// \deprecated use TiledRange::element_range() instead
-    const tile_range_type& elements() const {
+    DEPRECATED const tile_range_type& elements() const {
       return element_range();
     }
 
@@ -153,7 +153,7 @@ namespace TiledArray {
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
     /// \deprecated use TiledRange::tile() instead
-    tile_range_type make_tile_range(const size_type& i) const {
+    DEPRECATED  tile_range_type make_tile_range(const size_type& i) const {
       return tile(i);
     }
 
@@ -174,7 +174,8 @@ namespace TiledArray {
     /// \return The constructed range object
     /// \deprecated use TiledRange::tile() instead
     template <typename Index>
-    typename std::enable_if<! std::is_integral<Index>::value, tile_range_type>::type
+    DEPRECATED typename std::enable_if<!std::is_integral<Index>::value,
+                                       tile_range_type>::type
     make_tile_range(const Index& index) const {
       return tile(index);
     }
