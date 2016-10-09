@@ -31,6 +31,7 @@
 #include <TiledArray/val_array.h>
 #include <TiledArray/tensor/shift_wrapper.h>
 #include <TiledArray/tensor/tensor_interface.h>
+#include <typeinfo>
 
 namespace TiledArray {
 
@@ -1046,6 +1047,20 @@ namespace TiledArray {
   // Static member initialization
   template <typename T>
   typename SparseShape<T>::value_type SparseShape<T>::threshold_ = std::numeric_limits<T>::epsilon();
+
+  /// Add the shape to an output stream
+
+  /// \tparam T the numeric type supporting the type of \c shape
+  /// \param os The output stream
+  /// \param shape the SparseShape<T> object
+  /// \return A reference to the output stream
+  template <typename T>
+  inline std::ostream& operator<<(std::ostream& os, const SparseShape<T>& shape) {
+    os << "SparseShape<" << typeid(T).name() << ">:" << std::endl
+       << shape.data() << std::endl;
+    return os;
+  }
+
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
