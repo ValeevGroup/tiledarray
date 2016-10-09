@@ -68,10 +68,10 @@ namespace TiledArray {
       {
         // Validate input data.
         TA_ASSERT(pmap_);
-        TA_ASSERT(pmap_->size() == trange_.tiles().volume());
+        TA_ASSERT(pmap_->size() == trange_.tile_range().volume());
         TA_ASSERT(pmap_->rank() == typename pmap_interface::size_type(world_.rank()));
         TA_ASSERT(pmap_->procs() == typename pmap_interface::size_type(world_.size()));
-        TA_ASSERT(shape_.validate(trange_.tiles()));
+        TA_ASSERT(shape_.validate(trange_.tile_range()));
       }
 
       /// Virtual destructor
@@ -87,13 +87,13 @@ namespace TiledArray {
 
       /// \return The size array of the tensor tiles
       /// \throw nothing
-      const range_type& range() const { return trange_.tiles(); }
+      const range_type& range() const { return trange_.tile_range(); }
 
       /// Tensor tile volume accessor
 
       /// \return The number of tiles in the tensor
       /// \throw nothing
-      size_type size() const { return trange_.tiles().volume(); }
+      size_type size() const { return trange_.tile_range().volume(); }
 
       /// Local element count
 
@@ -113,8 +113,8 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When the process map has not been set
       template <typename Index>
       ProcessID owner(const Index& i) const {
-        TA_ASSERT(trange_.tiles().includes(i));
-        return pmap_->owner(trange_.tiles().ordinal(i));
+        TA_ASSERT(trange_.tile_range().includes(i));
+        return pmap_->owner(trange_.tile_range().ordinal(i));
       }
 
       /// Query for a locally owned tile
@@ -125,8 +125,8 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When the process map has not been set
       template <typename Index>
       bool is_local(const Index& i) const {
-        TA_ASSERT(trange_.tiles().includes(i));
-        return pmap_->is_local(trange_.tiles().ordinal(i));
+        TA_ASSERT(trange_.tile_range().includes(i));
+        return pmap_->is_local(trange_.tile_range().ordinal(i));
       }
 
       /// Query for a zero tile
@@ -138,8 +138,8 @@ namespace TiledArray {
       /// range
       template <typename Index>
       bool is_zero(const Index& i) const {
-        TA_ASSERT(trange_.tiles().includes(i));
-        return shape_.is_zero(trange_.tiles().ordinal(i));
+        TA_ASSERT(trange_.tile_range().includes(i));
+        return shape_.is_zero(trange_.tile_range().ordinal(i));
       }
 
       /// Query the density of the tensor

@@ -34,7 +34,7 @@ struct ArrayImplBaseFixture : public SparseShapeFixture {
   typedef Tensor<int> value_type;
   typedef detail::ArrayImpl<value_type, DensePolicy> array_impl_base;
   ArrayImplBaseFixture() :
-    pmap(new detail::HashPmap(* GlobalFixture::world, tr.tiles().volume()))
+    pmap(new detail::HashPmap(* GlobalFixture::world, tr.tile_range().volume()))
   { }
 
   std::shared_ptr<array_impl_base::pmap_interface> pmap;
@@ -69,13 +69,13 @@ BOOST_AUTO_TEST_CASE( constructor_dense_policy )
   array_impl_base x(* GlobalFixture::world, tr, dense_shape_type(), pmap);
 
   // Check that the initial conditions are correct after constructution.
-  BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
+  BOOST_CHECK_EQUAL(& x.world(), GlobalFixture::world);
   BOOST_CHECK(x.pmap() == pmap);
-  BOOST_CHECK_EQUAL(x.range(), tr.tiles());
+  BOOST_CHECK_EQUAL(x.range(), tr.tile_range());
   BOOST_CHECK_EQUAL(x.trange(), tr);
-  BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
+  BOOST_CHECK_EQUAL(x.size(), tr.tile_range().volume());
   BOOST_CHECK(x.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
     BOOST_CHECK(! x.is_zero(i));
 }
 
@@ -85,13 +85,13 @@ BOOST_AUTO_TEST_CASE( constructor_shape_policy )
   sp_array_impl_base x(* GlobalFixture::world, tr, make_shape(tr, 0.5, 23), pmap);
 
   // Check that the initial conditions are correct after constructution.
-  BOOST_CHECK_EQUAL(& x.get_world(), GlobalFixture::world);
+  BOOST_CHECK_EQUAL(& x.world(), GlobalFixture::world);
   BOOST_CHECK(x.pmap() == pmap);
-  BOOST_CHECK_EQUAL(x.range(), tr.tiles());
+  BOOST_CHECK_EQUAL(x.range(), tr.tile_range());
   BOOST_CHECK_EQUAL(x.trange(), tr);
-  BOOST_CHECK_EQUAL(x.size(), tr.tiles().volume());
+  BOOST_CHECK_EQUAL(x.size(), tr.tile_range().volume());
   BOOST_CHECK(! x.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i) {
     if(x.shape()[i] < SparseShape<float>::threshold()) {
       BOOST_CHECK(x.is_zero(i));
     } else {
@@ -103,12 +103,12 @@ BOOST_AUTO_TEST_CASE( constructor_shape_policy )
 BOOST_AUTO_TEST_CASE( tile_get_and_set_w_value )
 {
   // Get each tile before it is set
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i) {
     if(GlobalFixture::world->rank() == 0) {
       const ProcessID owner = impl.owner(i);
 
       // Set each tile on node 0
-      BOOST_CHECK_NO_THROW(impl.set(i, value_type(impl.trange().make_tile_range(i), owner)));
+      BOOST_CHECK_NO_THROW(impl.set(i, value_type(impl.trange().tile(i), owner)));
 
       // Get the tile future (may or may not be remote) and wait for the data to arrive.
       Future<value_type> tile = impl.get(i);
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE( tile_get_and_set_w_value )
 BOOST_AUTO_TEST_CASE( tile_get_and_set_w_future )
 {
   // Get each tile before it is set
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i) {
     if(GlobalFixture::world->rank() == 0) {
       const ProcessID owner = impl.owner(i);
       Future<value_type> tile;
@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE( tile_get_and_set_w_future )
       BOOST_CHECK_NO_THROW(impl.set(i, tile));
 
       // Get the tile future (may or may not be remote) and wait for the data to arrive.
-      tile.set(value_type(impl.trange().make_tile_range(i), owner));
+      tile.set(value_type(impl.trange().tile(i), owner));
       GlobalFixture::world->gop.fence();
 
       // Check that the future has been set and the data is what we expect.
@@ -171,13 +171,13 @@ BOOST_AUTO_TEST_CASE( tile_iterator_w_value )
 {
   // Set local tiles via iterators
   for(array_impl_base::iterator it = impl.begin(); it != impl.end(); ++it) {
-    BOOST_CHECK_NO_THROW(*it = value_type(impl.trange().make_tile_range(it.ordinal()), impl.owner(it.ordinal())));
+    BOOST_CHECK_NO_THROW(*it = value_type(impl.trange().tile(it.ordinal()), impl.owner(it.ordinal())));
   }
 
   GlobalFixture::world->gop.fence();
 
   // Get each tile before it is set
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i) {
     if(GlobalFixture::world->rank() == 0) {
       // Get the tile future (may or may not be remote) and wait for the data to arrive.
       value_type tile = impl.get(i);
@@ -206,13 +206,13 @@ BOOST_AUTO_TEST_CASE( tile_iterator_w_future )
   for(array_impl_base::iterator it = impl.begin(); it != impl.end(); ++it) {
     Future<value_type> tile;
     BOOST_CHECK_NO_THROW(*it = tile);
-    tile.set(value_type(impl.trange().make_tile_range(it.ordinal()), GlobalFixture::world->rank()));
+    tile.set(value_type(impl.trange().tile(it.ordinal()), GlobalFixture::world->rank()));
   }
 
   GlobalFixture::world->gop.fence();
 
   // Get each tile before it is set
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i) {
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i) {
     if(GlobalFixture::world->rank() == 0) {
       // Get the tile, which may be local or remote.
       Future<value_type> tile = impl.get(i);

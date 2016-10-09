@@ -28,7 +28,7 @@
 using namespace TiledArray;
 
 ArrayFixture::ArrayFixture() :
-    shape_tensor(tr.tiles(), 0.0),
+    shape_tensor(tr.tile_range(), 0.0),
     world(*GlobalFixture::world),
     a(world, tr)
 {
@@ -38,7 +38,7 @@ ArrayFixture::ArrayFixture() :
 
   world.gop.fence();
 
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
     if(i % 3)
       shape_tensor[i] = 1.0;
 }
@@ -73,13 +73,13 @@ BOOST_AUTO_TEST_CASE( constructors )
 BOOST_AUTO_TEST_CASE( all_owned )
 {
   std::size_t count = 0ul;
-  for(std::size_t i = 0ul; i < tr.tiles().volume(); ++i)
+  for(std::size_t i = 0ul; i < tr.tile_range().volume(); ++i)
     if(a.owner(i) == GlobalFixture::world->rank())
       ++count;
   world.gop.sum(count);
 
   // Check that all tiles are in the array
-  BOOST_CHECK_EQUAL(tr.tiles().volume(), count);
+  BOOST_CHECK_EQUAL(tr.tile_range().volume(), count);
 }
 
 BOOST_AUTO_TEST_CASE( owner )
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE( fill_tiles )
       Future<ArrayN::value_type> tile = a.find(*it);
 
       // Check that the range for the constructed tile is correct.
-      BOOST_CHECK_EQUAL(tile.get().range(), tr.make_tile_range(*it));
+      BOOST_CHECK_EQUAL(tile.get().range(), tr.tile(*it));
 
       for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
         BOOST_CHECK_EQUAL(*it, 0);
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
   ArrayN a(world, tr);
 
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
-    ArrayN::trange_type::tile_range_type range = a.trange().make_tile_range(*it);
+    ArrayN::trange_type::tile_range_type range = a.trange().tile(*it);
     if(a.is_local(*it)) {
       if(data.size() < range.volume())
         data.resize(range.volume(), 1);
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
       BOOST_CHECK(tile.probe());
 
       // Check that the range for the constructed tile is correct.
-      BOOST_CHECK_EQUAL(tile.get().range(), tr.make_tile_range(*it));
+      BOOST_CHECK_EQUAL(tile.get().range(), tr.tile(*it));
 
       for(ArrayN::value_type::iterator it = tile.get().begin(); it != tile.get().end(); ++it)
         BOOST_CHECK_EQUAL(*it, 1);
@@ -226,10 +226,10 @@ BOOST_AUTO_TEST_CASE( clone )
 
   // Check array data are equal
   BOOST_CHECK(!(ca.id() == a.id()));
-  BOOST_CHECK_EQUAL(ca.get_world().id(), a.get_world().id());
+  BOOST_CHECK_EQUAL(ca.world().id(), a.world().id());
   BOOST_CHECK_EQUAL(ca.trange(), a.trange());
-  BOOST_CHECK_EQUAL_COLLECTIONS(ca.get_pmap()->begin(), ca.get_pmap()->end(),
-      a.get_pmap()->begin(), a.get_pmap()->end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(ca.pmap()->begin(), ca.pmap()->end(),
+      a.pmap()->begin(), a.pmap()->end());
 
   // Check that array tiles are equal
   for(typename ArrayN::size_type index = 0ul; index < a.size(); ++index) {
@@ -256,22 +256,22 @@ BOOST_AUTO_TEST_CASE( clone )
 BOOST_AUTO_TEST_CASE( make_replicated )
 {
   // Get a copy of the original process map
-  std::shared_ptr<ArrayN::pmap_interface> distributed_pmap = a.get_pmap();
+  std::shared_ptr<ArrayN::pmap_interface> distributed_pmap = a.pmap();
 
   // Convert array to a replicated array.
   BOOST_REQUIRE_NO_THROW(a.make_replicated());
 
   if(GlobalFixture::world->size() == 1)
-    BOOST_CHECK(! a.get_pmap()->is_replicated());
+    BOOST_CHECK(! a.pmap()->is_replicated());
   else
-    BOOST_CHECK(a.get_pmap()->is_replicated());
+    BOOST_CHECK(a.pmap()->is_replicated());
 
   // Check that all the data is local
   for(std::size_t i = 0; i < a.size(); ++i) {
     BOOST_CHECK(a.is_local(i));
-    BOOST_CHECK_EQUAL(a.get_pmap()->owner(i), GlobalFixture::world->rank());
+    BOOST_CHECK_EQUAL(a.pmap()->owner(i), GlobalFixture::world->rank());
     Future<ArrayN::value_type> tile = a.find(i);
-    BOOST_CHECK_EQUAL(tile.get().range(), a.trange().make_tile_range(i));
+    BOOST_CHECK_EQUAL(tile.get().range(), a.trange().tile(i));
     for(ArrayN::value_type::const_iterator it = tile.get().begin(); it != tile.get().end(); ++it)
       BOOST_CHECK_EQUAL(*it, distributed_pmap->owner(i) + 1);
   }

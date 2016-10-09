@@ -43,12 +43,12 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
 
   UnaryEvalImplFixture() :
     array(*GlobalFixture::world, tr),
-    arg(make_array_eval(array, array.get_world(), DenseShape(),
-        array.get_pmap(), Permutation(), array_op_type(array_op_base_type())))
+    arg(make_array_eval(array, array.world(), DenseShape(),
+        array.pmap(), Permutation(), array_op_type(array_op_base_type())))
   {
     // Fill array with random data
     for(TArrayI::iterator it = array.begin(); it != array.end(); ++it) {
-      TensorI tile(array.trange().make_tile_range(it.index()));
+      TensorI tile(array.trange().tile(it.index()));
       for(TensorI::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
@@ -118,42 +118,42 @@ BOOST_FIXTURE_TEST_SUITE( unary_eval_suite, UnaryEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(make_unary_eval(arg, arg.get_world(),
+  BOOST_REQUIRE_NO_THROW(make_unary_eval(arg, arg.world(),
       DenseShape(), arg.pmap(), Permutation(), make_scal0(3)));
 
-  auto unary = make_unary_eval(arg, arg.get_world(),
+  auto unary = make_unary_eval(arg, arg.world(),
       DenseShape(), arg.pmap(), Permutation(), make_scal0(3));
 
-  BOOST_CHECK_EQUAL(& unary.get_world(), GlobalFixture::world);
+  BOOST_CHECK_EQUAL(& unary.world(), GlobalFixture::world);
   BOOST_CHECK(unary.pmap() == arg.pmap());
-  BOOST_CHECK_EQUAL(unary.range(), tr.tiles());
+  BOOST_CHECK_EQUAL(unary.range(), tr.tile_range());
   BOOST_CHECK_EQUAL(unary.trange(), tr);
-  BOOST_CHECK_EQUAL(unary.size(), tr.tiles().volume());
+  BOOST_CHECK_EQUAL(unary.size(), tr.tile_range().volume());
   BOOST_CHECK(unary.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
     BOOST_CHECK(! unary.is_zero(i));
 
-  BOOST_REQUIRE_NO_THROW(make_unary_eval(unary, unary.get_world(),
+  BOOST_REQUIRE_NO_THROW(make_unary_eval(unary, unary.world(),
       DenseShape(), arg.pmap(), Permutation(), make_scal0(5)));
 
-  auto unary2 = make_unary_eval(unary, unary.get_world(),
+  auto unary2 = make_unary_eval(unary, unary.world(),
       DenseShape(), unary.pmap(), Permutation(), make_scal0(5));
 
 
-  BOOST_CHECK_EQUAL(& unary2.get_world(), GlobalFixture::world);
+  BOOST_CHECK_EQUAL(& unary2.world(), GlobalFixture::world);
   BOOST_CHECK(unary2.pmap() == arg.pmap());
-  BOOST_CHECK_EQUAL(unary2.range(), tr.tiles());
+  BOOST_CHECK_EQUAL(unary2.range(), tr.tile_range());
   BOOST_CHECK_EQUAL(unary2.trange(), tr);
-  BOOST_CHECK_EQUAL(unary2.size(), tr.tiles().volume());
+  BOOST_CHECK_EQUAL(unary2.size(), tr.tile_range().volume());
   BOOST_CHECK(unary2.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
     BOOST_CHECK(! unary2.is_zero(i));
 }
 
 
 BOOST_AUTO_TEST_CASE( eval )
 {
-  auto dist_eval = make_unary_eval(arg, arg.get_world(),
+  auto dist_eval = make_unary_eval(arg, arg.world(),
       DenseShape(), arg.pmap(), Permutation(), make_scal0(3));
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
@@ -173,7 +173,7 @@ BOOST_AUTO_TEST_CASE( eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().tile(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], 3 * array_tile[i]);
@@ -185,12 +185,12 @@ BOOST_AUTO_TEST_CASE( eval )
 BOOST_AUTO_TEST_CASE( double_eval )
 {
   /// Construct a scaling unary evaluator
-  auto dist_eval = make_unary_eval(arg, arg.get_world(),
+  auto dist_eval = make_unary_eval(arg, arg.world(),
       DenseShape(), arg.pmap(), Permutation(), make_scal0(3));
 
   /// Construct a two-step, scaling unary evaluator
   auto dist_eval2 = make_unary_eval(dist_eval,
-      dist_eval.get_world(), DenseShape(), dist_eval.pmap(),
+      dist_eval.world(), DenseShape(), dist_eval.pmap(),
       Permutation(), make_scal1(5));
 
   BOOST_REQUIRE_NO_THROW(dist_eval2.eval());
@@ -210,7 +210,7 @@ BOOST_AUTO_TEST_CASE( double_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().make_tile_range(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().tile(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], 5 * 3 * array_tile[i]);
@@ -228,12 +228,12 @@ BOOST_AUTO_TEST_CASE( perm_eval )
   const Permutation perm(p.begin(), p.end());
 
   /// Construct a scaling unary evaluator
-  auto dist_eval = make_unary_eval(arg, arg.get_world(),
+  auto dist_eval = make_unary_eval(arg, arg.world(),
       DenseShape(), arg.pmap(), Permutation(), make_scal0(3));
 
   /// Construct a two-step, scaling unary evaluator
   auto dist_eval2 = make_unary_eval(dist_eval,
-      dist_eval.get_world(), DenseShape(), dist_eval.pmap(), perm, make_scal1(5, perm));
+      dist_eval.world(), DenseShape(), dist_eval.pmap(), perm, make_scal1(5, perm));
 
   BOOST_REQUIRE_NO_THROW(dist_eval2.eval());
   BOOST_REQUIRE_NO_THROW(dist_eval2.wait());
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().make_tile_range(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().tile(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), perm * array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[perm * array_tile.range().idx(i)], 5 * 3 * array_tile[i]);

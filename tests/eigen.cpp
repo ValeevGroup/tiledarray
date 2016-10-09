@@ -28,7 +28,7 @@ struct EigenFixture : public TiledRangeFixture {
   EigenFixture() :
     trange(dims.begin(), dims.begin() + 2), trange1(dims.begin(), dims.begin() + 1),
     array(*GlobalFixture::world, trange), array1(*GlobalFixture::world, trange1),
-    matrix(dims[0].elements().second, dims[1].elements().second), vector(dims[0].elements().second)
+    matrix(dims[0].element_range().second, dims[1].element_range().second), vector(dims[0].element_range().second)
   { }
 
 
@@ -44,7 +44,7 @@ BOOST_FIXTURE_TEST_SUITE( eigen_suite , EigenFixture )
 
 BOOST_AUTO_TEST_CASE( tile_map ) {
   // Make a tile with random data
-  Tensor<int> tensor(trange.make_tile_range(0));
+  Tensor<int> tensor(trange.tile(0));
   const Tensor<int>& ctensor = tensor;
   GlobalFixture::world->srand(27);
   for(Tensor<int>::iterator it = tensor.begin(); it != tensor.end(); ++it)
@@ -73,7 +73,7 @@ BOOST_AUTO_TEST_CASE( tile_map ) {
 
 BOOST_AUTO_TEST_CASE( auto_tile_map ) {
   // Make a tile with random data
-  Tensor<int> tensor(trange.make_tile_range(0));
+  Tensor<int> tensor(trange.tile(0));
   const Tensor<int>& ctensor = tensor;
   GlobalFixture::world->srand(27);
   for(Tensor<int>::iterator it = tensor.begin(); it != tensor.end(); ++it)
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE( submatrix_to_tensor ) {
   // Fill the matrix with random data
   matrix = Eigen::MatrixXi::Random(matrix.rows(), matrix.cols());
   // Make a target tensor
-  Tensor<int> tensor(trange.make_tile_range(0));
+  Tensor<int> tensor(trange.tile(0));
 
   // Copy the sub matrix to the tensor objects
   BOOST_CHECK_NO_THROW(eigen_submatrix_to_tensor(matrix, tensor));
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE( submatrix_to_tensor ) {
 
 BOOST_AUTO_TEST_CASE( tensor_to_submatrix ) {
   // Fill a tensor with data
-  Tensor<int> tensor(trange.make_tile_range(0));
+  Tensor<int> tensor(trange.tile(0));
   GlobalFixture::world->srand(27);
   for(Tensor<int>::iterator it = tensor.begin(); it != tensor.end(); ++it)
     *it = GlobalFixture::world->rand();
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     // Fill the array with random data
     GlobalFixture::world->srand(27);
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
-      TArrayI::value_type tile(array.trange().make_tile_range(*it));
+      TArrayI::value_type tile(array.trange().tile(*it));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
         *tile_it = GlobalFixture::world->rand();
       }
@@ -214,8 +214,8 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     BOOST_CHECK_NO_THROW(matrix = array_to_eigen(array));
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements().extent_data()[0]);
-    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements().extent_data()[1]);
+    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().element_range().extent_data()[0]);
+    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().element_range().extent_data()[1]);
 
 
     // Check that the data in matrix matches the data in array
@@ -231,10 +231,10 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
-    TArrayI::pmap_interface::const_iterator it = array.get_pmap()->begin();
-    TArrayI::pmap_interface::const_iterator end = array.get_pmap()->end();
+    TArrayI::pmap_interface::const_iterator it = array.pmap()->begin();
+    TArrayI::pmap_interface::const_iterator end = array.pmap()->end();
     for(; it != end; ++it) {
-      TArrayI::value_type tile(array.trange().make_tile_range(*it));
+      TArrayI::value_type tile(array.trange().tile(*it));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
         *tile_it = GlobalFixture::world->rand();
       }
@@ -244,15 +244,15 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     // Distribute the data of array1 to all nodes
     array.make_replicated();
 
-    BOOST_CHECK(array.get_pmap()->is_replicated());
+    BOOST_CHECK(array.pmap()->is_replicated());
 
     // Convert the array to an Eigen vector
     BOOST_CHECK_NO_THROW(matrix = array_to_eigen(array));
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements().extent_data()[0]);
-    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements().extent_data()[1]);
+    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().element_range().extent_data()[0]);
+    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().element_range().extent_data()[1]);
 
     // Check that the data in vector matches the data in array
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
     // Fill the array with random data
     GlobalFixture::world->srand(27);
     for(Range::const_iterator it = array1.range().begin(); it != array1.range().end(); ++it) {
-      TArrayI::value_type tile(array1.trange().make_tile_range(*it));
+      TArrayI::value_type tile(array1.trange().tile(*it));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
         *tile_it = GlobalFixture::world->rand();
       }
@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements().extent_data()[0]);
+    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().element_range().extent_data()[0]);
     BOOST_CHECK_EQUAL(vector.cols(), 1);
 
     // Check that the data in vector matches the data in array
@@ -299,10 +299,10 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
-    TArrayI::pmap_interface::const_iterator it = array1.get_pmap()->begin();
-    TArrayI::pmap_interface::const_iterator end = array1.get_pmap()->end();
+    TArrayI::pmap_interface::const_iterator it = array1.pmap()->begin();
+    TArrayI::pmap_interface::const_iterator end = array1.pmap()->end();
     for(; it != end; ++it) {
-      TArrayI::value_type tile(array1.trange().make_tile_range(*it));
+      TArrayI::value_type tile(array1.trange().tile(*it));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
         *tile_it = GlobalFixture::world->rand();
       }
@@ -312,14 +312,14 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
     // Distribute the data of array1 to all nodes
     array1.make_replicated();
 
-    BOOST_CHECK(array1.get_pmap()->is_replicated());
+    BOOST_CHECK(array1.pmap()->is_replicated());
 
     // Convert the array to an Eigen vector
     BOOST_CHECK_NO_THROW(vector = array_to_eigen(array1));
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements().extent_data()[0]);
+    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().element_range().extent_data()[0]);
     BOOST_CHECK_EQUAL(vector.cols(), 1);
 
     // Check that the data in vector matches the data in array

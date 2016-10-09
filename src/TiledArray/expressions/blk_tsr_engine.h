@@ -155,7 +155,7 @@ namespace TiledArray {
 
       /// \return The result tiled range
       trange_type make_trange() const {
-        const unsigned int rank = array_.trange().tiles().rank();
+        const unsigned int rank = array_.trange().tile_range().rank();
 
         std::vector<TiledRange1> trange_data;
         trange_data.reserve(rank);
@@ -191,7 +191,7 @@ namespace TiledArray {
 
       /// \return The result tiled range
       trange_type make_trange(const Permutation& perm) const {
-        const unsigned int rank = array_.trange().tiles().rank();
+        const unsigned int rank = array_.trange().tile_range().rank();
 
         std::vector<TiledRange1> trange_data;
         trange_data.reserve(rank);
@@ -231,7 +231,7 @@ namespace TiledArray {
           const std::shared_ptr<pmap_interface>& pmap)
       {
         ExprEngine_::init_distribution(world,
-            (pmap ? pmap : policy::default_pmap(*world, trange_.tiles().volume())));
+            (pmap ? pmap : policy::default_pmap(*world, trange_.tile_range().volume())));
       }
 
       /// Construct the distributed evaluator for array
@@ -318,7 +318,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() {
-        return array_.get_shape().block(lower_bound_, upper_bound_);
+        return array_.shape().block(lower_bound_, upper_bound_);
       }
 
       /// Permuting shape factory function
@@ -326,14 +326,14 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) {
-        return array_.get_shape().block(lower_bound_, upper_bound_, perm);
+        return array_.shape().block(lower_bound_, upper_bound_, perm);
       }
 
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
       op_type make_tile_op() const {
-        const unsigned int rank = trange_.tiles().rank();
+        const unsigned int rank = trange_.tile_range().rank();
 
         // Construct and allocate memory for the shift range
         std::vector<long> range_shift;
@@ -358,7 +358,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
       op_type make_tile_op(const Permutation& perm) const {
-        const unsigned int rank = trange_.tiles().rank();
+        const unsigned int rank = trange_.tile_range().rank();
 
         // Construct and allocate memory for the shift range
         std::vector<long> range_shift(rank, 0l);
@@ -448,7 +448,7 @@ namespace TiledArray {
 
       /// \return The result shape
       shape_type make_shape() {
-        return array_.get_shape().block(lower_bound_, upper_bound_, factor_);
+        return array_.shape().block(lower_bound_, upper_bound_, factor_);
       }
 
       /// Permuting shape factory function
@@ -457,14 +457,14 @@ namespace TiledArray {
       /// \return The result shape
       shape_type
       make_shape(const Permutation& perm) {
-        return array_.get_shape().block(lower_bound_, upper_bound_, factor_, perm);
+        return array_.shape().block(lower_bound_, upper_bound_, factor_, perm);
       }
 
       /// Non-permuting tile operation factory function
 
       /// \return The tile operation
       op_type make_tile_op() const {
-        const unsigned int rank = trange_.tiles().rank();
+        const unsigned int rank = trange_.tile_range().rank();
 
         // Construct and allocate memory for the shift range
         std::vector<long> range_shift;
@@ -489,7 +489,7 @@ namespace TiledArray {
       /// \param perm The permutation to be applied to tiles
       /// \return The tile operation
       op_type make_tile_op(const Permutation& perm) const {
-        const unsigned int rank = trange_.tiles().rank();
+        const unsigned int rank = trange_.tile_range().rank();
 
         // Construct and allocate memory for the shift range
         std::vector<long> range_shift(rank, 0l);

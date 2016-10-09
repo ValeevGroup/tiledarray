@@ -275,12 +275,12 @@ TA::detail::DistEval<typename Op::result_type, Policy> make_contract_eval(
   for(unsigned int i = 0ul; i < left_middle; ++i) {
     ranges[(perm ? perm[pi++] : pi++)] = left.trange().data()[i];
     M *= left.range().extent_data()[i];
-    m *= left.trange().elements().extent_data()[i];
+    m *= left.trange().element_range().extent_data()[i];
   }
   for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
     ranges[(perm ? perm[pi++] : pi++)] = right.trange().data()[i];
     N *= right.range().extent_data()[i];
-    n *= right.trange().elements().extent_data()[i];
+    n *= right.trange().element_range().extent_data()[i];
   }
 
   // Compute the number of tiles in the inner dimension.
@@ -391,7 +391,7 @@ void tensor_contract_444(TA::DistArray<Tile, Policy>& tv,
   // result shape
   TA::TiledRange trange_tv({trange_occ, trange_occ, trange_uocc, trange_uocc});
   //
-  pmap.reset(new TA::detail::BlockedPmap(world, trange_tv.tiles().volume()));
+  pmap.reset(new TA::detail::BlockedPmap(world, trange_tv.tile_range().volume()));
   // 'contract' object is of type
   // PaRSEC's PTG object will do the job here:
   // 1. it will use t_eval and v_eval's Futures as input

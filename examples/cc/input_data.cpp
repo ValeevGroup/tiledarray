@@ -156,7 +156,7 @@ InputData::make_f(TiledArray::World& w, const Spin s, const RangeOV ov1, const R
   // Set the tile data
   TiledArray::TSpArrayD::range_type::index index;
   for(array2d::const_iterator it = f_.begin(); it != f_.end(); ++it) {
-    if(f.trange().elements().includes(it->first)) {
+    if(f.trange().element_range().includes(it->first)) {
       index = f.trange().element_to_tile(it->first);
       if(f.is_local(index))
         f.find(index).get()[it->first] = it->second;
@@ -179,7 +179,7 @@ InputData::make_v_ab(TiledArray::World& w, const RangeOV ov1, const RangeOV ov2,
   // Set the tile data
   TiledArray::TSpArrayD::range_type::index index;
   for(array4d::const_iterator it = v_ab_.begin(); it != v_ab_.end(); ++it) {
-    if(v_ab.trange().elements().includes(it->first)) {
+    if(v_ab.trange().element_range().includes(it->first)) {
       index = v_ab.trange().element_to_tile(it->first);
       if(v_ab.is_local(index))
         v_ab.find(index).get()[it->first] = it->second;

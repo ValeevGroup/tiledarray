@@ -28,10 +28,10 @@ BOOST_FIXTURE_TEST_SUITE( range1_suite, Range1Fixture )
 
 BOOST_AUTO_TEST_CASE( range_accessor )
 {
-  BOOST_CHECK_EQUAL(tr1.tiles().first, tiles.first);
-  BOOST_CHECK_EQUAL(tr1.tiles().second, tiles.second);
-  BOOST_CHECK_EQUAL(tr1.elements().first, elements.first);
-  BOOST_CHECK_EQUAL(tr1.elements().second, elements.second);
+  BOOST_CHECK_EQUAL(tr1.tile_range().first, tiles.first);
+  BOOST_CHECK_EQUAL(tr1.tile_range().second, tiles.second);
+  BOOST_CHECK_EQUAL(tr1.element_range().first, elements.first);
+  BOOST_CHECK_EQUAL(tr1.element_range().second, elements.second);
 
   // Check individual tiles
   for(std::size_t i = 0; i < a.size() - 1; ++i) {
@@ -42,10 +42,10 @@ BOOST_AUTO_TEST_CASE( range_accessor )
 
 BOOST_AUTO_TEST_CASE( range_info )
 {
-  BOOST_CHECK_EQUAL(tr1.tiles().first, 0ul);
-  BOOST_CHECK_EQUAL(tr1.tiles().second, a.size() - 1);
-  BOOST_CHECK_EQUAL(tr1.elements().first, 0ul);
-  BOOST_CHECK_EQUAL(tr1.elements().second, a.back());
+  BOOST_CHECK_EQUAL(tr1.tile_range().first, 0ul);
+  BOOST_CHECK_EQUAL(tr1.tile_range().second, a.size() - 1);
+  BOOST_CHECK_EQUAL(tr1.element_range().first, 0ul);
+  BOOST_CHECK_EQUAL(tr1.element_range().second, a.back());
   for(std::size_t i = 0; i < a.size() - 1; ++i) {
     BOOST_CHECK_EQUAL(tr1.tile(i).first, a[i]);
     BOOST_CHECK_EQUAL(tr1.tile(i).second, a[i + 1]);
@@ -58,10 +58,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r);
     TiledRange1 r;
-    BOOST_CHECK_EQUAL(r.tiles().first, 0ul);
-    BOOST_CHECK_EQUAL(r.tiles().second, 0ul);
-    BOOST_CHECK_EQUAL(r.elements().first, 0ul);
-    BOOST_CHECK_EQUAL(r.elements().second, 0ul);
+    BOOST_CHECK_EQUAL(r.tile_range().first, 0ul);
+    BOOST_CHECK_EQUAL(r.tile_range().second, 0ul);
+    BOOST_CHECK_EQUAL(r.element_range().first, 0ul);
+    BOOST_CHECK_EQUAL(r.element_range().second, 0ul);
 #ifdef TA_EXCEPTION_ERROR
     BOOST_CHECK_THROW(r.tile(0), Exception);
 #endif // TA_EXCEPTION_ERROR
@@ -71,10 +71,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r(a.begin(), a.end()));
     TiledRange1 r(a.begin(), a.end());
-    BOOST_CHECK_EQUAL(r.tiles().first, tiles.first);
-    BOOST_CHECK_EQUAL(r.tiles().second, tiles.second);
-    BOOST_CHECK_EQUAL(r.elements().first, elements.first);
-    BOOST_CHECK_EQUAL(r.elements().second, elements.second);
+    BOOST_CHECK_EQUAL(r.tile_range().first, tiles.first);
+    BOOST_CHECK_EQUAL(r.tile_range().second, tiles.second);
+    BOOST_CHECK_EQUAL(r.element_range().first, elements.first);
+    BOOST_CHECK_EQUAL(r.element_range().second, elements.second);
     for(std::size_t i = 0; i < a.size() - 1; ++i) {
       BOOST_CHECK_EQUAL(r.tile(i).first, a[i]);
       BOOST_CHECK_EQUAL(r.tile(i).second, a[i + 1]);
@@ -86,10 +86,10 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(TiledRange1 r(0,1,2,3,4,5));
     if (Range1Fixture::ntiles == 5) {
       TiledRange1 r(0,2,5,10,17,28);
-      BOOST_CHECK_EQUAL(r.tiles().first, tiles.first);
-      BOOST_CHECK_EQUAL(r.tiles().second, tiles.second);
-      BOOST_CHECK_EQUAL(r.elements().first, elements.first);
-      BOOST_CHECK_EQUAL(r.elements().second, elements.second);
+      BOOST_CHECK_EQUAL(r.tile_range().first, tiles.first);
+      BOOST_CHECK_EQUAL(r.tile_range().second, tiles.second);
+      BOOST_CHECK_EQUAL(r.element_range().first, elements.first);
+      BOOST_CHECK_EQUAL(r.element_range().second, elements.second);
       for(std::size_t i = 0; i < a.size() - 1; ++i) {
         BOOST_CHECK_EQUAL(r.tile(i).first, a[i]);
         BOOST_CHECK_EQUAL(r.tile(i).second, a[i + 1]);
@@ -101,10 +101,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     if (Range1Fixture::ntiles == 5) {
       TiledRange1 r {0,2,5,10,17,28};
-      BOOST_CHECK_EQUAL(r.tiles().first, tiles.first);
-      BOOST_CHECK_EQUAL(r.tiles().second, tiles.second);
-      BOOST_CHECK_EQUAL(r.elements().first, elements.first);
-      BOOST_CHECK_EQUAL(r.elements().second, elements.second);
+      BOOST_CHECK_EQUAL(r.tile_range().first, tiles.first);
+      BOOST_CHECK_EQUAL(r.tile_range().second, tiles.second);
+      BOOST_CHECK_EQUAL(r.element_range().first, elements.first);
+      BOOST_CHECK_EQUAL(r.element_range().second, elements.second);
       for(std::size_t i = 0; i < a.size() - 1; ++i) {
         BOOST_CHECK_EQUAL(r.tile(i).first, a[i]);
         BOOST_CHECK_EQUAL(r.tile(i).second, a[i + 1]);
@@ -116,10 +116,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r(tr1));
     TiledRange1 r(tr1);
-    BOOST_CHECK_EQUAL(r.tiles().first, tiles.first);
-    BOOST_CHECK_EQUAL(r.tiles().second, tiles.second);
-    BOOST_CHECK_EQUAL(r.elements().first, elements.first);
-    BOOST_CHECK_EQUAL(r.elements().second, elements.second);
+    BOOST_CHECK_EQUAL(r.tile_range().first, tiles.first);
+    BOOST_CHECK_EQUAL(r.tile_range().second, tiles.second);
+    BOOST_CHECK_EQUAL(r.element_range().first, elements.first);
+    BOOST_CHECK_EQUAL(r.element_range().second, elements.second);
     for(std::size_t i = 0; i < a.size() - 1; ++i) {
       BOOST_CHECK_EQUAL(r.tile(i).first, a[i]);
       BOOST_CHECK_EQUAL(r.tile(i).second, a[i + 1]);
@@ -130,10 +130,10 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r(a.begin() + 1, a.end()));
     TiledRange1 r(a.begin() + 1, a.end());
-    BOOST_CHECK_EQUAL(r.tiles().first, 0ul);
-    BOOST_CHECK_EQUAL(r.tiles().second, a.size() - 2);
-    BOOST_CHECK_EQUAL(r.elements().first, a[1]);
-    BOOST_CHECK_EQUAL(r.elements().second, a.back());
+    BOOST_CHECK_EQUAL(r.tile_range().first, 0ul);
+    BOOST_CHECK_EQUAL(r.tile_range().second, a.size() - 2);
+    BOOST_CHECK_EQUAL(r.element_range().first, a[1]);
+    BOOST_CHECK_EQUAL(r.element_range().second, a.back());
     for(std::size_t i = 1; i < a.size() - 1; ++i) {
       BOOST_CHECK_EQUAL(r.tile(i - 1).first, a[i]);
       BOOST_CHECK_EQUAL(r.tile(i - 1).second, a[i + 1]);
@@ -171,13 +171,13 @@ BOOST_AUTO_TEST_CASE( element2tile )
 {
   // construct a map that should match the element to tile map for tr1.
   std::vector<std::size_t> e;
-  for(std::size_t t = tr1.tiles().first; t < tr1.tiles().second; ++t)
+  for(std::size_t t = tr1.tile_range().first; t < tr1.tile_range().second; ++t)
     for(std::size_t i = tr1.tile(t).first; i < tr1.tile(t).second; ++i)
       e.push_back(t);
 
   // Construct a map that matches the internal element to tile map for tr1.
   std::vector<std::size_t> c;
-  for(std::size_t i = tr1.elements().first; i < tr1.elements().second; ++i)
+  for(std::size_t i = tr1.element_range().first; i < tr1.element_range().second; ++i)
     c.push_back(tr1.element2tile(i));
 
   // Check that the expected and internal element to tile maps match.
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE( iteration )
     BOOST_CHECK_EQUAL(it->first, a[count]);
     BOOST_CHECK_EQUAL(it->second, a[count + 1]);
   }
-  BOOST_CHECK_EQUAL(count, tr1.tiles().second - tr1.tiles().first);
+  BOOST_CHECK_EQUAL(count, tr1.tile_range().second - tr1.tile_range().first);
 }
 
 BOOST_AUTO_TEST_CASE( find )

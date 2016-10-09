@@ -114,11 +114,21 @@ namespace TiledArray {
       return result;
     }
 
-    /// Tiles range accessor
-    const range_type& tiles() const { return range_; }
+    /// \deprecated use TiledRange1::tile_range()
+    DEPRECATED const range_type& tiles() const { return range_; }
+
+    /// Tile range accessor
+
+    /// \return a reference to the tile index range
+    const range_type& tile_range() const { return range_; }
+
+    /// \deprecated use TiledRange1::element_range()
+    const range_type& elements() const { return element_range_; }
 
     /// Elements range accessor
-    const range_type& elements() const { return element_range_; }
+
+    /// \return a reference to the element index range
+    const range_type& element_range() const { return element_range_; }
 
     /// Tile range extent accessor
     size_type tile_extent() const { return range_.second - range_.first; }
@@ -210,7 +220,7 @@ namespace TiledArray {
   /// Equality operator
   inline bool operator ==(const TiledRange1& r1, const TiledRange1& r2) {
     return std::equal(r1.begin(), r1.end(), r2.begin()) &&
-        (r1.tiles() == r2.tiles()) && (r1.elements() == r2.elements());
+        (r1.tile_range() == r2.tile_range()) && (r1.element_range() == r2.element_range());
   }
 
   /// Inequality operator
@@ -220,8 +230,8 @@ namespace TiledArray {
 
   /// TiledRange1 ostream operator
   inline std::ostream& operator <<(std::ostream& out, const TiledRange1& rng) {
-    out << "( tiles = [ " << rng.tiles().first << ", " << rng.tiles().second
-        << " ), elements = [ " << rng.elements().first << ", " << rng.elements().second << " ) )";
+    out << "( tiles = [ " << rng.tile_range().first << ", " << rng.tile_range().second
+        << " ), elements = [ " << rng.element_range().first << ", " << rng.element_range().second << " ) )";
     return out;
   }
 

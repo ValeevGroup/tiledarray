@@ -102,8 +102,8 @@ int main(int argc, char** argv) {
 
       // Construct tile norm tensors
       TiledArray::Tensor<float>
-          a_tile_norms(trange.tiles(), 0.0f),
-          b_tile_norms(trange.tiles(), 0.0f);
+          a_tile_norms(trange.tile_range(), 0.0f),
+          b_tile_norms(trange.tile_range(), 0.0f);
 
       // Fill tile norm tensors
       if(world.rank() == 0) {
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
             // Find a new zero tile index.
             std::size_t index = 0ul;
             do {
-              index = world.rand() % trange.tiles().volume();
+              index = world.rand() % trange.tile_range().volume();
             } while(a_tile_norms[index] > TiledArray::SparseShape<float>::threshold());
 
             // Set index tile of matrix matrix a.
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 
             // Find a new zero tile index.
             do {
-              index = world.rand() % trange.tiles().volume();
+              index = world.rand() % trange.tile_range().volume();
             } while(b_tile_norms[index] > TiledArray::SparseShape<float>::threshold());
 
             b_tile_norms[index] = tile_norm;

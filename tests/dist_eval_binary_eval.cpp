@@ -37,13 +37,13 @@ struct BinaryEvalFixture : public TiledRangeFixture {
   {
     // Fill array with random data
     for(TArrayI::iterator it = left.begin(); it != left.end(); ++it) {
-      TArrayI::value_type tile(left.trange().make_tile_range(it.index()));
+      TArrayI::value_type tile(left.trange().tile(it.index()));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
     }
     for(TArrayI::iterator it = right.begin(); it != right.end(); ++it) {
-      TArrayI::value_type tile(right.trange().make_tile_range(it.index()));
+      TArrayI::value_type tile(right.trange().tile(it.index()));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
@@ -111,36 +111,36 @@ BOOST_FIXTURE_TEST_SUITE( dist_eval_binary_eval_suite, BinaryEvalFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  auto left_arg = make_array_eval(left, left.get_world(), DenseShape(),
-      left.get_pmap(), Permutation(), make_array_noop());
-  auto right_arg = make_array_eval(right, right.get_world(), DenseShape(),
-      left.get_pmap(), Permutation(), make_array_noop());
+  auto left_arg = make_array_eval(left, left.world(), DenseShape(),
+      left.pmap(), Permutation(), make_array_noop());
+  auto right_arg = make_array_eval(right, right.world(), DenseShape(),
+      left.pmap(), Permutation(), make_array_noop());
 
-  BOOST_REQUIRE_NO_THROW(make_binary_eval(left_arg, right_arg, left.get_world(),
+  BOOST_REQUIRE_NO_THROW(make_binary_eval(left_arg, right_arg, left.world(),
       DenseShape(), left_arg.pmap(), Permutation(), make_add()));
 
   auto binary = make_binary_eval(left_arg, right_arg,
-      left_arg.get_world(), DenseShape(), left_arg.pmap(), Permutation(), make_add());
+      left_arg.world(), DenseShape(), left_arg.pmap(), Permutation(), make_add());
 
-  BOOST_CHECK_EQUAL(& binary.get_world(), GlobalFixture::world);
+  BOOST_CHECK_EQUAL(& binary.world(), GlobalFixture::world);
   BOOST_CHECK(binary.pmap() == left_arg.pmap());
-  BOOST_CHECK_EQUAL(binary.range(), tr.tiles());
+  BOOST_CHECK_EQUAL(binary.range(), tr.tile_range());
   BOOST_CHECK_EQUAL(binary.trange(), tr);
-  BOOST_CHECK_EQUAL(binary.size(), tr.tiles().volume());
+  BOOST_CHECK_EQUAL(binary.size(), tr.tile_range().volume());
   BOOST_CHECK(binary.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
     BOOST_CHECK(! binary.is_zero(i));
 }
 
 BOOST_AUTO_TEST_CASE( eval )
 {
-  auto left_arg = make_array_eval(left, left.get_world(), DenseShape(),
-      left.get_pmap(), Permutation(), make_array_noop());
-  auto right_arg = make_array_eval(right, right.get_world(), DenseShape(),
-      left.get_pmap(), Permutation(), make_array_noop());
+  auto left_arg = make_array_eval(left, left.world(), DenseShape(),
+      left.pmap(), Permutation(), make_array_noop());
+  auto right_arg = make_array_eval(right, right.world(), DenseShape(),
+      left.pmap(), Permutation(), make_array_noop());
 
   auto dist_eval = make_binary_eval(left_arg, right_arg,
-      left_arg.get_world(), DenseShape(), left_arg.pmap(), Permutation(), make_add());
+      left_arg.world(), DenseShape(), left_arg.pmap(), Permutation(), make_add());
   using dist_eval_type = decltype(dist_eval);
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE( eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().tile(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), left_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], left_tile[i] + right_tile[i]);
@@ -172,10 +172,10 @@ BOOST_AUTO_TEST_CASE( eval )
 
 BOOST_AUTO_TEST_CASE( perm_eval )
 {
-  auto left_arg = make_array_eval(left, left.get_world(), DenseShape(),
-      left.get_pmap(), Permutation(), make_array_noop());
-  auto right_arg = make_array_eval(right, right.get_world(), DenseShape(),
-      left.get_pmap(), Permutation(), make_array_noop());
+  auto left_arg = make_array_eval(left, left.world(), DenseShape(),
+      left.pmap(), Permutation(), make_array_noop());
+  auto right_arg = make_array_eval(right, right.world(), DenseShape(),
+      left.pmap(), Permutation(), make_array_noop());
 
   // Create permutation to be applied in the array evaluations
   std::array<std::size_t, GlobalFixture::dim> p;
@@ -185,7 +185,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
 
   auto dist_eval = make_binary_eval(left_arg, right_arg,
-      left_arg.get_world(), DenseShape(), left_arg.pmap(), perm, make_add(perm));
+      left_arg.world(), DenseShape(), left_arg.pmap(), perm, make_add(perm));
 
   using dist_eval_type = decltype(dist_eval);
 
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().tile(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), perm * left_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[perm * left_tile.range().idx(i)], left_tile[i] + right_tile[i]);

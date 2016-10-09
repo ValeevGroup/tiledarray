@@ -78,7 +78,7 @@ namespace TiledArray {
     Array result(world, trange);
 
     // Iterate over local tiles of arg
-    for(const auto index : * result.get_pmap()) {
+    for(const auto index : * result.pmap()) {
 
       // Spawn a task to evaluate the tile
       auto tile =
@@ -146,7 +146,7 @@ namespace TiledArray {
     // Construct a tensor to hold updated tile norms for the result shape.
     TiledArray::Tensor<typename detail::shape_t<Array>::value_type,
         Eigen::aligned_allocator<typename detail::shape_t<Array>::value_type> >
-    tile_norms(trange.tiles(), 0);
+    tile_norms(trange.tile_range(), 0);
 
     // Construct the task function used to construct the result tiles.
     madness::AtomicInt counter; counter = 0;
@@ -219,7 +219,7 @@ namespace TiledArray {
   make_array(World& world, const detail::trange_t<Array>& trange, Op&& op) {
     return make_array<Array>(world, trange,
         detail::policy_t<Array>::default_pmap(world,
-        trange.tiles().volume()), op);
+        trange.tile_range().volume()), op);
   }
 
 } // namespace TiledArray

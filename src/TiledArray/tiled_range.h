@@ -48,11 +48,11 @@ namespace TiledArray {
 
       // Find the start and finish of the over all tiles and element ranges.
       for(unsigned int i = 0; i < rank; ++i) {
-        start.push_back(ranges_[i].tiles().first);
-        finish.push_back(ranges_[i].tiles().second);
+        start.push_back(ranges_[i].tile_range().first);
+        finish.push_back(ranges_[i].tile_range().second);
 
-        start_element.push_back(ranges_[i].elements().first);
-        finish_element.push_back(ranges_[i].elements().second);
+        start_element.push_back(ranges_[i].element_range().first);
+        finish_element.push_back(ranges_[i].element_range().second);
       }
       range_type(start, finish).swap(range_);
       tile_range_type(start_element, finish_element).swap(element_range_);
@@ -147,31 +147,21 @@ namespace TiledArray {
       return element_range();
     }
 
-    /// Construct a range for the given ordinal index.
-
-    /// \param i The ordinal index of the tile range to be constructed
-    /// \throw std::runtime_error Throws if i is not included in the range
-    /// \return The constructed range object
     /// \deprecated use TiledRange::tile() instead
     DEPRECATED  tile_range_type make_tile_range(const size_type& i) const {
       return tile(i);
     }
 
-    /// Construct a range for the given ordinal index.
+    /// Construct a range for the tile indexed by the given ordinal index.
 
     /// \param i The ordinal index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
     /// \return The constructed range object
     tile_range_type tile(const size_type& i) const {
-      TA_ASSERT(range_.includes(i));
-      return make_tile_range(tiles().idx(i));
+      TA_ASSERT(tile_range().includes(i));
+      return tile(tile_range().idx(i));
     }
 
-    /// Construct a range for the given tile index.
-
-    /// \param index The index of the tile range to be constructed
-    /// \throw std::runtime_error Throws if i is not included in the range
-    /// \return The constructed range object
     /// \deprecated use TiledRange::tile() instead
     template <typename Index>
     DEPRECATED typename std::enable_if<!std::is_integral<Index>::value,
@@ -180,7 +170,7 @@ namespace TiledArray {
       return tile(index);
     }
 
-    /// Construct a range for the given tile index.
+    /// Construct a range for the tile indexed by the given index.
 
     /// \param index The index of the tile range to be constructed
     /// \throw std::runtime_error Throws if i is not included in the range
@@ -205,7 +195,7 @@ namespace TiledArray {
       return tile_range_type(lower, upper);
     }
 
-    /// Construct a range for the given tile index.
+    /// Construct a range for the tile indexed by the given index.
 
     /// \param index The tile index, given as a \c std::initializer_list
     /// \throw std::runtime_error Throws if i is not included in the range
@@ -272,7 +262,7 @@ namespace TiledArray {
   /// being used by other objects will be permuted. The owner of those
   /// objects are
   inline TiledRange operator *(const Permutation& p, const TiledRange& r) {
-    TA_ASSERT(r.tiles().rank() == p.dim());
+    TA_ASSERT(r.tile_range().rank() == p.dim());
     TiledRange::Ranges data = p * r.data();
 
     return TiledRange(data.begin(), data.end());
@@ -283,8 +273,8 @@ namespace TiledArray {
 
   /// Returns true when all tile and element ranges are the same.
   inline bool operator ==(const TiledRange& r1, const TiledRange& r2) {
-    return (r1.tiles().rank() == r2.tiles().rank()) &&
-        (r1.tiles() == r2.tiles()) && (r1.elements() == r2.elements()) &&
+    return (r1.tile_range().rank() == r2.tile_range().rank()) &&
+        (r1.tile_range() == r2.tile_range()) && (r1.element_range() == r2.element_range()) &&
         std::equal(r1.data().begin(), r1.data().end(), r2.data().begin());
   }
 
@@ -293,8 +283,8 @@ namespace TiledArray {
   }
 
   inline std::ostream& operator<<(std::ostream& out, const TiledRange& rng) {
-    out << "(" << " tiles = " << rng.tiles()
-        << ", elements = " << rng.elements() << " )";
+    out << "(" << " tiles = " << rng.tile_range()
+        << ", elements = " << rng.element_range() << " )";
     return out;
   }
 

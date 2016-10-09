@@ -46,10 +46,10 @@ int main(int argc, char* argv[]) {
   TA::TiledRange1 TR1{0, 4, 7, 10};
   TA::TiledRange TR{TR0, TR1};
   cout << TR << endl;
-  for(const auto& i: TR.elements()) {
+  for(const auto& i: TR.element_range()) {
     cout << i << endl;
   }
-  for(const auto& i: TR.tiles()) {
+  for(const auto& i: TR.tile_range()) {
     cout << i << endl;
   }
 
@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
     cout << a0 << endl;
   world.gop.fence();
 
-  TA::Tensor<float> shape_tensor(TR.tiles());
+  TA::Tensor<float> shape_tensor(TR.tile_range());
   shape_tensor(0,0) = 1.0;
   shape_tensor(0,1) = 1.0;
   shape_tensor(1,1) = 1.0;

@@ -150,7 +150,7 @@ namespace TiledArray {
 
       /// \return A shared pointer to the process map.
       /// \throw nothing
-      const std::shared_ptr<pmap_interface>& get_pmap() const { return pmap_; }
+      const std::shared_ptr<pmap_interface>& pmap() const { return pmap_; }
 
       /// Element owner
 

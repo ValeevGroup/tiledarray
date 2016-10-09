@@ -28,8 +28,8 @@ BOOST_FIXTURE_TEST_SUITE( tiled_range_suite, TiledRangeFixture )
 
 BOOST_AUTO_TEST_CASE( accessor )
 {
-  BOOST_CHECK_EQUAL(tr.tiles(), tile_range);
-  BOOST_CHECK_EQUAL(tr.elements(), element_range);
+  BOOST_CHECK_EQUAL(tr.tile_range(), tile_range);
+  BOOST_CHECK_EQUAL(tr.element_range(), element_range);
 }
 
 BOOST_AUTO_TEST_CASE( constructor )
@@ -39,8 +39,8 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_REQUIRE_NO_THROW(TiledRange r0);
     TiledRange r0;
     std::vector<std::size_t> s0(3,0);
-    BOOST_CHECK(r0.tiles().extent_data() == nullptr);
-    BOOST_CHECK(r0.elements().extent_data() == nullptr);
+    BOOST_CHECK(r0.tile_range().extent_data() == nullptr);
+    BOOST_CHECK(r0.element_range().extent_data() == nullptr);
   }
 
 
@@ -48,8 +48,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   {
     BOOST_REQUIRE_NO_THROW(TiledRange r1(dims.begin(), dims.end()));
     TiledRange r1(dims.begin(), dims.end());
-    BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
-    BOOST_CHECK_EQUAL(r1.elements(), element_range);
+    BOOST_CHECK_EQUAL(r1.tile_range(), tile_range);
+    BOOST_CHECK_EQUAL(r1.element_range(), element_range);
   }
 
   // check initializer list of initializer list constructor
@@ -57,16 +57,16 @@ BOOST_AUTO_TEST_CASE( constructor )
     TiledRange r1 { {0,2,5,10,17,28},
                     {0,2,5,10,17,28},
                     {0,2,5,10,17,28} };
-    BOOST_CHECK_EQUAL(r1.tiles(), tile_range);
-    BOOST_CHECK_EQUAL(r1.elements(), element_range);
+    BOOST_CHECK_EQUAL(r1.tile_range(), tile_range);
+    BOOST_CHECK_EQUAL(r1.element_range(), element_range);
   }
 
   // check copy constructor
   {
     BOOST_REQUIRE_NO_THROW(TiledRange r4(tr));
     TiledRange r4(tr);
-    BOOST_CHECK_EQUAL(r4.tiles(), tr.tiles());
-    BOOST_CHECK_EQUAL(r4.elements(), tr.elements());
+    BOOST_CHECK_EQUAL(r4.tile_range(), tr.tile_range());
+    BOOST_CHECK_EQUAL(r4.element_range(), tr.element_range());
   }
 }
 
@@ -74,8 +74,8 @@ BOOST_AUTO_TEST_CASE( ostream )
 {
 
   std::stringstream stm;
-  stm << "( tiles = " << tr.tiles() <<
-      ", elements = " << tr.elements() << " )";
+  stm << "( tiles = " << tr.tile_range() <<
+      ", elements = " << tr.element_range() << " )";
 
   boost::test_tools::output_test_stream output;
   output << tr;
@@ -115,8 +115,8 @@ BOOST_AUTO_TEST_CASE( permutation )
 {
   Permutation p({2,0,1});
   TiledRange r1 = p * tr;
-  BOOST_CHECK_EQUAL(r1.tiles(), p * tr.tiles()); // check that tile data was permuted properly.
-  BOOST_CHECK_EQUAL(r1.elements(), p * tr.elements()); // check that element data was permuted properly.
+  BOOST_CHECK_EQUAL(r1.tile_range(), p * tr.tile_range()); // check that tile data was permuted properly.
+  BOOST_CHECK_EQUAL(r1.element_range(), p * tr.element_range()); // check that element data was permuted properly.
 
   TiledRange r2(tr);
   BOOST_CHECK_EQUAL((r2 *= p), r1); // check that permutation returns itself.
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE( make_tile_range )
 
   // iterate over all the tile indexes in the tiled range.
   TiledRange::size_type i = 0;
-  for(Range::const_iterator it = tr.tiles().begin(); it != tr.tiles().end(); ++it, ++i) {
+  for(Range::const_iterator it = tr.tile_range().begin(); it != tr.tile_range().end(); ++it, ++i) {
     // get the start and finish indexes of the current range.
     for(unsigned int d = 0; d < GlobalFixture::dim; ++d) {
       start[d] = a[ (*it)[d] ];
@@ -141,8 +141,8 @@ BOOST_AUTO_TEST_CASE( make_tile_range )
     TiledRange::tile_range_type range(start, finish);
 
     // Get the two ranges to be tested.
-    TiledRange::tile_range_type range_index = tr.make_tile_range(*it);
-    TiledRange::tile_range_type range_ordinal = tr.make_tile_range(i);
+    TiledRange::tile_range_type range_index = tr.tile(*it);
+    TiledRange::tile_range_type range_ordinal = tr.tile(i);
 
     BOOST_CHECK_EQUAL(range_index, range);
     BOOST_CHECK_EQUAL(range_ordinal, range);

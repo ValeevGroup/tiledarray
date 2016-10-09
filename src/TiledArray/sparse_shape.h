@@ -159,13 +159,13 @@ namespace TiledArray {
     static std::shared_ptr<vector_type>
     initialize_size_vectors(const TiledRange& trange) {
       // Allocate memory for size vectors
-      const unsigned int dim = trange.tiles().rank();
+      const unsigned int dim = trange.tile_range().rank();
       std::shared_ptr<vector_type> size_vectors(new vector_type[dim],
           std::default_delete<vector_type[]>());
 
       // Initialize the size vectors
       for(unsigned int i = 0ul; i != dim; ++i) {
-        const size_type n = trange.data()[i].tiles().second - trange.data()[i].tiles().first;
+        const size_type n = trange.data()[i].tile_range().second - trange.data()[i].tile_range().first;
 
         size_vectors.get()[i] = vector_type(n, & (* trange.data()[i].begin()),
             [] (const TiledRange1::range_type& tile)
@@ -216,7 +216,7 @@ namespace TiledArray {
       zero_tile_count_(0ul)
     {
       TA_ASSERT(! tile_norms_.empty());
-      TA_ASSERT(tile_norms_.range() == trange.tiles());
+      TA_ASSERT(tile_norms_.range() == trange.tile_range());
 
       normalize();
     }
@@ -236,7 +236,7 @@ namespace TiledArray {
       zero_tile_count_(0ul)
     {
       TA_ASSERT(! tile_norms_.empty());
-      TA_ASSERT(tile_norms_.range() == trange.tiles());
+      TA_ASSERT(tile_norms_.range() == trange.tile_range());
 
       // Do global initialization of norm data
       world.gop.sum(tile_norms_.data(), tile_norms_.size());
