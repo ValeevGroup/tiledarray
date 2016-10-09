@@ -107,12 +107,17 @@ namespace TiledArray {
         return index_;
       }
 
+      /// \deprecated use TileReference::range() instead
+      DEPRECATED range_type make_range() const {
+        return range(index_);
+      }
+
       /// Tile range factory function
 
       /// Construct a range object for the current tile
-      range_type make_range() const {
+      range_type range() const {
         TA_ASSERT(tensor_);
-        return tensor_->trange().make_tile_range(index_);
+        return tensor_->trange().tile(index_);
       }
     }; // class TileReference
 
@@ -356,13 +361,18 @@ namespace TiledArray {
         return *it_;
       }
 
+      /// \deprecated use TensorIterator::range()
+      DEPRECATED range_type make_range() const {
+        return range();
+      }
+
       /// Tile range factory function
 
       /// Construct a range object for the current tile
-      range_type make_range() const {
+      range_type range() const {
         TA_ASSERT(array_);
         TA_ASSERT(it_ != array_->pmap()->end());
-        return array_->trange().make_tile_range(*it_);
+        return array_->trange().tile(*it_);
       }
 
     }; // class TensorIterator
