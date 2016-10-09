@@ -79,7 +79,7 @@ namespace TiledArray {
     static void lazy_deleter(const impl_type* const pimpl) {
       if(pimpl) {
         if(madness::initialized()) {
-          World& world = pimpl->get_world();
+          World& world = pimpl->world();
           const madness::uniqueidT id = pimpl->id();
           cleanup_counter_++;
 
@@ -466,7 +466,7 @@ namespace TiledArray {
       for(; it != end; ++it) {
         const auto index = *it;
         if(! pimpl_->is_zero(index)) {
-          Future<value_type> tile = pimpl_->get_world().taskq.add(
+          Future<value_type> tile = pimpl_->world().taskq.add(
               [] (DistArray_& array, const size_type index, const Op& op) -> value_type
               { return op(array.trange().make_tile_range(index)); },
               *this, index, op);
@@ -550,18 +550,30 @@ namespace TiledArray {
       return TiledArray::expressions::TsrExpr<DistArray_, true>(*this, vars);
     }
 
+    /// \deprecated use DistArray::world()
+    DEPRECATED World& get_world() const {
+      check_pimpl();
+      return pimpl_->world();
+    }
+
     /// World accessor
 
     /// \return A reference to the world that owns this array.
-    World& get_world() const {
+    World& world() const {
       check_pimpl();
-      return pimpl_->get_world();
+      return pimpl_->world();
+    }
+
+    /// \deprecated use DistArray::pmap()
+    DEPRECATED const std::shared_ptr<pmap_interface>& get_pmap() const {
+      check_pimpl();
+      return pimpl_->pmap();
     }
 
     /// Process map accessor
 
-    /// \return A reference to the world that owns this array.
-    const std::shared_ptr<pmap_interface>& get_pmap() const {
+    /// \return A reference to the process map that owns this array.
+    const std::shared_ptr<pmap_interface>& pmap() const {
       check_pimpl();
       return pimpl_->pmap();
     }
@@ -574,14 +586,15 @@ namespace TiledArray {
       return pimpl_->is_dense();
     }
 
+    /// \deprecated use DistArray::shape()
+    DEPRECATED const shape_type& get_shape() const {  return pimpl_->shape(); }
 
-    /// Shape map accessor
+    /// Shape accessor
 
-    /// Bits are \c true when the tile exists, either locally or remotely. No
-    /// no communication required.
-    /// \return A bitset that maps the existence of tiles.
+    /// Returns shape object. No communication is required.
+    /// \return reference to the shape object.
     /// \throw TiledArray::Exception When the Array is dense.
-    const shape_type& get_shape() const {  return pimpl_->shape(); }
+    inline const shape_type& shape() const {  return pimpl_->shape(); }
 
     /// Tile ownership
 
@@ -626,10 +639,10 @@ namespace TiledArray {
     /// Convert a distributed array into a replicated array
     void make_replicated() {
       check_pimpl();
-      if((! pimpl_->pmap()->is_replicated()) && (get_world().size() > 1)) {
+      if((! pimpl_->pmap()->is_replicated()) && (world().size() > 1)) {
         // Construct a replicated array
-        std::shared_ptr<pmap_interface> pmap(new detail::ReplicatedPmap(get_world(), size()));
-        DistArray_ result = DistArray_(get_world(), trange(), get_shape(), pmap);
+        std::shared_ptr<pmap_interface> pmap(new detail::ReplicatedPmap(world(), size()));
+        DistArray_ result = DistArray_(world(), trange(), shape(), pmap);
 
         // Create the replicator object that will do an all-to-all broadcast of
         // the local tile data.
@@ -639,7 +652,7 @@ namespace TiledArray {
         // Put the replicator pointer in the deferred cleanup object so it will
         // be deleted at the end of the next fence.
         TA_ASSERT(replicator.unique()); // Required for deferred_cleanup
-        madness::detail::deferred_cleanup(get_world(), replicator);
+        madness::detail::deferred_cleanup(world(), replicator);
 
         DistArray_::operator=(result);
       }
@@ -730,14 +743,14 @@ namespace TiledArray {
   /// \return A reference to the output stream
   template <typename Tile, typename Policy>
   inline std::ostream& operator<<(std::ostream& os, const DistArray<Tile, Policy>& a) {
-    if(a.get_world().rank() == 0) {
+    if(a.world().rank() == 0) {
       for(std::size_t i = 0; i < a.size(); ++i)
         if(! a.is_zero(i)) {
           const typename DistArray<Tile, Policy>::value_type tile = a.find(i).get();
           os << i << ": " << tile  << "\n";
         }
     }
-    a.get_world().gop.fence();
+    a.world().gop.fence();
     return os;
   }
 

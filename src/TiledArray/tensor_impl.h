@@ -159,10 +159,13 @@ namespace TiledArray {
       /// \return The tiled range of the tensor
       const trange_type& trange() const { return trange_; }
 
+      /// \deprecated use TensorImpl::world()
+      DEPRECATED World& get_world() const { return world_; }
+
       /// World accessor
 
       /// \return A reference to the world that contains this tensor
-      World& get_world() const { return world_; }
+      World& world() const { return world_; }
 
     }; // class TensorImpl
 
