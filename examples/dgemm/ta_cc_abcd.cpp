@@ -334,7 +334,7 @@ make_array_noop(const TA::Permutation& perm = TA::Permutation()) {
 
 template <typename Tile, typename Policy>
 void rand_fill_array(TA::DistArray<Tile, Policy>& array) {
-  auto& world = array.get_world();
+  auto& world = array.world();
   // Iterate over local, non-zero tiles
   for (auto it : array) {
     // Construct a new tile with random data
@@ -367,7 +367,7 @@ void tensor_contract_444(TA::DistArray<Tile, Policy>& tv,
 
   // compute the 2-d grid of processors for the SUMMA
   // note that the result is (occ occ|uocc uocc), hence the row dimension is occ x occ, etc.
-  auto& world = t.get_world();
+  auto& world = t.world();
   auto nrowtiles = ntiles_occ * ntiles_occ;
   auto ncoltiles = ntiles_uocc * ntiles_uocc;
   auto ninttiles = ntiles_uocc * ntiles_uocc; // contraction is over uocc x uocc
@@ -377,10 +377,10 @@ void tensor_contract_444(TA::DistArray<Tile, Policy>& tv,
                                  nrowtiles, ncoltiles,
                                  nrows, ncols);
   std::shared_ptr<TA::Pmap> pmap;
-  auto t_eval = make_array_eval(t, t.get_world(), TA::DenseShape(),
+  auto t_eval = make_array_eval(t, t.world(), TA::DenseShape(),
       proc_grid.make_row_phase_pmap(ninttiles),
       TA::Permutation(), make_array_noop<Tile>());
-  auto v_eval = make_array_eval(v, v.get_world(), TA::DenseShape(),
+  auto v_eval = make_array_eval(v, v.world(), TA::DenseShape(),
       proc_grid.make_col_phase_pmap(ninttiles),
       TA::Permutation(), make_array_noop<Tile>());
 
@@ -410,7 +410,7 @@ void tensor_contract_444(TA::DistArray<Tile, Policy>& tv,
   // migrate contract's futures to tv here
 
   // Create a temporary result array
-  TA::DistArray<Tile,Policy> result(contract.get_world(), contract.trange(),
+  TA::DistArray<Tile,Policy> result(contract.world(), contract.trange(),
            contract.shape(), contract.pmap());
 
   // Move the data from dist_eval into the result array. There is no
