@@ -116,14 +116,14 @@ namespace TiledArray {
       std::vector<std::size_t> upper_bound_; ///< Upper bound of the tile block
 
       void check_valid() const {
-        const unsigned int rank = array_.trange().tile_range().rank();
+        const unsigned int rank = array_.trange().tiles_range().rank();
         // Check the dimension of the lower block bound
         if(TiledArray::detail::size(lower_bound_) != rank) {
           if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The size lower bound of the block is not equal to rank of " \
                 "the array: " \
-                << "\n    array rank  = " << array_.trange().tile_range().rank() \
+                << "\n    array rank  = " << array_.trange().tiles_range().rank() \
                 << "\n    lower bound = " << lower_bound_ );
 
             TA_EXCEPTION("The size lower bound of the block is not equal to " \
@@ -147,17 +147,17 @@ namespace TiledArray {
 
         const bool lower_bound_check =
             std::equal(std::begin(lower_bound_), std::end(lower_bound_),
-                    array_.trange().tile_range().lobound_data(),
+                    array_.trange().tiles_range().lobound_data(),
                     [] (std::size_t l, std::size_t r) { return l >= r; });
         const bool upper_bound_check =
             std::equal(std::begin(upper_bound_), std::end(upper_bound_),
-                    array_.trange().tile_range().upbound_data(),
+                    array_.trange().tiles_range().upbound_data(),
                     [] (std::size_t l, std::size_t r) { return l <= r; });
         if(! (lower_bound_check && upper_bound_check)) {
           if(World::get_default().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The block range is not a sub-block of the array range: " \
-                << "\n    array range = " << array_.trange().tile_range() \
+                << "\n    array range = " << array_.trange().tiles_range() \
                 << "\n    block range = [ " << lower_bound_  << " , " << upper_bound_ << " )");
           }
 

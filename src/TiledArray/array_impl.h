@@ -107,18 +107,14 @@ namespace TiledArray {
         return index_;
       }
 
-      /// \deprecated use TileReference::range() instead
-      DEPRECATED range_type make_range() const {
-        return range(index_);
-      }
-
       /// Tile range factory function
 
       /// Construct a range object for the current tile
-      range_type range() const {
+      range_type make_range() const {
         TA_ASSERT(tensor_);
-        return tensor_->trange().tile(index_);
+        return tensor_->trange().make_tile_range(index_);
       }
+
     }; // class TileReference
 
     /// Tensor tile reference
@@ -361,18 +357,13 @@ namespace TiledArray {
         return *it_;
       }
 
-      /// \deprecated use TensorIterator::range()
-      DEPRECATED range_type make_range() const {
-        return range();
-      }
-
       /// Tile range factory function
 
       /// Construct a range object for the current tile
-      range_type range() const {
+      range_type make_range() const {
         TA_ASSERT(array_);
         TA_ASSERT(it_ != array_->pmap()->end());
-        return array_->trange().tile(*it_);
+        return array_->trange().make_tile_range(*it_);
       }
 
     }; // class TensorIterator
@@ -425,7 +416,7 @@ namespace TiledArray {
       ArrayImpl(World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap) :
         TensorImpl_(world, trange, shape, pmap),
-        data_(world, trange.tile_range().volume(), pmap)
+        data_(world, trange.tiles_range().volume(), pmap)
       { }
 
       /// Virtual destructor
@@ -440,7 +431,7 @@ namespace TiledArray {
       template <typename Index>
       future get(const Index& i) const {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        return data_.get(TensorImpl_::trange().tile_range().ordinal(i));
+        return data_.get(TensorImpl_::trange().tiles_range().ordinal(i));
       }
 
       /// Tile future accessor
@@ -466,7 +457,7 @@ namespace TiledArray {
       template <typename Index, typename Value>
       void set(const Index& i, const Value& value) {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        data_.set(TensorImpl_::trange().tile_range().ordinal(i), value);
+        data_.set(TensorImpl_::trange().tiles_range().ordinal(i), value);
       }
 
       /// Array begin iterator

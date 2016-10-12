@@ -135,10 +135,10 @@ namespace TiledArray {
 
       if(! pmap) {
         // Construct a default process map
-        pmap = Policy::default_pmap(world, trange.tile_range().volume());
+        pmap = Policy::default_pmap(world, trange.tiles_range().volume());
       } else {
         // Validate the process map
-        TA_USER_ASSERT(pmap->size() == trange.tile_range().volume(),
+        TA_USER_ASSERT(pmap->size() == trange.tiles_range().volume(),
             "Array::Array() -- The size of the process map is not equal to the number of tiles in the TiledRange object.");
         TA_USER_ASSERT(pmap->rank() == typename pmap_interface::size_type(world.rank()),
             "Array::Array() -- The rank of the process map is not equal to that of the world object.");
@@ -149,7 +149,7 @@ namespace TiledArray {
       // Validate the shape
       TA_USER_ASSERT(! shape.empty(),
           "Array::Array() -- The shape is not initialized.");
-      TA_USER_ASSERT(shape.validate(trange.tile_range()),
+      TA_USER_ASSERT(shape.validate(trange.tiles_range()),
           "Array::Array() -- The range of the shape is not equal to the tiles range.");
 
       return std::shared_ptr<impl_type>(new impl_type(world, trange, shape, pmap), lazy_deleter);
@@ -330,7 +330,7 @@ namespace TiledArray {
     typename std::enable_if<detail::is_input_iterator<InIter>::value>::type
     set(const Index& i, InIter first) {
       check_index(i);
-      pimpl_->set(i, value_type(pimpl_->trange().tile(i), first));
+      pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
     }
 
     /// Set a tile and fill it using a sequence
@@ -354,7 +354,7 @@ namespace TiledArray {
     template <typename Index>
     void set(const Index& i, const element_type& value = element_type()) {
       check_index(i);
-      pimpl_->set(i, value_type(pimpl_->trange().tile(i), value));
+      pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
     }
 
     /// Set a tile and fill it using a value
@@ -468,7 +468,7 @@ namespace TiledArray {
         if(! pimpl_->is_zero(index)) {
           Future<value_type> tile = pimpl_->world().taskq.add(
               [] (DistArray_& array, const size_type index, const Op& op) -> value_type
-              { return op(array.trange().tile(index)); },
+              { return op(array.trange().make_tile_range(index)); },
               *this, index, op);
           set(index, tile);
         }
@@ -491,17 +491,17 @@ namespace TiledArray {
       return pimpl_->range();
     }
 
-    /// \deprecated use DistArray::element_range()
-    DEPRECATED const typename trange_type::tile_range_type& elements() const {
-      return element_range();
+    /// \deprecated use DistArray::elements_range()
+    DEPRECATED const typename trange_type::tiles_range_type& elements() const {
+      return elements_range();
     }
 
     /// Element range accessor
 
     /// \return A const reference to the range object for the array elements
-    const typename trange_type::tile_range_type& element_range() const {
+    const typename trange_type::tiles_range_type& elements_range() const {
       check_pimpl();
-      return pimpl_->trange().element_range();
+      return pimpl_->trange().elements_range();
     }
 
     size_type size() const {
@@ -518,12 +518,12 @@ namespace TiledArray {
 #ifndef NDEBUG
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
-      if(bool(pimpl_) && n != pimpl_->trange().tile_range().rank()) {
+      if(bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
         if(World::get_default().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
-              << "\n    array dimension      = " << pimpl_->trange().tile_range().rank() );
+              << "\n    array dimension      = " << pimpl_->trange().tiles_range().rank() );
         }
 
         TA_EXCEPTION("The number of array annotation variables is not equal to the array dimension.");
@@ -541,12 +541,12 @@ namespace TiledArray {
 #ifndef NDEBUG
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
-      if(bool(pimpl_) && n != pimpl_->trange().tile_range().rank()) {
+      if(bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
         if(World::get_default().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
-              << "\n    array dimension      = " << pimpl_->trange().tile_range().rank() );
+              << "\n    array dimension      = " << pimpl_->trange().tiles_range().rank() );
         }
 
         TA_EXCEPTION("The number of array annotation variables is not equal to the array dimension.");
@@ -690,7 +690,7 @@ namespace TiledArray {
       check_pimpl();
       TA_USER_ASSERT(pimpl_->range().includes(i),
           "The coordinate index used to access an array tile is out of range.");
-      TA_USER_ASSERT(i.size() == pimpl_->trange().tile_range().rank(),
+      TA_USER_ASSERT(i.size() == pimpl_->trange().tiles_range().rank(),
           "The number of elements in the coordinate index does not match the dimension of the array.");
     }
 

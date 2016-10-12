@@ -37,13 +37,13 @@ struct BinaryEvalFixture : public TiledRangeFixture {
   {
     // Fill array with random data
     for(TArrayI::iterator it = left.begin(); it != left.end(); ++it) {
-      TArrayI::value_type tile(left.trange().tile(it.index()));
+      TArrayI::value_type tile(left.trange().make_tile_range(it.index()));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
     }
     for(TArrayI::iterator it = right.begin(); it != right.end(); ++it) {
-      TArrayI::value_type tile(right.trange().tile(it.index()));
+      TArrayI::value_type tile(right.trange().make_tile_range(it.index()));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
@@ -124,11 +124,11 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_CHECK_EQUAL(& binary.world(), GlobalFixture::world);
   BOOST_CHECK(binary.pmap() == left_arg.pmap());
-  BOOST_CHECK_EQUAL(binary.range(), tr.tile_range());
+  BOOST_CHECK_EQUAL(binary.range(), tr.tiles_range());
   BOOST_CHECK_EQUAL(binary.trange(), tr);
-  BOOST_CHECK_EQUAL(binary.size(), tr.tile_range().volume());
+  BOOST_CHECK_EQUAL(binary.size(), tr.tiles_range().volume());
   BOOST_CHECK(binary.is_dense());
-  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tiles_range().volume(); ++i)
     BOOST_CHECK(! binary.is_zero(i));
 }
 
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE( eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().tile(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), left_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], left_tile[i] + right_tile[i]);
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().tile(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), perm * left_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[perm * left_tile.range().idx(i)], left_tile[i] + right_tile[i]);

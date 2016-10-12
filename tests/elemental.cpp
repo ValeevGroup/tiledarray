@@ -72,8 +72,8 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
   elem::DistMatrix<int> matrix(grid);
   BOOST_CHECK_NO_THROW(matrix = array_to_elem(array, grid));
   // Check dims
-  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().element_range().extent_data()[0]);
-  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().element_range().extent_data()[1]);
+  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements_range().extent_data()[0]);
+  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements_range().extent_data()[1]);
 
   check_equal(array, matrix);
   GlobalFixture::world->gop.fence();
@@ -95,8 +95,8 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   elem::DistMatrix<int> matrix(grid);
   BOOST_CHECK_NO_THROW(matrix = array_to_elem(array, grid));
   // Check dims
-  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().element_range().extent_data()[0]);
-  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().element_range().extent_data()[1]);
+  BOOST_CHECK_EQUAL(matrix.Width(), array.trange().elements_range().extent_data()[0]);
+  BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements_range().extent_data()[1]);
 
   // Re-fill elemental matrix with other random values
   for(int i = 0; i < matrix.Width(); ++i){

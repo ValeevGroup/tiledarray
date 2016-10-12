@@ -17,7 +17,7 @@ namespace TiledArray {
       typedef DistArray<Tile, SparsePolicy> ArrayType;  // return type
 
       // Constructing a tensor to hold the norm of each tile in the Dense Array
-      TiledArray::Tensor<float> tile_norms(dense_array.trange().tile_range(), 0.0);
+      TiledArray::Tensor<float> tile_norms(dense_array.trange().tiles_range(), 0.0);
 
       const auto end = dense_array.end();
       const auto begin = dense_array.begin();

@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
 
   // make shapes
   auto make_shape = [](const TA::TiledRange& trange) -> TA::SparseShape<float> {
-    TA::Tensor<float> tile_norms(trange.tile_range());
+    TA::Tensor<float> tile_norms(trange.tiles_range());
     for(auto& tile_norm: tile_norms) tile_norm = 1.e20;
     //std::cout << "shape_norms = " << tile_norms << std::endl;
     TA::SparseShape<float> result(tile_norms, trange);

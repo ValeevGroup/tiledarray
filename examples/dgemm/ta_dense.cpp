@@ -131,7 +131,7 @@ gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange, long repea
 
   const bool do_memtrace = false;
 
-  const auto n = trange.element_range().extent()[0];
+  const auto n = trange.elements_range().extent()[0];
   const auto complex_T = TiledArray::detail::is_complex<T>::value;
   const double gflop = (complex_T ? 8 : 2) // 1 multiply takes 6/1 flops for complex/real
                                            // 1 add takes 2/1 flops for complex/real

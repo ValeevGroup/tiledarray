@@ -73,7 +73,7 @@ namespace TiledArray {
       /// \param index An ordinal index in the source index space
       /// \return The ordinal index in the target index space
       size_type perm_index_to_target(size_type index) const {
-        TA_ASSERT(index < TensorImpl_::trange().tile_range().volume());
+        TA_ASSERT(index < TensorImpl_::trange().tiles_range().volume());
         return (source_to_target_ ? source_to_target_(index) : index);
       }
 
@@ -82,7 +82,7 @@ namespace TiledArray {
       /// \param index An ordinal index in the target index space
       /// \return The ordinal index in the source index space
       size_type perm_index_to_source(size_type index) const {
-        TA_ASSERT(index < TensorImpl_::trange().tile_range().volume());
+        TA_ASSERT(index < TensorImpl_::trange().tiles_range().volume());
         return (target_to_source_ ? target_to_source_(index) : index);
       }
 
@@ -110,9 +110,9 @@ namespace TiledArray {
 
         if(perm) {
           Permutation inv_perm(-perm);
-          range_type source_range = inv_perm * trange.tile_range();
+          range_type source_range = inv_perm * trange.tiles_range();
           source_to_target_ = PermIndex(source_range, perm);
-          target_to_source_ = PermIndex(trange.tile_range(), inv_perm);
+          target_to_source_ = PermIndex(trange.tiles_range(), inv_perm);
         }
       }
 

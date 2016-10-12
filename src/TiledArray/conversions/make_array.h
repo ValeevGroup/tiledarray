@@ -86,7 +86,7 @@ namespace TiledArray {
             value_type tile;
             op(tile, range);
             return tile;
-          }, trange.make_tile_range(index));
+          }, trange.make_tiles_range(index));
 
       // Store result tile
       result.set(index, tile);
@@ -146,14 +146,14 @@ namespace TiledArray {
     // Construct a tensor to hold updated tile norms for the result shape.
     TiledArray::Tensor<typename detail::shape_t<Array>::value_type,
         Eigen::aligned_allocator<typename detail::shape_t<Array>::value_type> >
-    tile_norms(trange.tile_range(), 0);
+    tile_norms(trange.tiles_range(), 0);
 
     // Construct the task function used to construct the result tiles.
     madness::AtomicInt counter; counter = 0;
     int task_count = 0;
     auto task = [&](const size_type index) -> value_type {
       value_type tile;
-      tile_norms[index] = op(tile, trange.make_tile_range(index));
+      tile_norms[index] = op(tile, trange.make_tiles_range(index));
       ++counter;
       return tile;
     };
@@ -219,7 +219,7 @@ namespace TiledArray {
   make_array(World& world, const detail::trange_t<Array>& trange, Op&& op) {
     return make_array<Array>(world, trange,
         detail::policy_t<Array>::default_pmap(world,
-        trange.tile_range().volume()), op);
+        trange.tiles_range().volume()), op);
   }
 
 } // namespace TiledArray

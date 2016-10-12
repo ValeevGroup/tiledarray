@@ -145,7 +145,7 @@ namespace TiledArray {
       // Construct a tensor to hold updated tile norms for the result shape.
       TiledArray::Tensor<typename shape_type::value_type,
           Eigen::aligned_allocator<typename shape_type::value_type> >
-      tile_norms(arg.trange().tile_range(), 0);
+      tile_norms(arg.trange().tiles_range(), 0);
 
       // Construct the task function used to construct the result tiles.
       madness::AtomicInt counter; counter = 0;

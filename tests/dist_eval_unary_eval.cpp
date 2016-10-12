@@ -48,7 +48,7 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
   {
     // Fill array with random data
     for(TArrayI::iterator it = array.begin(); it != array.end(); ++it) {
-      TensorI tile(array.trange().tile(it.index()));
+      TensorI tile(array.trange().make_tile_range(it.index()));
       for(TensorI::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
@@ -126,11 +126,11 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_CHECK_EQUAL(& unary.world(), GlobalFixture::world);
   BOOST_CHECK(unary.pmap() == arg.pmap());
-  BOOST_CHECK_EQUAL(unary.range(), tr.tile_range());
+  BOOST_CHECK_EQUAL(unary.range(), tr.tiles_range());
   BOOST_CHECK_EQUAL(unary.trange(), tr);
-  BOOST_CHECK_EQUAL(unary.size(), tr.tile_range().volume());
+  BOOST_CHECK_EQUAL(unary.size(), tr.tiles_range().volume());
   BOOST_CHECK(unary.is_dense());
-  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tiles_range().volume(); ++i)
     BOOST_CHECK(! unary.is_zero(i));
 
   BOOST_REQUIRE_NO_THROW(make_unary_eval(unary, unary.world(),
@@ -142,11 +142,11 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_CHECK_EQUAL(& unary2.world(), GlobalFixture::world);
   BOOST_CHECK(unary2.pmap() == arg.pmap());
-  BOOST_CHECK_EQUAL(unary2.range(), tr.tile_range());
+  BOOST_CHECK_EQUAL(unary2.range(), tr.tiles_range());
   BOOST_CHECK_EQUAL(unary2.trange(), tr);
-  BOOST_CHECK_EQUAL(unary2.size(), tr.tile_range().volume());
+  BOOST_CHECK_EQUAL(unary2.size(), tr.tiles_range().volume());
   BOOST_CHECK(unary2.is_dense());
-  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tiles_range().volume(); ++i)
     BOOST_CHECK(! unary2.is_zero(i));
 }
 
@@ -173,7 +173,7 @@ BOOST_AUTO_TEST_CASE( eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().tile(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval.trange().make_tile_range(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], 3 * array_tile[i]);
@@ -210,7 +210,7 @@ BOOST_AUTO_TEST_CASE( double_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().tile(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().make_tile_range(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[i], 5 * 3 * array_tile[i]);
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE( perm_eval )
     BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
 
     // Check that the result tile is correctly modified.
-    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().tile(index));
+    BOOST_CHECK_EQUAL(eval_tile.range(), dist_eval2.trange().make_tile_range(index));
     BOOST_CHECK_EQUAL(eval_tile.range(), perm * array_tile.range());
     for(std::size_t i = 0ul; i < eval_tile.size(); ++i) {
       BOOST_CHECK_EQUAL(eval_tile[perm * array_tile.range().idx(i)], 5 * 3 * array_tile[i]);

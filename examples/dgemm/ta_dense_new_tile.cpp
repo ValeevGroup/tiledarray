@@ -29,7 +29,7 @@ void set_tiles(double val, Array_t& a) {
     auto pmap = a.pmap();
     const auto end = pmap->end();
     for (auto it = pmap->begin(); it != end; ++it) {
-        auto range = trange.make_tile_range(*it);
+        auto range = trange.make_tiles_range(*it);
         a.set(*it, Tile_t(TiledArray::Tensor<double>(range, val)));
     }
 }

@@ -178,7 +178,7 @@ namespace TiledArray {
           const std::vector<std::size_t>& upper_bound) :
         DistEvalImpl_(world, trange, shape, pmap, perm),
         array_(array), op_(std::make_shared<op_type>(op)),
-        block_range_(array.trange().tile_range(), lower_bound, upper_bound)
+        block_range_(array.trange().tiles_range(), lower_bound, upper_bound)
       { }
 
       /// Virtual destructor

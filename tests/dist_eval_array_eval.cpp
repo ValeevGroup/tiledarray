@@ -38,7 +38,7 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
   ArrayEvalImplFixture() : array(*GlobalFixture::world, tr) {
     // Fill array with random data
     for(TArrayI::iterator it = array.begin(); it != array.end(); ++it) {
-      TArrayI::value_type tile(array.trange().tile(it.index()));
+      TArrayI::value_type tile(array.trange().make_tile_range(it.index()));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it)
         *tile_it = GlobalFixture::world->rand() % 101;
       *it = tile;
@@ -100,11 +100,11 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   BOOST_CHECK_EQUAL(& dist_eval.world(), GlobalFixture::world);
   BOOST_CHECK(dist_eval.pmap() == array.pmap());
-  BOOST_CHECK_EQUAL(dist_eval.range(), tr.tile_range());
+  BOOST_CHECK_EQUAL(dist_eval.range(), tr.tiles_range());
   BOOST_CHECK_EQUAL(dist_eval.trange(), tr);
-  BOOST_CHECK_EQUAL(dist_eval.size(), tr.tile_range().volume());
+  BOOST_CHECK_EQUAL(dist_eval.size(), tr.tiles_range().volume());
   BOOST_CHECK(dist_eval.is_dense());
-  for(std::size_t i = 0; i < tr.tile_range().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tiles_range().volume(); ++i)
     BOOST_CHECK(! dist_eval.is_zero(i));
 }
 

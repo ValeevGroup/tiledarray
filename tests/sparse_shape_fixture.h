@@ -40,7 +40,7 @@ namespace TiledArray {
       left(make_shape(tr, 0.1, 23)),
       right(make_shape(tr, 0.1, 82)),
       perm(make_perm()),
-      perm_index(tr.tile_range(), perm),
+      perm_index(tr.tiles_range(), perm),
       tolerance(0.0001)
 
     {
@@ -52,9 +52,9 @@ namespace TiledArray {
 
     static Tensor<float> make_norm_tensor(const TiledRange& trange, const float fill_percent, const int seed) {
       GlobalFixture::world->srand(seed);
-      Tensor<float> norms(trange.tile_range());
+      Tensor<float> norms(trange.tiles_range());
       for(Tensor<float>::size_type i = 0ul; i < norms.size(); ++i) {
-        const Range range = trange.tile(i);
+        const Range range = trange.make_tile_range(i);
         norms[i] = (GlobalFixture::world->rand() % 101);
         norms[i] = std::sqrt(norms[i] * norms[i] * range.volume());
       }

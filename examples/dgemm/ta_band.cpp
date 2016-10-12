@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     TiledArray::SparseShape<float>::threshold(0.5);
 
     // Construct shape
-    TiledArray::Tensor<float> shape_tensor(trange.tile_range(), 0.0f);
+    TiledArray::Tensor<float> shape_tensor(trange.tiles_range(), 0.0f);
     for(long i = 0l; i < num_blocks; ++i) {
       long j = std::max<long>(i - band_width + 1, 0);
       const long j_end = std::min<long>(i + band_width - 1, num_blocks);
