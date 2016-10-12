@@ -67,6 +67,9 @@ namespace TiledArray {
       typedef Op op_type; ///< Tile evaluation operator type
 
     private:
+      static size_type max_memory_; ///< Maximum overhead used per node
+      static size_type max_depth_; ///< Maximum number of concurrent SUMMA iterations
+
       // Arguments and operation
       left_type left_; ///< The left-hand argument
       right_type right_; /// < The right-hand argument
@@ -103,6 +106,52 @@ namespace TiledArray {
       using std::enable_shared_from_this<Summa_>::shared_from_this;
 
     private:
+
+      // Static variable initialization ----------------------------------------
+
+
+      /// Initialize max_memory_ limit for SUMMA
+      static size_type init_max_memory() {
+        const char* max_memory = getenv("TA_SUMMA_MAX_MEMORY");
+        if(max_memory) {
+            // Convert the string into bytes
+            std::stringstream ss(max_memory);
+            double memory = 0.0;
+            if(ss >> memory) {
+                if(memory > 0.0) {
+                    std::string unit;
+                    if(ss >> unit) { // Failure == assume bytes
+                        if(unit == "KB" || unit == "kB") {
+                          memory *= 1000.0;
+                        } else if(unit == "KiB" || unit == "kiB") {
+                          memory *= 1024.0;
+                        } else if(unit == "MB") {
+                          memory *= 1000000.0;
+                        } else if(unit == "MiB") {
+                          memory *= 1048576.0;
+                        } else if(unit == "GB") {
+                          memory *= 1000000000.0;
+                        } else if(unit == "GiB") {
+                          memory *= 1073741824.0;
+                        }
+                    }
+                }
+            }
+
+            memory = std::max(memory, 104857600.0); // Minimum 100 MiB
+            return memory;
+        }
+
+        return 0ul;
+      }
+
+
+      static size_type init_max_depth() {
+        const char* max_depth = getenv("TA_SUMMA_MAX_DEPTH");
+        if(max_depth)
+          return std::stoul(max_depth);
+        return 0ul;
+      }
 
 
       // Process groups --------------------------------------------------------
@@ -1235,10 +1284,10 @@ namespace TiledArray {
       /// \return The memory bounded iteration depth
       /// \thorw TiledArray::Exception When the memory bounded iteration depth
       /// is less than 1.
-      size_type mem_bound_depth(size_type depth, float left_sparsity, float right_sparsity) {
+      size_type mem_bound_depth(size_type depth, const float left_sparsity, const float right_sparsity) {
 
         // Check if a memory bound has been set
-        const std::size_t available_memory = 1ul;
+        const size_type available_memory = max_memory_;
         if(available_memory) {
 
           // Compute the average memory requirement per iteration of this process
@@ -1254,7 +1303,7 @@ namespace TiledArray {
           // Compute the maximum number of iterations based on available memory
           const size_type mem_bound_depth =
               ((local_memory_per_iter_left + local_memory_per_iter_right) /
-              available_memory) * 0.8;
+              available_memory);
 
           // Check if the memory bounded depth is less than the optimal depth
           if(depth > mem_bound_depth) {
@@ -1267,7 +1316,7 @@ namespace TiledArray {
                 break;
               case 1:
                 if(TensorImpl_::world().rank() == 0)
-                  printf("!! WARNING TiledArray: Insufficient memory available for SUMMA.\n"
+                  printf("!! WARNING TiledArray: Memory constraints limit the SUMMA depth depth to 1.\n"
                          "!! WARNING TiledArray: Performance may be slow.\n");
               default:
                 depth = mem_bound_depth;
@@ -1304,26 +1353,28 @@ namespace TiledArray {
 
           // depth controls the number of simultaneous SUMMA iterations
           // that are scheduled.
-#ifndef TILEDARRAY_SUMMA_DEPTH
+
+          // The optimal depth is equal to the smallest dimension of the process
+          // grid, but no less than 2
           size_type depth =
               std::max(ProcGrid::size_type(2), std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
-#else
-          size_type depth = TILEDARRAY_SUMMA_DEPTH;
-#endif //TILEDARRAY_SUMMA_DEPTH
 
           // Construct the first SUMMA iteration task
           if(TensorImpl_::shape().is_dense()) {
-#ifndef TILEDARRAY_SUMMA_DEPTH
+            // We cannot have more iterations than there are blocks in the k
+            // dimension
             if(depth > k_) depth = k_;
 
             // Modify the number of concurrent iterations based on the available
             // memory.
-//            depth = mem_bound_depth(depth, 0.0f, 0.0f);
-#endif //TILEDARRAY_SUMMA_DEPTH
+            depth = mem_bound_depth(depth, 0.0f, 0.0f);
+
+            // Enforce user defined depth bound
+            if(max_depth_) std::min(depth, max_depth_);
+
             TensorImpl_::world().taskq.add(new DenseStepTask(shared_from_this(),
-                depth));
+                                                             depth));
           } else {
-#ifndef TILEDARRAY_SUMMA_DEPTH
             // Increase the depth based on the amount of sparsity in an iteration.
 
             // Get the sparsity fractions for the left- and right-hand arguments.
@@ -1334,16 +1385,22 @@ namespace TiledArray {
             const float frac_non_zero = (1.0f - std::min(left_sparsity, 0.9f))
                                       * (1.0f - std::min(right_sparsity, 0.9f));
 
-            // Compute the new depth
+            // Compute the new depth based on sparsity of the arguments
             depth = float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) + 0.5f;
+
+            // We cannot have more iterations than there are blocks in the k
+            // dimension
             if(depth > k_) depth = k_;
 
             // Modify the number of concurrent iterations based on the available
             // memory and sparsity of the argument tensors.
-//            depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
-#endif // TILEDARRAY_SUMMA_DEPTH
+            depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
+
+            // Enforce user defined depth bound
+            if(max_depth_) std::min(depth, max_depth_);
+
             TensorImpl_::world().taskq.add(new SparseStepTask(shared_from_this(),
-                depth));
+                                                              depth));
           }
         }
 
@@ -1364,6 +1421,18 @@ namespace TiledArray {
 
     }; // class Summa
 
+
+    // Initialize static member variables for Summa
+
+    template <typename Left, typename Right, typename Op, typename Policy>
+    typename Summa<Left, Right, Op, Policy>::size_type
+    Summa<Left, Right, Op, Policy>::max_depth_ =
+        Summa<Left, Right, Op, Policy>::init_max_depth();
+
+    template <typename Left, typename Right, typename Op, typename Policy>
+    typename Summa<Left, Right, Op, Policy>::size_type
+    Summa<Left, Right, Op, Policy>::max_memory_ =
+        Summa<Left, Right, Op, Policy>::init_max_memory();
   } // namespace detail
 }  // namespace TiledArray
 
