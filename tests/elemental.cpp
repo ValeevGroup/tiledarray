@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
   // Fill array with random data
   GlobalFixture::world->srand(27);
   for(Array<int,2>::iterator it = array.begin(); it != array.end(); ++it) {
-    Array<int, 2>::value_type tile(it.range());
+    Array<int, 2>::value_type tile(it.make_range());
     for(auto& v : tile) {
       v = GlobalFixture::world->rand();
     }
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   // Fill array with random data
   GlobalFixture::world->srand(27);
   for(Array<int,2>::iterator it = array.begin(); it != array.end(); ++it) {
-    Array<int, 2>::value_type tile(it.range());
+    Array<int, 2>::value_type tile(it.make_range());
     for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
       *tile_it = GlobalFixture::world->rand();
     }
