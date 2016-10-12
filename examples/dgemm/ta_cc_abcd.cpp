@@ -339,7 +339,7 @@ void rand_fill_array(TA::DistArray<Tile, Policy>& array) {
   for (auto it : array) {
     // Construct a new tile with random data
     typename TA::DistArray<Tile, Policy>::value_type tile(
-        array.trange().make_tiles_range(it.index()));
+        array.trange().make_tile_range(it.index()));
     for (auto& tile_it : tile) tile_it = world.drand();
 
     // Set array tile

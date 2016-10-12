@@ -86,7 +86,7 @@ namespace TiledArray {
             value_type tile;
             op(tile, range);
             return tile;
-          }, trange.make_tiles_range(index));
+          }, trange.make_tile_range(index));
 
       // Store result tile
       result.set(index, tile);
@@ -153,7 +153,7 @@ namespace TiledArray {
     int task_count = 0;
     auto task = [&](const size_type index) -> value_type {
       value_type tile;
-      tile_norms[index] = op(tile, trange.make_tiles_range(index));
+      tile_norms[index] = op(tile, trange.make_tile_range(index));
       ++counter;
       return tile;
     };
