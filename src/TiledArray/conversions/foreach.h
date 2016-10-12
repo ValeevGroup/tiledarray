@@ -95,10 +95,10 @@ namespace TiledArray {
       typedef DistArray<ArgTile, DensePolicy> arg_array_type;
       typedef DistArray<ResultTile, DensePolicy> result_array_type;
 
-      World& world = arg.get_world();
+      World& world = arg.world();
 
       // Make an empty result array
-      result_array_type result(world, arg.trange(), arg.get_pmap());
+      result_array_type result(world, arg.trange(), arg.pmap());
 
       // Construct the task function for making result tiles.
       auto task = [&op](const_if_t<not inplace, typename arg_array_type::value_type>& arg_tile)
@@ -111,7 +111,7 @@ namespace TiledArray {
       };
 
       // Iterate over local tiles of arg
-      for (auto index: *(arg.get_pmap())) {
+      for (auto index: *(arg.pmap())) {
         // Spawn a task to evaluate the tile
         Future<typename result_array_type::value_type> tile =
             world.taskq.add(task, arg.find(index));
@@ -140,12 +140,12 @@ namespace TiledArray {
 
       // Create a vector to hold local tiles
       std::vector<datum_type> tiles;
-      tiles.reserve(arg.get_pmap()->size());
+      tiles.reserve(arg.pmap()->size());
 
       // Construct a tensor to hold updated tile norms for the result shape.
       TiledArray::Tensor<typename shape_type::value_type,
           Eigen::aligned_allocator<typename shape_type::value_type> >
-      tile_norms(arg.trange().tiles(), 0);
+      tile_norms(arg.trange().tiles_range(), 0);
 
       // Construct the task function used to construct the result tiles.
       madness::AtomicInt counter; counter = 0;
@@ -162,10 +162,10 @@ namespace TiledArray {
         return std::move(result_tile);
       };
 
-      World& world = arg.get_world();
+      World& world = arg.world();
 
       // Get local tile index iterator
-      for(auto index: *(arg.get_pmap())) {
+      for(auto index: *(arg.pmap())) {
         if(arg.is_zero(index))
           continue;
         auto arg_tile = arg.find(index);
@@ -180,7 +180,7 @@ namespace TiledArray {
 
       // Construct the new array
       result_array_type result(world, arg.trange(),
-          shape_type(world, tile_norms, arg.trange()), arg.get_pmap());
+          shape_type(world, tile_norms, arg.trange()), arg.pmap());
       for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
         const size_type index = it->first;
         if(! result.is_zero(index))
@@ -271,7 +271,7 @@ namespace TiledArray {
     // The tile data is being modified in place, which means we may need to
     // fence to ensure no other threads are using the data.
     if(fence)
-      arg.get_world().gop.fence();
+      arg.world().gop.fence();
 
     arg = detail::foreach<Tile, Tile, Op, true>(arg, std::forward<Op>(op));
   }
@@ -375,7 +375,7 @@ namespace TiledArray {
     // The tile data is being modified in place, which means we may need to
     // fence to ensure no other threads are using the data.
     if(fence)
-      arg.get_world().gop.fence();
+      arg.world().gop.fence();
 
     // Set the arg with the new array
     arg = detail::foreach<Tile,Tile,Op,true>(arg, std::forward<Op>(op));

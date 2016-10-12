@@ -33,7 +33,7 @@ make_random_array(TiledArray::World &world, TiledArray::TiledRange &trange){
   typename TiledArray::TArrayD::iterator it = array.begin();
   for(; it != array.end(); ++it){
     typename TiledArray::TArrayD::value_type tile(
-                                array.trange().make_tile_range(it.ordinal()));
+                                array.trange().make_tiles_range(it.ordinal()));
     world.taskq.add(&random_tile_task<decltype(it), decltype(tile)>, it, tile);
   }
   return array;

@@ -117,25 +117,25 @@ int main(int argc, char** argv) {
 
         // Construct shape
         TiledArray::Tensor<float>
-            a_tile_norms(trange.tiles(), 0.0),
-            b_tile_norms(trange.tiles(), 0.0);
+            a_tile_norms(trange.tiles_range(), 0.0),
+            b_tile_norms(trange.tiles_range(), 0.0);
         if(world.rank() == 0) {
           world.srand(time(NULL));
           for(long count = 0l; count < l_block_count; ++count) {
-            std::size_t index = world.rand() % trange.tiles().volume();
+            std::size_t index = world.rand() % trange.tiles_range().volume();
 
             // Avoid setting the same tile to non-zero.
             while(a_tile_norms[index] > TiledArray::SparseShape<float>::threshold())
-              index = world.rand() % trange.tiles().volume();
+              index = world.rand() % trange.tiles_range().volume();
 
             a_tile_norms[index] = std::sqrt(float(block_size * block_size));
           }
           for(long count = 0l; count < r_block_count; ++count) {
-            std::size_t index = world.rand() % trange.tiles().volume();
+            std::size_t index = world.rand() % trange.tiles_range().volume();
 
             // Avoid setting the same tile to non-zero.
             while(b_tile_norms[index] > TiledArray::SparseShape<float>::threshold())
-              index = world.rand() % trange.tiles().volume();
+              index = world.rand() % trange.tiles_range().volume();
 
             b_tile_norms[index] = std::sqrt(float(block_size * block_size));
           }
@@ -177,14 +177,14 @@ int main(int argc, char** argv) {
             if(world.rank() == 0)
               std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
                   << flop / time / 1.0e9 << "   apparent GFLOPS=" << app_flop / time / 1.0e9 << "\n";
-            std::cout << "C sparsity = " << c.get_shape().sparsity() << "\n";
+            std::cout << "C sparsity = " << c.shape().sparsity() << "\n";
 
           }
         } catch(...) {
           if(world.rank() == 0) {
             std::stringstream ss;
-            ss << "left shape  = " << a.get_shape().data() << "\n"
-               << "right shape = " << b.get_shape().data() << "\n";
+            ss << "left shape  = " << a.shape().data() << "\n"
+               << "right shape = " << b.shape().data() << "\n";
             printf(ss.str().c_str());
           }
           throw;

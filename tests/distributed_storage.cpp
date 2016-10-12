@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE( get_world )
 
 BOOST_AUTO_TEST_CASE( get_pmap )
 {
-  BOOST_CHECK_EQUAL(t.get_pmap(), pmap);
+  BOOST_CHECK_EQUAL(t.pmap(), pmap);
 }
 
 BOOST_AUTO_TEST_CASE( set_value )

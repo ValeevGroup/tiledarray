@@ -114,30 +114,30 @@ int main(int argc, char** argv) {
 //      std::cout << " done.\n";
 //
 //
-//    TArray2s t_a_vo(world, f_a_vo.trange(), f_a_vo.get_shape());
+//    TArray2s t_a_vo(world, f_a_vo.trange(), f_a_vo.shape());
 //    t_a_vo.set_all_local(0.0);
 //
 //    TArray2s& t_b_vo = t_a_vo;
 //
-//    TArray4s t_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.get_shape());
+//    TArray4s t_aa_vvoo(world, v_aa_vvoo.trange(), v_aa_vvoo.shape());
 //    t_aa_vvoo.set_all_local(0.0);
 //
-//    TArray4s t_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
+//    TArray4s t_ab_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.shape());
 //    t_ab_vvoo.set_all_local(0.0);
 //
-//    TArray4s t_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.get_shape());
+//    TArray4s t_bb_vvoo(world, v_bb_vvoo.trange(), v_bb_vvoo.shape());
 //    t_bb_vvoo.set_all_local(0.0);
 //
 //
-//    TArray2s D_vo(world, f_a_vo.trange(), f_a_vo.get_shape());
+//    TArray2s D_vo(world, f_a_vo.trange(), f_a_vo.shape());
 //    for(TArray2s::range_type::const_iterator it = D_vo.range().begin(); it != D_vo.range().end(); ++it)
 //      if(D_vo.is_local(*it) && (! D_vo.is_zero(*it)))
-//        D_vo.set(*it, world.taskq.add(data, & InputData::make_D_vo_tile, D_vo.trange().make_tile_range(*it)));
+//        D_vo.set(*it, world.taskq.add(data, & InputData::make_D_vo_tile, D_vo.trange().make_tiles_range(*it)));
 //
-//    TArray4s D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.get_shape());
+//    TArray4s D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.shape());
 //    for(TArray4s::range_type::const_iterator it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
 //      if(D_vvoo.is_local(*it) && (! D_vvoo.is_zero(*it)))
-//        D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_vvoo_tile, D_vvoo.trange().make_tile_range(*it)));
+//        D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_vvoo_tile, D_vvoo.trange().make_tiles_range(*it)));
 
 
     world.gop.fence();

@@ -114,6 +114,7 @@ namespace TiledArray {
         TA_ASSERT(tensor_);
         return tensor_->trange().make_tile_range(index_);
       }
+
     }; // class TileReference
 
     /// Tensor tile reference
@@ -415,7 +416,7 @@ namespace TiledArray {
       ArrayImpl(World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap) :
         TensorImpl_(world, trange, shape, pmap),
-        data_(world, trange.tiles().volume(), pmap)
+        data_(world, trange.tiles_range().volume(), pmap)
       { }
 
       /// Virtual destructor
@@ -430,7 +431,7 @@ namespace TiledArray {
       template <typename Index>
       future get(const Index& i) const {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        return data_.get(TensorImpl_::trange().tiles().ordinal(i));
+        return data_.get(TensorImpl_::trange().tiles_range().ordinal(i));
       }
 
       /// Tile future accessor
@@ -456,7 +457,7 @@ namespace TiledArray {
       template <typename Index, typename Value>
       void set(const Index& i, const Value& value) {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        data_.set(TensorImpl_::trange().tiles().ordinal(i), value);
+        data_.set(TensorImpl_::trange().tiles_range().ordinal(i), value);
       }
 
       /// Array begin iterator

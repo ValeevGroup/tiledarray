@@ -122,7 +122,7 @@ namespace TiledArray {
       void init_distribution(World* world,
           const std::shared_ptr<pmap_interface>& pmap)
       {
-        ExprEngine_::init_distribution(world, (pmap ? pmap : array_.get_pmap()));
+        ExprEngine_::init_distribution(world, (pmap ? pmap : array_.pmap()));
       }
 
 
@@ -142,14 +142,14 @@ namespace TiledArray {
       /// Non-permuting shape factory function
 
       /// \return The result shape
-      shape_type make_shape() { return array_.get_shape(); }
+      shape_type make_shape() { return array_.shape(); }
 
       /// Permuting shape factory function
 
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type
-      make_shape(const Permutation& perm) { return array_.get_shape().perm(perm); }
+      make_shape(const Permutation& perm) { return array_.shape().perm(perm); }
 
 
       /// Construct the distributed evaluator for array

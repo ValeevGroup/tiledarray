@@ -28,7 +28,7 @@ struct EigenFixture : public TiledRangeFixture {
   EigenFixture() :
     trange(dims.begin(), dims.begin() + 2), trange1(dims.begin(), dims.begin() + 1),
     array(*GlobalFixture::world, trange), array1(*GlobalFixture::world, trange1),
-    matrix(dims[0].elements().second, dims[1].elements().second), vector(dims[0].elements().second)
+    matrix(dims[0].elements_range().second, dims[1].elements_range().second), vector(dims[0].elements_range().second)
   { }
 
 
@@ -214,8 +214,8 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     BOOST_CHECK_NO_THROW(matrix = array_to_eigen(array));
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements().extent_data()[0]);
-    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements().extent_data()[1]);
+    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements_range().extent_data()[0]);
+    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements_range().extent_data()[1]);
 
 
     // Check that the data in matrix matches the data in array
@@ -231,8 +231,8 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
-    TArrayI::pmap_interface::const_iterator it = array.get_pmap()->begin();
-    TArrayI::pmap_interface::const_iterator end = array.get_pmap()->end();
+    TArrayI::pmap_interface::const_iterator it = array.pmap()->begin();
+    TArrayI::pmap_interface::const_iterator end = array.pmap()->end();
     for(; it != end; ++it) {
       TArrayI::value_type tile(array.trange().make_tile_range(*it));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
@@ -244,15 +244,15 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     // Distribute the data of array1 to all nodes
     array.make_replicated();
 
-    BOOST_CHECK(array.get_pmap()->is_replicated());
+    BOOST_CHECK(array.pmap()->is_replicated());
 
     // Convert the array to an Eigen vector
     BOOST_CHECK_NO_THROW(matrix = array_to_eigen(array));
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements().extent_data()[0]);
-    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements().extent_data()[1]);
+    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements_range().extent_data()[0]);
+    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements_range().extent_data()[1]);
 
     // Check that the data in vector matches the data in array
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements().extent_data()[0]);
+    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements_range().extent_data()[0]);
     BOOST_CHECK_EQUAL(vector.cols(), 1);
 
     // Check that the data in vector matches the data in array
@@ -299,8 +299,8 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
-    TArrayI::pmap_interface::const_iterator it = array1.get_pmap()->begin();
-    TArrayI::pmap_interface::const_iterator end = array1.get_pmap()->end();
+    TArrayI::pmap_interface::const_iterator it = array1.pmap()->begin();
+    TArrayI::pmap_interface::const_iterator end = array1.pmap()->end();
     for(; it != end; ++it) {
       TArrayI::value_type tile(array1.trange().make_tile_range(*it));
       for(TArrayI::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
@@ -312,14 +312,14 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
     // Distribute the data of array1 to all nodes
     array1.make_replicated();
 
-    BOOST_CHECK(array1.get_pmap()->is_replicated());
+    BOOST_CHECK(array1.pmap()->is_replicated());
 
     // Convert the array to an Eigen vector
     BOOST_CHECK_NO_THROW(vector = array_to_eigen(array1));
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements().extent_data()[0]);
+    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements_range().extent_data()[0]);
     BOOST_CHECK_EQUAL(vector.cols(), 1);
 
     // Check that the data in vector matches the data in array

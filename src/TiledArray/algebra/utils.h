@@ -48,7 +48,7 @@ namespace TiledArray {
   inline size_t size(const DistArray<Tile, Policy>& a) {
     // this is the number of tiles
     if (a.size() > 0) // assuming dense shape
-      return a.trange().elements().volume();
+      return a.trange().elements_range().volume();
     else
       return 0;
   }
@@ -60,33 +60,33 @@ namespace TiledArray {
 
   template <typename Tile, typename Policy>
   inline void zero(DistArray<Tile,Policy>& a) {
-    const std::string vars = detail::dummy_annotation(a.trange().tiles().rank());
+    const std::string vars = detail::dummy_annotation(a.trange().tiles_range().rank());
     a(vars) = typename DistArray<Tile,Policy>::element_type(0) * a(vars);
   }
 
   template <typename Tile, typename Policy>
   typename DistArray<Tile,Policy>::element_type
   inline minabs_value(const DistArray<Tile,Policy>& a) {
-    return a(detail::dummy_annotation(a.trange().tiles().rank())).abs_min();
+    return a(detail::dummy_annotation(a.trange().tiles_range().rank())).abs_min();
   }
 
   template <typename Tile, typename Policy>
   inline typename DistArray<Tile,Policy>::element_type
   maxabs_value(const DistArray<Tile,Policy>& a) {
-    return a(detail::dummy_annotation(a.trange().tiles().rank())).abs_max();
+    return a(detail::dummy_annotation(a.trange().tiles_range().rank())).abs_max();
   }
 
   template <typename Tile, typename Policy>
   inline void vec_multiply(DistArray<Tile,Policy>& a1,
                            const DistArray<Tile,Policy>& a2) {
-    const std::string vars = detail::dummy_annotation(a1.trange().tiles().rank());
+    const std::string vars = detail::dummy_annotation(a1.trange().tiles_range().rank());
     a1(vars) = a1(vars) * a2(vars);
   }
 
   template <typename Tile, typename Policy>
   inline typename DistArray<Tile,Policy>::element_type
   dot_product(const DistArray<Tile,Policy>& a1, const DistArray<Tile,Policy>& a2) {
-    const std::string vars = detail::dummy_annotation(a1.trange().tiles().rank());
+    const std::string vars = detail::dummy_annotation(a1.trange().tiles_range().rank());
     return a1(vars).dot(a2(vars)).get();
   }
 
@@ -106,7 +106,7 @@ namespace TiledArray {
   template <typename Tile, typename Policy>
   inline void scale(DistArray<Tile,Policy>& a,
                     typename DistArray<Tile,Policy>::element_type scaling_factor) {
-    const std::string vars = detail::dummy_annotation(a.trange().tiles().rank());
+    const std::string vars = detail::dummy_annotation(a.trange().tiles_range().rank());
     a(vars) = scaling_factor * a(vars);
   }
 
@@ -114,7 +114,7 @@ namespace TiledArray {
   inline void axpy(DistArray<Tile,Policy>& y,
                    typename DistArray<Tile,Policy>::element_type a,
                    const DistArray<Tile,Policy>& x) {
-    const std::string vars = detail::dummy_annotation(y.trange().tiles().rank());
+    const std::string vars = detail::dummy_annotation(y.trange().tiles_range().rank());
     y(vars) = y(vars) + a * x(vars);
   }
 
@@ -127,7 +127,7 @@ namespace TiledArray {
   template <typename Tile, typename Policy>
   inline typename DistArray<Tile,Policy>::element_type
   norm2(const DistArray<Tile,Policy>& a) {
-    return std::sqrt(a(detail::dummy_annotation(a.trange().tiles().rank())).squared_norm());
+    return std::sqrt(a(detail::dummy_annotation(a.trange().tiles_range().rank())).squared_norm());
   }
 
   template <typename Tile, typename Policy>

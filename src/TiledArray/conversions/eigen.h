@@ -365,16 +365,16 @@ namespace TiledArray {
     typedef typename A::size_type size_type;
     // Check that trange matches the dimensions of other
     if((matrix.cols() > 1) && (matrix.rows() > 1)) {
-      TA_USER_ASSERT(trange.tiles().rank() == 2,
+      TA_USER_ASSERT(trange.tiles_range().rank() == 2,
           "TiledArray::eigen_to_array(): The number of dimensions in trange is not equal to that of the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements().extent_data()[0] == size_type(matrix.rows()),
+      TA_USER_ASSERT(trange.elements_range().extent_data()[0] == size_type(matrix.rows()),
           "TiledArray::eigen_to_array(): The number of rows in trange is not equal to the number of rows in the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements().extent_data()[1] == size_type(matrix.cols()),
+      TA_USER_ASSERT(trange.elements_range().extent_data()[1] == size_type(matrix.cols()),
           "TiledArray::eigen_to_array(): The number of columns in trange is not equal to the number of columns in the Eigen matrix.");
     } else {
-      TA_USER_ASSERT(trange.tiles().rank() == 1,
+      TA_USER_ASSERT(trange.tiles_range().rank() == 1,
           "TiledArray::eigen_to_array(): The number of dimensions in trange must match that of the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements().extent_data()[0] == size_type(matrix.size()),
+      TA_USER_ASSERT(trange.elements_range().extent_data()[0] == size_type(matrix.size()),
           "TiledArray::eigen_to_array(): The size of trange must be equal to the matrix size.");
     }
 
@@ -386,7 +386,7 @@ namespace TiledArray {
     // Create a new tensor
     A array = (replicated && (world.size() > 1) ?
         A(world, trange, std::static_pointer_cast<typename A::pmap_interface>(
-            std::shared_ptr<detail::ReplicatedPmap>(new detail::ReplicatedPmap(world, trange.tiles().volume())))) :
+            std::shared_ptr<detail::ReplicatedPmap>(new detail::ReplicatedPmap(world, trange.tiles_range().volume())))) :
         A(world, trange));
 
     // Spawn tasks to copy Eigen to an Array
@@ -400,7 +400,7 @@ namespace TiledArray {
     }
 
     // Wait until the write tasks are complete
-    array.get_world().await([&counter,n] () { return counter == n; });
+    array.world().await([&counter,n] () { return counter == n; });
 
     return array;
   }
@@ -432,7 +432,7 @@ namespace TiledArray {
     typedef Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic>
         EigenMatrix;
 
-    const auto rank = array.trange().tiles().rank();
+    const auto rank = array.trange().tiles_range().rank();
 
     // Check that the array will fit in a matrix or vector
     TA_USER_ASSERT((rank == 2u) || (rank == 1u),
@@ -440,12 +440,12 @@ namespace TiledArray {
 
     // Check that this is not a distributed computing environment or that the
     // array is replicated
-    if(! array.get_pmap()->is_replicated())
-      TA_USER_ASSERT(array.get_world().size() == 1,
+    if(! array.pmap()->is_replicated())
+      TA_USER_ASSERT(array.world().size() == 1,
           "TiledArray::array_to_eigen(): Array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
 
     // Construct the Eigen matrix
-    const auto* restrict const array_extent = array.trange().elements().extent_data();
+    const auto* restrict const array_extent = array.trange().elements_range().extent_data();
     EigenMatrix matrix(array_extent[0], (rank == 2 ? array_extent[1] : 1));
 
     // Spawn tasks to copy array tiles to the Eigen matrix
@@ -454,7 +454,7 @@ namespace TiledArray {
     std::size_t n = 0;
     for(std::size_t i = 0; i < array.size(); ++i) {
       if(! array.is_zero(i)) {
-        array.get_world().taskq.add(
+        array.world().taskq.add(
             & detail::counted_tensor_to_eigen_submatrix<EigenMatrix,
             typename DistArray<Tile, Policy>::value_type>,
             array.find(i), &matrix, &counter);
@@ -464,7 +464,7 @@ namespace TiledArray {
 
     // Wait until the above tasks are complete. Tasks will be processed by this
     // thread while waiting.
-    array.get_world().await([&counter,n] () { return counter == n; });
+    array.world().await([&counter,n] () { return counter == n; });
 
     return matrix;
   }
@@ -514,9 +514,9 @@ namespace TiledArray {
       const typename A::value_type::value_type* buffer, const std::size_t m,
       const std::size_t n, const bool replicated = false)
   {
-    TA_USER_ASSERT(trange.elements().extent_data()[0] == m,
+    TA_USER_ASSERT(trange.elements_range().extent_data()[0] == m,
         "TiledArray::eigen_to_array(): The number of rows in trange is not equal to m.");
-    TA_USER_ASSERT(trange.elements().extent_data()[1] == n,
+    TA_USER_ASSERT(trange.elements_range().extent_data()[1] == n,
         "TiledArray::eigen_to_array(): The number of columns in trange is not equal to n.");
 
     typedef Eigen::Matrix<typename A::value_type::value_type, Eigen::Dynamic,
@@ -570,9 +570,9 @@ namespace TiledArray {
       const typename A::value_type::value_type* buffer, const std::size_t m,
       const std::size_t n, const bool replicated = false)
   {
-    TA_USER_ASSERT(trange.elements().extent_data()[0] == m,
+    TA_USER_ASSERT(trange.elements_range().extent_data()[0] == m,
         "TiledArray::eigen_to_array(): The number of rows in trange is not equal to m.");
-    TA_USER_ASSERT(trange.elements().extent_data()[1] == n,
+    TA_USER_ASSERT(trange.elements_range().extent_data()[1] == n,
         "TiledArray::eigen_to_array(): The number of columns in trange is not equal to n.");
 
     typedef Eigen::Matrix<typename A::value_type::value_type, Eigen::Dynamic,

@@ -34,10 +34,10 @@ namespace TiledArray {
   DistArray<Tile, DensePolicy>
   to_dense(DistArray<Tile, SparsePolicy> const& sparse_array) {
       typedef DistArray<Tile, DensePolicy> ArrayType;
-      ArrayType dense_array(sparse_array.get_world(), sparse_array.trange());
+      ArrayType dense_array(sparse_array.world(), sparse_array.trange());
 
       typedef typename ArrayType::pmap_interface pmap_interface;
-      std::shared_ptr<pmap_interface> const& pmap = dense_array.get_pmap();
+      std::shared_ptr<pmap_interface> const& pmap = dense_array.pmap();
 
       typename pmap_interface::const_iterator end = pmap->end();
 

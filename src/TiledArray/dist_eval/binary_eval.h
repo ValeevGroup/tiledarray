@@ -102,7 +102,7 @@ namespace TiledArray {
                                                   // should have the same owner
 
         const madness::DistributedID key(DistEvalImpl_::id(), i);
-        return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
+        return TensorImpl_::world().gop.template recv<value_type>(source, key);
       }
 
       /// Discard a tile that is not needed
@@ -163,7 +163,7 @@ namespace TiledArray {
             const size_type target_index = DistEvalImpl_::perm_index_to_target(source_index);
 
             // Schedule tile evaluation task
-            TensorImpl_::get_world().taskq.add(self,
+            TensorImpl_::world().taskq.add(self,
                 & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
                 target_index, left_.get(source_index), right_.get(source_index));
 
@@ -179,15 +179,15 @@ namespace TiledArray {
             if(! TensorImpl_::is_zero(target_index)) {
               // Schedule tile evaluation task
               if(left_.is_zero(index)) {
-                TensorImpl_::get_world().taskq.add(self,
+                TensorImpl_::world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<const ZeroTensor, right_argument_type>,
                   target_index, ZeroTensor(), right_.get(index));
               } else if(right_.is_zero(index)) {
-                TensorImpl_::get_world().taskq.add(self,
+                TensorImpl_::world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<left_argument_type, const ZeroTensor>,
                   target_index, left_.get(index), ZeroTensor());
               } else {
-                TensorImpl_::get_world().taskq.add(self,
+                TensorImpl_::world().taskq.add(self,
                   & BinaryEvalImpl_::template eval_tile<left_argument_type, right_argument_type>,
                   target_index, left_.get(index), right_.get(index));
               }
