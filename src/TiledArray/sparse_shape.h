@@ -569,12 +569,16 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| (\rm{this})_{ij...}
     /// \f]
+    /// \tparam Scalar The scaling factor type
+    /// \note expression abs(Scalar) must be well defined (by default, std::abs will be used)
     /// \param factor The scaling factor
     /// \return A new, scaled shape
-    SparseShape_ scale(const value_type factor) const {
+    template <typename Scalar>
+    SparseShape_ scale(const Scalar factor) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
-      const value_type abs_factor = std::abs(factor);
+      using std::abs;
+      const auto abs_factor = abs(factor);
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
@@ -597,13 +601,17 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ji...} = \rm{perm}(j,i) |(\rm{factor})| (\rm{this})_{ij...}
     /// \f]
+    /// \tparam Scalar The scaling factor type
+    /// \note expression abs(Scalar) must be well defined (by default, std::abs will be used)
     /// \param factor The scaling factor
     /// \param perm The permutation that will be applied to this tensor.
     /// \return A new, scaled-and-permuted shape
-    SparseShape_ scale(const value_type factor, const Permutation& perm) const {
+    template <typename Scalar>
+    SparseShape_ scale(const Scalar factor, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
-      const value_type abs_factor = std::abs(factor);
+      using std::abs;
+      const auto abs_factor = abs(factor);
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
@@ -659,7 +667,7 @@ namespace TiledArray {
     /// \f]
     /// \param other The shape to be added to this shape
     /// \param perm The permutation that is applied to the result
-    /// \return A new, scaled shape
+    /// \return the new shape, equals \c this + \c other
     SparseShape_ add(const SparseShape_& other, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
@@ -689,13 +697,17 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...})
     /// \f]
+    /// \tparam Scalar The scaling factor type
+    /// \note expression abs(Scalar) must be well defined (by default, std::abs will be used)
     /// \param other The shape to be added to this shape
     /// \param factor The scaling factor
     /// \return A scaled sum of shapes
-    SparseShape_ add(const SparseShape_& other, value_type factor) const {
+    template <typename Scalar>
+    SparseShape_ add(const SparseShape_& other, const Scalar factor) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
-      const value_type abs_factor = std::abs(factor);
+      using std::abs;
+      const auto abs_factor = abs(factor);
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type left,
@@ -722,16 +734,20 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...})
     /// \f]
+    /// \tparam Scalar The scaling factor type
+    /// \note expression abs(Scalar) must be well defined (by default, std::abs will be used)
     /// \param other The shape to be added to this shape
     /// \param factor The scaling factor
     /// \param perm The permutation that is applied to the result
     /// \return A scaled and permuted sum of shapes
-    SparseShape_ add(const SparseShape_& other, const value_type factor,
+    template <typename Scalar>
+    SparseShape_ add(const SparseShape_& other, const Scalar factor,
         const Permutation& perm) const
     {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
-      const value_type abs_factor = std::abs(factor);
+      using std::abs;
+      const auto abs_factor = abs(factor);
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor]
