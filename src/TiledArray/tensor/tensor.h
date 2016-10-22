@@ -1364,7 +1364,7 @@ namespace TiledArray {
     /// Vector 2-norm
 
     /// \return The vector norm of this tensor
-    numeric_type norm() const {
+    scalar_type norm() const {
       return std::sqrt(squared_norm());
     }
 
