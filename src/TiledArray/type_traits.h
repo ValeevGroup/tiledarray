@@ -172,9 +172,9 @@ namespace TiledArray {
 
     /// \tparam T The type to extract a numeric type from
     /// \tparam Enabler Type used to selectively implement partial specializations
-    /// -# if T is numeric, scalar_type<T>::type evaluates to T
-    /// -# if T is not numeric and T::value_type is a valid type, will evaluate to scalar_type<T::value_type>::type,
-    ///   and so on recursively
+    /// -# if T is numeric, numeric_type<T>::type evaluates to T
+    /// -# if T is not numeric and T::value_type is a valid type, will evaluate to numeric_type<T::value_type>::type,
+    ///    and so on recursively
     /// -# otherwise it's undefined
     template <typename T, typename Enabler = void> struct numeric_type;
 
