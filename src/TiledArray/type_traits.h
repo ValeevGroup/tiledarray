@@ -248,7 +248,7 @@ namespace TiledArray {
     struct scalar_type<std::complex<T>, void > : public scalar_type<T> { };
 
     template <typename T>
-    struct scalar_type<T, typename std::enable_if<!is_scalar<T>::value>::type > :
+    struct scalar_type<T, typename std::enable_if<!is_numeric<T>::value>::type > :
     public scalar_type<typename numeric_type<T>::type> { };
 
     template <typename T>
