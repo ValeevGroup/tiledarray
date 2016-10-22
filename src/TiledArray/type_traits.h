@@ -224,11 +224,32 @@ namespace TiledArray {
     template <typename T>
     using numeric_t = typename TiledArray::detail::numeric_type<T>::type;
 
-    template <typename T>
-    struct scalar_type : public numeric_type<T> { };
+    /// Type trait for extracting the scalar type of tensors and arrays.
+
+    /// \tparam T The type to extract a numeric type from
+    /// \tparam Enabler Type used to selectively implement partial
+    /// specializations
+    /// -# if T is a scalar type, i.e. \c is_scalar<T>::value is true (e.g. \c
+    ///    int or \c float), \c scalar_type<T>::type evaluates to \c T
+    /// -# if T is std::complex<U>, scalar_type<T>::type evaluates to U
+    /// -# if T is not a scalar or complex type, will evaluate to \c
+    ///    scalar_type<numeric_type<T>::type>::type, and so on recursively
+    /// -# otherwise it's undefined
+    template <typename T, typename Enabler = void>
+    struct scalar_type;
 
     template <typename T>
-    struct scalar_type<std::complex<T> > : public scalar_type<T> { };
+    struct scalar_type<
+        T, typename std::enable_if<is_scalar<T>::value>::type> {
+      typedef T type;
+    };
+
+    template <typename T>
+    struct scalar_type<std::complex<T>, void > : public scalar_type<T> { };
+
+    template <typename T>
+    struct scalar_type<T, typename std::enable_if<!is_scalar<T>::value>::type > :
+    public scalar_type<typename numeric_type<T>::type> { };
 
     template <typename T>
     using scalar_t = typename TiledArray::detail::scalar_type<T>::type;
