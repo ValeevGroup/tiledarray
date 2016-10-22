@@ -147,9 +147,9 @@ gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange, long repea
   memtrace("start");
   {  // array lifetime scope
     // Construct and initialize arrays
-    TiledArray::TArrayD a(world, trange);
-    TiledArray::TArrayD b(world, trange);
-    TiledArray::TArrayD c(world, trange);
+    TiledArray::TArray<T> a(world, trange);
+    TiledArray::TArray<T> b(world, trange);
+    TiledArray::TArray<T> c(world, trange);
     a.fill(1.0);
     b.fill(1.0);
     memtrace("allocated a and b");
