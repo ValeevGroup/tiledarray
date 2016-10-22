@@ -498,7 +498,11 @@ namespace TiledArray {
         shape_gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
             op_.gemm_helper().result_rank(), op_.gemm_helper().left_rank(),
             op_.gemm_helper().right_rank());
-        return left_.shape().gemm(right_.shape(), factor_, shape_gemm_helper);
+        using std::abs;
+        return left_.shape().gemm(
+            right_.shape(),
+            abs(factor_),
+            shape_gemm_helper);
       }
 
       /// Permuting shape factory function
@@ -510,7 +514,11 @@ namespace TiledArray {
         shape_gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
             op_.gemm_helper().result_rank(), op_.gemm_helper().left_rank(),
             op_.gemm_helper().right_rank());
-        return left_.shape().gemm(right_.shape(), factor_, shape_gemm_helper, perm);
+        using std::abs;
+        return left_.shape().gemm(
+            right_.shape(),
+            abs(factor_),
+            shape_gemm_helper, perm);
       }
 
       dist_eval_type make_dist_eval() const {
