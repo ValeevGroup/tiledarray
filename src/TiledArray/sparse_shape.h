@@ -53,9 +53,11 @@ namespace TiledArray {
   public:
     typedef SparseShape<T> SparseShape_; ///< This object type
     typedef T value_type; ///< The norm value type
-    typedef typename Tensor<value_type>::size_type size_type; ///< Size type
+    static_assert(TiledArray::detail::is_scalar<T>::value,
+                  "SparseShape<T> only supports scalar numeric types for T");
+    typedef typename Tensor<value_type>::size_type size_type;  ///< Size type
 
-  private:
+   private:
 
     // T must be a numeric type
     static_assert(std::is_floating_point<T>::value,
@@ -499,12 +501,16 @@ namespace TiledArray {
     /// Create a scaled sub-block of the shape
 
     /// \tparam Index The upper and lower bound array type
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
     /// \param lower_bound The lower bound of the sub-block
     /// \param upper_bound The upper bound of the sub-block
-    template <typename Index>
+    template <typename Index, typename Factor>
     SparseShape block(const Index& lower_bound, const Index& upper_bound,
-        const value_type factor) const
+        const Factor factor) const
     {
+      using std::abs;
+      const value_type abs_factor = abs(factor);
       std::shared_ptr<vector_type> size_vectors =
           block_range(lower_bound, upper_bound);
 
@@ -512,10 +518,10 @@ namespace TiledArray {
       const value_type threshold = threshold_;
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
-      auto copy_op = [factor,threshold,&zero_tile_count] (value_type& restrict result,
+      auto copy_op = [abs_factor,threshold,&zero_tile_count] (value_type& restrict result,
               const value_type arg)
       {
-        result = arg * factor;
+        result = arg * abs_factor;
         if(result < threshold) {
           ++zero_tile_count;
           result = value_type(0);
@@ -545,11 +551,13 @@ namespace TiledArray {
 
     /// Create a copy of a sub-block of the shape
 
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
     /// \param lower_bound The lower bound of the sub-block
     /// \param upper_bound The upper bound of the sub-block
-    template <typename Index>
+    template <typename Index, typename Factor>
     SparseShape block(const Index& lower_bound, const Index& upper_bound,
-        const value_type factor, const Permutation& perm) const
+        const Factor factor, const Permutation& perm) const
     {
       return block(lower_bound, upper_bound, factor).perm(perm);
     }
@@ -569,12 +577,12 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| (\rm{this})_{ij...}
     /// \f]
-    /// \tparam Scalar The scaling factor type
-    /// \note expression abs(Scalar) must be well defined (by default, std::abs will be used)
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
     /// \param factor The scaling factor
     /// \return A new, scaled shape
-    template <typename Scalar>
-    SparseShape_ scale(const Scalar factor) const {
+    template <typename Factor>
+    SparseShape_ scale(const Factor factor) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
       using std::abs;
@@ -601,17 +609,17 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ji...} = \rm{perm}(j,i) |(\rm{factor})| (\rm{this})_{ij...}
     /// \f]
-    /// \tparam Scalar The scaling factor type
-    /// \note expression abs(Scalar) must be well defined (by default, std::abs will be used)
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
     /// \param factor The scaling factor
     /// \param perm The permutation that will be applied to this tensor.
     /// \return A new, scaled-and-permuted shape
-    template <typename Scalar>
-    SparseShape_ scale(const Scalar factor, const Permutation& perm) const {
+    template <typename Factor>
+    SparseShape_ scale(const Factor factor, const Permutation& perm) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
       using std::abs;
-      const auto abs_factor = abs(factor);
+      const value_type abs_factor = abs(factor);
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type value) {
@@ -697,17 +705,17 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...})
     /// \f]
-    /// \tparam Scalar The scaling factor type
-    /// \note expression abs(Scalar) must be well defined (by default, std::abs will be used)
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
     /// \param other The shape to be added to this shape
     /// \param factor The scaling factor
     /// \return A scaled sum of shapes
-    template <typename Scalar>
-    SparseShape_ add(const SparseShape_& other, const Scalar factor) const {
+    template <typename Factor>
+    SparseShape_ add(const SparseShape_& other, const Factor factor) const {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
       using std::abs;
-      const auto abs_factor = abs(factor);
+      const value_type abs_factor = abs(factor);
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor] (value_type left,
@@ -734,20 +742,20 @@ namespace TiledArray {
     /// \f[
     /// {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...})
     /// \f]
-    /// \tparam Scalar The scaling factor type
-    /// \note expression abs(Scalar) must be well defined (by default, std::abs will be used)
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
     /// \param other The shape to be added to this shape
     /// \param factor The scaling factor
     /// \param perm The permutation that is applied to the result
     /// \return A scaled and permuted sum of shapes
-    template <typename Scalar>
-    SparseShape_ add(const SparseShape_& other, const Scalar factor,
+    template <typename Factor>
+    SparseShape_ add(const SparseShape_& other, const Factor factor,
         const Permutation& perm) const
     {
       TA_ASSERT(! tile_norms_.empty());
       const value_type threshold = threshold_;
       using std::abs;
-      const auto abs_factor = abs(factor);
+      const value_type abs_factor = abs(factor);
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
       auto op = [threshold, &zero_tile_count, abs_factor]
@@ -843,11 +851,13 @@ namespace TiledArray {
       return add(other, perm);
     }
 
-    SparseShape_ subt(const SparseShape_& other, const value_type factor) const {
+    template <typename Factor>
+    SparseShape_ subt(const SparseShape_& other, const Factor factor) const {
       return add(other, factor);
     }
 
-    SparseShape_ subt(const SparseShape_& other, const value_type factor,
+    template <typename Factor>
+    SparseShape_ subt(const SparseShape_& other, const Factor factor,
         const Permutation& perm) const
     {
       return add(other, factor, perm);
@@ -939,26 +949,36 @@ namespace TiledArray {
       return SparseShape_(result_tile_norms, result_size_vector, zero_tile_count);
     }
 
-    SparseShape_ mult(const SparseShape_& other, const value_type factor) const {
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
+    template <typename Factor>
+    SparseShape_ mult(const SparseShape_& other, const Factor factor) const {
       // TODO: Optimize this function so that the tensor arithmetic and
       // scale_by_size operations are performed in one step instead of two.
 
       TA_ASSERT(! tile_norms_.empty());
-      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor));
+      using std::abs;
+      const value_type abs_factor = abs(factor);
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, abs_factor);
       const size_type zero_tile_count =
           scale_by_size(result_tile_norms, size_vectors_.get());
 
       return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
 
-    SparseShape_ mult(const SparseShape_& other, const value_type factor,
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
+    template <typename Factor>
+    SparseShape_ mult(const SparseShape_& other, const Factor factor,
         const Permutation& perm) const
     {
       // TODO: Optimize this function so that the tensor arithmetic and
       // scale_by_size operations are performed in one step instead of two.
 
       TA_ASSERT(! tile_norms_.empty());
-      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, std::abs(factor), perm);
+      using std::abs;
+      const value_type abs_factor = abs(factor);
+      Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, abs_factor, perm);
       std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
       const size_type zero_tile_count =
           scale_by_size(result_tile_norms, result_size_vector.get());
@@ -966,12 +986,16 @@ namespace TiledArray {
       return SparseShape_(result_tile_norms, result_size_vector, zero_tile_count);
     }
 
-    SparseShape_ gemm(const SparseShape_& other, value_type factor,
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
+    template <typename Factor>
+    SparseShape_ gemm(const SparseShape_& other, const Factor factor,
         const math::GemmHelper& gemm_helper) const
     {
       TA_ASSERT(! tile_norms_.empty());
 
-      factor = std::abs(factor);
+      using std::abs;
+      const value_type abs_factor = abs(factor);
       const value_type threshold = threshold_;
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
@@ -1022,7 +1046,7 @@ namespace TiledArray {
           math::vector_op(right_op, N, right.data() + i, other.tile_norms_.data() + i);
         }
 
-        result_norms = left.gemm(right, factor, gemm_helper);
+        result_norms = left.gemm(right, abs_factor, gemm_helper);
 
         // Hard zero tiles that are below the zero threshold.
         result_norms.inplace_unary(
@@ -1037,10 +1061,10 @@ namespace TiledArray {
 
         // This is an outer product, so the inputs can be used directly
         math::outer_fill(M, N, tile_norms_.data(), other.tile_norms_.data(), result_norms.data(),
-            [threshold, &zero_tile_count, factor] (const value_type left,
+            [threshold, &zero_tile_count, abs_factor] (const value_type left,
                 const value_type right)
             {
-              value_type norm = left * right * factor;
+              value_type norm = left * right * abs_factor;
               if(norm < threshold) {
                 norm = value_type(0);
                 ++zero_tile_count;
@@ -1052,7 +1076,10 @@ namespace TiledArray {
       return SparseShape_(result_norms, result_size_vectors, zero_tile_count);
     }
 
-    SparseShape_ gemm(const SparseShape_& other, const value_type factor,
+    /// \tparam Factor The scaling factor type
+    /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
+    template <typename Factor>
+    SparseShape_ gemm(const SparseShape_& other, const Factor factor,
         const math::GemmHelper& gemm_helper, const Permutation& perm) const
     {
       return gemm(other, factor, gemm_helper).perm(perm);
