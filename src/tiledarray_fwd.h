@@ -74,4 +74,8 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
+#ifndef TILEDARRAY_DISABLE_NAMESPACE_TA
+namespace TA = TiledArray;
+#endif  // TILEDARRAY_DISABLE_NAMESPACE_TA
+
 #endif // TILEDARRAY_FWD_H__INCLUDED

@@ -21,7 +21,6 @@
 #include <tiledarray.h>
 #include <madness/world/worldmem.h>
 
-namespace TA = TiledArray;
 using array_type = TA::TSpArrayD;
 
 int main(int argc, char** argv) {

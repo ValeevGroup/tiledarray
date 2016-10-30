@@ -24,7 +24,6 @@
 
 int main(int argc, char* argv[]) {
   using namespace std;
-  namespace TA = TiledArray;
 
   auto& world = madness::initialize(argc, argv);
 
