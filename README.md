@@ -42,8 +42,6 @@ The following application is a minimal example of a distributed-memory matrix mu
 ```c++
 #include <tiledarray.h>
 
-namespace TA = TiledArray;
-
 int main(int argc, char** argv) {
   // Initialize the parallel runtime
   TA::World& world = TA::initialize(argc, argv);

@@ -20,8 +20,6 @@
 #include <iostream>
 #include <tiledarray.h>
 
-namespace TA = TiledArray;
-
 bool to_bool(const char* str) {
   if (not strcmp(str,"0") ||
       not strcmp(str,"no") ||
