@@ -29,6 +29,7 @@
 #include <sstream>
 
 #include "../dist_array.h"
+#include "../expressions/expr.h"
 
 namespace TiledArray {
 
