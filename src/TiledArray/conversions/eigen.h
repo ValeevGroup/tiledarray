@@ -429,7 +429,7 @@ namespace TiledArray {
   /// is not equal to 1 or 2.
   /// \note This function will only work in non-distributed environments.
   template <typename Tile, typename Policy,
-            Eigen::StorageOptions EigenStorageOrder = Eigen::ColMajor>
+            unsigned int EigenStorageOrder = Eigen::ColMajor>
   Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic,
                 EigenStorageOrder>
   array_to_eigen(const DistArray<Tile, Policy>& array) {
