@@ -28,7 +28,9 @@ struct EigenFixture : public TiledRangeFixture {
   EigenFixture() :
     trange(dims.begin(), dims.begin() + 2), trange1(dims.begin(), dims.begin() + 1),
     array(*GlobalFixture::world, trange), array1(*GlobalFixture::world, trange1),
-    matrix(dims[0].elements_range().second, dims[1].elements_range().second), vector(dims[0].elements_range().second)
+    matrix(dims[0].elements_range().second, dims[1].elements_range().second),
+    rmatrix(dims[0].elements_range().second, dims[1].elements_range().second),
+    vector(dims[0].elements_range().second)
   { }
 
 
@@ -37,6 +39,7 @@ struct EigenFixture : public TiledRangeFixture {
   TArrayI array;
   TArrayI array1;
   Eigen::MatrixXi matrix;
+  EigenMatrixXi rmatrix;
   Eigen::VectorXi vector;
 };
 
@@ -102,7 +105,7 @@ BOOST_AUTO_TEST_CASE( auto_tile_map ) {
 
 BOOST_AUTO_TEST_CASE( submatrix_to_tensor ) {
   // Fill the matrix with random data
-  matrix = Eigen::MatrixXi::Random(matrix.rows(), matrix.cols());
+  matrix = decltype(matrix)::Random(matrix.rows(), matrix.cols());
   // Make a target tensor
   Tensor<int> tensor(trange.make_tile_range(0));
 
@@ -110,7 +113,7 @@ BOOST_AUTO_TEST_CASE( submatrix_to_tensor ) {
   BOOST_CHECK_NO_THROW(eigen_submatrix_to_tensor(matrix, tensor));
 
   // Get the target submatrix block
-  Eigen::Block<Eigen::MatrixXi> block = matrix.block(tensor.range().lobound_data()[0],
+  auto block = matrix.block(tensor.range().lobound_data()[0],
       tensor.range().lobound_data()[1], tensor.range().extent_data()[0], tensor.range().extent_data()[1]);
 
   // Check that the block contains the same values as the tensor
@@ -130,7 +133,7 @@ BOOST_AUTO_TEST_CASE( tensor_to_submatrix ) {
   BOOST_CHECK_NO_THROW(tensor_to_eigen_submatrix(tensor, matrix));
 
   // Get the source submatrix block
-  Eigen::Block<Eigen::MatrixXi> block = matrix.block(tensor.range().lobound_data()[0],
+  auto block = matrix.block(tensor.range().lobound_data()[0],
       tensor.range().lobound_data()[1], tensor.range().extent_data()[0], tensor.range().extent_data()[1]);
 
   // Check that the block contains the same values as the tensor
@@ -141,7 +144,7 @@ BOOST_AUTO_TEST_CASE( tensor_to_submatrix ) {
 
 BOOST_AUTO_TEST_CASE( matrix_to_array ) {
   // Fill the matrix with random data
-  matrix = Eigen::MatrixXi::Random(matrix.rows(), matrix.cols());
+  matrix = decltype(matrix)::Random(matrix.rows(), matrix.cols());
 
   if(GlobalFixture::world->size() == 1) {
     // Copy matrix to array
@@ -199,6 +202,10 @@ BOOST_AUTO_TEST_CASE( vector_to_array ) {
 }
 
 BOOST_AUTO_TEST_CASE( array_to_matrix ) {
+  auto a_to_e_rowmajor = [](const TArrayI& array) -> EigenMatrixXi {
+    return array_to_eigen<Tensor<int>, DensePolicy, Eigen::RowMajor>(array);
+  };
+
   if(GlobalFixture::world->size() == 1) {
     // Fill the array with random data
     GlobalFixture::world->srand(27);
@@ -210,19 +217,22 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
       array.set(*it, tile);
     }
 
-    // Convert the array to an Eigen matrix
+    // Convert the array to an Eigen matrices: column-major (matrix) and row-major (rmatrix)
     BOOST_CHECK_NO_THROW(matrix = array_to_eigen(array));
+    BOOST_CHECK_NO_THROW(rmatrix = a_to_e_rowmajor(array));
 
     // Check that the matrix dimensions are the same as the array
     BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements_range().extent_data()[0]);
     BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements_range().extent_data()[1]);
-
+    BOOST_CHECK_EQUAL(rmatrix.rows(), array.trange().elements_range().extent_data()[0]);
+    BOOST_CHECK_EQUAL(rmatrix.cols(), array.trange().elements_range().extent_data()[1]);
 
     // Check that the data in matrix matches the data in array
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
       Future<TArrayI::value_type> tile = array.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(matrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
+        BOOST_CHECK_EQUAL(rmatrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
       }
     }
   } else {
@@ -246,13 +256,15 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
 
     BOOST_CHECK(array.pmap()->is_replicated());
 
-    // Convert the array to an Eigen vector
+    // Convert the array to an Eigen matrix
     BOOST_CHECK_NO_THROW(matrix = array_to_eigen(array));
-
+    BOOST_CHECK_NO_THROW(rmatrix = a_to_e_rowmajor(array));
 
     // Check that the matrix dimensions are the same as the array
     BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements_range().extent_data()[0]);
     BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements_range().extent_data()[1]);
+    BOOST_CHECK_EQUAL(rmatrix.rows(), array.trange().elements_range().extent_data()[0]);
+    BOOST_CHECK_EQUAL(rmatrix.cols(), array.trange().elements_range().extent_data()[1]);
 
     // Check that the data in vector matches the data in array
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
@@ -261,6 +273,7 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
       Future<TArrayI::value_type > tile = array.find(*it);
       for(Range::const_iterator tile_it = tile.get().range().begin(); tile_it != tile.get().range().end(); ++tile_it) {
         BOOST_CHECK_EQUAL(matrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
+        BOOST_CHECK_EQUAL(rmatrix((*tile_it)[0], (*tile_it)[1]), tile.get()[*tile_it]);
       }
     }
   }

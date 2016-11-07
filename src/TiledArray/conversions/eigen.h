@@ -32,7 +32,7 @@
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/madness.h>
 #include <TiledArray/pmap/replicated_pmap.h>
-#include "../dist_array.h"
+#include "TiledArray/dist_array.h"
 
 namespace TiledArray {
 
@@ -420,16 +420,21 @@ namespace TiledArray {
   /// Eigen::MatrixXd m = array_to_eigen(array);
   /// \endcode
   /// \tparam Tile The array tile type
+  /// \tparam EigenStorageOrder The storage order of the resulting Eigen::Matrix
+  ///      object; the default is Eigen::ColMajor, i.e. the column-major storage
   /// \param array The array to be converted
   /// \throw TiledArray::Exception When world size is greater than 1 and
   /// \c array is not replicated.
   /// \throw TiledArray::Exception When the number of dimensions of \c array
   /// is not equal to 1 or 2.
   /// \note This function will only work in non-distributed environments.
-  template <typename Tile, typename Policy>
-  Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic>
+  template <typename Tile, typename Policy,
+            Eigen::StorageOptions EigenStorageOrder = Eigen::ColMajor>
+  Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic,
+                EigenStorageOrder>
   array_to_eigen(const DistArray<Tile, Policy>& array) {
-    typedef Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic>
+    typedef Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic,
+                          Eigen::Dynamic, EigenStorageOrder>
         EigenMatrix;
 
     const auto rank = array.trange().tiles_range().rank();
