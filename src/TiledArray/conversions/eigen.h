@@ -451,7 +451,8 @@ namespace TiledArray {
 
     // Construct the Eigen matrix
     const auto* restrict const array_extent = array.trange().elements_range().extent_data();
-    EigenMatrix matrix(array_extent[0], (rank == 2 ? array_extent[1] : 1));
+    // if array is sparse must initialize to zero
+    EigenMatrix matrix = EigenMatrix::Zero(array_extent[0], (rank == 2 ? array_extent[1] : 1));
 
     // Spawn tasks to copy array tiles to the Eigen matrix
     madness::AtomicInt counter;
