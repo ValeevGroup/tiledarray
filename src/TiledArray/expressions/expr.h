@@ -43,9 +43,16 @@ namespace TiledArray {
     template <typename, bool> class BlkTsrExpr;
     template <typename> struct is_aliased;
 
-    template <typename Policy>
+    template <typename Engine>
     struct StructOverride {
-       typename Policy::shape_type shape;
+
+      typedef typename EngineTrait<Engine>::policy policy; ///< The result policy type
+      typedef typename EngineTrait<Engine>::shape_type shape_type; ///< Tensor shape type
+      typedef typename EngineTrait<Engine>::pmap_interface pmap_interface; ///< Process map interface type
+
+       World* world;
+       std::shared_ptr<pmap_interface> pmap;
+       const shape_type* shape;
     };
 
     /// Base class for expression evaluation
@@ -59,25 +66,51 @@ namespace TiledArray {
       typedef Derived derived_type; ///< The derived object type
       typedef typename ExprTrait<Derived>::engine_type
           engine_type; ///< Expression engine type
-      typedef StructOverride<typename engine_type::policy> 
-          override_type; ///< Expression engine type
 
     private:
 
       template <typename D>
       friend class ExprEngine;
 
+      typedef StructOverride<engine_type>
+          override_type; ///< Expression engine parameters
       std::shared_ptr<override_type> struct_override_ptr_;
 
     public:
-      Expr<Derived> &set_shape(typename engine_type::shape_type const &shape) {
+      /// \param shape the shape to use for the result
+     /// \internal \c shape is taken by const reference, but converted to a
+     /// pointer; passing by const ref ensures lifetime management for temporary
+     /// shapes
+     Expr<Derived>& set_shape(typename override_type::shape_type const& shape) {
+       if (struct_override_ptr_ != nullptr) {
+         struct_override_ptr_->shape = &shape;
+       } else {
+         struct_override_ptr_ = std::make_shared<override_type>();
+         struct_override_ptr_->shape = &shape;
+       }
+       return derived();
+      }
+      /// \param world the World object to use for the result
+      Expr<Derived> &set_world(World& world) {
           if(struct_override_ptr_ != nullptr){
-            struct_override_ptr_->shape = shape;
+            struct_override_ptr_->world = &world;
           } else {
               struct_override_ptr_ = std::make_shared<override_type>();
-              struct_override_ptr_->shape = shape;
+              struct_override_ptr_->world = &world;
           }
           return derived();
+      }
+      /// \param pmap the Pmap object to use for the result
+      Expr<Derived>& set_pmap(
+          const std::shared_ptr<typename override_type::pmap_interface>
+              pmap) {
+        if (struct_override_ptr_) {
+          struct_override_ptr_->pmap = pmap;
+        } else {
+          struct_override_ptr_ = std::make_shared<override_type>();
+          struct_override_ptr_->pmap = pmap;
+        }
+        return derived();
       }
 
     private:

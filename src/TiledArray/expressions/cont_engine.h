@@ -377,7 +377,7 @@ namespace TiledArray {
         }
 
         if(ExprEngine_::struct_override_ptr_ != nullptr){
-            shape_ = shape_.mask(ExprEngine_::struct_override_ptr_->shape);
+            shape_ = shape_.mask(*ExprEngine_::struct_override_ptr_->shape);
         } 
       }
 

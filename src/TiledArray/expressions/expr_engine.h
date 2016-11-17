@@ -67,7 +67,7 @@ namespace TiledArray {
       trange_type trange_; ///< The tiled range of the result tensor
       shape_type shape_; ///< The shape of the result tensor
       std::shared_ptr<pmap_interface> pmap_; ///< The process map for the result tensor
-      std::shared_ptr<StructOverride<policy> > struct_override_ptr_; ///< The structure used to override array member variables.
+      std::shared_ptr<StructOverride<Derived> > struct_override_ptr_; ///< The structure used to override array member variables.
 
     public:
 
@@ -100,16 +100,27 @@ namespace TiledArray {
           derived().init_struct(vars_);
         }
 
-        // Check for a valid process map.
-        if(pmap) {
-          // If process map is not valid, use the process map constructed by the
-          // expression engine.
-          if((typename pmap_interface::size_type(world.size()) != pmap->procs()) ||
-              (trange_.tiles_range().volume() != pmap->size()))
-            pmap.reset();
+        if (struct_override_ptr_ != nullptr) {
+          if (struct_override_ptr_->world)
+            world_ = struct_override_ptr_->world;
+          if (struct_override_ptr_->pmap)
+            pmap_ = struct_override_ptr_->pmap;
+        }
+        else {
+          world_ = &world;
+          pmap_ = pmap;
         }
 
-        derived().init_distribution(& world, pmap);
+        // Check for a valid process map.
+        if(pmap_) {
+          // If process map is not valid, use the process map constructed by the
+          // expression engine.
+          if((typename pmap_interface::size_type(world_->size()) != pmap_->procs()) ||
+              (trange_.tiles_range().volume() != pmap_->size()))
+            pmap_.reset();
+        }
+
+        derived().init_distribution(world_, pmap_);
       }
 
       /// Initialize result tensor structure
@@ -133,8 +144,9 @@ namespace TiledArray {
         }
 
         if(struct_override_ptr_ != nullptr){
-            shape_ = shape_.mask(struct_override_ptr_->shape);
-        } 
+          if (struct_override_ptr_->shape)
+            shape_ = shape_.mask(*struct_override_ptr_->shape);
+        }
       }
 
       /// Initialize result tensor distribution
