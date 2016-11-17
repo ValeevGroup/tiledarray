@@ -40,19 +40,19 @@ int main(int argc, char** argv) {
   const long df_size = atol(argv[5]);
   const long df_blk_size = atol(argv[6]);
   if (ao_size <= 0) {
-    std::cerr << "Error: ao size must greater than zero.\n";
+    std::cerr << "Error: ao size must be greater than zero.\n";
     return 1;
   }
   if (occ_size <= 0) {
-    std::cerr << "Error: occ size must greater than zero.\n";
+    std::cerr << "Error: occ size must be greater than zero.\n";
     return 1;
   }
   if (df_size <= 0) {
-    std::cerr << "Error: df size must greater than zero.\n";
+    std::cerr << "Error: df size must be greater than zero.\n";
     return 1;
   }
   if (ao_blk_size <= 0 || df_blk_size <= 0 || occ_blk_size <= 0) {
-    std::cerr << "Error: block sizes must greater than zero.\n";
+    std::cerr << "Error: block sizes must be greater than zero.\n";
     return 1;
   }
   if(ao_size % ao_blk_size != 0ul && df_size % df_blk_size != 0ul && occ_size % occ_blk_size != 0) {
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
   }
   const long repeat = (argc >= 8 ? atol(argv[7]) : 5);
   if (repeat <= 0) {
-    std::cerr << "Error: number of repetitions must greater than zero.\n";
+    std::cerr << "Error: number of repetitions must be greater than zero.\n";
     return 1;
   }
 

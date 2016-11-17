@@ -177,7 +177,7 @@ namespace TiledArray {
       /// Evaluate this object and assign it to \c tsr
 
       /// This expression is evaluated in parallel in distributed environments,
-      /// where the content of \c tsr will be replace by the results of the
+      /// where the content of \c tsr will be replaced by the results of the
       /// evaluated tensor expression.
       /// \tparam A The array type
       /// \tparam Alias Tile alias flag

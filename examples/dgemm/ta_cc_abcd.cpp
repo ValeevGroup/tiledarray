@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
     }
     const long repeat = (argc >= 6 ? atol(argv[5]) : 5);
     if (repeat <= 0) {
-      std::cerr << "Error: number of repetitions must greater than zero.\n";
+      std::cerr << "Error: number of repetitions must be greater than zero.\n";
       return 1;
     }
     const bool use_complex = (argc >= 7 ? to_bool(argv[6]) : false);
