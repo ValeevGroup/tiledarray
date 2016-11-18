@@ -119,7 +119,10 @@ namespace TiledArray {
         default_construct(n, SizeArray<T>::data());
       }
 
-      template <typename Value>
+      template <typename Value,
+          typename std::enable_if<
+              std::is_convertible<value_type, Value>::value
+          >::type* = nullptr>
       ValArray(const size_type n, const Value& value) :
         SizeArray<T>(), counter_(NULL)
       {

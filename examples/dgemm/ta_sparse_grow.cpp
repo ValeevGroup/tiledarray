@@ -42,11 +42,11 @@ int main(int argc, char** argv) {
     const long matrix_size = atol(argv[1]);
     const long block_size = atol(argv[2]);
     if(matrix_size <= 0) {
-      std::cerr << "Error: matrix size must greater than zero.\n";
+      std::cerr << "Error: matrix size must be greater than zero.\n";
       return 1;
     }
     if(block_size <= 0) {
-      std::cerr << "Error: block size must greater than zero.\n";
+      std::cerr << "Error: block size must be greater than zero.\n";
       return 1;
     }
     if((matrix_size % block_size) != 0ul) {
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     }
     const long repeat = (argc >= 4 ? atol(argv[3]) : 4);
     if(repeat <= 0) {
-      std::cerr << "Error: number of repetitions must greater than zero.\n";
+      std::cerr << "Error: number of repetitions must be greater than zero.\n";
       return 1;
     }
 
@@ -102,8 +102,8 @@ int main(int argc, char** argv) {
 
       // Construct tile norm tensors
       TiledArray::Tensor<float>
-          a_tile_norms(trange.tiles(), 0.0f),
-          b_tile_norms(trange.tiles(), 0.0f);
+          a_tile_norms(trange.tiles_range(), 0.0f),
+          b_tile_norms(trange.tiles_range(), 0.0f);
 
       // Fill tile norm tensors
       if(world.rank() == 0) {
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
             // Find a new zero tile index.
             std::size_t index = 0ul;
             do {
-              index = world.rand() % trange.tiles().volume();
+              index = world.rand() % trange.tiles_range().volume();
             } while(a_tile_norms[index] > TiledArray::SparseShape<float>::threshold());
 
             // Set index tile of matrix matrix a.
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
 
             // Find a new zero tile index.
             do {
-              index = world.rand() % trange.tiles().volume();
+              index = world.rand() % trange.tiles_range().volume();
             } while(b_tile_norms[index] > TiledArray::SparseShape<float>::threshold());
 
             b_tile_norms[index] = tile_norm;

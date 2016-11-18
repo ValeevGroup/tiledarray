@@ -392,7 +392,7 @@ namespace TiledArray {
       std::vector<PermutationGroup::Permutation> conjugate_generators;
       const auto h_inv = h.inv();
       for(const auto& generator: G.generators()) {
-        conjugate_generators.emplace_back(std::move(h * generator * h_inv));
+        conjugate_generators.emplace_back(h * generator * h_inv);
       }
       return PermutationGroup{std::move(conjugate_generators)};
     }

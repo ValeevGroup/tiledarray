@@ -42,8 +42,6 @@ The following application is a minimal example of a distributed-memory matrix mu
 ```c++
 #include <tiledarray.h>
 
-namespace TA = TiledArray;
-
 int main(int argc, char** argv) {
   // Initialize the parallel runtime
   TA::World& world = TA::initialize(argc, argv);
@@ -81,7 +79,7 @@ Parallel performance of TiledArray for multiplication of dense square matrices o
 
 This figure was obtained with the help of an award from [the Department of Energy INCITE program](http://www.doeleadershipcomputing.org/incite-program/).
 
-Excellent parallel scalability is also possible for much more complicated expressions than just a single GEMM, as demonstrated below for the coupled-cluster singles and doubles (CCSD) wave function solver. Parallel speed-up of 1 iteration of CCSD solver for uracil trimer in 6-31G* AO basis was measured on ("BlueRidge" cluster)[https://secure.hosting.vt.edu/www.arc.vt.edu/computing/blueridge-sandy-bridge/] at Virginia Tech (wall time on one 16-core node = 1290 sec):
+Excellent parallel scalability is also possible for much more complicated expressions than just a single GEMM, as demonstrated below for the coupled-cluster singles and doubles (CCSD) wave function solver. Parallel speed-up of 1 iteration of CCSD solver for uracil trimer in 6-31G* AO basis was measured on ["BlueRidge" cluster](https://secure.hosting.vt.edu/www.arc.vt.edu/computing/blueridge-sandy-bridge/) at Virginia Tech (wall time on one 16-core node = 1290 sec):
 
 ![CCSD:UracilTrimer-speedup](https://github.com/ValeevGroup/tiledarray/wiki/images/uracil-trimer-ccsd-blueridge-speedup.png)
 
@@ -146,7 +144,7 @@ Common CMake cache variables that you may want to define include:
 -D BLAS_LIBRARIES=(semicolon seperated list of BLAS libraries)
 -D BLA_STATIC=(TRUE|FALSE)
 -D INTEGER4=(TRUE|FALSE)
--D EIGEN_INCLUDE_DIR=/path/to/eigen3/include
+-D EIGEN3_INCLUDE_DIR=/path/to/eigen3/include
 ```
 
 `BLA_STATIC` indicates static LAPACK and BLAS libraries will be perferred. `INTEGER4` indicated the Fortran integer width used by BLAS and LAPACK; if `TRUE` (the default), the integer size is `integer*4`, otherwise `integer*8` is used.
@@ -170,7 +168,7 @@ Inner workings of TiledArray are partially described in the following publicatio
 * Justus A. Calvin and Edward F. Valeev, "Task-Based Algorithm for Matrix Multiplication: A Step Towards Block-Sparse Tensor Computing." http://arxiv.org/abs/1504.05046 .
 
 The MADNESS parallel runtime is described in the following publication:
-* Robert J. Harrison, Gregory Beylkin, Florian A. Bischoff, Justus A. Calvin, George I. Fann, Jacob Fosso-Tande, Diego Galindo, Jeff R. Hammond, Rebecca Hartman-Baker, Judith C. Hill, Jun Jia, Jakob S. Kottmann, M-J. Yvonne Ou, Junchen Pei, Laura E. Ratcliff, Matthew G. Reuter, Adam C. Richie-Halford, Nichols A. Romero, Hideo Sekino, William A. Shelton, Bryan E. Sundahl, W. Scott Thornton, Edward F. Valeev, Álvaro Vázquez-Mayagoitia, Nicholas Vence and Yukina Yokoi, "madness: A Multiresolution, Adaptive Numerical Environment for Scientific Simulation.", http://arxiv.org/abs/1507.01888 .
+* Robert J. Harrison, Gregory Beylkin, Florian A. Bischoff, Justus A. Calvin, George I. Fann, Jacob Fosso-Tande, Diego Galindo, Jeff R. Hammond, Rebecca Hartman-Baker, Judith C. Hill, Jun Jia, Jakob S. Kottmann, M-J. Yvonne Ou, Junchen Pei, Laura E. Ratcliff, Matthew G. Reuter, Adam C. Richie-Halford, Nichols A. Romero, Hideo Sekino, William A. Shelton, Bryan E. Sundahl, W. Scott Thornton, Edward F. Valeev, Álvaro Vázquez-Mayagoitia, Nicholas Vence, Takeshi Yanai, and Yukina Yokoi, "madness: A Multiresolution, Adaptive Numerical Environment for Scientific Simulation.", *SIAM J Sci Comput* __38__, S123-S142 (2016), http://dx.doi.org/10.1137/15M1026171 .
 
 ### Acknowledgements
-Development of TiledArray is made possible by past and present contributions from the National Science Foundation (awards CHE-0847295, CHE-0741927, OCI-1047696, CHE-1362655, ACI-1047696), the Alfred P. Sloan Foundation, the Camille and Henry Dreyfus Foundation, and the Department of Energy INCITE Program.
+Development of TiledArray is made possible by past and present contributions from the National Science Foundation (awards CHE-0847295, CHE-0741927, OCI-1047696, CHE-1362655, ACI-1450262, ACI-1550456), the Alfred P. Sloan Foundation, the Camille and Henry Dreyfus Foundation, the Department of Energy Exascale Computing Project (NWChemEx subproject), and the Department of Energy INCITE Program.

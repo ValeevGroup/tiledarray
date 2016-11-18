@@ -62,10 +62,7 @@ namespace TiledArray {
       typedef StructOverride<typename engine_type::policy> 
           override_type; ///< Expression engine type
 
-
-
     private:
-
 
       template <typename D>
       friend class ExprEngine;
@@ -84,8 +81,6 @@ namespace TiledArray {
       }
 
     private:
-
-      Expr<Derived>& operator=(const Expr<Derived>&) = delete;
 
       /// Task function used to evaluate lazy tiles
 
@@ -125,7 +120,7 @@ namespace TiledArray {
       template <typename A, typename I, typename T>
       typename std::enable_if<is_lazy_tile<T>::value>::type
       set_tile(A& array, const I index, const Future<T>& tile) const {
-        array.set(index, array.get_world().taskq.add(
+        array.set(index, array.world().taskq.add(
               & Expr_::template eval_tile<typename A::value_type, T>, tile));
       }
 
@@ -159,11 +154,19 @@ namespace TiledArray {
       void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
-        array.set(index, array.get_world().taskq.add(
+        array.set(index, array.world().taskq.add(
               & Expr_::template eval_tile<typename A::value_type, T, Op>, tile, op));
       }
 
     public:
+
+      // Compiler generated functions
+      Expr() = default;
+      Expr(const Expr_&) = default;
+      Expr(Expr_&&) = default;
+      ~Expr() = default;
+      Expr_& operator=(const Expr_&) = delete;
+      Expr_& operator=(Expr_&&) = delete;
 
       /// Cast this object to it's derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
@@ -174,7 +177,7 @@ namespace TiledArray {
       /// Evaluate this object and assign it to \c tsr
 
       /// This expression is evaluated in parallel in distributed environments,
-      /// where the content of \c tsr will be replace by the results of the
+      /// where the content of \c tsr will be replaced by the results of the
       /// evaluated tensor expression.
       /// \tparam A The array type
       /// \tparam Alias Tile alias flag
@@ -186,13 +189,13 @@ namespace TiledArray {
 
         // Get the target world.
         World& world = (tsr.array().is_initialized() ?
-            tsr.array().get_world() :
+            tsr.array().world() :
             World::get_default());
 
         // Get the output process map.
         std::shared_ptr<typename TsrExpr<A, Alias>::array_type::pmap_interface> pmap;
         if(tsr.array().is_initialized())
-          pmap = tsr.array().get_pmap();
+          pmap = tsr.array().pmap();
 
         // Get result variable list.
         VariableList target_vars(tsr.vars());
@@ -206,7 +209,7 @@ namespace TiledArray {
         dist_eval.eval();
 
         // Create the result array
-        A result(dist_eval.get_world(), dist_eval.trange(),
+        A result(dist_eval.world(), dist_eval.trange(),
             dist_eval.shape(), dist_eval.pmap());
 
         // Move the data from dist_eval into the result array. There is no
@@ -256,7 +259,7 @@ namespace TiledArray {
 #endif // NDEBUG
 
         // Get the target world.
-        World& world = tsr.array().get_world();
+        World& world = tsr.array().world();
 
         // Get the output process map.
         std::shared_ptr<typename BlkTsrExpr<A, Alias>::array_type::pmap_interface> pmap;
@@ -274,8 +277,8 @@ namespace TiledArray {
 
         // Create the result array
         A result(world, tsr.array().trange(),
-            tsr.array().get_shape().update_block(tsr.lower_bound(), tsr.upper_bound(),
-            dist_eval.shape()), tsr.array().get_pmap());
+            tsr.array().shape().update_block(tsr.lower_bound(), tsr.upper_bound(),
+            dist_eval.shape()), tsr.array().pmap());
 
         // NOTE: The tiles from the original array and the sub-block are copied
         // in two separate steps because the two tensors have different data
@@ -284,11 +287,11 @@ namespace TiledArray {
         // Copy tiles from the original array to the result array that are not
         // included in the sub-block assignment. There is no communication in
         // this step.
-        const BlockRange blk_range(tsr.array().trange().tiles(),
+        const BlockRange blk_range(tsr.array().trange().tiles_range(),
             tsr.lower_bound(), tsr.upper_bound());
-        for(const auto index : *tsr.array().get_pmap()) {
+        for(const auto index : *tsr.array().pmap()) {
           if(! tsr.array().is_zero(index)) {
-            if(! blk_range.includes(tsr.array().trange().tiles().idx(index)))
+            if(! blk_range.includes(tsr.array().trange().tiles_range().idx(index)))
               result.set(index, tsr.array().find(index));
           }
         }

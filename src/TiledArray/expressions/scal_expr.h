@@ -62,10 +62,14 @@ namespace TiledArray {
 
       scalar_type factor_; ///< The scaling factor
 
-      // Not allowed
-      ScalExpr_& operator=(const ScalExpr_&);
-
     public:
+
+      // Compiler generated functions
+      ScalExpr(const ScalExpr_&) = default;
+      ScalExpr(ScalExpr_&&) = default;
+      ~ScalExpr() = default;
+      ScalExpr_& operator=(const ScalExpr_&) = delete;
+      ScalExpr_& operator=(ScalExpr_&&) = delete;
 
       /// Scaled expression constructor
 
@@ -83,10 +87,6 @@ namespace TiledArray {
         UnaryExpr_(other), factor_(other.factor_ * factor)
       { }
 
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      ScalExpr(const ScalExpr_& other) : UnaryExpr_(other), factor_(other.factor_) { }
 
       /// Scaling factor accessor
 

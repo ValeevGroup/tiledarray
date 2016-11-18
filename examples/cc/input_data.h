@@ -80,11 +80,14 @@ private:
 
   template <typename R, typename T>
   TiledArray::SparseShape<float> make_sparse_shape(const R& r, const T& t) const {
-    TiledArray::Tensor<float> tile_norms(r.tiles(), 0.0f);
+    TiledArray::Tensor<float> tile_norms(r.tiles_range(), 0.0f);
 
     // Find and store the tile for each element in the tensor.
-    for(typename T::const_iterator it = t.begin(); it != t.end(); ++it)
+    for(typename T::const_iterator it = t.begin(); it != t.end(); ++it) {
+      if (r.elements_range().includes(it->first)) {
         tile_norms[r.element_to_tile(it->first)] += it->second * it->second;
+      }
+    }
 
     tile_norms.inplace_unary([](float& x) { x = std::sqrt(x); });
 

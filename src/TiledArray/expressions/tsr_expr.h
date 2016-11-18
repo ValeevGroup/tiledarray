@@ -92,19 +92,18 @@ namespace TiledArray {
 
     public:
 
+      // Compiler generated functions
+      TsrExpr() = default;
+      TsrExpr(const TsrExpr_&) = default;
+      TsrExpr(TsrExpr_&&) = default;
+      ~TsrExpr() = default;
+
       /// Constructor
 
       /// \param array The array object
       /// \param vars The variable list that is associated with this expression
       TsrExpr(array_type& array, const std::string& vars) :
         array_(array), vars_(vars)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      TsrExpr(const TsrExpr_& other) :
-        array_(other.array_), vars_(other.vars_)
       { }
 
       /// Expression assignment operator
@@ -261,17 +260,20 @@ namespace TiledArray {
 
     public:
 
+      // Compiler generated functions
+      TsrExpr(const TsrExpr_&) = default;
+      TsrExpr(TsrExpr_&&) = default;
+      ~TsrExpr() = default;
+      TsrExpr_& operator=(const TsrExpr_&) = delete;
+      TsrExpr_& operator=(TsrExpr_&&) = delete;
+
       /// Constructor
 
       /// \param array The array object
       /// \param vars The variable list that is associated with this expression
       TsrExpr(const array_type& array, const std::string& vars) :
-        Expr_(), array_(array), vars_(vars) { }
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      TsrExpr(const TsrExpr_& other) : array_(other.array_), vars_(other.vars_) { }
+        Expr_(), array_(array), vars_(vars)
+      { }
 
       /// Array accessor
 

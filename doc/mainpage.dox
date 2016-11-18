@@ -1,10 +1,10 @@
 /// \file mainpage.dox
-/// \brief TiledArray Library
+/// \brief TiledArray Framework
 
 /** \mainpage
 
 \section Overview
 
-The objective of TiledArray is a scalable generic implementation of block-sparse multi-dimensional arrays.
+TiledArray is a scalable generic implementation of block-sparse tensor arithmetic.
 
 */

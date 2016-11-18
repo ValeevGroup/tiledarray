@@ -92,26 +92,26 @@ BOOST_FIXTURE_TEST_SUITE( array_eval_suite, ArrayEvalImplFixture )
 
 BOOST_AUTO_TEST_CASE( constructor )
 {
-  BOOST_REQUIRE_NO_THROW(make_array_eval(array, array.get_world(),
-      DenseShape(), array.get_pmap(), Permutation(), make_array_scal(3)));
+  BOOST_REQUIRE_NO_THROW(make_array_eval(array, array.world(),
+      DenseShape(), array.pmap(), Permutation(), make_array_scal(3)));
 
-  auto dist_eval = make_array_eval(array, array.get_world(),
-      DenseShape(), array.get_pmap(), Permutation(), make_array_scal(3));
+  auto dist_eval = make_array_eval(array, array.world(),
+      DenseShape(), array.pmap(), Permutation(), make_array_scal(3));
 
-  BOOST_CHECK_EQUAL(& dist_eval.get_world(), GlobalFixture::world);
-  BOOST_CHECK(dist_eval.pmap() == array.get_pmap());
-  BOOST_CHECK_EQUAL(dist_eval.range(), tr.tiles());
+  BOOST_CHECK_EQUAL(& dist_eval.world(), GlobalFixture::world);
+  BOOST_CHECK(dist_eval.pmap() == array.pmap());
+  BOOST_CHECK_EQUAL(dist_eval.range(), tr.tiles_range());
   BOOST_CHECK_EQUAL(dist_eval.trange(), tr);
-  BOOST_CHECK_EQUAL(dist_eval.size(), tr.tiles().volume());
+  BOOST_CHECK_EQUAL(dist_eval.size(), tr.tiles_range().volume());
   BOOST_CHECK(dist_eval.is_dense());
-  for(std::size_t i = 0; i < tr.tiles().volume(); ++i)
+  for(std::size_t i = 0; i < tr.tiles_range().volume(); ++i)
     BOOST_CHECK(! dist_eval.is_zero(i));
 }
 
 BOOST_AUTO_TEST_CASE( eval_scale )
 {
-  auto dist_eval = make_array_eval(array, array.get_world(),
-      DenseShape(), array.get_pmap(), Permutation(), make_scal(3));
+  auto dist_eval = make_array_eval(array, array.world(),
+      DenseShape(), array.pmap(), Permutation(), make_scal(3));
   using dist_eval_type = decltype(dist_eval);
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());
@@ -147,8 +147,8 @@ BOOST_AUTO_TEST_CASE( eval_permute )
   const Permutation perm(p.begin(), p.end());
 
   // Construct and evaluate
-  auto dist_eval = make_array_eval(array, array.get_world(),
-      DenseShape(), array.get_pmap(), perm, make_array_noop(perm));
+  auto dist_eval = make_array_eval(array, array.world(),
+      DenseShape(), array.pmap(), perm, make_array_noop(perm));
   using dist_eval_type = decltype(dist_eval);
 
   BOOST_REQUIRE_NO_THROW(dist_eval.eval());

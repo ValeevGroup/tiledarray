@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <tiledarray.h>
+#include <madness/world/worldmem.h>
 
 bool to_bool(const char* str) {
   if (not strcmp(str,"0") ||
@@ -45,18 +46,18 @@ int main(int argc, char** argv) {
     TiledArray::World& world = TiledArray::initialize(argc, argv);
 
     // Get command line arguments
-    if(argc < 2) {
+    if(argc < 3) {
       std::cout << "Usage: ta_dense matrix_size block_size [repetitions] [use_complex]\n";
       return 0;
     }
     const long matrix_size = atol(argv[1]);
     const long block_size = atol(argv[2]);
     if (matrix_size <= 0) {
-      std::cerr << "Error: matrix size must greater than zero.\n";
+      std::cerr << "Error: matrix size must be greater than zero.\n";
       return 1;
     }
     if (block_size <= 0) {
-      std::cerr << "Error: block size must greater than zero.\n";
+      std::cerr << "Error: block size must be greater than zero.\n";
       return 1;
     }
     if((matrix_size % block_size) != 0ul) {
@@ -65,7 +66,7 @@ int main(int argc, char** argv) {
     }
     const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
     if (repeat <= 0) {
-      std::cerr << "Error: number of repetitions must greater than zero.\n";
+      std::cerr << "Error: number of repetitions must be greater than zero.\n";
       return 1;
     }
     const bool use_complex = (argc >= 5 ? to_bool(argv[4]) : false);
@@ -128,44 +129,60 @@ template <typename T>
 void
 gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange, long repeat) {
 
-  const auto n = trange.elements().extent()[0];
+  const bool do_memtrace = false;
+
+  const auto n = trange.elements_range().extent()[0];
   const auto complex_T = TiledArray::detail::is_complex<T>::value;
   const double gflop = (complex_T ? 8 : 2) // 1 multiply takes 6/1 flops for complex/real
                                            // 1 add takes 2/1 flops for complex/real
                      * double(n*n*n) / 1.0e9;
 
-  // Construct and initialize arrays
-  TiledArray::TArrayD a(world, trange);
-  TiledArray::TArrayD b(world, trange);
-  TiledArray::TArrayD c(world, trange);
-  a.fill(1.0);
-  b.fill(1.0);
+  auto memtrace = [do_memtrace,&world](const std::string& str) -> void {
+    if (do_memtrace) {
+      world.gop.fence();
+      madness::print_meminfo(world.rank(),str);
+    }
+  };
 
-  // Start clock
-  world.gop.fence();
-  if(world.rank() == 0)
-    std::cout << "Starting iterations: " << "\n";
+  memtrace("start");
+  {  // array lifetime scope
+    // Construct and initialize arrays
+    TiledArray::TArray<T> a(world, trange);
+    TiledArray::TArray<T> b(world, trange);
+    TiledArray::TArray<T> c(world, trange);
+    a.fill(1.0);
+    b.fill(1.0);
+    memtrace("allocated a and b");
 
-  double total_time = 0.0;
-  double total_gflop_rate = 0.0;
+    // Start clock
+    world.gop.fence();
+    if (world.rank() == 0)
+      std::cout << "Starting iterations: "
+                << "\n";
 
-  // Do matrix multiplication
-  for(int i = 0; i < repeat; ++i) {
-    const double start = madness::wall_time();
-    c("m,n") = a("m,k") * b("k,n");
-//      world.gop.fence();
-    const double time = madness::wall_time() - start;
-    total_time += time;
-    const double gflop_rate = gflop / time;
-    total_gflop_rate += gflop_rate;
-    if(world.rank() == 0)
-      std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
-          << gflop_rate <<"\n";
-  }
+    double total_time = 0.0;
+    double total_gflop_rate = 0.0;
 
-  // Print results
-  if(world.rank() == 0)
-    std::cout << "Average wall time   = " << total_time / double(repeat)
-        << " sec\nAverage GFLOPS      = " << total_gflop_rate / double(repeat) << "\n";
+    // Do matrix multiplication
+    for (int i = 0; i < repeat; ++i) {
+      const double start = madness::wall_time();
+      c("m,n") = a("m,k") * b("k,n");
+      memtrace("c=a*b");
+      const double time = madness::wall_time() - start;
+      total_time += time;
+      const double gflop_rate = gflop / time;
+      total_gflop_rate += gflop_rate;
+      if (world.rank() == 0)
+        std::cout << "Iteration " << i + 1 << "   time=" << time
+                  << "   GFLOPS=" << gflop_rate << "\n";
+    }
 
+    // Print results
+    if (world.rank() == 0)
+      std::cout << "Average wall time   = " << total_time / double(repeat)
+                << " sec\nAverage GFLOPS      = "
+                << total_gflop_rate / double(repeat) << "\n";
+
+  }  // array lifetime scope
+  memtrace("stop");
 }

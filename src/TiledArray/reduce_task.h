@@ -443,7 +443,7 @@ namespace TiledArray {
         /// World accessor
 
         /// \return The world that owns this task.
-        World& get_world() const { return world_; }
+        World& world() const { return world_; }
 
       }; // class ReduceTaskImpl
 
@@ -534,7 +534,7 @@ namespace TiledArray {
         Future<result_type> result = pimpl_->result();
 
         pimpl_->dec();
-        World& world = pimpl_->get_world();
+        World& world = pimpl_->world();
         world.taskq.add(pimpl_);
 
         pimpl_ = nullptr;
@@ -673,7 +673,7 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Non-copyabe
+      /// Non-copyable
       ReducePairTask(const ReducePairTask<opT>&) = delete;
       ReducePairTask<opT> operator=(const ReducePairTask<opT>&) = delete;
 

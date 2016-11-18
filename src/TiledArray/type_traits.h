@@ -169,9 +169,9 @@ namespace TiledArray {
 
     /// \tparam T The type to extract a numeric type from
     /// \tparam Enabler Type used to selectively implement partial specializations
-    /// -# if T is numeric, scalar_type<T>::type evaluates to T
-    /// -# if T is not numeric and T::value_type is a valid type, will evaluate to scalar_type<T::value_type>::type,
-    ///   and so on recursively
+    /// -# if T is numeric, numeric_type<T>::type evaluates to T
+    /// -# if T is not numeric and T::value_type is a valid type, will evaluate to numeric_type<T::value_type>::type,
+    ///    and so on recursively
     /// -# otherwise it's undefined
     template <typename T, typename Enabler = void> struct numeric_type;
 
@@ -221,11 +221,32 @@ namespace TiledArray {
     template <typename T>
     using numeric_t = typename TiledArray::detail::numeric_type<T>::type;
 
-    template <typename T>
-    struct scalar_type : public numeric_type<T> { };
+    /// Type trait for extracting the scalar type of tensors and arrays.
+
+    /// \tparam T The type to extract a numeric type from
+    /// \tparam Enabler Type used to selectively implement partial
+    /// specializations
+    /// -# if T is a scalar type, i.e. \c is_scalar<T>::value is true (e.g. \c
+    ///    int or \c float), \c scalar_type<T>::type evaluates to \c T
+    /// -# if T is std::complex<U>, scalar_type<T>::type evaluates to U
+    /// -# if T is not a scalar or complex type, will evaluate to \c
+    ///    scalar_type<numeric_type<T>::type>::type, and so on recursively
+    /// -# otherwise it's undefined
+    template <typename T, typename Enabler = void>
+    struct scalar_type;
 
     template <typename T>
-    struct scalar_type<std::complex<T> > : public scalar_type<T> { };
+    struct scalar_type<
+        T, typename std::enable_if<is_scalar<T>::value>::type> {
+      typedef T type;
+    };
+
+    template <typename T>
+    struct scalar_type<std::complex<T>, void > : public scalar_type<T> { };
+
+    template <typename T>
+    struct scalar_type<T, typename std::enable_if<!is_numeric<T>::value>::type > :
+    public scalar_type<typename numeric_type<T>::type> { };
 
     template <typename T>
     using scalar_t = typename TiledArray::detail::scalar_type<T>::type;
@@ -253,6 +274,10 @@ namespace TiledArray {
     struct remove_cvr {
       typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type type;
     };
+
+    /// prepends \c const to \c T if \c B is \c true
+    template <bool B, typename T>
+    using const_if_t = typename std::conditional<B, const T, T>::type;
 
     template <typename T, typename Enabler = void>
     struct param {
@@ -376,6 +401,16 @@ namespace TiledArray {
 
     template <typename T>
     using policy_t = typename policy_type<T>::type;
+
+    /// If \c Base is a base of \c Derived, \c if_same_or_derived::value is \c true.
+    /// \tparam Base supposed base class
+    /// \tparam Derived supposed derived class
+    template<typename Base, typename Derived>
+    struct is_same_or_derived : std::conditional<
+          std::is_base_of<Base,typename std::decay<Derived>::type>::value,
+          std::true_type, std::false_type
+        >::type {};
+
 
   } // namespace detail
 

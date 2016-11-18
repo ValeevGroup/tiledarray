@@ -37,11 +37,11 @@ int main(int argc, char** argv) {
     const long block_size = atol(argv[2]);
     const long band_width = atol(argv[3]);
     if(matrix_size <= 0) {
-      std::cerr << "Error: matrix size must greater than zero.\n";
+      std::cerr << "Error: matrix size must be greater than zero.\n";
       return 1;
     }
     if(block_size <= 0) {
-      std::cerr << "Error: block size must greater than zero.\n";
+      std::cerr << "Error: block size must be greater than zero.\n";
       return 1;
     }
     if((matrix_size % block_size) != 0ul) {
@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
     }
     const long repeat = (argc >= 5 ? atol(argv[4]) : 5);
     if(repeat <= 0) {
-      std::cerr << "Error: number of repetitions must greater than zero.\n";
+      std::cerr << "Error: number of repetitions must be greater than zero.\n";
       return 1;
     }
 
@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     TiledArray::SparseShape<float>::threshold(0.5);
 
     // Construct shape
-    TiledArray::Tensor<float> shape_tensor(trange.tiles(), 0.0f);
+    TiledArray::Tensor<float> shape_tensor(trange.tiles_range(), 0.0f);
     for(long i = 0l; i < num_blocks; ++i) {
       long j = std::max<long>(i - band_width + 1, 0);
       const long j_end = std::min<long>(i + band_width - 1, num_blocks);

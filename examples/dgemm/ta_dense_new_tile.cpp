@@ -26,7 +26,7 @@ using Array_t = TiledArray::DistArray<Tile_t>;
 void set_tiles(double val, Array_t& a) {
     auto const& trange = a.trange();
 
-    auto pmap = a.get_pmap();
+    auto pmap = a.pmap();
     const auto end = pmap->end();
     for (auto it = pmap->begin(); it != end; ++it) {
         auto range = trange.make_tile_range(*it);
@@ -50,11 +50,11 @@ int main(int argc, char** argv) {
         const long matrix_size = atol(argv[1]);
         const long block_size = atol(argv[2]);
         if (matrix_size <= 0) {
-            std::cerr << "Error: matrix size must greater than zero.\n";
+            std::cerr << "Error: matrix size must be greater than zero.\n";
             return 1;
         }
         if (block_size <= 0) {
-            std::cerr << "Error: block size must greater than zero.\n";
+            std::cerr << "Error: block size must be greater than zero.\n";
             return 1;
         }
         if ((matrix_size % block_size) != 0ul) {
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
         const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
         if (repeat <= 0) {
             std::cerr
-                << "Error: number of repetitions must greater than zero.\n";
+                << "Error: number of repetitions must be greater than zero.\n";
             return 1;
         }
 

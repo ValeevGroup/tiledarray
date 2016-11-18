@@ -13,13 +13,40 @@ matrix:
     - compiler: clang
       env: GCC_VERSION=4.7
     - compiler: clang
-      env: GCC_VERSION=4.9
+      env: GCC_VERSION=4.8
     - compiler: clang
-      env: GCC_VERSION=5
+      env: GCC_VERSION=4.9
+  allow_failures:
+    - compiler: clang      # until llvm.org apt server is back up
+      env: GCC_VERSION=5   #
+sudo: false
+addons:
+  apt:
+    sources:
+      - george-edison55-precise-backports
+      - ubuntu-toolchain-r-test
+      - boost-latest
+      # LLVM apt mirror is down
+      #- llvm-toolchain-precise-3.7
+    packages:
+      - g++-4.7
+      - g++-4.8
+      - g++-4.9
+      - g++-5
+# llvm.org apt repo is down
+#      - clang-3.7
+      - libeigen3-dev
+      - libboost1.55-dev
+      - libblas-dev
+      - liblapack-dev
+      #- mpich2 # disallowed - build from source
+      - libtbb-dev
+      - cmake
+      - cmake-data
 #notifications:
 #  email:
 #    recipients:
-#      - madness-developers@googlegroups.com
+#      - @github.com
 #    on_success: change
 #    on_failure: always
 before_install: ./bin/dep-$TRAVIS_OS_NAME.sh

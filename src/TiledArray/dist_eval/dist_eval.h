@@ -73,7 +73,7 @@ namespace TiledArray {
       /// \param index An ordinal index in the source index space
       /// \return The ordinal index in the target index space
       size_type perm_index_to_target(size_type index) const {
-        TA_ASSERT(index < TensorImpl_::trange().tiles().volume());
+        TA_ASSERT(index < TensorImpl_::trange().tiles_range().volume());
         return (source_to_target_ ? source_to_target_(index) : index);
       }
 
@@ -82,7 +82,7 @@ namespace TiledArray {
       /// \param index An ordinal index in the target index space
       /// \return The ordinal index in the source index space
       size_type perm_index_to_source(size_type index) const {
-        TA_ASSERT(index < TensorImpl_::trange().tiles().volume());
+        TA_ASSERT(index < TensorImpl_::trange().tiles_range().volume());
         return (target_to_source_ ? target_to_source_(index) : index);
       }
 
@@ -110,9 +110,9 @@ namespace TiledArray {
 
         if(perm) {
           Permutation inv_perm(-perm);
-          range_type source_range = inv_perm * trange.tiles();
+          range_type source_range = inv_perm * trange.tiles_range();
           source_to_target_ = PermIndex(source_range, perm);
-          target_to_source_ = PermIndex(trange.tiles(), inv_perm);
+          target_to_source_ = PermIndex(trange.tiles_range(), inv_perm);
         }
       }
 
@@ -146,7 +146,7 @@ namespace TiledArray {
       void set_tile(size_type i, const value_type& value) {
         // Store value
         madness::DistributedID id(id_, i);
-        TensorImpl_::get_world().gop.send(TensorImpl_::owner(i), id, value);
+        TensorImpl_::world().gop.send(TensorImpl_::owner(i), id, value);
 
         // Record the assignment of a tile
         DistEvalImpl_::notify();
@@ -161,7 +161,7 @@ namespace TiledArray {
       void set_tile(size_type i, Future<value_type> f) {
         // Store value
         madness::DistributedID id(id_, i);
-        TensorImpl_::get_world().gop.send(TensorImpl_::owner(i), id, f);
+        TensorImpl_::world().gop.send(TensorImpl_::owner(i), id, f);
 
         // Record the assignment of a tile
         f.register_callback(this);
@@ -175,12 +175,12 @@ namespace TiledArray {
         const int task_count = task_count_;
         if(task_count > 0) {
           try {
-            TensorImpl_::get_world().await([this,task_count] ()
+            TensorImpl_::world().await([this,task_count] ()
                 { return this->set_counter_ == task_count; });
           } catch(...) {
             std::stringstream ss;
             ss << "!! ERROR TiledArray: Aborting due to exception.\n"
-               << "!! ERROR TiledArray: rank=" << TensorImpl_::get_world().rank()
+               << "!! ERROR TiledArray: rank=" << TensorImpl_::world().rank()
                << " id=" << id_ << " " << set_counter_ << " of " << task_count << " tiles set\n";
             std::cout << ss.str().c_str();
             throw;
@@ -339,7 +339,7 @@ namespace TiledArray {
       /// World object accessor
 
       /// \return A reference to the world object
-      World& get_world() const { return pimpl_->get_world(); }
+      World& world() const { return pimpl_->world(); }
 
       /// Unique object id
 

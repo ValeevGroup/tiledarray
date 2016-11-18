@@ -118,6 +118,7 @@ namespace TiledArray {
 #ifdef TILEDARRAY_NO_USER_ERROR_MESSAGES
 #define TA_USER_ERROR_MESSAGE( m )
 #else
+#include <iostream>
 #define TA_USER_ERROR_MESSAGE( m ) std::cerr << "!! ERROR TiledArray: " << m << "\n";
 #endif // TILEDARRAY_NO_USER_ERROR_MESSAGES
 
@@ -136,6 +137,17 @@ namespace TiledArray {
 // Disable user interface assertion when NDEBUG is defined
 #define TA_USER_ASSERT( a , m )
 
+#endif
+
+// mark functions as deprecated using this macro
+// will result in a warning
+#ifdef __GNUC__
+#define DEPRECATED __attribute__((deprecated))
+#elif defined(_MSC_VER)
+#define DEPRECATED __declspec(deprecated)
+#else
+#pragma message("WARNING: You need to implement DEPRECATED for this compiler")
+#define DEPRECATED
 #endif
 
 #endif // TILEDARRAY_ERROR_H__INCLUDED

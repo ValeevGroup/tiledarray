@@ -82,7 +82,7 @@ namespace TiledArray {
         TA_ASSERT(! TensorImpl_::is_zero(i));
         const size_type source = arg_.owner(DistEvalImpl_::perm_index_to_source(i));
         const madness::DistributedID key(DistEvalImpl_::id(), i);
-        return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
+        return TensorImpl_::world().gop.template recv<value_type>(source, key);
       }
 
       /// Discard a tile that is not needed
@@ -141,7 +141,7 @@ namespace TiledArray {
             const size_type target_index = DistEvalImpl_::perm_index_to_target(index);
 
             // Schedule tile evaluation task
-            TensorImpl_::get_world().taskq.add(self, & UnaryEvalImpl_::eval_tile,
+            TensorImpl_::world().taskq.add(self, & UnaryEvalImpl_::eval_tile,
                 target_index, arg_.get(index));
 
             ++task_count;

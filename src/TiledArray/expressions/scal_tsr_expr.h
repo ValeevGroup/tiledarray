@@ -77,6 +77,13 @@ namespace TiledArray {
 
     public:
 
+      // Compiler generated functions
+      ScalTsrExpr(const ScalTsrExpr_&) = default;
+      ScalTsrExpr(ScalTsrExpr_&&) = default;
+      ~ScalTsrExpr() = default;
+      ScalTsrExpr_& operator=(const ScalTsrExpr_&) = delete;
+      ScalTsrExpr_& operator=(ScalTsrExpr_&&) = delete;
+
       /// Construct a scaled tensor expression
 
       /// \param array The array object
@@ -85,13 +92,6 @@ namespace TiledArray {
       ScalTsrExpr(const array_type& array, const std::string& vars,
           const scalar_type factor) :
         Expr_(), array_(array), vars_(vars), factor_(factor)
-      { }
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      ScalTsrExpr(const ScalTsrExpr_& other) :
-        Expr_(), array_(other.array_), vars_(other.vars_), factor_(other.factor_)
       { }
 
       /// Array accessor

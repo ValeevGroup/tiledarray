@@ -40,7 +40,7 @@ namespace TiledArray {
       left(make_shape(tr, 0.1, 23)),
       right(make_shape(tr, 0.1, 82)),
       perm(make_perm()),
-      perm_index(tr.tiles(), perm),
+      perm_index(tr.tiles_range(), perm),
       tolerance(0.0001)
 
     {

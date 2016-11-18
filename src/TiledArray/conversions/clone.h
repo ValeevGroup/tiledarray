@@ -43,13 +43,13 @@ namespace TiledArray {
   clone(const DistArray<Tile, Policy>& arg) {
     typedef typename DistArray<Tile, Policy>::value_type value_type;
 
-    World& world = arg.get_world();
+    World& world = arg.world();
 
     // Make an empty result array
-    DistArray<Tile, Policy> result(world, arg.trange(), arg.get_shape(), arg.get_pmap());
+    DistArray<Tile, Policy> result(world, arg.trange(), arg.shape(), arg.pmap());
 
     // Iterate over local tiles of arg
-    for(auto index : * arg.get_pmap()) {
+    for(auto index : * arg.pmap()) {
       if(arg.is_zero(index))
         continue;
 

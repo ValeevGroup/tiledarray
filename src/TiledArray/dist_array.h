@@ -37,13 +37,12 @@ namespace TiledArray {
   } // namespace expressions
 
 
-  /// An n-dimensional, tiled array
+  /// A (multidimensional) tiled array
 
   /// DistArray is the local representation of a global object. This means that
   /// the local array object will only contain a portion of the data. It may be
   /// used to construct distributed tensor algebraic operations.
   /// \tparam T The element type of for array tiles
-  /// \tparam DIM The number of dimensions for this array object
   /// \tparam Tile The tile type [ Default = \c Tensor<T> ]
   template <typename Tile = Tensor<double, Eigen::aligned_allocator<double> >,
       typename Policy = DensePolicy>
@@ -80,7 +79,7 @@ namespace TiledArray {
     static void lazy_deleter(const impl_type* const pimpl) {
       if(pimpl) {
         if(madness::initialized()) {
-          World& world = pimpl->get_world();
+          World& world = pimpl->world();
           const madness::uniqueidT id = pimpl->id();
           cleanup_counter_++;
 
@@ -136,10 +135,10 @@ namespace TiledArray {
 
       if(! pmap) {
         // Construct a default process map
-        pmap = Policy::default_pmap(world, trange.tiles().volume());
+        pmap = Policy::default_pmap(world, trange.tiles_range().volume());
       } else {
         // Validate the process map
-        TA_USER_ASSERT(pmap->size() == trange.tiles().volume(),
+        TA_USER_ASSERT(pmap->size() == trange.tiles_range().volume(),
             "Array::Array() -- The size of the process map is not equal to the number of tiles in the TiledRange object.");
         TA_USER_ASSERT(pmap->rank() == typename pmap_interface::size_type(world.rank()),
             "Array::Array() -- The rank of the process map is not equal to that of the world object.");
@@ -150,7 +149,7 @@ namespace TiledArray {
       // Validate the shape
       TA_USER_ASSERT(! shape.empty(),
           "Array::Array() -- The shape is not initialized.");
-      TA_USER_ASSERT(shape.validate(trange.tiles()),
+      TA_USER_ASSERT(shape.validate(trange.tiles_range()),
           "Array::Array() -- The range of the shape is not equal to the tiles range.");
 
       return std::shared_ptr<impl_type>(new impl_type(world, trange, shape, pmap), lazy_deleter);
@@ -200,18 +199,18 @@ namespace TiledArray {
     { }
 
 
-    /// Unary mutating constructor
+    /// Unary transform constructor
 
     /// This constructor uses the meta data of `other` to initialize the meta
     /// data of the new array. In addition, the tiles of the new array are also
-    /// initialized using the `op` function/functor, which creates a mutated
-    /// copy of the tiles in `other`.
+    /// initialized using the `op` function/functor, which creates transfroms
+    /// each tile in `other` using `op`
     /// \param other The array to be copied
-    template <typename Op>
-    DistArray(const DistArray_& other, Op&& op) :
+    template <typename OtherTile, typename Op>
+    DistArray(const DistArray<OtherTile,Policy>& other, Op&& op) :
       pimpl_()
     {
-      *this = foreach(other, op);
+      *this = foreach<Tile,OtherTile,Op>(other, op);
     }
 
     /// Destructor
@@ -301,18 +300,32 @@ namespace TiledArray {
     /// Find local or remote tile
 
     /// \tparam Index The index type
+    /// \param i The tile index
+    /// \return A \c future to tile \c i
+    /// \throw TiledArray::Exception When tile \c i is zero
     template <typename Index>
     Future<value_type> find(const Index& i) const {
       check_index(i);
       return pimpl_->get(i);
     }
 
-    /// Set the data of tile \c i
+    /// Find local or remote tile
 
-    /// \tparam Index \c index or an integral type
+    /// \tparam Integer An integer type
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \return A \c future to tile \c i
+    /// \throw TiledArray::Exception When tile \c i is zero
+    template <typename Integer>
+    Future<value_type> find(const std::initializer_list<Integer>& i) const {
+      return find<std::initializer_list<Integer>>(i);
+    }
+
+    /// Set a tile and fill it using a sequence
+
+    /// \tparam Index An index or integral type
     /// \tparam InIter An input iterator
-    /// \param i The index of the tile to be set
-    /// \param first The iterator that points to the new tile data
+    /// \param i The index or the ordinal of the tile to be set
+    /// \param first The iterator that points to the start of the input sequence
     template <typename Index, typename InIter>
     typename std::enable_if<detail::is_input_iterator<InIter>::value>::type
     set(const Index& i, InIter first) {
@@ -320,16 +333,46 @@ namespace TiledArray {
       pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
     }
 
-    template <typename Index>
-    void set(const Index& index, const element_type& value = element_type()) {
-      check_index(index);
-      pimpl_->set(index, value_type(pimpl_->trange().make_tile_range(index), value));
+    /// Set a tile and fill it using a sequence
+
+    /// \tparam Integer An integral type
+    /// \tparam InIter An input iterator
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \param first The iterator that points to the new tile data
+    template <typename Integer, typename InIter>
+    typename std::enable_if<detail::is_input_iterator<InIter>::value>::type
+    set(const std::initializer_list<Integer>& i, InIter first) {
+      set<std::initializer_list<Integer>>(i, first);
     }
 
-    /// Set tile \c i with future \c f
+    /// Set a tile and fill it using a value
 
-    /// \tparam Index The index type (i.e. index or size_type)
-    /// \param i The tile index to be set
+    /// \tparam Index An index or integral type
+    /// \tparam InIter An input iterator
+    /// \param i The index or the ordinal of the tile to be set
+    /// \param value the value used to fill the tile
+    template <typename Index>
+    void set(const Index& i, const element_type& value = element_type()) {
+      check_index(i);
+      pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
+    }
+
+    /// Set a tile and fill it using a value
+
+    /// \tparam Integer An integral type
+    /// \tparam InIter An input iterator
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \param value the value used to fill the tile
+    template <typename Integer>
+    void set(const std::initializer_list<Integer>& i,
+             const element_type& value = element_type()) {
+      set<std::initializer_list<Integer>>(i, value);
+    }
+
+    /// Set a tile directly using a future
+
+    /// \tparam Index An index or integral type
+    /// \param i The index or the ordinal of the tile to be set
     /// \param f A future to the tile
     template <typename Index>
     void set(const Index& i, const Future<value_type>& f) {
@@ -337,15 +380,36 @@ namespace TiledArray {
       pimpl_->set(i, f);
     }
 
-    /// Set tile \c i to value \c v
+    /// Set a tile directly using a future
 
-    /// \tparam Index The index type (i.e. index or size_type)
+    /// \tparam Integer An integral type
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \param f A future to the tile
+    template <typename Integer>
+    void set(const std::initializer_list<Integer>& i,
+             const Future<value_type>& f) {
+      set<std::initializer_list<Integer>>(i, f);
+    }
+
+    /// Set a tile using a Tile object
+
+    /// \tparam Index An index or integral type
     /// \param i The tile index to be set
     /// \param v The tile value
     template <typename Index>
     void set(const Index& i, const value_type& v) {
       check_index(i);
       pimpl_->set(i, v);
+    }
+
+    /// Set a tile using a Tile object
+
+    /// \tparam Integer An integral type
+    /// \param i The tile index, as an \c std::initializer_list<Integer>
+    /// \param v The tile value
+    template <typename Integer>
+    void set(const std::initializer_list<Integer>& i, const value_type& v) {
+      set<std::initializer_list<Integer>>(i, v);
     }
 
     /// Fill all local tiles
@@ -402,7 +466,7 @@ namespace TiledArray {
       for(; it != end; ++it) {
         const auto index = *it;
         if(! pimpl_->is_zero(index)) {
-          Future<value_type> tile = pimpl_->get_world().taskq.add(
+          Future<value_type> tile = pimpl_->world().taskq.add(
               [] (DistArray_& array, const size_type index, const Op& op) -> value_type
               { return op(array.trange().make_tile_range(index)); },
               *this, index, op);
@@ -427,12 +491,17 @@ namespace TiledArray {
       return pimpl_->range();
     }
 
+    /// \deprecated use DistArray::elements_range()
+    DEPRECATED const typename trange_type::tiles_range_type& elements() const {
+      return elements_range();
+    }
+
     /// Element range accessor
 
     /// \return A const reference to the range object for the array elements
-    const typename trange_type::tile_range_type& elements() const {
+    const typename trange_type::tiles_range_type& elements_range() const {
       check_pimpl();
-      return pimpl_->trange().elements();
+      return pimpl_->trange().elements_range();
     }
 
     size_type size() const {
@@ -449,12 +518,12 @@ namespace TiledArray {
 #ifndef NDEBUG
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
-      if(bool(pimpl_) && n != pimpl_->trange().tiles().rank()) {
+      if(bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
         if(World::get_default().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
-              << "\n    array dimension      = " << pimpl_->trange().tiles().rank() );
+              << "\n    array dimension      = " << pimpl_->trange().tiles_range().rank() );
         }
 
         TA_EXCEPTION("The number of array annotation variables is not equal to the array dimension.");
@@ -472,12 +541,12 @@ namespace TiledArray {
 #ifndef NDEBUG
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
-      if(bool(pimpl_) && n != pimpl_->trange().tiles().rank()) {
+      if(bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
         if(World::get_default().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
-              << "\n    array dimension      = " << pimpl_->trange().tiles().rank() );
+              << "\n    array dimension      = " << pimpl_->trange().tiles_range().rank() );
         }
 
         TA_EXCEPTION("The number of array annotation variables is not equal to the array dimension.");
@@ -486,18 +555,30 @@ namespace TiledArray {
       return TiledArray::expressions::TsrExpr<DistArray_, true>(*this, vars);
     }
 
+    /// \deprecated use DistArray::world()
+    DEPRECATED World& get_world() const {
+      check_pimpl();
+      return pimpl_->world();
+    }
+
     /// World accessor
 
     /// \return A reference to the world that owns this array.
-    World& get_world() const {
+    World& world() const {
       check_pimpl();
-      return pimpl_->get_world();
+      return pimpl_->world();
+    }
+
+    /// \deprecated use DistArray::pmap()
+    DEPRECATED const std::shared_ptr<pmap_interface>& get_pmap() const {
+      check_pimpl();
+      return pimpl_->pmap();
     }
 
     /// Process map accessor
 
-    /// \return A reference to the world that owns this array.
-    const std::shared_ptr<pmap_interface>& get_pmap() const {
+    /// \return A reference to the process map that owns this array.
+    const std::shared_ptr<pmap_interface>& pmap() const {
       check_pimpl();
       return pimpl_->pmap();
     }
@@ -510,14 +591,15 @@ namespace TiledArray {
       return pimpl_->is_dense();
     }
 
+    /// \deprecated use DistArray::shape()
+    DEPRECATED const shape_type& get_shape() const {  return pimpl_->shape(); }
 
-    /// Shape map accessor
+    /// Shape accessor
 
-    /// Bits are \c true when the tile exists, either locally or remotely. No
-    /// no communication required.
-    /// \return A bitset that maps the existence of tiles.
+    /// Returns shape object. No communication is required.
+    /// \return reference to the shape object.
     /// \throw TiledArray::Exception When the Array is dense.
-    const shape_type& get_shape() const {  return pimpl_->shape(); }
+    inline const shape_type& shape() const {  return pimpl_->shape(); }
 
     /// Tile ownership
 
@@ -559,13 +641,13 @@ namespace TiledArray {
     /// \param other The array to be swapped with this array.
     void swap(DistArray_& other) { std::swap(pimpl_, other.pimpl_); }
 
-    /// Convert a distributed \c Array into a replicated array
+    /// Convert a distributed array into a replicated array
     void make_replicated() {
       check_pimpl();
-      if((! pimpl_->pmap()->is_replicated()) && (get_world().size() > 1)) {
+      if((! pimpl_->pmap()->is_replicated()) && (world().size() > 1)) {
         // Construct a replicated array
-        std::shared_ptr<pmap_interface> pmap(new detail::ReplicatedPmap(get_world(), size()));
-        DistArray_ result = DistArray_(get_world(), trange(), get_shape(), pmap);
+        std::shared_ptr<pmap_interface> pmap(new detail::ReplicatedPmap(world(), size()));
+        DistArray_ result = DistArray_(world(), trange(), shape(), pmap);
 
         // Create the replicator object that will do an all-to-all broadcast of
         // the local tile data.
@@ -575,7 +657,7 @@ namespace TiledArray {
         // Put the replicator pointer in the deferred cleanup object so it will
         // be deleted at the end of the next fence.
         TA_ASSERT(replicator.unique()); // Required for deferred_cleanup
-        madness::detail::deferred_cleanup(get_world(), replicator);
+        madness::detail::deferred_cleanup(world(), replicator);
 
         DistArray_::operator=(result);
       }
@@ -608,7 +690,7 @@ namespace TiledArray {
       check_pimpl();
       TA_USER_ASSERT(pimpl_->range().includes(i),
           "The coordinate index used to access an array tile is out of range.");
-      TA_USER_ASSERT(i.size() == pimpl_->trange().tiles().rank(),
+      TA_USER_ASSERT(i.size() == pimpl_->trange().tiles_range().rank(),
           "The number of elements in the coordinate index does not match the dimension of the array.");
     }
 
@@ -660,21 +742,20 @@ namespace TiledArray {
   /// tiles. It will wait for each tile to be evaluated (i.e. it is a blocking
   /// function). Tasks will continue to be processed.
   /// \tparam T The element type of Array
-  /// \tparam DIM The number of dimensions
   /// \tparam Tile The Tile type
   /// \param os The output stream
   /// \param a The array to be put in the output stream
   /// \return A reference to the output stream
   template <typename Tile, typename Policy>
   inline std::ostream& operator<<(std::ostream& os, const DistArray<Tile, Policy>& a) {
-    if(a.get_world().rank() == 0) {
+    if(a.world().rank() == 0) {
       for(std::size_t i = 0; i < a.size(); ++i)
         if(! a.is_zero(i)) {
           const typename DistArray<Tile, Policy>::value_type tile = a.find(i).get();
           os << i << ": " << tile  << "\n";
         }
     }
-    a.get_world().gop.fence();
+    a.world().gop.fence();
     return os;
   }
 

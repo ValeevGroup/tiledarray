@@ -67,6 +67,9 @@ namespace TiledArray {
       typedef Op op_type; ///< Tile evaluation operator type
 
     private:
+      static size_type max_memory_; ///< Maximum overhead used per node
+      static size_type max_depth_; ///< Maximum number of concurrent SUMMA iterations
+
       // Arguments and operation
       left_type left_; ///< The left-hand argument
       right_type right_; /// < The right-hand argument
@@ -103,6 +106,52 @@ namespace TiledArray {
       using std::enable_shared_from_this<Summa_>::shared_from_this;
 
     private:
+
+      // Static variable initialization ----------------------------------------
+
+
+      /// Initialize max_memory_ limit for SUMMA
+      static size_type init_max_memory() {
+        const char* max_memory = getenv("TA_SUMMA_MAX_MEMORY");
+        if(max_memory) {
+            // Convert the string into bytes
+            std::stringstream ss(max_memory);
+            double memory = 0.0;
+            if(ss >> memory) {
+                if(memory > 0.0) {
+                    std::string unit;
+                    if(ss >> unit) { // Failure == assume bytes
+                        if(unit == "KB" || unit == "kB") {
+                          memory *= 1000.0;
+                        } else if(unit == "KiB" || unit == "kiB") {
+                          memory *= 1024.0;
+                        } else if(unit == "MB") {
+                          memory *= 1000000.0;
+                        } else if(unit == "MiB") {
+                          memory *= 1048576.0;
+                        } else if(unit == "GB") {
+                          memory *= 1000000000.0;
+                        } else if(unit == "GiB") {
+                          memory *= 1073741824.0;
+                        }
+                    }
+                }
+            }
+
+            memory = std::max(memory, 104857600.0); // Minimum 100 MiB
+            return memory;
+        }
+
+        return 0ul;
+      }
+
+
+      static size_type init_max_depth() {
+        const char* max_depth = getenv("TA_SUMMA_MAX_DEPTH");
+        if(max_depth)
+          return std::stoul(max_depth);
+        return 0ul;
+      }
 
 
       // Process groups --------------------------------------------------------
@@ -159,7 +208,7 @@ namespace TiledArray {
         // Truncate invalid process id's
         proc_list.resize(count);
 
-        return madness::Group(TensorImpl_::get_world(), proc_list,
+        return madness::Group(TensorImpl_::world(), proc_list,
             madness::DistributedID(DistEvalImpl_::id(), k + key_offset));
       }
 
@@ -225,7 +274,7 @@ namespace TiledArray {
           is_lazy_tile<typename Arg::value_type>::value,
           Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) {
-        return arg.get_world().taskq.add(
+        return arg.world().taskq.add(
             & Summa_::template convert_tile_task<typename Arg::value_type>,
             arg.get(index), madness::TaskAttributes::hipri());
       }
@@ -305,7 +354,7 @@ namespace TiledArray {
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
         std::stringstream ss;
-        ss  << "bcast: rank=" << TensorImpl_::get_world().rank()
+        ss  << "bcast: rank=" << TensorImpl_::world().rank()
             << " root=" << group.world_rank(group_root)
             << " groupid=(" << group.id().first << "," << group.id().second
             << ") keyoffset=" << key_offset << " group={ ";
@@ -320,7 +369,7 @@ namespace TiledArray {
 
           // Broadcast the tile
           const madness::DistributedID key(DistEvalImpl_::id(), index + key_offset);
-          TensorImpl_::get_world().gop.bcast(key, it->second, group_root, group);
+          TensorImpl_::world().gop.bcast(key, it->second, group_root, group);
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_BCAST
           ss  << index << " ";
@@ -405,7 +454,7 @@ namespace TiledArray {
                 // Broadcast the tile
                 const madness::DistributedID key(DistEvalImpl_::id(), index);
                 auto tile = get_tile(left_, index);
-                TensorImpl_::get_world().gop.bcast(key, tile, group_root, row_group);
+                TensorImpl_::world().gop.bcast(key, tile, group_root, row_group);
               }
             } else {
               // Discard column k of left_.
@@ -448,7 +497,7 @@ namespace TiledArray {
                 // Broadcast the tile
                 const madness::DistributedID key(DistEvalImpl_::id(), index + left_.size());
                 auto tile = get_tile(right_, index);
-                TensorImpl_::get_world().gop.bcast(key, tile, group_root, col_group);
+                TensorImpl_::world().gop.bcast(key, tile, group_root, col_group);
               }
             } else {
               // Broadcast row k of right_.
@@ -537,12 +586,12 @@ namespace TiledArray {
 
         if(k < k_row) {
           // Spawn a task to broadcast any local columns of left that were skipped
-          TensorImpl_::get_world().taskq.add(shared_from_this(),
+          TensorImpl_::world().taskq.add(shared_from_this(),
               & Summa_::bcast_col_range_task, k, k_row,
               madness::TaskAttributes::hipri());
 
           // Spawn a task to broadcast any local rows of right that were skipped
-          TensorImpl_::get_world().taskq.add(shared_from_this(),
+          TensorImpl_::world().taskq.add(shared_from_this(),
               & Summa_::bcast_row_range_task, k, k_col,
               madness::TaskAttributes::hipri());
         }
@@ -579,7 +628,7 @@ namespace TiledArray {
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
         std::stringstream ss;
-        ss << "init: rank=" << TensorImpl_::get_world().rank()
+        ss << "init: rank=" << TensorImpl_::world().rank()
            << "\n    col_group_=(" << col_did.first << ", " << col_did.second << ") { ";
         for(ProcessID gproc = 0ul; gproc < col_group_.size(); ++gproc)
           ss << col_group_.world_rank(gproc) << " ";
@@ -599,7 +648,7 @@ namespace TiledArray {
         for(size_type t = 0ul; t < n; ++t) {
           // Initialize the reduction task
           ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
-          new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+          new(reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_);
         }
 
         return proc_grid_.local_size();
@@ -611,7 +660,7 @@ namespace TiledArray {
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
         std::stringstream ss;
-        ss << "    initialize rank=" << TensorImpl_::get_world().rank() << " tiles={ ";
+        ss << "    initialize rank=" << TensorImpl_::world().rank() << " tiles={ ";
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
         // Allocate memory for the reduce pair tasks.
@@ -643,7 +692,7 @@ namespace TiledArray {
               ss << index << " ";
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
-              new(reduce_task) ReducePairTask<op_type>(TensorImpl_::get_world(), op_);
+              new(reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_);
               ++tile_count;
             } else {
               // Construct an empty task to represent zero tiles.
@@ -662,13 +711,13 @@ namespace TiledArray {
 
       size_type initialize() {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
-        printf("init: start rank=%i\n", TensorImpl_::get_world().rank());
+        printf("init: start rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
         const size_type result = initialize(TensorImpl_::shape());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
-        printf("init: finish rank=%i\n", TensorImpl_::get_world().rank());
+        printf("init: finish rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
         return result;
@@ -715,7 +764,7 @@ namespace TiledArray {
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
         std::stringstream ss;
-        ss << "    finalize rank=" << TensorImpl_::get_world().rank() << " tiles={ ";
+        ss << "    finalize rank=" << TensorImpl_::world().rank() << " tiles={ ";
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
 
         // Initialize iteration variables
@@ -763,13 +812,13 @@ namespace TiledArray {
 
       void finalize() {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
-        printf("finalize: start rank=%i\n", TensorImpl_::get_world().rank());
+        printf("finalize: start rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
 
         finalize(TensorImpl_::shape());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
-        printf("finalize: finish rank=%i\n", TensorImpl_::get_world().rank());
+        printf("finalize: finish rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
       }
 
@@ -950,11 +999,11 @@ namespace TiledArray {
 
         StepTask(const std::shared_ptr<Summa_>& owner, int finalize_ndep) :
           madness::TaskInterface(0ul, madness::TaskAttributes::hipri()),
-          owner_(owner), world_(owner->get_world()),
+          owner_(owner), world_(owner->world()),
           finalize_task_(new FinalizeTask(owner, finalize_ndep))
         {
           TA_ASSERT(owner_);
-          owner_->get_world().taskq.add(finalize_task_);
+          owner_->world().taskq.add(finalize_task_);
         }
 
         /// Construct the task for the next step
@@ -1003,7 +1052,7 @@ namespace TiledArray {
         template <typename Derived, typename GroupType>
         void run(const size_type k, const GroupType& row_group, const GroupType& col_group) {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
-          printf("step:  start rank=%i k=%lu\n", owner_->get_world().rank(), k);
+          printf("step:  start rank=%i k=%lu\n", owner_->world().rank(), k);
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
 
           if(k < owner_->k_) {
@@ -1047,7 +1096,7 @@ namespace TiledArray {
           }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
-          printf("step: finish rank=%i k=%lu\n", owner_->get_world().rank(), k);
+          printf("step: finish rank=%i k=%lu\n", owner_->world().rank(), k);
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
         }
 
@@ -1161,17 +1210,18 @@ namespace TiledArray {
 
       /// \param left The left-hand argument evaluator
       /// \param right The right-hand argument evaluator
-      /// \param world The world where the tensor lives
-      /// \param trange The tiled range object
-      /// \param shape The tensor shape object
-      /// \param pmap The tile-process map
-      /// \param perm The permutation that is applied to tile indices
+      /// \param world The world where the result lives
+      /// \param trange The tiled range object for the result
+      /// \param shape The tensor shape object for the result
+      /// \param pmap The tile-process map for the result
+      /// \param perm The permutation that is applied to result tile indices
       /// \param op The tile transform operation
       /// \param k The number of tiles in the inner dimension
       /// \param proc_grid The process grid that defines the layout of the tiles
-      /// during the contraction evaluation
-      /// \note The trange, shape, and pmap are assumed to be in the final,
-      /// permuted, state for the result.
+      ///                  during the contraction evaluation
+      /// \note The trange, shape, and pmap refer to the final,
+      ///       permuted, state for the result, NOT to the result during
+      ///       the SUMMA evaluation.
       Summa(const left_type& left, const right_type& right,
           World& world, const trange_type trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
@@ -1213,7 +1263,7 @@ namespace TiledArray {
         const ProcessID source = proc_row * proc_grid_.proc_cols() + proc_col;
 
         const madness::DistributedID key(DistEvalImpl_::id(), i);
-        return TensorImpl_::get_world().gop.template recv<value_type>(source, key);
+        return TensorImpl_::world().gop.template recv<value_type>(source, key);
       }
 
 
@@ -1234,26 +1284,26 @@ namespace TiledArray {
       /// \return The memory bounded iteration depth
       /// \thorw TiledArray::Exception When the memory bounded iteration depth
       /// is less than 1.
-      size_type mem_bound_depth(size_type depth, float left_sparsity, float right_sparsity) {
+      size_type mem_bound_depth(size_type depth, const float left_sparsity, const float right_sparsity) {
 
         // Check if a memory bound has been set
-        const std::size_t available_memory = 1ul;
+        const size_type available_memory = max_memory_;
         if(available_memory) {
 
           // Compute the average memory requirement per iteration of this process
           const std::size_t local_memory_per_iter_left =
-              (left_.trange().elements().volume() / left_.trange().tiles().volume()) *
+              (left_.trange().elements_range().volume() / left_.trange().tiles_range().volume()) *
               sizeof(typename numeric_type<typename left_type::eval_type>::type) *
               proc_grid_.local_rows() * (1.0f - left_sparsity);
           const std::size_t local_memory_per_iter_right =
-              (right_.trange().elements().volume() / right_.trange().tiles().volume()) *
+              (right_.trange().elements_range().volume() / right_.trange().tiles_range().volume()) *
               sizeof(typename numeric_type<typename right_type::eval_type>::type) *
               proc_grid_.local_cols() * (1.0f - right_sparsity);
 
           // Compute the maximum number of iterations based on available memory
           const size_type mem_bound_depth =
               ((local_memory_per_iter_left + local_memory_per_iter_right) /
-              available_memory) * 0.8;
+              available_memory);
 
           // Check if the memory bounded depth is less than the optimal depth
           if(depth > mem_bound_depth) {
@@ -1265,8 +1315,8 @@ namespace TiledArray {
                 TA_EXCEPTION("Insufficient memory available for SUMMA");
                 break;
               case 1:
-                if(TensorImpl_::get_world().rank() == 0)
-                  printf("!! WARNING TiledArray: Insufficient memory available for SUMMA.\n"
+                if(TensorImpl_::world().rank() == 0)
+                  printf("!! WARNING TiledArray: Memory constraints limit the SUMMA depth depth to 1.\n"
                          "!! WARNING TiledArray: Performance may be slow.\n");
               default:
                 depth = mem_bound_depth;
@@ -1286,7 +1336,7 @@ namespace TiledArray {
       /// \return The number of tiles that will be set by this process
       virtual int internal_eval() {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
-        printf("eval: start eval children rank=%i\n", TensorImpl_::get_world().rank());
+        printf("eval: start eval children rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
 
         // Start evaluate child tensors
@@ -1294,7 +1344,7 @@ namespace TiledArray {
         right_.eval();
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
-        printf("eval: finished eval children rank=%i\n", TensorImpl_::get_world().rank());
+        printf("eval: finished eval children rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
 
         size_type tile_count = 0ul;
@@ -1303,26 +1353,28 @@ namespace TiledArray {
 
           // depth controls the number of simultaneous SUMMA iterations
           // that are scheduled.
-#ifndef TILEDARRAY_SUMMA_DEPTH
+
+          // The optimal depth is equal to the smallest dimension of the process
+          // grid, but no less than 2
           size_type depth =
               std::max(ProcGrid::size_type(2), std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
-#else
-          size_type depth = TILEDARRAY_SUMMA_DEPTH;
-#endif //TILEDARRAY_SUMMA_DEPTH
 
           // Construct the first SUMMA iteration task
           if(TensorImpl_::shape().is_dense()) {
-#ifndef TILEDARRAY_SUMMA_DEPTH
+            // We cannot have more iterations than there are blocks in the k
+            // dimension
             if(depth > k_) depth = k_;
 
             // Modify the number of concurrent iterations based on the available
             // memory.
-//            depth = mem_bound_depth(depth, 0.0f, 0.0f);
-#endif //TILEDARRAY_SUMMA_DEPTH
-            TensorImpl_::get_world().taskq.add(new DenseStepTask(shared_from_this(),
-                depth));
+            depth = mem_bound_depth(depth, 0.0f, 0.0f);
+
+            // Enforce user defined depth bound
+            if(max_depth_) std::min(depth, max_depth_);
+
+            TensorImpl_::world().taskq.add(new DenseStepTask(shared_from_this(),
+                                                             depth));
           } else {
-#ifndef TILEDARRAY_SUMMA_DEPTH
             // Increase the depth based on the amount of sparsity in an iteration.
 
             // Get the sparsity fractions for the left- and right-hand arguments.
@@ -1333,21 +1385,27 @@ namespace TiledArray {
             const float frac_non_zero = (1.0f - std::min(left_sparsity, 0.9f))
                                       * (1.0f - std::min(right_sparsity, 0.9f));
 
-            // Compute the new depth
+            // Compute the new depth based on sparsity of the arguments
             depth = float(depth) * (1.0f - 1.35638f * std::log2(frac_non_zero)) + 0.5f;
+
+            // We cannot have more iterations than there are blocks in the k
+            // dimension
             if(depth > k_) depth = k_;
 
             // Modify the number of concurrent iterations based on the available
             // memory and sparsity of the argument tensors.
-//            depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
-#endif // TILEDARRAY_SUMMA_DEPTH
-            TensorImpl_::get_world().taskq.add(new SparseStepTask(shared_from_this(),
-                depth));
+            depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
+
+            // Enforce user defined depth bound
+            if(max_depth_) std::min(depth, max_depth_);
+
+            TensorImpl_::world().taskq.add(new SparseStepTask(shared_from_this(),
+                                                              depth));
           }
         }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
-        printf("eval: start wait children rank=%i\n", TensorImpl_::get_world().rank());
+        printf("eval: start wait children rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
 
         // Wait for child tensors to be evaluated, and process tasks while waiting.
@@ -1355,7 +1413,7 @@ namespace TiledArray {
         right_.wait();
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
-        printf("eval: finished wait children rank=%i\n", TensorImpl_::get_world().rank());
+        printf("eval: finished wait children rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
 
         return tile_count;
@@ -1363,6 +1421,18 @@ namespace TiledArray {
 
     }; // class Summa
 
+
+    // Initialize static member variables for Summa
+
+    template <typename Left, typename Right, typename Op, typename Policy>
+    typename Summa<Left, Right, Op, Policy>::size_type
+    Summa<Left, Right, Op, Policy>::max_depth_ =
+        Summa<Left, Right, Op, Policy>::init_max_depth();
+
+    template <typename Left, typename Right, typename Op, typename Policy>
+    typename Summa<Left, Right, Op, Policy>::size_type
+    Summa<Left, Right, Op, Policy>::max_memory_ =
+        Summa<Left, Right, Op, Policy>::init_max_memory();
   } // namespace detail
 }  // namespace TiledArray
 

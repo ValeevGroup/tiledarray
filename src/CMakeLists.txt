@@ -158,7 +158,7 @@ target_include_directories(tiledarray INTERFACE
 target_compile_definitions(tiledarray PUBLIC 
    $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
 target_include_directories(tiledarray PUBLIC 
-   "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN_INCLUDE_DIR}")
+   "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN3_INCLUDE_DIR}")
 if(TARGET build-madness)
   add_dependencies(tiledarray build-madness)
 endif()

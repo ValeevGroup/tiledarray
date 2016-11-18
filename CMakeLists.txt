@@ -105,6 +105,8 @@ else()
   set(CMAKE_MACOSX_RPATH FALSE)
 endif()
 
+# miscellaneous cmake platform-neutral and platform-specific configuration =============================
+set(CMAKE_FIND_NO_INSTALL_PREFIX TRUE)  # do not search in CMAKE_INSTALL_PREFIX 
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 set(CMAKE_SKIP_INSTALL_RPATH FALSE)

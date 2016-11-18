@@ -14,10 +14,23 @@ if(NOT TARGET tiledarray)
   include("${CMAKE_CURRENT_LIST_DIR}/tiledarray-targets.cmake")
 endif()
 if(NOT TARGET MADworld)
-  find_package(MADNESS 0.10.1 CONFIG QUIET REQUIRED COMPONENTS world HINTS "${CMAKE_CURRENT_LIST_DIR}/../madness")
+  # if madness installed separately, use the madness install discovered when configuring TA
+  set(MADNESS_CONFIG_DIR "@MADNESS_CONFIG_DIR@")
+  # otherwise assume TA built madness
+  if (MADNESS_CONFIG_DIR STREQUAL "")
+    set(MADNESS_CONFIG_DIR "${CMAKE_CURRENT_LIST_DIR}/../madness")
+  endif()
+  find_package(MADNESS 0.10.1 CONFIG QUIET REQUIRED COMPONENTS world PATHS ${MADNESS_CONFIG_DIR} NO_DEFAULT_PATH)
 endif()
 
-# Set the madness libraries target
+# re-export other dependency info
+if (@EIGEN3_FOUND@)
+  set(EIGEN3_FOUND @EIGEN3_FOUND@)
+  set(EIGEN3_VERSION @EIGEN3_VERSION@)
+  set(EIGEN3_INCLUDE_DIR @EIGEN3_INCLUDE_DIR@)
+endif()
+
+# Set the tiledarray compiled library target
 set(TILEDARRAY_LIBRARIES tiledarray)
 
 set(TILEDARRAY_SOURCE_DIR "@TILEDARRAY_SOURCE_DIR@")

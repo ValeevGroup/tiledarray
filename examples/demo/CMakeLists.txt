@@ -1,6 +1,6 @@
 #
 #  This file is a part of TiledArray.
-#  Copyright (C) 2013  Virginia Tech
+#  Copyright (C) 2016  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,18 +15,12 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#  Justus Calvin
-#  Department of Chemistry, Virginia Tech
-#
-#  CMakeLists.txt
-#  Feb 4, 2014
-#
 
 # Create the ta_fock_build executable
 
-# Add the ta_fock_build executable
-add_executable(ta_k_build EXCLUDE_FROM_ALL ta_k_build.cpp)
-target_link_libraries(ta_k_build PRIVATE tiledarray)
-add_dependencies(ta_k_build External)
-add_dependencies(example ta_k_build)
+# Add the demo executable
+add_executable(demo EXCLUDE_FROM_ALL demo.cpp)
+target_link_libraries(demo PRIVATE tiledarray)
+add_dependencies(demo External)
+add_dependencies(example demo)
 

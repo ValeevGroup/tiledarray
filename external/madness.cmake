@@ -13,6 +13,8 @@ find_package(MADNESS 0.10.1 CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_D
 if(MADNESS_FOUND)
 
   cmake_push_check_state()
+
+  set(MADNESS_CONFIG_DIR ${MADNESS_DIR})
   
   list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INCLUDE_DIRS} ${TiledArray_CONFIG_INCLUDE_DIRS})
   list(APPEND CMAKE_REQUIRED_LIBRARIES "${MADNESS_LINKER_FLAGS}" ${MADNESS_LIBRARIES}
@@ -81,7 +83,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "d7e79c5bad433b0c7b67b989dc73d3535e927834" CACHE STRING 
+  set(MADNESS_TAG "38f5199aae8335b160f92d31d320a0f66461aead" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
