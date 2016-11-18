@@ -48,6 +48,21 @@ namespace TiledArray {
        typename Policy::shape_type shape;
     };
 
+    /// \brief type trait checks if T has array() member
+    /// Useful to determine if an Expr is a TsrExpr or a related type
+    template<class E>
+    class has_array {
+       /// true case
+       template<class U>
+       static auto __test(U* p) -> decltype(p->array(), std::true_type());
+       /// false case
+       template<class>
+       static std::false_type __test(...);
+    public:
+       static constexpr const bool value = std::is_same<std::true_type, decltype(__test<E>(0))>::value;
+    };
+
+
     /// Base class for expression evaluation
 
     /// \tparam Derived The derived class type
@@ -478,15 +493,36 @@ namespace TiledArray {
       template <typename T>
       static T sqrt(const T t) { return std::sqrt(t); }
 
-    public:
+      template <typename D, typename Enabler = void>
+      struct default_world_helper {
+        default_world_helper(const D&) {}
+        World& get() const { return madness::World::get_default(); }
+      };
+      template <typename D>
+      struct default_world_helper<
+          D, typename std::enable_if<has_array<D>::value>::type> {
+        default_world_helper(const D& d) : derived_(d) {}
+        World& get() const { return derived_.array().world(); }
+        const D& derived_;
+      };
+      World& default_world() const {
+        return default_world_helper<Derived>(this->derived()).get();
+      }
+
+     public:
 
       Future<typename TiledArray::SquaredNormReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      norm(World& world = World::get_default()) const {
+      norm(World& world) const {
         return world.taskq.add(Expr_::template sqrt<
             typename TiledArray::SquaredNormReduction<
             typename EngineTrait<engine_type>::eval_type>::result_type>,
             squared_norm(world));
+      }
+      Future<typename TiledArray::SquaredNormReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      norm() const {
+        return norm(default_world());
       }
 
       Future<typename TiledArray::MinReduction<
