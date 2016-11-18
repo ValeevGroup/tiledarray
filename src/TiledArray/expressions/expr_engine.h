@@ -33,7 +33,7 @@ namespace TiledArray {
   namespace expressions {
 
     // Forward declarations
-    template <typename> struct StructOverride;
+    template <typename> struct EngineParamOverride;
     template <typename> class Expr;
     template <typename> struct EngineTrait;
 
@@ -67,7 +67,7 @@ namespace TiledArray {
       trange_type trange_; ///< The tiled range of the result tensor
       shape_type shape_; ///< The shape of the result tensor
       std::shared_ptr<pmap_interface> pmap_; ///< The process map for the result tensor
-      std::shared_ptr<StructOverride<Derived> > struct_override_ptr_; ///< The structure used to override array member variables.
+      std::shared_ptr<EngineParamOverride<Derived> > override_ptr_; ///< The engine params overriding the default
 
     public:
 
@@ -77,7 +77,7 @@ namespace TiledArray {
       template <typename D>
       ExprEngine(const Expr<D> &expr) :
         world_(NULL), vars_(), permute_tiles_(true), perm_(), trange_(), shape_(),
-        pmap_(), struct_override_ptr_(expr.struct_override_ptr_)
+        pmap_(), override_ptr_(expr.override_ptr_)
       { }
 
       /// Construct and initialize the expression engine
@@ -100,11 +100,11 @@ namespace TiledArray {
           derived().init_struct(vars_);
         }
 
-        if (struct_override_ptr_ != nullptr) {
-          if (struct_override_ptr_->world)
-            world_ = struct_override_ptr_->world;
-          if (struct_override_ptr_->pmap)
-            pmap_ = struct_override_ptr_->pmap;
+        if (override_ptr_ != nullptr) {
+          if (override_ptr_->world)
+            world_ = override_ptr_->world;
+          if (override_ptr_->pmap)
+            pmap_ = override_ptr_->pmap;
         }
         else {
           world_ = &world;
@@ -143,10 +143,8 @@ namespace TiledArray {
           shape_ = derived().make_shape();
         }
 
-        if(struct_override_ptr_ != nullptr){
-          if (struct_override_ptr_->shape)
-            shape_ = shape_.mask(*struct_override_ptr_->shape);
-        }
+        if(override_ptr_ && override_ptr_->shape)
+          shape_ = shape_.mask(*override_ptr_->shape);
       }
 
       /// Initialize result tensor distribution

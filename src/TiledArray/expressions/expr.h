@@ -44,7 +44,7 @@ namespace TiledArray {
     template <typename> struct is_aliased;
 
     template <typename Engine>
-    struct StructOverride {
+    struct EngineParamOverride {
 
       typedef typename EngineTrait<Engine>::policy policy; ///< The result policy type
       typedef typename EngineTrait<Engine>::shape_type shape_type; ///< Tensor shape type
@@ -72,9 +72,9 @@ namespace TiledArray {
       template <typename D>
       friend class ExprEngine;
 
-      typedef StructOverride<engine_type>
+      typedef EngineParamOverride<engine_type>
           override_type; ///< Expression engine parameters
-      std::shared_ptr<override_type> struct_override_ptr_;
+      std::shared_ptr<override_type> override_ptr_;
 
     public:
       /// \param shape the shape to use for the result
@@ -82,21 +82,21 @@ namespace TiledArray {
      /// pointer; passing by const ref ensures lifetime management for temporary
      /// shapes
      Expr<Derived>& set_shape(typename override_type::shape_type const& shape) {
-       if (struct_override_ptr_ != nullptr) {
-         struct_override_ptr_->shape = &shape;
+       if (override_ptr_ != nullptr) {
+         override_ptr_->shape = &shape;
        } else {
-         struct_override_ptr_ = std::make_shared<override_type>();
-         struct_override_ptr_->shape = &shape;
+         override_ptr_ = std::make_shared<override_type>();
+         override_ptr_->shape = &shape;
        }
        return derived();
       }
       /// \param world the World object to use for the result
       Expr<Derived> &set_world(World& world) {
-          if(struct_override_ptr_ != nullptr){
-            struct_override_ptr_->world = &world;
+          if(override_ptr_ != nullptr){
+            override_ptr_->world = &world;
           } else {
-              struct_override_ptr_ = std::make_shared<override_type>();
-              struct_override_ptr_->world = &world;
+              override_ptr_ = std::make_shared<override_type>();
+              override_ptr_->world = &world;
           }
           return derived();
       }
@@ -104,11 +104,11 @@ namespace TiledArray {
       Expr<Derived>& set_pmap(
           const std::shared_ptr<typename override_type::pmap_interface>
               pmap) {
-        if (struct_override_ptr_) {
-          struct_override_ptr_->pmap = pmap;
+        if (override_ptr_) {
+          override_ptr_->pmap = pmap;
         } else {
-          struct_override_ptr_ = std::make_shared<override_type>();
-          struct_override_ptr_->pmap = pmap;
+          override_ptr_ = std::make_shared<override_type>();
+          override_ptr_->pmap = pmap;
         }
         return derived();
       }
@@ -220,12 +220,18 @@ namespace TiledArray {
         static_assert(! is_lazy_tile<typename A::value_type>::value,
             "Assignment to an array of lazy tiles is not supported.");
 
-        // Get the target world.
+        // Get the target world
+        // 1. result's world is assigned, use it
+        // 2. if this expression's world was assigned by set_world(), use it
+        // 3. otherwise revert to the default MADNESS world
+        const auto has_set_world = override_ptr_ && override_ptr_->world;
         World& world = (tsr.array().is_initialized() ?
             tsr.array().world() :
-            World::get_default());
+            (has_set_world ? *override_ptr_->world : World::get_default()));
 
         // Get the output process map.
+        // If result's pmap is assigned use it as the initial guess
+        // it will be assigned in engine.init
         std::shared_ptr<typename TsrExpr<A, Alias>::array_type::pmap_interface> pmap;
         if(tsr.array().is_initialized())
           pmap = tsr.array().pmap();
