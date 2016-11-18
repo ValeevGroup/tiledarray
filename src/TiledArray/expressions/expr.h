@@ -350,11 +350,27 @@ namespace TiledArray {
 
       struct ExpressionReduceTag { };
 
+      template <typename D, typename Enabler = void>
+      struct default_world_helper {
+        default_world_helper(const D&) {}
+        World& get() const { return madness::World::get_default(); }
+      };
+      template <typename D>
+      struct default_world_helper<
+          D, typename std::enable_if<has_array<D>::value>::type> {
+        default_world_helper(const D& d) : derived_(d) {}
+        World& get() const { return derived_.array().world(); }
+        const D& derived_;
+      };
+      World& default_world() const {
+        return default_world_helper<Derived>(this->derived()).get();
+      }
+
     public:
 
       template <typename Op>
       Future<typename Op::result_type>
-      reduce(const Op& op, World& world = World::get_default()) const {
+      reduce(const Op& op, World& world) const {
         // Typedefs
         typedef madness::TaggedKey<madness::uniqueidT, ExpressionReduceTag> key_type;
         typedef TiledArray::math::UnaryReduceWrapper<typename engine_type::value_type,
@@ -386,10 +402,16 @@ namespace TiledArray {
         return world.gop.all_reduce(key_type(dist_eval.id()), reduce_task.submit(), op);
       }
 
+      template <typename Op>
+      Future<typename Op::result_type>
+      reduce(const Op& op) const {
+        return reduce(op, default_world());
+      }
+
       template <typename D, typename Op>
       Future<typename Op::result_type>
       reduce(const Expr<D>& right_expr, const Op& op,
-          World& world = World::get_default()) const
+             World& world) const
       {
         static_assert(is_aliased<D>::value,
             "no_alias() expressions are not allowed on the right-hand side of "
@@ -459,33 +481,63 @@ namespace TiledArray {
             local_reduce_task.submit(), op);
       }
 
+      template <typename D, typename Op>
+      Future<typename Op::result_type>
+      reduce(const Expr<D>& right_expr, const Op& op) const {
+        return reduce(right_expr, op, default_world());
+      }
+
       Future<typename TiledArray::TraceReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      trace(World& world = World::get_default()) const {
+      trace(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::TraceReduction<value_type>(), world);
       }
 
+      Future<typename TiledArray::TraceReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      trace() const {
+        return trace(default_world());
+      }
+
       Future<typename TiledArray::SumReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      sum(World& world = World::get_default()) const {
+      sum(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::SumReduction<value_type>(), world);
       }
 
+      Future<typename TiledArray::SumReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      sum() const {
+        return sum(default_world());
+      }
+
       Future<typename TiledArray::ProductReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      product(World& world = World::get_default()) const {
+      product(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::ProductReduction<value_type>(), world);
       }
 
+      Future<typename TiledArray::ProductReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      product() const {
+        return product(default_world());
+      }
+
       Future<typename TiledArray::SquaredNormReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      squared_norm(World& world = World::get_default()) const {
+      squared_norm(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::SquaredNormReduction<value_type>(),
             world);
+      }
+
+      Future<typename TiledArray::SquaredNormReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      squared_norm() const {
+        return squared_norm(default_world());
       }
 
     private:
@@ -493,23 +545,7 @@ namespace TiledArray {
       template <typename T>
       static T sqrt(const T t) { return std::sqrt(t); }
 
-      template <typename D, typename Enabler = void>
-      struct default_world_helper {
-        default_world_helper(const D&) {}
-        World& get() const { return madness::World::get_default(); }
-      };
-      template <typename D>
-      struct default_world_helper<
-          D, typename std::enable_if<has_array<D>::value>::type> {
-        default_world_helper(const D& d) : derived_(d) {}
-        World& get() const { return derived_.array().world(); }
-        const D& derived_;
-      };
-      World& default_world() const {
-        return default_world_helper<Derived>(this->derived()).get();
-      }
-
-     public:
+    public:
 
       Future<typename TiledArray::SquaredNormReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
@@ -527,41 +563,73 @@ namespace TiledArray {
 
       Future<typename TiledArray::MinReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      min(World& world = World::get_default()) const {
+      min(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::MinReduction<value_type>(), world);
       }
 
+      Future<typename TiledArray::MinReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      min() const {
+        return min(default_world());
+      }
+
       Future<typename TiledArray::MaxReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      max(World& world = World::get_default()) const {
+      max(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::MaxReduction<value_type>(), world);
       }
 
+      Future<typename TiledArray::MaxReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      max() const {
+        return max(default_world());
+      }
+
       Future<typename TiledArray::AbsMinReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      abs_min(World& world = World::get_default()) const {
+      abs_min(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::AbsMinReduction<value_type>(), world);
       }
 
+      Future<typename TiledArray::AbsMinReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      abs_min() const {
+        return abs_min(default_world());
+      }
+
       Future<typename TiledArray::AbsMaxReduction<
           typename EngineTrait<engine_type>::eval_type>::result_type>
-      abs_max(World& world = World::get_default()) const {
+      abs_max(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::AbsMaxReduction<value_type>(), world);
+      }
+
+      Future<typename TiledArray::AbsMaxReduction<
+          typename EngineTrait<engine_type>::eval_type>::result_type>
+      abs_max() const {
+        return abs_max(default_world());
       }
 
       template <typename D>
       Future<typename TiledArray::DotReduction<
           typename EngineTrait<engine_type>::eval_type,
           typename EngineTrait<typename D::engine_type>::eval_type>::result_type>
-      dot(const Expr<D>& right_expr, World& world = World::get_default()) const {
+      dot(const Expr<D>& right_expr, World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type left_value_type;
         typedef typename EngineTrait<typename D::engine_type>::eval_type right_value_type;
         return reduce(right_expr, TiledArray::DotReduction<left_value_type,
             right_value_type>(), world);
+      }
+
+      template <typename D>
+      Future<typename TiledArray::DotReduction<
+          typename EngineTrait<engine_type>::eval_type,
+          typename EngineTrait<typename D::engine_type>::eval_type>::result_type>
+      dot(const Expr<D>& right_expr) const {
+        return dot(right_expr, default_world());
       }
 
     }; // class Expr
