@@ -236,8 +236,8 @@ namespace TiledArray {
     /// environment variable. The default timeout is 900 seconds.
     /// \param world The world that to be used to execute ready tasks.
     /// \throw madness::MadnessException When timeout has been exceeded.
-    static void wait_for_lazy_cleanup(World& world = World::get_default(),
-        const double = 60.0)
+    static void wait_for_lazy_cleanup(World& world,
+                                      const double = 60.0)
     {
       try {
         world.await([&]() { return (cleanup_counter_ == 0); }, true);
