@@ -4,6 +4,12 @@
 # Find MADNESS
 ###################
 
+# extra preprocessor definitions that MADNESS needs from TiledArray
+set(MADNESS_EXTRA_CPP_FLAGS "")
+if (MADNESS_DISABLE_WORLD_GET_DEFAULT)
+  set(MADNESS_EXTRA_CPP_FLAGS "${MADNESS_EXTRA_CPP_FLAGS} -DMADNESS_DISABLE_WORLD_GET_DEFAULT")
+endif ()
+
 include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
@@ -19,7 +25,7 @@ if(MADNESS_FOUND)
   list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INCLUDE_DIRS} ${TiledArray_CONFIG_INCLUDE_DIRS})
   list(APPEND CMAKE_REQUIRED_LIBRARIES "${MADNESS_LINKER_FLAGS}" ${MADNESS_LIBRARIES}
       "${CMAKE_EXE_LINKER_FLAGS}" ${TiledArray_CONFIG_LIBRARIES})
-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${MADNESS_COMPILE_FLAGS} ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${MADNESS_COMPILE_FLAGS} ${CMAKE_CXX_FLAGS} ${MADNESS_EXTRA_CPP_FLAGS}")
 
   # sanity check: try compiling a simple program
   CHECK_CXX_SOURCE_COMPILES(
@@ -83,7 +89,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "38f5199aae8335b160f92d31d320a0f66461aead" CACHE STRING 
+  set(MADNESS_TAG "e4aa500e67f58a10e48bc54a46e10b928ffb84ab" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -218,6 +224,13 @@ else()
   if (DEFINED ELEMENTAL_URL)
     set(MAD_ELEMENTAL_OPTIONS -DELEMENTAL_URL=${ELEMENTAL_URL} ${MAD_ELEMENTAL_OPTIONS})
   endif (DEFINED ELEMENTAL_URL)
+  
+  # update all CMAKE_CXX_FLAGS to include extra preprocessor flags MADNESS needs
+  set(CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} ${MADNESS_EXTRA_CPP_FLAGS}")
+  set(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} ${MADNESS_EXTRA_CPP_FLAGS}")
+  set(CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS_RELEASE} ${MADNESS_EXTRA_CPP_FLAGS}")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${MADNESS_EXTRA_CPP_FLAGS}")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL} ${MADNESS_EXTRA_CPP_FLAGS}")
   
   set(error_code 1)
   message (STATUS "** Configuring MADNESS")
