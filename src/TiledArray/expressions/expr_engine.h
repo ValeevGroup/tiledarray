@@ -33,7 +33,7 @@ namespace TiledArray {
   namespace expressions {
 
     // Forward declarations
-    template <typename> struct StructOverride;
+    template <typename> struct EngineParamOverride;
     template <typename> class Expr;
     template <typename> struct EngineTrait;
 
@@ -67,7 +67,7 @@ namespace TiledArray {
       trange_type trange_; ///< The tiled range of the result tensor
       shape_type shape_; ///< The shape of the result tensor
       std::shared_ptr<pmap_interface> pmap_; ///< The process map for the result tensor
-      std::shared_ptr<StructOverride<policy> > struct_override_ptr_; ///< The structure used to override array member variables.
+      std::shared_ptr<EngineParamOverride<Derived> > override_ptr_; ///< The engine params overriding the default
 
     public:
 
@@ -77,7 +77,7 @@ namespace TiledArray {
       template <typename D>
       ExprEngine(const Expr<D> &expr) :
         world_(NULL), vars_(), permute_tiles_(true), perm_(), trange_(), shape_(),
-        pmap_(), struct_override_ptr_(expr.struct_override_ptr_)
+        pmap_(), override_ptr_(expr.override_ptr_)
       { }
 
       /// Construct and initialize the expression engine
@@ -100,16 +100,27 @@ namespace TiledArray {
           derived().init_struct(vars_);
         }
 
-        // Check for a valid process map.
-        if(pmap) {
-          // If process map is not valid, use the process map constructed by the
-          // expression engine.
-          if((typename pmap_interface::size_type(world.size()) != pmap->procs()) ||
-              (trange_.tiles_range().volume() != pmap->size()))
-            pmap.reset();
+        if (override_ptr_ != nullptr) {
+          if (override_ptr_->world)
+            world_ = override_ptr_->world;
+          if (override_ptr_->pmap)
+            pmap_ = override_ptr_->pmap;
+        }
+        else {
+          world_ = &world;
+          pmap_ = pmap;
         }
 
-        derived().init_distribution(& world, pmap);
+        // Check for a valid process map.
+        if(pmap_) {
+          // If process map is not valid, use the process map constructed by the
+          // expression engine.
+          if((typename pmap_interface::size_type(world_->size()) != pmap_->procs()) ||
+              (trange_.tiles_range().volume() != pmap_->size()))
+            pmap_.reset();
+        }
+
+        derived().init_distribution(world_, pmap_);
       }
 
       /// Initialize result tensor structure
@@ -132,9 +143,8 @@ namespace TiledArray {
           shape_ = derived().make_shape();
         }
 
-        if(struct_override_ptr_ != nullptr){
-            shape_ = shape_.mask(struct_override_ptr_->shape);
-        } 
+        if(override_ptr_ && override_ptr_->shape)
+          shape_ = shape_.mask(*override_ptr_->shape);
       }
 
       /// Initialize result tensor distribution

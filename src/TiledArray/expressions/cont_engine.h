@@ -376,8 +376,8 @@ namespace TiledArray {
           shape_ = ContEngine_::make_shape();
         }
 
-        if(ExprEngine_::struct_override_ptr_ != nullptr){
-            shape_ = shape_.mask(ExprEngine_::struct_override_ptr_->shape);
+        if(ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape){
+            shape_ = shape_.mask(*ExprEngine_::override_ptr_->shape);
         } 
       }
 
