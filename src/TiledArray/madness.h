@@ -26,13 +26,12 @@
 #endif // WORLD_INSTANTIATE_STATIC_TEMPLATES
 
 #include <memory>
-
 #pragma GCC diagnostic push
 #pragma GCC system_header
 #include <madness/world/MADworld.h>
 #include <madness/tensor/cblas.h>
 #pragma GCC diagnostic pop
-#include "error.h"
+#include <TiledArray/error.h>
 
 namespace TiledArray {
 // Import some MADNESS classes into TiledArray for convenience.
@@ -64,7 +63,7 @@ namespace TiledArray {
         return world_;
       }
     };
-  };
+  }  // namespace detail
 
   /// \brief Sets the default World to \c world .
 
@@ -120,6 +119,6 @@ namespace TiledArray {
         current_world, detail::world_resetter);
   }
 
-  }  // namespace TiledArray
+}  // namespace TiledArray
 
 #endif // TILEDARRAY_MADNESS_H__INCLUDED
