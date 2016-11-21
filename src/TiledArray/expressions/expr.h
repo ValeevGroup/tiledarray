@@ -238,11 +238,11 @@ namespace TiledArray {
         // Get the target world
         // 1. result's world is assigned, use it
         // 2. if this expression's world was assigned by set_world(), use it
-        // 3. otherwise revert to the default MADNESS world
+        // 3. otherwise revert to the TA default for the MADNESS world
         const auto has_set_world = override_ptr_ && override_ptr_->world;
         World& world = (tsr.array().is_initialized() ?
             tsr.array().world() :
-            (has_set_world ? *override_ptr_->world : World::get_default()));
+            (has_set_world ? *override_ptr_->world : TiledArray::get_default_world()));
 
         // Get the output process map.
         // If result's pmap is assigned use it as the initial guess
@@ -392,7 +392,7 @@ namespace TiledArray {
       template <typename D, typename Enabler = void>
       struct default_world_helper {
         default_world_helper(const D&) {}
-        World& get() const { return madness::World::get_default(); }
+        World& get() const { return TiledArray::get_default_world(); }
       };
       template <typename D>
       struct default_world_helper<
