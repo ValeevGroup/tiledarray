@@ -91,7 +91,7 @@ namespace TiledArray {
     return detail::default_world::set(nullptr);
   }
 
-  namespace detail {
+  namespace {
   auto world_resetter = [](World* w) { set_default_world(*w); };
   }  // namespace detail
 
@@ -111,12 +111,12 @@ namespace TiledArray {
   /// \return a smart pointer to the current default World (i.e. not \c world)
   ///         whose deleter will reset the default World back to the stored
   ///         value
-  static std::unique_ptr<World, decltype(detail::world_resetter)>
+  static std::unique_ptr<World, decltype(world_resetter)>
   push_default_world(World& world) {
     World* current_world = &get_default_world();
     set_default_world(world);
-    return std::unique_ptr<World, decltype(detail::world_resetter)>(
-        current_world, detail::world_resetter);
+    return std::unique_ptr<World, decltype(world_resetter)>(
+        current_world, world_resetter);
   }
 
 }  // namespace TiledArray
