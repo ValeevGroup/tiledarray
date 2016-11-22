@@ -21,16 +21,15 @@
 #  CMakeLists.txt
 #  Sep 4, 2013
 #
- 
-# Create example programs target so all examples programs
-add_custom_target(example)
 
-# Add Subdirectories
-add_subdirectory (cc)
-add_subdirectory (dgemm)
-add_subdirectory (demo)
-add_subdirectory (elemental)
-add_subdirectory (fock)
-add_subdirectory (mpi_tests)
-add_subdirectory (pmap_test)
-add_subdirectory (vector_tests)
+# Create example executable
+
+foreach(_exec evd)
+
+  # Add executable
+  add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
+  target_link_libraries(${_exec} PRIVATE tiledarray)
+  add_dependencies(${_exec} External)
+  add_dependencies(example ${_exec})
+
+endforeach()
