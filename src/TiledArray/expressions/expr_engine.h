@@ -100,16 +100,10 @@ namespace TiledArray {
           derived().init_struct(vars_);
         }
 
-        if (override_ptr_ != nullptr) {
-          if (override_ptr_->world)
-            world_ = override_ptr_->world;
-          if (override_ptr_->pmap)
-            pmap_ = override_ptr_->pmap;
-        }
-        else {
-          world_ = &world;
-          pmap_ = pmap;
-        }
+        auto override_world = override_ptr_ != nullptr && override_ptr_->world;
+        auto override_pmap = override_ptr_ != nullptr && override_ptr_->pmap;
+        world_ = override_world ? override_ptr_->world : &world;
+        pmap_ = override_pmap ? override_ptr_->pmap : pmap;
 
         // Check for a valid process map.
         if(pmap_) {
