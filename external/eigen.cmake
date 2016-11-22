@@ -59,6 +59,7 @@ else()
     SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
     CONFIGURE_COMMAND ""
    #--Build step-----------------
+    BINARY_DIR ${EXTERNAL_BUILD_DIR}
     BUILD_COMMAND ""
    #--Install step---------------
     INSTALL_COMMAND ""
