@@ -43,7 +43,6 @@ else()
 
   # Set source and build path for Eigen3 in the TiledArray Project
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
-  set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
   set(EIGEN3_URL https://bitbucket.org/eigen/eigen)
   set(EIGEN3_TAG 3.2.4)
 
@@ -59,6 +58,7 @@ else()
     SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
     CONFIGURE_COMMAND ""
    #--Build step-----------------
+    BINARY_DIR ${EXTERNAL_SOURCE_DIR}
     BUILD_COMMAND ""
    #--Install step---------------
     INSTALL_COMMAND ""
