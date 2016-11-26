@@ -16,6 +16,17 @@ include(ConvertLibrariesListToCompilerArgs)
 
 find_package(MADNESS 0.10.1 CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
 
+macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
+  set(${_mad_config_libs} )
+  foreach (_lib ${${_mad_libraries}})
+    if (${_lib} MATCHES "MAD*")
+      set(${_mad_config_libs} "${${_mad_config_libs}} -l${_lib}")
+    else ()
+      set(${_mad_config_libs} "${${_mad_config_libs}} ${_lib}")
+    endif()
+  endforeach()
+endmacro()
+
 if(MADNESS_FOUND)
 
   cmake_push_check_state()
@@ -67,7 +78,8 @@ if(MADNESS_FOUND)
 
   # Set config variables
   list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${MADNESS_INCLUDE_DIRS})
-  set(TiledArray_CONFIG_LIBRARIES ${MADNESS_LIBRARIES} ${TiledArray_CONFIG_LIBRARIES})
+  replace_mad_targets_with_libnames(MADNESS_LIBRARIES MADNESS_CONFIG_LIBRARIES)
+  list(APPEND TiledArray_CONFIG_LIBRARIES ${MADNESS_CONFIG_LIBRARIES})
   set(TiledArray_LIBRARIES ${MADNESS_LIBRARIES} ${TiledArray_LIBRARIES})
 
   
@@ -344,8 +356,9 @@ else()
   # Set build dependencies and compiler arguments
   add_dependencies(External build-madness)
 
-  # Set config variables 
-  list(APPEND TiledArray_CONFIG_LIBRARIES ${MADNESS_LIBRARIES})
+  # Set config variables
+  replace_mad_targets_with_libnames(MADNESS_LIBRARIES MADNESS_CONFIG_LIBRARIES)
+  list(APPEND TiledArray_CONFIG_LIBRARIES ${MADNESS_CONFIG_LIBRARIES})
 
 endif()
 
