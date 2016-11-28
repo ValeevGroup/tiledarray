@@ -17,7 +17,6 @@ matrix:
       env: GCC_VERSION=4.8
     - compiler: clang
       env: GCC_VERSION=4.9
-  allow_failures:
     - compiler: clang      # problems mixing ccache with clang in building mpich
       env: GCC_VERSION=5   #
 sudo: false
