@@ -12,8 +12,8 @@ case "$CXX" in
         export CXX=/usr/bin/g++-$GCC_VERSION
         ;;
     clang++)
-        export CC=/usr/bin/clang-3.7
-        export CXX=/usr/bin/clang++-3.7
+        export CC=/usr/bin/clang-3.9
+        export CXX=/usr/bin/clang++-3.9
         export CXXFLAGS="-std=c++11"
         ;;
     *)
