@@ -24,14 +24,14 @@ addons:
       - george-edison55-precise-backports
       - ubuntu-toolchain-r-test
       - boost-latest
-      - llvm-toolchain-precise-3.9
+      - llvm-toolchain-precise-3.8
     packages:
       - g++-4.7
       - g++-4.8
       - g++-4.9
       - g++-5
 # llvm.org apt repo is down
-      - clang-3.9
+      - clang-3.8
       - libeigen3-dev
       - libboost1.55-dev
       - libblas-dev
