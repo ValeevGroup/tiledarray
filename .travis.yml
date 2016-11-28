@@ -17,6 +17,9 @@ matrix:
       env: GCC_VERSION=4.8
     - compiler: clang
       env: GCC_VERSION=4.9
+  allow_failures:
+    - compiler: clang      # problems mixing ccache with clang in building mpich
+      env: GCC_VERSION=5   #
 sudo: false
 addons:
   apt:
@@ -30,7 +33,6 @@ addons:
       - g++-4.8
       - g++-4.9
       - g++-5
-# llvm.org apt repo is down
       - clang-3.8
       - libeigen3-dev
       - libboost1.55-dev
