@@ -35,7 +35,7 @@ if [ ! -d "${HOME}/mpich" ]; then
     wget --no-check-certificate -q http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz
     tar -xzf mpich-3.2.tar.gz
     cd mpich-3.2
-    ./configure CC=$CC CXX=$CXX --disable-fortran --disable-romio --prefix=${HOME}/mpich
+    ./configure CC="ccache $CC" CXX="ccache $CXX" --disable-fortran --disable-romio --prefix=${HOME}/mpich
     make -j2
     make install
     ${HOME}/mpich/bin/mpichversion
