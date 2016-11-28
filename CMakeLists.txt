@@ -215,11 +215,21 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 ##########################
 add_custom_target(External)
 
+# required deps:
 include(external/eigen.cmake)
 include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
+
+# optional deps:
+# 1. ccache
+find_program(CCACHE ccache)
+if(CCACHE)
+    message (STATUS "Found ccache: ${CCACHE_FOUND}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
+endif(CCACHE)
 
 ##########################
 # sources
