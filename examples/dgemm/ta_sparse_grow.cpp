@@ -25,6 +25,7 @@
 
 #include <iostream>
 #include <tiledarray.h>
+#include <TiledArray/version.h>
 #include <iomanip>
 
 int main(int argc, char** argv) {

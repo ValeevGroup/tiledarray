@@ -20,6 +20,7 @@
 #include <iostream>
 #include <time.h> // for time
 #include <tiledarray.h>
+#include <TiledArray/version.h>
 #include <iomanip>
 
 void print_results(const TiledArray::World& world, const std::vector<std::vector<double> >& results) {

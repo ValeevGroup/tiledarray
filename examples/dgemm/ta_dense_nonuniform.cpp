@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <tiledarray.h>
+#include <TiledArray/version.h>
 
 int main(int argc, char** argv) {
   int rc = 0;

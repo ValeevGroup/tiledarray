@@ -297,6 +297,11 @@ CONFIGURE_FILE(
 )
 
 CONFIGURE_FILE(
+  ${PROJECT_SOURCE_DIR}/src/TiledArray/version.h.in
+  ${PROJECT_BINARY_DIR}/src/TiledArray/version.h
+)
+
+CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/tiledarray.pc.in
   ${PROJECT_BINARY_DIR}/tiledarray.pc
 )

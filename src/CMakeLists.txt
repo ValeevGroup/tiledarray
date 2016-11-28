@@ -55,6 +55,7 @@ TiledArray/transform_iterator.h
 TiledArray/type_traits.h
 TiledArray/utility.h
 TiledArray/val_array.h
+TiledArray/version.h
 TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h

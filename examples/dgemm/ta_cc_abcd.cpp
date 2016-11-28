@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <tiledarray.h>
+#include <TiledArray/version.h>
 
 bool to_bool(const char* str) {
   if (not strcmp(str,"0") ||

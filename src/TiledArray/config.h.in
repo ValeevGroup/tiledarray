@@ -24,24 +24,6 @@
 
 #define TILEDARRAY_PACKAGE_URL "https://github.com/ValeevGroup/tiledarray"
 
-/* Defines a string with the Git SHA1 revision hash tag of TiledArray */
-#define TILEDARRAY_REVISION "@TILEDARRAY_REVISION@"
-
-/* TiledArray version X.Y.Z-id */
-#define TILEDARRAY_VERSION "@TILEDARRAY_VERSION@"
-
-/* TiledArray major version */
-#define TILEDARRAY_MAJOR_VERSION @TILEDARRAY_MAJOR_VERSION@
-
-/* TiledArray minor version */
-#define TILEDARRAY_MINOR_VERSION @TILEDARRAY_MINOR_VERSION@
-
-/* TiledArray micro version */
-#define TILEDARRAY_MICRO_VERSION @TILEDARRAY_MICRO_VERSION@
-
-/* TiledArray buildid */
-#define TILEDARRAY_BUILDID "@TILEDARRAY_BUILDID@"
-
 /* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
 #define TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@
 

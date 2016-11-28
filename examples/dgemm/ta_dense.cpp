@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <tiledarray.h>
+#include <TiledArray/version.h>
 #include <madness/world/worldmem.h>
 
 bool to_bool(const char* str) {

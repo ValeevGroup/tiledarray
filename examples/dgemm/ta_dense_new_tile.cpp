@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <tiledarray.h>
+#include <TiledArray/version.h>
 
 using Tile_t = TiledArray::Tile<TiledArray::Tensor<double>>;
 using Array_t = TiledArray::DistArray<Tile_t>;
