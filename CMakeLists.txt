@@ -226,7 +226,7 @@ endif()
 # 1. ccache
 find_program(CCACHE ccache)
 if(CCACHE)
-    message (STATUS "Found ccache: ${CCACHE_FOUND}")
+    message (STATUS "Found ccache: ${CCACHE}")
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
 endif(CCACHE)
