@@ -35,7 +35,7 @@ addons:
       - g++-4.9
       - g++-5
 # llvm.org apt repo is down
-#      - clang-3.7
+      - clang-3.7
       - libeigen3-dev
       - libboost1.55-dev
       - libblas-dev
