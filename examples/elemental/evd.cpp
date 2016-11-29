@@ -70,7 +70,6 @@ int main(int argc, char** argv) {
 
         if (world.rank() == 0)
             std::cout << "TiledArray: to El evd test..."
-                      << "\nGit HASH: " << TILEDARRAY_REVISION
                       << "\nNumber of nodes     = " << world.size()
                       << "\nMatrix size         = " << matrix_size << "x"
                       << matrix_size << "\nBlock size          = " << block_size
@@ -92,7 +91,7 @@ int main(int argc, char** argv) {
 
         TiledArray::TiledRange trange(blocking2.begin(), blocking2.end());
 
-        elem::DistMatrix<double, elem::MC, elem::MR, elem::BLOCK> A(elem::Grid::Default());
+        El::DistMatrix<double, El::MC, El::MR, El::BLOCK> A(El::Grid::Default());
 
         TiledArray::finalize();
 
