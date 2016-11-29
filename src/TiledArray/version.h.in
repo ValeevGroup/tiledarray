@@ -20,6 +20,9 @@
 #ifndef TILEDARRAY_VERSION_H__INCLUDED
 #define TILEDARRAY_VERSION_H__INCLUDED
 
+/* Defines a string with the Git SHA1 revision hash tag of TiledArray */
+#define TILEDARRAY_REVISION "@TILEDARRAY_REVISION@"
+
 /* TiledArray version X.Y.Z-id */
 #define TILEDARRAY_VERSION "@TILEDARRAY_VERSION@"
 
