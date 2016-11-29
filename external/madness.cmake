@@ -101,7 +101,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "c731b80ef14c9abe0c0b02bcd5c4528476a79867" CACHE STRING 
+  set(MADNESS_TAG "e4aa500e67f58a10e48bc54a46e10b928ffb84ab" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
