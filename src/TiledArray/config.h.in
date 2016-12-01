@@ -24,7 +24,7 @@
 
 #define TILEDARRAY_PACKAGE_URL "https://github.com/ValeevGroup/tiledarray"
 
-/* Defines the default error checking behavior. none = 0, throw = 1, assert = 2 */
+/* Defines the default error checking behavior. none = 0, throw = 1, assert = 2, abort = 3 */
 #define TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@
 
 /* define if compiler supports long double, the value is sizeof(long double) */
