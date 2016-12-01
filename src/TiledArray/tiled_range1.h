@@ -110,7 +110,7 @@ namespace TiledArray {
       if(! includes(elements_range_, e))
         return tiles_ranges_.end();
       const_iterator result = tiles_ranges_.begin();
-      result += element2tile(e);
+      result += element_to_tile(e);
       return result;
     }
 
@@ -146,9 +146,13 @@ namespace TiledArray {
       return tiles_ranges_[i - range_.first];
     }
 
-    const size_type& element2tile(const size_type& i) const {
+    const size_type& element_to_tile(const size_type& i) const {
       TA_ASSERT( includes(elements_range_, i) );
       return elem2tile_[i - elements_range_.first];
+    }
+
+    DEPRECATED const size_type& element2tile(const size_type& i) const {
+      return element_to_tile(i);
     }
 
     void swap(TiledRange1& other) { // no throw
