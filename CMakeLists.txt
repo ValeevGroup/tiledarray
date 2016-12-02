@@ -192,7 +192,6 @@ endif()
 # Check C++11 features
 ##########################
 
-
 include(CheckCXX11Support)
 check_cxx11_support(TILEDARRAY_HAS_CXX11)
 if (NOT TILEDARRAY_HAS_CXX11)
@@ -204,6 +203,25 @@ include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
 check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
 
+##########################
+# convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
+##########################
+set (TA_DEFAULT_ERROR 3)  # default is to abort so that it works with or without NDEBUG
+                          # assert when CMAKE_BUILD_TYPE is Debug or RelWithDebugUnfo
+string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
+if (CMAKE_BUILD_TYPE AND uppercase_CMAKE_BUILD_TYPE MATCHES "^(DEBUG|RELWITHDEBINFO)$")
+  set (TA_DEFAULT_ERROR 2)
+endif()
+
+if (TA_ERROR STREQUAL none)
+  set (TA_DEFAULT_ERROR 0)
+elseif (TA_ERROR STREQUAL throw)
+  set (TA_DEFAULT_ERROR 1)
+elseif (TA_ERROR STREQUAL assert)
+  set (TA_DEFAULT_ERROR 2)
+elseif (TA_ERROR STREQUAL abort)
+  set (TA_DEFAULT_ERROR 3)
+endif()
 
 ##########################
 # Include source dirctories
@@ -248,18 +266,6 @@ if (TA_BUILD_UNITTEST)
   add_subdirectory(tests)
 else()
   add_custom_target(check COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
-endif()
-
-##########################
-# convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
-##########################
-set (TA_DEFAULT_ERROR 1)
-if (TA_ERROR STREQUAL none)
-  set (TA_DEFAULT_ERROR 0)
-elseif (TA_ERROR STREQUAL throw)
-  set (TA_DEFAULT_ERROR 1)
-elseif (TA_ERROR STREQUAL assert)
-  set (TA_DEFAULT_ERROR 2)
 endif()
 
 ##########################
