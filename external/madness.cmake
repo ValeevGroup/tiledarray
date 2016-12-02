@@ -119,14 +119,15 @@ else()
   
   # Set error handling method (for TA_DEFAULT_ERROR values see top-level CMakeLists.txt)
   if(TA_DEFAULT_ERROR EQUAL 0)
-    set(MAD_EXCEPTION disable)
+    set(_MAD_ASSERT_TYPE disable)
   elseif(TA_DEFAULT_ERROR EQUAL 1)
-    set(MAD_EXCEPTION throw)
+    set(_MAD_ASSERT_TYPE throw)
   elseif(TA_DEFAULT_ERROR EQUAL 2)
-    set(MAD_EXCEPTION assert)
+    set(_MAD_ASSERT_TYPE assert)
   elseif(TA_DEFAULT_ERROR EQUAL 3)
-    set(MAD_EXCEPTION abort)
+    set(_MAD_ASSERT_TYPE abort)
   endif()
+  set(MAD_ASSERT_TYPE ${_MAD_ASSERT_TYPE} CACHE INTERNAL "MADNESS assert type")
   
   # Check the MADNESS source directory to make sure it contains the source files
   # If the MADNESS source directory is the default location and does not exist,
@@ -286,7 +287,7 @@ else()
       -DENABLE_LIBXC=FALSE
       "-DLAPACK_LIBRARIES=${LAPACK_LIBRARIES}"
       -DENABLE_GPERFTOOLS=${ENABLE_GPERFTOOLS}
-      -DASSERTION_TYPE=${MAD_EXCEPTION}
+      -DASSERTION_TYPE=${MAD_ASSERT_TYPE}
       "-DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}"
       ${MADNESS_CMAKE_EXTRA_ARGS}
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"

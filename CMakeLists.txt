@@ -223,15 +223,6 @@ elseif (TA_ERROR STREQUAL abort)
   set (TA_DEFAULT_ERROR 3)
 endif()
 
-# if TA_BUILD_UNITTEST assertions must throw! (some unit tests check for exceptions)
-# must override globally since TA is no longer header-only
-if (TA_BUILD_UNITTEST AND NOT TA_DEFAULT_ERROR EQUAL 1)
-  if (TA_ERROR)
-    message(WARNING "setting TA_ERROR=\"throw\" since TA_BUILD_UNITTEST=ON (current value: TA_ERROR=\"${TA_ERROR}\")")
-  endif(TA_ERROR)
-  set (TA_DEFAULT_ERROR 1)
-endif()
-
 ##########################
 # Include source dirctories
 ##########################

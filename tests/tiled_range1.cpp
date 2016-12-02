@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE( ostream )
   BOOST_CHECK( output.is_equal( stm.str().c_str() ) );
 }
 
-BOOST_AUTO_TEST_CASE( element2tile )
+BOOST_AUTO_TEST_CASE( element_to_tile )
 {
   // construct a map that should match the element to tile map for tr1.
   std::vector<std::size_t> e;
@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE( element2tile )
   // Construct a map that matches the internal element to tile map for tr1.
   std::vector<std::size_t> c;
   for(std::size_t i = tr1.elements_range().first; i < tr1.elements_range().second; ++i)
-    c.push_back(tr1.element2tile(i));
+    c.push_back(tr1.element_to_tile(i));
 
   // Check that the expected and internal element to tile maps match.
   BOOST_CHECK_EQUAL_COLLECTIONS(c.begin(), c.end(), e.begin(), e.end());
