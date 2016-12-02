@@ -36,7 +36,7 @@
 #  elif TA_DEFAULT_ERROR == 3
 #   define TA_ABORT_ERROR
 #  endif // TA_DEFAULT_ERROR == ?
-# endif // !defined(TA_EXCEPTION_ERROR) && !defined(TA_EXCEPTION_ERROR) && !defined(TA_EXCEPTION_ERROR) && !defined(TA_ABORT_ERROR)
+# endif // !defined(TA_EXCEPTION_ERROR) && !defined(TA_ASSERT_ERROR) && !defined(TA_NO_ERROR) && !defined(TA_ABORT_ERROR)
 #endif // TA_DEFAULT_ERROR
 
 #if __cplusplus > 199711L

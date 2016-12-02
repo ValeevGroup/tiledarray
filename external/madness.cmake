@@ -117,17 +117,15 @@ else()
     set (F77_INT_SIZE 8)
   endif(INTEGER4)
   
-  # Set error handling method
-  if(TA_ERROR STREQUAL none)
+  # Set error handling method (for TA_DEFAULT_ERROR values see top-level CMakeLists.txt)
+  if(TA_DEFAULT_ERROR EQUAL 0)
     set(MAD_EXCEPTION disable)
-  elseif(TA_ERROR STREQUAL throw)
+  elseif(TA_DEFAULT_ERROR EQUAL 1)
     set(MAD_EXCEPTION throw)
-  elseif(TA_ERROR STREQUAL assert)
+  elseif(TA_DEFAULT_ERROR EQUAL 2)
     set(MAD_EXCEPTION assert)
-  elseif(TA_ERROR STREQUAL abort)
+  elseif(TA_DEFAULT_ERROR EQUAL 3)
     set(MAD_EXCEPTION abort)
-  else()
-    set(MAD_EXCEPTION throw)
   endif()
   
   # Check the MADNESS source directory to make sure it contains the source files
