@@ -53,11 +53,6 @@ int main(int argc, char** argv) {
             std::cerr << "Error: block size must greater than zero.\n";
             return 1;
         }
-        if ((matrix_size % block_size) != 0ul) {
-            std::cerr << "Error: matrix size must be evenly divisible by block "
-                         "size.\n";
-            return 1;
-        }
         const long repeat = (argc >= 4 ? atol(argv[3]) : 5);
         if (repeat <= 0) {
             std::cerr
@@ -83,15 +78,78 @@ int main(int argc, char** argv) {
         // Construct TiledRange
         std::vector<unsigned int> blocking;
         blocking.reserve(num_blocks + 1);
-        for (long i = 0l; i <= matrix_size; i += block_size)
+        for (long i = 0l; i < matrix_size; i += block_size)
             blocking.push_back(i);
+        blocking.push_back(matrix_size);
 
         std::vector<TiledArray::TiledRange1> blocking2(
             2, TiledArray::TiledRange1(blocking.begin(), blocking.end()));
 
         TiledArray::TiledRange trange(blocking2.begin(), blocking2.end());
 
-        El::DistMatrix<double, El::MC, El::MR, El::BLOCK> A(El::Grid::Default());
+        auto array_task = [](TA::Tensor<double> &t, TA::Range const&range){
+            t = TA::Tensor<double>(range, 0.0);
+            auto lo = range.lobound_data();
+            auto up = range.upbound_data();
+            for(auto m = lo[0]; m < up[0]; ++m){
+                for(auto n = lo[1]; n < up[1]; ++n){
+                    t(m,n) = m + n;
+                }
+            }
+
+            return t.norm();
+        };
+
+        auto A_ta = TA::make_array<TA::DistArray<TA::Tensor<double>, 
+             TA::DensePolicy>>(world, trange, array_task);
+
+        world.gop.fence();
+        auto to_el_start = madness::wall_time();
+        auto el_mat = TA::array_to_el(A_ta);
+        world.gop.fence();
+        auto to_el_end = madness::wall_time();
+        auto to_el_time = to_el_end - to_el_start;
+
+        auto A_ta_copy = TA::el_to_array(el_mat, world, A_ta.trange());
+        world.gop.fence();
+        auto el_to_array_time = madness::wall_time() - to_el_end;
+
+        if(world.rank() == 0){
+            std::cout << "To el time: " << to_el_time << std::endl;
+            std::cout << "From el time: " << el_to_array_time << std::endl;
+        }
+
+        double norm = (A_ta("i,j") - A_ta_copy("i,j")).norm(world).get();
+
+        if(world.rank() == 0){
+            std::cout << "To el and back norm diff: " << norm << std::endl;
+        }
+
+        
+        El::DistMatrix<double, El::VR, El::STAR> w(El::Grid::Default());
+        El::DistMatrix<double> C(El::Grid::Default());
+
+        std::vector<double> times;
+        for(auto i = 0; i < repeat; ++i){
+            El::DistMatrix<double> el_mat_copy = el_mat;
+            auto start = madness::wall_time();
+            El::HermitianEig(El::LOWER, el_mat_copy, w, C);
+            auto time = madness::wall_time() - start;
+            times.push_back(time);
+        }
+
+        auto time_avg = 0.0;
+        for(auto const &t : times){
+            time_avg += t;
+        }
+        time_avg /= times.size();
+        if(world.rank() == 0){
+            std::cout << "Evd time average: " << time_avg << std::endl;
+        }
+
+        auto evecs = TA::el_to_array(C, world, A_ta.trange());
+
+        world.gop.fence();
 
         TiledArray::finalize();
 

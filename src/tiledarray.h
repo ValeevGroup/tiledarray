@@ -42,6 +42,9 @@
 #include <TiledArray/conversions/foreach.h>
 #include <TiledArray/conversions/make_array.h>
 
+// Special Arrays
+#include <TiledArray/SpecialArrays/diagonal_array.h>
+
 // Process maps
 #include <TiledArray/pmap/hash_pmap.h>
 #include <TiledArray/pmap/replicated_pmap.h>
@@ -55,6 +58,7 @@
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
 #include <TiledArray/elemental.h>
+#include <TiledArray/conversions/to_elemental.h>
 #endif
 
 #endif // TILEDARRAY_H__INCLUDED
