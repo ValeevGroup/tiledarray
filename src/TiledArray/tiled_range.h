@@ -243,7 +243,7 @@ namespace TiledArray {
       typename range_type::index result;
       result.reserve(rank);
       for(size_type i = 0; i < rank; ++i)
-        result.push_back(ranges_[i].element2tile(index[i]));
+        result.push_back(ranges_[i].element_to_tile(index[i]));
 
       return result;
     }

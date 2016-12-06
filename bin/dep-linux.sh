@@ -5,7 +5,6 @@ set -ev
 
 # Install packages
 
-ls -la /usr/lib/ccache
 case "$CXX" in
     g++)
         export CC=/usr/bin/gcc-$GCC_VERSION

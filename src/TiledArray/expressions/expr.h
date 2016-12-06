@@ -46,6 +46,8 @@ namespace TiledArray {
     template <typename Engine>
     struct EngineParamOverride {
 
+      EngineParamOverride() : world(nullptr), pmap(), shape(nullptr) {}
+
       typedef typename EngineTrait<Engine>::policy policy; ///< The result policy type
       typedef typename EngineTrait<Engine>::shape_type shape_type; ///< Tensor shape type
       typedef typename EngineTrait<Engine>::pmap_interface pmap_interface; ///< Process map interface type
