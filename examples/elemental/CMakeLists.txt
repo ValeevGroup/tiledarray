@@ -1,6 +1,6 @@
 #
 #  This file is a part of TiledArray.
-#  Copyright (C) 2013  Virginia Tech
+#  Copyright (C) 2016  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,11 +15,11 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#  Justus Calvin
+#  Drew Lewis
 #  Department of Chemistry, Virginia Tech
 #
 #  CMakeLists.txt
-#  Sep 4, 2013
+#  Dec 6th, 2016
 #
 
 # Create example executable
