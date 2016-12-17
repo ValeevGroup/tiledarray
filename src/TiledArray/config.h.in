@@ -77,7 +77,7 @@
 #else
 
 #define TILEDARRAY_ALIGNED_STORAGE
-#warning FIXEME!!! TiledArray alignment attribute is not definded for this platform.
+#warning FIXME!!! TiledArray alignment attribute is not defined for this platform.
 
 #endif
 
