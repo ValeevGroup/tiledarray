@@ -18,12 +18,18 @@ set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -march=native -DNDEBUG" CACHE STRING "In
 set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -march=native -DNDEBUG" CACHE STRING "Inital C++ release compile flags")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ release with debug info compile flags")
 
-# Set BLAS/LAPACK flags
+# Libraries
 if(EXISTS $ENV{MKLROOT})
-  set(MKLROOT "$ENV{MKLROOT}")
+  set(MKL_ROOT_DIR "$ENV{MKLROOT}" CACHE PATH "MKL root directory")
 else()
-  set(MKLROOT "/opt/intel/mkl")
+  set(MKL_ROOT_DIR "/opt/intel/mkl" CACHE PATH "MKL root directory")
 endif()
-set(BLAS_LINKER_FLAGS "-L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lm" CACHE STRING "BLAS linker flags")
+if(EXISTS $ENV{TBBROOT})
+  set(TBB_ROOT_DIR "$ENV{TBBROOT}" CACHE PATH "TBB root directory")
+else()
+  set(TBB_ROOT_DIR "/opt/intel/tbb" CACHE PATH "TBB root directory")
+endif()
+
+set(BLAS_LINKER_FLAGS "-L${MKL_ROOT_DIR}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lm" CACHE STRING "BLAS linker flags")
 set(LAPACK_LINKER_FLAGS "" CACHE STRING "LAPACK linker flags")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
