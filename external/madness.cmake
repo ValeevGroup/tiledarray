@@ -6,9 +6,6 @@
 
 # extra preprocessor definitions that MADNESS needs from TiledArray
 set(MADNESS_EXTRA_CPP_FLAGS "")
-if (MADNESS_DISABLE_WORLD_GET_DEFAULT)
-  set(MADNESS_EXTRA_CPP_FLAGS "${MADNESS_EXTRA_CPP_FLAGS} -DMADNESS_DISABLE_WORLD_GET_DEFAULT")
-endif ()
 
 include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
@@ -289,6 +286,7 @@ else()
       -DENABLE_GPERFTOOLS=${ENABLE_GPERFTOOLS}
       -DASSERTION_TYPE=${MAD_ASSERT_TYPE}
       "-DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}"
+      -DDISABLE_WORLD_GET_DEFAULT=ON
       ${MADNESS_CMAKE_EXTRA_ARGS}
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)

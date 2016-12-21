@@ -95,8 +95,6 @@ endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
-option(MADNESS_DISABLE_WORLD_GET_DEFAULT "Disable the use of madness::World::get_gefault" OFF)
-
 # Enable shared library support options
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
 option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
