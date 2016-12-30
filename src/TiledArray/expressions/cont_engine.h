@@ -464,7 +464,7 @@ namespace TiledArray {
         // Check that the contracted dimensions are coformal (equal).
         for(unsigned int l = left_outer_rank, r = 0ul; l < left_rank; ++l, ++r) {
           if(left_.trange().data()[l] != right_.trange().data()[r]) {
-            if(World::get_default().rank() == 0) {
+            if(TiledArray::get_default_world().rank() == 0) {
 
               if(left_extent[l] == right_extent[r]) {
                 TA_USER_ERROR_MESSAGE( "The tiling of the contracted dimensions " \

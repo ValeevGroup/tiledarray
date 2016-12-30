@@ -302,7 +302,7 @@ namespace TiledArray {
 #ifndef NDEBUG
         // Check that the array has been initialized.
         if(! tsr.array().is_initialized()) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "Assignment to an uninitialized array sub-block is not supported.");
           }
@@ -484,7 +484,7 @@ namespace TiledArray {
 
 #ifndef NDEBUG
         if(left_dist_eval.trange() != right_dist_eval.trange()) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The TiledRanges of the left- and right-hand arguments the binary reduction are not equal:" \
                 << "\n    left  = " << left_dist_eval.trange() \
