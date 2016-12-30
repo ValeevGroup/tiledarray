@@ -101,7 +101,7 @@ namespace TiledArray {
       void init_vars(const VariableList& target_vars) {
 #ifndef NDEBUG
         if(! target_vars.is_permutation(vars_)) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The array variable list is not compatible with the expected output:" \
                 << "\n    expected = " << target_vars \

@@ -519,7 +519,7 @@ namespace TiledArray {
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
       if(bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-        if(World::get_default().rank() == 0) {
+        if(TiledArray::get_default_world().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
@@ -542,7 +542,7 @@ namespace TiledArray {
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
       if(bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-        if(World::get_default().rank() == 0) {
+        if(TiledArray::get_default_world().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
