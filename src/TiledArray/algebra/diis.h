@@ -47,7 +47,7 @@ namespace TiledArray {
   /// \li proceed until a norm of the error is less than the target precision
   ///     \f$ \epsilon \f$. Another convergence criterion may include
   ///     \f$ ||x_{i+1} - x_i|| < \epsilon \f$ .
-  /// \\
+  ///
   /// For example, in the Hartree-Fock method in the density form, one could
   /// choose \f$ x \equiv \mathbf{P} \f$, the one-electron density matrix, and
   /// \f$ f(\mathbf{P}) \equiv [\mathbf{F}, \mathbf{P}] \f$ , where
@@ -56,13 +56,13 @@ namespace TiledArray {
   /// of the density and DIIS uses a linear extrapolation, it is possible to
   /// just extrapolate the Fock matrix itself, i.e. \f$ x \equiv \mathbf{F} \f$
   /// and \f$ f(\mathbf{F}) \equiv [\mathbf{F}, \mathbf{P}] \f$ .
-  /// \\
+  ///
   /// Similarly, in the Hartree-Fock method in the molecular orbital
   /// representation, DIIS is used to extrapolate the Fock matrix, i.e.
   /// \f$ x \equiv \mathbf{F} \f$ and \f$ f(\mathbf{F}) \equiv \{ F_i^a \} \f$ ,
   /// where \f$ i \f$ and \f$ a \f$ are the occupied and unoccupied orbitals,
   /// respectively.
-  /// \\
+  ///
   /// Here's a short description of the DIIS method. Given a set of solution
   /// guess vectors \f$ \{ x_k \}, k=0..i \f$ and the corresponding error
   /// vectors \f$ \{ e_k \} \f$ DIIS tries to find a linear combination of
@@ -73,7 +73,7 @@ namespace TiledArray {
   /// A more complicated version of DIIS introduces mixing:
   /// \f$ x_{\mathrm{extrap},i+1} = \sum\limits_{k=0}^i C_{k,i} ( (1-f) x_{k} + f x_{extrap,k} ) \f$
   /// Note that the mixing is not used in the first iteration.
-  /// \\
+  ///
   /// The original DIIS reference: P. Pulay, Chem. Phys. Lett. 73, 393 (1980).
   ///
   /// \tparam D type of \c x

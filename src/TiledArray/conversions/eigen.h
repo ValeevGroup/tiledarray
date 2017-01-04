@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_EIGEN_H__INCLUDED
 #define TILEDARRAY_EIGEN_H__INCLUDED
 
+#include <cstdint>
 #include <tiledarray_fwd.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/error.h>
@@ -392,7 +393,7 @@ namespace TiledArray {
     // Spawn tasks to copy Eigen to an Array
     madness::AtomicInt counter;
     counter = 0;
-    std::size_t n = 0;
+    std::int64_t n = 0;
     for(std::size_t i = 0; i < array.size(); ++i) {
       world.taskq.add(& detail::counted_eigen_submatrix_to_tensor<A, Derived>,
           &matrix, array, i, &counter);

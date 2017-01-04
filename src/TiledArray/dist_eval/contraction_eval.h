@@ -389,7 +389,7 @@ namespace TiledArray {
 
       ProcessID get_row_group_root(const size_type k, const madness::Group& row_group) const {
         ProcessID group_root = k % proc_grid_.proc_cols();
-        if(! right_.shape().is_dense() && row_group.size() < proc_grid_.proc_cols()) {
+        if(! right_.shape().is_dense() && row_group.size() < static_cast<ProcessID>(proc_grid_.proc_cols())) {
           const ProcessID world_root = proc_grid_.rank_row() * proc_grid_.proc_cols() + group_root;
           group_root = row_group.rank(world_root);
         }
@@ -398,7 +398,7 @@ namespace TiledArray {
 
       ProcessID get_col_group_root(const size_type k, const madness::Group& col_group) const {
         ProcessID group_root = k % proc_grid_.proc_rows();
-        if(! left_.shape().is_dense() && col_group.size() < proc_grid_.proc_rows()) {
+        if(! left_.shape().is_dense() && col_group.size() < static_cast<ProcessID>(proc_grid_.proc_rows())) {
           const ProcessID world_root = group_root * proc_grid_.proc_cols() + proc_grid_.rank_col();
           group_root = col_group.rank(world_root);
         }
