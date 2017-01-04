@@ -151,7 +151,9 @@ BOOST_AUTO_TEST_CASE( matrix_to_array ) {
     BOOST_CHECK_NO_THROW((array = eigen_to_array<TArrayI>(*GlobalFixture::world, trange, matrix)));
   } else {
     // Check that eigen_to_array does not work in distributed environments
+#if !defined(TA_USER_ASSERT_DISABLED)
     BOOST_CHECK_THROW((eigen_to_array<TArrayI>(*GlobalFixture::world, trange, matrix)), TiledArray::Exception);
+#endif
 
     // Note: The following tests constructs a replicated array, but the data may
     // not be identical. That is OK here since we are check the local data, but
@@ -182,7 +184,9 @@ BOOST_AUTO_TEST_CASE( vector_to_array ) {
 
   } else {
     // Check that eigen_to_array does not work in distributed environments
+#if !defined(TA_USER_ASSERT_DISABLED)
     BOOST_CHECK_THROW((eigen_to_array<TArrayI>(*GlobalFixture::world, trange1, vector)), TiledArray::Exception);
+#endif
 
     // Note: The following tests constructs a replicated array, but the data may
     // not be identical. That is OK here since we are check the local data, but
@@ -237,7 +241,9 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     }
   } else {
     // Check that eigen_to_array throws when there is more than one node
+#if !defined(TA_USER_ASSERT_DISABLED)
     BOOST_CHECK_THROW(array_to_eigen(array), TiledArray::Exception);
+#endif
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
@@ -308,7 +314,9 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
     }
   } else {
     // Check that eigen_to_array throws when there is more than one node
+#if !defined(TA_USER_ASSERT_DISABLED)
     BOOST_CHECK_THROW(array_to_eigen(array1), TiledArray::Exception);
+#endif
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
