@@ -1146,7 +1146,7 @@ namespace TiledArray {
       const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          pimpl_->data_, lda, other.data(), ldb, scalar_type(0), result.data(), n);
+          pimpl_->data_, lda, other.data(), ldb, numeric_type(0), result.data(), n);
 
       return result;
     }
@@ -1243,7 +1243,7 @@ namespace TiledArray {
           (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          left.data(), lda, right.data(), ldb, scalar_type(1), pimpl_->data_, n);
+          left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
 
       return *this;
     }
