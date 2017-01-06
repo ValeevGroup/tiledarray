@@ -68,34 +68,63 @@ namespace TiledArray {
       Eigen::Map<matrixC_type, Eigen::AutoAlign, Eigen::OuterStride<> >
           C(c, m, n, Eigen::OuterStride<>(ldc));
 
+      const bool beta_is_nonzero = (beta != static_cast<S2>(0));
+
       switch(op_a | (op_b << 2)) {
         case notrans_notrans:
-          C.noalias() = alpha * A * B + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A * B + beta * C;
+          else
+            C.noalias() = alpha * A * B;
           break;
         case notrans_trans:
-          C.noalias() = alpha * A * B.transpose() + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A * B.transpose() + beta * C;
+          else
+            C.noalias() = alpha * A * B.transpose();
           break;
         case trans_notrans:
-          C.noalias() = alpha * A.transpose() * B + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A.transpose() * B + beta * C;
+          else
+            C.noalias() = alpha * A.transpose() * B;
           break;
         case trans_trans:
-          C.noalias() = alpha * A.transpose() * B.transpose() + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A.transpose() * B.transpose() + beta * C;
+          else
+            C.noalias() = alpha * A.transpose() * B.transpose();
           break;
 
         case notrans_conjtrans:
-          C.noalias() = alpha * A * B.adjoint() + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A * B.adjoint() + beta * C;
+          else
+            C.noalias() = alpha * A * B.adjoint();
           break;
         case trans_conjtrans:
-          C.noalias() = alpha * A.transpose() * B.adjoint() + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A.transpose() * B.adjoint() + beta * C;
+          else
+            C.noalias() = alpha * A.transpose() * B.adjoint();
           break;
         case conjtrans_notrans:
-          C.noalias() = alpha * A.adjoint() * B + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A.adjoint() * B + beta * C;
+          else
+            C.noalias() = alpha * A.adjoint() * B;
           break;
         case conjtrans_trans:
-          C.noalias() = alpha * A.adjoint() * B.transpose() + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A.adjoint() * B.transpose() + beta * C;
+          else
+            C.noalias() = alpha * A.adjoint() * B.transpose();
           break;
         case conjtrans_conjtrans:
-          C.noalias() = alpha * A.adjoint() * B.adjoint() + beta * C;
+          if (beta_is_nonzero)
+            C.noalias() = alpha * A.adjoint() * B.adjoint() + beta * C;
+          else
+            C.noalias() = alpha * A.adjoint() * B.adjoint();
           break;
       }
     }
