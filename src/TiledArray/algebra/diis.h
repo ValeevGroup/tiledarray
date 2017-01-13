@@ -81,6 +81,7 @@ namespace TiledArray {
   class DIIS {
     public:
       typedef typename D::element_type value_type;
+      typedef typename D::scalar_type scalar_type;
 
       /// Constructor
 
@@ -104,10 +105,10 @@ namespace TiledArray {
       ///   described in Kerker, Phys. Rev. B, 23, p3082, 1981.
       DIIS(unsigned int strt=1,
            unsigned int ndi=5,
-           value_type dmp =0,
+           scalar_type dmp =0,
            unsigned int ngr=1,
            unsigned int ngrdiis=1,
-           value_type mf=0) :
+           scalar_type mf=0) :
              error_(0), errorset_(false),
              start(strt), ndiis(ndi),
              iter(0), ngroup(ngr),
@@ -134,13 +135,13 @@ namespace TiledArray {
                        D& error,
                        bool extrapolate_error = false)
       {
-        const value_type zero_determinant = 1.0e-15;
-        const value_type zero_norm = 1.0e-10;
+        const scalar_type zero_determinant = 1.0e-15;
+        const scalar_type zero_norm = 1.0e-10;
 
         iter++;
 
         const bool do_mixing = (mixing_fraction != 0.0);
-        const value_type scale = 1.0 + damping_factor;
+        const scalar_type scale = 1.0 + damping_factor;
 
         // if have ndiis vectors
         if (errors_.size() == ndiis) { // holding max # of vectors already? drop the least recent {x, error} pair
@@ -175,7 +176,7 @@ namespace TiledArray {
 
           EigenVectorX c;
 
-          value_type absdetA;
+          scalar_type absdetA;
           unsigned int nskip = 0; // how many oldest vectors to skip for the sake of conditioning?
                                         // try zero
           // skip oldest vectors until found a numerically stable system
@@ -191,9 +192,9 @@ namespace TiledArray {
             EigenVectorX rhs = EigenVectorX::Zero(rank);
             rhs[0] = -1.0;
 
-            value_type norm = 1.0;
-            if (B_(nskip,nskip) > zero_norm)
-              norm = 1.0/B_(nskip,nskip);
+            scalar_type norm = 1.0;
+            if (std::abs(B_(nskip,nskip)) > zero_norm)
+              norm = 1.0/std::abd(B_(nskip,nskip));
 
             A.block(1, 1, rank-1, rank-1) = B_.block(nskip, nskip, rank-1, rank-1) * norm;
             A.diagonal() *= scale;
@@ -267,7 +268,7 @@ namespace TiledArray {
       }
 
     private:
-      value_type error_;
+      scalar_type error_;
       bool errorset_;
 
       unsigned int start;
@@ -275,11 +276,11 @@ namespace TiledArray {
       unsigned int iter;
       unsigned int ngroup;
       unsigned int ngroupdiis;
-      value_type damping_factor;
-      value_type mixing_fraction;
+      scalar_type damping_factor;
+      scalar_type mixing_fraction;
 
-      typedef Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixX;
-      typedef Eigen::Matrix<value_type, Eigen::Dynamic, 1> EigenVectorX;
+      typedef Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixX;
+      typedef Eigen::Matrix<scalar_type, Eigen::Dynamic, 1> EigenVectorX;
 
       EigenMatrixX B_; //!< B(i,j) = <ei|ej>
 
@@ -287,8 +288,8 @@ namespace TiledArray {
       std::deque<D> errors_; //!< set of most recent errors
       std::deque<D> x_extrap_; //!< set of most recent extrapolated x
 
-      void set_error(value_type e) { error_ = e; errorset_ = true; }
-      value_type error() { return error_; }
+      void set_error(scalar_type e) { error_ = e; errorset_ = true; }
+      scalar_type error() { return error_; }
 
       void init() {
         iter = 0;
