@@ -81,7 +81,7 @@ namespace TiledArray {
   class DIIS {
     public:
       typedef typename D::element_type value_type;
-      typedef typename D::scalar_type scalar_type;
+      typedef typename detail::scalar_t<value_type> scalar_type;
 
       /// Constructor
 
