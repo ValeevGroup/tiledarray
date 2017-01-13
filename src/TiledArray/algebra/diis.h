@@ -194,7 +194,7 @@ namespace TiledArray {
 
             scalar_type norm = 1.0;
             if (std::abs(B_(nskip,nskip)) > zero_norm)
-              norm = 1.0/std::abd(B_(nskip,nskip));
+              norm = 1.0/std::abs(B_(nskip,nskip));
 
             A.block(1, 1, rank-1, rank-1) = B_.block(nskip, nskip, rank-1, rank-1) * norm;
             A.diagonal() *= scale;
