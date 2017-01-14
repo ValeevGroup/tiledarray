@@ -279,8 +279,8 @@ namespace TiledArray {
       scalar_type damping_factor;
       scalar_type mixing_fraction;
 
-      typedef Eigen::Matrix<scalar_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixX;
-      typedef Eigen::Matrix<scalar_type, Eigen::Dynamic, 1> EigenVectorX;
+      typedef Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixX;
+      typedef Eigen::Matrix<value_type, Eigen::Dynamic, 1> EigenVectorX;
 
       EigenMatrixX B_; //!< B(i,j) = <ei|ej>
 
