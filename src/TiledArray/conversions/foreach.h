@@ -83,6 +83,44 @@ namespace TiledArray {
         }
       };
 
+      template <typename Op, typename Result, typename Arg, bool inplace>
+      struct void_op_helper2;
+
+      template <typename Op, typename Result, typename Arg>
+      struct void_op_helper2<Op, Result, Arg, false> {
+        Result operator()(Op&& op, Arg& arg1, const Arg& arg2) {
+          Result result;
+          op(result, arg1, arg2);
+          return result;
+        }
+      };
+
+      template <typename Op, typename Arg>
+      struct void_op_helper2<Op, Arg, Arg, true> {
+        Arg operator()(Op&& op, Arg& arg1, const Arg& arg2) {
+          op(arg1, arg2);
+          return arg1;
+        }
+      };
+
+      template <typename Op, typename Result, typename Arg, typename OpResult, bool inplace>
+      struct nonvoid_op_helper2;
+
+      template <typename Op, typename Result, typename Arg, typename OpResult>
+      struct nonvoid_op_helper2<Op, Result, Arg, OpResult, false> {
+        Result operator()(Op&&op, const Arg& arg1, const Arg& arg2, OpResult& op_result) {
+          Result result;
+          op_result = op(result, arg1, arg2);
+          return result;
+        }
+      };
+      template <typename Op, typename Arg, typename OpResult>
+      struct nonvoid_op_helper2<Op, Arg, Arg, OpResult, true> {
+        Arg operator()(Op&&op, Arg& arg1, const Arg& arg2, OpResult& op_result) {
+          op_result = op(arg1, arg2);
+          return arg1;
+        }
+      };
     }
 
     /// base implementation of dense TiledArray::foreach
@@ -181,6 +219,122 @@ namespace TiledArray {
       // Construct the new array
       result_array_type result(world, arg.trange(),
           shape_type(world, tile_norms, arg.trange()), arg.pmap());
+      for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
+        const size_type index = it->first;
+        if(! result.is_zero(index))
+          result.set(it->first, it->second);
+      }
+
+      return result;
+    }
+
+    /// base implementation of dense TiledArray::foreach
+
+    /// \note can't autodeduce \c ResultTile from \c void \c Op(ResultTile,ArgTile)
+    template <typename ResultTile, typename ArgTile, typename Op, bool inplace = false>
+    inline DistArray<ResultTile, DensePolicy> foreach (
+        const_if_t<not inplace, DistArray<ArgTile, DensePolicy>>& arg1,
+        const DistArray<ArgTile, DensePolicy>& arg2,
+        Op && op) {
+      typedef DistArray<ArgTile, DensePolicy> arg_array_type;
+      typedef DistArray<ResultTile, DensePolicy> result_array_type;
+
+      // Tiled ranges of arg1 and arg2 must be equal
+      TA_ASSERT(arg1.trange() == arg2.trange());
+
+      World& world = arg1.world();
+
+      // Make an empty result array
+      result_array_type result(world, arg1.trange(), arg1.pmap());
+
+      // Construct the task function for making result tiles.
+      auto task = [&op](const_if_t<not inplace, typename arg_array_type::value_type>& arg1_tile,
+          const typename arg_array_type::value_type &arg2_tile)
+          -> typename result_array_type::value_type {
+        void_op_helper2<Op,
+            typename result_array_type::value_type,
+            typename arg_array_type::value_type,
+            inplace> op_caller;
+        return op_caller(std::forward<Op>(op), arg1_tile, arg2_tile);
+      };
+
+      // Iterate over local tiles of arg
+      for (auto index: *(arg1.pmap())) {
+        // Spawn a task to evaluate the tile
+        Future<typename result_array_type::value_type> tile =
+            world.taskq.add(task, arg1.find(index), arg2.find(index));
+
+        // Store result tile
+        result.set(index, tile);
+      }
+
+      return result;
+    }
+
+    /// base implementation of sparse TiledArray::foreach
+
+    /// \note can't autodeduce \c ResultTile from \c void \c Op(ResultTile,ArgTile)
+    template <typename ResultTile, typename ArgTile, typename Op, bool inplace = false>
+    inline DistArray<ResultTile, SparsePolicy>
+    foreach(const_if_t<not inplace, DistArray<ArgTile, SparsePolicy>>& arg1,
+        const DistArray<ArgTile, SparsePolicy>& arg2, Op&& op) {
+      typedef DistArray<ArgTile, SparsePolicy> arg_array_type;
+      typedef DistArray<ResultTile, SparsePolicy> result_array_type;
+
+      typedef typename arg_array_type::value_type arg_value_type;
+      typedef typename result_array_type::value_type result_value_type;
+      typedef typename arg_array_type::size_type size_type;
+      typedef typename arg_array_type::shape_type shape_type;
+      typedef std::pair<size_type, Future<result_value_type>> datum_type;
+
+      // Tiled ranges of arg1 and arg2 must be equal
+      TA_ASSERT(arg1.trange() == arg2.trange());
+
+      // Create a vector to hold local tiles
+      std::vector<datum_type> tiles;
+      tiles.reserve(arg1.pmap()->size());
+
+      // Construct a tensor to hold updated tile norms for the result shape.
+      TiledArray::Tensor<typename shape_type::value_type,
+          Eigen::aligned_allocator<typename shape_type::value_type> >
+      tile_norms(arg1.trange().tiles_range(), 0);
+
+      // Construct the task function used to construct the result tiles.
+      madness::AtomicInt counter; counter = 0;
+      int task_count = 0;
+      auto task = [&op,&counter,&tile_norms](const size_type index,
+          const_if_t<not inplace, arg_value_type>& arg1_tile,
+          const arg_value_type &arg2_tile) -> result_value_type {
+        nonvoid_op_helper2<Op,
+            result_value_type,
+            arg_value_type,
+            typename shape_type::value_type,
+            inplace> op_caller;
+        auto result_tile = op_caller(std::forward<Op>(op), arg1_tile, arg2_tile, tile_norms[index]);
+        ++counter;
+        return std::move(result_tile);
+      };
+
+      World& world = arg1.world();
+
+      // Get local tile index iterator
+      for(auto index: *(arg1.pmap())) {
+        if(arg1.is_zero(index))
+          continue;
+        auto arg1_tile = arg1.find(index);
+        auto arg2_tile = arg2.find(index);
+        auto result_tile = world.taskq.add(task, index, arg1_tile, arg2_tile);
+        ++task_count;
+        tiles.push_back(datum_type(index, result_tile));
+      }
+
+      // Wait for tile norm data to be collected.
+      if(task_count > 0)
+        world.await([&counter,task_count] () -> bool { return counter == task_count; });
+
+      // Construct the new array
+      result_array_type result(world, arg1.trange(),
+          shape_type(world, tile_norms, arg1.trange()), arg1.pmap());
       for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
         const size_type index = it->first;
         if(! result.is_zero(index))
@@ -379,6 +533,35 @@ namespace TiledArray {
 
     // Set the arg with the new array
     arg = detail::foreach<Tile,Tile,Op,true>(arg, std::forward<Op>(op));
+  }
+
+  /// Apply a function to each tile of dense Arrays
+  /// This function takes two input tiles and put result into the first input tile
+
+  template <typename Tile, typename Op>
+  inline void
+  foreach_inplace(DistArray<Tile, DensePolicy>& arg1,
+      const DistArray<Tile, DensePolicy>& arg2, Op&& op, bool fence = true) {
+    // The arg1 tile data is being modified in place, which means we may need to
+    // fence to ensure no other threads are using the data.
+    if(fence)
+      arg1.world().gop.fence();
+
+    arg1 = detail::foreach<Tile, Tile, Op, true>(arg1, arg2, std::forward<Op>(op));
+  }
+
+  template <typename Tile, typename Op>
+  inline void
+  foreach_inplace(DistArray<Tile, SparsePolicy>& arg1,
+      const DistArray<Tile, SparsePolicy>& arg2, Op&& op, bool fence = true) {
+
+    // The tile data is being modified in place, which means we may need to
+    // fence to ensure no other threads are using the data.
+    if(fence)
+      arg1.world().gop.fence();
+
+    // Set the arg with the new array
+    arg1 = detail::foreach<Tile, Tile, Op, true>(arg1, arg2, std::forward<Op>(op));
   }
 
 } // namespace TiledArray
