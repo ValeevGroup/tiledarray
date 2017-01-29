@@ -12,8 +12,9 @@ else
     export CC=/usr/bin/clang-3.8
     export CXX=/usr/bin/clang++-3.8
 fi
-export MPICC=$HOME/mpich/bin/mpicc
-export MPICXX=$HOME/mpich/bin/mpicxx
+export MPI_HOME=$HOME/mpich
+export MPICC=$MPI_HOME/bin/mpicc
+export MPICXX=$MPI_HOME/bin/mpicxx
 export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:$LD_LIBRARY_PATH
 
 # Configure TiledArray
