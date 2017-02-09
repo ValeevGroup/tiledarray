@@ -440,7 +440,9 @@ namespace TiledArray {
             reduce_task.add(dist_eval.get(*it));
 
         // All reduce the result of the expression
-        return world.gop.all_reduce(key_type(dist_eval.id()), reduce_task.submit(), op);
+        auto result = world.gop.all_reduce(key_type(dist_eval.id()), reduce_task.submit(), op);
+        dist_eval.wait();
+        return result;
       }
 
       template <typename Op>
@@ -518,8 +520,11 @@ namespace TiledArray {
           }
         }
 
-        return world.gop.all_reduce(key_type(left_dist_eval.id()),
+        auto result = world.gop.all_reduce(key_type(left_dist_eval.id()),
             local_reduce_task.submit(), op);
+        left_dist_eval.wait();
+        right_dist_eval.wait();
+        return result;
       }
 
       template <typename D, typename Op>
