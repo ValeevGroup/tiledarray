@@ -200,7 +200,7 @@ namespace TiledArray {
 
     /// Construct range defined by an upper and lower bound
 
-    /// Construct a range diffined by \c lower_boudn and \c upper_bound.
+    /// Construct a range defined by \c lower_bound and \c upper_bound.
     /// \tparam Index An array type
     /// \param lower_bound A vector of lower bounds for each dimension
     /// \param upper_bound A vector of upper bounds for each dimension
@@ -223,7 +223,7 @@ namespace TiledArray {
 
     /// Construct range defined by an upper and lower bound
 
-    /// Construct a range defined by \c lower_boudn and \c upper_bound.
+    /// Construct a range defined by \c lower_bound and \c upper_bound.
     /// \param lower_bound An initializer list of lower bounds for each dimension
     /// \param upper_bound An initializer list of upper bounds for each dimension
     /// \throw TiledArray::Exception When the size of \c lower_bound is not
