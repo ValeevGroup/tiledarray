@@ -361,69 +361,89 @@ BOOST_AUTO_TEST_CASE( perm_eval )
 
 BOOST_AUTO_TEST_CASE( sparse_eval )
 {
-  TSpArrayI left(*GlobalFixture::world, tr, make_shape(tr, 0.4, 23));
+  auto do_sparse_eval = [&](bool force_shape) -> void {
+    TSpArrayI left(*GlobalFixture::world, tr, make_shape(tr, 0.1, 23));
+    TSpArrayI right(*GlobalFixture::world, tr, make_shape(tr, 0.1, 42));
 
-  TSpArrayI right(*GlobalFixture::world, tr, make_shape(tr, 0.4, 42));
+    // Fill arrays with random data
+    rand_fill_array(left);
+    left.truncate();
+    rand_fill_array(right);
+    right.truncate();
 
-  // Fill arrays with random data
-  rand_fill_array(left);
-  left.truncate();
-  rand_fill_array(right);
-  right.truncate();
+    auto left_arg = make_array_eval(left, left.world(), left.shape(),
+        proc_grid.make_row_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent_data()[0]),
+        Permutation(), make_array_noop());
+    auto right_arg = make_array_eval(right, right.world(), right.shape(),
+        proc_grid.make_col_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent_data()[tr.tiles_range().rank() - 1]),
+        Permutation(), make_array_noop());
+    auto op = make_contract(2u, left_arg.trange().tiles_range().rank(),
+        right_arg.trange().tiles_range().rank());
 
-  auto left_arg = make_array_eval(left, left.world(), left.shape(),
-      proc_grid.make_row_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent_data()[0]),
-      Permutation(), make_array_noop());
-  auto right_arg = make_array_eval(right, right.world(), right.shape(),
-      proc_grid.make_col_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent_data()[tr.tiles_range().rank() - 1]),
-      Permutation(), make_array_noop());
-  auto op = make_contract(2u, left_arg.trange().tiles_range().rank(),
-      right_arg.trange().tiles_range().rank());
+    SparseShape<float> result_shape =
+        left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
 
-  const SparseShape<float> result_shape =
-      left_arg.shape().gemm(right_arg.shape(), 1, op.gemm_helper());
+    // if needed, force the shape to have 1 tile only
+    if (force_shape) {
+      auto result_shape_data = result_shape.data().clone();
+      bool found_nonzero = false;
+      for (auto& i: result_shape_data) {
+        if (i >= decltype(result_shape)::threshold() && !found_nonzero) {
+          found_nonzero = true;
+          i = std::numeric_limits<float>::max();
+        }
+        else
+          i = 0.0;
+      }
+      TiledRange result_trange{dims[0], dims[0]};
+      result_shape = decltype(result_shape)(result_shape_data, result_trange);
+    }
 
-  auto contract = make_contract_eval(left_arg, right_arg,
-      left_arg.world(), result_shape, pmap, Permutation(), op);
-  using dist_eval_type = decltype(contract);
+    auto contract = make_contract_eval(left_arg, right_arg,
+        left_arg.world(), result_shape, pmap, Permutation(), op);
+    using dist_eval_type = decltype(contract);
 
-  // Check evaluation
-  BOOST_REQUIRE_NO_THROW(contract.eval());
-  BOOST_REQUIRE_NO_THROW(contract.wait());
+    // Check evaluation
+    BOOST_REQUIRE_NO_THROW(contract.eval());
+    BOOST_REQUIRE_NO_THROW(contract.wait());
 
-  // Compute the reference contraction
-  const matrix_type l = copy_to_matrix(left, 1),
-                    r = copy_to_matrix(right, GlobalFixture::dim - 1);
-  const matrix_type reference = l * r;
+    // Compute the reference contraction
+    const matrix_type l = copy_to_matrix(left, 1),
+                      r = copy_to_matrix(right, GlobalFixture::dim - 1);
+    const matrix_type reference = l * r;
 
-  // Check that each tile has been properly scaled.
-  for(auto index : *contract.pmap()) {
-    // Skip zero tiles
-    if(contract.is_zero(index)) {
-      dist_eval_type::range_type range = contract.trange().make_tile_range(index);
+    // Check that each tile has been properly scaled.
+    for(auto index : *contract.pmap()) {
+      // Skip zero tiles
+      if(contract.is_zero(index)) {
+        if (!force_shape) {  // can't distinguish forced zeroes, can only check if shape was not forced
+          dist_eval_type::range_type range = contract.trange().make_tile_range(index);
 
-      BOOST_CHECK((reference.block(range.lobound_data()[0], range.lobound_data()[1],
-          range.extent_data()[0], range.extent_data()[1]).array() == 0).all());
+          BOOST_CHECK((reference.block(range.lobound_data()[0], range.lobound_data()[1],
+              range.extent_data()[0], range.extent_data()[1]).array() == 0).all());
+        }
+      } else {
+        // Get the array evaluator tile.
+        Future<dist_eval_type::value_type> tile;
+        BOOST_REQUIRE_NO_THROW(tile = contract.get(index));
 
-    } else {
-      // Get the array evaluator tile.
-      Future<dist_eval_type::value_type> tile;
-      BOOST_REQUIRE_NO_THROW(tile = contract.get(index));
+        // Force the evaluation of the tile
+        dist_eval_type::eval_type eval_tile;
+        BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
+        BOOST_CHECK(! eval_tile.empty());
 
-      // Force the evaluation of the tile
-      dist_eval_type::eval_type eval_tile;
-      BOOST_REQUIRE_NO_THROW(eval_tile = tile.get());
-      BOOST_CHECK(! eval_tile.empty());
-
-      if(!eval_tile.empty()) {
-        // Check that the result tile is correctly modified.
-        BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(index));
-        BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound_data()[0],
-            eval_tile.range().lobound_data()[1], eval_tile.range().extent_data()[0], eval_tile.range().extent_data()[1]));
+        if(!eval_tile.empty()) {
+          // Check that the result tile is correctly modified.
+          BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(index));
+          BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound_data()[0],
+              eval_tile.range().lobound_data()[1], eval_tile.range().extent_data()[0], eval_tile.range().extent_data()[1]));
+        }
       }
     }
-  }
+  };
 
+  do_sparse_eval(false);
+  do_sparse_eval(true);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
