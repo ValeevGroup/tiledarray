@@ -633,7 +633,7 @@ namespace TiledArray {
           bool have_group = false;
           madness::Group row_group;
           ProcessID group_root;
-          bool do_broadcast = false;
+          bool do_broadcast;
 
           // Search column k of left for non-zero tiles
           for(; index < left_end_; index += left_stride_local_) {
@@ -675,10 +675,10 @@ namespace TiledArray {
           index += proc_grid_.rank_col();
 
           // will create broadcast group only if needed
-          bool have_group = true;
+          bool have_group = false;
           madness::Group col_group;
           ProcessID group_root;
-          bool do_broadcast = false;
+          bool do_broadcast;
 
           // Search for and broadcast non-zero row
           for(; index < row_end; index += right_stride_local_) {
