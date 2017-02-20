@@ -199,12 +199,7 @@ namespace TiledArray {
         for(p = 0ul; (index < end) && (count < max_group_size); index += stride,
             p = (p + 1u) % max_group_size)
         {
-          static bool masked_out_broadcast_proc_flag = false;
-          if (!shape.is_zero(index) && !process_mask[p] && masked_out_broadcast_proc_flag) {
-            masked_out_broadcast_proc_flag = true;
-            std::cout << "set masked_out_broadcast_proc_flag" << std::endl;
-          }
-          if((proc_list[p] != -1) || (shape.is_zero(index))) continue;
+          if((proc_list[p] != -1) || (shape.is_zero(index)) || !process_mask.at(p)) continue;
 
           proc_list[p] = proc_map(p);
           ++count;
@@ -235,9 +230,13 @@ namespace TiledArray {
         // for every tile and use of masked broadcasts
         auto result_row_mask_k = make_row_mask(k);
 
-        return make_group(right_.shape(), result_row_mask_k, right_begin_k, right_end_k,
-            right_stride_, proc_grid_.proc_cols(), k, k_,
-            [&](const ProcGrid::size_type col) { return proc_grid_.map_col(col); });
+        // return empty group if I am not in this group, otherwise make a group
+        if (result_row_mask_k[proc_grid_.rank_col()])
+          return make_group(right_.shape(), result_row_mask_k, right_begin_k, right_end_k,
+                            right_stride_, proc_grid_.proc_cols(), k, k_,
+                            [&](const ProcGrid::size_type col) { return proc_grid_.map_col(col); });
+        else
+          return madness::Group();
       }
 
 
@@ -251,10 +250,13 @@ namespace TiledArray {
         // for every tile and use of masked broadcasts
         auto result_col_mask_k = make_col_mask(k);
 
-        // Construct the sparse broadcast group
-        return make_group(left_.shape(), result_col_mask_k, k, left_end_, left_stride_,
-            proc_grid_.proc_rows(), k, 0ul,
-            [&](const ProcGrid::size_type row) { return proc_grid_.map_row(row); });
+        // return empty group if I am not in this group, otherwise make a group
+        if (result_col_mask_k[proc_grid_.rank_row()])
+          return make_group(left_.shape(), result_col_mask_k, k, left_end_, left_stride_,
+                            proc_grid_.proc_rows(), k, 0ul,
+                            [&](const ProcGrid::size_type row) { return proc_grid_.map_row(row); });
+        else
+          return madness::Group();
       }
 
       /// Makes the row result mask
@@ -263,6 +265,7 @@ namespace TiledArray {
       /// \return a set object, if \code result[p] == true \endcode the process
       ///         in column \c p of this row has at least 1 result tile for this \c k
       std::vector<bool> make_row_mask(const size_type k) const {
+
         // "local" A[i][k] (i.e. for all i assigned to my row of processes) will produce C[i][*]
         // for each process in my row of the process grid determine whether there are any
         // nonzero C[i][*] located on that node
@@ -272,6 +275,13 @@ namespace TiledArray {
         const auto my_proc_row = proc_grid_.rank_row();
         const auto my_proc_col = proc_grid_.rank_col();
 
+        // result shape
+        const auto& result_shape = TensorImpl_::shape();
+
+        // if result is dense, include all processors
+        if (result_shape.is_dense())
+          return std::vector<bool>(nproc_cols, false);
+
         // initialize the mask
         std::vector<bool> mask(nproc_cols, false);
 
@@ -279,8 +289,6 @@ namespace TiledArray {
         const auto nj = right_.range().extent_data()[1];
         // number of tiles in contraction dim
         const auto nk = right_.range().extent_data()[0];
-        // result shape
-        const auto& result_shape = TensorImpl_::shape();
 
         // for each i assigned to my column of processes ...
         size_type i_start, i_fence, i_stride;
@@ -291,10 +299,13 @@ namespace TiledArray {
              i += i_stride, ik += ik_stride) {
           // ... such that A[i][k] exists ...
           if (!left_.shape().is_zero(ik)) {
+            // ... the owner of А[i][k] is always in the group ...
+            const auto k_proc_col = k % nproc_cols;
+            mask[k_proc_col] = true;
             // ... loop over processes in my row ...
             for (size_type proc_col = 0; proc_col != nproc_cols; ++proc_col) {
-              // ... that are not me ...
-              if (proc_col != my_proc_col) {
+              // ... that are not the owner of A[i][k] ...
+              if (proc_col != k_proc_col) {
                 // ... loop over all C[i][j] tiles that belong to this process ...
                 size_type j_start, j_fence, j_stride;
                 std::tie(j_start, j_fence, j_stride) =
@@ -335,38 +346,45 @@ namespace TiledArray {
         const auto my_proc_row = proc_grid_.rank_row();
         const auto my_proc_col = proc_grid_.rank_col();
 
+        // result shape
+        const auto& result_shape = TensorImpl_::shape();
+
+        // if result is dense, include all processors
+        if (result_shape.is_dense())
+          return std::vector<bool>(nproc_rows, false);
+
         // initialize the mask
         std::vector<bool> mask(nproc_rows, false);
 
         // number of tiles in col dim of the result
         const auto nj = right_.range().extent_data()[1];
-        // result shape
-        const auto& result_shape = TensorImpl_::shape();
 
         // for each j assigned to my column of processes ...
         size_type j_start, j_fence, j_stride;
-        std::tie(j_start, j_fence, j_stride) =
-            result_col_range(my_proc_col);
+        std::tie(j_start, j_fence, j_stride) = result_col_range(my_proc_col);
         const auto kj_stride = j_stride;
         for (size_type j = j_start, kj = k * nj + j_start; j < j_fence;
              j += j_stride, kj += kj_stride) {
           // ... such that B[k][j] exists ...
           if (!right_.shape().is_zero(kj)) {
+            // ... the owner of B[k][j] is always in the group ...
+            auto k_proc_row = k % nproc_rows;
+            mask[k_proc_row] = true;
             // ... loop over processes in my col ...
             for (size_type proc_row = 0; proc_row != nproc_rows; ++proc_row) {
-              // ... that are not me ...
-              if (proc_row != my_proc_row) {
+              // ... that are not the owner of B[k][j] ...
+              if (proc_row != k_proc_row) {
                 // ... loop over all C[i][j] tiles that belong to this process
-                // ...
                 size_type i_start, i_fence, i_stride;
                 std::tie(i_start, i_fence, i_stride) =
                     result_row_range(proc_row);
-                const auto ij_stride = i_stride*nj;
+                const auto ij_stride = i_stride * nj;
                 for (size_type i = i_start, ij = i_start * nj + j; i < i_fence;
                      i += i_stride, ij += ij_stride) {
                   // ... if any such C[i][j] exists, update the mask, and move
                   // on to next process
-                  if (!result_shape.is_zero(DistEvalImpl_::perm_index_to_target(ij))) {
+                  if (!result_shape.is_zero(
+                          DistEvalImpl_::perm_index_to_target(ij))) {
                     mask[proc_row] = true;
                     break;
                   }
@@ -581,9 +599,12 @@ namespace TiledArray {
       /// \param[in] k The column of \c left_ to be broadcast
       /// \param[out] col The vector that will hold the results of the broadcast
       void bcast_col(const size_type k, std::vector<col_datum>& col, const madness::Group& row_group) const {
-        // Broadcast column k of left_.
-        ProcessID group_root = get_row_group_root(k, row_group);
-        bcast(left_start_local_ + k, left_stride_local_, row_group, group_root, 0ul, col);
+        // broadcast if I'm part of the broadcast group
+        if (!row_group.empty()) {
+          // Broadcast column k of left_.
+          ProcessID group_root = get_row_group_root(k, row_group);
+          bcast(left_start_local_ + k, left_stride_local_, row_group, group_root, 0ul, col);
+        }
       }
 
       /// Broadcast row \c k of \c right_ with a dense left-hand argument
@@ -591,12 +612,15 @@ namespace TiledArray {
       /// \param[in] k The row of \c right to be broadcast
       /// \param[out] row The vector that will hold the results of the broadcast
       void bcast_row(const size_type k, std::vector<row_datum>& row, const madness::Group& col_group) const {
-        // Compute the group root process.
-        ProcessID group_root = get_col_group_root(k, col_group);
+        // broadcast if I'm part of the broadcast group
+        if (!col_group.empty()) {
+          // Compute the group root process.
+          ProcessID group_root = get_col_group_root(k, col_group);
 
-        // Broadcast row k of right_.
-        bcast(k * proc_grid_.cols() + proc_grid_.rank_col(),
-            right_stride_local_, col_group, group_root, left_.size(), row);
+          // Broadcast row k of right_.
+          bcast(k * proc_grid_.cols() + proc_grid_.rank_col(),
+                right_stride_local_, col_group, group_root, left_.size(), row);
+        }
       }
 
       void bcast_col_range_task(size_type k, const size_type end) const {
@@ -609,33 +633,35 @@ namespace TiledArray {
           // Compute local iteration limits for column k of left_.
           size_type index = left_start_local_ + k;
 
+          // will create broadcast group only if needed
+          bool have_group = false;
+          madness::Group row_group;
+          ProcessID group_root;
+          bool do_broadcast = false;
+
           // Search column k of left for non-zero tiles
           for(; index < left_end_; index += left_stride_local_) {
             if(left_.shape().is_zero(index)) continue;
 
-            // Construct broadcast group
-            const madness::Group row_group = make_row_group(k);
-            const ProcessID group_root = get_row_group_root(k, row_group);
-
-            if(row_group.size() > 1) {
-              // Broadcast column k of left_.
-              for(; index < left_end_; index += left_stride_local_) {
-                if(left_.shape().is_zero(index)) continue;
-
-                // Broadcast the tile
-                const madness::DistributedID key(DistEvalImpl_::id(), index);
-                auto tile = get_tile(left_, index);
-                TensorImpl_::world().gop.bcast(key, tile, group_root, row_group);
-              }
-            } else {
-              // Discard column k of left_.
-              for(; index < left_end_; index += left_stride_local_) {
-                if(left_.shape().is_zero(index)) continue;
-                left_.discard(index);
-              }
+            // Construct broadcast group, if needed
+            if (!have_group) {
+              have_group = true;
+              row_group = make_row_group(k);
+              // broadcast if I am in this group and this group has others
+              do_broadcast = !row_group.empty() && row_group.size() > 1;
+              if (do_broadcast)
+                group_root = get_row_group_root(k, row_group);
             }
 
-            break;
+            if(do_broadcast) {
+              // Broadcast the tile
+              const madness::DistributedID key(DistEvalImpl_::id(), index);
+              auto tile = get_tile(left_, index);
+              TensorImpl_::world().gop.bcast(key, tile, group_root, row_group);
+            } else {
+              // Discard the tile
+              left_.discard(index);
+            }
           }
         }
       }
@@ -652,33 +678,35 @@ namespace TiledArray {
           const size_type row_end = index + proc_grid_.cols();
           index += proc_grid_.rank_col();
 
+          // will create broadcast group only if needed
+          bool have_group = true;
+          madness::Group col_group;
+          ProcessID group_root;
+          bool do_broadcast = false;
+
           // Search for and broadcast non-zero row
           for(; index < row_end; index += right_stride_local_) {
             if(right_.shape().is_zero(index)) continue;
 
             // Construct broadcast group
-            const madness::Group col_group = make_col_group(k);
-            const ProcessID group_root = get_col_group_root(k, col_group);
-
-            if(col_group.size() > 1) {
-              // Broadcast row k of right_.
-              for(; index < row_end; index += right_stride_local_) {
-                if(right_.shape().is_zero(index)) continue;
-
-                // Broadcast the tile
-                const madness::DistributedID key(DistEvalImpl_::id(), index + left_.size());
-                auto tile = get_tile(right_, index);
-                TensorImpl_::world().gop.bcast(key, tile, group_root, col_group);
-              }
-            } else {
-              // Broadcast row k of right_.
-              for(; index < row_end; index += right_stride_local_) {
-                if(right_.shape().is_zero(index)) continue;
-                right_.discard(index);
-              }
+            if (!have_group) {
+              have_group = true;
+              col_group = make_col_group(k);
+              // broadcast if I am in this group and this group has others
+              do_broadcast = !col_group.empty() && col_group.size() > 1;
+              if (do_broadcast)
+                group_root = get_col_group_root(k, col_group);
             }
 
-            break;
+            if(do_broadcast) {
+              // Broadcast the tile
+              const madness::DistributedID key(DistEvalImpl_::id(), index + left_.size());
+              auto tile = get_tile(right_, index);
+              TensorImpl_::world().gop.bcast(key, tile, group_root, col_group);
+            } else {
+              // Discard the tile
+              right_.discard(index);
+            }
           }
         }
       }
@@ -1238,9 +1266,9 @@ namespace TiledArray {
 
             // Start broadcast of column and row tiles for this step
             world_.taskq.add(owner_, & Summa_::bcast_col, k, col_, row_group,
-                madness::TaskAttributes::hipri());
+                             madness::TaskAttributes::hipri());
             world_.taskq.add(owner_, & Summa_::bcast_row, k, row_, col_group,
-                madness::TaskAttributes::hipri());
+                             madness::TaskAttributes::hipri());
 
             // Submit tasks for the contraction of col and row tiles.
             owner_->contract(k, col_, row_, tail_step_task_);
