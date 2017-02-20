@@ -278,7 +278,7 @@ namespace TiledArray {
 
         // if result is dense, include all processors
         if (result_shape.is_dense())
-          return std::vector<bool>(nproc_cols, false);
+          return std::vector<bool>(nproc_cols, true);
 
         // initialize the mask
         std::vector<bool> mask(nproc_cols, false);
@@ -347,7 +347,7 @@ namespace TiledArray {
 
         // if result is dense, include all processors
         if (result_shape.is_dense())
-          return std::vector<bool>(nproc_rows, false);
+          return std::vector<bool>(nproc_rows, true);
 
         // initialize the mask
         std::vector<bool> mask(nproc_rows, false);
