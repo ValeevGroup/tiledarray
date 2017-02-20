@@ -270,10 +270,8 @@ namespace TiledArray {
         // for each process in my row of the process grid determine whether there are any
         // nonzero C[i][*] located on that node
 
-        const auto nproc_rows = proc_grid_.proc_rows();
         const auto nproc_cols = proc_grid_.proc_cols();
         const auto my_proc_row = proc_grid_.rank_row();
-        const auto my_proc_col = proc_grid_.rank_col();
 
         // result shape
         const auto& result_shape = TensorImpl_::shape();
@@ -342,8 +340,6 @@ namespace TiledArray {
         // nonzero C[*][j] located on that node
 
         const auto nproc_rows = proc_grid_.proc_rows();
-        const auto nproc_cols = proc_grid_.proc_cols();
-        const auto my_proc_row = proc_grid_.rank_row();
         const auto my_proc_col = proc_grid_.rank_col();
 
         // result shape
