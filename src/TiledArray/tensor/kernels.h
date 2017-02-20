@@ -87,7 +87,7 @@ namespace TiledArray {
 
     /// In-place tensor operations with contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
+    /// This function sets the elements of \c result with the result of
     /// \c op(tensors[i]...)
     /// \tparam Op The element initialization operation type
     /// \tparam TR The result tensor type
@@ -110,7 +110,7 @@ namespace TiledArray {
 
     /// In-place tensor of tensors operations with contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
+    /// This function sets the elements of \c result with the result of
     /// \c op(tensors[i]...)
     /// \tparam Op The element initialization operation type
     /// \tparam TR The result tensor type
@@ -134,8 +134,8 @@ namespace TiledArray {
 
     /// In-place tensor permutation operations with contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
-    /// \c op(tensors[i]...)
+    /// This function sets the \c i -th element of \c result with the result of
+    /// \c op(tensor1[i],tensors[i]...)
     /// The expected signature of the input operations is:
     /// \code
     /// Result::value_type op(const T1::value_type, const Ts::value_type...)
@@ -176,8 +176,8 @@ namespace TiledArray {
 
     /// In-place tensor of tensors permutation operations with contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
-    /// \c op(tensors[i]...)
+    /// This function sets the \c i -th element of \c result with the result of
+    /// \c op(tensor1[i], tensors[i]...)
     /// The expected signature of the input operations is:
     /// \code
     /// Result::value_type op(const T1::value_type::value_type, const Ts::value_type::value_type...)
@@ -227,7 +227,7 @@ namespace TiledArray {
 
     /// In-place tensor operations with non-contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
+    /// This function sets the \c i -th element of \c result with the result of
     /// \c op(tensors[i]...)
     /// \tparam Op The element initialization operation type
     /// \tparam TR The result tensor type
@@ -252,7 +252,7 @@ namespace TiledArray {
 
     /// In-place tensor of tensors operations with non-contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
+    /// This function sets the \c i -th element of \c result with the result of
     /// \c op(tensors[i]...)
     /// \tparam Op The element initialization operation type
     /// \tparam TR The result tensor type
@@ -289,7 +289,7 @@ namespace TiledArray {
 
     /// Initialize tensor with contiguous tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
+    /// This function initializes the \c i -th element of \c result with the result of
     /// \c op(tensors[i]...)
     /// \pre The memory of \c tensor1 has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
@@ -316,7 +316,7 @@ namespace TiledArray {
 
     /// Initialize tensor of tensors with contiguous tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
+    /// This function initializes the \c i -th element of \c result with the result of
     /// \c op(tensors[i]...)
     /// \pre The memory of \c tensor1 has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
@@ -343,7 +343,7 @@ namespace TiledArray {
 
     /// Initialize tensor with permuted tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
+    /// This function initializes the \c i -th element of \c result with the result of
     /// \c op(tensor1[i], tensors[i]...)
     /// \pre The memory of \c result has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
@@ -376,7 +376,7 @@ namespace TiledArray {
 
     /// Initialize tensor of tensors with permuted tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
+    /// This function initializes the \c i -th element of \c result with the result of
     /// \c op(tensor1[i], tensors[i]...)
     /// \pre The memory of \c result has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
@@ -413,14 +413,15 @@ namespace TiledArray {
 
     /// Initialize tensor with one or more non-contiguous tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
-    /// \c op(tensors[i]...)
+    /// This function initializes the \c i -th element of \c result with the result of
+    /// \c op(tensor1[i], tensors[i]...)
     /// \pre The memory of \c tensor1 has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
     /// \tparam T1 The result tensor type
     /// \tparam Ts The argument tensor types
     /// \param[in] op The result tensor element initialization operation
-    /// \param[out] tensor1 The result tensor
+    /// \param[out] result The result tensor
+    /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename T1, typename... Ts,
         typename std::enable_if<is_tensor<TR, T1, Ts...>::value
@@ -448,14 +449,15 @@ namespace TiledArray {
 
     /// Initialize tensor with one or more non-contiguous tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
-    /// \c op(tensors[i]...)
+    /// This function initializes the \c i -th element of \c result with the result of
+    /// \c op(tensor1[i],tensors[i]...)
     /// \pre The memory of \c tensor1 has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
     /// \tparam T1 The result tensor type
     /// \tparam Ts The argument tensor types
     /// \param[in] op The result tensor element initialization operation
-    /// \param[out] tensor1 The result tensor
+    /// \param[out] result The result tensor
+    /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename T1, typename... Ts,
         typename std::enable_if<is_tensor_of_tensor<TR, T1, Ts...>::value
