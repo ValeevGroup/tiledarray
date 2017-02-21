@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
     TiledArray::TSpArrayD D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.shape());
     for(auto it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
       if(D_vvoo.is_local(*it) && (! D_vvoo.is_zero(*it)))
-        D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_vvoo_tile, D_vvoo.trange().make_tiles_range(*it)));
+        D_vvoo.set(*it, world.taskq.add(data, & InputData::make_D_vvoo_tile, D_vvoo.trange().make_tile_range(*it)));
 
 
     world.gop.fence();
