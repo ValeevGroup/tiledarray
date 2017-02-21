@@ -283,16 +283,16 @@ namespace TiledArray {
         // initialize the mask
         std::vector<bool> mask(nproc_cols, false);
 
-        // number of tiles in col dim of the result
-        const auto nj = right_.range().extent_data()[1];
+        // number of tiles in the col dimension of the result
+        const auto nj = proc_grid_.cols();
         // number of tiles in contraction dim
-        const auto nk = right_.range().extent_data()[0];
+        const auto nk = k_;
 
-        // for each i assigned to my column of processes ...
+        // for each i assigned to my row of processes ...
         size_type i_start, i_fence, i_stride;
         std::tie(i_start, i_fence, i_stride) =
             result_row_range(my_proc_row);
-        const auto ik_stride = i_fence * nk;
+        const auto ik_stride = i_stride * nk;
         for (size_type i = i_start, ik = i_start * nk + k; i < i_fence;
              i += i_stride, ik += ik_stride) {
           // ... such that A[i][k] exists ...
@@ -353,7 +353,7 @@ namespace TiledArray {
         std::vector<bool> mask(nproc_rows, false);
 
         // number of tiles in col dim of the result
-        const auto nj = right_.range().extent_data()[1];
+        const auto nj = proc_grid_.cols();
 
         // for each j assigned to my column of processes ...
         size_type j_start, j_fence, j_stride;
