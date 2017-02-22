@@ -1151,9 +1151,15 @@ namespace TiledArray {
             if((col_shape_value * row_shape_values[j]) < threshold_k)
               continue;
 
+            const size_type reduce_task_index = offset + row[j].first;
+
+            // Skip zero tiles
+            if(! reduce_tasks_[reduce_task_index])
+              continue;
+
             if(task)
               task->inc();
-            reduce_tasks_[offset + row[j].first].add(col[i].second, row[j].second, task);
+            reduce_tasks_[reduce_task_index].add(col[i].second, row[j].second, task);
           }
         }
       }
