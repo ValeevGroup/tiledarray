@@ -401,8 +401,8 @@ namespace TiledArray {
       ///         process in row \c proc_row
       inline std::tuple<size_type, size_type, size_type> result_row_range(
           size_type proc_row) const {
-        const size_type start = left_.range().lobound_data()[0] + proc_row;
-        const size_type fence = left_.range().upbound_data()[0];
+        const size_type start = proc_row;
+        const size_type fence = proc_grid_.rows();
         const size_type stride = proc_grid_.proc_rows();
         return std::make_tuple(start, fence, stride);
       }
@@ -415,8 +415,8 @@ namespace TiledArray {
       ///         process in column \c proc_col
       std::tuple<size_type, size_type, size_type> result_col_range(
           size_type proc_col) const {
-        const size_type start = right_.range().lobound_data()[1] + proc_col;
-        const size_type fence = left_.range().upbound_data()[1];
+        const size_type start = proc_col;
+        const size_type fence = proc_grid_.cols();
         const size_type stride = proc_grid_.proc_cols();
         return std::make_tuple(start, fence, stride);
       }
