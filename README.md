@@ -100,8 +100,8 @@ This figure was obtained with the help of an allocation from [Advanced Research 
   * **Pthreads**
   * **MPI-2 or MPI-3 library** - [MPICH](http://www.mpich.org), [MVAPICH](http://mvapich.cse.ohio-state.edu), and [Intel MPI](https://software.intel.com/en-us/intel-mpi-library) have been tested. Intel MPI is recommended on x86/Infiniband hardware, but any of these libraries will do. We do not recommend OpenMPI as `MPI_THREAD_MULTIPLE` support is [broken](https://github.com/open-mpi/ompi/issues/157).
   * **LAPACK** and **BLAS** - Serial (sequential, or 1-thread) versions of these libraries is recommended. If you have to use threaded version of these libraries, to avoid poor performance (or even errors) due to non-interoperable threading runtimes it is recommended to configure these libraries to use single thread at runtime before entering the block of TiledArray code.
-  * **Intel Threading Building Blocks** (optional) Version 4.3 Update 4 or later. 
-* **Doxygen** (optional) - Used to generate for documentation only
+  * **Intel Threading Building Blocks** (optional, but **strongly recommended**) Version 4.3 Update 5 or later. 
+* **Doxygen** (optional) - Used to generate for documentation only. We strongly recommend to use the most recent version of Doxygen to produce the most accurate documentation.
 * **Boost** (optional) - Version 1.33.0 or later for unit tests only
  
 #### Build
