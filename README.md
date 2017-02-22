@@ -21,25 +21,25 @@ The following example expressions are written in C++ with TiledArray. TiledArray
 
 * Matrix-matrix multiplication
 
-    ```c++
-    C("m,n") = 2.0 * A("m,k") * B("k,n");
-    ```
+   ```{.cc}
+   C("m,n") = 2.0 * A("m,k") * B("k,n");
+   ```
 
 * Matrix-vector multiplication
 
-    ```c++
-    C("n") = A("k") * B("k,n");
-    ```
+   ```{.cc}
+   C("n") = A("k") * B("k,n");
+   ```
 
 * A more complex tensor expression
  
-    ```c++
-    E("m,n") = 2.0 * A("m,k") * B("k,n") + C("k,n") * D("k,m");
-    ```
+   ```{.cc}
+   E("m,n") = 2.0 * A("m,k") * B("k,n") + C("k,n") * D("k,m");
+   ```
 
 The following application is a minimal example of a distributed-memory matrix multiplcation.
 
-```c++
+```{.cc}
 #include <tiledarray.h>
 
 int main(int argc, char** argv) {
