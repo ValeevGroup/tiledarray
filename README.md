@@ -2,20 +2,20 @@
 
 <img src=https://github.com/ValeevGroup/tiledarray/wiki/images/ta_logo_med.png width=125>
 
-### Synopsis
+# Synopsis
 TiledArray is a scalable, block-sparse tensor framework for rapid composition of high-performance tensor arithmetic, appearing for example in many-body quantum mechanics. It allows users to compose tensor expressions of arbitrary complexity in native C++ code that closely resembles the standard mathematical notation. The framework is designed to scale from a single multicore computer to a massive distributed-memory multiprocessor.
 
 TiledArray is built on top of MADNESS parallel runtime (MADWorld), part of [MADNESS numerical calculus framework](https://github.com/m-a-d-n-e-s-s/madness).
 
 TiledArray is a work in progress. Its development has been possible thanks to generous support from the U.S. National Science Foundation, the Alfred P. Sloan Foundation, the Camille and Henry Dreyfus Foundation, and the Department of Energy.
 
-### Design Goals
+# Design Goals
 * General-purpose arithmetic on dense and block-sparse tensors;
 * High-level (math-like) composition as well as full access to low-level data and algorithms, both from C++
 * Massive shared- and distributed-memory parallelism
 * Deeply-reusable framework: everything can be customized, from tile types (e.g. to support on-disk or compute-on-the-fly tensors) to how the structure of sparse tensors is described.
 
-### Example Code
+# Example Code
 
 The following example expressions are written in C++ with TiledArray. TiledArray use the [Einstein summation convention](http://en.wikipedia.org/wiki/Einstein_notation) when evaluating tensor expressions.
 
@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
 }
 ```
 
-### Performance
+# Performance
 
 Parallel performance of TiledArray for multiplication of dense square matrices on [Mira](https://www.alcf.anl.gov/mira), an IBM BlueGene/Q supercomputer at Argonne National Laboratory, compared with that of [Cyclops Tensor Framework](https://github.com/solomonik/ctf) and [ScaLAPACK](http://www.netlib.org/scalapack/):
 
@@ -85,9 +85,9 @@ Excellent parallel scalability is also possible for much more complicated expres
 
 This figure was obtained with the help of an allocation from [Advanced Research Computing](https://secure.hosting.vt.edu/www.arc.vt.edu/) at Virginia Tech.
 
-### Installing TiledArray
+# Installing TiledArray
 
-#### Dependencies
+## Dependencies
 
 * **C++ compiler with C++11 support** - Compilers that have been tested include:
   * GCC 4.7.2 and later, 
@@ -104,11 +104,11 @@ This figure was obtained with the help of an allocation from [Advanced Research 
 * **Doxygen** (optional) - Used to generate for documentation only. We strongly recommend to use the most recent version of Doxygen to produce the most accurate documentation.
 * **Boost** (optional) - Version 1.33.0 or later for unit tests only
  
-#### Build
+## Build
 
 TiledArray includes several tool chain files for common platforms. These files contain system specific settings that have been tested on the various platforms. We recommend using one of these 
 
-```shell
+```{.sh}
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ mkdir build
@@ -121,7 +121,8 @@ $ cmake \
 
 Common CMake cache variables that you may want to define include:
 
-##### Compiler Variables
+### Compiler Variables
+
 ```cmake
 -D CMAKE_C_COMPILER=/path/to/bin/cc
 -D CMAKE_CXX_COMPILER=/path/to/bin/c++
@@ -129,14 +130,16 @@ Common CMake cache variables that you may want to define include:
 -D MPI_CXX_COMPILER=/path/to/bin/mpicxx
 ```
 
-##### Option Variables
+### Option Variables
+
 ```cmake
 -D CMAKE_BUILD_TYPE=(Release|Debug|RelWithDebInfo)
 -D BUILD_SHARED_LIBS=(TRUE|FALSE)
 -D TA_ERROR=(none|throw|assert)
 ```
 
-##### Library Variables
+### Library Variables
+
 ```cmake
 -D MADNESS_ROOT_DIR=/path/to/madness/root/dir
 -D TBB_ROOT_DIR=/path/to/tbb/root/dir
@@ -151,14 +154,14 @@ Common CMake cache variables that you may want to define include:
 
 Note, when configuring TiledArray, CMake will download and build MADNESS, Eigen, and Boost if they are not found on the system. Boost will only be installed if unit testing is enabled. This behavior can be disable with `-D TA_EXPERT=TRUE`.
 
-### Developers
+# Developers
 TiledArray is developed by the [Valeev Group](http://research.valeyev.net) at [Virginia Tech](http://www.vt.edu).
 
-### License
+# License
 
 TiledArray is freely available under the terms of the GPL v3+ licence. See the the included LICENSE file for details. If you are interested in using TiledArray under different licensing terms, please contact us.
 
-### How to Cite
+# How to Cite
 
 Cite TiledArray as
 > "TiledArray: A general-purpose scalable block-sparse tensor framework", Justus A. Calvin and Edward F. Valeev, https://github.com/valeevgroup/tiledarray .
@@ -170,5 +173,5 @@ Inner workings of TiledArray are partially described in the following publicatio
 The MADNESS parallel runtime is described in the following publication:
 * Robert J. Harrison, Gregory Beylkin, Florian A. Bischoff, Justus A. Calvin, George I. Fann, Jacob Fosso-Tande, Diego Galindo, Jeff R. Hammond, Rebecca Hartman-Baker, Judith C. Hill, Jun Jia, Jakob S. Kottmann, M-J. Yvonne Ou, Junchen Pei, Laura E. Ratcliff, Matthew G. Reuter, Adam C. Richie-Halford, Nichols A. Romero, Hideo Sekino, William A. Shelton, Bryan E. Sundahl, W. Scott Thornton, Edward F. Valeev, Álvaro Vázquez-Mayagoitia, Nicholas Vence, Takeshi Yanai, and Yukina Yokoi, "madness: A Multiresolution, Adaptive Numerical Environment for Scientific Simulation.", *SIAM J Sci Comput* __38__, S123-S142 (2016), http://dx.doi.org/10.1137/15M1026171 .
 
-### Acknowledgements
-Development of TiledArray is made possible by past and present contributions from the National Science Foundation (awards CHE-0847295, CHE-0741927, OCI-1047696, CHE-1362655, ACI-1450262, ACI-1550456), the Alfred P. Sloan Foundation, the Camille and Henry Dreyfus Foundation, the Department of Energy Exascale Computing Project (NWChemEx subproject), and the Department of Energy INCITE Program.
+# Acknowledgements
+Development of TiledArray is made possible by past and present contributions from the National Science Foundation (awards CHE-0847295, CHE-0741927, OCI-1047696, CHE-1362655, ACI-1450262, ACI-1550456), the Alfred P. Sloan Foundation, the Camille and Henry Dreyfus Foundation, the Department of Energy Exascale Computing Project ([NWChemEx subproject](https://github.com/NWChemEx-Project)), and the Department of Energy INCITE Program.
