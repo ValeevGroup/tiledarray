@@ -1,5 +1,5 @@
 #
-# Generic Toolchain for MVAPICH + MKL 
+# Generic Toolchain for GCC + MVAPICH + MKL + TBB
 #
 # REQUIREMENTS:
 # - in PATH:
