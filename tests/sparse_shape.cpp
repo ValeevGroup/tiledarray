@@ -182,6 +182,28 @@ BOOST_AUTO_TEST_CASE( comm_constructor )
   }
 
   BOOST_CHECK_CLOSE(x.sparsity(), float(zero_tile_count) / float(tr.tiles_range().volume()), tolerance);
+
+  // use the sparse ctor
+  {
+    std::vector<std::pair<std::vector<std::size_t>,float>> sparse_tile_norms;
+
+    for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
+      auto tiles_range = tr.tiles_range();
+      auto idx = tiles_range.idx(i);
+      if (tile_norms[i] > 0.0) {
+        sparse_tile_norms.push_back(std::make_pair(idx,tile_norms[i]));
+      }
+    }
+
+    // Construct the shape using sparse ctor
+    BOOST_CHECK_NO_THROW(SparseShape<float> x_sp(*GlobalFixture::world, sparse_tile_norms, tr));
+    SparseShape<float> x_sp(*GlobalFixture::world, sparse_tile_norms, tr);
+
+    // Check that the dense and sparse ctors produced same data
+    for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
+      BOOST_CHECK_CLOSE(x[i], x_sp[i], tolerance);
+    }
+  }
 }
 
 
