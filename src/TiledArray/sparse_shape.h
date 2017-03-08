@@ -494,7 +494,7 @@ namespace TiledArray {
       TA_ASSERT(detail::size(lower_bound) == tile_norms_.range().rank());
       TA_ASSERT(detail::size(upper_bound) == tile_norms_.range().rank());
 
-      // Get the number dimensions of the the shape
+      // Get the number dimensions of the shape
       const auto rank = detail::size(lower_bound);
       const auto* restrict const lower = detail::data(lower_bound);
       const auto* restrict const upper = detail::data(upper_bound);

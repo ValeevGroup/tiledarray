@@ -239,7 +239,7 @@ namespace TiledArray {
 
   /// This function modifies the tile data of \c Array object. Users must
   /// provide a function/functor that modifies the tile data. For example, if we
-  /// want to modify the elements of the array to be equal to the the square
+  /// want to modify the elements of the array to be equal to the square
   /// root of the original value:
   /// \code
   /// foreach(array, [] (TiledArray::TensorD& tile) {

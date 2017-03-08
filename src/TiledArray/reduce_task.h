@@ -481,7 +481,7 @@ namespace TiledArray {
       /// Destructor
 
       /// If the reduction has not been submitted or \c destroy() has not been
-      /// called, it well be submitted when the the destructor is called.
+      /// called, it will be submitted when the destructor is called.
       ~ReduceTask() { delete pimpl_; }
 
       /// Move assignment operator

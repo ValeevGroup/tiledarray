@@ -945,7 +945,7 @@ namespace TiledArray {
             DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index),
                 reduce_task->submit());
 
-            // Destroy the the reduce task
+            // Destroy the reduce task
             reduce_task->~ReducePairTask<op_type>();
           }
         }
@@ -992,7 +992,7 @@ namespace TiledArray {
               DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
             }
 
-            // Destroy the the reduce task
+            // Destroy the reduce task
             reduce_task->~ReducePairTask<op_type>();
           }
         }

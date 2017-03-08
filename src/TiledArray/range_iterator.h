@@ -150,7 +150,7 @@ namespace TiledArray {
     /// \tparam Container The container that the iterator references
     /// \param left_it The left-hand iterator to be compared
     /// \param right_it The right-hand iterator to be compared
-    /// \return \c true if the the value and container are equal for the \c left_it
+    /// \return \c true if the value and container are equal for the \c left_it
     /// and \c right_it , otherwise \c false .
     template <typename T, typename Container>
     bool operator==(const RangeIterator<T, Container>& left_it,
@@ -167,7 +167,7 @@ namespace TiledArray {
     /// \tparam Container The container that the iterator references
     /// \param left_it The left-hand iterator to be compared
     /// \param right_it The right-hand iterator to be compared
-    /// \return \c true if the the value or container are not equal for the
+    /// \return \c true if the value or container are not equal for the
     /// \c left_it and \c right_it , otherwise \c false .
     template <typename T, typename Container>
     bool operator!=(const RangeIterator<T, Container>& left_it,

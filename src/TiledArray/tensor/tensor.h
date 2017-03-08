@@ -1206,7 +1206,7 @@ namespace TiledArray {
       TA_ASSERT(!right.empty());
       TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
-      // Check that the outer dimensions of left match the the corresponding
+      // Check that the outer dimensions of left match the corresponding
       // dimensions in result
       TA_ASSERT(gemm_helper.left_result_coformal(left.range().lobound_data(),
           pimpl_->range_.lobound_data()));
@@ -1215,7 +1215,7 @@ namespace TiledArray {
       TA_ASSERT(gemm_helper.left_result_coformal(left.range().extent_data(),
           pimpl_->range_.extent_data()));
 
-      // Check that the outer dimensions of right match the the corresponding
+      // Check that the outer dimensions of right match the corresponding
       // dimensions in result
       TA_ASSERT(gemm_helper.right_result_coformal(right.range().lobound_data(),
           pimpl_->range_.lobound_data()));
