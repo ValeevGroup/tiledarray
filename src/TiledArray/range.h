@@ -463,7 +463,7 @@ namespace TiledArray {
     /// \throw nothing
     const size_type* stride_data() const { return data_ + (rank_ + rank_ + rank_); }
 
-    /// Upper bound accessor
+    /// Range stride accessor
 
     /// \return A \c size_array that contains the stride for each dimension of
     /// the block range.
