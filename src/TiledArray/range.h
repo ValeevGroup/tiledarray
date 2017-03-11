@@ -400,6 +400,15 @@ namespace TiledArray {
     /// \throw nothing
     size_array lobound() const { return size_array(lobound_data(), rank_); }
 
+    /// Range lower bound element accessor
+
+    /// \return The lower bound of dimension \c dim.
+    /// \throw nothing
+    size_type lobound(size_t dim) const {
+      TA_ASSERT(dim < rank_);
+      return *(lobound_data() + dim);
+    }
+
     /// Range upper bound data accessor
 
     /// \return A pointer to the upper bound data (see <tt>upbound()</tt>)
@@ -413,6 +422,15 @@ namespace TiledArray {
     /// \throw nothing
     size_array upbound() const {
       return size_array(upbound_data(), rank_);
+    }
+
+    /// Range upped bound element accessor
+
+    /// \return The upper bound of dimension \c dim.
+    /// \throw nothing
+    size_type upbound(size_t dim) const {
+      TA_ASSERT(dim < rank_);
+      return *(upbound_data() + dim);
     }
 
     /// Range extent data accessor
@@ -430,6 +448,15 @@ namespace TiledArray {
       return size_array(extent_data(), rank_);
     }
 
+    /// Range extent element accessor
+
+    /// \return The extent of dimension \c dim.
+    /// \throw nothing
+    size_type extent(size_t dim) const {
+      TA_ASSERT(dim < rank_);
+      return *(extent_data() + dim);
+    }
+
     /// Range stride data accessor
 
     /// \return A pointer to the stride data (see <tt>stride()</tt>)
@@ -443,6 +470,15 @@ namespace TiledArray {
     /// \throw nothing
     size_array stride() const {
       return size_array(stride_data(), rank_);
+    }
+
+    /// Range stride element accessor
+
+    /// \return The stride of dimension \c dim.
+    /// \throw nothing
+    size_type stride(size_t dim) const {
+      TA_ASSERT(dim < rank_);
+      return *(stride_data() + dim);
     }
 
     /// Range volume accessor
