@@ -510,7 +510,7 @@ namespace TiledArray {
 
         // Check that the input indices are in range
         TA_ASSERT(lower_i < upper_i);
-        TA_ASSERT(upper_i <= tile_norms_.range().upbound_data()[i]);
+        TA_ASSERT(upper_i <= tile_norms_.range().upbound(i));
 
         // Construct the size vector for rank i
         size_vectors.get()[i] = vector_type(extent_i,

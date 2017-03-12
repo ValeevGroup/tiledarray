@@ -104,8 +104,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
     // Construct the Eigen matrix
     Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
-        matrix(array.trange().elements_range().extent_data()[0],
-            (array.trange().tiles_range().rank() == 2 ? array.trange().elements_range().extent_data()[1] : 1));
+        matrix(array.trange().elements_range().extent(0),
+            (array.trange().tiles_range().rank() == 2 ? array.trange().elements_range().extent(1) : 1));
 
     // Spawn tasks to copy array tiles to the Eigen matrix
     for(std::size_t i = 0; i < array.size(); ++i) {
@@ -503,17 +503,17 @@ BOOST_AUTO_TEST_CASE( block )
     Tensor<int> result_tile = c.find(index).get();
 
     for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
-      BOOST_CHECK_EQUAL(result_tile.range().lobound_data()[r],
-          arg_tile.range().lobound_data()[r] - a.trange().data()[r].tile(3).first);
+      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
+          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
 
-      BOOST_CHECK_EQUAL(result_tile.range().upbound_data()[r],
-          arg_tile.range().upbound_data()[r] - a.trange().data()[r].tile(3).first);
+      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
+          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
 
-      BOOST_CHECK_EQUAL(result_tile.range().extent_data()[r],
-          arg_tile.range().extent_data()[r]);
+      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
+          arg_tile.range().extent(r));
 
-      BOOST_CHECK_EQUAL(result_tile.range().stride_data()[r],
-          arg_tile.range().stride_data()[r]);
+      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
+          arg_tile.range().stride(r));
     }
     BOOST_CHECK_EQUAL(result_tile.range().volume(), arg_tile.range().volume());
 
@@ -536,17 +536,17 @@ BOOST_AUTO_TEST_CASE( const_block )
     Tensor<int> result_tile = c.find(index).get();
 
     for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
-      BOOST_CHECK_EQUAL(result_tile.range().lobound_data()[r],
-          arg_tile.range().lobound_data()[r] - a.trange().data()[r].tile(3).first);
+      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
+          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
 
-      BOOST_CHECK_EQUAL(result_tile.range().upbound_data()[r],
-          arg_tile.range().upbound_data()[r] - a.trange().data()[r].tile(3).first);
+      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
+          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
 
-      BOOST_CHECK_EQUAL(result_tile.range().extent_data()[r],
-          arg_tile.range().extent_data()[r]);
+      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
+          arg_tile.range().extent(r));
 
-      BOOST_CHECK_EQUAL(result_tile.range().stride_data()[r],
-          arg_tile.range().stride_data()[r]);
+      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
+          arg_tile.range().stride(r));
     }
     BOOST_CHECK_EQUAL(result_tile.range().volume(), arg_tile.range().volume());
 
@@ -568,17 +568,17 @@ BOOST_AUTO_TEST_CASE( scal_block )
     Tensor<int> result_tile = c.find(index).get();
 
     for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
-      BOOST_CHECK_EQUAL(result_tile.range().lobound_data()[r],
-          arg_tile.range().lobound_data()[r] - a.trange().data()[r].tile(3).first);
+      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
+          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
 
-      BOOST_CHECK_EQUAL(result_tile.range().upbound_data()[r],
-          arg_tile.range().upbound_data()[r] - a.trange().data()[r].tile(3).first);
+      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
+          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
 
-      BOOST_CHECK_EQUAL(result_tile.range().extent_data()[r],
-          arg_tile.range().extent_data()[r]);
+      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
+          arg_tile.range().extent(r));
 
-      BOOST_CHECK_EQUAL(result_tile.range().stride_data()[r],
-          arg_tile.range().stride_data()[r]);
+      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
+          arg_tile.range().stride(r));
     }
     BOOST_CHECK_EQUAL(result_tile.range().volume(), arg_tile.range().volume());
 
@@ -990,9 +990,9 @@ BOOST_AUTO_TEST_CASE( scale_mult )
 
 BOOST_AUTO_TEST_CASE( cont )
 {
-  const std::size_t m = a.trange().elements_range().extent_data()[0];
-  const std::size_t k = a.trange().elements_range().extent_data()[1] * a.trange().elements_range().extent_data()[2];
-  const std::size_t n = b.trange().elements_range().extent_data()[2];
+  const std::size_t m = a.trange().elements_range().extent(0);
+  const std::size_t k = a.trange().elements_range().extent(1) * a.trange().elements_range().extent(2);
+  const std::size_t n = b.trange().elements_range().extent(2);
 
   TiledArray::EigenMatrixXi left(m, k);
   left.fill(0);
@@ -1002,12 +1002,12 @@ BOOST_AUTO_TEST_CASE( cont )
 
     std::array<std::size_t, 3> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
       const std::size_t r = i[0];
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
-        for(i[2] = tile.range().lobound_data()[2]; i[2] < tile.range().upbound_data()[2]; ++i[2]) {
-          const std::size_t c = i[1] * a.trange().elements_range().stride_data()[1]
-                              + i[2] * a.trange().elements_range().stride_data()[2];
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        for(i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2); ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1)
+                              + i[2] * a.trange().elements_range().stride(2);
 
           left(r, c) = tile[i];
         }
@@ -1025,12 +1025,12 @@ BOOST_AUTO_TEST_CASE( cont )
 
     std::array<std::size_t, 3> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
       const std::size_t r = i[0];
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
-        for(i[2] = tile.range().lobound_data()[2]; i[2] < tile.range().upbound_data()[2]; ++i[2]) {
-          const std::size_t c = i[1] * a.trange().elements_range().stride_data()[1]
-                              + i[2] * a.trange().elements_range().stride_data()[2];
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        for(i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2); ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1)
+                              + i[2] * a.trange().elements_range().stride(2);
 
           right(r, c) = tile[i];
         }
@@ -1050,8 +1050,8 @@ BOOST_AUTO_TEST_CASE( cont )
 
     std::array<std::size_t, 2> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
           BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]));
       }
     }
@@ -1063,8 +1063,8 @@ BOOST_AUTO_TEST_CASE( cont )
 
     std::array<std::size_t, 2> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
           BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 2);
       }
     }
@@ -1077,8 +1077,8 @@ BOOST_AUTO_TEST_CASE( cont )
 
     std::array<std::size_t, 2> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
           BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 3);
       }
     }
@@ -1091,8 +1091,8 @@ BOOST_AUTO_TEST_CASE( cont )
 
     std::array<std::size_t, 2> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
           BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 6);
       }
     }
@@ -1101,9 +1101,9 @@ BOOST_AUTO_TEST_CASE( cont )
 
 BOOST_AUTO_TEST_CASE( scale_cont )
 {
-  const std::size_t m = a.trange().elements_range().extent_data()[0];
-  const std::size_t k = a.trange().elements_range().extent_data()[1] * a.trange().elements_range().extent_data()[2];
-  const std::size_t n = b.trange().elements_range().extent_data()[2];
+  const std::size_t m = a.trange().elements_range().extent(0);
+  const std::size_t k = a.trange().elements_range().extent(1) * a.trange().elements_range().extent(2);
+  const std::size_t n = b.trange().elements_range().extent(2);
 
   TiledArray::EigenMatrixXi left(m, k);
   left.fill(0);
@@ -1113,12 +1113,12 @@ BOOST_AUTO_TEST_CASE( scale_cont )
 
     std::array<std::size_t, 3> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
       const std::size_t r = i[0];
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
-        for(i[2] = tile.range().lobound_data()[2]; i[2] < tile.range().upbound_data()[2]; ++i[2]) {
-          const std::size_t c = i[1] * a.trange().elements_range().stride_data()[1]
-                              + i[2] * a.trange().elements_range().stride_data()[2];
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        for(i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2); ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1)
+                              + i[2] * a.trange().elements_range().stride(2);
 
           left(r, c) = tile[i];
         }
@@ -1136,12 +1136,12 @@ BOOST_AUTO_TEST_CASE( scale_cont )
 
     std::array<std::size_t, 3> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
       const std::size_t r = i[0];
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
-        for(i[2] = tile.range().lobound_data()[2]; i[2] < tile.range().upbound_data()[2]; ++i[2]) {
-          const std::size_t c = i[1] * a.trange().elements_range().stride_data()[1]
-                              + i[2] * a.trange().elements_range().stride_data()[2];
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        for(i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2); ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1)
+                              + i[2] * a.trange().elements_range().stride(2);
 
           right(r, c) = tile[i];
         }
@@ -1162,8 +1162,8 @@ BOOST_AUTO_TEST_CASE( scale_cont )
 
     std::array<std::size_t, 2> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
           BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 5);
       }
     }
@@ -1176,8 +1176,8 @@ BOOST_AUTO_TEST_CASE( scale_cont )
 
     std::array<std::size_t, 2> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
           BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 10);
       }
     }
@@ -1190,8 +1190,8 @@ BOOST_AUTO_TEST_CASE( scale_cont )
 
     std::array<std::size_t, 2> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
           BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 15);
       }
     }
@@ -1204,8 +1204,8 @@ BOOST_AUTO_TEST_CASE( scale_cont )
 
     std::array<std::size_t, 2> i;
 
-    for(i[0] = tile.range().lobound_data()[0]; i[0] < tile.range().upbound_data()[0]; ++i[0]) {
-      for(i[1] = tile.range().lobound_data()[1]; i[1] < tile.range().upbound_data()[1]; ++i[1]) {
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
           BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 30);
       }
     }

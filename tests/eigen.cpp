@@ -53,21 +53,21 @@ BOOST_AUTO_TEST_CASE( tile_map ) {
   for(Tensor<int>::iterator it = tensor.begin(); it != tensor.end(); ++it)
     *it = GlobalFixture::world->rand();
 
-  Eigen::Map<EigenMatrixXi> map = eigen_map(tensor, tensor.range().extent_data()[0], tensor.range().extent_data()[1]);
+  Eigen::Map<EigenMatrixXi> map = eigen_map(tensor, tensor.range().extent(0), tensor.range().extent(1));
 
   // Check the map dimensions
-  BOOST_CHECK_EQUAL(map.rows(), tensor.range().extent_data()[0]);
-  BOOST_CHECK_EQUAL(map.cols(), tensor.range().extent_data()[1]);
+  BOOST_CHECK_EQUAL(map.rows(), tensor.range().extent(0));
+  BOOST_CHECK_EQUAL(map.cols(), tensor.range().extent(1));
 
   for(Range::const_iterator it = tensor.range().begin(); it != tensor.range().end(); ++it) {
     BOOST_CHECK_EQUAL(map((*it)[0], (*it)[1]), tensor[*it]);
   }
 
-  Eigen::Map<const EigenMatrixXi> cmap = eigen_map(ctensor, ctensor.range().extent_data()[0], ctensor.range().extent_data()[1]);
+  Eigen::Map<const EigenMatrixXi> cmap = eigen_map(ctensor, ctensor.range().extent(0), ctensor.range().extent(1));
 
   // Check the map dimensions
-  BOOST_CHECK_EQUAL(cmap.rows(), ctensor.range().extent_data()[0]);
-  BOOST_CHECK_EQUAL(cmap.cols(), ctensor.range().extent_data()[1]);
+  BOOST_CHECK_EQUAL(cmap.rows(), ctensor.range().extent(0));
+  BOOST_CHECK_EQUAL(cmap.cols(), ctensor.range().extent(1));
 
   for(Range::const_iterator it = tensor.range().begin(); it != tensor.range().end(); ++it) {
     BOOST_CHECK_EQUAL(cmap((*it)[0], (*it)[1]), ctensor[*it]);
@@ -85,8 +85,8 @@ BOOST_AUTO_TEST_CASE( auto_tile_map ) {
   Eigen::Map<EigenMatrixXi> map = eigen_map(tensor);
 
   // Check the map dimensions
-  BOOST_CHECK_EQUAL(map.rows(), tensor.range().extent_data()[0]);
-  BOOST_CHECK_EQUAL(map.cols(), tensor.range().extent_data()[1]);
+  BOOST_CHECK_EQUAL(map.rows(), tensor.range().extent(0));
+  BOOST_CHECK_EQUAL(map.cols(), tensor.range().extent(1));
 
   for(Range::const_iterator it = tensor.range().begin(); it != tensor.range().end(); ++it) {
     BOOST_CHECK_EQUAL(map((*it)[0], (*it)[1]), tensor[*it]);
@@ -95,8 +95,8 @@ BOOST_AUTO_TEST_CASE( auto_tile_map ) {
   Eigen::Map<const EigenMatrixXi> cmap = eigen_map(ctensor);
 
   // Check the map dimensions
-  BOOST_CHECK_EQUAL(cmap.rows(), ctensor.range().extent_data()[0]);
-  BOOST_CHECK_EQUAL(cmap.cols(), ctensor.range().extent_data()[1]);
+  BOOST_CHECK_EQUAL(cmap.rows(), ctensor.range().extent(0));
+  BOOST_CHECK_EQUAL(cmap.cols(), ctensor.range().extent(1));
 
   for(Range::const_iterator it = tensor.range().begin(); it != tensor.range().end(); ++it) {
     BOOST_CHECK_EQUAL(cmap((*it)[0], (*it)[1]), ctensor[*it]);
@@ -113,8 +113,8 @@ BOOST_AUTO_TEST_CASE( submatrix_to_tensor ) {
   BOOST_CHECK_NO_THROW(eigen_submatrix_to_tensor(matrix, tensor));
 
   // Get the target submatrix block
-  auto block = matrix.block(tensor.range().lobound_data()[0],
-      tensor.range().lobound_data()[1], tensor.range().extent_data()[0], tensor.range().extent_data()[1]);
+  auto block = matrix.block(tensor.range().lobound(0),
+      tensor.range().lobound(1), tensor.range().extent(0), tensor.range().extent(1));
 
   // Check that the block contains the same values as the tensor
   for(Range::const_iterator it = tensor.range().begin(); it != tensor.range().end(); ++it) {
@@ -133,8 +133,8 @@ BOOST_AUTO_TEST_CASE( tensor_to_submatrix ) {
   BOOST_CHECK_NO_THROW(tensor_to_eigen_submatrix(tensor, matrix));
 
   // Get the source submatrix block
-  auto block = matrix.block(tensor.range().lobound_data()[0],
-      tensor.range().lobound_data()[1], tensor.range().extent_data()[0], tensor.range().extent_data()[1]);
+  auto block = matrix.block(tensor.range().lobound(0),
+      tensor.range().lobound(1), tensor.range().extent(0), tensor.range().extent(1));
 
   // Check that the block contains the same values as the tensor
   for(Range::const_iterator it = tensor.range().begin(); it != tensor.range().end(); ++it) {
@@ -226,10 +226,10 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     BOOST_CHECK_NO_THROW(rmatrix = a_to_e_rowmajor(array));
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements_range().extent_data()[0]);
-    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements_range().extent_data()[1]);
-    BOOST_CHECK_EQUAL(rmatrix.rows(), array.trange().elements_range().extent_data()[0]);
-    BOOST_CHECK_EQUAL(rmatrix.cols(), array.trange().elements_range().extent_data()[1]);
+    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements_range().extent(0));
+    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements_range().extent(1));
+    BOOST_CHECK_EQUAL(rmatrix.rows(), array.trange().elements_range().extent(0));
+    BOOST_CHECK_EQUAL(rmatrix.cols(), array.trange().elements_range().extent(1));
 
     // Check that the data in matrix matches the data in array
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
@@ -267,10 +267,10 @@ BOOST_AUTO_TEST_CASE( array_to_matrix ) {
     BOOST_CHECK_NO_THROW(rmatrix = a_to_e_rowmajor(array));
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements_range().extent_data()[0]);
-    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements_range().extent_data()[1]);
-    BOOST_CHECK_EQUAL(rmatrix.rows(), array.trange().elements_range().extent_data()[0]);
-    BOOST_CHECK_EQUAL(rmatrix.cols(), array.trange().elements_range().extent_data()[1]);
+    BOOST_CHECK_EQUAL(matrix.rows(), array.trange().elements_range().extent(0));
+    BOOST_CHECK_EQUAL(matrix.cols(), array.trange().elements_range().extent(1));
+    BOOST_CHECK_EQUAL(rmatrix.rows(), array.trange().elements_range().extent(0));
+    BOOST_CHECK_EQUAL(rmatrix.cols(), array.trange().elements_range().extent(1));
 
     // Check that the data in vector matches the data in array
     for(Range::const_iterator it = array.range().begin(); it != array.range().end(); ++it) {
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements_range().extent_data()[0]);
+    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements_range().extent(0));
     BOOST_CHECK_EQUAL(vector.cols(), 1);
 
     // Check that the data in vector matches the data in array
@@ -340,7 +340,7 @@ BOOST_AUTO_TEST_CASE( array_to_vector ) {
 
 
     // Check that the matrix dimensions are the same as the array
-    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements_range().extent_data()[0]);
+    BOOST_CHECK_EQUAL(vector.rows(), array1.trange().elements_range().extent(0));
     BOOST_CHECK_EQUAL(vector.cols(), 1);
 
     // Check that the data in vector matches the data in array

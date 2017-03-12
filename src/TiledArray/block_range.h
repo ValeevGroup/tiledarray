@@ -77,9 +77,9 @@ namespace TiledArray {
         const auto extent_i = upper_bound_i - lower_bound_i;
 
         // Check input dimensions
-        TA_ASSERT(lower_bound_i >= range.lobound_data()[i]);
+        TA_ASSERT(lower_bound_i >= range.lobound(i));
         TA_ASSERT(lower_bound_i < upper_bound_i);
-        TA_ASSERT(upper_bound_i <= range.upbound_data()[i]);
+        TA_ASSERT(upper_bound_i <= range.upbound(i));
 
         // Set the block range data
         lower[i]       = lower_bound_i;

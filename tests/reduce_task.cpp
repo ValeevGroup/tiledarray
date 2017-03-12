@@ -45,7 +45,7 @@ struct plus {
 
 struct ReduceTaskFixture {
 
-  ReduceTaskFixture() : world(*GlobalFixture::world), rt(world, plus<int>()) {
+  ReduceTaskFixture() : world(*GlobalFixture::world), rt(world) {
 
   }
 
@@ -81,7 +81,7 @@ struct ReduceOp {
 
 struct ReducePairTaskFixture {
 
-  ReducePairTaskFixture() : world(*GlobalFixture::world), rt(world, ReduceOp()) {
+  ReducePairTaskFixture() : world(*GlobalFixture::world), rt(world) {
 
   }
 

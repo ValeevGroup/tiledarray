@@ -42,13 +42,13 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   ContractionEvalFixture() :
     left(*GlobalFixture::world, tr),
     right(*GlobalFixture::world, tr),
-    proc_grid(*GlobalFixture::world, tr.tiles_range().extent_data()[0], tr.tiles_range().extent_data()[tr.tiles_range().rank() - 1],
-        tr.elements_range().extent_data()[0], tr.elements_range().extent_data()[tr.elements_range().rank() - 1u]),
+    proc_grid(*GlobalFixture::world, tr.tiles_range().extent(0), tr.tiles_range().extent(tr.tiles_range().rank() - 1),
+        tr.elements_range().extent(0), tr.elements_range().extent(tr.elements_range().rank() - 1u)),
     left_arg(make_array_eval(left, left.world(), DenseShape(),
-        proc_grid.make_row_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent_data()[0]),
+        proc_grid.make_row_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent(0)),
         Permutation(), make_array_noop())),
     right_arg(make_array_eval(right, right.world(), DenseShape(),
-        proc_grid.make_col_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent_data()[tr.tiles_range().rank() - 1u]),
+        proc_grid.make_col_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent(tr.tiles_range().rank() - 1u)),
         Permutation(), make_array_noop())),
     result_tr()
   {
@@ -112,11 +112,11 @@ struct ContractionEvalFixture : public SparseShapeFixture {
     int i = dim - 1;
     for(; i >= middle; --i) {
       weight[i] = MN[1];
-      MN[1] *= array.trange().elements_range().extent_data()[i];
+      MN[1] *= array.trange().elements_range().extent(i);
     }
     for(; i >= 0; --i) {
       weight[i] = MN[0];
-      MN[0] *= array.trange().elements_range().extent_data()[i];
+      MN[0] *= array.trange().elements_range().extent(i);
     }
 
     // Construct the result matrix
@@ -134,12 +134,12 @@ struct ContractionEvalFixture : public SparseShapeFixture {
       // Compute block start and size
       std::size_t start[2] = { 0ul, 0ul }, size[2] = { 1ul, 1ul };
       for(i = 0ul; i < middle; ++i) {
-        start[0] += tile.range().lobound_data()[i] * weight[i] * size[0];
-        size[0] *= tile.range().extent_data()[i];
+        start[0] += tile.range().lobound(i) * weight[i] * size[0];
+        size[0] *= tile.range().extent(i);
       }
       for(; i < dim; ++i) {
-        start[1] += tile.range().lobound_data()[i] * weight[i] * size[1];
-        size[1] *= tile.range().extent_data()[i];
+        start[1] += tile.range().lobound(i) * weight[i] * size[1];
+        size[1] *= tile.range().extent(i);
       }
 
       // Copy tile into matrix sub-block
@@ -200,19 +200,19 @@ struct ContractionEvalFixture : public SparseShapeFixture {
     std::size_t pi = 0ul;
     for(unsigned int i = 0ul; i < left_middle; ++i) {
       ranges[(perm ? perm[pi++] : pi++)] = left.trange().data()[i];
-      M *= left.range().extent_data()[i];
-      m *= left.trange().elements_range().extent_data()[i];
+      M *= left.range().extent(i);
+      m *= left.trange().elements_range().extent(i);
     }
     for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
       ranges[(perm ? perm[pi++] : pi++)] = right.trange().data()[i];
-      N *= right.range().extent_data()[i];
-      n *= right.trange().elements_range().extent_data()[i];
+      N *= right.range().extent(i);
+      n *= right.trange().elements_range().extent(i);
     }
 
     // Compute the number of tiles in the inner dimension.
     std::size_t K = 1ul;
     for(std::size_t i = left_middle; i < left_end; ++i)
-      K *= left.range().extent_data()[i];
+      K *= left.range().extent(i);
 
     // Construct the result range
     typename impl_type::trange_type trange(ranges.begin(), ranges.end());
@@ -309,8 +309,8 @@ BOOST_AUTO_TEST_CASE( eval )
     if(!eval_tile.empty()) {
       // Check that the result tile is correctly modified.
       BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(index));
-      BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound_data()[0],
-          eval_tile.range().lobound_data()[1], eval_tile.range().extent_data()[0], eval_tile.range().extent_data()[1]));
+      BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound(0),
+          eval_tile.range().lobound(1), eval_tile.range().extent(0), eval_tile.range().extent(1)));
     }
   }
 
@@ -352,8 +352,8 @@ BOOST_AUTO_TEST_CASE( perm_eval )
     if(!eval_tile.empty()) {
       // Check that the result tile is correctly modified.
       BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(index));
-      BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound_data()[0],
-          eval_tile.range().lobound_data()[1], eval_tile.range().extent_data()[0], eval_tile.range().extent_data()[1]));
+      BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound(0),
+          eval_tile.range().lobound(1), eval_tile.range().extent(0), eval_tile.range().extent(1)));
     }
   }
 
@@ -372,10 +372,10 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
     right.truncate();
 
     auto left_arg = make_array_eval(left, left.world(), left.shape(),
-        proc_grid.make_row_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent_data()[0]),
+        proc_grid.make_row_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent(0)),
         Permutation(), make_array_noop());
     auto right_arg = make_array_eval(right, right.world(), right.shape(),
-        proc_grid.make_col_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent_data()[tr.tiles_range().rank() - 1]),
+        proc_grid.make_col_phase_pmap(tr.tiles_range().volume() / tr.tiles_range().extent(tr.tiles_range().rank() - 1)),
         Permutation(), make_array_noop());
     auto op = make_contract(2u, left_arg.trange().tiles_range().rank(),
         right_arg.trange().tiles_range().rank());
@@ -419,8 +419,8 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
         if (!force_shape) {  // can't distinguish forced zeroes, can only check if shape was not forced
           dist_eval_type::range_type range = contract.trange().make_tile_range(index);
 
-          BOOST_CHECK((reference.block(range.lobound_data()[0], range.lobound_data()[1],
-              range.extent_data()[0], range.extent_data()[1]).array() == 0).all());
+          BOOST_CHECK((reference.block(range.lobound(0), range.lobound(1),
+              range.extent(0), range.extent(1)).array() == 0).all());
         }
       } else {
         // Get the array evaluator tile.
@@ -435,8 +435,8 @@ BOOST_AUTO_TEST_CASE( sparse_eval )
         if(!eval_tile.empty()) {
           // Check that the result tile is correctly modified.
           BOOST_CHECK_EQUAL(eval_tile.range(), contract.trange().make_tile_range(index));
-          BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound_data()[0],
-              eval_tile.range().lobound_data()[1], eval_tile.range().extent_data()[0], eval_tile.range().extent_data()[1]));
+          BOOST_CHECK(eigen_map(eval_tile) == reference.block(eval_tile.range().lobound(0),
+              eval_tile.range().lobound(1), eval_tile.range().extent(0), eval_tile.range().extent(1)));
         }
       }
     }

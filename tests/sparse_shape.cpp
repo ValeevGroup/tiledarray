@@ -261,10 +261,10 @@ BOOST_AUTO_TEST_CASE( block )
         std::size_t volume = 1ul;
         for(int i = int(tr.tiles_range().rank()) - 1u; i >= 0; --i) {
           auto size_i = upper[i] - lower[i];
-          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
-          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          BOOST_CHECK_EQUAL(result.data().range().lobound(i), 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride(i), volume);
           volume *= size_i;
         }
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
@@ -320,10 +320,10 @@ BOOST_AUTO_TEST_CASE( block_scale )
         std::size_t volume = 1ul;
         for(int i = int(tr.tiles_range().rank()) - 1u; i >= 0; --i) {
           auto size_i = upper[i] - lower[i];
-          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
-          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          BOOST_CHECK_EQUAL(result.data().range().lobound(i), 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride(i), volume);
           volume *= size_i;
         }
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
@@ -382,10 +382,10 @@ BOOST_AUTO_TEST_CASE( block_perm )
         for(int i = int(tr.tiles_range().rank()) - 1u; i >= 0; --i) {
           const auto inv_perm_i = inv_perm[i];
           const auto size_i = upper[inv_perm_i] - lower[inv_perm_i];
-          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
-          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          BOOST_CHECK_EQUAL(result.data().range().lobound(i), 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride(i), volume);
           volume *= size_i;
         }
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
@@ -445,10 +445,10 @@ BOOST_AUTO_TEST_CASE( block_scale_perm )
         for(int i = int(tr.tiles_range().rank()) - 1u; i >= 0; --i) {
           const auto inv_perm_i = inv_perm[i];
           const auto size_i = upper[inv_perm_i] - lower[inv_perm_i];
-          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
-          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          BOOST_CHECK_EQUAL(result.data().range().lobound(i), 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride(i), volume);
           volume *= size_i;
         }
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
@@ -1127,8 +1127,8 @@ BOOST_AUTO_TEST_CASE( mult_scale_perm )
 BOOST_AUTO_TEST_CASE( gemm )
 {
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().extent_data()[0];
-  const std::size_t n = right.data().range().extent_data()[right.data().range().rank() - 1];
+  const std::size_t m = left.data().range().extent(0);
+  const std::size_t n = right.data().range().extent(right.data().range().rank() - 1);
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;
@@ -1186,8 +1186,8 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
   const Permutation perm({1,0});
 
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().extent_data()[0];
-  const std::size_t n = right.data().range().extent_data()[right.data().range().rank() - 1];
+  const std::size_t m = left.data().range().extent(0);
+  const std::size_t n = right.data().range().extent(right.data().range().rank() - 1);
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;

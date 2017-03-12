@@ -368,14 +368,14 @@ namespace TiledArray {
     if((matrix.cols() > 1) && (matrix.rows() > 1)) {
       TA_USER_ASSERT(trange.tiles_range().rank() == 2,
           "TiledArray::eigen_to_array(): The number of dimensions in trange is not equal to that of the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements_range().extent_data()[0] == size_type(matrix.rows()),
+      TA_USER_ASSERT(trange.elements_range().extent(0) == size_type(matrix.rows()),
           "TiledArray::eigen_to_array(): The number of rows in trange is not equal to the number of rows in the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements_range().extent_data()[1] == size_type(matrix.cols()),
+      TA_USER_ASSERT(trange.elements_range().extent(1) == size_type(matrix.cols()),
           "TiledArray::eigen_to_array(): The number of columns in trange is not equal to the number of columns in the Eigen matrix.");
     } else {
       TA_USER_ASSERT(trange.tiles_range().rank() == 1,
           "TiledArray::eigen_to_array(): The number of dimensions in trange must match that of the Eigen matrix.");
-      TA_USER_ASSERT(trange.elements_range().extent_data()[0] == size_type(matrix.size()),
+      TA_USER_ASSERT(trange.elements_range().extent(0) == size_type(matrix.size()),
           "TiledArray::eigen_to_array(): The size of trange must be equal to the matrix size.");
     }
 
@@ -521,9 +521,9 @@ namespace TiledArray {
       const typename A::value_type::value_type* buffer, const std::size_t m,
       const std::size_t n, const bool replicated = false)
   {
-    TA_USER_ASSERT(trange.elements_range().extent_data()[0] == m,
+    TA_USER_ASSERT(trange.elements_range().extent(0) == m,
         "TiledArray::eigen_to_array(): The number of rows in trange is not equal to m.");
-    TA_USER_ASSERT(trange.elements_range().extent_data()[1] == n,
+    TA_USER_ASSERT(trange.elements_range().extent(1) == n,
         "TiledArray::eigen_to_array(): The number of columns in trange is not equal to n.");
 
     typedef Eigen::Matrix<typename A::value_type::value_type, Eigen::Dynamic,
@@ -577,9 +577,9 @@ namespace TiledArray {
       const typename A::value_type::value_type* buffer, const std::size_t m,
       const std::size_t n, const bool replicated = false)
   {
-    TA_USER_ASSERT(trange.elements_range().extent_data()[0] == m,
+    TA_USER_ASSERT(trange.elements_range().extent(0) == m,
         "TiledArray::eigen_to_array(): The number of rows in trange is not equal to m.");
-    TA_USER_ASSERT(trange.elements_range().extent_data()[1] == n,
+    TA_USER_ASSERT(trange.elements_range().extent(1) == n,
         "TiledArray::eigen_to_array(): The number of columns in trange is not equal to n.");
 
     typedef Eigen::Matrix<typename A::value_type::value_type, Eigen::Dynamic,

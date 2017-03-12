@@ -280,19 +280,19 @@ TA::detail::DistEval<typename Op::result_type, Policy> make_contract_eval(
   std::size_t pi = 0ul;
   for(unsigned int i = 0ul; i < left_middle; ++i) {
     ranges[(perm ? perm[pi++] : pi++)] = left.trange().data()[i];
-    M *= left.range().extent_data()[i];
-    m *= left.trange().elements_range().extent_data()[i];
+    M *= left.range().extent(i);
+    m *= left.trange().elements_range().extent(i);
   }
   for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
     ranges[(perm ? perm[pi++] : pi++)] = right.trange().data()[i];
-    N *= right.range().extent_data()[i];
-    n *= right.trange().elements_range().extent_data()[i];
+    N *= right.range().extent(i);
+    n *= right.trange().elements_range().extent(i);
   }
 
   // Compute the number of tiles in the inner dimension.
   std::size_t K = 1ul;
   for(std::size_t i = left_middle; i < left_end; ++i)
-    K *= left.range().extent_data()[i];
+    K *= left.range().extent(i);
 
   // Construct the result range
   typename impl_type::trange_type trange(ranges.begin(), ranges.end());
