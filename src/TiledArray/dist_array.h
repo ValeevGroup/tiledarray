@@ -615,6 +615,18 @@ namespace TiledArray {
       return pimpl_->owner(i);
     }
 
+    /// Tile ownership
+
+    /// \tparam Index An index type
+    /// \param i The index of a tile
+    /// \return The process ID of the owner of a tile.
+    /// \note This does not indicate whether a tile exists or not. Only, the
+    /// rank of the process that would own it if it does exist.
+    template <typename Index1>
+    ProcessID owner(const std::initializer_list<Index1>& i) const {
+      return owner<std::initializer_list<Index1>>(i);
+    }
+
     /// Check if the tile at index \c i is stored locally
 
     /// \tparam Index A coordinate or ordinal index type
@@ -627,6 +639,17 @@ namespace TiledArray {
       return pimpl_->is_local(i);
     }
 
+    /// Check if the tile at index \c i is stored locally
+
+    /// \tparam Index A coordinate or ordinal index type
+    /// \param i The coordinate or ordinal index of the tile to be checked
+    /// \return \c true if \c owner(i) is equal to the MPI process rank,
+    /// otherwise \c false.
+    template <typename Index1>
+    bool is_local(const std::initializer_list<Index1>& i) const {
+      return is_local<std::initializer_list<Index1>>(i);
+    }
+
     /// Check for zero tiles
 
     /// \return \c true if tile at index \c i is zero, false if the tile is
@@ -635,6 +658,15 @@ namespace TiledArray {
     bool is_zero(const Index& i) const {
       check_index(i);
       return pimpl_->is_zero(i);
+    }
+
+    /// Check for zero tiles
+
+    /// \return \c true if tile at index \c i is zero, false if the tile is
+    /// non-zero or remote existence data is not available.
+    template <typename Index1>
+    bool is_zero(const std::initializer_list<Index1>& i) const {
+      return is_zero<std::initializer_list<Index1>>(i);
     }
 
     /// Swap this array with \c other
@@ -693,6 +725,11 @@ namespace TiledArray {
           "The coordinate index used to access an array tile is out of range.");
       TA_USER_ASSERT(i.size() == pimpl_->trange().tiles_range().rank(),
           "The number of elements in the coordinate index does not match the dimension of the array.");
+    }
+
+    template <typename Index1>
+    void check_index(const std::initializer_list<Index1>& i) const {
+      check_index<std::initializer_list<Index1>>(i);
     }
 
     /// Makes sure pimpl has been initialized
