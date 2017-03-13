@@ -74,9 +74,7 @@ namespace TiledArray {
     /// \c data_ has been allocated to hold 4*rank_ elements
     /// \post \c data_ and \c volume_ are initialized with range dimension
     /// information.
-    template <typename Index,
-              typename std::enable_if<std::is_integral<
-                  typename Index::value_type>::value>::type* = nullptr>
+    template <typename Index>
     void init_range_data(const Index& lower_bound, const Index& upper_bound) {
       // Construct temp pointers
       size_type* restrict const lower  = data_;
