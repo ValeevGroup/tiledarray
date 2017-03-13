@@ -24,6 +24,7 @@
 #include <iterator>
 #include <madness/world/type_traits.h>
 #include <complex>
+#include <utility>
 
 namespace Eigen {
 
@@ -414,6 +415,13 @@ namespace TiledArray {
           std::true_type, std::false_type
         >::type {};
 
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename T>
+    struct is_pair : public std::false_type { };
+
+    template <typename T1, typename T2>
+    struct is_pair<std::pair<T1,T2> > : public std::true_type { };
 
   } // namespace detail
 
