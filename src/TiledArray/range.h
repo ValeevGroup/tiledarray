@@ -74,7 +74,9 @@ namespace TiledArray {
     /// \c data_ has been allocated to hold 4*rank_ elements
     /// \post \c data_ and \c volume_ are initialized with range dimension
     /// information.
-    template <typename Index>
+    template <typename Index,
+              typename std::enable_if<std::is_integral<
+                  typename Index::value_type>::value>::type* = nullptr>
     void init_range_data(const Index& lower_bound, const Index& upper_bound) {
       // Construct temp pointers
       size_type* restrict const lower  = data_;
@@ -108,6 +110,50 @@ namespace TiledArray {
       }
     }
 
+    /// Initialize range data from sequences of lower and upper bounds
+
+    /// \tparam Index An array type
+    /// \param lower_bound The lower bound of the range
+    /// \param upper_bound The upper bound of the range
+    /// \pre Assume \c rank_ is initialized to the rank of the range and
+    /// \c data_ has been allocated to hold 4*rank_ elements
+    /// \post \c data_ and \c volume_ are initialized with range dimension
+    /// information.
+    template <typename Index,
+              typename std::enable_if<detail::is_pair<
+                  typename Index::value_type>::value>::type* = nullptr>
+    void init_range_data(const Index& bound) {
+      // Construct temp pointers
+      size_type* restrict const lower  = data_;
+      size_type* restrict const upper  = lower + rank_;
+      size_type* restrict const extent = upper + rank_;
+      size_type* restrict const stride = extent + rank_;
+      const auto* restrict const bound_data = detail::data(bound);
+
+      // Set the volume seed
+      volume_ = 1ul;
+      offset_ = 0ul;
+
+      // Compute range data
+      for(int i = int(rank_) - 1; i >= 0; --i) {
+        // Compute data for element i of lower, upper, and extent
+        const size_type lower_bound_i = bound_data[i].first;
+        const size_type upper_bound_i = bound_data[i].second;
+        const size_type extent_i      = upper_bound_i - lower_bound_i;
+
+        // Check input dimensions
+        TA_ASSERT(lower_bound_i >= 0ul);
+        TA_ASSERT(lower_bound_i < upper_bound_i);
+
+        lower[i]  = lower_bound_i;
+        upper[i]  = upper_bound_i;
+        extent[i] = extent_i;
+        stride[i] = volume_;
+        offset_  += lower_bound_i * volume_;
+        volume_  *= extent_i;
+      }
+    }
+
     /// Initialize range data from a sequence of extents
 
     /// \tparam Index An array type
@@ -116,7 +162,9 @@ namespace TiledArray {
     /// \c data_ has been allocated to hold 4*rank_ elements
     /// \post \c data_ and \c volume_ are initialized with range dimension
     /// information.
-    template <typename Index>
+    template <typename Index,
+              typename std::enable_if<std::is_integral<
+                  typename Index::value_type>::value>::type* = nullptr>
     void init_range_data(const Index& extents) {
       // Construct temp pointers
       size_type* restrict const lower  = data_;
@@ -230,8 +278,10 @@ namespace TiledArray {
     /// equal to that of \c upper_bound.
     /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
     /// \throw std::bad_alloc When memory allocation fails.
-    Range(const std::initializer_list<size_type>& lower_bound,
-        const std::initializer_list<size_type>& upper_bound)
+    template <typename Index1,
+              typename std::enable_if<std::is_integral<Index1>::value>::type* = nullptr>
+    Range(const std::initializer_list<Index1>& lower_bound,
+        const std::initializer_list<Index1>& upper_bound)
     {
       const size_type n = detail::size(lower_bound);
       TA_ASSERT(n == detail::size(upper_bound));
@@ -251,7 +301,8 @@ namespace TiledArray {
     /// \param extent A vector that defines the size of each dimension
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename Index,
-        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
+        typename std::enable_if<! std::is_integral<Index>::value &&
+        std::is_integral<typename Index::value_type>::value>::type* = nullptr>
     explicit Range(const Index& extent) {
       const size_type n = detail::size(extent);
       if(n) {
@@ -268,7 +319,8 @@ namespace TiledArray {
     /// \c extent.
     /// \param extent An initializer list that defines the size of each dimension
     /// \throw std::bad_alloc When memory allocation fails.
-    template <typename Index1>
+    template <typename Index1,
+              typename std::enable_if<std::is_integral<Index1>::value>::type* = nullptr>
     explicit Range(const std::initializer_list<Index1>& extent) {
       const size_type n = detail::size(extent);
       if(n) {
@@ -276,6 +328,48 @@ namespace TiledArray {
         data_ = new size_type[n << 2];
         rank_ = n;
         init_range_data(extent);
+      }
+    }
+
+    /// Construct range defined by a sequence of {lower,upper} bound pairs
+
+    /// \tparam Index An array (contiguous sequence) type
+    /// \param lower_bound A sequence of lower bounds for each dimension
+    /// \param upper_bound A sequence of upper bounds for each dimension
+    /// \throw TiledArray::Exception When the size of \c lower_bound is not
+    /// equal to that of \c upper_bound.
+    /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
+    /// \throw std::bad_alloc When memory allocation fails.
+    template <typename Index,
+        typename std::enable_if<! std::is_integral<Index>::value &&
+        detail::is_pair<typename Index::value_type>::value>::type* = nullptr>
+    Range(const Index& bounds) {
+      const size_type n = detail::size(bounds);
+      if(n) {
+        // Initialize array memory
+        data_ = new size_type[n << 2];
+        rank_ = n;
+        init_range_data(bounds);
+      }
+    }
+
+    /// Construct range defined by an initializer_list of {lower,upper} bound pairs
+
+    /// \tparam Index An initializer list type
+    /// \param lower_bound A sequence of lower bounds for each dimension
+    /// \param upper_bound A sequence of upper bounds for each dimension
+    /// \throw TiledArray::Exception When the size of \c lower_bound is not
+    /// equal to that of \c upper_bound.
+    /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
+    /// \throw std::bad_alloc When memory allocation fails.
+    template <typename Index1, typename Index2>
+    Range(const std::initializer_list<std::pair<Index1,Index2>>& bounds) {
+      const size_type n = detail::size(bounds);
+      if(n) {
+        // Initialize array memory
+        data_ = new size_type[n << 2];
+        rank_ = n;
+        init_range_data(bounds);
       }
     }
 
