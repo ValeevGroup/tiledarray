@@ -65,7 +65,7 @@ namespace TiledArray {
 
   private:
 
-    /// Initialize range data from lower and upper bounds
+    /// Initialize range data from sequences of lower and upper bounds
 
     /// \tparam Index An array type
     /// \param lower_bound The lower bound of the range
@@ -198,12 +198,12 @@ namespace TiledArray {
     /// Construct a range that has zero rank, volume, and size.
     Range() { }
 
-    /// Construct range defined by an upper and lower bound
+    /// Construct range defined by upper and lower bound sequences
 
     /// Construct a range defined by \c lower_bound and \c upper_bound.
     /// \tparam Index An array type
-    /// \param lower_bound A vector of lower bounds for each dimension
-    /// \param upper_bound A vector of upper bounds for each dimension
+    /// \param lower_bound A sequence of lower bounds for each dimension
+    /// \param upper_bound A sequence of upper bounds for each dimension
     /// \throw TiledArray::Exception When the size of \c lower_bound is not
     /// equal to that of \c upper_bound.
     /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
@@ -221,7 +221,7 @@ namespace TiledArray {
       }
     }
 
-    /// Construct range defined by an upper and lower bound
+    /// Construct range defined by the upper and lower bound sequences
 
     /// Construct a range defined by \c lower_bound and \c upper_bound.
     /// \param lower_bound An initializer list of lower bounds for each dimension
@@ -243,7 +243,7 @@ namespace TiledArray {
       }
     }
 
-    /// Range constructor from size array
+    /// Range constructor from a sequence of extents
 
     /// Construct a range with a lower bound of zero and an upper bound equal to
     /// \c extents.
@@ -279,16 +279,16 @@ namespace TiledArray {
       }
     }
 
-    /// Range constructor from a pack of sizes for each dimension
+    /// Range constructor from a pack of extents for each dimension
 
     /// \tparam Index An array type
-    /// \param upper_bound The upper bound of the N-dimensional range
-    /// \post Range has an lower bound of 0, and an upper bound of \c (sizes...).
+    /// \param extents A pack of extents for each dimension
+    /// \post Range has a lower bound of 0, and an upper bound of \c (extents...).
     /// \throw std::bad_alloc When memory allocation fails.
     template<typename... Index,
         typename std::enable_if<detail::is_integral_list<Index...>::value>::type* = nullptr>
-    explicit Range(const Index... upper_bound) :
-      Range(std::array<size_t, sizeof...(Index)>{{upper_bound...}})
+    explicit Range(const Index... extents) :
+      Range(std::array<size_t, sizeof...(Index)>{{extents...}})
     { }
 
     /// Copy Constructor
