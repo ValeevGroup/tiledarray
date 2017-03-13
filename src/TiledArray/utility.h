@@ -63,6 +63,14 @@ namespace TiledArray {
         typename std::enable_if<! std::is_array<T>::value>::type* = nullptr>
     inline auto size(const T &a) -> decltype(a.size()) { return a.size(); }
 
+    /// Array size accessor
+
+    /// \tparam T The initializer list element type
+    /// \param a An initializer_list object
+    /// \return The size of initializer_list \c a
+    template <typename T>
+    inline auto size(std::initializer_list<T> a) -> decltype(a.size()) { return a.size(); }
+
     /// Container data pointer accessor
 
     /// \tparam T The container type
