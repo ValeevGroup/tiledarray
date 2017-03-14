@@ -379,7 +379,7 @@ namespace TiledArray {
     using mult_t = decltype(std::declval<Scalar1>() * std::declval<Scalar2>());
 
 
-    /// Test if `T` is a dense array type
+    /// is_dense<T> is a true type if `T` is a dense array
     template <typename T>
     struct is_dense : public std::false_type { };
 
