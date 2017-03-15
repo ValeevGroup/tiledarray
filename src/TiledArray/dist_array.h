@@ -416,18 +416,19 @@ namespace TiledArray {
     /// Fill all local tiles
 
     /// \param value The fill value
-    void fill_local(const element_type& value = element_type()) {
+    /// \param skip_set If false, will throw if any tiles are already set
+    void fill_local(const element_type& value = element_type(), bool skip_set = false) {
       init_tiles([=] (const range_type& range)
-          { return value_type(range, value); });
+          { return value_type(range, value); }, skip_set);
     }
 
     /// Fill all local tiles
 
     /// \param value The fill value
-    void fill(const element_type& value = element_type()) {
-      fill_local(value);
+    /// \param skip_set If false, will throw if any tiles are already set
+    void fill(const element_type& value = element_type(), bool skip_set = false) {
+      fill_local(value, skip_set);
     }
-
 
     /// Initialize tiles with a user provided functor
 
@@ -458,8 +459,9 @@ namespace TiledArray {
     /// \endcode
     /// \tparam Op Tile operation type
     /// \param op The operation used to generate tiles
+    /// \param skip_set If false, will throw if any tiles are already set
     template <typename Op>
-    void init_tiles(Op&& op) {
+    void init_tiles(Op&& op, bool skip_set = false) {
       check_pimpl();
 
       auto it = pimpl_->pmap()->begin();
@@ -467,6 +469,11 @@ namespace TiledArray {
       for(; it != end; ++it) {
         const auto index = *it;
         if(! pimpl_->is_zero(index)) {
+          if (skip_set) {
+            auto fut = find(index);
+            if (fut.probe())
+              continue;
+          }
           Future<value_type> tile = pimpl_->world().taskq.add(
               [] (DistArray_& array, const size_type index, const Op& op) -> value_type
               { return op(array.trange().make_tile_range(index)); },
