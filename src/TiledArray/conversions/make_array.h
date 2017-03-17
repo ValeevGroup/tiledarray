@@ -170,7 +170,7 @@ namespace TiledArray {
 
     // Construct the new array
     Array result(world, trange,
-        shape_type(world, tile_norms, trange), pmap);
+        typename Array::shape_type(world, tile_norms, trange), pmap);
     for(auto& it : tiles) {
       const size_type index = it.first;
       if(! result.is_zero(index))
