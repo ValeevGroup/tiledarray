@@ -17,8 +17,8 @@ matrix:
       env: GCC_VERSION=4.8
     - compiler: clang
       env: GCC_VERSION=4.9
-    - compiler: clang      # problems mixing ccache with clang in building mpich
-      env: GCC_VERSION=5   #
+    - compiler: clang
+      env: GCC_VERSION=5
 sudo: false
 addons:
   apt:

@@ -5,22 +5,9 @@ set -ev
 
 # Install packages
 
-case "$CXX" in
-    g++)
-        export CC=/usr/bin/gcc-$GCC_VERSION
-        export CXX=/usr/bin/g++-$GCC_VERSION
-        ;;
-    clang++)
-        export CC=/usr/bin/clang-3.8
-        export CXX=/usr/bin/clang++-3.8
-        export CXXFLAGS="-std=c++11"
-        ;;
-    *)
-        echo "Unknown C++ compiler:"
-        echo "$CXX"
-        exit 1
-        ;;
-esac
+# always use gcc to compile MPICH, there are unexplained issues with clang (e.g. MPI_Barrier aborts)
+export CC=/usr/bin/gcc-$GCC_VERSION
+export CXX=/usr/bin/g++-$GCC_VERSION
 
 # Print compiler information
 $CC --version
