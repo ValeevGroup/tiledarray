@@ -686,8 +686,8 @@ namespace TiledArray {
       check_pimpl();
       if((! pimpl_->pmap()->is_replicated()) && (world().size() > 1)) {
         // Construct a replicated array
-        std::shared_ptr<pmap_interface> pmap = std::make_shared<detail::ReplicatedPmap>(get_world(), size());
-        DistArray_ result = DistArray_(get_world(), trange(), get_shape(), pmap);
+        std::shared_ptr<pmap_interface> pmap = std::make_shared<detail::ReplicatedPmap>(world(), size());
+        DistArray_ result = DistArray_(world(), trange(), shape(), pmap);
 
         // Create the replicator object that will do an all-to-all broadcast of
         // the local tile data.
