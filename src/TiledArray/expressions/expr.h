@@ -139,8 +139,11 @@ namespace TiledArray {
       /// \param tile The lazy tile
       /// \return The evaluated tile
       template <typename R, typename T>
-      static typename TiledArray::eval_trait<T>::type eval_tile(const T& tile) {
-        return tile;
+      static Future<typename TiledArray::eval_trait<T>::type> eval_tile(const T& tile, World* world) {
+        auto cast = [](const T& tile) -> typename TiledArray::eval_trait<T>::type {
+          return static_cast<typename TiledArray::eval_trait<T>::type>(tile);
+        };
+        return world->taskq.add(cast, tile);
       }
 
 
@@ -153,8 +156,12 @@ namespace TiledArray {
       /// \return The evaluated tile
       /// \param op The tile mutating operation
       template <typename R, typename T, typename Op>
-      static R eval_tile(T& tile, const std::shared_ptr<Op>& op) {
-        return (*op)(tile);
+      static Future<R> eval_tile(T& tile, const std::shared_ptr<Op>& op, World* world) {
+        //return (*op)(tile);
+        auto apply_op = [](const T& tile, const std::shared_ptr<Op>& op) -> R {
+          return (*op)(tile);
+        };
+        return world->taskq.add(apply_op, tile, op);
       }
 
       /// Set an array tile with a lazy tile
@@ -171,7 +178,7 @@ namespace TiledArray {
       typename std::enable_if<is_lazy_tile<T>::value>::type
       set_tile(A& array, const I index, const Future<T>& tile) const {
         array.set(index, array.world().taskq.add(
-              & Expr_::template eval_tile<typename A::value_type, T>, tile));
+              & Expr_::template eval_tile<typename A::value_type, T>, tile, &array.world()));
       }
 
       /// Set the \c array tile at \c index with \c tile
@@ -205,7 +212,7 @@ namespace TiledArray {
           const std::shared_ptr<Op>& op) const
       {
         array.set(index, array.world().taskq.add(
-              & Expr_::template eval_tile<typename A::value_type, T, Op>, tile, op));
+              & Expr_::template eval_tile<typename A::value_type, T, Op>, tile, op, &array.world()));
       }
 
     public:
