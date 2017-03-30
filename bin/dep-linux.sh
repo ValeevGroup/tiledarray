@@ -3,12 +3,7 @@
 # Exit on error
 set -ev
 
-# Add PPA for a newer version GCC
-sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-# Add PPA for newer cmake (3.2.3)
-sudo add-apt-repository ppa:george-edison55/precise-backports -y
-# Add Eigen 3.2
-sudo add-apt-repository ppa:kalakris/eigen -y
+# Install packages
 
 # always use gcc to compile MPICH, there are unexplained issues with clang (e.g. MPI_Barrier aborts)
 export CC=/usr/bin/gcc-$GCC_VERSION
