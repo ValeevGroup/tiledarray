@@ -26,31 +26,18 @@
 // Check for default error checking method, which is determined by TA_DEFAULT_ERROR,
 // which is defined in TiledArray/config.h.
 #ifdef TA_DEFAULT_ERROR
-# if !defined(TA_EXCEPTION_ERROR) && !defined(TA_ASSERT_ERROR) && !defined(TA_NO_ERROR)
+# if !defined(TA_EXCEPTION_ERROR) && !defined(TA_ASSERT_ERROR) && !defined(TA_NO_ERROR) && !defined(TA_ABORT_ERROR)
 #  if TA_DEFAULT_ERROR == 0
 #   define TA_NO_ERROR
 #  elif TA_DEFAULT_ERROR == 1
 #   define TA_EXCEPTION_ERROR
 #  elif TA_DEFAULT_ERROR == 2
 #   define TA_ASSERT_ERROR
+#  elif TA_DEFAULT_ERROR == 3
+#   define TA_ABORT_ERROR
 #  endif // TA_DEFAULT_ERROR == ?
-# endif // !defined(TA_EXCEPTION_ERROR) && !defined(TA_EXCEPTION_ERROR) && !defined(TA_EXCEPTION_ERROR)
+# endif // !defined(TA_EXCEPTION_ERROR) && !defined(TA_ASSERT_ERROR) && !defined(TA_NO_ERROR) && !defined(TA_ABORT_ERROR)
 #endif // TA_DEFAULT_ERROR
-
-// Disable error checking if NDEBUG is defined
-#ifdef NDEBUG
-
-// Disable exception error checking
-#ifdef TA_EXCEPTION_ERROR
-#undef TA_EXCEPTION_ERROR
-#endif // TA_EXCEPTION_ERROR
-
-// Disable assertion error checking
-#ifdef TA_ASSERT_ERROR
-#undef TA_ASSERT_ERROR
-#endif // TA_ASSERT_ERROR
-
-#endif // NDEBUG
 
 #if __cplusplus > 199711L
 // C++11
@@ -94,6 +81,9 @@ namespace TiledArray {
 #ifdef TA_ASSERT_ERROR
 #undef TA_ASSERT_ERROR
 #endif
+#ifdef TA_ABORT_ERROR
+#undef TA_ABORT_ERROR
+#endif
 
 #define TA_ASSERT( a )  if(! ( a ) ) TA_EXCEPTION( "assertion failure" )
 #define TA_TEST( a )  TA_ASSERT( a )
@@ -103,6 +93,12 @@ namespace TiledArray {
 // uses assertions.
 #include <cassert>
 #define TA_ASSERT( a ) assert( a )
+#define TA_TEST( a )  TA_ASSERT( a )
+#elif defined(TA_ABORT_ERROR)
+// This sections defines behavior for TiledArray assertion error checking which
+// calls std::abort
+#include <cstdlib>
+#define TA_ASSERT( a )  if(! ( a ) ) std::abort();
 #define TA_TEST( a )  TA_ASSERT( a )
 #else
 // This section defines behavior for TiledArray assertion error checking which
@@ -118,6 +114,7 @@ namespace TiledArray {
 #ifdef TILEDARRAY_NO_USER_ERROR_MESSAGES
 #define TA_USER_ERROR_MESSAGE( m )
 #else
+#include <iostream>
 #define TA_USER_ERROR_MESSAGE( m ) std::cerr << "!! ERROR TiledArray: " << m << "\n";
 #endif // TILEDARRAY_NO_USER_ERROR_MESSAGES
 
@@ -135,7 +132,19 @@ namespace TiledArray {
 
 // Disable user interface assertion when NDEBUG is defined
 #define TA_USER_ASSERT( a , m )
+#define TA_USER_ASSERT_DISABLED 1
 
+#endif
+
+// mark functions as deprecated using this macro
+// will result in a warning
+#ifdef __GNUC__
+#define DEPRECATED __attribute__((deprecated))
+#elif defined(_MSC_VER)
+#define DEPRECATED __declspec(deprecated)
+#else
+#pragma message("WARNING: You need to implement DEPRECATED for this compiler")
+#define DEPRECATED
 #endif
 
 #endif // TILEDARRAY_ERROR_H__INCLUDED

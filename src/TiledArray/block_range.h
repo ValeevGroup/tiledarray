@@ -38,7 +38,7 @@ namespace TiledArray {
     using Range::volume_;
     using Range::rank_;
 
-    Range::size_type block_offset_ = 0ul;
+    Range::ordinal_type block_offset_ = 0ul;
 
 
     template <typename Index>
@@ -77,9 +77,9 @@ namespace TiledArray {
         const auto extent_i = upper_bound_i - lower_bound_i;
 
         // Check input dimensions
-        TA_ASSERT(lower_bound_i >= range.lobound_data()[i]);
+        TA_ASSERT(lower_bound_i >= range.lobound(i));
         TA_ASSERT(lower_bound_i < upper_bound_i);
-        TA_ASSERT(upper_bound_i <= range.upbound_data()[i]);
+        TA_ASSERT(upper_bound_i <= range.upbound(i));
 
         // Set the block range data
         lower[i]       = lower_bound_i;
@@ -127,13 +127,13 @@ namespace TiledArray {
     /// \throw When \c index is not included in this range.
     template <typename Index,
         typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
-    size_type ordinal(const Index& index) const {
+    ordinal_type ordinal(const Index& index) const {
       return Range::ordinal(index);
     }
 
     template <typename... Index,
         typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
-    size_type ordinal(const Index&... index) const {
+    ordinal_type ordinal(const Index&... index) const {
       return Range::ordinal(index...);
     }
 
@@ -144,21 +144,21 @@ namespace TiledArray {
     /// \return The index of the ordinal index
     /// \throw TiledArray::Exception When \c index is not included in this range
     /// \throw std::bad_alloc When memory allocation fails
-    size_type ordinal(size_type index) const {
+    ordinal_type ordinal(ordinal_type index) const {
       // Check that index is contained by range.
       TA_ASSERT(includes(index));
 
       // Construct result coordinate index object and allocate its memory.
-      size_type result = 0ul;
+      ordinal_type result = 0ul;
 
       // Get pointers to the data
-      const size_type * restrict const size = data_ + rank_ + rank_;
-      const size_type * restrict const stride = size + rank_;
+      const auto * restrict const size = data_ + rank_ + rank_;
+      const auto * restrict const stride = size + rank_;
 
       // Compute the coordinate index of o in range.
       for(int i = int(rank_) - 1; i >= 0; --i) {
-        const size_type size_i = size[i];
-        const size_type stride_i = stride[i];
+        const auto size_i = size[i];
+        const auto stride_i = stride[i];
 
         // Compute result index element i
         result += (index % size_i) * stride_i;

@@ -29,7 +29,7 @@
 #include <deque>
 #include <TiledArray/math/eigen.h>
 #include <TiledArray/algebra/utils.h>
-#include <TiledArray/array.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 
@@ -47,7 +47,7 @@ namespace TiledArray {
   /// \li proceed until a norm of the error is less than the target precision
   ///     \f$ \epsilon \f$. Another convergence criterion may include
   ///     \f$ ||x_{i+1} - x_i|| < \epsilon \f$ .
-  /// \\
+  ///
   /// For example, in the Hartree-Fock method in the density form, one could
   /// choose \f$ x \equiv \mathbf{P} \f$, the one-electron density matrix, and
   /// \f$ f(\mathbf{P}) \equiv [\mathbf{F}, \mathbf{P}] \f$ , where
@@ -56,13 +56,13 @@ namespace TiledArray {
   /// of the density and DIIS uses a linear extrapolation, it is possible to
   /// just extrapolate the Fock matrix itself, i.e. \f$ x \equiv \mathbf{F} \f$
   /// and \f$ f(\mathbf{F}) \equiv [\mathbf{F}, \mathbf{P}] \f$ .
-  /// \\
+  ///
   /// Similarly, in the Hartree-Fock method in the molecular orbital
   /// representation, DIIS is used to extrapolate the Fock matrix, i.e.
   /// \f$ x \equiv \mathbf{F} \f$ and \f$ f(\mathbf{F}) \equiv \{ F_i^a \} \f$ ,
   /// where \f$ i \f$ and \f$ a \f$ are the occupied and unoccupied orbitals,
   /// respectively.
-  /// \\
+  ///
   /// Here's a short description of the DIIS method. Given a set of solution
   /// guess vectors \f$ \{ x_k \}, k=0..i \f$ and the corresponding error
   /// vectors \f$ \{ e_k \} \f$ DIIS tries to find a linear combination of
@@ -73,7 +73,7 @@ namespace TiledArray {
   /// A more complicated version of DIIS introduces mixing:
   /// \f$ x_{\mathrm{extrap},i+1} = \sum\limits_{k=0}^i C_{k,i} ( (1-f) x_{k} + f x_{extrap,k} ) \f$
   /// Note that the mixing is not used in the first iteration.
-  /// \\
+  ///
   /// The original DIIS reference: P. Pulay, Chem. Phys. Lett. 73, 393 (1980).
   ///
   /// \tparam D type of \c x
@@ -81,6 +81,7 @@ namespace TiledArray {
   class DIIS {
     public:
       typedef typename D::element_type value_type;
+      typedef typename detail::scalar_t<value_type> scalar_type;
 
       /// Constructor
 
@@ -104,10 +105,10 @@ namespace TiledArray {
       ///   described in Kerker, Phys. Rev. B, 23, p3082, 1981.
       DIIS(unsigned int strt=1,
            unsigned int ndi=5,
-           value_type dmp =0,
+           scalar_type dmp =0,
            unsigned int ngr=1,
            unsigned int ngrdiis=1,
-           value_type mf=0) :
+           scalar_type mf=0) :
              error_(0), errorset_(false),
              start(strt), ndiis(ndi),
              iter(0), ngroup(ngr),
@@ -134,13 +135,13 @@ namespace TiledArray {
                        D& error,
                        bool extrapolate_error = false)
       {
-        const value_type zero_determinant = 1.0e-15;
-        const value_type zero_norm = 1.0e-10;
+        const scalar_type zero_determinant = 1.0e-15;
+        const scalar_type zero_norm = 1.0e-10;
 
         iter++;
 
         const bool do_mixing = (mixing_fraction != 0.0);
-        const value_type scale = 1.0 + damping_factor;
+        const scalar_type scale = 1.0 + damping_factor;
 
         // if have ndiis vectors
         if (errors_.size() == ndiis) { // holding max # of vectors already? drop the least recent {x, error} pair
@@ -175,7 +176,7 @@ namespace TiledArray {
 
           EigenVectorX c;
 
-          value_type absdetA;
+          scalar_type absdetA;
           unsigned int nskip = 0; // how many oldest vectors to skip for the sake of conditioning?
                                         // try zero
           // skip oldest vectors until found a numerically stable system
@@ -191,9 +192,9 @@ namespace TiledArray {
             EigenVectorX rhs = EigenVectorX::Zero(rank);
             rhs[0] = -1.0;
 
-            value_type norm = 1.0;
-            if (B_(nskip,nskip) > zero_norm)
-              norm = 1.0/B_(nskip,nskip);
+            scalar_type norm = 1.0;
+            if (std::abs(B_(nskip,nskip)) > zero_norm)
+              norm = 1.0/std::abs(B_(nskip,nskip));
 
             A.block(1, 1, rank-1, rank-1) = B_.block(nskip, nskip, rank-1, rank-1) * norm;
             A.diagonal() *= scale;
@@ -267,7 +268,7 @@ namespace TiledArray {
       }
 
     private:
-      value_type error_;
+      scalar_type error_;
       bool errorset_;
 
       unsigned int start;
@@ -275,8 +276,8 @@ namespace TiledArray {
       unsigned int iter;
       unsigned int ngroup;
       unsigned int ngroupdiis;
-      value_type damping_factor;
-      value_type mixing_fraction;
+      scalar_type damping_factor;
+      scalar_type mixing_fraction;
 
       typedef Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixX;
       typedef Eigen::Matrix<value_type, Eigen::Dynamic, 1> EigenVectorX;
@@ -287,8 +288,8 @@ namespace TiledArray {
       std::deque<D> errors_; //!< set of most recent errors
       std::deque<D> x_extrap_; //!< set of most recent extrapolated x
 
-      void set_error(value_type e) { error_ = e; errorset_ = true; }
-      value_type error() { return error_; }
+      void set_error(scalar_type e) { error_ = e; errorset_ = true; }
+      scalar_type error() { return error_; }
 
       void init() {
         iter = 0;

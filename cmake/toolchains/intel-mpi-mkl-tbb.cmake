@@ -7,7 +7,7 @@
 # - environment variables:
 #   * INTEL_DIR: the Intel compiler directory (includes MKL and TBB), e.g. /opt/intel
 #   * GCC_DIR: ${GCC_DIR}/bin/gcc points to the gcc compiler to use
-#   * EIGEN_DIR: the Eigen directory
+#   * EIGEN3_DIR or (deprecated) EIGEN_DIR: the Eigen3 directory
 #   * BOOST_DIR: the Boost root directory
 #
 
@@ -15,7 +15,13 @@
 set(GCC_ROOT_DIR "$ENV{GCC_DIR}")
 set(MKL_ROOT_DIR "$ENV{INTEL_DIR}/mkl")
 set(TBB_ROOT_DIR "$ENV{INTEL_DIR}/tbb" CACHE PATH "TBB root directory")
-set(EIGEN_INCLUDE_DIR "$ENV{EIGEN_DIR}" CACHE PATH "Eigen library directory")
+# query EIGEN3_DIR and (deprecated) EIGEN_DIR envvars
+if ($ENV{EIGEN3_DIR})
+  set(ENV_EIGEN3_DIR "$ENV{EIGEN3_DIR}")
+else()
+  set(ENV_EIGEN3_DIR "$ENV{EIGEN_DIR}")
+endif()
+set(EIGEN3_INCLUDE_DIR "${ENV_EIGEN3_DIR}" CACHE PATH "Eigen3 library directory")
 set(BOOST_ROOT "$ENV{BOOST_DIR}" CACHE PATH "Boost root directory")
 
 # Set compilers (assumes the compilers are in the PATH)

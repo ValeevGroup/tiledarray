@@ -1,0 +1,15 @@
+
+                           TILEDARRAY REVISION HISTORY
+
+Following is a brief summary of changes made in each release of TiledArray.
+
+- <date>: 0.6.1
+  - resolved issues 101, 103
+  - MADNESS bump to 0.11.0
+  - many fixes to unit tests
+  - TiledRange1::element2tile -> TiledRange1::element_to_tile for consistency with TiledRange
+
+- 27-Nov-2016: 0.6.0
+  - block expression code
+  - DSL extensions to "force" shape, world, and pmap
+  - minor API improvements and bug fixes.

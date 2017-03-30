@@ -83,10 +83,10 @@ BOOST_AUTO_TEST_CASE( non_const_view )
         // Check that the data of the block range is correct
         std::size_t volume = 1ul;
         for(unsigned int i = 0u; i < t.range().rank(); ++i) {
-          BOOST_CHECK_EQUAL(view.range().lobound_data()[i], lower[i]);
-          BOOST_CHECK_EQUAL(view.range().upbound_data()[i], upper[i]);
-          BOOST_CHECK_EQUAL(view.range().extent_data()[i], upper[i] - lower[i]);
-          BOOST_CHECK_EQUAL(view.range().stride_data()[i], t.range().stride_data()[i]);
+          BOOST_CHECK_EQUAL(view.range().lobound(i), lower[i]);
+          BOOST_CHECK_EQUAL(view.range().upbound(i), upper[i]);
+          BOOST_CHECK_EQUAL(view.range().extent(i), upper[i] - lower[i]);
+          BOOST_CHECK_EQUAL(view.range().stride(i), t.range().stride(i));
           volume *= upper[i] - lower[i];
         }
         BOOST_CHECK_EQUAL(view.size(), volume);
@@ -126,10 +126,10 @@ BOOST_AUTO_TEST_CASE( const_view )
         // Check that the data of the block range is correct
         std::size_t volume = 1ul;
         for(unsigned int i = 0u; i < t.range().rank(); ++i) {
-          BOOST_CHECK_EQUAL(view.range().lobound_data()[i], lower[i]);
-          BOOST_CHECK_EQUAL(view.range().upbound_data()[i], upper[i]);
-          BOOST_CHECK_EQUAL(view.range().extent_data()[i], upper[i] - lower[i]);
-          BOOST_CHECK_EQUAL(view.range().stride_data()[i], t.range().stride_data()[i]);
+          BOOST_CHECK_EQUAL(view.range().lobound(i), lower[i]);
+          BOOST_CHECK_EQUAL(view.range().upbound(i), upper[i]);
+          BOOST_CHECK_EQUAL(view.range().extent(i), upper[i] - lower[i]);
+          BOOST_CHECK_EQUAL(view.range().stride(i), t.range().stride(i));
           volume *= upper[i] - lower[i];
         }
         BOOST_CHECK_EQUAL(view.size(), volume);

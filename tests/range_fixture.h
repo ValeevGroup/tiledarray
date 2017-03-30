@@ -100,23 +100,23 @@ struct TiledRangeFixtureBase : public Range1Fixture {
 
 struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
   typedef TiledRange TRangeN;
-  typedef TRangeN::tile_range_type::index tile_index;
+  typedef TRangeN::tiles_range_type::index tile_index;
 
 
   TiledRangeFixture() :
-    tile_range(TiledRangeFixture::index(GlobalFixture::dim, 0),
+    tiles_range(TiledRangeFixture::index(GlobalFixture::dim, 0),
         TiledRangeFixture::index(GlobalFixture::dim, 5)),
-    element_range(TiledRangeFixture::tile_index(GlobalFixture::dim, 0),
+    elements_range(TiledRangeFixture::tile_index(GlobalFixture::dim, 0),
         TiledRangeFixture::tile_index(GlobalFixture::dim, a[5])),
     tr(dims.begin(), dims.end())
   { }
 
   ~TiledRangeFixture() { }
 
-  static tile_index fill_tile_index(TRangeN::tile_range_type::index::value_type);
+  static tile_index fill_tile_index(TRangeN::tiles_range_type::index::value_type);
 
-  const TRangeN::range_type tile_range;
-  const TRangeN::tile_range_type element_range;
+  const TRangeN::range_type tiles_range;
+  const TRangeN::tiles_range_type elements_range;
   TRangeN tr;
 };
 

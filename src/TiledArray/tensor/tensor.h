@@ -106,12 +106,18 @@ namespace TiledArray {
   public:
 
     // Compiler generated functions
-    Tensor() = default;
-    Tensor(const Tensor_&) = default;
-    Tensor(Tensor_&&) = default;
-    ~Tensor() = default;
-    Tensor_& operator=(const Tensor_& other) = default;
-    Tensor_& operator=(Tensor_&&) = default;
+    Tensor() : pimpl_() { }
+    Tensor(const Tensor_& other) : pimpl_(other.pimpl_) { }
+    Tensor(Tensor_&& other) : pimpl_(std::move(other.pimpl_)) { }
+    ~Tensor() { }
+    Tensor_& operator=(const Tensor_& other) {
+      pimpl_ = other.pimpl_;
+      return *this;
+    }
+    Tensor_& operator=(Tensor_&& other)  {
+      pimpl_ = std::move(other.pimpl_);
+      return *this;
+    }
 
     /// Construct tensor
 
@@ -1102,15 +1108,16 @@ namespace TiledArray {
 
     /// \tparam U The other tensor element type
     /// \tparam AU The other tensor allocator type
+    /// \tparam V The type of \c factor scalar
     /// \param other The tensor that will be contracted with this tensor
-    /// \param factor The scaling factor
+    /// \param factor Multiply the result by this constant
     /// \param gemm_helper The *GEMM operation meta data
     /// \return A new tensor which is the result of contracting this tensor with
-    /// \c other
+    /// \c other and scaled by \c factor
     /// \throw TiledArray::Exception When this tensor is empty.
     /// \throw TiledArray::Exception When \c other is empty.
-    template <typename U, typename AU>
-    Tensor_ gemm(const Tensor<U, AU>& other, const numeric_type factor,
+    template <typename U, typename AU, typename V>
+    Tensor_ gemm(const Tensor<U, AU>& other, const V factor,
         const math::GemmHelper& gemm_helper) const
     {
       // Check that this tensor is not empty and has the correct rank
@@ -1139,7 +1146,7 @@ namespace TiledArray {
       const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          pimpl_->data_, lda, other.data(), ldb, scalar_type(0), result.data(), n);
+          pimpl_->data_, lda, other.data(), ldb, numeric_type(0), result.data(), n);
 
       return result;
     }
@@ -1177,6 +1184,7 @@ namespace TiledArray {
     /// \tparam AU The left-hand tensor allocator type
     /// \tparam V The right-hand tensor element type
     /// \tparam AV The right-hand tensor allocator type
+    /// \tparam W The type of the scaling factor
     /// \param left The left-hand tensor that will be contracted
     /// \param right The right-hand tensor that will be contracted
     /// \param factor The scaling factor
@@ -1184,9 +1192,9 @@ namespace TiledArray {
     /// \return A new tensor which is the result of contracting this tensor with
     /// other
     /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename U, typename AU, typename V, typename AV>
+    template <typename U, typename AU, typename V, typename AV, typename W>
     Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
-        const numeric_type factor, const math::GemmHelper& gemm_helper)
+        const W factor, const math::GemmHelper& gemm_helper)
     {
       // Check that this tensor is not empty and has the correct rank
       TA_ASSERT(pimpl_);
@@ -1198,7 +1206,7 @@ namespace TiledArray {
       TA_ASSERT(!right.empty());
       TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
-      // Check that the outer dimensions of left match the the corresponding
+      // Check that the outer dimensions of left match the corresponding
       // dimensions in result
       TA_ASSERT(gemm_helper.left_result_coformal(left.range().lobound_data(),
           pimpl_->range_.lobound_data()));
@@ -1207,7 +1215,7 @@ namespace TiledArray {
       TA_ASSERT(gemm_helper.left_result_coformal(left.range().extent_data(),
           pimpl_->range_.extent_data()));
 
-      // Check that the outer dimensions of right match the the corresponding
+      // Check that the outer dimensions of right match the corresponding
       // dimensions in result
       TA_ASSERT(gemm_helper.right_result_coformal(right.range().lobound_data(),
           pimpl_->range_.lobound_data()));
@@ -1235,7 +1243,7 @@ namespace TiledArray {
           (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          left.data(), lda, right.data(), ldb, scalar_type(1), pimpl_->data_, n);
+          left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
 
       return *this;
     }
@@ -1358,7 +1366,7 @@ namespace TiledArray {
     /// Vector 2-norm
 
     /// \return The vector norm of this tensor
-    numeric_type norm() const {
+    scalar_type norm() const {
       return std::sqrt(squared_norm());
     }
 
@@ -1422,6 +1430,23 @@ namespace TiledArray {
 
   template <typename T, typename A>
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
+
+#ifndef TILEDARRAY_HEADER_ONLY
+
+  extern template
+  class Tensor<double, Eigen::aligned_allocator<double> >;
+  extern template
+  class Tensor<float, Eigen::aligned_allocator<float> >;
+  extern template
+  class Tensor<int, Eigen::aligned_allocator<int> >;
+  extern template
+  class Tensor<long, Eigen::aligned_allocator<long> >;
+//  extern template
+//  class Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >;
+//  extern template
+//  class Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >;
+
+#endif // TILEDARRAY_HEADER_ONLY
 
 } // namespace TiledArray
 

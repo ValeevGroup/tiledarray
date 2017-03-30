@@ -24,7 +24,9 @@
 
 # Create example executable
 
-foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform ta_asymm_dense ta_sparse_grow ta_dense_new_tile)
+foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform
+              ta_asymm_dense ta_sparse_grow ta_dense_new_tile
+              ta_cc_abcd)
 
   # Add executable
   add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)

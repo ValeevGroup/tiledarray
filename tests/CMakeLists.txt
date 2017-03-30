@@ -62,7 +62,7 @@ set(ta_test_src_files  ta_test.cpp
     tensor_impl.cpp
     array_impl.cpp
     variable_list.cpp
-    array.cpp
+    dist_array.cpp
     eigen.cpp
     dist_op_dist_cache.cpp
     dist_op_group.cpp
@@ -95,9 +95,18 @@ target_include_directories(${executable} PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}
     ${Boost_INCLUDE_DIRS}
     )
-set_target_properties(${executable} PROPERTIES
-    COMPILE_DEFINITIONS "TILEDARRAY_NO_USER_ERROR_MESSAGES=1")
-target_link_libraries(${executable} PUBLIC tiledarray)
+# unit tests
+# 1. should disable error messages
+# 2. must emit exceptions in asserts since some tests check for exceptions
+target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
+    TA_EXCEPTION_ERROR=1)
+# if tiledarray library was compiled without exceptions, use TA header-only
+if (NOT TA_DEFAULT_ERROR EQUAL 1)
+  target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
+  target_link_libraries(${executable} PUBLIC MADworld "${LAPACK_LIBRARIES}")
+else()
+  target_link_libraries(${executable} PUBLIC tiledarray)
+endif()
 
 # Add targets
 add_dependencies(${executable} External)

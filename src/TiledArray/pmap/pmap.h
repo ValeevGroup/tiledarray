@@ -105,7 +105,7 @@ namespace TiledArray {
     /// \return The number of local elements
     size_type local_size() const { return local_.size(); }
 
-    /// Local elements
+    /// Check if there are any local elements
 
     /// \return \c true when there are no local tiles, otherwise \c false .
     bool empty() const { return local_.empty(); }

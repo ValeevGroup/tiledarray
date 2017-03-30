@@ -365,7 +365,7 @@ namespace TiledArray {
 
       /// Element count accessor
 
-      /// \return The number of element
+      /// \return The total number of elements
       size_type size() const { return size_; }
 
       /// Local element row count accessor
@@ -380,7 +380,7 @@ namespace TiledArray {
 
       /// Local element count accessor
 
-      /// \return The number of element
+      /// \return The number of elements assigned to this process
       size_type local_size() const { return local_size_; }
 
       /// Rank row accessor

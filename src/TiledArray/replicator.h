@@ -114,8 +114,8 @@ namespace TiledArray {
           // The data is ready so send it now.
           send(); // Replication is done
         } else {
-          // The data local data is not ready to be sent so create a task that
-          // will send the data when it is ready.
+          // The local data is not ready to be sent, so create a task that will
+          // send it when it is ready.
           DelaySend* delay_send_task = new DelaySend(*this);
           world_.taskq.add(delay_send_task);
         }
@@ -152,17 +152,17 @@ namespace TiledArray {
     public:
 
       Replicator(const A& source, const A destination) :
-        wobj_type(source.get_world()), madness::Spinlock(),
+        wobj_type(source.world()), madness::Spinlock(),
         destination_(destination), indices_(), data_(), sent_(),
-        world_(source.get_world()), callbacks_()
+        world_(source.world()), callbacks_(), probe_(false)
       {
         sent_ = 0;
 
         // Generate a list of local tiles from other.
-        typename A::pmap_interface::const_iterator end = source.get_pmap()->end();
-        typename A::pmap_interface::const_iterator it = source.get_pmap()->begin();
-        indices_.reserve(source.get_pmap()->local_size());
-        data_.reserve(source.get_pmap()->local_size());
+        typename A::pmap_interface::const_iterator end = source.pmap()->end();
+        typename A::pmap_interface::const_iterator it = source.pmap()->begin();
+        indices_.reserve(source.pmap()->local_size());
+        data_.reserve(source.pmap()->local_size());
         if(source.is_dense()) {
           // When dense, all tiles are present
           for(; it != end; ++it) {
@@ -198,7 +198,7 @@ namespace TiledArray {
 
       /// Add a callback
 
-      /// The callback is called when the the local data has been sent to all
+      /// The callback is called when the local data has been sent to all
       /// nodes. If the data has already been sent to all nodes, the callback
       /// is notified immediately.
       /// \param callback The callback object

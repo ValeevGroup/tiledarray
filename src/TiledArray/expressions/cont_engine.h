@@ -385,6 +385,10 @@ namespace TiledArray {
           trange_ = ContEngine_::make_trange();
           shape_ = ContEngine_::make_shape();
         }
+
+        if(ExprEngine_::override_ptr_ && ExprEngine_::override_ptr_->shape){
+            shape_ = shape_.mask(*ExprEngine_::override_ptr_->shape);
+        } 
       }
 
       /// Initialize result tensor distribution
@@ -401,13 +405,13 @@ namespace TiledArray {
 
         // Get pointers to the argument sizes
         const size_type* restrict const left_tiles_size =
-            left_.trange().tiles().extent_data();
+            left_.trange().tiles_range().extent_data();
         const size_type* restrict const left_element_size =
-            left_.trange().elements().extent_data();
+            left_.trange().elements_range().extent_data();
         const size_type* restrict const right_tiles_size =
-            right_.trange().tiles().extent_data();
+            right_.trange().tiles_range().extent_data();
         const size_type* restrict const right_element_size =
-            right_.trange().elements().extent_data();
+            right_.trange().elements_range().extent_data();
 
         // Compute the fused sizes of the contraction
         size_type M = 1ul, m = 1ul, N = 1ul, n = 1ul;
@@ -463,14 +467,14 @@ namespace TiledArray {
 
         // Get left and right tile extents.
         const auto* restrict const left_extent =
-            left_.trange().tiles().extent_data();
+            left_.trange().tiles_range().extent_data();
         const auto* restrict const right_extent =
-            right_.trange().tiles().extent_data();
+            right_.trange().tiles_range().extent_data();
 
         // Check that the contracted dimensions are coformal (equal).
         for(unsigned int l = left_outer_rank, r = 0ul; l < left_rank; ++l, ++r) {
           if(left_.trange().data()[l] != right_.trange().data()[r]) {
-            if(World::get_default().rank() == 0) {
+            if(TiledArray::get_default_world().rank() == 0) {
 
               if(left_extent[l] == right_extent[r]) {
                 TA_USER_ERROR_MESSAGE( "The tiling of the contracted dimensions " \
@@ -516,7 +520,8 @@ namespace TiledArray {
         shape_gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
             op_.gemm_helper().result_rank(), op_.gemm_helper().left_rank(),
             op_.gemm_helper().right_rank());
-        return left_.shape().gemm(right_.shape(), factor_, shape_gemm_helper, perm);
+        return left_.shape().gemm(right_.shape(), factor_, shape_gemm_helper,
+                                  perm);
       }
 
       dist_eval_type make_dist_eval() const {

@@ -107,7 +107,7 @@ namespace TiledArray {
       /// \return The output stream
       template <typename D>
       std::ostream& operator<<(const Expr<D>& expr) const {
-        if(World::get_default().rank() == 0) {
+        if(TiledArray::get_default_world().rank() == 0) {
           os_ << target_vars_ << " =\n";
 
           ExprOStream expr_stream(os_);

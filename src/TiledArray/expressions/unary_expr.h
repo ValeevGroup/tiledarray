@@ -35,6 +35,7 @@ namespace TiledArray {
     template <typename Derived>
     class UnaryExpr : public Expr<Derived> {
     public:
+      typedef UnaryExpr<Derived> UnaryExpr_;
       typedef typename ExprTrait<Derived>::argument_type argument_type; ///< The expression type
 
     private:
@@ -42,16 +43,19 @@ namespace TiledArray {
       argument_type arg_; ///< The argument expression
 
     public:
+
+      // Compiler generated functions
+      UnaryExpr(const UnaryExpr_&) = default;
+      UnaryExpr(UnaryExpr_&&) = default;
+      ~UnaryExpr() = default;
+      UnaryExpr_& operator=(const UnaryExpr_&) = delete;
+      UnaryExpr_& operator=(UnaryExpr_&&) = delete;
+
       /// Constructor
 
       /// \param arg The argument expression
       UnaryExpr(const argument_type& arg) : arg_(arg) { }
 
-
-      /// Copy constructor
-
-      /// \param other The expression to be copied
-      UnaryExpr(const UnaryExpr<Derived>& other) : arg_(other.arg_) { }
 
       /// Argument expression accessor
 

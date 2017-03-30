@@ -81,7 +81,7 @@ namespace TiledArray {
 
       template <typename D>
       BinaryEngine(const BinaryExpr<D>& expr) :
-        ExprEngine_(), left_(expr.left()), right_(expr.right())
+        ExprEngine_(expr), left_(expr.left()), right_(expr.right())
       { }
 
       /// Set the variable list for this expression
@@ -154,7 +154,7 @@ namespace TiledArray {
         right_.init_struct(ExprEngine_::vars());
 #ifndef NDEBUG
         if(left_.trange() != right_.trange()) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The TiledRanges of the left- and right-hand arguments of the " \
                 "binary operation are not equal:" \

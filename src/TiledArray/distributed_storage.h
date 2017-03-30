@@ -150,7 +150,7 @@ namespace TiledArray {
 
       /// \return A shared pointer to the process map.
       /// \throw nothing
-      const std::shared_ptr<pmap_interface>& get_pmap() const { return pmap_; }
+      const std::shared_ptr<pmap_interface>& pmap() const { return pmap_; }
 
       /// Element owner
 
@@ -188,7 +188,7 @@ namespace TiledArray {
       /// \throw nothing
       size_type max_size() const { return max_size_; }
 
-      /// Get local or remote node
+      /// Get local or remote element
 
       /// \param i The element to get
       /// \return A future to element \c i

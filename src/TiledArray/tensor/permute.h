@@ -110,7 +110,7 @@ namespace TiledArray {
     /// \tparam OutputOp The output operation type
     /// \tparam Result The result tensor type
     /// \tparam Arg0 The first tensor argument type
-    /// \tparam Args The the remaining tensor argument types
+    /// \tparam Args The remaining tensor argument types
     /// \param input_op The operation that is used to generate the output value
     /// from the input arguments
     /// \param output_op The operation that is used to set the value of the

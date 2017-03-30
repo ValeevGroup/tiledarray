@@ -26,9 +26,10 @@
 #ifndef TILEDARRAY_SYMM_REPRESENTATION_H__INCLUDED
 #define TILEDARRAY_SYMM_REPRESENTATION_H__INCLUDED
 
+#include <functional>
 #include <map>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <TiledArray/error.h>
 
@@ -114,16 +115,22 @@ namespace TiledArray {
             elements.push_back(eop.first);
 
           for(size_t i = 0; i < elements.size(); ++i) {
-            const auto& e = elements[i];
-            const auto& e_op = element_reps[e];
+            auto e = std::cref(elements[i]);
+            auto e_op = std::cref(element_reps[e]);
             for(const auto& g_op_pair: generator_reps) {
               const auto& g = g_op_pair.first;
               const auto& g_op = g_op_pair.second;
               auto h = e * g;
               if(element_reps.find(h) == element_reps.end()) {
-                auto h_op = e_op * g_op;
+                auto h_op = e_op.get() * g_op;
                 element_reps[h] = h_op;
+                const auto orig_elements_capacity = elements.capacity();
                 elements.emplace_back(std::move(h));
+                // update e and e_op if capacity changed
+                if (orig_elements_capacity != elements.capacity()) {
+                  e = std::cref(elements[i]);
+                  e_op = std::cref(element_reps[e]);
+                }
               }
             }
           }

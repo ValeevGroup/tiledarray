@@ -4,20 +4,36 @@
 # Find MADNESS
 ###################
 
+# extra preprocessor definitions that MADNESS needs from TiledArray
+set(MADNESS_EXTRA_CPP_FLAGS "")
+
 include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
 find_package(MADNESS 0.10.1 CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
 
+macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
+  set(${_mad_config_libs} )
+  foreach (_lib ${${_mad_libraries}})
+    if (${_lib} MATCHES "MAD*")
+      set(${_mad_config_libs} "${${_mad_config_libs}} -l${_lib}")
+    else ()
+      set(${_mad_config_libs} "${${_mad_config_libs}} ${_lib}")
+    endif()
+  endforeach()
+endmacro()
+
 if(MADNESS_FOUND)
 
   cmake_push_check_state()
+
+  set(MADNESS_CONFIG_DIR ${MADNESS_DIR})
   
   list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INCLUDE_DIRS} ${TiledArray_CONFIG_INCLUDE_DIRS})
   list(APPEND CMAKE_REQUIRED_LIBRARIES "${MADNESS_LINKER_FLAGS}" ${MADNESS_LIBRARIES}
       "${CMAKE_EXE_LINKER_FLAGS}" ${TiledArray_CONFIG_LIBRARIES})
-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${MADNESS_COMPILE_FLAGS} ${CMAKE_CXX_FLAGS}")
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${MADNESS_COMPILE_FLAGS} ${CMAKE_CXX_FLAGS} ${MADNESS_EXTRA_CPP_FLAGS}")
 
   # sanity check: try compiling a simple program
   CHECK_CXX_SOURCE_COMPILES(
@@ -59,7 +75,8 @@ if(MADNESS_FOUND)
 
   # Set config variables
   list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${MADNESS_INCLUDE_DIRS})
-  set(TiledArray_CONFIG_LIBRARIES ${MADNESS_LIBRARIES} ${TiledArray_CONFIG_LIBRARIES})
+  replace_mad_targets_with_libnames(MADNESS_LIBRARIES MADNESS_CONFIG_LIBRARIES)
+  list(APPEND TiledArray_CONFIG_LIBRARIES ${MADNESS_CONFIG_LIBRARIES})
   set(TiledArray_LIBRARIES ${MADNESS_LIBRARIES} ${TiledArray_LIBRARIES})
 
   
@@ -81,7 +98,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "d7e79c5bad433b0c7b67b989dc73d3535e927834" CACHE STRING 
+  set(MADNESS_TAG "f2eb7e124687ab59344185e3c4d1fbece609390f" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -97,16 +114,17 @@ else()
     set (F77_INT_SIZE 8)
   endif(INTEGER4)
   
-  # Set error handling method
-  if(TA_ERROR STREQUAL none)
-    set(MAD_EXCEPTION disable)
-  elseif(TA_ERROR STREQUAL throw)
-    set(MAD_EXCEPTION throw)
-  elseif(TA_ERROR STREQUAL assert)
-    set(MAD_EXCEPTION assert)
-  else()
-    set(MAD_EXCEPTION throw)
+  # Set error handling method (for TA_DEFAULT_ERROR values see top-level CMakeLists.txt)
+  if(TA_DEFAULT_ERROR EQUAL 0)
+    set(_MAD_ASSERT_TYPE disable)
+  elseif(TA_DEFAULT_ERROR EQUAL 1)
+    set(_MAD_ASSERT_TYPE throw)
+  elseif(TA_DEFAULT_ERROR EQUAL 2)
+    set(_MAD_ASSERT_TYPE assert)
+  elseif(TA_DEFAULT_ERROR EQUAL 3)
+    set(_MAD_ASSERT_TYPE abort)
   endif()
+  set(MAD_ASSERT_TYPE ${_MAD_ASSERT_TYPE} CACHE INTERNAL "MADNESS assert type")
   
   # Check the MADNESS source directory to make sure it contains the source files
   # If the MADNESS source directory is the default location and does not exist,
@@ -217,6 +235,13 @@ else()
     set(MAD_ELEMENTAL_OPTIONS -DELEMENTAL_URL=${ELEMENTAL_URL} ${MAD_ELEMENTAL_OPTIONS})
   endif (DEFINED ELEMENTAL_URL)
   
+  # update all CMAKE_CXX_FLAGS to include extra preprocessor flags MADNESS needs
+  set(CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} ${MADNESS_EXTRA_CPP_FLAGS}")
+  set(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} ${MADNESS_EXTRA_CPP_FLAGS}")
+  set(CMAKE_CXX_FLAGS_RELEASE        "${CMAKE_CXX_FLAGS_RELEASE} ${MADNESS_EXTRA_CPP_FLAGS}")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${MADNESS_EXTRA_CPP_FLAGS}")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL} ${MADNESS_EXTRA_CPP_FLAGS}")
+  
   set(error_code 1)
   message (STATUS "** Configuring MADNESS")
   execute_process(
@@ -259,8 +284,9 @@ else()
       -DENABLE_LIBXC=FALSE
       "-DLAPACK_LIBRARIES=${LAPACK_LIBRARIES}"
       -DENABLE_GPERFTOOLS=${ENABLE_GPERFTOOLS}
-      -DASSERTION_TYPE=${MAD_EXCEPTION}
+      -DASSERTION_TYPE=${MAD_ASSERT_TYPE}
       "-DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}"
+      -DDISABLE_WORLD_GET_DEFAULT=ON
       ${MADNESS_CMAKE_EXTRA_ARGS}
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)
@@ -329,8 +355,9 @@ else()
   # Set build dependencies and compiler arguments
   add_dependencies(External build-madness)
 
-  # Set config variables 
-  list(APPEND TiledArray_CONFIG_LIBRARIES ${MADNESS_LIBRARIES})
+  # Set config variables
+  replace_mad_targets_with_libnames(MADNESS_LIBRARIES MADNESS_CONFIG_LIBRARIES)
+  list(APPEND TiledArray_CONFIG_LIBRARIES ${MADNESS_CONFIG_LIBRARIES})
 
 endif()
 

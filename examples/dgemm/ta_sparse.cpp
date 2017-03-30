@@ -20,6 +20,7 @@
 #include <iostream>
 #include <time.h> // for time
 #include <tiledarray.h>
+#include <TiledArray/version.h>
 #include <iomanip>
 
 void print_results(const TiledArray::World& world, const std::vector<std::vector<double> >& results) {
@@ -57,11 +58,11 @@ int main(int argc, char** argv) {
     const long matrix_size = atol(argv[1]);
     const long block_size = atol(argv[2]);
     if(matrix_size <= 0) {
-      std::cerr << "Error: matrix size must greater than zero.\n";
+      std::cerr << "Error: matrix size must be greater than zero.\n";
       return 1;
     }
     if(block_size <= 0) {
-      std::cerr << "Error: block size must greater than zero.\n";
+      std::cerr << "Error: block size must be greater than zero.\n";
       return 1;
     }
     if((matrix_size % block_size) != 0ul) {
@@ -70,7 +71,7 @@ int main(int argc, char** argv) {
     }
     const long repeat = (argc >= 4 ? atol(argv[3]) : 4);
     if(repeat <= 0) {
-      std::cerr << "Error: number of repetitions must greater than zero.\n";
+      std::cerr << "Error: number of repetitions must be greater than zero.\n";
       return 1;
     }
 
@@ -101,6 +102,7 @@ int main(int argc, char** argv) {
     TiledArray::TiledRange
       trange(blocking2.begin(), blocking2.end());
 
+    TiledArray::SparseShape<float> forced_shape;
     for(unsigned int left_sparsity = 10; left_sparsity <= 100; left_sparsity += 10){
       std::vector<double> inner_gflops, inner_times, inner_app_gflops;
       for(unsigned int right_sparsity = 10; right_sparsity <= left_sparsity; right_sparsity += 10){
@@ -116,25 +118,25 @@ int main(int argc, char** argv) {
 
         // Construct shape
         TiledArray::Tensor<float>
-            a_tile_norms(trange.tiles(), 0.0),
-            b_tile_norms(trange.tiles(), 0.0);
+            a_tile_norms(trange.tiles_range(), 0.0),
+            b_tile_norms(trange.tiles_range(), 0.0);
         if(world.rank() == 0) {
           world.srand(time(NULL));
           for(long count = 0l; count < l_block_count; ++count) {
-            std::size_t index = world.rand() % trange.tiles().volume();
+            std::size_t index = world.rand() % trange.tiles_range().volume();
 
             // Avoid setting the same tile to non-zero.
             while(a_tile_norms[index] > TiledArray::SparseShape<float>::threshold())
-              index = world.rand() % trange.tiles().volume();
+              index = world.rand() % trange.tiles_range().volume();
 
             a_tile_norms[index] = std::sqrt(float(block_size * block_size));
           }
           for(long count = 0l; count < r_block_count; ++count) {
-            std::size_t index = world.rand() % trange.tiles().volume();
+            std::size_t index = world.rand() % trange.tiles_range().volume();
 
             // Avoid setting the same tile to non-zero.
             while(b_tile_norms[index] > TiledArray::SparseShape<float>::threshold())
-              index = world.rand() % trange.tiles().volume();
+              index = world.rand() % trange.tiles_range().volume();
 
             b_tile_norms[index] = std::sqrt(float(block_size * block_size));
           }
@@ -143,6 +145,10 @@ int main(int argc, char** argv) {
         TiledArray::SparseShape<float>
             a_shape(world, a_tile_norms, trange),
             b_shape(world, b_tile_norms, trange);
+
+        if(left_sparsity == 10){
+            forced_shape = a_shape;
+        }
 
 
         // Construct and initialize arrays
@@ -164,7 +170,7 @@ int main(int argc, char** argv) {
         try {
           for(int i = 0; i < repeat; ++i) {
             const double start = madness::wall_time();
-            c("m,n") = a("m,k") * b("k,n");
+            c("m,n") = (a("m,k") * b("k,n")).set_shape(forced_shape);
             const double time = madness::wall_time() - start;
             total_time += time;
             if(flop < 1.0)
@@ -172,13 +178,14 @@ int main(int argc, char** argv) {
             if(world.rank() == 0)
               std::cout << "Iteration " << i + 1 << "   time=" << time << "   GFLOPS="
                   << flop / time / 1.0e9 << "   apparent GFLOPS=" << app_flop / time / 1.0e9 << "\n";
+            std::cout << "C sparsity = " << c.shape().sparsity() << "\n";
 
           }
         } catch(...) {
           if(world.rank() == 0) {
             std::stringstream ss;
-            ss << "left shape  = " << a.get_shape().data() << "\n"
-               << "right shape = " << b.get_shape().data() << "\n";
+            ss << "left shape  = " << a.shape().data() << "\n"
+               << "right shape = " << b.shape().data() << "\n";
             printf(ss.str().c_str());
           }
           throw;

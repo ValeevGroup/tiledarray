@@ -37,7 +37,7 @@ namespace TiledArray {
     // Forward declaration
     template <typename> class TensorReference;
     template <typename> class TensorConstReference;
-    template <typename, typename> class ArrayIiterator;
+    template <typename, typename> class ArrayIterator;
 
     /// Tensor tile reference
 
@@ -47,13 +47,17 @@ namespace TiledArray {
     private:
 
       template <typename, typename>
-      friend class ArrayIiterator;
+      friend class ArrayIterator;
 
       template <typename>
       friend class TileConstReference;
 
+      typedef typename Impl::range_type range_type;
+      typedef typename Impl::range_type::index index_type;
+      typedef typename Impl::size_type ordinal_type;
+
       Impl* tensor_; ///< The tensor that owns the referenced tile
-      typename Impl::size_type index_; ///< The index of the tensor
+      ordinal_type index_; ///< The ordinal index of the tile
 
       // Not allowed
       TileReference<Impl>& operator=(const TileReference<Impl>&);
@@ -84,9 +88,33 @@ namespace TiledArray {
         return future().get();
       }
 
-      operator typename Impl::future() const { return tensor_->get(index_); }
+      operator typename Impl::future() const { return this->future(); }
 
       operator typename Impl::value_type() const { return get(); }
+
+      /// Tile coordinate index accessor
+
+      /// \return The coordinate index of the current tile
+      index_type index() const {
+        TA_ASSERT(tensor_);
+        return tensor_->range().idx(index_);
+      }
+
+      /// Tile ordinal index accessor
+
+      /// \return The ordinal index of the current tile
+      ordinal_type ordinal() const {
+        return index_;
+      }
+
+      /// Tile range factory function
+
+      /// Construct a range object for the current tile
+      range_type make_range() const {
+        TA_ASSERT(tensor_);
+        return tensor_->trange().make_tile_range(index_);
+      }
+
     }; // class TileReference
 
     /// Tensor tile reference
@@ -97,16 +125,16 @@ namespace TiledArray {
     private:
 
       template <typename, typename>
-      friend class ArrayIiterator;
+      friend class ArrayIterator;
 
-      Impl* tensor_; ///< The tensor that owns the referenced tile
+      const Impl* tensor_; ///< The tensor that owns the referenced tile
       typename Impl::size_type index_; ///< The index of the tensor
 
       // Not allowed
       TileConstReference<Impl>& operator=(const TileConstReference<Impl>&);
     public:
 
-      TileConstReference(Impl* tensor, const typename Impl::size_type index) :
+      TileConstReference(const Impl* tensor, const typename Impl::size_type index) :
         tensor_(tensor), index_(index)
       { }
 
@@ -172,11 +200,11 @@ namespace TiledArray {
     /// \tparam Impl The TensorImpl type
     /// \tparam Reference The iterator reference type
     template <typename Impl, typename Reference>
-    class ArrayIiterator {
+    class ArrayIterator {
     private:
       // Give access to other iterator types.
       template <typename, typename>
-      friend class ArrayIiterator;
+      friend class ArrayIterator;
 
       Impl* array_;
       typename Impl::pmap_interface::const_iterator it_;
@@ -187,7 +215,7 @@ namespace TiledArray {
       typedef PointerProxy<value_type> pointer; ///< Pointer type to iterator value
       typedef Reference reference; ///< Reference type to iterator value
       typedef std::forward_iterator_tag iterator_category; ///< Iterator category type
-      typedef ArrayIiterator<Impl, Reference> ArrayIterator_; ///< This object type
+      typedef ArrayIterator<Impl, Reference> ArrayIterator_; ///< This object type
       typedef typename Impl::range_type::index index_type;
       typedef typename Impl::size_type ordinal_type;
       typedef typename Impl::range_type range_type;
@@ -207,17 +235,17 @@ namespace TiledArray {
     public:
 
       /// Default constructor
-      ArrayIiterator() : array_(NULL), it_() { }
+      ArrayIterator() : array_(NULL), it_() { }
 
       /// Constructor
-      ArrayIiterator(Impl* tensor, typename Impl::pmap_interface::const_iterator it) :
+      ArrayIterator(Impl* tensor, typename Impl::pmap_interface::const_iterator it) :
         array_(tensor), it_(it)
       { }
 
       /// Copy constructor
 
       /// \param other The transform iterator to copy
-      ArrayIiterator(const ArrayIterator_& other) :
+      ArrayIterator(const ArrayIterator_& other) :
         array_(other.array_), it_(other.it_)
       { }
 
@@ -225,8 +253,12 @@ namespace TiledArray {
 
       /// \tparam R Iterator reference type
       /// \param other The transform iterator to copy
-      template <typename R>
-      ArrayIiterator(const ArrayIiterator<Impl, R>& other) :
+      template <typename I, typename R,
+          typename std::enable_if<
+              !((! std::is_const<Impl>::value) &&
+              std::is_const<I>::value)
+          >::type* = nullptr>
+      ArrayIterator(const ArrayIterator<I, R>& other) :
         array_(other.array_), it_(other.it_)
       { }
 
@@ -247,7 +279,7 @@ namespace TiledArray {
       /// \param other The transform iterator to copy
       /// \return A reference to this object
       template <typename R>
-      ArrayIterator_& operator=(const ArrayIiterator<Impl, R>& other) {
+      ArrayIterator_& operator=(const ArrayIterator<Impl, R>& other) {
         array_ = other.array_;
         it_ = other.it_;
 
@@ -277,8 +309,8 @@ namespace TiledArray {
       /// \param other The iterator to compare to this iterator.
       /// \return \c true when the iterators are equal to each other, otherwise
       /// \c false.
-      template <typename R>
-      bool operator==(const ArrayIiterator<Impl, R>& other) const {
+      template <typename I, typename R>
+      bool operator==(const ArrayIterator<I, R>& other) const {
         return (array_ == other.array_) && (it_ == other.it_);
       }
 
@@ -288,8 +320,8 @@ namespace TiledArray {
       /// \param other The iterator to compare to this iterator.
       /// \return \c true when the iterators are not equal to each other,
       /// otherwise \c false.
-      template <typename R>
-      bool operator!=(const ArrayIiterator<Impl, R>& other) const {
+      template <typename I, typename R>
+      bool operator!=(const ArrayIterator<I, R>& other) const {
         return (array_ != other.array_) || (it_ != other.it_);
       }
 
@@ -363,8 +395,8 @@ namespace TiledArray {
       typedef typename storage_type::future future; ///< Future tile type
       typedef TileReference<ArrayImpl_> reference; ///< Tile reference type
       typedef TileConstReference<ArrayImpl_> const_reference; ///< Tile constant reference type
-      typedef ArrayIiterator<ArrayImpl_, reference> iterator; ///< Iterator type
-      typedef ArrayIiterator<ArrayImpl_, const_reference> const_iterator; ///< Constant iterator type
+      typedef ArrayIterator<ArrayImpl_, reference> iterator; ///< Iterator type
+      typedef ArrayIterator<const ArrayImpl_, const_reference> const_iterator; ///< Constant iterator type
 
     private:
 
@@ -384,7 +416,7 @@ namespace TiledArray {
       ArrayImpl(World& world, const trange_type& trange, const shape_type& shape,
           const std::shared_ptr<pmap_interface>& pmap) :
         TensorImpl_(world, trange, shape, pmap),
-        data_(world, trange.tiles().volume(), pmap)
+        data_(world, trange.tiles_range().volume(), pmap)
       { }
 
       /// Virtual destructor
@@ -399,7 +431,18 @@ namespace TiledArray {
       template <typename Index>
       future get(const Index& i) const {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        return data_.get(TensorImpl_::trange().tiles().ordinal(i));
+        return data_.get(TensorImpl_::trange().tiles_range().ordinal(i));
+      }
+
+      /// Tile future accessor
+
+      /// \tparam Integer An integer type
+      /// \param i The tile index, as an \c std::initializer_list<Integer>
+      /// \return A \c future to tile \c i
+      /// \throw TiledArray::Exception When tile \c i is zero
+      template <typename Integer>
+      future get(const std::initializer_list<Integer>& i) const {
+        return get<std::initializer_list<Integer>>(i);
       }
 
       /// Set tile
@@ -414,7 +457,7 @@ namespace TiledArray {
       template <typename Index, typename Value>
       void set(const Index& i, const Value& value) {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        data_.set(TensorImpl_::trange().tiles().ordinal(i), value);
+        data_.set(TensorImpl_::trange().tiles_range().ordinal(i), value);
       }
 
       /// Array begin iterator
@@ -432,11 +475,19 @@ namespace TiledArray {
         return iterator(this, it);
       }
 
-      /// Array end iterator
+      /// Array begin iterator
 
-      /// \return A const iterator to one past the last element of the array.
-      const_iterator end() const {
-        return iterator(this, TensorImpl_::pmap()->end());
+      /// \return A const iterator to the first element of the array.
+      const_iterator cbegin() const {
+        // Get the pmap iterator
+        typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
+
+        // Find the fist non-zero iterator
+        const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
+        while((it != end) && TensorImpl_::is_zero(*it)) ++it;
+
+        // Construct and return the iterator
+        return const_iterator(this, it);
       }
 
       /// Array end iterator
@@ -446,12 +497,50 @@ namespace TiledArray {
         return iterator(this, TensorImpl_::pmap()->end());
       }
 
+      /// Array end iterator
+
+      /// \return A const iterator to one past the last element of the array.
+      const_iterator cend() const {
+        return const_iterator(this, TensorImpl_::pmap()->end());
+      }
+
       /// Unique object id accessor
 
       /// \return A const reference to this object unique id
       const madness::uniqueidT& id() const { return data_.id(); }
 
-    }; // class TensorImpl
+    }; // class ArrayImpl
+
+
+#ifndef TILEDARRAY_HEADER_ONLY
+
+    extern template
+    class ArrayImpl<Tensor<double, Eigen::aligned_allocator<double> >, DensePolicy>;
+    extern template
+    class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float> >, DensePolicy>;
+    extern template
+    class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int> >, DensePolicy>;
+    extern template
+    class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long> >, DensePolicy>;
+//    extern template
+//    class ArrayImpl<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>;
+//    extern template
+//    class ArrayImpl<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>;
+
+    extern template
+    class ArrayImpl<Tensor<double, Eigen::aligned_allocator<double> >, SparsePolicy>;
+    extern template
+    class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float> >, SparsePolicy>;
+    extern template
+    class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int> >, SparsePolicy>;
+    extern template
+    class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long> >, SparsePolicy>;
+//    extern template
+//    class ArrayImpl<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>;
+//    extern template
+//    class ArrayImpl<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
+
+#endif // TILEDARRAY_HEADER_ONLY
 
   }  // namespace detail
 }  // namespace TiledArray

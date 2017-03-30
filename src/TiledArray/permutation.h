@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_PERMUTATION_H__INCLUED
-#define TILEDARRAY_PERMUTATION_H__INCLUED
+#ifndef TILEDARRAY_PERMUTATION_H__INCLUDED
+#define TILEDARRAY_PERMUTATION_H__INCLUDED
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>

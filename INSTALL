@@ -69,7 +69,7 @@ $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
 
 $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
         -D CMAKE_BUILD_TYPE=Release \
-        -D EIGEN_INCLUDE_DIR=/path/to/eigen/include/eigen3 \
+        -D EIGEN3_INCLUDE_DIR=/path/to/eigen/include/eigen3 \
         -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack" \
         -D BLAS_LIBRARIES="-L/path/to/blas/lib -lblas" \
         -D TBB_ROOT_DIR=/path/to/tbb \
@@ -83,7 +83,7 @@ $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
 
 $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
         -D CMAKE_BUILD_TYPE=Release \
-        -D EIGEN_INCLUDE_DIR=/path/to/eigen/include/eigen3 \
+        -D EIGEN3_INCLUDE_DIR=/path/to/eigen/include/eigen3 \
         -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack" \
         -D BLAS_LIBRARIES="-L/path/to/blas/lib -lblas" \
         -D MADNESS_ROOT_DIR=/path/to/madness \
@@ -189,7 +189,7 @@ Link Advisor page.
 You can specify the install location of Eigen 3 with the following CMake cache
 variable:
 
-* EIGEN_INCLUDE_DIR -- The path to the Eigen 3 include directory
+* EIGEN3_INCLUDE_DIR -- The path to the Eigen 3 include directory
 
 If Eigen is not found by the configure script, it will be downloaded from the
 hg repository on Bitbucket.
@@ -218,7 +218,7 @@ MADNESS:
 * MADNESS_BINARY_DIR -- Path to the MADNESS build directory
 * MADNESS_URL -- Path to the MADNESS repository [Default=MADNESS git repository]
 * MADNESS_TAG -- Revision hash or tag to use when building MADNESS (expert only)
-* MAD_EXTRA_CMAKE_FLAGS -- Extra flags passed to MADNESS cmake command
+* MADNESS_CMAKE_EXTRA_ARGS -- Extra flags passed to MADNESS cmake command
 
 If you wish to install MADNESS yourself, we recommend downloading the latest
 version from the MADNESS git repository. You should not expect the latest 

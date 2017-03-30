@@ -112,14 +112,14 @@ namespace TiledArray {
       /// Non-permuting shape factory function
 
       /// \return The result shape
-      shape_type make_shape() { return LeafEngine_::array_.get_shape().scale(factor_); }
+      shape_type make_shape() { return LeafEngine_::array_.shape().scale(factor_); }
 
       /// Permuting shape factory function
 
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type make_shape(const Permutation& perm) {
-        return LeafEngine_::array_.get_shape().scale(factor_, perm);
+        return LeafEngine_::array_.shape().scale(factor_, perm);
       }
 
       /// Non-permuting tile operation factory function

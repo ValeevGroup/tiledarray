@@ -23,14 +23,15 @@
 #
 
 # library headers
-set(tiledarray_header_files 
+set(TILEDARRAY_HEADER_FILES
 tiledarray.h
 tiledarray_fwd.h
-TiledArray/array.h
+TiledArray/config.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
 TiledArray/dense_shape.h
+TiledArray/dist_array.h
 TiledArray/distributed_storage.h
 TiledArray/elemental.h
 TiledArray/error.h
@@ -54,6 +55,7 @@ TiledArray/transform_iterator.h
 TiledArray/type_traits.h
 TiledArray/utility.h
 TiledArray/val_array.h
+TiledArray/version.h
 TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h
@@ -124,15 +126,18 @@ TiledArray/tensor/tensor_interface.h
 TiledArray/tensor/tensor_map.h
 TiledArray/tensor/type_traits.h
 TiledArray/tensor/utility.h
+TiledArray/tile_interface/add.h
+TiledArray/tile_interface/cast.h
+TiledArray/tile_interface/clone.h
+TiledArray/tile_interface/permute.h
+TiledArray/tile_interface/scale.h
+TiledArray/tile_interface/shift.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_reduction.h
 TiledArray/tile_op/binary_wrapper.h
-TiledArray/tile_op/cast.h
-TiledArray/tile_op/clone.h
 TiledArray/tile_op/contract_reduce.h
 TiledArray/tile_op/mult.h
 TiledArray/tile_op/noop.h
-TiledArray/tile_op/permute.h
 TiledArray/tile_op/reduce_wrapper.h
 TiledArray/tile_op/scal.h
 TiledArray/tile_op/shift.h
@@ -141,6 +146,38 @@ TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
+set(TILEDARRAY_SOURCE_FILES
+TiledArray/tensor/tensor.cpp
+TiledArray/sparse_shape.cpp
+TiledArray/tensor_impl.cpp
+TiledArray/array_impl.cpp
+TiledArray/dist_array.cpp)
+
+# Create the TiledArray header-only library
+add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+target_include_directories(tiledarray INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+  $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
+)
+  
+target_compile_definitions(tiledarray PUBLIC 
+   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
+target_include_directories(tiledarray PUBLIC 
+   "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN3_INCLUDE_DIR}")
+if(TARGET build-madness)
+  add_dependencies(tiledarray build-madness)
+endif()
+# append current CMAKE_CXX_FLAGS
+string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
+target_compile_options(tiledarray PUBLIC 
+   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>;${CMAKE_CXX_FLAG_LIST})
+target_link_libraries(tiledarray PUBLIC "${LAPACK_LIBRARIES}" MADworld)
+
+# Add library to the list of installed components
+install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
+    LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
+    ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
 # Install header files
 install(
   DIRECTORY
@@ -151,26 +188,4 @@ install(
   PATTERN "CMakeFiles" EXCLUDE
 )
 
-# Create the TiledArray header-only library 
-add_library(tiledarray INTERFACE)
-target_include_directories(tiledarray INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
-)
-  
-target_compile_definitions(tiledarray INTERFACE 
-   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
-target_include_directories(tiledarray INTERFACE 
-   "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN_INCLUDE_DIR}")
-# append current CMAKE_CXX_FLAGS
-string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
-target_compile_options(tiledarray INTERFACE 
-   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>;${CMAKE_CXX_FLAG_LIST})
-target_link_libraries(tiledarray INTERFACE "${LAPACK_LIBRARIES}" MADworld)
-
-# Add library to the list of installed components
-install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
-    PUBLIC_HEADER DESTINATION "${TILEDARRAY_INSTALL_INCLUDEDIR}/TiledArray"
-    LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
-    ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
+    

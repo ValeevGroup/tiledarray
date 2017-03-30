@@ -23,7 +23,8 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
-#include "TiledArray/array.h"
+
+#include "../src/TiledArray/dist_array.h"
 
 struct ArrayFixture : public TiledRangeFixture {
   typedef TArrayI ArrayN;

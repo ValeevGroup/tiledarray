@@ -29,7 +29,7 @@
 #include <sstream>
 #include <TiledArray/algebra/diis.h>
 #include <TiledArray/algebra/utils.h>
-#include <TiledArray/array.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 

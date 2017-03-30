@@ -113,7 +113,7 @@ namespace TiledArray {
     private:
 
       Op op_; ///< Tile operation
-      Permutation perm_; ///< Permuation applied to the result
+      Permutation perm_; ///< Permutation applied to the result
 
     public:
 

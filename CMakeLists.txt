@@ -30,10 +30,13 @@ project (TiledArray)
 # Set TiledArray version =======================================================
 
 set(TILEDARRAY_MAJOR_VERSION 0)
-set(TILEDARRAY_MINOR_VERSION 5)
+set(TILEDARRAY_MINOR_VERSION 6)
 set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_BUILDID alpha)
-set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}-${TILEDARRAY_BUILDID}")
+set(TILEDARRAY_BUILDID )
+set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}")
+if (TILEDARRAY_BUILDID)
+  set(TILEDARRAY_BUILDID "${TILEDARRAY_BUILDID}-${MPQCTILEDARRAY_BUILDID_BUILDID}")
+endif(TILEDARRAY_BUILDID)
 
 # Set install paths ============================================================
 
@@ -122,8 +125,11 @@ else()
   set(CMAKE_MACOSX_RPATH FALSE)
 endif()
 
+# miscellaneous cmake platform-neutral and platform-specific configuration =============================
+set(CMAKE_FIND_NO_INSTALL_PREFIX TRUE)  # do not search in CMAKE_INSTALL_PREFIX 
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
+set(CMAKE_SKIP_INSTALL_RPATH FALSE)
 
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
   # look for frameworks and appbundles last
@@ -211,6 +217,25 @@ include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
 check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
 
+##########################
+# convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
+##########################
+set (TA_DEFAULT_ERROR 3)  # default is to abort so that it works with or without NDEBUG
+                          # assert when CMAKE_BUILD_TYPE is Debug or RelWithDebugUnfo
+string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
+if (CMAKE_BUILD_TYPE AND uppercase_CMAKE_BUILD_TYPE MATCHES "^(DEBUG|RELWITHDEBINFO)$")
+  set (TA_DEFAULT_ERROR 2)
+endif()
+
+if (TA_ERROR STREQUAL none)
+  set (TA_DEFAULT_ERROR 0)
+elseif (TA_ERROR STREQUAL throw)
+  set (TA_DEFAULT_ERROR 1)
+elseif (TA_ERROR STREQUAL assert)
+  set (TA_DEFAULT_ERROR 2)
+elseif (TA_ERROR STREQUAL abort)
+  set (TA_DEFAULT_ERROR 3)
+endif()
 
 ##########################
 # Include source dirctories
@@ -222,11 +247,21 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 ##########################
 add_custom_target(External)
 
+# required deps:
 include(external/eigen.cmake)
 include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
+
+# optional deps:
+# 1. ccache
+find_program(CCACHE ccache)
+if(CCACHE)
+    message (STATUS "Found ccache: ${CCACHE}")
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
+endif(CCACHE)
 
 ##########################
 # sources
@@ -279,6 +314,11 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" CACHE STRING "C++ compile flags" FORCE)
 CONFIGURE_FILE(
   ${PROJECT_SOURCE_DIR}/src/TiledArray/config.h.in
   ${PROJECT_BINARY_DIR}/src/TiledArray/config.h
+)
+
+CONFIGURE_FILE(
+  ${PROJECT_SOURCE_DIR}/src/TiledArray/version.h.in
+  ${PROJECT_BINARY_DIR}/src/TiledArray/version.h
 )
 
 CONFIGURE_FILE(

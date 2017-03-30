@@ -48,7 +48,7 @@ namespace TiledArray {
 
   /// Tensor output operator
 
-  /// Ouput tensor \c t to the output stream, \c os .
+  /// Output tensor \c t to the output stream, \c os .
   /// \tparam T The tensor type
   /// \param os The output stream
   /// \param t The tensor to be output
@@ -70,7 +70,7 @@ namespace TiledArray {
 
   /// Tensor output operator
 
-  /// Ouput tensor \c t to the output stream, \c os .
+  /// Output tensor \c t to the output stream, \c os .
   /// \tparam T The tensor type
   /// \param os The output stream
   /// \param t The tensor to be output

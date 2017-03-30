@@ -10,31 +10,31 @@ sudo add-apt-repository ppa:george-edison55/precise-backports -y
 # Add Eigen 3.2
 sudo add-apt-repository ppa:kalakris/eigen -y
 
-# Update package list
-sudo apt-get update -qq
-
-# Install updated gcc compilers
-sudo apt-get install -qq -y gcc-$GCC_VERSION g++-$GCC_VERSION
-if [ "$CXX" = "g++" ]; then
-    export CC=/usr/bin/gcc-$GCC_VERSION
-    export CXX=/usr/bin/g++-$GCC_VERSION
-fi
+# always use gcc to compile MPICH, there are unexplained issues with clang (e.g. MPI_Barrier aborts)
+export CC=/usr/bin/gcc-$GCC_VERSION
+export CXX=/usr/bin/g++-$GCC_VERSION
 
 # Print compiler information
 $CC --version
 $CXX --version
 
-# Install very recent CMAKE
-#curl -O https://cmake.org/files/v3.4/cmake-3.4.1.tar.gz
-#tar -xzf cmake-3.4.1.tar.gz
-#cd ./cmake-3.4.1
-#./configure --prefix=/usr/local
-#make -j2
-#sudo make install
-
-# Install CMake 3
-sudo apt-get -y -qq --no-install-suggests --no-install-recommends --force-yes install cmake cmake-data
+# log the CMake version (need 3+)
 cmake --version
 
-# Install the rest
-sudo apt-get install -qq -y libblas-dev liblapack-dev mpich2 libtbb-dev libeigen3-dev libboost1.48-dev
+# Install MPICH
+if [ ! -d "${HOME}/mpich" ]; then
+    wget --no-check-certificate -q http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz
+    tar -xzf mpich-3.2.tar.gz
+    cd mpich-3.2
+    ./configure CC="ccache $CC" CXX="ccache $CXX" --disable-fortran --disable-romio --prefix=${HOME}/mpich
+    make -j2
+    make install
+    ${HOME}/mpich/bin/mpichversion
+    ${HOME}/mpich/bin/mpicc -show
+    ${HOME}/mpich/bin/mpicxx -show
+else
+    echo "MPICH installed..."
+    find ${HOME}/mpich -name mpiexec
+    find ${HOME}/mpich -name mpicc
+    find ${HOME}/mpich -name mpicxx
+fi

@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_CONVERSIONS_TO_NEW_TILE_TYPE_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_TO_NEW_TILE_TYPE_H__INCLUDED
 
-#include <TiledArray/array.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 
@@ -46,14 +46,14 @@ namespace TiledArray {
     static_assert(!std::is_same<Tile, OutTileType>::value,
         "Can't call new tile type if tile type does not change.");
 
-    auto &world = old_array.get_world();
+    auto &world = old_array.world();
 
     // Create new array
-    OutArray new_array(world, old_array.trange(), old_array.get_shape(), old_array.get_pmap());
+    OutArray new_array(world, old_array.trange(), old_array.shape(), old_array.pmap());
 
-    using pmap_iter = decltype(old_array.get_pmap()->begin());
-    pmap_iter it = old_array.get_pmap()->begin();
-    pmap_iter end = old_array.get_pmap()->end();
+    using pmap_iter = decltype(old_array.pmap()->begin());
+    pmap_iter it = old_array.pmap()->begin();
+    pmap_iter end = old_array.pmap()->end();
 
     for(; it != end; ++it) {
       // Must check for zero because pmap_iter does not.

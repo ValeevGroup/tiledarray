@@ -46,7 +46,7 @@ namespace TiledArray {
 
     // Construct the elemental matrix
     using T = typename Tile::value_type;
-    auto sizes = array.trange().elements().extent_data();
+    auto sizes = array.trange().elements_range().extent_data();
     elem::DistMatrix<T> mat(sizes[0], sizes[1], grid);
     elem::Zero(mat);
 
@@ -56,8 +56,8 @@ namespace TiledArray {
     interface.Attach(elem::LOCAL_TO_GLOBAL, mat);
 
     // Get array iterators
-    typename DistArray<Tile>::iterator it = array.begin();
-    typename DistArray<Tile>::iterator end = array.end();
+    typename DistArray<Tile>::const_iterator it = array.begin();
+    typename DistArray<Tile>::const_iterator end = array.end();
 
     for(; it != end; ++it){
       // Get tile matrix location info
@@ -95,8 +95,8 @@ namespace TiledArray {
   void elem_to_array(DistArray<Tile> &array, elem::DistMatrix<typename Tile::value_type> &mat){
 	using T = typename Tile::value_type;
     TA_USER_ASSERT(array.range().rank()==2u, "TiledArray::elem_to_array(): requires the array to have dimension 2");
-    TA_USER_ASSERT((array.trange().elements().extent()[0]==mat.Height()) &&
-                   (array.trange().elements().extent()[1] == mat.Width()),
+    TA_USER_ASSERT((array.trange().elements_range().extent()[0]==mat.Height()) &&
+                   (array.trange().elements_range().extent()[1] == mat.Width()),
                    "TiledArray::elem_to_array(): requires the shape of the elem matrix and the array to be the same.");
 
     // Make interface and attach mat

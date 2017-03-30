@@ -34,11 +34,11 @@ int main(int argc, char** argv) {
   const long col_size = atol(argv[3]);
   const long col_block_size = atol(argv[4]);
   if (row_size <= 0 || col_size <= 0) {
-    std::cerr << "Error: dimensions must greater than zero.\n";
+    std::cerr << "Error: dimensions must be greater than zero.\n";
     return 1;
   }
   if (row_block_size <= 0 || col_block_size <= 0) {
-    std::cerr << "Error: block sizes must greater than zero.\n";
+    std::cerr << "Error: block sizes must be greater than zero.\n";
     return 1;
   }
   if((row_size % row_block_size) != 0ul || col_size % col_block_size !=0ul) {
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
   }
   const long repeat = (argc >= 6 ? atol(argv[5]) : 5);
   if (repeat <= 0) {
-    std::cerr << "Error: number of repetitions must greater than zero.\n";
+    std::cerr << "Error: number of repetitions must be greater than zero.\n";
     return 1;
   }
 

@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_CONVERSIONS_SPARSE_TO_DENSE_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_SPARSE_TO_DENSE_H__INCLUDED
 
-#include <TiledArray/array.h>
+#include "../dist_array.h"
 
 namespace TiledArray {
 
@@ -34,14 +34,14 @@ namespace TiledArray {
   DistArray<Tile, DensePolicy>
   to_dense(DistArray<Tile, SparsePolicy> const& sparse_array) {
       typedef DistArray<Tile, DensePolicy> ArrayType;
-      ArrayType dense_array(sparse_array.get_world(), sparse_array.trange());
+      ArrayType dense_array(sparse_array.world(), sparse_array.trange());
 
       typedef typename ArrayType::pmap_interface pmap_interface;
-      std::shared_ptr<pmap_interface> const& pmap = dense_array.get_pmap();
+      std::shared_ptr<pmap_interface> const& pmap = dense_array.pmap();
 
       typename pmap_interface::const_iterator end = pmap->end();
 
-      // iteratate over sparse tiles
+      // iterate over sparse tiles
       for (typename pmap_interface::const_iterator it = pmap->begin(); it != end;
            ++it) {
           const std::size_t ord = *it;
@@ -50,10 +50,8 @@ namespace TiledArray {
               Tile tile(sparse_array.find(ord).get().clone());
               dense_array.set(ord, tile);
           } else {
-              // This is how Array::set_all_local() sets tiles to a value,
-              // This likely means that what ever type Tile is must be
-              // constructible from a type T
-              dense_array.set(ord, 0);  // This is how Array::set_all_local()
+              // see DistArray::set(ordinal, element_type)
+              dense_array.set(ord, 0);
           }
       }
 

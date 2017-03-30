@@ -80,6 +80,7 @@ namespace TiledArray {
       /// \param expr The argument expression
       template <typename D>
       LeafEngine(const Expr<D>& expr) :
+        ExprEngine_(expr),
         array_(expr.derived().array())
       {
         vars_ = VariableList(expr.derived().vars());
@@ -100,7 +101,7 @@ namespace TiledArray {
       void init_vars(const VariableList& target_vars) {
 #ifndef NDEBUG
         if(! target_vars.is_permutation(vars_)) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The array variable list is not compatible with the expected output:" \
                 << "\n    expected = " << target_vars \
@@ -121,7 +122,7 @@ namespace TiledArray {
       void init_distribution(World* world,
           const std::shared_ptr<pmap_interface>& pmap)
       {
-        ExprEngine_::init_distribution(world, (pmap ? pmap : array_.get_pmap()));
+        ExprEngine_::init_distribution(world, (pmap ? pmap : array_.pmap()));
       }
 
 
@@ -141,14 +142,14 @@ namespace TiledArray {
       /// Non-permuting shape factory function
 
       /// \return The result shape
-      shape_type make_shape() { return array_.get_shape(); }
+      shape_type make_shape() { return array_.shape(); }
 
       /// Permuting shape factory function
 
       /// \param perm The permutation to be applied to the array
       /// \return The result shape
       shape_type
-      make_shape(const Permutation& perm) { return array_.get_shape().perm(perm); }
+      make_shape(const Permutation& perm) { return array_.shape().perm(perm); }
 
 
       /// Construct the distributed evaluator for array
