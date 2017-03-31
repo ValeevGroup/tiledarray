@@ -428,14 +428,15 @@ namespace TiledArray {
       /// \tparam Tile The input tile type
       /// \param tile The input tile
       /// \return The evaluated version of the lazy tile
-      template <typename Tile>
-      static Future<typename eval_trait<Tile>::type> convert_tile_task(const Tile& tile, World* world) {
-        auto cast = [](const Tile& tile) -> typename eval_trait<Tile>::type {
-          return static_cast<typename eval_trait<Tile>::type>(tile);
-        };
-        return world->taskq.add(cast, tile, madness::TaskAttributes::hipri());
+      template <typename Tile, bool Nonblocking>
+      static typename std::conditional<Nonblocking,
+      Future<typename eval_trait<Tile>::type>,
+      typename eval_trait<Tile>::type>::type convert_tile_task(const Tile& tile) {
+        using cast_type = typename std::conditional<Nonblocking,
+            Future<typename eval_trait<Tile>::type>,
+            typename eval_trait<Tile>::type>::type;
+        return static_cast<cast_type>(tile);
       }
-
 
       /// Conversion function
 
@@ -464,9 +465,13 @@ namespace TiledArray {
           is_lazy_tile<typename Arg::value_type>::value,
           Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) {
+        using tile_type = typename Arg::value_type;
+        using tile_eval_type = typename eval_trait<tile_type>::type;
         return arg.world().taskq.add(
-            & Summa_::template convert_tile_task<typename Arg::value_type>,
-            arg.get(index), &arg.world(), madness::TaskAttributes::hipri());
+            &Summa_::template convert_tile_task<
+                typename Arg::value_type,
+                std::is_convertible<Future<tile_eval_type>, tile_type>::value>,
+            arg.get(index), madness::TaskAttributes::hipri());
       }
 
 
