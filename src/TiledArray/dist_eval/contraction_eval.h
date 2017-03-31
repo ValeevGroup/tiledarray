@@ -429,7 +429,12 @@ namespace TiledArray {
       /// \param tile The input tile
       /// \return The evaluated version of the lazy tile
       template <typename Tile>
-      static typename eval_trait<Tile>::type convert_tile_task(const Tile& tile) { return tile; }
+      static Future<typename eval_trait<Tile>::type> convert_tile_task(const Tile& tile, World* world) {
+        auto cast = [](const Tile& tile) -> typename eval_trait<Tile>::type {
+          return static_cast<typename eval_trait<Tile>::type>(tile);
+        };
+        return world->taskq.add(cast, tile, madness::TaskAttributes::hipri());
+      }
 
 
       /// Conversion function
@@ -461,7 +466,7 @@ namespace TiledArray {
       get_tile(Arg& arg, const typename Arg::size_type index) {
         return arg.world().taskq.add(
             & Summa_::template convert_tile_task<typename Arg::value_type>,
-            arg.get(index), madness::TaskAttributes::hipri());
+            arg.get(index), &arg.world(), madness::TaskAttributes::hipri());
       }
 
 
