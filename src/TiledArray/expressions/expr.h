@@ -143,7 +143,7 @@ namespace TiledArray {
         auto cast = [](const T& tile) -> typename TiledArray::eval_trait<T>::type {
           return static_cast<typename TiledArray::eval_trait<T>::type>(tile);
         };
-        return world->taskq.add(cast, tile);
+        return world->taskq.add(cast, tile, madness::TaskAttributes::hipri());
       }
 
 
@@ -161,7 +161,7 @@ namespace TiledArray {
         auto apply_op = [](const T& tile, const std::shared_ptr<Op>& op) -> R {
           return (*op)(tile);
         };
-        return world->taskq.add(apply_op, tile, op);
+        return world->taskq.add(apply_op, tile, op, madness::TaskAttributes::hipri());
       }
 
       /// Set an array tile with a lazy tile
