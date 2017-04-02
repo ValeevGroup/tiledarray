@@ -88,8 +88,9 @@ namespace TiledArray {
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
       /// Convert tile to evaluation type
-      operator auto() const {
-        return (consume_ ? op_->consume(tile_) : (*op_)(tile_));
+      explicit operator auto() const {
+        auto result = (consume_ ? op_->consume(tile_) : (*op_)(tile_));
+        return result;
       }
 
       /// return ref to input tile

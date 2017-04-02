@@ -138,12 +138,8 @@ namespace TiledArray {
       /// \tparam T The lazy tile type
       /// \param tile The lazy tile
       /// \return The evaluated tile
-      template <typename R, typename T, bool Nonblocking>
-      static
-      typename std::conditional<Nonblocking,
-            Future<typename TiledArray::eval_trait<T>::type>,
-            typename TiledArray::eval_trait<T>::type>::type
-      eval_tile(const T& tile) {
+      template <typename T, bool Nonblocking>
+      static auto eval_tile(const T& tile) {
         using cast_type = typename std::conditional<Nonblocking,
             Future<typename eval_trait<T>::type>,
             typename eval_trait<T>::type>::type;
@@ -158,8 +154,8 @@ namespace TiledArray {
       /// \param tile The lazy tile
       /// \return The evaluated tile
       /// \param op The tile mutating operation
-      template <typename R, typename T, typename Op>
-      static R eval_tile(T& tile, const std::shared_ptr<Op>& op) {
+      template <typename T, typename Op>
+      static auto eval_tile(T& tile, const std::shared_ptr<Op>& op) {
         return (*op)(tile);
       }
 
@@ -176,14 +172,14 @@ namespace TiledArray {
       template <typename A, typename I, typename T>
       typename std::enable_if<is_lazy_tile<T>::value>::type
       set_tile(A& array, const I index, const Future<T>& tile) const {
-        using tile_type = typename A::value_type;
-        using tile_eval_type = typename eval_trait<tile_type>::type;
-        array.set(index, array.world().taskq.add(
-                             &Expr_::template eval_tile<
-                                 typename A::value_type, T,
-                                 std::is_convertible<Future<tile_eval_type>,
-                                                     tile_type>::value>,
-                             tile));
+        using result_tile_type = typename A::value_type;
+        static_assert(std::is_same<result_tile_type, typename eval_trait<T>::type>::value, "double conversion in Expr::set_tile(lazy)");
+        constexpr bool do_nonblocking_cast =
+            std::is_constructible<Future<result_tile_type>, T>::value && !std::is_same<result_tile_type,T>::value;
+        auto eval_tile_fn_ptr =
+            &Expr_::template eval_tile<T, do_nonblocking_cast>;
+        array.set(index, array.world().taskq.add(eval_tile_fn_ptr, tile));
+//        array.set(index, array.world().taskq.add(&Expr_::template eval_tile<T, do_nonblocking_cast>, tile));
       }
 
       /// Set the \c array tile at \c index with \c tile
@@ -216,11 +212,11 @@ namespace TiledArray {
       void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
-        array.set(index, array.world().taskq.add(
-              & Expr_::template eval_tile<typename A::value_type, T, Op>, tile, op));
+        auto eval_tile_fn_ptr = &Expr_::template eval_tile<T, Op>;
+        array.set(index, array.world().taskq.add(eval_tile_fn_ptr, tile, op));
       }
 
-    public:
+     public:
 
       // Compiler generated functions
       Expr() = default;
