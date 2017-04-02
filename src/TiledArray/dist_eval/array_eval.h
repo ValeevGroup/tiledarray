@@ -87,10 +87,12 @@ namespace TiledArray {
       /// \return \c true if this tile is consumable, otherwise \c false .
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
-      /// Convert tile to evaluation type
-      explicit operator auto() const {
-        auto result = (consume_ ? op_->consume(tile_) : (*op_)(tile_));
-        return result;
+      /// Convert tile using the op object
+#ifndef __clang__ // clang does not consider this operator in conversions if "explicit" (gcc accepts)
+      explicit
+#endif
+      operator auto() const {
+        return consume_ ? op_->consume(tile_) : (*op_)(tile_);
       }
 
       /// return ref to input tile
