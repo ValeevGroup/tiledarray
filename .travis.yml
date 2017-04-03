@@ -10,7 +10,6 @@ env:
   - GCC_VERSION=6 LLVM_VERSION=4.0
   - GCC_VERSION=6 LLVM_VERSION=3.8
   - GCC_VERSION=6 LLVM_VERSION=3.9
-  - GCC_VERSION=6 LLVM_VERSION=4.0
   - GCC_VERSION=6 LLVM_VERSION=5.0
 matrix:
   exclude:
@@ -18,14 +17,10 @@ matrix:
       env: GCC_VERSION=4.9 LLVM_VERSION=4.0
     - compiler: clang
       env: GCC_VERSION=5 LLVM_VERSION=4.0
-    - compiler: clang
-      env: GCC_VERSION=6 LLVM_VERSION=4.0
     - compiler: gcc
       env: GCC_VERSION=6 LLVM_VERSION=3.8
     - compiler: gcc
       env: GCC_VERSION=6 LLVM_VERSION=3.9
-    - compiler: gcc
-      env: GCC_VERSION=6 LLVM_VERSION=4.0
     - compiler: gcc
       env: GCC_VERSION=6 LLVM_VERSION=5.0
 sudo: false
@@ -35,6 +30,10 @@ addons:
       - george-edison55-precise-backports
       - ubuntu-toolchain-r-test
       - boost-latest
+      - llvm-toolchain-precise-3.8
+      - llvm-toolchain-precise-3.9
+      - llvm-toolchain-precise-4.0
+      - llvm-toolchain-precise
     packages:
       - g++-4.9
       - g++-5
