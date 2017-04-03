@@ -9,8 +9,8 @@ if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
 else
-    export CC=/usr/bin/clang-3.8
-    export CXX=/usr/bin/clang++-3.8
+    export CC=/usr/bin/clang-$LLVM_VERSION
+    export CXX=/usr/bin/clang++-$LLVM_VERSION
 fi
 export MPI_HOME=$HOME/mpich
 export MPICC=$MPI_HOME/bin/mpicc
