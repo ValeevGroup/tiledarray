@@ -23,7 +23,7 @@ matrix:
       env: GCC_VERSION=6 LLVM_VERSION=3.9
     - compiler: gcc
       env: GCC_VERSION=6 LLVM_VERSION=5.0
-sudo: false
+sudo: required
 addons:
   apt:
     sources:
@@ -32,6 +32,7 @@ addons:
       - boost-latest
       - llvm-toolchain-precise-3.8
       - llvm-toolchain-precise-3.9
+      - llvm-toolchain-precise-4.0
       - llvm-toolchain-precise
     packages:
       - g++-4.9
