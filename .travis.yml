@@ -32,7 +32,6 @@ addons:
       - boost-latest
       - llvm-toolchain-precise-3.8
       - llvm-toolchain-precise-3.9
-      - llvm-toolchain-precise-4.0
       - llvm-toolchain-precise
     packages:
       - g++-4.9
