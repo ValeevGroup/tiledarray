@@ -88,7 +88,8 @@ namespace TiledArray {
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
       /// Convert tile using the op object
-#ifndef __clang__ // clang does not consider this operator in conversions if "explicit" (gcc accepts)
+#ifndef __clang__  // clang does not consider this operator in conversions if
+                   // "explicit" (gcc and intel accept)
       explicit
 #endif
       operator auto() const {
