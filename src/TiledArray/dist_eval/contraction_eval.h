@@ -465,14 +465,14 @@ namespace TiledArray {
       get_tile(Arg& arg, const typename Arg::size_type index) {
         using tile_type = typename Arg::value_type;
         using tile_eval_type = typename eval_trait<tile_type>::type;
-//        constexpr bool do_nonblocking_cast =
-//            std::is_constructible<Future<result_tile_type>, T>::value && !std::is_same<result_tile_type,T>::value;
-        auto convert_tile_fn = &Summa_::template convert_tile<
-        typename Arg::value_type,
-        std::is_convertible<Future<tile_eval_type>, tile_type>::value>;
-        return arg.world().taskq.add(
-            convert_tile_fn,
-            arg.get(index), madness::TaskAttributes::hipri());
+        constexpr bool do_nonblocking_cast =
+            std::is_constructible<Future<result_tile_type>, T>::value &&
+            !std::is_same<result_tile_type, T>::value;
+        auto convert_tile_fn =
+            &Summa_::template convert_tile<typename Arg::value_type,
+                                           do_nonblocking_cast>;
+        return arg.world().taskq.add(convert_tile_fn, arg.get(index),
+                                     madness::TaskAttributes::hipri());
       }
 
 
