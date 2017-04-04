@@ -95,7 +95,7 @@ namespace TiledArray {
                    // "explicit" (gcc and intel accept)
       explicit
 #endif
-      explicit operator auto() const {
+      operator auto() const {
         return ((! Op::is_consumable) && consume_ ?
             op_->consume(tile_) :
             (*op_)(tile_));
