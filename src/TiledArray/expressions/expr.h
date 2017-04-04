@@ -140,7 +140,7 @@ namespace TiledArray {
       /// \param tile The lazy tile
       /// \return The evaluated tile
       template <typename R, typename T, typename C, typename Op>
-      static R eval_tile(T tile, const C& cast, const std::shared_ptr<Op>& op) {
+      static auto eval_tile(T tile, const C& cast, const std::shared_ptr<Op>& op) {
         auto cast_tile = cast(tile);
         return (*op)(cast_tile);
       }
@@ -153,8 +153,8 @@ namespace TiledArray {
       /// \param tile The lazy tile
       /// \return The evaluated tile
       /// \param op The tile mutating operation
-      template <typename R, typename T, typename Op>
-      static R eval_tile(T& tile, const std::shared_ptr<Op>& op) {
+      template <typename T, typename Op>
+      static auto eval_tile(T& tile, const std::shared_ptr<Op>& op) {
         return (*op)(tile);
       }
 
@@ -240,11 +240,11 @@ namespace TiledArray {
       void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
-        array.set(index, array.world().taskq.add(
-              & Expr_::template eval_tile<typename A::value_type, T, Op>, tile, op));
+        auto eval_tile_fn_ptr = &Expr_::template eval_tile<T, Op>;
+        array.set(index, array.world().taskq.add(eval_tile_fn_ptr, tile, op));
       }
 
-    public:
+     public:
 
       // Compiler generated functions
       Expr() = default;

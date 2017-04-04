@@ -5,36 +5,44 @@ compiler:
   - gcc
   - clang
 env:
-  - GCC_VERSION=4.7
-  - GCC_VERSION=4.8
-  - GCC_VERSION=4.9
-  - GCC_VERSION=5
-  - GCC_VERSION=6
+  - GCC_VERSION=4.9 LLVM_VERSION=4.0
+  - GCC_VERSION=5 LLVM_VERSION=4.0
+  - GCC_VERSION=6 LLVM_VERSION=4.0
+  - GCC_VERSION=6 LLVM_VERSION=3.8
+  - GCC_VERSION=6 LLVM_VERSION=3.9
+  - GCC_VERSION=6 LLVM_VERSION=5.0
 matrix:
   exclude:
     - compiler: clang
-      env: GCC_VERSION=4.7
+      env: GCC_VERSION=4.9 LLVM_VERSION=4.0
     - compiler: clang
-      env: GCC_VERSION=4.8
-    - compiler: clang
-      env: GCC_VERSION=4.9
-    - compiler: clang
-      env: GCC_VERSION=5
-sudo: false
+      env: GCC_VERSION=5 LLVM_VERSION=4.0
+    - compiler: gcc
+      env: GCC_VERSION=6 LLVM_VERSION=3.8
+    - compiler: gcc
+      env: GCC_VERSION=6 LLVM_VERSION=3.9
+    - compiler: gcc
+      env: GCC_VERSION=6 LLVM_VERSION=5.0
+sudo: required
 addons:
   apt:
     sources:
       - george-edison55-precise-backports
       - ubuntu-toolchain-r-test
       - boost-latest
+      - llvm-toolchain-precise
       - llvm-toolchain-precise-3.8
+      - llvm-toolchain-precise-3.9
+      - sourceline: 'deb http://apt.llvm.org/precise/ llvm-toolchain-precise-4.0 main'
+        key_url: 'http://apt.llvm.org/llvm-snapshot.gpg.key'
     packages:
-      - g++-4.7
-      - g++-4.8
       - g++-4.9
       - g++-5
       - g++-6
       - clang-3.8
+      - clang-3.9
+      - clang-4.0
+      - clang-5.0
       - libeigen3-dev
       - libboost1.55-dev
       - libblas-dev

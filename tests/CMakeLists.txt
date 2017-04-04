@@ -107,6 +107,7 @@ if (NOT TA_DEFAULT_ERROR EQUAL 1)
 else()
   target_link_libraries(${executable} PUBLIC tiledarray)
 endif()
+target_link_libraries(${executable} PUBLIC ${MADNESS_DISABLEPIE_LINKER_FLAG})
 
 # Add targets
 add_dependencies(${executable} External)
