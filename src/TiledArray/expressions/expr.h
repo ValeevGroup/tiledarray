@@ -214,10 +214,13 @@ namespace TiledArray {
       void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
-        array.set(index, array.world().taskq.add(
-              & Expr_::template eval_tile<typename A::value_type, T,
-              TiledArray::Cast<typename A::value_type, T>, Op>, tile,
-              TiledArray::Cast<typename A::value_type, T>(), op));
+        auto eval_tile_fn = &Expr_::template eval_tile<
+            typename A::value_type, T,
+            TiledArray::Cast<typename A::value_type, T>, Op>;
+        array.set(index,
+                  array.world().taskq.add(
+                      eval_tile_fn, tile,
+                      TiledArray::Cast<typename A::value_type, T>(), op));
       }
 
 
