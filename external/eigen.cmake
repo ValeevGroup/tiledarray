@@ -1,6 +1,8 @@
 # -*- mode: cmake -*-
 
 include(CMakePushCheckState)
+include(CheckCXXSourceCompiles)
+include(AppendFlags)
 
 # Check for Eigen
 find_package(Eigen3 3.0)
