@@ -35,6 +35,7 @@ addons:
       - llvm-toolchain-precise-3.9
       - sourceline: 'deb http://apt.llvm.org/precise/ llvm-toolchain-precise-4.0 main'
         key_url: 'http://apt.llvm.org/llvm-snapshot.gpg.key'
+      - sourceline: 'ppa:kalakris/eigen'
     packages:
       - g++-4.9
       - g++-5
