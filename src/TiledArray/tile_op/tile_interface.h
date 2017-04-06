@@ -279,8 +279,7 @@ namespace TiledArray {
   /// \param right The right-hand argument to be subtracted
   /// \return A tile that is equal to <tt>(left - right)</tt>
   template <typename Left, typename Right>
-  inline auto subt(const Left& left, const Right& right) ->
-      decltype(left.subt(right))
+  inline auto subt(const Left& left, const Right& right)
   { return left.subt(right); }
 
   /// Subtract and scale tile arguments
@@ -294,8 +293,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(left - right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
       typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto subt(const Left& left, const Right& right, const Scalar factor) ->
-      decltype(left.subt(right, factor))
+  inline auto subt(const Left& left, const Right& right, const Scalar factor)
   { return left.subt(right, factor); }
 
   /// Subtract and permute tile arguments
@@ -308,8 +306,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>perm ^ (left - right)</tt>
   template <typename Left, typename Right>
   inline auto
-  subt(const Left& left, const Right& right, const Permutation& perm) ->
-      decltype(left.subt(right, perm))
+  subt(const Left& left, const Right& right, const Permutation& perm)
   { return left.subt(right, perm); }
 
   /// Subtract, scale, and permute tile arguments
@@ -325,8 +322,7 @@ namespace TiledArray {
   template <typename Left, typename Right, typename Scalar,
       typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto subt(const Left& left, const Right& right, const Scalar factor,
-      const Permutation& perm) ->
-      decltype(left.subt(right, factor, perm))
+      const Permutation& perm)
   { return left.subt(right, factor, perm); }
 
   /// Subtract a scalar constant from the tile argument
@@ -338,8 +334,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>arg - value</tt>
   template <typename Arg, typename Scalar,
       typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto subt(const Arg& arg, const Scalar value) ->
-      decltype(arg.subt(value))
+  inline auto subt(const Arg& arg, const Scalar value)
   { return arg.subt(value); }
 
   /// Subtract a constant scalar and permute tile argument
@@ -353,8 +348,7 @@ namespace TiledArray {
   template <typename Arg, typename Scalar,
       typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto
-  subt(const Arg& arg, const Scalar value, const Permutation& perm) ->
-      decltype(arg.subt(value,perm))
+  subt(const Arg& arg, const Scalar value, const Permutation& perm)
   { return arg.subt(value,perm); }
 
   /// Subtract from the result tile
@@ -412,8 +406,7 @@ namespace TiledArray {
   /// \param right The right-hand argument to be multiplied
   /// \return A tile that is equal to <tt>(left * right)</tt>
   template <typename Left, typename Right>
-  inline auto mult(const Left& left, const Right& right) ->
-      decltype(left.mult(right))
+  inline auto mult(const Left& left, const Right& right)
   { return left.mult(right); }
 
   /// Multiplication and scale tile arguments
@@ -427,8 +420,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(left * right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
       typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto mult(const Left& left, const Right& right, const Scalar factor) ->
-      decltype(left.mult(right, factor))
+  inline auto mult(const Left& left, const Right& right, const Scalar factor)
   { return left.mult(right, factor); }
 
   /// Multiplication and permute tile arguments
@@ -441,8 +433,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>perm ^ (left * right)</tt>
   template <typename Left, typename Right>
   inline auto
-  mult(const Left& left, const Right& right, const Permutation& perm) ->
-      decltype(left.mult(right, perm))
+  mult(const Left& left, const Right& right, const Permutation& perm)
   { return left.mult(right, perm); }
 
   /// Multiplication, scale, and permute tile arguments
@@ -458,8 +449,7 @@ namespace TiledArray {
   template <typename Left, typename Right, typename Scalar,
       typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto mult(const Left& left, const Right& right, const Scalar factor,
-      const Permutation& perm) ->
-      decltype(left.mult(right, factor, perm))
+      const Permutation& perm)
   { return left.mult(right, factor, perm); }
 
   /// Multiply to the result tile
@@ -505,7 +495,7 @@ namespace TiledArray {
   /// \param arg The argument to be negated
   /// \return A tile that is equal to <tt>-arg</tt>
   template <typename Arg>
-  inline auto neg(const Arg& arg) -> decltype(arg.neg())
+  inline auto neg(const Arg& arg)
   { return arg.neg(); }
 
   /// Negate and permute tile argument
@@ -515,8 +505,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ -arg</tt>
   template <typename Arg>
-  inline auto neg(const Arg& arg, const Permutation& perm) ->
-      decltype(arg.neg(perm))
+  inline auto neg(const Arg& arg, const Permutation& perm)
   { return arg.neg(perm); }
 
   /// Multiplication constant scalar to a tile
@@ -544,8 +533,7 @@ namespace TiledArray {
   /// \param arg The tile to be conjugated
   /// \return A complex conjugated copy of `arg`
   template <typename Arg>
-  inline auto conj(const Arg& arg) ->
-      decltype(arg.conj())
+  inline auto conj(const Arg& arg)
   { return arg.conj(); }
 
   /// Create a complex conjugated and scaled copy of a tile
@@ -559,8 +547,7 @@ namespace TiledArray {
       typename std::enable_if<
           TiledArray::detail::is_numeric<Scalar>::value
       >::type* = nullptr>
-  inline auto conj(const Arg& arg, const Scalar factor) ->
-      decltype(arg.conj(factor))
+  inline auto conj(const Arg& arg, const Scalar factor)
   { return arg.conj(factor); }
 
   /// Create a complex conjugated and permuted copy of a tile
@@ -570,8 +557,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to `arg`
   /// \return A complex conjugated and permuted copy of `arg`
   template <typename Arg>
-  inline auto conj(const Arg& arg, const Permutation& perm) ->
-      decltype(arg.conj(perm))
+  inline auto conj(const Arg& arg, const Permutation& perm)
   { return arg.conj(perm); }
 
   /// Create a complex conjugated, scaled, and permuted copy of a tile
@@ -586,8 +572,7 @@ namespace TiledArray {
       typename std::enable_if<
           TiledArray::detail::is_numeric<Scalar>::value
       >::type* = nullptr>
-  inline auto conj(const Arg& arg, const Scalar factor, const Permutation& perm) ->
-      decltype(arg.conj(factor, perm))
+  inline auto conj(const Arg& arg, const Scalar factor, const Permutation& perm)
   { return arg.conj(factor, perm); }
 
   /// In-place complex conjugate a tile
@@ -640,8 +625,7 @@ namespace TiledArray {
   template <typename Left, typename Right, typename Scalar,
       typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto gemm(const Left& left, const Right& right, const Scalar factor,
-      const math::GemmHelper& gemm_config) ->
-      decltype(left.gemm(right, factor, gemm_config))
+      const math::GemmHelper& gemm_config)
   { return left.gemm(right, factor, gemm_config); }
 
   /// Contract and scale tile arguments to the result tile
@@ -678,7 +662,7 @@ namespace TiledArray {
   /// \param arg The argument to be summed
   /// \return The sum of the hyper-diagonal elements of \c arg
   template <typename Arg>
-  inline auto trace(const Arg& arg) -> decltype(arg.trace())
+  inline auto trace(const Arg& arg)
   { return arg.trace(); }
 
   /// Sum the elements of a tile
@@ -687,7 +671,7 @@ namespace TiledArray {
   /// \param arg The argument to be summed
   /// \return A scalar that is equal to <tt>sum_i arg[i]</tt>
   template <typename Arg>
-  inline auto sum(const Arg& arg) -> decltype(arg.sum())
+  inline auto sum(const Arg& arg)
   { return arg.sum(); }
 
   /// Multiply the elements of a tile
@@ -696,7 +680,7 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied
   /// \return A scalar that is equal to <tt>prod_i arg[i]</tt>
   template <typename Arg>
-  inline auto product(const Arg& arg) -> decltype(arg.product())
+  inline auto product(const Arg& arg)
   { return arg.product(); }
 
   /// Squared vector 2-norm of the elements of a tile
@@ -706,7 +690,7 @@ namespace TiledArray {
   /// \return The sum of the squared elements of \c arg
   /// \return A scalar that is equal to <tt>sum_i arg[i] * arg[i]</tt>
   template <typename Arg>
-  inline auto squared_norm(const Arg& arg) -> decltype(arg.squared_norm())
+  inline auto squared_norm(const Arg& arg)
   { return arg.squared_norm(); }
 
   /// Vector 2-norm of a tile
@@ -715,7 +699,7 @@ namespace TiledArray {
   /// \param arg The argument to be multiplied and summed
   /// \return A scalar that is equal to <tt>sqrt(sum_i arg[i] * arg[i])</tt>
   template <typename Arg>
-  inline auto norm(const Arg& arg) -> decltype(arg.norm())
+  inline auto norm(const Arg& arg)
   { return arg.norm(); }
 
   /// Maximum element of a tile
@@ -724,7 +708,7 @@ namespace TiledArray {
   /// \param arg The argument to find the maximum
   /// \return A scalar that is equal to <tt>max(arg)</tt>
   template <typename Arg>
-  inline auto max(const Arg& arg) -> decltype(arg.max())
+  inline auto max(const Arg& arg)
   { return arg.max(); }
 
   /// Minimum element of a tile
@@ -733,7 +717,7 @@ namespace TiledArray {
   /// \param arg The argument to find the minimum
   /// \return A scalar that is equal to <tt>min(arg)</tt>
   template <typename Arg>
-  inline auto min(const Arg& arg) -> decltype(arg.min())
+  inline auto min(const Arg& arg)
   { return arg.min(); }
 
   /// Absolute maximum element of a tile
@@ -742,7 +726,7 @@ namespace TiledArray {
   /// \param arg The argument to find the maximum
   /// \return A scalar that is equal to <tt>abs(max(arg))</tt>
   template <typename Arg>
-  inline auto abs_max(const Arg& arg) -> decltype(arg.abs_max())
+  inline auto abs_max(const Arg& arg)
   { return arg.abs_max(); }
 
   /// Absolute mainimum element of a tile
@@ -751,7 +735,7 @@ namespace TiledArray {
   /// \param arg The argument to find the minimum
   /// \return A scalar that is equal to <tt>abs(min(arg))</tt>
   template <typename Arg>
-  inline auto abs_min(const Arg& arg) -> decltype(arg.abs_min())
+  inline auto abs_min(const Arg& arg)
   { return arg.abs_min(); }
 
   /// Vector dot product of a tile
@@ -762,7 +746,7 @@ namespace TiledArray {
   /// \param right The right-hand argument tile to be contracted
   /// \return A scalar that is equal to <tt>sum_i left[i] * right[i]</tt>
   template <typename Left, typename Right>
-  inline auto dot(const Left& left, const Right& right) -> decltype(left.dot(right))
+  inline auto dot(const Left& left, const Right& right)
   { return left.dot(right); }
 
   template <typename T>
