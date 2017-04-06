@@ -54,8 +54,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>(left + right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
       typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto add(const Left& left, const Right& right, const Scalar factor) ->
-      decltype(left.add(right, factor))
+  inline auto add(const Left& left, const Right& right, const Scalar factor)
   { return left.add(right, factor); }
 
   /// Add and permute tile arguments
@@ -67,8 +66,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left + right)</tt>
   template <typename Left, typename Right>
-  inline auto add(const Left& left, const Right& right, const Permutation& perm) ->
-      decltype(left.add(right, perm))
+  inline auto add(const Left& left, const Right& right, const Permutation& perm)
   { return left.add(right, perm); }
 
   /// Add, scale, and permute tile arguments
@@ -84,8 +82,7 @@ namespace TiledArray {
   template <typename Left, typename Right, typename Scalar,
       typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
   inline auto add(const Left& left, const Right& right, const Scalar factor,
-      const Permutation& perm) ->
-      decltype(left.add(right, factor, perm))
+      const Permutation& perm)
   { return left.add(right, factor, perm); }
 
   /// Add to the result tile

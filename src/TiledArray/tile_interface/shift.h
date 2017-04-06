@@ -39,8 +39,7 @@ namespace TiledArray {
   /// \param range_shift The offset to be applied to the argument range
   /// \return A copy of the tile with a new range
   template <typename Arg, typename Index>
-  inline auto shift(const Arg& arg, const Index& range_shift) ->
-      decltype(arg.shift(range_shift))
+  inline auto shift(const Arg& arg, const Index& range_shift)
   { return arg.shift(range_shift); }
 
 
@@ -52,8 +51,7 @@ namespace TiledArray {
   /// \param range_shift The offset to be applied to the argument range
   /// \return A copy of the tile with a new range
   template <typename Arg, typename Index>
-  inline auto shift_to(Arg& arg, const Index& range_shift) ->
-      decltype(arg.shift_to(range_shift))
+  inline auto shift_to(Arg& arg, const Index& range_shift)
   { return arg.shift_to(range_shift); }
 
 

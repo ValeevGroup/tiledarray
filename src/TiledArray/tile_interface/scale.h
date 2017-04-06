@@ -41,8 +41,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>arg * factor</tt>
   template <typename Arg, typename Scalar,
       typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto scale(const Arg& arg, const Scalar factor) ->
-      decltype(arg.scale(factor))
+  inline auto scale(const Arg& arg, const Scalar factor)
   { return arg.scale(factor); }
 
   /// Scale and permute tile argument
@@ -55,8 +54,7 @@ namespace TiledArray {
   /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
   template <typename Arg, typename Scalar,
       typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
-  inline auto scale(const Arg& arg, const Scalar factor, const Permutation& perm) ->
-      decltype(arg.scale(factor, perm))
+  inline auto scale(const Arg& arg, const Scalar factor, const Permutation& perm)
   { return arg.scale(factor, perm); }
 
   /// Scale to the result tile

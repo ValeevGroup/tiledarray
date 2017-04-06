@@ -61,7 +61,7 @@ namespace TiledArray {
     /// \return The size of array \c a
     template <typename T,
         typename std::enable_if<! std::is_array<T>::value>::type* = nullptr>
-    inline auto size(const T &a) -> decltype(a.size()) { return a.size(); }
+    inline auto size(const T &a){ return a.size(); }
 
     /// Array size accessor
 
@@ -69,7 +69,7 @@ namespace TiledArray {
     /// \param a An initializer_list object
     /// \return The size of initializer_list \c a
     template <typename T>
-    inline auto size(std::initializer_list<T> a) -> decltype(a.size()) { return a.size(); }
+    inline auto size(std::initializer_list<T> a) { return a.size(); }
 
     /// Container data pointer accessor
 
@@ -78,7 +78,7 @@ namespace TiledArray {
     /// \return A pointer to the first element of the container, \c v
     template <typename T,
         typename std::enable_if<! std::is_pointer<T>::value>::type* = nullptr>
-    inline auto data(T& t) -> decltype(t.data())
+    inline auto data(T& t)
     { return t.data(); }
 
 
@@ -90,7 +90,7 @@ namespace TiledArray {
     /// \return A pointer to the first element of the container, \c v
     template <typename T,
         typename std::enable_if<! std::is_pointer<T>::value>::type* = nullptr>
-    inline auto data(const T& t) -> decltype(t.data())
+    inline auto data(const T& t)
     { return t.data(); }
 
     /// Pointer data adapter

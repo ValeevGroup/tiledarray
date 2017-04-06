@@ -164,39 +164,33 @@ namespace TiledArray {
 
     template <typename L, typename R>
     TILEDARRAY_FORCE_INLINE auto
-    operator*(const L value, const ComplexConjugate<R> op) ->
-        decltype(TiledArray::detail::conj(value) * op.factor())
+    operator*(const L value, const ComplexConjugate<R> op)
     { return TiledArray::detail::conj(value) * op.factor(); }
 
     template <typename L>
     TILEDARRAY_FORCE_INLINE auto
-    operator*(const L value, const ComplexConjugate<void>&) ->
-        decltype(TiledArray::detail::conj(value))
+    operator*(const L value, const ComplexConjugate<void>&)
     { return TiledArray::detail::conj(value); }
 
     template <typename L>
     TILEDARRAY_FORCE_INLINE auto
-    operator*(const L value, const ComplexConjugate<ComplexNegTag>&) ->
-        decltype(-TiledArray::detail::conj(value))
+    operator*(const L value, const ComplexConjugate<ComplexNegTag>&)
     { return -TiledArray::detail::conj(value); }
 
 
     template <typename L, typename R>
     TILEDARRAY_FORCE_INLINE auto
-    operator*(const ComplexConjugate<L> op, const R value) ->
-        decltype(TiledArray::detail::conj(value) * op.factor())
+    operator*(const ComplexConjugate<L> op, const R value)
     { return TiledArray::detail::conj(value) * op.factor(); }
 
     template <typename R>
     TILEDARRAY_FORCE_INLINE auto
-    operator*(const ComplexConjugate<void>, const R value) ->
-        decltype(TiledArray::detail::conj(value))
+    operator*(const ComplexConjugate<void>, const R value)
     { return TiledArray::detail::conj(value); }
 
     template <typename R>
     TILEDARRAY_FORCE_INLINE auto
-    operator*(const ComplexConjugate<ComplexNegTag>, const R value) ->
-        decltype(-TiledArray::detail::conj(value))
+    operator*(const ComplexConjugate<ComplexNegTag>, const R value)
     { return -TiledArray::detail::conj(value); }
 
 

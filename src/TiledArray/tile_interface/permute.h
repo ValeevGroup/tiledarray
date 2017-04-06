@@ -40,8 +40,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ arg</tt>
   template <typename Arg>
-  inline auto permute(const Arg& arg, const Permutation& perm) ->
-      decltype(arg.permute(perm))
+  inline auto permute(const Arg& arg, const Permutation& perm)
   { return arg.permute(perm); }
 
   template <typename> struct permute_trait;
