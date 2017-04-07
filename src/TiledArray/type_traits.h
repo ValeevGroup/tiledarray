@@ -294,6 +294,8 @@ namespace TiledArray {
     template <typename T>
     using scalar_t = typename TiledArray::detail::scalar_type<T>::type;
 
+    template <typename T>
+    constexpr const bool is_ordered_v = std::is_same<T,scalar_t<T>>::value;
 
     template <typename...> struct is_integral_list_helper;
 

@@ -648,28 +648,52 @@ namespace TiledArray {
         return norm(default_world());
       }
 
-      Future<typename TiledArray::MinReduction<
-          typename EngineTrait<engine_type>::eval_type>::result_type>
+      template <typename Derived_ = Derived>
+      std::enable_if<
+          TiledArray::detail::is_ordered_v<
+              TiledArray::detail::numeric_t<typename EngineTrait<
+                  typename ExprTrait<Derived_>::engine_type>::eval_type>>,
+          Future<typename TiledArray::MinReduction<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>::result_type>>
       min(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::MinReduction<value_type>(), world);
       }
 
-      Future<typename TiledArray::MinReduction<
-          typename EngineTrait<engine_type>::eval_type>::result_type>
+      template <typename Derived_ = Derived>
+      std::enable_if<
+          TiledArray::detail::is_ordered_v<
+              TiledArray::detail::numeric_t<typename EngineTrait<
+                  typename ExprTrait<Derived_>::engine_type>::eval_type>>,
+          Future<typename TiledArray::MinReduction<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>::result_type>>
       min() const {
         return min(default_world());
       }
 
-      Future<typename TiledArray::MaxReduction<
-          typename EngineTrait<engine_type>::eval_type>::result_type>
+      template <typename Derived_ = Derived>
+      std::enable_if<
+          TiledArray::detail::is_ordered_v<
+              TiledArray::detail::numeric_t<typename EngineTrait<
+                  typename ExprTrait<Derived_>::engine_type>::eval_type>>,
+          Future<typename TiledArray::MaxReduction<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>::result_type>>
       max(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::MaxReduction<value_type>(), world);
       }
 
-      Future<typename TiledArray::MaxReduction<
-          typename EngineTrait<engine_type>::eval_type>::result_type>
+      template <typename Derived_ = Derived>
+      std::enable_if<
+          TiledArray::detail::is_ordered_v<
+              TiledArray::detail::numeric_t<typename EngineTrait<
+                  typename ExprTrait<Derived_>::engine_type>::eval_type>>,
+          Future<typename TiledArray::MaxReduction<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>::result_type>>
       max() const {
         return max(default_world());
       }
