@@ -653,7 +653,7 @@ namespace TiledArray {
   inline auto
   mult(const Tile<Left>& left, const Tile<Right>& right, const Scalar factor,
       const Permutation& perm)
-  { return Tile<Left>(mult(left.tensor(), right.tensor(), factor, perm)); }
+  { return detail::make_tile(mult(left.tensor(), right.tensor(), factor, perm)); }
 
   /// Multiply to the result tile
 

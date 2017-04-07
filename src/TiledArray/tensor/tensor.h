@@ -1308,9 +1308,9 @@ namespace TiledArray {
     /// \param join_op The join result operation
     /// \param identity The identity value of the reduction
     /// \return The reduced value
-    template <typename ReduceOp, typename JoinOp>
-    numeric_type reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
-        const numeric_type identity) const
+    template <typename ReduceOp, typename JoinOp, typename Scalar>
+    auto reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
+                Scalar identity) const
     {
       return detail::tensor_reduce(reduce_op, join_op, identity, *this);
     }
@@ -1326,10 +1326,10 @@ namespace TiledArray {
     /// \param join_op The join result operation
     /// \param identity The identity value of the reduction
     /// \return The reduced value
-    template <typename Right, typename ReduceOp, typename JoinOp,
+    template <typename Right, typename ReduceOp, typename JoinOp, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-    numeric_type reduce(const Right& other, ReduceOp&& reduce_op, JoinOp&& join_op,
-        const numeric_type identity) const
+    auto reduce(const Right& other, ReduceOp&& reduce_op, JoinOp&& join_op,
+                Scalar identity) const
     {
       return detail::tensor_reduce(reduce_op, join_op, identity, *this, other);
     }
@@ -1385,29 +1385,29 @@ namespace TiledArray {
     numeric_type max() const {
       auto max_op = [] (numeric_type& restrict res, const numeric_type arg)
               { res = std::max(res, arg); };
-      return reduce(max_op, max_op, std::numeric_limits<numeric_type>::min());
+      return reduce(max_op, max_op, std::numeric_limits<scalar_type>::min());
     }
 
     /// Absolute minimum element
 
     /// \return The minimum elements of this tensor
-    numeric_type abs_min() const {
-      auto abs_min_op = [] (numeric_type& restrict res, const numeric_type arg)
+    scalar_type abs_min() const {
+      auto abs_min_op = [] (scalar_type& restrict res, const numeric_type arg)
               { res = std::min(res, std::abs(arg)); };
-      auto min_op = [] (numeric_type& restrict res, const numeric_type arg)
+      auto min_op = [] (scalar_type& restrict res, const scalar_type arg)
               { res = std::min(res, arg); };
-      return reduce(abs_min_op, min_op, std::numeric_limits<numeric_type>::max());
+      return reduce(abs_min_op, min_op, std::numeric_limits<scalar_type>::max());
     }
 
     /// Absolute maximum element
 
     /// \return The maximum elements of this tensor
-    numeric_type abs_max() const {
-      auto abs_max_op = [] (numeric_type& restrict res, const numeric_type arg)
+    scalar_type abs_max() const {
+      auto abs_max_op = [] (scalar_type& restrict res, const numeric_type arg)
               { res = std::max(res, std::abs(arg)); };
-      auto max_op = [] (numeric_type& restrict res, const numeric_type arg)
+      auto max_op = [] (scalar_type& restrict res, const scalar_type arg)
               { res = std::max(res, arg); };
-      return reduce(abs_max_op, max_op, numeric_type(0));
+      return reduce(abs_max_op, max_op, scalar_type(0));
     }
 
     /// Vector dot product
