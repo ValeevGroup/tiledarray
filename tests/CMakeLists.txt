@@ -32,6 +32,7 @@ set(executable ta_test)
 # NOTE: The order of files here represent the order that tests are run and
 # dependencies.
 set(ta_test_src_files  ta_test.cpp
+    type_traits.cpp
     utility.cpp
     permutation.cpp
     symm_permutation_group.cpp
