@@ -172,7 +172,7 @@ namespace TiledArray {
 
   template <typename Tile>
   class MinReduction<
-      Tile, typename std::enable_if<is_ordered_v<numeric_t<Tile>>>::type> {
+      Tile, typename std::enable_if<detail::is_ordered_v<detail::numeric_t<Tile>>>::type> {
    public:
     // typedefs
     using result_type = decltype(min(std::declval<Tile>()));
@@ -210,7 +210,7 @@ namespace TiledArray {
 
   template <typename Tile>
   class MaxReduction<
-      Tile, typename std::enable_if<is_ordered_v<numeric_t<Tile>>>::type> {
+      Tile, typename std::enable_if<detail::is_ordered_v<detail::numeric_t<Tile>>>::type> {
   public:
     // typedefs
     using result_type = decltype(max(std::declval<Tile>()));
