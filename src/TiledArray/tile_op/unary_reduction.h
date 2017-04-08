@@ -165,14 +165,14 @@ namespace TiledArray {
 
   /// This reduction operation is used to find the minimum value of elements in a Tile.
   /// \tparam Tile The tile type
-  /// \note the implementation is only enabled if is_ordered_v<Tile::numeric_type> is true
-  template <typename Tile,
-            typename Enabler = void>
-    class MinReduction;
+  /// \note the implementation is only enabled if
+  /// is_strictly_ordered<Tile::numeric_type>::value is true
+  template <typename Tile, typename Enabler = void>
+  class MinReduction;
 
   template <typename Tile>
-  class MinReduction<
-      Tile, typename std::enable_if<detail::is_ordered_v<detail::numeric_t<Tile>>>::type> {
+  class MinReduction<Tile, typename std::enable_if<detail::is_strictly_ordered<
+                               detail::numeric_t<Tile>>::value>::type> {
    public:
     // typedefs
     using result_type = decltype(min(std::declval<Tile>()));
@@ -203,15 +203,15 @@ namespace TiledArray {
 
   /// This reduction operation is used to find the maximum value of elements in a Tile.
   /// \tparam Tile The tile type
-  /// \note the implementation is only enabled if is_ordered_v<Tile::numeric_type> is true
-  template <typename Tile,
-            typename Enabler = void>
-    class MaxReduction;
+  /// \note the implementation is only enabled if
+  /// is_strictly_ordered<Tile::numeric_type>::value is true
+  template <typename Tile, typename Enabler = void>
+  class MaxReduction;
 
   template <typename Tile>
-  class MaxReduction<
-      Tile, typename std::enable_if<detail::is_ordered_v<detail::numeric_t<Tile>>>::type> {
-  public:
+  class MaxReduction<Tile, typename std::enable_if<detail::is_strictly_ordered<
+                               detail::numeric_t<Tile>>::value>::type> {
+   public:
     // typedefs
     using result_type = decltype(max(std::declval<Tile>()));
     typedef Tile argument_type;

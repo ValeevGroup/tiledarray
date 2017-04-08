@@ -1374,10 +1374,12 @@ namespace TiledArray {
 
     /// \return The minimum elements of this tensor
     template <typename Numeric = numeric_type>
-    numeric_type
-    min(typename std::enable_if<detail::is_ordered_v<Numeric>>::type* = nullptr) const {
-      auto min_op = [] (numeric_type& restrict res, const numeric_type arg)
-              { res = std::min(res, arg); };
+    numeric_type min(typename std::enable_if<
+                         detail::is_strictly_ordered<Numeric>::value>::type* =
+                         nullptr) const {
+      auto min_op = [](numeric_type& restrict res, const numeric_type arg) {
+        res = std::min(res, arg);
+      };
       return reduce(min_op, min_op, std::numeric_limits<numeric_type>::max());
     }
 
@@ -1385,8 +1387,9 @@ namespace TiledArray {
 
     /// \return The maximum elements of this tensor
     template <typename Numeric = numeric_type>
-    numeric_type
-    max(typename std::enable_if<detail::is_ordered_v<Numeric>>::type* = nullptr) const {
+    numeric_type max(typename std::enable_if<
+                         detail::is_strictly_ordered<Numeric>::value>::type* =
+                         nullptr) const {
       auto max_op = [](numeric_type& restrict res, const numeric_type arg) {
         res = std::max(res, arg);
       };

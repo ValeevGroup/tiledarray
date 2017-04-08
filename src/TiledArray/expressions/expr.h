@@ -650,9 +650,9 @@ namespace TiledArray {
 
       template <typename Derived_ = Derived>
       std::enable_if<
-          TiledArray::detail::is_ordered_v<
-              TiledArray::detail::numeric_t<typename EngineTrait<
-                  typename ExprTrait<Derived_>::engine_type>::eval_type>>,
+          TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>>::value,
           Future<typename TiledArray::MinReduction<
               typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
                   eval_type>::result_type>>
@@ -663,9 +663,9 @@ namespace TiledArray {
 
       template <typename Derived_ = Derived>
       std::enable_if<
-          TiledArray::detail::is_ordered_v<
-              TiledArray::detail::numeric_t<typename EngineTrait<
-                  typename ExprTrait<Derived_>::engine_type>::eval_type>>,
+          TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>>::value,
           Future<typename TiledArray::MinReduction<
               typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
                   eval_type>::result_type>>
@@ -675,9 +675,9 @@ namespace TiledArray {
 
       template <typename Derived_ = Derived>
       std::enable_if<
-          TiledArray::detail::is_ordered_v<
-              TiledArray::detail::numeric_t<typename EngineTrait<
-                  typename ExprTrait<Derived_>::engine_type>::eval_type>>,
+          TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>>::value,
           Future<typename TiledArray::MaxReduction<
               typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
                   eval_type>::result_type>>
@@ -688,9 +688,9 @@ namespace TiledArray {
 
       template <typename Derived_ = Derived>
       std::enable_if<
-          TiledArray::detail::is_ordered_v<
-              TiledArray::detail::numeric_t<typename EngineTrait<
-                  typename ExprTrait<Derived_>::engine_type>::eval_type>>,
+          TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>>::value,
           Future<typename TiledArray::MaxReduction<
               typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
                   eval_type>::result_type>>

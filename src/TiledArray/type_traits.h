@@ -295,7 +295,27 @@ namespace TiledArray {
     using scalar_t = typename TiledArray::detail::scalar_type<T>::type;
 
     template <typename T>
-    constexpr const bool is_ordered_v = std::is_same<T,scalar_t<T>>::value;
+    struct is_strictly_ordered_helper {
+      using Yes = char;
+      using No = int;
+      template <typename U>
+      static auto test(void*) -> decltype(
+          std::add_pointer_t<decltype(std::declval<U>() < std::declval<U>())>{},
+          Yes{});
+      template <typename...>
+      static No test(...);
+
+     public:
+      static constexpr const bool value = sizeof(test<T>(0)) == sizeof(Yes);
+    };
+
+    /// \c is_strictly_ordered<T>::value is true if strict order is defined for T,
+    /// i.e. "T < T" is defined
+    template <typename T>
+    struct is_strictly_ordered
+        : public std::integral_constant<bool,
+                                        is_strictly_ordered_helper<T>::value> {
+    };
 
     template <typename...> struct is_integral_list_helper;
 
