@@ -44,6 +44,12 @@ struct TypeTraitsFixture {
 
 BOOST_FIXTURE_TEST_SUITE( type_traits_suite, TypeTraitsFixture )
 
+BOOST_AUTO_TEST_CASE( sanity )
+{
+  constexpr bool double_has_value_type = TiledArray::detail::has_member_type_value_type<double>::value;
+  BOOST_CHECK(!double_has_value_type);
+}
+
 BOOST_AUTO_TEST_CASE( vector )
 {
   using container = std::vector<int>;

@@ -26,6 +26,9 @@
 #include <complex>
 #include <utility>
 
+//////////////////////////////////////////////////////////////////////////////////////////////
+// forward declarations
+
 namespace Eigen {
 
   template <typename, int, int, int, int, int> class Matrix;
@@ -35,19 +38,242 @@ namespace Eigen {
 } // namespace Eigen
 
 namespace TiledArray {
-
-  // Forward declaration
   template <typename> class Tile;
   class DensePolicy;
   struct ZeroTensor;
   template <typename, typename> class DistArray;
   namespace detail {
     template <typename, typename> class LazyArrayTile;
+  }  // namespace detail
+}  // namespace TiledArray
 
-    // helps to implement other metafunctions
-    template<typename> struct is_type : public std::true_type { };
+//////////////////////////////////////////////////////////////////////////////////////////////
+// see https://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Member_Detector
+
+/// this generates struct \c has_member_##Type<T> whose
+/// public constexpr member variable \c value is true if \c T::Member is a
+/// member variable or function.
+#define GENERATE_HAS_MEMBER(Member)                                            \
+  template <typename T, typename Enabler = void>                               \
+  class __has_member_##Member : public std::false_type {};                     \
+  template <typename T>                                                        \
+  class __has_member_##Member<                                                 \
+      T, typename std::enable_if<std::is_class<T>::value ||                    \
+                                 std::is_union<T>::value>::type> {             \
+    using Yes = char[2];                                                       \
+    using No = char[1];                                                        \
+                                                                               \
+    struct Fallback {                                                          \
+      int Member;                                                              \
+    };                                                                         \
+    struct Derived : T, Fallback {};                                           \
+                                                                               \
+    template <class U>                                                         \
+    static No& test(decltype(U::Member) *);                                    \
+    template <typename U>                                                      \
+    static Yes& test(U*);                                                      \
+                                                                               \
+   public:                                                                     \
+    static constexpr bool value =                                              \
+        sizeof(test<Derived>(nullptr)) == sizeof(Yes);                         \
+  };                                                                           \
+                                                                               \
+  template <class T>                                                           \
+  struct has_member_##Member                                                   \
+      : public std::integral_constant<bool, __has_member_##Member<T>::value> { \
+  };
+
+/// this generates struct \c has_member_type_##Type<T> whose
+/// public constexpr member variable \c value is true if \c T::Member is a
+/// valid type.
+#define GENERATE_HAS_MEMBER_TYPE(Type)                             \
+  template <typename T, typename Enabler = void>                   \
+  class __has_member_type_##Type : public std::false_type {};      \
+  template <typename T>                                            \
+  class __has_member_type_##Type<                                  \
+      T, typename std::enable_if<std::is_class<T>::value ||        \
+                                 std::is_union<T>::value>::type> { \
+    using Yes = char[2];                                           \
+    using No = char[1];                                            \
+                                                                   \
+    struct Fallback {                                              \
+      struct Type {};                                              \
+    };                                                             \
+    struct Derived : T, Fallback {};                               \
+                                                                   \
+    template <class U>                                             \
+    static No& test(typename U::Type*);                            \
+    template <typename U>                                          \
+    static Yes& test(U*);                                          \
+                                                                   \
+   public:                                                         \
+    static constexpr bool value =                                  \
+        sizeof(test<Derived>(nullptr)) == sizeof(Yes);             \
+  };                                                               \
+                                                                   \
+  template <class T>                                               \
+  struct has_member_type_##Type                                    \
+      : public std::integral_constant<bool,                        \
+                                      __has_member_type_##Type<T>::value> {};
+
+/// this generates struct \c has_member_function_Member<T,R,Args...> whose
+/// public constexpr member variable \c value is true if \c T::Member is a
+/// member function that takes \c Args and returns \c R .
+/// \note if T is a const type, only const member functions will be
+/// detected, hence
+/// \c has_member_function_Member_anyreturn<const T,R,Args...>::value &&
+/// \c !has_member_function_Member_anyreturn<T,R,Args...>::value
+/// evaluates to true if there is only a const T::Member
+#define GENERATE_HAS_MEMBER_FUNCTION(Member)                                   \
+  template <typename T, typename Result, typename... Args>                     \
+  class __has_member_function_##Member {                                       \
+    using Yes = char;                                                          \
+    using No = int;                                                            \
+    template <typename U, Result (U::*)(Args...)>                              \
+    struct Check;                                                              \
+    template <typename U, Result (U::*)(Args...) const>                        \
+    struct CheckConst;                                                         \
+    template <typename U>                                                      \
+    static Yes test_const(CheckConst<U, &U::Member>*);                         \
+    template <typename U>                                                      \
+    static No test_const(...);                                                 \
+    template <typename U>                                                      \
+    static Yes test_nonconst(Check<U, &U::Member>*);                           \
+    template <typename U>                                                      \
+    static No test_nonconst(...);                                              \
+                                                                               \
+   public:                                                                     \
+    static constexpr const bool value =                                        \
+        sizeof(test_const<T>(0)) == sizeof(Yes) ||                             \
+        (!std::is_const<T>::value ? sizeof(test_nonconst<T>(0)) == sizeof(Yes) \
+                                  : false);                                    \
+  };                                                                           \
+  template <class T, typename Result, typename... Args>                        \
+  struct has_member_function_##Member                                          \
+      : public std::integral_constant<                                         \
+            bool, __has_member_function_##Member<T, Result, Args...>::value> { \
+  };
+
+/// this generates struct \c has_member_function_Member_anyreturn<T,Args...>
+/// whose public constexpr member variable \c value is true if \c T::Member
+/// is a member function that takes \c Args and returns any type.
+/// \note if T is a const type, only const member functions will be
+/// detected, hence
+/// \c has_member_function_Member_anyreturn<const T,Args...>::value &&
+/// \c !has_member_function_Member_anyreturn<T,Args...>::value
+/// evaluates to true if there is only a const T::Member
+#define GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(Member)                    \
+  template <typename T, typename... Args>                                 \
+  class __has_member_function_##Member##_anyreturn {                      \
+    using Yes = char;                                                     \
+    using No = int;                                                       \
+    template <typename U, typename... Args_>                              \
+    static auto func(void*)                                               \
+        -> decltype(std::add_pointer_t<decltype(std::declval<U>().Member( \
+                        std::declval<Args_>()...))>{},                    \
+                    Yes{});                                               \
+    template <typename U, typename... Args_>                              \
+    static No func(...);                                                  \
+                                                                          \
+   public:                                                                \
+    static constexpr const bool value =                                   \
+        sizeof(func<T, Args...>(0)) == sizeof(Yes);                       \
+  };                                                                      \
+  template <class T, typename... Args>                                    \
+  struct has_member_function_##Member##_anyreturn                         \
+      : public std::integral_constant<                                    \
+            bool,                                                         \
+            __has_member_function_##Member##_anyreturn<T, Args...>::value> {};
+
+/// this generates struct \c is_free_function_Function_anyreturn<Args...> whose
+/// public constexpr member variable \c value is true if \c Function is a
+/// free function that takes \c Args and returns any value.
+/// \note to ensure that \c Function can be looked up, it may be necessary
+///       to add \c "using namespace::Function" BEFORE using this macro.
+#define GENERATE_IS_FREE_FUNCTION_ANYRETURN(Function)                          \
+  template <typename... Args>                                                  \
+  class __is_free_function_##Function##_anyreturn {                            \
+    using Yes = char;                                                          \
+    using No = int;                                                            \
+    template <typename... Args_>                                               \
+    static auto func(void*) -> decltype(                                       \
+        std::add_pointer_t<decltype(Function(std::declval<Args_>()...))>{},    \
+        Yes{});                                                                \
+    template <typename...>                                                     \
+    static No func(...);                                                       \
+                                                                               \
+   public:                                                                     \
+    static constexpr const bool value =                                        \
+        sizeof(func<Args...>(0)) == sizeof(Yes);                               \
+  };                                                                           \
+  template <typename... Args>                                                  \
+  struct is_free_function_##Function##_anyreturn                               \
+      : public std::integral_constant<                                         \
+            bool, __is_free_function_##Function##_anyreturn<Args...>::value> { \
+  };
+
+namespace TiledArray {
+  namespace detail {
+
+  /////////////////////////////
+  // standard container traits (incomplete)
+
+  GENERATE_HAS_MEMBER_TYPE(value_type)
+  GENERATE_HAS_MEMBER_TYPE(allocator_type)
+  GENERATE_HAS_MEMBER_TYPE(size_type)
+  GENERATE_HAS_MEMBER_TYPE(difference_type)
+  GENERATE_HAS_MEMBER_TYPE(reference)
+  GENERATE_HAS_MEMBER_TYPE(const_reference)
+  GENERATE_HAS_MEMBER_TYPE(pointer)
+  GENERATE_HAS_MEMBER_TYPE(const_pointer)
+  GENERATE_HAS_MEMBER_TYPE(iterator)
+  GENERATE_HAS_MEMBER_TYPE(const_iterator)
+  GENERATE_HAS_MEMBER_TYPE(reverse_iterator)
+  GENERATE_HAS_MEMBER_TYPE(const_reverse_iterator)
+
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(size)
+  GENERATE_HAS_MEMBER_FUNCTION(size)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(empty)
+  GENERATE_HAS_MEMBER_FUNCTION(empty)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(clear)
+  GENERATE_HAS_MEMBER_FUNCTION(clear)
+
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(begin)
+  GENERATE_HAS_MEMBER_FUNCTION(begin)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(end)
+  GENERATE_HAS_MEMBER_FUNCTION(end)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(cbegin)
+  GENERATE_HAS_MEMBER_FUNCTION(cbegin)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(cend)
+  GENERATE_HAS_MEMBER_FUNCTION(cend)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(rbegin)
+  GENERATE_HAS_MEMBER_FUNCTION(rbegin)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(rend)
+  GENERATE_HAS_MEMBER_FUNCTION(rend)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(crbegin)
+  GENERATE_HAS_MEMBER_FUNCTION(crbegin)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(crend)
+  GENERATE_HAS_MEMBER_FUNCTION(crend)
+
+  /////////////////////////////
+  // standard iterator traits
+  // GENERATE_HAS_MEMBER_TYPE(value_type)
+  // GENERATE_HAS_MEMBER_TYPE(difference_type)
+  // GENERATE_HAS_MEMBER_TYPE(reference)
+  // GENERATE_HAS_MEMBER_TYPE(pointer)
+  GENERATE_HAS_MEMBER_TYPE(iterator_category)
 
   }  // namespace detail
+}  // namespace TiledArray
+
+namespace TiledArray {
+namespace detail {
+// helps to implement other metafunctions
+template<typename> struct is_type : public std::true_type { };
+}  // namespace detail
+}  // namespace TiledArray
+
+namespace TiledArray {
 
   /**
    * \addtogroup TileInterface
@@ -58,6 +284,8 @@ namespace TiledArray {
   template <typename> struct eval_trait;
 
   namespace detail {
+
+  GENERATE_HAS_MEMBER_TYPE(eval_type)
 
   // evaluates to false type if an explicit conversion of From to To (i.e.
   // static_cast<To>(From)) is not possible
@@ -86,7 +314,7 @@ namespace TiledArray {
 
     template <typename T>
     struct eval_trait_base<T, typename std::enable_if<
-        detail::is_type<typename T::eval_type>::value &&
+        has_member_type_eval_type<T>::value &&
         (detail::is_explicitly_convertible<T, typename T::eval_type>::value ||
          detail::is_explicitly_convertible<T, madness::Future<typename T::eval_type>>::value ||
          detail::is_implicitly_convertible<T, typename T::eval_type>::value ||
@@ -224,7 +452,7 @@ namespace TiledArray {
 
     template <typename T>
     struct numeric_type<T, typename std::enable_if<
-          is_type<typename T::value_type>::value &&
+          has_member_type_value_type<T>::value &&
           (! is_lazy_tile<T>::value) &&
           (! is_numeric<T>::value)>::type> :
         public numeric_type<typename T::value_type>
@@ -374,7 +602,7 @@ namespace TiledArray {
     };
 
     template <typename T>
-    struct is_iterator<T, typename std::enable_if<is_type<typename T::iterator_category>::value>::type > : public std::true_type {
+    struct is_iterator<T, typename std::enable_if<has_member_type_iterator_category<T>::value>::type > : public std::true_type {
       typedef typename std::iterator_traits<T>::iterator_category iterator_category;
     };
 
@@ -480,208 +708,6 @@ namespace TiledArray {
 
     template <typename T1, typename T2>
     struct is_pair<std::pair<T1,T2> > : public std::true_type { };
-
-    //////////////////////////////////////////////////////////////////////////////////////////////
-    // see https://en.wikibooks.org/wiki/More_C%2B%2B_Idioms/Member_Detector
-
-    /// this generates struct \c has_member_##Type<T> whose
-    /// public constexpr member variable \c value is true if \c T::Member is a
-    /// member variable or function.
-#define GENERATE_HAS_MEMBER(Member)                                            \
-                                                                               \
-  template <class T>                                                           \
-  class __has_member_##Member {                                                \
-   private:                                                                    \
-    using Yes = char[2];                                                       \
-    using No = char[1];                                                        \
-                                                                               \
-    struct Fallback {                                                          \
-      int Member;                                                              \
-    };                                                                         \
-    struct Derived : T, Fallback {};                                           \
-                                                                               \
-    template <class U>                                                         \
-    static No& test(decltype(U::Member) *);                                    \
-    template <typename U>                                                      \
-    static Yes& test(U*);                                                      \
-                                                                               \
-   public:                                                                     \
-    static constexpr bool value =                                              \
-        sizeof(test<Derived>(nullptr)) == sizeof(Yes);                         \
-  };                                                                           \
-                                                                               \
-  template <class T>                                                           \
-  struct has_member_##Member                                                   \
-      : public std::integral_constant<bool, __has_member_##Member<T>::value> { \
-  };
-
-    /// this generates struct \c has_member_type_##Type<T> whose
-    /// public constexpr member variable \c value is true if \c T::Member is a
-    /// valid type.
-#define GENERATE_HAS_MEMBER_TYPE(Type)                 \
-                                                       \
-  template <class T>                                   \
-  class __has_member_type_##Type {                     \
-   private:                                            \
-    using Yes = char[2];                               \
-    using No = char[1];                                \
-                                                       \
-    struct Fallback {                                  \
-      struct Type {};                                  \
-    };                                                 \
-    struct Derived : T, Fallback {};                   \
-                                                       \
-    template <class U>                                 \
-    static No& test(typename U::Type*);                \
-    template <typename U>                              \
-    static Yes& test(U*);                              \
-                                                       \
-   public:                                             \
-    static constexpr bool value =                      \
-        sizeof(test<Derived>(nullptr)) == sizeof(Yes); \
-  };                                                   \
-                                                       \
-  template <class T>                                   \
-  struct has_member_type_##Type                        \
-      : public std::integral_constant<bool,            \
-                                      __has_member_type_##Type<T>::value> {};
-
-    /// this generates struct \c has_member_function_Member<T,R,Args...> whose
-    /// public constexpr member variable \c value is true if \c T::Member is a
-    /// member function that takes \c Args and returns \c R .
-    /// \note if T is a const type, only const member functions will be
-    /// detected, hence
-    /// \c has_member_function_Member_anyreturn<const T,R,Args...>::value &&
-    /// \c !has_member_function_Member_anyreturn<T,R,Args...>::value
-    /// evaluates to true if there is only a const T::Member
-#define GENERATE_HAS_MEMBER_FUNCTION(Member)                                   \
-  template <typename T, typename Result, typename... Args>                     \
-  class __has_member_function_##Member {                                       \
-    using Yes = char;                                                          \
-    using No = int;                                                            \
-    template <typename U, Result (U::*)(Args...)>                              \
-    struct Check;                                                              \
-    template <typename U, Result (U::*)(Args...) const>                        \
-    struct CheckConst;                                                         \
-    template <typename U>                                                      \
-    static Yes test_const(CheckConst<U, &U::Member>*);                         \
-    template <typename U>                                                      \
-    static No test_const(...);                                                 \
-    template <typename U>                                                      \
-    static Yes test_nonconst(Check<U, &U::Member>*);                           \
-    template <typename U>                                                      \
-    static No test_nonconst(...);                                              \
-                                                                               \
-   public:                                                                     \
-    static constexpr const bool value =                                        \
-        sizeof(test_const<T>(0)) == sizeof(Yes) ||                            \
-        (!std::is_const<T>::value                                              \
-             ? sizeof(test_nonconst<T>(0)) == sizeof(Yes)                     \
-             : false);                                                         \
-  };                                                                           \
-  template <class T, typename Result, typename... Args>                        \
-  struct has_member_function_##Member                                          \
-      : public std::integral_constant<                                         \
-            bool, __has_member_function_##Member<T, Result, Args...>::value> { \
-  };
-
-    /// this generates struct \c has_member_function_Member_anyreturn<T,Args...>
-    /// whose public constexpr member variable \c value is true if \c T::Member
-    /// is a member function that takes \c Args and returns any type.
-    /// \note if T is a const type, only const member functions will be
-    /// detected, hence
-    /// \c has_member_function_Member_anyreturn<const T,Args...>::value &&
-    /// \c !has_member_function_Member_anyreturn<T,Args...>::value
-    /// evaluates to true if there is only a const T::Member
-#define GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(Member)                    \
-  template <typename T, typename... Args>                                 \
-  class __has_member_function_##Member##_anyreturn {                      \
-  using Yes = char;                                                       \
-  using No = int;                                                         \
-    template <typename U, typename... Args_>                              \
-    static auto func(void*)                                               \
-        -> decltype(std::add_pointer_t<decltype(std::declval<U>().Member( \
-                        std::declval<Args_>()...))>{},                    \
-                    Yes{});                                               \
-    template <typename U, typename... Args_>                              \
-    static No func(...);                                                  \
-                                                                          \
-   public:                                                                \
-    static constexpr const bool value =                                   \
-        sizeof(func<T, Args...>(0)) == sizeof(Yes);                       \
-  };                                                                      \
-  template <class T, typename... Args>                                    \
-  struct has_member_function_##Member##_anyreturn                         \
-      : public std::integral_constant<                                    \
-            bool,                                                         \
-            __has_member_function_##Member##_anyreturn<T, Args...>::value> {};
-
-    /// this generates struct \c is_free_function_Function_anyreturn<Args...> whose
-    /// public constexpr member variable \c value is true if \c Function is a
-    /// free function that takes \c Args and returns any value.
-    /// \note to ensure that \c Function can be looked up, it may be necessary
-    ///       to add \c "using namespace::Function" BEFORE using this macro.
-#define GENERATE_IS_FREE_FUNCTION_ANYRETURN(Function)                          \
-  template <typename... Args>                                                  \
-  class __is_free_function_##Function##_anyreturn {                            \
-    using Yes = char;                                                          \
-    using No = int;                                                            \
-    template <typename... Args_>                                               \
-    static auto func(void*) -> decltype(                                       \
-        std::add_pointer_t<decltype(Function(std::declval<Args_>()...))>{},    \
-        Yes{});                                                                \
-    template <typename...>                                                     \
-    static No func(...);                                                       \
-                                                                               \
-   public:                                                                     \
-    static constexpr const bool value =                                        \
-        sizeof(func<Args...>(0)) == sizeof(Yes);                               \
-  };                                                                           \
-  template <typename... Args>                                                  \
-  struct is_free_function_##Function##_anyreturn                               \
-      : public std::integral_constant<                                         \
-            bool, __is_free_function_##Function##_anyreturn<Args...>::value> { \
-  };
-
-    /////////////////////////////
-    // standard container traits (incomplete)
-
-    GENERATE_HAS_MEMBER_TYPE(value_type)
-    GENERATE_HAS_MEMBER_TYPE(allocator_type)
-    GENERATE_HAS_MEMBER_TYPE(size_type)
-    GENERATE_HAS_MEMBER_TYPE(difference_type)
-    GENERATE_HAS_MEMBER_TYPE(reference)
-    GENERATE_HAS_MEMBER_TYPE(const_reference)
-    GENERATE_HAS_MEMBER_TYPE(pointer)
-    GENERATE_HAS_MEMBER_TYPE(const_pointer)
-    GENERATE_HAS_MEMBER_TYPE(iterator)
-    GENERATE_HAS_MEMBER_TYPE(const_iterator)
-    GENERATE_HAS_MEMBER_TYPE(reverse_iterator)
-    GENERATE_HAS_MEMBER_TYPE(const_reverse_iterator)
-
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(size)
-    GENERATE_HAS_MEMBER_FUNCTION(size)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(empty)
-    GENERATE_HAS_MEMBER_FUNCTION(empty)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(clear)
-    GENERATE_HAS_MEMBER_FUNCTION(clear)
-
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(begin)
-    GENERATE_HAS_MEMBER_FUNCTION(begin)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(end)
-    GENERATE_HAS_MEMBER_FUNCTION(end)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(cbegin)
-    GENERATE_HAS_MEMBER_FUNCTION(cbegin)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(cend)
-    GENERATE_HAS_MEMBER_FUNCTION(cend)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(rbegin)
-    GENERATE_HAS_MEMBER_FUNCTION(rbegin)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(rend)
-    GENERATE_HAS_MEMBER_FUNCTION(rend)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(crbegin)
-    GENERATE_HAS_MEMBER_FUNCTION(crbegin)
-    GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(crend)
-    GENERATE_HAS_MEMBER_FUNCTION(crend)
 
   } // namespace detail
 
