@@ -30,6 +30,9 @@
 #include <vector>
 
 #include "TiledArray/type_traits.h"
+#include "TiledArray/tensor.h"
+#include "TiledArray/tile_op/noop.h"
+#include "TiledArray/dist_eval/array_eval.h"
 
 struct TypeTraitsFixture {
 
@@ -157,6 +160,20 @@ BOOST_AUTO_TEST_CASE( _min_ )
   constexpr bool there_is_min_int_double = is_free_function_min_anyreturn<int,double>::value;
   BOOST_CHECK(there_is_min_int_int);
   BOOST_CHECK(!there_is_min_int_double);
+}
+
+BOOST_AUTO_TEST_CASE(convertibility) {
+  using TileD = TiledArray::Tensor<double>;
+  using LazyTileD = TiledArray::detail::LazyArrayTile<
+      TileD, TiledArray::detail::Noop<TileD, TileD, true>>;
+  {
+    using T = LazyTileD;
+    constexpr bool lazy_tile_is_explconv_to_tile =
+        TiledArray::detail::is_explicitly_convertible<T, typename T::eval_type>::value;
+    constexpr bool lazy_tile_is_implconv_to_tile =
+        TiledArray::detail::is_implicitly_convertible<T, typename T::eval_type>::value;
+    BOOST_CHECK(lazy_tile_is_explconv_to_tile || lazy_tile_is_implconv_to_tile);
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

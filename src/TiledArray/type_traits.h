@@ -59,22 +59,22 @@ namespace TiledArray {
 
   namespace detail {
 
-  // evaluates to false type if an explicit conversion of T to U (i.e.
-  // static_cast<U>(T)) is not possible
-  template <class U, class T, typename Enabler = void>
+  // evaluates to false type if an explicit conversion of From to To (i.e.
+  // static_cast<To>(From)) is not possible
+  template <class From, class To, typename Enabler = void>
   struct is_explicitly_convertible : public std::false_type {
   };
 
-  // evaluates to true if static_cast<U>(T) is possible
-  template <class U, class T>
+  // evaluates to true if static_cast<To>(From) is possible
+  template <class From, class To>
   struct is_explicitly_convertible<
-      U, T, typename std::enable_if<std::is_constructible<T, U>::value &&
-                                    !std::is_convertible<U, T>::value>::type>
+      From, To, typename std::enable_if<std::is_constructible<To, From>::value &&
+                                    !std::is_convertible<From, To>::value>::type>
       : public std::true_type {};
 
   // alias to std::is_convertible
-  template <class U, class T>
-  struct is_implicitly_convertible : public std::is_convertible<U,T> {
+  template <class From, class To>
+  struct is_implicitly_convertible : public std::is_convertible<From,To> {
   };
 
   template <typename T, typename Enabler = void>
@@ -87,20 +87,17 @@ namespace TiledArray {
     template <typename T>
     struct eval_trait_base<T, typename std::enable_if<
         detail::is_type<typename T::eval_type>::value &&
-        (detail::is_explicitly_convertible<typename T::eval_type, T>::value ||
-         detail::is_explicitly_convertible<madness::Future<typename T::eval_type>, T>::value ||
-         detail::is_implicitly_convertible<typename T::eval_type, T>::value ||
-         detail::is_implicitly_convertible<madness::Future<typename T::eval_type>, T>::value ||
-         true
+        (detail::is_explicitly_convertible<T, typename T::eval_type>::value ||
+         detail::is_explicitly_convertible<T, madness::Future<typename T::eval_type>>::value ||
+         detail::is_implicitly_convertible<T, typename T::eval_type>::value ||
+         detail::is_implicitly_convertible<T, madness::Future<typename T::eval_type>>::value
         )>::type>
     {
       typedef typename T::eval_type type;
       static constexpr bool is_consumable = false;
       static constexpr bool nonblocking =
-          detail::is_explicitly_convertible<madness::Future<typename T::eval_type>,
-                                            T>::value ||
-          detail::is_implicitly_convertible<madness::Future<typename T::eval_type>,
-                                            T>::value;
+          detail::is_explicitly_convertible<T, madness::Future<typename T::eval_type>>::value ||
+          detail::is_implicitly_convertible<T, madness::Future<typename T::eval_type>>::value;
     };  // struct eval_trait
 
   } // namespace detail
