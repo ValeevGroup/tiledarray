@@ -461,8 +461,6 @@ namespace TiledArray {
           is_lazy_tile<typename Arg::value_type>::value,
           Future<typename Arg::eval_type> >::type
       get_tile(Arg& arg, const typename Arg::size_type index) {
-        using tile_type = typename Arg::value_type;
-        using tile_eval_type = typename eval_trait<tile_type>::type;
         auto convert_tile_fn =
             &Summa_::template convert_tile<typename Arg::value_type>;
         return arg.world().taskq.add(convert_tile_fn, arg.get(index),
