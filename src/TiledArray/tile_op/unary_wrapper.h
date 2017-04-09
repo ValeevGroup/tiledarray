@@ -130,7 +130,7 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \return The result tile from the unary operation applied to the
-      /// \c left and \c right arguments.
+      /// \c arg .
       result_type operator()(argument_type& arg) const {
         return (perm_ ? op_(arg, perm_) : op_(arg) );
       }
@@ -139,7 +139,7 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \return The result tile from the unary operation applied to the
-      /// \c left and \c right arguments.
+      /// \c arg .
       result_type operator()(const argument_type& arg) const {
         return (perm_ ? op_(arg, perm_) : op_(arg) );
       }
