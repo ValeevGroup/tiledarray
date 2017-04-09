@@ -35,24 +35,20 @@ namespace TiledArray {
 
     /// Unary tile operation wrapper
 
-    /// This wrapper class is handles evaluation of lazily evaluated tiles in binary operations and
+    /// This wrapper class is handles evaluation of lazily evaluated tiles in unary operations and
     /// forwards the evaluated arguments to the base operation object.
     ///
-    /// The base binary operation class must have the following interface.
+    /// The base unary operation class must have the following interface.
     /// \code
-    /// template <typename Left, typename Right, typename Scalar, bool LeftConsumable,
-    ///     bool RightConsumable>
+    /// template <typename Arg, typename Scalar, bool Consumable>
     /// class Operator {
     /// public:
     ///
-    ///   typedef ... first_argument_type;
-    ///   typedef ... second_argument_type;
+    ///   typedef ... argument_type;
     ///   typedef ... result_type;
     ///
-    ///   static constexpr bool left_is_consumable =
-    ///       LeftConsumable && std::is_same<result_type, Left>::value;
-    ///   static constexpr bool right_is_consumable =
-    ///       RightConsumable && std::is_same<result_type, Right>::value;
+    ///   static constexpr bool is_consumable =
+    ///       Consumable && std::is_same<result_type, Arg>::value;
     ///
     ///   // Constructor
     ///   Operator();
@@ -61,28 +57,23 @@ namespace TiledArray {
     ///   Operator(const Scalar);
     ///
     ///   // Operation evaluation operators
-    ///   // L and R template parameters types may be Left and Right, repsectively, or
+    ///   // The A template parameter type may be Arg or
     ///   // TiledArray::ZeroTensor.
     ///
-    ///   // Evaluate the operation with left and right arguments and permute the result.
-    ///   template <typename L, typename R>
-    ///   result_type operator()(L&& left, R&& right, const Permutation& perm) const;
+    ///   // Evaluate and permute the result.
+    ///   template <typename A>
+    ///   result_type operator()(A&& arg, const Permutation& perm) const;
     ///
-    ///   // Evaluate the operation with left and right arguments.
-    ///   // If the left_is_consumable or right_is_consumable variables are true, then this
-    ///   // may the left or right arguments, respectively.
-    ///   template <typename L, typename R>
-    ///   result_type operator()(L&& left, R&& right) const;
+    ///   // Evaluate only
+    ///   // If is_consumable is true, then this
+    ///   // may consume arg.
+    ///   template <typename A>
+    ///   result_type operator()(A&& arg) const;
     ///
-    ///   // Evaluate the operation with left and right arguments and consume the left-hand
-    ///   // argument. This function may not consume left if it is not consumable.
-    ///   template <typename R>
-    ///   result_type consume_left(Left& left, R&& right) const;
-    ///
-    ///   // Evaluate the operation with left and right arguments and consume the right-hand
-    ///   // argument. This function may not consume right if it is not consumable.
-    ///   template <typename L>
-    ///   result_type consume_right(L&& left, Right& right) const;
+    ///   // Evaluate the operation and try to consume the
+    ///   // argument. This function may not consume arg if it is not consumable.
+    ///   template <typename A>
+    ///   result_type consume(argument_type& arg) const;
     ///
     /// }; // class Operator
     /// \endcode
