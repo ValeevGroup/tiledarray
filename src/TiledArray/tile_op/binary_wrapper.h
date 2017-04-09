@@ -59,7 +59,7 @@ namespace TiledArray {
     ///   Operator(const Scalar);
     ///
     ///   // Operation evaluation operators
-    ///   // L and R template parameters types may be Left and Right, repsectively, or
+    ///   // L and R template parameters types may be Left and Right, respectively, or
     ///   // TiledArray::ZeroTensor.
     ///
     ///   // Evaluate the operation with left and right arguments and permute the result.
@@ -68,17 +68,17 @@ namespace TiledArray {
     ///
     ///   // Evaluate the operation with left and right arguments.
     ///   // If the left_is_consumable or right_is_consumable variables are true, then this
-    ///   // may the left or right arguments, respectively.
+    ///   // will try to consume the left or right arguments, respectively.
     ///   template <typename L, typename R>
     ///   result_type operator()(L&& left, R&& right) const;
     ///
-    ///   // Evaluate the operation with left and right arguments and consume the left-hand
-    ///   // argument. This function may not consume left if it is not consumable.
+    ///   // Evaluate the operation with left and right arguments and try to consume the left-hand
+    ///   // argument. This function may not consume left if it is not consumable (see is_consumable_tile trait).
     ///   template <typename R>
     ///   result_type consume_left(left_type& left, R&& right) const;
     ///
-    ///   // Evaluate the operation with left and right arguments and consume the right-hand
-    ///   // argument. This function may not consume right if it is not consumable.
+    ///   // Evaluate the operation with left and right arguments and try to consume the right-hand
+    ///   // argument. This function may not consume right if it is not consumable (see is_consumable_tile trait).
     ///   template <typename L>
     ///   result_type consume_right(L&& left, right_type& right) const;
     ///
