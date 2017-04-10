@@ -159,9 +159,9 @@ namespace TiledArray {
           typename std::enable_if<
               is_lazy_tile_t<A>::value && (! is_array_tile_t<A>::value)
           >::type* = nullptr>
-      result_type operator()(A&& arg) const {
-        eval_t<A> eval_arg(arg);
-        return (perm_ ? op_(eval_arg, perm_) : op_(eval_arg) );
+      auto operator()(A&& arg) const {
+        auto cast = Cast<eval_t<A>,A>{};
+        return (perm_ ? op_(cast(arg), perm_) : op_(cast(arg)) );
       }
 
 
