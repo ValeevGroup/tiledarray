@@ -41,16 +41,49 @@ namespace TiledArray {
     /// \tparam Result The output tile type
     /// \tparam Arg The input tile type
     /// \tparam Enabler Enabler type used to select (partial) specializations
+    /// \note the base implementation is invoked when Arg is a lazy tile (see TiledArray::is_lazy_tile)
+    ///       that evaluates to Result.
     template <typename Result, typename Arg, typename Enabler = void>
     class Cast {
-    public:
 
-      typedef Result result_type; ///< Result tile type
-      typedef Arg argument_type; ///< Argument tile type
+     public:
 
-      result_type operator()(const argument_type& arg) const {
-        return static_cast<result_type>(arg);
-      }
+       typedef Result result_type; ///< Result tile type
+       typedef Arg argument_type; ///< Argument tile type
+
+       static_assert(
+           detail::has_conversion_operator<
+               argument_type, madness::Future<result_type>>::value ||
+               detail::is_convertible<argument_type, result_type>::value,
+           "Cast<Result,Arg> does not know how to construct Result or "
+           "Future<Result> from Arg");
+
+      private:
+       template <typename Result_, typename Arg_,
+                 typename = std::enable_if_t<detail::is_convertible<
+                     std::decay_t<Arg_>, Result_>::value>>
+       static auto invoker(Arg_&& arg) {
+         return Result_(arg);
+       }
+       template <typename Result_, typename Arg_>
+       static auto invoker(
+           Arg_&& arg,
+           std::enable_if_t<detail::has_conversion_operator<
+               std::decay_t<Arg_>, madness::Future<Result_>>::value>* =
+               nullptr) {
+         return static_cast<madness::Future<Result_>>(arg);
+       }
+
+      public:
+
+       /// this converts an Arg object to a Result object
+       auto operator()(const argument_type& arg) const {
+         return this->invoker<result_type>(arg);
+       }
+       /// this converts an Arg object to a Result object
+       auto operator()(argument_type&& arg) const {
+         return this->invoker<result_type>(arg);
+       }
 
     }; // class Cast
 
