@@ -287,23 +287,44 @@ namespace TiledArray {
 
   GENERATE_HAS_MEMBER_TYPE(eval_type)
 
-  // evaluates to false type if an explicit conversion of From to To (i.e.
-  // static_cast<To>(From)) is not possible
-  template <class From, class To, typename Enabler = void>
-  struct is_explicitly_convertible : public std::false_type {
-  };
+  /// evaluates to true if \c From has an (explicit or implicit) conversion function
+  /// that produces \c To from \c From , i.e. there exists \c From::operator \c To()
+  /// \note I do not how to distinguish explicit from implicit operator;
+  /// some observable behavior does depend on this (e.g. given explicit A::A(C) and
+  /// an B::operator C(), explicit conversion of B into A will be possible if the conversion
+  /// operator is implicit.
+  template <typename From, typename To, typename Enabler = void>
+  struct has_conversion_operator : std::false_type {};
 
-  // evaluates to true if static_cast<To>(From) is possible
-  template <class From, class To>
-  struct is_explicitly_convertible<
-      From, To, typename std::enable_if<std::is_constructible<To, From>::value &&
-                                    !std::is_convertible<From, To>::value>::type>
-      : public std::true_type {};
+  template <typename From, typename To>
+  struct has_conversion_operator<
+      From, To, typename std::enable_if<is_type<decltype(
+                    std::declval<From>().operator To())>::value>::type>
+      : std::true_type {};
 
-  // alias to std::is_convertible
+  /// evaluates to true if can construct \c To from \c From , i.e. if there is
+  /// a converting constructor \c To::To(From) or if \c From has an implicit
+  /// or explicit conversion function to \c To, i.e. \c operator \c To()
   template <class From, class To>
-  struct is_implicitly_convertible : public std::is_convertible<From,To> {
-  };
+  struct is_explicitly_convertible
+      : public std::is_constructible<To, From> {};
+
+  /// evaluates to true if can implicitly convert \c To from \c From , i.e.
+  /// if \c From has an implicit
+  /// conversion function to \c To, i.e. \c operator \c To()
+  /// \note this is just an alias to std::is_convertible
+  template <class From, class To>
+  struct is_implicitly_convertible : public std::is_convertible<From, To> {};
+
+  /// evaluates to true if can convert \c To from \c From , either explicitly
+  /// or implicitly
+  /// \note contrast to std::is_convertible which checks for implicit conversion
+  /// only
+  template <class From, class To>
+  struct is_convertible
+      : public std::integral_constant<
+            bool, is_implicitly_convertible<From, To>::value ||
+                      is_explicitly_convertible<From, To>::value> {};
 
   template <typename T, typename Enabler = void>
   struct eval_trait_base {
