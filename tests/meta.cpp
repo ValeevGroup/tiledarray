@@ -43,7 +43,7 @@ double cos(double x) {
   return std::cos(x);
 }
 madness::Future<double> async_cos(double x) {
-  return madness::World::get_default().taskq.add(cos, x);
+  return TiledArray::get_default_world().taskq.add(cos, x);
 }
 
 BOOST_AUTO_TEST_CASE(sanity) {

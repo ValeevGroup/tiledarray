@@ -25,7 +25,6 @@ GlobalFixture::GlobalFixture() {
   world = & TiledArray::initialize(
       boost::unit_test::framework::master_test_suite().argc,
       boost::unit_test::framework::master_test_suite().argv);
-  TiledArray::set_default_world(*world);
   world->gop.fence();
 }
 
