@@ -77,12 +77,12 @@ namespace TiledArray {
     template <typename Index>
     void init_range_data(const Index& lower_bound, const Index& upper_bound) {
       // Construct temp pointers
-      size_type* restrict const lower  = data_;
-      size_type* restrict const upper  = lower + rank_;
-      size_type* restrict const extent = upper + rank_;
-      size_type* restrict const stride = extent + rank_;
-      const auto* restrict const lower_data = detail::data(lower_bound);
-      const auto* restrict const upper_data = detail::data(upper_bound);
+      size_type* MADNESS_RESTRICT const lower  = data_;
+      size_type* MADNESS_RESTRICT const upper  = lower + rank_;
+      size_type* MADNESS_RESTRICT const extent = upper + rank_;
+      size_type* MADNESS_RESTRICT const stride = extent + rank_;
+      const auto* MADNESS_RESTRICT const lower_data = detail::data(lower_bound);
+      const auto* MADNESS_RESTRICT const upper_data = detail::data(upper_bound);
 
       // Set the volume seed
       volume_ = 1ul;
@@ -122,11 +122,11 @@ namespace TiledArray {
                   typename Index::value_type>::value>::type* = nullptr>
     void init_range_data(const Index& bound) {
       // Construct temp pointers
-      size_type* restrict const lower  = data_;
-      size_type* restrict const upper  = lower + rank_;
-      size_type* restrict const extent = upper + rank_;
-      size_type* restrict const stride = extent + rank_;
-      const auto* restrict const bound_data = detail::data(bound);
+      size_type* MADNESS_RESTRICT const lower  = data_;
+      size_type* MADNESS_RESTRICT const upper  = lower + rank_;
+      size_type* MADNESS_RESTRICT const extent = upper + rank_;
+      size_type* MADNESS_RESTRICT const stride = extent + rank_;
+      const auto* MADNESS_RESTRICT const bound_data = detail::data(bound);
 
       // Set the volume seed
       volume_ = 1ul;
@@ -165,11 +165,11 @@ namespace TiledArray {
                   typename Index::value_type>::value>::type* = nullptr>
     void init_range_data(const Index& extents) {
       // Construct temp pointers
-      size_type* restrict const lower  = data_;
-      size_type* restrict const upper  = lower + rank_;
-      size_type* restrict const extent = upper + rank_;
-      size_type* restrict const stride = extent + rank_;
-      const auto* restrict const extent_data = detail::data(extents);
+      size_type* MADNESS_RESTRICT const lower  = data_;
+      size_type* MADNESS_RESTRICT const upper  = lower + rank_;
+      size_type* MADNESS_RESTRICT const extent = upper + rank_;
+      size_type* MADNESS_RESTRICT const stride = extent + rank_;
+      const auto* MADNESS_RESTRICT const extent_data = detail::data(extents);
 
       // Set the offset and volume initial values
       volume_ = 1ul;
@@ -201,14 +201,14 @@ namespace TiledArray {
     /// permuted range dimension information from \c other_lower_bound and
     /// \c other_upper_bound.
     void init_range_data(const Permutation& perm,
-        const size_type* restrict const other_lower_bound,
-        const size_type* restrict const other_upper_bound)
+        const size_type* MADNESS_RESTRICT const other_lower_bound,
+        const size_type* MADNESS_RESTRICT const other_upper_bound)
     {
       // Create temporary pointers to this range data
-      auto* restrict const lower  = data_;
-      auto* restrict const upper  = lower + rank_;
-      auto* restrict const extent = upper + rank_;
-      auto* restrict const stride = extent + rank_;
+      auto* MADNESS_RESTRICT const lower  = data_;
+      auto* MADNESS_RESTRICT const upper  = lower + rank_;
+      auto* MADNESS_RESTRICT const extent = upper + rank_;
+      auto* MADNESS_RESTRICT const stride = extent + rank_;
 
       // Copy the permuted lower, upper, and extent into this range.
       for(unsigned int i = 0u; i < rank_; ++i) {
@@ -620,8 +620,8 @@ namespace TiledArray {
         typename std::enable_if<! std::is_integral<Index>::value, bool>::type* = nullptr>
     bool includes(const Index& index) const {
       TA_ASSERT(detail::size(index) == rank_);
-      const size_type* restrict const lower  = data_;
-      const size_type* restrict const upper = lower + rank_;
+      const size_type* MADNESS_RESTRICT const lower  = data_;
+      const size_type* MADNESS_RESTRICT const upper = lower + rank_;
 
       bool result = (rank_ > 0u);
       auto it = std::begin(index); // TODO C++14 switch to std::cbegin
@@ -718,10 +718,10 @@ namespace TiledArray {
       const unsigned int n = detail::size(bound_shift);
       TA_ASSERT(n == rank_);
 
-      const auto* restrict const bound_shift_data = detail::data(bound_shift);
-      size_type* restrict const lower = data_;
-      size_type* restrict const upper = data_ + rank_;
-      const size_type* restrict const stride = upper + rank_ + rank_;
+      const auto* MADNESS_RESTRICT const bound_shift_data = detail::data(bound_shift);
+      size_type* MADNESS_RESTRICT const lower = data_;
+      size_type* MADNESS_RESTRICT const upper = data_ + rank_;
+      const size_type* MADNESS_RESTRICT const stride = upper + rank_ + rank_;
 
       offset_ = 0ul;
       for(unsigned i = 0u; i < rank_; ++i) {
@@ -781,7 +781,7 @@ namespace TiledArray {
       TA_ASSERT(detail::size(index) == rank_);
       TA_ASSERT(includes(index));
 
-      size_type* restrict const stride = data_ + rank_ + rank_ + rank_;
+      size_type* MADNESS_RESTRICT const stride = data_ + rank_ + rank_ + rank_;
 
       size_type result = 0ul;
       auto index_it = std::begin(index);
@@ -822,9 +822,9 @@ namespace TiledArray {
       Range_::index result(rank_, 0);
 
       // Get pointers to the data
-      size_type * restrict const result_data = result.data();
-      size_type const * restrict const lower = data_;
-      size_type const * restrict const size = data_ + rank_ + rank_;
+      size_type * MADNESS_RESTRICT const result_data = result.data();
+      size_type const * MADNESS_RESTRICT const lower = data_;
+      size_type const * MADNESS_RESTRICT const size = data_ + rank_ + rank_;
 
       // Compute the coordinate index of index in range.
       for(int i = int(rank_) - 1; i >= 0; --i) {
@@ -918,8 +918,8 @@ namespace TiledArray {
     void increment(index& i) const {
       TA_ASSERT(includes(i));
 
-      size_type const * restrict const lower = data_;
-      size_type const * restrict const upper = data_ + rank_;
+      size_type const * MADNESS_RESTRICT const lower = data_;
+      size_type const * MADNESS_RESTRICT const upper = data_ + rank_;
 
       for(int d = int(rank_) - 1; d >= 0; --d) {
         // increment coordinate
@@ -972,8 +972,8 @@ namespace TiledArray {
     TA_ASSERT(perm.dim() == rank_);
     if(rank_ > 1ul) {
       // Copy the lower and upper bound data into a temporary array
-      size_type* restrict const temp_lower = new size_type[rank_ << 1];
-      const size_type* restrict const temp_upper = temp_lower + rank_;
+      size_type* MADNESS_RESTRICT const temp_lower = new size_type[rank_ << 1];
+      const size_type* MADNESS_RESTRICT const temp_upper = temp_lower + rank_;
       std::memcpy(temp_lower, data_, (sizeof(size_type) << 1) * rank_);
 
       init_range_data(perm, temp_lower, temp_upper);

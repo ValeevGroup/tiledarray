@@ -162,9 +162,9 @@ namespace TiledArray {
         std::vector<std::size_t> trange1_data;
 
         // Get temporary data pointers
-        const auto* restrict const trange = array_.trange().data().data();
-        const auto* restrict const lower = lower_bound_.data();
-        const auto* restrict const upper = upper_bound_.data();
+        const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
+        const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
+        const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
 
         for(unsigned int d = 0u; d < rank; ++d) {
           // Copy the tiling for the block
@@ -198,9 +198,9 @@ namespace TiledArray {
         std::vector<std::size_t> trange1_data;
 
         // Get temporary data pointers
-        const auto* restrict const trange = array_.trange().data().data();
-        const auto* restrict const lower = lower_bound_.data();
-        const auto* restrict const upper = upper_bound_.data();
+        const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
+        const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
+        const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
 
         // Construct the inverse permutation
         const Permutation inv_perm = -perm;
@@ -340,8 +340,8 @@ namespace TiledArray {
         range_shift.reserve(rank);
 
         // Get temporary data pointers
-        const auto* restrict const trange = array_.trange().data().data();
-        const auto* restrict const lower = lower_bound_.data();
+        const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
+        const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
 
         // Initialize the range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {
@@ -364,8 +364,8 @@ namespace TiledArray {
         std::vector<long> range_shift(rank, 0l);
 
         // Get temporary data pointers
-        const auto* restrict const trange = array_.trange().data().data();
-        const auto* restrict const lower = lower_bound_.data();
+        const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
+        const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
 
         // Initialize the permuted range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {
@@ -471,8 +471,8 @@ namespace TiledArray {
         range_shift.reserve(rank);
 
         // Get temporary data pointers
-        const auto* restrict const trange = array_.trange().data().data();
-        const auto* restrict const lower = lower_bound_.data();
+        const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
+        const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
 
         // Construct the inverse permutation
         for(unsigned int d = 0u; d < rank; ++d) {
@@ -495,8 +495,8 @@ namespace TiledArray {
         std::vector<long> range_shift(rank, 0l);
 
         // Get temporary data pointers
-        const auto* restrict const trange = array_.trange().data().data();
-        const auto* restrict const lower = lower_bound_.data();
+        const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
+        const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
 
         // Initialize the permuted range shift vector
         for(unsigned int d = 0u; d < rank; ++d) {

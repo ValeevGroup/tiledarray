@@ -60,13 +60,13 @@ namespace TiledArray {
       block_offset_ = 0ul;
 
       // Construct temp pointers
-      const auto* restrict const range_stride = range.stride_data();
-      const auto* restrict const lower_bound_ptr = detail::data(lower_bound);
-      const auto* restrict const upper_bound_ptr = detail::data(upper_bound);
-      auto* restrict const lower  = data_;
-      auto* restrict const upper  = lower + rank_;
-      auto* restrict const extent = upper + rank_;
-      auto* restrict const stride = extent + rank_;
+      const auto* MADNESS_RESTRICT const range_stride = range.stride_data();
+      const auto* MADNESS_RESTRICT const lower_bound_ptr = detail::data(lower_bound);
+      const auto* MADNESS_RESTRICT const upper_bound_ptr = detail::data(upper_bound);
+      auto* MADNESS_RESTRICT const lower  = data_;
+      auto* MADNESS_RESTRICT const upper  = lower + rank_;
+      auto* MADNESS_RESTRICT const extent = upper + rank_;
+      auto* MADNESS_RESTRICT const stride = extent + rank_;
 
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
@@ -152,8 +152,8 @@ namespace TiledArray {
       ordinal_type result = 0ul;
 
       // Get pointers to the data
-      const auto * restrict const size = data_ + rank_ + rank_;
-      const auto * restrict const stride = size + rank_;
+      const auto * MADNESS_RESTRICT const size = data_ + rank_ + rank_;
+      const auto * MADNESS_RESTRICT const stride = size + rank_;
 
       // Compute the coordinate index of o in range.
       for(int i = int(rank_) - 1; i >= 0; --i) {

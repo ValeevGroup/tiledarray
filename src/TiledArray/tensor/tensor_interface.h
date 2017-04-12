@@ -192,7 +192,7 @@ namespace TiledArray {
       TensorInterface_& operator=(const T1& other) {
         TA_ASSERT(data_ != other.data());
 
-        detail::inplace_tensor_op([] (numeric_type& restrict result,
+        detail::inplace_tensor_op([] (numeric_type& MADNESS_RESTRICT result,
             const numeric_t<T1> arg)
             { result = arg; }, *this, other);
 
@@ -414,7 +414,7 @@ namespace TiledArray {
       template <typename Scalar,
           typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
       TensorInterface_& scale_to(const Scalar factor) {
-        return inplace_unary([=] (numeric_type& restrict res) { res *= factor; });
+        return inplace_unary([=] (numeric_type& MADNESS_RESTRICT res) { res *= factor; });
       }
 
 
@@ -515,7 +515,7 @@ namespace TiledArray {
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       TensorInterface_& add_to(const Right& right) {
-        return inplace_binary(right, [] (numeric_type& restrict l,
+        return inplace_binary(right, [] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { l += r; });
       }
@@ -531,7 +531,7 @@ namespace TiledArray {
           typename std::enable_if<is_tensor<Right>::value &&
           detail::is_numeric<Scalar>::value>::type* = nullptr>
       TensorInterface_& add_to(const Right& right, const Scalar factor) {
-        return inplace_binary(right, [=] (numeric_type& restrict l,
+        return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { (l += r) *= factor; });
       }
@@ -541,7 +541,7 @@ namespace TiledArray {
       /// \param value The constant to be added
       /// \return A reference to this tensor
       TensorInterface_& add_to(const numeric_type value) {
-        return inplace_unary([=] (numeric_type& restrict res) { res += value; });
+        return inplace_unary([=] (numeric_type& MADNESS_RESTRICT res) { res += value; });
       }
 
       // Subtraction operations
@@ -638,7 +638,7 @@ namespace TiledArray {
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       TensorInterface_& subt_to(const Right& right) {
-        return inplace_binary(right, [] (numeric_type& restrict l,
+        return inplace_binary(right, [] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { l -= r; });
       }
@@ -654,7 +654,7 @@ namespace TiledArray {
           typename std::enable_if<is_tensor<Right>::value &&
           detail::is_numeric<Scalar>::value>::type* = nullptr>
       TensorInterface_& subt_to(const Right& right, const Scalar factor) {
-        return inplace_binary(right, [=] (numeric_type& restrict l,
+        return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { (l -= r) *= factor; });
       }
@@ -742,7 +742,7 @@ namespace TiledArray {
       template <typename Right,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       TensorInterface_& mult_to(const Right& right) {
-        return inplace_binary(right, [] (numeric_type& restrict l,
+        return inplace_binary(right, [] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { l *= r; });
       }
@@ -758,7 +758,7 @@ namespace TiledArray {
           typename std::enable_if<is_tensor<Right>::value &&
           detail::is_numeric<Scalar>::value>::type* = nullptr>
       TensorInterface_& mult_to(const Right& right, const Scalar factor) {
-        return inplace_binary(right, [=] (numeric_type& restrict l,
+        return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { (l *= r) *= factor; });
       }
@@ -785,7 +785,7 @@ namespace TiledArray {
 
       /// \return A reference to this tensor
       TensorInterface_& neg_to() {
-        return inplace_unary([] (numeric_type& restrict l) { l = -l; });
+        return inplace_unary([] (numeric_type& MADNESS_RESTRICT l) { l = -l; });
       }
 
 
@@ -887,7 +887,7 @@ namespace TiledArray {
 
       /// \return The sum of all elements of this tensor
       numeric_type sum() const {
-        auto sum_op = [] (numeric_type& restrict res, const numeric_type arg)
+        auto sum_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res += arg; };
         return reduce(sum_op, sum_op, numeric_type(0));
       }
@@ -896,7 +896,7 @@ namespace TiledArray {
 
       /// \return The product of all elements of this tensor
       numeric_type product() const {
-        auto mult_op = [] (numeric_type& restrict res, const numeric_type arg)
+        auto mult_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res *= arg; };
         return reduce(mult_op, mult_op, numeric_type(1));
       }
@@ -905,9 +905,9 @@ namespace TiledArray {
 
       /// \return The vector norm of this tensor
       scalar_type squared_norm() const {
-        auto square_op = [] (scalar_type& restrict res, const numeric_type arg)
+        auto square_op = [] (scalar_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res += TiledArray::detail::norm(arg); };
-        auto sum_op = [] (scalar_type& restrict res, const scalar_type arg)
+        auto sum_op = [] (scalar_type& MADNESS_RESTRICT res, const scalar_type arg)
                 { res += arg; };
         return reduce(square_op, sum_op, numeric_type(0));
       }
@@ -923,7 +923,7 @@ namespace TiledArray {
 
       /// \return The minimum elements of this tensor
       numeric_type min() const {
-        auto min_op = [] (numeric_type& restrict res, const numeric_type arg)
+        auto min_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res = std::min(res, arg); };
         return reduce(min_op, min_op, std::numeric_limits<numeric_type>::max());
       }
@@ -932,7 +932,7 @@ namespace TiledArray {
 
       /// \return The maximum elements of this tensor
       numeric_type max() const {
-        auto max_op = [] (numeric_type& restrict res, const numeric_type arg)
+        auto max_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res = std::max(res, arg); };
         return reduce(max_op, max_op, std::numeric_limits<numeric_type>::min());
       }
@@ -941,9 +941,9 @@ namespace TiledArray {
 
       /// \return The minimum elements of this tensor
       numeric_type abs_min() const {
-        auto abs_min_op = [] (numeric_type& restrict res, const numeric_type arg)
+        auto abs_min_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res = std::min(res, std::abs(arg)); };
-        auto min_op = [] (numeric_type& restrict res, const numeric_type arg)
+        auto min_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res = std::min(res, arg); };
         return reduce(abs_min_op, min_op, std::numeric_limits<numeric_type>::max());
       }
@@ -952,9 +952,9 @@ namespace TiledArray {
 
       /// \return The maximum elements of this tensor
       numeric_type abs_max() const {
-        auto abs_max_op = [] (numeric_type& restrict res, const numeric_type arg)
+        auto abs_max_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res = std::max(res, std::abs(arg)); };
-        auto max_op = [] (numeric_type& restrict res, const numeric_type arg)
+        auto max_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type arg)
                 { res = std::max(res, arg); };
         return reduce(abs_max_op, max_op, numeric_type(0));
       }
@@ -970,7 +970,7 @@ namespace TiledArray {
         auto mult_add_op = [] (numeric_type& res, const numeric_type l,
                   const numeric_t<Right> r)
                   { res += l * r; };
-        auto add_op = [] (numeric_type& restrict res, const numeric_type value)
+        auto add_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type value)
               { res += value; };
         return reduce(other, mult_add_op, add_op, numeric_type(0));
       }

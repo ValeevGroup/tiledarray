@@ -63,11 +63,11 @@ namespace TiledArray {
 
       template <typename U>
       typename std::enable_if<std::is_scalar<U>::value>::type
-      default_construct(const size_type, U* restrict) { }
+      default_construct(const size_type, U* MADNESS_RESTRICT) { }
 
       template <typename U>
       typename std::enable_if<! std::is_scalar<U>::value>::type
-      default_construct(const size_type n, U* restrict u) {
+      default_construct(const size_type n, U* MADNESS_RESTRICT u) {
         size_type i = 0ul;
         try {
           for(; i < n; ++i)
@@ -139,7 +139,7 @@ namespace TiledArray {
       }
 
       template <typename Arg, typename Op>
-      ValArray(const size_type n, const Arg* restrict const arg, const Op& op) :
+      ValArray(const size_type n, const Arg* MADNESS_RESTRICT const arg, const Op& op) :
         SizeArray<T>(), counter_(NULL)
       {
         init(n);
@@ -155,8 +155,8 @@ namespace TiledArray {
       }
 
       template <typename Left, typename Right, typename Op>
-      ValArray(const size_type n, const Left* restrict const left,
-          const Right* restrict const right, const Op& op) :
+      ValArray(const size_type n, const Left* MADNESS_RESTRICT const left,
+          const Right* MADNESS_RESTRICT const right, const Op& op) :
         SizeArray<T>(), counter_(NULL)
       {
         init(n);
