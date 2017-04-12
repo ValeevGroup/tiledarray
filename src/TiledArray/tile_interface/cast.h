@@ -27,6 +27,7 @@
 #define TILEDARRAY_TILE_INTERFACE_CAST_H__INCLUDED
 
 #include "../type_traits.h"
+#include "../meta.h"
 
 namespace TiledArray {
 
@@ -50,7 +51,17 @@ namespace TiledArray {
 
        typedef Result result_type; ///< Result tile type
        typedef Arg argument_type; ///< Argument tile type
+       static const constexpr bool is_nonblocking =
+           detail::has_conversion_operator<argument_type,
+                                           madness::Future<result_type>>::value;
 
+       // basic type sanity checks
+       static_assert(
+           std::is_same<result_type, std::decay_t<result_type>>::value,
+           "Cast<Result,Arg>: Result must be a non-const non-ref type");
+       static_assert(
+           std::is_same<argument_type, std::decay_t<argument_type>>::value,
+           "Cast<Result,Arg>: Arg must be a non-const non-ref type");
        static_assert(
            detail::has_conversion_operator<
                argument_type, madness::Future<result_type>>::value ||
@@ -63,7 +74,10 @@ namespace TiledArray {
                  typename = std::enable_if_t<detail::is_convertible<
                      std::decay_t<Arg_>, Result_>::value>>
        static auto invoker(Arg_&& arg) {
-         return Result_(arg);
+         auto exec = [](Arg_&& arg) {
+           return Result_(argument_type(arg));
+         };
+         return TiledArray::meta::invoke(exec, arg);
        }
        template <typename Result_, typename Arg_>
        static auto invoker(
@@ -71,17 +85,19 @@ namespace TiledArray {
            std::enable_if_t<detail::has_conversion_operator<
                std::decay_t<Arg_>, madness::Future<Result_>>::value>* =
                nullptr) {
-         return static_cast<madness::Future<Result_>>(arg);
+         auto exec = [](Arg_&& arg) {
+           return static_cast<madness::Future<Result_>>(arg);
+         };
+         return TiledArray::meta::invoke(exec, arg);
        }
 
       public:
 
        /// this converts an Arg object to a Result object
-       auto operator()(const argument_type& arg) const {
-         return this->invoker<result_type>(arg);
-       }
-       /// this converts an Arg object to a Result object
-       auto operator()(argument_type&& arg) const {
+       /// \note get the argument by universal ref as a step towards moving conversions
+       template <typename Arg_, typename = std::enable_if_t<std::is_same<
+                                    argument_type, std::decay_t<Arg_>>::value>>
+       auto operator()(Arg_&& arg) const {
          return this->invoker<result_type>(arg);
        }
 
@@ -94,19 +110,22 @@ namespace TiledArray {
     /// evaluation type.
     /// \tparam Result The output tile type
     /// \tparam Arg The input tile type
+    /// \note this specialization is invoked when Arg is a lazy tile (see TiledArray::is_lazy_tile)
+    ///       that evaluates to something other than Result.
     template <typename Result, typename Arg>
     class Cast<Result, Arg,
         typename std::enable_if<
             is_lazy_tile<Arg>::value &&
             ! std::is_same<Result, typename TiledArray::eval_trait<Arg>::type>::value
-        >::type> :
-        public TiledArray::Cast<Result, typename TiledArray::eval_trait<Arg>::type>
+        >::type>
     {
     private:
-      typedef TiledArray::Cast<Result, typename TiledArray::eval_trait<Arg>::type>
-          Cast_; ///< Base class type
       typedef typename TiledArray::eval_trait<Arg>::type
           eval_type; ///< Lazy tile evaluation type
+      typedef TiledArray::Cast<eval_type, Arg>
+          arg_to_eval_caster_type; ///< this converts Arg to eval_type
+      typedef TiledArray::Cast<Result, eval_type>
+          eval_to_result_caster_type; ///< this converts eval_type to Result
     public:
 
       typedef Result result_type; ///< Result tile type
@@ -117,8 +136,14 @@ namespace TiledArray {
       /// Cast arg to a `result_type` tile
       /// \param arg The tile to be cast
       /// \return A cast copy of `arg`
-      result_type operator()(const argument_type& arg) const {
-        return Cast_::operator()(static_cast<eval_type>(arg));
+      /// \note get the argument by universal ref as a step towards moving conversions
+      template <typename Arg_, typename = std::enable_if_t<std::is_same<
+                                   argument_type, std::decay_t<Arg_>>::value>>
+      auto operator()(Arg_&& arg) const {
+        arg_to_eval_caster_type cast_to_eval;
+        eval_to_result_caster_type cast_to_result;
+        using TiledArray::meta::invoke;
+        return invoke(cast_to_result, invoke(cast_to_eval, arg));
       }
 
     }; // class Cast

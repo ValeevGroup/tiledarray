@@ -131,7 +131,7 @@ namespace TiledArray {
       /// \param arg The argument
       /// \return The result tile from the unary operation applied to the
       /// \c arg .
-      result_type operator()(argument_type& arg) const {
+      auto operator()(argument_type& arg) const {
         return (perm_ ? op_(arg, perm_) : op_(arg) );
       }
 
@@ -140,7 +140,7 @@ namespace TiledArray {
       /// \param arg The argument
       /// \return The result tile from the unary operation applied to the
       /// \c arg .
-      result_type operator()(const argument_type& arg) const {
+      auto operator()(const argument_type& arg) const {
         return (perm_ ? op_(arg, perm_) : op_(arg) );
       }
 
@@ -160,8 +160,10 @@ namespace TiledArray {
               is_lazy_tile_t<A>::value && (! is_array_tile_t<A>::value)
           >::type* = nullptr>
       auto operator()(A&& arg) const {
-        auto cast = Cast<eval_t<A>,A>{};
-        return (perm_ ? op_(cast(arg), perm_) : op_(cast(arg)) );
+        auto cast = Cast<eval_t<A>,decay_t<A>>{};
+        using TiledArray::meta::invoke;
+        auto cast_arg = invoke(cast, arg);
+        return (perm_ ? invoke(op_, cast_arg, perm_) : invoke(op_, cast_arg) );
       }
 
 
@@ -178,10 +180,15 @@ namespace TiledArray {
               is_array_tile_t<A>::value
           >::type* = nullptr>
       result_type operator()(A&& arg) const {
-        eval_t<A> eval_arg(arg);
+        auto cast = Cast<eval_t<A>,decay_t<A>>{};
+        using TiledArray::meta::invoke;
+        auto cast_arg = invoke(cast, arg);
+        auto op_consume = [this](auto arg) {
+          return op_.consume(arg);
+        };
         return (perm_ ?
-           op_(eval_arg, perm_) :
-           (arg.is_consumable() ? op_.consume(eval_arg) : op_(eval_arg) ));
+           invoke(op_, cast_arg, perm_) :
+           (arg.is_consumable() ? invoke(op_consume, cast_arg) : invoke(op_, cast_arg) ));
       }
 
       /// Consume lazy tile
