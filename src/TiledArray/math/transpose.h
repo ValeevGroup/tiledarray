@@ -45,8 +45,8 @@ namespace TiledArray {
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      gather_trans(Op&& op, Result* restrict const result,
-          const std::size_t arg_stride, const Args* restrict const... args)
+      gather_trans(Op&& op, Result* MADNESS_RESTRICT const result,
+          const std::size_t arg_stride, const Args* MADNESS_RESTRICT const... args)
       {
         // Load arg block
         Block<Result> result_block;
@@ -76,8 +76,8 @@ namespace TiledArray {
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      gather_trans(Op&& op, Result* restrict const result,
-          const std::size_t arg_stride, const Args* restrict const... args)
+      gather_trans(Op&& op, Result* MADNESS_RESTRICT const result,
+          const std::size_t arg_stride, const Args* MADNESS_RESTRICT const... args)
       {
         {
           // Load arg block
@@ -130,8 +130,8 @@ namespace TiledArray {
     TILEDARRAY_FORCE_INLINE void
     transpose_block(InputOp&& input_op, OutputOp&& output_op,
         const std::size_t m, const std::size_t n,
-        const std::size_t result_stride, Result* restrict const result,
-        const std::size_t arg_stride, const Args* restrict const... args)
+        const std::size_t result_stride, Result* MADNESS_RESTRICT const result,
+        const std::size_t arg_stride, const Args* MADNESS_RESTRICT const... args)
     {
       TA_ASSERT(m <= TILEDARRAY_LOOP_UNWIND);
       TA_ASSERT(n <= TILEDARRAY_LOOP_UNWIND);
@@ -148,8 +148,8 @@ namespace TiledArray {
 
       // Copy the temp block into result
       for(std::size_t j = 0ul; j < n; ++j) {
-        Result* restrict const result_j = result + (j * result_stride);
-        const Result* restrict const temp_j = temp + (j * TILEDARRAY_LOOP_UNWIND);
+        Result* MADNESS_RESTRICT const result_j = result + (j * result_stride);
+        const Result* MADNESS_RESTRICT const temp_j = temp + (j * TILEDARRAY_LOOP_UNWIND);
         for(std::size_t i = 0ul; i < m; ++i)
           output_op(result_j + i, temp_j[i]);
       }

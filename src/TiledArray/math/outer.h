@@ -143,7 +143,7 @@ namespace TiledArray {
       template <typename X, typename Y, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
       fill(const X* const x_block, const Y* const y_block,
-          Result* restrict const result, const std::size_t stride, const Op& op)
+          Result* MADNESS_RESTRICT const result, const std::size_t stride, const Op& op)
       {
         {
           TILEDARRAY_ALIGNED_STORAGE Result result_block[TILEDARRAY_LOOP_UNWIND];
@@ -327,8 +327,8 @@ namespace TiledArray {
     /// \param[in] op The operation that will compute the outer product elements
     template <typename X, typename Y, typename A, typename B, typename Op>
     void outer_fill(const std::size_t m, const std::size_t n,
-        const X* restrict const x, const Y* restrict const y,
-        const A* restrict a, B* restrict b, const Op& op)
+        const X* MADNESS_RESTRICT const x, const Y* MADNESS_RESTRICT const y,
+        const A* MADNESS_RESTRICT a, B* MADNESS_RESTRICT b, const Op& op)
     {
       std::size_t i = 0ul;
 

@@ -165,10 +165,10 @@ namespace TiledArray {
       template <typename R, typename Left, typename Right>
       R make_result_range(const Left& left, const Right& right) const {
         // Get pointers to lower and upper bounds of left and right.
-        const auto* restrict const left_lower = left.lobound_data();
-        const auto* restrict const left_upper = left.upbound_data();
-        const auto* restrict const right_lower = right.lobound_data();
-        const auto* restrict const right_upper = right.upbound_data();
+        const auto* MADNESS_RESTRICT const left_lower = left.lobound_data();
+        const auto* MADNESS_RESTRICT const left_upper = left.upbound_data();
+        const auto* MADNESS_RESTRICT const right_lower = right.lobound_data();
+        const auto* MADNESS_RESTRICT const right_upper = right.upbound_data();
 
         // Create the start and finish indices
         std::vector<std::size_t> lower, upper;
@@ -255,8 +255,8 @@ namespace TiledArray {
         // Check that the arguments are not empty and have the correct ranks
         TA_ASSERT(left.rank() == left_.rank);
         TA_ASSERT(right.rank() == right_.rank);
-        const auto* restrict const left_extent = left.extent_data();
-        const auto* restrict const right_extent = right.extent_data();
+        const auto* MADNESS_RESTRICT const left_extent = left.extent_data();
+        const auto* MADNESS_RESTRICT const right_extent = right.extent_data();
 
         // Compute fused dimension sizes
         m = 1;

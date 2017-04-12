@@ -76,8 +76,8 @@ namespace TiledArray {
       template <typename U>
       ShiftWrapper<T>& operator=(U&& other) {
         typedef typename std::decay<U>::type arg_type;
-        detail::inplace_tensor_op([] (reference restrict l,
-            typename arg_type::const_reference restrict r) { l = r; },
+        detail::inplace_tensor_op([] (reference MADNESS_RESTRICT l,
+            typename arg_type::const_reference MADNESS_RESTRICT r) { l = r; },
             *this, other);
         return *this;
       }

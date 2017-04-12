@@ -46,8 +46,8 @@ namespace TiledArray {
 
       template <typename Left, typename Right, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      row_reduce(const Left* restrict const left, const std::size_t,
-          const Right* restrict const right, Result* restrict const result,
+      row_reduce(const Left* MADNESS_RESTRICT const left, const std::size_t,
+          const Right* MADNESS_RESTRICT const right, Result* MADNESS_RESTRICT const result,
           const Op& op)
       {
         // Load the left block
@@ -59,8 +59,8 @@ namespace TiledArray {
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      row_reduce(const Arg* restrict const arg, const std::size_t,
-          Result* restrict const result, const Op& op)
+      row_reduce(const Arg* MADNESS_RESTRICT const arg, const std::size_t,
+          Result* MADNESS_RESTRICT const result, const Op& op)
       {
         // Load the left block
         TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
@@ -71,8 +71,8 @@ namespace TiledArray {
 
       template <typename Left, typename Right, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      col_reduce(const Left* restrict const left, const std::size_t /*stride*/,
-          const Right* restrict const right, Result* restrict const result,
+      col_reduce(const Left* MADNESS_RESTRICT const left, const std::size_t /*stride*/,
+          const Right* MADNESS_RESTRICT const right, Result* MADNESS_RESTRICT const result,
           const Op& op)
       {
         // Load right block
@@ -89,8 +89,8 @@ namespace TiledArray {
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      col_reduce(const Arg* restrict const arg, const std::size_t /*stride*/,
-          Result* restrict const result, const Op& op)
+      col_reduce(const Arg* MADNESS_RESTRICT const arg, const std::size_t /*stride*/,
+          Result* MADNESS_RESTRICT const result, const Op& op)
       {
         // Load the arg block
         TILEDARRAY_ALIGNED_STORAGE Arg arg_block[TILEDARRAY_LOOP_UNWIND];
@@ -112,8 +112,8 @@ namespace TiledArray {
 
       template <typename Left, typename Right, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      row_reduce(const Left* restrict const left, const std::size_t stride,
-          const Right* restrict const right, Result* restrict const result,
+      row_reduce(const Left* MADNESS_RESTRICT const left, const std::size_t stride,
+          const Right* MADNESS_RESTRICT const right, Result* MADNESS_RESTRICT const result,
           const Op& op)
       {
         {
@@ -130,8 +130,8 @@ namespace TiledArray {
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      row_reduce(const Arg* restrict const arg, const std::size_t stride,
-          Result* restrict const result, const Op& op)
+      row_reduce(const Arg* MADNESS_RESTRICT const arg, const std::size_t stride,
+          Result* MADNESS_RESTRICT const result, const Op& op)
       {
         {
           // Load the left block
@@ -147,8 +147,8 @@ namespace TiledArray {
 
       template <typename Left, typename Right, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      col_reduce(const Left* restrict const left, const std::size_t stride,
-          const Right* restrict const right, Result* restrict const result,
+      col_reduce(const Left* MADNESS_RESTRICT const left, const std::size_t stride,
+          const Right* MADNESS_RESTRICT const right, Result* MADNESS_RESTRICT const result,
           const Op& op)
       {
         {
@@ -168,8 +168,8 @@ namespace TiledArray {
 
       template <typename Arg, typename Result, typename Op>
       static TILEDARRAY_FORCE_INLINE void
-      col_reduce(const Arg* restrict const arg, const std::size_t stride,
-          Result* restrict const result, const Op& op)
+      col_reduce(const Arg* MADNESS_RESTRICT const arg, const std::size_t stride,
+          Result* MADNESS_RESTRICT const result, const Op& op)
       {
         {
           // Load the left block
@@ -202,8 +202,8 @@ namespace TiledArray {
     /// \param[in] op The operation that will reduce the rows of left
     template <typename Left, typename Right, typename Result, typename Op>
     void row_reduce(const std::size_t m, const std::size_t n,
-        const Left* restrict const left, const Right* restrict const right,
-        Result* restrict const result, const Op& op)
+        const Left* MADNESS_RESTRICT const left, const Right* MADNESS_RESTRICT const right,
+        Result* MADNESS_RESTRICT const result, const Op& op)
     {
       std::size_t i = 0ul;
 
@@ -218,7 +218,7 @@ namespace TiledArray {
         copy_block(result_block, result + i);
 
         // Compute left pointer offset
-        const Left* restrict const left_i = left + (i * n);
+        const Left* MADNESS_RESTRICT const left_i = left + (i * n);
 
         std::size_t j = 0ul;
         for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
@@ -272,7 +272,7 @@ namespace TiledArray {
     /// \param[in] op The operation that will reduce the rows of left
     template <typename Arg, typename Result, typename Op>
     void row_reduce(const std::size_t m, const std::size_t n,
-        const Arg* restrict const arg,  Result* restrict const result, const Op& op)
+        const Arg* MADNESS_RESTRICT const arg,  Result* MADNESS_RESTRICT const result, const Op& op)
     {
       std::size_t i = 0ul;
 
@@ -287,7 +287,7 @@ namespace TiledArray {
         copy_block(result_block, result + i);
 
         // Compute left pointer offset
-        const Arg* restrict const arg_i = arg + (i * n);
+        const Arg* MADNESS_RESTRICT const arg_i = arg + (i * n);
 
         std::size_t j = 0ul;
         for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
@@ -334,8 +334,8 @@ namespace TiledArray {
     /// \param[in] op The operation that will reduce the columns of left
     template <typename Left, typename Right, typename Result, typename Op>
     void col_reduce(const std::size_t m, const std::size_t n,
-        const Left* restrict const left, const Right* restrict const right,
-        Result* restrict const result, const Op& op)
+        const Left* MADNESS_RESTRICT const left, const Right* MADNESS_RESTRICT const right,
+        Result* MADNESS_RESTRICT const result, const Op& op)
     {
       std::size_t i = 0ul;
 
@@ -350,7 +350,7 @@ namespace TiledArray {
         copy_block(right_block, right + i);
 
         // Compute left pointer offset
-        const Left* restrict const left_i = left + (i * n);
+        const Left* MADNESS_RESTRICT const left_i = left + (i * n);
 
         std::size_t j = 0ul;
         for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {
@@ -406,7 +406,7 @@ namespace TiledArray {
     /// \param[in] op The operation that will reduce the columns of left
     template <typename Arg, typename Result, typename Op>
     void col_reduce(const std::size_t m, const std::size_t n,
-        const Arg* restrict const arg, Result* restrict const result, const Op& op)
+        const Arg* MADNESS_RESTRICT const arg, Result* MADNESS_RESTRICT const result, const Op& op)
     {
       std::size_t i = 0ul;
 
@@ -417,7 +417,7 @@ namespace TiledArray {
       for(; i < mx; i += TILEDARRAY_LOOP_UNWIND) {
 
         // Compute left pointer offset
-        const Arg* restrict const arg_i = arg + (i * n);
+        const Arg* MADNESS_RESTRICT const arg_i = arg + (i * n);
 
         std::size_t j = 0ul;
         for(; j < nx; j += TILEDARRAY_LOOP_UNWIND) {

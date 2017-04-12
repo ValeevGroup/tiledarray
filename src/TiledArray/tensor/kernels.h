@@ -212,12 +212,12 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == tensor1.range().rank());
 
-      auto wrapper_input_op = [=] (typename T1::const_reference restrict value1,
-        typename Ts::const_reference restrict... values) ->
+      auto wrapper_input_op = [=] (typename T1::const_reference MADNESS_RESTRICT value1,
+        typename Ts::const_reference MADNESS_RESTRICT... values) ->
         typename T1::value_type
         { return tensor_op<TR::value_type>(input_op, value1, values...); };
 
-      auto wrapper_output_op = [=] (typename T1::pointer restrict const result_value,
+      auto wrapper_output_op = [=] (typename T1::pointer MADNESS_RESTRICT const result_value,
                                     const typename TR::value_type value)
       { inplace_tensor_op(output_op, *result_value, value); };
 
@@ -271,8 +271,8 @@ namespace TiledArray {
       const auto volume = result.range().volume();
 
       auto inplace_tensor_range =
-          [=] (typename TR::pointer restrict const result_data,
-          typename Ts::const_pointer restrict const... tensors_data)
+          [=] (typename TR::pointer MADNESS_RESTRICT const result_data,
+          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data)
           {
             for(decltype(result.range().volume()) i = 0ul; i < stride; ++i)
               inplace_tensor_op(op, result_data[i], tensors_data[i]...);
@@ -307,8 +307,8 @@ namespace TiledArray {
 
       const auto volume = result.range().volume();
 
-      auto wrapper_op = [=] (typename TR::pointer restrict result,
-              typename Ts::const_reference restrict... ts)
+      auto wrapper_op = [=] (typename TR::pointer MADNESS_RESTRICT result,
+              typename Ts::const_reference MADNESS_RESTRICT... ts)
           { new(result) typename TR::value_type(op(ts...)); };
 
       math::vector_ptr_op(wrapper_op, volume, result.data(), tensors.data()...);
@@ -366,8 +366,8 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == result.range().rank());
 
-      auto output_op = [=] (typename TR::pointer restrict result,
-          typename TR::const_reference  restrict temp)
+      auto output_op = [=] (typename TR::pointer MADNESS_RESTRICT result,
+          typename TR::const_reference  MADNESS_RESTRICT temp)
           { new(result) typename TR::value_type(temp); };
 
       permute(op, output_op, result, perm, tensor1, tensors...);
@@ -399,11 +399,11 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == result.range().rank());
 
-      auto output_op = [=] (typename TR::pointer restrict result,
-          typename TR::const_reference  restrict temp)
+      auto output_op = [=] (typename TR::pointer MADNESS_RESTRICT result,
+          typename TR::const_reference  MADNESS_RESTRICT temp)
           { new(result) typename TR::value_type(temp); };
-      auto tensor_input_op = [=] (typename T1::const_reference restrict value1,
-          typename Ts::const_reference restrict... values) ->
+      auto tensor_input_op = [=] (typename T1::const_reference MADNESS_RESTRICT value1,
+          typename Ts::const_reference MADNESS_RESTRICT... values) ->
           typename TR::value_type
           { return tensor_op<typename TR::value_type>(op, value1, values...); };
 
@@ -436,7 +436,7 @@ namespace TiledArray {
       const auto stride = inner_size(tensor1, tensors...);
       const auto volume = tensor1.range().volume();
 
-      auto wrapper_op = [=] (typename TR::pointer restrict result_ptr,
+      auto wrapper_op = [=] (typename TR::pointer MADNESS_RESTRICT result_ptr,
               const typename T1::value_type value1,
               const typename Ts::value_type... values)
           { new(result_ptr) typename T1::value_type(op(value1, values...)); };
@@ -474,9 +474,9 @@ namespace TiledArray {
 
 
       auto inplace_tensor_range =
-          [=] (typename TR::pointer restrict const result_data,
-              typename T1::const_pointer restrict const tensor1_data,
-              typename Ts::const_pointer restrict const... tensors_data)
+          [=] (typename TR::pointer MADNESS_RESTRICT const result_data,
+              typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
+              typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data)
           {
             for(decltype(result.range().volume()) i = 0ul; i < stride; ++i)
               new(result_data + i)
@@ -626,9 +626,9 @@ namespace TiledArray {
       const auto volume = tensor1.range().volume();
 
       auto tensor_reduce_range =
-          [=] (Scalar& restrict result,
-              typename T1::const_pointer restrict const tensor1_data,
-              typename Ts::const_pointer restrict const... tensors_data)
+          [=] (Scalar& MADNESS_RESTRICT result,
+              typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
+              typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data)
           {
             for(decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
               Scalar temp = tensor_reduce(reduce_op, join_op, identity,

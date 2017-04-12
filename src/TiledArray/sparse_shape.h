@@ -109,7 +109,7 @@ namespace TiledArray {
     void normalize() {
       const value_type threshold = threshold_;
       const unsigned int dim = tile_norms_.range().rank();
-      const vector_type* restrict const size_vectors = size_vectors_.get();
+      const vector_type* MADNESS_RESTRICT const size_vectors = size_vectors_.get();
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
 
@@ -496,8 +496,8 @@ namespace TiledArray {
 
       // Get the number dimensions of the shape
       const auto rank = detail::size(lower_bound);
-      const auto* restrict const lower = detail::data(lower_bound);
-      const auto* restrict const upper = detail::data(upper_bound);
+      const auto* MADNESS_RESTRICT const lower = detail::data(lower_bound);
+      const auto* MADNESS_RESTRICT const upper = detail::data(upper_bound);
 
       std::shared_ptr<vector_type> size_vectors(new vector_type[rank],
           std::default_delete<vector_type[]>());
@@ -535,7 +535,7 @@ namespace TiledArray {
       const value_type threshold = threshold_;
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
-      auto copy_op = [threshold,&zero_tile_count] (value_type& restrict result,
+      auto copy_op = [threshold,&zero_tile_count] (value_type& MADNESS_RESTRICT result,
           const value_type arg)
       {
         result = arg;
@@ -573,7 +573,7 @@ namespace TiledArray {
       const value_type threshold = threshold_;
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
-      auto copy_op = [abs_factor,threshold,&zero_tile_count] (value_type& restrict result,
+      auto copy_op = [abs_factor,threshold,&zero_tile_count] (value_type& MADNESS_RESTRICT result,
               const value_type arg)
       {
         result = arg * abs_factor;
@@ -838,7 +838,7 @@ namespace TiledArray {
 
       value = std::abs(value);
       const unsigned int dim = tile_norms_.range().rank();
-      const vector_type* restrict const size_vectors = size_vectors_.get();
+      const vector_type* MADNESS_RESTRICT const size_vectors = size_vectors_.get();
 
       if(dim == 1u) {
         auto add_const_op = [threshold, &zero_tile_count, value] (value_type norm,
@@ -925,7 +925,7 @@ namespace TiledArray {
   private:
 
     static size_type scale_by_size(Tensor<T>& tile_norms,
-        const vector_type* restrict const size_vectors)
+        const vector_type* MADNESS_RESTRICT const size_vectors)
     {
       const unsigned int dim = tile_norms.range().rank();
       const value_type threshold = threshold_;

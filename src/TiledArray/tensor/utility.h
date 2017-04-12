@@ -194,8 +194,8 @@ namespace TiledArray {
     /// \return The largest contiguous, inner-dimension size.
     template <typename T>
     inline typename T::size_type inner_size_helper(const T& tensor) {
-      const auto* restrict const stride = tensor.range().stride_data();
-      const auto* restrict const size = tensor.range().extent_data();
+      const auto* MADNESS_RESTRICT const stride = tensor.range().stride_data();
+      const auto* MADNESS_RESTRICT const size = tensor.range().extent_data();
 
       int i = int(tensor.range().rank()) - 1;
       auto volume = size[i];
@@ -226,10 +226,10 @@ namespace TiledArray {
     inline typename T1::size_type
     inner_size_helper(const T1& tensor1, const T2& tensor2) {
       TA_ASSERT(is_range_congruent(tensor1.range(), tensor2.range()));
-      const auto* restrict const size1   = tensor1.range().extent_data();
-      const auto* restrict const stride1 = tensor1.range().stride_data();
-      const auto* restrict const size2   = tensor2.range().extent_data();
-      const auto* restrict const stride2 = tensor2.range().stride_data();
+      const auto* MADNESS_RESTRICT const size1   = tensor1.range().extent_data();
+      const auto* MADNESS_RESTRICT const stride1 = tensor1.range().stride_data();
+      const auto* MADNESS_RESTRICT const size2   = tensor2.range().extent_data();
+      const auto* MADNESS_RESTRICT const stride2 = tensor2.range().stride_data();
 
       int i = int(tensor1.range().rank()) - 1;
       auto volume1 = size1[i];

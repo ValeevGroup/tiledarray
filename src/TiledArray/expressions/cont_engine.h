@@ -404,13 +404,13 @@ namespace TiledArray {
         const unsigned int left_outer_rank = left_rank - inner_rank;
 
         // Get pointers to the argument sizes
-        const size_type* restrict const left_tiles_size =
+        const size_type* MADNESS_RESTRICT const left_tiles_size =
             left_.trange().tiles_range().extent_data();
-        const size_type* restrict const left_element_size =
+        const size_type* MADNESS_RESTRICT const left_element_size =
             left_.trange().elements_range().extent_data();
-        const size_type* restrict const right_tiles_size =
+        const size_type* MADNESS_RESTRICT const right_tiles_size =
             right_.trange().tiles_range().extent_data();
-        const size_type* restrict const right_element_size =
+        const size_type* MADNESS_RESTRICT const right_element_size =
             right_.trange().elements_range().extent_data();
 
         // Compute the fused sizes of the contraction
@@ -466,9 +466,9 @@ namespace TiledArray {
 #ifndef NDEBUG
 
         // Get left and right tile extents.
-        const auto* restrict const left_extent =
+        const auto* MADNESS_RESTRICT const left_extent =
             left_.trange().tiles_range().extent_data();
-        const auto* restrict const right_extent =
+        const auto* MADNESS_RESTRICT const right_extent =
             right_.trange().tiles_range().extent_data();
 
         // Check that the contracted dimensions are coformal (equal).

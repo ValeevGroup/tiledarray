@@ -845,7 +845,7 @@ namespace TiledArray {
         const size_type n = proc_grid_.local_size();
         for(size_type t = 0ul; t < n; ++t) {
           // Initialize the reduction task
-          ReducePairTask<op_type>* restrict const reduce_task = reduce_tasks_ + t;
+          ReducePairTask<op_type>* MADNESS_RESTRICT const reduce_task = reduce_tasks_ + t;
           new(reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_);
         }
 
@@ -877,7 +877,7 @@ namespace TiledArray {
 
         // Iterate over all local tiles
         size_type tile_count = 0ul;
-        ReducePairTask<op_type>* restrict reduce_task = reduce_tasks_;
+        ReducePairTask<op_type>* MADNESS_RESTRICT reduce_task = reduce_tasks_;
         // this loops over result tiles arranged in block-cyclic order
         // index = tile index (row major)
         for(; row_start < end; row_start += col_stride, row_end += col_stride) {

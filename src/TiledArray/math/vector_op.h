@@ -56,25 +56,25 @@ namespace TiledArray {
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      for_each(Op&& op, Result* restrict const result, const Args* restrict const ...args) {
+      for_each(Op&& op, Result* MADNESS_RESTRICT const result, const Args* MADNESS_RESTRICT const ...args) {
         op(result[offset], args[offset]...);
       }
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      for_each_ptr(Op&& op, Result* restrict const result, const Args* restrict const ...args) {
+      for_each_ptr(Op&& op, Result* MADNESS_RESTRICT const result, const Args* MADNESS_RESTRICT const ...args) {
         op(result + offset, args[offset]...);
       }
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      reduce(Op&& op, Result& restrict result, const Args* restrict const ...args) {
+      reduce(Op&& op, Result& MADNESS_RESTRICT result, const Args* MADNESS_RESTRICT const ...args) {
         op(result, args[offset]...);
       }
 
       template <typename Result, typename Arg>
       static TILEDARRAY_FORCE_INLINE void
-      scatter(Result* restrict const result, const Arg* restrict const arg,
+      scatter(Result* MADNESS_RESTRICT const result, const Arg* MADNESS_RESTRICT const arg,
           const std::size_t /*result_stride*/)
       {
         *result = arg[offset];
@@ -82,7 +82,7 @@ namespace TiledArray {
 
       template <typename Result, typename Arg>
       static TILEDARRAY_FORCE_INLINE void
-      gather(Result* restrict const result, const Arg* restrict const arg,
+      gather(Result* MADNESS_RESTRICT const result, const Arg* MADNESS_RESTRICT const arg,
           std::size_t /*arg_stride*/)
       {
         result[offset] = *arg;
@@ -104,28 +104,28 @@ namespace TiledArray {
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      for_each(Op&& op, Result* restrict const result, const Args* restrict const ...args) {
+      for_each(Op&& op, Result* MADNESS_RESTRICT const result, const Args* MADNESS_RESTRICT const ...args) {
         op(result[offset], args[offset]...);
         VectorOpUnwindN1::for_each(op, result, args...);
       }
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      for_each_ptr(Op&& op, Result* restrict const result, const Args* restrict const ...args) {
+      for_each_ptr(Op&& op, Result* MADNESS_RESTRICT const result, const Args* MADNESS_RESTRICT const ...args) {
         op(result + offset, args[offset]...);
         VectorOpUnwindN1::for_each_ptr(op, result, args...);
       }
 
       template <typename Op, typename Result, typename... Args>
       static TILEDARRAY_FORCE_INLINE void
-      reduce(Op&& op, Result& restrict result, const Args* restrict const ...args) {
+      reduce(Op&& op, Result& MADNESS_RESTRICT result, const Args* MADNESS_RESTRICT const ...args) {
         op(result, args[offset]...);
         VectorOpUnwindN1::reduce(op, result, args...);
       }
 
       template <typename Result, typename Arg>
       static TILEDARRAY_FORCE_INLINE void
-      scatter(Result* restrict const result, const Arg* restrict const arg,
+      scatter(Result* MADNESS_RESTRICT const result, const Arg* MADNESS_RESTRICT const arg,
           const std::size_t result_stride)
       {
         *result = arg[offset];
@@ -134,7 +134,7 @@ namespace TiledArray {
 
       template <typename Result, typename Arg>
       static TILEDARRAY_FORCE_INLINE void
-      gather(Result* restrict const result, const Arg* restrict const arg,
+      gather(Result* MADNESS_RESTRICT const result, const Arg* MADNESS_RESTRICT const arg,
           std::size_t arg_stride)
       {
         result[offset] = *arg;
@@ -163,8 +163,8 @@ namespace TiledArray {
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
-    for_each_block_n(Op&& op, const std::size_t n, Result* restrict const result,
-        const Args* restrict const... args)
+    for_each_block_n(Op&& op, const std::size_t n, Result* MADNESS_RESTRICT const result,
+        const Args* MADNESS_RESTRICT const... args)
     {
       for(std::size_t i = 0ul; i < n; ++i)
         op(result[i], args[i]...);
@@ -187,8 +187,8 @@ namespace TiledArray {
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE void
-    for_each_block_ptr_n(Op&& op, const std::size_t n, Result* restrict const result,
-        const Args* restrict const... args)
+    for_each_block_ptr_n(Op&& op, const std::size_t n, Result* MADNESS_RESTRICT const result,
+        const Args* MADNESS_RESTRICT const... args)
     {
       for(std::size_t i = 0ul; i < n; ++i)
         op(result + i, args[i]...);
@@ -208,8 +208,8 @@ namespace TiledArray {
 
     template <typename Op, typename Result, typename... Args>
     TILEDARRAY_FORCE_INLINE
-    void reduce_block_n(Op&& op, const std::size_t n, Result& restrict result,
-        const Args* restrict const... args)
+    void reduce_block_n(Op&& op, const std::size_t n, Result& MADNESS_RESTRICT result,
+        const Args* MADNESS_RESTRICT const... args)
     {
       for(std::size_t i = 0ul; i < n; ++i)
         op(result, args[i]...);

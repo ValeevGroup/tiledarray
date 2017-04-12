@@ -134,7 +134,7 @@ namespace TiledArray {
   inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
   eigen_map(const Tensor<T, A>& tensor) {
     TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
-    const auto* restrict const tensor_extent = tensor.range().extent_data();
+    const auto* MADNESS_RESTRICT const tensor_extent = tensor.range().extent_data();
     return eigen_map(tensor, tensor_extent[0],
             (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
   }
@@ -150,7 +150,7 @@ namespace TiledArray {
   inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
   eigen_map(Tensor<T, A>& tensor) {
     TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
-    const auto* restrict const tensor_extent = tensor.range().extent_data();
+    const auto* MADNESS_RESTRICT const tensor_extent = tensor.range().extent_data();
     return eigen_map(tensor, tensor_extent[0],
             (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
   }
@@ -174,9 +174,9 @@ namespace TiledArray {
     TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
     // Get pointers to the tensor range data
-    const auto* restrict const tensor_lower = tensor.range().lobound_data();
-    const auto* restrict const tensor_upper = tensor.range().upbound_data();
-    const auto* restrict const tensor_extent = tensor.range().extent_data();
+    const auto* MADNESS_RESTRICT const tensor_lower = tensor.range().lobound_data();
+    const auto* MADNESS_RESTRICT const tensor_upper = tensor.range().upbound_data();
+    const auto* MADNESS_RESTRICT const tensor_extent = tensor.range().extent_data();
 
     if(tensor.range().rank() == 2u) {
       // Get tensor range data
@@ -238,9 +238,9 @@ namespace TiledArray {
     TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
     // Get pointers to the tensor range data
-    const auto* restrict const tensor_lower = tensor.range().lobound_data();
-    const auto* restrict const tensor_upper = tensor.range().upbound_data();
-    const auto* restrict const tensor_extent = tensor.range().extent_data();
+    const auto* MADNESS_RESTRICT const tensor_lower = tensor.range().lobound_data();
+    const auto* MADNESS_RESTRICT const tensor_upper = tensor.range().upbound_data();
+    const auto* MADNESS_RESTRICT const tensor_extent = tensor.range().extent_data();
 
     if(tensor.range().rank() == 2) {
       // Get tensor range data
@@ -451,7 +451,7 @@ namespace TiledArray {
           "TiledArray::array_to_eigen(): Array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
 
     // Construct the Eigen matrix
-    const auto* restrict const array_extent = array.trange().elements_range().extent_data();
+    const auto* MADNESS_RESTRICT const array_extent = array.trange().elements_range().extent_data();
     // if array is sparse must initialize to zero
     EigenMatrix matrix = EigenMatrix::Zero(array_extent[0], (rank == 2 ? array_extent[1] : 1));
 
