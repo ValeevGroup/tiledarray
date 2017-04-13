@@ -91,7 +91,7 @@ public:
   // Deep copy
   EigenSparseTile clone() const {
     EigenSparseTile result;
-    result.impl_ = std::make_shared < impl_type > (this->impl_);
+    result.impl_ = std::make_shared < impl_type > (*(this->impl_));
     return result;
   }
 
