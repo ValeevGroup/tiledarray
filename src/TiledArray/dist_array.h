@@ -475,8 +475,8 @@ namespace TiledArray {
               continue;
           }
           Future<value_type> tile = pimpl_->world().taskq.add(
-              [] (DistArray_& array, const size_type index, const Op& op) -> value_type
-              { return op(array.trange().make_tile_range(index)); },
+              [] (DistArray_* array, const size_type index, const Op& op) -> value_type
+              { return op(array->trange().make_tile_range(index)); },
               *this, index, op);
           set(index, tile);
         }
