@@ -134,15 +134,18 @@ namespace TiledArray {
 
     private:
 
-      /// Task function used to evaluate lazy tiles
+      /// Task function used to evaluate a lazy tile and apply an op
 
       /// \tparam R The result type
-      /// \tparam T The lazy tile type
-      /// \param tile The lazy tile
+      /// \tparam T A lazy tile type
+      /// \tparam Op Tile operation type
+      /// \param tile A forwarding reference to a lazy tile
+      /// \param cast A const lvalue reference to the object that will cast the lazy tile to its result
+      /// \param op A smart pointer to the Op object
       /// \return The evaluated tile
       template <typename R, typename T, typename C, typename Op>
-      static auto eval_tile(T tile, const C& cast, const std::shared_ptr<Op>& op) {
-        auto cast_tile = cast(tile);
+      static auto eval_tile(T&& tile, const C& cast, const std::shared_ptr<Op>& op) {
+        auto&& cast_tile = cast(std::forward<T>(tile));
         return (*op)(cast_tile);
       }
 
@@ -151,12 +154,12 @@ namespace TiledArray {
       /// \tparam R The result type
       /// \tparam T The lazy tile type
       /// \tparam Op Tile operation type
-      /// \param tile The lazy tile
+      /// \param tile A forwarding reference to a lazy tile
       /// \return The evaluated tile
       /// \param op The tile mutating operation
       template <typename T, typename Op>
-      static auto eval_tile(T& tile, const std::shared_ptr<Op>& op) {
-        return (*op)(tile);
+      static auto eval_tile(T&& tile, const std::shared_ptr<Op>& op) {
+        return (*op)(std::forward<T>(tile));
       }
 
 
@@ -175,7 +178,7 @@ namespace TiledArray {
               ! std::is_same<typename A::value_type, T>::value &&
               is_lazy_tile<T>::value
           >::type* = nullptr>
-      void set_tile(A& array, const I index, const Future<T>& tile) const {
+      void set_tile(A& array, const I& index, const Future<T>& tile) const {
         array.set(index, array.world().taskq.add(
             TiledArray::Cast<typename A::value_type, T>(), tile));
       }
@@ -193,7 +196,7 @@ namespace TiledArray {
           typename std::enable_if<
               std::is_same<typename A::value_type, T>::value
           >::type* = nullptr>
-      void set_tile(A& array, const I index, const Future<T>& tile) const {
+      void set_tile(A& array, const I& index, const Future<T>& tile) const {
         array.set(index, tile);
       }
 
@@ -216,7 +219,7 @@ namespace TiledArray {
           const std::shared_ptr<Op>& op) const
       {
         auto eval_tile_fn = &Expr_::template eval_tile<
-            typename A::value_type, T,
+            typename A::value_type, const T&,
             TiledArray::Cast<typename A::value_type, T>, Op>;
         array.set(index,
                   array.world().taskq.add(
@@ -244,7 +247,11 @@ namespace TiledArray {
       void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
-        auto eval_tile_fn_ptr = &Expr_::template eval_tile<T, Op>;
+        auto eval_tile_fn_ptr = &Expr_::template eval_tile<const T&, Op>;
+        using fn_ptr_type = decltype(eval_tile_fn_ptr);
+        static_assert(
+            madness::detail::function_traits<fn_ptr_type(const T&,const std::shared_ptr<Op>&)>::value,
+            "ouch");
         array.set(index, array.world().taskq.add(eval_tile_fn_ptr, tile, op));
       }
 

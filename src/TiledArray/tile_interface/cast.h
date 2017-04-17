@@ -75,7 +75,7 @@ namespace TiledArray {
                      std::decay_t<Arg_>, Result_>::value>>
        static auto invoker(Arg_&& arg) {
          auto exec = [](Arg_&& arg) {
-           return Result_(argument_type(arg));
+           return static_cast<Result_>(std::forward<Arg_>(arg));
          };
          return TiledArray::meta::invoke(exec, arg);
        }
@@ -86,9 +86,9 @@ namespace TiledArray {
                std::decay_t<Arg_>, madness::Future<Result_>>::value>* =
                nullptr) {
          auto exec = [](Arg_&& arg) {
-           return static_cast<madness::Future<Result_>>(arg);
+           return static_cast<madness::Future<Result_>>(std::forward<Arg_>(arg));
          };
-         return TiledArray::meta::invoke(exec, arg);
+         return TiledArray::meta::invoke(exec, std::forward<Arg_>(arg));
        }
 
       public:

@@ -74,14 +74,21 @@ namespace TiledArray {
       // The compiler will select the correct functions based on the
       // consumability of the arguments.
 
-      template <bool C, typename std::enable_if<!C>::type* = nullptr>
-      result_type eval(const argument_type& arg) const {
+      template <bool C, typename = void>
+      auto eval(const argument_type& arg) const {
         TiledArray::Shift<result_type, argument_type> shift;
         return shift(arg, range_shift_);
       }
 
-      template <bool C, typename std::enable_if<C>::type* = nullptr>
-      result_type eval(argument_type& arg) const {
+      template <bool C, typename = typename std::enable_if<C>::type>
+      auto eval(argument_type& arg) const {
+        TiledArray::ShiftTo<result_type, argument_type> shift_to;
+        shift_to(arg, range_shift_);
+        return arg;
+      }
+
+      template <bool C, typename = typename std::enable_if<C>::type>
+      auto eval(argument_type&& arg) const {
         TiledArray::ShiftTo<result_type, argument_type> shift_to;
         shift_to(arg, range_shift_);
         return arg;
