@@ -294,11 +294,11 @@ namespace TiledArray {
     /// \param counter The task counter
     template <typename A, typename Derived>
     void counted_eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>* matrix,
-        A& array, const typename A::size_type i, madness::AtomicInt* counter)
+        A* array, const typename A::size_type i, madness::AtomicInt* counter)
     {
-      typename A::value_type tensor(array.trange().make_tile_range(i));
+      typename A::value_type tensor(array->trange().make_tile_range(i));
       eigen_submatrix_to_tensor(*matrix, tensor);
-      array.set(i, tensor);
+      array->set(i, tensor);
       (*counter)++;
     }
 
@@ -396,7 +396,7 @@ namespace TiledArray {
     std::int64_t n = 0;
     for(std::size_t i = 0; i < array.size(); ++i) {
       world.taskq.add(& detail::counted_eigen_submatrix_to_tensor<A, Derived>,
-          &matrix, array, i, &counter);
+          &matrix, &array, i, &counter);
       ++n;
     }
 
