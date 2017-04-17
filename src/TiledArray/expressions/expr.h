@@ -29,6 +29,7 @@
 #include "expr_engine.h"
 #include "../reduce_task.h"
 #include "../tile_interface/cast.h"
+#include "../tile_interface/scale.h"
 #include "../tile_op/shift.h"
 #include "../tile_op/unary_wrapper.h"
 #include "../tile_op/unary_reduction.h"
