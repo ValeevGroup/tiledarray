@@ -29,8 +29,8 @@ struct ForeachFixture : public TiledRangeFixture {
   ForeachFixture() :
     a(*GlobalFixture::world, tr),
     b(*GlobalFixture::world, tr),
-    c(*GlobalFixture::world, tr, make_shape(tr, 50, 42)),
-    d(*GlobalFixture::world, tr, make_shape(tr, 50, 16))
+    c(*GlobalFixture::world, tr, make_shape(tr, 0.50, 42)),
+    d(*GlobalFixture::world, tr, make_shape(tr, 0.50, 16))
   {
     random_fill(a);
     random_fill(b);
@@ -58,12 +58,6 @@ struct ForeachFixture : public TiledRangeFixture {
   }
 
 
-  template <typename T>
-  static void set_random(std::complex<T>& t) {
-    t = std::complex<T>{T(GlobalFixture::world->rand() % 101),
-      T(GlobalFixture::world->rand() % 101)};
-  }
-
   // Fill a tile with random data
   template <typename A>
   static typename A::value_type
@@ -74,43 +68,6 @@ struct ForeachFixture : public TiledRangeFixture {
     return tile;
   }
 
-  template <typename M, typename A>
-  static void rand_fill_matrix_and_array(M& matrix, A& array, int seed = 42) {
-    TA_ASSERT(std::size_t(matrix.size()) == array.trange().elements_range().volume());
-    matrix.fill(0);
-
-    GlobalFixture::world->srand(seed);
-
-    // Iterate over local tiles
-    for(typename A::iterator it = array.begin(); it != array.end(); ++it) {
-      typename A::value_type tile(array.trange().make_tile_range(it.index()));
-      for(Range::const_iterator rit = tile.range().begin(); rit != tile.range().end(); ++rit) {
-        const std::size_t elem_index = array.elements_range().ordinal(*rit);
-        tile[*rit] = (matrix.array()(elem_index) = (GlobalFixture::world->rand() % 101));
-      }
-      *it = tile;
-    }
-    GlobalFixture::world->gop.sum(& matrix(0,0), matrix.size());
-  }
-
-  template <typename Tile>
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
-  make_matrix(DistArray<Tile>& array) {
-    // Check that the array will fit in a matrix or vector
-
-    // Construct the Eigen matrix
-    Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
-        matrix(array.trange().elements_range().extent_data()[0],
-            (array.trange().tiles_range().rank() == 2 ? array.trange().elements_range().extent_data()[1] : 1));
-
-    // Spawn tasks to copy array tiles to the Eigen matrix
-    for(std::size_t i = 0; i < array.size(); ++i) {
-      if(! array.is_zero(i))
-        tensor_to_eigen_submatrix(array.find(i).get(), matrix);
-    }
-
-    return matrix;
-  }
 
   static Tensor<float> make_norm_tensor(const TiledRange& trange, const float fill_percent, const int seed) {
     GlobalFixture::world->srand(seed);
@@ -205,7 +162,7 @@ BOOST_AUTO_TEST_CASE( foreach_unary_to_double )
 BOOST_AUTO_TEST_CASE( foreach_unary_sparse_to_double )
 {
   TSpArrayD result = foreach<TensorD>(c, [] (TensorD& result, const TensorI& arg) -> float {
-    result = TensorI(arg, [] (int val) -> int { return 2.0 * double(val); });
+    result = TensorD(arg, [] (int val) -> double { return 2.0 * double(val); });
     return result.norm();
   });
 
@@ -324,7 +281,7 @@ BOOST_AUTO_TEST_CASE( foreach_binary_to_double )
 BOOST_AUTO_TEST_CASE( foreach_binary_sparse_to_double )
 {
   TSpArrayD result = foreach<TensorD>(c, d, [] (TensorD& result, const TensorI& l, const TensorI& r) -> float {
-    result = TensorI(l, r, [] (int l, int r) -> double { return l + r; });
+    result = TensorD(l, r, [] (int l, int r) -> double { return l + r; });
     return result.norm();
   });
 
@@ -334,7 +291,7 @@ BOOST_AUTO_TEST_CASE( foreach_binary_sparse_to_double )
 
     TensorI tilec = c.find(index).get();
     TensorI tiled = d.find(index).get();
-    TensorI tile = result.find(index).get();
+    TensorD tile = result.find(index).get();
     for(std::size_t i = 0; i < tile.size(); ++i) {
       BOOST_CHECK_EQUAL(tile[i], tilec[i] + tiled[i]);
     }
