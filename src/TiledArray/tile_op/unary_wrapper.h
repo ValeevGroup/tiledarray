@@ -183,7 +183,13 @@ namespace TiledArray {
         auto cast = Cast<eval_t<A>,decay_t<A>>{};
         using TiledArray::meta::invoke;
         auto cast_arg = invoke(cast, arg);
-        auto op_consume = [this](auto arg) {
+//        NB using this generic lambda breaks TaskFn ...
+//        need to make TaskFn variadic and accepting callables, but this is a lot of MP
+//
+//        auto op_consume = [this](auto&& arg) {
+//          return op_.consume(std::forward<decltype(arg)>(arg));
+//        };
+        auto op_consume = [this](eval_t<A>& arg) {
           return op_.consume(arg);
         };
         return (perm_ ?
@@ -197,10 +203,21 @@ namespace TiledArray {
               is_lazy_tile_t<A>::value
           >::type* = nullptr>
       result_type consume(A&& arg) const {
-        eval_t<A> eval_arg(arg);
+        auto cast = Cast<eval_t<A>,decay_t<A>>{};
+        using TiledArray::meta::invoke;
+        auto cast_arg = invoke(cast, arg);
+//        NB using this generic lambda breaks TaskFn ...
+//        need to make TaskFn variadic and accepting callables, but this is a lot of MP
+//
+//        auto op_consume = [this](auto&& arg) {
+//          return op_.consume(std::forward<decltype(arg)>(arg));
+//        };
+        auto op_consume = [this](eval_t<A>& arg) {
+          return op_.consume(arg);
+        };
         return (perm_ ?
-            op_(eval_arg, perm_) :
-            op_.consume(eval_arg) );
+            invoke(op_, cast_arg, perm_) :
+            invoke(op_consume, cast_arg));
       }
 
       template <typename A,

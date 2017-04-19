@@ -81,10 +81,14 @@ namespace TiledArray {
     class Expr {
     public:
 
-      typedef Expr<Derived> Expr_; ///< This class type
-      typedef Derived derived_type; ///< The derived object type
-      typedef typename ExprTrait<Derived>::engine_type
-          engine_type; ///< Expression engine type
+      template <typename Derived_ = Derived>
+      using engine_t = typename ExprTrait<Derived_>::engine_type;
+      template <typename Derived_ = Derived>
+      using eval_type_t = typename engine_t<Derived_>::eval_type;
+
+      typedef Expr<Derived> Expr_;                 ///< This class type
+      typedef Derived derived_type;                ///< The derived object type
+      typedef engine_t<derived_type> engine_type;  ///< Expression engine type
 
     private:
 
