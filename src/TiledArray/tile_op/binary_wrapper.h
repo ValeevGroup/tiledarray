@@ -146,8 +146,12 @@ namespace TiledArray {
           typename std::enable_if<
               ! (is_lazy_tile_t<L>::value || is_lazy_tile_t<R>::value)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
-        if(perm_)
+      auto operator()(L&& left, R&& right) const {
+        static_assert(std::is_same<std::decay_t<L>, left_type>::value,
+                      "BinaryWrapper::operator()(L&&,R&&): invalid argument type L");
+        static_assert(std::is_same<std::decay_t<R>, right_type>::value,
+                      "BinaryWrapper::operator()(L&&,R&&): invalid argument type R");
+        if (perm_)
           return op_(std::forward<L>(left), std::forward<R>(right), perm_);
 
         return op_(std::forward<L>(left), std::forward<R>(right));
@@ -165,7 +169,9 @@ namespace TiledArray {
           typename std::enable_if<
               ! is_lazy_tile_t<R>::value
           >::type* = nullptr>
-      result_type operator()(const ZeroTensor& left, R&& right) const {
+      auto operator()(const ZeroTensor& left, R&& right) const {
+        static_assert(std::is_same<std::decay_t<R>, right_type>::value,
+                      "BinaryWrapper::operator()(zero,R&&): invalid argument type R");
         if(perm_)
           return op_(left, std::forward<R>(right), perm_);
 
@@ -184,7 +190,9 @@ namespace TiledArray {
           typename std::enable_if<
               ! is_lazy_tile_t<L>::value
           >::type* = nullptr>
-      result_type operator()(L&& left, const ZeroTensor& right) const {
+      auto operator()(L&& left, const ZeroTensor& right) const {
+        static_assert(std::is_same<std::decay_t<L>, left_type>::value,
+                      "BinaryWrapper::operator()(L&&,zero): invalid argument type L");
         if(perm_)
           return op_(std::forward<L>(left), right, perm_);
 
@@ -211,7 +219,7 @@ namespace TiledArray {
               is_lazy_tile_t<R>::value &&
               (left_is_consumable || right_is_consumable)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
+      auto operator()(L&& left, R&& right) const {
         eval_t<L> eval_left(left);
         eval_t<R> eval_right(right);
         return BinaryWrapper_::operator()(eval_left, eval_right);
@@ -234,8 +242,8 @@ namespace TiledArray {
               (! is_lazy_tile_t<R>::value) &&
               (left_is_consumable || right_is_consumable)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
-        eval_t<L> eval_left(left);
+      auto operator()(L&& left, R&& right) const {
+        auto eval_left = invoke_cast(std::forward<L>(left));
         return BinaryWrapper_::operator()(eval_left, std::forward<R>(right));
       }
 
@@ -256,8 +264,8 @@ namespace TiledArray {
               is_lazy_tile_t<R>::value &&
               (left_is_consumable || right_is_consumable)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
-        eval_t<R> eval_right(right);
+      auto operator()(L&& left, R&& right) const {
+        auto eval_right = invoke_cast(std::forward<R>(right));
         return BinaryWrapper_::operator()(std::forward<L>(left), eval_right);
       }
 
@@ -278,20 +286,28 @@ namespace TiledArray {
               is_array_tile_t<R>::value &&
               ! (left_is_consumable || right_is_consumable)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
-        eval_t<L> eval_left(left);
-        eval_t<R> eval_right(right);
+      auto operator()(L&& left, R&& right) const {
+        auto eval_left = invoke_cast(std::forward<L>(left));
+        auto eval_right = invoke_cast(std::forward<R>(right));
+
+        using TiledArray::meta::invoke;
 
         if(perm_)
-          return op_(eval_left, eval_right, perm_);
+          return invoke(op_, eval_left, eval_right, perm_);
 
+        auto op_left =[=](eval_t<L>&_left, eval_t<R>& _right) {
+          return op_.consume_left(_left, _right);
+        };
+        auto op_right =[=](eval_t<L>&_left, eval_t<R>& _right) {
+          return op_.consume_right(_left, _right);
+        };
         // Override consumable
         if(is_consumable_tile<eval_t<L> >::value && left.is_consumable())
-          return op_.consume_left(eval_left, eval_right);
+          return invoke(op_left, eval_left, eval_right);
         if(is_consumable_tile<eval_t<R> >::value && right.is_consumable())
-          return op_.consume_right(eval_left, eval_right);
+          return invoke(op_right, eval_left, eval_right);
 
-        return op_(eval_left, eval_right);
+        return invoke(op_, eval_left, eval_right);
       }
 
 
@@ -301,8 +317,8 @@ namespace TiledArray {
               (! is_lazy_tile_t<R>::value) &&
               ! (left_is_consumable || right_is_consumable)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
-        eval_t<L> eval_left(left);
+      auto operator()(L&& left, R&& right) const {
+        auto eval_left = invoke_cast(std::forward<L>(left));
 
         if(perm_)
           return op_(eval_left, std::forward<R>(right), perm_);
@@ -321,9 +337,9 @@ namespace TiledArray {
               is_lazy_tile_t<R>::value && (! is_array_tile_t<R>::value) &&
               ! (left_is_consumable || right_is_consumable)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
-        eval_t<L> eval_left(left);
-        eval_t<R> eval_right(right);
+      auto operator()(L&& left, R&& right) const {
+        auto eval_left = invoke_cast(std::forward<L>(left));
+        auto eval_right = invoke_cast(std::forward<R>(right));
 
         if(perm_)
           return op_(eval_left, eval_right, perm_);
@@ -342,8 +358,8 @@ namespace TiledArray {
               is_array_tile_t<R>::value &&
               ! (left_is_consumable || right_is_consumable)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
-        eval_t<R> eval_right(right);
+      auto operator()(L&& left, R&& right) const {
+        auto eval_right = invoke_cast(std::forward<R>(right));
 
         if(perm_)
           return op_(std::forward<L>(left), eval_right, perm_);
@@ -362,9 +378,9 @@ namespace TiledArray {
               is_array_tile_t<R>::value &&
               ! (left_is_consumable || right_is_consumable)
           >::type* = nullptr>
-      result_type operator()(L&& left, R&& right) const {
-        eval_t<L> eval_left(left);
-        eval_t<R> eval_right(right);
+      auto operator()(L&& left, R&& right) const {
+        auto eval_left = invoke_cast(std::forward<L>(left));
+        auto eval_right = invoke_cast(std::forward<R>(right));
 
         if(perm_)
           return op_(eval_left, eval_right, perm_);

@@ -160,12 +160,10 @@ namespace TiledArray {
               is_lazy_tile_t<A>::value && (! is_array_tile_t<A>::value)
           >::type* = nullptr>
       auto operator()(A&& arg) const {
-        auto cast = Cast<eval_t<A>,decay_t<A>>{};
         using TiledArray::meta::invoke;
-        auto cast_arg = invoke(cast, arg);
-        return (perm_ ? invoke(op_, cast_arg, perm_) : invoke(op_, cast_arg) );
+        return (perm_ ? invoke(op_, invoke_cast(std::forward<A>(arg)), perm_)
+                      : invoke(op_, invoke_cast(std::forward<A>(arg))));
       }
-
 
       /// Evaluate a lazy array tile
 
@@ -179,10 +177,9 @@ namespace TiledArray {
           typename std::enable_if<
               is_array_tile_t<A>::value
           >::type* = nullptr>
-      result_type operator()(A&& arg) const {
-        auto cast = Cast<eval_t<A>,decay_t<A>>{};
-        using TiledArray::meta::invoke;
-        auto cast_arg = invoke(cast, arg);
+      auto operator()(A&& arg) const {
+        auto cast_arg = invoke_cast(std::forward<A>(arg));
+        // TODO replace with generic lambda, replace cast_arg with std::move(cast_arg)
 //        NB using this generic lambda breaks TaskFn ...
 //        need to make TaskFn variadic and accepting callables, but this is a lot of MP
 //
@@ -192,9 +189,11 @@ namespace TiledArray {
         auto op_consume = [this](eval_t<A>& arg) {
           return op_.consume(arg);
         };
-        return (perm_ ?
-           invoke(op_, cast_arg, perm_) :
-           (arg.is_consumable() ? invoke(op_consume, cast_arg) : invoke(op_, cast_arg) ));
+        using TiledArray::meta::invoke;
+        return (perm_ ? invoke(op_, std::move(cast_arg), perm_)
+                      : (arg.is_consumable()
+                             ? invoke(op_consume, cast_arg)
+                             : invoke(op_, std::move(cast_arg))));
       }
 
       /// Consume lazy tile
@@ -202,10 +201,9 @@ namespace TiledArray {
           typename std::enable_if<
               is_lazy_tile_t<A>::value
           >::type* = nullptr>
-      result_type consume(A&& arg) const {
-        auto cast = Cast<eval_t<A>,decay_t<A>>{};
-        using TiledArray::meta::invoke;
-        auto cast_arg = invoke(cast, arg);
+      auto consume(A&& arg) const {
+        auto cast_arg = invoke_cast(std::forward<A>(arg));
+        // TODO replace with generic lambda, replace cast_arg with std::move(cast_arg)
 //        NB using this generic lambda breaks TaskFn ...
 //        need to make TaskFn variadic and accepting callables, but this is a lot of MP
 //
@@ -215,8 +213,9 @@ namespace TiledArray {
         auto op_consume = [this](eval_t<A>& arg) {
           return op_.consume(arg);
         };
+        using TiledArray::meta::invoke;
         return (perm_ ?
-            invoke(op_, cast_arg, perm_) :
+            invoke(op_, std::move(cast_arg), perm_) :
             invoke(op_consume, cast_arg));
       }
 
@@ -225,9 +224,10 @@ namespace TiledArray {
               ! is_lazy_tile_t<A>::value
           >::type* = nullptr>
       result_type consume(A&& arg) const {
-        return (perm_ ?
-           op_(std::forward<A>(arg), perm_) :
-           op_.consume(std::forward<A>(arg)) );
+        static_assert(std::is_same<std::decay_t<A>, argument_type>::value,
+                      "UnaryWrapper::consume(A&&): invalid argument type A");
+        return (perm_ ? op_(std::forward<A>(arg), perm_)
+                      : op_.consume(std::forward<A>(arg)));
       }
 
     }; // class UnaryWrapper
