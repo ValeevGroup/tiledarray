@@ -163,6 +163,15 @@ namespace TiledArray {
   template <typename Result, typename Arg>
   class Cast : public TiledArray::tile_interface::Cast<Result, Arg> { };
 
+  /// Invokes TiledArray::Cast to cast/convert the argument to type Result.
+  /// The operation may be nonblocking, if needed. The cast may involve zero, one,
+  /// or more conversions, depending on the implementation of Cast<>, and the properties
+  /// of types Arg and Result.
+  template <typename Arg, typename Result = typename TiledArray::eval_trait<std::decay_t<Arg>>::type>
+  auto invoke_cast(Arg&& arg) {
+    Cast<Result,std::decay_t<Arg>> cast;
+    return TiledArray::meta::invoke(cast, std::forward<Arg>(arg));
+  }
 
 } // namespace TiledArray
 
