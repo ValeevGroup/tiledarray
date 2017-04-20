@@ -69,10 +69,10 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
 
   template <typename Tile>
   static void random_fill(DistArray<Tile>& array) {
-    typename DistArray<Tile>::pmap_interface::const_iterator it = array.get_pmap()->begin();
-    typename DistArray<Tile>::pmap_interface::const_iterator end = array.get_pmap()->end();
+    typename DistArray<Tile>::pmap_interface::const_iterator it = array.pmap()->begin();
+    typename DistArray<Tile>::pmap_interface::const_iterator end = array.pmap()->end();
     for(; it != end; ++it)
-      array.set(*it, array.get_world().taskq.add(& MixedExpressionsFixture::template make_rand_tile<DistArray<Tile> >,
+      array.set(*it, array.world().taskq.add(& MixedExpressionsFixture::template make_rand_tile<DistArray<Tile> >,
           array.trange().make_tile_range(*it)));
   }
 
