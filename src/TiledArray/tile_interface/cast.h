@@ -35,7 +35,7 @@ namespace TiledArray {
 
   namespace tile_interface {
 
-    /// Internal cast implementation
+    /// Internal cast (aka conversion) implementation
 
     /// This class is used to define internal tile cast operations. Users may
     /// specialize the `TiledArray::Cast` class.
@@ -133,7 +133,10 @@ namespace TiledArray {
 
       /// Tile cast operation
 
-      /// Cast arg to a `result_type` tile
+      /// Cast `arg` to a `result_type` tile. This potentially involves 2 steps:
+      /// - from `argument_type` to `eval_t<argument_type>`
+      /// - from `eval_t<argument_type>` to `result_tile`
+      /// These casts are nonblocking, if needed.
       /// \param arg The tile to be cast
       /// \return A cast copy of `arg`
       /// \note get the argument by universal ref as a step towards moving conversions

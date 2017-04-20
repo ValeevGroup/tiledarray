@@ -368,14 +368,14 @@ namespace TiledArray {
 
   /// Detect lazy evaluation tiles
 
-  /// \c is_lazy_type evaluates to \c std::true_type when T is a tile that
+  /// \c is_lazy_tile evaluates to \c std::true_type when T is a tile that
   /// uses the lazy evaluation mechanism (i.e. when <tt>T != T::eval_type</tt>),
   /// otherwise it evaluates to \c std::false_type .
   /// \tparam T The tile type to test
   template <typename T>
   struct is_lazy_tile :
       public std::integral_constant<bool, ! std::is_same<T, typename eval_trait<T>::type>::value>
-  { }; // struct is_lazy_tile
+  { };
 
   template <typename Tile, typename Policy>
   struct is_lazy_tile<DistArray<Tile, Policy> > : public std::false_type { };
@@ -429,9 +429,11 @@ namespace TiledArray {
 
     /// Detect tiles used by \c ArrayEvalImpl
 
-    /// \c is_lazy_type evaluates to \c std::true_type when T is a tile from
-    /// \c ArrayEvalImpl (i.e. when <tt>T != LazyArrayTile</tt>),
+    /// \c is_array_tile evaluates to \c std::true_type when \c T is a \c LazyArrayTile<U> ,
+    /// i.e. when it is a lazy tile wrapper used by e.g. \c ArrayEvalImpl .
     /// otherwise it evaluates to \c std::false_type .
+    /// Note that \c is_array_tile<T> implies \c is_lazy_tile<T> , but
+    /// \c is_lazy_tile<T> does not imply \c is_array_tile<T> .
     /// \tparam T The tile type to test
     template <typename T>
     struct is_array_tile : public std::false_type { };
