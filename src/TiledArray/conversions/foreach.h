@@ -113,8 +113,9 @@ namespace TiledArray {
       // Iterate over local tiles of arg
       for (auto index: *(arg.pmap())) {
         // Spawn a task to evaluate the tile
+        auto arg_tile = arg.find(index);
         Future<typename result_array_type::value_type> tile =
-            world.taskq.add(task, arg.find(index));
+            world.taskq.add(task,arg_tile); 
 
         // Store result tile
         result.set(index, tile);
