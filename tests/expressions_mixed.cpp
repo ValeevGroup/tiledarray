@@ -43,18 +43,18 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
 
   MixedExpressionsFixture() :
     u(*GlobalFixture::world, trange2),
-    v(*GlobalFixture::world, trange2),
-    w(*GlobalFixture::world, trange2),
     u2(*GlobalFixture::world, trange4),
     e2(*GlobalFixture::world, trange2e),
     e4(*GlobalFixture::world, trange4e),
+    v(*GlobalFixture::world, trange2),
+    w(*GlobalFixture::world, trange2),
     delta1(*GlobalFixture::world, trange2,
            DenseShape(),
-           std::make_shared<detail::ReplicatedPmap>(*GlobalFixture::world, trange2.tiles().volume())
+           std::make_shared<detail::ReplicatedPmap>(*GlobalFixture::world, trange2.tiles_range().volume())
           ),
     delta1e(*GlobalFixture::world, trange2e,
             DenseShape(),
-            std::make_shared<detail::ReplicatedPmap>(*GlobalFixture::world, trange2e.tiles().volume())
+            std::make_shared<detail::ReplicatedPmap>(*GlobalFixture::world, trange2e.tiles_range().volume())
            )
   {
     random_fill(u);
@@ -190,10 +190,6 @@ BOOST_FIXTURE_TEST_SUITE( mixed_expressions_suite, MixedExpressionsFixture )
 
 BOOST_AUTO_TEST_CASE( tensor_factories )
 {
-  const auto& ca = a;
-  const std::array<int,2> lobound{{3,3}};
-  const std::array<int,2> upbound{{5,5}};
-
   BOOST_CHECK_NO_THROW(w("a,b") = u("b,a"));
   BOOST_CHECK_NO_THROW(v("a,b") = w("b,a"));
   BOOST_CHECK_NO_THROW(u("a,b") = v("b,a"));

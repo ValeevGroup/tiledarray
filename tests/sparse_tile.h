@@ -169,7 +169,7 @@ public:
   template <typename Archive, typename std::enable_if<
       madness::archive::is_input_archive<Archive>::value>::type* = nullptr>
   void serialize(Archive& ar) {
-    bool have_impl;
+    bool have_impl = false;
     ar & have_impl;
     if(have_impl) {
       std::vector < Eigen::Triplet < T >> datavec;
@@ -457,7 +457,6 @@ template<typename T, typename TagType>
 
     auto arg1_lobound = arg1.range ().lobound_data ();
     auto arg1_upbound = arg1.range ().upbound_data ();
-    auto arg1_data = arg1.data ();
     typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
     typedef typename matrix_type::Index idx_t;
     auto arg2_mat = arg2.data ();
