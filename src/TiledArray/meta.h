@@ -50,13 +50,13 @@ struct or_reduce<b> {
 // -  no: direct launch
 template <typename Function, typename... Args>
 auto invoke(Function&& fn, Args&&... args) -> typename std::enable_if<
-    !or_reduce<madness::is_future<std::decay_t<Args>>::value...>::value,
+    !or_reduce<false,madness::is_future<std::decay_t<Args>>::value...>::value,
     decltype(fn(args...))>::type {
   return fn(std::forward<Args>(args)...);
 }
 
 template <typename Function, typename... Args,
-          typename = typename std::enable_if<or_reduce<
+          typename = typename std::enable_if<or_reduce<false,
               madness::is_future<std::decay_t<Args>>::value...>::value>::type>
 auto invoke(Function&& fn, Args&&... args) {
   return TiledArray::get_default_world().taskq.add(fn, std::forward<Args>(args)...);
