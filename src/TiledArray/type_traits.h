@@ -289,10 +289,10 @@ namespace TiledArray {
 
   /// evaluates to true if \c From has an (explicit or implicit) conversion function
   /// that produces \c To from \c From , i.e. there exists \c From::operator \c To()
-  /// \note I do not how to distinguish explicit from implicit operator;
-  /// some observable behavior does depend on this (e.g. given explicit A::A(C) and
-  /// an B::operator C(), explicit conversion of B into A will be possible if the conversion
-  /// operator is implicit.
+  /// \note I do not yet know how to distinguish explicit from implicit operators;
+  /// some observable behavior does depend on this (e.g. given an explicit converting ctor
+  /// A::A(C) and an B::operator C(), explicit conversion of B into A will be possible
+  /// if B::operator C is implicit.
   template <typename From, typename To, typename Enabler = void>
   struct has_conversion_operator : std::false_type {};
 
