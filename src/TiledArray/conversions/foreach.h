@@ -41,7 +41,7 @@ namespace TiledArray {
   class DensePolicy;
   class SparsePolicy;
 
-  enum ArraySparcitySet {sparse_union, sparse_intersection};
+  enum class ShapeReductionMethod {Union, Intersect};
 
   namespace detail {
 
@@ -209,7 +209,7 @@ namespace TiledArray {
     /// \note can't autodeduce \c ResultTile from \c void \c Op(ResultTile,ArgTile)
     template <bool inplace = false, typename Op,
         typename ResultTile, typename ArgTile, typename... ArgTiles>
-    inline DistArray<ResultTile, SparsePolicy> foreach (Op&& op, const ArraySparcitySet sparse_set,
+    inline DistArray<ResultTile, SparsePolicy> foreach (Op&& op, const ShapeReductionMethod shape_reduction,
         const_if_t<not inplace, DistArray<ArgTile, SparsePolicy>>& arg,
         const DistArray<ArgTiles, SparsePolicy>&... args) {
 
@@ -252,8 +252,8 @@ namespace TiledArray {
 
       World& world = arg.world();
 
-      switch (sparse_set) {
-      case sparse_intersection:
+      switch (shape_reduction) {
+      case ShapeReductionMethod::Intersect:
         // Get local tile index iterator
         for(auto index: *(arg.pmap())) {
           if(is_zero_intersection({arg.is_zero(index), args.is_zero(index)...}))
@@ -264,7 +264,7 @@ namespace TiledArray {
           tiles.push_back(datum_type(index, result_tile));
         }
         break;
-      case sparse_union:
+      case ShapeReductionMethod::Union:
         // Get local tile index iterator
         for(auto index: *(arg.pmap())) {
           if(is_zero_union({arg.is_zero(index), args.is_zero(index)...}))
@@ -538,7 +538,7 @@ namespace TiledArray {
             typename = typename std::enable_if<!std::is_same<ResultTile,ArgTile>::value>::type>
   inline DistArray<ResultTile, SparsePolicy>
   foreach(const DistArray<ArgTile, SparsePolicy> arg, Op&& op) {
-    return detail::foreach<false, Op, ResultTile, ArgTile>(std::forward<Op>(op), sparse_intersection, arg);
+    return detail::foreach<false, Op, ResultTile, ArgTile>(std::forward<Op>(op), ShapeReductionMethod::Intersect, arg);
   }
 
   /// Apply a function to each tile of a sparse Array
@@ -548,7 +548,7 @@ namespace TiledArray {
   template <typename Tile, typename Op>
   inline DistArray<Tile, SparsePolicy>
   foreach(const DistArray<Tile, SparsePolicy>& arg, Op&& op) {
-    return detail::foreach<false, Op, Tile, Tile>(std::forward<Op>(op), sparse_intersection, arg);
+    return detail::foreach<false, Op, Tile, Tile>(std::forward<Op>(op), ShapeReductionMethod::Intersect, arg);
   }
 
 
@@ -602,7 +602,7 @@ namespace TiledArray {
       arg.world().gop.fence();
 
     // Set the arg with the new array
-    arg = detail::foreach<true, Op, Tile, Tile>(std::forward<Op>(op), sparse_intersection, arg);
+    arg = detail::foreach<true, Op, Tile, Tile>(std::forward<Op>(op), ShapeReductionMethod::Intersect, arg);
   }
 
   /// Apply a function to each tile of dense Arrays
@@ -647,9 +647,9 @@ namespace TiledArray {
   inline DistArray<ResultTile, SparsePolicy>
   foreach(const DistArray<LeftTile, SparsePolicy>& left,
       const DistArray<RightTile, SparsePolicy>& right, Op&& op,
-      const ArraySparcitySet sparse_set = sparse_intersection) {
+      const ShapeReductionMethod shape_reduction = ShapeReductionMethod::Intersect) {
     return detail::foreach<false, Op, ResultTile, LeftTile, RightTile>(std::forward<Op>(op),
-        sparse_set, left, right);
+        shape_reduction, left, right);
   }
 
   /// Specialization of foreach<ResultTile,ArgTile,Op> for
@@ -658,9 +658,9 @@ namespace TiledArray {
   inline DistArray<LeftTile, SparsePolicy>
   foreach(const DistArray<LeftTile, SparsePolicy>& left,
       const DistArray<RightTile, SparsePolicy>& right, Op&& op,
-      const ArraySparcitySet sparse_set = sparse_intersection) {
+      const ShapeReductionMethod shape_reduction = ShapeReductionMethod::Intersect) {
     return detail::foreach<false, Op, LeftTile, LeftTile, RightTile>(std::forward<Op>(op),
-        sparse_set, left, right);
+        shape_reduction, left, right);
   }
 
   /// This function takes two input tiles and put result into the left tile
@@ -668,7 +668,8 @@ namespace TiledArray {
   inline void
   foreach_inplace(DistArray<LeftTile, SparsePolicy>& left,
       const DistArray<RightTile, SparsePolicy>& right, Op&& op,
-      const ArraySparcitySet sparse_set = sparse_intersection, bool fence = true) {
+      const ShapeReductionMethod shape_reduction = ShapeReductionMethod::Intersect,
+      bool fence = true) {
 
     // The tile data is being modified in place, which means we may need to
     // fence to ensure no other threads are using the data.
@@ -677,7 +678,7 @@ namespace TiledArray {
 
     // Set the arg with the new array
     left = detail::foreach<true, Op, LeftTile, LeftTile, RightTile>(std::forward<Op>(op),
-        sparse_set, left, right);
+        shape_reduction, left, right);
   }
 
 //  /// Apply a function to each tile of dense Arrays
