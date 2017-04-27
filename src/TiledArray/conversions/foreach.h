@@ -41,57 +41,99 @@ namespace TiledArray {
   class DensePolicy;
   class SparsePolicy;
 
+  enum class ShapeReductionMethod {Union, Intersect};
+
   namespace detail {
 
     namespace {
 
-      template <typename Op, typename Result, typename Arg, bool inplace>
+      template <bool inplace, typename Op, typename Result, typename Arg, typename... Args>
       struct void_op_helper;
 
-      template <typename Op, typename Result, typename Arg>
-      struct void_op_helper<Op, Result, Arg, false> {
-        Result operator()(Op&&op, const Arg& arg) {
+      template <typename Op, typename Result, typename Arg, typename... Args>
+      struct void_op_helper<false, Op, Result, Arg, Args...> {
+        Result operator()(Op&&op, const Arg& arg, const Args&... args) {
           Result result;
-          op(result,arg);
+          op(result, arg, args...);
           return result;
         }
       };
-      template <typename Op, typename Arg>
-      struct void_op_helper<Op, Arg, Arg, true> {
-        Arg operator()(Op&&op, Arg& arg) {
-          op(arg);
+      template <typename Op, typename Arg, typename... Args>
+      struct void_op_helper<true, Op, Arg, Arg, Args...> {
+        Arg operator()(Op&&op, Arg& arg, const Args&... args) {
+          op(arg, args...);
           return arg;
         }
       };
 
-      template <typename Op, typename Result, typename Arg, typename OpResult, bool inplace>
+      template <bool inplace, typename Op, typename OpResult,
+          typename Result, typename Arg, typename... Args>
       struct nonvoid_op_helper;
 
-      template <typename Op, typename Result, typename Arg, typename OpResult>
-      struct nonvoid_op_helper<Op, Result, Arg, OpResult, false> {
-        Result operator()(Op&&op, const Arg& arg, OpResult& op_result) {
+      template <typename Op, typename OpResult,
+          typename Result, typename Arg,typename... Args>
+      struct nonvoid_op_helper<false, Op, OpResult, Result, Arg, Args...> {
+        Result operator()(Op&&op, OpResult& op_result,
+            const Arg& arg, const Args&... args) {
           Result result;
-          op_result = op(result,arg);
+          op_result = op(result, arg, args...);
           return result;
         }
       };
-      template <typename Op, typename Arg, typename OpResult>
-      struct nonvoid_op_helper<Op, Arg, Arg, OpResult, true> {
-        Arg operator()(Op&&op, Arg& arg, OpResult& op_result) {
-          op_result = op(arg);
+      template <typename Op, typename OpResult, typename Arg, typename... Args>
+      struct nonvoid_op_helper<true, Op, OpResult, Arg, Arg, Args...> {
+        Arg operator()(Op&&op, OpResult& op_result,
+            Arg& arg, const Args&... args) {
+          op_result = op(arg, args...);
           return arg;
         }
       };
+
+      template <typename Tile, typename Policy>
+      inline bool compare_trange(const DistArray<Tile, Policy>& array1) {
+        return true;
+      }
+
+      template <typename Tile1, typename Tile2, typename Policy, typename... Arrays>
+      inline bool compare_trange(const DistArray<Tile1, Policy>& array1,
+          const DistArray<Tile2, Policy>& array2, const Arrays&... arrays) {
+        return(array1.trange() == array2.trange()
+            && compare_trange(array1, arrays...));
+      }
+
+      bool is_zero_intersection(const std::initializer_list<bool>& is_zero_list ) {
+        return std::any_of(is_zero_list.begin(), is_zero_list.end(),
+            [](const bool val) -> bool {return val;});
+      }
+      bool is_zero_union(const std::initializer_list<bool>& is_zero_list ) {
+        return std::all_of(is_zero_list.begin(), is_zero_list.end(),
+            [](const bool val) -> bool {return val;});
+      }
+
+      template <typename I, typename A>
+      Future<typename A::value_type> get_sparse_tile(const I& index, const A& array) {
+        return (!array.is_zero(index)? array.find(index)
+            : Future<typename A::value_type>(typename A::value_type()));
+      }
+      template <typename I, typename A>
+      Future<typename A::value_type> get_sparse_tile(const I& index, A& array) {
+        return (!array.is_zero(index)? array.find(index)
+            : Future<typename A::value_type>(typename A::value_type()));
+      }
 
     }
 
     /// base implementation of dense TiledArray::foreach
 
     /// \note can't autodeduce \c ResultTile from \c void \c Op(ResultTile,ArgTile)
-    template <typename ResultTile, typename ArgTile, typename Op, bool inplace = false>
-    inline DistArray<ResultTile, DensePolicy> foreach (
+    template <bool inplace = false, typename Op,
+        typename ResultTile, typename ArgTile, typename... ArgTiles>
+    inline DistArray<ResultTile, DensePolicy> foreach ( Op && op,
         const_if_t<not inplace, DistArray<ArgTile, DensePolicy>>& arg,
-        Op && op) {
+        const DistArray<ArgTiles, DensePolicy>&... args) {
+
+      TA_USER_ASSERT(compare_trange(arg, args...), "Tiled ranges of args must match");
+
       typedef DistArray<ArgTile, DensePolicy> arg_array_type;
       typedef DistArray<ResultTile, DensePolicy> result_array_type;
 
@@ -101,20 +143,21 @@ namespace TiledArray {
       result_array_type result(world, arg.trange(), arg.pmap());
 
       // Construct the task function for making result tiles.
-      auto task = [&op](const_if_t<not inplace, typename arg_array_type::value_type>& arg_tile)
+      auto task = [&op](const_if_t<not inplace, typename arg_array_type::value_type>& arg_tile,
+          const ArgTiles&... arg_tiles)
           -> typename result_array_type::value_type {
-        void_op_helper<Op,
+        void_op_helper<inplace, Op,
             typename result_array_type::value_type,
             typename arg_array_type::value_type,
-            inplace> op_caller;
-        return op_caller(std::forward<Op>(op), arg_tile);
+            ArgTiles...> op_caller;
+        return op_caller(std::forward<Op>(op), arg_tile, arg_tiles...);
       };
 
       // Iterate over local tiles of arg
       for (auto index: *(arg.pmap())) {
         // Spawn a task to evaluate the tile
         Future<typename result_array_type::value_type> tile =
-            world.taskq.add(task, arg.find(index));
+            world.taskq.add(task, arg.find(index), args.find(index)...);
 
         // Store result tile
         result.set(index, tile);
@@ -126,9 +169,14 @@ namespace TiledArray {
     /// base implementation of sparse TiledArray::foreach
 
     /// \note can't autodeduce \c ResultTile from \c void \c Op(ResultTile,ArgTile)
-    template <typename ResultTile, typename ArgTile, typename Op, bool inplace = false>
-    inline DistArray<ResultTile, SparsePolicy>
-    foreach(const_if_t<not inplace, DistArray<ArgTile, SparsePolicy>>& arg, Op&& op) {
+    template <bool inplace = false, typename Op,
+        typename ResultTile, typename ArgTile, typename... ArgTiles>
+    inline DistArray<ResultTile, SparsePolicy> foreach (Op&& op, const ShapeReductionMethod shape_reduction,
+        const_if_t<not inplace, DistArray<ArgTile, SparsePolicy>>& arg,
+        const DistArray<ArgTiles, SparsePolicy>&... args) {
+
+      TA_USER_ASSERT(detail::compare_trange(arg, args...), "Tiled ranges of args must match");
+
       typedef DistArray<ArgTile, SparsePolicy> arg_array_type;
       typedef DistArray<ResultTile, SparsePolicy> result_array_type;
 
@@ -151,27 +199,47 @@ namespace TiledArray {
       madness::AtomicInt counter; counter = 0;
       int task_count = 0;
       auto task = [&op,&counter,&tile_norms](const size_type index,
-          const_if_t<not inplace, arg_value_type>& arg_tile) -> result_value_type {
-        nonvoid_op_helper<Op,
+          const_if_t<not inplace, arg_value_type>& arg_tile,
+          const ArgTiles&... arg_tiles) -> result_value_type {
+        nonvoid_op_helper<inplace, Op,
+            typename shape_type::value_type,
             result_value_type,
             arg_value_type,
-            typename shape_type::value_type,
-            inplace> op_caller;
-        auto result_tile = op_caller(std::forward<Op>(op), arg_tile, tile_norms[index]);
+            ArgTiles...> op_caller;
+        auto result_tile = op_caller(std::forward<Op>(op), tile_norms[index],
+            arg_tile, arg_tiles...);
         ++counter;
         return std::move(result_tile);
       };
 
       World& world = arg.world();
 
-      // Get local tile index iterator
-      for(auto index: *(arg.pmap())) {
-        if(arg.is_zero(index))
-          continue;
-        auto arg_tile = arg.find(index);
-        auto result_tile = world.taskq.add(task, index, arg_tile);
-        ++task_count;
-        tiles.push_back(datum_type(index, result_tile));
+      switch (shape_reduction) {
+      case ShapeReductionMethod::Intersect:
+        // Get local tile index iterator
+        for(auto index: *(arg.pmap())) {
+          if(is_zero_intersection({arg.is_zero(index), args.is_zero(index)...}))
+            continue;
+          auto result_tile = world.taskq.add(task, index, arg.find(index),
+              args.find(index)...);
+          ++task_count;
+          tiles.push_back(datum_type(index, result_tile));
+        }
+        break;
+      case ShapeReductionMethod::Union:
+        // Get local tile index iterator
+        for(auto index: *(arg.pmap())) {
+          if(is_zero_union({arg.is_zero(index), args.is_zero(index)...}))
+            continue;
+          auto result_tile = world.taskq.add(task, index, detail::get_sparse_tile(index, arg),
+              detail::get_sparse_tile(index, args)...);
+          ++task_count;
+          tiles.push_back(datum_type(index, result_tile));
+        }
+        break;
+      default:
+        TA_ASSERT(false);
+        break;
       }
 
       // Wait for tile norm data to be collected.
@@ -222,7 +290,7 @@ namespace TiledArray {
             typename = typename std::enable_if<!std::is_same<ResultTile,ArgTile>::value>::type>
   inline DistArray<ResultTile, DensePolicy>
   foreach(const DistArray<ArgTile, DensePolicy>& arg, Op&& op) {
-    return detail::foreach<ResultTile,ArgTile,Op>(arg,std::forward<Op>(op));
+    return detail::foreach<false, Op, ResultTile, ArgTile>(std::forward<Op>(op), arg);
   }
 
   /// Apply a function to each tile of a dense Array
@@ -232,7 +300,7 @@ namespace TiledArray {
   template <typename Tile, typename Op>
   inline DistArray<Tile, DensePolicy>
   foreach(const DistArray<Tile, DensePolicy>& arg, Op&& op) {
-    return detail::foreach<Tile,Tile,Op>(arg,std::forward<Op>(op));
+    return detail::foreach<false, Op, Tile, Tile>(std::forward<Op>(op), arg);
   }
 
   /// Modify each tile of a dense Array
@@ -265,7 +333,8 @@ namespace TiledArray {
   /// of a tile is held in a \c std::shared_ptr. If you need to ensure other
   /// copies of the data are not modified or this behavior causes problems in
   /// your application, use the \c TiledArray::foreach function instead.
-  template <typename Tile, typename Op>
+  template <typename Tile, typename Op,
+      typename = typename std::enable_if<! TiledArray::detail::is_array<typename std::decay<Op>::type>::value>::type>
   inline void
   foreach_inplace(DistArray<Tile, DensePolicy>& arg, Op&& op, bool fence = true) {
     // The tile data is being modified in place, which means we may need to
@@ -273,7 +342,7 @@ namespace TiledArray {
     if(fence)
       arg.world().gop.fence();
 
-    arg = detail::foreach<Tile, Tile, Op, true>(arg, std::forward<Op>(op));
+    arg = detail::foreach<true, Op, Tile, Tile>(std::forward<Op>(op), arg);
   }
 
   /// Apply a function to each tile of a sparse Array
@@ -315,7 +384,7 @@ namespace TiledArray {
             typename = typename std::enable_if<!std::is_same<ResultTile,ArgTile>::value>::type>
   inline DistArray<ResultTile, SparsePolicy>
   foreach(const DistArray<ArgTile, SparsePolicy> arg, Op&& op) {
-    return detail::foreach<ResultTile,ArgTile,Op>(arg,std::forward<Op>(op));
+    return detail::foreach<false, Op, ResultTile, ArgTile>(std::forward<Op>(op), ShapeReductionMethod::Intersect, arg);
   }
 
   /// Apply a function to each tile of a sparse Array
@@ -325,7 +394,7 @@ namespace TiledArray {
   template <typename Tile, typename Op>
   inline DistArray<Tile, SparsePolicy>
   foreach(const DistArray<Tile, SparsePolicy>& arg, Op&& op) {
-    return detail::foreach<Tile,Tile,Op>(arg,std::forward<Op>(op));
+    return detail::foreach<false, Op, Tile, Tile>(std::forward<Op>(op), ShapeReductionMethod::Intersect, arg);
   }
 
 
@@ -368,7 +437,8 @@ namespace TiledArray {
   /// of a tile is held in a \c std::shared_ptr. If you need to ensure other
   /// copies of the data are not modified or this behavior causes problems in
   /// your application, use the \c TiledArray::foreach function instead.
-  template <typename Tile, typename Op>
+  template <typename Tile, typename Op,
+      typename = typename std::enable_if<! TiledArray::detail::is_array<typename std::decay<Op>::type>::value>::type>
   inline void
   foreach_inplace(DistArray<Tile, SparsePolicy>& arg, Op&& op, bool fence = true) {
 
@@ -378,7 +448,83 @@ namespace TiledArray {
       arg.world().gop.fence();
 
     // Set the arg with the new array
-    arg = detail::foreach<Tile,Tile,Op,true>(arg, std::forward<Op>(op));
+    arg = detail::foreach<true, Op, Tile, Tile>(std::forward<Op>(op), ShapeReductionMethod::Intersect, arg);
+  }
+
+  /// Apply a function to each tile of dense Arrays
+  /// The following function takes two input tiles
+  template <typename ResultTile, typename LeftTile, typename RightTile, typename Op,
+            typename = typename std::enable_if<!std::is_same<ResultTile, LeftTile>::value>::type>
+  inline DistArray<ResultTile, DensePolicy>
+  foreach(const DistArray<LeftTile, DensePolicy>& left,
+      const DistArray<RightTile, DensePolicy>& right, Op&& op) {
+    return detail::foreach<false, Op, ResultTile, LeftTile, RightTile>(std::forward<Op>(op),
+        left, right);
+  }
+
+  /// Specialization of foreach<ResultTile,ArgTile,Op> for
+  /// the case \c ResultTile == \c ArgTile
+  template <typename LeftTile, typename RightTile, typename Op>
+  inline DistArray<LeftTile, DensePolicy>
+  foreach(const DistArray<LeftTile, DensePolicy>& left,
+      const DistArray<RightTile, DensePolicy>& right, Op&& op) {
+    return detail::foreach<false, Op, LeftTile, LeftTile, RightTile>(std::forward<Op>(op),
+        left, right);
+  }
+
+  /// This function takes two input tiles and put result into the left tile
+  template <typename LeftTile, typename RightTile, typename Op>
+  inline void
+  foreach_inplace(DistArray<LeftTile, DensePolicy>& left,
+      const DistArray<RightTile, DensePolicy>& right, Op&& op, bool fence = true) {
+    // The tile data is being modified in place, which means we may need to
+    // fence to ensure no other threads are using the data.
+    if(fence)
+      left.world().gop.fence();
+
+    left = detail::foreach<true, Op, LeftTile, LeftTile, RightTile>(std::forward<Op>(op),
+        left, right);
+  }
+
+  /// Apply a function to each tile of sparse Arrays
+  /// The following function takes two input tiles
+  template <typename ResultTile, typename LeftTile, typename RightTile, typename Op,
+            typename = typename std::enable_if<!std::is_same<ResultTile, LeftTile>::value>::type>
+  inline DistArray<ResultTile, SparsePolicy>
+  foreach(const DistArray<LeftTile, SparsePolicy>& left,
+      const DistArray<RightTile, SparsePolicy>& right, Op&& op,
+      const ShapeReductionMethod shape_reduction = ShapeReductionMethod::Intersect) {
+    return detail::foreach<false, Op, ResultTile, LeftTile, RightTile>(std::forward<Op>(op),
+        shape_reduction, left, right);
+  }
+
+  /// Specialization of foreach<ResultTile,ArgTile,Op> for
+  /// the case \c ResultTile == \c ArgTile
+  template <typename LeftTile, typename RightTile, typename Op>
+  inline DistArray<LeftTile, SparsePolicy>
+  foreach(const DistArray<LeftTile, SparsePolicy>& left,
+      const DistArray<RightTile, SparsePolicy>& right, Op&& op,
+      const ShapeReductionMethod shape_reduction = ShapeReductionMethod::Intersect) {
+    return detail::foreach<false, Op, LeftTile, LeftTile, RightTile>(std::forward<Op>(op),
+        shape_reduction, left, right);
+  }
+
+  /// This function takes two input tiles and put result into the left tile
+  template <typename LeftTile, typename RightTile, typename Op>
+  inline void
+  foreach_inplace(DistArray<LeftTile, SparsePolicy>& left,
+      const DistArray<RightTile, SparsePolicy>& right, Op&& op,
+      const ShapeReductionMethod shape_reduction = ShapeReductionMethod::Intersect,
+      bool fence = true) {
+
+    // The tile data is being modified in place, which means we may need to
+    // fence to ensure no other threads are using the data.
+    if(fence)
+      left.world().gop.fence();
+
+    // Set the arg with the new array
+    left = detail::foreach<true, Op, LeftTile, LeftTile, RightTile>(std::forward<Op>(op),
+        shape_reduction, left, right);
   }
 
 } // namespace TiledArray
