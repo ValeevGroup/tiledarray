@@ -64,14 +64,14 @@ namespace TiledArray {
           if(! weights_)
             throw std::bad_alloc();
 
-          // Construct restricted pointers to the input data
-          const auto* restrict const inv_perm = & inv_perm_.data().front();
-          const auto* restrict const range_size = range.extent_data();
-          const auto* restrict const range_weight = range.stride_data();
+          // Construct MADNESS_RESTRICTed pointers to the input data
+          const auto* MADNESS_RESTRICT const inv_perm = & inv_perm_.data().front();
+          const auto* MADNESS_RESTRICT const range_size = range.extent_data();
+          const auto* MADNESS_RESTRICT const range_weight = range.stride_data();
 
-          // Construct restricted pointers to the object data
-          std::size_t* restrict const input_weight = weights_;
-          std::size_t* restrict const output_weight = weights_ + ndim_;
+          // Construct MADNESS_RESTRICTed pointers to the object data
+          std::size_t* MADNESS_RESTRICT const input_weight = weights_;
+          std::size_t* MADNESS_RESTRICT const output_weight = weights_ + ndim_;
 
           // Initialize input and output weights
           std::size_t volume = 1ul;
@@ -146,9 +146,9 @@ namespace TiledArray {
         TA_ASSERT(ndim_);
         TA_ASSERT(weights_);
 
-        // Construct restricted pointers to data
-        const std::size_t* restrict const input_weight = weights_;
-        const std::size_t* restrict const output_weight = weights_ + ndim_;
+        // Construct MADNESS_RESTRICTed pointers to data
+        const std::size_t* MADNESS_RESTRICT const input_weight = weights_;
+        const std::size_t* MADNESS_RESTRICT const output_weight = weights_ + ndim_;
 
         // create result index
         std::size_t perm_index = 0ul;

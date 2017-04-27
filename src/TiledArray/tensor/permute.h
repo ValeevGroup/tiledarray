@@ -48,9 +48,9 @@ namespace TiledArray {
     /// \param[in] perm The permutation that will be applied to the argument
     /// tensor(s).
     template <typename SizeType>
-    inline void fuse_dimensions(SizeType * restrict const fused_size,
-        SizeType * restrict const fused_weight,
-        const SizeType * restrict const size, const Permutation& perm)
+    inline void fuse_dimensions(SizeType * MADNESS_RESTRICT const fused_size,
+        SizeType * MADNESS_RESTRICT const fused_weight,
+        const SizeType * MADNESS_RESTRICT const size, const Permutation& perm)
     {
       const unsigned int ndim1 = perm.dim() - 1u;
 
@@ -110,7 +110,7 @@ namespace TiledArray {
     /// \tparam OutputOp The output operation type
     /// \tparam Result The result tensor type
     /// \tparam Arg0 The first tensor argument type
-    /// \tparam Args The the remaining tensor argument types
+    /// \tparam Args The remaining tensor argument types
     /// \param input_op The operation that is used to generate the output value
     /// from the input arguments
     /// \param output_op The operation that is used to set the value of the
@@ -130,7 +130,7 @@ namespace TiledArray {
       const typename Result::size_type volume = arg0.range().volume();
 
       // Get pointer to arg extent
-      const auto* restrict const arg0_extent = arg0.range().extent_data();
+      const auto* MADNESS_RESTRICT const arg0_extent = arg0.range().extent_data();
 
       if(perm[ndim1] == ndim1) {
         // This is the simple case where the last dimension is not permuted.
@@ -181,7 +181,7 @@ namespace TiledArray {
             arg0.range().extent_data(), perm);
 
         // Compute the fused stride for the result matrix transpose.
-        const auto* restrict const result_extent = result.range().extent_data();
+        const auto* MADNESS_RESTRICT const result_extent = result.range().extent_data();
         typename Result::size_type  result_outer_stride = 1ul;
         for(unsigned int i = perm[ndim1] + 1u; i < ndim; ++i)
           result_outer_stride *= result_extent[i];

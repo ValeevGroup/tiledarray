@@ -119,7 +119,7 @@ namespace TiledArray {
         const unsigned int rank = array_.trange().tiles_range().rank();
         // Check the dimension of the lower block bound
         if(TiledArray::detail::size(lower_bound_) != rank) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The size lower bound of the block is not equal to rank of " \
                 "the array: " \
@@ -133,7 +133,7 @@ namespace TiledArray {
 
         // Check the dimension of the upper block bound
         if(TiledArray::detail::size(upper_bound_) != rank) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The size upper bound of the block is not equal to rank of " \
                 "the array: " \
@@ -154,7 +154,7 @@ namespace TiledArray {
                     array_.trange().tiles_range().upbound_data(),
                     [] (std::size_t l, std::size_t r) { return l <= r; });
         if(! (lower_bound_check && upper_bound_check)) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The block range is not a sub-block of the array range: " \
                 << "\n    array range = " << array_.trange().tiles_range() \
@@ -169,7 +169,7 @@ namespace TiledArray {
                     std::begin(upper_bound_),
                     [] (std::size_t l, std::size_t r) { return l < r; });
         if(! lower_upper_bound_check) {
-          if(World::get_default().rank() == 0) {
+          if(TiledArray::get_default_world().rank() == 0) {
             TA_USER_ERROR_MESSAGE( \
                 "The block lower bound is not less than the upper bound: " \
                 << "\n    lower bound = " << lower_bound_ \

@@ -5,20 +5,15 @@ compiler:
   - gcc
   - clang
 env:
-  - GCC_VERSION=4.7
-  - GCC_VERSION=4.8
   - GCC_VERSION=4.9
   - GCC_VERSION=5
+  - GCC_VERSION=6
 matrix:
   exclude:
     - compiler: clang
-      env: GCC_VERSION=4.7
-    - compiler: clang
-      env: GCC_VERSION=4.8
-    - compiler: clang
       env: GCC_VERSION=4.9
-    - compiler: clang      # problems mixing ccache with clang in building mpich
-      env: GCC_VERSION=5   #
+    - compiler: clang
+      env: GCC_VERSION=5
 sudo: false
 addons:
   apt:
@@ -28,10 +23,9 @@ addons:
       - boost-latest
       - llvm-toolchain-precise-3.8
     packages:
-      - g++-4.7
-      - g++-4.8
       - g++-4.9
       - g++-5
+      - g++-6
       - clang-3.8
       - libeigen3-dev
       - libboost1.55-dev

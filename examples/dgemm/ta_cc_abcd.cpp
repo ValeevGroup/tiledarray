@@ -172,6 +172,7 @@ void cc_abcd(TA::World& world,
   TA::TiledRange trange_vvvv(
       {trange_uocc, trange_uocc, trange_uocc, trange_uocc});
 
+  const bool do_validate = false;  // set to true if need to validate the result
   auto n_occ = trange_occ.extent();
   auto n_uocc = trange_uocc.extent();
 
@@ -186,9 +187,15 @@ void cc_abcd(TA::World& world,
   TA::TArrayD t2(world, trange_oovv);
   TA::TArrayD v(world, trange_vvvv);
   TA::TArrayD t2_v;
-  // Fill input tensors with random data
-  rand_fill_array(t2);
-  rand_fill_array(v);
+  // To validate, fill input tensors with random data, otherwise just with 1s
+  if (do_validate) {
+    rand_fill_array(t2);
+    rand_fill_array(v);
+  }
+  else {
+    t2.fill_local(1.0);
+    v.fill_local(1.0);
+  }
 
   // Start clock
   world.gop.fence();
@@ -212,7 +219,7 @@ void cc_abcd(TA::World& world,
       tensor_contract_444(t2_v, t2, v);
 
       // to validate replace: false -> true
-      if (false) {
+      if (do_validate) {
         // obtain reference result using the high-level DSL
         TA::TArrayD t2_v_ref;
         t2_v_ref("i,j,a,b") = t2("i,j,c,d") * v("c,d,a,b");
@@ -273,19 +280,19 @@ TA::detail::DistEval<typename Op::result_type, Policy> make_contract_eval(
   std::size_t pi = 0ul;
   for(unsigned int i = 0ul; i < left_middle; ++i) {
     ranges[(perm ? perm[pi++] : pi++)] = left.trange().data()[i];
-    M *= left.range().extent_data()[i];
-    m *= left.trange().elements_range().extent_data()[i];
+    M *= left.range().extent(i);
+    m *= left.trange().elements_range().extent(i);
   }
   for(std::size_t i = num_contract_ranks; i < right_end; ++i) {
     ranges[(perm ? perm[pi++] : pi++)] = right.trange().data()[i];
-    N *= right.range().extent_data()[i];
-    n *= right.trange().elements_range().extent_data()[i];
+    N *= right.range().extent(i);
+    n *= right.trange().elements_range().extent(i);
   }
 
   // Compute the number of tiles in the inner dimension.
   std::size_t K = 1ul;
   for(std::size_t i = left_middle; i < left_end; ++i)
-    K *= left.range().extent_data()[i];
+    K *= left.range().extent(i);
 
   // Construct the result range
   typename impl_type::trange_type trange(ranges.begin(), ranges.end());

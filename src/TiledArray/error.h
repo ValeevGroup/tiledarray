@@ -132,6 +132,7 @@ namespace TiledArray {
 
 // Disable user interface assertion when NDEBUG is defined
 #define TA_USER_ASSERT( a , m )
+#define TA_USER_ASSERT_DISABLED 1
 
 #endif
 

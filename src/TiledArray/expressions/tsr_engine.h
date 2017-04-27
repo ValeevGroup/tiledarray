@@ -47,7 +47,7 @@ namespace TiledArray {
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
-      // Note: the consumable flag is true for noop to avoid necessary copies.
+      // Note: the consumable flag is true for noop to avoid unnecessary copies.
       // This is OK because the result consumable flag is set to false.
       typedef TiledArray::Noop<typename array_type::eval_type, true>
           op_base_type; ///< The tile operation

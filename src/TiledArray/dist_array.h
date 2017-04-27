@@ -51,6 +51,7 @@ namespace TiledArray {
     typedef DistArray<Tile, Policy> DistArray_; ///< This object's type
     typedef TiledArray::detail::ArrayImpl<Tile, Policy> impl_type;
     typedef typename detail::numeric_type<Tile>::type element_type; ///< The tile element type
+    typedef typename detail::scalar_type<Tile>::type scalar_type; ///< The tile scalar type
     typedef typename impl_type::trange_type trange_type; ///< Tile range type
     typedef typename impl_type::range_type range_type; ///< Range type for array tiling
     typedef typename impl_type::shape_type shape_type; ///< Shape type for array tiling
@@ -415,18 +416,19 @@ namespace TiledArray {
     /// Fill all local tiles
 
     /// \param value The fill value
-    void fill_local(const element_type& value = element_type()) {
+    /// \param skip_set If false, will throw if any tiles are already set
+    void fill_local(const element_type& value = element_type(), bool skip_set = false) {
       init_tiles([=] (const range_type& range)
-          { return value_type(range, value); });
+          { return value_type(range, value); }, skip_set);
     }
 
     /// Fill all local tiles
 
     /// \param value The fill value
-    void fill(const element_type& value = element_type()) {
-      fill_local(value);
+    /// \param skip_set If false, will throw if any tiles are already set
+    void fill(const element_type& value = element_type(), bool skip_set = false) {
+      fill_local(value, skip_set);
     }
-
 
     /// Initialize tiles with a user provided functor
 
@@ -457,8 +459,9 @@ namespace TiledArray {
     /// \endcode
     /// \tparam Op Tile operation type
     /// \param op The operation used to generate tiles
+    /// \param skip_set If false, will throw if any tiles are already set
     template <typename Op>
-    void init_tiles(Op&& op) {
+    void init_tiles(Op&& op, bool skip_set = false) {
       check_pimpl();
 
       auto it = pimpl_->pmap()->begin();
@@ -466,6 +469,11 @@ namespace TiledArray {
       for(; it != end; ++it) {
         const auto index = *it;
         if(! pimpl_->is_zero(index)) {
+          if (skip_set) {
+            auto fut = find(index);
+            if (fut.probe())
+              continue;
+          }
           Future<value_type> tile = pimpl_->world().taskq.add(
               [] (DistArray_& array, const size_type index, const Op& op) -> value_type
               { return op(array.trange().make_tile_range(index)); },
@@ -519,7 +527,7 @@ namespace TiledArray {
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
       if(bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-        if(World::get_default().rank() == 0) {
+        if(TiledArray::get_default_world().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
@@ -542,7 +550,7 @@ namespace TiledArray {
       const unsigned int n = 1u + std::count_if(vars.begin(), vars.end(),
           [](const char c) { return c == ','; });
       if(bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-        if(World::get_default().rank() == 0) {
+        if(TiledArray::get_default_world().rank() == 0) {
           TA_USER_ERROR_MESSAGE( \
               "The number of array annotation variables is not equal to the array dimension:" \
               << "\n    number of variables  = " << n \
@@ -614,6 +622,18 @@ namespace TiledArray {
       return pimpl_->owner(i);
     }
 
+    /// Tile ownership
+
+    /// \tparam Index An index type
+    /// \param i The index of a tile
+    /// \return The process ID of the owner of a tile.
+    /// \note This does not indicate whether a tile exists or not. Only, the
+    /// rank of the process that would own it if it does exist.
+    template <typename Index1>
+    ProcessID owner(const std::initializer_list<Index1>& i) const {
+      return owner<std::initializer_list<Index1>>(i);
+    }
+
     /// Check if the tile at index \c i is stored locally
 
     /// \tparam Index A coordinate or ordinal index type
@@ -626,6 +646,17 @@ namespace TiledArray {
       return pimpl_->is_local(i);
     }
 
+    /// Check if the tile at index \c i is stored locally
+
+    /// \tparam Index A coordinate or ordinal index type
+    /// \param i The coordinate or ordinal index of the tile to be checked
+    /// \return \c true if \c owner(i) is equal to the MPI process rank,
+    /// otherwise \c false.
+    template <typename Index1>
+    bool is_local(const std::initializer_list<Index1>& i) const {
+      return is_local<std::initializer_list<Index1>>(i);
+    }
+
     /// Check for zero tiles
 
     /// \return \c true if tile at index \c i is zero, false if the tile is
@@ -634,6 +665,15 @@ namespace TiledArray {
     bool is_zero(const Index& i) const {
       check_index(i);
       return pimpl_->is_zero(i);
+    }
+
+    /// Check for zero tiles
+
+    /// \return \c true if tile at index \c i is zero, false if the tile is
+    /// non-zero or remote existence data is not available.
+    template <typename Index1>
+    bool is_zero(const std::initializer_list<Index1>& i) const {
+      return is_zero<std::initializer_list<Index1>>(i);
     }
 
     /// Swap this array with \c other
@@ -692,6 +732,11 @@ namespace TiledArray {
           "The coordinate index used to access an array tile is out of range.");
       TA_USER_ASSERT(i.size() == pimpl_->trange().tiles_range().rank(),
           "The number of elements in the coordinate index does not match the dimension of the array.");
+    }
+
+    template <typename Index1>
+    void check_index(const std::initializer_list<Index1>& i) const {
+      check_index<std::initializer_list<Index1>>(i);
     }
 
     /// Makes sure pimpl has been initialized

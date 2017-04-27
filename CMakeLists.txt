@@ -24,7 +24,7 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 3.0.0)
+cmake_minimum_required (VERSION 3.1.0)
 project (TiledArray)
 
 # Set TiledArray version =======================================================
@@ -98,8 +98,6 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
 endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
-
-option(MADNESS_DISABLE_WORLD_GET_DEFAULT "Disable the use of madness::World::get_gefault" OFF)
 
 # Enable shared library support options
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
@@ -193,15 +191,13 @@ else()
 endif()
 
 ##########################
-# Check C++11 features
+# Check compiler features
 ##########################
-
-include(CheckCXX11Support)
-check_cxx11_support(TILEDARRAY_HAS_CXX11)
-if (NOT TILEDARRAY_HAS_CXX11)
-  message(FATAL_ERROR "${CMAKE_CXX_COMPILER} does not support C++11.")
-endif()
-
+# need for C++14 will be inherited from madness
+# but insist on strict standard
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 # Check type support
 include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)

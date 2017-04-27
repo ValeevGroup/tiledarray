@@ -6,9 +6,6 @@
 
 # extra preprocessor definitions that MADNESS needs from TiledArray
 set(MADNESS_EXTRA_CPP_FLAGS "")
-if (MADNESS_DISABLE_WORLD_GET_DEFAULT)
-  set(MADNESS_EXTRA_CPP_FLAGS "${MADNESS_EXTRA_CPP_FLAGS} -DMADNESS_DISABLE_WORLD_GET_DEFAULT")
-endif ()
 
 include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
@@ -101,7 +98,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "0bcbc3eee269039ab5362a6fbe6aa3410bfb3245" CACHE STRING 
+  set(MADNESS_TAG "ta-master-track" CACHE STRING 
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -289,6 +286,7 @@ else()
       -DENABLE_GPERFTOOLS=${ENABLE_GPERFTOOLS}
       -DASSERTION_TYPE=${MAD_ASSERT_TYPE}
       "-DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}"
+      -DDISABLE_WORLD_GET_DEFAULT=ON
       ${MADNESS_CMAKE_EXTRA_ARGS}
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)

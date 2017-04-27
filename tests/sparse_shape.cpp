@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE( non_comm_constructor )
   // Construct test tile norms
   Tensor<float> tile_norms = make_norm_tensor(tr, 1, 42);
 
-  // Construct the shape
+  // Construct the shape using dense ctor
   BOOST_CHECK_NO_THROW(SparseShape<float> x(tile_norms, tr));
   SparseShape<float> x(tile_norms, tr);
 
@@ -105,6 +105,8 @@ BOOST_AUTO_TEST_CASE( non_comm_constructor )
     // Check zero threshold
     if(x[i] < SparseShape<float>::threshold()) {
       BOOST_CHECK(x.is_zero(i));
+      // "zero" tile norms are set to hard 0
+      BOOST_CHECK(x[i] == 0.0f);
       ++zero_tile_count;
     } else {
       BOOST_CHECK(! x.is_zero(i));
@@ -112,6 +114,28 @@ BOOST_AUTO_TEST_CASE( non_comm_constructor )
   }
 
   BOOST_CHECK_CLOSE(x.sparsity(), float(zero_tile_count) / float(tr.tiles_range().volume()), tolerance);
+
+  // use the sparse ctor
+  {
+    std::vector<std::pair<std::vector<std::size_t>,float>> sparse_tile_norms;
+
+    for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
+      auto tiles_range = tr.tiles_range();
+      auto idx = tiles_range.idx(i);
+      if (tile_norms[i] > 0.0) {
+        sparse_tile_norms.push_back(std::make_pair(idx,tile_norms[i]));
+      }
+    }
+
+    // Construct the shape using sparse ctor
+    BOOST_CHECK_NO_THROW(SparseShape<float> x_sp(sparse_tile_norms, tr));
+    SparseShape<float> x_sp(sparse_tile_norms, tr);
+
+    // Check that the dense and sparse ctors produced same data
+    for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
+      BOOST_CHECK_CLOSE(x[i], x_sp[i], tolerance);
+    }
+  }
 }
 
 
@@ -158,6 +182,28 @@ BOOST_AUTO_TEST_CASE( comm_constructor )
   }
 
   BOOST_CHECK_CLOSE(x.sparsity(), float(zero_tile_count) / float(tr.tiles_range().volume()), tolerance);
+
+  // use the sparse ctor
+  {
+    std::vector<std::pair<std::vector<std::size_t>,float>> sparse_tile_norms;
+
+    for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
+      auto tiles_range = tr.tiles_range();
+      auto idx = tiles_range.idx(i);
+      if (tile_norms[i] > 0.0) {
+        sparse_tile_norms.push_back(std::make_pair(idx,tile_norms[i]));
+      }
+    }
+
+    // Construct the shape using sparse ctor
+    BOOST_CHECK_NO_THROW(SparseShape<float> x_sp(*GlobalFixture::world, sparse_tile_norms, tr));
+    SparseShape<float> x_sp(*GlobalFixture::world, sparse_tile_norms, tr);
+
+    // Check that the dense and sparse ctors produced same data
+    for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
+      BOOST_CHECK_CLOSE(x[i], x_sp[i], tolerance);
+    }
+  }
 }
 
 
@@ -215,10 +261,10 @@ BOOST_AUTO_TEST_CASE( block )
         std::size_t volume = 1ul;
         for(int i = int(tr.tiles_range().rank()) - 1u; i >= 0; --i) {
           auto size_i = upper[i] - lower[i];
-          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
-          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          BOOST_CHECK_EQUAL(result.data().range().lobound(i), 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride(i), volume);
           volume *= size_i;
         }
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
@@ -274,10 +320,10 @@ BOOST_AUTO_TEST_CASE( block_scale )
         std::size_t volume = 1ul;
         for(int i = int(tr.tiles_range().rank()) - 1u; i >= 0; --i) {
           auto size_i = upper[i] - lower[i];
-          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
-          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          BOOST_CHECK_EQUAL(result.data().range().lobound(i), 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride(i), volume);
           volume *= size_i;
         }
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
@@ -336,10 +382,10 @@ BOOST_AUTO_TEST_CASE( block_perm )
         for(int i = int(tr.tiles_range().rank()) - 1u; i >= 0; --i) {
           const auto inv_perm_i = inv_perm[i];
           const auto size_i = upper[inv_perm_i] - lower[inv_perm_i];
-          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
-          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          BOOST_CHECK_EQUAL(result.data().range().lobound(i), 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride(i), volume);
           volume *= size_i;
         }
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
@@ -399,10 +445,10 @@ BOOST_AUTO_TEST_CASE( block_scale_perm )
         for(int i = int(tr.tiles_range().rank()) - 1u; i >= 0; --i) {
           const auto inv_perm_i = inv_perm[i];
           const auto size_i = upper[inv_perm_i] - lower[inv_perm_i];
-          BOOST_CHECK_EQUAL(result.data().range().lobound_data()[i], 0);
-          BOOST_CHECK_EQUAL(result.data().range().upbound_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().extent_data()[i], size_i);
-          BOOST_CHECK_EQUAL(result.data().range().stride_data()[i], volume);
+          BOOST_CHECK_EQUAL(result.data().range().lobound(i), 0);
+          BOOST_CHECK_EQUAL(result.data().range().upbound(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().extent(i), size_i);
+          BOOST_CHECK_EQUAL(result.data().range().stride(i), volume);
           volume *= size_i;
         }
         BOOST_CHECK_EQUAL(result.data().range().volume(), volume);
@@ -1081,8 +1127,8 @@ BOOST_AUTO_TEST_CASE( mult_scale_perm )
 BOOST_AUTO_TEST_CASE( gemm )
 {
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().extent_data()[0];
-  const std::size_t n = right.data().range().extent_data()[right.data().range().rank() - 1];
+  const std::size_t m = left.data().range().extent(0);
+  const std::size_t n = right.data().range().extent(right.data().range().rank() - 1);
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;
@@ -1140,8 +1186,8 @@ BOOST_AUTO_TEST_CASE( gemm_perm )
   const Permutation perm({1,0});
 
   // Create a matrix with the expected output
-  const std::size_t m = left.data().range().extent_data()[0];
-  const std::size_t n = right.data().range().extent_data()[right.data().range().rank() - 1];
+  const std::size_t m = left.data().range().extent(0);
+  const std::size_t n = right.data().range().extent(right.data().range().rank() - 1);
 //  const std::size_t k = left.data().size() / m;
 
   size_type zero_tile_count = 0ul;

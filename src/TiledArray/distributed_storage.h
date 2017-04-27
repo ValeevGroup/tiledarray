@@ -188,7 +188,7 @@ namespace TiledArray {
       /// \throw nothing
       size_type max_size() const { return max_size_; }
 
-      /// Get local or remote node
+      /// Get local or remote element
 
       /// \param i The element to get
       /// \return A future to element \c i

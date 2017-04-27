@@ -209,9 +209,9 @@ namespace TiledArray {
     friend std::ostream& operator <<(std::ostream&, const TiledRange1&);
 
     // TiledRange1 data
-    range_type range_; ///< stores the overall dimensions of the tiles.
-    range_type elements_range_; ///< stores overall element dimensions.
-    std::vector<range_type> tiles_ranges_; ///< stores the dimensions of each tile.
+    range_type range_; ///< the range of tile indices
+    range_type elements_range_; ///< the range of element indices
+    std::vector<range_type> tiles_ranges_; ///< ranges of each tile.
     std::vector<size_type> elem2tile_; ///< maps element index to tile index (secondary data).
 
   }; // class TiledRange1

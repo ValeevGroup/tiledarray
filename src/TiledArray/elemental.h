@@ -64,8 +64,8 @@ namespace TiledArray {
       const typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
-      const auto* restrict const tile_lower = tile.range().lobound_data();
-      const auto* restrict const tile_extent = tile.range().extent_data();
+      const auto* MADNESS_RESTRICT const tile_lower = tile.range().lobound_data();
+      const auto* MADNESS_RESTRICT const tile_extent = tile.range().extent_data();
       const std::size_t tile_lower_0 = tile_lower[0];
       const std::size_t tile_lower_1 = tile_lower[1];
       const std::size_t tile_extent_0 = tile_extent[0];
@@ -114,8 +114,8 @@ namespace TiledArray {
       typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
-      const auto* restrict const tile_lower = tile.range().lobound_data();
-      const auto* restrict const tile_extent = tile.range().extent_data();
+      const auto* MADNESS_RESTRICT const tile_lower = tile.range().lobound_data();
+      const auto* MADNESS_RESTRICT const tile_extent = tile.range().extent_data();
       const std::size_t tile_lower_0 = tile_lower[0];
       const std::size_t tile_lower_1 = tile_lower[1];
       const std::size_t tile_extent_0 = tile_extent[0];
@@ -140,7 +140,7 @@ namespace TiledArray {
       typename DistArray<Tile>::value_type tile = *it;
 
       // Get tile range data
-      const auto* restrict const tile_extent = tile.range().extent_data();
+      const auto* MADNESS_RESTRICT const tile_extent = tile.range().extent_data();
       const std::size_t tile_extent_0 = tile_extent[0];
       const std::size_t tile_extent_1 = tile_extent[1];
 

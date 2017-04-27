@@ -76,8 +76,8 @@ namespace TiledArray {
       template <typename U>
       ShiftWrapper<T>& operator=(U&& other) {
         typedef typename std::decay<U>::type arg_type;
-        detail::inplace_tensor_op([] (reference restrict l,
-            typename arg_type::const_reference restrict r) { l = r; },
+        detail::inplace_tensor_op([] (reference MADNESS_RESTRICT l,
+            typename arg_type::const_reference MADNESS_RESTRICT r) { l = r; },
             *this, other);
         return *this;
       }
@@ -116,7 +116,7 @@ namespace TiledArray {
     /// \tparam Right The right-hand tensor type
     /// \param left The left-hand tensor
     /// \param right The right-hand tensor
-    /// \return \c true if the lower and upper bounds of the the left- and
+    /// \return \c true if the lower and upper bounds of the left- and
     /// right-hand tensor ranges are equal, otherwise \c false
     template <typename Left, typename Right>
     inline bool is_range_congruent(const Left& left, const ShiftWrapper<Right>& right) {

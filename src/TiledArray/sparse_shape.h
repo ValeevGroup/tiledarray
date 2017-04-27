@@ -70,7 +70,7 @@ namespace TiledArray {
     typedef detail::ValArray<value_type> vector_type;
 
     Tensor<value_type> tile_norms_; ///< Tile magnitude data
-    std::shared_ptr<vector_type> size_vectors_; ///< Tile size information
+    std::shared_ptr<vector_type> size_vectors_; ///< Tile size information; size_vectors_[d][i] reports the size of i-th tile in dimension d
     size_type zero_tile_count_; ///< Number of zero tiles
     static value_type threshold_; ///< The zero threshold
 
@@ -109,7 +109,7 @@ namespace TiledArray {
     void normalize() {
       const value_type threshold = threshold_;
       const unsigned int dim = tile_norms_.range().rank();
-      const vector_type* restrict const size_vectors = size_vectors_.get();
+      const vector_type* MADNESS_RESTRICT const size_vectors = size_vectors_.get();
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
 
@@ -226,27 +226,80 @@ namespace TiledArray {
       normalize();
     }
 
-    /// Collective constructor
+    /// "Sparse" constructor
 
-    /// This constructor will sum the tile_norms data across all processes (via
-    /// an all reduce). After the norms have been summed, it will be normalized.
-    /// The normalization constant for each tile is the inverse of the number of
-    /// elements in the tile.
+    /// This constructor uses tile norms given as a sparse tensor,
+    /// represented as a sequence of {index,value_type} data.
+    /// The tile norms are normalized to per-element norms by dividing each
+    /// norm by the number of elements in the corresponding tile.
+    /// \tparam SparseNormSequence the sequence of \c std::pair<index,value_type> objects,
+    ///         where \c index is a directly-addressable sequence indices.
+    /// \param tile_norms The Frobenius norm of tiles
+    /// \param trange The tiled range of the tensor
+    template<typename SparseNormSequence>
+    SparseShape(const SparseNormSequence& tile_norms,
+                const TiledRange& trange) :
+      tile_norms_(trange.tiles_range(), value_type(0)), size_vectors_(initialize_size_vectors(trange)),
+      zero_tile_count_(trange.tiles_range().volume())
+    {
+      const auto dim = tile_norms_.range().rank();
+      for(const auto& pair_idx_norm: tile_norms) {
+        auto compute_tile_volume = [dim,this,pair_idx_norm]() -> uint64_t {
+          uint64_t tile_volume = 1;
+          for(size_t d=0;d != dim; ++d)
+            tile_volume *= size_vectors_.get()[d].at(pair_idx_norm.first[d]);
+          return tile_volume;
+        };
+        auto norm_per_element = pair_idx_norm.second / compute_tile_volume();
+        if (norm_per_element >= threshold()) {
+          tile_norms_[pair_idx_norm.first] = norm_per_element;
+          --zero_tile_count_;
+        }
+      }
+    }
+
+    /// Collective "dense" constructor
+
+    /// This constructor uses tile norms given as a dense tensor.
+    /// The tile norms data are summed across all processes (via
+    /// an all reduce).
+    /// Next, the norms are converted to per-element norms by dividing each
+    /// norm by the number of elements in the corresponding tile.
     /// \param world The world where the shape will live
     /// \param tile_norms The Frobenius norm of tiles
     /// \param trange The tiled range of the tensor
     SparseShape(World& world, const Tensor<value_type>& tile_norms,
-        const TiledRange& trange) :
+                const TiledRange& trange) :
       tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
       zero_tile_count_(0ul)
     {
       TA_ASSERT(! tile_norms_.empty());
       TA_ASSERT(tile_norms_.range() == trange.tiles_range());
 
-      // Do global initialization of norm data
+      // reduce norm data from all processors
       world.gop.sum(tile_norms_.data(), tile_norms_.size());
 
       normalize();
+    }
+
+    /// Collective "sparse" constructor
+
+    /// This constructor uses tile norms given as a sparse tensor,
+    /// represented as a sequence of {index,value_type} data.
+    /// The tile norms are normalized to per-element norms by dividing each
+    /// norm by the number of elements in the corresponding tile.
+    /// Lastly, he norms are sum-reduced across all processors.
+    /// \tparam SparseNormSequence the sequence of \c std::pair<index,value_type> objects,
+    ///         where \c index is a directly-addressable sequence of integers.
+    /// \param world The world where the shape will live
+    /// \param tile_norms The Frobenius norm of tiles
+    /// \param trange The tiled range of the tensor
+    template<typename SparseNormSequence>
+    SparseShape(World& world,
+                const SparseNormSequence& tile_norms,
+                const TiledRange& trange) : SparseShape(tile_norms, trange)
+    {
+      world.gop.sum(tile_norms_.data(), tile_norms_.size());
     }
 
     /// Copy constructor
@@ -441,10 +494,10 @@ namespace TiledArray {
       TA_ASSERT(detail::size(lower_bound) == tile_norms_.range().rank());
       TA_ASSERT(detail::size(upper_bound) == tile_norms_.range().rank());
 
-      // Get the number dimensions of the the shape
+      // Get the number dimensions of the shape
       const auto rank = detail::size(lower_bound);
-      const auto* restrict const lower = detail::data(lower_bound);
-      const auto* restrict const upper = detail::data(upper_bound);
+      const auto* MADNESS_RESTRICT const lower = detail::data(lower_bound);
+      const auto* MADNESS_RESTRICT const upper = detail::data(upper_bound);
 
       std::shared_ptr<vector_type> size_vectors(new vector_type[rank],
           std::default_delete<vector_type[]>());
@@ -457,7 +510,7 @@ namespace TiledArray {
 
         // Check that the input indices are in range
         TA_ASSERT(lower_i < upper_i);
-        TA_ASSERT(upper_i <= tile_norms_.range().upbound_data()[i]);
+        TA_ASSERT(upper_i <= tile_norms_.range().upbound(i));
 
         // Construct the size vector for rank i
         size_vectors.get()[i] = vector_type(extent_i,
@@ -482,7 +535,7 @@ namespace TiledArray {
       const value_type threshold = threshold_;
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
-      auto copy_op = [threshold,&zero_tile_count] (value_type& restrict result,
+      auto copy_op = [threshold,&zero_tile_count] (value_type& MADNESS_RESTRICT result,
           const value_type arg)
       {
         result = arg;
@@ -520,7 +573,7 @@ namespace TiledArray {
       const value_type threshold = threshold_;
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
-      auto copy_op = [abs_factor,threshold,&zero_tile_count] (value_type& restrict result,
+      auto copy_op = [abs_factor,threshold,&zero_tile_count] (value_type& MADNESS_RESTRICT result,
               const value_type arg)
       {
         result = arg * abs_factor;
@@ -785,7 +838,7 @@ namespace TiledArray {
 
       value = std::abs(value);
       const unsigned int dim = tile_norms_.range().rank();
-      const vector_type* restrict const size_vectors = size_vectors_.get();
+      const vector_type* MADNESS_RESTRICT const size_vectors = size_vectors_.get();
 
       if(dim == 1u) {
         auto add_const_op = [threshold, &zero_tile_count, value] (value_type norm,
@@ -872,7 +925,7 @@ namespace TiledArray {
   private:
 
     static size_type scale_by_size(Tensor<T>& tile_norms,
-        const vector_type* restrict const size_vectors)
+        const vector_type* MADNESS_RESTRICT const size_vectors)
     {
       const unsigned int dim = tile_norms.range().rank();
       const value_type threshold = threshold_;

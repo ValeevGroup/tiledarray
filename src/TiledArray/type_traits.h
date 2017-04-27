@@ -24,6 +24,7 @@
 #include <iterator>
 #include <madness/world/type_traits.h>
 #include <complex>
+#include <utility>
 
 namespace Eigen {
 
@@ -378,7 +379,7 @@ namespace TiledArray {
     using mult_t = decltype(std::declval<Scalar1>() * std::declval<Scalar2>());
 
 
-    /// Test if `T` is a dense array type
+    /// is_dense<T> is a true type if `T` is a dense array
     template <typename T>
     struct is_dense : public std::false_type { };
 
@@ -414,6 +415,13 @@ namespace TiledArray {
           std::true_type, std::false_type
         >::type {};
 
+    //////////////////////////////////////////////////////////////////////////////////////////////
+
+    template <typename T>
+    struct is_pair : public std::false_type { };
+
+    template <typename T1, typename T2>
+    struct is_pair<std::pair<T1,T2> > : public std::true_type { };
 
   } // namespace detail
 

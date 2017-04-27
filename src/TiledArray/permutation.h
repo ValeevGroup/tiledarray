@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_PERMUTATION_H__INCLUED
-#define TILEDARRAY_PERMUTATION_H__INCLUED
+#ifndef TILEDARRAY_PERMUTATION_H__INCLUDED
+#define TILEDARRAY_PERMUTATION_H__INCLUDED
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
@@ -41,7 +41,7 @@ namespace TiledArray {
   template <typename T, typename A>
   inline std::vector<T, A>& operator*=(std::vector<T, A>&, const Permutation&);
   template <typename T>
-  inline std::vector<T> operator*(const Permutation&, const T* restrict const);
+  inline std::vector<T> operator*(const Permutation&, const T* MADNESS_RESTRICT const);
 
   namespace detail {
 
@@ -543,7 +543,7 @@ namespace TiledArray {
   /// \param ptr A pointer to the memory buffer to be permuted
   /// \return A permuted copy of the memory buffer as a \c std::vector
   template <typename T>
-  inline std::vector<T> operator*(const Permutation& perm, const T* restrict const ptr) {
+  inline std::vector<T> operator*(const Permutation& perm, const T* MADNESS_RESTRICT const ptr) {
     const unsigned int n = perm.dim();
     std::vector<T> result(n);
     for(unsigned int i = 0u; i < n; ++i) {

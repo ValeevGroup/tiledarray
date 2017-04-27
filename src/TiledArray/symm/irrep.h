@@ -108,8 +108,8 @@ namespace TiledArray {
 
 #ifndef NDEBUG
       {
-        const unsigned int* restrict const M = data_.get() + degree_;
-        const unsigned int* restrict const mu = data_.get();
+        const unsigned int* MADNESS_RESTRICT const M = data_.get() + degree_;
+        const unsigned int* MADNESS_RESTRICT const mu = data_.get();
         unsigned int M_max = 0u;
         unsigned int mu_sum = 0u;
         for(unsigned int i = 0u; i < degree_; ++i) {

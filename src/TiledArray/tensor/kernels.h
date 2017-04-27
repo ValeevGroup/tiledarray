@@ -87,7 +87,7 @@ namespace TiledArray {
 
     /// In-place tensor operations with contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
+    /// This function sets the elements of \c result with the result of
     /// \c op(tensors[i]...)
     /// \tparam Op The element initialization operation type
     /// \tparam TR The result tensor type
@@ -110,7 +110,7 @@ namespace TiledArray {
 
     /// In-place tensor of tensors operations with contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
+    /// This function sets the elements of \c result with the result of
     /// \c op(tensors[i]...)
     /// \tparam Op The element initialization operation type
     /// \tparam TR The result tensor type
@@ -134,8 +134,8 @@ namespace TiledArray {
 
     /// In-place tensor permutation operations with contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
-    /// \c op(tensors[i]...)
+    /// This function sets the \c i -th element of \c result with the result of
+    /// \c op(tensor1[i],tensors[i]...)
     /// The expected signature of the input operations is:
     /// \code
     /// Result::value_type op(const T1::value_type, const Ts::value_type...)
@@ -176,8 +176,8 @@ namespace TiledArray {
 
     /// In-place tensor of tensors permutation operations with contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
-    /// \c op(tensors[i]...)
+    /// This function sets the \c i -th element of \c result with the result of
+    /// \c op(tensor1[i], tensors[i]...)
     /// The expected signature of the input operations is:
     /// \code
     /// Result::value_type op(const T1::value_type::value_type, const Ts::value_type::value_type...)
@@ -212,12 +212,12 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == tensor1.range().rank());
 
-      auto wrapper_input_op = [=] (typename T1::const_reference restrict value1,
-        typename Ts::const_reference restrict... values) ->
+      auto wrapper_input_op = [=] (typename T1::const_reference MADNESS_RESTRICT value1,
+        typename Ts::const_reference MADNESS_RESTRICT... values) ->
         typename T1::value_type
         { return tensor_op<TR::value_type>(input_op, value1, values...); };
 
-      auto wrapper_output_op = [=] (typename T1::pointer restrict const result_value,
+      auto wrapper_output_op = [=] (typename T1::pointer MADNESS_RESTRICT const result_value,
                                     const typename TR::value_type value)
       { inplace_tensor_op(output_op, *result_value, value); };
 
@@ -227,7 +227,7 @@ namespace TiledArray {
 
     /// In-place tensor operations with non-contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
+    /// This function sets the \c i -th element of \c result with the result of
     /// \c op(tensors[i]...)
     /// \tparam Op The element initialization operation type
     /// \tparam TR The result tensor type
@@ -252,7 +252,7 @@ namespace TiledArray {
 
     /// In-place tensor of tensors operations with non-contiguous data
 
-    /// This function sets the elements of \c tensor1 with the result of
+    /// This function sets the \c i -th element of \c result with the result of
     /// \c op(tensors[i]...)
     /// \tparam Op The element initialization operation type
     /// \tparam TR The result tensor type
@@ -271,8 +271,8 @@ namespace TiledArray {
       const auto volume = result.range().volume();
 
       auto inplace_tensor_range =
-          [=] (typename TR::pointer restrict const result_data,
-          typename Ts::const_pointer restrict const... tensors_data)
+          [=] (typename TR::pointer MADNESS_RESTRICT const result_data,
+          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data)
           {
             for(decltype(result.range().volume()) i = 0ul; i < stride; ++i)
               inplace_tensor_op(op, result_data[i], tensors_data[i]...);
@@ -289,7 +289,7 @@ namespace TiledArray {
 
     /// Initialize tensor with contiguous tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
+    /// This function initializes the \c i -th element of \c result with the result of
     /// \c op(tensors[i]...)
     /// \pre The memory of \c tensor1 has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
@@ -307,8 +307,8 @@ namespace TiledArray {
 
       const auto volume = result.range().volume();
 
-      auto wrapper_op = [=] (typename TR::pointer restrict result,
-              typename Ts::const_reference restrict... ts)
+      auto wrapper_op = [=] (typename TR::pointer MADNESS_RESTRICT result,
+              typename Ts::const_reference MADNESS_RESTRICT... ts)
           { new(result) typename TR::value_type(op(ts...)); };
 
       math::vector_ptr_op(wrapper_op, volume, result.data(), tensors.data()...);
@@ -316,7 +316,7 @@ namespace TiledArray {
 
     /// Initialize tensor of tensors with contiguous tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
+    /// This function initializes the \c i -th element of \c result with the result of
     /// \c op(tensors[i]...)
     /// \pre The memory of \c tensor1 has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
@@ -343,7 +343,7 @@ namespace TiledArray {
 
     /// Initialize tensor with permuted tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
+    /// This function initializes the \c i -th element of \c result with the result of
     /// \c op(tensor1[i], tensors[i]...)
     /// \pre The memory of \c result has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
@@ -366,8 +366,8 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == result.range().rank());
 
-      auto output_op = [=] (typename TR::pointer restrict result,
-          typename TR::const_reference  restrict temp)
+      auto output_op = [=] (typename TR::pointer MADNESS_RESTRICT result,
+          typename TR::const_reference  MADNESS_RESTRICT temp)
           { new(result) typename TR::value_type(temp); };
 
       permute(op, output_op, result, perm, tensor1, tensors...);
@@ -376,7 +376,7 @@ namespace TiledArray {
 
     /// Initialize tensor of tensors with permuted tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
+    /// This function initializes the \c i -th element of \c result with the result of
     /// \c op(tensor1[i], tensors[i]...)
     /// \pre The memory of \c result has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
@@ -399,11 +399,11 @@ namespace TiledArray {
       TA_ASSERT(perm);
       TA_ASSERT(perm.dim() == result.range().rank());
 
-      auto output_op = [=] (typename TR::pointer restrict result,
-          typename TR::const_reference  restrict temp)
+      auto output_op = [=] (typename TR::pointer MADNESS_RESTRICT result,
+          typename TR::const_reference  MADNESS_RESTRICT temp)
           { new(result) typename TR::value_type(temp); };
-      auto tensor_input_op = [=] (typename T1::const_reference restrict value1,
-          typename Ts::const_reference restrict... values) ->
+      auto tensor_input_op = [=] (typename T1::const_reference MADNESS_RESTRICT value1,
+          typename Ts::const_reference MADNESS_RESTRICT... values) ->
           typename TR::value_type
           { return tensor_op<typename TR::value_type>(op, value1, values...); };
 
@@ -413,14 +413,15 @@ namespace TiledArray {
 
     /// Initialize tensor with one or more non-contiguous tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
-    /// \c op(tensors[i]...)
+    /// This function initializes the \c i -th element of \c result with the result of
+    /// \c op(tensor1[i], tensors[i]...)
     /// \pre The memory of \c tensor1 has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
     /// \tparam T1 The result tensor type
     /// \tparam Ts The argument tensor types
     /// \param[in] op The result tensor element initialization operation
-    /// \param[out] tensor1 The result tensor
+    /// \param[out] result The result tensor
+    /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename T1, typename... Ts,
         typename std::enable_if<is_tensor<TR, T1, Ts...>::value
@@ -435,7 +436,7 @@ namespace TiledArray {
       const auto stride = inner_size(tensor1, tensors...);
       const auto volume = tensor1.range().volume();
 
-      auto wrapper_op = [=] (typename TR::pointer restrict result_ptr,
+      auto wrapper_op = [=] (typename TR::pointer MADNESS_RESTRICT result_ptr,
               const typename T1::value_type value1,
               const typename Ts::value_type... values)
           { new(result_ptr) typename T1::value_type(op(value1, values...)); };
@@ -448,14 +449,15 @@ namespace TiledArray {
 
     /// Initialize tensor with one or more non-contiguous tensor arguments
 
-    /// This function initializes the elements of \c tensor1 with the result of
-    /// \c op(tensors[i]...)
+    /// This function initializes the \c i -th element of \c result with the result of
+    /// \c op(tensor1[i],tensors[i]...)
     /// \pre The memory of \c tensor1 has been allocated but not initialized.
     /// \tparam Op The element initialization operation type
     /// \tparam T1 The result tensor type
     /// \tparam Ts The argument tensor types
     /// \param[in] op The result tensor element initialization operation
-    /// \param[out] tensor1 The result tensor
+    /// \param[out] result The result tensor
+    /// \param[in] tensor1 The first argument tensor
     /// \param[in] tensors The argument tensors
     template <typename Op, typename TR, typename T1, typename... Ts,
         typename std::enable_if<is_tensor_of_tensor<TR, T1, Ts...>::value
@@ -472,9 +474,9 @@ namespace TiledArray {
 
 
       auto inplace_tensor_range =
-          [=] (typename TR::pointer restrict const result_data,
-              typename T1::const_pointer restrict const tensor1_data,
-              typename Ts::const_pointer restrict const... tensors_data)
+          [=] (typename TR::pointer MADNESS_RESTRICT const result_data,
+              typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
+              typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data)
           {
             for(decltype(result.range().volume()) i = 0ul; i < stride; ++i)
               new(result_data + i)
@@ -624,9 +626,9 @@ namespace TiledArray {
       const auto volume = tensor1.range().volume();
 
       auto tensor_reduce_range =
-          [=] (Scalar& restrict result,
-              typename T1::const_pointer restrict const tensor1_data,
-              typename Ts::const_pointer restrict const... tensors_data)
+          [=] (Scalar& MADNESS_RESTRICT result,
+              typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
+              typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data)
           {
             for(decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
               Scalar temp = tensor_reduce(reduce_op, join_op, identity,

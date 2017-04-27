@@ -37,7 +37,7 @@ namespace TiledArray {
     // Forward declaration
     template <typename> class TensorReference;
     template <typename> class TensorConstReference;
-    template <typename, typename> class ArrayIiterator;
+    template <typename, typename> class ArrayIterator;
 
     /// Tensor tile reference
 
@@ -47,7 +47,7 @@ namespace TiledArray {
     private:
 
       template <typename, typename>
-      friend class ArrayIiterator;
+      friend class ArrayIterator;
 
       template <typename>
       friend class TileConstReference;
@@ -125,7 +125,7 @@ namespace TiledArray {
     private:
 
       template <typename, typename>
-      friend class ArrayIiterator;
+      friend class ArrayIterator;
 
       const Impl* tensor_; ///< The tensor that owns the referenced tile
       typename Impl::size_type index_; ///< The index of the tensor
@@ -200,11 +200,11 @@ namespace TiledArray {
     /// \tparam Impl The TensorImpl type
     /// \tparam Reference The iterator reference type
     template <typename Impl, typename Reference>
-    class ArrayIiterator {
+    class ArrayIterator {
     private:
       // Give access to other iterator types.
       template <typename, typename>
-      friend class ArrayIiterator;
+      friend class ArrayIterator;
 
       Impl* array_;
       typename Impl::pmap_interface::const_iterator it_;
@@ -215,7 +215,7 @@ namespace TiledArray {
       typedef PointerProxy<value_type> pointer; ///< Pointer type to iterator value
       typedef Reference reference; ///< Reference type to iterator value
       typedef std::forward_iterator_tag iterator_category; ///< Iterator category type
-      typedef ArrayIiterator<Impl, Reference> ArrayIterator_; ///< This object type
+      typedef ArrayIterator<Impl, Reference> ArrayIterator_; ///< This object type
       typedef typename Impl::range_type::index index_type;
       typedef typename Impl::size_type ordinal_type;
       typedef typename Impl::range_type range_type;
@@ -235,17 +235,17 @@ namespace TiledArray {
     public:
 
       /// Default constructor
-      ArrayIiterator() : array_(NULL), it_() { }
+      ArrayIterator() : array_(NULL), it_() { }
 
       /// Constructor
-      ArrayIiterator(Impl* tensor, typename Impl::pmap_interface::const_iterator it) :
+      ArrayIterator(Impl* tensor, typename Impl::pmap_interface::const_iterator it) :
         array_(tensor), it_(it)
       { }
 
       /// Copy constructor
 
       /// \param other The transform iterator to copy
-      ArrayIiterator(const ArrayIterator_& other) :
+      ArrayIterator(const ArrayIterator_& other) :
         array_(other.array_), it_(other.it_)
       { }
 
@@ -258,7 +258,7 @@ namespace TiledArray {
               !((! std::is_const<Impl>::value) &&
               std::is_const<I>::value)
           >::type* = nullptr>
-      ArrayIiterator(const ArrayIiterator<I, R>& other) :
+      ArrayIterator(const ArrayIterator<I, R>& other) :
         array_(other.array_), it_(other.it_)
       { }
 
@@ -279,7 +279,7 @@ namespace TiledArray {
       /// \param other The transform iterator to copy
       /// \return A reference to this object
       template <typename R>
-      ArrayIterator_& operator=(const ArrayIiterator<Impl, R>& other) {
+      ArrayIterator_& operator=(const ArrayIterator<Impl, R>& other) {
         array_ = other.array_;
         it_ = other.it_;
 
@@ -310,7 +310,7 @@ namespace TiledArray {
       /// \return \c true when the iterators are equal to each other, otherwise
       /// \c false.
       template <typename I, typename R>
-      bool operator==(const ArrayIiterator<I, R>& other) const {
+      bool operator==(const ArrayIterator<I, R>& other) const {
         return (array_ == other.array_) && (it_ == other.it_);
       }
 
@@ -321,7 +321,7 @@ namespace TiledArray {
       /// \return \c true when the iterators are not equal to each other,
       /// otherwise \c false.
       template <typename I, typename R>
-      bool operator!=(const ArrayIiterator<I, R>& other) const {
+      bool operator!=(const ArrayIterator<I, R>& other) const {
         return (array_ != other.array_) || (it_ != other.it_);
       }
 
@@ -395,8 +395,8 @@ namespace TiledArray {
       typedef typename storage_type::future future; ///< Future tile type
       typedef TileReference<ArrayImpl_> reference; ///< Tile reference type
       typedef TileConstReference<ArrayImpl_> const_reference; ///< Tile constant reference type
-      typedef ArrayIiterator<ArrayImpl_, reference> iterator; ///< Iterator type
-      typedef ArrayIiterator<const ArrayImpl_, const_reference> const_iterator; ///< Constant iterator type
+      typedef ArrayIterator<ArrayImpl_, reference> iterator; ///< Iterator type
+      typedef ArrayIterator<const ArrayImpl_, const_reference> const_iterator; ///< Constant iterator type
 
     private:
 

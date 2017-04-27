@@ -355,7 +355,7 @@ namespace TiledArray {
         /// Reduce two reduction arguments
         void reduce_object_object(const ReduceObject* object1, const ReduceObject* object2) {
           // Construct an empty result object
-          std::shared_ptr<result_type> result(new result_type(op_()));
+          auto result = std::make_shared<result_type>(op_());
 
           // Reduce the two arguments
           op_(*result, object1->arg());
@@ -392,7 +392,7 @@ namespace TiledArray {
         /// has completed
         ReduceTaskImpl(World& world, opT op, madness::CallbackInterface* callback) :
           madness::TaskInterface(1, TaskAttributes::hipri()),
-          world_(world), op_(op), ready_result_(new result_type(op())),
+          world_(world), op_(op), ready_result_(std::make_shared<result_type>(op())),
           ready_object_(nullptr), result_(), lock_(), callback_(callback)
         { }
 
@@ -481,7 +481,7 @@ namespace TiledArray {
       /// Destructor
 
       /// If the reduction has not been submitted or \c destroy() has not been
-      /// called, it well be submitted when the the destructor is called.
+      /// called, it will be submitted when the destructor is called.
       ~ReduceTask() { delete pimpl_; }
 
       /// Move assignment operator

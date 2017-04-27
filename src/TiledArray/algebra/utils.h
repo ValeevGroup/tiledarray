@@ -126,7 +126,7 @@ namespace TiledArray {
   }
 
   template <typename Tile, typename Policy>
-  inline typename DistArray<Tile,Policy>::element_type
+  inline typename DistArray<Tile,Policy>::scalar_type
   norm2(const DistArray<Tile,Policy>& a) {
     return std::sqrt(a(detail::dummy_annotation(a.trange().tiles_range().rank())).squared_norm());
   }
