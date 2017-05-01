@@ -378,6 +378,11 @@ namespace TiledArray {
     template <typename Scalar1, typename Scalar2>
     using mult_t = decltype(std::declval<Scalar1>() * std::declval<Scalar2>());
 
+    template <typename T>
+    struct is_array : public std::false_type { };
+
+    template <typename T, typename P>
+    struct is_array<DistArray<T, P> > : public std::true_type { };
 
     /// is_dense<T> is a true type if `T` is a dense array
     template <typename T>
