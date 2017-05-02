@@ -20,8 +20,6 @@ export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:$LD_LIBRARY_PATH
 
 # Options for Elemental
 export F77=gfortran-5
-ElemOpts="-DCMAKE_Fortran_COMPILER=$F77 -DCMAKE_BUILD_TYPE=Debug -DMATH_LIBS='-lapack -lblas'"
-
 
 # Configure TiledArray
 mkdir _build
@@ -31,7 +29,8 @@ cd _build
 cmake .. -DCMAKE_INSTALL_PREFIX=../_install -DCMAKE_CXX_COMPILER=$CXX \
   -DCMAKE_C_COMPILER=$CC -DMPI_CXX_COMPILER=$MPICXX -DMPI_C_COMPILER=$MPICC \
   -DTA_BUILD_UNITTEST=ON -DCMAKE_BUILD_TYPE=Debug -DTA_ERROR="throw" \
-  -DENABLE_ELEMENTAL=ON -Wno-dev -DMAD_ELEMENTAL_OPTIONS="$ElemOpts"
+  -DENABLE_ELEMENTAL=ON -Wno-dev 
+  -DMADNESS_CMAKE_EXTRA_ARGS="-Wno-dev -DELEMENTAL_CMAKE_BUILD_TYPE=DEBUG -DELEMENTAL_CMAKE_EXTRA_ARGS='-DCMAKE_Fortran_COMPILER=gfortran-5' -DELEMENTAL_MATH_LIBS='-lapack -lblas'"
 
 # Build all libraries, examples, and applications
 make -j2 all VERBOSE=1
