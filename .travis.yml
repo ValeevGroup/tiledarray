@@ -26,7 +26,9 @@ addons:
       - g++-4.9
       - g++-5
       - g++-6
+      - gfortran-4
       - gfortran-5
+      - gfortran-6
       - clang-3.8
       - libeigen3-dev
       - libboost1.55-dev
