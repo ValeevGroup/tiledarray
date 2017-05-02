@@ -211,9 +211,13 @@ namespace TiledArray {
                                  (left_is_consumable || right_is_consumable)>* =
                     nullptr>
       auto operator()(L&& left, R&& right) const {
-        eval_t<L> eval_left(left);
-        eval_t<R> eval_right(right);
-        return BinaryWrapper_::operator()(eval_left, eval_right);
+        auto eval_left = invoke_cast(std::forward<L>(left));
+        auto eval_right = invoke_cast(std::forward<R>(right));
+        auto continuation = [this](decltype(eval_left)& l, decltype(eval_right)& r) {
+          return BinaryWrapper_::operator()(l, r);
+        };
+        using TiledArray::meta::invoke;
+        return invoke(continuation, eval_left, eval_right);
       }
 
       /// Evaluate lazy and non-lazy tiles
@@ -234,7 +238,11 @@ namespace TiledArray {
                     nullptr>
       auto operator()(L&& left, R&& right) const {
         auto eval_left = invoke_cast(std::forward<L>(left));
-        return BinaryWrapper_::operator()(eval_left, std::forward<R>(right));
+        auto continuation = [this](decltype(eval_left)& l, R&& r) {
+          return BinaryWrapper_::operator()(l, std::forward<R>(r));
+        };
+        using TiledArray::meta::invoke;
+        return invoke(continuation, eval_left, right);
       }
 
       /// Evaluate non-lazy and lazy tiles
