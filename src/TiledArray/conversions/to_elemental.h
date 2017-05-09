@@ -83,7 +83,7 @@ El::DistMatrix<typename Array::element_type> matrix_to_el(
     // Loop over all tiles
     const auto vol = trange.tiles_range().volume();
     for(auto i = 0ul; i < vol; ++i){
-        //
+
         // Write local tiles into a queue and allow elemental to do all 
         // communication of elements to the remote nodes.
         if(!A.is_zero(i) && A.is_local(i)){
@@ -115,7 +115,7 @@ DistArray<Tensor<T>, DensePolicy> el_to_matrix(
     TA_USER_ASSERT(uniformly_blocked(trange), "The output TiledRange must be uniformly blocked.");
 
     // Determine block size
-    TiledRange1 const& tr1_row = trange.data()[0];
+    auto const& tr1_row = trange.data()[0];
     auto const& tr1_col = trange.data()[1];
     auto row_bs = tr1_row.begin()->second - tr1_row.begin()->first;
     auto col_bs = tr1_col.begin()->second - tr1_col.begin()->first;
@@ -132,9 +132,7 @@ DistArray<Tensor<T>, DensePolicy> el_to_matrix(
         // Make the tiled range for tile i
         auto range = trange.make_tile_range(i);
         auto lo = range.lobound_data();
-        auto up = range.upbound_data();
 
-        using ptr_type = decltype(lo);
         auto task = [&](Range rng){
             auto lo = rng.lobound_data();
             auto up = rng.upbound_data();

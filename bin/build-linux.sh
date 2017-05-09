@@ -39,3 +39,5 @@ make -j2 ta_test VERBOSE=1
 cd tests
 export MAD_NUM_THREADS=2
 ./ta_test --show_progress
+cd ..
+make evd
