@@ -235,7 +235,7 @@ DistArray<Tensor<T>, DensePolicy> el_to_array(
 
 } // namespace TiledArray
 
-#endif // #HAVE_EL_H
-#endif // #TILEDARRAY_HAS_ELEMENTAL
+#endif // HAVE_EL_H
+#endif // TILEDARRAY_HAS_ELEMENTAL
 
 #endif // TILEDARRAY_CONVERSIONS_TO_ELEMENTAL_H__INCLUDED
