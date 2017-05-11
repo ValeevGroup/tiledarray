@@ -26,11 +26,15 @@
 #ifndef TILEDARRAY_CONVERSIONS_TO_ELEMENTAL_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_TO_ELEMENTAL_H__INCLUDED
 
+#if TILEDARRAY_HAS_ELEMENTAL
+#if HAVE_EL_H
+
+#include <TiledArray/dist_array.h>
 #include <TiledArray/error.h>
 #include <TiledArray/tiled_range.h>
-#include <TiledArray/elemental.h>
 #include <TiledArray/tensor.h>
-#include <TiledArray/dist_array.h>
+
+#include <El.hpp>
 
 #include <utility>
 
@@ -230,5 +234,8 @@ DistArray<Tensor<T>, DensePolicy> el_to_array(
 }
 
 } // namespace TiledArray
+
+#endif #HAVE_EL_H
+#endif #TILEDARRAY_HAS_ELEMENTAL
 
 #endif // TILEDARRAY_CONVERSIONS_TO_ELEMENTAL_H__INCLUDED

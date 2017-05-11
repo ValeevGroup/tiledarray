@@ -244,7 +244,7 @@ else()
   
   set(error_code 1)
   message (STATUS "** Configuring MADNESS")
-  message (STATUS "Madness Extra Args: ${MADNESS_CMAKE_EXTRA_ARGS}") 
+  message (STATUS "MADNESS Extra Args: ${MADNESS_CMAKE_EXTRA_ARGS}") 
   execute_process(
       COMMAND ${CMAKE_COMMAND}
       ARGS
