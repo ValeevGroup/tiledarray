@@ -81,6 +81,10 @@ add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-
 option(ENABLE_ELEMENTAL "Enable use of MADNESS-provided Elemental" OFF)
 add_feature_info(Elemental ENABLE_ELEMENTAL "Elemental provides parallel linear algebra")
 
+if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
+    set(ELEMENTAL_TAG ff7d0603238e5ba3175e9b936bf8e945cb130cd0)
+endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
+
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
 add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks support shared-memory parallel programs")
 
