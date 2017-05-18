@@ -135,7 +135,7 @@ void write_tiles_to_array(Array &A, T val){
 /// \param val The value to be written along the diagonal elements 
 
 template <typename T>
-DistArray<Tensor<T>, DensePolicy> dense_diagonal_array(World &world,
+DistArray<Tensor<T>,DensePolicy> dense_diagonal_array(World &world,
                                                TiledRange const &trange,
                                                T val = 1) {
     // Init the array
@@ -168,6 +168,22 @@ DistArray<Tensor<T>, SparsePolicy> sparse_diagonal_array(World &world,
 
     world.gop.fence();
     return A;
+}
+
+template <typename T, typename Policy>
+DistArray<Tensor<T>, 
+  std::enable_if_t<std::is_same<Policy, DensePolicy>::value, Policy>
+> 
+diagonal_array(World &world, TiledRange const &trange, T val = 1) {
+  return dense_diagonal_array<T>(world, trange, val);
+}
+
+template <typename T, typename Policy>
+DistArray<Tensor<T>, 
+  std::enable_if_t<std::is_same<Policy, SparsePolicy>::value, Policy>
+> 
+diagonal_array(World &world, TiledRange const &trange, T val = 1) {
+  return sparse_diagonal_array<T>(world, trange, val);
 }
 
 }  // namespace TiledArray
