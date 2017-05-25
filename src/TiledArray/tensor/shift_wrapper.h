@@ -94,8 +94,8 @@ namespace TiledArray {
 
       /// Tensor range accessor
 
-      /// \return The tensor range object
-      auto range() const { return tensor_->range(); }
+      /// \return a const reference to the tensor range object
+      const auto& range() const { return tensor_->range(); }
 
       /// Tensor data pointer accessor
 
