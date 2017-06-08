@@ -322,20 +322,20 @@ make_array_eval(
 }
 
 template<typename Tile>
-TA::ContractReduce<Tile, Tile, typename Tile::value_type>
+TA::detail::ContractReduce<Tile, Tile, Tile, typename Tile::value_type>
 make_contract(const unsigned int result_rank, const unsigned int left_rank,
     const unsigned int right_rank, const TA::Permutation& perm = TA::Permutation())
 {
-  return TA::ContractReduce<Tile, Tile, typename Tile::value_type>(
+  return TA::detail::ContractReduce<Tile, Tile, Tile, typename Tile::value_type>(
       madness::cblas::NoTrans, madness::cblas::NoTrans, 1, result_rank,
       left_rank, right_rank, perm);
 }
 
 template <typename Tile>
-static TA::detail::UnaryWrapper<TA::Noop<Tile, true> >
+static TA::detail::UnaryWrapper<TA::detail::Noop<Tile, Tile, true> >
 make_array_noop(const TA::Permutation& perm = TA::Permutation()) {
-  return TA::detail::UnaryWrapper<TA::Noop<Tile, true> >(
-      TA::Noop<Tile, true>(), perm);
+  return TA::detail::UnaryWrapper<TA::detail::Noop<Tile, Tile, true> >(
+      TA::detail::Noop<Tile, Tile, true>(), perm);
 }
 
 template <typename Tile, typename Policy>
@@ -366,7 +366,7 @@ void tensor_contract_444(TA::DistArray<Tile, Policy>& tv,
   auto n_occ = trange_occ.extent();
   auto n_uocc = trange_occ.extent();
 
-  typedef TA::Noop<Tile, true> array_base_op_type;
+  typedef TA::detail::Noop<Tile, Tile, true> array_base_op_type;
   typedef TA::detail::UnaryWrapper<array_base_op_type> array_op_type;
   typedef TA::detail::DistEval<TA::detail::LazyArrayTile<Tile, array_op_type>,
       TA::DensePolicy> array_eval_type;
