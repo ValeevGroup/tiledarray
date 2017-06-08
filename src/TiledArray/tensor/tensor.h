@@ -1309,7 +1309,7 @@ namespace TiledArray {
     /// \param identity The identity value of the reduction
     /// \return The reduced value
     template <typename ReduceOp, typename JoinOp, typename Scalar>
-    auto reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
+    decltype(auto) reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
                 Scalar identity) const
     {
       return detail::tensor_reduce(reduce_op, join_op, identity, *this);
@@ -1328,7 +1328,7 @@ namespace TiledArray {
     /// \return The reduced value
     template <typename Right, typename ReduceOp, typename JoinOp, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-    auto reduce(const Right& other, ReduceOp&& reduce_op, JoinOp&& join_op,
+    decltype(auto) reduce(const Right& other, ReduceOp&& reduce_op, JoinOp&& join_op,
                 Scalar identity) const
     {
       return detail::tensor_reduce(reduce_op, join_op, identity, *this, other);
