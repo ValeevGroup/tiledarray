@@ -55,7 +55,7 @@ namespace TiledArray {
       /// Output operator
 
       /// \tparam T The object type
-      /// \param t The object to be added to the steam
+      /// \param t The object to be added to the stream
       template <typename T>
       std::ostream& operator <<(const T& t) {
         for(unsigned int i = 0u; i < tab_; ++i) {
