@@ -66,6 +66,7 @@ TiledArray/conversions/eigen.h
 TiledArray/conversions/foreach.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
+TiledArray/conversions/elemental.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/dist_eval/array_eval.h
@@ -112,6 +113,7 @@ TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
+TiledArray/special/diagonal_array.h
 TiledArray/symm/irrep.h
 TiledArray/symm/permutation.h
 TiledArray/symm/permutation_group.h

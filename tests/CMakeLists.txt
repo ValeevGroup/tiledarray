@@ -86,7 +86,8 @@ set(ta_test_src_files  ta_test.cpp
     dist_eval_contraction_eval.cpp
     expressions.cpp
     expressions_mixed.cpp
-    )
+    foreach.cpp
+)
         
 if(ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
