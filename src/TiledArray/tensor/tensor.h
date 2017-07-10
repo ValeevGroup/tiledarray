@@ -793,7 +793,7 @@ namespace TiledArray {
 
     // Subtraction operations
 
-    /// Subtract this and \c right to construct a new tensor
+    /// Subtract \c right from this and return the result
 
     /// \tparam Right The right-hand tensor type
     /// \param right The tensor that will be subtracted from this tensor
@@ -807,7 +807,7 @@ namespace TiledArray {
           -> numeric_type { return l - r; });
     }
 
-    /// Subtract this and \c right to construct a new, permuted tensor
+    /// Subtract \c right from this and return the result permuted by \c perm
 
     /// \tparam Right The right-hand tensor type
     /// \param right The tensor that will be subtracted from this tensor
@@ -822,7 +822,7 @@ namespace TiledArray {
           -> numeric_type { return l - r; }, perm);
     }
 
-    /// Scale and subtract this and \c right to construct a new tensor
+    /// Subtract \c right from this and return the result scaled by a scaling \c factor
 
     /// \tparam Right The right-hand tensor type
     /// \tparam Scalar A scalar type
@@ -839,7 +839,7 @@ namespace TiledArray {
           -> numeric_type { return (l - r) * factor; });
     }
 
-    /// Scale and subtract this and \c right to construct a new, permuted tensor
+    /// Subtract \c right from this and return the result scaled by a scaling \c factor and permuted by \c perm
 
     /// \tparam Right The right-hand tensor type
     /// \tparam Scalar A scalar type
