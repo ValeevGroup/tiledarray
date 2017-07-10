@@ -42,6 +42,9 @@
 /* Define if MADNESS configured with Elemental support */
 #cmakedefine TILEDARRAY_HAS_ELEMENTAL 1
 
+/* Define if BTAS is available */
+#cmakedefine TILEDARRAY_HAS_BTAS 1
+
 /* Add macro TILEDARRAY_FORCE_INLINE which does as the name implies. */
 #if defined(_MSC_VER) || defined(__INTEL_COMPILER)
 

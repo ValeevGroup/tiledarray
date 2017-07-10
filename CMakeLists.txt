@@ -239,6 +239,8 @@ include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
+# this is optional since depends on boost, but handles that internally
+include(external/btas.cmake)
 
 # optional deps:
 # 1. ccache

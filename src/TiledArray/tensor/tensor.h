@@ -1431,6 +1431,32 @@ namespace TiledArray {
   template <typename T, typename A>
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
 
+  // specialize TiledArray::detail::transform for Tensor
+  namespace detail {
+  template <typename T, typename A>
+  struct transform<Tensor<T, A>> {
+    template <typename Op, typename T1>
+    Tensor<T, A> operator()(Op&& op, T1&& t1) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op));
+    }
+    template <typename Op, typename T1>
+    Tensor<T, A> operator()(Op&& op, const Permutation& perm, T1&& t1) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op), perm);
+    }
+    template <typename Op, typename T1, typename T2>
+    Tensor<T, A> operator()(Op&& op, T1&& t1, T2&& t2) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<T2>(t2),
+                          std::forward<Op>(op));
+    }
+    template <typename Op, typename T1, typename T2>
+    Tensor<T, A> operator()(Op&& op,
+                            const Permutation& perm, T1&& t1, T2&& t2) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<T2>(t2),
+                          std::forward<Op>(op), perm);
+    }
+  };
+  }  // namespace detail
+
 #ifndef TILEDARRAY_HEADER_ONLY
 
   extern template
