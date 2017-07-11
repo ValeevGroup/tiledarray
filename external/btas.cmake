@@ -29,14 +29,16 @@ if (_BTAS_INCLUDE_DIR)
   cmake_pop_check_state()
 
   if (NOT BTAS_COMPILES)
-    message(FATAL_ERROR "BTAS found at ${_BTAS_INCLUDE_DIR}, but failed to compile test program")
+    message(STATUS "BTAS found at ${_BTAS_INCLUDE_DIR}, but failed to compile test program")
   endif()
   
-  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${_BTAS_INCLUDE_DIR})
+  ##### uncomment, if ready to bundle with TiledArray #####
+#  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${_BTAS_INCLUDE_DIR})
+  
 elseif(TA_EXPERT)
 
   message("** BTAS was not found")
-  message(FATAL_ERROR "** Downloading and building BTAS is explicitly disabled in EXPERT mode")
+  message(STATUS "** Downloading and building BTAS is explicitly disabled in EXPERT mode")
 
 else()
 
@@ -74,19 +76,16 @@ else()
   # Set the BTAS included directory
   set(BTAS_INCLUDE_DIR ${EXTERNAL_SOURCE_DIR})
   
-  # Install BTAS
-  install(
-    DIRECTORY
-        ${EXTERNAL_SOURCE_DIR}/btas
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/btas
-    COMPONENT btas
-    )
+  ##### uncomment, if ready to bundle with TiledArray #####
+#  # Install BTAS
+#  install(
+#    DIRECTORY
+#        ${EXTERNAL_SOURCE_DIR}/btas
+#    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/btas
+#    COMPONENT btas
+#    )
 
 endif()
 
 # Set the  build variables
 include_directories(${BTAS_INCLUDE_DIR})
-if (Boost_FOUND)
-  add_definitions(-DHAVE_BOOST_CONTAINER)
-endif()
-set(TILEDARRAY_HAS_BTAS 1)
