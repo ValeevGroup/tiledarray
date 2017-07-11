@@ -1431,6 +1431,15 @@ namespace TiledArray {
   template <typename T, typename A>
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
 
+  template <typename T, typename A>
+  bool operator==(const Tensor<T,A>& a, const Tensor<T,A>& b) {
+    return a.range() == b.range() && std::equal(a.data(), a.data() + a.size(), b.data());
+  }
+  template <typename T, typename A>
+  bool operator!=(const Tensor<T,A>& a, const Tensor<T,A>& b) {
+    return !(a == b);
+  }
+
   // specialize TiledArray::detail::transform for Tensor
   namespace detail {
   template <typename T, typename A>
