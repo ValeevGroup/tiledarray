@@ -47,7 +47,9 @@ else()
   # Set source and build path for Eigen3 in the TiledArray Project
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/btas)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/btas)
-  set(BTAS_URL https://github.com/BTAS/BTAS)
+  if (NOT BTAS_URL)
+    set(BTAS_URL https://github.com/BTAS/BTAS)
+  endif (NOT BTAS_URL)
   set(BTAS_TAG master)
 
   message("** Will clone BTAS from ${BTAS_URL}")
