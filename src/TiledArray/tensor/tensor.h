@@ -450,6 +450,12 @@ namespace TiledArray {
         std::shared_ptr<Impl> temp(new Impl());
         temp->data_ = temp->allocate(n);
         try {
+          // need to construct elements of data_ using placement new in case its default ctor is not trivial
+          // N.B. for fundamental types and standard alloc this incurs no overhead (Eigen::aligned_alloc OK also)
+          auto* data_ptr = temp->data_;
+          for(size_type i=0; i!=n; ++i, ++data_ptr)
+            new(static_cast<void*>(data_ptr)) value_type;
+
           ar & madness::archive::wrap(temp->data_, n);
           ar & temp->range_;
         } catch(...) {
