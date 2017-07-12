@@ -36,6 +36,10 @@ namespace TiledArray {
 
   namespace detail {
 
+    /// customization point transform functionality to tensor class T, useful for nonintrusive extension of T to be usable as tensor type T in Tensor<T>
+    template <typename T>
+    struct transform;
+
     // -------------------------------------------------------------------------
     // Tensor kernel operations that generate a new tensor
 
@@ -54,7 +58,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<TR, T1, Ts...>::value
             || is_tensor_of_tensor<TR, T1, Ts...>::value>::type* = nullptr>
     inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
-      return TR(tensor1, tensors..., op);
+      return TiledArray::detail::transform<TR>()(std::forward<Op>(op), tensor1, tensors...);
     }
 
 
@@ -78,9 +82,67 @@ namespace TiledArray {
     inline TR tensor_op(Op&& op, const Permutation& perm, const T1& tensor1,
         const Ts&... tensors)
     {
-      return TR(tensor1, tensors..., op, perm);
+      return TiledArray::detail::transform<TR>()(std::forward<Op>(op), perm, tensor1, tensors...);
     }
 
+    /// provides transform functionality to class T, useful for nonintrusive extension of T to be usable as tensor type T in Tensor<T>
+    template <typename T>
+    struct transform {
+      /// creates a result tensor in which element \c i is obtained by \c op(tensor[i], tensors[i]...)
+      template <typename Op, typename Tensor, typename ... Tensors>
+      T operator()(Op&& op, Tensor&& tensor, Tensors&& ... tensors) const {
+        TA_ASSERT(! empty(tensor, tensors...));
+        TA_ASSERT(is_range_set_congruent(tensor, tensors...));
+
+        const auto& range = tensor.range();
+        T result(range);
+        this->operator()(result, std::forward<Op>(op), std::forward<Tensor>(tensor), std::forward<Tensors>(tensors)...);
+        return result;
+      }
+
+      /// an in-place version of above
+      /// \note result  must be already allocated
+      template <typename Op, typename Tensor, typename ... Tensors>
+      void operator()(T& result, Op&& op, Tensor&& tensor, Tensors&& ... tensors) const {
+        TA_ASSERT(! empty(result, tensor, tensors...));
+        TA_ASSERT(is_range_set_congruent(result, tensor, tensors...));
+
+        const auto& range = result.range();
+        for (auto&& i : range)
+          result[std::forward<decltype(i)>(i)] = std::forward<Op>(op)(
+              std::forward<Tensor>(tensor)[std::forward<decltype(i)>(i)],
+              std::forward<Tensors>(tensors)[std::forward<decltype(i)>(i)]...);
+      }
+
+      template <typename Op, typename Tensor, typename ... Tensors>
+      T operator()(Op&& op, const Permutation& perm, Tensor&& tensor, Tensors&& ... tensors) const {
+
+        TA_ASSERT(! empty(tensor, tensors...));
+        TA_ASSERT(is_range_set_congruent(tensor, tensors...));
+        TA_ASSERT(perm);
+        TA_ASSERT(perm.dim() == tensor.range().rank());
+
+        const auto& range = tensor.range();
+        T result(perm ^ range);
+        this->operator()(result, std::forward<Op>(op), perm, std::forward<Tensor>(tensor), std::forward<Tensors>(tensors)...);
+        return result;
+      }
+
+      template <typename Op, typename Tensor, typename ... Tensors>
+      void operator()(T& result, Op&& op, const Permutation& perm, Tensor&& tensor, Tensors&& ... tensors) const {
+        TA_ASSERT(! empty(result, tensor, tensors...));
+        TA_ASSERT(is_range_congruent(result, tensor, perm));
+        TA_ASSERT(is_range_set_congruent(tensor, tensors...));
+        TA_ASSERT(perm);
+        TA_ASSERT(perm.dim() == tensor.range().rank());
+
+        const auto& range = tensor.range();
+        for (auto&& i : range)
+          result[perm ^ std::forward<decltype(i)>(i)] = std::forward<Op>(op)(
+              std::forward<Tensor>(tensor)[std::forward<decltype(i)>(i)],
+              std::forward<Tensors>(tensors)[std::forward<decltype(i)>(i)]...);
+      }
+    };
 
     // -------------------------------------------------------------------------
     // Tensor kernel operations with in-place memory operations

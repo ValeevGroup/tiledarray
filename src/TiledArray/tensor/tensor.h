@@ -76,6 +76,15 @@ namespace TiledArray {
         data_ = allocator_type::allocate(range.volume());
       }
 
+      /// Construct with rvalue range
+
+      /// \param range The N-dimensional range for this tensor
+      explicit Impl(range_type&& range) :
+        allocator_type(), range_(range), data_(NULL)
+      {
+        data_ = allocator_type::allocate(range.volume());
+      }
+
       ~Impl() {
         math::destroy_vector(range_.volume(), data_);
         allocator_type::deallocate(data_, range_.volume());
@@ -125,7 +134,7 @@ namespace TiledArray {
     /// uninitialized.
     /// \param range The range of the tensor
     Tensor(const range_type& range) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       default_init(range.volume(), pimpl_->data_);
     }
@@ -139,7 +148,7 @@ namespace TiledArray {
         typename std::enable_if<std::is_same<Value, value_type>::value &&
         detail::is_tensor<Value>::value>::type* = nullptr>
     Tensor(const range_type& range, const Value& value) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       const size_type n = pimpl_->range_.volume();
       pointer MADNESS_RESTRICT const data = pimpl_->data_;
@@ -154,7 +163,7 @@ namespace TiledArray {
     template <typename Value,
         typename std::enable_if<detail::is_numeric<Value>::value>::type* = nullptr>
     Tensor(const range_type& range, const Value& value) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       detail::tensor_init([=] () -> Value { return value; }, *this);
     }
@@ -164,7 +173,7 @@ namespace TiledArray {
         typename std::enable_if<TiledArray::detail::is_input_iterator<InIter>::value &&
             ! std::is_pointer<InIter>::value>::type* = nullptr>
     Tensor(const range_type& range, InIter it) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       size_type n = range.volume();
       pointer MADNESS_RESTRICT const data = pimpl_->data_;
@@ -174,7 +183,7 @@ namespace TiledArray {
 
     template <typename U>
     Tensor(const Range& range, const U* u) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       math::uninitialized_copy_vector(range.volume(), u, pimpl_->data_);
     }
@@ -187,7 +196,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<T1>::value &&
             ! std::is_same<T1, Tensor_>::value>::type* = nullptr>
     Tensor(const T1& other) :
-      pimpl_(new Impl(detail::clone_range(other)))
+      pimpl_(std::make_shared<Impl>(detail::clone_range(other)))
     {
       auto op =
           [] (const numeric_t<T1> arg) -> numeric_t<T1>
@@ -204,7 +213,7 @@ namespace TiledArray {
     template <typename T1,
         typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
     Tensor(const T1& other, const Permutation& perm) :
-      pimpl_(new Impl(perm * other.range()))
+      pimpl_(std::make_shared<Impl>(perm * other.range()))
     {
       auto op =
           [] (const numeric_t<T1> arg) -> numeric_t<T1>
@@ -224,7 +233,7 @@ namespace TiledArray {
                  && ! std::is_same<typename std::decay<Op>::type,
                  Permutation>::value>::type* = nullptr>
     Tensor(const T1& other, Op&& op) :
-      pimpl_(new Impl(detail::clone_range(other)))
+      pimpl_(std::make_shared<Impl>(detail::clone_range(other)))
     {
       detail::tensor_init(op, *this, other);
     }
@@ -238,7 +247,7 @@ namespace TiledArray {
     template <typename T1, typename Op,
         typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
     Tensor(const T1& other, Op&& op, const Permutation& perm) :
-      pimpl_(new Impl(perm * other.range()))
+      pimpl_(std::make_shared<Impl>(perm * other.range()))
     {
       detail::tensor_init(op, perm, *this, other);
     }
@@ -254,7 +263,7 @@ namespace TiledArray {
     template <typename T1, typename T2, typename Op,
         typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
     Tensor(const T1& left, const T2& right, Op&& op) :
-      pimpl_(new Impl(detail::clone_range(left)))
+      pimpl_(std::make_shared<Impl>(detail::clone_range(left)))
     {
       detail::tensor_init(op, *this, left, right);
     }
@@ -271,7 +280,7 @@ namespace TiledArray {
     template <typename T1, typename T2, typename Op,
         typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
     Tensor(const T1& left, const T2& right, Op&& op, const Permutation& perm) :
-      pimpl_(new Impl(perm * left.range()))
+      pimpl_(std::make_shared<Impl>(perm * left.range()))
     {
       detail::tensor_init(op, perm, *this, left, right);
     }
@@ -447,9 +456,15 @@ namespace TiledArray {
       size_type n = 0ul;
       ar & n;
       if(n) {
-        std::shared_ptr<Impl> temp(new Impl());
+        std::shared_ptr<Impl> temp = std::make_shared<Impl>();
         temp->data_ = temp->allocate(n);
         try {
+          // need to construct elements of data_ using placement new in case its default ctor is not trivial
+          // N.B. for fundamental types and standard alloc this incurs no overhead (Eigen::aligned_alloc OK also)
+          auto* data_ptr = temp->data_;
+          for(size_type i=0; i!=n; ++i, ++data_ptr)
+            new(static_cast<void*>(data_ptr)) value_type;
+
           ar & madness::archive::wrap(temp->data_, n);
           ar & temp->range_;
         } catch(...) {
@@ -1430,6 +1445,41 @@ namespace TiledArray {
 
   template <typename T, typename A>
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
+
+  template <typename T, typename A>
+  bool operator==(const Tensor<T,A>& a, const Tensor<T,A>& b) {
+    return a.range() == b.range() && std::equal(a.data(), a.data() + a.size(), b.data());
+  }
+  template <typename T, typename A>
+  bool operator!=(const Tensor<T,A>& a, const Tensor<T,A>& b) {
+    return !(a == b);
+  }
+
+  // specialize TiledArray::detail::transform for Tensor
+  namespace detail {
+  template <typename T, typename A>
+  struct transform<Tensor<T, A>> {
+    template <typename Op, typename T1>
+    Tensor<T, A> operator()(Op&& op, T1&& t1) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op));
+    }
+    template <typename Op, typename T1>
+    Tensor<T, A> operator()(Op&& op, const Permutation& perm, T1&& t1) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op), perm);
+    }
+    template <typename Op, typename T1, typename T2>
+    Tensor<T, A> operator()(Op&& op, T1&& t1, T2&& t2) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<T2>(t2),
+                          std::forward<Op>(op));
+    }
+    template <typename Op, typename T1, typename T2>
+    Tensor<T, A> operator()(Op&& op,
+                            const Permutation& perm, T1&& t1, T2&& t2) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<T2>(t2),
+                          std::forward<Op>(op), perm);
+    }
+  };
+  }  // namespace detail
 
 #ifndef TILEDARRAY_HEADER_ONLY
 

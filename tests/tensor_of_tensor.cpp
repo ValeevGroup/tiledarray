@@ -27,6 +27,12 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+#include <boost/mpl/list.hpp>
+
+#ifdef TILEDARRAY_HAS_BTAS
+#include "btas.h"
+#endif
+
 using namespace TiledArray;
 
 struct TensorOfTensorFixture {
@@ -35,6 +41,12 @@ struct TensorOfTensorFixture {
     a(make_rand_tensor_of_tensor(Range(size))),
     b(make_rand_tensor_of_tensor(Range(size))),
     c(a - b)
+#ifdef TILEDARRAY_HAS_BTAS
+    ,
+    d(make_rand_TobT(Range(size))),
+    e(make_rand_TobT(Range(size))),
+    f(d - e)
+#endif
   { }
 
   ~TensorOfTensorFixture() { }
@@ -61,31 +73,88 @@ struct TensorOfTensorFixture {
     return tensor;
   }
 
+  // Fill a tensor with random data
+  static Tensor<btas::Tensor<int> > make_rand_TobT(const Range& r) {
+    Tensor<btas::Tensor<int> > tensor(r);
+    for(std::size_t i = 0ul; i < r.extent(0); ++i) {
+      for(std::size_t j = 0ul; j < r.extent(1); ++j) {
+
+        auto make_rand_tensor = [](size_t dim0, size_t dim1) -> btas::Tensor<int> {
+          btas::Tensor<int> tensor(dim0, dim1);
+          tensor.generate( []() { return GlobalFixture::world->rand() % 42; } );
+          return tensor;
+        };
+
+        tensor(i,j) = make_rand_tensor(10+i, 10+j);
+      }
+    }
+    return tensor;
+  }
+
   static const std::array<std::size_t, 2> size;
   static const Permutation perm;
 
   Tensor<Tensor<int> > a, b, c;
+  Tensor<btas::Tensor<int>> d, e, f;
+
+  template <typename T>
+  Tensor<T>& ToT(size_t idx);
 
 }; // TensorOfTensorFixture
+
+template<>
+Tensor<Tensor<int>>&
+TensorOfTensorFixture::ToT<Tensor<int>>(size_t idx) {
+  if (idx == 0)
+    return a;
+  else if (idx == 1)
+    return b;
+  else if (idx == 2)
+    return c;
+  else
+    throw std::range_error("idx out of range");
+}
+
+#ifdef TILEDARRAY_HAS_BTAS
+template<>
+Tensor<btas::Tensor<int>>&
+TensorOfTensorFixture::ToT<btas::Tensor<int>>(size_t idx) {
+  if (idx == 0)
+    return d;
+  else if (idx == 1)
+    return e;
+  else if (idx == 2)
+    return f;
+  else
+    throw std::range_error("idx out of range");
+}
+#endif
 
 const std::array<std::size_t, 2> TensorOfTensorFixture::size{{10, 10}};
 const Permutation TensorOfTensorFixture::perm{1, 0};
 
 BOOST_FIXTURE_TEST_SUITE( tensor_of_tensor_suite, TensorOfTensorFixture )
 
-BOOST_AUTO_TEST_CASE( default_constructor )
+#ifdef TILEDARRAY_HAS_BTAS
+typedef boost::mpl::list<TiledArray::Tensor<int>, btas::Tensor<int>> itensor_types;
+#else
+typedef boost::mpl::list<TiledArray::Tensor<int>> itensor_types;
+#endif
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( default_constructor, ITensor, itensor_types )
 {
-  BOOST_CHECK_NO_THROW(Tensor<Tensor<int> > t);
-  Tensor<Tensor<int> > t;
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t);
+  Tensor<ITensor> t;
   BOOST_CHECK(t.data() == nullptr);
   BOOST_CHECK(t.empty());
   BOOST_CHECK_EQUAL(t.size(), 0ul);
 }
 
-BOOST_AUTO_TEST_CASE( unary_constructor )
+BOOST_AUTO_TEST_CASE_TEMPLATE( unary_constructor, ITensor, itensor_types )
 {
-  BOOST_CHECK_NO_THROW(Tensor<Tensor<int> > t(a, [] (const int l) { return l * 2; }));
-  Tensor<Tensor<int> > t(a, [] (const int l) { return l * 2; });
+  const auto& a = ToT<ITensor>(0);
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t(a, [] (const int l) { return l * 2; }));
+  Tensor<ITensor> t(a, [] (const int l) { return l * 2; });
 
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
@@ -101,10 +170,11 @@ BOOST_AUTO_TEST_CASE( unary_constructor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_perm_constructor )
+BOOST_AUTO_TEST_CASE_TEMPLATE( unary_perm_constructor, ITensor, itensor_types )
 {
-  BOOST_CHECK_NO_THROW(Tensor<Tensor<int> > t(a, [] (const int l) { return l * 2; }, perm));
-  Tensor<Tensor<int> > t(a, [] (const int l) { return l * 2; }, perm);
+  const auto& a = ToT<ITensor>(0);
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t(a, [] (const int l) { return l * 2; }, perm));
+  Tensor<ITensor> t(a, [] (const int l) { return l * 2; }, perm);
 
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), perm * a.range());
@@ -120,11 +190,13 @@ BOOST_AUTO_TEST_CASE( unary_perm_constructor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_constructor )
+BOOST_AUTO_TEST_CASE_TEMPLATE( binary_constructor, ITensor, itensor_types )
 {
-  BOOST_CHECK_NO_THROW(Tensor<Tensor<int> > t(a, b,
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(1);
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t(a, b,
       [] (const int l, const int r) { return l + r; }));
-  Tensor<Tensor<int> > t(a, b, [] (const int l, const int r) { return l + r; });
+  Tensor<ITensor> t(a, b, [] (const int l, const int r) { return l + r; });
 
   BOOST_CHECK(! t.empty());
   BOOST_CHECK_EQUAL(t.range(), a.range());
@@ -140,11 +212,13 @@ BOOST_AUTO_TEST_CASE( binary_constructor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_perm_constructor )
+BOOST_AUTO_TEST_CASE_TEMPLATE( binary_perm_constructor, ITensor, itensor_types )
 {
-  BOOST_CHECK_NO_THROW(Tensor<Tensor<int> > t(a, b,
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(1);
+ BOOST_CHECK_NO_THROW(Tensor<ITensor> t(a, b,
       [] (const int l, const int r) { return l + r; }, perm));
-  Tensor<Tensor<int> > t(a, b,
+  Tensor<ITensor> t(a, b,
       [] (const int l, const int r) { return l + r; }, perm);
 
   BOOST_CHECK(! t.empty());
@@ -161,9 +235,10 @@ BOOST_AUTO_TEST_CASE( binary_perm_constructor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( clone )
+BOOST_AUTO_TEST_CASE_TEMPLATE( clone, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.clone());
 
   BOOST_CHECK(! t.empty());
@@ -183,9 +258,10 @@ BOOST_AUTO_TEST_CASE( clone )
 }
 
 
-BOOST_AUTO_TEST_CASE( permute )
+BOOST_AUTO_TEST_CASE_TEMPLATE( permute, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.permute(perm));
 
   BOOST_CHECK(! t.empty());
@@ -203,9 +279,10 @@ BOOST_AUTO_TEST_CASE( permute )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scale )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scale, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.scale(3));
 
   BOOST_CHECK(! t.empty());
@@ -222,9 +299,10 @@ BOOST_AUTO_TEST_CASE( scale )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scale_perm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scale_perm, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.scale(3, perm));
 
   BOOST_CHECK(! t.empty());
@@ -241,9 +319,10 @@ BOOST_AUTO_TEST_CASE( scale_perm )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scale_to )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scale_to, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.scale_to(3));
 
   BOOST_CHECK(! t.empty());
@@ -260,9 +339,11 @@ BOOST_AUTO_TEST_CASE( scale_to )
   }
 }
 
-BOOST_AUTO_TEST_CASE( add )
+BOOST_AUTO_TEST_CASE_TEMPLATE( add, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.add(b));
 
   BOOST_CHECK(! t.empty());
@@ -279,9 +360,11 @@ BOOST_AUTO_TEST_CASE( add )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scal_add )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_add, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.add(b, 3));
 
   BOOST_CHECK(! t.empty());
@@ -298,9 +381,11 @@ BOOST_AUTO_TEST_CASE( scal_add )
   }
 }
 
-BOOST_AUTO_TEST_CASE( add_perm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( add_perm, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.add(b, perm));
 
   BOOST_CHECK(! t.empty());
@@ -318,9 +403,11 @@ BOOST_AUTO_TEST_CASE( add_perm )
 }
 
 
-BOOST_AUTO_TEST_CASE( scal_add_perm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_add_perm, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.add(b, 3, perm));
 
   BOOST_CHECK(! t.empty());
@@ -338,9 +425,11 @@ BOOST_AUTO_TEST_CASE( scal_add_perm )
 }
 
 
-BOOST_AUTO_TEST_CASE( add_to )
+BOOST_AUTO_TEST_CASE_TEMPLATE( add_to, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.add_to(b));
 
   BOOST_CHECK(! t.empty());
@@ -357,9 +446,11 @@ BOOST_AUTO_TEST_CASE( add_to )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scal_add_to )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_add_to, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.add_to(b, 3));
 
   BOOST_CHECK(! t.empty());
@@ -376,9 +467,10 @@ BOOST_AUTO_TEST_CASE( scal_add_to )
   }
 }
 
-BOOST_AUTO_TEST_CASE( add_const )
+BOOST_AUTO_TEST_CASE_TEMPLATE( add_const, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.add(3));
 
   BOOST_CHECK(! t.empty());
@@ -395,9 +487,10 @@ BOOST_AUTO_TEST_CASE( add_const )
   }
 }
 
-BOOST_AUTO_TEST_CASE( add_to_const )
+BOOST_AUTO_TEST_CASE_TEMPLATE( add_to_const, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.add_to(3));
 
   BOOST_CHECK(! t.empty());
@@ -414,9 +507,11 @@ BOOST_AUTO_TEST_CASE( add_to_const )
   }
 }
 
-BOOST_AUTO_TEST_CASE( subt )
+BOOST_AUTO_TEST_CASE_TEMPLATE( subt, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.subt(b));
 
   BOOST_CHECK(! t.empty());
@@ -433,9 +528,11 @@ BOOST_AUTO_TEST_CASE( subt )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scal_subt )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_subt, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.subt(b, 3));
 
   BOOST_CHECK(! t.empty());
@@ -452,9 +549,11 @@ BOOST_AUTO_TEST_CASE( scal_subt )
   }
 }
 
-BOOST_AUTO_TEST_CASE( subt_perm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( subt_perm, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.subt(b, perm));
 
   BOOST_CHECK(! t.empty());
@@ -472,9 +571,11 @@ BOOST_AUTO_TEST_CASE( subt_perm )
 }
 
 
-BOOST_AUTO_TEST_CASE( scal_subt_perm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_subt_perm, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.subt(b, 3, perm));
 
   BOOST_CHECK(! t.empty());
@@ -492,9 +593,11 @@ BOOST_AUTO_TEST_CASE( scal_subt_perm )
 }
 
 
-BOOST_AUTO_TEST_CASE( subt_to )
+BOOST_AUTO_TEST_CASE_TEMPLATE( subt_to, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.subt_to(b));
 
   BOOST_CHECK(! t.empty());
@@ -511,9 +614,11 @@ BOOST_AUTO_TEST_CASE( subt_to )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scal_subt_to )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_subt_to, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.subt_to(b, 3));
 
   BOOST_CHECK(! t.empty());
@@ -530,9 +635,10 @@ BOOST_AUTO_TEST_CASE( scal_subt_to )
   }
 }
 
-BOOST_AUTO_TEST_CASE( subt_const )
+BOOST_AUTO_TEST_CASE_TEMPLATE( subt_const, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.subt(3));
 
   BOOST_CHECK(! t.empty());
@@ -549,9 +655,10 @@ BOOST_AUTO_TEST_CASE( subt_const )
   }
 }
 
-BOOST_AUTO_TEST_CASE( subt_to_const )
+BOOST_AUTO_TEST_CASE_TEMPLATE( subt_to_const, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.subt_to(3));
 
   BOOST_CHECK(! t.empty());
@@ -569,9 +676,11 @@ BOOST_AUTO_TEST_CASE( subt_to_const )
 }
 
 
-BOOST_AUTO_TEST_CASE( mult )
+BOOST_AUTO_TEST_CASE_TEMPLATE( mult, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.mult(b));
 
   BOOST_CHECK(! t.empty());
@@ -588,9 +697,11 @@ BOOST_AUTO_TEST_CASE( mult )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scal_mult )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_mult, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.mult(b, 3));
 
   BOOST_CHECK(! t.empty());
@@ -607,9 +718,11 @@ BOOST_AUTO_TEST_CASE( scal_mult )
   }
 }
 
-BOOST_AUTO_TEST_CASE( mult_perm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( mult_perm, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.mult(b, perm));
 
   BOOST_CHECK(! t.empty());
@@ -627,9 +740,11 @@ BOOST_AUTO_TEST_CASE( mult_perm )
 }
 
 
-BOOST_AUTO_TEST_CASE( scal_mult_perm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_mult_perm, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.mult(b, 3, perm));
 
   BOOST_CHECK(! t.empty());
@@ -647,9 +762,11 @@ BOOST_AUTO_TEST_CASE( scal_mult_perm )
 }
 
 
-BOOST_AUTO_TEST_CASE( mult_to )
+BOOST_AUTO_TEST_CASE_TEMPLATE( mult_to, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.mult_to(b));
 
   BOOST_CHECK(! t.empty());
@@ -666,9 +783,11 @@ BOOST_AUTO_TEST_CASE( mult_to )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scal_mult_to )
+BOOST_AUTO_TEST_CASE_TEMPLATE( scal_mult_to, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.mult_to(b, 3));
 
   BOOST_CHECK(! t.empty());
@@ -686,9 +805,10 @@ BOOST_AUTO_TEST_CASE( scal_mult_to )
 }
 
 
-BOOST_AUTO_TEST_CASE( neg )
+BOOST_AUTO_TEST_CASE_TEMPLATE( neg, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.neg());
 
   BOOST_CHECK(! t.empty());
@@ -705,9 +825,10 @@ BOOST_AUTO_TEST_CASE( neg )
   }
 }
 
-BOOST_AUTO_TEST_CASE( neg_perm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( neg_perm, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t;
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.neg(perm));
 
   BOOST_CHECK(! t.empty());
@@ -724,9 +845,10 @@ BOOST_AUTO_TEST_CASE( neg_perm )
   }
 }
 
-BOOST_AUTO_TEST_CASE( net_to )
+BOOST_AUTO_TEST_CASE_TEMPLATE( neg_to, ITensor, itensor_types )
 {
-  Tensor<Tensor<int> > t = a.clone();
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t = a.clone();
   BOOST_CHECK_NO_THROW(t.neg_to());
 
   BOOST_CHECK(! t.empty());
@@ -743,8 +865,9 @@ BOOST_AUTO_TEST_CASE( net_to )
   }
 }
 
-BOOST_AUTO_TEST_CASE( sum )
+BOOST_AUTO_TEST_CASE_TEMPLATE( sum, ITensor, itensor_types )
 {
+  const auto& a = ToT<ITensor>(0);
   int x = 0, expected = 0;
 
   BOOST_CHECK_NO_THROW(x = a.sum());
@@ -756,8 +879,9 @@ BOOST_AUTO_TEST_CASE( sum )
   BOOST_CHECK_EQUAL(x, expected);
 }
 
-BOOST_AUTO_TEST_CASE( product )
+BOOST_AUTO_TEST_CASE_TEMPLATE( product, ITensor, itensor_types )
 {
+  const auto& a = ToT<ITensor>(0);
   int x = 1, expected = 1;
 
   BOOST_CHECK_NO_THROW(x = a.product());
@@ -769,8 +893,9 @@ BOOST_AUTO_TEST_CASE( product )
   BOOST_CHECK_EQUAL(x, expected);
 }
 
-BOOST_AUTO_TEST_CASE( squared_norm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( squared_norm, ITensor, itensor_types )
 {
+  const auto& a = ToT<ITensor>(0);
   int x = 0, expected = 0;
 
   BOOST_CHECK_NO_THROW(x = a.squared_norm());
@@ -782,8 +907,9 @@ BOOST_AUTO_TEST_CASE( squared_norm )
   BOOST_CHECK_EQUAL(x, expected);
 }
 
-BOOST_AUTO_TEST_CASE( norm )
+BOOST_AUTO_TEST_CASE_TEMPLATE( norm, ITensor, itensor_types )
 {
+  const auto& a = ToT<ITensor>(0);
   int x = 0, expected = 0;
 
   BOOST_CHECK_NO_THROW(x = a.norm());
@@ -797,8 +923,9 @@ BOOST_AUTO_TEST_CASE( norm )
   BOOST_CHECK_EQUAL(x, expected);
 }
 
-BOOST_AUTO_TEST_CASE( min )
+BOOST_AUTO_TEST_CASE_TEMPLATE( min, ITensor, itensor_types )
 {
+  const auto& c = ToT<ITensor>(2);
   int x = 0, expected = std::numeric_limits<int>::max();
 
   BOOST_CHECK_NO_THROW(x = c.min());
@@ -810,8 +937,9 @@ BOOST_AUTO_TEST_CASE( min )
   BOOST_CHECK_EQUAL(x, expected);
 }
 
-BOOST_AUTO_TEST_CASE( max )
+BOOST_AUTO_TEST_CASE_TEMPLATE( max, ITensor, itensor_types )
 {
+  const auto& c = ToT<ITensor>(2);
   int x = 0, expected = std::numeric_limits<int>::min();
 
   BOOST_CHECK_NO_THROW(x = c.max());
@@ -823,8 +951,9 @@ BOOST_AUTO_TEST_CASE( max )
   BOOST_CHECK_EQUAL(x, expected);
 }
 
-BOOST_AUTO_TEST_CASE( abs_min )
+BOOST_AUTO_TEST_CASE_TEMPLATE( abs_min, ITensor, itensor_types )
 {
+  const auto& c = ToT<ITensor>(2);
   int x = 0, expected = std::numeric_limits<int>::max();
 
   BOOST_CHECK_NO_THROW(x = c.abs_min());
@@ -836,8 +965,9 @@ BOOST_AUTO_TEST_CASE( abs_min )
   BOOST_CHECK_EQUAL(x, expected);
 }
 
-BOOST_AUTO_TEST_CASE( abs_max )
+BOOST_AUTO_TEST_CASE_TEMPLATE( abs_max, ITensor, itensor_types )
 {
+  const auto& c = ToT<ITensor>(2);
   int x = 0, expected = 0;
 
   BOOST_CHECK_NO_THROW(x = c.abs_max());
@@ -850,8 +980,10 @@ BOOST_AUTO_TEST_CASE( abs_max )
 }
 
 
-BOOST_AUTO_TEST_CASE( dot )
+BOOST_AUTO_TEST_CASE_TEMPLATE( dot, ITensor, itensor_types )
 {
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(1);
   int x = 1, expected = 0;
 
   BOOST_CHECK_NO_THROW(x = a.dot(b));
@@ -861,6 +993,29 @@ BOOST_AUTO_TEST_CASE( dot )
       expected += a[i][j] * b[i][j];
 
   BOOST_CHECK_EQUAL(x, expected);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( serialization, ITensor, itensor_types )
+{
+  const auto& a = ToT<ITensor>(0);
+  std::size_t buf_size = 10000000;  // enough to store: impossible to compute precisely for general ITensor
+  unsigned char* buf = new unsigned char[buf_size];
+  madness::archive::BufferOutputArchive oar(buf, buf_size);
+  BOOST_REQUIRE_NO_THROW(oar & a);
+  std::size_t nbyte = oar.size();
+  oar.close();
+
+  typename std::decay<decltype(a)>::type a_roundtrip;
+  madness::archive::BufferInputArchive iar(buf,nbyte);
+  BOOST_REQUIRE_NO_THROW(iar & a_roundtrip);
+  iar.close();
+
+  delete [] buf;
+
+  BOOST_CHECK_EQUAL(a.range(), a_roundtrip.range());
+  using std::cbegin;
+  using std::cend;
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(a), cend(a), cbegin(a_roundtrip), cend(a_roundtrip));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
