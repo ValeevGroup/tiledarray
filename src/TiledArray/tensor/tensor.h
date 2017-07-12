@@ -76,6 +76,15 @@ namespace TiledArray {
         data_ = allocator_type::allocate(range.volume());
       }
 
+      /// Construct with rvalue range
+
+      /// \param range The N-dimensional range for this tensor
+      explicit Impl(range_type&& range) :
+        allocator_type(), range_(range), data_(NULL)
+      {
+        data_ = allocator_type::allocate(range.volume());
+      }
+
       ~Impl() {
         math::destroy_vector(range_.volume(), data_);
         allocator_type::deallocate(data_, range_.volume());
