@@ -30,24 +30,10 @@
 #include <boost/mpl/list.hpp>
 
 #ifdef TILEDARRAY_HAS_BTAS
-#include <btas/tensor.h>
+#include "btas.h"
 #endif
 
 using namespace TiledArray;
-
-#ifdef TILEDARRAY_HAS_BTAS
-namespace TiledArray {
-namespace detail {
-
-template <typename T, typename ... Args>
-struct is_tensor_helper<btas::Tensor<T, Args...> > : public std::true_type { };
-
-template <typename T, typename ... Args>
-struct is_contiguous_tensor_helper<btas::Tensor<T, Args...> > : public std::true_type { };
-
-}
-}
-#endif
 
 struct TensorOfTensorFixture {
 
@@ -1007,6 +993,29 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( dot, ITensor, itensor_types )
       expected += a[i][j] * b[i][j];
 
   BOOST_CHECK_EQUAL(x, expected);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE( serialization, ITensor, itensor_types )
+{
+  const auto& a = ToT<ITensor>(0);
+  std::size_t buf_size = 10000000;  // enough to store: impossible to compute precisely for general ITensor
+  unsigned char* buf = new unsigned char[buf_size];
+  madness::archive::BufferOutputArchive oar(buf, buf_size);
+  BOOST_REQUIRE_NO_THROW(oar & a);
+  std::size_t nbyte = oar.size();
+  oar.close();
+
+  typename std::decay<decltype(a)>::type a_roundtrip;
+  madness::archive::BufferInputArchive iar(buf,nbyte);
+  BOOST_REQUIRE_NO_THROW(iar & a_roundtrip);
+  iar.close();
+
+  delete [] buf;
+
+  BOOST_CHECK_EQUAL(a.range(), a_roundtrip.range());
+  using std::cbegin;
+  using std::cend;
+  BOOST_CHECK_EQUAL_COLLECTIONS(cbegin(a), cend(a), cbegin(a_roundtrip), cend(a_roundtrip));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
