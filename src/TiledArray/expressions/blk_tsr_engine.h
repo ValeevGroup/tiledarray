@@ -240,9 +240,9 @@ namespace TiledArray {
         typedef TiledArray::detail::ArrayEvalImpl<array_type, op_type, policy> impl_type;
 
         /// Create the pimpl for the distributed evaluator
-        std::shared_ptr<impl_type> pimpl(
-            new impl_type(array_, *world_, trange_, shape_, pmap_, perm_,
-            ExprEngine_::make_op(), lower_bound_, upper_bound_));
+        std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
+            array_, *world_, trange_, shape_, pmap_, perm_,
+            ExprEngine_::make_op(), lower_bound_, upper_bound_);
 
         return dist_eval_type(pimpl);
       }

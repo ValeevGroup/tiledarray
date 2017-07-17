@@ -88,7 +88,7 @@ namespace TiledArray {
         const madness::cblas::CBLAS_TRANSPOSE right_op, const scalar_type alpha,
         const unsigned int result_rank, const unsigned int left_rank,
         const unsigned int right_rank, const Permutation& perm = Permutation()) :
-      pimpl_(new Impl(left_op, right_op, alpha, result_rank, left_rank, right_rank, perm))
+      pimpl_(std::make_shared<Impl>(left_op, right_op, alpha, result_rank, left_rank, right_rank, perm))
     { }
 
 
