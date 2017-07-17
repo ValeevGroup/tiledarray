@@ -87,7 +87,7 @@ namespace TiledArray {
     Irrep& operator=(Irrep&&) = default;
 
     Irrep(const Irrep& other) :
-      data_(new unsigned int[other.degree_ << 1]),
+      data_(std::make_unique<unsigned int[]>(other.degree_ << 1)),
       degree_(other.degree_)
     {
       std::copy_n(other.data_.get(), other.degree_ << 1, data_.get());
@@ -96,7 +96,7 @@ namespace TiledArray {
     /// Irrep constructor
     Irrep(const std::initializer_list<unsigned int>& mu,
         const std::initializer_list<unsigned int>& M) :
-      data_(new unsigned int[M.size() << 1u]), degree_(M.size())
+      data_(std::make_unique<unsigned int[]>(M.size() << 1u)), degree_(M.size())
     {
       TA_ASSERT(mu.size() > 0ul);
       TA_ASSERT(M.size() > 0ul);
@@ -136,7 +136,7 @@ namespace TiledArray {
     /// \return A reference to this irrep
     Irrep& operator=(const Irrep& other) {
       if(degree_ != other.degree_) {
-        data_.reset(new unsigned int[other.degree_ << 1]);
+        data_ = std::make_unique<unsigned int[]>(other.degree_ << 1);
         degree_ = other.degree_;
       }
       std::copy_n(other.data_.get(), other.degree_ << 1, data_.get());

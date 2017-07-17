@@ -208,9 +208,9 @@ namespace TiledArray {
         const typename right_type::dist_eval_type right = right_.make_dist_eval();
 
         // Construct the distributed evaluator type
-        std::shared_ptr<impl_type> pimpl(
-            new impl_type(left, right, *world_, trange_, shape_, pmap_,
-            perm_, ExprEngine_::make_op()));
+        std::shared_ptr<impl_type> pimpl =
+            std::make_shared<impl_type>(left, right, *world_, trange_, shape_,
+                                        pmap_, perm_, ExprEngine_::make_op());
 
         return dist_eval_type(pimpl);
       }

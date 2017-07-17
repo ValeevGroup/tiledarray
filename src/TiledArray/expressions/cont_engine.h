@@ -522,9 +522,9 @@ namespace TiledArray {
         typename left_type::dist_eval_type left = left_.make_dist_eval();
         typename right_type::dist_eval_type right = right_.make_dist_eval();
 
-        std::shared_ptr<impl_type> pimpl(
-            new impl_type(left, right, *world_, trange_, shape_, pmap_, perm_,
-            op_, K_, proc_grid_));
+        std::shared_ptr<impl_type> pimpl =
+            std::make_shared<impl_type>(left, right, *world_, trange_, shape_,
+                                        pmap_, perm_, op_, K_, proc_grid_);
 
         return dist_eval_type(pimpl);
       }

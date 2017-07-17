@@ -385,10 +385,12 @@ namespace TiledArray {
           "An array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
 
     // Create a new tensor
-    A array = (replicated && (world.size() > 1) ?
-        A(world, trange, std::static_pointer_cast<typename A::pmap_interface>(
-            std::shared_ptr<detail::ReplicatedPmap>(new detail::ReplicatedPmap(world, trange.tiles_range().volume())))) :
-        A(world, trange));
+    A array = (replicated && (world.size() > 1)
+                   ? A(world, trange,
+                       std::static_pointer_cast<typename A::pmap_interface>(
+                           std::make_shared<detail::ReplicatedPmap>(
+                               world, trange.tiles_range().volume())))
+                   : A(world, trange));
 
     // Spawn tasks to copy Eigen to an Array
     madness::AtomicInt counter;

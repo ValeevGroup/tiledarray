@@ -48,7 +48,7 @@ namespace TiledArray {
     /// \return A shared pointer to a process map
     static std::shared_ptr<pmap_interface>
     default_pmap(World& world, const std::size_t size) {
-      return std::shared_ptr<pmap_interface>(new default_pmap_type(world, size));
+      return std::make_shared<default_pmap_type>(world, size);
     }
 
   }; // class SparsePolicy
