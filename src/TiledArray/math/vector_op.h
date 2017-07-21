@@ -336,19 +336,6 @@ namespace TiledArray {
 
 //    SizeTRange::set_grain_size(1024ul);
 
-    //forward compatibility
-    namespace cxx14{
-      template<std::size_t...>
-      struct index_sequence{};
-
-      template<std::size_t N, std::size_t... Is>
-      struct make_index_sequence : public make_index_sequence<N-1, N-1, Is...>{};
-
-      template<std::size_t... Is>
-      struct make_index_sequence<0, Is...> : public index_sequence<Is...>{};
-
-    }
-
 #endif
 
     template <typename Op, typename Result, typename... Args,
@@ -384,14 +371,14 @@ namespace TiledArray {
       ~ApplyInplaceVectorOp(){}
 
       template<std::size_t... Is>
-      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
+      void helper(SizeTRange& range, const std::index_sequence<Is...>&  ) const {
         std::size_t offset = range.begin();
         std::size_t n_range = range.size();
         inplace_vector_op_serial(op_, n_range, result_+offset, (std::get<Is>(args_)+offset)...);
       }
 
       void operator()(SizeTRange& range) const {
-        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+        helper(range, std::make_index_sequence<sizeof...(Args)>());
       }
 
     private:
@@ -465,14 +452,14 @@ namespace TiledArray {
       ~ApplyVectorOp(){}
 
       template<std::size_t... Is>
-      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
+      void helper(SizeTRange& range, const std::index_sequence<Is...>&  ) const {
         std::size_t offset = range.begin();
         std::size_t n_range = range.size();
         vector_op_serial(op_, n_range, result_+offset, (std::get<Is>(args_)+offset)...);
       }
 
       void operator()(SizeTRange& range) const {
-        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+        helper(range, std::make_index_sequence<sizeof...(Args)>());
       }
 
     private:
@@ -536,14 +523,14 @@ namespace TiledArray {
       ~ApplyVectorPtrOp(){}
 
       template<std::size_t... Is>
-      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) const {
+      void helper(SizeTRange& range, const std::index_sequence<Is...>&  ) const {
         std::size_t offset = range.begin();
         std::size_t n_range = range.size();
         vector_ptr_op_serial(op_, n_range, result_+offset, (std::get<Is>(args_)+offset)...);
       }
 
       void operator()(SizeTRange& range) const {
-        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+        helper(range, std::make_index_sequence<sizeof...(Args)>());
       }
 
     private:
@@ -620,14 +607,14 @@ namespace TiledArray {
       ~ApplyReduceOp(){}
 
       template<std::size_t... Is>
-      void helper(SizeTRange& range, const cxx14::index_sequence<Is...>&  ) {
+      void helper(SizeTRange& range, const std::index_sequence<Is...>&  ) {
         std::size_t offset = range.begin();
         std::size_t n_range = range.size();
         reduce_op_serial(reduce_op_, n_range, result_, (std::get<Is>(args_)+offset)...);
       }
 
       void operator()(SizeTRange& range) {
-        helper(range, cxx14::make_index_sequence<sizeof...(Args)>());
+        helper(range, std::make_index_sequence<sizeof...(Args)>());
       }
 
       void join(const ApplyReduceOp& rhs){
