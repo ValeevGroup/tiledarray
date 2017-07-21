@@ -554,11 +554,15 @@ namespace TiledArray {
 
 
     // -------------------------------------------------------------------------
-    // Tensor reduction kernels for argument tensors
+    // Reduction kernels for argument tensors
 
-    /// Tensor reduction operation for contiguous tensors
+    /// Reduction operation for contiguous tensors
 
-    /// Perform an element-wise reduction of the tensors.
+    /// Perform an element-wise reduction of the tensors by
+    /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for each
+    /// \c i in the index range of \c tensor1 . \c result is initialized to \c identity .
+    /// If HAVE_INTEL_TBB is defined, the reduction will be executed in an undefined order,
+    /// otherwise will execute in the order of increasing \c i .
     /// \tparam ReduceOp The element-wise reduction operation type
     /// \tparam JoinOp The result operation type
     /// \tparam Scalar A scalar type
@@ -586,9 +590,13 @@ namespace TiledArray {
       return identity;
     }
 
-    /// Tensor of tensor reduction operation for contiguous tensors
+    /// Reduction operation for contiguous tensors of tensors
 
-    /// Perform an element-wise reduction of the tensors.
+    /// Perform an element-wise reduction of the tensors by
+    /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for each
+    /// \c i in the index range of \c tensor1 . \c result is initialized to \c identity .
+    /// This will execute serially, in the order of increasing \c i (each element-wise
+    /// reduction can however be executed in parallel, depending on the element type).
     /// \tparam ReduceOp The element-wise reduction operation type
     /// \tparam JoinOp The result operation type
     /// \tparam Scalar A scalar type
@@ -622,9 +630,13 @@ namespace TiledArray {
       return result;
     }
 
-    /// Tensor reduction operation for non-contiguous tensors
+    /// Reduction operation for non-contiguous tensors
 
-    /// Perform an element-wise reduction of the tensors.
+    /// Perform an element-wise reduction of the tensors by
+    /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for each
+    /// \c i in the index range of \c tensor1 . \c result is initialized to \c identity .
+    /// This will execute serially, in the order of increasing \c i (each element-wise
+    /// reduction can however be executed in parallel, depending on the element type).
     /// \tparam ReduceOp The element-wise reduction operation type
     /// \tparam JoinOp The result operation type
     /// \tparam Scalar A scalar type
@@ -660,9 +672,13 @@ namespace TiledArray {
       return result;
     }
 
-    /// Tensor of tensors reduction operation for non-contiguous tensors
+    /// Reduction operation for non-contiguous tensors of tensors.
 
-    /// Perform an element-wise reduction of the tensors.
+    /// Perform an element-wise reduction of the tensors by
+    /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for each
+    /// \c i in the index range of \c tensor1 . \c result is initialized to \c identity .
+    /// This will execute serially, in the order of increasing \c i (each element-wise
+    /// reduction can however be executed in parallel, depending on the element type).
     /// \tparam ReduceOp The element-wise reduction operation type
     /// \tparam JoinOp The result operation type
     /// \tparam Scalar A scalar type

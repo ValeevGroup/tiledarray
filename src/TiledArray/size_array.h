@@ -264,11 +264,13 @@ namespace TiledArray {
         math::vector_op(op, last_ - first_, first_, arg);
       }
 
-      /// Binary reduce vector operation
+      /// Binary reduction operation
 
-      /// Binary reduction operation where this object is the left-hand
-      /// argument type. The reduced result is computed by
-      /// <tt>op(result, *this[i], arg[i])</tt>.
+      /// Perform an element-wise binary reduction of the data of \c this and \c arg by
+      /// executing <tt>join_op(result, reduce_op(*this[i], arg[i]))</tt> for each
+      /// \c i in the index range of \c this . \c result is initialized to \c identity .
+      /// If HAVE_INTEL_TBB is defined the reduction will
+      /// be executed in an undefined order, otherwise will execute in the order of increasing \c i .
       /// \tparam Arg The right-hand argument type
       /// \tparam Result The reduction result type
       /// \tparam ReduceOp The binary reduction operation type
@@ -283,10 +285,13 @@ namespace TiledArray {
         return result;
       }
 
-      /// Unary reduce vector operation
+      /// Unary reduction operation
 
-      /// Unary reduction operation where this object is the argument. The
-      /// reduced result is computed by <tt>op(result, *this[i])</tt>.
+      /// Perform an element-wise unary reduction of the data by
+      /// executing <tt>join_op(result, reduce_op(*this[i]))</tt> for each
+      /// \c i in the index range of \c this . \c result is initialized to \c identity .
+      /// If HAVE_INTEL_TBB is defined the reduction will
+      /// be executed in an undefined order, otherwise will execute in the order of increasing \c i .
       /// \tparam Result The reduction result type
       /// \tparam ReduceOp The binary reduction operation type
       /// \tparam JoinOp The join operation type

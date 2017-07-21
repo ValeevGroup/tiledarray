@@ -596,6 +596,8 @@ namespace TiledArray {
     }
 
 #ifdef HAVE_INTEL_TBB
+    /// Helper class for composing TBB parallel reductions. Meets the \c Body concept used
+    /// for the imperative form of \c tbb::parallel_reduce .
     template<typename ReduceOp, typename JoinOp, typename Result, typename... Args>
     class ApplyReduceOp{
 
