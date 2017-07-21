@@ -654,18 +654,17 @@ namespace TiledArray {
                    const Args* const... args)
     {
       //TODO implement reduce operation with TBB
-      #ifdef HAVE_INTEL_TBB
-//      std::cout << "TBB_Reduce_OP" << std::endl;
+#ifdef HAVE_INTEL_TBB
         SizeTRange range(0, n);
 
         auto apply_reduce_op = ApplyReduceOp<ReduceOp,JoinOp,Result,Args...>(reduce_op, join_op, identity, result, args...);
 
-        tbb::parallel_reduce(range,apply_reduce_op, tbb::auto_partitioner());
+        tbb::parallel_reduce(range, apply_reduce_op, tbb::auto_partitioner());
 
         result = apply_reduce_op.result();
-      #else
+#else
         reduce_op_serial(reduce_op,n,result,args...);
-      #endif
+#endif
     }
 
     template <typename Arg, typename Result>
