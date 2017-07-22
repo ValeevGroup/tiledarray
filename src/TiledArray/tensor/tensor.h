@@ -1131,10 +1131,11 @@ namespace TiledArray {
     /// \c other and scaled by \c factor
     /// \throw TiledArray::Exception When this tensor is empty.
     /// \throw TiledArray::Exception When \c other is empty.
-    template <typename U, typename AU, typename V>
+    template <typename U, typename AU, typename V,
+              typename std::enable_if<!detail::is_tensor_of_tensor<
+                  Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
     Tensor_ gemm(const Tensor<U, AU>& other, const V factor,
-        const math::GemmHelper& gemm_helper) const
-    {
+                 const math::GemmHelper& gemm_helper) const {
       // Check that this tensor is not empty and has the correct rank
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.rank() == gemm_helper.left_rank());
@@ -1168,7 +1169,7 @@ namespace TiledArray {
 
     /// Contract two tensors and store the result in this tensor
 
-    /// Gemm is limited to matrix like contractions. For example, the following
+    /// GEMM is limited to matrix like contractions. For example, the following
     /// contractions are supported:
     /// \code
     /// C[a,b] = A[a,i,j] * B[i,j,b]
@@ -1207,10 +1208,12 @@ namespace TiledArray {
     /// \return A new tensor which is the result of contracting this tensor with
     /// other
     /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename U, typename AU, typename V, typename AV, typename W>
+    template <
+        typename U, typename AU, typename V, typename AV, typename W,
+        typename std::enable_if<!detail::is_tensor_of_tensor<
+            Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
     Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
-        const W factor, const math::GemmHelper& gemm_helper)
-    {
+                  const W factor, const math::GemmHelper& gemm_helper) {
       // Check that this tensor is not empty and has the correct rank
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.rank() == gemm_helper.result_rank());
