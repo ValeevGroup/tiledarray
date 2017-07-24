@@ -1129,8 +1129,6 @@ namespace TiledArray {
     /// \param gemm_helper The *GEMM operation meta data
     /// \return A new tensor which is the result of contracting this tensor with
     /// \c other and scaled by \c factor
-    /// \throw TiledArray::Exception When this tensor is empty.
-    /// \throw TiledArray::Exception When \c other is empty.
     template <typename U, typename AU, typename V,
               typename std::enable_if<!detail::is_tensor_of_tensor<
                   Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
@@ -1167,7 +1165,7 @@ namespace TiledArray {
       return result;
     }
 
-    /// Contract two tensors and store the result in this tensor
+    /// Contract two tensors and accumulate the scaled result to this tensor
 
     /// GEMM is limited to matrix like contractions. For example, the following
     /// contractions are supported:
@@ -1203,11 +1201,9 @@ namespace TiledArray {
     /// \tparam W The type of the scaling factor
     /// \param left The left-hand tensor that will be contracted
     /// \param right The right-hand tensor that will be contracted
-    /// \param factor The scaling factor
+    /// \param factor The contraction result will be scaling by this value, then accumulated into \c this
     /// \param gemm_helper The *GEMM operation meta data
-    /// \return A new tensor which is the result of contracting this tensor with
-    /// other
-    /// \throw TiledArray::Exception When this tensor is empty.
+    /// \return A reference to \c this
     template <
         typename U, typename AU, typename V, typename AV, typename W,
         typename std::enable_if<!detail::is_tensor_of_tensor<
