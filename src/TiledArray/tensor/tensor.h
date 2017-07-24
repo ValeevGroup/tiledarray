@@ -1148,9 +1148,9 @@ namespace TiledArray {
       Tensor_ result(gemm_helper.make_result_range<range_type>(pimpl_->range_, other.range()));
 
       // Check that the inner dimensions of left and right match
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.lobound_data(), other.range().lobound_data()));
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.upbound_data(), other.range().upbound_data()));
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.extent_data(), other.range().extent_data()));
+      TA_ASSERT(gemm_helper.left_right_congruent(pimpl_->range_.lobound_data(), other.range().lobound_data()));
+      TA_ASSERT(gemm_helper.left_right_congruent(pimpl_->range_.upbound_data(), other.range().upbound_data()));
+      TA_ASSERT(gemm_helper.left_right_congruent(pimpl_->range_.extent_data(), other.range().extent_data()));
 
 
       // Compute gemm dimensions
@@ -1226,28 +1226,28 @@ namespace TiledArray {
 
       // Check that the outer dimensions of left match the corresponding
       // dimensions in result
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().lobound_data(),
+      TA_ASSERT(gemm_helper.left_result_congruent(left.range().lobound_data(),
           pimpl_->range_.lobound_data()));
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().upbound_data(),
+      TA_ASSERT(gemm_helper.left_result_congruent(left.range().upbound_data(),
           pimpl_->range_.upbound_data()));
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().extent_data(),
+      TA_ASSERT(gemm_helper.left_result_congruent(left.range().extent_data(),
           pimpl_->range_.extent_data()));
 
       // Check that the outer dimensions of right match the corresponding
       // dimensions in result
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().lobound_data(),
+      TA_ASSERT(gemm_helper.right_result_congruent(right.range().lobound_data(),
           pimpl_->range_.lobound_data()));
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().upbound_data(),
+      TA_ASSERT(gemm_helper.right_result_congruent(right.range().upbound_data(),
           pimpl_->range_.upbound_data()));
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().extent_data(),
+      TA_ASSERT(gemm_helper.right_result_congruent(right.range().extent_data(),
           pimpl_->range_.extent_data()));
 
       // Check that the inner dimensions of left and right match
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().lobound_data(),
+      TA_ASSERT(gemm_helper.left_right_congruent(left.range().lobound_data(),
           right.range().lobound_data()));
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().upbound_data(),
+      TA_ASSERT(gemm_helper.left_right_congruent(left.range().upbound_data(),
           right.range().upbound_data()));
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().extent_data(),
+      TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
           right.range().extent_data()));
 
       // Compute gemm dimensions
