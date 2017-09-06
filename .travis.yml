@@ -21,7 +21,7 @@ addons:
       - george-edison55-precise-backports
       - ubuntu-toolchain-r-test
       - boost-latest
-      - llvm-toolchain-precise-3.8
+      - llvm-toolchain-trusty-5.0
     packages:
       - g++-4.9
       - g++-5
@@ -29,7 +29,7 @@ addons:
       - gfortran-4.9
       - gfortran-5
       - gfortran-6
-      - clang-3.8
+      - clang-5.0
       - libeigen3-dev
       - libboost1.55-dev
       - libblas-dev

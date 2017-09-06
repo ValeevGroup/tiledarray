@@ -10,8 +10,8 @@ if [ "$CXX" = "g++" ]; then
     export CXXFLAGS="-mno-avx -fext-numeric-literals"
     export F77=gfortran-$GCC_VERSION
 else
-    export CC=/usr/bin/clang-3.8
-    export CXX=/usr/bin/clang++-3.8
+    export CC=/usr/bin/clang-5.0
+    export CXX=/usr/bin/clang++-5.0
     export CXXFLAGS="-mno-avx"
     export F77=gfortran-$GCC_VERSION
 fi
