@@ -21,104 +21,119 @@
 #define EXAMPLES_DEMO_DEMO_CPP_
 
 #include <tiledarray.h>
+#include <random>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
   using namespace std;
 
-  auto& world = madness::initialize(argc, argv);
+  std::srand(2017);
+  TA::World &world = TA::initialize(argc, argv);
 
-  //TA::Range R0({0,0},{10,10});
-  TA::Range R0{10,10};
+  using namespace TA;
+
+  //Range R0({0,0},{10,10});
+  Range R0{10, 10};
   cout << R0 << endl;
 
-  TA::Range R1({2,1},{7,8});
+  Range R1({2, 1}, {7, 8});
   cout << R1 << endl;
 
-  TA::Range R2(array<int,3>{{1,2,3}},array<int,3>{{3,4,5}});
+  Range R2(array<int, 3> {{ 1, 2, 3 }}, array<int, 3>{{3, 4, 5}});
   cout << R2 << " area=" << R2.area() << endl;
 
-  for(const auto& i: R2) {
+  for (const auto &i: R2) {
     cout << i << " " << R2.ordinal(i) << endl;
   }
 
-  TA::TiledRange1 TR0{0, 3, 8, 10};
-  TA::TiledRange1 TR1{0, 4, 7, 10};
-  TA::TiledRange TR{TR0, TR1};
+  TiledRange1 TR0{0, 3, 8, 10};
+  TiledRange1 TR1{0, 4, 7, 10};
+  TiledRange TR{TR0, TR1};
   cout << TR << endl;
-  for(const auto& i: TR.elements_range()) {
+  for (const auto &i: TR.elements_range()) {
     cout << i << endl;
   }
-  for(const auto& i: TR.tiles_range()) {
+  for (const auto &i: TR.tiles_range()) {
     cout << i << endl;
   }
 
-  cout << TR.tile({0,1}) << endl;
+  cout << TR.tile({0, 1}) << endl;
 
-  auto TRp = TA::Permutation{1,0} * TR;
+  auto TRp = Permutation{1, 0} * TR;
   cout << TRp << endl;
 
-  TA::TArray<double> a0(world, TR);
-  a0.fill_local(1.0);
-  //std::vector<double> vec(100,0.0); for(auto& i: vec) { i = (double)rand()/RAND_MAX; }
-  //a0.set(vec.begin());
+  TArray<double> a0(world, TR);
+  a0.fill(1.0);
   if (world.rank() == 0)
-    cout << a0 << endl;
+    cout << "a0:\n" << a0 << endl;
   world.gop.fence();
 
-  TA::Tensor<float> shape_tensor(TR.tiles_range());
-  shape_tensor(0,0) = 1.0;
-  shape_tensor(0,1) = 1.0;
-  shape_tensor(1,1) = 1.0;
-  shape_tensor(2,2) = 1.0;
-  TA::SparseShape<float> shape(shape_tensor, TR);
-  TA::TSpArray<double> a1(world, TR, shape);
-  a1.fill_local(1.0);
+  Tensor<float> shape_tensor(TR.tiles_range(), 0.0);
+  shape_tensor(0, 0) = 1.0;
+  shape_tensor(0, 1) = 1.0;
+  shape_tensor(1, 1) = 1.0;
+  shape_tensor(2, 2) = 1.0;
+  SparseShape<float> shape(shape_tensor, TR);
+  TSpArrayD a1(world, TR, shape);
+  a1.fill_random();
+
   if (world.rank() == 0)
-    cout << a1 << endl;
+    cout << "a1:\n" << a1 << endl;
   world.gop.fence();
 
-//  TA::TArray<complex<double>> a1(world, TR);
-//  a1.fill_local(complex<double>{1., 2.});
+//  TSpArrayZ a1(world, TR, shape);
+//  a1.fill_random();
 //  if (world.rank() == 0)
 //    cout << a1 << endl;
 //  world.gop.fence();
 
-  TA::TSpArray<double> a2; a2("i,j") = a1("i,j") * 2.0;
+  TSpArrayD a2;
+  a2("i,j") = a1("i,j") * 2.0;
   if (world.rank() == 0)
-    cout << a2 << endl;
+    cout << "a2:\n" << a2 << endl;
   world.gop.fence();
 
-  TA::TSpArray<double> a3; a3("j,i") = a2("i,j");
+  TSpArrayD a3;
+  a3("j,i") = a2("i,j");
   if (world.rank() == 0)
-    cout << a3 << endl;
+    cout << "a3:\n" << a3 << endl;
   world.gop.fence();
 
-  TA::TSpArray<double> a4; a4("j,i") = a3("i,j") * 0.5;
+  TSpArrayD a4;
+  a4("j,i") = a3("i,j") * 0.5;
   if (world.rank() == 0)
-    cout << a4 << endl;
+    cout << "a4:\n" << a4 << endl;
   world.gop.fence();
 
-  using TSpArrayD = TA::TSpArray<double>;
-
-  TSpArrayD a5; a5("i,j") = a4("i,j") + 2.0 * a4("i,j");
+  TSpArrayD a5;
+  a5("i,j") = a4("i,j") + 2.0 * a4("i,j");
   if (world.rank() == 0)
-    cout << a5 << endl;
+    cout << "a5:\n" << a5 << endl;
   world.gop.fence();
 
-  TSpArrayD a6; a6("i,j") = a4("i,j") - 2.0 * a4("i,j");
+  TSpArrayD a6;
+  a6("i,j") = a4("i,j") - 2.0 * a4("i,j");
   if (world.rank() == 0)
-    cout << a6 << endl;
+    cout << "a6:\n" << a6 << endl;
   world.gop.fence();
 
-  TSpArrayD a7; a7("i,j") = a6("i,j") * a5("i,j");
+  TSpArrayD a7;
+  a7("i,j") = a6("i,j") * a5("i,j");
   if (world.rank() == 0)
-    cout << a7 << endl;
+    cout << "a7:\n" << a7 << endl;
   world.gop.fence();
 
-  TSpArrayD a8; a8("i,j") = a1("i,k") * a5("j,k");
+  TSpArrayD a8;
+  a8("i,j") = a1("i,k") * a5("j,k");
   if (world.rank() == 0)
-    cout << a8 << endl;
+    cout << "a8:\n" << a8 << endl;
   world.gop.fence();
+
+  auto tile_0_0 = a1.find({0,0});
+  cout << "a1: tile {0,0}: " << tile_0_0 << endl;
+  world.taskq.add([](const TensorD& tile) {
+    cout << tile << endl;
+  }, a1.find({0,1}));
+  // auto tile_1_0 = a1.find({1,0});
 
   return 0;
 }
