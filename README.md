@@ -89,12 +89,12 @@ This figure was obtained with the help of an allocation from [Advanced Research 
 
 ## Dependencies
 
-* **C++ compiler with C++11 support** - Compilers that have been tested include:
-  * GCC 4.7.2 and later, 
+* **C++ compiler with C++14 support** - Compilers that have been tested include:
+  * GCC 4.9 and later, 
   * Clang 3.4 and later, 
   * Apple Clang 5.0 and later, and
-  * Intel C/C++ Compiler 15 and later.
-* **Cmake** 3.0 or later
+  * ~~Intel C/C++ Compiler 17 and later.~~
+* **Cmake** 3.1 or later
 * **Eigen** - Version 3.0 and later. http://eigen.tuxfamily.org
 * **MADNESS** - While it is possible to compile MADNESS separately, we recommend compiling MADNESS automatically as part of TiledArray. Compilation of MADNESS requires the following additional prerequisites (see the [MADNESS GitHub page](https://github.com/m-a-d-n-e-s-s/madness) for details):
   * **Pthreads**
