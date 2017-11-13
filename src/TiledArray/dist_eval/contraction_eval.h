@@ -1186,7 +1186,7 @@ namespace TiledArray {
         std::vector<row_datum> row_{};
         FinalizeTask* finalize_task_; ///< The SUMMA finalization task
         StepTask* next_step_task_ = nullptr; ///< The next SUMMA step task
-        StepTask* tail_step_task_ = nullptr; ///< The next SUMMA step task
+        StepTask* tail_step_task_ = nullptr; ///< The last SUMMA step task that currently exists
 
         void get_col(const size_type k) {
           owner_->get_col(k, col_);
@@ -1241,14 +1241,14 @@ namespace TiledArray {
           if(depth > owner_->k_)
             depth = owner_->k_;
 
-          // Spawn the first (depth - 1) step tasks
+          // Spawn n=depth step tasks
           for(; depth > 0ul; --depth) {
-            Derived* const next = new Derived(task, 0);
+            // Set dep count of the tail task to 1, it will not start until this task commands
+            Derived* const next = new Derived(task, depth == 1 ? 1 : 0);
             task = next;
           }
 
-          // Initialize the tail pointer
-          task->inc();
+          // Keep track of the tail ptr
           tail_step_task_ = task;
         }
 
@@ -1262,7 +1262,7 @@ namespace TiledArray {
             // Initialize next tail task and submit next task
             TA_ASSERT(next_step_task_);
             next_step_task_->tail_step_task_ =
-                new Derived(static_cast<Derived*>(tail_step_task_), 1);
+                new Derived(static_cast<Derived*>(tail_step_task_), 1);  // <- ndep=1, will control its scheduling by this task
             world_.taskq.add(next_step_task_);
             next_step_task_ = nullptr;
 
