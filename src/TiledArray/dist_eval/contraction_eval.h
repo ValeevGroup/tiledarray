@@ -1100,7 +1100,7 @@ namespace TiledArray {
 
             // Schedule task for contraction pairs
             if(task)
-              task->inc();
+              task->inc_debug("destroy(*ReduceObject)");
             const left_future left = col[i].second;
             const right_future right = row[j].second;
             reduce_tasks_[reduce_task_index].add(left, right, task);
@@ -1190,18 +1190,18 @@ namespace TiledArray {
 
         void get_col(const size_type k) {
           owner_->get_col(k, col_);
-          this->notify();
+          this->notify_debug("StepTask::spawn_col");
         }
 
         void get_row(const size_type k) {
           owner_->get_row(k, row_);
-          this->notify();
+          this->notify_debug("StepTask::spawn_row");
         }
 
       public:
 
         StepTask(const std::shared_ptr<Summa_>& owner, int finalize_ndep) :
-          madness::TaskInterface(0ul, madness::TaskAttributes::hipri()),
+          madness::TaskInterface(0ul, "StepTask 1st ctor", madness::TaskAttributes::hipri()),
           owner_(owner), world_(owner->world()),
           finalize_task_(new FinalizeTask(owner, finalize_ndep))
         {
@@ -1214,7 +1214,7 @@ namespace TiledArray {
         /// \param parent The previous SUMMA step task
         /// \param ndep The number of dependencies for this task
         StepTask(StepTask* const parent, const int ndep) :
-          madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
+          madness::TaskInterface(ndep, "StepTask nth ctor", madness::TaskAttributes::hipri()),
           owner_(parent->owner_), world_(parent->world_),
           finalize_task_(parent->finalize_task_)
         {
@@ -1226,11 +1226,11 @@ namespace TiledArray {
 
         void spawn_get_row_col_tasks(const size_type k) {
           // Submit the task to collect column tiles of left for iteration k
-          madness::DependencyInterface::inc();
+          madness::DependencyInterface::inc_debug("StepTask::spawn_col");
           world_.taskq.add(this, & StepTask::get_col, k, madness::TaskAttributes::hipri());
 
           // Submit the task to collect row tiles of right for iteration k
-          madness::DependencyInterface::inc();
+          madness::DependencyInterface::inc_debug("StepTask::spawn_row");
           world_.taskq.add(this, & StepTask::get_row, k, madness::TaskAttributes::hipri());
         }
 
@@ -1263,6 +1263,9 @@ namespace TiledArray {
             TA_ASSERT(next_step_task_);
             next_step_task_->tail_step_task_ =
                 new Derived(static_cast<Derived*>(tail_step_task_), 1);  // <- ndep=1, will control its scheduling by this task
+            // submit next step task ... even if it's same as tail_step_task_ it is safe to submit
+            // because its ndep > 0 (see StepTask::make_next_step_tasks)
+            TA_ASSERT(tail_step_task_->ndep() > 0);
             world_.taskq.add(next_step_task_);
             next_step_task_ = nullptr;
 
@@ -1277,7 +1280,7 @@ namespace TiledArray {
 
             // Notify task dependencies
             TA_ASSERT(tail_step_task_);
-            tail_step_task_->notify();
+            tail_step_task_->notify_debug("StepTask nth ctor");
             finalize_task_->notify();
 
           } else if(finalize_task_) {
@@ -1295,7 +1298,7 @@ namespace TiledArray {
               step_task = next_step_task;
             }
 
-            tail_step_task_->notify();
+            tail_step_task_->notify_debug("StepTask nth ctor");
           }
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
@@ -1370,7 +1373,7 @@ namespace TiledArray {
             finalize_task_->inc();
           }
 
-          madness::DependencyInterface::notify();
+          madness::DependencyInterface::notify_debug("SparseStepTask ctor");
         }
 
       public:
@@ -1381,7 +1384,7 @@ namespace TiledArray {
           StepTask::make_next_step_tasks(this, depth);
 
           // Spawn a task to find the next non-zero iteration
-          madness::DependencyInterface::inc();
+          madness::DependencyInterface::inc_debug("SparseStepTask ctor");
           world_.taskq.add(this, & SparseStepTask::iterate_task,
               0ul, 0ul, madness::TaskAttributes::hipri());
         }
@@ -1392,9 +1395,10 @@ namespace TiledArray {
           if(parent->k_.probe() && (parent->k_.get() >= owner_->k_)) {
             // Avoid running extra tasks if not needed.
             k_.set(parent->k_.get());
+            MADNESS_ASSERT(ndep == 1);  // ensure that this does not get executed immediately
           } else {
             // Spawn a task to find the next non-zero iteration
-            madness::DependencyInterface::inc();
+            madness::DependencyInterface::inc_debug("SparseStepTask ctor");
             world_.taskq.add(this, & SparseStepTask::iterate_task,
                 parent->k_, 1ul, madness::TaskAttributes::hipri());
           }

@@ -280,7 +280,7 @@ namespace TiledArray {
           /// \param object The reduce object to be destroyed
           static void destroy(const ReduceObject* object) {
             if(object->callback_)
-              object->callback_->notify();
+              object->callback_->notify_debug("destroy(*ReduceObject)");
             delete object;
           }
 
