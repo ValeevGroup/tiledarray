@@ -22,6 +22,7 @@
 
 #include <vector>
 
+#include <TiledArray/config.h>
 #include <TiledArray/dist_eval/dist_eval.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/reduce_task.h>
@@ -1236,7 +1237,11 @@ namespace TiledArray {
         /// \param parent The previous SUMMA step task
         /// \param ndep The number of dependencies for this task
         StepTask(StepTask* const parent, const int ndep) :
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_TASKS
           madness::TaskInterface(ndep, "StepTask nth ctor", madness::TaskAttributes::hipri()),
+#else
+          madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
+#endif
           owner_(parent->owner_), world_(parent->world_),
           finalize_task_(parent->finalize_task_)
         {

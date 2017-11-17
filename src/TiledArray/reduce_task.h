@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_REDUCE_TASK_H__INCLUDED
 #define TILEDARRAY_REDUCE_TASK_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/error.h>
 #include <TiledArray/madness.h>
 
