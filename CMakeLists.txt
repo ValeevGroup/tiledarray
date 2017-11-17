@@ -98,6 +98,10 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
 endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+option(TA_TRACE_TASKS "Enable tracing of MADNESS tasks in (some components of) TiledArray" OFF)
+if (TA_TRACE_TASKS)
+  set(TILEDARRAY_ENABLE_TRACE_TASKS 1)
+endif()
 
 # Enable shared library support options
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)

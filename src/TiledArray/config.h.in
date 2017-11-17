@@ -93,4 +93,7 @@
 
 #endif
 
+/* Enables tracing MADNESS tasks in TiledArray */
+#cmakedefine TILEDARRAY_ENABLE_TRACE_TASKS @TILEDARRAY_ENABLE_TRACE_TASKS@
+
 #endif // TILEDARRAY_CONFIG_H__INCLUDED

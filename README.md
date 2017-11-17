@@ -152,7 +152,10 @@ Common CMake cache variables that you may want to define include:
 
 `BLA_STATIC` indicates static LAPACK and BLAS libraries will be perferred. `INTEGER4` indicated the Fortran integer width used by BLAS and LAPACK; if `TRUE` (the default), the integer size is `integer*4`, otherwise `integer*8` is used.
 
-Note, when configuring TiledArray, CMake will download and build MADNESS, Eigen, and Boost if they are not found on the system. Boost will only be installed if unit testing is enabled. This behavior can be disable with `-D TA_EXPERT=TRUE`.
+### Expert Variables
+
+- Note, when configuring TiledArray, CMake will download and build MADNESS, Eigen, and Boost if they are not found on the system. Boost will only be installed if unit testing is enabled. This behavior can be disable with `-D TA_EXPERT=TRUE`.
+- To enable tracing of MADNESS tasks add `-D TA_TRACE_TASKS=ON`
 
 # Developers
 TiledArray is developed by the [Valeev Group](http://valeevgroup.github.io/) at [Virginia Tech](http://www.vt.edu).
