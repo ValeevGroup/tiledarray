@@ -1220,7 +1220,7 @@ namespace TiledArray {
       public:
 
         StepTask(const std::shared_ptr<Summa_>& owner, int finalize_ndep) :
-#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_TASKS
+#ifdef TILEDARRAY_ENABLE_TASK_DEBUG_TRACE
         madness::TaskInterface(0ul, "StepTask 1st ctor", madness::TaskAttributes::hipri()),
 #else
         madness::TaskInterface(0ul, madness::TaskAttributes::hipri()),
@@ -1237,7 +1237,7 @@ namespace TiledArray {
         /// \param parent The previous SUMMA step task
         /// \param ndep The number of dependencies for this task
         StepTask(StepTask* const parent, const int ndep) :
-#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_TASKS
+#ifdef TILEDARRAY_ENABLE_TASK_DEBUG_TRACE
           madness::TaskInterface(ndep, "StepTask nth ctor", madness::TaskAttributes::hipri()),
 #else
           madness::TaskInterface(ndep, madness::TaskAttributes::hipri()),
