@@ -281,7 +281,7 @@ namespace TiledArray {
           /// \param object The reduce object to be destroyed
           static void destroy(const ReduceObject* object) {
             static constexpr const bool trace_tasks =
-#ifdef TILEDARRAY_ENABLE_TRACE_TASKS
+#ifdef TILEDARRAY_ENABLE_TASK_DEBUG_TRACE
                 true
 #else
                 false

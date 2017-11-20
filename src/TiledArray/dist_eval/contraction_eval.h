@@ -104,7 +104,7 @@ namespace TiledArray {
       typedef std::pair<size_type, left_future> col_datum; ///< Datum element type for a left-hand argument column
 
       static constexpr const bool trace_tasks =
-#ifdef TILEDARRAY_ENABLE_TRACE_TASKS
+#ifdef TILEDARRAY_ENABLE_TASK_DEBUG_TRACE
           true
 #else
           false
