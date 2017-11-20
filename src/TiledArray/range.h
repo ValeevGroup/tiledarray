@@ -715,8 +715,7 @@ namespace TiledArray {
     /// \return A reference to this range
     template <typename Index>
     Range_& inplace_shift(const Index& bound_shift) {
-      const unsigned int n = detail::size(bound_shift);
-      TA_ASSERT(n == rank_);
+      TA_ASSERT(detail::size(bound_shift) == rank_);
 
       const auto* MADNESS_RESTRICT const bound_shift_data = detail::data(bound_shift);
       size_type* MADNESS_RESTRICT const lower = data_;
