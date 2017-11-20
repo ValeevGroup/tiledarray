@@ -7,12 +7,12 @@ set -ev
 if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
-    export CXXFLAGS="-mno-avx -fext-numeric-literals"
+    export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
     export F77=gfortran-$GCC_VERSION
 else
     export CC=/usr/bin/clang-5.0
     export CXX=/usr/bin/clang++-5.0
-    export CXXFLAGS="-mno-avx"
+    export EXTRACXXFLAGS="-mno-avx"
     export F77=gfortran-$GCC_VERSION
 fi
 
@@ -40,7 +40,7 @@ cmake ${TRAVIS_BUILD_DIR} \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument" \
+    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON -Wno-dev \
