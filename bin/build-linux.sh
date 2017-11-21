@@ -1,5 +1,8 @@
 #! /bin/sh
 
+${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
+${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
+
 # Exit on error
 set -ev
 
