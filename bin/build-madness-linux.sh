@@ -61,7 +61,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DASSERTION_TYPE=throw \
     -DDISABLE_WORLD_GET_DEFAULT=ON \
     -DENABLE_ELEMENTAL=ON \
-    -Wno-dev \
+    -DELEMENTAL_TAG=ff7d0603238e5ba3175e9b936bf8e945cb130cd0 \
     -DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DELEMENTAL_MATH_LIBS='-L/usr/lib/libblas -L/usr/lib/lapack -lblas -llapack' \
     -DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77
