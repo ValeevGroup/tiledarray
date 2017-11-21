@@ -55,7 +55,7 @@ if(MADNESS_FOUND)
     # Check to that MADNESS was compiled with Elemental support.
     CHECK_CXX_SOURCE_COMPILES(
         "
-        #include <madness/world/parallel_runtime.h>
+        #include <madness/world/config.h>
         #ifndef MADNESS_HAS_ELEMENTAL
         # error MADNESS does not have Elemental
         #endif
