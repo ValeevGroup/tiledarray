@@ -144,7 +144,7 @@ matrix:
 before_install:
   - env
   - mkdir -p ${BUILD_PREFIX} && mkdir -p ${INSTALL_PREFIX}
-script: timeout 2800 ./bin/build-$TRAVIS_OS_NAME.sh || true
+script: timeout 2800 travis_wait 30 ./bin/build-$TRAVIS_OS_NAME.sh || true
 after_failure:
   - cat ${BUILD_PREFIX}/TA/external/build/madness/CMakeFiles/CMakeError.log
   - cat ${BUILD_PREFIX}/TA/external/build/madness/CMakeFiles/CMakeOutput.log
