@@ -82,7 +82,7 @@ option(ENABLE_ELEMENTAL "Enable use of MADNESS-provided Elemental" OFF)
 add_feature_info(Elemental ENABLE_ELEMENTAL "Elemental provides parallel linear algebra")
 
 if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
-    set(ELEMENTAL_TAG ff7d0603238e5ba3175e9b936bf8e945cb130cd0)
+    set(ELEMENTAL_TAG ca171b964a02d7a7c52d019fdf18cf01986e3de6)
 endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
 
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
