@@ -79,5 +79,7 @@ make -j2 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
 setarch `uname -m` -R make check
 
-# Elemental-only: build evd example
+# Elemental-only: build and run evd example
 make evd
+${MPI_HOME}/bin/mpirun -n 1 examples/elemental/evd 512 64 2
+${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2
