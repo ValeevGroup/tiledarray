@@ -81,5 +81,6 @@ setarch `uname -m` -R make check
 
 # Elemental-only: build and run evd example
 make evd
+export MAD_NUM_THREADS=1
 ${MPI_HOME}/bin/mpirun -n 1 examples/elemental/evd 512 64 2
 ${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2
