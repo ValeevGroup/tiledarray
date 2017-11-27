@@ -65,7 +65,6 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DENABLE_ELEMENTAL=ON \
       -DELEMENTAL_TAG=ca171b964a02d7a7c52d019fdf18cf01986e3de6 \
       -DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE \
-      -DELEMENTAL_MATH_LIBS='-L/usr/lib/libblas -L/usr/lib/lapack -lblas -llapack' \
       -DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77
 
     # Build all libraries, examples, and applications
