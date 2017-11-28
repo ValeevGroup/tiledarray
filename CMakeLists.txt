@@ -82,7 +82,7 @@ option(ENABLE_ELEMENTAL "Enable use of MADNESS-provided Elemental" OFF)
 add_feature_info(Elemental ENABLE_ELEMENTAL "Elemental provides parallel linear algebra")
 
 if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
-    set(ELEMENTAL_TAG ff7d0603238e5ba3175e9b936bf8e945cb130cd0)
+    set(ELEMENTAL_TAG 50e24bb92b6b2e30d657decda3a903d967f00f0b)
 endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
 
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
@@ -99,22 +99,9 @@ endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
-# define behavior of TA_ASSERT: throw by default, disable if compiling for release
-set(TA_ERROR throw CACHE STRING "Controls behavior of TA_ASSERT (valid values: throw, assert, none)")
-if (CMAKE_BUILD_TYPE STREQUAL Release OR
-    CMAKE_BUILD_TYPE STREQUAL RelWithDebugInfo OR
-    CMAKE_BUILD_TYPE STREQUAL MinSizeRel)
-  set (TA_ERROR none)
-endif()
-add_feature_info("TA_ERROR=${TA_ERROR}" TRUE "Define how TiledArray assertion (TA_ASSERT) behaves")
-# convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
-if (TA_ERROR STREQUAL none)
-  set (TA_DEFAULT_ERROR 0)
-elseif (TA_ERROR STREQUAL throw)
-  set (TA_DEFAULT_ERROR 1)
-elseif (TA_ERROR STREQUAL assert)
-  set (TA_DEFAULT_ERROR 2)
-endif()
+option(TA_TRACE_TASKS "Enable debug tracing of MADNESS tasks in (some components of) TiledArray" OFF)
+add_feature_info(TASK_TRACE_DEBUG TA_TRACE_TASKS "Debug tracing of MADNESS tasks in (some components of) TiledArray")
+set(TILEDARRAY_ENABLE_TASK_DEBUG_TRACE ${TA_TRACE_TASKS})
 
 # Enable shared library support options
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
@@ -254,6 +241,9 @@ include(external/eigen.cmake)
 include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
+  # this is only for internal testing right now, but can be moved out to be first-class citizen like Eigen
+  # if that happens: Boost dependencies can be checked in header-only mode, so no need to check for boost first
+  include(external/btas.cmake)
 endif()
 
 # optional deps:

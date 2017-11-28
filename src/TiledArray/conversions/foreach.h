@@ -105,11 +105,11 @@ namespace TiledArray {
             && compare_trange(array1, arrays...));
       }
 
-      bool is_zero_intersection(const std::initializer_list<bool>& is_zero_list ) {
+      inline bool is_zero_intersection(const std::initializer_list<bool>& is_zero_list ) {
         return std::any_of(is_zero_list.begin(), is_zero_list.end(),
             [](const bool val) -> bool {return val;});
       }
-      bool is_zero_union(const std::initializer_list<bool>& is_zero_list ) {
+      inline bool is_zero_union(const std::initializer_list<bool>& is_zero_list ) {
         return std::all_of(is_zero_list.begin(), is_zero_list.end(),
             [](const bool val) -> bool {return val;});
       }

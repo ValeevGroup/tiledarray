@@ -1,5 +1,8 @@
 #! /bin/sh
 
+${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
+${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
+
 # Exit on error
 set -ev
 
@@ -7,37 +10,80 @@ set -ev
 if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
-    export CXXFLAGS="-mno-avx -fext-numeric-literals"
+    export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
     export F77=gfortran-$GCC_VERSION
 else
-    export CC=/usr/bin/clang-$LLVM_VERSION
-    export CXX=/usr/bin/clang++-$LLVM_VERSION
-    export CXXFLAGS="-mno-avx"
+    export CC=/usr/bin/clang-5.0
+    export CXX=/usr/bin/clang++-5.0
+    export EXTRACXXFLAGS="-mno-avx"
     export F77=gfortran-$GCC_VERSION
 fi
 
-export MPI_HOME=$HOME/mpich
+export MPI_HOME=${INSTALL_PREFIX}/mpich
 export MPICC=$MPI_HOME/bin/mpicc
 export MPICXX=$MPI_HOME/bin/mpicxx
 export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:$LD_LIBRARY_PATH
 
-# Configure TiledArray
-mkdir _build
-mkdir _install
-cd _build
-# TA_ERROR="throw" is the recommended way to configure TA for running unit tests
-cmake .. -DCMAKE_INSTALL_PREFIX=../_install -DCMAKE_CXX_COMPILER=$CXX \
-  -DCMAKE_C_COMPILER=$CC -DMPI_CXX_COMPILER=$MPICXX -DMPI_C_COMPILER=$MPICC \
-  -DTA_BUILD_UNITTEST=ON -DCMAKE_BUILD_TYPE=Debug -DTA_ERROR="throw" \
-  -DENABLE_ELEMENTAL=ON -Wno-dev \
-  -DMADNESS_CMAKE_EXTRA_ARGS="-Wno-dev;-DELEMENTAL_CMAKE_BUILD_TYPE=Debug;-DELEMENTAL_MATH_LIBS='-L/usr/lib/libblas -L/usr/lib/lapack -lblas -llapack';-DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77"
+# list the prebuilt prereqs
+ls -l ${INSTALL_PREFIX}
+
+# where to install TA (need for testing installed code)
+export INSTALL_DIR=${INSTALL_PREFIX}/TA
+
+# make build dir
+cd ${BUILD_PREFIX}
+mkdir -p TA
+cd TA
+
+# MADNESS+Elemental are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
+if [ "$BUILD_TYPE" = "Debug" ]; then
+
+  cmake ${TRAVIS_BUILD_DIR} \
+    -DCMAKE_CXX_COMPILER=$CXX \
+    -DCMAKE_C_COMPILER=$CC \
+    -DMPI_CXX_COMPILER=$MPICXX \
+    -DMPI_C_COMPILER=$MPICC \
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
+    -DTA_BUILD_UNITTEST=ON \
+    -DTA_ERROR="throw" \
+    -DENABLE_ELEMENTAL=ON \
+    -DMADNESS_ROOT_DIR="${INSTALL_PREFIX}/madness"
+
+else
+
+  cmake ${TRAVIS_BUILD_DIR} \
+    -DCMAKE_CXX_COMPILER=$CXX \
+    -DCMAKE_C_COMPILER=$CC \
+    -DMPI_CXX_COMPILER=$MPICXX \
+    -DMPI_C_COMPILER=$MPICC \
+    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
+    -DBUILD_SHARED_LIBS=OFF \
+    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
+    -DTA_BUILD_UNITTEST=ON \
+    -DTA_ERROR="throw" \
+    -DENABLE_ELEMENTAL=ON -Wno-dev \
+    -DMADNESS_CMAKE_EXTRA_ARGS="-Wno-dev;-DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE;-DELEMENTAL_MATH_LIBS='-L/usr/lib/libblas -L/usr/lib/lapack -lblas -llapack';-DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77"
+
+fi
 
 # Build all libraries, examples, and applications
 make -j2 all VERBOSE=1
 make install
+
+# Validate
 make -j2 ta_test VERBOSE=1
-cd tests
 export MAD_NUM_THREADS=2
-./ta_test --show_progress
-cd ..
+setarch `uname -m` -R make check
+
+# Elemental-only: build and run evd example
 make evd
+# must use 1 thread only since Debug El is not reentrant
+if [ "$BUILD_TYPE" = "Debug" ]; then
+  export MAD_NUM_THREADS=1
+fi
+${MPI_HOME}/bin/mpirun -n 1 examples/elemental/evd 512 64 2
+${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2

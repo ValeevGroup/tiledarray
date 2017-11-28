@@ -488,7 +488,7 @@ namespace TiledArray {
       std::shared_ptr<Pmap> make_pmap() const {
         TA_ASSERT(world_);
 
-        return std::shared_ptr<Pmap>(new CyclicPmap(*world_, rows_, cols_, proc_rows_, proc_cols_));
+        return std::make_shared<CyclicPmap>(*world_, rows_, cols_, proc_rows_, proc_cols_);
       }
 
       /// Construct column phased a cyclic process
@@ -500,7 +500,7 @@ namespace TiledArray {
       std::shared_ptr<Pmap> make_col_phase_pmap(const size_type rows) const {
         TA_ASSERT(world_);
 
-        return std::shared_ptr<Pmap>(new CyclicPmap(*world_, rows, cols_, proc_rows_, proc_cols_));
+        return std::make_shared<CyclicPmap>(*world_, rows, cols_, proc_rows_, proc_cols_);
       }
 
       /// Construct row phased a cyclic process
@@ -512,7 +512,7 @@ namespace TiledArray {
       std::shared_ptr<Pmap> make_row_phase_pmap(const size_type cols) const {
         TA_ASSERT(world_);
 
-        return std::shared_ptr<Pmap>(new CyclicPmap(*world_, rows_, cols, proc_rows_, proc_cols_));
+        return std::make_shared<CyclicPmap>(*world_, rows_, cols, proc_rows_, proc_cols_);
       }
     }; // class Grid
 

@@ -1137,7 +1137,9 @@ namespace TiledArray {
     template <typename Factor>
     static value_type to_abs_factor(const Factor factor) {
       using std::abs;
-      return static_cast<value_type>(abs(factor));
+      const auto cast_abs_factor = static_cast<value_type>(abs(factor));
+      TA_ASSERT(std::isfinite(cast_abs_factor));
+      return cast_abs_factor;
     }
 
   }; // class SparseShape

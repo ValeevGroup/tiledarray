@@ -36,10 +36,10 @@
 namespace TiledArray {
   namespace detail {
 
-    /// Contract and reduce base
+    /// Contract and (sum) reduce base
 
-    /// This object uses a tile contraction operation to form a pair reduction
-    /// operation.
+    /// This implementation class is used to provide shallow copy semantics for ContractReduce.
+    /// It encodes a binary tensor contraction mapped to a GEMM, as well as the sum reduction and post-processing.
     /// \tparam Result The result tile type
     /// \tparam Left The left-hand tile type
     /// \tparam Right The right-hand tile type
@@ -77,7 +77,8 @@ namespace TiledArray {
 
     public:
 
-      /// Compiler generated functions
+      // Compiler generated defaults are fine
+      
       ContractReduceBase() = default;
       ContractReduceBase(const ContractReduceBase_&) = default;
       ContractReduceBase(ContractReduceBase_&&) = default;
@@ -100,7 +101,7 @@ namespace TiledArray {
           const scalar_type alpha, const unsigned int result_rank,
           const unsigned int left_rank, const unsigned int right_rank,
           const Permutation& perm = Permutation()) :
-        pimpl_(new Impl(left_op, right_op, alpha, result_rank, left_rank,
+        pimpl_(std::make_shared<Impl>(left_op, right_op, alpha, result_rank, left_rank,
             right_rank, perm))
       { }
 
@@ -130,6 +131,8 @@ namespace TiledArray {
         return pimpl_->alpha_;
       }
 
+      //-------------- these are only used for unit tests -----------------
+      
       /// Compute the number of contracted ranks
 
       /// \return The number of ranks that are summed by this operation
@@ -164,10 +167,9 @@ namespace TiledArray {
 
     }; // class ContractReduceBase
 
-    /// Contract and reduce operation
-
-    /// This object uses a tile contraction operation to form a pair reduction
-    /// operation.
+    /// Contract and (sum) reduce operation
+    
+    /// This encodes a binary tensor contraction mapped to a GEMM, as well as the sum reduction and post-processing.
     /// \tparam Result The result tile type
     /// \tparam Left The left-hand tile type
     /// \tparam Right The right-hand tile type
@@ -188,7 +190,8 @@ namespace TiledArray {
       typedef Result result_type; ///< The result tile type.
       typedef Scalar scalar_type;
 
-      /// Compiler generated functions
+      // Compiler generated defaults are fine. N.B. this is shallow-copy.
+      
       ContractReduce() = default;
       ContractReduce(const ContractReduce_&) = default;
       ContractReduce(ContractReduce_&&) = default;
@@ -269,10 +272,9 @@ namespace TiledArray {
     }; // class ContractReduce
 
 
-    /// Contract and reduce operation
-
-    /// This object uses a tile contraction operation to form a pair reduction
-    /// operation.
+    /// Contract and (sum) reduce operation
+  
+    /// This encodes a binary tensor contraction mapped to a GEMM, as well as the sum reduction and post-processing.
     /// \tparam Result The result tile type
     /// \tparam Left The left-hand tile type
     /// \tparam Right The right-hand tile type
@@ -298,7 +300,8 @@ namespace TiledArray {
           result_type; ///< The result tile type.
       typedef TiledArray::detail::ComplexConjugate<void> scalar_type;
 
-      /// Compiler generated functions
+      // Compiler generated defaults are fine. N.B. This has shallow copy semantics.
+              
       ContractReduce() = default;
       ContractReduce(const ContractReduce_&) = default;
       ContractReduce(ContractReduce_&&) = default;
@@ -335,13 +338,15 @@ namespace TiledArray {
 
       /// Post processing step
       result_type operator()(result_type& temp) const {
-        using TiledArray::conj;
         using TiledArray::empty;
         TA_ASSERT(! empty(temp));
 
-        if(! ContractReduceBase_::perm())
+        if(! ContractReduceBase_::perm()) {
+          using TiledArray::conj_to;
           return conj_to(temp);
+        }
 
+        using TiledArray::conj;
         return conj(temp, ContractReduceBase_::perm());
       }
 
@@ -444,13 +449,15 @@ namespace TiledArray {
 
       /// Post processing step
       result_type operator()(result_type& temp) const {
-        using TiledArray::conj;
         using TiledArray::empty;
         TA_ASSERT(! empty(temp));
 
-        if(! ContractReduceBase_::perm())
+        if(! ContractReduceBase_::perm()) {
+          using TiledArray::conj_to;
           return conj_to(temp, ContractReduceBase_::factor().factor());
+        }
 
+        using TiledArray::conj;
         return conj(temp, ContractReduceBase_::factor().factor(),
             ContractReduceBase_::perm());
       }

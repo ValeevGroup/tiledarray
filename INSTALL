@@ -1,15 +1,15 @@
 # Software Stack:
 
-* C++ compiler with C++11 standard support. 
+* C++ compiler with C++14 standard support.
   Supported compilers include:
-    * GCC 4.7 or later (Linux only)
-    * Clang 3.3 or later
+    * GCC 4.9 or later (Linux only)
+    * Clang 3.4 or later
     * Apple Clang 5.0 or later (OS X only)  
-    * Intel 14 or later
+    * ~~Intel 17 or later~~
   Note, GCC is NOT supported on OS X. There are compatibility issues that arise
   when mixing libraries compiled with clang (or system libraries) with those
   compiled with GCC.
-* Cmake 2.8.8 or later
+* Cmake 3.1.0 or later
 * Git 1.8 or later (required to download TiledArray and MADNESS from GitHub)
 * Eigen 3.x or later
   * Mercurial (required to download Eigen from Bitbucket)

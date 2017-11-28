@@ -76,6 +76,15 @@ namespace TiledArray {
         data_ = allocator_type::allocate(range.volume());
       }
 
+      /// Construct with rvalue range
+
+      /// \param range The N-dimensional range for this tensor
+      explicit Impl(range_type&& range) :
+        allocator_type(), range_(range), data_(NULL)
+      {
+        data_ = allocator_type::allocate(range.volume());
+      }
+
       ~Impl() {
         math::destroy_vector(range_.volume(), data_);
         allocator_type::deallocate(data_, range_.volume());
@@ -125,7 +134,7 @@ namespace TiledArray {
     /// uninitialized.
     /// \param range The range of the tensor
     Tensor(const range_type& range) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       default_init(range.volume(), pimpl_->data_);
     }
@@ -139,7 +148,7 @@ namespace TiledArray {
         typename std::enable_if<std::is_same<Value, value_type>::value &&
         detail::is_tensor<Value>::value>::type* = nullptr>
     Tensor(const range_type& range, const Value& value) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       const size_type n = pimpl_->range_.volume();
       pointer MADNESS_RESTRICT const data = pimpl_->data_;
@@ -154,7 +163,7 @@ namespace TiledArray {
     template <typename Value,
         typename std::enable_if<detail::is_numeric<Value>::value>::type* = nullptr>
     Tensor(const range_type& range, const Value& value) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       detail::tensor_init([=] () -> Value { return value; }, *this);
     }
@@ -164,7 +173,7 @@ namespace TiledArray {
         typename std::enable_if<TiledArray::detail::is_input_iterator<InIter>::value &&
             ! std::is_pointer<InIter>::value>::type* = nullptr>
     Tensor(const range_type& range, InIter it) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       size_type n = range.volume();
       pointer MADNESS_RESTRICT const data = pimpl_->data_;
@@ -174,7 +183,7 @@ namespace TiledArray {
 
     template <typename U>
     Tensor(const Range& range, const U* u) :
-      pimpl_(new Impl(range))
+      pimpl_(std::make_shared<Impl>(range))
     {
       math::uninitialized_copy_vector(range.volume(), u, pimpl_->data_);
     }
@@ -187,7 +196,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<T1>::value &&
             ! std::is_same<T1, Tensor_>::value>::type* = nullptr>
     Tensor(const T1& other) :
-      pimpl_(new Impl(detail::clone_range(other)))
+      pimpl_(std::make_shared<Impl>(detail::clone_range(other)))
     {
       auto op =
           [] (const numeric_t<T1> arg) -> numeric_t<T1>
@@ -204,7 +213,7 @@ namespace TiledArray {
     template <typename T1,
         typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
     Tensor(const T1& other, const Permutation& perm) :
-      pimpl_(new Impl(perm * other.range()))
+      pimpl_(std::make_shared<Impl>(perm * other.range()))
     {
       auto op =
           [] (const numeric_t<T1> arg) -> numeric_t<T1>
@@ -224,7 +233,7 @@ namespace TiledArray {
                  && ! std::is_same<typename std::decay<Op>::type,
                  Permutation>::value>::type* = nullptr>
     Tensor(const T1& other, Op&& op) :
-      pimpl_(new Impl(detail::clone_range(other)))
+      pimpl_(std::make_shared<Impl>(detail::clone_range(other)))
     {
       detail::tensor_init(op, *this, other);
     }
@@ -238,7 +247,7 @@ namespace TiledArray {
     template <typename T1, typename Op,
         typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
     Tensor(const T1& other, Op&& op, const Permutation& perm) :
-      pimpl_(new Impl(perm * other.range()))
+      pimpl_(std::make_shared<Impl>(perm * other.range()))
     {
       detail::tensor_init(op, perm, *this, other);
     }
@@ -254,7 +263,7 @@ namespace TiledArray {
     template <typename T1, typename T2, typename Op,
         typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
     Tensor(const T1& left, const T2& right, Op&& op) :
-      pimpl_(new Impl(detail::clone_range(left)))
+      pimpl_(std::make_shared<Impl>(detail::clone_range(left)))
     {
       detail::tensor_init(op, *this, left, right);
     }
@@ -271,7 +280,7 @@ namespace TiledArray {
     template <typename T1, typename T2, typename Op,
         typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
     Tensor(const T1& left, const T2& right, Op&& op, const Permutation& perm) :
-      pimpl_(new Impl(perm * left.range()))
+      pimpl_(std::make_shared<Impl>(perm * left.range()))
     {
       detail::tensor_init(op, perm, *this, left, right);
     }
@@ -447,9 +456,15 @@ namespace TiledArray {
       size_type n = 0ul;
       ar & n;
       if(n) {
-        std::shared_ptr<Impl> temp(new Impl());
+        std::shared_ptr<Impl> temp = std::make_shared<Impl>();
         temp->data_ = temp->allocate(n);
         try {
+          // need to construct elements of data_ using placement new in case its default ctor is not trivial
+          // N.B. for fundamental types and standard alloc this incurs no overhead (Eigen::aligned_alloc OK also)
+          auto* data_ptr = temp->data_;
+          for(size_type i=0; i!=n; ++i, ++data_ptr)
+            new(static_cast<void*>(data_ptr)) value_type;
+
           ar & madness::archive::wrap(temp->data_, n);
           ar & temp->range_;
         } catch(...) {
@@ -793,7 +808,7 @@ namespace TiledArray {
 
     // Subtraction operations
 
-    /// Subtract this and \c right to construct a new tensor
+    /// Subtract \c right from this and return the result
 
     /// \tparam Right The right-hand tensor type
     /// \param right The tensor that will be subtracted from this tensor
@@ -807,7 +822,7 @@ namespace TiledArray {
           -> numeric_type { return l - r; });
     }
 
-    /// Subtract this and \c right to construct a new, permuted tensor
+    /// Subtract \c right from this and return the result permuted by \c perm
 
     /// \tparam Right The right-hand tensor type
     /// \param right The tensor that will be subtracted from this tensor
@@ -822,7 +837,7 @@ namespace TiledArray {
           -> numeric_type { return l - r; }, perm);
     }
 
-    /// Scale and subtract this and \c right to construct a new tensor
+    /// Subtract \c right from this and return the result scaled by a scaling \c factor
 
     /// \tparam Right The right-hand tensor type
     /// \tparam Scalar A scalar type
@@ -839,7 +854,7 @@ namespace TiledArray {
           -> numeric_type { return (l - r) * factor; });
     }
 
-    /// Scale and subtract this and \c right to construct a new, permuted tensor
+    /// Subtract \c right from this and return the result scaled by a scaling \c factor and permuted by \c perm
 
     /// \tparam Right The right-hand tensor type
     /// \tparam Scalar A scalar type
@@ -1114,12 +1129,11 @@ namespace TiledArray {
     /// \param gemm_helper The *GEMM operation meta data
     /// \return A new tensor which is the result of contracting this tensor with
     /// \c other and scaled by \c factor
-    /// \throw TiledArray::Exception When this tensor is empty.
-    /// \throw TiledArray::Exception When \c other is empty.
-    template <typename U, typename AU, typename V>
+    template <typename U, typename AU, typename V,
+              typename std::enable_if<!detail::is_tensor_of_tensor<
+                  Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
     Tensor_ gemm(const Tensor<U, AU>& other, const V factor,
-        const math::GemmHelper& gemm_helper) const
-    {
+                 const math::GemmHelper& gemm_helper) const {
       // Check that this tensor is not empty and has the correct rank
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.rank() == gemm_helper.left_rank());
@@ -1132,9 +1146,9 @@ namespace TiledArray {
       Tensor_ result(gemm_helper.make_result_range<range_type>(pimpl_->range_, other.range()));
 
       // Check that the inner dimensions of left and right match
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.lobound_data(), other.range().lobound_data()));
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.upbound_data(), other.range().upbound_data()));
-      TA_ASSERT(gemm_helper.left_right_coformal(pimpl_->range_.extent_data(), other.range().extent_data()));
+      TA_ASSERT(gemm_helper.left_right_congruent(pimpl_->range_.lobound_data(), other.range().lobound_data()));
+      TA_ASSERT(gemm_helper.left_right_congruent(pimpl_->range_.upbound_data(), other.range().upbound_data()));
+      TA_ASSERT(gemm_helper.left_right_congruent(pimpl_->range_.extent_data(), other.range().extent_data()));
 
 
       // Compute gemm dimensions
@@ -1151,9 +1165,9 @@ namespace TiledArray {
       return result;
     }
 
-    /// Contract two tensors and store the result in this tensor
+    /// Contract two tensors and accumulate the scaled result to this tensor
 
-    /// Gemm is limited to matrix like contractions. For example, the following
+    /// GEMM is limited to matrix like contractions. For example, the following
     /// contractions are supported:
     /// \code
     /// C[a,b] = A[a,i,j] * B[i,j,b]
@@ -1187,15 +1201,15 @@ namespace TiledArray {
     /// \tparam W The type of the scaling factor
     /// \param left The left-hand tensor that will be contracted
     /// \param right The right-hand tensor that will be contracted
-    /// \param factor The scaling factor
+    /// \param factor The contraction result will be scaling by this value, then accumulated into \c this
     /// \param gemm_helper The *GEMM operation meta data
-    /// \return A new tensor which is the result of contracting this tensor with
-    /// other
-    /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename U, typename AU, typename V, typename AV, typename W>
+    /// \return A reference to \c this
+    template <
+        typename U, typename AU, typename V, typename AV, typename W,
+        typename std::enable_if<!detail::is_tensor_of_tensor<
+            Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
     Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
-        const W factor, const math::GemmHelper& gemm_helper)
-    {
+                  const W factor, const math::GemmHelper& gemm_helper) {
       // Check that this tensor is not empty and has the correct rank
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.rank() == gemm_helper.result_rank());
@@ -1208,28 +1222,28 @@ namespace TiledArray {
 
       // Check that the outer dimensions of left match the corresponding
       // dimensions in result
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().lobound_data(),
+      TA_ASSERT(gemm_helper.left_result_congruent(left.range().lobound_data(),
           pimpl_->range_.lobound_data()));
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().upbound_data(),
+      TA_ASSERT(gemm_helper.left_result_congruent(left.range().upbound_data(),
           pimpl_->range_.upbound_data()));
-      TA_ASSERT(gemm_helper.left_result_coformal(left.range().extent_data(),
+      TA_ASSERT(gemm_helper.left_result_congruent(left.range().extent_data(),
           pimpl_->range_.extent_data()));
 
       // Check that the outer dimensions of right match the corresponding
       // dimensions in result
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().lobound_data(),
+      TA_ASSERT(gemm_helper.right_result_congruent(right.range().lobound_data(),
           pimpl_->range_.lobound_data()));
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().upbound_data(),
+      TA_ASSERT(gemm_helper.right_result_congruent(right.range().upbound_data(),
           pimpl_->range_.upbound_data()));
-      TA_ASSERT(gemm_helper.right_result_coformal(right.range().extent_data(),
+      TA_ASSERT(gemm_helper.right_result_congruent(right.range().extent_data(),
           pimpl_->range_.extent_data()));
 
       // Check that the inner dimensions of left and right match
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().lobound_data(),
+      TA_ASSERT(gemm_helper.left_right_congruent(left.range().lobound_data(),
           right.range().lobound_data()));
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().upbound_data(),
+      TA_ASSERT(gemm_helper.left_right_congruent(left.range().upbound_data(),
           right.range().upbound_data()));
-      TA_ASSERT(gemm_helper.left_right_coformal(left.range().extent_data(),
+      TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
           right.range().extent_data()));
 
       // Compute gemm dimensions
@@ -1301,7 +1315,11 @@ namespace TiledArray {
 
     /// Unary reduction operation
 
-    /// Perform an element-wise reduction of the tile data.
+    /// Perform an element-wise reduction of the data by
+    /// executing <tt>join_op(result, reduce_op(*this[i]))</tt> for each
+    /// \c i in the index range of \c this . \c result is initialized to \c identity .
+    /// If HAVE_INTEL_TBB is defined, and this is a contiguous tensor, the reduction will
+    /// be executed in an undefined order, otherwise will execute in the order of increasing \c i .
     /// \tparam ReduceOp The reduction operation type
     /// \tparam JoinOp The join operation type
     /// \param reduce_op The element-wise reduction operation
@@ -1317,7 +1335,11 @@ namespace TiledArray {
 
     /// Binary reduction operation
 
-    /// Perform an element-wise reduction of the tile data.
+    /// Perform an element-wise binary reduction of the data of \c this and \c other by
+    /// executing <tt>join_op(result, reduce_op(*this[i], other[i]))</tt> for each
+    /// \c i in the index range of \c this . \c result is initialized to \c identity .
+    /// If HAVE_INTEL_TBB is defined, and this is a contiguous tensor, the reduction will
+    /// be executed in an undefined order, otherwise will execute in the order of increasing \c i .
     /// \tparam Right The right-hand argument tensor type
     /// \tparam ReduceOp The reduction operation type
     /// \tparam JoinOp The join operation type
@@ -1438,6 +1460,41 @@ namespace TiledArray {
 
   template <typename T, typename A>
   const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
+
+  template <typename T, typename A>
+  bool operator==(const Tensor<T,A>& a, const Tensor<T,A>& b) {
+    return a.range() == b.range() && std::equal(a.data(), a.data() + a.size(), b.data());
+  }
+  template <typename T, typename A>
+  bool operator!=(const Tensor<T,A>& a, const Tensor<T,A>& b) {
+    return !(a == b);
+  }
+
+  // specialize TiledArray::detail::transform for Tensor
+  namespace detail {
+  template <typename T, typename A>
+  struct transform<Tensor<T, A>> {
+    template <typename Op, typename T1>
+    Tensor<T, A> operator()(Op&& op, T1&& t1) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op));
+    }
+    template <typename Op, typename T1>
+    Tensor<T, A> operator()(Op&& op, const Permutation& perm, T1&& t1) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op), perm);
+    }
+    template <typename Op, typename T1, typename T2>
+    Tensor<T, A> operator()(Op&& op, T1&& t1, T2&& t2) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<T2>(t2),
+                          std::forward<Op>(op));
+    }
+    template <typename Op, typename T1, typename T2>
+    Tensor<T, A> operator()(Op&& op,
+                            const Permutation& perm, T1&& t1, T2&& t2) const {
+      return Tensor<T, A>(std::forward<T1>(t1), std::forward<T2>(t2),
+                          std::forward<Op>(op), perm);
+    }
+  };
+  }  // namespace detail
 
 #ifndef TILEDARRAY_HEADER_ONLY
 

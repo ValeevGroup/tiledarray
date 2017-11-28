@@ -41,8 +41,6 @@ struct ForeachFixture : public TiledRangeFixture {
 
   template <typename Tile, typename Policy>
   static void random_fill(DistArray<Tile, Policy>& array) {
-    typename DistArray<Tile, Policy>::pmap_interface::const_iterator it = array.pmap()->begin();
-    typename DistArray<Tile, Policy>::pmap_interface::const_iterator end = array.pmap()->end();
     for(auto index : * array.pmap()) {
       if(array.is_zero(index))
         continue;

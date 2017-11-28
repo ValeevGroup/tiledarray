@@ -55,7 +55,7 @@ if(MADNESS_FOUND)
     # Check to that MADNESS was compiled with Elemental support.
     CHECK_CXX_SOURCE_COMPILES(
         "
-        #include <madness/world/parallel_runtime.h>
+        #include <madness/config.h>
         #ifndef MADNESS_HAS_ELEMENTAL
         # error MADNESS does not have Elemental
         #endif
@@ -288,6 +288,7 @@ else()
       -DASSERTION_TYPE=${MAD_ASSERT_TYPE}
       "-DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}"
       -DDISABLE_WORLD_GET_DEFAULT=ON
+      "-DENABLE_TASK_DEBUG_TRACE=${TILEDARRAY_ENABLE_TASK_DEBUG_TRACE}"
       ${MADNESS_CMAKE_EXTRA_ARGS}
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)

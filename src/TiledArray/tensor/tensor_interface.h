@@ -850,7 +850,11 @@ namespace TiledArray {
 
       /// Unary reduction operation
 
-      /// Perform an element-wise reduction of the tile data.
+      /// Perform an element-wise reduction of the data by
+      /// executing <tt>join_op(result, reduce_op(*this[i]))</tt> for each
+      /// \c i in the index range of \c this . \c result is initialized to \c identity .
+      /// If HAVE_INTEL_TBB is defined, and this is a contiguous tensor, the reduction will
+      /// be executed in an undefined order, otherwise will execute in the order of increasing \c i .
       /// \tparam ReduceOp The reduction operation type
       /// \tparam JoinOp The join operation type
       /// \param reduce_op The element-wise reduction operation
@@ -866,7 +870,11 @@ namespace TiledArray {
 
       /// Binary reduction operation
 
-      /// Perform an element-wise reduction of the tile data.
+      /// Perform an element-wise binary reduction of the data of \c this and \c other by
+      /// executing <tt>join_op(result, reduce_op(*this[i], other[i]))</tt> for each
+      /// \c i in the index range of \c this . \c result is initialized to \c identity .
+      /// If HAVE_INTEL_TBB is defined, and this is a contiguous tensor, the reduction will
+      /// be executed in an undefined order, otherwise will execute in the order of increasing \c i .
       /// \tparam Right The right-hand argument tensor type
       /// \tparam ReduceOp The reduction operation type
       /// \tparam JoinOp The join operation type
