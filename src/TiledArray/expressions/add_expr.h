@@ -49,8 +49,12 @@ namespace TiledArray {
     struct ExprTrait<AddExpr<Left, Right> > {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
+      typedef TiledArray::tile_interface::result_of_add_t<
+          typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type>
+          result_type; ///< Result tile type
       typedef AddEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type>
+          typename ExprTrait<Right>::engine_type, result_type>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Addition result numeric type
@@ -62,12 +66,16 @@ namespace TiledArray {
     struct ExprTrait<ScalAddExpr<Left, Right, Scalar> > {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
+      typedef Scalar scalar_type;  ///< Expression scalar type
+      typedef TiledArray::tile_interface::result_of_add_t<
+          typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type,
+          scalar_type> result_type; ///< Result tile type
       typedef ScalAddEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, Scalar>
+          typename ExprTrait<Right>::engine_type, Scalar, result_type>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Addition numeric type
-      typedef Scalar scalar_type;  ///< Expression scalar type
     };
 
 
@@ -79,8 +87,7 @@ namespace TiledArray {
     class AddExpr : public BinaryExpr<AddExpr<Left, Right> > {
     public:
       typedef AddExpr<Left, Right> AddExpr_; ///< This class type
-      typedef BinaryExpr<AddExpr<Left, Right> >
-          BinaryExpr_; ///< Binary base class type
+      typedef BinaryExpr<AddExpr_> BinaryExpr_; ///< Binary base class type
       typedef typename ExprTrait<AddExpr_>::left_type
           left_type; ///< The left-hand expression type
       typedef typename ExprTrait<AddExpr_>::right_type
@@ -106,7 +113,7 @@ namespace TiledArray {
     }; // class AddExpr
 
 
-    /// Addition expression
+    /// Add-then-scale expression
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type

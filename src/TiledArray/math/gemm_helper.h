@@ -187,7 +187,7 @@ namespace TiledArray {
           upper.push_back(right_upper[i]);
         }
 
-        // Construct the result tile
+        // Construct the result tile range
         return R(lower, upper);
       }
 

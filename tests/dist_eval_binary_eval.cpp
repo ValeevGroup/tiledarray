@@ -29,6 +29,11 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+using TiledArray::detail::Add;
+using TiledArray::detail::Noop;
+using TiledArray::detail::BinaryWrapper;
+using TiledArray::detail::UnaryWrapper;
+
 struct BinaryEvalFixture : public TiledRangeFixture {
 
   BinaryEvalFixture() :
@@ -53,23 +58,25 @@ struct BinaryEvalFixture : public TiledRangeFixture {
   ~BinaryEvalFixture() { }
 
 
-  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  static UnaryWrapper<Noop<TensorI, TensorI, true> >
   make_array_noop(const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
-        Noop<TensorI, true>(), perm);
+    return UnaryWrapper<Noop<TensorI, TensorI, true> >(
+        Noop<TensorI, TensorI, true>(), perm);
   }
 
 
-  static TiledArray::detail::BinaryWrapper<
-      Add<TArrayI::value_type, TArrayI::value_type, false, false> >
+  static BinaryWrapper<TiledArray::detail::Add<TArrayI::value_type, TArrayI::value_type,
+      TArrayI::value_type, false, false> >
   make_add(const Permutation& perm = Permutation()) {
-    return TiledArray::detail::BinaryWrapper<
-          Add<TArrayI::value_type, TArrayI::value_type, false, false> >(
-          Add<TArrayI::value_type, TArrayI::value_type, false, false>(), perm);
+    return BinaryWrapper<
+        TiledArray::detail::Add<TArrayI::value_type, TArrayI::value_type, TArrayI::value_type,
+          false, false> >(TiledArray::detail::Add<TArrayI::value_type, TArrayI::value_type,
+          TArrayI::value_type, false, false>(), perm);
   }
 
   template <typename Tile, typename Policy, typename Op>
-  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<typename DistArray<Tile, Policy>::value_type, Op>, Policy>
+  static TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<
+      typename DistArray<Tile, Policy>::value_type, Op>, Policy>
   make_array_eval(
       const DistArray<Tile, Policy>& array,
       TiledArray::World& world,

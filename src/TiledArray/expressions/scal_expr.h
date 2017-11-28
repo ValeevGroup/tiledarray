@@ -39,11 +39,14 @@ namespace TiledArray {
     template <typename Arg, typename Scalar>
     struct ExprTrait<ScalExpr<Arg, Scalar> > {
       typedef Arg argument_type; ///< The argument expression type
-      typedef ScalEngine<typename ExprTrait<Arg>::engine_type, Scalar>
-          engine_type; ///< Expression engine type
+      typedef Scalar scalar_type; ///< Addition result scalar type
+      typedef TiledArray::tile_interface::result_of_scale_t<
+          typename EngineTrait<typename ExprTrait<Arg>::engine_type>::eval_type,
+          scalar_type> result_type; ///< Result tile type
+      typedef ScalEngine<typename ExprTrait<Arg>::engine_type, Scalar,
+          result_type> engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Addition result numeric type
-      typedef Scalar scalar_type; ///< Addition result scalar type
     };
 
     /// Scaling expression

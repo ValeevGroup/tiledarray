@@ -26,222 +26,241 @@
 #ifndef TILEDARRAY_TILE_OP_SHIFT_H__INCLUDED
 #define TILEDARRAY_TILE_OP_SHIFT_H__INCLUDED
 
+#include "../tile_interface/shift.h"
+#include "../tile_interface/permute.h"
+
 namespace TiledArray {
+  namespace detail {
 
-  /// Tile shift operation
+    /// Tile shift operation
 
-  /// This no operation will shift the range of the tile and/or apply a
-  /// permutation to the result tensor.
-  /// \tparam Result The result type
-  /// \tparam Arg The argument type
-  /// \tparam Consumable Flag that is \c true when Arg is consumable
-  template <typename Arg, bool Consumable>
-  class Shift {
-  public:
-    typedef Shift<Arg, Consumable> Shift_; ///< This object type
-    typedef Arg argument_type; ///< The argument type
-    typedef decltype(shift(std::declval<argument_type>(), std::declval<std::vector<long> >()))
-        result_type; ///< The result tile type
+    /// This tile operation will shift the range of the tile and/or apply a
+    /// permutation to the result tensor.
+    /// \tparam Result The tile result type
+    /// \tparam Arg The argument type
+    /// \tparam Consumable If `true`, the tile is a temporary and may be
+    /// consumed
+    /// \note Input tiles can be consumed only if their type matches the result
+    /// type.
+    template <typename Result, typename Arg, bool Consumable>
+    class Shift {
+    public:
+      typedef Shift<Result, Arg, Consumable> Shift_; ///< This object type
+      typedef Arg argument_type; ///< The argument type
+      typedef Result result_type; ///< The result tile type
 
-    static constexpr bool is_consumable =
-        Consumable && std::is_same<result_type, argument_type>::value;
+      /// Indicates whether it is *possible* to consume the left tile
+      static constexpr bool is_consumable =
+          Consumable && std::is_same<result_type, argument_type>::value;
 
-  private:
+    private:
 
-    std::vector<long> range_shift_;
+      std::vector<long> range_shift_;
 
-    // Permuting tile evaluation function
-    // These operations cannot consume the argument tile since this operation
-    // requires temporary storage space.
+      // Permuting tile evaluation function
+      // These operations cannot consume the argument tile since this operation
+      // requires temporary storage space.
 
-    result_type eval(const argument_type& arg, const Permutation& perm) const {
-      using TiledArray::permute;
-      using TiledArray::shift_to;
-      result_type result = permute(arg, perm);
-      shift_to(result, range_shift_);
-      return result;
-    }
+      result_type
+      eval(const argument_type& arg, const Permutation& perm) const {
+        TiledArray::Permute<result_type, argument_type> permute;
+        TiledArray::ShiftTo<result_type, result_type> shift_to;
+        result_type result = permute(arg, perm);
+        shift_to(result, range_shift_);
+        return result;
+      }
 
-    // Non-permuting tile evaluation functions
-    // The compiler will select the correct functions based on the consumability
-    // of the arguments.
+      // Non-permuting tile evaluation functions
+      // The compiler will select the correct functions based on the
+      // consumability of the arguments.
 
-    template <bool C, typename std::enable_if<!C>::type* = nullptr>
-    result_type eval(const argument_type& arg) const {
-      using TiledArray::shift;
-      return shift(arg, range_shift_);
-    }
+      template <bool C, typename = void>
+      auto eval(const argument_type& arg) const {
+        TiledArray::Shift<result_type, argument_type> shift;
+        return shift(arg, range_shift_);
+      }
 
-    template <bool C, typename std::enable_if<C>::type* = nullptr>
-    result_type eval(argument_type& arg) const {
-      using TiledArray::shift_to;
-      shift_to(arg, range_shift_);
-      return arg;
-    }
+      template <bool C, typename = typename std::enable_if<C>::type>
+      auto eval(argument_type& arg) const {
+        TiledArray::ShiftTo<result_type, argument_type> shift_to;
+        shift_to(arg, range_shift_);
+        return arg;
+      }
 
-  public:
+      template <bool C, typename = typename std::enable_if<C>::type>
+      auto eval(argument_type&& arg) const {
+        TiledArray::ShiftTo<result_type, argument_type> shift_to;
+        shift_to(arg, range_shift_);
+        return arg;
+      }
 
-    // Compiler generated functions
-    Shift() = delete;
-    Shift(const Shift_&) = default;
-    Shift(Shift_&&) = default;
-    ~Shift() = default;
-    Shift& operator=(const Shift_&) = default;
-    Shift& operator=(Shift_&&) = default;
+    public:
 
-
-    /// Default constructor
-
-    /// Construct a no operation that does not permute the result tile
-    Shift(const std::vector<long>& range_shift) :
-      range_shift_(range_shift)
-    { }
-
-    /// Shift and permute operator
-
-    /// \param arg The tile argument
-    /// \param perm The permutation applied to the result tile
-    /// \return A permuted and shifted copy of `arg`
-    result_type operator()(const argument_type& arg, const Permutation& perm) const {
-      return eval(arg, perm);
-    }
-
-    /// Consuming shift operation
-
-    /// \tparam A The tile argument type
-    /// \param arg The tile argument
-    /// \return A shifted copy of `arg`
-    template <typename A>
-    result_type operator()(A&& arg) const {
-      return Shift_::template eval<is_consumable &&
-          ! std::is_const<typename std::remove_reference<A>::type>::value>(
-          std::forward<A>(arg));
-    }
-
-    /// Explicit consuming shift operation
-
-    /// \tparam A The tile argument type
-    /// \param arg The tile argument
-    /// \return In-place shifted `arg`
-    template <typename A>
-    result_type consume(A& arg) const {
-      return Shift_::template eval<is_consumable_tile<argument_type>::value>(arg);
-    }
-
-  }; // class Shift
+      // Compiler generated functions
+      Shift() = delete;
+      Shift(const Shift_&) = default;
+      Shift(Shift_&&) = default;
+      ~Shift() = default;
+      Shift& operator=(const Shift_&) = default;
+      Shift& operator=(Shift_&&) = default;
 
 
-  /// Tile shift operation
+      /// Default constructor
 
-  /// This no operation will shift the range of the tile and/or apply a
-  /// permutation to the result tensor.
-  /// \tparam Result The result type
-  /// \tparam Arg The argument type
-  /// \tparam Consumable Flag that is \c true when Arg is consumable
-  template <typename Arg, typename Scalar, bool Consumable>
-  class ScalShift {
-  public:
-    typedef ScalShift<Arg, Scalar, Consumable> ScalShift_; ///< This object type
-    typedef Arg argument_type; ///< The argument type
-    typedef Scalar scalar_type; ///< The scaling factor type
-    typedef decltype(shift(scale(std::declval<argument_type>(),
-        std::declval<scalar_type>()), std::declval<std::vector<long> >()))
-        result_type; ///< The result tile type
+      /// Construct a no operation that does not permute the result tile
+      Shift(const std::vector<long>& range_shift) :
+        range_shift_(range_shift)
+      { }
 
-    static constexpr bool is_consumable =
-        Consumable && std::is_same<result_type, argument_type>::value;
+      /// Shift and permute operator
 
-  private:
+      /// \param arg The tile argument
+      /// \param perm The permutation applied to the result tile
+      /// \return A permuted and shifted copy of `arg`
+      result_type
+      operator()(const argument_type& arg, const Permutation& perm) const {
+        return eval(arg, perm);
+      }
 
-    std::vector<long> range_shift_; ///< Range shift array
-    scalar_type factor_; ///< Scaling factor
+      /// Consuming shift operation
 
-  public:
+      /// \tparam A The tile argument type
+      /// \param arg The tile argument
+      /// \return A shifted copy of `arg`
+      template <typename A>
+      result_type operator()(A&& arg) const {
+        return Shift_::template eval<is_consumable>(std::forward<A>(arg));
+      }
 
-    // Permuting tile evaluation function
-    // These operations cannot consume the argument tile since this operation
-    // requires temporary storage space.
+      /// Explicit consuming shift operation
 
-    result_type eval(const argument_type& arg, const Permutation& perm) const {
-      using TiledArray::scale;
-      using TiledArray::shift_to;
-      result_type result = scale(arg, factor_, perm);
-      return shift_to(result, range_shift_);
-    }
+      /// \tparam A The tile argument type
+      /// \param arg The tile argument
+      /// \return In-place shifted `arg`
+      template <typename A>
+      result_type consume(A& arg) const {
+        constexpr bool can_consume = is_consumable_tile<argument_type>::value &&
+            std::is_same<result_type, argument_type>::value;
+        return Shift_::template eval<can_consume>(arg);
+      }
 
-    // Non-permuting tile evaluation functions
-    // The compiler will select the correct functions based on the consumability
-    // of the arguments.
-
-    template <bool C>
-    typename std::enable_if<!C, result_type>::type
-    eval(const argument_type& arg) const {
-      using TiledArray::scale;
-      using TiledArray::shift_to;
-      result_type result = scale(arg, factor_);
-      return shift_to(result, range_shift_);
-    }
-
-    template <bool C>
-    typename std::enable_if<C, result_type>::type
-    eval(argument_type& arg) const {
-      using TiledArray::scale_to;
-      using TiledArray::shift_to;
-      scale_to(arg, factor_);
-      shift_to(arg, range_shift_);
-      return arg;
-    }
-
-  public:
-
-    // Compiler generated functions
-    ScalShift() = delete;
-    ScalShift(const ScalShift_&) = default;
-    ScalShift(ScalShift_&&) = default;
-    ~ScalShift() = default;
-    ScalShift_& operator=(const ScalShift_&) = default;
-    ScalShift_& operator=(ScalShift_&&) = default;
-
-    /// Default constructor
-
-    /// Construct a no operation that does not permute the result tile
-    ScalShift(const std::vector<long>& range_shift, const scalar_type factor) :
-      range_shift_(range_shift), factor_(factor)
-    { }
+    }; // class Shift
 
 
-    /// Shift and permute operator
+    /// Tile shift operation
 
-    /// \param arg The tile argument
-    /// \param perm The permutation applied to the result tile
-    /// \return A permuted and shifted copy of `arg`
-    result_type operator()(const argument_type& arg, const Permutation& perm) const {
-      return eval(arg, perm);
-    }
+    /// This tile operation will shift the range of the tile and/or apply a
+    /// permutation to the result tensor.
+    /// \tparam Result The result type
+    /// \tparam Arg The argument type
+    /// \tparam Scalar The scaling factor type
+    /// \tparam Consumable Flag that is \c true when Arg is consumable
+    template <typename Result, typename Arg, typename Scalar, bool Consumable>
+    class ScalShift {
+    public:
+      typedef ScalShift<Result, Arg, Scalar, Consumable>
+          ScalShift_; ///< This object type
+      typedef Arg argument_type; ///< The argument type
+      typedef Scalar scalar_type; ///< The scaling factor type
+      typedef Result result_type; ///< The result tile type
 
-    /// Consuming shift operation
+      static constexpr bool is_consumable =
+          Consumable && std::is_same<result_type, argument_type>::value;
 
-    /// \tparam A The tile argument type
-    /// \param arg The tile argument
-    /// \return A shifted copy of `arg`
-    template <typename A>
-    result_type operator()(A&& arg) const {
-      return ScalShift_::template eval<is_consumable>(arg);
-      return ScalShift_::template eval<is_consumable &&
-          ! std::is_const<typename std::remove_reference<A>::type>::value>(
-          std::forward<A>(arg));
-    }
+    private:
 
-    /// Explicit consuming shift operation
+      std::vector<long> range_shift_; ///< Range shift array
+      scalar_type factor_; ///< Scaling factor
 
-    /// \param arg The tile argument
-    /// \return In-place shifted `arg`
-    result_type consume(argument_type& arg) const {
-      return ScalShift_::template eval<is_consumable_tile<argument_type>::value>(arg);
-    }
+    public:
 
-  }; // class Shift
+      // Permuting tile evaluation function
+      // These operations cannot consume the argument tile since this operation
+      // requires temporary storage space.
 
+      result_type
+      eval(const argument_type& arg, const Permutation& perm) const {
+        using TiledArray::scale;
+        using TiledArray::shift_to;
+        result_type result = scale(arg, factor_, perm);
+        return shift_to(result, range_shift_);
+      }
+
+      // Non-permuting tile evaluation functions
+      // The compiler will select the correct functions based on the
+      // consumability of the arguments.
+
+      template <bool C>
+      typename std::enable_if<!C, result_type>::type
+      eval(const argument_type& arg) const {
+        using TiledArray::scale;
+        using TiledArray::shift_to;
+        result_type result = scale(arg, factor_);
+        return shift_to(result, range_shift_);
+      }
+
+      template <bool C>
+      typename std::enable_if<C, result_type>::type
+      eval(argument_type& arg) const {
+        using TiledArray::scale_to;
+        using TiledArray::shift_to;
+        scale_to(arg, factor_);
+        shift_to(arg, range_shift_);
+        return arg;
+      }
+
+    public:
+
+      // Compiler generated functions
+      ScalShift() = delete;
+      ScalShift(const ScalShift_&) = default;
+      ScalShift(ScalShift_&&) = default;
+      ~ScalShift() = default;
+      ScalShift_& operator=(const ScalShift_&) = default;
+      ScalShift_& operator=(ScalShift_&&) = default;
+
+      /// Default constructor
+
+      /// Construct a no operation that does not permute the result tile
+      ScalShift(const std::vector<long>& range_shift,
+          const scalar_type factor) :
+        range_shift_(range_shift), factor_(factor)
+      { }
+
+
+      /// Shift and permute operator
+
+      /// \param arg The tile argument
+      /// \param perm The permutation applied to the result tile
+      /// \return A permuted and shifted copy of `arg`
+      result_type
+      operator()(const argument_type& arg, const Permutation& perm) const {
+        return eval(arg, perm);
+      }
+
+      /// Consuming shift operation
+
+      /// \tparam A The tile argument type
+      /// \param arg The tile argument
+      /// \return A shifted copy of `arg`
+      template <typename A>
+      result_type operator()(A&& arg) const {
+        return ScalShift_::template eval<is_consumable>(std::forward<A>(arg));
+      }
+
+      /// Explicit consuming shift operation
+
+      /// \param arg The tile argument
+      /// \return In-place shifted `arg`
+      result_type consume(argument_type& arg) const {
+        constexpr bool can_consume = is_consumable_tile<argument_type>::value &&
+            std::is_same<result_type, argument_type>::value;
+        return ScalShift_::template eval<can_consume>(arg);
+      }
+
+    }; // class ScalShift
+
+  } // namesapce detail
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILE_OP_SHIFT_H__INCLUDED

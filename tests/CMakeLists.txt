@@ -32,6 +32,8 @@ set(executable ta_test)
 # NOTE: The order of files here represent the order that tests are run and
 # dependencies.
 set(ta_test_src_files  ta_test.cpp
+    meta.cpp
+    type_traits.cpp
     utility.cpp
     permutation.cpp
     symm_permutation_group.cpp
@@ -69,7 +71,6 @@ set(ta_test_src_files  ta_test.cpp
     dist_op_communicator.cpp
     tile_op_noop.cpp
     tile_op_scal.cpp
-    tile_op_neg.cpp
     dist_eval_array_eval.cpp
     dist_eval_unary_eval.cpp
     tile_op_add.cpp
@@ -84,7 +85,9 @@ set(ta_test_src_files  ta_test.cpp
     proc_grid.cpp
     dist_eval_contraction_eval.cpp
     expressions.cpp
-    foreach.cpp)
+    expressions_mixed.cpp
+    foreach.cpp
+)
         
 if(ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)

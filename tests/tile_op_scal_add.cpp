@@ -28,7 +28,7 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 
-using namespace TiledArray;
+using TiledArray::TensorI;
 
 struct ScalAddFixture : public RangeFixture {
 
@@ -47,9 +47,9 @@ struct ScalAddFixture : public RangeFixture {
 
   ~ScalAddFixture() { }
 
-  Tensor<int> a;
-  Tensor<int> b;
-  Tensor<int> c;
+  TensorI a;
+  TensorI b;
+  TensorI c;
   Permutation perm;
 
 }; // AddFixture
@@ -59,15 +59,15 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_scal_add_suite, ScalAddFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((ScalAdd<Tensor<int>, Tensor<int>, int, false, false>(7)));
-  BOOST_CHECK_NO_THROW((ScalAdd<Tensor<int>, Tensor<int>, int, true, false>(7)));
-  BOOST_CHECK_NO_THROW((ScalAdd<Tensor<int>, Tensor<int>, int, false, true>(7)));
-  BOOST_CHECK_NO_THROW((ScalAdd<Tensor<int>, Tensor<int>, int, true, true>(7)));
+  BOOST_CHECK_NO_THROW((TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>(7)));
+  BOOST_CHECK_NO_THROW((TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>(7)));
+  BOOST_CHECK_NO_THROW((TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>(7)));
+  BOOST_CHECK_NO_THROW((TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, true>(7)));
 }
 
 BOOST_AUTO_TEST_CASE( binary_scale_add )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b));
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_perm )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_perm )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));
@@ -183,8 +183,8 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_consume_left )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, true, false> add_op(7);
-  const Tensor<int> ax(a.range(), a.begin());
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
+  const TensorI ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b));
@@ -204,7 +204,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_consume_left )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, true, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
@@ -223,8 +223,8 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_consume_left )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, true, false> add_op(7);
-  const Tensor<int> ax(a.range(), a.begin());
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
+  const TensorI ax(a.range(), a.begin());
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
@@ -243,7 +243,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_perm_consume_left )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, true, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm_consume_left )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, true, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
@@ -282,7 +282,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm_consume_left )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, true, false> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));
@@ -301,8 +301,8 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_consume_right )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, true> add_op(7);
-  const Tensor<int> bx(b.range(), b.begin());
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
+  const TensorI bx(b.range(), b.begin());
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b));
@@ -322,8 +322,8 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_consume_right )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, true> add_op(7);
-  const Tensor<int> bx(b.range(), b.begin());
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
+  const TensorI bx(b.range(), b.begin());
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
@@ -342,7 +342,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_consume_right )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, true> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
@@ -361,7 +361,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_perm_consume_right )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, true> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
@@ -381,7 +381,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_perm_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm_consume_right )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, true> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
@@ -400,7 +400,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm_consume_right )
 {
-  ScalAdd<Tensor<int>, Tensor<int>, int, false, true> add_op(7);
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));

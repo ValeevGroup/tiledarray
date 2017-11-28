@@ -84,7 +84,7 @@ namespace TiledArray {
 
       /// This function will initialize all expression engines in the expression
       /// graph. The <tt>init_vars()</tt>, <tt>init_struct()</tt>, and
-      /// <tt>init_distributeion()</tt> will be called for each node and leaf of
+      /// <tt>init_distribution()</tt> will be called for each node and leaf of
       /// the graph in that order.
       /// \param world The world where the expression will be evaluated
       /// \param pmap The process map for the result tensor (may be NULL)

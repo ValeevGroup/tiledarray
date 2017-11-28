@@ -5,7 +5,7 @@ include(CheckCXXSourceCompiles)
 include(AppendFlags)
 
 # Check for Eigen
-find_package(Eigen3 3.0)
+find_package(Eigen3 3.1)
 
 if (EIGEN3_FOUND)
 
@@ -16,6 +16,7 @@ if (EIGEN3_FOUND)
   CHECK_CXX_SOURCE_COMPILES("
     #include <Eigen/Core>
     #include <Eigen/Dense>
+    #include <Eigen/SparseCore>
     #include <iostream>
     int main(int argc, char* argv[]){
       Eigen::MatrixXd m = Eigen::MatrixXd::Random(5, 5);

@@ -39,57 +39,73 @@ namespace TiledArray {
     // Forward declaration
     template <typename, bool> class BlkTsrExpr;
     template <typename, typename> class ScalBlkTsrExpr;
-    template <typename, bool> class BlkTsrEngine;
-    template <typename, typename> class ScalBlkTsrEngine;
+    template <typename, typename, bool> class BlkTsrEngine;
+    template <typename, typename, typename> class ScalBlkTsrEngine;
 
-    template <typename Tile, typename Policy, bool Alias>
-    struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Alias> > {
+    template <typename Tile, typename Policy, typename Result, bool Alias>
+    struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias> > {
+
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
-      typedef typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type scalar_type;
-      typedef TiledArray::Shift<typename array_type::eval_type,
-          ! Alias> op_base_type; ///< The base tile operation
-      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type; ///< The tile operation
+      typedef typename TiledArray::detail::scalar_type<DistArray<Tile,
+            Policy> >::type scalar_type;
+      typedef TiledArray::detail::Shift<Result, typename TiledArray::eval_trait<
+          typename array_type::value_type>::type, (! Alias) ||
+          TiledArray::eval_trait<typename array_type::value_type>::is_consumable
+          > op_base_type; ///< The base tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type>
+          op_type; ///< The tile operation
       typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
           op_type> value_type;  ///< Tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type; ///< Evaluation tile type
       typedef Policy policy; ///< Policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = true;
       static constexpr unsigned int leaves = 1;
     };
 
 
-    template <typename Tile, typename Policy, typename Scalar>
-    struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar> > {
+    template <typename Tile, typename Policy, typename Scalar, typename Result>
+    struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar, Result> >
+    {
       // Argument typedefs
       typedef DistArray<Tile, Policy> array_type; ///< The array type
 
       // Operational typedefs
       typedef Scalar scalar_type;
-      typedef TiledArray::ScalShift<typename array_type::eval_type,
-          scalar_type, false> op_base_type; ///< The base tile operation
-      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type; ///< The tile operation
-      typedef TiledArray::detail::LazyArrayTile<typename array_type::value_type,
-          op_type> value_type;  ///< Tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
+      typedef TiledArray::detail::ScalShift<Result,
+          typename TiledArray::eval_trait<typename array_type::value_type>::type,
+          scalar_type,
+          TiledArray::eval_trait<typename array_type::value_type>::is_consumable>
+          op_base_type; ///< The base tile operation
+      typedef TiledArray::detail::UnaryWrapper<op_base_type>
+          op_type; ///< The tile operation
+      typedef TiledArray::detail::LazyArrayTile<
+          typename array_type::value_type, op_type> value_type; ///< Tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type; ///< Evaluation tile type
       typedef Policy policy; ///< Policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = true;
       static constexpr unsigned int leaves = 1;
@@ -104,22 +120,32 @@ namespace TiledArray {
       // Class hierarchy typedefs
       typedef BlkTsrEngineBase<Derived> BlkTsrEngineBase_; ///< This class type
       typedef LeafEngine<Derived> LeafEngine_; ///< Leaf base class type
-      typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
+      typedef typename LeafEngine_::ExprEngine_
+          ExprEngine_; ///< Expression engine base class
 
       // Argument typedefs
-      typedef typename EngineTrait<Derived>::array_type array_type; ///< The left-hand expression type
+      typedef typename EngineTrait<Derived>::array_type
+          array_type; ///< The input array type
 
       // Operational typedefs
-      typedef typename EngineTrait<Derived>::value_type value_type; ///< Tensor value type
-      typedef typename EngineTrait<Derived>::op_type op_type; ///< Tile operation type
-      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+      typedef typename EngineTrait<Derived>::value_type
+          value_type; ///< Tensor value type
+      typedef typename EngineTrait<Derived>::op_type
+          op_type; ///< Tile operation type
+      typedef typename EngineTrait<Derived>::policy
+          policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type
+          dist_eval_type; ///< This expression's distributed evaluator type
 
       // Meta data typedefs
-      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type type
-      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Tensor shape type
-      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<Derived>::size_type
+          size_type; ///< Size type
+      typedef typename EngineTrait<Derived>::trange_type
+          trange_type; ///< Tiled range type type
+      typedef typename EngineTrait<Derived>::shape_type
+          shape_type; ///< Tensor shape type
+      typedef typename EngineTrait<Derived>::pmap_interface
+          pmap_interface; ///< Process map interface type
 
     protected:
 
@@ -266,32 +292,47 @@ namespace TiledArray {
     /// Tensor expression engine
 
     /// \tparam Array The array type
+    /// \tparam Result The result tile type
     /// \tparam Alias Indicates the array tiles should be computed as a
     /// temporary before assignment
-    template <typename Array, bool Alias>
-    class BlkTsrEngine : public BlkTsrEngineBase<BlkTsrEngine<Array, Alias> > {
+    template <typename Array, typename Result, bool Alias>
+    class BlkTsrEngine : public BlkTsrEngineBase<BlkTsrEngine<Array, Result, Alias> > {
     public:
       // Class hierarchy typedefs
-      typedef BlkTsrEngine<Array, Alias> BlkTsrEngine_; ///< This class type
-      typedef BlkTsrEngineBase<BlkTsrEngine_> BlkTsrEngineBase_; ///< Block tensor base class type
-      typedef typename BlkTsrEngineBase_::LeafEngine_ LeafEngine_; ///< Leaf base class type
-      typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
+      typedef BlkTsrEngine<Array, Result, Alias>
+          BlkTsrEngine_; ///< This class type
+      typedef BlkTsrEngineBase<BlkTsrEngine_>
+          BlkTsrEngineBase_; ///< Block tensor base class type
+      typedef typename BlkTsrEngineBase_::LeafEngine_
+          LeafEngine_; ///< Leaf base class type
+      typedef typename LeafEngine_::ExprEngine_
+          ExprEngine_; ///< Expression engine base class
 
       // Argument typedefs
-      typedef typename EngineTrait<BlkTsrEngine_>::array_type array_type; ///< The left-hand expression type
+      typedef typename EngineTrait<BlkTsrEngine_>::array_type
+          array_type; ///< The input array type
 
       // Operational typedefs
-      typedef typename EngineTrait<BlkTsrEngine_>::value_type value_type; ///< Tensor value type
-      typedef typename EngineTrait<BlkTsrEngine_>::op_base_type op_base_type; ///< Tile base operation type
-      typedef typename EngineTrait<BlkTsrEngine_>::op_type op_type; ///< Tile operation type
-      typedef typename EngineTrait<BlkTsrEngine_>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<BlkTsrEngine_>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+      typedef typename EngineTrait<BlkTsrEngine_>::value_type
+          value_type; ///< Tensor value type
+      typedef typename EngineTrait<BlkTsrEngine_>::op_base_type
+          op_base_type; ///< Tile base operation type
+      typedef typename EngineTrait<BlkTsrEngine_>::op_type
+          op_type; ///< Tile operation type
+      typedef typename EngineTrait<BlkTsrEngine_>::policy
+          policy; ///< The result policy type
+      typedef typename EngineTrait<BlkTsrEngine_>::dist_eval_type
+          dist_eval_type; ///< This expression's distributed evaluator type
 
       // Meta data typedefs
-      typedef typename EngineTrait<BlkTsrEngine_>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<BlkTsrEngine_>::trange_type trange_type; ///< Tiled range type type
-      typedef typename EngineTrait<BlkTsrEngine_>::shape_type shape_type; ///< Tensor shape type
-      typedef typename EngineTrait<BlkTsrEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<BlkTsrEngine_>::size_type
+          size_type; ///< Size type
+      typedef typename EngineTrait<BlkTsrEngine_>::trange_type
+          trange_type; ///< Tiled range type type
+      typedef typename EngineTrait<BlkTsrEngine_>::shape_type
+          shape_type; ///< Tensor shape type
+      typedef typename EngineTrait<BlkTsrEngine_>::pmap_interface
+          pmap_interface; ///< Process map interface type
 
     protected:
 
@@ -395,17 +436,26 @@ namespace TiledArray {
     /// Scaled tensor block expression engine
 
     /// \tparam Array The array type
-    template <typename Array, typename Scalar>
-    class ScalBlkTsrEngine : public BlkTsrEngineBase<ScalBlkTsrEngine<Array, Scalar> > {
+    /// \tparam Scalar The scaling factor type
+    /// \tparam Result The result tile type
+    template <typename Array, typename Scalar, typename Result>
+    class ScalBlkTsrEngine :
+        public BlkTsrEngineBase<ScalBlkTsrEngine<Array, Scalar, Result> >
+    {
     public:
       // Class hierarchy typedefs
-      typedef ScalBlkTsrEngine<Array, Scalar> ScalBlkTsrEngine_; ///< This class type
-      typedef BlkTsrEngineBase<ScalBlkTsrEngine_> BlkTsrEngineBase_; ///< Block tensor base class type
-      typedef typename BlkTsrEngineBase_::LeafEngine_ LeafEngine_; ///< Leaf base class type
-      typedef typename LeafEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base class
+      typedef ScalBlkTsrEngine<Array, Scalar, Result>
+          ScalBlkTsrEngine_; ///< This class type
+      typedef BlkTsrEngineBase<ScalBlkTsrEngine_>
+          BlkTsrEngineBase_; ///< Block tensor base class type
+      typedef typename BlkTsrEngineBase_::LeafEngine_
+          LeafEngine_; ///< Leaf base class type
+      typedef typename LeafEngine_::ExprEngine_
+          ExprEngine_; ///< Expression engine base class
 
       // Argument typedefs
-      typedef typename EngineTrait<ScalBlkTsrEngine_>::array_type array_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalBlkTsrEngine_>::array_type
+          array_type; ///< The input array type
 
       // Operational typedefs
       typedef typename EngineTrait<ScalBlkTsrEngine_>::value_type value_type; ///< Tensor value type

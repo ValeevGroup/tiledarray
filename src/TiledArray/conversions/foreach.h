@@ -47,44 +47,48 @@ namespace TiledArray {
 
     namespace {
 
-      template <bool inplace, typename Op, typename Result, typename Arg, typename... Args>
+      template <bool inplace, typename Result = void>
       struct void_op_helper;
 
-      template <typename Op, typename Result, typename Arg, typename... Args>
-      struct void_op_helper<false, Op, Result, Arg, Args...> {
-        Result operator()(Op&&op, const Arg& arg, const Args&... args) {
+      template <typename Result>
+      struct void_op_helper<false, Result> {
+        template <typename Op, typename Arg, typename... Args>
+        Result operator()(Op&&op, Arg&& arg, Args&&... args) {
           Result result;
-          op(result, arg, args...);
+          op(result, std::forward<Arg>(arg), std::forward<Args>(args)...);
           return result;
         }
       };
-      template <typename Op, typename Arg, typename... Args>
-      struct void_op_helper<true, Op, Arg, Arg, Args...> {
-        Arg operator()(Op&&op, Arg& arg, const Args&... args) {
-          op(arg, args...);
+      template <typename Result>
+      struct void_op_helper<true, Result> {
+        template <typename Op, typename Arg, typename... Args>
+        decltype(auto) operator()(Op&&op, Arg&& arg, Args&&... args) {
+          op(std::forward<Arg>(arg), std::forward<Args>(args)...);
           return arg;
         }
       };
 
-      template <bool inplace, typename Op, typename OpResult,
-          typename Result, typename Arg, typename... Args>
+      template <bool inplace, typename Result = void>
       struct nonvoid_op_helper;
 
-      template <typename Op, typename OpResult,
-          typename Result, typename Arg,typename... Args>
-      struct nonvoid_op_helper<false, Op, OpResult, Result, Arg, Args...> {
+      template <typename Result>
+      struct nonvoid_op_helper<false, Result> {
+        template <typename Op, typename OpResult,
+                  typename Arg, typename... Args>
         Result operator()(Op&&op, OpResult& op_result,
-            const Arg& arg, const Args&... args) {
+            Arg&& arg, Args&&... args) {
           Result result;
-          op_result = op(result, arg, args...);
+          op_result = op(result, std::forward<Arg>(arg), std::forward<Args>(args)...);
           return result;
         }
       };
-      template <typename Op, typename OpResult, typename Arg, typename... Args>
-      struct nonvoid_op_helper<true, Op, OpResult, Arg, Arg, Args...> {
-        Arg operator()(Op&&op, OpResult& op_result,
-            Arg& arg, const Args&... args) {
-          op_result = op(arg, args...);
+      template <typename Result>
+      struct nonvoid_op_helper<true, Result> {
+        template <typename Op, typename OpResult,
+                  typename Arg, typename... Args>
+        std::decay_t<Arg> operator()(Op&&op, OpResult& op_result,
+            Arg&& arg, Args&&... args) {
+          op_result = op(std::forward<Arg>(arg), std::forward<Args>(args)...);
           return arg;
         }
       };
@@ -144,12 +148,8 @@ namespace TiledArray {
 
       // Construct the task function for making result tiles.
       auto task = [&op](const_if_t<not inplace, typename arg_array_type::value_type>& arg_tile,
-          const ArgTiles&... arg_tiles)
-          -> typename result_array_type::value_type {
-        void_op_helper<inplace, Op,
-            typename result_array_type::value_type,
-            typename arg_array_type::value_type,
-            ArgTiles...> op_caller;
+          const ArgTiles&... arg_tiles) {
+        void_op_helper<inplace, typename result_array_type::value_type> op_caller;
         return op_caller(std::forward<Op>(op), arg_tile, arg_tiles...);
       };
 
@@ -201,11 +201,7 @@ namespace TiledArray {
       auto task = [&op,&counter,&tile_norms](const size_type index,
           const_if_t<not inplace, arg_value_type>& arg_tile,
           const ArgTiles&... arg_tiles) -> result_value_type {
-        nonvoid_op_helper<inplace, Op,
-            typename shape_type::value_type,
-            result_value_type,
-            arg_value_type,
-            ArgTiles...> op_caller;
+        nonvoid_op_helper<inplace, result_value_type> op_caller;
         auto result_tile = op_caller(std::forward<Op>(op), tile_norms[index],
             arg_tile, arg_tiles...);
         ++counter;

@@ -29,6 +29,7 @@
 #include "range_fixture.h"
 
 using namespace TiledArray;
+using TiledArray::detail::Noop;
 
 struct NoopFixture : public RangeFixture {
 
@@ -56,13 +57,13 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_noop_suite, NoopFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((Noop<Tensor<int>, false>()));
-  BOOST_CHECK_NO_THROW((Noop<Tensor<int>, true>()));
+  BOOST_CHECK_NO_THROW((Noop<Tensor<int>, Tensor<int>, false>()));
+  BOOST_CHECK_NO_THROW((Noop<Tensor<int>, Tensor<int>, true>()));
 }
 
 BOOST_AUTO_TEST_CASE( noop )
 {
-  Noop<Tensor<int>, false> noop_op;
+  Noop<Tensor<int>, Tensor<int>, false> noop_op;
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = noop_op(a));
@@ -81,7 +82,7 @@ BOOST_AUTO_TEST_CASE( noop )
 
 BOOST_AUTO_TEST_CASE( noop_perm )
 {
-  Noop<Tensor<int>, false> noop_op;
+  Noop<Tensor<int>, Tensor<int>, false> noop_op;
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = noop_op(a, perm));
@@ -100,7 +101,7 @@ BOOST_AUTO_TEST_CASE( noop_perm )
 
 BOOST_AUTO_TEST_CASE( noop_consume )
 {
-  Noop<Tensor<int>, true> noop_op;
+  Noop<Tensor<int>, Tensor<int>, true> noop_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
@@ -120,7 +121,7 @@ BOOST_AUTO_TEST_CASE( noop_consume )
 
 BOOST_AUTO_TEST_CASE( noop_runtime_consume )
 {
-  Noop<Tensor<int>, false> noop_op;
+  Noop<Tensor<int>, Tensor<int>, false> noop_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
@@ -140,7 +141,7 @@ BOOST_AUTO_TEST_CASE( noop_runtime_consume )
 
 BOOST_AUTO_TEST_CASE( noop_perm_consume )
 {
-  Noop<Tensor<int>, true> noop_op;
+  Noop<Tensor<int>, Tensor<int>, true> noop_op;
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = noop_op(a, perm));

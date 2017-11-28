@@ -35,24 +35,20 @@ namespace TiledArray {
 
     /// Unary tile operation wrapper
 
-    /// This wrapper class is handles evaluation of lazily evaluated tiles in binary operations and
+    /// This wrapper class is handles evaluation of lazily evaluated tiles in unary operations and
     /// forwards the evaluated arguments to the base operation object.
     ///
-    /// The base binary operation class must have the following interface.
+    /// The base unary operation class must have the following interface.
     /// \code
-    /// template <typename Left, typename Right, typename Scalar, bool LeftConsumable,
-    ///     bool RightConsumable>
+    /// template <typename Arg, typename Scalar, bool Consumable>
     /// class Operator {
     /// public:
     ///
-    ///   typedef ... first_argument_type;
-    ///   typedef ... second_argument_type;
+    ///   typedef ... argument_type;
     ///   typedef ... result_type;
     ///
-    ///   static constexpr bool left_is_consumable =
-    ///       LeftConsumable && std::is_same<result_type, Left>::value;
-    ///   static constexpr bool right_is_consumable =
-    ///       RightConsumable && std::is_same<result_type, Right>::value;
+    ///   static constexpr bool is_consumable =
+    ///       Consumable && std::is_same<result_type, Arg>::value;
     ///
     ///   // Constructor
     ///   Operator();
@@ -61,28 +57,23 @@ namespace TiledArray {
     ///   Operator(const Scalar);
     ///
     ///   // Operation evaluation operators
-    ///   // L and R template parameters types may be Left and Right, repsectively, or
+    ///   // The A template parameter type may be Arg or
     ///   // TiledArray::ZeroTensor.
     ///
-    ///   // Evaluate the operation with left and right arguments and permute the result.
-    ///   template <typename L, typename R>
-    ///   result_type operator()(L&& left, R&& right, const Permutation& perm) const;
+    ///   // Evaluate and permute the result.
+    ///   template <typename A>
+    ///   result_type operator()(A&& arg, const Permutation& perm) const;
     ///
-    ///   // Evaluate the operation with left and right arguments.
-    ///   // If the left_is_consumable or right_is_consumable variables are true, then this
-    ///   // may the left or right arguments, respectively.
-    ///   template <typename L, typename R>
-    ///   result_type operator()(L&& left, R&& right) const;
+    ///   // Evaluate only
+    ///   // If is_consumable is true, then this
+    ///   // may consume arg.
+    ///   template <typename A>
+    ///   result_type operator()(A&& arg) const;
     ///
-    ///   // Evaluate the operation with left and right arguments and consume the left-hand
-    ///   // argument. This function may not consume left if it is not consumable.
-    ///   template <typename R>
-    ///   result_type consume_left(Left& left, R&& right) const;
-    ///
-    ///   // Evaluate the operation with left and right arguments and consume the right-hand
-    ///   // argument. This function may not consume right if it is not consumable.
-    ///   template <typename L>
-    ///   result_type consume_right(L&& left, Right& right) const;
+    ///   // Evaluate the operation and try to consume the
+    ///   // argument. This function may not consume arg if it is not consumable.
+    ///   template <typename A>
+    ///   result_type consume(argument_type& arg) const;
     ///
     /// }; // class Operator
     /// \endcode
@@ -99,16 +90,16 @@ namespace TiledArray {
       static constexpr bool is_consumable = Op::is_consumable;
 
       template <typename T>
-      using decay_t = typename std::decay<T>::type;
+      static constexpr auto is_lazy_tile_v = is_lazy_tile<std::decay_t<T>>::value;
 
       template <typename T>
-      using is_lazy_tile_t = is_lazy_tile<decay_t<T> >;
+      static constexpr auto is_array_tile_v = is_array_tile<std::decay_t<T>>::value;
 
       template <typename T>
-      using is_array_tile_t = is_array_tile<decay_t<T> >;
+      static constexpr auto is_nonarray_lazy_tile_v = is_lazy_tile_v<T> && !is_array_tile_v<T>;
 
       template <typename T>
-      using eval_t = typename eval_trait<decay_t<T> >::type;
+      using eval_t = typename eval_trait<std::decay_t<T> >::type;
 
     private:
 
@@ -139,8 +130,8 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \return The result tile from the unary operation applied to the
-      /// \c left and \c right arguments.
-      result_type operator()(argument_type& arg) const {
+      /// \c arg .
+      auto operator()(argument_type& arg) const {
         return (perm_ ? op_(arg, perm_) : op_(arg) );
       }
 
@@ -148,71 +139,81 @@ namespace TiledArray {
 
       /// \param arg The argument
       /// \return The result tile from the unary operation applied to the
-      /// \c left and \c right arguments.
-      result_type operator()(const argument_type& arg) const {
+      /// \c arg .
+      auto operator()(const argument_type& arg) const {
         return (perm_ ? op_(arg, perm_) : op_(arg) );
       }
-
-      // The following operators will evaluate lazy tile and use the base class
-      // interface functions to call the correct evaluation kernel.
 
       /// Evaluate a lazy tile
 
       /// This function will evaluate `arg`, then pass the evaluated tile to
-      /// the `UnaryInterfaceBase_::operator()` function.
+      /// the \c Op callable.
       /// \tparam A The lazy tile type
       /// \param arg The lazy tile argument
       /// \return The result of the unary operation applied to the evaluated
       /// `arg`.
       template <typename A,
-          typename std::enable_if<
-              is_lazy_tile_t<A>::value && (! is_array_tile_t<A>::value)
-          >::type* = nullptr>
-      result_type operator()(A&& arg) const {
-        eval_t<A> eval_arg(arg);
-        return (perm_ ? op_(eval_arg, perm_) : op_(eval_arg) );
+                std::enable_if_t<is_nonarray_lazy_tile_v<A>>* = nullptr>
+      auto operator()(A&& arg) const {
+        using TiledArray::meta::invoke;
+        return (perm_ ? invoke(op_, invoke_cast(std::forward<A>(arg)), perm_)
+                      : invoke(op_, invoke_cast(std::forward<A>(arg))));
       }
-
 
       /// Evaluate a lazy array tile
 
       /// This function will evaluate `arg`, then pass the evaluated tile to
-      /// the `UnaryInterfaceBase_::operator()` function.
+      /// the \c Op callable , optionally consuming the evaluated tile in the process.
       /// \tparam A The lazy tile type
       /// \param arg The lazy tile argument
       /// \return The result of the unary operation applied to the evaluated
       /// `arg`.
-      template <typename A,
-          typename std::enable_if<
-              is_array_tile_t<A>::value
-          >::type* = nullptr>
-      result_type operator()(A&& arg) const {
-        eval_t<A> eval_arg(arg);
-        return (perm_ ?
-           op_(eval_arg, perm_) :
-           (arg.is_consumable() ? op_.consume(eval_arg) : op_(eval_arg) ));
+      template <typename A, std::enable_if_t<is_array_tile_v<A>>* = nullptr>
+      auto operator()(A&& arg) const {
+        auto cast_arg = invoke_cast(std::forward<A>(arg));
+        // TODO replace with generic lambda, replace cast_arg with std::move(cast_arg)
+//        NB using this generic lambda breaks TaskFn ...
+//        need to make TaskFn variadic and accepting callables, but this is a lot of MP
+//
+//        auto op_consume = [this](auto&& arg) {
+//          return op_.consume(std::forward<decltype(arg)>(arg));
+//        };
+        auto op_consume = [this](eval_t<A>& arg) {
+          return op_.consume(arg);
+        };
+        using TiledArray::meta::invoke;
+        return (perm_ ? invoke(op_, std::move(cast_arg), perm_)
+                      : (arg.is_consumable()
+                             ? invoke(op_consume, cast_arg)
+                             : invoke(op_, std::move(cast_arg))));
       }
 
-      /// Consume lazy tile
-      template <typename A,
-          typename std::enable_if<
-              is_lazy_tile_t<A>::value
-          >::type* = nullptr>
-      result_type consume(A&& arg) const {
-        eval_t<A> eval_arg(arg);
+      /// Consume a lazy tile
+      template <typename A, std::enable_if_t<is_lazy_tile_v<A>>* = nullptr>
+      auto consume(A&& arg) const {
+        auto cast_arg = invoke_cast(std::forward<A>(arg));
+        // TODO replace with generic lambda, replace cast_arg with std::move(cast_arg)
+//        NB using this generic lambda breaks TaskFn ...
+//        need to make TaskFn variadic and accepting callables, but this is a lot of MP
+//
+//        auto op_consume = [this](auto&& arg) {
+//          return op_.consume(std::forward<decltype(arg)>(arg));
+//        };
+        auto op_consume = [this](eval_t<A>& arg) {
+          return op_.consume(arg);
+        };
+        using TiledArray::meta::invoke;
         return (perm_ ?
-            op_(eval_arg, perm_) :
-            op_.consume(eval_arg) );
+            invoke(op_, std::move(cast_arg), perm_) :
+            invoke(op_consume, cast_arg));
       }
 
-      template <typename A,
-          typename std::enable_if<
-              ! is_lazy_tile_t<A>::value
-          >::type* = nullptr>
+      template <typename A, std::enable_if_t<!is_lazy_tile_v<A>>* = nullptr>
       result_type consume(A&& arg) const {
-        return (perm_ ?
-           op_(std::forward<A>(arg), perm_) :
-           op_.consume(std::forward<A>(arg)) );
+        static_assert(std::is_same<std::decay_t<A>, argument_type>::value,
+                      "UnaryWrapper::consume(A&&): invalid argument type A");
+        return (perm_ ? op_(std::forward<A>(arg), perm_)
+                      : op_.consume(std::forward<A>(arg)));
       }
 
     }; // class UnaryWrapper

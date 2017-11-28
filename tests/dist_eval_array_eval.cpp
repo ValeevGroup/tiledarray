@@ -31,6 +31,9 @@
 
 
 using namespace TiledArray;
+using TiledArray::detail::Noop;
+using TiledArray::detail::Scal;
+using TiledArray::detail::UnaryWrapper;
 
 // Array evaluator fixture
 struct ArrayEvalImplFixture : public TiledRangeFixture {
@@ -48,24 +51,24 @@ struct ArrayEvalImplFixture : public TiledRangeFixture {
   ~ArrayEvalImplFixture() { }
 
 
-  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  static UnaryWrapper<Noop<TensorI, TensorI, true> >
   make_array_noop(const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
-        Noop<TensorI, true>(), perm);
+    return UnaryWrapper<Noop<TensorI, TensorI, true> >(
+        Noop<TensorI, TensorI, true>(), perm);
   }
 
 
-  static TiledArray::detail::UnaryWrapper<Scal<TensorI, int, true> >
+  static UnaryWrapper<Scal<TensorI, TensorI, int, true> >
   make_array_scal(const int factor, const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Scal<TensorI, int, true> >(
-        Scal<TensorI, int, true>(factor), perm);
+    return UnaryWrapper<Scal<TensorI, TensorI, int, true> >(
+        Scal<TensorI, TensorI, int, true>(factor), perm);
   }
 
 
-  static TiledArray::detail::UnaryWrapper<Scal<TensorI, int, false> >
+  static UnaryWrapper<Scal<TensorI, TensorI, int, false> >
   make_scal(const int factor, const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Scal<TensorI, int, false> >(
-        Scal<TensorI, int, false>(factor), perm);
+    return UnaryWrapper<Scal<TensorI, TensorI, int, false> >(
+        Scal<TensorI, TensorI, int, false>(factor), perm);
   }
 
 
@@ -127,7 +130,7 @@ BOOST_AUTO_TEST_CASE( eval_scale )
 
     // Force the evaluation of the tile
     dist_eval_type::eval_type eval_tile;
-    BOOST_REQUIRE_NO_THROW(eval_tile = impl_tile.get());
+    BOOST_REQUIRE_NO_THROW(eval_tile = static_cast<dist_eval_type::eval_type>(impl_tile.get()));
 
     // Check that the result tile is correctly modified.
     BOOST_CHECK_EQUAL(eval_tile.range(), array_tile.range());
@@ -166,7 +169,7 @@ BOOST_AUTO_TEST_CASE( eval_permute )
 
     // Force the evaluation of the tile
     dist_eval_type::eval_type eval_tile;
-    BOOST_REQUIRE_NO_THROW(eval_tile = tile.get(););
+    BOOST_REQUIRE_NO_THROW(eval_tile = static_cast<dist_eval_type::eval_type>(tile.get()););
 
     // Check that the result tile is correctly modified.
     BOOST_CHECK_EQUAL(eval_tile.range(), perm * array_tile.range());

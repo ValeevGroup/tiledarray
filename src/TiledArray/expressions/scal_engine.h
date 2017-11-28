@@ -35,30 +35,37 @@ namespace TiledArray {
 
     // Forward declarations
     template <typename, typename> class ScalExpr;
-    template <typename, typename> class ScalEngine;
+    template <typename, typename, typename> class ScalEngine;
 
 
-    template <typename Arg, typename Scalar>
-    struct EngineTrait<ScalEngine<Arg, Scalar> > {
+    template <typename Arg, typename Scalar, typename Result>
+    struct EngineTrait<ScalEngine<Arg, Scalar, Result> > {
       // Argument typedefs
       typedef Arg argument_type; ///< The argument expression engine type
 
       // Operational typedefs
-      typedef typename std::conditional<std::is_void<Scalar>::value,
-          typename EngineTrait<Arg>::scalar_type, Scalar>::type scalar_type; ///< Tile scalar type
-      typedef typename EngineTrait<Arg>::eval_type value_type; ///< The result tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef TiledArray::Scal<typename EngineTrait<Arg>::eval_type,
-          scalar_type, EngineTrait<Arg>::consumable> op_base_type; ///< The tile base operation type
-      typedef TiledArray::detail::UnaryWrapper<op_base_type> op_type; ///< The tile operation type
-      typedef typename argument_type::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef Scalar scalar_type; ///< Tile scalar type
+      typedef TiledArray::detail::Scal<Result,
+          typename EngineTrait<Arg>::eval_type, scalar_type,
+          EngineTrait<Arg>::consumable>
+          op_base_type; ///< The tile base operation type
+      typedef TiledArray::detail::UnaryWrapper<op_base_type>
+          op_type; ///< The tile operation type
+      typedef typename op_type::result_type
+          value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type; ///< Evaluation tile type
+      typedef typename argument_type::policy
+          policy; ///< The result policy type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+      dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = true;
       static constexpr unsigned int leaves = EngineTrait<Arg>::leaves;
@@ -68,11 +75,11 @@ namespace TiledArray {
     /// Scaling expression engine
 
     /// \tparam Arg The argument expression engine type
-    template <typename Arg, typename Scalar>
-    class ScalEngine : public UnaryEngine<ScalEngine<Arg, Scalar> > {
+    template <typename Arg, typename Scalar, typename Result>
+    class ScalEngine : public UnaryEngine<ScalEngine<Arg, Scalar, Result> > {
     public:
       // Class hierarchy typedefs
-      typedef ScalEngine<Arg, Scalar> ScalEngine_; ///< This class type
+      typedef ScalEngine<Arg, Scalar, Result> ScalEngine_; ///< This class type
       typedef UnaryEngine<ScalEngine_> UnaryEngine_; ///< Unary expression engine base type
       typedef typename UnaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
 

@@ -26,13 +26,15 @@
 #ifndef TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 
-#include <TiledArray/expressions/expr_engine.h>
-#include <TiledArray/reduce_task.h>
-#include <TiledArray/tile_op/unary_reduction.h>
-#include <TiledArray/tile_op/binary_reduction.h>
-#include <TiledArray/tile_op/reduce_wrapper.h>
-#include <TiledArray/tile_op/shift.h>
-#include <TiledArray/tile_op/unary_wrapper.h>
+#include "expr_engine.h"
+#include "../reduce_task.h"
+#include "../tile_interface/cast.h"
+#include "../tile_interface/scale.h"
+#include "../tile_op/shift.h"
+#include "../tile_op/unary_wrapper.h"
+#include "../tile_op/unary_reduction.h"
+#include "../tile_op/binary_reduction.h"
+#include "../tile_op/reduce_wrapper.h"
 
 namespace TiledArray {
   namespace expressions {
@@ -79,10 +81,14 @@ namespace TiledArray {
     class Expr {
     public:
 
-      typedef Expr<Derived> Expr_; ///< This class type
-      typedef Derived derived_type; ///< The derived object type
-      typedef typename ExprTrait<Derived>::engine_type
-          engine_type; ///< Expression engine type
+      template <typename Derived_ = Derived>
+      using engine_t = typename ExprTrait<Derived_>::engine_type;
+      template <typename Derived_ = Derived>
+      using eval_type_t = typename engine_t<Derived_>::eval_type;
+
+      typedef Expr<Derived> Expr_;                 ///< This class type
+      typedef Derived derived_type;                ///< The derived object type
+      typedef engine_t<derived_type> engine_type;  ///< Expression engine type
 
     private:
 
@@ -132,30 +138,34 @@ namespace TiledArray {
 
     private:
 
-      /// Task function used to evaluate lazy tiles
+      /// Task function used to evaluate a lazy tile and apply an op
 
       /// \tparam R The result type
-      /// \tparam T The lazy tile type
-      /// \param tile The lazy tile
+      /// \tparam T A lazy tile type
+      /// \tparam Op Tile operation type
+      /// \param tile A forwarding reference to a lazy tile
+      /// \param cast A const lvalue reference to the object that will cast the lazy tile to its result
+      /// \param op A smart pointer to the Op object
       /// \return The evaluated tile
-      template <typename R, typename T>
-      static typename TiledArray::eval_trait<T>::type eval_tile(const T& tile) {
-        return tile;
+      template <typename R, typename T, typename C, typename Op>
+      static auto eval_tile(T&& tile, const C& cast, const std::shared_ptr<Op>& op) {
+        auto&& cast_tile = cast(std::forward<T>(tile));
+        return (*op)(cast_tile);
       }
-
 
       /// Task function used to mutate result tiles
 
       /// \tparam R The result type
       /// \tparam T The lazy tile type
       /// \tparam Op Tile operation type
-      /// \param tile The lazy tile
+      /// \param tile A forwarding reference to a lazy tile
       /// \return The evaluated tile
       /// \param op The tile mutating operation
-      template <typename R, typename T, typename Op>
-      static R eval_tile(T& tile, const std::shared_ptr<Op>& op) {
-        return (*op)(tile);
+      template <typename T, typename Op>
+      static auto eval_tile(T&& tile, const std::shared_ptr<Op>& op) {
+        return (*op)(std::forward<T>(tile));
       }
+
 
       /// Set an array tile with a lazy tile
 
@@ -167,12 +177,16 @@ namespace TiledArray {
       /// \param array The result array
       /// \param index The tile index
       /// \param tile The lazy tile
-      template <typename A, typename I, typename T>
-      typename std::enable_if<is_lazy_tile<T>::value>::type
-      set_tile(A& array, const I index, const Future<T>& tile) const {
+      template <typename A, typename I, typename T,
+          typename std::enable_if<
+              ! std::is_same<typename A::value_type, T>::value &&
+              is_lazy_tile<T>::value
+          >::type* = nullptr>
+      void set_tile(A& array, const I& index, const Future<T>& tile) const {
         array.set(index, array.world().taskq.add(
-              & Expr_::template eval_tile<typename A::value_type, T>, tile));
+            TiledArray::Cast<typename A::value_type, T>(), tile));
       }
+
 
       /// Set the \c array tile at \c index with \c tile
 
@@ -182,11 +196,41 @@ namespace TiledArray {
       /// \param array The result array
       /// \param index The tile index
       /// \param tile The tile
-      template <typename A, typename I, typename T>
-      typename std::enable_if<! is_lazy_tile<T>::value>::type
-      set_tile(A& array, const I index, const Future<T>& tile) const {
+      template <typename A, typename I, typename T,
+          typename std::enable_if<
+              std::is_same<typename A::value_type, T>::value
+          >::type* = nullptr>
+      void set_tile(A& array, const I& index, const Future<T>& tile) const {
         array.set(index, tile);
       }
+
+
+      /// Set an array tile with a lazy tile
+
+      /// Spawn a task to evaluate a lazy tile and set the \a array tile at
+      /// \c index with the result.
+      /// \tparam A The array type
+      /// \tparam I The index type
+      /// \tparam T The lazy tile type
+      /// \param array The result array
+      /// \param index The tile index
+      /// \param tile The lazy tile
+      template <typename A, typename I, typename T, typename Op,
+          typename std::enable_if<
+              ! std::is_same<typename A::value_type, T>::value
+          >::type* = nullptr>
+      void set_tile(A& array, const I index, const Future<T>& tile,
+          const std::shared_ptr<Op>& op) const
+      {
+        auto eval_tile_fn = &Expr_::template eval_tile<
+            typename A::value_type, const T&,
+            TiledArray::Cast<typename A::value_type, T>, Op>;
+        array.set(index,
+                  array.world().taskq.add(
+                      eval_tile_fn, tile,
+                      TiledArray::Cast<typename A::value_type, T>(), op));
+      }
+
 
       /// Set an array tile with a lazy tile
 
@@ -200,15 +244,22 @@ namespace TiledArray {
       /// \param index The tile index
       /// \param tile The lazy tile
       /// \param op The tile mutating operation
-      template <typename A, typename I, typename T, typename Op>
+      template <typename A, typename I, typename T, typename Op,
+          typename std::enable_if<
+              std::is_same<typename A::value_type, T>::value
+          >::type* = nullptr>
       void set_tile(A& array, const I index, const Future<T>& tile,
           const std::shared_ptr<Op>& op) const
       {
-        array.set(index, array.world().taskq.add(
-              & Expr_::template eval_tile<typename A::value_type, T, Op>, tile, op));
+        auto eval_tile_fn_ptr = &Expr_::template eval_tile<const T&, Op>;
+        using fn_ptr_type = decltype(eval_tile_fn_ptr);
+        static_assert(
+            madness::detail::function_traits<fn_ptr_type(const T&,const std::shared_ptr<Op>&)>::value,
+            "ouch");
+        array.set(index, array.world().taskq.add(eval_tile_fn_ptr, tile, op));
       }
 
-    public:
+     public:
 
       // Compiler generated functions
       Expr() = default;
@@ -286,14 +337,15 @@ namespace TiledArray {
       /// Evaluate this object and assign it to \c tsr
 
       /// This expression is evaluated in parallel in distributed environments,
-      /// where the content of \c tsr will be replace by the results of the
+      /// where the content of \c tsr will be replaced by the results of the
       /// evaluated tensor expression.
       /// \tparam A The array type
       /// \tparam Alias Tile alias flag
       /// \param tsr The tensor to be assigned
       template <typename A, bool Alias>
       void eval_to(BlkTsrExpr<A, Alias>& tsr) const {
-        typedef TiledArray::Shift<typename EngineTrait<engine_type>::eval_type,
+        typedef TiledArray::detail::Shift<typename std::decay<A>::type::value_type,
+            typename EngineTrait<engine_type>::eval_type,
             EngineTrait<engine_type>::consumable> shift_op_type;
         typedef TiledArray::detail::UnaryWrapper<shift_op_type> op_type;
         static_assert(! is_lazy_tile<typename A::value_type>::value,
@@ -364,7 +416,8 @@ namespace TiledArray {
 
           for(const auto index : *dist_eval.pmap()) {
             if(! dist_eval.is_zero(index))
-              set_tile(result, blk_range.ordinal(index), dist_eval.get(index), shift_op);
+              set_tile(result, blk_range.ordinal(index), dist_eval.get(index),
+                  shift_op);
           }
         }
 
@@ -607,28 +660,52 @@ namespace TiledArray {
         return norm(default_world());
       }
 
-      Future<typename TiledArray::MinReduction<
-          typename EngineTrait<engine_type>::eval_type>::result_type>
+      template <typename Derived_ = Derived>
+      std::enable_if<
+          TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>>::value,
+          Future<typename TiledArray::MinReduction<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>::result_type>>
       min(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::MinReduction<value_type>(), world);
       }
 
-      Future<typename TiledArray::MinReduction<
-          typename EngineTrait<engine_type>::eval_type>::result_type>
+      template <typename Derived_ = Derived>
+      std::enable_if<
+          TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>>::value,
+          Future<typename TiledArray::MinReduction<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>::result_type>>
       min() const {
         return min(default_world());
       }
 
-      Future<typename TiledArray::MaxReduction<
-          typename EngineTrait<engine_type>::eval_type>::result_type>
+      template <typename Derived_ = Derived>
+      std::enable_if<
+          TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>>::value,
+          Future<typename TiledArray::MaxReduction<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>::result_type>>
       max(World& world) const {
         typedef typename EngineTrait<engine_type>::eval_type value_type;
         return reduce(TiledArray::MaxReduction<value_type>(), world);
       }
 
-      Future<typename TiledArray::MaxReduction<
-          typename EngineTrait<engine_type>::eval_type>::result_type>
+      template <typename Derived_ = Derived>
+      std::enable_if<
+          TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>>::value,
+          Future<typename TiledArray::MaxReduction<
+              typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
+                  eval_type>::result_type>>
       max() const {
         return max(default_world());
       }

@@ -29,6 +29,7 @@
 #include "range_fixture.h"
 
 using namespace TiledArray;
+using TiledArray::detail::ScalMult;
 
 struct ScalMultFixture : public RangeFixture {
 
@@ -59,15 +60,15 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_scal_mult_suite, ScalMultFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((ScalMult<Tensor<int>, Tensor<int>, int, false, false>(7)));
-  BOOST_CHECK_NO_THROW((ScalMult<Tensor<int>, Tensor<int>, int, true, false>(7)));
-  BOOST_CHECK_NO_THROW((ScalMult<Tensor<int>, Tensor<int>, int, false, true>(7)));
-  BOOST_CHECK_NO_THROW((ScalMult<Tensor<int>, Tensor<int>, int, true, true>(7)));
+  BOOST_CHECK_NO_THROW((ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, false, false>(7)));
+  BOOST_CHECK_NO_THROW((ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, true, false>(7)));
+  BOOST_CHECK_NO_THROW((ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, false, true>(7)));
+  BOOST_CHECK_NO_THROW((ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, true, true>(7)));
 }
 
 BOOST_AUTO_TEST_CASE( binary_scale_mult )
 {
-  ScalMult<Tensor<int>, Tensor<int>, int, false, false> mult_op(7);
+  ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, false, false> mult_op(7);
 
   // Store the multiplication of a and b in c
   BOOST_CHECK_NO_THROW(c = mult_op(a, b));
@@ -87,7 +88,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_mult )
 
 BOOST_AUTO_TEST_CASE( binary_scale_mult_perm )
 {
-  ScalMult<Tensor<int>, Tensor<int>, int, false, false> mult_op(7);
+  ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, false, false> mult_op(7);
 
   // Store the multiplication of a and b in c
   BOOST_CHECK_NO_THROW(c = mult_op(a, b, perm));
@@ -107,7 +108,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_mult_perm )
 
 BOOST_AUTO_TEST_CASE( binary_scale_mult_consume_left )
 {
-  ScalMult<Tensor<int>, Tensor<int>, int, true, false> mult_op(7);
+  ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, true, false> mult_op(7);
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the multiplication of a and b in c
@@ -128,7 +129,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_mult_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_scale_mult_perm_consume_left )
 {
-  ScalMult<Tensor<int>, Tensor<int>, int, true, false> mult_op(7);
+  ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, true, false> mult_op(7);
 
   // Store the multiplication of a and b in c
   BOOST_CHECK_NO_THROW(c = mult_op(a, b, perm));
@@ -148,7 +149,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_mult_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_scale_mult_consume_right )
 {
-  ScalMult<Tensor<int>, Tensor<int>, int, false, true> mult_op(7);
+  ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, false, true> mult_op(7);
   const Tensor<int> bx = b.clone();
 
   // Store the multiplication of a and b in c
@@ -169,7 +170,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_mult_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_scale_mult_perm_consume_right )
 {
-  ScalMult<Tensor<int>, Tensor<int>, int, false, true> mult_op(7);
+  ScalMult<Tensor<int>, Tensor<int>, Tensor<int>, int, false, true> mult_op(7);
 
   // Store the multiplication of a and b in c
   BOOST_CHECK_NO_THROW(c = mult_op(a, b, perm));

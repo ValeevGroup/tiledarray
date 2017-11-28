@@ -37,11 +37,11 @@ namespace TiledArray {
     // Forward declarations
     template <typename, typename> class MultExpr;
     template <typename, typename, typename> class ScalMultExpr;
-    template <typename, typename> class MultEngine;
-    template <typename, typename, typename> class ScalMultEngine;
+    template <typename, typename, typename> class MultEngine;
+    template <typename, typename, typename, typename> class ScalMultEngine;
 
-    template <typename Left, typename Right>
-    struct EngineTrait<MultEngine<Left, Right> > {
+    template <typename Left, typename Right, typename Result>
+    struct EngineTrait<MultEngine<Left, Right, Result> > {
       static_assert(std::is_same<typename EngineTrait<Left>::policy,
           typename EngineTrait<Right>::policy>::value,
           "The left- and right-hand expressions must use the same policy class");
@@ -51,7 +51,8 @@ namespace TiledArray {
       typedef Right right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef TiledArray::Mult<typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::detail::Mult<Result,
+          typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, EngineTrait<Left>::consumable,
           EngineTrait<Right>::consumable>
           op_base_type; ///< The base tile operation type
@@ -79,8 +80,8 @@ namespace TiledArray {
           EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
     };
 
-    template <typename Left, typename Right, typename Scalar>
-    struct EngineTrait<ScalMultEngine<Left, Right, Scalar> > {
+    template <typename Left, typename Right, typename Scalar, typename Result>
+    struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result> > {
       static_assert(std::is_same<typename EngineTrait<Left>::policy,
           typename EngineTrait<Right>::policy>::value,
           "The left- and right-hand expressions must use the same policy class");
@@ -91,20 +92,27 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type; ///< Tile scalar type
-      typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef TiledArray::ScalMult<typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::detail::ScalMult<Result,
+          typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, scalar_type,
-          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
-      typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
+          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable>
+          op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type>
+          op_type; ///< The tile operation type
+      typedef typename op_type::result_type
+          value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type;  ///< Evaluation tile type
       typedef typename Left::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = is_consumable_tile<eval_type>::value;
       static constexpr unsigned int leaves =
@@ -116,31 +124,46 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand engine type
     /// \tparam Right The Right-hand engine type
-    template <typename Left, typename Right>
-    class MultEngine : public ContEngine<MultEngine<Left, Right> > {
+    /// \tparam Result The result tile type
+    template <typename Left, typename Right, typename Result>
+    class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
     public:
       // Class hierarchy typedefs
-      typedef MultEngine<Left, Right> MultEngine_; ///< This class type
-      typedef ContEngine<MultEngine_> ContEngine_; ///< Contraction engine base class
-      typedef BinaryEngine<MultEngine_> BinaryEngine_; ///< Binary base class type
-      typedef BinaryEngine<MultEngine_> ExprEngine_; ///< Expression engine base class type
+      typedef MultEngine<Left, Right, Result> MultEngine_; ///< This class type
+      typedef ContEngine<MultEngine_>
+          ContEngine_; ///< Contraction engine base class
+      typedef BinaryEngine<MultEngine_>
+          BinaryEngine_; ///< Binary base class type
+      typedef BinaryEngine<MultEngine_>
+          ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
-      typedef typename EngineTrait<MultEngine_>::left_type left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<MultEngine_>::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<MultEngine_>::left_type
+          left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<MultEngine_>::right_type
+          right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename EngineTrait<MultEngine_>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<MultEngine_>::op_base_type op_base_type; ///< The tile operation type
-      typedef typename EngineTrait<MultEngine_>::op_type op_type; ///< The tile operation type
-      typedef typename EngineTrait<MultEngine_>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<MultEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<MultEngine_>::value_type
+          value_type; ///< The result tile type
+      typedef typename EngineTrait<MultEngine_>::op_base_type
+          op_base_type; ///< The tile operation type
+      typedef typename EngineTrait<MultEngine_>::op_type
+          op_type; ///< The tile operation type
+      typedef typename EngineTrait<MultEngine_>::policy
+          policy; ///< The result policy type
+      typedef typename EngineTrait<MultEngine_>::dist_eval_type
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename EngineTrait<MultEngine_>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<MultEngine_>::trange_type trange_type; ///< Tiled range type
-      typedef typename EngineTrait<MultEngine_>::shape_type shape_type; ///< Shape type
-      typedef typename EngineTrait<MultEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<MultEngine_>::size_type
+          size_type; ///< Size type
+      typedef typename EngineTrait<MultEngine_>::trange_type
+          trange_type; ///< Tiled range type
+      typedef typename EngineTrait<MultEngine_>::shape_type
+          shape_type; ///< Shape type
+      typedef typename EngineTrait<MultEngine_>::pmap_interface
+          pmap_interface; ///< Process map interface type
 
     private:
 
@@ -155,7 +178,9 @@ namespace TiledArray {
       /// \tparam R The right-hand argument expression type
       /// \param expr The parent expression
       template <typename L, typename R>
-      MultEngine(const MultExpr<L, R>& expr) : ContEngine_(expr), contract_(false) { }
+      MultEngine(const MultExpr<L, R>& expr) :
+        ContEngine_(expr), contract_(false)
+      { }
 
 
       /// Set the variable list for this expression
@@ -322,32 +347,52 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand engine type
     /// \tparam Right The Right-hand engine type
-    template <typename Left, typename Right, typename Scalar>
-    class ScalMultEngine : public ContEngine<ScalMultEngine<Left, Right, Scalar> > {
+    /// \tparam Scalar The scaling factor type
+    /// \tparam Result The result tile type
+    template <typename Left, typename Right, typename Scalar, typename Result>
+    class ScalMultEngine :
+        public ContEngine<ScalMultEngine<Left, Right, Scalar, Result> >
+    {
     public:
       // Class hierarchy typedefs
-      typedef ScalMultEngine<Left, Right, Scalar> ScalMultEngine_; ///< This class type
-      typedef ContEngine<ScalMultEngine_> ContEngine_; ///< Contraction engine base class
-      typedef BinaryEngine<ScalMultEngine_> BinaryEngine_; ///< Binary base class type
-      typedef BinaryEngine<ScalMultEngine_> ExprEngine_; ///< Expression engine base class type
+      typedef ScalMultEngine<Left, Right, Scalar, Result>
+          ScalMultEngine_; ///< This class type
+      typedef ContEngine<ScalMultEngine_>
+          ContEngine_; ///< Contraction engine base class
+      typedef BinaryEngine<ScalMultEngine_>
+          BinaryEngine_; ///< Binary base class type
+      typedef BinaryEngine<ScalMultEngine_>
+          ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
-      typedef typename EngineTrait<ScalMultEngine_>::left_type left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<ScalMultEngine_>::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<ScalMultEngine_>::left_type
+          left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalMultEngine_>::right_type
+          right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename EngineTrait<ScalMultEngine_>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<ScalMultEngine_>::scalar_type scalar_type; ///< Tile scalar type
-      typedef typename EngineTrait<ScalMultEngine_>::op_base_type op_base_type; ///< The tile operation type
-      typedef typename EngineTrait<ScalMultEngine_>::op_type op_type; ///< The tile operation type
-      typedef typename EngineTrait<ScalMultEngine_>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<ScalMultEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<ScalMultEngine_>::value_type
+          value_type; ///< The result tile type
+      typedef typename EngineTrait<ScalMultEngine_>::scalar_type
+          scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalMultEngine_>::op_base_type
+          op_base_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalMultEngine_>::op_type
+          op_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalMultEngine_>::policy
+          policy; ///< The result policy type
+      typedef typename EngineTrait<ScalMultEngine_>::dist_eval_type
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename EngineTrait<ScalMultEngine_>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<ScalMultEngine_>::trange_type trange_type; ///< Tiled range type
-      typedef typename EngineTrait<ScalMultEngine_>::shape_type shape_type; ///< Shape type
-      typedef typename EngineTrait<ScalMultEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<ScalMultEngine_>::size_type
+          size_type; ///< Size type
+      typedef typename EngineTrait<ScalMultEngine_>::trange_type
+          trange_type; ///< Tiled range type
+      typedef typename EngineTrait<ScalMultEngine_>::shape_type
+          shape_type; ///< Shape type
+      typedef typename EngineTrait<ScalMultEngine_>::pmap_interface
+          pmap_interface; ///< Process map interface type
 
     private:
 

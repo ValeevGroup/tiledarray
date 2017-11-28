@@ -29,6 +29,7 @@
 #include "range_fixture.h"
 
 using namespace TiledArray;
+using TiledArray::detail::Scal;
 
 struct ScalFixture : public RangeFixture {
 
@@ -45,8 +46,8 @@ struct ScalFixture : public RangeFixture {
 
   ~ScalFixture() { }
 
-  Tensor<int> a;
-  Tensor<int> b;
+  TensorI a;
+  TensorI b;
   Permutation perm;
 
 }; // ScalFixture
@@ -56,13 +57,13 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_scal_neg_suite, ScalFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((Scal<Tensor<int>, int, false>(7)));
-  BOOST_CHECK_NO_THROW((Scal<Tensor<int>, int, true>(7)));
+  BOOST_CHECK_NO_THROW((Scal<TensorI, TensorI, int, false>(7)));
+  BOOST_CHECK_NO_THROW((Scal<TensorI, TensorI, int, true>(7)));
 }
 
 BOOST_AUTO_TEST_CASE( unary_scale )
 {
-  Scal<Tensor<int>, int, false> scal_op(7);
+  Scal<TensorI, TensorI, int, false> scal_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = scal_op(a));
@@ -81,7 +82,7 @@ BOOST_AUTO_TEST_CASE( unary_scale )
 
 BOOST_AUTO_TEST_CASE( unary_scale_perm )
 {
-  Scal<Tensor<int>, int, false> scal_op(7);
+  Scal<TensorI, TensorI, int, false> scal_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = scal_op(a, perm));
@@ -100,8 +101,8 @@ BOOST_AUTO_TEST_CASE( unary_scale_perm )
 
 BOOST_AUTO_TEST_CASE( unary_scale_consume )
 {
-  Scal<Tensor<int>, int, true> scal_op(7);
-  const Tensor<int> ax(a.range(), a.begin());
+  Scal<TensorI, TensorI, int, true> scal_op(7);
+  const TensorI ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = scal_op(a));
@@ -120,8 +121,8 @@ BOOST_AUTO_TEST_CASE( unary_scale_consume )
 
 BOOST_AUTO_TEST_CASE( unary_scale_runtime_consume )
 {
-  Scal<Tensor<int>, int, false> scal_op(7);
-  const Tensor<int> ax(a.range(), a.begin());
+  Scal<TensorI, TensorI, int, false> scal_op(7);
+  const TensorI ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = scal_op.consume(a));
@@ -140,7 +141,7 @@ BOOST_AUTO_TEST_CASE( unary_scale_runtime_consume )
 
 BOOST_AUTO_TEST_CASE( unary_scale_perm_consume )
 {
-  Scal<Tensor<int>, int, true> scal_op(7);
+  Scal<TensorI, TensorI, int, true> scal_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(b = scal_op(a, perm));
