@@ -38,9 +38,6 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     cd madness
 
     git clone https://github.com/m-a-d-n-e-s-s/madness madness_src
-    cd madness_src
-    git checkout ta-master-track
-    cd ..
 
     cmake madness_src \
       -DCMAKE_CXX_COMPILER=$CXX \
