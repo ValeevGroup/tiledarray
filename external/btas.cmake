@@ -79,13 +79,13 @@ else()
   set(BTAS_INCLUDE_DIR ${EXTERNAL_SOURCE_DIR})
   
   ##### uncomment, if ready to bundle with TiledArray #####
-#  # Install BTAS
-#  install(
-#    DIRECTORY
-#        ${EXTERNAL_SOURCE_DIR}/btas
-#    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/btas
-#    COMPONENT btas
-#    )
+  # Install BTAS
+  install(
+    DIRECTORY
+        ${EXTERNAL_SOURCE_DIR}/btas
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    COMPONENT btas
+    )
 
 endif()
 
