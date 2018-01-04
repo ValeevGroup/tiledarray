@@ -73,6 +73,7 @@ struct TensorOfTensorFixture {
     return tensor;
   }
 
+#ifdef TILEDARRAY_HAS_BTAS
   // Fill a tensor with random data
   static Tensor<btas::Tensor<int> > make_rand_TobT(const Range& r) {
     Tensor<btas::Tensor<int> > tensor(r);
@@ -90,12 +91,15 @@ struct TensorOfTensorFixture {
     }
     return tensor;
   }
+#endif  // defined(TILEDARRAY_HAS_BTAS)
 
   static const std::array<std::size_t, 2> size;
   static const Permutation perm;
 
   Tensor<Tensor<int> > a, b, c;
+#ifdef TILEDARRAY_HAS_BTAS
   Tensor<btas::Tensor<int>> d, e, f;
+#endif  // defined(TILEDARRAY_HAS_BTAS)
 
   template <typename T>
   Tensor<T>& ToT(size_t idx);
