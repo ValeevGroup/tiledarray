@@ -339,7 +339,6 @@ namespace TiledArray {
 
       EigenMatrixX B_; //!< B(i,j) = <ei|ej>
       EigenVectorX C_; //! DIIS coefficients
-      bool coeffs_set_;
       unsigned int nskip_;
 
       std::deque<D> x_; //!< set of most recent x given as input (i.e. not exrapolated)
