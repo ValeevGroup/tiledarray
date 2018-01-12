@@ -45,7 +45,7 @@ namespace TiledArray {
           detail::is_tensor<T1, T2>::value ||
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
-  operator+(const T1& left, const T2& right) -> decltype(left.add(right))
+  operator+(const T1& left, const T2& right)
   { return left.add(right); }
 
   /// Tensor minus operator
@@ -61,7 +61,7 @@ namespace TiledArray {
           detail::is_tensor<T1, T2>::value ||
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
-  operator-(const T1& left, const T2& right) -> decltype(left.subt(right))
+  operator-(const T1& left, const T2& right)
   { return left.subt(right); }
 
   /// Tensor multiplication operator
@@ -77,7 +77,7 @@ namespace TiledArray {
           detail::is_tensor<T1, T2>::value||
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
-  operator*(const T1& left, const T2& right) -> decltype(left.mult(right))
+  operator*(const T1& left, const T2& right)
   { return left.mult(right); }
 
 
@@ -94,7 +94,7 @@ namespace TiledArray {
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value) &&
           detail::is_numeric<N>::value>::type* = nullptr>
-  inline auto operator*(const T& left, N right) -> decltype(left.scale(right))
+  inline auto operator*(const T& left, N right)
   { return left.scale(right); }
 
   /// Create a copy of \c right that is scaled by \c left
@@ -109,7 +109,7 @@ namespace TiledArray {
           detail::is_numeric<N>::value &&
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value)>::type* = nullptr>
-  inline auto operator*(N left, const T& right) -> decltype(right.scale(left))
+  inline auto operator*(N left, const T& right)
   { return right.scale(left); }
 
   /// Create a negated copy of \c arg
@@ -134,7 +134,7 @@ namespace TiledArray {
           detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value>::type* = nullptr>
   inline auto
-  operator*(const Permutation& perm, const T& arg) -> decltype(arg.permute(perm))
+  operator*(const Permutation& perm, const T& arg)
   { return arg.permute(perm); }
 
   /// Tensor plus operator
@@ -150,7 +150,7 @@ namespace TiledArray {
           detail::is_tensor<T1, T2>::value ||
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
-  operator+=(T1& left, const T2& right) -> decltype(left.add_to(right))
+  operator+=(T1& left, const T2& right)
   { return left.add_to(right); }
 
   /// Tensor minus operator
@@ -166,7 +166,7 @@ namespace TiledArray {
           detail::is_tensor<T1, T2>::value ||
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
-  operator-=(T1& left, const T2& right) -> decltype(left.subt_to(right))
+  operator-=(T1& left, const T2& right)
   { return left.subt_to(right); }
 
   /// In place tensor multiplication
@@ -182,7 +182,7 @@ namespace TiledArray {
           detail::is_tensor<T1, T2>::value||
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
-  operator*=(T1& left, const T2& right) -> decltype(left.mult_to(right))
+  operator*=(T1& left, const T2& right)
   { return left.mult_to(right); }
 
 
@@ -199,7 +199,7 @@ namespace TiledArray {
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value) &&
           detail::is_numeric<N>::value>::type* = nullptr>
-  inline auto operator+=(T& left, N right) -> decltype(left.add_to(right))
+  inline auto operator+=(T& left, N right)
   { return left.add_to(right); }
 
   /// In place tensor subtract constant
@@ -215,7 +215,7 @@ namespace TiledArray {
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value) &&
           detail::is_numeric<N>::value>::type* = nullptr>
-  inline auto operator-=(T& left, N right) -> decltype(left.subt_to(right))
+  inline auto operator-=(T& left, N right)
   { return left.subt_to(right); }
 
   /// In place tensor scale
@@ -231,7 +231,7 @@ namespace TiledArray {
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value) &&
           detail::is_numeric<N>::value>::type* = nullptr>
-  inline auto operator*=(T& left, N right) -> decltype(left.scale_to(right))
+  inline auto operator*=(T& left, N right)
   { return left.scale_to(right); }
 
 } // namespace TiledArray

@@ -47,27 +47,37 @@ namespace TiledArray {
       // Class hierarchy typedefs
       typedef ContEngine<Derived> ContEngine_; ///< This class type
       typedef BinaryEngine<Derived> BinaryEngine_; ///< Binary base class type
-      typedef ExprEngine<Derived> ExprEngine_; ///< Expression engine base class type
+      typedef ExprEngine<Derived>
+          ExprEngine_; ///< Expression engine base class type
 
       // Argument typedefs
-      typedef typename EngineTrait<Derived>::left_type left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<Derived>::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<Derived>::left_type
+          left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<Derived>::right_type
+          right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<Derived>::scalar_type scalar_type; ///< Tile scalar type
-      typedef TiledArray::ContractReduce<
+      typedef typename EngineTrait<Derived>::value_type
+          value_type; ///< The result tile type
+      typedef typename EngineTrait<Derived>::scalar_type
+          scalar_type; ///< Tile scalar type
+      typedef TiledArray::detail::ContractReduce<value_type,
           typename eval_trait<typename left_type::value_type>::type,
           typename eval_trait<typename right_type::value_type>::type,
           scalar_type> op_type; ///< The tile operation type
-      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<Derived>::policy
+          policy; ///< The result policy type
+      typedef typename EngineTrait<Derived>::dist_eval_type
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type
-      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Shape type
-      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<Derived>::trange_type
+          trange_type; ///< Tiled range type
+      typedef typename EngineTrait<Derived>::shape_type
+          shape_type; ///< Shape type
+      typedef typename EngineTrait<Derived>::pmap_interface
+          pmap_interface; ///< Process map interface type
 
     protected:
 
@@ -461,28 +471,28 @@ namespace TiledArray {
         const auto* MADNESS_RESTRICT const right_extent =
             right_.trange().tiles_range().extent_data();
 
-        // Check that the contracted dimensions are coformal (equal).
+        // Check that the contracted dimensions are have congruent tilings
         for(unsigned int l = left_outer_rank, r = 0ul; l < left_rank; ++l, ++r) {
           if(left_.trange().data()[l] != right_.trange().data()[r]) {
             if(TiledArray::get_default_world().rank() == 0) {
 
               if(left_extent[l] == right_extent[r]) {
-                TA_USER_ERROR_MESSAGE( "The tiling of the contracted dimensions " \
+                TA_USER_ERROR_MESSAGE( "The tilings of the contracted dimensions " \
                     "of the left- and right-hand arguments are not equal.");
 
               } else {
                 TA_USER_ERROR_MESSAGE( "The contracted dimensions of the left- " \
-                    "and right-hand arguments are not coformal:" \
+                    "and right-hand arguments are not congruent:" \
                     << "\n    left  = " << left_.trange() \
                     << "\n    right = " << right_.trange() );
 
                 TA_EXCEPTION("The contracted dimensions of the left- and " \
-                    "right-hand expressions are not coformal.");
+                    "right-hand expressions are not congruent.");
               }
             }
 
             TA_EXCEPTION("The contracted dimensions of the left- and "
-                "right-hand expressions are not coformal.");
+                "right-hand expressions are not congruent.");
           }
         }
 #endif // NDEBUG
@@ -522,9 +532,9 @@ namespace TiledArray {
         typename left_type::dist_eval_type left = left_.make_dist_eval();
         typename right_type::dist_eval_type right = right_.make_dist_eval();
 
-        std::shared_ptr<impl_type> pimpl(
-            new impl_type(left, right, *world_, trange_, shape_, pmap_, perm_,
-            op_, K_, proc_grid_));
+        std::shared_ptr<impl_type> pimpl =
+            std::make_shared<impl_type>(left, right, *world_, trange_, shape_,
+                                        pmap_, perm_, op_, K_, proc_grid_);
 
         return dist_eval_type(pimpl);
       }

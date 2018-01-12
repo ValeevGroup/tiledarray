@@ -31,10 +31,13 @@
 #include "sparse_shape_fixture.h"
 
 using namespace TiledArray;
+using TiledArray::detail::Noop;
+using TiledArray::detail::ContractReduce;
+using TiledArray::detail::UnaryWrapper;
 
 struct ContractionEvalFixture : public SparseShapeFixture {
-  typedef Noop<TensorI, true> array_base_op_type;
-  typedef detail::UnaryWrapper<array_base_op_type> array_op_type;
+  typedef Noop<TensorI, TensorI, true> array_base_op_type;
+  typedef UnaryWrapper<array_base_op_type> array_op_type;
   typedef detail::DistEval<detail::LazyArrayTile<TensorI, array_op_type>,
       DensePolicy> array_eval_type;
   typedef Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> matrix_type;
@@ -68,21 +71,21 @@ struct ContractionEvalFixture : public SparseShapeFixture {
   }
 
 
-  static ContractReduce<TensorI, TensorI, int>
+  static ContractReduce<TensorI, TensorI, TensorI, int>
   make_contract(const unsigned int result_rank, const unsigned int left_rank,
       const unsigned int right_rank, const Permutation& perm = Permutation())
   {
-    return ContractReduce<TensorI, TensorI, int>(
+    return ContractReduce<TensorI, TensorI, TensorI, int>(
         madness::cblas::NoTrans, madness::cblas::NoTrans, 1, result_rank,
         left_rank, right_rank, perm);
   }
 
 
 
-  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  static TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >
   make_array_noop(const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
-        Noop<TensorI, true>(), perm);
+    return TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >(
+        Noop<TensorI, TensorI, true>(), perm);
   }
 
 

@@ -29,6 +29,7 @@
 #include "range_fixture.h"
 
 using namespace TiledArray;
+using TiledArray::detail::Subt;
 
 struct SubtFixture : public RangeFixture {
 
@@ -59,15 +60,15 @@ BOOST_FIXTURE_TEST_SUITE( tile_op_subt_suite, SubtFixture )
 BOOST_AUTO_TEST_CASE( constructor )
 {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, false, false>()));
-  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, true, false>()));
-  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, false, true>()));
-  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, true, true>()));
+  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false>()));
+  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false>()));
+  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
+  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
 }
 
 BOOST_AUTO_TEST_CASE( binary_subt )
 {
-  Subt<Tensor<int>, Tensor<int>, false, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, b));
@@ -87,7 +88,7 @@ BOOST_AUTO_TEST_CASE( binary_subt )
 
 BOOST_AUTO_TEST_CASE( binary_subt_left_zero )
 {
-  Subt<Tensor<int>, Tensor<int>, false, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of 0 and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b));
@@ -106,7 +107,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero )
 
 BOOST_AUTO_TEST_CASE( binary_subt_right_zero )
 {
-  Subt<Tensor<int>, Tensor<int>, false, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and 0 in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor()));
@@ -125,7 +126,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero )
 
 BOOST_AUTO_TEST_CASE( binary_subt_perm )
 {
-  Subt<Tensor<int>, Tensor<int>, false, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, b, perm));
@@ -145,7 +146,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm )
 
 BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm )
 {
-  Subt<Tensor<int>, Tensor<int>, false, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of 0 and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b, perm));
@@ -164,7 +165,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm )
 
 BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm )
 {
-  Subt<Tensor<int>, Tensor<int>, false, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and 0 in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor(), perm));
@@ -183,7 +184,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm )
 
 BOOST_AUTO_TEST_CASE( binary_subt_consume_left )
 {
-  Subt<Tensor<int>, Tensor<int>, true, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the difference of a and b in c
@@ -204,7 +205,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_left )
 {
-  Subt<Tensor<int>, Tensor<int>, true, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of 0 and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b));
@@ -223,7 +224,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_left )
 {
-  Subt<Tensor<int>, Tensor<int>, true, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
   const Tensor<int> ax(a.range(), a.begin());
 
   // Store the difference of a and 0 in c
@@ -243,7 +244,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_left )
 {
-  Subt<Tensor<int>, Tensor<int>, true, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of a and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, b, perm));
@@ -263,7 +264,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_left )
 {
-  Subt<Tensor<int>, Tensor<int>, true, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of 0 and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b, perm));
@@ -282,7 +283,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_left )
 {
-  Subt<Tensor<int>, Tensor<int>, true, false> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of a and 0 in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor(), perm));
@@ -301,7 +302,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_left )
 
 BOOST_AUTO_TEST_CASE( binary_subt_consume_right )
 {
-  Subt<Tensor<int>, Tensor<int>, false, true> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
   const Tensor<int> bx(b.range(), b.begin());
 
   // Store the difference of a and b in c
@@ -322,7 +323,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_right )
 {
-  Subt<Tensor<int>, Tensor<int>, false, true> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
   const Tensor<int> bx(b.range(), b.begin());
 
   // Store the difference of 0 and b in c
@@ -342,7 +343,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_right )
 {
-  Subt<Tensor<int>, Tensor<int>, false, true> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of a and 0 in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor()));
@@ -361,7 +362,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_right )
 {
-  Subt<Tensor<int>, Tensor<int>, false, true> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of a and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, b, perm));
@@ -381,7 +382,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_right )
 {
-  Subt<Tensor<int>, Tensor<int>, false, true> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of 0 and b in c
   BOOST_CHECK_NO_THROW(c = subt_op(ZeroTensor(), b, perm));
@@ -400,7 +401,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_right )
 
 BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_right )
 {
-  Subt<Tensor<int>, Tensor<int>, false, true> subt_op;
+  Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of a and 0 in c
   BOOST_CHECK_NO_THROW(c = subt_op(a, ZeroTensor(), perm));

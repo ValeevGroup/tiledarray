@@ -36,11 +36,11 @@ namespace TiledArray {
     // Forward declarations
     template <typename, typename> class SubtExpr;
     template <typename, typename, typename> class ScalSubtExpr;
-    template <typename, typename> class SubtEngine;
-    template <typename, typename, typename> class ScalSubtEngine;
+    template <typename, typename, typename> class SubtEngine;
+    template <typename, typename, typename, typename> class ScalSubtEngine;
 
-    template <typename Left, typename Right>
-    struct EngineTrait<SubtEngine<Left, Right> > {
+    template <typename Left, typename Right, typename Result>
+    struct EngineTrait<SubtEngine<Left, Right, Result> > {
       static_assert(std::is_same<typename EngineTrait<Left>::policy,
           typename EngineTrait<Right>::policy>::value,
           "The left- and right-hand expressions must use the same policy class");
@@ -50,7 +50,8 @@ namespace TiledArray {
       typedef Right right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef TiledArray::Subt<typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::detail::Subt<Result,
+          typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type,
           EngineTrait<Left>::consumable, EngineTrait<Right>::consumable>
           op_base_type; ///< The base tile operation type
@@ -76,8 +77,8 @@ namespace TiledArray {
           EngineTrait<Left>::leaves + EngineTrait<Right>::leaves;
     }; // struct EngineTrait<SubtEngine<Left, Right> >
 
-    template <typename Left, typename Right, typename Scalar>
-    struct EngineTrait<ScalSubtEngine<Left, Right, Scalar> > {
+    template <typename Left, typename Right, typename Scalar, typename Result>
+    struct EngineTrait<ScalSubtEngine<Left, Right, Scalar, Result> > {
       static_assert(std::is_same<typename EngineTrait<Left>::policy,
           typename EngineTrait<Right>::policy>::value,
           "The left- and right-hand expressions must use the same policy class");
@@ -88,20 +89,27 @@ namespace TiledArray {
 
       // Operational typedefs
       typedef Scalar scalar_type; ///< Tile scalar type
-      typedef typename EngineTrait<Left>::eval_type value_type; ///< The result tile type
-      typedef typename eval_trait<value_type>::type eval_type;  ///< Evaluation tile type
-      typedef TiledArray::ScalSubt<typename EngineTrait<Left>::eval_type,
+      typedef TiledArray::detail::ScalSubt<Result,
+          typename EngineTrait<Left>::eval_type,
           typename EngineTrait<Right>::eval_type, scalar_type,
-          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable> op_base_type; ///< The base tile operation type
-      typedef TiledArray::detail::BinaryWrapper<op_base_type> op_type; ///< The tile operation type
+          EngineTrait<Left>::consumable, EngineTrait<Right>::consumable>
+          op_base_type; ///< The base tile operation type
+      typedef TiledArray::detail::BinaryWrapper<op_base_type>
+          op_type; ///< The tile operation type
+      typedef typename op_type::result_type
+          value_type; ///< The result tile type
+      typedef typename eval_trait<value_type>::type
+          eval_type;  ///< Evaluation tile type
       typedef typename Left::policy policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy> dist_eval_type; ///< The distributed evaluator type
+      typedef TiledArray::detail::DistEval<value_type, policy>
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
       typedef typename policy::size_type size_type; ///< Size type
       typedef typename policy::trange_type trange_type; ///< Tiled range type
       typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename policy::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       static constexpr bool consumable = is_consumable_tile<eval_type>::value;
       static constexpr unsigned int leaves =
@@ -113,30 +121,44 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right>
-    class SubtEngine : public BinaryEngine<SubtEngine<Left, Right> > {
+    /// \tparam Result The result tile type
+    template <typename Left, typename Right, typename Result>
+    class SubtEngine : public BinaryEngine<SubtEngine<Left, Right, Result> > {
     public:
       // Class hierarchy typedefs
-      typedef SubtEngine<Left, Right> SubtEngine_; ///< This class type
-      typedef BinaryEngine<SubtEngine<Left, Right> > BinaryEngine_; ///< Binary base class type
-      typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
+      typedef SubtEngine<Left, Right, Result> SubtEngine_; ///< This class type
+      typedef BinaryEngine<SubtEngine_ >
+          BinaryEngine_; ///< Binary base class type
+      typedef typename BinaryEngine_::ExprEngine_
+          ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
-      typedef typename EngineTrait<SubtEngine_>::left_type left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<SubtEngine_>::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<SubtEngine_>::left_type
+          left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<SubtEngine_>::right_type
+          right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename EngineTrait<SubtEngine_>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<SubtEngine_>::op_base_type op_base_type; ///< The tile operation type
-      typedef typename EngineTrait<SubtEngine_>::op_type op_type; ///< The tile operation type
-      typedef typename EngineTrait<SubtEngine_>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<SubtEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<SubtEngine_>::value_type
+          value_type; ///< The result tile type
+      typedef typename EngineTrait<SubtEngine_>::op_base_type
+          op_base_type; ///< The tile operation type
+      typedef typename EngineTrait<SubtEngine_>::op_type
+          op_type; ///< The tile operation type
+      typedef typename EngineTrait<SubtEngine_>::policy
+          policy; ///< The result policy type
+      typedef typename EngineTrait<SubtEngine_>::dist_eval_type
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename EngineTrait<SubtEngine_>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<SubtEngine_>::trange_type trange_type; ///< Tiled range type
-      typedef typename EngineTrait<SubtEngine_>::shape_type shape_type; ///< Shape type
-      typedef typename EngineTrait<SubtEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<SubtEngine_>::size_type
+          size_type; ///< Size type
+      typedef typename EngineTrait<SubtEngine_>::trange_type
+          trange_type; ///< Tiled range type
+      typedef typename EngineTrait<SubtEngine_>::shape_type
+          shape_type; ///< Shape type
+      typedef typename EngineTrait<SubtEngine_>::pmap_interface
+          pmap_interface; ///< Process map interface type
 
       /// Constructor
 
@@ -184,31 +206,50 @@ namespace TiledArray {
 
     /// \tparam Left The left-hand expression type
     /// \tparam Right The right-hand expression type
-    template <typename Left, typename Right, typename Scalar>
-    class ScalSubtEngine : public BinaryEngine<ScalSubtEngine<Left, Right, Scalar> > {
+    /// \tparam Scalar The scaling factor type
+    /// \tparam Result The result tile type
+    template <typename Left, typename Right, typename Scalar, typename Result>
+    class ScalSubtEngine :
+        public BinaryEngine<ScalSubtEngine<Left, Right, Scalar, Result> >
+    {
     public:
       // Class hierarchy typedefs
-      typedef ScalSubtEngine<Left, Right, Scalar> ScalSubtEngine_; ///< This class type
-      typedef BinaryEngine<ScalSubtEngine_> BinaryEngine_; ///< Binary expression engine base type
-      typedef typename BinaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
+      typedef ScalSubtEngine<Left, Right, Scalar, Result>
+          ScalSubtEngine_; ///< This class type
+      typedef BinaryEngine<ScalSubtEngine_>
+          BinaryEngine_; ///< Binary expression engine base type
+      typedef typename BinaryEngine_::ExprEngine_
+          ExprEngine_; ///< Expression engine base type
 
       // Argument typedefs
-      typedef typename EngineTrait<ScalSubtEngine_>::left_type left_type; ///< The left-hand expression type
-      typedef typename EngineTrait<ScalSubtEngine_>::right_type right_type; ///< The right-hand expression type
+      typedef typename EngineTrait<ScalSubtEngine_>::left_type
+          left_type; ///< The left-hand expression type
+      typedef typename EngineTrait<ScalSubtEngine_>::right_type
+          right_type; ///< The right-hand expression type
 
       // Operational typedefs
-      typedef typename EngineTrait<ScalSubtEngine_>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<ScalSubtEngine_>::scalar_type scalar_type; ///< Tile scalar type
-      typedef typename EngineTrait<ScalSubtEngine_>::op_base_type op_base_type; ///< The tile operation type
-      typedef typename EngineTrait<ScalSubtEngine_>::op_type op_type; ///< The tile operation type
-      typedef typename EngineTrait<ScalSubtEngine_>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<ScalSubtEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+      typedef typename EngineTrait<ScalSubtEngine_>::value_type
+          value_type; ///< The result tile type
+      typedef typename EngineTrait<ScalSubtEngine_>::scalar_type
+          scalar_type; ///< Tile scalar type
+      typedef typename EngineTrait<ScalSubtEngine_>::op_base_type
+          op_base_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalSubtEngine_>::op_type
+          op_type; ///< The tile operation type
+      typedef typename EngineTrait<ScalSubtEngine_>::policy
+          policy; ///< The result policy type
+      typedef typename EngineTrait<ScalSubtEngine_>::dist_eval_type
+          dist_eval_type; ///< The distributed evaluator type
 
       // Meta data typedefs
-      typedef typename EngineTrait<ScalSubtEngine_>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<ScalSubtEngine_>::trange_type trange_type; ///< Tiled range type
-      typedef typename EngineTrait<ScalSubtEngine_>::shape_type shape_type; ///< Shape type
-      typedef typename EngineTrait<ScalSubtEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+      typedef typename EngineTrait<ScalSubtEngine_>::size_type
+          size_type; ///< Size type
+      typedef typename EngineTrait<ScalSubtEngine_>::trange_type
+          trange_type; ///< Tiled range type
+      typedef typename EngineTrait<ScalSubtEngine_>::shape_type
+          shape_type; ///< Shape type
+      typedef typename EngineTrait<ScalSubtEngine_>::pmap_interface
+          pmap_interface; ///< Process map interface type
 
     private:
 

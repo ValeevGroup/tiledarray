@@ -31,13 +31,15 @@
 
 using namespace TiledArray;
 using namespace TiledArray::expressions;
+using TiledArray::detail::Noop;
+using TiledArray::detail::Scal;
+using TiledArray::detail::UnaryWrapper;
 
 // Array evaluator fixture
 struct UnaryEvalImplFixture : public TiledRangeFixture {
-  typedef TArrayI ArrayN;
-  typedef Noop<ArrayN::value_type, true> array_op_base_type;
-  typedef TiledArray::detail::UnaryWrapper<array_op_base_type> array_op_type;
-  typedef TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<ArrayN::value_type,
+  typedef Noop<TArrayI::value_type, TArrayI::value_type, true> array_op_base_type;
+  typedef UnaryWrapper<array_op_base_type> array_op_type;
+  typedef TiledArray::detail::DistEval<TiledArray::detail::LazyArrayTile<TArrayI::value_type,
       array_op_type>, DensePolicy> dist_eval_type;
 
 
@@ -57,24 +59,24 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
 
   ~UnaryEvalImplFixture() { }
 
-  static TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >
+  static UnaryWrapper<Noop<TensorI, TensorI, true> >
   make_array_noop(const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Noop<TensorI, true> >(
-        Noop<TensorI, true>(), perm);
+    return UnaryWrapper<Noop<TensorI, TensorI, true> >(
+        Noop<TensorI, TensorI, true>(), perm);
   }
 
 
-  static TiledArray::detail::UnaryWrapper<Scal<TensorI, int, true> >
+  static UnaryWrapper<Scal<TensorI, TensorI, int, true> >
   make_scal1(const int factor, const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Scal<TensorI, int, true> >(
-        Scal<TensorI, int, true>(factor), perm);
+    return UnaryWrapper<Scal<TensorI, TensorI, int, true> >(
+        Scal<TensorI, TensorI, int, true>(factor), perm);
   }
 
 
-  static TiledArray::detail::UnaryWrapper<Scal<TensorI, int, false> >
+  static UnaryWrapper<Scal<TensorI, TensorI, int, false> >
   make_scal0(const int factor, const Permutation& perm = Permutation()) {
-    return TiledArray::detail::UnaryWrapper<Scal<TensorI, int, false> >(
-        Scal<TensorI, int, false>(factor), perm);
+    return UnaryWrapper<Scal<TensorI, TensorI, int, false> >(
+        Scal<TensorI, TensorI, int, false>(factor), perm);
   }
 
   template <typename Tile, typename Policy, typename Op>

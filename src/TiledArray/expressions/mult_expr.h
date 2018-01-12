@@ -49,8 +49,12 @@ namespace TiledArray {
     struct ExprTrait<MultExpr<Left, Right> > {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
+      typedef result_of_mult_t<
+          typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type>
+          result_type; ///< Result tile type
       typedef MultEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type>
+          typename ExprTrait<Right>::engine_type, result_type>
           engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Multiplication result numeric type
@@ -62,11 +66,16 @@ namespace TiledArray {
     struct ExprTrait<ScalMultExpr<Left, Right, Scalar> > {
       typedef Left left_type; ///< The left-hand expression type
       typedef Right right_type; ///< The right-hand expression type
+      typedef Scalar scalar_type;  ///< Tile scalar type
+      typedef result_of_mult_t<
+          typename EngineTrait<typename ExprTrait<Left>::engine_type>::eval_type,
+          typename EngineTrait<typename ExprTrait<Right>::engine_type>::eval_type,
+          scalar_type> result_type; ///< Result tile type
       typedef ScalMultEngine<typename ExprTrait<Left>::engine_type,
-          typename ExprTrait<Right>::engine_type, Scalar> engine_type; ///< Expression engine type
+          typename ExprTrait<Right>::engine_type, Scalar, result_type>
+          engine_type; ///< Expression engine type
       typedef numeric_t<typename EngineTrait<engine_type>::eval_type>
           numeric_type; ///< Multiplication result numeric type
-      typedef Scalar scalar_type;  ///< Tile scalar type
     };
 
 

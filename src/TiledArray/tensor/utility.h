@@ -43,7 +43,7 @@ namespace TiledArray {
     /// range of \c tensor.
     template <typename T,
         typename std::enable_if<is_contiguous_tensor<T>::value>::type* = nullptr>
-    inline auto clone_range(const T& tensor) -> decltype(tensor.range())
+    inline auto clone_range(const T& tensor)
     { return tensor.range(); }
 
     /// Create a contiguous copy of the range of the tensor

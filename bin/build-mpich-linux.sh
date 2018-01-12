@@ -16,20 +16,22 @@ $CXX --version
 # log the CMake version (need 3+)
 cmake --version
 
-# Install MPICH
-if [ ! -d "${HOME}/mpich" ]; then
+# Install MPICH unless previous install is cached ... must manually wipe cache on version bump or toolchain update
+export INSTALL_DIR=${INSTALL_PREFIX}/mpich
+if [ ! -d "${INSTALL_DIR}" ]; then
+    cd ${BUILD_PREFIX}
     wget --no-check-certificate -q http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz
     tar -xzf mpich-3.2.tar.gz
     cd mpich-3.2
-    ./configure CC="ccache $CC" CXX="ccache $CXX" --disable-fortran --disable-romio --prefix=${HOME}/mpich
+    ./configure CC=$CC CXX=$CXX --disable-fortran --disable-romio --prefix=${INSTALL_DIR}
     make -j2
     make install
-    ${HOME}/mpich/bin/mpichversion
-    ${HOME}/mpich/bin/mpicc -show
-    ${HOME}/mpich/bin/mpicxx -show
+    ${INSTALL_DIR}/bin/mpichversion
+    ${INSTALL_DIR}/bin/mpicc -show
+    ${INSTALL_DIR}/bin/mpicxx -show
 else
     echo "MPICH installed..."
-    find ${HOME}/mpich -name mpiexec
-    find ${HOME}/mpich -name mpicc
-    find ${HOME}/mpich -name mpicxx
+    find ${INSTALL_DIR} -name mpiexec
+    find ${INSTALL_DIR} -name mpicc
+    find ${INSTALL_DIR} -name mpicxx
 fi

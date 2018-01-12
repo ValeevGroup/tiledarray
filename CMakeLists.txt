@@ -81,6 +81,10 @@ add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-
 option(ENABLE_ELEMENTAL "Enable use of MADNESS-provided Elemental" OFF)
 add_feature_info(Elemental ENABLE_ELEMENTAL "Elemental provides parallel linear algebra")
 
+if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
+    set(ELEMENTAL_TAG 50e24bb92b6b2e30d657decda3a903d967f00f0b)
+endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
+
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
 add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks support shared-memory parallel programs")
 
@@ -94,6 +98,10 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
 endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+
+option(TA_TRACE_TASKS "Enable debug tracing of MADNESS tasks in (some components of) TiledArray" OFF)
+add_feature_info(TASK_TRACE_DEBUG TA_TRACE_TASKS "Debug tracing of MADNESS tasks in (some components of) TiledArray")
+set(TILEDARRAY_ENABLE_TASK_DEBUG_TRACE ${TA_TRACE_TASKS})
 
 # Enable shared library support options
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
@@ -169,7 +177,6 @@ set(BUILD_TESTING FALSE CACHE BOOLEAN "BUILD_TESTING")
 set(BUILD_TESTING_STATIC FALSE CACHE BOOLEAN "BUILD_TESTING_STATIC")
 set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
 
-
 ##########################
 # Get the git revision tag information
 ##########################
@@ -234,6 +241,9 @@ include(external/eigen.cmake)
 include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
+  # this is only for internal testing right now, but can be moved out to be first-class citizen like Eigen
+  # if that happens: Boost dependencies can be checked in header-only mode, so no need to check for boost first
+  include(external/btas.cmake)
 endif()
 
 # optional deps:

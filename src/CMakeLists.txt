@@ -66,6 +66,7 @@ TiledArray/conversions/eigen.h
 TiledArray/conversions/foreach.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
+TiledArray/conversions/elemental.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/dist_eval/array_eval.h
@@ -112,6 +113,7 @@ TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
+TiledArray/special/diagonal_array.h
 TiledArray/symm/irrep.h
 TiledArray/symm/permutation.h
 TiledArray/symm/permutation_group.h
@@ -126,12 +128,17 @@ TiledArray/tensor/tensor_interface.h
 TiledArray/tensor/tensor_map.h
 TiledArray/tensor/type_traits.h
 TiledArray/tensor/utility.h
+TiledArray/tile_interface/add.h
+TiledArray/tile_interface/cast.h
+TiledArray/tile_interface/clone.h
+TiledArray/tile_interface/permute.h
+TiledArray/tile_interface/scale.h
+TiledArray/tile_interface/shift.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_reduction.h
 TiledArray/tile_op/binary_wrapper.h
 TiledArray/tile_op/contract_reduce.h
 TiledArray/tile_op/mult.h
-TiledArray/tile_op/neg.h
 TiledArray/tile_op/noop.h
 TiledArray/tile_op/reduce_wrapper.h
 TiledArray/tile_op/scal.h

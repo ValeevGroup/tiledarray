@@ -138,13 +138,28 @@ namespace TiledArray {
 
 // mark functions as deprecated using this macro
 // will result in a warning
-#ifdef __GNUC__
+#ifndef DEPRECATED  // avoid clashing with previous definitions
+#if __cplusplus >= 201402L
+#define DEPRECATED [[deprecated]]
+#elif defined(__GNUC__)
 #define DEPRECATED __attribute__((deprecated))
-#elif defined(_MSC_VER)
-#define DEPRECATED __declspec(deprecated)
 #else
 #pragma message("WARNING: You need to implement DEPRECATED for this compiler")
 #define DEPRECATED
 #endif
+#endif  // not defined(DEPRECATED)
+
+// same as DEPRECATED, but annotated with a message
+// will result in a warning
+#ifndef DEPRECATEDMSG  // avoid clashing with previous definitions
+#if __cplusplus >= 201402L
+#define DEPRECATEDMSG(msg)  [[deprecated(msg)]]
+#elif defined(__GNUC__)
+#define DEPRECATEDMSG(msg) __attribute__((deprecated(msg)))
+#else
+#pragma message("WARNING: You need to implement DEPRECATEDMSG for this compiler")
+#define DEPRECATEDMSG(msg)
+#endif
+#endif  // not defined(DEPRECATEDMSG)
 
 #endif // TILEDARRAY_ERROR_H__INCLUDED

@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_REDUCE_TASK_H__INCLUDED
 #define TILEDARRAY_REDUCE_TASK_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/error.h>
 #include <TiledArray/madness.h>
 
@@ -279,8 +280,19 @@ namespace TiledArray {
           /// This function will invoke the callback and delete object.
           /// \param object The reduce object to be destroyed
           static void destroy(const ReduceObject* object) {
-            if(object->callback_)
-              object->callback_->notify();
+            static constexpr const bool trace_tasks =
+#ifdef TILEDARRAY_ENABLE_TASK_DEBUG_TRACE
+                true
+#else
+                false
+#endif
+            ;
+            if(object->callback_) {
+              if (trace_tasks)
+                object->callback_->notify_debug("destroy(*ReduceObject)");
+              else
+                object->callback_->notify();
+            }
             delete object;
           }
 

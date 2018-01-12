@@ -187,11 +187,11 @@ namespace TiledArray {
           upper.push_back(right_upper[i]);
         }
 
-        // Construct the result tile
+        // Construct the result tile range
         return R(lower, upper);
       }
 
-      /// Test that the outer dimensions of left are coformal with that of the result tensor
+      /// Test that the outer dimensions of left are congruent (have equal extent) with that of the result tensor
 
       /// This function can test the start, finish, or size arrays of range
       /// objects.
@@ -199,14 +199,14 @@ namespace TiledArray {
       /// \tparam Result The result size array type
       /// \param left The left-hand size array to be tested
       /// \param result The result size array to be tested
-      /// \return \c true if The outer dimensions of left are coformal with that
+      /// \return \c true if The outer dimensions of left are congruent with that
       /// of result
       template <typename Left, typename Result>
-      bool left_result_coformal(const Left& left, const Result& result) const {
+      bool left_result_congruent(const Left& left, const Result& result) const {
         return std::equal(left + left_.outer[0], left + left_.outer[1], result);
       }
 
-      /// Test that the outer dimensions of right are coformal with that of the result tensor
+      /// Test that the outer dimensions of right are congruent (have equal extent) with that of the result tensor
 
       /// This function can test the start, finish, or size arrays of range
       /// objects.
@@ -214,15 +214,15 @@ namespace TiledArray {
       /// \tparam Result The result size array type
       /// \param right The right-hand size array to be tested
       /// \param result The result size array to be tested
-      /// \return \c true if The outer dimensions of right are coformal with that
+      /// \return \c true if The outer dimensions of right are congruent with that
       /// of result
       template <typename Right, typename Result>
-      bool right_result_coformal(const Right& right, const Result& result) const {
+      bool right_result_congruent(const Right& right, const Result& result) const {
         return std::equal(right + right_.outer[0], right + right_.outer[1],
             result + (left_.outer[1] - left_.outer[0]));
       }
 
-      /// Test that the inner dimensions of left are coformal with that of right
+      /// Test that the inner dimensions of left are congruent (have equal extent) with that of right
 
       /// This function can test the start, finish, or size arrays of range
       /// objects.
@@ -230,10 +230,10 @@ namespace TiledArray {
       /// \tparam Right The right-hand size array type
       /// \param left The left-hand size array to be tested
       /// \param right The right-hand size array to be tested
-      /// \return \c true if the outer dimensions of \c left are coformal with
+      /// \return \c true if the outer dimensions of \c left are congruent with
       /// that of \c right, other \c false.
       template <typename Left, typename Right>
-      bool left_right_coformal(const Left& left, const Right& right) const {
+      bool left_right_congruent(const Left& left, const Right& right) const {
         return std::equal(left + left_.inner[0], left + left_.inner[1],
             right + right_.inner[0]);
       }

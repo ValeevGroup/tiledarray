@@ -327,7 +327,7 @@ namespace TiledArray {
 
       /// Dereference operator
 
-      /// \return A referenc to the current tile future.
+      /// \return A reference to the current tile future.
       reference operator*() const {
         TA_ASSERT(array_);
         return reference(array_, *it_);

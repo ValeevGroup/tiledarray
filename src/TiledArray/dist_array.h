@@ -20,6 +20,8 @@
 #ifndef TILEDARRAY_ARRAY_H__INCLUDED
 #define TILEDARRAY_ARRAY_H__INCLUDED
 
+#include <cstdlib>
+
 #include <TiledArray/replicator.h>
 #include <TiledArray/pmap/replicated_pmap.h>
 //#include <TiledArray/tensor.h>
@@ -204,7 +206,7 @@ namespace TiledArray {
 
     /// This constructor uses the meta data of `other` to initialize the meta
     /// data of the new array. In addition, the tiles of the new array are also
-    /// initialized using the `op` function/functor, which creates transfroms
+    /// initialized using the `op` function/functor, which transforms
     /// each tile in `other` using `op`
     /// \param other The array to be copied
     template <typename OtherTile, typename Op>
@@ -430,7 +432,15 @@ namespace TiledArray {
       fill_local(value, skip_set);
     }
 
-    /// Initialize tiles with a user provided functor
+    /// Fill all local tiles with random values obtained as \code (element_type)std::rand()/RAND_MAX \endcode
+    /// \param skip_set If false, will throw if any tiles are already set
+    void fill_random(bool skip_set = false) {
+      init_elements([](const auto &) {
+        return (element_type)std::rand() / RAND_MAX;
+      });
+    }
+
+    /// Initialize (local) tiles with a user provided functor
 
     /// This function is used to initialize tiles of the array via a function
     /// (or functor). The work is done in parallel, therefore \c op must be a
@@ -441,7 +451,7 @@ namespace TiledArray {
     /// For example, in the following code, the array tiles are initialized with
     /// random numbers from 0 to 1:
     /// \code
-    /// array.init_local_tiles([] (const TiledArray::Range& range) -> TiledArray::Tensor<double>
+    /// array.init_tiles([] (const TiledArray::Range& range) -> TiledArray::Tensor<double>
     ///     {
     ///        // Initialize the tile with the given range object
     ///        TiledArray::Tensor<double> tile(range);
@@ -475,12 +485,46 @@ namespace TiledArray {
               continue;
           }
           Future<value_type> tile = pimpl_->world().taskq.add(
-              [] (DistArray_& array, const size_type index, const Op& op) -> value_type
-              { return op(array.trange().make_tile_range(index)); },
-              *this, index, op);
+              [] (DistArray_* array, const size_type index, const Op& op) -> value_type
+              { return op(array->trange().make_tile_range(index)); },
+              this, index, op);
           set(index, tile);
         }
       }
+    }
+
+    /// Initialize (local) elements with a user provided functor
+
+    /// This function is used to initialize elements of the array via a function
+    /// (or functor). The work is done in parallel, therefore \c op must be a
+    /// thread safe function/functor. The signature of the functor should be:
+    /// \code
+    /// value_type op(const index&)
+    /// \endcode
+    /// For example, in the following code, the array elements are initialized with
+    /// random numbers from 0 to 1:
+    /// \code
+    /// array.init_elements([] (const auto&)
+    ///     {
+    ///        return (double)std::rand() / RAND_MAX;
+    ///     });
+    /// \endcode
+    /// \tparam Op Element generator type
+    /// \param op The operation used to generate elements
+    /// \param skip_set If false, will throw if any tiles are already set
+    template <typename Op>
+    void init_elements(Op&& op, bool skip_set = false) {
+      init_tiles([op] (const TiledArray::Range& range) -> value_type
+      {
+        // Initialize the tile with the given range object
+        TiledArray::Tensor<double> tile(range);
+
+        // Initialize tile elements
+        for(auto& idx: range)
+          tile[idx] = op(idx);
+
+        return tile;
+       });
     }
 
     /// Tiled range accessor
@@ -686,13 +730,13 @@ namespace TiledArray {
       check_pimpl();
       if((! pimpl_->pmap()->is_replicated()) && (world().size() > 1)) {
         // Construct a replicated array
-        std::shared_ptr<pmap_interface> pmap(new detail::ReplicatedPmap(world(), size()));
+        auto pmap = std::make_shared<detail::ReplicatedPmap>(world(), size());
         DistArray_ result = DistArray_(world(), trange(), shape(), pmap);
 
         // Create the replicator object that will do an all-to-all broadcast of
         // the local tile data.
-        std::shared_ptr<detail::Replicator<DistArray_> > replicator(
-            new detail::Replicator<DistArray_>(*this, result));
+        auto replicator =
+            std::make_shared<detail::Replicator<DistArray_>>(*this, result);
 
         // Put the replicator pointer in the deferred cleanup object so it will
         // be deleted at the end of the next fence.

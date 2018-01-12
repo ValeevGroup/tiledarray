@@ -32,6 +32,8 @@ set(executable ta_test)
 # NOTE: The order of files here represent the order that tests are run and
 # dependencies.
 set(ta_test_src_files  ta_test.cpp
+    meta.cpp
+    type_traits.cpp
     utility.cpp
     permutation.cpp
     symm_permutation_group.cpp
@@ -69,7 +71,6 @@ set(ta_test_src_files  ta_test.cpp
     dist_op_communicator.cpp
     tile_op_noop.cpp
     tile_op_scal.cpp
-    tile_op_neg.cpp
     dist_eval_array_eval.cpp
     dist_eval_unary_eval.cpp
     tile_op_add.cpp
@@ -84,7 +85,9 @@ set(ta_test_src_files  ta_test.cpp
     proc_grid.cpp
     dist_eval_contraction_eval.cpp
     expressions.cpp
-    foreach.cpp)
+    expressions_mixed.cpp
+    foreach.cpp
+)
         
 if(ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
@@ -118,9 +121,9 @@ add_test(build_${executable} "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR} --ta
 # Add a test(s)
 if(ENABLE_MPI)
   add_test(NAME ${executable}-np-1
-      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> ${MPIEXEC_POSTFLAGS})
+      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> --show-progress ${MPIEXEC_POSTFLAGS})
   add_test(NAME ${executable}-np-2
-      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> ${MPIEXEC_POSTFLAGS})
+      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> --show-progress ${MPIEXEC_POSTFLAGS})
   set_tests_properties(${executable}-np-1 PROPERTIES DEPENDS build_${executable})
   set_tests_properties(${executable}-np-2 PROPERTIES DEPENDS build_${executable})
 else()

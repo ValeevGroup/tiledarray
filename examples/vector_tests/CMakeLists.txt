@@ -25,7 +25,9 @@
 # Create the vector executable
 
 # Add the vector executable
-add_executable(vector EXCLUDE_FROM_ALL vector.cpp)
-target_link_libraries(vector PRIVATE tiledarray)
-add_dependencies(vector External)
-add_dependencies(example vector)
+foreach(_exec ta_vector vector)
+  add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
+  target_link_libraries(${_exec} PRIVATE tiledarray)
+  add_dependencies(${_exec} External)
+  add_dependencies(example ${_exec})
+endforeach()

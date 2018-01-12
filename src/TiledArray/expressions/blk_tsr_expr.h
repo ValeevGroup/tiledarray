@@ -61,7 +61,7 @@ namespace TiledArray {
       typedef Array& reference; ///< \c Array reference type
       typedef numeric_t<Array> numeric_type; ///< Array base numeric type
       typedef scalar_t<Array> scalar_type; ///< Array base scalar type
-      typedef BlkTsrEngine<Array, Alias>
+      typedef BlkTsrEngine<Array, typename Array::eval_type, Alias>
           engine_type; ///< Expression engine type
     };
 
@@ -71,7 +71,7 @@ namespace TiledArray {
       typedef const Array& reference; ///< \c Array reference type
       typedef numeric_t<Array> numeric_type; ///< Array base numeric type
       typedef scalar_t<Array> scalar_type; ///< Array base scalar type
-      typedef BlkTsrEngine<Array, Alias>
+      typedef BlkTsrEngine<Array, typename Array::eval_type, Alias>
           engine_type; ///< Expression engine type
     };
 
@@ -79,7 +79,7 @@ namespace TiledArray {
     struct ExprTrait<ScalBlkTsrExpr<Array, Scalar> > {
       typedef Array array_type; ///< The \c Array type
       typedef const Array& reference; ///< \c Array reference type
-      typedef ScalBlkTsrEngine<Array, Scalar>
+      typedef ScalBlkTsrEngine<Array, Scalar, typename Array::eval_type>
           engine_type; ///< Expression engine type
       typedef numeric_t<Array> numeric_type; ///< Array base numeric type
       typedef Scalar scalar_type; ///< Tile scalar type
@@ -89,7 +89,7 @@ namespace TiledArray {
     struct ExprTrait<ScalBlkTsrExpr<const Array, Scalar> > {
       typedef Array array_type; ///< The \c Array type
       typedef const Array& reference; ///< \c Array reference type
-      typedef ScalBlkTsrEngine<Array, Scalar>
+      typedef ScalBlkTsrEngine<Array, Scalar, typename Array::eval_type>
           engine_type; ///< Expression engine type
       typedef numeric_t<Array> numeric_type; ///< Array base numeric type
       typedef Scalar scalar_type; ///< Tile scalar type
