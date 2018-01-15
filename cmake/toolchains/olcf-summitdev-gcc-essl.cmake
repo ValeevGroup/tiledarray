@@ -26,10 +26,11 @@ set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG" CACHE STRING "Inital C++ relea
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ release with debug info compile flags")
 
 
-# Set library
-
+# Set BLAS/LAPACK libraries
 set(XLF_LIBRARIES ${OLCF_XLF_ROOT}/lib/libxlf90_r.a;${OLCF_XLF_ROOT}/lib/libxlfmath.a;-ldl;-lm)
 set(BLAS_LIBRARIES ${OLCF_ESSL_ROOT}/lib64/libessl.so;${XLF_LIBRARIES})
 set(LAPACK_LIBRARIES $ENV{OLCF_NETLIB_LAPACK_ROOT}/lib64/liblapack.a;${BLAS_LIBRARIES})
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 
+# Set build params
+set(BUILD_SHARED_LIBS OFF)
