@@ -82,6 +82,8 @@ namespace TiledArray {
     public:
       typedef typename D::element_type value_type;
       typedef typename detail::scalar_t<value_type> scalar_type;
+      typedef Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixX;
+      typedef Eigen::Matrix<value_type, Eigen::Dynamic, 1> EigenVectorX;
 
       /// Constructor
 
@@ -135,35 +137,54 @@ namespace TiledArray {
                        D& error,
                        bool extrapolate_error = false)
       {
-        const scalar_type zero_determinant = 1.0e-15;
-        const scalar_type zero_norm = 1.0e-10;
-
         iter++;
 
-        const bool do_mixing = (mixing_fraction != 0.0);
-        const scalar_type scale = 1.0 + damping_factor;
+        // compute extrapolation coefficients C_ and number of skipped vectors nskip_
+        compute_extrapolation_parameters(error);
 
-        // if have ndiis vectors
-        if (errors_.size() == ndiis) { // holding max # of vectors already? drop the least recent {x, error} pair
-          x_.pop_front();
-          errors_.pop_front();
-          if (not x_extrap_.empty()) x_extrap_.pop_front();
-          EigenMatrixX Bcrop = B_.bottomRightCorner(ndiis-1,ndiis-1);
-          Bcrop.conservativeResize(ndiis,ndiis);
-          B_ = Bcrop;
-        }
+        // extrapolate x using above computed parameters (C_ and nskip_)
+        extrapolate(x, C_, nskip_);
 
-        // push {x, error} to the set
-        x_.push_back(x);
-        errors_.push_back(error);
         const unsigned int nvec = errors_.size();
+
+        // sizes of the x set and the error set should equal, otherwise throw
         TA_USER_ASSERT(x_.size() == errors_.size(),
                        "DIIS: numbers of guess and error vectors do not match, likely due to a programming error");
 
-        // and compute the most recent elements of B, B(i,j) = <ei|ej>
-        for (unsigned int i=0; i < nvec-1; i++)
-          B_(i,nvec-1) = B_(nvec-1,i) = dot_product(errors_[i], errors_[nvec-1]);
-        B_(nvec-1,nvec-1) = dot_product(errors_[nvec-1], errors_[nvec-1]);
+        // extrapolate the error if needed
+        if (extrapolate_error && (mixing_fraction == 0.0 || x_extrap_.empty())) {
+          for (unsigned int k=nskip_, kk=1; k < nvec; ++k, ++kk) {
+            axpy(error, C_[kk], errors_[k]);
+          }
+        }
+      }
+
+      /// calling this function performs the extrapolation with provided
+      /// coefficients.
+      /// \param[in,out] x On input, the most recent solution guess; on output,
+      ///   the extrapolated guess
+      /// \param c provided coefficients
+      /// \param nskip number of old vectors to skip (default = 0)
+      /// \param increase_iter whether to increase the diis iteration index
+      /// (default = false)
+      void extrapolate(D& x,
+                       const EigenVectorX &c,
+                       unsigned int nskip = 0,
+                       bool increase_iter = false) {
+        if (increase_iter) {
+          iter++;
+        }
+
+        const bool do_mixing = (mixing_fraction != 0.0);
+
+        // if have ndiis vectors
+        if (x_.size() == ndiis) { // holding max # of vectors already? drop the least recent x
+          x_.pop_front();
+          if (not x_extrap_.empty()) x_extrap_.pop_front();
+        }
+
+        // push x to the set
+        x_.push_back(x);
 
         if (iter == 1) { // the first iteration
           if (not x_extrap_.empty() && do_mixing) {
@@ -174,18 +195,73 @@ namespace TiledArray {
         }
         else if (iter > start && (((iter - start) % ngroup) < ngroupdiis)) { // not the first iteration and need to extrapolate?
 
-          EigenVectorX c;
+          const unsigned int nvec = x_.size();
+          const unsigned int rank = nvec - nskip + 1; // size of coefficients
+
+          TA_USER_ASSERT(c.size() == rank,
+                         "DIIS: numbers of coefficients and x's do not match");
+          zero(x);
+          for (unsigned int k=nskip, kk=1; k < nvec; ++k, ++kk) {
+            if (not do_mixing || x_extrap_.empty()) {
+              //std::cout << "contrib " << k << " c=" << c[kk] << ":" << std::endl << x_[k] << std::endl;
+              axpy(x, c[kk], x_[k]);
+            } else {
+              axpy(x, c[kk] * (1.0 - mixing_fraction), x_[k]);
+              axpy(x, c[kk] * mixing_fraction, x_extrap_[k]);
+            }
+          }
+
+        } // do DIIS
+
+        // only need to keep extrapolated x if doing mixing
+        if (do_mixing) x_extrap_.push_back(x);
+      }
+
+      /// calling this function computes extrapolation parameters,
+      /// i.e. coefficients \c C_ and number of skipped vectors \c nskip_
+      /// \param error the most recent error
+      /// \param increase_iter whether to increase the diis iteration index
+      /// (default = false)
+      void compute_extrapolation_parameters(const D &error,
+                                            bool increase_iter = false) {
+        if (increase_iter) {
+          iter++;
+        }
+
+        const scalar_type zero_determinant = 1.0e-15;
+        const scalar_type zero_norm = 1.0e-10;
+        const scalar_type scale = 1.0 + damping_factor;
+
+        // if have ndiis vectors
+        if (errors_.size() == ndiis) { // holding max # of vectors already? drop the least recent error
+          errors_.pop_front();
+          EigenMatrixX Bcrop = B_.bottomRightCorner(ndiis-1,ndiis-1);
+          Bcrop.conservativeResize(ndiis,ndiis);
+          B_ = Bcrop;
+        }
+
+        // push error to the set
+        errors_.push_back(error);
+        const unsigned int nvec = errors_.size();
+
+        // and compute the most recent elements of B, B(i,j) = <ei|ej>
+        for (unsigned int i=0; i < nvec-1; i++)
+          B_(i,nvec-1) = B_(nvec-1,i) = dot_product(errors_[i], errors_[nvec-1]);
+        B_(nvec-1,nvec-1) = dot_product(errors_[nvec-1], errors_[nvec-1]);
+
+        // compute extrapolation coefficients C_ and number of skipped vectors nskip_
+        if (iter > start && (((iter - start) % ngroup) < ngroupdiis)) { // not the first iteration and need to extrapolate?
 
           scalar_type absdetA;
-          unsigned int nskip = 0; // how many oldest vectors to skip for the sake of conditioning?
+          nskip_ = 0; // how many oldest vectors to skip for the sake of conditioning?
                                         // try zero
-          // skip oldest vectors until found a numerically stable system
           do {
-
-            const unsigned int rank = nvec - nskip + 1; // size of matrix A
+            const unsigned int rank = nvec - nskip_ + 1; // size of matrix A
 
             // set up the DIIS linear system: A c = rhs
             EigenMatrixX A(rank, rank);
+            C_.resize(rank);
+
             A.col(0).setConstant(-1.0);
             A.row(0).setConstant(-1.0);
             A(0,0) = 0.0;
@@ -193,10 +269,10 @@ namespace TiledArray {
             rhs[0] = -1.0;
 
             scalar_type norm = 1.0;
-            if (std::abs(B_(nskip,nskip)) > zero_norm)
-              norm = 1.0/std::abs(B_(nskip,nskip));
+            if (std::abs(B_(nskip_,nskip_)) > zero_norm)
+              norm = 1.0/std::abs(B_(nskip_,nskip_));
 
-            A.block(1, 1, rank-1, rank-1) = B_.block(nskip, nskip, rank-1, rank-1) * norm;
+            A.block(1, 1, rank-1, rank-1) = B_.block(nskip_, nskip_, rank-1, rank-1) * norm;
             A.diagonal() *= scale;
             //for (unsigned int i=1; i < rank ; i++) {
             //  for (unsigned int j=1; j <= i ; j++) {
@@ -214,14 +290,14 @@ namespace TiledArray {
 
             // finally, solve the DIIS linear system
             Eigen::ColPivHouseholderQR<EigenMatrixX> A_QR = A.colPivHouseholderQr();
-            c = A_QR.solve(rhs);
+            C_ = A_QR.solve(rhs);
             absdetA = A_QR.absDeterminant();
 
             //std::cout << "DIIS: |A|=" << absdetA << " sol=" << c << std::endl;
 
-            ++nskip;
+            ++nskip_;
 
-          } while (absdetA < zero_determinant && nskip < nvec); // while (system is poorly conditioned)
+          } while (absdetA < zero_determinant && nskip_ < nvec); // while (system is poorly conditioned)
 
           // failed?
           if (absdetA < zero_determinant) {
@@ -229,27 +305,11 @@ namespace TiledArray {
             oss << "DIIS::extrapolate: poorly-conditioned system, |A| = " << absdetA;
             throw std::domain_error(oss.str());
           }
-          --nskip; // undo the last ++ :-(
+          --nskip_; // undo the last ++ :-(
 
-          {
+          parameters_computed_ = true;
+        }
 
-            zero(x);
-            for (unsigned int k=nskip, kk=1; k < nvec; ++k, ++kk) {
-              if (not do_mixing || x_extrap_.empty()) {
-                //std::cout << "contrib " << k << " c=" << c[kk] << ":" << std::endl << x_[k] << std::endl;
-                axpy(x, c[kk], x_[k]);
-                if (extrapolate_error)
-                  axpy(error, c[kk], errors_[k]);
-              } else {
-                axpy(x, c[kk] * (1.0 - mixing_fraction), x_[k]);
-                axpy(x, c[kk] * mixing_fraction, x_extrap_[k]);
-              }
-            }
-          }
-        } // do DIIS
-
-        // only need to keep extrapolated x if doing mixing
-        if (do_mixing) x_extrap_.push_back(x);
       }
 
       /// calling this function forces the extrapolation to start upon next call
@@ -267,6 +327,19 @@ namespace TiledArray {
         }
       }
 
+      /// calling this function returns extrapolation coefficients
+      const EigenVectorX &get_coeffs() {
+        TA_USER_ASSERT(parameters_computed_ && C_.size() > 0,
+                       "DIIS: empty coefficients, because they have not been computed");
+        return C_;
+      }
+
+      /// calling this function returns number of skipped vectors in extrapolation
+      unsigned int get_nskip() { return nskip_; }
+
+      /// calling this function returns whether diis parameters C_ and nskip_ have been computed
+      bool parameters_computed() { return parameters_computed_; }
+
     private:
       scalar_type error_;
       bool errorset_;
@@ -279,10 +352,10 @@ namespace TiledArray {
       scalar_type damping_factor;
       scalar_type mixing_fraction;
 
-      typedef Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> EigenMatrixX;
-      typedef Eigen::Matrix<value_type, Eigen::Dynamic, 1> EigenVectorX;
-
       EigenMatrixX B_; //!< B(i,j) = <ei|ej>
+      EigenVectorX C_; //! DIIS coefficients
+      bool parameters_computed_; //! whether diis parameters C_ and nskip_ have been computed
+      unsigned int nskip_; //! number of skipped vectors in extrapolation
 
       std::deque<D> x_; //!< set of most recent x given as input (i.e. not exrapolated)
       std::deque<D> errors_; //!< set of most recent errors
@@ -295,6 +368,9 @@ namespace TiledArray {
         iter = 0;
 
         B_ = EigenMatrixX::Zero(ndiis,ndiis);
+        C_.resize(0);
+        parameters_computed_ = false;
+        nskip_ = 0;
 
         x_.clear();
         errors_.clear();
