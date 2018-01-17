@@ -108,7 +108,7 @@ namespace TiledArray {
       }
     }
 
-    /// Initialize range data from sequences of lower and upper bounds
+    /// Initialize range data from a sequence of {lower,upper} bound pairs
 
     /// \tparam Index An array type
     /// \param lower_bound The lower bound of the range
@@ -161,7 +161,7 @@ namespace TiledArray {
     /// \post \c data_ and \c volume_ are initialized with range dimension
     /// information.
     template <typename Index,
-              typename std::enable_if<std::is_integral<
+              typename std::enable_if<detail::is_integral_list<
                   typename Index::value_type>::value>::type* = nullptr>
     void init_range_data(const Index& extents) {
       // Construct temp pointers
@@ -189,6 +189,54 @@ namespace TiledArray {
         stride[i] = volume_;
         volume_  *= extent_i;
       }
+    }
+
+    /// Initialize range data from a tuple of extents
+
+    /// \tparam Index An array type
+    /// \param extents A tuple of extents for each dimension
+    /// \pre Assume \c rank_ is initialized to the rank of the range and
+    /// \c data_ has been allocated to hold 4*rank_ elements
+    /// \post \c data_ and \c volume_ are initialized with range dimension
+    /// information.
+    template <typename ... Indices,
+              typename std::enable_if<detail::is_integral_list<Indices...>::value>::type* = nullptr>
+    void init_range_data(const std::tuple<Indices...>& extents) {
+      const constexpr std::size_t rank = std::tuple_size<std::tuple<Indices...>>::value;
+      TA_ASSERT(rank_ == rank);
+
+      // Set the offset and volume initial values
+      volume_ = 1ul;
+      offset_ = 0ul;
+
+      // initialize by recursion
+      init_range_data_helper(extents, std::make_index_sequence<rank>{});
+    }
+
+    template <typename ... Indices, std::size_t ... Is>
+    void init_range_data_helper(const std::tuple<Indices...>& extents, std::index_sequence<Is...>) {
+      int workers[] = {0, (init_range_data_helper_iter<Is>(extents),0)...};
+      ++workers[0];
+    }
+
+    template <std::size_t I, typename ... Indices>
+    void init_range_data_helper_iter(const std::tuple<Indices...>& extents) {
+      // Check bounds of the input extent
+      TA_ASSERT(std::get<I>(extents) > 0ul);
+
+      // Get extent i
+      const size_type extent_i = std::get<I>(extents);
+
+      size_type* MADNESS_RESTRICT const lower  = data_;
+      size_type* MADNESS_RESTRICT const upper  = lower + rank_;
+      size_type* MADNESS_RESTRICT const extent = upper + rank_;
+      size_type* MADNESS_RESTRICT const stride = extent + rank_;
+
+      lower[I]  = 0ul;
+      upper[I]  = extent_i;
+      extent[I] = extent_i;
+      stride[I] = volume_;
+      volume_  *= extent_i;
     }
 
     /// Initialize permuted range data from lower and upper bounds
@@ -373,15 +421,28 @@ namespace TiledArray {
 
     /// Range constructor from a pack of extents for each dimension
 
-    /// \tparam Index An array type
+    /// \tparam Index Pack of integer types
     /// \param extents A pack of extents for each dimension
     /// \post Range has a lower bound of 0, and an upper bound of \c (extents...).
     /// \throw std::bad_alloc When memory allocation fails.
     template<typename... Index,
         typename std::enable_if<detail::is_integral_list<Index...>::value>::type* = nullptr>
     explicit Range(const Index... extents) :
-      Range(std::array<size_t, sizeof...(Index)>{{extents...}})
+      Range(std::array<size_t, sizeof...(Index)>{{static_cast<std::size_t>(extents)...}})
     { }
+
+    /// Range constructor from a pack of {lo,up} bounds for each dimension
+
+    /// \tparam IndexPairs Pack of std::pair's of integer types
+    /// \param extents A pack of pairs of lobound and upbound for each dimension
+    /// \throw std::bad_alloc When memory allocation fails.
+    template <typename ... IndexPairs,
+              typename std::enable_if<detail::is_integral_pair_list<IndexPairs...>::value>::type* = nullptr
+             >
+    explicit Range(const IndexPairs... bounds) :
+    Range(std::array<std::pair<std::size_t,std::size_t>, sizeof...(IndexPairs)>{{static_cast<std::pair<std::size_t,std::size_t>>(bounds)...}})
+    { }
+
 
     /// Copy Constructor
 

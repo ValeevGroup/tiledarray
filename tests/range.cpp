@@ -69,7 +69,8 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
 
 BOOST_AUTO_TEST_CASE( constructors )
 {
-  BOOST_REQUIRE_NO_THROW(Range r0); // Default Constructor
+  // Default Constructor
+  BOOST_REQUIRE_NO_THROW(Range r0);
   Range r0;
   BOOST_CHECK_EQUAL(r0.rank(), 0u);
   BOOST_CHECK(r0.lobound_data() == nullptr);
@@ -78,6 +79,7 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK(r0.stride_data() == nullptr);
   BOOST_CHECK_EQUAL(r0.volume(), 0ul);
 
+  // Copy of a default-constructed object
   BOOST_CHECK_NO_THROW(Range r00(r0));
   Range r00(r0);
   BOOST_CHECK_EQUAL(r00.rank(), 0u);
@@ -91,9 +93,26 @@ BOOST_AUTO_TEST_CASE( constructors )
   for(std::size_t i = 0; i < f2.size(); ++i)
     f2[i] += p2[i];
 
-  BOOST_REQUIRE_NO_THROW(Range r2(p2, f2)); // Start/Finish Constructor
+  // Constructor that takes extents
+  BOOST_REQUIRE_NO_THROW(Range r5(p5));       // uses index container
+  BOOST_REQUIRE_NO_THROW(Range r5({1,2,3}));  // uses initializer_list
+  BOOST_REQUIRE_NO_THROW(Range r5(1u,2,3ul,4l));  // uses param pack
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(Range r2(f2, p2), Exception);
+  BOOST_CHECK_THROW(Range r5({0,0,0}), Exception);
+#endif // TA_EXCEPTION_ERROR
+  Range r5(p5);
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.lobound_data(), r5.lobound_data() + r5.rank(), p0.begin(), p0.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.upbound_data(), r5.upbound_data() + r5.rank(), p5.begin(), p5.end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(r5.extent_data(), r5.extent_data() + r5.rank(), p5.begin(), p5.end());
+  BOOST_CHECK_EQUAL(r5.volume(), volume);
+
+  // Constructor that takes start/finish indices
+  BOOST_REQUIRE_NO_THROW(Range r2(p2, f2));   // uses index containers
+  BOOST_REQUIRE_NO_THROW(Range r2({std::make_pair(1,2),std::make_pair(3,4),std::make_pair(5,6)}));   // uses initializer_list of pairs
+  BOOST_REQUIRE_NO_THROW(Range r2(std::make_pair(1,2),std::make_pair(3,4),std::make_pair(5,6)));   // uses param pack of pairs
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_CHECK_THROW(Range r2(f2, p2), Exception);  // lobound >= upbound
+  BOOST_CHECK_THROW(Range(p2, p2), Exception);     // lobound = upbound
 #endif // TA_EXCEPTION_ERROR
   Range r2(p2, f2);
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.lobound_data(), r2.lobound_data() + r2.rank(), p2.begin(), p2.end());
@@ -102,24 +121,13 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.stride_data(), r2.stride_data() + r2.rank(), weight.begin(), weight.end());
   BOOST_CHECK_EQUAL(r2.volume(), volume);
 
-  BOOST_REQUIRE_NO_THROW(Range r4(r)); // Copy Constructor
+  // Copy Constructor
+  BOOST_REQUIRE_NO_THROW(Range r4(r));
   Range r4(r);
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.lobound_data(), r4.lobound_data() + r4.rank(), start.begin(), start.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.upbound_data(), r4.upbound_data() + r4.rank(), finish.begin(), finish.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r4.extent_data(), r4.extent_data() + r4.rank(), size.begin(), size.end());
   BOOST_CHECK_EQUAL(r4.volume(), volume);
-
-
-  BOOST_REQUIRE_NO_THROW(Range r5(p2)); // Copy Constructor
-  Range r5(p2);
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.lobound_data(), r5.lobound_data() + r5.rank(), p0.begin(), p0.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.upbound_data(), r5.upbound_data() + r5.rank(), p2.begin(), p2.end());
-  BOOST_CHECK_EQUAL_COLLECTIONS(r5.extent_data(), r5.extent_data() + r5.rank(), p2.begin(), p2.end());
-  BOOST_CHECK_EQUAL(r4.volume(), volume);
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(Range(p2, p2), Exception); // Zero Size Construction
-#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( assignment_operator )

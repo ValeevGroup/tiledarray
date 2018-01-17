@@ -581,6 +581,54 @@ namespace TiledArray {
         std::false_type>::type
     { };
 
+    ///////////
+
+    template<class T, class = void>
+    struct is_tuple_
+      : std::false_type {};
+    template<class T>
+    struct is_tuple_< T,
+      typename std::enable_if<( std::tuple_size<T>::value >= 0 )>::type
+    > : std::true_type {};
+    template<class T>
+    struct is_tuple
+      : is_tuple_<T> {};
+
+    template<class T, class = void>
+    struct is_integral_pair_
+      : std::false_type {};
+    template<class T1, class T2>
+    struct is_integral_pair_< std::pair<T1, T2>,
+      typename std::enable_if<std::is_integral<T1>::value && std::is_integral<T2>::value>::type
+    > : std::true_type {};
+    template<class T>
+    struct is_integral_pair
+      : is_integral_pair_<T> {};
+
+    //////////
+
+    template <typename...> struct is_integral_pair_list_helper;
+
+    template <typename T, typename...Ts>
+    struct is_integral_pair_list_helper<T, Ts...> {
+      static constexpr bool value = is_integral_pair<T>::value && is_integral_pair_list_helper<Ts...>::value;
+    };
+
+    template <> struct is_integral_pair_list_helper<> { static constexpr bool value = true; };
+
+    ///
+    template <typename...Ts>
+    struct is_integral_pair_list : std::conditional<(sizeof...(Ts) > 0ul),
+        is_integral_pair_list_helper<Ts...>,
+        std::false_type>::type
+    { };
+
+    ///
+    template <typename T>
+    struct is_integral_tuple : std::false_type
+    { };
+    template <typename ... Ts>
+    struct is_integral_tuple<std::tuple<Ts...>> : is_integral_list<Ts...> { };
 
     /// Remove const, volatile, and reference qualifiers.
     template <typename T>

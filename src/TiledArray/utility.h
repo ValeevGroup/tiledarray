@@ -71,6 +71,14 @@ namespace TiledArray {
     template <typename T>
     inline auto size(std::initializer_list<T> a) { return a.size(); }
 
+    /// Tuple size accessor
+
+    /// \tparam Ts The tuple element types
+    /// \param a A tuple object
+    /// \return The size of tuple \c a
+    template <typename ... Ts>
+    inline auto size(const std::tuple<Ts...>& a) { return std::tuple_size<std::tuple<Ts...>>::value; }
+
     /// Container data pointer accessor
 
     /// \tparam T The container type
