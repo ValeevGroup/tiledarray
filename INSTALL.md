@@ -1,32 +1,35 @@
-# Software Stack:
+# Prerequisites
 
-* C++ compiler with C++14 standard support.
-  Supported compilers include:
-    * GCC 4.9 or later (Linux only)
-    * Clang 3.4 or later
-    * Apple Clang 5.0 or later (OS X only)  
-    * ~~Intel 17 or later~~
-  Note, GCC is NOT supported on OS X. There are compatibility issues that arise
-  when mixing libraries compiled with clang (or system libraries) with those
-  compiled with GCC.
-* Cmake 3.1.0 or later
-* Git 1.8 or later (required to download TiledArray and MADNESS from GitHub)
-* Eigen 3.x or later
-  * Mercurial (required to download Eigen from Bitbucket)
-* MADNESS
-  Only the MADworld and MADtensor library of MADNESS are required by TiledArray.
-  Requirements for MADNESS include:
-    * autoconf 2.59 or later
-    * automake 1.11 or later
-    * libtool 2.x or later (??? not sure on earliest working version)
-    * Intel TBB  4.x or later (4.3 Update 5 or later on BlueGene/Q)
-    * MPI-2 or MPI-3
-    * LAPACK and BLAS
-    * Elemental (optional)
+- BLAS and LAPACK libraries
+
+- C++ compiler with support for the [C++14 standard](https://www.iso.org/standard/64029.html). This includes the following compilers:
+  - [GNU C++](https://gcc.gnu.org/), version 5.0 or higher
+  - [Clang](https://clang.llvm.org/), version 3.4 or higher
+  - Apple Clang, version 5.0 or higher
+  See the current [Travis CI matrix]() for the most up-to-date list of compilers that are known to work.
+- [CMake](https://cmake.org/), version 3.1 and higher
+- [Git]() 1.8 or later (required to download TiledArray and MADNESS from GitHub)
+- [Eigen](http://eigen.tuxfamily.org), version 3.0 or higher
+  - (optional) Mercurial, to download Eigen from [Bitbucket](http://bitbucket.com/) if it is not already installed on your system.
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness)
+  Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
+  If usable MADNESS installation is now found, TiledArray will download and compile
+  MADNESS. *This is the recommended way to compile MADNESS for all users*.
+  A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/INSTALL_CMake);
+  it also also contains detailed
+  MADNESS compilation instructions.
+
+  Compiling MADNESS requires the following prerequisites:
+  - An implementation of Message Passing Interface version 2 or 3, with suppport
+    for MPI_THREAD_MULTIPLE.
+  - Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb‎) or
+    an [open-source](https://www.threadingbuildingblocks.org/) form
+  - LAPACK and BLAS libraries
+  - Elemental (optional)
 
 Optional:
-* Doxygen (required to generating documentation)
-* Boost 1.33.0 or later (required for unit tests)
+- Doxygen (required to generating documentation)
+- [Boost libraries](www.boost.org/), required for unit tests
 
 Dependencies can be installed via the package manager of your choice, e.g.
 Homebrew on OS X or apt-get on Debian Linux distributions. See notes below for
