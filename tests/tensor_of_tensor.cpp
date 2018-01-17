@@ -31,6 +31,7 @@
 
 #ifdef TILEDARRAY_HAS_BTAS
 #include "btas.h"
+#include "btas/optimize/contract.h"
 #endif
 
 using namespace TiledArray;
@@ -998,6 +999,115 @@ BOOST_AUTO_TEST_CASE_TEMPLATE( dot, ITensor, itensor_types )
 
   BOOST_CHECK_EQUAL(x, expected);
 }
+
+#if 0
+#ifdef TILEDARRAY_HAS_BTAS
+
+/// This reduction operation is used to reduce \c Tensor<btas::Tensor<T>> objects
+/// \tparam Tile The tile type
+template <typename Tile>
+class ContractSumReduction {
+public:
+  // typedefs
+  typedef Tile result_type; ///< The result tile type.
+  typedef Tile first_argument_type;
+  typedef Tile second_argument_type;
+
+  class Impl {
+   public:
+    Impl(double alpha,
+         const btas::DEFAULT::index_type& left_annotation,
+         const btas::DEFAULT::index_type& right_annotation,
+         const btas::DEFAULT::index_type& result_annotation
+         ) :
+           alpha_(alpha), left_annotation_(left_annotation), right_annotation_(right_annotation), result_annotation_(result_annotation)
+         {}
+    auto alpha() const {
+      return alpha_;
+    }
+    const auto& left_annotation() const {
+      return left_annotation_;
+    }
+    const auto& right_annotation() const {
+      return right_annotation_;
+    }
+    const auto& result_annotation() const {
+      return result_annotation_;
+    }
+
+   private:
+    double alpha_;
+    btas::DEFAULT::index_type left_annotation_;
+    btas::DEFAULT::index_type right_annotation_;
+    btas::DEFAULT::index_type result_annotation_;
+  };  // ContractSumReduction::Impl
+
+  ContractSumReduction(double alpha,
+                       const btas::DEFAULT::index_type& left_annotation,
+                       const btas::DEFAULT::index_type& right_annotation,
+                       const btas::DEFAULT::index_type& result_annotation) :
+                         pimpl_(std::make_shared<Impl>(alpha, left_annotation, right_annotation, result_annotation)) {}
+
+  // Reduction functions
+
+  /// Create a result type object
+
+  /// Initialize a result object for subsequent reductions
+  result_type operator()() const {
+    return result_type();
+  }
+
+  /// Post processing step
+  result_type operator()(const result_type& temp) const {
+    using TiledArray::empty;
+    TA_ASSERT(! empty(temp));
+
+    if(! this->perm())
+      return temp;
+
+    using TiledArray::permute;
+    return permute(temp, this->perm());
+  }
+
+  /// Reduce two result objects
+
+  /// Add \c arg to \c result .
+  /// \param[in,out] result The result object that will be the reduction target
+  /// \param[in] arg The argument that will be added to \c result
+  void operator()(result_type& result, const result_type& arg) const {
+    using TiledArray::add_to;
+    add_to(result, arg);
+  }
+
+  /// Contract a pair of tiles and add to a target tile
+
+  /// Contract \c left and \c right and add the result to \c result.
+  /// \param[in,out] result The result object that will be the reduction target
+  /// \param[in] left The left-hand tile to be contracted
+  /// \param[in] right The right-hand tile to be contracted
+  void operator()(result_type& result, first_argument_type left,
+      second_argument_type right) const
+  {
+    using TiledArray::empty;
+    using TiledArray::gemm;
+    btas::contract(pimpl_->alpha(),
+                   left, pimpl_->left_annotation(),
+                   right, pimpl_->right_annotation(),
+                   1.0, result, pimpl_->result_annotation());
+  }
+
+private:
+  std::shared_ptr<Impl> pimpl_;
+
+}; // class ProductReduction
+
+BOOST_AUTO_TEST_CASE( reduce )
+{
+  auto contract_12_23_sum = ContractSumReduction<btas::Tensor<int>>{1.0, {1, 2}, {2, 3}, {1, 3}};
+  auto x = d.reduce(e, contract_12_23_sum);
+}
+#endif
+#endif
 
 BOOST_AUTO_TEST_CASE_TEMPLATE( serialization, ITensor, itensor_types )
 {
