@@ -98,6 +98,7 @@ TiledArray/expressions/tsr_expr.h
 TiledArray/expressions/unary_engine.h
 TiledArray/expressions/unary_expr.h
 TiledArray/expressions/variable_list.h
+TiledArray/external/btas.h
 TiledArray/math/blas.h
 TiledArray/math/eigen.h
 TiledArray/math/gemm_helper.h
