@@ -270,6 +270,28 @@ namespace TiledArray {
 namespace detail {
 // helps to implement other metafunctions
 template<typename> struct is_type : public std::true_type { };
+
+// import some existing C++17 features, or implement them
+#if __cplusplus <= 201402L
+
+// GNU stdlibc++ provides void_t if -gnu++11 or -gnu++14 are given
+# if __GNUC__ && defined(__GLIBCXX__) && !__STRICT_ANSI__ && __cplusplus >= 201103L
+#  define HAVE_VOID_T
+# endif
+
+# ifndef HAVE_VOID_T
+template <typename... Ts>
+struct make_void {
+  using type = void;
+};
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
+#else
+using std::void_t;
+# endif
+
+#endif  // C++17 features
+
 }  // namespace detail
 }  // namespace TiledArray
 
@@ -279,7 +301,6 @@ namespace TiledArray {
    * \addtogroup TileInterface
    * @{
    */
-
 
   template <typename> struct eval_trait;
 
