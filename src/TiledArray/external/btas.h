@@ -57,26 +57,26 @@ void add_to(btas::Tensor<T, Range, Storage>& result,
 template<typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2); /* {
+    const btas::Tensor<T, Range, Storage>& arg2) {
   assert(false);
-} */
+}
 
 /// result[perm ^ i] = arg1[i] * arg2[i]
 template<typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2,
-    const TiledArray::Permutation& perm); /* {
+    const TiledArray::Permutation& perm) {
   assert(false);
-} */
+}
 
 /// result[i] *= arg[i]
 template<typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage>&
 mult_to(btas::Tensor<T, Range, Storage>& result,
-        const btas::Tensor<T, Range, Storage>& arg); /* {
+        const btas::Tensor<T, Range, Storage>& arg) {
   assert(false);
-} */
+}
 
 template<typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> gemm(
@@ -226,6 +226,18 @@ template <typename T, typename ... Args>
 struct is_contiguous_tensor_helper<btas::Tensor<T, Args...> > : public std::true_type { };
 
 }
+}
+
+/// implement conversions from btas::Tensor to TA::Tensor
+namespace TiledArray {
+  template <typename T, typename Allocator, typename ... Args>
+  struct Cast<TiledArray::Tensor<T, Allocator>, btas::Tensor<T, Args...>> {
+    auto operator()(const btas::Tensor<T, Args...>& arg) const {
+      TiledArray::Tensor<T> result(arg.range());
+      std::copy(btas::cbegin(arg), btas::cend(arg), begin(result));
+      return result;
+    }
+  };
 }
 
 namespace madness {
