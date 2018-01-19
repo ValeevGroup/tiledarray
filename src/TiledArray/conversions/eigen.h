@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_EIGEN_H__INCLUDED
-#define TILEDARRAY_EIGEN_H__INCLUDED
+#ifndef TILEDARRAY_CONVERSIONS_EIGEN_H__INCLUDED
+#define TILEDARRAY_CONVERSIONS_EIGEN_H__INCLUDED
 
 #include <cstdint>
 #include <tiledarray_fwd.h>
@@ -355,10 +355,8 @@ namespace TiledArray {
   /// replicated array [default = false].
   /// \return An \c Array object that is a copy of \c matrix
   /// \throw TiledArray::Exception When world size is greater than 1
-  /// \note This function will only work in non-distributed environments. If you
-  /// need to convert an Eigen matrix to an \c Array object, you must implement
-  /// it yourself. However, you may use \c eigen_submatrix_to_tensor to make
-  /// writing such an algorithm easier.
+  /// \note If using 2 or more World ranks, set \c replicated=true and make sure \c matrix
+  /// is the same on each rank!
   template <typename A, typename Derived>
   A eigen_to_array(World& world, const typename A::trange_type& trange,
       const Eigen::MatrixBase<Derived>& matrix, bool replicated = false)
@@ -382,7 +380,7 @@ namespace TiledArray {
     // Check that this is not a distributed computing environment
     if(! replicated)
       TA_USER_ASSERT(world.size() == 1,
-          "An array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
+          "An array cannot be assigned with an Eigen::Matrix when the number of World ranks is greater than 1.");
 
     // Create a new tensor
     A array = (replicated && (world.size() > 1)
@@ -425,12 +423,12 @@ namespace TiledArray {
   /// \tparam Tile The array tile type
   /// \tparam EigenStorageOrder The storage order of the resulting Eigen::Matrix
   ///      object; the default is Eigen::ColMajor, i.e. the column-major storage
-  /// \param array The array to be converted
+  /// \param array The array to be converted. It must be replicated if using 2 or more World ranks.
+  /// \return an Eigen matrix; it will contain same data on each World rank.
   /// \throw TiledArray::Exception When world size is greater than 1 and
   /// \c array is not replicated.
   /// \throw TiledArray::Exception When the number of dimensions of \c array
   /// is not equal to 1 or 2.
-  /// \note This function will only work in non-distributed environments.
   template <typename Tile, typename Policy,
             unsigned int EigenStorageOrder = Eigen::ColMajor>
   Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic,
@@ -450,7 +448,7 @@ namespace TiledArray {
     // array is replicated
     if(! array.pmap()->is_replicated())
       TA_USER_ASSERT(array.world().size() == 1,
-          "TiledArray::array_to_eigen(): Array cannot be assigned with an Eigen::Matrix when the number of MPI processes is greater than 1.");
+          "TiledArray::array_to_eigen(): Array cannot be assigned with an Eigen::Matrix when the number of World ranks is greater than 1.");
 
     // Construct the Eigen matrix
     const auto* MADNESS_RESTRICT const array_extent = array.trange().elements_range().extent_data();
@@ -592,4 +590,4 @@ namespace TiledArray {
 
 } // namespace TiledArray
 
-#endif // TILEDARRAY_EIGEN_H__INCLUDED
+#endif // TILEDARRAY_CONVERSIONS_EIGEN_H__INCLUDED
