@@ -30,7 +30,7 @@
 #include <boost/mpl/list.hpp>
 
 #ifdef TILEDARRAY_HAS_BTAS
-#include "btas.h"
+#include <TiledArray/external/btas.h>
 #include "btas/optimize/contract.h"
 #endif
 
