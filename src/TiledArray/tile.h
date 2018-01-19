@@ -21,6 +21,7 @@
 #define TILEDARRAY_TILE_H__INCLUDED
 
 #include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/tile_interface/cast.h>
 #include <memory>
 
 // Forward declaration of MADNESS archive type traits
@@ -1103,7 +1104,19 @@ namespace TiledArray {
     return os;
   }
 
-  /** @}*/
+/// implement conversions from Tile<T> to TiledArray::Tensor<T::value_type,Allocator>
+template<typename Allocator, typename T>
+struct Cast<TiledArray::Tensor<typename T::value_type, Allocator>,
+            Tile<T>,
+            detail::void_t<decltype(std::declval<TiledArray::Cast<TiledArray::Tensor<typename T::value_type, Allocator>,
+                                                                  T>>()(std::declval<const T &>()))>> {
+  TiledArray::Tensor<typename T::value_type,
+                     Allocator> operator()(const Tile<T> &arg) const {
+    return arg.tensor();
+  }
+};
+
+/** @}*/
 
 }  // namespace TiledArray
 

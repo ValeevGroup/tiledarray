@@ -31,7 +31,7 @@
 
 namespace TiledArray {
 
-  template <typename, typename> class Cast;
+  template <typename Result, typename Arg, typename Enabler = void> class Cast;
 
   namespace tile_interface {
 
@@ -160,8 +160,8 @@ namespace TiledArray {
   /// this class for arbitrary tile type conversion operations.
   /// \tparam Result The output tile type
   /// \tparam Arg The input tile type
-  template <typename Result, typename Arg>
-  class Cast : public TiledArray::tile_interface::Cast<Result, Arg> { };
+  template <typename Result, typename Arg, typename Enabler>
+  class Cast : public TiledArray::tile_interface::Cast<Result, Arg, Enabler> { };
 
   /// Invokes TiledArray::Cast to cast/convert the argument to type Result.
   /// The operation may be nonblocking, if needed. The cast may involve zero, one,
