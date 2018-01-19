@@ -104,7 +104,8 @@ namespace TiledArray {
     template <typename Arg,
       typename = typename std::enable_if<
         not detail::is_same_or_derived<Tile_,Arg>::value &&
-        not std::is_convertible<Arg,Tile_>::value
+        not std::is_convertible<Arg,Tile_>::value &&
+        not TiledArray::detail::is_explicitly_convertible<Arg,Tile_>::value
       >::type
     >
     explicit Tile(Arg&& arg) :
