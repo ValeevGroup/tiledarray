@@ -29,6 +29,7 @@
 #include <TiledArray/array_impl.h>
 #include <TiledArray/conversions/truncate.h>
 #include <TiledArray/conversions/clone.h>
+#include <TiledArray/tile_interface/cast.h>
 
 namespace TiledArray {
 
@@ -201,6 +202,18 @@ namespace TiledArray {
       pimpl_(init(world, trange, shape, pmap))
     { }
 
+    /// converting copy constructor
+
+    /// This constructor uses the meta data of `other` to initialize the meta
+    /// data of the new array. In addition, the tiles of the new array are also
+    /// initialized using TiledArray::Cast<Tile,OtherTile>
+    /// \param other The array to be copied
+    template <typename OtherTile, typename = std::enable_if_t<not std::is_same<DistArray_,DistArray<OtherTile,Policy>>::value>>
+    explicit DistArray(const DistArray<OtherTile,Policy>& other) :
+        pimpl_()
+    {
+      *this = foreach<Tile,OtherTile>(other, [](Tile& result, const OtherTile& source) { result = TiledArray::Cast<Tile,OtherTile>{}(source); });
+    }
 
     /// Unary transform constructor
 
@@ -213,7 +226,7 @@ namespace TiledArray {
     DistArray(const DistArray<OtherTile,Policy>& other, Op&& op) :
       pimpl_()
     {
-      *this = foreach<Tile,OtherTile,Op>(other, op);
+      *this = foreach<Tile,OtherTile,Op>(other, std::forward<Op>(op));
     }
 
     /// Destructor
