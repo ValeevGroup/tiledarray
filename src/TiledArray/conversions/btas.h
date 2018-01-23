@@ -29,18 +29,17 @@ namespace TiledArray {
 
   /// Copy a block of a btas::Tensor into a TiledArray::Tensor
 
-  /// A block of btas::Tensor \c src will be copied into TiledArray::Tensor \c dest. The block
-  /// dimensions will be determined by the dimensions of the tensor's range.
+  /// A block of btas::Tensor \c src will be copied into TiledArray::Tensor \c dst. The block
+  /// dimensions will be determined by the dimensions of the range of \c dst .
   /// \tparam T The tensor element type
-  /// \tparam Range The range type of the source btas::Tensor object
-  /// \tparam Storage The storage type of the source btas::Tensor object
-  /// \tparam Allocator The allocator type for the destination TA::Tensor object
+  /// \tparam Range_ The range type of the source btas::Tensor object
+  /// \tparam Storage_ The storage type of the source btas::Tensor object
+  /// \tparam Allocator_ The allocator type of the destination TA::Tensor object
   /// \param[in] src The source object; its subblock defined by the {lower,upper} bounds \c {dst.lobound(),dst.upbound()} will be copied to \c dst
   /// \param[out] dst The object that will contain the contents of the corresponding subblock of src
   /// \throw TiledArray::Exception When the dimensions of \c src and \c dst do not match.
-  template <typename T, typename Range_, typename Storage, typename Allocator>
-  inline void btas_subtensor_to_tensor(const btas::Tensor<T,Range_,Storage>& src, Tensor<T, Allocator>& dst) {
-    typedef typename Tensor<T, Allocator>::size_type size_type;
+  template <typename T, typename Range_, typename Storage_, typename Allocator_>
+  inline void btas_subtensor_to_tensor(const btas::Tensor<T,Range_,Storage_>& src, Tensor<T, Allocator_>& dst) {
     TA_ASSERT(dst.range().rank() == src.range().rank());
 
     const auto& src_range = src.range();
@@ -49,8 +48,31 @@ namespace TiledArray {
     using std::data;
     auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
 
-    // Copy tensor subblock
     dst = src_view;
+  }
+
+  /// Copy a block of a btas::Tensor into a TiledArray::Tensor
+
+  /// TiledArray::Tensor \c src will be copied into a block of btas::Tensor \c dst. The block
+  /// dimensions will be determined by the dimensions of the range of \c src .
+  /// \tparam T The tensor element type
+  /// \tparam Allocator_ The allocator type of the source TA::Tensor object
+  /// \tparam Range_ The range type of the destination btas::Tensor object
+  /// \tparam Storage_ The storage type of the destination btas::Tensor object
+  /// \param[in] src The source object whose contents will be copied into a subblock of \c dst
+  /// \param[out] dst The destination object; its subblock defined by the {lower,upper} bounds \c {src.lobound(),src.upbound()} will be overwritten with the content of \c src
+  /// \throw TiledArray::Exception When the dimensions of \c src and \c dst do not match.
+  template <typename T, typename Allocator_, typename Range_, typename Storage_>
+  inline void btas_subtensor_from_tensor(const Tensor<T, Allocator_>& src, btas::Tensor<T,Range_,Storage_>& dst) {
+    TA_ASSERT(dst.range().rank() == src.range().rank());
+
+    const auto& src_range = src.range();
+    const auto& dst_range = dst.range();
+    auto dst_blk_range = TA::BlockRange(detail::make_ta_range(dst_range), src_range.lobound(), src_range.upbound());
+    using std::data;
+    auto dst_view = TiledArray::make_map(data(dst), dst_blk_range);
+
+    dst_view = src;
   }
 
 }  // namespace TiledArray

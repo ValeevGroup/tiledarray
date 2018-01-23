@@ -235,14 +235,28 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(contract, Array, array_types) {
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(from_btas_subtensor, bTensor, tensor_types) {
   using range_type = typename bTensor::range_type;
-  bTensor src = make_rand_tile<bTensor>(range_type({3,3}));
+  bTensor src = make_rand_tile<bTensor>(range_type({4,5}));
 
-  Tensor<double> dst(TA::Range({1,1}, {3,3}));
+  Tensor<double> dst(TA::Range({1,1}, {3,4}));
   BOOST_REQUIRE_NO_THROW(btas_subtensor_to_tensor(src, dst));
 
 //  btas_subtensor_to_tensor(src, dst);
 
   for(const auto& i: dst.range()) {
+    BOOST_CHECK_EQUAL(src(i), dst(i));
+  }
+
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(to_btas_subtensor, bTensor, tensor_types) {
+  Tensor<double> src = make_rand_tile<Tensor<double>>(TA::Range({1,1}, {3,3}));
+
+  using range_type = typename bTensor::range_type;
+  bTensor dst(range_type({4,5}), 0.0);
+
+  BOOST_REQUIRE_NO_THROW(btas_subtensor_from_tensor(src, dst));
+
+  for(const auto& i: src.range()) {
     BOOST_CHECK_EQUAL(src(i), dst(i));
   }
 
