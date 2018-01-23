@@ -254,12 +254,53 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(to_btas_subtensor, bTensor, tensor_types) {
   using range_type = typename bTensor::range_type;
   bTensor dst(range_type({4,5}), 0.0);
 
-  BOOST_REQUIRE_NO_THROW(btas_subtensor_from_tensor(src, dst));
+  BOOST_REQUIRE_NO_THROW(tensor_to_btas_subtensor(src, dst));
 
   for(const auto& i: src.range()) {
     BOOST_CHECK_EQUAL(src(i), dst(i));
   }
 
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(array_conversion, bTensor, tensor_types) {
+  // make random btas::Tensor on World rank 0, and replicate
+  const auto root = 0;
+  bTensor src;
+  if (GlobalFixture::world->rank() == root)
+    src = make_rand_tile<bTensor>(typename bTensor::range_type({20,22,24}));
+  if (GlobalFixture::world->size() != 0)
+    GlobalFixture::world->gop.broadcast_serializable(src, root);
+
+  // make tiled range
+  using trange1_t = TA::TiledRange1;
+  TA::TiledRange trange({trange1_t(0,10,20), trange1_t(0,11,22), trange1_t(0,12,24)});
+
+  // convert to a replicated DistArray
+  using T = typename bTensor::value_type;
+  TA::TArray<T> dst;
+  const auto replicated = true;
+  BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TA::TArray<T>>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
+  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TA::TArray<T>>(*GlobalFixture::world, trange, src, replicated));
+
+  // check the array contents
+  for(const auto& t: dst) {
+    const auto& tile = t.get();
+    const auto& tile_range = tile.range();
+    auto src_blk_range = TA::BlockRange(trange.elements_range(), tile_range.lobound(), tile_range.upbound());
+    using std::data;
+    auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
+
+    for(const auto& i: tile_range) {
+      BOOST_CHECK_EQUAL(src_view(i), tile(i));
+    }
+  }
+
+  // convert to the replicated DistArray back to a btas::Tensor
+  btas::Tensor<T> src_copy;
+  BOOST_REQUIRE_NO_THROW(src_copy = array_to_btas_tensor(dst));
+  for(const auto& i: src.range()) {
+    BOOST_CHECK_EQUAL(src(i), src_copy(i));
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
