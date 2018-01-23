@@ -38,7 +38,17 @@ namespace detail {
 
 inline const TA::Range& make_ta_range(const TA::Range& range) { return range; }
 
-template <CBLAS_ORDER Order, typename ... Args> inline TA::Range make_ta_range(const btas::RangeNd<Order, Args...>& range) { return TA::Range(range.lobound(), range.upbound()); }
+/// makes TiledArray::Range from a btas::RangeNd
+
+/// \param[in] range a btas::RangeNd object
+/// \throw TiledArray::Exception if \c range is non-row-major
+template <CBLAS_ORDER Order, typename ... Args>
+inline TA::Range make_ta_range(const btas::RangeNd<Order, Args...>& range) {
+  TA_USER_ASSERT(Order == CblasRowMajor,
+                 "TiledArray::detail::make_ta_range(btas::RangeNd<Order,...>): not supported for col-major Order");
+  return TA::Range(range.lobound(), range.upbound());
+}
+
 }  // namespace detail
 }  // namespace TiledArray
 
