@@ -35,6 +35,9 @@ namespace TiledArray {
 
   namespace tile_interface {
 
+    template <typename Result, typename Arg, typename Enabler>
+    class Cast;
+
     /// Internal cast (aka conversion) implementation
 
     /// This class is used to define internal tile cast operations. Users may
@@ -44,8 +47,12 @@ namespace TiledArray {
     /// \tparam Enabler Enabler type used to select (partial) specializations
     /// \note the base implementation is invoked when Arg is a lazy tile (see TiledArray::is_lazy_tile)
     ///       that evaluates to Result.
-    template <typename Result, typename Arg, typename Enabler = void>
-    class Cast {
+    template <typename Result, typename Arg>
+    class Cast<Result, Arg,
+        std::enable_if_t<detail::has_conversion_operator<
+            Arg, madness::Future<Result>>::value ||
+            detail::is_convertible<Arg, Result>::value>
+    > {
 
      public:
 
