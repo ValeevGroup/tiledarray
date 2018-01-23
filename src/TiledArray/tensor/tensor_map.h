@@ -39,13 +39,13 @@ namespace TiledArray {
 
   }  // namespace detail
 
-  template <typename T>
+  template <typename T, typename Range_ = Range>
   using TensorMap =
-      detail::TensorInterface<T, Range>;
+      detail::TensorInterface<T, Range_>;
 
-  template <typename T>
+  template <typename T, typename Range_ = Range>
   using TensorConstMap =
-      detail::TensorInterface<typename std::add_const<T>::type, Range>;
+      detail::TensorInterface<typename std::add_const<T>::type, Range_>;
 
   template <typename T, typename Index>
   inline TensorMap<T> make_map(T* const data, const Index& lower_bound,
@@ -58,9 +58,9 @@ namespace TiledArray {
       const std::initializer_list<std::size_t>& upper_bound)
   { return TensorMap<T>(Range(lower_bound, upper_bound), data); }
 
-  template <typename T>
-  inline TensorMap<T> make_map(T* const data, const Range& range)
-  { return TensorMap<T>(range, data); }
+  template <typename T, typename Range_>
+  inline TensorMap<T, std::decay_t<Range_>> make_map(T* const data, Range_ && range)
+  { return TensorMap<T, std::decay_t<Range_>>(std::forward<Range_>(range), data); }
 
   template <typename T, typename Index>
   inline TensorConstMap<T> make_map(const T* const data, const Index& lower_bound,
@@ -74,9 +74,9 @@ namespace TiledArray {
       const std::initializer_list<std::size_t>& upper_bound)
   { return TensorConstMap<T>(Range(lower_bound, upper_bound), data); }
 
-  template <typename T>
-  inline TensorConstMap<T> make_map(const T* const data, const Range& range)
-  { return TensorConstMap<T>(range, data); }
+  template <typename T, typename Range_>
+  inline TensorConstMap<T, std::decay_t<Range_>> make_map(const T* const data, Range_ && range)
+  { return TensorConstMap<T, std::decay_t<Range_>>(std::forward<Range_>(range), data); }
 
 
   template <typename T, typename Index>
@@ -107,9 +107,9 @@ namespace TiledArray {
       const std::initializer_list<std::size_t>& upper_bound)
   { return TensorConstMap<T>(Range(lower_bound, upper_bound), const_cast<const T*>(data)); }
 
-  template <typename T>
-  inline TensorConstMap<T> make_const_map(T* const data, const Range& range)
-  { return TensorConstMap<T>(range, const_cast<const T*>(data)); }
+  template <typename T, typename Range_>
+  inline TensorConstMap<T, std::decay_t<Range_>> make_const_map(T* const data, Range_ && range)
+  { return TensorConstMap<T, std::decay_t<Range_>>(std::forward<Range_>(range), const_cast<const T*>(data)); }
 
   /// For reusing map without allocating new ranges . . . maybe. 
   template <typename T, typename Index>
