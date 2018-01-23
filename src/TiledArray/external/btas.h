@@ -33,6 +33,32 @@
 #include <madness/world/archive.h>
 
 namespace TiledArray {
+namespace detail {
+// these convert any range into TA::Range
+
+inline const TA::Range& make_ta_range(const TA::Range& range) { return range; }
+
+template <CBLAS_ORDER Order, typename ... Args> inline TA::Range make_ta_range(const btas::RangeNd<Order, Args...>& range) { return TA::Range(range.lobound(), range.upbound()); }
+}  // namespace detail
+}  // namespace TiledArray
+
+namespace btas {
+
+template <typename ... Args>
+bool operator==(const TA::Range& range1, const btas::BaseRangeNd<Args...>& range2) {
+  const auto rank = range1.rank();
+  if (rank == range2.rank()) {
+    auto range1_lobound_data = range1.lobound_data();
+    using std::cbegin;
+    const auto lobound_match = std::equal(range1_lobound_data, range1_lobound_data + rank, cbegin(range2.lobound()));
+    if (lobound_match) {
+      auto range1_upbound_data = range1.upbound_data();
+      return std::equal(range1_upbound_data, range1_upbound_data + rank, cbegin(range2.upbound()));
+    }
+  }
+  return false;
+}
+
 /// Computes the result of applying permutation \c perm to \c arg
 template<typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> permute(
@@ -95,11 +121,11 @@ btas::Tensor<T, Range, Storage> gemm(
 
   // Check that the inner dimensions of left and right match
   TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
-                                            std::cbegin(right.range().lobound())));
+                                             std::cbegin(right.range().lobound())));
   TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
-                                            std::cbegin(right.range().upbound())));
+                                             std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().extent()),
-                                            std::cbegin(right.range().extent())));
+                                             std::cbegin(right.range().extent())));
 
   // Compute gemm dimensions
   integer m = 1, n = 1, k = 1;
@@ -133,28 +159,28 @@ void gemm(btas::Tensor<T, Range, Storage>& result,
   // Check that the outer dimensions of left match the the corresponding
   // dimensions in result
   TA_ASSERT(gemm_helper.left_result_congruent(std::cbegin(left.range().lobound()),
-                                             std::cbegin(result.range().lobound())));
+                                              std::cbegin(result.range().lobound())));
   TA_ASSERT(gemm_helper.left_result_congruent(std::cbegin(left.range().upbound()),
-                                             std::cbegin(result.range().upbound())));
+                                              std::cbegin(result.range().upbound())));
   TA_ASSERT(gemm_helper.left_result_congruent(std::cbegin(left.range().extent()),
-                                             std::cbegin(result.range().extent())));
+                                              std::cbegin(result.range().extent())));
 
   // Check that the outer dimensions of right match the the corresponding
   // dimensions in result
   TA_ASSERT(gemm_helper.right_result_congruent(std::cbegin(right.range().lobound()),
-                                              std::cbegin(result.range().lobound())));
+                                               std::cbegin(result.range().lobound())));
   TA_ASSERT(gemm_helper.right_result_congruent(std::cbegin(right.range().upbound()),
-                                              std::cbegin(result.range().upbound())));
+                                               std::cbegin(result.range().upbound())));
   TA_ASSERT(gemm_helper.right_result_congruent(std::cbegin(right.range().extent()),
-                                              std::cbegin(result.range().extent())));
+                                               std::cbegin(result.range().extent())));
 
   // Check that the inner dimensions of left and right match
   TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
-                                            std::cbegin(right.range().lobound())));
+                                             std::cbegin(right.range().lobound())));
   TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
-                                            std::cbegin(right.range().upbound())));
+                                             std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().extent()),
-                                            std::cbegin(right.range().extent())));
+                                             std::cbegin(right.range().extent())));
 
   // Compute gemm dimensions
   integer m, n, k;
@@ -168,12 +194,6 @@ void gemm(btas::Tensor<T, Range, Storage>& result,
 
   TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
                          left.data(), lda, right.data(), ldb, T(1), result.data(), n);
-}
-
-template<typename Perm>
-TiledArray::Range permute(const TiledArray::Range& r, const Perm& p) {
-  TiledArray::Permutation pp(p.begin(), p.end());
-  return pp * r;
 }
 
 //
@@ -214,6 +234,15 @@ abs_max(const btas::Tensor<T, Range, Storage>& arg);
 template<typename T, typename Range, typename Storage>
 typename btas::Tensor<T, Range, Storage>::value_type
 abs_min(const btas::Tensor<T, Range, Storage>& arg);
+}  // namespace btas
+
+namespace TiledArray {
+template<typename Perm>
+TiledArray::Range permute(const TiledArray::Range& r, const Perm& p) {
+  TiledArray::Permutation pp(p.begin(), p.end());
+  return pp * r;
+}
+
 }  // namespace TiledArray
 
 namespace TiledArray {
@@ -228,12 +257,12 @@ struct is_contiguous_tensor_helper<btas::Tensor<T, Args...> > : public std::true
 }
 }
 
-/// implement conversions from btas::Tensor to TA::Tensor
 namespace TiledArray {
-  template <typename T, typename Allocator, typename ... Args>
-  struct Cast<TiledArray::Tensor<T, Allocator>, btas::Tensor<T, Args...>> {
-    auto operator()(const btas::Tensor<T, Args...>& arg) const {
-      TiledArray::Tensor<T> result(arg.range());
+  /// \brief converts a btas::Tensor to a TA::Tensor
+  template <typename T, typename Allocator, typename Range_, typename Storage>
+  struct Cast<TiledArray::Tensor<T, Allocator>, btas::Tensor<T, Range_, Storage>> {
+    auto operator()(const btas::Tensor<T, Range_, Storage>& arg) const {
+      TiledArray::Tensor<T> result(detail::make_ta_range(arg.range()));
       std::copy(btas::cbegin(arg), btas::cend(arg), begin(result));
       return result;
     }

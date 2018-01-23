@@ -28,31 +28,52 @@
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include <TiledArray/external/btas.h>
+#include <TiledArray/conversions/btas.h>
 
 using namespace TiledArray;
 
-// test both bare (deep-copy) BTAS tensor as well as its shallow-copy wrap in Tile<>
+// test both bare (deep-copy) BTAS tensor as well as its shallow-copy wrap in Tile<>,
+// using both btas::RangeNd<> and TA::Range as the range type
 typedef boost::mpl::list<
 DistArray<Tile<btas::Tensor<double, TA::Range, btas::varray<double>>>, DensePolicy>,
-DistArray<     btas::Tensor<double, TA::Range, btas::varray<double>> , DensePolicy>
+DistArray<     btas::Tensor<double, TA::Range, btas::varray<double>> , DensePolicy>,
+DistArray<Tile<btas::Tensor<double>>                                 , DensePolicy>,
+DistArray<     btas::Tensor<double>                                  , DensePolicy>
 > array_types;
+
+typedef boost::mpl::list<
+btas::Tensor<double, TA::Range, btas::varray<double>>,
+btas::Tensor<double>
+> tensor_types;
 
 struct BTASFixture : public TiledRangeFixture {
 
   BTASFixture() :
-      a(*GlobalFixture::world, trange2),
-      b(*GlobalFixture::world, trange3),
-      c(*GlobalFixture::world, trange4),
-      d(*GlobalFixture::world, trange2),
-      e(*GlobalFixture::world, trange3),
-      f(*GlobalFixture::world, trange4)
+      a0(*GlobalFixture::world, trange2),
+      b0(*GlobalFixture::world, trange3),
+      c0(*GlobalFixture::world, trange4),
+      a1(*GlobalFixture::world, trange2),
+      b1(*GlobalFixture::world, trange3),
+      c1(*GlobalFixture::world, trange4),
+      a2(*GlobalFixture::world, trange2),
+      b2(*GlobalFixture::world, trange3),
+      c2(*GlobalFixture::world, trange4),
+      a3(*GlobalFixture::world, trange2),
+      b3(*GlobalFixture::world, trange3),
+      c3(*GlobalFixture::world, trange4)
   {
-    random_fill(a);
-    random_fill(b);
-    random_fill(c);
-    random_fill(d);
-    random_fill(e);
-    random_fill(f);
+    random_fill(a0);
+    random_fill(b0);
+    random_fill(c0);
+    random_fill(a1);
+    random_fill(b1);
+    random_fill(c1);
+    random_fill(a2);
+    random_fill(b2);
+    random_fill(c2);
+    random_fill(a3);
+    random_fill(b3);
+    random_fill(c3);
     GlobalFixture::world->gop.fence();
   }
 
@@ -106,9 +127,13 @@ struct BTASFixture : public TiledRangeFixture {
   const static TiledRange trange4;
 
   using TArrayDSB = DistArray<Tile<btas::Tensor<double, TA::Range, btas::varray<double>>>, DensePolicy>;
-  TArrayDSB a, b, c;
+  TArrayDSB a0, b0, c0;
   using TArrayDB = DistArray<btas::Tensor<double, TA::Range, btas::varray<double>>, DensePolicy>;
-  TArrayDB d, e, f;
+  TArrayDB a1, b1, c1;
+  using TArrayDSB0 = DistArray<Tile<btas::Tensor<double>>, DensePolicy>;
+  TArrayDSB0 a2, b2, c2;
+  using TArrayDB0 = DistArray<btas::Tensor<double>, DensePolicy>;
+  TArrayDB0 a3, b3, c3;
 
   template <typename Array>
   Array& array(size_t idx);
@@ -132,11 +157,11 @@ template<>
 BTASFixture::TArrayDSB&
 BTASFixture::array<BTASFixture::TArrayDSB>(size_t idx) {
   if (idx == 0)
-    return a;
+    return a0;
   else if (idx == 1)
-    return b;
+    return b0;
   else if (idx == 2)
-    return c;
+    return c0;
   else
     throw std::range_error("idx out of range");
 }
@@ -145,11 +170,37 @@ template<>
 BTASFixture::TArrayDB&
 BTASFixture::array<BTASFixture::TArrayDB>(size_t idx) {
   if (idx == 0)
-    return d;
+    return a1;
   else if (idx == 1)
-    return e;
+    return b1;
   else if (idx == 2)
-    return f;
+    return c1;
+  else
+    throw std::range_error("idx out of range");
+}
+
+template<>
+BTASFixture::TArrayDSB0&
+BTASFixture::array<BTASFixture::TArrayDSB0>(size_t idx) {
+  if (idx == 0)
+    return a2;
+  else if (idx == 1)
+    return b2;
+  else if (idx == 2)
+    return c2;
+  else
+    throw std::range_error("idx out of range");
+}
+
+template<>
+BTASFixture::TArrayDB0&
+BTASFixture::array<BTASFixture::TArrayDB0>(size_t idx) {
+  if (idx == 0)
+    return a3;
+  else if (idx == 1)
+    return b3;
+  else if (idx == 2)
+    return c3;
   else
     throw std::range_error("idx out of range");
 }
@@ -180,6 +231,21 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(contract, Array, array_types) {
   c_ref("j,k,l") = a_copy("i,j") * b_copy("i,k,l");
 
   BOOST_CHECK(std::sqrt((c_copy("i,j,k") - c_ref("i,j,k")).squared_norm().get()) < 1e-10);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(from_btas_subtensor, bTensor, tensor_types) {
+  using range_type = typename bTensor::range_type;
+  bTensor src = make_rand_tile<bTensor>(range_type({3,3}));
+
+  Tensor<double> dst(TA::Range({1,1}, {3,3}));
+  BOOST_REQUIRE_NO_THROW(btas_subtensor_to_tensor(src, dst));
+
+//  btas_subtensor_to_tensor(src, dst);
+
+  for(const auto& i: dst.range()) {
+    BOOST_CHECK_EQUAL(src(i), dst(i));
+  }
+
 }
 
 BOOST_AUTO_TEST_SUITE_END()

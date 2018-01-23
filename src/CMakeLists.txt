@@ -60,6 +60,7 @@ TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h
 TiledArray/algebra/utils.h
+TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
 TiledArray/conversions/eigen.h
