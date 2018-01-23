@@ -103,7 +103,7 @@ namespace TiledArray {
       ///   (default = 1).
       /// \param mf This real number in [0,1] is used to dampen the DIIS
       ///   extrapolation by mixing the input data with the output data for each
-      ///   iteration (default = 0.0), which performs no mixing. The approach
+      ///   iteration (default = 0.0, which performs no mixing). The approach
       ///   described in Kerker, Phys. Rev. B, 23, p3082, 1981.
       DIIS(unsigned int strt=1,
            unsigned int ndi=5,
@@ -114,7 +114,7 @@ namespace TiledArray {
              error_(0), errorset_(false),
              start(strt), ndiis(ndi),
              iter(0), ngroup(ngr),
-             ngroupdiis(ngr),
+             ngroupdiis(ngrdiis),
              damping_factor(dmp),
              mixing_fraction(mf)
            {
