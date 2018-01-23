@@ -1110,9 +1110,9 @@ struct Cast<TiledArray::Tensor<typename T::value_type, Allocator>,
             Tile<T>,
             detail::void_t<decltype(std::declval<TiledArray::Cast<TiledArray::Tensor<typename T::value_type, Allocator>,
                                                                   T>>()(std::declval<const T &>()))>> {
-  TiledArray::Tensor<typename T::value_type,
-                     Allocator> operator()(const Tile<T> &arg) const {
-    return arg.tensor();
+  auto operator()(const Tile<T> &arg) const {
+    return TiledArray::Cast<TiledArray::Tensor<typename T::value_type, Allocator>,
+                            T>{}(arg.tensor());
   }
 };
 
