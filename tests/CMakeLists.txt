@@ -29,8 +29,8 @@ CONFIGURE_FILE(
 
 # Create the ta_test executable
 set(executable ta_test)
-# NOTE: The order of files here represent the order that tests are run and
-# dependencies.
+# N.B.: The order of files here represents the order in which the tests are run.
+# N.B. 2: if you want to trim this down you may need to resolve linker errors due to missing fixture deps manually
 set(ta_test_src_files  ta_test.cpp
     btas.cpp
     meta.cpp
