@@ -280,7 +280,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(array_conversion, bTensor, tensor_types) {
   TA::TArray<T> dst;
   const auto replicated = true;
 #if !defined(TA_USER_ASSERT_DISABLED)
-  BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TA::TArray<T>>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
+  if (*GlobalFixture::world->size() > 1)
+    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TA::TArray<T>>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
 #endif
   BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TA::TArray<T>>(*GlobalFixture::world, trange, src, replicated));
 
