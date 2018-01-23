@@ -272,7 +272,7 @@ namespace TiledArray {
   template <typename T, typename Allocator, typename Range_, typename Storage>
   struct Cast<TiledArray::Tensor<T, Allocator>, btas::Tensor<T, Range_, Storage>> {
     auto operator()(const btas::Tensor<T, Range_, Storage>& arg) const {
-      TiledArray::Tensor<T> result(detail::make_ta_range(arg.range()));
+      TiledArray::Tensor<T, Allocator> result(detail::make_ta_range(arg.range()));
       using std::begin;
       std::copy(btas::cbegin(arg), btas::cend(arg), begin(result));
       return result;
