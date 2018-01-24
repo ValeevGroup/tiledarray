@@ -166,3 +166,34 @@ extern template
 class cpu_cuda_vector<double>;
 extern template
 class cpu_cuda_vector<float>;
+
+namespace madness {
+namespace archive {
+
+// forward decls
+template<class Archive, typename T> struct ArchiveLoadImpl;
+template<class Archive, typename T> struct ArchiveStoreImpl;
+
+template<class Archive, typename T>
+struct ArchiveLoadImpl<Archive, cpu_cuda_vector<T> > {
+  static inline void load(const Archive& ar, cpu_cuda_vector<T>& x) {
+    typename cpu_cuda_vector<T>::size_type n;
+    ar & n;
+    x.resize(n);
+    for (auto& xi : x)
+      ar & xi;
+  }
+};
+
+template<class Archive, typename T>
+struct ArchiveStoreImpl<Archive, cpu_cuda_vector<T> > {
+  static inline void store(const Archive& ar, const cpu_cuda_vector<T>& x) {
+    ar & x.size();
+    for (const auto& xi : x)
+      ar & xi;
+  }
+};
+
+}
+}
+

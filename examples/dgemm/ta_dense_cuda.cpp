@@ -237,11 +237,9 @@ void add_to(btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& re
 namespace TiledArray {
 
 // foreach(i) result += arg[i] * arg[i]
-template <>
 btas::Tensor<double, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
              cpu_cuda_vector<double>>::value_type
-squared_norm<double, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-             cpu_cuda_vector<double>>(
+squared_norm(
     const btas::Tensor<double,
                        btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
                        cpu_cuda_vector<double>>& arg) {
@@ -259,11 +257,9 @@ squared_norm<double, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
   return result;
 }
 // foreach(i) result += arg[i] * arg[i]
-template <>
 btas::Tensor<float, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
              cpu_cuda_vector<float>>::value_type
-squared_norm<float, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-             cpu_cuda_vector<float>>(
+squared_norm(
     const btas::Tensor<float,
                        btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
                        cpu_cuda_vector<float>>& arg) {
@@ -353,7 +349,7 @@ int try_main(int argc, char** argv) {
     cuda_streams.resize(num_cuda_streams);
     for(auto& stream: cuda_streams) {
       auto error = cudaStreamCreate(&stream);
-      assert(error == CUBLAS_STATUS_SUCCESS);
+      assert(error == cudaSuccess);
     }
   }
 
@@ -424,17 +420,17 @@ int try_main(int argc, char** argv) {
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
   // Construct and initialize arrays
-  CUDAMatrixD a(world, trange_a);
-  CUDAMatrixD b(world, trange_b);
-  CUDAMatrixD c(world, trange_c);
+  CUDAMatrix a(world, trange_a);
+  CUDAMatrix b(world, trange_b);
+  CUDAMatrix c(world, trange_c);
   a.fill(1.0);
   b.fill(1.0);
   cudaDeviceSynchronize();
 
-  auto to_device = [](TA::Tile<DenseMatrix_>& tile) -> void {
+  auto to_device = [](TA::Tile<CUDATile>& tile) -> void {
     tile.tensor().storage().to_device();
   };
-  auto to_host = [](TA::Tile<DenseMatrix_>& tile) -> void {
+  auto to_host = [](TA::Tile<CUDATile>& tile) -> void {
     tile.tensor().storage().to_host();
   };
   foreach_inplace(a, to_device);
@@ -467,7 +463,7 @@ int try_main(int argc, char** argv) {
   {
     for(int s=0; s!=num_cuda_streams; ++s) {
       auto error = cudaStreamDestroy(cuda_streams[s]);
-      assert(error == CUBLAS_STATUS_SUCCESS);
+      assert(error == cudaSuccess);
     }
   }
 
