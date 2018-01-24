@@ -37,9 +37,10 @@ foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform
 endforeach()
 
 if(ENABLE_ELEMENTAL)
-    # Add the ta_elem_dense executable
-    add_executable(ta_elem_dense EXCLUDE_FROM_ALL ta_elem_dense.cpp)
-    target_link_libraries(ta_elem_dense PRIVATE tiledarray)
-    add_dependencies(ta_elem_dense External)
-    add_dependencies(example ta_elem_dense)
+    # Add the ta_dense_elem executable
+    add_executable(ta_dense_elem EXCLUDE_FROM_ALL ta_dense_elem.cpp)
+    target_link_libraries(ta_dense_elem PRIVATE tiledarray)
+    add_dependencies(ta_dense_elem External)
+    add_dependencies(example ta_dense_elem)
+endif()
 endif()
