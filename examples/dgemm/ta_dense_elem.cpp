@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
 
   // Get command line arguments
   if(argc < 2) {
-    std::cout << "Usage: ta_dense matrix_size block_size [repetitions]\n";
+    std::cout << "Usage: " << argv[0] << " matrix_size block_size [repetitions]\n";
     return 0;
   }
   const long matrix_size = atol(argv[1]);
