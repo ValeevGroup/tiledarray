@@ -24,6 +24,8 @@
 #define TILEDARRAY_MATH_BTAS_H__INCLUDED
 
 #include "TiledArray/config.h"
+#include "TiledArray/tensor/type_traits.h"
+#include "TiledArray/tile_interface/cast.h"
 
 #include <btas/features.h>
 #include <btas/tensor.h>
