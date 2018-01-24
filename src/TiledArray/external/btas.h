@@ -34,19 +34,19 @@
 
 namespace TiledArray {
 namespace detail {
-// these convert any range into TA::Range
+// these convert any range into TiledArray::Range
 
-inline const TA::Range& make_ta_range(const TA::Range& range) { return range; }
+inline const TiledArray::Range& make_ta_range(const TiledArray::Range& range) { return range; }
 
 /// makes TiledArray::Range from a btas::RangeNd
 
 /// \param[in] range a btas::RangeNd object
 /// \throw TiledArray::Exception if \c range is non-row-major
 template <CBLAS_ORDER Order, typename ... Args>
-inline TA::Range make_ta_range(const btas::RangeNd<Order, Args...>& range) {
+inline TiledArray::Range make_ta_range(const btas::RangeNd<Order, Args...>& range) {
   TA_USER_ASSERT(Order == CblasRowMajor,
                  "TiledArray::detail::make_ta_range(btas::RangeNd<Order,...>): not supported for col-major Order");
-  return TA::Range(range.lobound(), range.upbound());
+  return TiledArray::Range(range.lobound(), range.upbound());
 }
 
 }  // namespace detail
@@ -55,7 +55,7 @@ inline TA::Range make_ta_range(const btas::RangeNd<Order, Args...>& range) {
 namespace btas {
 
 template <typename ... Args>
-bool operator==(const TA::Range& range1, const btas::BaseRangeNd<Args...>& range2) {
+bool operator==(const TiledArray::Range& range1, const btas::BaseRangeNd<Args...>& range2) {
   const auto rank = range1.rank();
   if (rank == range2.rank()) {
     auto range1_lobound_data = range1.lobound_data();
@@ -268,7 +268,7 @@ struct is_contiguous_tensor_helper<btas::Tensor<T, Args...> > : public std::true
 }
 
 namespace TiledArray {
-  /// \brief converts a btas::Tensor to a TA::Tensor
+  /// \brief converts a btas::Tensor to a TiledArray::Tensor
   template <typename T, typename Allocator, typename Range_, typename Storage>
   struct Cast<TiledArray::Tensor<T, Allocator>, btas::Tensor<T, Range_, Storage>> {
     auto operator()(const btas::Tensor<T, Range_, Storage>& arg) const {

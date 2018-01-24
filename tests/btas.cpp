@@ -33,16 +33,16 @@
 using namespace TiledArray;
 
 // test both bare (deep-copy) BTAS tensor as well as its shallow-copy wrap in Tile<>,
-// using both btas::RangeNd<> and TA::Range as the range type
+// using both btas::RangeNd<> and TiledArray::Range as the range type
 typedef boost::mpl::list<
-DistArray<Tile<btas::Tensor<double, TA::Range, btas::varray<double>>>, DensePolicy>,
-DistArray<     btas::Tensor<double, TA::Range, btas::varray<double>> , DensePolicy>,
-DistArray<Tile<btas::Tensor<double>>                                 , DensePolicy>,
-DistArray<     btas::Tensor<double>                                  , DensePolicy>
+DistArray<Tile<btas::Tensor<double, TiledArray::Range, btas::varray<double>>>, DensePolicy>,
+DistArray<     btas::Tensor<double, TiledArray::Range, btas::varray<double>> , DensePolicy>,
+DistArray<Tile<btas::Tensor<double>>                                         , DensePolicy>,
+DistArray<     btas::Tensor<double>                                          , DensePolicy>
 > array_types;
 
 typedef boost::mpl::list<
-btas::Tensor<double, TA::Range, btas::varray<double>>,
+btas::Tensor<double, TiledArray::Range, btas::varray<double>>,
 btas::Tensor<double>
 > tensor_types;
 
@@ -126,9 +126,9 @@ struct BTASFixture : public TiledRangeFixture {
   const static TiledRange trange3;
   const static TiledRange trange4;
 
-  using TArrayDSB = DistArray<Tile<btas::Tensor<double, TA::Range, btas::varray<double>>>, DensePolicy>;
+  using TArrayDSB = DistArray<Tile<btas::Tensor<double, TiledArray::Range, btas::varray<double>>>, DensePolicy>;
   TArrayDSB a0, b0, c0;
-  using TArrayDB = DistArray<btas::Tensor<double, TA::Range, btas::varray<double>>, DensePolicy>;
+  using TArrayDB = DistArray<btas::Tensor<double, TiledArray::Range, btas::varray<double>>, DensePolicy>;
   TArrayDB a1, b1, c1;
   using TArrayDSB0 = DistArray<Tile<btas::Tensor<double>>, DensePolicy>;
   TArrayDSB0 a2, b2, c2;
@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(from_btas_subtensor, bTensor, tensor_types) {
   using range_type = typename bTensor::range_type;
   bTensor src = make_rand_tile<bTensor>(range_type({4,5}));
 
-  Tensor<double> dst(TA::Range({1,1}, {3,4}));
+  Tensor<double> dst(TiledArray::Range({1,1}, {3,4}));
   BOOST_REQUIRE_NO_THROW(btas_subtensor_to_tensor(src, dst));
 
 //  btas_subtensor_to_tensor(src, dst);
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(from_btas_subtensor, bTensor, tensor_types) {
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(to_btas_subtensor, bTensor, tensor_types) {
-  Tensor<double> src = make_rand_tile<Tensor<double>>(TA::Range({1,1}, {3,3}));
+  Tensor<double> src = make_rand_tile<Tensor<double>>(TiledArray::Range({1,1}, {3,3}));
 
   using range_type = typename bTensor::range_type;
   bTensor dst(range_type({4,5}), 0.0);
@@ -272,24 +272,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(array_conversion, bTensor, tensor_types) {
     GlobalFixture::world->gop.broadcast_serializable(src, root);
 
   // make tiled range
-  using trange1_t = TA::TiledRange1;
-  TA::TiledRange trange({trange1_t(0,10,20), trange1_t(0,11,22), trange1_t(0,12,24)});
+  using trange1_t = TiledArray::TiledRange1;
+  TiledArray::TiledRange trange({trange1_t(0,10,20), trange1_t(0,11,22), trange1_t(0,12,24)});
 
   // convert to a replicated DistArray
   using T = typename bTensor::value_type;
-  TA::TArray<T> dst;
+  TiledArray::TArray<T> dst;
   const auto replicated = true;
 #if !defined(TA_USER_ASSERT_DISABLED)
   if (GlobalFixture::world->size() > 1)
-    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TA::TArray<T>>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
+    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TiledArray::TArray<T>>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
 #endif
-  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TA::TArray<T>>(*GlobalFixture::world, trange, src, replicated));
+  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TiledArray::TArray<T>>(*GlobalFixture::world, trange, src, replicated));
 
   // check the array contents
   for(const auto& t: dst) {
     const auto& tile = t.get();
     const auto& tile_range = tile.range();
-    auto src_blk_range = TA::BlockRange(trange.elements_range(), tile_range.lobound(), tile_range.upbound());
+    auto src_blk_range = TiledArray::BlockRange(trange.elements_range(), tile_range.lobound(), tile_range.upbound());
     using std::data;
     auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
 

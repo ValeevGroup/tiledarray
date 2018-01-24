@@ -34,7 +34,7 @@ namespace TiledArray {
   /// \tparam T The tensor element type
   /// \tparam Range_ The range type of the source btas::Tensor object
   /// \tparam Storage_ The storage type of the source btas::Tensor object
-  /// \tparam Allocator_ The allocator type of the destination TA::Tensor object
+  /// \tparam Allocator_ The allocator type of the destination TiledArray::Tensor object
   /// \param[in] src The source object; its subblock defined by the {lower,upper} bounds \c {dst.lobound(),dst.upbound()} will be copied to \c dst
   /// \param[out] dst The object that will contain the contents of the corresponding subblock of src
   /// \throw TiledArray::Exception When the dimensions of \c src and \c dst do not match.
@@ -44,7 +44,7 @@ namespace TiledArray {
 
     const auto& src_range = src.range();
     const auto& dst_range = dst.range();
-    auto src_blk_range = TA::BlockRange(detail::make_ta_range(src_range), dst_range.lobound(), dst_range.upbound());
+    auto src_blk_range = TiledArray::BlockRange(detail::make_ta_range(src_range), dst_range.lobound(), dst_range.upbound());
     using std::data;
     auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
 
@@ -56,7 +56,7 @@ namespace TiledArray {
   /// TiledArray::Tensor \c src will be copied into a block of btas::Tensor \c dst. The block
   /// dimensions will be determined by the dimensions of the range of \c src .
   /// \tparam T The tensor element type
-  /// \tparam Allocator_ The allocator type of the source TA::Tensor object
+  /// \tparam Allocator_ The allocator type of the source TiledArray::Tensor object
   /// \tparam Range_ The range type of the destination btas::Tensor object
   /// \tparam Storage_ The storage type of the destination btas::Tensor object
   /// \param[in] src The source object whose contents will be copied into a subblock of \c dst
@@ -68,7 +68,7 @@ namespace TiledArray {
 
     const auto& src_range = src.range();
     const auto& dst_range = dst.range();
-    auto dst_blk_range = TA::BlockRange(detail::make_ta_range(dst_range), src_range.lobound(), src_range.upbound());
+    auto dst_blk_range = TiledArray::BlockRange(detail::make_ta_range(dst_range), src_range.lobound(), src_range.upbound());
     using std::data;
     auto dst_view = TiledArray::make_map(data(dst), dst_blk_range);
 
