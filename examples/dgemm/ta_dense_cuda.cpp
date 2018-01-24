@@ -79,11 +79,11 @@ btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
   Tensor result(std::move(result_range), std::move(result_storage));
 
   // Check that the inner dimensions of left and right match
-  TA_ASSERT(gemm_helper.left_right_coformal(std::cbegin(left.range().lobound()),
+  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
                                             std::cbegin(right.range().lobound())));
-  TA_ASSERT(gemm_helper.left_right_coformal(std::cbegin(left.range().upbound()),
+  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
                                             std::cbegin(right.range().upbound())));
-  TA_ASSERT(gemm_helper.left_right_coformal(std::cbegin(left.range().extent()),
+  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().extent()),
                                             std::cbegin(right.range().extent())));
 
   // Compute gemm dimensions
@@ -140,28 +140,28 @@ void gemm(btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& resu
 
   // Check that the outer dimensions of left match the the corresponding
   // dimensions in result
-  TA_ASSERT(gemm_helper.left_result_coformal(std::cbegin(left.range().lobound()),
+  TA_ASSERT(gemm_helper.left_result_congruent(std::cbegin(left.range().lobound()),
                                              std::cbegin(result.range().lobound())));
-  TA_ASSERT(gemm_helper.left_result_coformal(std::cbegin(left.range().upbound()),
+  TA_ASSERT(gemm_helper.left_result_congruent(std::cbegin(left.range().upbound()),
                                              std::cbegin(result.range().upbound())));
-  TA_ASSERT(gemm_helper.left_result_coformal(std::cbegin(left.range().extent()),
+  TA_ASSERT(gemm_helper.left_result_congruent(std::cbegin(left.range().extent()),
                                              std::cbegin(result.range().extent())));
 
   // Check that the outer dimensions of right match the the corresponding
   // dimensions in result
-  TA_ASSERT(gemm_helper.right_result_coformal(std::cbegin(right.range().lobound()),
+  TA_ASSERT(gemm_helper.right_result_congruent(std::cbegin(right.range().lobound()),
                                               std::cbegin(result.range().lobound())));
-  TA_ASSERT(gemm_helper.right_result_coformal(std::cbegin(right.range().upbound()),
+  TA_ASSERT(gemm_helper.right_result_congruent(std::cbegin(right.range().upbound()),
                                               std::cbegin(result.range().upbound())));
-  TA_ASSERT(gemm_helper.right_result_coformal(std::cbegin(right.range().extent()),
+  TA_ASSERT(gemm_helper.right_result_congruent(std::cbegin(right.range().extent()),
                                               std::cbegin(result.range().extent())));
 
   // Check that the inner dimensions of left and right match
-  TA_ASSERT(gemm_helper.left_right_coformal(std::cbegin(left.range().lobound()),
+  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
                                             std::cbegin(right.range().lobound())));
-  TA_ASSERT(gemm_helper.left_right_coformal(std::cbegin(left.range().upbound()),
+  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
                                             std::cbegin(right.range().upbound())));
-  TA_ASSERT(gemm_helper.left_right_coformal(std::cbegin(left.range().extent()),
+  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().extent()),
                                             std::cbegin(right.range().extent())));
 
   // Compute gemm dimensions
