@@ -203,8 +203,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 # Check type support
 include(CheckTypeSize)
-check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE)
-check_type_size("long long" TILEDARRAY_HAS_LONG_LONG)
+check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE LANGUAGE CXX)
+check_type_size("long long" TILEDARRAY_HAS_LONG_LONG LANGUAGE CXX)
 
 ##########################
 # convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
