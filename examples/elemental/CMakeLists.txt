@@ -24,6 +24,8 @@
 
 # Create example executable
 
+if(ENABLE_ELEMENTAL)
+
 foreach(_exec evd)
 
   # Add executable
@@ -33,3 +35,5 @@ foreach(_exec evd)
   add_dependencies(example ${_exec})
 
 endforeach()
+
+endif(ENABLE_ELEMENTAL)
