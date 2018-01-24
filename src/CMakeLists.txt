@@ -172,6 +172,9 @@ target_include_directories(tiledarray PUBLIC
 if(TARGET build-madness)
   add_dependencies(tiledarray build-madness)
 endif()
+if(TARGET eigen3)
+  add_dependencies(tiledarray eigen3)
+endif()
 # append current CMAKE_CXX_FLAGS
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
 target_compile_options(tiledarray PUBLIC 
