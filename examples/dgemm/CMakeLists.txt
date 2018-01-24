@@ -48,8 +48,8 @@ endif(ENABLE_ELEMENTAL)
 
 if(CUDA_FOUND)
     # Add the ta_dense_cuda executable
-#    cuda_add_executable(ta_dense_cuda EXCLUDE_FROM_ALL ta_dense_cuda.cpp)
-#    target_link_libraries(ta_dense_cuda PRIVATE tiledarray)
-#    add_dependencies(ta_dense_cuda ${CUDA_CUDART_LIBRARY})
-#    add_dependencies(example ta_dense_cuda)
+    cuda_add_executable(ta_dense_cuda EXCLUDE_FROM_ALL ta_dense_cuda.cpp cpu_cuda_vector.h cpu_cuda_vector.cu)
+    target_link_libraries(ta_dense_cuda PRIVATE tiledarray)
+    add_dependencies(ta_dense_cuda ${CUDA_CUDART_LIBRARY})
+    add_dependencies(example ta_dense_cuda)
 endif(CUDA_FOUND)
