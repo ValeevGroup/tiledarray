@@ -157,7 +157,7 @@ TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp)
 
-# Create the TiledArray header-only library
+# Create the TiledArray library
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
 target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
