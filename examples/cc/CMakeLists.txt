@@ -40,10 +40,10 @@ add_dependencies(inputlib External)
 add_executable(ccd EXCLUDE_FROM_ALL ccd.cpp $<TARGET_OBJECTS:inputlib>)
 target_link_libraries(ccd PRIVATE tiledarray)
 add_dependencies(ccd External)
-add_dependencies(example ccd)
+add_dependencies(examples ccd)
 
 # Add the ccsd executable
 add_executable(ccsd EXCLUDE_FROM_ALL ccsd.cpp $<TARGET_OBJECTS:inputlib>)
 target_link_libraries(ccsd PRIVATE tiledarray)
 add_dependencies(ccsd External)
-add_dependencies(example ccsd)
+add_dependencies(examples ccsd)

@@ -22,5 +22,5 @@
 add_executable(demo EXCLUDE_FROM_ALL demo.cpp)
 target_link_libraries(demo PRIVATE tiledarray)
 add_dependencies(demo External)
-add_dependencies(example demo)
+add_dependencies(examples demo)
 

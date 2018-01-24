@@ -22,8 +22,8 @@
 #  Sep 4, 2013
 #
  
-# Create example programs target so all examples programs
-add_custom_target(example)
+# Create target "examples" that builds all example programs
+add_custom_target(examples)
 
 # Add Subdirectories
 add_subdirectory (cc)

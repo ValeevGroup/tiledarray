@@ -80,7 +80,7 @@ export MAD_NUM_THREADS=2
 setarch `uname -m` -R make check
 
 # Build examples
-make -j2 example VERBOSE=1
+make -j2 examples VERBOSE=1
 
 # Elemental-only: build and run evd example
 make evd

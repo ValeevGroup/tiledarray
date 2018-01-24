@@ -32,7 +32,7 @@ foreach(_exec evd)
   add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
   target_link_libraries(${_exec} PRIVATE tiledarray  PUBLIC ${MADNESS_DISABLEPIE_LINKER_FLAG})
   add_dependencies(${_exec} External)
-  add_dependencies(example ${_exec})
+  add_dependencies(examples ${_exec})
 
 endforeach()
 
