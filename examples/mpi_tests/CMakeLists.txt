@@ -25,6 +25,8 @@
 # Create the mpi_bandwidth and mpi_latency executable
 
 if(NOT DISABLE_MPI)
+  enable_language(C)
+    
   # Add the mpi_bandwidth executable
   add_executable(mpi_bandwidth EXCLUDE_FROM_ALL mpi_bandwidth.c)
   target_link_libraries(mpi_bandwidth ${MADNESS_LIBRARIES})
