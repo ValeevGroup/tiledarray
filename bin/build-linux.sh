@@ -79,6 +79,9 @@ make -j2 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
 setarch `uname -m` -R make check
 
+# Build examples
+make -j2 example VERBOSE=1
+
 # Elemental-only: build and run evd example
 make evd
 # must use 1 thread only since Debug El is not reentrant
