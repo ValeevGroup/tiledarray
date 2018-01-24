@@ -55,6 +55,16 @@ std::vector<cudaStream_t> cuda_streams; // pool of streams
 #include <TiledArray/math/blas.h>
 #include <TiledArray/external/btas.h>
 
+cublasOperation_t to_cublas_op(madness::cblas::CBLAS_TRANSPOSE cblas_op) {
+  cublasOperation_t result;
+  switch(cblas_op) {
+    case madness::cblas::NoTrans: result = CUBLAS_OP_N; break;
+    case madness::cblas::Trans: result = CUBLAS_OP_T; break;
+    case madness::cblas::ConjTrans: result = CUBLAS_OP_C; break;
+  }
+  return result;
+}
+
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
 btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
     const btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
@@ -407,10 +417,11 @@ int try_main(int argc, char** argv) {
   TiledArray::TiledRange // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
-  using CUDATileD = btas::Tensor<Real,
+  using Real = float;
+  using CUDATile = btas::Tensor<Real,
                        btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
                        cpu_cuda_vector<Real>>;
-  using CUDAMatrixD = TA::DistArray<TA::Tile<CUDATileD>>;
+  using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
   // Construct and initialize arrays
   CUDAMatrixD a(world, trange_a);
