@@ -68,8 +68,8 @@ int main(int argc, char** argv) {
               << "\nSize of B block   = " << Bk << "x" << Bn
               << "\nSize of C         = " << Nm << "x" << Nn << " (" << double(Nm * Nn * sizeof(double)) / 1.0e9 << " GB)"
               << "\nSize of C block   = " << Bm << "x" << Bn
-              << "\n# of blocks of C  = " << Bm * Bn
-              << "\nAverage # of blocks of C/node = " << double(Bm * Bn) / double(world.size()) << "\n";
+              << "\n# of blocks of C  = " << Tm * Tn
+              << "\nAverage # of blocks of C/node = " << double(Tm * Tn) / double(world.size()) << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking_m;
