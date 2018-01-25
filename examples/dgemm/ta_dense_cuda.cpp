@@ -65,6 +65,32 @@ cublasOperation_t to_cublas_op(madness::cblas::CBLAS_TRANSPOSE cblas_op) {
   return result;
 }
 
+template <typename T> cublasStatus_t cublasGemm(cublasHandle_t handle,
+                                                cublasOperation_t transa,
+                                                cublasOperation_t transb,
+                                                int m, int n, int k,
+                                                const T *alpha,
+                                                const T *A, int lda, const T *B, int ldb, const T *beta, T *C, int ldc);
+template <> cublasStatus_t cublasGemm<float>(cublasHandle_t handle,
+                                             cublasOperation_t transa,
+                                             cublasOperation_t transb,
+                                             int m, int n, int k,
+                                             const float *alpha,
+                                             const float *A, int lda, const float *B, int ldb, const float *beta, float *C, int ldc) {
+  return cublasSgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+template <> cublasStatus_t cublasGemm<double>(cublasHandle_t handle,
+                                              cublasOperation_t transa,
+                                              cublasOperation_t transb,
+                                              int m, int n, int k,
+                                              const double *alpha,
+                                              const double *A, int lda, const double *B, int ldb, const double *beta, double *C, int ldc) {
+  return cublasDgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
+Read more at: http://docs.nvidia.com/cuda/cublas/index.html#ixzz55CsoczbT
+Follow us: @GPUComputing on Twitter | NVIDIA on Facebook)
+
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
 btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
     const btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
@@ -110,9 +136,9 @@ btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
     auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasSgemm(handle,
-                         to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
-                         left.storage().device_data(), lda, right.storage().device_data(), ldb, &zero, result.storage().device_data(), n);
+    status = cublasGemm<T>(handle,
+                           to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
+                           left.storage().device_data(), lda, right.storage().device_data(), ldb, &zero, result.storage().device_data(), n);
     assert(status == CUBLAS_STATUS_SUCCESS);
   }
   else {
@@ -190,9 +216,9 @@ void gemm(btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& resu
     auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasSgemm(handle,
-                         to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
-                         left.storage().device_data(), lda, right.storage().device_data(), ldb, &one, result.storage().device_data(), n);
+    status = cublasGemm<T>(handle,
+                           to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
+                           left.storage().device_data(), lda, right.storage().device_data(), ldb, &one, result.storage().device_data(), n);
     assert(status == CUBLAS_STATUS_SUCCESS);
   }
   else {
@@ -292,6 +318,7 @@ squared_norm(const btas::Tensor<T, Range, Storage>& arg) {
 #include <iostream>
 #include <tiledarray.h>
 
+template <typename Real>
 int try_main(int argc, char** argv) {
 
   // Initialize runtime
@@ -413,7 +440,6 @@ int try_main(int argc, char** argv) {
   TiledArray::TiledRange // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
-  using Real = float;
   using CUDATile = btas::Tensor<Real,
                        btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
                        cpu_cuda_vector<Real>>;
@@ -473,7 +499,8 @@ int try_main(int argc, char** argv) {
 int main(int argc, char* argv[]) {
 
   try {
-    try_main(argc, argv);
+    try_main<double>(argc, argv);
+    //try_main<float>(argc, argv);
   }
   catch(thrust::system::detail::bad_alloc& ex) {
     std::cout << ex.what() << std::endl;
