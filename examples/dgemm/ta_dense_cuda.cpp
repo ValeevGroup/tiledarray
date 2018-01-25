@@ -88,8 +88,19 @@ template <> cublasStatus_t cublasGemm<double>(cublasHandle_t handle,
   return cublasDgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
-Read more at: http://docs.nvidia.com/cuda/cublas/index.html#ixzz55CsoczbT
-Follow us: @GPUComputing on Twitter | NVIDIA on Facebook)
+template <typename T> cublasStatus_t cublasAxpy(cublasHandle_t handle,
+                                                int n,
+                                                const T *alpha, const T *x, int incx, T *y, int incy);
+template <> cublasStatus_t cublasAxpy<float>(cublasHandle_t handle,
+                                             int n,
+                                             const float *alpha, const float *x, int incx, float *y, int incy) {
+  return cublasSaxpy(handle, n, alpha, x, incx, y, incy);
+}
+template <> cublasStatus_t cublasAxpy<double>(cublasHandle_t handle,
+                                              int n,
+                                              const double *alpha, const double *x, int incx, double *y, int incy) {
+  return cublasDaxpy(handle, n, alpha, x, incx, y, incy);
+}
 
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
 btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
@@ -136,9 +147,9 @@ btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
     auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasGemm<T>(handle,
-                           to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
-                           left.storage().device_data(), lda, right.storage().device_data(), ldb, &zero, result.storage().device_data(), n);
+    status = cublasGemm(handle,
+                        to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
+                        left.storage().device_data(), lda, right.storage().device_data(), ldb, &zero, result.storage().device_data(), n);
     assert(status == CUBLAS_STATUS_SUCCESS);
   }
   else {
@@ -216,9 +227,9 @@ void gemm(btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& resu
     auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasGemm<T>(handle,
-                           to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
-                           left.storage().device_data(), lda, right.storage().device_data(), ldb, &one, result.storage().device_data(), n);
+    status = cublasGemm(handle,
+                        to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
+                        left.storage().device_data(), lda, right.storage().device_data(), ldb, &one, result.storage().device_data(), n);
     assert(status == CUBLAS_STATUS_SUCCESS);
   }
   else {
@@ -247,9 +258,9 @@ void add_to(btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& re
     auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasSaxpy(handle, result.size(),
-                         &one, arg.storage().device_data(), 1,
-                         result.storage().device_data(), 1);
+    status = cublasAxpy(handle, result.size(),
+                        &one, arg.storage().device_data(), 1,
+                        result.storage().device_data(), 1);
     assert(status == CUBLAS_STATUS_SUCCESS);
   }
   else {
