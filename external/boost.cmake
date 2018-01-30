@@ -59,6 +59,7 @@ else()
   ExternalProject_Add(boost
     PREFIX ${CMAKE_INSTALL_PREFIX}
     STAMP_DIR ${BOOST_BUILD_DIR}/stamp
+    TMP_DIR ${BOOST_BUILD_DIR}/tmp
    #--Download step--------------
     URL ${BOOST_URL}
     URL_HASH ${BOOST_URL_HASH}

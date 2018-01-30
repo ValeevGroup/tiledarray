@@ -55,7 +55,9 @@ else()
   ExternalProject_Add(eigen3
     PREFIX ${CMAKE_INSTALL_PREFIX}
     STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
+    TMP_DIR ${EXTERNAL_BUILD_DIR}/tmp
    #--Download step--------------
+    DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
     HG_REPOSITORY ${EIGEN3_URL}
     HG_TAG ${EIGEN3_TAG}
    #--Configure step-------------
