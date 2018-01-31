@@ -102,6 +102,26 @@ template <> cublasStatus_t cublasAxpy<double>(cublasHandle_t handle,
   return cublasDaxpy(handle, n, alpha, x, incx, y, incy);
 }
 
+template <typename T> cublasStatus_t cublasDot(cublasHandle_t handle,
+                                               int n,
+                                               const T *x, int incx,
+                                               const T *y, int incy,
+                                               T *result);
+template <> cublasStatus_t cublasDot<float>(cublasHandle_t handle,
+                                            int n,
+                                            const float *x, int incx,
+                                            const float *y, int incy,
+                                            float *result) {
+  return cublasSdot(handle, n, x, incx, y, incy, result);
+}
+template <> cublasStatus_t cublasDot<double>(cublasHandle_t handle,
+                                             int n,
+                                             const double *x, int incx,
+                                             const double *y, int incy,
+                                             double *result) {
+  return cublasDdot(handle, n, x, incx, y, incy, result);
+}
+
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
 btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
     const btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
@@ -274,39 +294,20 @@ void add_to(btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& re
 namespace TiledArray {
 
 // foreach(i) result += arg[i] * arg[i]
-btas::Tensor<double, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-             cpu_cuda_vector<double>>::value_type
+template <typename T>
+typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+                      cpu_cuda_vector<T>>::value_type
 squared_norm(
-    const btas::Tensor<double,
+    const btas::Tensor<T,
                        btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                       cpu_cuda_vector<double>>& arg) {
+                       cpu_cuda_vector<T>>& arg) {
   auto storage = arg.storage();
   integer size = storage.size();
-  double result = 0.0;
+  T result = 0;
   if (storage.on_device()) {
     const auto& handle = cuBLASHandlePool::handle();
-    auto status = cublasDdot(handle, size, storage.device_data(),
-                             1, storage.device_data(), 1, &result);
-    assert(status == CUBLAS_STATUS_SUCCESS);
-  } else {
-    result = TiledArray::math::dot(size, storage.data(), storage.data());
-  }
-  return result;
-}
-// foreach(i) result += arg[i] * arg[i]
-btas::Tensor<float, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-             cpu_cuda_vector<float>>::value_type
-squared_norm(
-    const btas::Tensor<float,
-                       btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                       cpu_cuda_vector<float>>& arg) {
-  auto storage = arg.storage();
-  integer size = storage.size();
-  float result = 0.0;
-  if (storage.on_device()) {
-    const auto& handle = cuBLASHandlePool::handle();
-    auto status = cublasSdot(handle, size, storage.device_data(),
-                             1, storage.device_data(), 1, &result);
+    auto status = cublasDot(handle, size, storage.device_data(),
+                            1, storage.device_data(), 1, &result);
     assert(status == CUBLAS_STATUS_SUCCESS);
   } else {
     result = TiledArray::math::dot(size, storage.data(), storage.data());
@@ -336,7 +337,7 @@ int try_main(int argc, char** argv) {
   TiledArray::World& world = TiledArray::initialize(argc, argv);
 
   // Get command line arguments
-  if(argc < 2) {
+  if(argc < 6) {
     std::cout << "multiplies A(Nm,Nk) * B(Nk,Nn), with dimensions m, n, and k blocked by Bm, Bn, and Bk, respectively"
               << std::endl
               << "Usage: " << argv[0] << " Nm Bm Nn Bn Nk Bk [repetitions = 5] [# of CUDA streams = 17]\n";
