@@ -25,7 +25,7 @@ int main(int argc, char** argv) {
   TiledArray::World& world = TiledArray::initialize(argc, argv);
 
   // Get command line arguments
-  if(argc < 2) {
+  if(argc < 6) {
     std::cout << "multiplies A(Nm,Nk) * B(Nk,Nn), with dimensions m, n, and k blocked by Bm, Bn, and Bk, respectively"
               << std::endl
               << "Usage: " << argv[0] << " Nm Bm Nn Bn Nk Bk [repetitions]\n";

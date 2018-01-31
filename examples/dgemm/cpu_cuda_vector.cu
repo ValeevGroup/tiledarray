@@ -17,7 +17,8 @@ void resize<float,thrust::device_malloc_allocator<float>>(
 template class cpu_cuda_vector<double>;
 template class cpu_cuda_vector<float>;
 
-
+// Thrust included in CUDA 9 seems to generate uninstantiated CUB calls
+#if __CUDACC_VER_MAJOR__ > 8
 void force_missing_instantiations_double() {
 
 using Real = double;
@@ -40,3 +41,4 @@ auto x = thrust::cuda_cub::copy<thrust::cuda_cub::tag, thrust::detail::normal_it
 
 }
 
+#endif

@@ -57,7 +57,9 @@ else()
   ExternalProject_Add(btas
     PREFIX ${CMAKE_INSTALL_PREFIX}
     STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
+    TMP_DIR ${EXTERNAL_BUILD_DIR}/tmp
    #--Download step--------------
+    DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
     GIT_REPOSITORY ${BTAS_URL}
     GIT_TAG ${BTAS_TAG}
    #--Configure step-------------
