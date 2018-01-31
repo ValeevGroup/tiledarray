@@ -335,6 +335,7 @@ DistArray_ btas_tensor_to_sparse_array(World& world, const typename DistArray_::
 
     // Analyze tiles norms and truncate based on sparse policy
     truncate(array);
+
     return array;
   }
 }  // namespace TiledArray

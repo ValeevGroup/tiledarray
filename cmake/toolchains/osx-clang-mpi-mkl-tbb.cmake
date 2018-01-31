@@ -30,6 +30,7 @@ else()
   set(TBB_ROOT_DIR "/opt/intel/tbb" CACHE PATH "TBB root directory")
 endif()
 
+
 set(BLAS_LINKER_FLAGS "${MKL_ROOT_DIR}/lib/libmkl_intel_lp64.a" "${MKL_ROOT_DIR}/lib/libmkl_sequential.a" "${MKL_ROOT_DIR}/lib/libmkl_core.a" "-lpthread" "-lm" "-ldl" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES ${BLAS_LINKER_FLAGS} CACHE STRING "LAPACK linker flags")
 set(MADNESS_CMAKE_EXTRA_ARGS "-DLAPACK_LIBRARIES=${LAPACK_LINKER_FLAGS}")
