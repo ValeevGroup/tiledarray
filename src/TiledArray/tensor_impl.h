@@ -39,6 +39,7 @@ namespace TiledArray {
     class TensorImpl : private NO_DEFAULTS {
     public:
       typedef TensorImpl<Policy> TensorImpl_;
+      typedef Policy policy_type; ///< Policy type
       typedef typename Policy::trange_type trange_type; ///< Tiled range type
       typedef typename Policy::range_type range_type; ///< Tile range type
       typedef typename Policy::size_type size_type; ///< Size type

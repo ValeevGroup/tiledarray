@@ -769,16 +769,8 @@ namespace TiledArray {
     template <typename T>
     using pmap_t = typename T::pmap_interface;
 
-    template <typename Array>
-    struct policy_type;
-
-    template <typename Tile, typename Policy>
-    struct policy_type<DistArray<Tile, Policy> > {
-      typedef Policy type;
-    };
-
     template <typename T>
-    using policy_t = typename policy_type<T>::type;
+    using policy_t = typename T::policy_type;
 
     /// If \c Base is a base of \c Derived, \c if_same_or_derived::value is \c true.
     /// \tparam Base supposed base class
