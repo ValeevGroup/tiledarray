@@ -23,6 +23,8 @@
 #ifndef TILEDARRAY_CONVERSIONS_BTAS_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_BTAS_H__INCLUDED
 
+#include <limits>
+
 #include <TiledArray/external/btas.h>
 
 namespace TiledArray {
@@ -110,6 +112,20 @@ void counted_tensor_to_btas_subtensor(const TA_Tensor_& src,
   (*counter)++;
 }
 
+template <bool sparse>
+auto make_shape(World& world, const TiledArray::TiledRange& trange);
+
+template <>
+auto make_shape<true>(World& world, const TiledArray::TiledRange& trange) {
+  TensorF tile_norms(trange.tiles_range(), std::numeric_limits<float>::max());
+  return TiledArray::SparseShape<float>(world, tile_norms, trange);
+}
+
+template <>
+auto make_shape<false>(World&, const TiledArray::TiledRange&) {
+  return TiledArray::DenseShape{};
+}
+
 } // namespace detail
 
 /// Convert a btas::Tensor object into a TiledArray::DistArray object
@@ -151,9 +167,13 @@ void counted_tensor_to_btas_subtensor(const TA_Tensor_& src,
 /// \throw TiledArray::Exception When world size is greater than 1
 /// \note If using 2 or more World ranks, set \c replicated=true and make sure \c matrix
 /// is the same on each rank!
-template <typename DistArray_, typename ... TArgs>
-DistArray_ btas_tensor_to_array(World& world, const typename DistArray_::trange_type& trange,
-                                const btas::Tensor<TArgs...>& src, bool replicated = false)
+template <typename DistArray_,
+    typename T,
+    typename Range,
+    typename Storage>
+DistArray_
+btas_tensor_to_array(World& world, const TiledArray::TiledRange& trange,
+                     const btas::Tensor<T, Range, Storage>& src, bool replicated = false)
 {
   // Test preconditions
   const auto rank = trange.tiles_range().rank();
@@ -165,31 +185,42 @@ DistArray_ btas_tensor_to_array(World& world, const typename DistArray_::trange_
                    "TiledArray::btas_tensor_to_array(): source dimension does not match destination dimension.");
   }
 
+  using Tensor_ = btas::Tensor<T,Range,Storage>;
+  using Policy_ = typename DistArray_::policy_type;
+  const auto is_sparse = std::is_same<Policy_,TiledArray::SparsePolicy>::value;
+
   // Check that this is not a distributed computing environment
   if(! replicated)
     TA_USER_ASSERT(world.size() == 1,
                    "An array can be created from a btas::Tensor if the number of World ranks is greater than 1 only when replicated=true.");
 
+  // Make a shape, only used if making a sparse array
+  using Shape_ = typename DistArray_::shape_type;
+  Shape_ shape = detail::make_shape<is_sparse>(world, trange);
+
   // Create a new tensor
   DistArray_ array = (replicated && (world.size() > 1)
-                     ? DistArray_(world, trange,
+                     ? DistArray_(world, trange, shape,
                      std::static_pointer_cast<typename DistArray_::pmap_interface>(
                      std::make_shared<detail::ReplicatedPmap>(
                          world, trange.tiles_range().volume())))
-             : DistArray_(world, trange));
+             : DistArray_(world, trange, shape));
 
   // Spawn copy tasks
   madness::AtomicInt counter;
   counter = 0;
   std::int64_t n = 0;
   for(std::size_t i = 0; i < array.size(); ++i) {
-    world.taskq.add(& detail::counted_btas_subtensor_to_tensor<DistArray_, btas::Tensor<TArgs...>>,
+    world.taskq.add(& detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>,
                     &src, &array, i, &counter);
     ++n;
   }
 
   // Wait until the write tasks are complete
   array.world().await([&counter,n] () { return counter == n; });
+
+  // Analyze tiles norms and truncate based on sparse policy
+  if (is_sparse) truncate(array);
 
   return array;
 }
@@ -308,8 +339,7 @@ DistArray_ btas_tensor_to_sparse_array(World& world, const typename DistArray_::
                      "An array can be created from a btas::Tensor if the number of World ranks is greater than 1 only when replicated=true.");
 
     // Making a norm, so all data is copied to TA
-    auto norm = src.size();
-    TensorF tile_norms(trange.tiles_range(), norm);
+    TensorF tile_norms(trange.tiles_range(), std::numeric_limits<float>::max());
     TA::TSpArrayD::shape_type shape(world, tile_norms, trange);
     
     // Create a new tensor

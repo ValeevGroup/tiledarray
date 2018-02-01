@@ -262,7 +262,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(to_btas_subtensor, bTensor, tensor_types) {
 
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(array_conversion, bTensor, tensor_types) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
   // make random btas::Tensor on World rank 0, and replicate
   const auto root = 0;
   bTensor src;
@@ -277,13 +277,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(array_conversion, bTensor, tensor_types) {
 
   // convert to a replicated DistArray
   using T = typename bTensor::value_type;
-  TiledArray::TArray<T> dst;
+  using TArray = TiledArray::TArray<T>;
+  TArray dst;
   const auto replicated = true;
 #if !defined(TA_USER_ASSERT_DISABLED)
   if (GlobalFixture::world->size() > 1)
-    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TiledArray::TArray<T>>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
+    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TArray>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
 #endif
-  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TiledArray::TArray<T>>(*GlobalFixture::world, trange, src, replicated));
+  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TArray>(*GlobalFixture::world, trange, src, replicated));
 
   // check the array contents
   for(const auto& t: dst) {
