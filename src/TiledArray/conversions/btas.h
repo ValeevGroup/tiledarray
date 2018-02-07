@@ -116,13 +116,13 @@ template <bool sparse>
 auto make_shape(World& world, const TiledArray::TiledRange& trange);
 
 template <>
-auto make_shape<true>(World& world, const TiledArray::TiledRange& trange) {
+inline auto make_shape<true>(World& world, const TiledArray::TiledRange& trange) {
   TensorF tile_norms(trange.tiles_range(), std::numeric_limits<float>::max());
   return TiledArray::SparseShape<float>(world, tile_norms, trange);
 }
 
 template <>
-auto make_shape<false>(World&, const TiledArray::TiledRange&) {
+inline auto make_shape<false>(World&, const TiledArray::TiledRange&) {
   return TiledArray::DenseShape{};
 }
 
@@ -131,12 +131,15 @@ auto make_shape<false>(World&, const TiledArray::TiledRange&) {
 /// Convert a btas::Tensor object into a TiledArray::DistArray object
 
 /// This function will copy the contents of \c src into a \c DistArray_ object
-/// that is tiled according to the \c trange object. The copy operation is
+/// that is tiled according to the \c trange object. If the \c DistArray_ object
+/// has sparse policy, a sparse map with large norm is created to ensure all the
+/// values from \c src copy to the \c DistArray_ object. The copy operation is
 /// done in parallel, and this function will block until all elements of
 /// \c src have been copied into the result array tiles. The size of
 /// \c world.size() must be equal to 1 or \c replicate must be equal to
 /// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in \c src is identical on all nodes.
+/// that the data in \c src is identical on all nodes. Upon completion,
+/// if the \c DistArray_ object has sparse policy truncate() is called.\n
 /// Usage:
 /// \code
 /// btas::Tensor<double> src(100, 100, 100);
@@ -277,97 +280,6 @@ array_to_btas_tensor(const TiledArray::DistArray<Tile,Policy>& src)
   return result;
 }
 
-
-/// Convert a btas::Tensor object into a TiledArray::DistArray object
-
-/// This function will copy the contents of \c src into a sparse policy \c DistArray_ object
-/// that is tiled according to the \c trange object. The copy operation is
-/// done in parallel, and this function will block until all elements of
-/// \c src have been copied into the result array tiles. The size of
-/// \c world.size() must be equal to 1 or \c replicate must be equal to
-/// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in \c src is identical on all nodes.  After the copy is complete
-/// sparse policy truncation is carried out on the new \c DistArray_ object
-/// Usage:
-/// \code
-/// btas::Tensor<double> src(100, 100, 100);
-/// // Fill src with data ...
-///
-/// // Create a range for the new array object
-/// std::vector<std::size_t> blocks;
-/// for(std::size_t i = 0ul; i <= 100ul; i += 10ul)
-///   blocks.push_back(i);
-/// std::array<TiledArray::TiledRange1, 3> blocks3 =
-///     {{ TiledArray::TiledRange1(blocks.begin(), blocks.end()),
-///        TiledArray::TiledRange1(blocks.begin(), blocks.end()),
-///        TiledArray::TiledRange1(blocks.begin(), blocks.end()) }};
-/// TiledArray::TiledRange trange(blocks3.begin(), blocks3.end());
-///
-/// // Create an Array from the source btas::Tensor object
-/// TiledArray::TArrayD array =
-///     btas_tensor_to_sparse_array<decltype(array)>(world, trange, src);
-/// \endcode
-/// \tparam DistArray_ a TiledArray::DistArray type with policy=sparse
-/// \tparam TArgs the type pack in type btas::Tensor<TArgs...> of \c src
-/// \param[in,out] world The world where the result array will live
-/// \param[in] trange The tiled range of the new array
-/// \param[in] src The btas::Tensor<TArgs..> object whose contents will be copied to the result.
-/// \param[in] replicated \c true indicates that the result array should be a
-///            replicated array [default = false].
-/// \return A \c DistArray_ object that is a copy of \c src
-/// \throw TiledArray::Exception When world size is greater than 1
-/// \note If using 2 or more World ranks, set \c replicated=true and make sure \c matrix
-/// is the same on each rank!
-template <typename DistArray_, typename ... TArgs>
-DistArray_ btas_tensor_to_sparse_array(World& world, const typename DistArray_::trange_type& trange,
-                                const btas::Tensor<TArgs...>& src, bool replicated = false)
-  {
-    // Test preconditions
-    const auto rank = trange.tiles_range().rank();
-    TA_USER_ASSERT(rank == src.range().rank(),
-                   "TiledArray::btas_tensor_to_array(): rank of destination trange does not match the rank of source BTAS tensor.");
-
-    auto dst_range_extents = trange.elements_range().extent();
-    for(auto d=0; d!=rank; ++d) {
-      TA_USER_ASSERT(dst_range_extents[d] == src.range().extent(d),
-                     "TiledArray::btas_tensor_to_array(): source dimension does not match destination dimension.");
-    }
-
-    // Check that this is not a distributed computing environment
-    if(! replicated)
-      TA_USER_ASSERT(world.size() == 1,
-                     "An array can be created from a btas::Tensor if the number of World ranks is greater than 1 only when replicated=true.");
-
-    // Making a norm, so all data is copied to TA
-    TensorF tile_norms(trange.tiles_range(), std::numeric_limits<float>::max());
-    TA::TSpArrayD::shape_type shape(world, tile_norms, trange);
-    
-    // Create a new tensor
-    DistArray_ array = (replicated && (world.size() > 1))
-                        ? DistArray_(world, trange, shape,
-                                     std::static_pointer_cast<typename DistArray_::pmap_interface>(
-                                             std::make_shared<detail::ReplicatedPmap>(
-                                                     world, trange.tiles_range().volume())))
-                        : DistArray_(world, trange, shape);
-
-    // Spawn copy tasks
-    madness::AtomicInt counter;
-    counter = 0;
-    std::int64_t n = 0;
-    for(std::size_t i = 0; i < array.size(); ++i) {
-      world.taskq.add(& detail::counted_btas_subtensor_to_tensor<DistArray_, btas::Tensor<TArgs...>>,
-                      &src, &array, i, &counter);
-      ++n;
-    }
-
-    // Wait until the write tasks are complete
-    array.world().await([&counter,n] () { return counter == n; });
-
-    // Analyze tiles norms and truncate based on sparse policy
-    truncate(array);
-
-    return array;
-  }
 }  // namespace TiledArray
 
 #endif // TILEDARRAY_CONVERSIONS_BTAS_H__INCLUDED

@@ -33,5 +33,4 @@ endif()
 
 set(BLAS_LINKER_FLAGS "${MKL_ROOT_DIR}/lib/libmkl_intel_lp64.a" "${MKL_ROOT_DIR}/lib/libmkl_sequential.a" "${MKL_ROOT_DIR}/lib/libmkl_core.a" "-lpthread" "-lm" "-ldl" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES ${BLAS_LINKER_FLAGS} CACHE STRING "LAPACK linker flags")
-set(MADNESS_CMAKE_EXTRA_ARGS "-DLAPACK_LIBRARIES=${LAPACK_LINKER_FLAGS}")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
