@@ -262,7 +262,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(to_btas_subtensor, bTensor, tensor_types) {
 
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(array_conversion, bTensor, tensor_types) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
   // make random btas::Tensor on World rank 0, and replicate
   const auto root = 0;
   bTensor src;
@@ -277,13 +277,59 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(array_conversion, bTensor, tensor_types) {
 
   // convert to a replicated DistArray
   using T = typename bTensor::value_type;
-  TiledArray::TArray<T> dst;
+  using TArray = TiledArray::TArray<T>;
+  TArray dst;
   const auto replicated = true;
 #if !defined(TA_USER_ASSERT_DISABLED)
   if (GlobalFixture::world->size() > 1)
-    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TiledArray::TArray<T>>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
+    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TArray>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
 #endif
-  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TiledArray::TArray<T>>(*GlobalFixture::world, trange, src, replicated));
+  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TArray>(*GlobalFixture::world, trange, src, replicated));
+
+  // check the array contents
+  for(const auto& t: dst) {
+    const auto& tile = t.get();
+    const auto& tile_range = tile.range();
+    auto src_blk_range = TiledArray::BlockRange(trange.elements_range(), tile_range.lobound(), tile_range.upbound());
+    using std::data;
+    auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
+
+    for(const auto& i: tile_range) {
+      BOOST_CHECK_EQUAL(src_view(i), tile(i));
+    }
+  }
+
+  // convert to the replicated DistArray back to a btas::Tensor
+  btas::Tensor<T> src_copy;
+  BOOST_REQUIRE_NO_THROW(src_copy = array_to_btas_tensor(dst));
+  for(const auto& i: src.range()) {
+    BOOST_CHECK_EQUAL(src(i), src_copy(i));
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(sparse_array_conversion, bTensor, tensor_types){
+  // make random btas::Tensor on World rank 0, and replicate
+  const auto root = 0;
+  bTensor src;
+  if (GlobalFixture::world->rank() == root)
+    src = make_rand_tile<bTensor>(typename bTensor::range_type({20,22,24}));
+  if (GlobalFixture::world->size() != 0)
+    GlobalFixture::world->gop.broadcast_serializable(src, root);
+
+  // make tiled range
+  using trange1_t = TiledArray::TiledRange1;
+  TiledArray::TiledRange trange({trange1_t(0,10,20), trange1_t(0,11,22), trange1_t(0,12,24)});
+
+  // convert to a replicated sparse policy DistArray
+  using T = typename bTensor::value_type;
+  using TSpArray = TiledArray::TSpArray<T>;
+  TSpArray dst;
+  const auto replicated = true;
+#if !defined(TA_USER_ASSERT_DISABLED)
+  if (GlobalFixture::world->size() > 1)
+    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TSpArray>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
+#endif
+  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TSpArray>(*GlobalFixture::world, trange, src, replicated));
 
   // check the array contents
   for(const auto& t: dst) {
