@@ -31,10 +31,12 @@ if (_BTAS_INCLUDE_DIR)
   if (NOT BTAS_COMPILES)
     message(STATUS "BTAS found at ${_BTAS_INCLUDE_DIR}, but failed to compile test program")
   endif()
-  
-  ##### uncomment, if ready to bundle with TiledArray #####
-#  list(APPEND TiledArray_CONFIG_INCLUDE_DIRS ${_BTAS_INCLUDE_DIR})
-  
+
+  add_library(TiledArray_BTAS INTERFACE)
+  set_property(TARGET TiledArray_BTAS PROPERTY
+          INTERFACE_INCLUDE_DIRECTORIES ${_BTAS_INCLUDE_DIR})
+  install(TARGETS TiledArray_BTAS EXPORT tiledarray COMPONENT tiledarray)
+
 elseif(TA_EXPERT)
 
   message("** BTAS was not found")
@@ -44,7 +46,7 @@ else()
 
   include(ExternalProject)
 
-  # Set source and build path for Eigen3 in the TiledArray Project
+  # Set source and build path for BTAS in the TiledArray Project
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/btas)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/btas)
   if (NOT BTAS_URL)
@@ -74,22 +76,23 @@ else()
     STEP_TARGETS download
     )
 
-  # Add btas dependency
+  # Add BTAS dependency to External
   add_dependencies(External btas)
-  
-  # Set the BTAS included directory
-  set(BTAS_INCLUDE_DIR ${EXTERNAL_SOURCE_DIR})
-  
-  ##### uncomment, if ready to bundle with TiledArray #####
-  # Install BTAS
+
+  # create an exportable interface target for BTAS
+  add_library(TiledArray_BTAS INTERFACE)
+  set_property(TARGET TiledArray_BTAS PROPERTY
+          INTERFACE_INCLUDE_DIRECTORIES
+          $<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}>
+          $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/btas>)
+  install(TARGETS TiledArray_BTAS EXPORT tiledarray COMPONENT tiledarray)
+
+  # how to install BTAS
   install(
     DIRECTORY
         ${EXTERNAL_SOURCE_DIR}/btas
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/btas
     COMPONENT btas
     )
 
 endif()
-
-# Set the  build variables
-include_directories(${BTAS_INCLUDE_DIR})

@@ -25,7 +25,15 @@
 
 #include <limits>
 
+#include <TiledArray/block_range.h>
 #include <TiledArray/external/btas.h>
+#include <TiledArray/tensor.h>
+#include <TiledArray/tensor/tensor_map.h>
+#include <TiledArray/dense_shape.h>
+#include <TiledArray/policies/dense_policy.h>
+#include <TiledArray/sparse_shape.h>
+#include <TiledArray/policies/sparse_policy.h>
+#include <TiledArray/pmap/replicated_pmap.h>
 
 namespace TiledArray {
 
@@ -117,7 +125,7 @@ auto make_shape(World& world, const TiledArray::TiledRange& trange);
 
 template <>
 inline auto make_shape<true>(World& world, const TiledArray::TiledRange& trange) {
-  TensorF tile_norms(trange.tiles_range(), std::numeric_limits<float>::max());
+  TiledArray::Tensor<float> tile_norms(trange.tiles_range(), std::numeric_limits<float>::max());
   return TiledArray::SparseShape<float>(world, tile_norms, trange);
 }
 

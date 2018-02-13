@@ -157,6 +157,9 @@ TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp)
 
+# the list of libraries on which TiledArray depends on
+set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+
 # Create the TiledArray library
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
 target_include_directories(tiledarray INTERFACE
@@ -164,22 +167,19 @@ target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
 )
-  
-target_compile_definitions(tiledarray PUBLIC 
-   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_DEFINITIONS>)
-target_include_directories(tiledarray PUBLIC 
-   "$<TARGET_PROPERTY:MADworld,INTERFACE_INCLUDE_DIRECTORIES>" "${EIGEN3_INCLUDE_DIR}")
+target_link_libraries(tiledarray PUBLIC ${TILEDARRAY_DEPENDENCIES})
 if(TARGET build-madness)
   add_dependencies(tiledarray build-madness)
 endif()
 if(TARGET eigen3)
   add_dependencies(tiledarray eigen3)
 endif()
+if(TARGET btas)
+  add_dependencies(tiledarray btas)
+endif()
 # append current CMAKE_CXX_FLAGS
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
-target_compile_options(tiledarray PUBLIC 
-   $<TARGET_PROPERTY:MADworld,INTERFACE_COMPILE_OPTIONS>;${CMAKE_CXX_FLAG_LIST})
-target_link_libraries(tiledarray PUBLIC "${LAPACK_LIBRARIES}" MADworld)
+target_compile_options(tiledarray PUBLIC ${CMAKE_CXX_FLAG_LIST})
 
 # Add library to the list of installed components
 install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray

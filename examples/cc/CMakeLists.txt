@@ -31,7 +31,7 @@ add_library(inputlib EXCLUDE_FROM_ALL OBJECT input_data.cpp)
 target_compile_definitions(inputlib PRIVATE 
    $<TARGET_PROPERTY:tiledarray,INTERFACE_COMPILE_DEFINITIONS>)
 target_include_directories(inputlib PRIVATE 
-   $<TARGET_PROPERTY:tiledarray,INTERFACE_INCLUDE_DIRECTORIES>;${EIGEN3_INCLUDE_DIR})
+   $<TARGET_PROPERTY:tiledarray,INTERFACE_INCLUDE_DIRECTORIES> $<TARGET_PROPERTY:TiledArray_Eigen,INTERFACE_INCLUDE_DIRECTORIES>)
 target_compile_options(inputlib PRIVATE 
    $<TARGET_PROPERTY:tiledarray,INTERFACE_COMPILE_OPTIONS>)
 add_dependencies(inputlib External)

@@ -23,13 +23,6 @@ if(NOT TARGET MADworld)
   find_package(MADNESS 0.10.1 CONFIG QUIET REQUIRED COMPONENTS world PATHS ${MADNESS_CONFIG_DIR} NO_DEFAULT_PATH)
 endif()
 
-# re-export other dependency info
-if (@EIGEN3_FOUND@)
-  set(EIGEN3_FOUND @EIGEN3_FOUND@)
-  set(EIGEN3_VERSION @EIGEN3_VERSION@)
-  set(EIGEN3_INCLUDE_DIR @EIGEN3_INCLUDE_DIR@)
-endif()
-
 # Set the tiledarray compiled library target
 set(TILEDARRAY_LIBRARIES tiledarray)
 

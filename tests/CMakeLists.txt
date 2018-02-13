@@ -109,7 +109,8 @@ target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAG
 # if tiledarray library was compiled without exceptions, use TA header-only
 if (NOT TA_DEFAULT_ERROR EQUAL 1)
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
-  target_link_libraries(${executable} PUBLIC MADworld "${LAPACK_LIBRARIES}")
+  #
+  target_link_libraries(${executable} PUBLIC ${TILEDARRAY_DEPENDENCIES})
 else()
   target_link_libraries(${executable} PUBLIC tiledarray)
 endif()
