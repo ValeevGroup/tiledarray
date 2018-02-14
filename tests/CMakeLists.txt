@@ -105,7 +105,7 @@ target_include_directories(${executable} PRIVATE
 # 1. should disable error messages
 # 2. must emit exceptions in asserts since some tests check for exceptions
 target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
-    TA_EXCEPTION_ERROR=1)
+    TA_EXCEPTION_ERROR=1 MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=1)
 # if tiledarray library was compiled without exceptions, use TA header-only
 if (NOT TA_DEFAULT_ERROR EQUAL 1)
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
