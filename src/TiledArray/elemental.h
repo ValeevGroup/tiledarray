@@ -158,7 +158,18 @@ namespace TiledArray {
 
 #elif HAVE_EL_H // end of HAVE_ELEMENTAL_H
 
+// pacify clang warnings about tautological comparisons in El/macros/GuardAndPayload.h
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wtautological-compare"
+#endif  // __clang__
+
 # include <El.hpp>
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif  // __clang__
+
 # include <TiledArray/conversions/elemental.h>
 
 #else
