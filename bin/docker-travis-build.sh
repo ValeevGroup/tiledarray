@@ -23,7 +23,7 @@ apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
 apt-add-repository -y "ppa:boost-latest/ppa"
 apt-add-repository -y "ppa:kubuntu-ppa/backports"
 apt-get -yq update >> ~/apt-get-update.log
-apt-get -yq --no-install-suggests --no-install-recommends --force-yes install g++-4.9 g++-5 g++-6 g++-7 gfortran-4.9 gfortran-5 gfortran-6 gfortran-7 libeigen3-dev libboost1.55-all-dev libblas-dev liblapack-dev libtbb-dev clang-5.0 cmake cmake-data
+apt-get -yq --no-install-suggests --no-install-recommends --force-yes install g++-5 g++-6 g++-7 gfortran-5 gfortran-6 gfortran-7 libeigen3-dev libboost1.55-all-dev libblas-dev liblapack-dev libtbb-dev clang-5.0 cmake cmake-data
 mkdir -p ${TRAVIS_BUILD_TOPDIR}
 cd ${TRAVIS_BUILD_TOPDIR}
 git clone https://github.com/ValeevGroup/tiledarray.git ${TRAVIS_BUILD_TOPDIR}/ValeevGroup/tiledarray
