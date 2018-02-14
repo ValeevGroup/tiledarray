@@ -241,10 +241,8 @@ include(external/eigen.cmake)
 include(external/madness.cmake)
 if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
-  # this is only for internal testing right now, but can be moved out to be first-class citizen like Eigen
-  # if that happens: Boost dependencies can be checked in header-only mode, so no need to check for boost first
-  include(external/btas.cmake)
 endif()
+include(external/btas.cmake)
 
 # optional deps:
 # 1. ccache
