@@ -6,7 +6,7 @@ include(AppendFlags)
 
 # Check for existing Eigen
 # prefer CMake-configured-and-installed instance
-find_package(Eigen3 3.1 NO_MODULE)
+find_package(Eigen3 3.1 NO_MODULE QUIET)
 if (TARGET Eigen3::Eigen)
   # import alias into TiledArray "namespace"
   # TODO bump CMake requirement to 3.11 when available, uncomment this and remove the rest of this clause
