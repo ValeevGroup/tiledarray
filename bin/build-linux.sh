@@ -82,11 +82,10 @@ setarch `uname -m` -R make check
 # Build examples
 make -j2 examples VERBOSE=1
 
-# Elemental-only: build and run evd example
-make evd
+# run evd example manually TODO add run_examples target
 # must use 1 thread only since Debug El is not reentrant
 if [ "$BUILD_TYPE" = "Debug" ]; then
   export MAD_NUM_THREADS=1
 fi
 ${MPI_HOME}/bin/mpirun -n 1 examples/elemental/evd 512 64 2
-${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2
+setarch `uname -m` -R ${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2
