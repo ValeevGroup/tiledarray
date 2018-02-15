@@ -68,9 +68,6 @@ int main(int argc, char** argv) {
   const std::size_t num_blocks = ao_size / ao_blk_size;
   const std::size_t coeff_num_blocks = occ_size / occ_blk_size;
   const std::size_t df_num_blocks = df_size / df_blk_size;
-  const std::size_t block_count = num_blocks * num_blocks;
-  const std::size_t coeff_block_count = coeff_num_blocks * coeff_num_blocks;
-  const std::size_t df_block_count = df_num_blocks * num_blocks * num_blocks;
 
   // Memory used
   double tensor_memory = double(ao_size * ao_size * df_size * sizeof(double))/1e9;

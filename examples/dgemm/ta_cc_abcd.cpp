@@ -366,11 +366,6 @@ void tensor_contract_444(TA::DistArray<Tile, Policy>& tv,
   auto n_occ = trange_occ.extent();
   auto n_uocc = trange_occ.extent();
 
-  typedef TA::detail::Noop<Tile, Tile, true> array_base_op_type;
-  typedef TA::detail::UnaryWrapper<array_base_op_type> array_op_type;
-  typedef TA::detail::DistEval<TA::detail::LazyArrayTile<Tile, array_op_type>,
-      TA::DensePolicy> array_eval_type;
-
   // compute the 2-d grid of processors for the SUMMA
   // note that the result is (occ occ|uocc uocc), hence the row dimension is occ x occ, etc.
   auto& world = t.world();

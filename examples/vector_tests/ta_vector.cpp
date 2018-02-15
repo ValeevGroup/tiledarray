@@ -115,9 +115,6 @@ vector_test(TiledArray::World& world, const TiledArray::TiledRange& trange, long
 
   const bool do_memtrace = false;
 
-  const auto n = trange.elements_range().extent()[0];
-  const auto complex_T = TiledArray::detail::is_complex<T>::value;
-
   auto memtrace = [do_memtrace,&world](const std::string& str) -> void {
     if (do_memtrace) {
       world.gop.fence();
@@ -137,9 +134,6 @@ vector_test(TiledArray::World& world, const TiledArray::TiledRange& trange, long
 
     // Start clock
     world.gop.fence();
-
-    double total_time = 0.0;
-    double total_gflop_rate = 0.0;
 
     double start = madness::wall_time();
     for (int i = 0; i < repeat; ++i) {
@@ -192,7 +186,8 @@ vector_test(TiledArray::World& world, const TiledArray::TiledRange& trange, long
 
     start = madness::wall_time();
     for (int i = 0; i < repeat; ++i) {
-        T x = a("i,j").abs_max();
+      T x = a("i,j").abs_max();
+      (void)x;  // to prevent unused var warning
     }
     stop = madness::wall_time();
     if (world.rank() == 0)
@@ -201,6 +196,7 @@ vector_test(TiledArray::World& world, const TiledArray::TiledRange& trange, long
     start = madness::wall_time();
     for (int i = 0; i < repeat; ++i) {
       T x = a("i,j").sum();
+      (void)x;  // to prevent unused var warning
     }
     stop = madness::wall_time();
     if (world.rank() == 0)
@@ -209,6 +205,7 @@ vector_test(TiledArray::World& world, const TiledArray::TiledRange& trange, long
     start = madness::wall_time();
     for (int i = 0; i < repeat; ++i) {
       T x = a("i,j").norm();
+      (void)x;  // to prevent unused var warning
     }
     stop = madness::wall_time();
     if (world.rank() == 0)

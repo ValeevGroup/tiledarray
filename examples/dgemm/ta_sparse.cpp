@@ -186,7 +186,7 @@ int main(int argc, char** argv) {
             std::stringstream ss;
             ss << "left shape  = " << a.shape().data() << "\n"
                << "right shape = " << b.shape().data() << "\n";
-            printf(ss.str().c_str());
+            std::cout << ss.str();
           }
           throw;
         }
