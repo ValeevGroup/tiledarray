@@ -3,11 +3,19 @@
 
 Following is a brief summary of changes made in each release of TiledArray.
 
-- <date>: 0.6.1
-  - resolved issues 101, 103
-  - MADNESS bump to 0.11.0
-  - many fixes to unit tests
-  - TiledRange1::element2tile -> TiledRange1::element_to_tile for consistency with TiledRange
+- 14-Feb-2018: 0.7.0
+  - MADNESS bump to 0.11.0, requires C++14 as the result
+  - added interface to latest Elemental ('El')
+  - resolved issues 96, 100, 101, 102, 104, 106, 107, 108, 110, 124
+  - significant API changes:
+    - mixed-expressions branch is incorporated, it makes possible to implement operations on arrays of different types,
+      e.g. sparse + dense = dense, etc. It also supports asynchronous tile conversion operators (i.e. returning Future<Tile>
+      rather than Tile) to support expensive/communicating conversions.
+    - added expr.set_{world,shape,pmap}() to override the computed defaults; key application is to
+      impose the sparsity on the result of an expression
+    - TiledRange1::element2tile -> TiledRange1::element_to_tile for consistency with TiledRange
+    - ArrayIiterator -> ArrayIterator
+  - BTAS is a required dependence, automatically installed if missing
 
 - 27-Nov-2016: 0.6.0
   - block expression code
