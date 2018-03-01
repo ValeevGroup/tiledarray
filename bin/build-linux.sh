@@ -46,7 +46,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
+    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} -g -O0 --coverage" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON \

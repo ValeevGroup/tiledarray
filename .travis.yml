@@ -21,6 +21,7 @@ addons:
     - libtbb-dev
     - cmake
     - cmake-data
+    - lcov
 
 env:
   global:
@@ -133,3 +134,12 @@ after_failure:
   - cat ${BUILD_PREFIX}/TA/external/build/madness/CMakeFiles/CMakeOutput.log
   - cat ${BUILD_PREFIX}/TA/CMakeFiles/CMakeError.log
   - cat ${BUILD_PREFIX}/TA/CMakeFiles/CMakeOutput.log
+# codecov
+after_success:
+  # create report
+  - cd ${TRAVIS_BUILD_DIR}
+  - if [ "$BUILD_TYPE" = "Debug" ]; then lcov --directory . --capture --output-file coverage.info fi # capture coverage info
+  - if [ "$BUILD_TYPE" = "Debug" ]; then lcov --remove coverage.info '/usr/*' --output-file coverage.info fi# filter out system
+  - if [ "$BUILD_TYPE" = "Debug" ]; then lcov --list coverage.info fi #debug info
+  # upload report to CodeCov
+  - if [ "$BUILD_TYPE" = "Debug" ]; then bash <(curl -s https://codecov.io/bash) fi
