@@ -138,8 +138,8 @@ after_failure:
 after_success:
   # create report
   - cd ${TRAVIS_BUILD_DIR}
-  - if [ "$BUILD_TYPE" = "Debug" ]; then lcov --directory . --capture --output-file coverage.info; fi; # capture coverage info
-  - if [ "$BUILD_TYPE" = "Debug" ]; then lcov --remove coverage.info '/usr/*' --output-file coverage.info; fi; # filter out system
-  - if [ "$BUILD_TYPE" = "Debug" ]; then lcov --list coverage.info; fi; #debug info
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$CXX" = "g++" ]; then lcov --gcov-tool gcov-${GCC_VERSION} --directory ${BUILD_PREFIX}/TA --capture --output-file coverage.info; fi; # capture coverage info
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$CXX" = "g++" ]; then lcov --remove coverage.info '/usr/*' '*/madness/*' '*/btas/*' '*/tests/*' --output-file coverage.info; fi; # filter out non-project files
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$CXX" = "g++" ]; then lcov --list coverage.info; fi; #debug info
   # upload report to CodeCov
-  - if [ "$BUILD_TYPE" = "Debug" ]; then bash <(curl -s https://codecov.io/bash); fi;
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$CXX" = "g++" ]; then bash <(curl -s https://codecov.io/bash); fi;
