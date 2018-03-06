@@ -38,6 +38,10 @@ cd TA
 # MADNESS+Elemental are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
 if [ "$BUILD_TYPE" = "Debug" ]; then
 
+  if [ "$GCC_VERSION" = 5 ]; then
+    export CODECOVCXXFLAGS="-O0 --coverage"
+  fi
+
   cmake ${TRAVIS_BUILD_DIR} \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
@@ -46,7 +50,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} -g -O0 --coverage" \
+    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON \
