@@ -2,8 +2,8 @@
 #include <thrust/device_vector.h>
 #include <cublas_v2.h>
 
-// thrust::device_vector::data() returns a proxy, override std::data to provide raw ptr
-namespace std {
+// thrust::device_vector::data() returns a proxy, provide an overload for std::data() to provide raw ptr
+namespace thrust {
   template<typename T, typename Alloc>
   const T* data (const thrust::device_vector<T, Alloc>& dev_vec) {
     return thrust::raw_pointer_cast(dev_vec.data());
@@ -12,14 +12,17 @@ namespace std {
   T* data (thrust::device_vector<T, Alloc>& dev_vec) {
     return thrust::raw_pointer_cast(dev_vec.data());
   }
-} // namespace std
+
+  // this must be instantiated in a .cu file
+  template <typename T, typename Alloc>
+  void resize(thrust::device_vector<T, Alloc>& dev_vec, size_t size);
+}  // namespace thrust
 
 #include <btas/array_adaptor.h>
 
-template <typename T, typename Alloc>
-void resize(thrust::device_vector<T, Alloc>& dev_vec, size_t size);
+namespace TiledArray {
 
-/// a vector that lives on either host or device side, or both
+/// \brief a vector that lives on either host or device side, or both
 
 /// \tparam T the type of values this vector holds
 /// \tparam HostAlloc The allocator type used for host data
@@ -166,6 +169,8 @@ extern template
 class cpu_cuda_vector<double>;
 extern template
 class cpu_cuda_vector<float>;
+
+}  // namespace TiledArray
 
 namespace madness {
 namespace archive {
