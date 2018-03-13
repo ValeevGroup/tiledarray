@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/ValeevGroup/tiledarray.svg?branch=master)](https://travis-ci.org/ValeevGroup/tiledarray)
+[![codecov](https://codecov.io/gh/ValeevGroup/tiledarray/branch/master/graph/badge.svg)](https://codecov.io/gh/ValeevGroup/tiledarray)
 
 <img src=https://github.com/ValeevGroup/tiledarray/wiki/images/ta_logo_med.png width=125>
 
