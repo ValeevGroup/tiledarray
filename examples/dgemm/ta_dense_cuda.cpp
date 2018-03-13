@@ -123,9 +123,9 @@ template <> cublasStatus_t cublasDot<double>(cublasHandle_t handle,
 }
 
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
-btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
-    const btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
-    const btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& right, T factor,
+btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
+    const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
+    const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& right, T factor,
     const TiledArray::math::GemmHelper& gemm_helper) {
 
   // either both arguments are on host or both on device ... mixed case TBI
@@ -139,7 +139,7 @@ btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
   TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
   // Construct the result Tensor
-  typedef btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>> Tensor;
+  typedef btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>> Tensor;
   typedef typename Tensor::storage_type storage_type;
   auto result_range = gemm_helper.make_result_range<Range>(left.range(), right.range());
   auto result_storage = storage_type(result_range.area(), storage_type::state::device);
@@ -182,9 +182,9 @@ btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
 }
 
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
-void gemm(btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& result,
-          const btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
-          const btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& right, T factor,
+void gemm(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& result,
+          const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
+          const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& right, T factor,
           const TiledArray::math::GemmHelper& gemm_helper) {
 
   // the result determines were to do gemm
@@ -263,8 +263,8 @@ namespace TiledArray{
 
 /// result[i] += arg[i]
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
-void add_to(btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& result,
-            const btas::Tensor<T, Range, cpu_cuda_vector<T,AllocHost,AllocDevice>>& arg) {
+void add_to(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& result,
+            const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& arg) {
   // the result determines were to do gemm
   if (result.storage().on_device()) {
     TA_ASSERT(result.storage().on_device());
@@ -296,11 +296,11 @@ namespace TiledArray {
 // foreach(i) result += arg[i] * arg[i]
 template <typename T>
 typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                      cpu_cuda_vector<T>>::value_type
+                      TiledArray::cpu_cuda_vector<T>>::value_type
 squared_norm(
     const btas::Tensor<T,
                        btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                       cpu_cuda_vector<T>>& arg) {
+                       TiledArray::cpu_cuda_vector<T>>& arg) {
   auto storage = arg.storage();
   integer size = storage.size();
   T result = 0;
@@ -454,7 +454,7 @@ int try_main(int argc, char** argv) {
 
   using CUDATile = btas::Tensor<Real,
                        btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                       cpu_cuda_vector<Real>>;
+                       TiledArray::cpu_cuda_vector<Real>>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
   // Construct and initialize arrays

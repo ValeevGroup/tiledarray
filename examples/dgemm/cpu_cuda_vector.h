@@ -52,7 +52,7 @@ class cpu_cuda_vector {
       state_(st)
     {
       if (static_cast<int>(st) & static_cast<int>(state::device))
-        ::resize(device_vec_, size);
+        thrust::resize(device_vec_, size);
     }
     /// creates a vector with \c size elements filled with \c value
     /// \param value the value used to fill the vector
@@ -180,9 +180,9 @@ template<class Archive, typename T> struct ArchiveLoadImpl;
 template<class Archive, typename T> struct ArchiveStoreImpl;
 
 template<class Archive, typename T>
-struct ArchiveLoadImpl<Archive, cpu_cuda_vector<T> > {
-  static inline void load(const Archive& ar, cpu_cuda_vector<T>& x) {
-    typename cpu_cuda_vector<T>::size_type n;
+struct ArchiveLoadImpl<Archive, TiledArray::cpu_cuda_vector<T> > {
+  static inline void load(const Archive& ar, TiledArray::cpu_cuda_vector<T>& x) {
+    typename TiledArray::cpu_cuda_vector<T>::size_type n;
     ar & n;
     x.resize(n);
     for (auto& xi : x)
@@ -191,8 +191,8 @@ struct ArchiveLoadImpl<Archive, cpu_cuda_vector<T> > {
 };
 
 template<class Archive, typename T>
-struct ArchiveStoreImpl<Archive, cpu_cuda_vector<T> > {
-  static inline void store(const Archive& ar, const cpu_cuda_vector<T>& x) {
+struct ArchiveStoreImpl<Archive, TiledArray::cpu_cuda_vector<T> > {
+  static inline void store(const Archive& ar, const TiledArray::cpu_cuda_vector<T>& x) {
     ar & x.size();
     for (const auto& xi : x)
       ar & xi;

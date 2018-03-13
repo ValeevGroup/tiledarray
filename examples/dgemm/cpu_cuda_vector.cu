@@ -1,6 +1,7 @@
 
 #include "cpu_cuda_vector.h"
 
+namespace thrust {
 template<>
 void resize<double,thrust::device_malloc_allocator<double>>(
     thrust::device_vector<double, thrust::device_malloc_allocator<double>>& dev_vec,
@@ -13,9 +14,12 @@ void resize<float,thrust::device_malloc_allocator<float>>(
     size_t size) {
     dev_vec.resize(size);
 }
+}
 
+namespace TiledArray {
 template class cpu_cuda_vector<double>;
 template class cpu_cuda_vector<float>;
+}
 
 // Thrust included in CUDA 9 seems to generate uninstantiated CUB calls
 #if __CUDACC_VER_MAJOR__ > 8
