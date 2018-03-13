@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <tiledarray.h>
+#include <TiledArray/external/btas.h>
 
 int main(int argc, char** argv) {
   // Initialize runtime
@@ -115,9 +116,12 @@ int main(int argc, char** argv) {
     trange_b(blocking_B.begin(), blocking_B.end());
 
   // Construct and initialize arrays
-  TiledArray::TArrayD a(world, trange_a);
-  TiledArray::TArrayD b(world, trange_b);
-  TiledArray::TArrayD c(world, trange_c);
+  // by default use TiledArray tensors, uncomment second line if want to use btas::Tensor instead
+  using Array = TiledArray::TArrayD;
+  //using Array = TiledArray::DistArray<TiledArray::Tile<btas::Tensor<double>>>;
+  Array a(world, trange_a);
+  Array b(world, trange_b);
+  Array c(world, trange_c);
   a.fill(1.0);
   b.fill(1.0);
 
