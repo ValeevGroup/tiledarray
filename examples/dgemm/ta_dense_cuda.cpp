@@ -122,6 +122,7 @@ template <> cublasStatus_t cublasDot<double>(cublasHandle_t handle,
   return cublasDdot(handle, n, x, incx, y, incy, result);
 }
 
+namespace TiledArray{
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
 btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
     const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
@@ -259,7 +260,6 @@ void gemm(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDe
   }
 }
 
-namespace TiledArray{
 
 /// result[i] += arg[i]
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
