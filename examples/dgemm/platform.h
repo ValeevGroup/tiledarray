@@ -34,10 +34,12 @@ constexpr bool overlap(MemorySpace space1, MemorySpace space2) {
 
 /// enumerates the execution spaces
 enum class ExecutionSpace {
-  Null = 0,
   CPU,
   CUDA
 };
+
+// customization point: to_execution_space<S>(O) -> void
+// "moves" O to execution space S
 
 }  // namespace TiledArray
 

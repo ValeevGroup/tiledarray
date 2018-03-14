@@ -178,6 +178,22 @@ bool in_memory_space(const cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) noex
       (vec.on_device() && overlap(MemorySpace::CUDA, Space));
 }
 
+template <ExecutionSpace Space, typename T, typename HostAlloc, typename DeviceAlloc>
+void to_execution_space(cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) {
+  switch(Space) {
+    case ExecutionSpace::CPU: {
+      vec.to_host();
+      break;
+    }
+    case ExecutionSpace::CUDA: {
+      vec.to_device();
+      break;
+    }
+    default:
+      throw std::runtime_error("invalid execution space");
+  }
+}
+
 }  // namespace TiledArray
 
 namespace madness {

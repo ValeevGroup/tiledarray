@@ -18,6 +18,24 @@ bool in_memory_space(const cuda_um_vector<T> &vec) noexcept {
   return overlap(MemorySpace::CUDA_UM, Space);
 }
 
+template <ExecutionSpace Space, typename T>
+void to_execution_space(cuda_um_vector<T>& vec) {
+  switch(Space) {
+    case ExecutionSpace::CPU: {
+      using std::data;
+      cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(T), cudaCpuDeviceId);
+      break;
+    }
+    case ExecutionSpace::CUDA: {
+      using std::data;
+      cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(T), 0);
+      break;
+    }
+    default:
+      throw std::runtime_error("invalid execution space");
+  }
+}
+
 }  // namespace TiledArray
 
 #endif //TILEDARRAY_CUDA_UM_VECTOR_H

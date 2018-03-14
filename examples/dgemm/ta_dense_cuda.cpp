@@ -334,68 +334,14 @@ squared_norm(const btas::Tensor<T, Range, Storage>& arg) {
 #include <iostream>
 #include <tiledarray.h>
 
-template <typename Real>
-int try_main(int argc, char** argv) {
+template <typename Storage>
+void do_main_body(TiledArray::World& world,
+                  const long Nm, const long Bm,
+                  const long Nn, const long Bn,
+                  const long Nk, const long Bk,
+                  const long nrepeat) {
 
-  // Initialize runtime
-  TiledArray::World& world = TiledArray::initialize(argc, argv);
-
-  // Get command line arguments
-  if(argc < 6) {
-    std::cout << "multiplies A(Nm,Nk) * B(Nk,Nn), with dimensions m, n, and k blocked by Bm, Bn, and Bk, respectively"
-              << std::endl
-              << "Usage: " << argv[0] << " Nm Bm Nn Bn Nk Bk [repetitions = 5] [# of CUDA streams = 17]\n";
-    return 0;
-  }
-  const long Nm = atol(argv[1]);
-  const long Bm = atol(argv[2]);
-  const long Nn = atol(argv[3]);
-  const long Bn = atol(argv[4]);
-  const long Nk = atol(argv[5]);
-  const long Bk = atol(argv[6]);
-  if (Nm <= 0 || Nn <= 0 || Nk <= 0) {
-    std::cerr << "Error: dimensions must be greater than zero.\n";
-    return 1;
-  }
-  if (Bm <= 0 || Bn <= 0 || Bk <= 0) {
-    std::cerr << "Error: block sizes must be greater than zero.\n";
-    return 1;
-  }
-  if((Nm % Bm) != 0ul || Nn % Bn !=0ul || Nk % Bk !=0ul) {
-    std::cerr << "Error: diminsion size must be evenly divisible by block size.\n";
-    return 1;
-  }
-  const long repeat = (argc >= 8 ? atol(argv[7]) : 5);
-  if (repeat <= 0) {
-    std::cerr << "Error: number of repetitions must be greater than zero.\n";
-    return 1;
-  }
-
-  num_cuda_streams = (argc >= 9) ? atoi(argv[8]) : 17;
-
-  int driverVersion, runtimeVersion;
-  auto error = cudaDriverGetVersion (&driverVersion);
-  if (error != cudaSuccess) {
-    std::cout << "error(cudaDriverGetVersion) = " << error << std::endl;
-  }
-  error = cudaRuntimeGetVersion (&runtimeVersion);
-  if (error != cudaSuccess) {
-    std::cout << "error(cudaRuntimeGetVersion) = " << error << std::endl;
-  }
-  std::cout << "CUDA {driver,runtime} versions = " << driverVersion << "," << runtimeVersion << std::endl;
-  {
-    size_t free_mem, total_mem;
-    auto result = cudaMemGetInfo(&free_mem, &total_mem);
-    std::cout << "CUDA memory stats: {total,free} = {" << total_mem << "," << free_mem << "}" << std::endl;
-  }
-  {
-    cuda_streams.resize(num_cuda_streams);
-    for(auto& stream: cuda_streams) {
-      auto error = cudaStreamCreate(&stream);
-      assert(error == cudaSuccess);
-    }
-  }
-
+  using Real = typename Storage::value_type;
 
   const std::size_t Tm = Nm / Bm;
   const std::size_t Tn = Nn / Bn;
@@ -456,11 +402,9 @@ int try_main(int argc, char** argv) {
   TiledArray::TiledRange // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
-  using storage_type = TiledArray::cpu_cuda_vector<Real>;
-  //using storage_type = TiledArray::cuda_um_vector<Real>;
   using CUDATile = btas::Tensor<Real,
                                 btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                                storage_type>;
+                                Storage>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
   // Construct and initialize arrays
@@ -472,10 +416,10 @@ int try_main(int argc, char** argv) {
   cudaDeviceSynchronize();
 
   auto to_device = [](TA::Tile<CUDATile>& tile) -> void {
-    tile.tensor().storage().to_device();
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(tile.tensor().storage());
   };
   auto to_host = [](TA::Tile<CUDATile>& tile) -> void {
-    tile.tensor().storage().to_host();
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(tile.tensor().storage());
   };
   foreach_inplace(a, to_device);
   foreach_inplace(b, to_device);
@@ -486,7 +430,7 @@ int try_main(int argc, char** argv) {
   const double wall_time_start = madness::wall_time();
 
   // Do matrix multiplication
-  for(int i = 0; i < repeat; ++i) {
+  for(int i = 0; i < nrepeat; ++i) {
     c("m,n") = a("m,k") * b("k,n");
     world.gop.fence();
     cudaDeviceSynchronize();
@@ -498,9 +442,93 @@ int try_main(int argc, char** argv) {
   const double wall_time_stop = madness::wall_time();
 
   if(world.rank() == 0)
-    std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
-              << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(Nn *
+    std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(nrepeat)
+              << " sec\nAverage GFLOPS      = " << double(nrepeat) * 2.0 * double(Nn *
         Nm * Nm) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+}
+
+int try_main(int argc, char** argv) {
+
+  // Initialize runtime
+  TiledArray::World& world = TiledArray::initialize(argc, argv);
+
+  // Get command line arguments
+  if(argc < 6) {
+    std::cout << "multiplies A(Nm,Nk) * B(Nk,Nn), with dimensions m, n, and k blocked by Bm, Bn, and Bk, respectively"
+              << std::endl
+              << "Usage: " << argv[0] << " Nm Bm Nn Bn Nk Bk [# of repetitions = 5] [# of CUDA streams = 17] [real = double] [use CUDA UM? = false]\n";
+    return 0;
+  }
+  const long Nm = atol(argv[1]);
+  const long Bm = atol(argv[2]);
+  const long Nn = atol(argv[3]);
+  const long Bn = atol(argv[4]);
+  const long Nk = atol(argv[5]);
+  const long Bk = atol(argv[6]);
+  if (Nm <= 0 || Nn <= 0 || Nk <= 0) {
+    std::cerr << "Error: dimensions must be greater than zero.\n";
+    return 1;
+  }
+  if (Bm <= 0 || Bn <= 0 || Bk <= 0) {
+    std::cerr << "Error: block sizes must be greater than zero.\n";
+    return 1;
+  }
+  if((Nm % Bm) != 0ul || Nn % Bn !=0ul || Nk % Bk !=0ul) {
+    std::cerr << "Error: diminsion size must be evenly divisible by block size.\n";
+    return 1;
+  }
+  const long nrepeat = (argc >= 8 ? atol(argv[7]) : 5);
+  if (nrepeat <= 0) {
+    std::cerr << "Error: number of repetitions must be greater than zero.\n";
+    return 1;
+  }
+
+  num_cuda_streams = (argc >= 9) ? atoi(argv[8]) : 17;
+
+  const auto real_type_str = (argc >= 10) ? std::string(argv[9]) : std::string("double");
+
+  const auto arg10_str = (argc >= 11) ? std::string(argv[10]) : std::string{};
+  auto to_bool = [](const std::string& str) {
+    return (str == "true" || str == "True" || str == "TRUE" || str == "1" || str == "yes" || str == "Yes" || str == "YES");
+  };
+  const bool use_cuda_um = (argc >= 11) ? to_bool(arg10_str) : false;
+
+  int driverVersion, runtimeVersion;
+  auto error = cudaDriverGetVersion (&driverVersion);
+  if (error != cudaSuccess) {
+    std::cout << "error(cudaDriverGetVersion) = " << error << std::endl;
+  }
+  error = cudaRuntimeGetVersion (&runtimeVersion);
+  if (error != cudaSuccess) {
+    std::cout << "error(cudaRuntimeGetVersion) = " << error << std::endl;
+  }
+  std::cout << "CUDA {driver,runtime} versions = " << driverVersion << "," << runtimeVersion << std::endl;
+  {
+    size_t free_mem, total_mem;
+    auto result = cudaMemGetInfo(&free_mem, &total_mem);
+    std::cout << "CUDA memory stats: {total,free} = {" << total_mem << "," << free_mem << "}" << std::endl;
+  }
+  {
+    cuda_streams.resize(num_cuda_streams);
+    for(auto& stream: cuda_streams) {
+      auto error = cudaStreamCreate(&stream);
+      assert(error == cudaSuccess);
+    }
+  }
+
+  if (use_cuda_um) {
+//    if (real_type_str == "double")
+//      do_main_body<TiledArray::cuda_um_vector<double>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+//    else
+//      do_main_body<TiledArray::cuda_um_vector<float>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+    throw std::runtime_error("support for CUDA UM is not yet implemented");
+  }
+  else {
+    if (real_type_str == "double")
+      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+    else
+      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+  }
 
   TiledArray::finalize();
 
@@ -517,8 +545,7 @@ int try_main(int argc, char** argv) {
 int main(int argc, char* argv[]) {
 
   try {
-    try_main<double>(argc, argv);
-    //try_main<float>(argc, argv);
+    try_main(argc, argv);
   }
   catch(thrust::system::detail::bad_alloc& ex) {
     std::cout << ex.what() << std::endl;
