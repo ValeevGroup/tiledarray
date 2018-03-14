@@ -192,7 +192,7 @@ void gemm(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDe
   // the result determines were to do gemm
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     TA_ASSERT(in_memory_space<MemorySpace::CUDA>(left.storage()) &&
-              in_memory_space<MemorySpace::CUDA>(right.storage())));
+              in_memory_space<MemorySpace::CUDA>(right.storage()));
   }
   else {
     TA_ASSERT(in_memory_space<MemorySpace::CPU>(result.storage()) &&
@@ -456,8 +456,8 @@ int try_main(int argc, char** argv) {
   TiledArray::TiledRange // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
-  using storage_type = cpu_cuda_vector<Real>;
-  //using storage_type = cuda_um_vector<Real>;
+  using storage_type = TiledArray::cpu_cuda_vector<Real>;
+  //using storage_type = TiledArray::cuda_um_vector<Real>;
   using CUDATile = btas::Tensor<Real,
                                 btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
                                 storage_type>;
