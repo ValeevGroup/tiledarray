@@ -1,6 +1,7 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <cublas_v2.h>
+#include "platform.h"
 
 // thrust::device_vector::data() returns a proxy, provide an overload for std::data() to provide raw ptr
 namespace thrust {
@@ -169,6 +170,13 @@ extern template
 class cpu_cuda_vector<double>;
 extern template
 class cpu_cuda_vector<float>;
+
+template <MemorySpace Space, typename T, typename HostAlloc, typename DeviceAlloc>
+bool in_memory_space(const cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) noexcept {
+  return
+      (vec.on_host() && overlap(MemorySpace::CPU, Space)) ||
+      (vec.on_device() && overlap(MemorySpace::CUDA, Space));
+}
 
 }  // namespace TiledArray
 

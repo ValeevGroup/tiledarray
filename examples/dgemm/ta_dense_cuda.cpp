@@ -189,11 +189,14 @@ void gemm(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDe
           const TiledArray::math::GemmHelper& gemm_helper) {
 
   // the result determines were to do gemm
-  if (result.storage().on_device()) {
-    TA_ASSERT(left.storage().on_device() && right.storage().on_device());
+  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
+    TA_ASSERT(in_memory_space<MemorySpace::CUDA>(left.storage()) &&
+              in_memory_space<MemorySpace::CUDA>(right.storage())));
   }
   else {
-    TA_ASSERT(result.storage().on_host() && left.storage().on_host() && right.storage().on_host());
+    TA_ASSERT(in_memory_space<MemorySpace::CPU>(result.storage()) &&
+              in_memory_space<MemorySpace::CPU>(left.storage()) &&
+              in_memory_space<MemorySpace::CPU>(right.storage()));
   }
 
   // Check that the result is not empty and has the correct rank
