@@ -20,6 +20,7 @@
 #define CUDA_API_PER_THREAD_DEFAULT_STREAM
 
 #include "cpu_cuda_vector.h"
+#include "cuda_um_vector.h"
 #include <madness/config.h>
 
 // assign 1 cuBLAS handle / thread, use thread-local storage to manage
@@ -452,9 +453,11 @@ int try_main(int argc, char** argv) {
   TiledArray::TiledRange // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
+  using storage_type = cpu_cuda_vector<Real>;
+  //using storage_type = cuda_um_vector<Real>;
   using CUDATile = btas::Tensor<Real,
-                       btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                       TiledArray::cpu_cuda_vector<Real>>;
+                                btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+                                storage_type>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
   // Construct and initialize arrays
