@@ -60,9 +60,7 @@ std::vector<cudaStream_t> cuda_streams;  // pool of streams
 #include <TiledArray/external/btas.h>
 // clang-format on
 
-
 cublasOperation_t to_cublas_op(madness::cblas::CBLAS_TRANSPOSE cblas_op) {
-
   cublasOperation_t result;
   switch (cblas_op) {
     case madness::cblas::NoTrans:
@@ -387,9 +385,8 @@ void add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
     auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
-    status =
-        cublasAxpy(handle, result.size(), &one, device_data(arg.storage()), 1,
-                   device_data(result.storage()), 1);
+    status = cublasAxpy(handle, result.size(), &one, device_data(arg.storage()),
+                        1, device_data(result.storage()), 1);
     assert(status == CUBLAS_STATUS_SUCCESS);
   } else {
     assert(false);
@@ -414,24 +411,20 @@ void add_to(btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &result,
   add_to_cuda_impl(result, arg);
 }
 
-}  // namespace TiledArray
-
-namespace TiledArray {
-
 // foreach(i) result += arg[i] * arg[i]
-template <typename T>
+template <typename T, typename Storage>
 typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                      TiledArray::cpu_cuda_vector<T>>::value_type
-squared_norm(
+                      Storage>::value_type
+squared_norm_cuda_impl(
     const btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                       TiledArray::cpu_cuda_vector<T>> &arg) {
+                       Storage> &arg) {
   auto storage = arg.storage();
   integer size = storage.size();
   T result = 0;
-  if (storage.on_device()) {
+  if (in_memory_space<MemorySpace::CUDA>(storage)) {
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasDot(handle, size, storage.device_data(), 1,
-                            storage.device_data(), 1, &result);
+    auto status = cublasDot(handle, size, device_data(storage), 1,
+                            device_data(storage), 1, &result);
     assert(status == CUBLAS_STATUS_SUCCESS);
   } else {
     result = TiledArray::math::dot(size, storage.data(), storage.data());
@@ -439,8 +432,25 @@ squared_norm(
   return result;
 }
 
-}  // namespace TiledArray
+template <typename T>
+typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+                      TiledArray::cpu_cuda_vector<T>>::value_type
+squared_norm(
+    const btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+                       TiledArray::cpu_cuda_vector<T>> &arg) {
+  return squared_norm_cuda_impl(arg);
+}
 
+template <typename T>
+typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+                      TiledArray::cuda_um_vector<T>>::value_type
+squared_norm(
+    const btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+                       TiledArray::cuda_um_vector<T>> &arg) {
+  return squared_norm_cuda_impl(arg);
+}
+
+}  // namespace TiledArray
 
 template <typename Storage>
 void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
