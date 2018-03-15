@@ -6,6 +6,7 @@
 #define TILEDARRAY_CUDA_UM_VECTOR_H
 
 #include "cuda_um_allocator.h"
+#include <TiledArray/utility.h>
 
 namespace TiledArray {
 
@@ -23,11 +24,13 @@ void to_execution_space(cuda_um_vector<T>& vec) {
   switch(Space) {
     case ExecutionSpace::CPU: {
       using std::data;
+      using detail::size;
       cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(T), cudaCpuDeviceId);
       break;
     }
     case ExecutionSpace::CUDA: {
       using std::data;
+      using detail::size;
       cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(T), 0);
       break;
     }

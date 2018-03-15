@@ -319,16 +319,6 @@ squared_norm(
   return result;
 }
 
-// foreach(i) result += arg[i] * arg[i]
-template<typename T, typename Range, typename Storage>
-typename btas::Tensor<T, Range, Storage>::value_type
-squared_norm(const btas::Tensor<T, Range, Storage>& arg) {
-  integer size = arg.size();
-  double result = 0.0;
-  result = TiledArray::math::dot(size, arg.data(), arg.data());
-  return result;
-}
-
 }  // namespace TiledArray
 
 #include <iostream>
@@ -517,10 +507,10 @@ int try_main(int argc, char** argv) {
   }
 
   if (use_cuda_um) {
-//    if (real_type_str == "double")
-//      do_main_body<TiledArray::cuda_um_vector<double>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-//    else
-//      do_main_body<TiledArray::cuda_um_vector<float>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+    if (real_type_str == "double")
+      do_main_body<TiledArray::cuda_um_vector<double>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+    else
+      do_main_body<TiledArray::cuda_um_vector<float>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
     throw std::runtime_error("support for CUDA UM is not yet implemented");
   }
   else {

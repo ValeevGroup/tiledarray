@@ -10,19 +10,18 @@
 #include <stdexcept>
 
 namespace TiledArray {
-namespace detail {
 
 /// CUDA UM allocator, based on boilerplate by Howard Hinnant
 /// (https://howardhinnant.github.io/allocator_boilerplate.html)
 template <class T>
-class cuda_um_allocator {
+class cuda_um_allocator_impl {
  public:
   using value_type = T;
 
-  cuda_um_allocator() noexcept {}
+  cuda_um_allocator_impl() noexcept {}
 
   template <class U>
-  cuda_um_allocator(const cuda_um_allocator<U>&) noexcept {}
+  cuda_um_allocator_impl(const cuda_um_allocator_impl<U>&) noexcept {}
 
   value_type* allocate(size_t n) {
     value_type* result = nullptr;
@@ -47,18 +46,16 @@ class cuda_um_allocator {
 };  // class cuda_um_allocator
 
 template <class T1, class T2>
-bool operator==(const cuda_um_allocator<T1>&,
-                const cuda_um_allocator<T2>&) noexcept {
+bool operator==(const cuda_um_allocator_impl<T1>&,
+                const cuda_um_allocator_impl<T2>&) noexcept {
   return true;
 }
 
 template <class T1, class T2>
-bool operator!=(const cuda_um_allocator<T1>& lhs,
-                const cuda_um_allocator<T2>& rhs) noexcept {
+bool operator!=(const cuda_um_allocator_impl<T1>& lhs,
+                const cuda_um_allocator_impl<T2>& rhs) noexcept {
   return !(lhs == rhs);
 }
-
-}  // namespace detail
 
 /// see
 /// https://stackoverflow.com/questions/21028299/is-this-behavior-of-vectorresizesize-type-n-under-c11-and-boost-container/21028912#21028912
@@ -88,7 +85,7 @@ class default_init_allocator : public A {
 
 template <typename T>
 using cuda_um_allocator =
-    default_init_allocator<T, detail::cuda_um_allocator<T>>;
+    default_init_allocator<T, cuda_um_allocator_impl<T>>;
 
 }  // namespace TiledArray
 
