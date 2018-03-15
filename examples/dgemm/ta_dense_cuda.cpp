@@ -124,63 +124,79 @@ template <> cublasStatus_t cublasDot<double>(cublasHandle_t handle,
 }
 
 namespace TiledArray{
+
+template<typename T, typename Range, typename Storage>
+btas::Tensor<T, Range, Storage > gemm_cuda_impl(
+    const btas::Tensor<T, Range, Storage>& left,
+    const btas::Tensor<T, Range, Storage>& right, T factor,
+    const TiledArray::math::GemmHelper& gemm_helper) {
+// either both arguments are on host or both on device ... mixed case TBI
+TA_ASSERT(left.storage().on_host() == right.storage().on_host() &&
+    left.storage().on_device() == right.storage().on_device());
+
+// Check that the arguments are not empty and have the correct ranks
+TA_ASSERT(!left.empty());
+TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
+TA_ASSERT(!right.empty());
+TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
+
+// Construct the result Tensor
+typedef btas::Tensor<T, Range, Storage> Tensor;
+typedef typename Tensor::storage_type storage_type;
+auto result_range = gemm_helper.make_result_range<Range>(left.range(), right.range());
+auto result_storage = storage_type(result_range.area(), storage_type::state::device);
+Tensor result(std::move(result_range), std::move(result_storage));
+
+// Check that the inner dimensions of left and right match
+TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
+                                           std::cbegin(right.range().lobound())));
+TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
+                                           std::cbegin(right.range().upbound())));
+TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().extent()),
+                                           std::cbegin(right.range().extent())));
+
+// Compute gemm dimensions
+integer m = 1, n = 1, k = 1;
+gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
+
+// Get the leading dimension for left and right matrices.
+const integer lda = (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+
+if (result.storage().on_device()) {
+const auto& handle = cuBLASHandlePool::handle();
+auto zero = T(0);
+auto stream = result.range().ordinal().offset() % num_cuda_streams;
+auto status = cublasSetStream(handle, cuda_streams[stream]);
+assert(status == CUBLAS_STATUS_SUCCESS);
+status = cublasGemm(handle,
+                    to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
+                    left.storage().device_data(), lda, right.storage().device_data(), ldb, &zero, result.storage().device_data(), n);
+assert(status == CUBLAS_STATUS_SUCCESS);
+}
+else {
+assert(false);
+TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
+    left.data(), lda, right.data(), ldb, T(0), result.data(), n);
+}
+
+return result;
+}
+
+template<typename T, typename Range>
+btas::Tensor<T, Range, TiledArray::cuda_um_vector<T> > gemm(
+    const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>>& left,
+    const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>>& right, T factor,
+    const TiledArray::math::GemmHelper& gemm_helper) {
+  return gemm_cuda_impl(left, right, factor, gemm_helper);
+}
+
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
 btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice> > gemm(
     const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& left,
     const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>>& right, T factor,
     const TiledArray::math::GemmHelper& gemm_helper) {
-
-  // either both arguments are on host or both on device ... mixed case TBI
-  TA_ASSERT(left.storage().on_host() == right.storage().on_host() &&
-      left.storage().on_device() == right.storage().on_device());
-
-  // Check that the arguments are not empty and have the correct ranks
-  TA_ASSERT(!left.empty());
-  TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
-  TA_ASSERT(!right.empty());
-  TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
-
-  // Construct the result Tensor
-  typedef btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T,AllocHost,AllocDevice>> Tensor;
-  typedef typename Tensor::storage_type storage_type;
-  auto result_range = gemm_helper.make_result_range<Range>(left.range(), right.range());
-  auto result_storage = storage_type(result_range.area(), storage_type::state::device);
-  Tensor result(std::move(result_range), std::move(result_storage));
-
-  // Check that the inner dimensions of left and right match
-  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
-                                            std::cbegin(right.range().lobound())));
-  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
-                                            std::cbegin(right.range().upbound())));
-  TA_ASSERT(gemm_helper.left_right_congruent(std::cbegin(left.range().extent()),
-                                            std::cbegin(right.range().extent())));
-
-  // Compute gemm dimensions
-  integer m = 1, n = 1, k = 1;
-  gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
-
-  // Get the leading dimension for left and right matrices.
-  const integer lda = (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
-  const integer ldb = (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
-
-  if (result.storage().on_device()) {
-    const auto& handle = cuBLASHandlePool::handle();
-    auto zero = T(0);
-    auto stream = result.range().ordinal().offset() % num_cuda_streams;
-    auto status = cublasSetStream(handle, cuda_streams[stream]);
-    assert(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasGemm(handle,
-                        to_cublas_op(gemm_helper.left_op()), to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
-                        left.storage().device_data(), lda, right.storage().device_data(), ldb, &zero, result.storage().device_data(), n);
-    assert(status == CUBLAS_STATUS_SUCCESS);
-  }
-  else {
-    assert(false);
-    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-                           left.data(), lda, right.data(), ldb, T(0), result.data(), n);
-  }
-
-  return result;
+  return gemm_cuda_impl(left, right, factor, gemm_helper);
 }
 
 template<typename T, typename Range, typename AllocHost, typename AllocDevice>
@@ -507,10 +523,10 @@ int try_main(int argc, char** argv) {
   }
 
   if (use_cuda_um) {
-    if (real_type_str == "double")
-      do_main_body<TiledArray::cuda_um_vector<double>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-    else
-      do_main_body<TiledArray::cuda_um_vector<float>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+//    if (real_type_str == "double")
+//      do_main_body<TiledArray::cuda_um_vector<double>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+//    else
+//      do_main_body<TiledArray::cuda_um_vector<float>>(world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
     throw std::runtime_error("support for CUDA UM is not yet implemented");
   }
   else {
