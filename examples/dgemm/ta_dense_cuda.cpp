@@ -19,9 +19,9 @@
 
 #define CUDA_API_PER_THREAD_DEFAULT_STREAM
 
+#include <madness/config.h>
 #include "cpu_cuda_vector.h"
 #include "cuda_um_vector.h"
-#include <madness/config.h>
 
 // assign 1 cuBLAS handle / thread, use thread-local storage to manage
 class cuBLASHandlePool {
@@ -46,18 +46,23 @@ thread_local cublasHandle_t *cuBLASHandlePool::handle_;
 int num_cuda_streams;  // user param; use a a nice prime for round-robins
 std::vector<cudaStream_t> cuda_streams;  // pool of streams
 
+// clang-format off
 #include <btas/varray/varray.h>
 #include <btas/tensor.h>
 #include <btas/generic/permute.h>
 #include <btas/generic/axpy_impl.h>
 
+#include <tiledarray.h>
 #include <TiledArray/permutation.h>
 #include <TiledArray/range.h>
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/math/blas.h>
 #include <TiledArray/external/btas.h>
+// clang-format on
+
 
 cublasOperation_t to_cublas_op(madness::cblas::CBLAS_TRANSPOSE cblas_op) {
+
   cublasOperation_t result;
   switch (cblas_op) {
     case madness::cblas::NoTrans:
@@ -132,7 +137,6 @@ cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n, const double *x,
 }
 
 namespace TiledArray {
-
 
 template <typename T>
 void make_device_storage(cuda_um_vector<T> &storage, std::size_t n) {
@@ -235,37 +239,11 @@ btas::Tensor<T, Range, Storage> gemm_cuda_impl(
   return result;
 }
 
-template <typename T, typename Range>
-btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> gemm(
-    const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &left,
-    const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &right,
-    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
-  return gemm_cuda_impl(left, right, factor, gemm_helper);
-}
-
-template <typename T, typename Range, typename AllocHost, typename AllocDevice>
-btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-gemm(const btas::Tensor<T, Range,
-                        TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-         &left,
-     const btas::Tensor<T, Range,
-                        TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-         &right,
-     T factor, const TiledArray::math::GemmHelper &gemm_helper) {
-  return gemm_cuda_impl(left, right, factor, gemm_helper);
-}
-
-template <typename T, typename Range, typename AllocHost, typename AllocDevice>
-void gemm(
-    btas::Tensor<T, Range,
-                 TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-        &result,
-    const btas::Tensor<
-        T, Range, TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>> &left,
-    const btas::Tensor<T, Range,
-                       TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-        &right,
-    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+template <typename T, typename Range, typename Storage>
+void gemm_cuda_impl(btas::Tensor<T, Range, Storage> &result,
+                    const btas::Tensor<T, Range, Storage> &left,
+                    const btas::Tensor<T, Range, Storage> &right, T factor,
+                    const TiledArray::math::GemmHelper &gemm_helper) {
   // the result determines were to do gemm
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     TA_ASSERT(in_memory_space<MemorySpace::CUDA>(left.storage()) &&
@@ -330,7 +308,7 @@ void gemm(
   const integer ldb =
       (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
-  if (result.storage().on_device()) {
+  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
     auto one = T(1);
     auto stream = result.range().ordinal().offset() % num_cuda_streams;
@@ -338,9 +316,9 @@ void gemm(
     assert(status == CUBLAS_STATUS_SUCCESS);
     status = cublasGemm(handle, to_cublas_op(gemm_helper.left_op()),
                         to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
-                        left.storage().device_data(), lda,
-                        right.storage().device_data(), ldb, &one,
-                        result.storage().device_data(), n);
+                        device_data(left.storage()), lda,
+                        device_data(right.storage()), ldb, &one,
+                        device_data(result.storage()), n);
     assert(status == CUBLAS_STATUS_SUCCESS);
   } else {
     assert(false);
@@ -350,7 +328,75 @@ void gemm(
   }
 }
 
+template <typename T, typename Range>
+btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> gemm(
+    const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &left,
+    const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &right,
+    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+  return gemm_cuda_impl(left, right, factor, gemm_helper);
+}
+
+template <typename T, typename Range, typename AllocHost, typename AllocDevice>
+btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
+gemm(const btas::Tensor<T, Range,
+                        TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
+         &left,
+     const btas::Tensor<T, Range,
+                        TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
+         &right,
+     T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+  return gemm_cuda_impl(left, right, factor, gemm_helper);
+}
+
+template <typename T, typename Range>
+void gemm(btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &result,
+          const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &left,
+          const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &right,
+          T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+  return gemm_cuda_impl(result, left, right, factor, gemm_helper);
+}
+
+template <typename T, typename Range, typename AllocHost, typename AllocDevice>
+void gemm(
+    btas::Tensor<T, Range,
+                 TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
+        &result,
+    const btas::Tensor<
+        T, Range, TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>> &left,
+    const btas::Tensor<T, Range,
+                       TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
+        &right,
+    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+  return gemm_cuda_impl(result, left, right, factor, gemm_helper);
+}
+
 /// result[i] += arg[i]
+template <typename T, typename Range, typename Storage>
+void add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
+                      const btas::Tensor<T, Range, Storage> &arg) {
+  // the result determines were to do gemm
+  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
+    TA_ASSERT(in_memory_space<MemorySpace::CUDA>(arg.storage()));
+  } else {
+    TA_ASSERT(in_memory_space<MemorySpace::CPU>(result.storage()) &&
+              in_memory_space<MemorySpace::CPU>(arg.storage()));
+  }
+  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
+    const auto &handle = cuBLASHandlePool::handle();
+    auto one = T(1);
+    auto stream = result.range().ordinal().offset() % num_cuda_streams;
+    auto status = cublasSetStream(handle, cuda_streams[stream]);
+    assert(status == CUBLAS_STATUS_SUCCESS);
+    status =
+        cublasAxpy(handle, result.size(), &one, device_data(arg.storage()), 1,
+                   device_data(result.storage()), 1);
+    assert(status == CUBLAS_STATUS_SUCCESS);
+  } else {
+    assert(false);
+    btas::axpy(1.0, arg, result);
+  }
+}
+
 template <typename T, typename Range, typename AllocHost, typename AllocDevice>
 void add_to(
     btas::Tensor<T, Range,
@@ -359,26 +405,13 @@ void add_to(
     const btas::Tensor<T, Range,
                        TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
         &arg) {
-  // the result determines were to do gemm
-  if (result.storage().on_device()) {
-    TA_ASSERT(result.storage().on_device());
-  } else {
-    TA_ASSERT(result.storage().on_host() && arg.storage().on_host());
-  }
-  if (result.storage().on_device()) {
-    const auto &handle = cuBLASHandlePool::handle();
-    auto one = T(1);
-    auto stream = result.range().ordinal().offset() % num_cuda_streams;
-    auto status = cublasSetStream(handle, cuda_streams[stream]);
-    assert(status == CUBLAS_STATUS_SUCCESS);
-    status =
-        cublasAxpy(handle, result.size(), &one, arg.storage().device_data(), 1,
-                   result.storage().device_data(), 1);
-    assert(status == CUBLAS_STATUS_SUCCESS);
-  } else {
-    assert(false);
-    btas::axpy(1.0, arg, result);
-  }
+  add_to_cuda_impl(result, arg);
+}
+
+template <typename T, typename Range>
+void add_to(btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &result,
+            const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &arg) {
+  add_to_cuda_impl(result, arg);
 }
 
 }  // namespace TiledArray
@@ -408,8 +441,6 @@ squared_norm(
 
 }  // namespace TiledArray
 
-#include <tiledarray.h>
-#include <iostream>
 
 template <typename Storage>
 void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
