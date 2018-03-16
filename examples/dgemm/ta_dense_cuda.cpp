@@ -686,8 +686,6 @@ int try_main(int argc, char **argv) {
     else
       do_main_body<TiledArray::cuda_um_vector<float>>(world, Nm, Bm, Nn, Bn, Nk,
                                                       Bk, nrepeat);
-    //    throw std::runtime_error("support for CUDA UM is not yet
-    //    implemented");
   } else {
     if (real_type_str == "double")
       do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
