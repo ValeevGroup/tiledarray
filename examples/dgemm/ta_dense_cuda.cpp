@@ -139,6 +139,7 @@ namespace TiledArray {
 template <typename T>
 void make_device_storage(cuda_um_vector<T> &storage, std::size_t n) {
   storage = cuda_um_vector<T>(n);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(storage);
 }
 
 template <typename T>
