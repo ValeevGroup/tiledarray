@@ -26,13 +26,11 @@ template <ExecutionSpace Space, typename T>
 void to_execution_space(cuda_um_vector<T>& vec) {
   switch(Space) {
     case ExecutionSpace::CPU: {
-      using detail::data;
       using detail::size;
       cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(T), cudaCpuDeviceId);
       break;
     }
     case ExecutionSpace::CUDA: {
-      using detail::data;
       using detail::size;
       int device = -1;
       cudaGetDevice(&device);
