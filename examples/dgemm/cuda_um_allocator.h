@@ -7,6 +7,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <memory>
 #include <stdexcept>
 
 namespace TiledArray {
@@ -17,6 +18,8 @@ template <class T>
 class cuda_um_allocator_impl {
  public:
   using value_type = T;
+  using reference = T&;
+  using const_reference = const T&;
 
   cuda_um_allocator_impl() noexcept {}
 
@@ -61,9 +64,11 @@ bool operator!=(const cuda_um_allocator_impl<T1>& lhs,
 /// https://stackoverflow.com/questions/21028299/is-this-behavior-of-vectorresizesize-type-n-under-c11-and-boost-container/21028912#21028912
 template <typename T, typename A = std::allocator<T>>
 class default_init_allocator : public A {
-  typedef std::allocator_traits<A> a_t;
-
+  using a_t = std::allocator_traits<A>;
  public:
+  using reference = typename A::reference;   // std::allocator<T>::reference deprecated in C++17, but thrust still relying on this
+  using const_reference = typename A::const_reference;  // ditto
+
   template <typename U>
   struct rebind {
     using other =
