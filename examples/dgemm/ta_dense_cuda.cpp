@@ -635,12 +635,41 @@ int try_main(int argc, char **argv) {
   }
   std::cout << "CUDA {driver,runtime} versions = " << driverVersion << ","
             << runtimeVersion << std::endl;
-  {
-    size_t free_mem, total_mem;
-    auto result = cudaMemGetInfo(&free_mem, &total_mem);
-    std::cout << "CUDA memory stats: {total,free} = {" << total_mem << ","
-              << free_mem << "}" << std::endl;
-  }
+  {  // print device properties
+    int ndevice = -1;
+    auto error = cudaGetDeviceCount(&ndevice);
+    if (error != cudaSuccess) {
+      std::cout << "error(cudaGetDeviceCount) = " << error << std::endl;
+    }
+    assert(ndevice > 0);
+    for(int device=0; device != ndevice; ++device) {
+      cudaDeviceProp prop;
+      auto error = cudaGetDeviceProperties(&prop, device);
+      if (error != cudaSuccess) {
+        std::cout << "error(cudaGetDeviceProperties) = " << error << std::endl;
+      }
+      std::cout << "Device #" << device << ": " << prop.name << std::endl
+                << "  managedMemory = " << prop.managedMemory << std::endl
+                << "  singleToDoublePrecisionPerfRatio = " << prop.singleToDoublePrecisionPerfRatio << std::endl;
+      int result;
+      error = cudaDeviceGetAttribute (&result, cudaDevAttrUnifiedAddressing, device);
+      std::cout << "  attrUnifiedAddressing = " << result << std::endl;
+      error = cudaDeviceGetAttribute (&result, cudaDevAttrConcurrentManagedAccess, device);
+      std::cout << "  attrConcurrentManagedAccess = " << result << std::endl;
+      error = cudaSetDevice(device);
+      if (error != cudaSuccess) {
+        std::cout << "error(cudaSetDevice) = " << error << std::endl;
+      }
+      size_t free_mem, total_mem;
+      error = cudaMemGetInfo(&free_mem, &total_mem);
+      std::cout << "  {total,free} memory = {" << total_mem << ","
+                << free_mem << "}" << std::endl;
+    }
+    error = cudaSetDevice(0);
+    if (error != cudaSuccess) {
+      std::cout << "error(cudaSetDevice) = " << error << std::endl;
+    }
+  }  // print device properties
   {
     cuda_streams.resize(num_cuda_streams);
     for (auto &stream : cuda_streams) {
