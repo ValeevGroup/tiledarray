@@ -9,11 +9,14 @@
 #include "platform.h"
 #include "thrust.h"
 #include <TiledArray/utility.h>
+#include "btas/varray/varray.h"
+#include "btas/array_adaptor.h"
 
 namespace TiledArray {
 
 /// \brief a vector that lives in CUDA Unified Memory, with most operations implemented on the CPU
 template<typename T> using cuda_um_vector = std::vector<T, TiledArray::cuda_um_allocator<T>>;
+//template<typename T> using cuda_um_vector = btas::varray<T, TiledArray::cuda_um_allocator<T>>;
 //template<typename T> using cuda_um_vector = thrust::device_vector<T, TiledArray::cuda_um_allocator<T>>;
 
 /// @return true if @c dev_vec is present in space @space
@@ -27,11 +30,13 @@ void to_execution_space(cuda_um_vector<T>& vec) {
   switch(Space) {
     case ExecutionSpace::CPU: {
       using detail::size;
+      using std::data;
       cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(T), cudaCpuDeviceId);
       break;
     }
     case ExecutionSpace::CUDA: {
       using detail::size;
+      using std::data;
       int device = -1;
       cudaGetDevice(&device);
       cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(T), device);
@@ -65,6 +70,26 @@ struct ArchiveLoadImpl<Archive, thrust::device_vector<T, TiledArray::cuda_um_all
 template<class Archive, typename T>
 struct ArchiveStoreImpl<Archive, thrust::device_vector<T, TiledArray::cuda_um_allocator<T>> > {
   static inline void store(const Archive& ar, const thrust::device_vector<T, TiledArray::cuda_um_allocator<T>>& x) {
+    ar & x.size();
+    for (const auto& xi : x)
+      ar & xi;
+  }
+};
+
+template<class Archive, typename T>
+struct ArchiveLoadImpl<Archive, btas::varray<T, TiledArray::cuda_um_allocator<T>> > {
+  static inline void load(const Archive& ar, btas::varray<T, TiledArray::cuda_um_allocator<T>>& x) {
+    typename thrust::device_vector<T, TiledArray::cuda_um_allocator<T>>::size_type n;
+    ar & n;
+    x.resize(n);
+    for (auto& xi : x)
+      ar & xi;
+  }
+};
+
+template<class Archive, typename T>
+struct ArchiveStoreImpl<Archive, btas::varray<T, TiledArray::cuda_um_allocator<T>> > {
+  static inline void store(const Archive& ar, const btas::varray<T, TiledArray::cuda_um_allocator<T>>& x) {
     ar & x.size();
     for (const auto& xi : x)
       ar & xi;
