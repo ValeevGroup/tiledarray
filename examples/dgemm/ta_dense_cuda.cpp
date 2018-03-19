@@ -189,7 +189,7 @@ btas::Tensor<T, Range, Storage> gemm_cuda_impl(
 
   // Construct the result Tensor
   typedef btas::Tensor<T, Range, Storage> Tensor;
-  typedef typename Tensor::storage_type storage_type;
+  //  typedef typename Tensor::storage_type storage_type;
   auto result_range =
       gemm_helper.make_result_range<Range>(left.range(), right.range());
   Storage result_storage;
@@ -618,12 +618,30 @@ int try_main(int argc, char **argv) {
   const auto real_type_str =
       (argc >= 10) ? std::string(argv[9]) : std::string("double");
 
-  const auto arg10_str = (argc >= 11) ? std::string(argv[10]) : std::string{};
-  auto to_bool = [](const std::string &str) {
-    return (str == "true" || str == "True" || str == "TRUE" || str == "1" ||
-            str == "yes" || str == "Yes" || str == "YES");
-  };
-  const bool use_cuda_um = (argc >= 11) ? to_bool(arg10_str) : false;
+  if (real_type_str != "float" && real_type_str != "double") {
+    std::cerr << "Error: invalid real type: " << real_type_str
+              << "\n Valid option includes: float or "
+                 "double. \n";
+  }
+
+  const auto storage_type =
+      (argc >= 11) ? std::string(argv[10]) : std::string{"cuda_um_vector"};
+
+  if (storage_type != "cuda_um_vector" &&
+      storage_type != "cuda_um_btas_varray" &&
+      storage_type != "cuda_thrust_vector" &&
+      storage_type != "cpu_cuda_vector") {
+    std::cerr << "Error: invalid storage type: " << storage_type
+              << "\n Valid option includes: cuda_um_vector or "
+                 "cuda_um_btas_varray or cuda_thrust_vector "
+                 "or cpu_cuda_vector. \n";
+  }
+  std::cout << "Storage type: " << storage_type << "<" << real_type_str << ">"
+            << std::endl;
+  //  auto to_bool = [](const std::string &str) {
+  //    return (str == "true" || str == "True" || str == "TRUE" || str == "1" ||
+  //            str == "yes" || str == "Yes" || str == "YES");
+  //  };
 
   int driverVersion, runtimeVersion;
   auto error = cudaDriverGetVersion(&driverVersion);
@@ -643,7 +661,7 @@ int try_main(int argc, char **argv) {
       std::cout << "error(cudaGetDeviceCount) = " << error << std::endl;
     }
     assert(ndevice > 0);
-    for(int device=0; device != ndevice; ++device) {
+    for (int device = 0; device != ndevice; ++device) {
       cudaDeviceProp prop;
       auto error = cudaGetDeviceProperties(&prop, device);
       if (error != cudaSuccess) {
@@ -651,11 +669,14 @@ int try_main(int argc, char **argv) {
       }
       std::cout << "Device #" << device << ": " << prop.name << std::endl
                 << "  managedMemory = " << prop.managedMemory << std::endl
-                << "  singleToDoublePrecisionPerfRatio = " << prop.singleToDoublePrecisionPerfRatio << std::endl;
+                << "  singleToDoublePrecisionPerfRatio = "
+                << prop.singleToDoublePrecisionPerfRatio << std::endl;
       int result;
-      error = cudaDeviceGetAttribute (&result, cudaDevAttrUnifiedAddressing, device);
+      error =
+          cudaDeviceGetAttribute(&result, cudaDevAttrUnifiedAddressing, device);
       std::cout << "  attrUnifiedAddressing = " << result << std::endl;
-      error = cudaDeviceGetAttribute (&result, cudaDevAttrConcurrentManagedAccess, device);
+      error = cudaDeviceGetAttribute(
+          &result, cudaDevAttrConcurrentManagedAccess, device);
       std::cout << "  attrConcurrentManagedAccess = " << result << std::endl;
       error = cudaSetDevice(device);
       if (error != cudaSuccess) {
@@ -663,8 +684,8 @@ int try_main(int argc, char **argv) {
       }
       size_t free_mem, total_mem;
       error = cudaMemGetInfo(&free_mem, &total_mem);
-      std::cout << "  {total,free} memory = {" << total_mem << ","
-                << free_mem << "}" << std::endl;
+      std::cout << "  {total,free} memory = {" << total_mem << "," << free_mem
+                << "}" << std::endl;
     }
     error = cudaSetDevice(0);
     if (error != cudaSuccess) {
@@ -679,20 +700,38 @@ int try_main(int argc, char **argv) {
     }
   }
 
-  if (use_cuda_um) {
+  if (storage_type == "cuda_um_vector") {
     if (real_type_str == "double")
       do_main_body<TiledArray::cuda_um_vector<double>>(world, Nm, Bm, Nn, Bn,
                                                        Nk, Bk, nrepeat);
     else
       do_main_body<TiledArray::cuda_um_vector<float>>(world, Nm, Bm, Nn, Bn, Nk,
                                                       Bk, nrepeat);
-  } else {
+  } else if (storage_type == "cpu_cuda_vector") {
     if (real_type_str == "double")
       do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
                                                         Nk, Bk, nrepeat);
     else
       do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn,
                                                        Nk, Bk, nrepeat);
+  } else if (storage_type == "cuda_um_btas_varray") {
+    if (real_type_str == "double")
+      do_main_body<TiledArray::cuda_um_btas_varray<double>>(
+          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+    else
+      do_main_body<TiledArray::cuda_um_btas_varray<float>>(world, Nm, Bm, Nn,
+                                                           Bn, Nk, Bk, nrepeat);
+  }
+  else if(storage_type == "cuda_um_thrust_vector"){
+    if (real_type_str == "double")
+      do_main_body<TiledArray::cuda_um_thrust_vector<double>>(
+          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+    else
+      do_main_body<TiledArray::cuda_um_thrust_vector<float>>(
+          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+  }
+  else{
+    throw std::runtime_error("Invalid storage type!\n");
   }
 
   TiledArray::finalize();
