@@ -136,9 +136,9 @@ cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n, const double *x,
 
 namespace TiledArray {
 
-template <typename T>
-void make_device_storage(cuda_um_vector<T> &storage, std::size_t n) {
-  storage = cuda_um_vector<T>(n);
+template <typename Storage>
+void make_device_storage(Storage &storage, std::size_t n) {
+  storage = Storage(n);
   TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(storage);
 }
 
@@ -147,8 +147,8 @@ void make_device_storage(cpu_cuda_vector<T> &storage, std::size_t n) {
   storage = cpu_cuda_vector<T>(n, cpu_cuda_vector<T>::state::device);
 }
 
-template <typename T>
-T *device_data(cuda_um_vector<T> &storage) {
+template <typename Storage>
+typename Storage::value_type *device_data(Storage &storage) {
   return storage.data();
 }
 
@@ -157,8 +157,8 @@ T *device_data(cpu_cuda_vector<T> &storage) {
   return storage.device_data();
 }
 
-template <typename T>
-const T *device_data(const cuda_um_vector<T> &storage) {
+template <typename Storage>
+const typename Storage::value_type *device_data(const Storage &storage) {
   return storage.data();
 }
 
@@ -327,10 +327,30 @@ void gemm_cuda_impl(btas::Tensor<T, Range, Storage> &result,
   }
 }
 
+///
+/// cuda gemm interface function on left*right
+///
+
 template <typename T, typename Range>
 btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> gemm(
     const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &left,
     const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &right,
+    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+  return gemm_cuda_impl(left, right, factor, gemm_helper);
+}
+
+template <typename T, typename Range>
+btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> gemm(
+    const btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> &left,
+    const btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> &right,
+    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+  return gemm_cuda_impl(left, right, factor, gemm_helper);
+}
+
+template <typename T, typename Range>
+btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>> gemm(
+    const btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>> &left,
+    const btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>> &right,
     T factor, const TiledArray::math::GemmHelper &gemm_helper) {
   return gemm_cuda_impl(left, right, factor, gemm_helper);
 }
@@ -347,10 +367,30 @@ gemm(const btas::Tensor<T, Range,
   return gemm_cuda_impl(left, right, factor, gemm_helper);
 }
 
+///
+/// cuda gemm interface function on result = left*right
+///
+
 template <typename T, typename Range>
 void gemm(btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &result,
           const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &left,
           const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &right,
+          T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+  return gemm_cuda_impl(result, left, right, factor, gemm_helper);
+}
+
+template <typename T, typename Range>
+void gemm(btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>> &result,
+          const btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>> &left,
+          const btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>> &right,
+          T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+  return gemm_cuda_impl(result, left, right, factor, gemm_helper);
+}
+
+template <typename T, typename Range>
+void gemm(btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> &result,
+          const btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> &left,
+          const btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> &right,
           T factor, const TiledArray::math::GemmHelper &gemm_helper) {
   return gemm_cuda_impl(result, left, right, factor, gemm_helper);
 }
@@ -368,6 +408,7 @@ void gemm(
     T factor, const TiledArray::math::GemmHelper &gemm_helper) {
   return gemm_cuda_impl(result, left, right, factor, gemm_helper);
 }
+
 
 /// result[i] += arg[i]
 template <typename T, typename Range, typename Storage>
@@ -395,6 +436,10 @@ void add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
   }
 }
 
+///
+/// cuda axpy interface function
+///
+
 template <typename T, typename Range, typename AllocHost, typename AllocDevice>
 void add_to(
     btas::Tensor<T, Range,
@@ -409,6 +454,18 @@ void add_to(
 template <typename T, typename Range>
 void add_to(btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &result,
             const btas::Tensor<T, Range, TiledArray::cuda_um_vector<T>> &arg) {
+  add_to_cuda_impl(result, arg);
+}
+
+template <typename T, typename Range>
+void add_to(btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>> &result,
+            const btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>> &arg) {
+  add_to_cuda_impl(result, arg);
+}
+
+template <typename T, typename Range>
+void add_to(btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> &result,
+            const btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> &arg) {
   add_to_cuda_impl(result, arg);
 }
 
@@ -433,6 +490,11 @@ squared_norm_cuda_impl(
   return result;
 }
 
+
+///
+/// cuda dot interface function
+///
+
 template <typename T>
 typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
                       TiledArray::cpu_cuda_vector<T>>::value_type
@@ -448,6 +510,24 @@ typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
 squared_norm(
     const btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
                        TiledArray::cuda_um_vector<T>> &arg) {
+  return squared_norm_cuda_impl(arg);
+}
+
+template <typename T>
+typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+        TiledArray::cuda_um_thrust_vector<T>>::value_type
+squared_norm(
+        const btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+                TiledArray::cuda_um_thrust_vector<T>> &arg) {
+  return squared_norm_cuda_impl(arg);
+}
+
+template <typename T>
+typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+        TiledArray::cuda_um_btas_varray<T>>::value_type
+squared_norm(
+        const btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+                TiledArray::cuda_um_btas_varray<T>> &arg) {
   return squared_norm_cuda_impl(arg);
 }
 
@@ -721,16 +801,14 @@ int try_main(int argc, char **argv) {
     else
       do_main_body<TiledArray::cuda_um_btas_varray<float>>(world, Nm, Bm, Nn,
                                                            Bn, Nk, Bk, nrepeat);
-  }
-  else if(storage_type == "cuda_um_thrust_vector"){
+  } else if (storage_type == "cuda_um_thrust_vector") {
     if (real_type_str == "double")
       do_main_body<TiledArray::cuda_um_thrust_vector<double>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
     else
       do_main_body<TiledArray::cuda_um_thrust_vector<float>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-  }
-  else{
+  } else {
     throw std::runtime_error("Invalid storage type!\n");
   }
 
