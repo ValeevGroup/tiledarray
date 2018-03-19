@@ -1,5 +1,6 @@
 
-#include "cuda_um_vector.h"
+#include "cuda_um_allocator.h"
+#include "thrust.h"
 
 namespace thrust {
 template<>
