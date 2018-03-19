@@ -709,11 +709,11 @@ int try_main(int argc, char **argv) {
 
   if (storage_type != "cuda_um_vector" &&
       storage_type != "cuda_um_btas_varray" &&
-      storage_type != "cuda_thrust_vector" &&
+      storage_type != "cuda_um_thrust_vector" &&
       storage_type != "cpu_cuda_vector") {
     std::cerr << "Error: invalid storage type: " << storage_type
               << "\n Valid option includes: cuda_um_vector or "
-                 "cuda_um_btas_varray or cuda_thrust_vector "
+                 "cuda_um_btas_varray or cuda_um_thrust_vector "
                  "or cpu_cuda_vector. \n";
   }
   std::cout << "Storage type: " << storage_type << "<" << real_type_str << ">"
