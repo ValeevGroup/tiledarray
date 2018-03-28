@@ -35,14 +35,14 @@ bool in_memory_space(const Storage& vec) noexcept {
  * cuda_um_btas_varray
  */
 template <ExecutionSpace Space, typename Storage>
-void to_execution_space(Storage& vec) {
+void to_execution_space(Storage& vec, cudaStream_t stream=0 ) {
   switch (Space) {
     case ExecutionSpace::CPU: {
       using detail::size;
       using std::data;
       using value_type = typename Storage::value_type;
       cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(value_type),
-                           cudaCpuDeviceId);
+                           cudaCpuDeviceId, stream);
       break;
     }
     case ExecutionSpace::CUDA: {
@@ -51,7 +51,7 @@ void to_execution_space(Storage& vec) {
       using value_type = typename Storage::value_type;
       int device = -1;
       cudaGetDevice(&device);
-      cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(value_type), device);
+      cudaMemPrefetchAsync(data(vec), size(vec) * sizeof(value_type), device, stream);
       break;
     }
     default:

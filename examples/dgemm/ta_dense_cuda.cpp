@@ -137,13 +137,13 @@ cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n, const double *x,
 namespace TiledArray {
 
 template <typename Storage>
-void make_device_storage(Storage &storage, std::size_t n) {
+void make_device_storage(Storage &storage, std::size_t n, cudaStream_t stream = 0) {
   storage = Storage(n);
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(storage);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(storage, stream);
 }
 
 template <typename T>
-void make_device_storage(cpu_cuda_vector<T> &storage, std::size_t n) {
+void make_device_storage(cpu_cuda_vector<T> &storage, std::size_t n, cudaStream_t stream = 0) {
   storage = cpu_cuda_vector<T>(n, cpu_cuda_vector<T>::state::device);
 }
 
@@ -192,10 +192,18 @@ btas::Tensor<T, Range, Storage> gemm_cuda_impl(
   //  typedef typename Tensor::storage_type storage_type;
   auto result_range =
       gemm_helper.make_result_range<Range>(left.range(), right.range());
+  
+  auto stream = result_range.ordinal().offset() % num_cuda_streams;
   Storage result_storage;
-  make_device_storage(result_storage, result_range.area());
+  make_device_storage(result_storage, result_range.area(), cuda_streams[stream]);
   Tensor result(std::move(result_range), std::move(result_storage));
 
+  auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
+  auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
+  
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(left.storage(), cuda_streams[stream_left]);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(right.storage(), cuda_streams[stream_right]);
+     
   // Check that the inner dimensions of left and right match
   TA_ASSERT(
       gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
@@ -219,7 +227,6 @@ btas::Tensor<T, Range, Storage> gemm_cuda_impl(
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
     auto zero = T(0);
-    auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
     status = cublasGemm(handle, to_cublas_op(gemm_helper.left_op()),
@@ -626,9 +633,9 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
         tile.tensor().storage());
   };
-  foreach_inplace(a, to_device);
-  foreach_inplace(b, to_device);
-  cudaDeviceSynchronize();
+  //foreach_inplace(a, to_device);
+  //foreach_inplace(b, to_device);
+  //cudaDeviceSynchronize();
 
   // Start clock
   world.gop.fence();
@@ -636,10 +643,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
   // Do matrix multiplication
   for (int i = 0; i < nrepeat; ++i) {
+    double iter_time_start = madness::wall_time();
     c("m,n") = a("m,k") * b("k,n");
     world.gop.fence();
     cudaDeviceSynchronize();
-    if (world.rank() == 0) std::cout << "Iteration " << i + 1 << "\n";
+    double iter_time_stop = madness::wall_time();
+    if (world.rank() == 0) std::cout << "Iteration " << i + 1 << " wall time: " << (iter_time_stop - iter_time_start)  << "\n";
   }
 
   // Stop clock
