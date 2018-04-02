@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CONTRACT_REDUCE_H__INCLUDED
-#define TILEDARRAY_CONTRACT_REDUCE_H__INCLUDED
+#ifndef TILEDARRAY_TILE_OP_CONTRACT_REDUCE_H__INCLUDED
+#define TILEDARRAY_TILE_OP_CONTRACT_REDUCE_H__INCLUDED
 
 #include <TiledArray/permutation.h>
 #include <TiledArray/math/gemm_helper.h>
