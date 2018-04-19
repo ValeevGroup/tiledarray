@@ -23,26 +23,13 @@ template class cpu_cuda_vector<float>;
 
 // Thrust included in CUDA 9 seems to generate uninstantiated CUB calls
 #if __CUDACC_VER_MAJOR__ > 8
-void force_missing_instantiations_double() {
-
-using Real = double;
-thrust::cuda_cub::execution_policy<thrust::cuda_cub::tag> policy;
-thrust::detail::normal_iterator<thrust::device_ptr<Real const> > it;
-thrust::device_ptr<Real> ptr;
-
-auto x = thrust::cuda_cub::copy<thrust::cuda_cub::tag, thrust::detail::normal_iterator<thrust::device_ptr<Real const> >, thrust::device_ptr<Real> >(policy, it, it, ptr);
-
+template <typename Real> auto force_missing_instantiations() {
+  return thrust::cuda_cub::copy<thrust::cuda_cub::tag, thrust::detail::normal_iterator<thrust::device_ptr<Real const> >, thrust::device_ptr<Real> >;
 }
-
-void force_missing_instantiations_float() {
-
-using Real = float;
-thrust::cuda_cub::execution_policy<thrust::cuda_cub::tag> policy;
-thrust::detail::normal_iterator<thrust::device_ptr<Real const> > it;
-thrust::device_ptr<Real> ptr;
-
-auto x = thrust::cuda_cub::copy<thrust::cuda_cub::tag, thrust::detail::normal_iterator<thrust::device_ptr<Real const> >, thrust::device_ptr<Real> >(policy, it, it, ptr);
-
+auto force_missing_instantiations_double() {
+  return force_missing_instantiations<double>();
 }
-
+auto force_missing_instantiations_float() {
+  return force_missing_instantiations<float>();
+}
 #endif
