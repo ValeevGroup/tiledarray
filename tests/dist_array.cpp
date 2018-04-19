@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE( owner )
 
     // Check that everyone agrees who the owner of the tile is.
     BOOST_CHECK((std::find_if(group_owner.get(), group_owner.get() + world.size(),
-        std::bind1st(std::not_equal_to<ProcessID>(), owner)) == (group_owner.get() + world.size())));
+        std::bind(std::not_equal_to<ProcessID>(), owner, std::placeholders::_1)) == (group_owner.get() + world.size())));
 
   }
 }
