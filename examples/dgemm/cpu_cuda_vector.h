@@ -188,7 +188,7 @@ template<class Archive, typename T> struct ArchiveStoreImpl;
 template<class Archive, typename T>
 struct ArchiveLoadImpl<Archive, TiledArray::cpu_cuda_vector<T> > {
   static inline void load(const Archive& ar, TiledArray::cpu_cuda_vector<T>& x) {
-    typename TiledArray::cpu_cuda_vector<T>::size_type n;
+    typename TiledArray::cpu_cuda_vector<T>::size_type n(0);
     ar & n;
     x.resize(n);
     for (auto& xi : x)
