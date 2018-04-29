@@ -3,6 +3,11 @@
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 
+# to test both separate CMake install and during-build eigen download, pre-install only for Debug builds
+if [ "$BUILD_TYPE" = "Debug" ]; then
+  ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
+fi
+
 # Exit on error
 set -ev
 
@@ -51,6 +56,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
+    -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON \
@@ -67,6 +73,7 @@ else
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
+    -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON -Wno-dev \
