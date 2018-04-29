@@ -30,7 +30,9 @@ if [ ! -d "${INSTALL_DIR}" ]; then
     wget -q http://bitbucket.org/eigen/eigen/get/3.3.4.tar.bz2
     tar -xjf 3.3.4.tar.bz2
     cd eigen-*
-    cmake -DCMAKE_CXX_COMPILER=$CXX \
+    mkdir build
+    cd build
+    cmake .. -DCMAKE_CXX_COMPILER=$CXX \
       -DCMAKE_C_COMPILER=$CC \
       -DCMAKE_CXX_FLAGS="${EXTRACXXFLAGS}" \
       -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
