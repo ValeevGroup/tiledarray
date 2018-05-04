@@ -33,12 +33,13 @@ struct ExpressionsSparseFixture : public TiledRangeFixture {
   ExpressionsSparseFixture()
       : s_tr_1(make_random_sparseshape(tr)),
         s_tr_2(make_random_sparseshape(tr)),
-        s_tr1(make_random_sparseshape(trange1)),
-        s_tr2(make_random_sparseshape(trange1)),
+        s_tr1_1(make_random_sparseshape(trange1)),
+        s_tr1_2(make_random_sparseshape(trange1)),
+        s_tr2(make_random_sparseshape(trange2)),
         a(*GlobalFixture::world, tr, s_tr_1),
         b(*GlobalFixture::world, tr, s_tr_2),
-        u(*GlobalFixture::world, trange1, s_tr1),
-        v(*GlobalFixture::world, trange1, s_tr2) {
+        u(*GlobalFixture::world, trange1, s_tr1_1),
+        v(*GlobalFixture::world, trange1, s_tr1_2) {
     random_fill(a);
     random_fill(b);
     random_fill(u);
@@ -154,7 +155,8 @@ struct ExpressionsSparseFixture : public TiledRangeFixture {
   const static TiledRange trange2;
   SparseShape<float> s_tr_1;
   SparseShape<float> s_tr_2;
-  SparseShape<float> s_tr1;
+  SparseShape<float> s_tr1_1;
+  SparseShape<float> s_tr1_2;
   SparseShape<float> s_tr2;
   TSpArrayI a;
   TSpArrayI b;
@@ -650,36 +652,48 @@ BOOST_AUTO_TEST_CASE(scal_block) {
 }
 
 BOOST_AUTO_TEST_CASE(assign_sub_block) {
-  //  c.fill_local(0.0);
+  c = TSpArrayI(*GlobalFixture::world, tr, s_tr_1);
+  c.fill_local(0.0);
+  c.truncate();
 
-  //  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) = 2 *
-  //  a("a,b,c").block({3,3,3}, {5,5,5}));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             2 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
 
-  //  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
+  BlockRange block_range(a.trange().tiles_range(), {3, 3, 3}, {5, 5, 5});
 
-  //  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-  //    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-  //    Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
-  //
-  //    BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
+  for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    if (!c.is_zero(block_range.ordinal(index))) {
+      Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
+      Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
 
-  //    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-  //      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
-  //    }
-  //  }
+      BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
+
+      for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+        BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
+      }
+    } else {
+      BOOST_CHECK(a.is_zero(block_range.ordinal(index)));
+    }
+  }
 }
 BOOST_AUTO_TEST_CASE(assign_subblock_block_contract) {
-  //  w.fill_local(0.0);
+  w = TSpArrayI(*GlobalFixture::world, trange2, s_tr2);
+  w.fill_local(0.0);
+  w.truncate();
 
-  //  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
-//      a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3, 3}, {5, 5}) =
+                             a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
+                             b("c,d,b").block({2, 3, 3}, {5, 5, 5}));
 }
 
 BOOST_AUTO_TEST_CASE(assign_subblock_block_permute_contract) {
-  //  w.fill_local(0.0);
+  w = TSpArrayI(*GlobalFixture::world, trange2, s_tr2);
+  w.fill_local(0.0);
+  w.truncate();
 
-  //  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
-//      a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3, 3}, {5, 5}) =
+                             a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
+                             b("d,c,b").block({3, 2, 3}, {5, 5, 5}));
 }
 
 BOOST_AUTO_TEST_CASE(block_contract) {

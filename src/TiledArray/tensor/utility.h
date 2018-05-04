@@ -58,6 +58,54 @@ namespace TiledArray {
       return Range(tensor.range().lobound(), tensor.range().upbound());
     }
 
+    /// Test the two ranges are congruent
+
+    /// This function tests that the rank, lower bound, and upper bound of
+    /// \c r1 is equal to that of \c r2.
+    /// \tparam Range The range type
+    /// \param r1 The first Range to compare
+    /// \param r2 The second Range to compare
+    template <typename Range>
+    inline bool is_congruent(const Range& r1, const Range& r2){
+      return r1 == r2;
+    }
+
+    /// Test that two BlockRange are congruent
+
+    /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
+    /// \param r1 The first BlockRange to compare
+    /// \param r2 The second BlockRange to compare
+    template <>
+    inline bool is_congruent(const BlockRange& r1, const BlockRange& r2){
+      return (r1.rank() == r1.rank()) &&
+             std::equal(r1.extent_data(),
+                        r1.extent_data() + r1.rank(), r2.extent_data());
+    }
+
+    /// Test that BlockRange and Range are congruent
+
+    /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
+    /// \tparam Range The range type
+    /// \param r1 The BlockRange to compare
+    /// \param r2 The Range to compare
+    template <typename Range>
+    inline bool is_congruent(const BlockRange& r1, const Range& r2){
+      return (r1.rank() == r1.rank()) &&
+             std::equal(r1.extent_data(),
+                        r1.extent_data() + r1.rank(), r2.extent_data());
+    }
+
+    /// Test that Range and BlockRange are congruent
+
+    /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
+    /// \tparam Range The range type
+    /// \param r1 The Range to compare
+    /// \param r2 The BlockRange to compare
+    template <typename Range>
+    inline bool is_congruent(const Range& r1, const BlockRange& r2){
+      return is_congruent(r2,r1);
+    }
+
     /// Test that the ranges of a pair of tensors are congruent
 
     /// This function tests that the rank, lower bound, and upper bound of
@@ -72,7 +120,7 @@ namespace TiledArray {
         typename std::enable_if<! (is_shifted<T1>::value
             || is_shifted<T2>::value)>::type* = nullptr>
     inline bool is_range_congruent(const T1& tensor1, const T2& tensor2) {
-      return tensor1.range() == tensor2.range();
+      return is_congruent(tensor1.range(), tensor2.range());
     }
 
     /// Test that the ranges of a pair of permuted tensors are congruent
@@ -92,7 +140,7 @@ namespace TiledArray {
     inline bool is_range_congruent(const T1& tensor1, const T2& tensor2,
         const Permutation& perm)
     {
-      return tensor1.range() == (perm * tensor2.range());
+      return is_congruent(tensor1.range(), perm*tensor2.range());
     }
 
     /// Test that the ranges of a pair of shifted tensors are congruent
@@ -225,7 +273,7 @@ namespace TiledArray {
     template <typename T1, typename T2>
     inline typename T1::size_type
     inner_size_helper(const T1& tensor1, const T2& tensor2) {
-      TA_ASSERT(is_range_congruent(tensor1.range(), tensor2.range()));
+      TA_ASSERT(is_range_congruent(tensor1, tensor2));
       const auto* MADNESS_RESTRICT const size1   = tensor1.range().extent_data();
       const auto* MADNESS_RESTRICT const stride1 = tensor1.range().stride_data();
       const auto* MADNESS_RESTRICT const size2   = tensor2.range().extent_data();

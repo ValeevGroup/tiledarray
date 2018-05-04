@@ -49,7 +49,7 @@ namespace TiledArray {
     private:
       World& world_; ///< World that contains
       const trange_type trange_; ///< Tiled range type
-      const shape_type shape_; ///< Tensor shape
+      shape_type shape_; ///< Tensor shape
       std::shared_ptr<pmap_interface> pmap_; ///< Process map for tiles
 
     public:
@@ -154,6 +154,12 @@ namespace TiledArray {
       /// \return A reference to the tensor shape map
       /// \throw TiledArray::Exception When this tensor is dense
       const shape_type& shape() const { return shape_; }
+
+      /// Tensor shape accessor
+
+      /// \return non-const A reference to the tensor shape map
+      /// \throw TiledArray::Exception When this tensor is dense
+      shape_type& shape() { return shape_; }
 
       /// Tiled range accessor
 
