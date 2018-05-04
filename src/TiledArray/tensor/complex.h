@@ -221,6 +221,15 @@ namespace TiledArray {
       return value;
     }
 
+    template<typename T>
+    inline auto abs(const ComplexConjugate<T>& a){
+      return std::abs(a.factor());
+    }
+
+    inline int abs(const ComplexConjugate<void>& a){
+      return 1;
+    }
+
   }  // namespace detail
 } // namespace TiledArray
 
