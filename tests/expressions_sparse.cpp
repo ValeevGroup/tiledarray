@@ -181,8 +181,11 @@ BOOST_AUTO_TEST_CASE(tensor_factories) {
 
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") += a("c,b,a"));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") + a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") -= a("c,b,a"));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") - a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") *= a("c,b,a"));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") * a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a").conj());
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
@@ -201,8 +204,14 @@ BOOST_AUTO_TEST_CASE(block_tensor_factories) {
                            a("a,b,c").block({3, 3, 3}, {5, 5, 5}).conj());
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") += a("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") =
+                           c("b,a,c") + a("b,a,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") -= a("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") =
+                           c("b,a,c") - a("b,a,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") *= a("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") =
+                           c("b,a,c") * a("b,a,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound).conj());
   BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block(lobound, upbound).conj());
 
@@ -813,6 +822,50 @@ BOOST_AUTO_TEST_CASE(add_to) {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
     }
   }
+
+  c("a,b,c") = a("a,b,c");
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = c("a,b,c") + b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+          a.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                       : a.find(i).get();
+      TSpArrayI::value_type b_tile =
+          b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                       : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] + b_tile[j]);
+    } else {
+      BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(add_permute) {
+  Permutation perm({2, 1, 0});
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) + (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+          a.is_zero(perm_index) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                                : perm * a.find(perm_index).get();
+      TSpArrayI::value_type b_tile =
+          b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                       : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) + (3 * b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(perm_index) && b.is_zero(i));
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE(scale_add) {
@@ -890,6 +943,30 @@ BOOST_AUTO_TEST_CASE(scale_add) {
         BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) + (3 * b_tile[j])));
     } else {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( scale_add_permute ) {
+  Permutation perm({2, 1, 0});
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5*(2 * a("c,b,a")) + (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+              a.is_zero(perm_index) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                                    : perm * a.find(perm_index).get();
+      TSpArrayI::value_type b_tile =
+              b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], 5*(2 * a_tile[j]) + (3 * b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(perm_index) && b.is_zero(i));
     }
   }
 }
@@ -992,6 +1069,50 @@ BOOST_AUTO_TEST_CASE(subt_to) {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
     }
   }
+
+  c("a,b,c") = a("a,b,c");
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = c("a,b,c") - b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+              a.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : a.find(i).get();
+      TSpArrayI::value_type b_tile =
+              b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] - b_tile[j]);
+    } else {
+      BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(sub_permute) {
+  Permutation perm({2, 1, 0});
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) - (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+              a.is_zero(perm_index) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                                    : perm * a.find(perm_index).get();
+      TSpArrayI::value_type b_tile =
+              b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) - (3 * b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(perm_index) && b.is_zero(i));
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE(scale_subt) {
@@ -1069,6 +1190,30 @@ BOOST_AUTO_TEST_CASE(scale_subt) {
         BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) - (3 * b_tile[j])));
     } else {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(scale_sub_permute) {
+  Permutation perm({2, 1, 0});
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5*(2 * a("c,b,a")) - (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+              a.is_zero(perm_index) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                                    : perm * a.find(perm_index).get();
+      TSpArrayI::value_type b_tile =
+              b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], 5*(2 * a_tile[j]) - (3 * b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(perm_index) && b.is_zero(i));
     }
   }
 }
@@ -1151,6 +1296,30 @@ BOOST_AUTO_TEST_CASE(mult) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(mult_permute) {
+  Permutation perm({2, 1, 0});
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) * (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+              a.is_zero(perm_index) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                                    : perm * a.find(perm_index).get();
+      TSpArrayI::value_type b_tile =
+              b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(perm_index) || b.is_zero(i));
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE(mult_to) {
   c("a,b,c") = a("a,b,c");
   BOOST_REQUIRE_NO_THROW(c("a,b,c") *= b("a,b,c"));
@@ -1164,6 +1333,26 @@ BOOST_AUTO_TEST_CASE(mult_to) {
       TSpArrayI::value_type b_tile =
           b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
                        : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * b_tile[j]);
+    } else {
+      BOOST_CHECK(a.is_zero(i) || b.is_zero(i));
+    }
+  }
+
+  c("a,b,c") = a("a,b,c");
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = c("a,b,c") * b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+              a.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : a.find(i).get();
+      TSpArrayI::value_type b_tile =
+              b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : b.find(i).get();
 
       for (std::size_t j = 0ul; j < c_tile.size(); ++j)
         BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * b_tile[j]);
@@ -1248,6 +1437,30 @@ BOOST_AUTO_TEST_CASE(scale_mult) {
         BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * (3 * b_tile[j])));
     } else {
       BOOST_CHECK(a.is_zero(i) || b.is_zero(i));
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(scale_mult_permute) {
+  Permutation perm({2, 1, 0});
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5*(2 * a("c,b,a")) * (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    if (!c.is_zero(i)) {
+      TSpArrayI::value_type c_tile = c.find(i).get();
+      TSpArrayI::value_type a_tile =
+              a.is_zero(perm_index) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                                    : perm * a.find(perm_index).get();
+      TSpArrayI::value_type b_tile =
+              b.is_zero(i) ? make_zero_tile<TSpArrayI>(c_tile.range())
+                           : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], 5*(2 * a_tile[j]) * (3 * b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(perm_index) || b.is_zero(i));
     }
   }
 }
@@ -1377,6 +1590,117 @@ BOOST_AUTO_TEST_CASE(cont) {
   }
 }
 
+BOOST_AUTO_TEST_CASE( cont_permute )
+{
+  const std::size_t m = a.trange().elements_range().extent(0);
+  const std::size_t k = a.trange().elements_range().extent(1) * a.trange().elements_range().extent(2);
+  const std::size_t n = b.trange().elements_range().extent(2);
+
+  TiledArray::EigenMatrixXi left(m, k);
+  left.fill(0);
+
+  for(TSpArrayI::const_iterator it = a.begin(); it != a.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      const std::size_t r = i[0];
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        for(i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2); ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1)
+                                + i[2] * a.trange().elements_range().stride(2);
+
+          left(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(& left(0,0), left.rows() * left.cols());
+
+  TiledArray::EigenMatrixXi right(n, k);
+  right.fill(0);
+
+  for(TSpArrayI::const_iterator it = b.begin(); it != b.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      const std::size_t r = i[0];
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        for(i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2); ++i[2]) {
+          const std::size_t c = i[2] * a.trange().elements_range().stride(1)
+                                + i[1] * a.trange().elements_range().stride(2);
+
+          right(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(& right(0,0), right.rows() * right.cols());
+
+  TiledArray::EigenMatrixXi result(m, n);
+
+  result = left * right.transpose();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * b("j,c,b"));
+  for(TSpArrayI::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]));
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * b("j,c,b") );
+  for(TSpArrayI::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 2);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * (3 * b("j,c,b")));
+
+  for(TSpArrayI::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 3);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * (3 * b("j,c,b")));
+
+  for(TSpArrayI::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 6);
+      }
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE(scale_cont) {
   const std::size_t m = a.trange().elements_range().extent(0);
   const std::size_t k = a.trange().elements_range().extent(1) *
@@ -1498,6 +1822,119 @@ BOOST_AUTO_TEST_CASE(scale_cont) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 30);
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE( scale_cont_permute )
+{
+  const std::size_t m = a.trange().elements_range().extent(0);
+  const std::size_t k = a.trange().elements_range().extent(1) * a.trange().elements_range().extent(2);
+  const std::size_t n = b.trange().elements_range().extent(2);
+
+  TiledArray::EigenMatrixXi left(m, k);
+  left.fill(0);
+
+  for(TSpArrayI::const_iterator it = a.begin(); it != a.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      const std::size_t r = i[0];
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        for(i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2); ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1)
+                                + i[2] * a.trange().elements_range().stride(2);
+
+          left(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(& left(0,0), left.rows() * left.cols());
+
+  TiledArray::EigenMatrixXi right(n, k);
+  right.fill(0);
+
+  for(TSpArrayI::const_iterator it = b.begin(); it != b.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      const std::size_t r = i[0];
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        for(i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2); ++i[2]) {
+          const std::size_t c = i[2] * a.trange().elements_range().stride(1)
+                                + i[1] * a.trange().elements_range().stride(2);
+
+          right(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(& right(0,0), right.rows() * right.cols());
+
+  TiledArray::EigenMatrixXi result(m, n);
+
+  result = left * right.transpose();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("i,b,c") * b("j,c,b")));
+
+  for(TSpArrayI::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 5);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * b("j,c,b")) );
+
+  for(TSpArrayI::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 10);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("i,b,c") * (3 * b("j,c,b"))));
+
+  for(TSpArrayI::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 15);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * (3 * b("j,c,b"))));
+
+  for(TSpArrayI::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TSpArrayI::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for(i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0); ++i[0]) {
+      for(i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1); ++i[1]) {
         BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 30);
       }
     }
@@ -1753,6 +2190,33 @@ BOOST_AUTO_TEST_CASE(dot) {
     if (!a.is_zero(i) && !b.is_zero(i)) {
       TSpArrayI::value_type a_tile = a.find(i).get();
       TSpArrayI::value_type b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += a_tile[j] * b_tile[j];
+    }
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_EQUAL(result, expected);
+}
+
+BOOST_AUTO_TEST_CASE(dot_permute) {
+  Permutation perm({2, 1, 0});
+  // Test the dot expression function
+  int result = 0;
+  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(result *= a("a,b,c") * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(result = a("a,b,c").dot(b("c,b,a")).get());
+
+  // Compute the expected value for the dot function.
+  int expected = 0;
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
+      TSpArrayI::value_type a_tile = a.find(i).get();
+      TSpArrayI::value_type b_tile = perm * b.find(perm_index).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += a_tile[j] * b_tile[j];
