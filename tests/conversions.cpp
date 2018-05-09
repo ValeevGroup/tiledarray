@@ -34,6 +34,7 @@ struct ConversionsFixture : public TiledRangeFixture {
       : shape_tr(make_random_sparseshape(tr)),
         a_sparse(*GlobalFixture::world, tr, shape_tr) {
     random_fill(a_sparse);
+    a_sparse.truncate();
   }
 
   template <typename Tile, typename Policy>
@@ -56,9 +57,15 @@ struct ConversionsFixture : public TiledRangeFixture {
   static SparseShape<float> make_random_sparseshape(const TiledRange& tr) {
     std::size_t n = tr.tiles_range().volume();
     Tensor<float> norms(tr.tiles_range(), 0.0);
-    for (std::size_t i = 0; i < n; i++) {
-      norms[i] = GlobalFixture::world->drand() > 0.5 ? 0.0 : 1.0;
+
+    // make sure all mpi gets the same shape
+    if(GlobalFixture::world->rank() == 0){
+      for (std::size_t i = 0; i < n; i++) {
+        norms[i] = GlobalFixture::world->drand() > 0.5 ? 0.0 : 1.0;
+      }
     }
+
+    GlobalFixture::world->gop.broadcast_serializable(norms, 0);
 
     return SparseShape<float>(norms, tr);
   }
@@ -114,11 +121,16 @@ struct ConversionsFixture : public TiledRangeFixture {
 BOOST_FIXTURE_TEST_SUITE(conversions_suite, ConversionsFixture)
 
 BOOST_AUTO_TEST_CASE(policy_conversions) {
+  GlobalFixture::world->gop.fence();
   // convert sparse to dense
+//  std::cout << a_sparse.shape() << std::endl;
   BOOST_CHECK_NO_THROW(a_dense = to_dense(a_sparse));
   // convert dense back to sparse
   TSpArrayI b_sparse;
   BOOST_CHECK_NO_THROW(b_sparse = to_sparse(a_dense));
+//  std::cout << b_sparse.shape() << std::endl;
+
+  BOOST_CHECK_EQUAL(a_sparse.shape().data(), b_sparse.shape().data());
 
   // check correctness
   for (std::size_t i = 0; i < a_sparse.size(); i++) {
@@ -132,6 +144,7 @@ BOOST_AUTO_TEST_CASE(policy_conversions) {
       BOOST_CHECK(b_sparse.is_zero(i));
     }
   }
+
 }
 
 BOOST_AUTO_TEST_CASE(tile_element_conversions) {

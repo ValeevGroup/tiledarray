@@ -142,9 +142,15 @@ struct ExpressionsSparseFixture : public TiledRangeFixture {
   static SparseShape<float> make_random_sparseshape(const TiledRange& tr) {
     std::size_t n = tr.tiles_range().volume();
     Tensor<float> norms(tr.tiles_range(), 0.0);
-    for (std::size_t i = 0; i < n; i++) {
-      norms[i] = GlobalFixture::world->drand() > 0.5 ? 0.0 : 1.0;
+
+    // make sure all mpi gets the same shape
+    if(GlobalFixture::world->rank() == 0){
+      for (std::size_t i = 0; i < n; i++) {
+        norms[i] = GlobalFixture::world->drand() > 0.5 ? 0.0 : 1.0;
+      }
     }
+
+    GlobalFixture::world->gop.broadcast_serializable(norms, 0);
 
     return SparseShape<float>(norms, tr);
   }
