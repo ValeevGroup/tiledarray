@@ -49,7 +49,7 @@ namespace TiledArray {
     private:
       World& world_; ///< World that contains
       const trange_type trange_; ///< Tiled range type
-      shape_type shape_; ///< Tensor shape
+      const shape_type shape_; ///< Tensor shape
       std::shared_ptr<pmap_interface> pmap_; ///< Process map for tiles
 
     public:
