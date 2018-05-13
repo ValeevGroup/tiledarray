@@ -155,12 +155,6 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When this tensor is dense
       const shape_type& shape() const { return shape_; }
 
-      /// Tensor shape accessor
-
-      /// \return non-const A reference to the tensor shape map
-      /// \throw TiledArray::Exception When this tensor is dense
-      shape_type& shape() { return shape_; }
-
       /// Tiled range accessor
 
       /// \return The tiled range of the tensor

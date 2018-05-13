@@ -667,12 +667,6 @@ namespace TiledArray {
     /// \throw TiledArray::Exception When the Array is dense.
     inline const shape_type& shape() const {  return pimpl_->shape(); }
 
-    /// Returns shape object. No communication is required.
-    /// \return non-const reference to the shape object.
-    /// \throw TiledArray::Exception When the Array is dense.
-    inline shape_type& shape() {  return pimpl_->shape(); }
-
-
     /// Tile ownership
 
     /// \tparam Index An index type
