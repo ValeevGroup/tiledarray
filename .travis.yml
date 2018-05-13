@@ -91,6 +91,7 @@ matrix:
            - *base_packages
            - g++-7
            - gfortran-7
+  allow_failures:
     - compiler: clang
       env: GCC_VERSION=7 BUILD_TYPE=Debug
       addons:
