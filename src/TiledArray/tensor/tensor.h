@@ -446,7 +446,7 @@ namespace TiledArray {
 
     /// Input serialization function
 
-    /// This function enables serialization within MADNESS
+    /// This function implements serialization to/from MADNESS archive objects
     /// \tparam Archive The input archive type
     /// \param[out] ar The input archive
     template <typename Archive,
