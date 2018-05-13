@@ -282,29 +282,49 @@ BOOST_AUTO_TEST_CASE( make_replicated )
 
 BOOST_AUTO_TEST_CASE( serialization )
 {
-//  const std::size_t buf_size = 1000000;  // "big enough" buffer
-//  auto buf = std::make_unique<unsigned char[]>(buf_size);
-//  madness::archive::BufferOutputArchive oar(buf.get(), buf_size);
-  madness::archive::TextFstreamOutputArchive oar("tmp");
-
-  for(auto tile : a) {
-    BOOST_REQUIRE_NO_THROW(oar & tile.get());
-  }
-//  std::size_t nbyte = oar.size();
-//  BOOST_REQUIRE(nbyte < buf_size);
-  oar.close();
-
   decltype(a) acopy(a.world(), a.trange(), a.shape());
-//  madness::archive::BufferInputArchive iar(buf.get(), nbyte);
-  madness::archive::TextFstreamInputArchive iar("tmp");
-  for(auto tile : acopy) {
-    decltype(acopy)::value_type tile_value;
-    BOOST_REQUIRE_NO_THROW(iar & tile_value);
-    tile.future().set(std::move(tile_value));
-  }
-  iar.close();
 
-//  buf.reset();
+  const auto nproc = world.size();
+  if (nproc > 1) {  // use BufferOutputArchive if more than 1 node ...
+    const std::size_t buf_size = 1000000;  // "big enough" buffer
+    auto buf = std::make_unique<unsigned char[]>(buf_size);
+    madness::archive::BufferOutputArchive oar(buf.get(), buf_size);
+
+    for (auto tile : a) {
+      BOOST_REQUIRE_NO_THROW(oar & tile.get());
+    }
+
+    std::size_t nbyte = oar.size();
+    BOOST_REQUIRE(nbyte < buf_size);
+    oar.close();
+
+    madness::archive::BufferInputArchive iar(buf.get(), nbyte);
+    for (auto tile : acopy) {
+      decltype(acopy)::value_type tile_value;
+      BOOST_REQUIRE_NO_THROW(iar & tile_value);
+      tile.future().set(std::move(tile_value));
+    }
+    iar.close();
+
+    buf.reset();
+  }
+  else {  // ... else use TextFstreamOutputArchive
+    madness::archive::TextFstreamOutputArchive oar("tmp");
+
+    for(auto tile : a) {
+      BOOST_REQUIRE_NO_THROW(oar & tile.get());
+    }
+
+    oar.close();
+
+    madness::archive::TextFstreamInputArchive iar("tmp");
+    for(auto tile : acopy) {
+      decltype(acopy)::value_type tile_value;
+      BOOST_REQUIRE_NO_THROW(iar & tile_value);
+      tile.future().set(std::move(tile_value));
+    }
+    iar.close();
+  }
 
   BOOST_CHECK_EQUAL(a.trange(), acopy.trange());
   BOOST_REQUIRE(a.shape() == acopy.shape());
