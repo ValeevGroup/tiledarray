@@ -17,13 +17,16 @@
  *
  */
 
-#include <array_fixture.h>
+#include <random>
+#include <chrono>
 
+#include <madness/world/text_fstream_archive.h>
+#include <madness/world/binary_fstream_archive.h>
+
+#include <array_fixture.h>
 #include "tiledarray.h"
 #include "unit_test_config.h"
 #include "../src/TiledArray/dist_array.h"
-#include <random>
-#include <chrono>
 
 using namespace TiledArray;
 
@@ -107,7 +110,7 @@ BOOST_AUTO_TEST_CASE( owner )
 
     // Check that everyone agrees who the owner of the tile is.
     BOOST_CHECK((std::find_if(group_owner.get(), group_owner.get() + world.size(),
-        std::bind1st(std::not_equal_to<ProcessID>(), owner)) == (group_owner.get() + world.size())));
+        std::bind(std::not_equal_to<ProcessID>(), owner, std::placeholders::_1)) == (group_owner.get() + world.size())));
 
   }
 }
@@ -275,6 +278,37 @@ BOOST_AUTO_TEST_CASE( make_replicated )
     for(ArrayN::value_type::const_iterator it = tile.get().begin(); it != tile.get().end(); ++it)
       BOOST_CHECK_EQUAL(*it, distributed_pmap->owner(i) + 1);
   }
+}
+
+BOOST_AUTO_TEST_CASE( serialization )
+{
+//  const std::size_t buf_size = 1000000;  // "big enough" buffer
+//  auto buf = std::make_unique<unsigned char[]>(buf_size);
+//  madness::archive::BufferOutputArchive oar(buf.get(), buf_size);
+  madness::archive::TextFstreamOutputArchive oar("tmp");
+
+  for(auto tile : a) {
+    BOOST_REQUIRE_NO_THROW(oar & tile.get());
+  }
+//  std::size_t nbyte = oar.size();
+//  BOOST_REQUIRE(nbyte < buf_size);
+  oar.close();
+
+  decltype(a) acopy(a.world(), a.trange(), a.shape());
+//  madness::archive::BufferInputArchive iar(buf.get(), nbyte);
+  madness::archive::TextFstreamInputArchive iar("tmp");
+  for(auto tile : acopy) {
+    decltype(acopy)::value_type tile_value;
+    BOOST_REQUIRE_NO_THROW(iar & tile_value);
+    tile.future().set(std::move(tile_value));
+  }
+  iar.close();
+
+//  buf.reset();
+
+  BOOST_CHECK_EQUAL(a.trange(), acopy.trange());
+  BOOST_REQUIRE(a.shape() == acopy.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(a.begin(), a.end(), acopy.begin(), acopy.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

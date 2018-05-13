@@ -182,7 +182,7 @@ namespace TiledArray {
             ss << "!! ERROR TiledArray: Aborting due to exception.\n"
                << "!! ERROR TiledArray: rank=" << TensorImpl_::world().rank()
                << " id=" << id_ << " " << set_counter_ << " of " << task_count << " tiles set\n";
-            std::cout << ss.str().c_str();
+            std::cerr << ss.str().c_str();
             throw;
           }
         }

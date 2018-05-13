@@ -175,6 +175,9 @@ namespace TiledArray {
 
   }; // class DenseShape
 
+  constexpr inline bool operator==(const DenseShape& a, const DenseShape& b) { return true; }
+  constexpr inline bool operator!=(const DenseShape& a, const DenseShape& b) { return !(a==b); }
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_DENSE_SHAPE_H__INCLUDED

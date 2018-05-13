@@ -117,6 +117,27 @@ namespace TiledArray {
 
     }; // class TileReference
 
+    /// comparison operator for TileReference objects
+    template <typename Impl>
+    bool operator==(const TileReference<Impl>& a,
+                    const TileReference<Impl>& b) {
+      return a.get() == b.get();
+    }
+
+    /// inequality operator for TileReference objects
+    template <typename Impl>
+    bool operator!=(const TileReference<Impl>& a,
+                    const TileReference<Impl>& b) {
+      return !(a == b);
+    }
+
+    /// redirect operator to std::ostream for TileReference objects
+    template <typename Impl>
+    std::ostream& operator<<(std::ostream& os, const TileReference<Impl>& a) {
+      os << a.get();
+      return os;
+    }
+
     /// Tensor tile reference
 
     /// \tparam Impl The TensorImpl type
@@ -161,6 +182,27 @@ namespace TiledArray {
 
       operator typename Impl::value_type() const { return get(); }
     }; // class TileConstReference
+
+    /// comparison operator for TileConstReference objects
+    template <typename Impl>
+    bool operator==(const TileConstReference<Impl>& a,
+                    const TileConstReference<Impl>& b) {
+      return a.get() == b.get();
+    }
+
+    /// inequality operator for TileConstReference objects
+    template <typename Impl>
+    bool operator!=(const TileConstReference<Impl>& a,
+                    const TileConstReference<Impl>& b) {
+      return !(a == b);
+    }
+
+    /// redirect operator to std::ostream for TileConstReference objects
+    template <typename Impl>
+    std::ostream& operator<<(std::ostream& os, const TileConstReference<Impl>& a) {
+      os << a.get();
+      return os;
+    }
 
   } // namespace detail
 } // namespace TiledArray
