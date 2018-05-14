@@ -86,7 +86,7 @@ make -j2 all VERBOSE=1
 make install
 
 # Validate
-make -j2 ta_test VERBOSE=1
+make -j1 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
 setarch `uname -m` -R make check
 
