@@ -45,5 +45,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -xHOST -g -Wall" CACHE STRING "Inital C+
 set(LAPACK_LIBRARIES "-Wl,--start-group" "${MKL_ROOT_DIR}/lib/intel64/libmkl_intel_lp64.a" 
     "${MKL_ROOT_DIR}/lib/intel64/libmkl_core.a" "${MKL_ROOT_DIR}/lib/intel64/libmkl_sequential.a" "-Wl,--end-group"
     "-lm" "-ldl" CACHE STRING "BLAS linker flags")
+set(LAPACK_INCLUDE_DIRS ${MKL_ROOT_DIR}/include CACHE STRING "LAPACK include directories")
+set(LAPACK_COMPILE_DEFINITIONS HAVE_INTEL_MKL=1 CACHE STRING "LAPACK preprocessor definitions")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
