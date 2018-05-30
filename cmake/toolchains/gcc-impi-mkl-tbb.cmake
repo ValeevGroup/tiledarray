@@ -16,7 +16,7 @@ set(GCC_ROOT_DIR "$ENV{GCC_DIR}")
 set(MKL_ROOT_DIR "$ENV{INTEL_DIR}/mkl")
 set(TBB_ROOT_DIR "$ENV{INTEL_DIR}/tbb" CACHE PATH "TBB root directory")
 # query EIGEN3_DIR and (deprecated) EIGEN_DIR envvars
-if ($ENV{EIGEN3_DIR})
+if (DEFINED ENV{EIGEN3_DIR})
   set(ENV_EIGEN3_DIR "$ENV{EIGEN3_DIR}")
 else()
   set(ENV_EIGEN3_DIR "$ENV{EIGEN_DIR}")
