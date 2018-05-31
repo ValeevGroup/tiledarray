@@ -29,7 +29,7 @@
 
 Optional:
 - Doxygen (required to generating documentation)
-- [Boost libraries](www.boost.org/), required for unit tests
+- [Boost libraries](www.boost.org/), version 1.30 or higher, required for unit tests
 
 Dependencies can be installed via the package manager of your choice, e.g.
 Homebrew on OS X or apt-get on Debian Linux distributions. See notes below for
