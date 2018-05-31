@@ -9,7 +9,7 @@
   See the current [Travis CI matrix]() for the most up-to-date list of compilers that are known to work.
 - [CMake](https://cmake.org/), version 3.1 and higher
 - [Git]() 1.8 or later (required to download TiledArray and MADNESS from GitHub)
-- [Eigen](http://eigen.tuxfamily.org), version 3.0 or higher
+- [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher
   - (optional) Mercurial, to download Eigen from [Bitbucket](http://bitbucket.com/) if it is not already installed on your system.
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness)
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
