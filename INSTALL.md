@@ -35,7 +35,7 @@ Most of the dependencies (except for MADNESS) can be installed with a package ma
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
 this is the preferred method. Since on some systems configuring
 and building MADNESS can be difficult even for experts, we recommend letting the
-TiledArray configure script download and build MADNESS for you.
+TiledArray download and build MADNESS for you.
 
 # Obtain TiledArray source code
 
@@ -240,7 +240,7 @@ variable:
 
 * `EIGEN3_INCLUDE_DIR` -- The path to the Eigen 3 include directory
 
-If Eigen is not found by the configure script, it will be downloaded from the
+If Eigen is not found at the configure time, it will be downloaded from the
 hg repository on Bitbucket.
 
 ## MADNESS
@@ -249,7 +249,7 @@ TiledArray uses a non-release version of MADNESS. Therefore, you should NOT
 expect the most recent release of MADNESS to work with TiledArray. To ensure you
 are using the correct version of MADNESS, we recommend allowing CMake to
 automatically download, configure, and build MADNESS (this is the default
-behavior). When CMake is building MADNESS, the configure script will checkout
+behavior). When CMake is configuring TiledArray, it will checkout
 the correct revision of MADNESS.
 
 The following CMake options may be used to modify build behavior or find
