@@ -7,7 +7,7 @@
   - [Clang](https://clang.llvm.org/), version 3.4 or higher
   - Apple Clang, version 5.0 or higher
   See the current [Travis CI matrix]() for the most up-to-date list of compilers that are known to work.
-- [CMake](https://cmake.org/), version 3.1 and higher
+- [CMake](https://cmake.org/), version 3.1 or higher
 - [Git]() 1.8 or later (required to download TiledArray and MADNESS from GitHub)
 - [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher
   - (optional) Mercurial, to download Eigen from [Bitbucket](http://bitbucket.com/) if it is not already installed on your system.
@@ -242,7 +242,7 @@ modify these values if you know the values for your patricular system.
 
 VECTOR_ALIGNMENT controls the alignment of Tensor data, and CACHE_LINE_SIZE
 controls the size of automatic loop unrolling for tensor operations. TiledArray
-does not currently use explicit vector instructions (i.e. intrensics), but
+does not currently use explicit vector instructions (i.e. intrinsics), but
 the code is written in such a way that compilers can more easily autovectorize 
 the operations when supported. In a future version, explicit vectorization
 support may be added.
