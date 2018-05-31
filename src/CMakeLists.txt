@@ -181,6 +181,16 @@ endif()
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
 target_compile_options(tiledarray PUBLIC ${CMAKE_CXX_FLAG_LIST})
 
+if (LAPACK_INCLUDE_DIRS)
+  target_include_directories(tiledarray PUBLIC ${LAPACK_INCLUDE_DIRS})
+endif(LAPACK_INCLUDE_DIRS)
+if (LAPACK_COMPILE_OPTIONS)
+  target_compile_options(tiledarray PUBLIC ${LAPACK_COMPILE_OPTIONS})
+endif(LAPACK_COMPILE_OPTIONS)
+if (LAPACK_COMPILE_DEFINITIONS)
+  target_compile_definitions(tiledarray PUBLIC ${LAPACK_COMPILE_DEFINITIONS})
+endif(LAPACK_COMPILE_DEFINITIONS)
+
 # Add library to the list of installed components
 install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
     LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
