@@ -72,72 +72,72 @@ namespace TiledArray {
 
     /// Permutation of a sequence of objects indexed by base-0 indices.
 
-    /// \warning Unlike TiledArray::Permutation, this does not fix domain size.
-    ///
-    /// Permutation class is used as an argument in all permutation operations on
-    /// other objects. Permutations can be applied to sequences of objects:
-    /// \code
-    ///   b = p * a; // apply permutation p to sequence a and assign the result to sequence b.
-    ///   a *= p;    // apply permutation p (in-place) to sequence a.
-    /// \endcode
-    /// Permutations can also be composed, e.g. multiplied and inverted:
-    /// \code
-    ///   p3 = p1 * p2;      // computes product of permutations of p1 and p2
-    ///   p1_inv = p1.inv(); // computes inverse of p1
-    /// \endcode
-    ///
-    /// \note
-    ///
-    /// \par
-    /// Unlike TiledArray::Permutation, which is internally represented in one-line form,
-    /// TiledArray::symmetry::Permutation is internally
-    /// represented in compressed two-line form.
-    /// E.g. the following permutation in Cauchy's two-line form,
-    /// \f$
-    ///   \left(
-    ///   \begin{tabular}{ccccc}
-    ///     0 & 1 & 2 & 3 & 4 \\
-    ///     0 & 2 & 3 & 1 & 4
-    ///   \end{tabular}
-    ///   \right)
-    /// \f$
-    /// , is represented in compressed form as \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ . This means
-    /// that 0th element of a sequence is mapped by this permutation into the 0th element of the permuted
-    /// sequence (hence 0 is referred to as a <em>fixed point</em> of this permutation; so is 4);
-    /// similarly, 1st element of a sequence is mapped by this permutation into the 2nd element of
-    /// the permuted sequence (hence 2 is referred as the \em image of 1 under the action of this Permutation;
-    /// similarly, 1 is the image of 3, etc.). Set \f$ \{1, 2, 3\} \f$ is referred to
-    /// as \em domain  (or \em support) of this Permutation. Note that (by definition) Permutation
-    /// maps its domain into itself (i.e. it's a bijection).
-    ///
-    /// \par
-    /// As a reminder, permutation
-    /// \f$
-    ///   \left(
-    ///   \begin{tabular}{ccccc}
-    ///     0 & 1 & 2 & 3 & 4 \\
-    ///     0 & 2 & 3 & 1 & 4
-    ///   \end{tabular}
-    ///   \right)
-    /// \f$
-    /// is represented in one-line form as \f$ \{0, 2, 3, 1, 4\} \f$. Note that the one-line representation
-    /// is redundant as multiple distinct one-line representations correspond to the same
-    /// compressed form, e.g. \f$ \{0, 2, 3, 1, 4\} \f$ and \f$ \{0, 2, 3, 1\} \f$ correspond to the
-    /// same \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ compressed form.
-    ///
-    /// \par
-    /// Another non-redundant representation of Permutation is as a set of cycles. For example,
-    /// permutation \f$ \{0 \to 3, 1 \to 2, 2 \to 1, 0 \to 3 \} \f$ is represented uniquely as the
-    /// following set of cycles: (0,3)(1,2).
-    /// The canonical format for the cycle decomposition used by Permutation class is defined as follows:
-    /// <ul>
-    ///  <li> Cycles of length 1 are skipped.
-    ///  <li> Each cycle is in order of increasing elements.
-    ///  <li> Cycles are in the order of increasing first elements.
-    /// </ul>
-    /// Cycle representation is convenient for some operations, but is less efficient for others.
-    /// Thus cycle representation can be computed on request, but internally the compressed form is used.
-    ///
+    /** \warning Unlike TiledArray::Permutation, this does not fix domain size.
+
+     Permutation class is used as an argument in all permutation operations on
+     other objects. Permutations can be applied to sequences of objects:
+     \code
+       b = p * a; // apply permutation p to sequence a and assign the result to sequence b.
+       a *= p;    // apply permutation p (in-place) to sequence a.
+     \endcode
+     Permutations can also be composed, e.g. multiplied and inverted:
+     \code
+       p3 = p1 * p2;      // computes product of permutations of p1 and p2
+       p1_inv = p1.inv(); // computes inverse of p1
+     \endcode
+
+     \note
+
+     \par
+     Unlike TiledArray::Permutation, which is internally represented in one-line form,
+     TiledArray::symmetry::Permutation is internally
+     represented in compressed two-line form.
+     E.g. the following permutation in Cauchy's two-line form,
+     \f$
+       \left(
+       \begin{tabular}{ccccc}
+         0 & 1 & 2 & 3 & 4 \\
+         0 & 2 & 3 & 1 & 4
+       \end{tabular}
+       \right)
+     \f$
+     , is represented in compressed form as \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ . This means
+     that 0th element of a sequence is mapped by this permutation into the 0th element of the permuted
+     sequence (hence 0 is referred to as a <em>fixed point</em> of this permutation; so is 4);
+     similarly, 1st element of a sequence is mapped by this permutation into the 2nd element of
+     the permuted sequence (hence 2 is referred as the \em image of 1 under the action of this Permutation;
+     similarly, 1 is the image of 3, etc.). Set \f$ \{1, 2, 3\} \f$ is referred to
+     as \em domain  (or \em support) of this Permutation. Note that (by definition) Permutation
+     maps its domain into itself (i.e. it's a bijection).
+
+     \par
+     As a reminder, permutation
+     \f$
+       \left(
+       \begin{tabular}{ccccc}
+         0 & 1 & 2 & 3 & 4 \\
+         0 & 2 & 3 & 1 & 4
+       \end{tabular}
+       \right)
+     \f$
+     is represented in one-line form as \f$ \{0, 2, 3, 1, 4\} \f$. Note that the one-line representation
+     is redundant as multiple distinct one-line representations correspond to the same
+     compressed form, e.g. \f$ \{0, 2, 3, 1, 4\} \f$ and \f$ \{0, 2, 3, 1\} \f$ correspond to the
+     same \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ compressed form.
+
+     \par
+     Another non-redundant representation of Permutation is as a set of cycles. For example,
+     permutation \f$ \{0 \to 3, 1 \to 2, 2 \to 1, 0 \to 3 \} \f$ is represented uniquely as the
+     following set of cycles: (0,3)(1,2).
+     The canonical format for the cycle decomposition used by Permutation class is defined as follows:
+     <ul>
+      <li> Cycles of length 1 are skipped.
+      <li> Each cycle is in order of increasing elements.
+      <li> Cycles are in the order of increasing first elements.
+     </ul>
+     Cycle representation is convenient for some operations, but is less efficient for others.
+     Thus cycle representation can be computed on request, but internally the compressed form is used.
+    */
     class Permutation {
     public:
       typedef Permutation Permutation_;

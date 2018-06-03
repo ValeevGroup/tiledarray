@@ -214,7 +214,7 @@ template<typename T, unsigned N>
     switch (N) {
       case 1: {
         auto i0_range = std::min (arg1_extents[0], arg1_extents[1]);
-        for (auto i0 = 0; i0 != i0_range; ++i0) {
+        for (decltype(i0_range) i0 = 0; i0 != i0_range; ++i0) {
           auto result_i0i0_ptr = result_data
               + (i0 * arg1_extents[1] + i0) * arg2_volume;
           std::copy (arg2_data, arg2_data + arg2_volume, result_i0i0_ptr);
@@ -225,10 +225,10 @@ template<typename T, unsigned N>
         auto i0_range = std::min (arg1_extents[0], arg1_extents[1]);
         auto i1_range = std::min (arg1_extents[2], arg1_extents[3]);
         auto ndim23 = arg1_extents[2] * arg1_extents[3];
-        for (auto i0 = 0; i0 != i0_range; ++i0) {
+        for (decltype(i0_range) i0 = 0; i0 != i0_range; ++i0) {
           auto result_i0i0i1i1_ptr_offset = result_data
               + (i0 * arg1_extents[1] + i0) * ndim23 * arg2_volume;
-          for (auto i1 = 0; i1 != i1_range; ++i1) {
+          for (decltype(i1_range) i1 = 0; i1 != i1_range; ++i1) {
             auto result_i0i0i1i1_ptr = result_i0i0i1i1_ptr_offset
                 + (i1 * arg1_extents[3] + i1) * arg2_volume;
             std::copy (arg2_data, arg2_data + arg2_volume, result_i0i0i1i1_ptr);

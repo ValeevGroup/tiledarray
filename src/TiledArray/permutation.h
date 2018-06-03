@@ -128,13 +128,15 @@ namespace TiledArray {
     std::vector<index_type> p_;
 
     /// Validate input permutation
-    /// \return \c false if each element of [first, last) is non-negiative, unique and less than the size of the domain.
+    /// \return \c false if each element of [first, last) is non-negative, unique and less than the size of the domain.
     template <typename InIter>
     bool valid_permutation(InIter first, InIter last) {
       bool result = true;
-      const unsigned int n = std::distance(first, last);
+      using diff_type = typename std::iterator_traits<InIter>::difference_type;
+      const diff_type n = std::distance(first, last);
+      TA_ASSERT(n >= 0);
       for(; first != last; ++first) {
-        const auto value = *first;
+        const diff_type value = *first;
         result = result && value >= 0 && (value < n) && (std::count(first, last, *first) == 1ul);
       }
       return result;

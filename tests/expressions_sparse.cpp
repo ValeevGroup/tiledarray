@@ -2255,10 +2255,9 @@ BOOST_AUTO_TEST_CASE(dot_expr) {
 }
 
 BOOST_AUTO_TEST_CASE(dot_contr) {
-  int result = 0;
   for (int i = 0; i != 50; ++i)
     BOOST_REQUIRE_NO_THROW(
-        result = (a("a,b,c") * b("d,b,c")).dot(b("d,e,f") * a("a,e,f")));
+        (a("a,b,c") * b("d,b,c")).dot(b("d,e,f") * a("a,e,f")));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

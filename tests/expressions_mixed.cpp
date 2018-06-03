@@ -81,7 +81,7 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
   static void set_random(T& t) {
     // with 50% generate nonzero integer value in [0,101)
     auto rand_int = GlobalFixture::world->rand();
-    t = (rand_int < 0x8ffffful) ? rand_int % 101 : 0;
+    t = (rand_int < 0x8fffff) ? rand_int % 101 : 0;
   }
 
 
