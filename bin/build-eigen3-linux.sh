@@ -11,8 +11,8 @@ if [ "$CXX" = "g++" ]; then
   export CXX=/usr/bin/g++-$GCC_VERSION
   export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
 else
-  export CC=/usr/bin/clang-5.0
-  export CXX=/usr/bin/clang++-5.0
+  export CC=/usr/bin/clang-$CLANG_VERSION
+  export CXX=/usr/bin/clang++-$CLANG_VERSION
   export EXTRACXXFLAGS="-mno-avx"
 fi
 

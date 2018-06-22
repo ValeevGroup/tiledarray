@@ -19,11 +19,13 @@ cat > $setup << END
 #!/bin/sh
 curl -sSL "http://apt.llvm.org/llvm-snapshot.gpg.key" | apt-key add -
 echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | tee -a /etc/apt/sources.list > /dev/null
+echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main" | tee -a /etc/apt/sources.list > /dev/null
+echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main" | tee -a /etc/apt/sources.list > /dev/null
 apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
 apt-add-repository -y "ppa:boost-latest/ppa"
 apt-add-repository -y "ppa:kubuntu-ppa/backports"
 apt-get -yq update >> ~/apt-get-update.log
-apt-get -yq --no-install-suggests --no-install-recommends --force-yes install g++-5 g++-6 g++-7 gfortran-5 gfortran-6 gfortran-7 libeigen3-dev libboost1.55-all-dev libblas-dev liblapack-dev libtbb-dev clang-5.0 cmake cmake-data
+apt-get -yq --no-install-suggests --no-install-recommends --force-yes install g++-5 g++-6 g++-7 g++-8 gfortran-5 gfortran-6 gfortran-7 gfortran-8 libeigen3-dev libboost1.55-all-dev libblas-dev liblapack-dev libtbb-dev clang-5.0 clang-6.0 clang-7 cmake cmake-data
 mkdir -p ${TRAVIS_BUILD_TOPDIR}
 cd ${TRAVIS_BUILD_TOPDIR}
 git clone https://github.com/ValeevGroup/tiledarray.git ${TRAVIS_BUILD_TOPDIR}/ValeevGroup/tiledarray
