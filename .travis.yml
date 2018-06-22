@@ -113,7 +113,6 @@ matrix:
            - *base_packages
            - g++-8
            - gfortran-8
-  allow_failures:
     - compiler: clang
       env: CLANG_VERSION=5.0 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
