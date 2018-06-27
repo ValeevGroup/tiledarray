@@ -21,6 +21,5 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ relea
 # Set BLAS/LAPACK flags
 set(BLAS_LINKER_FLAGS "-framework Accelerate" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES ${BLAS_LINKER_FLAGS} CACHE STRING "LAPACK linker flags")
-set(LAPACK_COMPILE_OPTIONS "-framework Accelerate" CACHE STRING "LAPACK compiler options")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
