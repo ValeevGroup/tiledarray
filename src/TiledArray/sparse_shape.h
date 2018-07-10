@@ -458,7 +458,7 @@ namespace TiledArray {
     /// result_tile_norms of \c other.
     template <typename Index>
     SparseShape update_block(const Index& lower_bound, const Index& upper_bound,
-        const SparseShape& other)
+        const SparseShape& other) const
     {
       Tensor<value_type> result_tile_norms = tile_norms_.clone();
 

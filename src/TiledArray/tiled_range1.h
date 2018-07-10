@@ -189,7 +189,7 @@ namespace TiledArray {
       elements_range_.first = *first;
       elements_range_.second = *(last - 1);
       for (; first != (last - 1); ++first)
-        tiles_ranges_.push_back(range_type(*first, *(first + 1)));
+        tiles_ranges_.emplace_back(*first, *(first + 1));
     }
 
     /// Initialize secondary data

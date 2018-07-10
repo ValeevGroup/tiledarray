@@ -161,7 +161,7 @@ namespace TiledArray {
     for(const auto index : *pmap) {
       auto result_tile = world.taskq.add(task, index);
       ++task_count;
-      tiles.push_back(datum_type(index, result_tile));
+      tiles.emplace_back(index, std::move(result_tile));
     }
 
     // Wait for tile norm data to be collected.

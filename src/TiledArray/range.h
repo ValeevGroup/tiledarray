@@ -91,7 +91,7 @@ namespace TiledArray {
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check input dimensions
-        TA_ASSERT(lower_data[i] >= 0ul);
+        TA_ASSERT(lower_data[i] >= 0);
         TA_ASSERT(lower_data[i] < upper_data[i]);
 
         // Compute data for element i of lower, upper, and extent
@@ -178,7 +178,7 @@ namespace TiledArray {
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check bounds of the input extent
-        TA_ASSERT(extent_data[i] > 0ul);
+        TA_ASSERT(extent_data[i] > 0);
 
         // Get extent i
         const size_type extent_i = extent_data[i];

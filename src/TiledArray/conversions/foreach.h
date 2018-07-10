@@ -219,7 +219,7 @@ namespace TiledArray {
           auto result_tile = world.taskq.add(task, index, arg.find(index),
               args.find(index)...);
           ++task_count;
-          tiles.push_back(datum_type(index, result_tile));
+          tiles.emplace_back(index, std::move(result_tile));
         }
         break;
       case ShapeReductionMethod::Union:
@@ -230,7 +230,7 @@ namespace TiledArray {
           auto result_tile = world.taskq.add(task, index, detail::get_sparse_tile(index, arg),
               detail::get_sparse_tile(index, args)...);
           ++task_count;
-          tiles.push_back(datum_type(index, result_tile));
+          tiles.emplace_back(index, std::move(result_tile));
         }
         break;
       default:

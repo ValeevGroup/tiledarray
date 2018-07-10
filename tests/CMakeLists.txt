@@ -66,6 +66,7 @@ set(ta_test_src_files  ta_test.cpp
     array_impl.cpp
     variable_list.cpp
     dist_array.cpp
+    conversions.cpp
     eigen.cpp
     dist_op_dist_cache.cpp
     dist_op_group.cpp
@@ -87,6 +88,7 @@ set(ta_test_src_files  ta_test.cpp
     dist_eval_contraction_eval.cpp
     expressions.cpp
     expressions_mixed.cpp
+    expressions_sparse.cpp
     foreach.cpp
 )
         

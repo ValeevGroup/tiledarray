@@ -3,6 +3,11 @@
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 
+# to test both separate CMake install and during-build eigen download, pre-install only for Debug builds
+if [ "$BUILD_TYPE" = "Debug" ]; then
+  ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
+fi
+
 # Exit on error
 set -ev
 
@@ -13,8 +18,8 @@ if [ "$CXX" = "g++" ]; then
     export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
     export F77=gfortran-$GCC_VERSION
 else
-    export CC=/usr/bin/clang-5.0
-    export CXX=/usr/bin/clang++-5.0
+    export CC=/usr/bin/clang-$CLANG_VERSION
+    export CXX=/usr/bin/clang++-$CLANG_VERSION
     export EXTRACXXFLAGS="-mno-avx"
     export F77=gfortran-$GCC_VERSION
 fi
@@ -51,6 +56,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
+    -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON \
@@ -67,6 +73,7 @@ else
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
+    -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON -Wno-dev \
@@ -79,7 +86,7 @@ make -j2 all VERBOSE=1
 make install
 
 # Validate
-make -j2 ta_test VERBOSE=1
+make -j1 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
 setarch `uname -m` -R make check
 

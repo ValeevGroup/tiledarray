@@ -33,45 +33,46 @@ namespace TiledArray {
 
   /// Irrep of an \f$ S_n \f$ symmetric group
 
-  /// The data is represented using Yamanouchi symbol, \f$ M \f$ , which is a
-  /// row of \f$ n \f$ numbers \f$ M_i \f$ \f$ (i = 0, \dots , n-1) \f$, where
-  /// \f$ M_i \f$ is the number of the row in the standard Young tableau,
-  /// counting from above, in which the number \f$ i \f$ appears. For example,
-  /// the standard irreps for the \f$ S_3 \f$ group are:
-  /// \f[
-  ///   \begin{tabular}{ c c c }
-  ///     Young tableaux & partition [$\mu$] & Yamanouchi symbols M \\
-  ///     & & \\
-  ///     \begin{tabular}{ |c| }
-  ///        \hline
-  ///        1 \\ \hline
-  ///        2 \\ \hline
-  ///        3 \\ \hline
-  ///     \end{tabular} & [111] & 123 \\
-  ///     & & \\
-  ///     \begin{tabular}{ |c|c|c| }
-  ///        \hline
-  ///        1 & 2 & 3 \\ \hline
-  ///     \end{tabular} & [3] & 111 \\
-  ///     & & \\
-  ///     \begin{tabular}{ |c|c }
-  ///        \hline
-  ///        1 & \multicolumn{1}{|c|}{2} \\ \hline
-  ///        3 \\ \cline{1-1}
-  ///     \end{tabular} & [21] & 112 \\
-  ///     & & \\
-  ///     \begin{tabular}{ |c|c }
-  ///        \hline
-  ///        1 & \multicolumn{1}{|c|}{3} \\ \hline
-  ///        2 \\ \cline{1-1}
-  ///     \end{tabular} & [21] & 121 \\
-  ///   \end{tabular}
-  /// \f]
-  /// To construct an irrep, you must provide the partition for the Young
-  /// tableaux and the Yamanouchi symbols as follows:
-  /// \code
-  /// Irrep S3_irrep({1,1,1}, {1,2,3});
-  /// \endcode
+  /** The data is represented using Yamanouchi symbol, \f$ M \f$ , which is a
+   row of \f$ n \f$ numbers \f$ M_i \f$ \f$ (i = 0, \dots , n-1) \f$, where
+   \f$ M_i \f$ is the number of the row in the standard Young tableau,
+   counting from above, in which the number \f$ i \f$ appears. For example,
+   the standard irreps for the \f$ S_3 \f$ group are:
+   \f[
+     \begin{tabular}{ c c c }
+       Young tableaux & partition [$\mu$] & Yamanouchi symbols M \\
+       & & \\
+       \begin{tabular}{ |c| }
+          \hline
+          1 \\ \hline
+          2 \\ \hline
+          3 \\ \hline
+       \end{tabular} & [111] & 123 \\
+       & & \\
+       \begin{tabular}{ |c|c|c| }
+          \hline
+          1 & 2 & 3 \\ \hline
+       \end{tabular} & [3] & 111 \\
+       & & \\
+       \begin{tabular}{ |c|c }
+          \hline
+          1 & \multicolumn{1}{|c|}{2} \\ \hline
+          3 \\ \cline{1-1}
+       \end{tabular} & [21] & 112 \\
+       & & \\
+       \begin{tabular}{ |c|c }
+          \hline
+          1 & \multicolumn{1}{|c|}{3} \\ \hline
+          2 \\ \cline{1-1}
+       \end{tabular} & [21] & 121 \\
+     \end{tabular}
+   \f]
+   To construct an irrep, you must provide the partition for the Young
+   tableaux and the Yamanouchi symbols as follows:
+   \code
+   Irrep S3_irrep({1,1,1}, {1,2,3});
+   \endcode
+   */
   class Irrep {
 
     /// The Yamanouchi symbols for the irrep

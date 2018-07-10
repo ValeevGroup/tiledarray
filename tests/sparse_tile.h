@@ -76,16 +76,18 @@ public:
   EigenSparseTile(matrix_type&& mat, const range_type& range) :
       impl_(std::make_shared < impl_type > (std::make_tuple(std::move(mat), range)))
   {
-    TA_ASSERT(mat.rows() == range.extent()[0]);
-    TA_ASSERT(mat.cols() == range.extent()[1]);
+    using extent_type = typename range_type::extent_type::value_type;
+    TA_ASSERT(static_cast<extent_type>(mat.rows()) == range.extent()[0]);
+    TA_ASSERT(static_cast<extent_type>(mat.cols()) == range.extent()[1]);
   }
 
   /// ctor using sparse matrix
   EigenSparseTile(const matrix_type& mat, const range_type& range) :
       impl_(std::make_shared < impl_type > (std::make_tuple(mat, range)))
   {
-    TA_ASSERT(mat.rows() == range.extent()[0]);
-    TA_ASSERT(mat.cols() == range.extent()[1]);
+    using extent_type = typename range_type::extent_type::value_type;
+    TA_ASSERT(static_cast<extent_type>(mat.rows()) == range.extent()[0]);
+    TA_ASSERT(static_cast<extent_type>(mat.cols()) == range.extent()[1]);
   }
 
   // Deep copy
@@ -135,7 +137,7 @@ public:
 
   /// Maximum # of elements in the tile
   size_type size() const {
-    std::get < 0 > (*impl_).volume();
+    return std::get < 0 > (*impl_).volume();
   }
 
   // Initialization check. False if the tile is fully initialized.
@@ -562,8 +564,8 @@ namespace TiledArray {
       auto lobound = arg.range().lobound_data();
       auto nrows = extent[0];
       auto ncols = extent[1];
-      for(auto r = 0; r != nrows; ++r) {
-        for(auto c = 0; c != ncols; ++c) {
+      for(decltype(nrows) r = 0; r != nrows; ++r) {
+        for(decltype(ncols) c = 0; c != ncols; ++c) {
           auto v_rc = arg(r + lobound[0], c + lobound[1]);
           if(v_rc != 0)
             tripletList.push_back(Triplet(r, c, v_rc));

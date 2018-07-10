@@ -458,7 +458,7 @@ namespace TiledArray {
     // Spawn tasks to copy array tiles to the Eigen matrix
     madness::AtomicInt counter;
     counter = 0;
-    std::size_t n = 0;
+    int n = 0;
     for(std::size_t i = 0; i < array.size(); ++i) {
       if(! array.is_zero(i)) {
         array.world().taskq.add(
