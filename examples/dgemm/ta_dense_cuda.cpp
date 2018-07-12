@@ -606,7 +606,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
       trange_b(blocking_B.begin(), blocking_B.end());
 
   using CUDATile =
-      btas::Tensor<Real, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
+      btas::Tensor<Real, btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,
                    Storage>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
