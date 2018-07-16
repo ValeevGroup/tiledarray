@@ -627,50 +627,88 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                    Storage>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
-  // Construct and initialize arrays
-  CUDAMatrix a(world, trange_a);
-  CUDAMatrix b(world, trange_b);
   CUDAMatrix c(world, trange_c);
-  a.fill(1.0);
-  b.fill(1.0);
-  cudaDeviceSynchronize();
+  using value_type = typename Storage::value_type;
+  value_type val_a = 0.03;
+  value_type val_b = 0.02;
 
   auto to_device = [](TA::Tile<CUDATile> &tile) -> void {
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-        tile.tensor().storage());
+            tile.tensor().storage());
   };
   auto to_host = [](TA::Tile<CUDATile> &tile) -> void {
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-        tile.tensor().storage());
+            tile.tensor().storage());
   };
-  //foreach_inplace(a, to_device);
-  //foreach_inplace(b, to_device);
-  //cudaDeviceSynchronize();
 
-  // Start clock
-  world.gop.fence();
-  const double wall_time_start = madness::wall_time();
-
-  // Do matrix multiplication
-  for (int i = 0; i < nrepeat; ++i) {
-    double iter_time_start = madness::wall_time();
-    c("m,n") = a("m,k") * b("k,n");
-    world.gop.fence();
+  {
+    // Construct and initialize arrays
+    CUDAMatrix a(world, trange_a);
+    CUDAMatrix b(world, trange_b);
+    a.fill(val_a);
+    b.fill(val_b);
     cudaDeviceSynchronize();
-    double iter_time_stop = madness::wall_time();
-    if (world.rank() == 0) std::cout << "Iteration " << i + 1 << " wall time: " << (iter_time_stop - iter_time_start)  << "\n";
+
+    // foreach_inplace(a, to_device);
+    // foreach_inplace(b, to_device);
+    world.gop.fence();
+    // cudaDeviceSynchronize();
+
+    // Start clock
+    const double wall_time_start = madness::wall_time();
+
+    // Do matrix multiplication
+    for (int i = 0; i < nrepeat; ++i) {
+      double iter_time_start = madness::wall_time();
+      c("m,n") = a("m,k") * b("k,n");
+      world.gop.fence();
+      cudaDeviceSynchronize();
+      double iter_time_stop = madness::wall_time();
+      if (world.rank() == 0)
+        std::cout << "Iteration " << i + 1
+                  << " wall time: " << (iter_time_stop - iter_time_start)
+                  << "\n";
+    }
+
+    // Stop clock
+    const double wall_time_stop = madness::wall_time();
+
+    if (world.rank() == 0)
+      std::cout << "Average wall time   = "
+                << (wall_time_stop - wall_time_start) / double(nrepeat)
+                << " sec\nAverage GFLOPS      = "
+                << double(nrepeat) * 2.0 * double(Nn * Nm * Nm) /
+                       (wall_time_stop - wall_time_start) / 1.0e9
+                << "\n";
   }
 
-  // Stop clock
-  const double wall_time_stop = madness::wall_time();
+  CUDAMatrix::wait_for_lazy_cleanup(world);
 
-  if (world.rank() == 0)
-    std::cout << "Average wall time   = "
-              << (wall_time_stop - wall_time_start) / double(nrepeat)
-              << " sec\nAverage GFLOPS      = "
-              << double(nrepeat) * 2.0 * double(Nn * Nm * Nm) /
-                     (wall_time_stop - wall_time_start) / 1.0e9
-              << "\n";
+  // verify it with gpu result
+  foreach_inplace(c, to_host);
+  world.gop.fence();
+  cudaDeviceSynchronize();
+
+  double threshold = std::numeric_limits<typename Storage::value_type>::epsilon();
+  auto dot_length = Nk;
+  auto result = dot_length*val_a*val_b;
+
+  auto verify = [&threshold, &result,&dot_length](TA::Tile<CUDATile> &tile) {
+      auto n_elements = tile.size();
+      for (std::size_t i = 0; i < n_elements; i++){
+        double abs_err = fabs(tile[i] - result);
+        double abs_val = fabs(tile[i]);
+        double rel_err = abs_err/abs_val/dot_length ;
+        TA_USER_ASSERT(rel_err < threshold, std::string("gpu: " + std::to_string(tile[i]) + " cpu: " + std::to_string(result) + "\n").c_str() );
+      }
+  };
+
+  foreach_inplace(c, verify); 
+  world.gop.fence();
+
+  if(world.rank() == 0){
+    std::cout << "Verification Passed" << std::endl; 
+  }
 }
 
 int try_main(int argc, char **argv) {

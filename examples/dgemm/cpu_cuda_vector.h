@@ -134,6 +134,16 @@ class cpu_cuda_vector {
       return std::cend(host_vec_);
     }
 
+    const_reference operator[] (std::size_t i) const {
+      assert(on_host());
+      return host_vec_[i];
+    }
+
+    reference operator[] (std::size_t i) {
+      assert(on_host());
+      return host_vec_[i];
+    }
+
     bool on_host() const {
       return static_cast<int>(state_) & static_cast<int>(state::host);
     }
