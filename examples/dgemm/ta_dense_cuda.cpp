@@ -198,11 +198,11 @@ btas::Tensor<T, Range, Storage> gemm_cuda_impl(
   make_device_storage(result_storage, result_range.area(), cuda_streams[stream]);
   Tensor result(std::move(result_range), std::move(result_storage));
 
-  auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
-  auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
+  //auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
+  //auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
   
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(left.storage(), cuda_streams[stream_left]);
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(right.storage(), cuda_streams[stream_right]);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(left.storage(), cuda_streams[stream]);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(right.storage(), cuda_streams[stream]);
      
   // Check that the inner dimensions of left and right match
   TA_ASSERT(
@@ -241,6 +241,9 @@ btas::Tensor<T, Range, Storage> gemm_cuda_impl(
                            k, factor, left.data(), lda, right.data(), ldb, T(0),
                            result.data(), n);
   }
+
+  //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(left.storage(), cuda_streams[stream_left]);
+  //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(right.storage(), cuda_streams[stream_right]);
 
   return result;
 }
@@ -303,6 +306,14 @@ void gemm_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                        std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(
       std::cbegin(left.range().extent()), std::cbegin(right.range().extent())));
+  
+  //auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
+  //auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
+  
+  auto stream = result.range().ordinal().offset() % num_cuda_streams;
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(left.storage(), cuda_streams[stream]);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(right.storage(), cuda_streams[stream]);
+     
 
   // Compute gemm dimensions
   integer m, n, k;
@@ -317,7 +328,6 @@ void gemm_cuda_impl(btas::Tensor<T, Range, Storage> &result,
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
     auto one = T(1);
-    auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
     status = cublasGemm(handle, to_cublas_op(gemm_helper.left_op()),
