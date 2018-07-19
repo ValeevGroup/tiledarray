@@ -21,9 +21,10 @@
 
 
 #include <mpi.h>
-#include <stdexcept>
-#include <vector>
 #include <cuda_runtime.h>
+
+#include <stdexcept>
+#include <iostream>
 #include <assert.h>
 
 /**
@@ -49,7 +50,7 @@ int main(int argc, char *argv[]) {
   // allocate host vector
   int* vector_um;
   cudaError_t cuda_error;
-  cudaMallocManaged((void**) vector_um, sizeof(int)*N);
+  cudaMallocManaged(&vector_um, sizeof(int)*N);
   assert(cuda_error == cudaSuccess);
 
   // initialize data on node 0
@@ -75,6 +76,10 @@ int main(int argc, char *argv[]) {
   }
 
   cudaFree(vector_um);
+  
+  if( mpi_rank == 0){
+    std::cout << "MPI Send & Recv SUCCESS on CUDA Unified memory.\n";
+  }
 
   return 0;
 }

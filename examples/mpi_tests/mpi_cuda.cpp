@@ -21,9 +21,10 @@
 
 
 #include <mpi.h>
-#include <stdexcept>
-#include <vector>
 #include <cuda_runtime.h>
+
+#include <iostream>
+#include <stdexcept>
 #include <assert.h>
 
 /**
@@ -57,7 +58,7 @@ int main(int argc, char *argv[]) {
 
     cudaError_t cuda_error;
     int* vector_device;
-    cuda_error = cudaMalloc( (void**) vector_device, sizeof(int)*N);
+    cuda_error = cudaMalloc( &vector_device, sizeof(int)*N);
     assert(cuda_error == cudaSuccess);
 
     // initialize data on node 0
@@ -82,14 +83,17 @@ int main(int argc, char *argv[]) {
 
       // verify the data
       for (std::size_t i = 0; i < N; i++){
-        assert(vector_device[i] == i);
+        assert(vector_host[i] == i);
       }
     }
 
     free(vector_host);
     cudaFree(vector_device);
-  }
 
+    if( mpi_rank == 0 ){
+      std::cout << "MPI Send & Recv SUCCESS on GPU memory.\n";
+    }
+  }
 
   /**
    * Test MPI
