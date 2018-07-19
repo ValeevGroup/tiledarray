@@ -99,5 +99,6 @@ int main(int argc, char *argv[]) {
    * Test MPI
    */
 
+  MPI_Finalize();
   return 0;
 }

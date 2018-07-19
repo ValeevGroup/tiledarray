@@ -81,5 +81,6 @@ int main(int argc, char *argv[]) {
     std::cout << "MPI Send & Recv SUCCESS on CUDA Unified memory.\n";
   }
 
+  MPI_Finalize();
   return 0;
 }
