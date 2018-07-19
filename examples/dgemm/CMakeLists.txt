@@ -22,7 +22,6 @@
 #  Sep 4, 2013
 #
 
-find_package(CUDA)
 
 # Create example executable
 

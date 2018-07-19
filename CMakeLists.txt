@@ -243,6 +243,7 @@ if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
 include(external/btas.cmake)
+include(external/cuda.cmake)
 
 # optional deps:
 # 1. ccache
