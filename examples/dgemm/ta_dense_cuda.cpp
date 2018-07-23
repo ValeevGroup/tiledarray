@@ -44,6 +44,8 @@ thread_local cublasHandle_t *cuBLASHandlePool::handle_;
 
 // use multiple streams
 int num_cuda_streams;  // user param; use a a nice prime for round-robins
+int num_cuda_devices;
+int cuda_device_id;
 std::vector<cudaStream_t> cuda_streams;  // pool of streams
 
 // clang-format off
@@ -59,6 +61,23 @@ std::vector<cudaStream_t> cuda_streams;  // pool of streams
 #include <TiledArray/math/blas.h>
 #include <TiledArray/external/btas.h>
 // clang-format on
+
+std::pair<int,int> mpi_local_rank_size(int mpi_rank){
+  MPI_Comm local_comm;
+  MPI_Info info;
+  MPI_Info_create(&info);
+  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, mpi_rank, info, &local_comm);
+
+  int local_rank = -1;
+  int local_size = -1;
+  MPI_Comm_rank(local_comm,&local_rank);
+  MPI_Comm_size(local_comm,&local_size);
+
+  MPI_Comm_free(&local_comm);
+  MPI_Info_free(&info);
+
+  return std::make_pair(local_rank, local_size);
+}
 
 cublasOperation_t to_cublas_op(madness::cblas::CBLAS_TRANSPOSE cblas_op) {
   cublasOperation_t result;
@@ -187,6 +206,7 @@ btas::Tensor<T, Range, Storage> gemm_cuda_impl(
   TA_ASSERT(!right.empty());
   TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
+  cudaSetDevice(cuda_device_id);
   // Construct the result Tensor
   typedef btas::Tensor<T, Range, Storage> Tensor;
   //  typedef typename Tensor::storage_type storage_type;
@@ -309,6 +329,8 @@ void gemm_cuda_impl(btas::Tensor<T, Range, Storage> &result,
   
   //auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
   //auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
+
+  cudaSetDevice(cuda_device_id);
   
   auto stream = result.range().ordinal().offset() % num_cuda_streams;
   TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(left.storage(), cuda_streams[stream]);
@@ -438,10 +460,16 @@ void add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
     TA_ASSERT(in_memory_space<MemorySpace::CPU>(result.storage()) &&
               in_memory_space<MemorySpace::CPU>(arg.storage()));
   }
+ 
+  cudaSetDevice(cuda_device_id);
+  auto stream = result.range().ordinal().offset() % num_cuda_streams;
+  
+  //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(result.storage(), cuda_streams[stream]);
+  //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(arg.storage(), cuda_streams[stream]);
+  
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
     auto one = T(1);
-    auto stream = result.range().ordinal().offset() % num_cuda_streams;
     auto status = cublasSetStream(handle, cuda_streams[stream]);
     assert(status == CUBLAS_STATUS_SUCCESS);
     status = cublasAxpy(handle, result.size(), &one, device_data(arg.storage()),
@@ -493,12 +521,18 @@ typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
 squared_norm_cuda_impl(
     const btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
                        Storage> &arg) {
-  auto storage = arg.storage();
+  
+  cudaSetDevice(cuda_device_id);
+  auto stream = arg.range().ordinal().offset() % num_cuda_streams;
+
+  auto& storage = arg.storage();
   integer size = storage.size();
   T result = 0;
   if (in_memory_space<MemorySpace::CUDA>(storage)) {
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasDot(handle, size, device_data(storage), 1,
+    auto status = cublasSetStream(handle, cuda_streams[stream]);
+    assert(status == CUBLAS_STATUS_SUCCESS);
+    status = cublasDot(handle, size, device_data(storage), 1,
                             device_data(storage), 1, &result);
     assert(status == CUBLAS_STATUS_SUCCESS);
   } else {
@@ -792,43 +826,73 @@ int try_main(int argc, char **argv) {
   std::cout << "CUDA {driver,runtime} versions = " << driverVersion << ","
             << runtimeVersion << std::endl;
   {  // print device properties
-    int ndevice = -1;
-    auto error = cudaGetDeviceCount(&ndevice);
+    auto error = cudaGetDeviceCount(&num_cuda_devices);
     if (error != cudaSuccess) {
       std::cout << "error(cudaGetDeviceCount) = " << error << std::endl;
     }
-    assert(ndevice > 0);
-    for (int device = 0; device != ndevice; ++device) {
-      cudaDeviceProp prop;
-      auto error = cudaGetDeviceProperties(&prop, device);
-      if (error != cudaSuccess) {
-        std::cout << "error(cudaGetDeviceProperties) = " << error << std::endl;
-      }
-      std::cout << "Device #" << device << ": " << prop.name << std::endl
+    if (num_cuda_devices <= 0) {
+	throw std::runtime_error("No CUDA-Enabled GPUs Found!\n");
+    }
+    
+    // print out device information
+    int mpi_size = world.size();
+    int mpi_rank = world.rank();
+    
+    // determine device for current mpi process
+    int local_mpi_size = -1;
+    int local_mpi_rank = -1;
+    std::tie(local_mpi_rank, local_mpi_size) = mpi_local_rank_size(mpi_rank);
+    //if( local_mpi_size > num_cuda_devices ){
+    //    throw std::runtime_error("Number of local MPI Processes is greater than Number of CUDA-Enabled GPUs!\n");
+    //}
+
+    cuda_device_id = local_mpi_rank % num_cuda_devices;    
+
+
+    for (int i = 0; i < mpi_size; i++){
+
+      if( i == mpi_rank ){
+        std::cout << "CUDA Device Information for MPI Process Rank: " << mpi_rank << std::endl;	
+      //for (int device = 0; device != ndevice; ++device) {
+        cudaDeviceProp prop;
+        auto error = cudaGetDeviceProperties(&prop, cuda_device_id);
+        if (error != cudaSuccess) {
+          std::cout << "error(cudaGetDeviceProperties) = " << error << std::endl;
+        }
+        std::cout << "Device #" << cuda_device_id << ": " << prop.name << std::endl
                 << "  managedMemory = " << prop.managedMemory << std::endl
                 << "  singleToDoublePrecisionPerfRatio = "
                 << prop.singleToDoublePrecisionPerfRatio << std::endl;
-      int result;
-      error =
-          cudaDeviceGetAttribute(&result, cudaDevAttrUnifiedAddressing, device);
-      std::cout << "  attrUnifiedAddressing = " << result << std::endl;
-      error = cudaDeviceGetAttribute(
-          &result, cudaDevAttrConcurrentManagedAccess, device);
-      std::cout << "  attrConcurrentManagedAccess = " << result << std::endl;
-      error = cudaSetDevice(device);
-      if (error != cudaSuccess) {
-        std::cout << "error(cudaSetDevice) = " << error << std::endl;
-      }
-      size_t free_mem, total_mem;
-      error = cudaMemGetInfo(&free_mem, &total_mem);
-      std::cout << "  {total,free} memory = {" << total_mem << "," << free_mem
+        int result;
+        error =
+          cudaDeviceGetAttribute(&result, cudaDevAttrUnifiedAddressing, cuda_device_id);
+        std::cout << "  attrUnifiedAddressing = " << result << std::endl;
+        error = cudaDeviceGetAttribute(
+            &result, cudaDevAttrConcurrentManagedAccess, cuda_device_id);
+        std::cout << "  attrConcurrentManagedAccess = " << result << std::endl;
+        error = cudaSetDevice(cuda_device_id);
+        if (error != cudaSuccess) {
+          std::cout << "error(cudaSetDevice) = " << error << std::endl;
+        }
+        size_t free_mem, total_mem;
+        error = cudaMemGetInfo(&free_mem, &total_mem);
+        std::cout << "  {total,free} memory = {" << total_mem << "," << free_mem
                 << "}" << std::endl;
-    }
-    error = cudaSetDevice(0);
-    if (error != cudaSuccess) {
-      std::cout << "error(cudaSetDevice) = " << error << std::endl;
+      }
+      world.gop.fence();
     }
   }  // print device properties
+
+  // set device for current MPI process
+  error = cudaSetDevice(cuda_device_id);
+  if (error != cudaSuccess) {
+    std::cout << "error(cudaSetDevice) = " << error << std::endl;
+  }
+  
+  //@TODO set device for all MAD_THREADS here
+  
+
+  // creates cuda streams on current device
   {
     cuda_streams.resize(num_cuda_streams);
     for (auto &stream : cuda_streams) {
