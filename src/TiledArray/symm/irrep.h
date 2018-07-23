@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_IRREP_H__INCLUDED
 #define TILEDARRAY_IRREP_H__INCLUDED
 
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 #include <TiledArray/error.h>
 
 namespace TiledArray {

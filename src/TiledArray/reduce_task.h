@@ -22,7 +22,7 @@
 
 #include <TiledArray/config.h>
 #include <TiledArray/error.h>
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 
 namespace TiledArray {
   namespace detail {

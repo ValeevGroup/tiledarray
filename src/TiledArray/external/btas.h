@@ -20,8 +20,8 @@
  *
  */
 
-#ifndef TILEDARRAY_MATH_BTAS_H__INCLUDED
-#define TILEDARRAY_MATH_BTAS_H__INCLUDED
+#ifndef TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
+#define TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
 
 #include "TiledArray/config.h"
 #include "TiledArray/math/blas.h"
@@ -423,4 +423,4 @@ struct ArchiveStoreImpl<Archive, btas::Tensor<_T, _Range, _Store>> {
 }  // namespace archive
 }  // namespace madness
 
-#endif /* TILEDARRAY_MATH_BTAS_H__INCLUDED */
+#endif /* TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED */

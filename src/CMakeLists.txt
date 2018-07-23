@@ -33,9 +33,9 @@ TiledArray/block_range.h
 TiledArray/dense_shape.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
-TiledArray/elemental.h
+TiledArray/external/elemental.h
 TiledArray/error.h
-TiledArray/madness.h
+TiledArray/external/madness.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/proc_grid.h

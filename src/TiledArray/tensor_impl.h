@@ -21,7 +21,7 @@
 #define TILEDARRAY_TENSOR_IMPL_H__INCLUDED
 
 #include "error.h"
-#include "madness.h"
+#include "TiledArray/external/madness.h"
 #include "policies/dense_policy.h"
 #include "policies/sparse_policy.h"
 

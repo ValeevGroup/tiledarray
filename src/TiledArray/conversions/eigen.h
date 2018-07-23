@@ -31,7 +31,7 @@
 #include <TiledArray/tensor.h>
 #include <TiledArray/error.h>
 #include <TiledArray/math/eigen.h>
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 #include <TiledArray/pmap/replicated_pmap.h>
 #include "TiledArray/dist_array.h"
 

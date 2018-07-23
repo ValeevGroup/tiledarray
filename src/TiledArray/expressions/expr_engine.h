@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_EXPRESSIONS_EXPR_ENGINE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_EXPR_ENGINE_H__INCLUDED
 
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 #include <TiledArray/expressions/expr_trace.h>
 
 namespace TiledArray {

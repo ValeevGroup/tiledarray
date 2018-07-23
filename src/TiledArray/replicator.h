@@ -20,7 +20,7 @@
 #ifndef TILEDARRAY_REPLICATOR_H__INCLUDED
 #define TILEDARRAY_REPLICATOR_H__INCLUDED
 
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 
 namespace TiledArray {
   namespace detail {

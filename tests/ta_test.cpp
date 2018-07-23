@@ -19,7 +19,7 @@
 
 #define BOOST_TEST_MAIN TiledArray Tests
 #include "unit_test_config.h"
-#include "TiledArray/madness.h"
+#include "TiledArray/external/madness.h"
 
 GlobalFixture::GlobalFixture() {
   world = & TiledArray::initialize(

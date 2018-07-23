@@ -29,7 +29,7 @@
 #include <madness/world/world.h>
 #include <madness/world/future.h>
 #include <madness/world/world_task_queue.h>
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 
 namespace TiledArray {
 namespace meta {

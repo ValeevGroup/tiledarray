@@ -27,7 +27,7 @@
 #define TILEDARRAY_MATH_GEMM_HELPER_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 
 namespace TiledArray {
   namespace math {

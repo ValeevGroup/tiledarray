@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_CONVERSIONS_MAKE_ARRAY_H__INCLUDED
 #define TILEDARRAY_CONVERSIONS_MAKE_ARRAY_H__INCLUDED
 
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 #include <TiledArray/type_traits.h>
 
 /// Forward declarations

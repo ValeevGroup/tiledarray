@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef TILEDARRAY_MADNESS_H__INCLUDED
-#define TILEDARRAY_MADNESS_H__INCLUDED
+#ifndef TILEDARRAY_EXTERNAL_MADNESS_H__INCLUDED
+#define TILEDARRAY_EXTERNAL_MADNESS_H__INCLUDED
 
 // This needs to be defined before world/worldreduce.h and world/worlddc.h
 #ifndef WORLD_INSTANTIATE_STATIC_TEMPLATES
@@ -125,6 +125,9 @@ namespace TiledArray {
   inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm) {
     auto& default_world = madness::initialize(argc, argv, comm);
     TiledArray::set_default_world(default_world);
+//#ifdef TILEDARRAY_HAS_CUDA
+//    TiledArray::cuda_initialize();
+//#endif
     return default_world;
   }
 
@@ -139,10 +142,13 @@ namespace TiledArray {
   inline void finalize() {
     madness::finalize();
     TiledArray::reset_default_world();
+//#ifdef TILEDARRAY_HAS_CUDA
+//    TiledArray::cuda_finalize();
+//#endif
   }
 
   /// @}
 
 }  // namespace TiledArray
 
-#endif // TILEDARRAY_MADNESS_H__INCLUDED
+#endif // TILEDARRAY_EXTERNAL_MADNESS_H__INCLUDED
