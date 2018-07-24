@@ -302,14 +302,14 @@ int try_main(int argc, char **argv) {
         << "Error: diminsion size must be evenly divisible by block size.\n";
     return 1;
   }
-  const long nrepeat = (argc >= 7 ? atol(argv[7]) : 5);
+  const long nrepeat = (argc >= 8 ? atol(argv[7]) : 5);
   if (nrepeat <= 0) {
     std::cerr << "Error: number of repetitions must be greater than zero.\n";
     return 1;
   }
 
   const auto real_type_str =
-      (argc >= 8) ? std::string(argv[8]) : std::string("double");
+      (argc >= 9) ? std::string(argv[8]) : std::string("double");
 
   if (real_type_str != "float" && real_type_str != "double") {
     std::cerr << "Error: invalid real type: " << real_type_str
@@ -318,7 +318,7 @@ int try_main(int argc, char **argv) {
   }
 
   const auto storage_type =
-      (argc >= 9) ? std::string(argv[9]) : std::string{"cuda_um_btas_varray"};
+      (argc >= 10) ? std::string(argv[9]) : std::string{"cuda_um_btas_varray"};
 
   if (storage_type != "cuda_um_btas_varray" &&
       storage_type != "cuda_um_thrust_vector" &&
