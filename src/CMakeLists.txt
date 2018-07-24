@@ -150,6 +150,20 @@ TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
+if(CUDA_FOUND)
+
+  list(APPEND TILEDARRAY_HEADER_FILES
+     TiledArray/external/cuda.h
+     TiledArray/math/cublas.h
+     TiledArray/tensor/cuda/btas_cublas.h
+     TiledArray/tensor/cuda/btas_um_tensor.h
+     TiledArray/tensor/cuda/platform.h
+     TiledArray/tensor/cuda/thrust.h
+     TiledArray/tensor/cuda/um_allocator.h
+     TiledArray/tensor/cuda/um_storage.h)
+
+endif(CUDA_FOUND)
+
 set(TILEDARRAY_SOURCE_FILES
 TiledArray/tensor/tensor.cpp
 TiledArray/sparse_shape.cpp
@@ -157,16 +171,32 @@ TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp)
 
+#if(CUDA_FOUND)
+#
+#  set(TILEDARRAY_CUDA_SOURCE_FILES
+#          TiledArray/tensor/cuda/btas_um_tensor.cpp)
+##          TiledArray/tensor/cuda/um_storage.cu)
+#
+#endif(CUDA_FOUND)
+
 # the list of libraries on which TiledArray depends on
 set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 # Create the TiledArray library
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+
+#
+#if(CUDA_FOUND)
+#set(TILEDARRAY_CUDA_DEPENDENCIES )
+#cuda_add_library(tiledarray_cuda ${TILEDARRAY_CUDA_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+#endif()
+
 target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
 )
+
 target_link_libraries(tiledarray PUBLIC ${TILEDARRAY_DEPENDENCIES})
 if(TARGET build-madness)
   add_dependencies(tiledarray build-madness)

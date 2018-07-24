@@ -1,5 +1,5 @@
-#include "platform.h"
-#include "thrust.h"
+#include "TiledArray/tensor/cuda/platform.h"
+#include "TiledArray/tensor/cuda/thrust.h"
 
 #include <btas/array_adaptor.h>
 
@@ -184,6 +184,22 @@ void to_execution_space(cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) {
     default:
       throw std::runtime_error("invalid execution space");
   }
+}
+
+template <typename T>
+void make_device_storage(cpu_cuda_vector<T> &storage, std::size_t n,
+                         cudaStream_t stream = 0) {
+  storage = cpu_cuda_vector<T>(n, cpu_cuda_vector<T>::state::device);
+}
+
+template <typename T>
+T *device_data(cpu_cuda_vector<T> &storage) {
+  return storage.device_data();
+}
+
+template <typename T>
+const T *device_data(const cpu_cuda_vector<T> &storage) {
+  return storage.device_data();
 }
 
 }  // namespace TiledArray

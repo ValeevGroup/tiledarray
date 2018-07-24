@@ -1,12 +1,35 @@
-//
-// Created by Eduard Valeyev on 1/31/18.
-//
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2018  Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Eduard Valeyev
+ *  Department of Chemistry, Virginia Tech
+ *  Jan 31, 2018
+ *
+ */
 
-#ifndef TILEDARRAY_CUDA_UM_ALLOCATOR_H
-#define TILEDARRAY_CUDA_UM_ALLOCATOR_H
+#ifndef TILEDARRAY_TENSOR_CUDA_UM_ALLOCATOR_H___INCLUDED
+#define TILEDARRAY_TENSOR_CUDA_UM_ALLOCATOR_H___INCLUDED
 
-#include <cuda.h>
+#include <TiledArray/config.h>
+
+#ifdef TILEDARRAY_HAS_CUDA
+
 #include <cuda_runtime.h>
+
 #include <memory>
 #include <stdexcept>
 
@@ -65,8 +88,11 @@ bool operator!=(const cuda_um_allocator_impl<T1>& lhs,
 template <typename T, typename A = std::allocator<T>>
 class default_init_allocator : public A {
   using a_t = std::allocator_traits<A>;
+
  public:
-  using reference = typename A::reference;   // std::allocator<T>::reference deprecated in C++17, but thrust still relying on this
+  using reference = typename A::reference;  // std::allocator<T>::reference
+                                            // deprecated in C++17, but thrust
+                                            // still relying on this
   using const_reference = typename A::const_reference;  // ditto
 
   template <typename U>
@@ -89,9 +115,10 @@ class default_init_allocator : public A {
 };
 
 template <typename T>
-using cuda_um_allocator =
-    default_init_allocator<T, cuda_um_allocator_impl<T>>;
+using cuda_um_allocator = default_init_allocator<T, cuda_um_allocator_impl<T>>;
 
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_CUDA_UM_ALLOCATOR_H
+#endif  // TILEDARRAY_HAS_CUDA
+
+#endif  // TILEDARRAY_TENSOR_CUDA_UM_ALLOCATOR_H___INCLUDED

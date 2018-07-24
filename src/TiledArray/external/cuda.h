@@ -20,8 +20,6 @@
  *  July 23, 2018
  *
  */
-//
-//
 
 #ifndef TILEDARRAY_EXTERNAL_CUDA_H__INCLUDED
 #define TILEDARRAY_EXTERNAL_CUDA_H__INCLUDED
@@ -33,6 +31,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#include <mpi.h>
 #include <madness/tensor/cblas.h>
 
 #include <TiledArray/math/cublas.h>

@@ -28,8 +28,8 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-//#include <TiledArray/external/cuda.h>
 #include <cublas_v2.h>
+#include <TiledArray/error.h>
 
 namespace TiledArray{
 
