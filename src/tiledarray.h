@@ -54,10 +54,10 @@
 
 // Linear algebra
 #include <TiledArray/algebra/conjgrad.h>
-#include "TiledArray/dist_array.h"
+#include <TiledArray/dist_array.h>
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
-#include <TiledArray/elemental.h> 
+#include <TiledArray/external/elemental.h>
 #endif
 
 #endif // TILEDARRAY_H__INCLUDED
