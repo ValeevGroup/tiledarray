@@ -124,7 +124,7 @@ class cudaEnv {
 
 namespace detail {
 
-std::pair<int, int> mpi_local_rank_size(int mpi_rank) {
+inline std::pair<int, int> mpi_local_rank_size(int mpi_rank) {
   MPI_Comm local_comm;
   MPI_Info info;
   MPI_Info_create(&info);
@@ -142,7 +142,7 @@ std::pair<int, int> mpi_local_rank_size(int mpi_rank) {
   return std::make_pair(local_rank, local_size);
 }
 
-int num_cuda_streams() {
+inline int num_cuda_streams() {
   int num_streams = -1;
   char* num_stream_char = std::getenv("TA_NUM_STREAMS");
   /// default num of streams is 1
@@ -154,7 +154,7 @@ int num_cuda_streams() {
   return num_streams;
 }
 
-int num_cuda_devices() {
+inline int num_cuda_devices() {
   int num_devices = -1;
   auto error = cudaGetDeviceCount(&num_devices);
   TA_ASSERT(error == cudaSuccess);
@@ -164,7 +164,7 @@ int num_cuda_devices() {
   return num_devices;
 }
 
-int current_cuda_device_id() {
+inline int current_cuda_device_id() {
   int mpi_rank = -1;
   MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
 
@@ -189,7 +189,7 @@ int current_cuda_device_id() {
 }  // namespace detail
 
 /// initialize cuda environment
-void cuda_initialize() {
+inline void cuda_initialize() {
   /// initialize cudaGlobal
 
   int num_streams = detail::num_cuda_streams();
@@ -204,7 +204,7 @@ void cuda_initialize() {
 }
 
 /// finalize cuda environment
-void cuda_finalize() {
+inline void cuda_finalize() {
   cudaEnv::finalize();
   delete cuBLASHandlePool::handle();
 }

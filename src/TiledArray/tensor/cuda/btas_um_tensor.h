@@ -112,16 +112,16 @@ squared_norm(
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
-  extern template class btas::Tensor<double,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<double>>;
-  extern template class btas::Tensor<float,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<float>>;
-  extern template class btas::Tensor<int,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<int>>;
-  extern template class btas::Tensor<long,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<long>>;
-
-
-  extern template class btas::Tensor<double,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<double>>;
-  extern template class btas::Tensor<float,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<float>>;
-  extern template class btas::Tensor<int,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<int>>;
-  extern template class btas::Tensor<long,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<long>>;
+//  extern template class btas::Tensor<double,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<double>>;
+//  extern template class btas::Tensor<float,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<float>>;
+//  extern template class btas::Tensor<int,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<int>>;
+//  extern template class btas::Tensor<long,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<long>>;
+//
+//
+//  extern template class btas::Tensor<double,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<double>>;
+//  extern template class btas::Tensor<float,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<float>>;
+//  extern template class btas::Tensor<int,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<int>>;
+//  extern template class btas::Tensor<long,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<long>>;
 
 #endif
 

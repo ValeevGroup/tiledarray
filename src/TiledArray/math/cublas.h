@@ -61,7 +61,7 @@ private:
 };
 //thread_local cublasHandle_t *cuBLASHandlePool::handle_;
 
-cublasOperation_t to_cublas_op(madness::cblas::CBLAS_TRANSPOSE cblas_op) {
+inline cublasOperation_t to_cublas_op(madness::cblas::CBLAS_TRANSPOSE cblas_op) {
   cublasOperation_t result;
   switch (cblas_op) {
     case madness::cblas::NoTrans:
@@ -85,7 +85,7 @@ cublasStatus_t cublasGemm(cublasHandle_t handle, cublasOperation_t transa,
                           const T *alpha, const T *A, int lda, const T *B,
                           int ldb, const T *beta, T *C, int ldc);
 template <>
-cublasStatus_t cublasGemm<float>(cublasHandle_t handle,
+inline cublasStatus_t cublasGemm<float>(cublasHandle_t handle,
                                  cublasOperation_t transa,
                                  cublasOperation_t transb, int m, int n, int k,
                                  const float *alpha, const float *A, int lda,
@@ -95,7 +95,7 @@ cublasStatus_t cublasGemm<float>(cublasHandle_t handle,
                      beta, C, ldc);
 }
 template <>
-cublasStatus_t cublasGemm<double>(cublasHandle_t handle,
+inline cublasStatus_t cublasGemm<double>(cublasHandle_t handle,
                                   cublasOperation_t transa,
                                   cublasOperation_t transb, int m, int n, int k,
                                   const double *alpha, const double *A, int lda,
@@ -112,13 +112,13 @@ template <typename T>
 cublasStatus_t cublasAxpy(cublasHandle_t handle, int n, const T *alpha,
                           const T *x, int incx, T *y, int incy);
 template <>
-cublasStatus_t cublasAxpy<float>(cublasHandle_t handle, int n,
+inline cublasStatus_t cublasAxpy<float>(cublasHandle_t handle, int n,
                                  const float *alpha, const float *x, int incx,
                                  float *y, int incy) {
   return cublasSaxpy(handle, n, alpha, x, incx, y, incy);
 }
 template <>
-cublasStatus_t cublasAxpy<double>(cublasHandle_t handle, int n,
+inline cublasStatus_t cublasAxpy<double>(cublasHandle_t handle, int n,
                                   const double *alpha, const double *x,
                                   int incx, double *y, int incy) {
   return cublasDaxpy(handle, n, alpha, x, incx, y, incy);
@@ -130,13 +130,14 @@ template <typename T>
 cublasStatus_t cublasDot(cublasHandle_t handle, int n, const T *x, int incx,
                          const T *y, int incy, T *result);
 template <>
-cublasStatus_t cublasDot<float>(cublasHandle_t handle, int n, const float *x,
+inline cublasStatus_t cublasDot<float>(cublasHandle_t handle, int n, const float *x,
                                 int incx, const float *y, int incy,
                                 float *result) {
   return cublasSdot(handle, n, x, incx, y, incy, result);
 }
+
 template <>
-cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n, const double *x,
+inline cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n, const double *x,
                                  int incx, const double *y, int incy,
                                  double *result) {
   return cublasDdot(handle, n, x, incx, y, incy, result);
