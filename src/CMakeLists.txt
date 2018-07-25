@@ -179,17 +179,11 @@ if(CUDA_FOUND)
           TiledArray/tensor/cuda/btas_um_tensor.cpp
           TiledArray/tensor/cuda/um_storage.cu)
 
-  #  cuda_add_library(tiledarray_cuda ${TILEDARRAY_CUDA_SOURCE_FILES})
-  #  cuda_add_cublas_to_target(tiledarray_cuda)
-  #  target_link_libraries(tiledarray PUBLIC tiledarray_cuda)
-  #  add_dependencies(tiledarray_cuda tiledarray)
-
   # the list of libraries on which TiledArray depends on
   set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
   # Create the TiledArray library
   cuda_add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
-#  cuda_add_cublas_to_target(tiledarray PUBLIC)
 
 else(CUDA_FOUND)
 
