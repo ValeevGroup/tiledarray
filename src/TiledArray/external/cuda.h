@@ -98,7 +98,7 @@ class cudaEnv {
 
   /// finalize the static member
   static void finalize(){
-    instance_.release();
+    instance_.reset(nullptr);
   }
 
   int num_cuda_devices() const { return num_cuda_devices_; }
@@ -205,6 +205,7 @@ inline void cuda_initialize() {
 
 /// finalize cuda environment
 inline void cuda_finalize() {
+  cudaDeviceSynchronize();
   cudaEnv::finalize();
   delete cuBLASHandlePool::handle();
 }

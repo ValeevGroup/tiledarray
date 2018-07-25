@@ -181,10 +181,10 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   value_type val_a = 0.03;
   value_type val_b = 0.02;
 
-  auto to_device = [](TA::Tile<CUDATile> &tile) -> void {
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-        tile.tensor().storage());
-  };
+//  auto to_device = [](TA::Tile<CUDATile> &tile) -> void {
+//    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+//        tile.tensor().storage());
+//  };
   auto to_host = [](TA::Tile<CUDATile> &tile) -> void {
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
         tile.tensor().storage());
@@ -196,12 +196,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     CUDAMatrix b(world, trange_b);
     a.fill(val_a);
     b.fill(val_b);
-    cudaDeviceSynchronize();
+
 
     // foreach_inplace(a, to_device);
     // foreach_inplace(b, to_device);
     world.gop.fence();
-    // cudaDeviceSynchronize();
+    cudaDeviceSynchronize();
 
     // Start clock
     const double wall_time_start = madness::wall_time();
@@ -231,6 +231,15 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                 << "\n";
   }
 
+//  for (auto iter = c.begin(); iter != c.end(); iter++){
+//    auto tile = iter->get();
+//    std::cout << "tile: " << iter.index() << " ";
+//    for (int i = 0; i < tile.size(); i++){
+//      std::cout << tile[i] << " ";
+//    }
+//    std::cout << std::endl;
+//  }
+
   CUDAMatrix::wait_for_lazy_cleanup(world);
 
   // verify it with gpu result
@@ -248,7 +257,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = fabs(tile[i] - result);
       double abs_val = fabs(tile[i]);
-      double rel_err = abs_err / abs_val / dot_length;
+      double rel_err = abs_err / result / dot_length;
       TA_USER_ASSERT(rel_err < threshold,
                      std::string("gpu: " + std::to_string(tile[i]) +
                                  " cpu: " + std::to_string(result) + "\n")

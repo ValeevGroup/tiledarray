@@ -191,7 +191,7 @@ if(CUDA_FOUND)
   cuda_add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
 #  cuda_add_cublas_to_target(tiledarray PUBLIC)
 
-elseif(CUDA_FOUND)
+else(CUDA_FOUND)
 
 # the list of libraries on which TiledArray depends on
 set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
