@@ -38,6 +38,19 @@
 
 namespace TiledArray{
 
+
+namespace detail{
+
+template <typename Range>
+const cudaStream_t& get_stream_based_on_range(const Range &range){
+  // TODO better way to get stream based on the id of tensor
+  auto stream_id = range.offset() % cudaEnv::instance()->num_cuda_streams();
+  auto& stream = cudaEnv::instance()->cuda_stream(stream_id);
+  return stream;
+}
+
+}
+
 template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
         const btas::Tensor<T, Range, Storage> &left,
@@ -65,9 +78,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   auto result_range =
           gemm_helper.make_result_range<Range>(left.range(), right.range());
 
-  auto stream_id = result_range.ordinal().offset() % cudaEnv::instance()->num_cuda_streams();
-//  auto stream_id = result_range.offset() % cudaEnv::instance()->num_cuda_streams();
-  auto& cuda_stream = cudaEnv::instance()->cuda_stream(stream_id);
+  auto& cuda_stream = detail::get_stream_based_on_range(result_range);
+
   Storage result_storage;
   make_device_storage(result_storage, result_range.area(),
                       cuda_stream);
@@ -191,9 +203,7 @@ void btas_tensor_gemm_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
 
-  auto stream_id = result.range().ordinal().offset() % cudaEnv::instance()->num_cuda_streams();
-//  auto stream_id = result.range().offset() % cudaEnv::instance()->num_cuda_streams();
-  auto& stream = cudaEnv::instance()->cuda_stream(stream_id);
+  auto& stream = detail::get_stream_based_on_range(result.range());
 
 
   TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
@@ -243,12 +253,8 @@ void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
     TA_ASSERT(in_memory_space<MemorySpace::CPU>(result.storage()) &&
               in_memory_space<MemorySpace::CPU>(arg.storage()));
   }
-
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
-  auto stream_id = result.range().ordinal().offset() % cudaEnv::instance()->num_cuda_streams();
-//  auto stream_id = result.range().offset() % cudaEnv::instance()->num_cuda_streams();
-
-  auto& stream = cudaEnv::instance()->cuda_stream(stream_id);
+  auto& stream = detail::get_stream_based_on_range(result.range());
 
 
   // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(result.storage(),
@@ -276,10 +282,8 @@ typename btas::Tensor<T, Range, Storage>::value_type
 btas_tensor_squared_norm_cuda_impl(
         const btas::Tensor<T, Range, Storage> &arg) {
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
-  auto stream_id = arg.range().ordinal().offset() % cudaEnv::instance()->num_cuda_streams();
-//  auto stream_id = arg.range().offset() % cudaEnv::instance()->num_cuda_streams();
 
-  auto& stream = cudaEnv::instance()->cuda_stream(stream_id);
+  auto& stream = detail::get_stream_based_on_range(arg.range());
 
   auto &storage = arg.storage();
   integer size = storage.size();

@@ -9,7 +9,7 @@
  *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  MERCHANTiledArrayBILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
@@ -28,104 +28,190 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/tensor/cuda/btas_cublas.h>
 #include <TiledArray/range.h>
+#include <TiledArray/tensor/cuda/btas_cublas.h>
+#include <TiledArray/tensor/tensor.h>
 
-namespace TiledArray{
+namespace TiledArray {
 
 /*
  * btas::Tensor with UM storage cuda_um_btas_varray
  */
 
-template <typename T, typename Range = btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>>
-using btasUMTensorVarray = btas::Tensor<T,Range,TiledArray::cuda_um_btas_varray<T>>;
+template <typename T, typename Range = TiledArray::Range>
+using btasUMTensorVarray =
+    btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> gemm(
-        const btasUMTensorVarray<T, Range> &left,
-        const btasUMTensorVarray<T, Range> &right,
-        T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+    const btasUMTensorVarray<T, Range> &left,
+    const btasUMTensorVarray<T, Range> &right, T factor,
+    const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(left, right, factor, gemm_helper);
 }
 
 template <typename T, typename Range>
-void gemm(
-        btasUMTensorVarray<T, Range>  &result,
-        const btasUMTensorVarray<T, Range>  &left,
-        const btasUMTensorVarray<T, Range>  &right,
-        T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+void gemm(btasUMTensorVarray<T, Range> &result,
+          const btasUMTensorVarray<T, Range> &left,
+          const btasUMTensorVarray<T, Range> &right, T factor,
+          const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(result, left, right, factor, gemm_helper);
 }
 
 template <typename T, typename Range>
-void add_to(
-        btasUMTensorVarray<T, Range>  &result,
-        const btasUMTensorVarray<T, Range> &arg) {
+void add_to(btasUMTensorVarray<T, Range> &result,
+            const btasUMTensorVarray<T, Range> &arg) {
   btas_tensor_add_to_cuda_impl(result, arg);
 }
 
 template <typename T, typename Range>
-typename btasUMTensorVarray<T, Range> ::value_type
-squared_norm(
-        const btasUMTensorVarray<T, Range> &arg) {
+typename btasUMTensorVarray<T, Range>::value_type squared_norm(
+    const btasUMTensorVarray<T, Range> &arg) {
   return btas_tensor_squared_norm_cuda_impl(arg);
 }
 
 /*
  * btas::Tensor with UM storage cuda_um_thrust_vector
  */
-template <typename T, typename Range = btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>>
-using btasUMTensorThrust = btas::Tensor<T,Range,TiledArray::cuda_um_thrust_vector<T>>;
+template <typename T, typename Range = TiledArray::Range>
+using btasUMTensorThrust =
+    btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>>;
 
 template <typename T, typename Range>
-btasUMTensorThrust<T,Range> gemm(
-        const btasUMTensorThrust<T,Range>  &left,
-        const btasUMTensorThrust<T,Range>  &right,
-        T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+btasUMTensorThrust<T, Range> gemm(
+    const btasUMTensorThrust<T, Range> &left,
+    const btasUMTensorThrust<T, Range> &right, T factor,
+    const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(left, right, factor, gemm_helper);
 }
 
 template <typename T, typename Range>
-void gemm(
-        btasUMTensorThrust<T,Range>  &result,
-        const btasUMTensorThrust<T,Range> &left,
-        const btasUMTensorThrust<T,Range>  &right,
-        T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+void gemm(btasUMTensorThrust<T, Range> &result,
+          const btasUMTensorThrust<T, Range> &left,
+          const btasUMTensorThrust<T, Range> &right, T factor,
+          const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(result, left, right, factor, gemm_helper);
 }
 
 template <typename T, typename Range>
-void add_to(
-        btasUMTensorThrust<T,Range>   &result,
-        const btasUMTensorThrust<T,Range>  &arg) {
+void add_to(btasUMTensorThrust<T, Range> &result,
+            const btasUMTensorThrust<T, Range> &arg) {
   btas_tensor_add_to_cuda_impl(result, arg);
 }
 
 template <typename T, typename Range>
-typename btasUMTensorThrust<T, Range> ::value_type
-squared_norm(
-        const btasUMTensorThrust<T, Range> &arg) {
+typename btasUMTensorThrust<T, Range>::value_type squared_norm(
+    const btasUMTensorThrust<T, Range> &arg) {
   return btas_tensor_squared_norm_cuda_impl(arg);
 }
 
-} // namespace TiledArray
+/// to host for UM Array
+template <typename UMTensor, typename Policy>
+void to_host(
+    TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
+  auto to_host = [](TiledArray::Tile<UMTensor> &tile) -> void {
+
+    auto &stream = detail::get_stream_based_on_range(tile.range());
+
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
+        tile.tensor().storage(), stream);
+  };
+
+  foreach_inplace(um_array, to_host);
+  um_array.world().gop.fence();
+  cudaDeviceSynchronize();
+};
+
+/// to device for UM Array
+template <typename UMTensor, typename Policy>
+void to_device(
+    TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
+  auto to_device = [](TiledArray::Tile<UMTensor> &tile) -> void {
+
+    auto &stream = detail::get_stream_based_on_range(tile.range());
+
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+        tile.tensor().storage(), stream);
+  };
+
+  foreach_inplace(um_array, to_device);
+  um_array.world().gop.fence();
+  cudaDeviceSynchronize();
+};
+
+/// convert array from UMTensor to TiledArray::Tensor
+template <typename T,typename UMTensor, typename Policy>
+TiledArray::DistArray<TiledArray::Tensor<T>, Policy> um_tensor_to_ta_tensor(
+    TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
+        &um_array) {
+  const auto convert_tile =
+      [](const TiledArray::Tile<UMTensor> &tile) {
+        TiledArray::Tensor<T> result(tile.tensor().range());
+        using std::begin;
+        const auto n = tile.tensor().size();
+        for(std::size_t i = 0; i < n; i++){
+          result[i] = tile[i];
+        }
+        return result;
+      };
+
+  to_host(um_array);
+
+  auto ta_array = to_new_tile_type(um_array, convert_tile);
+
+  return ta_array;
+};
+
+/// convert array from TiledArray::Tensor to UMTensor
+template <typename T, typename UMTensor, typename Policy>
+TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
+ta_tensor_to_um_tensor(
+    TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
+
+  auto convert_tile =
+      [](const TiledArray::Tensor<T> &tile) {
+        typename UMTensor::storage_type storage(tile.range().area());
+
+        UMTensor result(tile.range(), std::move(storage));
+
+        const auto n = tile.size();
+        for(std::size_t i = 0; i < n; i++) {
+          result[i] = tile[i];
+        }
+
+        return TiledArray::Tile<UMTensor>(result);
+      };
+
+  auto um_array = to_new_tile_type(array, convert_tile);
+
+  return um_array;
+};
+
+}  // namespace TiledArray
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
-//  extern template class btas::Tensor<double,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<double>>;
-//  extern template class btas::Tensor<float,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<float>>;
-//  extern template class btas::Tensor<int,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<int>>;
-//  extern template class btas::Tensor<long,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_btas_varray<long>>;
+//  extern template class
+//  btas::Tensor<double,TiledArray::Range,TiledArray::cuda_um_btas_varray<double>>;
+//  extern template class
+//  btas::Tensor<float,TiledArray::Range,TiledArray::cuda_um_btas_varray<float>>;
+//  extern template class
+//  btas::Tensor<int,TiledArray::Range,TiledArray::cuda_um_btas_varray<int>>;
+//  extern template class
+//  btas::Tensor<long,TiledArray::Range,TiledArray::cuda_um_btas_varray<long>>;
 //
 //
-//  extern template class btas::Tensor<double,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<double>>;
-//  extern template class btas::Tensor<float,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<float>>;
-//  extern template class btas::Tensor<int,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<int>>;
-//  extern template class btas::Tensor<long,btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>,TiledArray::cuda_um_thrust_vector<long>>;
+//  extern template class
+//  btas::Tensor<double,TiledArray::Range,TiledArray::cuda_um_thrust_vector<double>>;
+//  extern template class
+//  btas::Tensor<float,TiledArray::Range,TiledArray::cuda_um_thrust_vector<float>>;
+//  extern template class
+//  btas::Tensor<int,TiledArray::Range,TiledArray::cuda_um_thrust_vector<int>>;
+//  extern template class
+//  btas::Tensor<long,TiledArray::Range,TiledArray::cuda_um_thrust_vector<long>>;
 
 #endif
 
+#endif  // TILEDARRAY_HAS_CUDA
 
-#endif // TILEDARRAY_HAS_CUDA
-
-#endif //TILEDARRAY_CUDA_TENSOR_CUDA_UM_TENSOR_H
+#endif  // TILEDARRAY_CUDA_TENSOR_CUDA_UM_TENSOR_H

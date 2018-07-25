@@ -172,8 +172,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   TiledArray::TiledRange  // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
-  using CUDATile = btas::Tensor<
-      Real, btas::RangeNd<CblasRowMajor, std::array<std::size_t, 2>>, Storage>;
+  using CUDATile = btas::Tensor<Real, TA::Range, Storage>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
 
   CUDAMatrix c(world, trange_c);
@@ -185,10 +184,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 //    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
 //        tile.tensor().storage());
 //  };
-  auto to_host = [](TA::Tile<CUDATile> &tile) -> void {
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-        tile.tensor().storage());
-  };
+
 
   {
     // Construct and initialize arrays
@@ -243,9 +239,11 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   CUDAMatrix::wait_for_lazy_cleanup(world);
 
   // verify it with gpu result
-  foreach_inplace(c, to_host);
-  world.gop.fence();
-  cudaDeviceSynchronize();
+
+  // convert um array to ta tensor array
+  auto c_ta = TiledArray::um_tensor_to_ta_tensor<Real, CUDATile, TiledArray::DensePolicy>(c);
+  // convert ta array to um tensor array
+  c = TiledArray::ta_tensor_to_um_tensor<Real,CUDATile,TiledArray::DensePolicy>(c_ta);
 
   double threshold =
       std::numeric_limits<typename Storage::value_type>::epsilon();
@@ -398,14 +396,15 @@ int try_main(int argc, char **argv) {
     }
   }  // print device properties
 
-  if (storage_type == "cpu_cuda_vector") {
-    if (real_type_str == "double")
-      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
-                                                        Nk, Bk, nrepeat);
-    else
-      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn,
-                                                       Nk, Bk, nrepeat);
-  } else if (storage_type == "cuda_um_btas_varray") {
+//  if (storage_type == "cpu_cuda_vector") {
+//    if (real_type_str == "double")
+//      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
+//                                                        Nk, Bk, nrepeat);
+//    else
+//      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn,
+//                                                       Nk, Bk, nrepeat);
+  if (storage_type == "cuda_um_btas_varray") {
+//  } else if (storage_type == "cuda_um_btas_varray") {
     if (real_type_str == "double")
       do_main_body<TiledArray::cuda_um_btas_varray<double>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
