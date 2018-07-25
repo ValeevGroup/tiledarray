@@ -48,10 +48,9 @@ endif(ENABLE_ELEMENTAL)
 
 if(CUDA_FOUND)
     # Add the ta_dense_cuda executable
-    cuda_add_executable(ta_dense_cuda EXCLUDE_FROM_ALL ta_dense_cuda.cpp cpu_cuda_vector.h
-            cpu_cuda_vector.cu ../../src/TiledArray/tensor/cuda/um_storage.cu)
-    cuda_add_cublas_to_target(ta_dense_cuda)
-    target_link_libraries(ta_dense_cuda general tiledarray)
+    cuda_add_executable(ta_dense_cuda ta_dense_cuda.cpp cpu_cuda_vector.h cpu_cuda_vector.cu)
+#    cuda_add_cublas_to_target(ta_dense_cuda)
+    target_link_libraries(ta_dense_cuda PUBLIC general tiledarray ${CUDA_CUBLAS_LIBRARIES})
     add_dependencies(ta_dense_cuda External)
     add_dependencies(examples ta_dense_cuda)
 endif(CUDA_FOUND)

@@ -41,11 +41,11 @@ if(NOT DISABLE_MPI)
   if(CUDA_FOUND)
 
     cuda_add_executable(mpi_cuda EXCLUDE_FROM_ALL mpi_cuda.cpp)
-    target_link_libraries(mpi_cuda ${MADNESS_LIBRARIES})
+    target_link_libraries(mpi_cuda PUBLIC ${MADNESS_LIBRARIES})
     add_dependencies(examples mpi_cuda)
 
     cuda_add_executable(mpi_cuda_um EXCLUDE_FROM_ALL mpi_cuda_um.cpp)
-    target_link_libraries(mpi_cuda_um ${MADNESS_LIBRARIES})
+    target_link_libraries(mpi_cuda_um PUBLIC ${MADNESS_LIBRARIES})
     add_dependencies(examples mpi_cuda_um)
   endif()
 endif()

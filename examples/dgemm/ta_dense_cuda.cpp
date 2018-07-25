@@ -31,11 +31,6 @@
 // clang-format on
 
 
-std::unique_ptr<TiledArray::cudaEnv> TiledArray::cudaEnv::instance_ = nullptr;
-thread_local cublasHandle_t *TiledArray::cuBLASHandlePool::handle_ = nullptr;
-
-
-
 namespace TiledArray {
 
 ///

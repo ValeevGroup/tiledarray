@@ -26,6 +26,7 @@
 #include "TiledArray/config.h"
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
+#include "TiledArray/range.h"
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/tile_interface/cast.h"
 
