@@ -28,10 +28,10 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <cublas_v2.h>
 #include <TiledArray/error.h>
+#include <cublas_v2.h>
 
-namespace TiledArray{
+namespace TiledArray {
 
 /*
  * cuBLAS interface functions
@@ -44,7 +44,7 @@ namespace TiledArray{
  *
  */
 class cuBLASHandlePool {
-public:
+ public:
   static const cublasHandle_t &handle() {
     if (handle_ == 0) {
       handle_ = new cublasHandle_t;
@@ -56,12 +56,13 @@ public:
     return *handle_;
   }
 
-private:
+ private:
   static thread_local cublasHandle_t *handle_;
 };
-//thread_local cublasHandle_t *cuBLASHandlePool::handle_;
+// thread_local cublasHandle_t *cuBLASHandlePool::handle_;
 
-inline cublasOperation_t to_cublas_op(madness::cblas::CBLAS_TRANSPOSE cblas_op) {
+inline cublasOperation_t to_cublas_op(
+    madness::cblas::CBLAS_TRANSPOSE cblas_op) {
   cublasOperation_t result;
   switch (cblas_op) {
     case madness::cblas::NoTrans:
@@ -85,26 +86,21 @@ cublasStatus_t cublasGemm(cublasHandle_t handle, cublasOperation_t transa,
                           const T *alpha, const T *A, int lda, const T *B,
                           int ldb, const T *beta, T *C, int ldc);
 template <>
-inline cublasStatus_t cublasGemm<float>(cublasHandle_t handle,
-                                 cublasOperation_t transa,
-                                 cublasOperation_t transb, int m, int n, int k,
-                                 const float *alpha, const float *A, int lda,
-                                 const float *B, int ldb, const float *beta,
-                                 float *C, int ldc) {
+inline cublasStatus_t cublasGemm<float>(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const float *alpha, const float *A, int lda,
+    const float *B, int ldb, const float *beta, float *C, int ldc) {
   return cublasSgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb,
                      beta, C, ldc);
 }
 template <>
-inline cublasStatus_t cublasGemm<double>(cublasHandle_t handle,
-                                  cublasOperation_t transa,
-                                  cublasOperation_t transb, int m, int n, int k,
-                                  const double *alpha, const double *A, int lda,
-                                  const double *B, int ldb, const double *beta,
-                                  double *C, int ldc) {
+inline cublasStatus_t cublasGemm<double>(
+    cublasHandle_t handle, cublasOperation_t transa, cublasOperation_t transb,
+    int m, int n, int k, const double *alpha, const double *A, int lda,
+    const double *B, int ldb, const double *beta, double *C, int ldc) {
   return cublasDgemm(handle, transa, transb, m, n, k, alpha, A, lda, B, ldb,
                      beta, C, ldc);
 }
-
 
 /// AXPY interface functions
 
@@ -113,14 +109,14 @@ cublasStatus_t cublasAxpy(cublasHandle_t handle, int n, const T *alpha,
                           const T *x, int incx, T *y, int incy);
 template <>
 inline cublasStatus_t cublasAxpy<float>(cublasHandle_t handle, int n,
-                                 const float *alpha, const float *x, int incx,
-                                 float *y, int incy) {
+                                        const float *alpha, const float *x,
+                                        int incx, float *y, int incy) {
   return cublasSaxpy(handle, n, alpha, x, incx, y, incy);
 }
 template <>
 inline cublasStatus_t cublasAxpy<double>(cublasHandle_t handle, int n,
-                                  const double *alpha, const double *x,
-                                  int incx, double *y, int incy) {
+                                         const double *alpha, const double *x,
+                                         int incx, double *y, int incy) {
   return cublasDaxpy(handle, n, alpha, x, incx, y, incy);
 }
 
@@ -130,22 +126,58 @@ template <typename T>
 cublasStatus_t cublasDot(cublasHandle_t handle, int n, const T *x, int incx,
                          const T *y, int incy, T *result);
 template <>
-inline cublasStatus_t cublasDot<float>(cublasHandle_t handle, int n, const float *x,
-                                int incx, const float *y, int incy,
-                                float *result) {
+inline cublasStatus_t cublasDot<float>(cublasHandle_t handle, int n,
+                                       const float *x, int incx, const float *y,
+                                       int incy, float *result) {
   return cublasSdot(handle, n, x, incx, y, incy, result);
 }
 
 template <>
-inline cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n, const double *x,
-                                 int incx, const double *y, int incy,
-                                 double *result) {
+inline cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n,
+                                        const double *x, int incx,
+                                        const double *y, int incy,
+                                        double *result) {
   return cublasDdot(handle, n, x, incx, y, incy, result);
 }
 
-} // end of namespace TiledArray
+/// SCAL interface function
+template <typename T>
+cublasStatus_t cublasScal(cublasHandle_t handle, int n, const T *alpha, T *x,
+                          int incx);
 
+template <>
+inline cublasStatus_t cublasScal<float>(cublasHandle_t handle, int n,
+                                        const float *alpha, float *x,
+                                        int incx) {
+  return cublasSscal(handle, n, alpha, x, incx);
+};
+
+template <>
+inline cublasStatus_t cublasScal<double>(cublasHandle_t handle, int n,
+                                         const double *alpha, double *x,
+                                         int incx) {
+  return cublasDscal(handle, n, alpha, x, incx);
+};
+
+/// COPY inerface function
+template <typename T>
+cublasStatus_t cublasCopy(cublasHandle_t handle, int n, const T *x, int incx,
+                          T *y, int incy);
+
+template <>
+inline cublasStatus_t cublasCopy(cublasHandle_t handle, int n, const float *x,
+                                 int incx, float *y, int incy) {
+  return cublasScopy(handle, n, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasCopy(cublasHandle_t handle, int n, const double *x,
+                                 int incx, double *y, int incy) {
+  return cublasDcopy(handle, n, x, incx, y, incy);
+}
+
+}  // end of namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif //TILEDARRAY_MATH_CUBLAS_H__INCLUDED
+#endif  // TILEDARRAY_MATH_CUBLAS_H__INCLUDED

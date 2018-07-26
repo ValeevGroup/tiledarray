@@ -32,7 +32,6 @@
 #include <TiledArray/tensor/cuda/btas_cublas.h>
 #include <TiledArray/tensor/tensor.h>
 
-namespace TiledArray {
 
 /*
  * btas::Tensor with UM storage cuda_um_btas_varray
@@ -41,6 +40,13 @@ namespace TiledArray {
 template <typename T, typename Range = TiledArray::Range>
 using btasUMTensorVarray =
     btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
+
+namespace TiledArray {
+
+template <typename T, typename Range>
+struct eval_trait<btasUMTensorVarray<T, Range>> {
+  typedef btasUMTensorVarray<T, Range> type;
+};
 
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> gemm(
@@ -59,9 +65,75 @@ void gemm(btasUMTensorVarray<T, Range> &result,
 }
 
 template <typename T, typename Range>
+btasUMTensorVarray<T, Range> clone(const btasUMTensorVarray<T, Range> &arg) {
+  return btas_tensor_clone_cuda_impl(arg);
+}
+
+template <typename T, typename Range>
+btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg) {
+  return btas_tensor_scale_cuda_impl(arg, T(-1.0));
+}
+
+template <typename T, typename Range>
+void neg_to(btasUMTensorVarray<T, Range> &arg) {
+  btas_tensor_scale_to_cuda_impl(arg, T(-1.0));
+}
+
+template <typename T, typename Range>
+btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg,
+                                 const TiledArray::Permutation &perm) {
+  /// only support identity permation for now
+  TA_ASSERT(perm == perm.identity());
+  return btas_tensor_scale_cuda_impl(arg, T(-1.0));
+}
+
+template <typename T, typename Range>
+btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
+                                  const btasUMTensorVarray<T, Range> &arg2) {
+  return btas_tensor_subt_cuda_impl(arg1, arg2, T(1.0));
+}
+
+template <typename T, typename Range>
+void subt_to(btasUMTensorVarray<T, Range> &result,
+             const btasUMTensorVarray<T, Range> &arg1) {
+  btas_tensor_subt_to_cuda_impl(result, arg1, T(1.0));
+}
+
+template <typename T, typename Range>
+void subt_to(btasUMTensorVarray<T, Range> &result,
+             const btasUMTensorVarray<T, Range> &arg1, const T factor) {
+  btas_tensor_subt_to_cuda_impl(result, arg1, T(1.0));
+  btas_tensor_scale_to_cuda_impl(result, factor);
+}
+
+template <typename T, typename Range>
+btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
+                                  const btasUMTensorVarray<T, Range> &arg2,
+                                  const TiledArray::Permutation &perm) {
+  /// only support identity permation for now
+  TA_ASSERT(perm == perm.identity());
+  return subt(arg1, arg2);
+}
+
+template <typename T, typename Range>
 void add_to(btasUMTensorVarray<T, Range> &result,
             const btasUMTensorVarray<T, Range> &arg) {
-  btas_tensor_add_to_cuda_impl(result, arg);
+  btas_tensor_add_to_cuda_impl(result, arg, T(1.0));
+}
+
+template <typename T, typename Range>
+btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
+                                 const btasUMTensorVarray<T, Range> &arg2) {
+  return btas_tensor_add_cuda_impl(arg1, arg2, T(1.0));
+}
+
+template <typename T, typename Range>
+btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
+                                 const btasUMTensorVarray<T, Range> &arg2,
+                                 const TiledArray::Permutation& perm) {
+  /// only support identity permation for now
+  TA_ASSERT(perm == perm.identity());
+  return btas_tensor_add_cuda_impl(arg1, arg2, T(1.0));
 }
 
 template <typename T, typename Range>
@@ -96,7 +168,13 @@ void gemm(btasUMTensorThrust<T, Range> &result,
 template <typename T, typename Range>
 void add_to(btasUMTensorThrust<T, Range> &result,
             const btasUMTensorThrust<T, Range> &arg) {
-  btas_tensor_add_to_cuda_impl(result, arg);
+  btas_tensor_add_to_cuda_impl(result, arg, T(1.0));
+}
+
+template <typename T, typename Range>
+btasUMTensorThrust<T, Range> add(const btasUMTensorThrust<T, Range> &arg1,
+                                 const btasUMTensorThrust<T, Range> &arg2) {
+  return btas_tensor_add_cuda_impl(arg1, arg2, T(1.0));
 }
 
 template <typename T, typename Range>
@@ -140,20 +218,18 @@ void to_device(
 };
 
 /// convert array from UMTensor to TiledArray::Tensor
-template <typename T,typename UMTensor, typename Policy>
+template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tensor<T>, Policy> um_tensor_to_ta_tensor(
-    TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
-        &um_array) {
-  const auto convert_tile =
-      [](const TiledArray::Tile<UMTensor> &tile) {
-        TiledArray::Tensor<T> result(tile.tensor().range());
-        using std::begin;
-        const auto n = tile.tensor().size();
-        for(std::size_t i = 0; i < n; i++){
-          result[i] = tile[i];
-        }
-        return result;
-      };
+    TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
+  const auto convert_tile = [](const TiledArray::Tile<UMTensor> &tile) {
+    TiledArray::Tensor<T> result(tile.tensor().range());
+    using std::begin;
+    const auto n = tile.tensor().size();
+    for (std::size_t i = 0; i < n; i++) {
+      result[i] = tile[i];
+    }
+    return result;
+  };
 
   to_host(um_array);
 
@@ -167,20 +243,18 @@ template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
 ta_tensor_to_um_tensor(
     TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
+  auto convert_tile = [](const TiledArray::Tensor<T> &tile) {
+    typename UMTensor::storage_type storage(tile.range().area());
 
-  auto convert_tile =
-      [](const TiledArray::Tensor<T> &tile) {
-        typename UMTensor::storage_type storage(tile.range().area());
+    UMTensor result(tile.range(), std::move(storage));
 
-        UMTensor result(tile.range(), std::move(storage));
+    const auto n = tile.size();
+    for (std::size_t i = 0; i < n; i++) {
+      result[i] = tile[i];
+    }
 
-        const auto n = tile.size();
-        for(std::size_t i = 0; i < n; i++) {
-          result[i] = tile[i];
-        }
-
-        return TiledArray::Tile<UMTensor>(result);
-      };
+    return TiledArray::Tile<UMTensor>(result);
+  };
 
   auto um_array = to_new_tile_type(array, convert_tile);
 
