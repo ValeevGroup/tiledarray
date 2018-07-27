@@ -150,10 +150,15 @@ using btasUMTensorThrust =
     btas::Tensor<T, Range, TiledArray::cuda_um_thrust_vector<T>>;
 
 template <typename T, typename Range>
+struct eval_trait<btasUMTensorThrust<T, Range>> {
+  typedef btasUMTensorThrust<T, Range> type;
+};
+
+template <typename T, typename Range>
 btasUMTensorThrust<T, Range> gemm(
-    const btasUMTensorThrust<T, Range> &left,
-    const btasUMTensorThrust<T, Range> &right, T factor,
-    const TiledArray::math::GemmHelper &gemm_helper) {
+        const btasUMTensorThrust<T, Range> &left,
+        const btasUMTensorThrust<T, Range> &right, T factor,
+        const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(left, right, factor, gemm_helper);
 }
 
@@ -163,6 +168,57 @@ void gemm(btasUMTensorThrust<T, Range> &result,
           const btasUMTensorThrust<T, Range> &right, T factor,
           const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(result, left, right, factor, gemm_helper);
+}
+
+template <typename T, typename Range>
+btasUMTensorThrust<T, Range> clone(const btasUMTensorThrust<T, Range> &arg) {
+  return btas_tensor_clone_cuda_impl(arg);
+}
+
+template <typename T, typename Range>
+btasUMTensorThrust<T, Range> neg(const btasUMTensorThrust<T, Range> &arg) {
+  return btas_tensor_scale_cuda_impl(arg, T(-1.0));
+}
+
+template <typename T, typename Range>
+void neg_to(btasUMTensorThrust<T, Range> &arg) {
+  btas_tensor_scale_to_cuda_impl(arg, T(-1.0));
+}
+
+template <typename T, typename Range>
+btasUMTensorThrust<T, Range> neg(const btasUMTensorThrust<T, Range> &arg,
+                                 const TiledArray::Permutation &perm) {
+  /// only support identity permation for now
+  TA_ASSERT(perm == perm.identity());
+  return btas_tensor_scale_cuda_impl(arg, T(-1.0));
+}
+
+template <typename T, typename Range>
+btasUMTensorThrust<T, Range> subt(const btasUMTensorThrust<T, Range> &arg1,
+                                  const btasUMTensorThrust<T, Range> &arg2) {
+  return btas_tensor_subt_cuda_impl(arg1, arg2, T(1.0));
+}
+
+template <typename T, typename Range>
+void subt_to(btasUMTensorThrust<T, Range> &result,
+             const btasUMTensorThrust<T, Range> &arg1) {
+  btas_tensor_subt_to_cuda_impl(result, arg1, T(1.0));
+}
+
+template <typename T, typename Range>
+void subt_to(btasUMTensorThrust<T, Range> &result,
+             const btasUMTensorThrust<T, Range> &arg1, const T factor) {
+  btas_tensor_subt_to_cuda_impl(result, arg1, T(1.0));
+  btas_tensor_scale_to_cuda_impl(result, factor);
+}
+
+template <typename T, typename Range>
+btasUMTensorThrust<T, Range> subt(const btasUMTensorThrust<T, Range> &arg1,
+                                  const btasUMTensorThrust<T, Range> &arg2,
+                                  const TiledArray::Permutation &perm) {
+  /// only support identity permation for now
+  TA_ASSERT(perm == perm.identity());
+  return subt(arg1, arg2);
 }
 
 template <typename T, typename Range>
@@ -178,8 +234,17 @@ btasUMTensorThrust<T, Range> add(const btasUMTensorThrust<T, Range> &arg1,
 }
 
 template <typename T, typename Range>
+btasUMTensorThrust<T, Range> add(const btasUMTensorThrust<T, Range> &arg1,
+                                 const btasUMTensorThrust<T, Range> &arg2,
+                                 const TiledArray::Permutation& perm) {
+  /// only support identity permation for now
+  TA_ASSERT(perm == perm.identity());
+  return btas_tensor_add_cuda_impl(arg1, arg2, T(1.0));
+}
+
+template <typename T, typename Range>
 typename btasUMTensorThrust<T, Range>::value_type squared_norm(
-    const btasUMTensorThrust<T, Range> &arg) {
+        const btasUMTensorThrust<T, Range> &arg) {
   return btas_tensor_squared_norm_cuda_impl(arg);
 }
 
