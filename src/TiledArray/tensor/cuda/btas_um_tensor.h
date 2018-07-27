@@ -28,8 +28,8 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/range.h>
 #include <TiledArray/tensor/cuda/btas_cublas.h>
+#include <TiledArray/range.h>
 #include <TiledArray/tensor/tensor.h>
 
 
@@ -142,6 +142,12 @@ typename btasUMTensorVarray<T, Range>::value_type squared_norm(
   return btas_tensor_squared_norm_cuda_impl(arg);
 }
 
+template <typename T, typename Range>
+typename btasUMTensorVarray<T, Range>::value_type norm(
+    const btasUMTensorVarray<T, Range> &arg) {
+  return std::sqrt(btas_tensor_squared_norm_cuda_impl(arg));
+}
+
 /*
  * btas::Tensor with UM storage cuda_um_thrust_vector
  */
@@ -248,16 +254,27 @@ typename btasUMTensorThrust<T, Range>::value_type squared_norm(
   return btas_tensor_squared_norm_cuda_impl(arg);
 }
 
+template <typename T, typename Range>
+typename btasUMTensorThrust<T, Range>::value_type norm(
+    const btasUMTensorThrust<T, Range> &arg) {
+  return std::sqrt(btas_tensor_squared_norm_cuda_impl(arg));
+}
+
 /// to host for UM Array
 template <typename UMTensor, typename Policy>
 void to_host(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
-  auto to_host = [](TiledArray::Tile<UMTensor> &tile) -> void {
+  auto to_host = [](TiledArray::Tile<UMTensor> &tile) {
 
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
+    // do norm on GPU
+    auto tile_norm = norm(tile.tensor());
+
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
         tile.tensor().storage(), stream);
+
+    return tile_norm;
   };
 
   foreach_inplace(um_array, to_host);
@@ -269,12 +286,15 @@ void to_host(
 template <typename UMTensor, typename Policy>
 void to_device(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
-  auto to_device = [](TiledArray::Tile<UMTensor> &tile) -> void {
+  auto to_device = [](TiledArray::Tile<UMTensor> &tile) {
+
 
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
         tile.tensor().storage(), stream);
+    
+    return norm(tile.tensor());
   };
 
   foreach_inplace(um_array, to_device);
