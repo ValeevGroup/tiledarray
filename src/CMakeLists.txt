@@ -36,6 +36,7 @@ TiledArray/distributed_storage.h
 TiledArray/external/elemental.h
 TiledArray/error.h
 TiledArray/external/madness.h
+TiledArray/initialize.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/proc_grid.h

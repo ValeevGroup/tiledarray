@@ -23,6 +23,7 @@
 #include <tiledarray_fwd.h>
 
 #include <TiledArray/external/madness.h>
+#include <TiledArray/initialize.h>
 
 // Array class
 #include <TiledArray/tensor.h>
