@@ -207,7 +207,7 @@ inline void cuda_initialize() {
 inline void cuda_finalize() {
   cudaDeviceSynchronize();
   cudaEnv::finalize();
-  delete cuBLASHandlePool::handle();
+  cublasDestroy(cuBLASHandlePool::handle());
 }
 
 
