@@ -320,6 +320,7 @@ TiledArray::DistArray<TiledArray::Tensor<T>, Policy> um_tensor_to_ta_tensor(
 
   auto ta_array = to_new_tile_type(um_array, convert_tile);
 
+  um_array.world().gop.fence();
   return ta_array;
 };
 
@@ -343,6 +344,7 @@ ta_tensor_to_um_tensor(
 
   auto um_array = to_new_tile_type(array, convert_tile);
 
+  array.world().gop.fence();
   return um_array;
 };
 

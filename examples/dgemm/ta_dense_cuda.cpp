@@ -30,13 +30,11 @@
 #include "cpu_cuda_vector.h"
 // clang-format on
 
-
 namespace TiledArray {
 
 ///
 /// cuda gemm interface function on left*right
 ///
-
 
 template <typename T, typename Range, typename AllocHost, typename AllocDevice>
 btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
@@ -67,8 +65,6 @@ void gemm(
     T factor, const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(result, left, right, factor, gemm_helper);
 }
-
-
 
 ///
 /// cuda axpy interface function
@@ -172,32 +168,34 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   TiledArray::TiledRange  // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
+  using value_type = typename Storage::value_type;
   using CUDATile = btas::Tensor<Real, TA::Range, Storage>;
   using CUDAMatrix = TA::DistArray<TA::Tile<CUDATile>>;
+  using TAMatrix = TA::DistArray<TA::Tensor<value_type>>;
 
   CUDAMatrix c(world, trange_c);
-  using value_type = typename Storage::value_type;
   value_type val_a = 0.03;
   value_type val_b = 0.02;
 
-//  auto to_device = [](TA::Tile<CUDATile> &tile) -> void {
-//    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-//        tile.tensor().storage());
-//  };
-
-
   {
     // Construct and initialize arrays
-    CUDAMatrix a(world, trange_a);
-    CUDAMatrix b(world, trange_b);
-    a.fill(val_a);
-    b.fill(val_b);
 
+    TAMatrix a_ta(world, trange_a);
+    TAMatrix b_ta(world, trange_b);
+
+    a_ta.fill(val_a);
+    b_ta.fill(val_b);
+
+    // convert from TA tensor to UM tensor
+    CUDAMatrix a =
+        TA::ta_tensor_to_um_tensor<value_type, CUDATile, TA::DensePolicy>(a_ta);
+    CUDAMatrix b =
+        TA::ta_tensor_to_um_tensor<value_type, CUDATile, TA::DensePolicy>(b_ta);
 
     // foreach_inplace(a, to_device);
     // foreach_inplace(b, to_device);
-    world.gop.fence();
-    cudaDeviceSynchronize();
+    //    world.gop.fence();
+    //    cudaDeviceSynchronize();
 
     // Start clock
     const double wall_time_start = madness::wall_time();
@@ -205,6 +203,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do matrix multiplication
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
+      //      c("m,n") = a("m,k") * b("k,n") + a("m,n") - b("m,n");
       c("m,n") = a("m,k") * b("k,n");
       world.gop.fence();
       cudaDeviceSynchronize();
@@ -214,7 +213,6 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
     }
-
     // Stop clock
     const double wall_time_stop = madness::wall_time();
 
@@ -227,30 +225,31 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                 << "\n";
   }
 
-//  for (auto iter = c.begin(); iter != c.end(); iter++){
-//    auto tile = iter->get();
-//    std::cout << "tile: " << iter.index() << " ";
-//    for (int i = 0; i < tile.size(); i++){
-//      std::cout << tile[i] << " ";
-//    }
-//    std::cout << std::endl;
-//  }
+  //  for (auto iter = c.begin(); iter != c.end(); iter++){
+  //    auto tile = iter->get();
+  //    std::cout << "tile: " << iter.index() << " ";
+  //    for (int i = 0; i < tile.size(); i++){
+  //      std::cout << tile[i] << " ";
+  //    }
+  //    std::cout << std::endl;
+  //  }
 
   CUDAMatrix::wait_for_lazy_cleanup(world);
 
   // verify it with gpu result
 
   // convert um array to ta tensor array
-  auto c_ta = TiledArray::um_tensor_to_ta_tensor<Real, CUDATile, TiledArray::DensePolicy>(c);
-  // convert ta array to um tensor array
-  c = TiledArray::ta_tensor_to_um_tensor<Real,CUDATile,TiledArray::DensePolicy>(c_ta);
+  auto c_ta = TiledArray::um_tensor_to_ta_tensor<Real, CUDATile,
+                                                 TiledArray::DensePolicy>(c);
 
   double threshold =
       std::numeric_limits<typename Storage::value_type>::epsilon();
   auto dot_length = Nk;
+  //  auto result = dot_length * val_a * val_b + val_a - val_b;
   auto result = dot_length * val_a * val_b;
 
-  auto verify = [&threshold, &result, &dot_length](TA::Tile<CUDATile> &tile) {
+  auto verify = [&threshold, &result,
+                 &dot_length](TA::Tensor<value_type> &tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = fabs(tile[i] - result);
@@ -263,7 +262,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     }
   };
 
-  foreach_inplace(c, verify);
+  foreach_inplace(c_ta, verify);
   world.gop.fence();
 
   if (world.rank() == 0) {
@@ -274,7 +273,6 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 int try_main(int argc, char **argv) {
   // Initialize runtime
   TiledArray::World &world = TiledArray::initialize(argc, argv);
-  TiledArray::cuda_initialize();
 
   // Get command line arguments
   if (argc < 6) {
@@ -282,7 +280,8 @@ int try_main(int argc, char **argv) {
                  "blocked by Bm, Bn, and Bk, respectively"
               << std::endl
               << "Usage: " << argv[0]
-              << " Nm Bm Nn Bn Nk Bk [# of repetitions = 5] [real = double] [storage type = cuda_um_btas_varray]\n";
+              << " Nm Bm Nn Bn Nk Bk [# of repetitions = 5] [real = double] "
+                 "[storage type = cuda_um_btas_varray]\n";
     return 0;
   }
   const long Nm = atol(argv[1]);
@@ -396,15 +395,17 @@ int try_main(int argc, char **argv) {
     }
   }  // print device properties
 
-//  if (storage_type == "cpu_cuda_vector") {
-//    if (real_type_str == "double")
-//      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
-//                                                        Nk, Bk, nrepeat);
-//    else
-//      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn,
-//                                                       Nk, Bk, nrepeat);
+  //  if (storage_type == "cpu_cuda_vector") {
+  //    if (real_type_str == "double")
+  //      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn,
+  //      Bn,
+  //                                                        Nk, Bk, nrepeat);
+  //    else
+  //      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn,
+  //      Bn,
+  //                                                       Nk, Bk, nrepeat);
   if (storage_type == "cuda_um_btas_varray") {
-//  } else if (storage_type == "cuda_um_btas_varray") {
+    //  } else if (storage_type == "cuda_um_btas_varray") {
     if (real_type_str == "double")
       do_main_body<TiledArray::cuda_um_btas_varray<double>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
@@ -423,7 +424,6 @@ int try_main(int argc, char **argv) {
   }
 
   TiledArray::finalize();
-  TiledArray::cuda_finalize();
 
   return 0;
 }
