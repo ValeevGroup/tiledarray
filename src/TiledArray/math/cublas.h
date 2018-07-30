@@ -141,22 +141,38 @@ inline cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n,
 }
 
 /// SCAL interface function
-template <typename T>
-cublasStatus_t cublasScal(cublasHandle_t handle, int n, const T *alpha, T *x,
+template <typename T, typename Scalar>
+cublasStatus_t cublasScal(cublasHandle_t handle, int n, const Scalar *alpha, T *x,
                           int incx);
 
 template <>
-inline cublasStatus_t cublasScal<float>(cublasHandle_t handle, int n,
+inline cublasStatus_t cublasScal<float,float>(cublasHandle_t handle, int n,
                                         const float *alpha, float *x,
                                         int incx) {
   return cublasSscal(handle, n, alpha, x, incx);
 };
 
 template <>
-inline cublasStatus_t cublasScal<double>(cublasHandle_t handle, int n,
+inline cublasStatus_t cublasScal<double,double>(cublasHandle_t handle, int n,
                                          const double *alpha, double *x,
                                          int incx) {
   return cublasDscal(handle, n, alpha, x, incx);
+};
+
+template <>
+inline cublasStatus_t cublasScal<float,int>(cublasHandle_t handle, int n,
+                                             const int *alpha, float*x,
+                                             int incx) {
+  float alpha_float = float(*alpha);
+  return cublasSscal(handle, n, &alpha_float, x, incx);
+};
+//
+template <>
+inline cublasStatus_t cublasScal<double,int>(cublasHandle_t handle, int n,
+                                                const int *alpha, double *x,
+                                                int incx) {
+  double alpha_double = double(*alpha);
+  return cublasDscal(handle, n, &alpha_double, x, incx);
 };
 
 /// COPY inerface function

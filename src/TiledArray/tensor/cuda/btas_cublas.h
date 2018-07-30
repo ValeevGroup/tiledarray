@@ -265,9 +265,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
 }
 
 /// result[i] = a * arg[i]
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Range, typename Storage, typename Scalar>
 btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
-    const btas::Tensor<T, Range, Storage> &arg, const T a) {
+    const btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
   auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
 
   auto result = btas_tensor_clone_cuda_impl(arg);
@@ -284,9 +284,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
 }
 
 /// result[i] *= a
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Range, typename Storage, typename Scalar>
 void btas_tensor_scale_to_cuda_impl(
-    btas::Tensor<T, Range, Storage> &result, const T a) {
+    btas::Tensor<T, Range, Storage> &result, const Scalar a) {
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
   // call cublasScale
   const auto &handle = cuBLASHandlePool::handle();
