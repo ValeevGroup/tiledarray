@@ -306,6 +306,7 @@ void to_device(
 template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tensor<T>, Policy> um_tensor_to_ta_tensor(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
+
   const auto convert_tile = [](const TiledArray::Tile<UMTensor> &tile) {
     TiledArray::Tensor<T> result(tile.tensor().range());
     using std::begin;
@@ -329,6 +330,7 @@ template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
 ta_tensor_to_um_tensor(
     TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
+
   auto convert_tile = [](const TiledArray::Tensor<T> &tile) {
     typename UMTensor::storage_type storage(tile.range().area());
 

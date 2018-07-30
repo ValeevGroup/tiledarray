@@ -116,10 +116,10 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
     auto zero = T(0);
     auto status = cublasSetStream(handle, cuda_stream);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasGemm(handle, to_cublas_op(gemm_helper.left_op()),
-                        to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
-                        device_data(left.storage()), lda,
-                        device_data(right.storage()), ldb, &zero,
+    status = cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
+                        to_cublas_op(gemm_helper.left_op()), n, m, k, &factor,
+                        device_data(right.storage()), ldb,
+                        device_data(left.storage()), lda, &zero,
                         device_data(result.storage()), n);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
   } else {
@@ -225,10 +225,10 @@ void btas_tensor_gemm_cuda_impl(
     auto one = T(1);
     auto status = cublasSetStream(handle, stream);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasGemm(handle, to_cublas_op(gemm_helper.left_op()),
-                        to_cublas_op(gemm_helper.right_op()), m, n, k, &factor,
-                        device_data(left.storage()), lda,
-                        device_data(right.storage()), ldb, &one,
+    status = cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
+                        to_cublas_op(gemm_helper.left_op()), n, m, k, &factor,
+                        device_data(right.storage()), ldb,
+                        device_data(left.storage()), lda, &one,
                         device_data(result.storage()), n);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
   } else {
