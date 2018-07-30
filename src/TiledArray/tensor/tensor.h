@@ -1382,7 +1382,7 @@ namespace TiledArray {
               { res += TiledArray::detail::norm(arg); };
       auto sum_op = [] (scalar_type& MADNESS_RESTRICT res, const scalar_type arg)
               { res += arg; };
-      return detail::tensor_reduce(square_op, sum_op, scalar_type(0), *this);
+      return reduce(square_op, sum_op, scalar_type(0));
     }
 
     /// Vector 2-norm
