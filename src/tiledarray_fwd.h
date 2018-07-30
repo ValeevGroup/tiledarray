@@ -22,7 +22,7 @@
 
 #include <complex>
 
-namespace Eigen { // Eigen Alligned allocator for TA::Tensor
+namespace Eigen { // fwd define Eigen's aligned allocator for TiledArray::Tensor
   template<class>
   class aligned_allocator;
 } // namespace Eigen
