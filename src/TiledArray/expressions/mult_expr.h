@@ -116,7 +116,7 @@ namespace TiledArray {
           typename std::enable_if<
               TiledArray::detail::is_numeric<Numeric>::value
           >::type* = nullptr>
-      operator Numeric() const {
+      explicit operator Numeric() const {
         auto result = BinaryExpr_::left().dot(BinaryExpr_::right());
         return result.get();
       }
@@ -129,7 +129,7 @@ namespace TiledArray {
           typename std::enable_if<
               TiledArray::detail::is_numeric<Numeric>::value
           >::type* = nullptr>
-      operator Future<Numeric>() const {
+      explicit operator Future<Numeric>() const {
         return BinaryExpr_::left().dot(BinaryExpr_::right());
       }
 
