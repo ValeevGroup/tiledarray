@@ -738,12 +738,12 @@ namespace TiledArray {
   inline auto abs_min(const Arg& arg)
   { return arg.abs_min(); }
 
-  /// Vector dot product of a tile
+  /// Vector dot product of two tiles
 
-  /// \tparam Left The left-hand argument type
-  /// \tparam Right The right-hand argument type
-  /// \param left The left-hand argument tile to be contracted
-  /// \param right The right-hand argument tile to be contracted
+  /// \tparam Left The left-hand argument tile type
+  /// \tparam Right The right-hand argument tile type
+  /// \param left The left-hand argument tile
+  /// \param right The right-hand argument tile
   /// \return A scalar that is equal to <tt>sum_i left[i] * right[i]</tt>
   template <typename Left, typename Right>
   inline auto dot(const Left& left, const Right& right)

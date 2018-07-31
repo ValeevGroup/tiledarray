@@ -1440,11 +1440,13 @@ namespace TiledArray {
       return reduce(abs_max_op, max_op, scalar_type(0));
     }
 
-    /// Vector dot product
+    /// Vector dot (not inner!) product
 
     /// \tparam Right The right-hand tensor type
     /// \param other The right-hand tensor to be reduced
-    /// \return The inner product of the this and \c other
+    /// \return The dot product of the this and \c other
+    /// If numeric_type is real, this is equivalent to inner product
+    /// \sa Tensor::inner_product
     template <typename Right,
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     numeric_type dot(const Right& other) const {
