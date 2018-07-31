@@ -236,6 +236,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
   CUDAMatrix::wait_for_lazy_cleanup(world);
 
+  // test permutation
+  c("m,n") = c("n,m");
+//  cudaDeviceSynchronize();
+//  c("m,n") = c("n,m");
+
+//  cudaDeviceSynchronize();
   // verify it with gpu result
 
   // convert um array to ta tensor array

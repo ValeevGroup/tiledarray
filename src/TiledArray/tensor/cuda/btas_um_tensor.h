@@ -28,6 +28,8 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
+#include <cutt.h>
+
 #include <TiledArray/range.h>
 #include <TiledArray/tensor/cuda/btas_cublas.h>
 #include <TiledArray/tensor/tensor.h>
@@ -66,6 +68,37 @@ void gemm(btasUMTensorVarray<T, Range> &result,
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> clone(const btasUMTensorVarray<T, Range> &arg) {
   return btas_tensor_clone_cuda_impl(arg);
+}
+
+template <typename T, typename Range>
+btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
+        const TiledArray::Permutation& perm) {
+
+  auto& stream = detail::get_stream_based_on_range(arg.range());
+
+  auto extent = arg.range().extent();
+  std::vector<int> extent_int (extent.begin(), extent.end());
+  std::vector<int> perm_int (perm.begin(), perm.end());
+  // compute result range
+  auto result_range = perm*arg.range();
+
+  // allocate result memory
+  typename btasUMTensorVarray<T, Range>::storage_type storage;
+  make_device_storage(storage, result_range.area(), stream);
+
+  cuttResult_t status;
+
+  cuttHandle plan;
+  status = cuttPlan(&plan, arg.rank(), extent_int.data(), perm_int.data(), sizeof(T), stream);
+
+  TA_ASSERT(status == CUTT_SUCCESS)
+
+  status = cuttExecute(plan, const_cast<T*>(device_data(arg.storage())), device_data(storage));
+
+  TA_ASSERT(status == CUTT_SUCCESS);
+
+  cuttDestroy(plan);
+  return btasUMTensorVarray<T, Range>(std::move(result_range), storage);
 }
 
 template <typename T, typename Range, typename Scalar>
