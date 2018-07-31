@@ -749,6 +749,17 @@ namespace TiledArray {
   inline auto dot(const Left& left, const Right& right)
   { return left.dot(right); }
 
+  /// Vector inner product of two tiles
+
+  /// \tparam Left The left-hand argument tile type
+  /// \tparam Right The right-hand argument tile type
+  /// \param left The left-hand argument tile
+  /// \param right The right-hand argument tile
+  /// \return A scalar that is equal to <tt>sum_i conj(left[i]) * right[i]</tt>
+  template <typename Left, typename Right>
+  inline auto inner_product(const Left& left, const Right& right)
+  { return left.inner_product(right); }
+
   template <typename T>
   using result_of_trace_t = decltype(mult(std::declval<T>()));
 

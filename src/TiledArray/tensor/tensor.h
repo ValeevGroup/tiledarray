@@ -1458,6 +1458,24 @@ namespace TiledArray {
       return reduce(other, mult_add_op, add_op, numeric_type(0));
     }
 
+    /// Vector inner product
+
+    /// \tparam Right The right-hand tensor type
+    /// \param other The right-hand tensor to be reduced
+    /// \return The dot product of the this and \c other
+    /// If numeric_type is real, this is equivalent to dot product
+    /// \sa Tensor::dot
+    template <typename Right,
+        typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+    numeric_type inner_product(const Right& other) const {
+      auto mult_add_op = [] (numeric_type& res, const numeric_type l,
+                             const numeric_t<Right> r)
+      { res += TiledArray::detail::inner_product(l, r); };
+      auto add_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type value)
+      { res += value; };
+      return reduce(other, mult_add_op, add_op, numeric_type(0));
+    }
+
   }; // class Tensor
 
   template <typename T, typename A>

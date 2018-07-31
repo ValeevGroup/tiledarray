@@ -55,6 +55,28 @@ namespace TiledArray {
       return std::conj(z);
     }
 
+    /// Inner product of a real value and a numeric value
+
+    /// \tparam L A real scalar type
+    /// \tparam R A numeric type
+    /// \return `r`
+    template <typename L, typename R,
+        typename std::enable_if<! is_complex<L>::value>::type* = nullptr>
+    TILEDARRAY_FORCE_INLINE auto inner_product(const L l, const R r) {
+      return l * r;
+    }
+
+    /// Inner product of a complex value and a numeric value
+
+    /// \tparam L A complex type
+    /// \tparam R A numeric type
+    /// \return `r`
+    template <typename L, typename R,
+        typename std::enable_if<is_complex<L>::value>::type* = nullptr>
+    TILEDARRAY_FORCE_INLINE auto inner_product(const L l, const R r) {
+      return TiledArray::detail::conj(l) * r;
+    }
+
     /// Wrapper function for `std::norm`
 
     /// This function disables the call to `std::conj` for real values to

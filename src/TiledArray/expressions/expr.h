@@ -755,6 +755,25 @@ namespace TiledArray {
         return dot(right_expr, default_world());
       }
 
+      template <typename D>
+      Future<typename TiledArray::InnerProductReduction<
+          typename EngineTrait<engine_type>::eval_type,
+          typename EngineTrait<typename D::engine_type>::eval_type>::result_type>
+      inner_product(const Expr<D>& right_expr, World& world) const {
+        typedef typename EngineTrait<engine_type>::eval_type left_value_type;
+        typedef typename EngineTrait<typename D::engine_type>::eval_type right_value_type;
+        return reduce(right_expr, TiledArray::InnerProductReduction<left_value_type,
+                                                                    right_value_type>(), world);
+      }
+
+      template <typename D>
+      Future<typename TiledArray::InnerProductReduction<
+          typename EngineTrait<engine_type>::eval_type,
+          typename EngineTrait<typename D::engine_type>::eval_type>::result_type>
+      inner_product(const Expr<D>& right_expr) const {
+        return inner_product(right_expr, default_world());
+      }
+
     }; // class Expr
 
   } // namespace expressions

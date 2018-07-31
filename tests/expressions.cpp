@@ -98,12 +98,12 @@ struct ExpressionsFixture : public TiledRangeFixture {
   }
 
   template <typename Tile>
-  Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
+  Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic>
   make_matrix(DistArray<Tile>& array) {
     // Check that the array will fit in a matrix or vector
 
     // Construct the Eigen matrix
-    Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic>
+    Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic>
         matrix(array.trange().elements_range().extent(0),
             (array.trange().tiles_range().rank() == 2 ? array.trange().elements_range().extent(1) : 1));
 
@@ -1882,6 +1882,31 @@ BOOST_AUTO_TEST_CASE( dot_contr )
 {
   for(int i=0; i!=50; ++i)
     BOOST_REQUIRE_NO_THROW( (a("a,b,c") * b("d,b,c")).dot(b("d,e,f")*a("a,e,f")) );
+}
+
+BOOST_AUTO_TEST_CASE( inner_product )
+{
+  // Test the inner_product expression function
+  TArrayZ x(*GlobalFixture::world, tr);
+  TArrayZ y(*GlobalFixture::world, tr);
+  random_fill(x);
+  random_fill(y);
+  std::complex<double> result = 0;
+  BOOST_REQUIRE_NO_THROW(result = x("a,b,c").inner_product(y("a,b,c")).get() );
+
+  // Compute the expected value for the dot function.
+  std::complex<double> expected = 0;
+  for(std::size_t i = 0ul; i < x.size(); ++i) {
+    auto x_tile = x.find(i).get();
+    auto y_tile = y.find(i).get();
+
+    for(std::size_t j = 0ul; j < x_tile.size(); ++j)
+      expected += TiledArray::detail::conj(x_tile[j]) * y_tile[j];
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_CLOSE(result.real(), expected.real(), 1e-9);
+  BOOST_CHECK_CLOSE(result.imag(), expected.imag(), 1e-9);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
