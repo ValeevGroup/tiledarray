@@ -1,6 +1,6 @@
 #
 #  This file is a part of TiledArray.
-#  Copyright (C) 2013  Virginia Tech
+#  Copyright (C) 2018  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,23 +15,18 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#  Justus Calvin
+#  Chong Peng
 #  Department of Chemistry, Virginia Tech
 #
 #  CMakeLists.txt
-#  Sep 4, 2013
+#  Aug 01, 2018
 #
- 
-# Create target "examples" that builds all example programs
-add_custom_target(examples)
 
-# Add Subdirectories
-add_subdirectory (cc)
-add_subdirectory(cuda_tests)
-add_subdirectory (dgemm)
-add_subdirectory (demo)
-add_subdirectory (elemental)
-add_subdirectory (fock)
-add_subdirectory (mpi_tests)
-add_subdirectory (pmap_test)
-add_subdirectory (vector_tests)
+
+if(CUDA_FOUND)
+
+  cuda_add_executable(cuda_cutt EXCLUDE_FROM_ALL cuda_cutt.cpp)
+  target_link_libraries(cuda_cutt PUBLIC tiledarray)
+  add_dependencies(examples cuda_cutt)
+
+endif()

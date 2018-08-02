@@ -28,6 +28,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
+#include <cutt.h>
 #include <TiledArray/range.h>
 #include <TiledArray/tensor/cuda/btas_cublas.h>
 #include <TiledArray/tensor/tensor.h>
@@ -78,7 +79,6 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   auto extent = arg.range().extent();
   std::vector<int> extent_int (extent.begin(), extent.end());
   std::vector<int> perm_int (perm.begin(), perm.end());
-  int rank = extent_int.size();
 
   // compute result range
   auto result_range = perm*arg.range();
@@ -92,7 +92,7 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   cuttHandle plan;
   status = cuttPlan(&plan, arg.rank(), extent_int.data(), perm_int.data(), sizeof(T), stream);
 
-  TA_ASSERT(status == CUTT_SUCCESS)
+  TA_ASSERT(status == CUTT_SUCCESS);
 
   status = cuttExecute(plan, const_cast<T*>(device_data(arg.storage())), device_data(storage));
 

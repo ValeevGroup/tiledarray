@@ -95,6 +95,10 @@ set(ta_test_src_files  ta_test.cpp
 if(ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
 endif()
+
+if(CUDA_FOUND)
+    list(APPEND ta_test_src_files cutt.cpp)
+endif()
 add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
 
 # Add include directories and compiler flags for ta_test
