@@ -55,7 +55,7 @@ else()
   # cutt only supports in source build
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/source/cutt)
   if (NOT CUTT_URL)
-    set(CUTT_URL https://github.com/ap-hynninen/cutt)
+    set(CUTT_URL https://github.com/pchong90/cutt.git)
   endif (NOT CUTT_URL)
   set(CUTT_TAG master)
 
