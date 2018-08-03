@@ -76,16 +76,20 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   auto& stream = detail::get_stream_based_on_range(arg.range());
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
 
-  auto extent = arg.range().extent();
-  std::vector<int> extent_int (extent.begin(), extent.end());
-  std::vector<int> perm_int (perm.begin(), perm.end());
-
   // compute result range
   auto result_range = perm*arg.range();
+
+  auto extent = result_range.extent();
+  std::vector<int> extent_int (extent.begin(), extent.end());
+
+  std::vector<int> perm_int (perm.begin(), perm.end());
+
 
   // allocate result memory
   typename btasUMTensorVarray<T, Range>::storage_type storage;
   make_device_storage(storage, result_range.area(), stream);
+
+  btasUMTensorVarray<T, Range> result(std::move(result_range),std::move(storage));
 
   cuttResult_t status;
 
@@ -94,12 +98,12 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
 
   TA_ASSERT(status == CUTT_SUCCESS);
 
-  status = cuttExecute(plan, const_cast<T*>(device_data(arg.storage())), device_data(storage));
+  status = cuttExecute(plan, const_cast<T*>(device_data(arg.storage())), device_data(result.storage()));
 
   TA_ASSERT(status == CUTT_SUCCESS);
 
   cuttDestroy(plan);
-  return btasUMTensorVarray<T, Range>(std::move(result_range),std::move(storage));
+  return result;
 }
 
 template <typename T, typename Range, typename Scalar>
@@ -403,6 +407,7 @@ template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
 ta_tensor_to_um_tensor(
     TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
+
   auto convert_tile = [](const TiledArray::Tensor<T> &tile) {
     typename UMTensor::storage_type storage(tile.range().area());
 
