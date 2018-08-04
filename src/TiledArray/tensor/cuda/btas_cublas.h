@@ -244,6 +244,8 @@ void btas_tensor_gemm_cuda_impl(
 template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg) {
+
+  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
 
   Storage result_storage;
@@ -268,6 +270,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
 template <typename T, typename Range, typename Storage, typename Scalar>
 btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
+
+  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
 
   auto result = btas_tensor_clone_cuda_impl(arg);
@@ -287,6 +291,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
 template <typename T, typename Range, typename Storage, typename Scalar>
 void btas_tensor_scale_to_cuda_impl(
     btas::Tensor<T, Range, Storage> &result, const Scalar a) {
+
+  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
   // call cublasScale
   const auto &handle = cuBLASHandlePool::handle();
