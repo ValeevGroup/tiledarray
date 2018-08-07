@@ -313,7 +313,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
   auto result = btas_tensor_clone_cuda_impl(arg1);
 
   // revert the sign of a
-  a = T(-1)*a;
+  T b = T(-1)*a;
 
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &stream = detail::get_stream_based_on_range(result.range());
@@ -322,7 +322,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
     const auto &handle = cuBLASHandlePool::handle();
     auto status = cublasSetStream(handle, stream);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasAxpy(handle, result.size(), &a, device_data(arg2.storage()),
+    status = cublasAxpy(handle, result.size(), &b, device_data(arg2.storage()),
                         1, device_data(result.storage()), 1);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
   } else {
@@ -343,13 +343,13 @@ void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
   auto &stream = detail::get_stream_based_on_range(result.range());
 
   // revert the sign of a
-  a = T(-1)*a;
+  T b = T(-1)*a;
 
   const auto &handle = cuBLASHandlePool::handle();
   auto status = cublasSetStream(handle, stream);
   TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
 
-  status = cublasAxpy(handle, result.size(), &a, device_data(arg1.storage()), 1,
+  status = cublasAxpy(handle, result.size(), &b, device_data(arg1.storage()), 1,
                       device_data(result.storage()), 1);
   TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
 }
