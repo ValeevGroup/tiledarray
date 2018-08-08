@@ -41,6 +41,9 @@ template <typename T, typename Range = TiledArray::Range>
 using btasUMTensorVarray =
     btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
+
+#ifndef TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
+
 /// serialize functions
 namespace madness {
 namespace archive {
@@ -86,6 +89,8 @@ struct ArchiveStoreImpl<Archive, btasUMTensorVarray<T>> {
 
 }  // namespace archive
 }  // namespace madness
+
+#endif TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
 
 namespace TiledArray {
 
