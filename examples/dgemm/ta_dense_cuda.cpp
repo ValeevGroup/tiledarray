@@ -24,8 +24,6 @@
 // clang-format off
 
 #include <tiledarray.h>
-#include <TiledArray/permutation.h>
-#include <TiledArray/range.h>
 #include <TiledArray/tensor/cuda/btas_um_tensor.h>
 #include "cpu_cuda_vector.h"
 // clang-format on
@@ -418,14 +416,16 @@ int try_main(int argc, char **argv) {
     else
       do_main_body<TiledArray::cuda_um_btas_varray<float>>(world, Nm, Bm, Nn,
                                                            Bn, Nk, Bk, nrepeat);
-  } else if (storage_type == "cuda_um_thrust_vector") {
-    if (real_type_str == "double")
-      do_main_body<TiledArray::cuda_um_thrust_vector<double>>(
-          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-    else
-      do_main_body<TiledArray::cuda_um_thrust_vector<float>>(
-          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-  } else {
+  }
+// else if (storage_type == "cuda_um_thrust_vector") {
+//    if (real_type_str == "double")
+//      do_main_body<TiledArray::cuda_um_thrust_vector<double>>(
+//          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+//    else
+//      do_main_body<TiledArray::cuda_um_thrust_vector<float>>(
+//          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+//  }
+  else {
     throw std::runtime_error("Invalid storage type!\n");
   }
 
