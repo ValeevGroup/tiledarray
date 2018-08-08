@@ -90,7 +90,7 @@ struct ArchiveStoreImpl<Archive, btasUMTensorVarray<T>> {
 }  // namespace archive
 }  // namespace madness
 
-#endif TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
+#endif //TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
 
 namespace TiledArray {
 
