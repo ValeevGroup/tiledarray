@@ -97,12 +97,12 @@ struct UMExpressionsFixture : public TiledRangeFixture {
   }
 
   template <typename Tile>
-  Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> make_matrix(
+  Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> make_matrix(
       DistArray<Tile>& array) {
     // Check that the array will fit in a matrix or vector
 
     // Construct the Eigen matrix
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> matrix(
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> matrix(
         array.trange().elements_range().extent(0),
         (array.trange().tiles_range().rank() == 2
              ? array.trange().elements_range().extent(1)
@@ -122,15 +122,16 @@ struct UMExpressionsFixture : public TiledRangeFixture {
   const static TiledRange trange1;
   const static TiledRange trange2;
 
-  using TArrayUMF =
-      TiledArray::DistArray<TA::Tile<btasUMTensorVarray<float>>, TA::DensePolicy>;
+  using TArrayUMD =
+      TiledArray::DistArray<TA::Tile<btasUMTensorVarray<double>>, TA::DensePolicy>;
 
-  TArrayUMF a;
-  TArrayUMF b;
-  TArrayUMF c;
-  TArrayUMF u;
-  TArrayUMF v;
-  TArrayUMF w;
+  TArrayUMD a;
+  TArrayUMD b;
+  TArrayUMD c;
+  TArrayUMD u;
+  TArrayUMD v;
+  TArrayUMD w;
+  double tolerance = 1.0e-14;
 };  // UMExpressionsFixture
 
 // Instantiate static variables for fixture
@@ -487,8 +488,8 @@ BOOST_AUTO_TEST_CASE(permute) {
   for (std::size_t i = 0ul; i < b.size(); ++i) {
     const std::size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (a.is_local(perm_index)) {
-      TArrayUMF::value_type a_tile = a.find(perm_index).get();
-      TArrayUMF::value_type perm_b_tile = perm * b.find(i).get();
+      TArrayUMD::value_type a_tile = a.find(perm_index).get();
+      TArrayUMD::value_type perm_b_tile = perm * b.find(i).get();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -502,8 +503,8 @@ BOOST_AUTO_TEST_CASE(permute) {
   for (std::size_t i = 0ul; i < b.size(); ++i) {
     const std::size_t perm_index = a.range().ordinal(perm2 * b.range().idx(i));
     if (a.is_local(perm_index)) {
-      TArrayUMF::value_type a_tile = a.find(perm_index).get();
-      TArrayUMF::value_type perm_b_tile = perm2 * b.find(i).get();
+      TArrayUMD::value_type a_tile = a.find(perm_index).get();
+      TArrayUMD::value_type perm_b_tile = perm2 * b.find(i).get();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -519,8 +520,8 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
   for (std::size_t i = 0ul; i < b.size(); ++i) {
     const std::size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (a.is_local(perm_index)) {
-      TArrayUMF::value_type a_tile = a.find(perm_index).get();
-      TArrayUMF::value_type perm_b_tile = perm * b.find(i).get();
+      TArrayUMD::value_type a_tile = a.find(perm_index).get();
+      TArrayUMD::value_type perm_b_tile = perm * b.find(i).get();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -564,7 +565,7 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
 //
 // BOOST_AUTO_TEST_CASE( const_block )
 //{
-//  const TArrayUMF& ca = a;
+//  const TArrayUMD& ca = a;
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = ca("a,b,c").block({3,3,3}, {5,5,5}));
 //
 //  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
@@ -680,9 +681,9 @@ BOOST_AUTO_TEST_CASE(add) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") + b("a,b,c"));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] + b_tile[j]);
@@ -691,9 +692,9 @@ BOOST_AUTO_TEST_CASE(add) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) + b("a,b,c"));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) + b_tile[j]);
@@ -702,9 +703,9 @@ BOOST_AUTO_TEST_CASE(add) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") + (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] + (3 * b_tile[j]));
@@ -713,9 +714,9 @@ BOOST_AUTO_TEST_CASE(add) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) + (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) + (3 * b_tile[j]));
@@ -727,9 +728,9 @@ BOOST_AUTO_TEST_CASE(add_to) {
   BOOST_REQUIRE_NO_THROW(a("a,b,c") += b("a,b,c"));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] + b_tile[j]);
@@ -739,9 +740,9 @@ BOOST_AUTO_TEST_CASE(add_to) {
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = a("a,b,c") + b("a,b,c"));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] + b_tile[j]);
@@ -754,10 +755,10 @@ BOOST_AUTO_TEST_CASE(add_permute) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) + (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMF::value_type a_tile = perm * a.find(perm_index).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) + (3 * b_tile[j]));
@@ -768,9 +769,9 @@ BOOST_AUTO_TEST_CASE(add_permute) {
 ////  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") + b("a,b,c")));
 //
 ////  for (std::size_t i = 0ul; i < c.size(); ++i) {
-////    TArrayUMF::value_type c_tile = c.find(i).get();
-////    TArrayUMF::value_type a_tile = a.find(i).get();
-////    TArrayUMF::value_type b_tile = b.find(i).get();
+////    TArrayUMD::value_type c_tile = c.find(i).get();
+////    TArrayUMD::value_type a_tile = a.find(i).get();
+////    TArrayUMD::value_type b_tile = b.find(i).get();
 ////
 ////    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
 ////      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] + b_tile[j]));
@@ -779,9 +780,9 @@ BOOST_AUTO_TEST_CASE(add_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) + b("a,b,c")));
 //
 //  for (std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) + b_tile[j]));
@@ -790,9 +791,9 @@ BOOST_AUTO_TEST_CASE(add_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") + (3 * b("a,b,c"))));
 //
 //  for (std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] + (3 * b_tile[j])));
@@ -802,9 +803,9 @@ BOOST_AUTO_TEST_CASE(add_permute) {
 //                             5 * ((2 * a("a,b,c")) + (3 * b("a,b,c"))));
 //
 //  for (std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) + (3 * b_tile[j])));
@@ -817,10 +818,10 @@ BOOST_AUTO_TEST_CASE(scale_add_permute) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) + (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMF::value_type a_tile = perm * a.find(perm_index).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) + (3 * b_tile[j]));
@@ -831,9 +832,9 @@ BOOST_AUTO_TEST_CASE(subt) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") - b("a,b,c"));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] - b_tile[j]);
@@ -842,9 +843,9 @@ BOOST_AUTO_TEST_CASE(subt) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) - b("a,b,c"));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) - b_tile[j]);
@@ -853,9 +854,9 @@ BOOST_AUTO_TEST_CASE(subt) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") - (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] - (3 * b_tile[j]));
@@ -864,9 +865,9 @@ BOOST_AUTO_TEST_CASE(subt) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) - (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) - (3 * b_tile[j]));
@@ -878,9 +879,9 @@ BOOST_AUTO_TEST_CASE(subt_to) {
   BOOST_REQUIRE_NO_THROW(a("a,b,c") -= b("a,b,c"));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] - b_tile[j]);
@@ -890,9 +891,9 @@ BOOST_AUTO_TEST_CASE(subt_to) {
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = a("a,b,c") - b("a,b,c"));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] - b_tile[j]);
@@ -905,10 +906,10 @@ BOOST_AUTO_TEST_CASE(subt_permute) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) - (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMF::value_type a_tile = perm * a.find(perm_index).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) - (3 * b_tile[j]));
@@ -919,9 +920,9 @@ BOOST_AUTO_TEST_CASE(scale_subt) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") - b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] - b_tile[j]));
@@ -930,9 +931,9 @@ BOOST_AUTO_TEST_CASE(scale_subt) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) - b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) - b_tile[j]));
@@ -941,9 +942,9 @@ BOOST_AUTO_TEST_CASE(scale_subt) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") - (3 * b("a,b,c"))));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] - (3 * b_tile[j])));
@@ -953,9 +954,9 @@ BOOST_AUTO_TEST_CASE(scale_subt) {
                              5 * ((2 * a("a,b,c")) - (3 * b("a,b,c"))));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) - (3 * b_tile[j])));
@@ -968,10 +969,10 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) - (3 * b("c,b,a")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    TArrayUMF::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMF::value_type a_tile = perm * a.find(perm_index).get();
-    TArrayUMF::value_type b_tile = perm * b.find(perm_index).get();
+    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type b_tile = perm * b.find(perm_index).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) - (3 * b_tile[j]));
@@ -983,9 +984,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * b("a,b,c") );
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * b_tile[j]);
@@ -995,9 +996,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * b("a,b,c"));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * b_tile[j]);
@@ -1007,9 +1008,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * (3 * b("a,b,c")));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * (3 * b_tile[j]));
@@ -1019,9 +1020,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * (3 * b("a,b,c")));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
@@ -1035,9 +1036,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW( a("a,b,c") *= b("a,b,c") );
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] * b_tile[j]);
@@ -1047,9 +1048,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW( a("a,b,c") = a("a,b,c") * b("a,b,c") );
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] * b_tile[j]);
@@ -1064,10 +1065,10 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) * (3 * b("a,b,c")));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
 //    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-//    TArrayUMF::value_type a_tile = perm * a.find(perm_index).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
@@ -1080,9 +1081,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") * b("a,b,c")));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] * b_tile[j]));
@@ -1092,9 +1093,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) * b("a,b,c")));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * b_tile[j]));
@@ -1104,9 +1105,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") * (3 * b("a,b,c"))));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] * (3 * b_tile[j])));
@@ -1117,9 +1118,9 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  b("a,b,c"))));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
-//    TArrayUMF::value_type a_tile = a.find(i).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type a_tile = a.find(i).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * (3 * b_tile[j])));
@@ -1133,10 +1134,10 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
 //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5*(2 * a("c,b,a")) * (3 * b("a,b,c")));
 //
 //  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMF::value_type c_tile = c.find(i).get();
+//    TArrayUMD::value_type c_tile = c.find(i).get();
 //    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-//    TArrayUMF::value_type a_tile = perm * a.find(perm_index).get();
-//    TArrayUMF::value_type b_tile = b.find(i).get();
+//    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+//    TArrayUMD::value_type b_tile = b.find(i).get();
 //
 //    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
 //      BOOST_CHECK_EQUAL(c_tile[j], 5*(2 * a_tile[j]) * (3 * b_tile[j]));
@@ -1150,11 +1151,11 @@ BOOST_AUTO_TEST_CASE(cont) {
                         a.trange().elements_range().extent(2);
   const std::size_t n = b.trange().elements_range().extent(2);
 
-  TiledArray::EigenMatrixXf left(m, k);
+  TiledArray::EigenMatrixXd left(m, k);
   left.fill(0);
 
-  for (TArrayUMF::const_iterator it = a.begin(); it != a.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = a.begin(); it != a.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 3> i;
 
@@ -1176,11 +1177,11 @@ BOOST_AUTO_TEST_CASE(cont) {
 
   GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
 
-  TiledArray::EigenMatrixXf right(n, k);
+  TiledArray::EigenMatrixXd right(n, k);
   right.fill(0);
 
-  for (TArrayUMF::const_iterator it = b.begin(); it != b.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = b.begin(); it != b.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 3> i;
 
@@ -1202,13 +1203,13 @@ BOOST_AUTO_TEST_CASE(cont) {
 
   GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
 
-  TiledArray::EigenMatrixXf result(m, n);
+  TiledArray::EigenMatrixXd result(m, n);
 
   result = left * right.transpose();
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * b("j,b,c"));
-  for (TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
 
@@ -1216,14 +1217,14 @@ BOOST_AUTO_TEST_CASE(cont) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
-        BOOST_CHECK_EQUAL(tile(i[0], i[1]), result(i[0], i[1]));
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]), tolerance);
       }
     }
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * b("j,b,c"));
-  for (TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
 
@@ -1231,15 +1232,15 @@ BOOST_AUTO_TEST_CASE(cont) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
-        BOOST_CHECK_EQUAL(tile(i[0], i[1]), result(i[0], i[1]) * 2);
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 2, tolerance);
       }
     }
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * (3 * b("j,b,c")));
 
-  for (TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
 
@@ -1247,15 +1248,15 @@ BOOST_AUTO_TEST_CASE(cont) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
-        BOOST_CHECK_EQUAL(tile(i[0], i[1]), result(i[0], i[1]) * 3);
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 3, tolerance);
       }
     }
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * (3 * b("j,b,c")));
 
-  for (TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
 
@@ -1263,10 +1264,43 @@ BOOST_AUTO_TEST_CASE(cont) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
-        BOOST_CHECK_EQUAL(tile(i[0], i[1]), result(i[0], i[1]) * 6);
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 6, tolerance);
       }
     }
   }
+  
+  BOOST_REQUIRE_NO_THROW(w("i,j") -= a("i,b,c") * (3 * b("j,b,c")));
+
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 3, tolerance);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") += 2 * a("i,b,c") * b("j,b,c"));
+
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 5, tolerance);
+      }
+    }
+  }
+
 }
 
 BOOST_AUTO_TEST_CASE(cont_permute) {
@@ -1275,11 +1309,11 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
                         a.trange().elements_range().extent(2);
   const std::size_t n = b.trange().elements_range().extent(2);
 
-  TiledArray::EigenMatrixXf left(m, k);
+  TiledArray::EigenMatrixXd left(m, k);
   left.fill(0);
 
-  for (TArrayUMF::const_iterator it = a.begin(); it != a.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = a.begin(); it != a.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 3> i;
 
@@ -1301,11 +1335,11 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 
   GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
 
-  TiledArray::EigenMatrixXf right(n, k);
+  TiledArray::EigenMatrixXd right(n, k);
   right.fill(0);
 
-  for (TArrayUMF::const_iterator it = b.begin(); it != b.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = b.begin(); it != b.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 3> i;
 
@@ -1327,13 +1361,13 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 
   GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
 
-  TiledArray::EigenMatrixXf result(m, n);
+  TiledArray::EigenMatrixXd result(m, n);
 
   result = left * right.transpose();
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * b("j,c,b"));
-  for (TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
 
@@ -1341,14 +1375,14 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
-        BOOST_CHECK_EQUAL(tile(i[0], i[1]), result(i[0], i[1]));
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]), tolerance);
       }
     }
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * b("j,c,b"));
-  for (TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
 
@@ -1356,15 +1390,15 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
-        BOOST_CHECK_EQUAL(tile(i[0], i[1]), result(i[0], i[1]) * 2);
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 2, tolerance);
       }
     }
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = a("i,b,c") * (3 * b("j,c,b")));
 
-  for (TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
 
@@ -1372,15 +1406,15 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
-        BOOST_CHECK_EQUAL(tile(i[0], i[1]), result(i[0], i[1]) * 3);
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 3, tolerance);
       }
     }
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("i,b,c")) * (3 * b("j,c,b")));
 
-  for (TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-    TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
 
     std::array<std::size_t, 2> i;
 
@@ -1388,7 +1422,7 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
          ++i[0]) {
       for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
            ++i[1]) {
-        BOOST_CHECK_EQUAL(tile(i[0], i[1]), result(i[0], i[1]) * 6);
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 6, tolerance);
       }
     }
   }
@@ -1401,11 +1435,11 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //  a.trange().elements_range().extent(2); const std::size_t n =
 //  b.trange().elements_range().extent(2);
 //
-//  TiledArray::EigenMatrixXf left(m, k);
+//  TiledArray::EigenMatrixXd left(m, k);
 //  left.fill(0);
 //
-//  for(TArrayUMF::const_iterator it = a.begin(); it != a.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = a.begin(); it != a.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 3> i;
 //
@@ -1427,11 +1461,11 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //
 //  GlobalFixture::world->gop.sum(& left(0,0), left.rows() * left.cols());
 //
-//  TiledArray::EigenMatrixXf right(n, k);
+//  TiledArray::EigenMatrixXd right(n, k);
 //  right.fill(0);
 //
-//  for(TArrayUMF::const_iterator it = b.begin(); it != b.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = b.begin(); it != b.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 3> i;
 //
@@ -1453,14 +1487,14 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //
 //  GlobalFixture::world->gop.sum(& right(0,0), right.rows() * right.cols());
 //
-//  TiledArray::EigenMatrixXf result(m, n);
+//  TiledArray::EigenMatrixXd result(m, n);
 //
 //  result = left * right.transpose();
 //
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("i,b,c") * b("j,b,c")));
 //
-//  for(TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 2> i;
 //
@@ -1475,8 +1509,8 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * b("j,b,c")) );
 //
-//  for(TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 2> i;
 //
@@ -1491,8 +1525,8 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("i,b,c") * (3 * b("j,b,c"))));
 //
-//  for(TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 2> i;
 //
@@ -1508,8 +1542,8 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * (3 *
 //  b("j,b,c"))));
 //
-//  for(TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 2> i;
 //
@@ -1530,11 +1564,11 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //  a.trange().elements_range().extent(2); const std::size_t n =
 //  b.trange().elements_range().extent(2);
 //
-//  TiledArray::EigenMatrixXf left(m, k);
+//  TiledArray::EigenMatrixXd left(m, k);
 //  left.fill(0);
 //
-//  for(TArrayUMF::const_iterator it = a.begin(); it != a.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = a.begin(); it != a.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 3> i;
 //
@@ -1557,11 +1591,11 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //
 //  GlobalFixture::world->gop.sum(& left(0,0), left.rows() * left.cols());
 //
-//  TiledArray::EigenMatrixXf right(n, k);
+//  TiledArray::EigenMatrixXd right(n, k);
 //  right.fill(0);
 //
-//  for(TArrayUMF::const_iterator it = b.begin(); it != b.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = b.begin(); it != b.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 3> i;
 //
@@ -1584,14 +1618,14 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //
 //  GlobalFixture::world->gop.sum(& right(0,0), right.rows() * right.cols());
 //
-//  TiledArray::EigenMatrixXf result(m, n);
+//  TiledArray::EigenMatrixXd result(m, n);
 //
 //  result = left * right.transpose();
 //
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("i,b,c") * b("j,c,b")));
 //
-//  for(TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 2> i;
 //
@@ -1606,8 +1640,8 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * b("j,c,b")) );
 //
-//  for(TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 2> i;
 //
@@ -1622,8 +1656,8 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("i,b,c") * (3 * b("j,c,b"))));
 //
-//  for(TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 2> i;
 //
@@ -1639,8 +1673,8 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * (3 *
 //  b("j,c,b"))));
 //
-//  for(TArrayUMF::const_iterator it = w.begin(); it != w.end(); ++it) {
-//    TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+//    TArrayUMD::value_type tile = *it;
 //
 //    std::array<std::size_t, 2> i;
 //
@@ -1668,32 +1702,32 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform1) {
   const std::size_t n = 5;
 
   // Construct the test arguments
-  TArrayUMF left(*GlobalFixture::world, trange);
-  TArrayUMF right(*GlobalFixture::world, trange);
+  TArrayUMD left(*GlobalFixture::world, trange);
+  TArrayUMD right(*GlobalFixture::world, trange);
 
   // Construct the reference matrices
-  TiledArray::EigenMatrixXf left_ref(m, k);
-  TiledArray::EigenMatrixXf right_ref(n, k);
+  TiledArray::EigenMatrixXd left_ref(m, k);
+  TiledArray::EigenMatrixXd right_ref(n, k);
 
   // Initialize input
   rand_fill_matrix_and_array(left_ref, left, 23);
   rand_fill_matrix_and_array(right_ref, right, 42);
 
   // Compute the reference result
-  TiledArray::EigenMatrixXf result_ref = 5 * left_ref * right_ref.transpose();
+  TiledArray::EigenMatrixXd result_ref = 5 * left_ref * right_ref.transpose();
 
   // Compute the result to be tested
-  TArrayUMF result;
+  TArrayUMD result;
   BOOST_REQUIRE_NO_THROW(result("x,y") =
                              5 * left("x,i,j,k") * right("y,i,j,k"));
 
   // Check the result
-  for (TArrayUMF::iterator it = result.begin(); it != result.end(); ++it) {
-    const TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::iterator it = result.begin(); it != result.end(); ++it) {
+    const TArrayUMD::value_type tile = *it;
     for (Range::const_iterator rit = tile.range().begin();
          rit != tile.range().end(); ++rit) {
       const std::size_t elem_index = result.elements_range().ordinal(*rit);
-      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
+      BOOST_CHECK_CLOSE_FRACTION(result_ref.array()(elem_index), tile[*rit], tolerance);
     }
   }
 }
@@ -1712,32 +1746,32 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
   const std::size_t n = 5;
 
   // Construct the test arguments
-  TArrayUMF left(*GlobalFixture::world, trange);
-  TArrayUMF right(*GlobalFixture::world, trange);
+  TArrayUMD left(*GlobalFixture::world, trange);
+  TArrayUMD right(*GlobalFixture::world, trange);
 
   // Construct the reference matrices
-  TiledArray::EigenMatrixXf left_ref(m, k);
-  TiledArray::EigenMatrixXf right_ref(n, k);
+  TiledArray::EigenMatrixXd left_ref(m, k);
+  TiledArray::EigenMatrixXd right_ref(n, k);
 
   // Initialize input
   rand_fill_matrix_and_array(left_ref, left, 23);
   rand_fill_matrix_and_array(right_ref, right, 42);
 
   // Compute the reference result
-  TiledArray::EigenMatrixXf result_ref = 5 * left_ref * right_ref.transpose();
+  TiledArray::EigenMatrixXd result_ref = 5 * left_ref * right_ref.transpose();
 
   // Compute the result to be tested
-  TArrayUMF result;
+  TArrayUMD result;
   BOOST_REQUIRE_NO_THROW(result("x,y") =
                              5 * left("x,i,j,k") * right("y,i,j,k"));
 
   // Check the result
-  for (TArrayUMF::iterator it = result.begin(); it != result.end(); ++it) {
-    const TArrayUMF::value_type tile = *it;
+  for (TArrayUMD::iterator it = result.begin(); it != result.end(); ++it) {
+    const TArrayUMD::value_type tile = *it;
     for (Range::const_iterator rit = tile.range().begin();
          rit != tile.range().end(); ++rit) {
       const std::size_t elem_index = result.elements_range().ordinal(*rit);
-      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
+      BOOST_CHECK_CLOSE_FRACTION(result_ref.array()(elem_index), tile[*rit], tolerance);
     }
   }
 }
@@ -1757,16 +1791,16 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
   const std::size_t n = 5;
 
   // Construct the test arrays
-  TArrayUMF arg1(*GlobalFixture::world, trange);
-  TArrayUMF arg2(*GlobalFixture::world, trange);
-  TArrayUMF arg3(*GlobalFixture::world, trange);
-  TArrayUMF arg4(*GlobalFixture::world, trange);
+  TArrayUMD arg1(*GlobalFixture::world, trange);
+  TArrayUMD arg2(*GlobalFixture::world, trange);
+  TArrayUMD arg3(*GlobalFixture::world, trange);
+  TArrayUMD arg4(*GlobalFixture::world, trange);
 
   // Construct the reference matrices
-  TiledArray::EigenMatrixXf arg1_ref(m, k);
-  TiledArray::EigenMatrixXf arg2_ref(n, k);
-  TiledArray::EigenMatrixXf arg3_ref(m, k);
-  TiledArray::EigenMatrixXf arg4_ref(n, k);
+  TiledArray::EigenMatrixXd arg1_ref(m, k);
+  TiledArray::EigenMatrixXd arg2_ref(n, k);
+  TiledArray::EigenMatrixXd arg3_ref(m, k);
+  TiledArray::EigenMatrixXd arg4_ref(n, k);
 
   // Initialize input
   rand_fill_matrix_and_array(arg1_ref, arg1, 23);
@@ -1775,7 +1809,7 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
   rand_fill_matrix_and_array(arg4_ref, arg4, 19);
 
   // Compute the reference result
-  TiledArray::EigenMatrixXf result_ref = 2 * (arg1_ref * arg2_ref.transpose()
+  TiledArray::EigenMatrixXd result_ref = 2 * (arg1_ref * arg2_ref.transpose()
   +
                                               arg1_ref * arg4_ref.transpose()
                                               + arg3_ref *
@@ -1783,7 +1817,7 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
                                               * arg2_ref.transpose());
 
   // Compute the result to be tested
-  TArrayUMF result;
+  TArrayUMD result;
   result("x,y") =  arg1("x,i,j,k") * arg2("y,i,j,k");
   result("x,y") += arg3("x,i,j,k") * arg4("y,i,j,k");
   result("x,y") += arg1("x,i,j,k") * arg4("y,i,j,k");
@@ -1794,12 +1828,12 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
   result("x,y") += arg1("x,i,j,k") * arg4("y,i,j,k");
 
   // Check the result
-  for(TArrayUMF::iterator it = result.begin(); it != result.end(); ++it) {
-    const TArrayUMF::value_type tile = *it;
+  for(TArrayUMD::iterator it = result.begin(); it != result.end(); ++it) {
+    const TArrayUMD::value_type tile = *it;
     for(Range::const_iterator rit = tile.range().begin(); rit !=
     tile.range().end(); ++rit) {
       const std::size_t elem_index = result.elements_range().ordinal(*rit);
-      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
+      BOOST_CHECK_CLOSE_FRACTION(result_ref.array()(elem_index), tile[*rit],tolerance);
     }
   }
 }
@@ -1819,16 +1853,16 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
 //  const std::size_t n = 5;
 //
 //  // Construct the test arrays
-//  TArrayUMF arg1(*GlobalFixture::world, trange);
-//  TArrayUMF arg2(*GlobalFixture::world, trange);
-//  TArrayUMF arg3(*GlobalFixture::world, trange);
-//  TArrayUMF arg4(*GlobalFixture::world, trange);
+//  TArrayUMD arg1(*GlobalFixture::world, trange);
+//  TArrayUMD arg2(*GlobalFixture::world, trange);
+//  TArrayUMD arg3(*GlobalFixture::world, trange);
+//  TArrayUMD arg4(*GlobalFixture::world, trange);
 //
 //  // Construct the reference matrices
-//  TiledArray::EigenMatrixXf arg1_ref(m, k);
-//  TiledArray::EigenMatrixXf arg2_ref(n, k);
-//  TiledArray::EigenMatrixXf arg3_ref(m, k);
-//  TiledArray::EigenMatrixXf arg4_ref(n, k);
+//  TiledArray::EigenMatrixXd arg1_ref(m, k);
+//  TiledArray::EigenMatrixXd arg2_ref(n, k);
+//  TiledArray::EigenMatrixXd arg3_ref(m, k);
+//  TiledArray::EigenMatrixXd arg4_ref(n, k);
 //
 //  // Initialize input
 //  rand_fill_matrix_and_array(arg1_ref, arg1, 23);
@@ -1837,7 +1871,7 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
 //  rand_fill_matrix_and_array(arg4_ref, arg4, 19);
 //
 //  // Compute the reference result
-//  TiledArray::EigenMatrixXf result_ref = 2 * (arg1_ref * arg2_ref.transpose()
+//  TiledArray::EigenMatrixXd result_ref = 2 * (arg1_ref * arg2_ref.transpose()
 //  +
 //                                              arg1_ref * arg4_ref.transpose()
 //                                              + arg3_ref *
@@ -1845,7 +1879,7 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
 //                                              * arg2_ref.transpose());
 //
 //  // Compute the result to be tested
-//  TArrayUMF result;
+//  TArrayUMD result;
 //  result("x,y") =             arg1("x,i,j,k") * arg2("y,i,j,k");
 //  result("x,y").no_alias() += arg3("x,i,j,k") * arg4("y,i,j,k");
 //  result("x,y").no_alias() += arg1("x,i,j,k") * arg4("y,i,j,k");
@@ -1856,8 +1890,8 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
 //  result("x,y").no_alias() += arg1("x,i,j,k") * arg4("y,i,j,k");
 //
 //  // Check the result
-//  for(TArrayUMF::iterator it = result.begin(); it != result.end(); ++it) {
-//    const TArrayUMF::value_type tile = *it;
+//  for(TArrayUMD::iterator it = result.begin(); it != result.end(); ++it) {
+//    const TArrayUMD::value_type tile = *it;
 //    for(Range::const_iterator rit = tile.range().begin(); rit !=
 //    tile.range().end(); ++rit) {
 //      const std::size_t elem_index = result.elements_range().ordinal(*rit);
@@ -1869,25 +1903,25 @@ BOOST_AUTO_TEST_CASE(cont_non_uniform2) {
 // BOOST_AUTO_TEST_CASE( outer_product )
 //{
 //  // Generate Eigen matrices from input arrays.
-//  EigenMatrixXf ev = make_matrix(v);
-//  EigenMatrixXf eu = make_matrix(u);
+//  EigenMatrixXd ev = make_matrix(v);
+//  EigenMatrixXd eu = make_matrix(u);
 //
 //  // Generate the expected result
-//  EigenMatrixXf ew_test = eu * ev.transpose();
+//  EigenMatrixXd ew_test = eu * ev.transpose();
 //
 //  // Test that outer product works
 //  BOOST_REQUIRE_NO_THROW(w("i,j") = u("i") * v("j"));
 //
 //  GlobalFixture::world->gop.fence();
 //
-//  EigenMatrixXf ew = make_matrix(w);
+//  EigenMatrixXd ew = make_matrix(w);
 //
 //  BOOST_CHECK_EQUAL(ew, ew_test);
 //}
 
 BOOST_AUTO_TEST_CASE(dot) {
   // Test the dot expression function
-  float result = 0;
+  double result = 0;
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("a,b,c"));
   BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("a,b,c"));
   BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("a,b,c"));
@@ -1895,23 +1929,23 @@ BOOST_AUTO_TEST_CASE(dot) {
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c").dot(b("a,b,c")).get());
 
   // Compute the expected value for the dot function.
-  float expected = 0;
+  double expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < a_tile.size(); ++j)
       expected += a_tile[j] * b_tile[j];
   }
 
   // Check the result of dot
-  BOOST_CHECK_EQUAL(result, expected);
+  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(dot_permute) {
   Permutation perm({2, 1, 0});
   // Test the dot expression function
-  float result = 0;
+  double result = 0;
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("c,b,a"));
   BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("c,b,a"));
   BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("c,b,a"));
@@ -1919,37 +1953,37 @@ BOOST_AUTO_TEST_CASE(dot_permute) {
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c").dot(b("c,b,a")).get());
 
   // Compute the expected value for the dot function.
-  float expected = 0;
+  double expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    TArrayUMF::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
-    TArrayUMF::value_type b_tile = perm * b.find(perm_index).get();
+    TArrayUMD::value_type b_tile = perm * b.find(perm_index).get();
 
     for (std::size_t j = 0ul; j < a_tile.size(); ++j)
       expected += a_tile[j] * b_tile[j];
   }
 
   // Check the result of dot
-  BOOST_CHECK_EQUAL(result, expected);
+  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(dot_expr) {
   // Test the dot expression function
-  float result = 0;
+  double result = 0;
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("a,b,c"));
 
   // Compute the expected value for the dot function.
-  float expected = 0;
+  double expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    TArrayUMF::value_type a_tile = a.find(i).get();
-    TArrayUMF::value_type b_tile = b.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < a_tile.size(); ++j)
       expected += a_tile[j] * b_tile[j];
   }
 
   // Check the result of dot
-  BOOST_CHECK_EQUAL(result, expected);
+  BOOST_CHECK_CLOSE_FRACTION(result, expected,tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(dot_contr) {
