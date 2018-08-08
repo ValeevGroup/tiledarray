@@ -209,6 +209,24 @@ namespace TiledArray {
     decltype(auto) operator[](std::size_t i)
     { return tensor()[i]; }
 
+    /// \return The element at the \c i position.
+    /// \throw TiledArray::Exception When this tensor is empty.
+    template <typename Index,
+            typename std::enable_if<
+                    ! std::is_integral<Index>::value>::type* = nullptr>
+    decltype(auto) operator[](const Index& i) const {
+      return tensor()[i];
+    }
+
+    /// \return The element at the \c i position.
+    /// \throw TiledArray::Exception When this tensor is empty.
+    template <typename Index,
+            typename std::enable_if<
+                    ! std::is_integral<Index>::value>::type* = nullptr>
+    decltype(auto) operator[](const Index& i) {
+      return tensor()[i];
+    }
+
     /// Const element accessor via parentheses operator
 
     /// \tparam I The set of coordinate index types (integral types)

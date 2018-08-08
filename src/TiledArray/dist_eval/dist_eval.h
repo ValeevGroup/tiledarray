@@ -24,6 +24,10 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/perm_index.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/config.h>
+#ifdef TILEDARRAY_HAS_CUDA
+#include <cuda_runtime.h>
+#endif
 
 namespace TiledArray {
   namespace detail {
@@ -185,6 +189,9 @@ namespace TiledArray {
             std::cerr << ss.str().c_str();
             throw;
           }
+#ifdef TILEDARRAY_HAS_CUDA
+          cudaDeviceSynchronize();
+#endif
         }
       }
 

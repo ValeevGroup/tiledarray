@@ -28,9 +28,8 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/external/btas.h>
 #include <TiledArray/external/cuda.h>
-//#include <btas/tensor.h>
+#include <btas/tensor.h>
 
 #include <TiledArray/math/gemm_helper.h>
 #include <TiledArray/tensor/cuda/platform.h>
@@ -244,7 +243,6 @@ void btas_tensor_gemm_cuda_impl(
 template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg) {
-
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
 
@@ -270,7 +268,6 @@ btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
 template <typename T, typename Range, typename Storage, typename Scalar>
 btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
-
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
 
@@ -289,9 +286,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
 
 /// result[i] *= a
 template <typename T, typename Range, typename Storage, typename Scalar>
-void btas_tensor_scale_to_cuda_impl(
-    btas::Tensor<T, Range, Storage> &result, const Scalar a) {
-
+void btas_tensor_scale_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
+                                    const Scalar a) {
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
   // call cublasScale
@@ -303,17 +299,15 @@ void btas_tensor_scale_to_cuda_impl(
   TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
 }
 
-
 /// result[i] = arg1[i] - a * arg2[i]
 template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg1,
     const btas::Tensor<T, Range, Storage> &arg2, const T a) {
-
   auto result = btas_tensor_clone_cuda_impl(arg1);
 
   // revert the sign of a
-  T b = T(-1)*a;
+  T b = T(-1) * a;
 
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &stream = detail::get_stream_based_on_range(result.range());
@@ -338,12 +332,11 @@ template <typename T, typename Range, typename Storage>
 void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                    const btas::Tensor<T, Range, Storage> &arg1,
                                    const T a) {
-
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &stream = detail::get_stream_based_on_range(result.range());
 
   // revert the sign of a
-  T b = T(-1)*a;
+  T b = T(-1) * a;
 
   const auto &handle = cuBLASHandlePool::handle();
   auto status = cublasSetStream(handle, stream);
@@ -359,13 +352,13 @@ template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg1,
     const btas::Tensor<T, Range, Storage> &arg2, const T a) {
-  
   auto result = btas_tensor_clone_cuda_impl(arg1);
 
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
   auto &stream = detail::get_stream_based_on_range(result.range());
 
-  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
+  if (in_memory_space<MemorySpace::CUDA>(result.storage()) &&
+      in_memory_space<MemorySpace::CUDA>(arg2.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
     auto status = cublasSetStream(handle, stream);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
@@ -430,6 +423,35 @@ btas_tensor_squared_norm_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
     status = cublasDot(handle, size, device_data(storage), 1,
                        device_data(storage), 1, &result);
+    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+  } else {
+    TA_ASSERT(false);
+    //    result = TiledArray::math::dot(size, storage.data(), storage.data());
+  }
+  return result;
+}
+
+// foreach(i) result += arg1[i] * arg2[i]
+template <typename T, typename Range, typename Storage>
+typename btas::Tensor<T, Range, Storage>::value_type btas_tensor_dot_cuda_impl(
+    const btas::Tensor<T, Range, Storage> &arg1,
+    const btas::Tensor<T, Range, Storage> &arg2) {
+  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
+
+  auto &stream = detail::get_stream_based_on_range(arg1.range());
+
+  integer size = arg1.storage().size();
+
+  TA_ASSERT(size == arg2.storage().size());
+
+  T result = 0;
+  if (in_memory_space<MemorySpace::CUDA>(arg1.storage()) &&
+      in_memory_space<MemorySpace::CUDA>(arg2.storage())) {
+    const auto &handle = cuBLASHandlePool::handle();
+    auto status = cublasSetStream(handle, stream);
+    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+    status = cublasDot(handle, size, device_data(arg1.storage()), 1,
+                       device_data(arg2.storage()), 1, &result);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
   } else {
     TA_ASSERT(false);
