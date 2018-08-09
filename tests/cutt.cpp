@@ -24,14 +24,20 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include "unit_test_config.h"
-#include <TiledArray/external/cuda.h>
 #include <TiledArray/tensor/cuda/btas_um_tensor.h>
+#include "unit_test_config.h"
 
-struct cuTTFixture{
-
-  cuTTFixture() : A(1000), B(500), C(20), rank(2), extent({1000,1000}), extent_nonsym({1000,500}), perm({1,0}) {}
-//  cuTTFixture() : A(10), B(5), C(2), rank(2), extent({10,10}), extent_nonsym({10,5}), perm({1,0}) {}
+struct cuTTFixture {
+  cuTTFixture()
+      : A(100),
+        B(50),
+        C(20),
+        rank(2),
+        extent({100, 100}),
+        extent_nonsym({100, 50}),
+        perm({1, 0}) {}
+  //  cuTTFixture() : A(10), B(5), C(2), rank(2), extent({10,10}),
+  //  extent_nonsym({10,5}), perm({1,0}) {}
 
   std::size_t A;
   std::size_t B;
@@ -40,13 +46,11 @@ struct cuTTFixture{
   std::vector<int> extent;
   std::vector<int> extent_nonsym;
   std::vector<int> perm;
-
 };
 
 BOOST_FIXTURE_TEST_SUITE(cutt_suite, cuTTFixture);
 
-BOOST_AUTO_TEST_CASE( cutt_gpu_mem ) {
-
+BOOST_AUTO_TEST_CASE(cutt_gpu_mem) {
   int* a_host = (int*)std::malloc(A * A * sizeof(int));
   int* b_host = (int*)std::malloc(A * A * sizeof(int));
   int iter = 0;
@@ -90,11 +94,9 @@ BOOST_AUTO_TEST_CASE( cutt_gpu_mem ) {
 
   cudaFree(a_device);
   cudaFree(b_device);
-
 }
 
-BOOST_AUTO_TEST_CASE( cutt_gpu_mem_nonsym ) {
-
+BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym) {
   int* a_host = (int*)std::malloc(A * B * sizeof(int));
   int* b_host = (int*)std::malloc(A * B * sizeof(int));
   int iter = 0;
@@ -115,7 +117,8 @@ BOOST_AUTO_TEST_CASE( cutt_gpu_mem_nonsym ) {
   cuttHandle plan;
   cuttResult_t status;
 
-  status = cuttPlan(&plan, 2, extent_nonsym.data(), perm.data(), sizeof(int), 0);
+  status =
+      cuttPlan(&plan, 2, extent_nonsym.data(), perm.data(), sizeof(int), 0);
 
   BOOST_CHECK(status == CUTT_SUCCESS);
 
@@ -139,10 +142,9 @@ BOOST_AUTO_TEST_CASE( cutt_gpu_mem_nonsym ) {
 
   cudaFree(a_device);
   cudaFree(b_device);
-
 }
 
-BOOST_AUTO_TEST_CASE(cutt_unified_mem){
+BOOST_AUTO_TEST_CASE(cutt_unified_mem) {
   int* a_um;
   cudaMallocManaged(&a_um, A * A * sizeof(int));
 
@@ -175,7 +177,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem){
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {
     for (std::size_t j = 0; j < A; j++) {
-      BOOST_CHECK(b_um[j*A + i] == iter);
+      BOOST_CHECK(b_um[j * A + i] == iter);
       iter++;
     }
   }
@@ -184,7 +186,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem){
   cudaFree(b_um);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym){
+BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym) {
   int* a_um;
   cudaMallocManaged(&a_um, A * B * sizeof(int));
 
@@ -202,7 +204,8 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym){
   cuttHandle plan;
   cuttResult_t status;
 
-  status = cuttPlan(&plan, 2, extent_nonsym.data(), perm.data(), sizeof(int), 0);
+  status =
+      cuttPlan(&plan, 2, extent_nonsym.data(), perm.data(), sizeof(int), 0);
 
   BOOST_CHECK(status == CUTT_SUCCESS);
 
@@ -217,7 +220,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym){
   iter = 0;
   for (std::size_t i = 0; i < B; i++) {
     for (std::size_t j = 0; j < A; j++) {
-      BOOST_CHECK(b_um[j*B + i] == iter);
+      BOOST_CHECK(b_um[j * B + i] == iter);
       iter++;
     }
   }
@@ -225,9 +228,9 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym){
   cudaFree(b_um);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three){
+BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three) {
   int* a_um;
-  cudaMallocManaged(&a_um, A * B * C* sizeof(int));
+  cudaMallocManaged(&a_um, A * B * C * sizeof(int));
 
   int* b_um;
   cudaMallocManaged(&b_um, A * B * C * sizeof(int));
@@ -235,7 +238,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three){
   int iter = 0;
   for (std::size_t i = 0; i < A; i++) {
     for (std::size_t j = 0; j < B; j++) {
-      for (std::size_t k = 0; k < C; k++){
+      for (std::size_t k = 0; k < C; k++) {
         a_um[iter] = iter;
         iter++;
       }
@@ -245,8 +248,8 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three){
   cuttHandle plan;
   cuttResult_t status;
 
-  std::vector<int> extent3 {int(C),int(A),int(B)};
-  std::vector<int> perm3 {1,2,0};
+  std::vector<int> extent3{int(C), int(A), int(B)};
+  std::vector<int> perm3{1, 2, 0};
 
   status = cuttPlan(&plan, 3, extent3.data(), perm3.data(), sizeof(int), 0);
 
@@ -263,8 +266,8 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three){
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {
     for (std::size_t j = 0; j < B; j++) {
-      for(std::size_t k = 0; k < C; k++){
-        BOOST_CHECK(b_um[k*A*B + i*B + j] == iter);
+      for (std::size_t k = 0; k < C; k++) {
+        BOOST_CHECK(b_um[k * A * B + i * B + j] == iter);
         iter++;
       }
     }
@@ -273,8 +276,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three){
   cudaFree(b_um);
 }
 
-BOOST_AUTO_TEST_CASE( cutt_um_tensor ){
-
+BOOST_AUTO_TEST_CASE(cutt_um_tensor) {
   TiledArray::Range range(std::vector<std::size_t>({A, A}));
 
   using Tile = btasUMTensorVarray<int, TiledArray::Range>;
@@ -299,14 +301,13 @@ BOOST_AUTO_TEST_CASE( cutt_um_tensor ){
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {
     for (std::size_t j = 0; j < A; j++) {
-      BOOST_CHECK(b(j,i) == iter);
+      BOOST_CHECK(b(j, i) == iter);
       iter++;
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE( cutt_um_tensor_nonsym ){
-
+BOOST_AUTO_TEST_CASE(cutt_um_tensor_nonsym) {
   TiledArray::Range range(std::vector<std::size_t>({B, A}));
 
   using Tile = btasUMTensorVarray<int, TiledArray::Range>;
@@ -331,14 +332,13 @@ BOOST_AUTO_TEST_CASE( cutt_um_tensor_nonsym ){
   iter = 0;
   for (std::size_t i = 0; i < B; i++) {
     for (std::size_t j = 0; j < A; j++) {
-      BOOST_CHECK(b(j,i) == iter);
+      BOOST_CHECK(b(j, i) == iter);
       iter++;
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE( cutt_um_tensor_rank_three ){
-
+BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_three) {
   TiledArray::Range range(std::vector<std::size_t>({A, B, C}));
 
   using Tile = btasUMTensorVarray<int, TiledArray::Range>;
@@ -349,14 +349,14 @@ BOOST_AUTO_TEST_CASE( cutt_um_tensor_rank_three ){
 
   for (std::size_t i = 0; i < A; i++) {
     for (std::size_t j = 0; j < B; j++) {
-      for (std::size_t k = 0; k < C; k++){
+      for (std::size_t k = 0; k < C; k++) {
         a[iter] = iter;
         iter++;
       }
     }
   }
 
-  TiledArray::Permutation permutation({1,2,0});
+  TiledArray::Permutation permutation({1, 2, 0});
 
   auto b = permute(a, permutation);
 
@@ -365,16 +365,101 @@ BOOST_AUTO_TEST_CASE( cutt_um_tensor_rank_three ){
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {
     for (std::size_t j = 0; j < B; j++) {
-      for (std::size_t k = 0; k < C; k++)
-      {
-        BOOST_CHECK(b(k,i,j) == iter);
+      for (std::size_t k = 0; k < C; k++) {
+        BOOST_CHECK(b(k, i, j) == iter);
         iter++;
       }
     }
   }
 }
 
+BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
+  std::size_t a = 2;
+  std::size_t b = 3;
+  std::size_t c = 6;
+  std::size_t d = 4;
+  std::size_t e = 5;
+  std::size_t f = 7;
+
+  TiledArray::Range range(std::vector<std::size_t>({a, b, c, d, e, f}));
+
+  using Tile = btasUMTensorVarray<int, TiledArray::Range>;
+
+  auto tile_a = Tile(range);
+
+  std::size_t iter = 0;
+
+  // initialize tensor
+  for (std::size_t i = 0; i < a; i++) {
+    for (std::size_t j = 0; j < b; j++) {
+      for (std::size_t k = 0; k < c; k++) {
+        for (std::size_t l = 0; l < d; l++) {
+          for (std::size_t m = 0; m < e; m++) {
+            for (std::size_t n = 0; n < f; n++) {
+              tile_a[iter] = iter;
+              iter++;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // b(i,j,k,l,m,n) = a(i,l,k,j,n,m)
+  {
+    TiledArray::Permutation permutation({0,3,2,1,5,4});
+
+    auto tile_b = permute(tile_a, permutation);
+
+    cudaDeviceSynchronize();
+
+    // validate
+    iter = 0;
+    for (std::size_t i = 0; i < a; i++) {
+      for (std::size_t j = 0; j < b; j++) {
+        for (std::size_t k = 0; k < c; k++) {
+          for (std::size_t l = 0; l < d; l++) {
+            for (std::size_t m = 0; m < e; m++) {
+              for (std::size_t n = 0; n < f; n++) {
+                BOOST_CHECK_EQUAL(tile_b(i,l,k,j,n,m), iter);
+                iter++;
+              }
+            }
+          }
+        }
+      }
+    }
+
+  }
+
+
+  // b(j,i,m,l,k,n) = a(i,j,k,l,m,n)
+  {
+    TiledArray::Permutation permutation({1,0,4,3,2,5});
+
+    auto tile_b = permute(tile_a, permutation);
+
+    cudaDeviceSynchronize();
+
+    // validate
+    iter = 0;
+    for (std::size_t i = 0; i < a; i++) {
+      for (std::size_t j = 0; j < b; j++) {
+        for (std::size_t k = 0; k < c; k++) {
+          for (std::size_t l = 0; l < d; l++) {
+            for (std::size_t m = 0; m < e; m++) {
+              for (std::size_t n = 0; n < f; n++) {
+                BOOST_CHECK_EQUAL(tile_b(j,i,m,l,k,n), iter);
+                iter++;
+              }
+            }
+          }
+        }
+      }
+    }
+
+  }
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 #endif
-
