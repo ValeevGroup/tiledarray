@@ -126,10 +126,10 @@ btas::Tensor<T, Range, Storage>& mult_to(
   assert(false);
 }
 
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> gemm(
     const btas::Tensor<T, Range, Storage>& left,
-    const btas::Tensor<T, Range, Storage>& right, T factor,
+    const btas::Tensor<T, Range, Storage>& right, Scalar factor,
     const TiledArray::math::GemmHelper& gemm_helper) {
   // Check that the arguments are not empty and have the correct ranks
   TA_ASSERT(!left.empty());
@@ -162,17 +162,19 @@ btas::Tensor<T, Range, Storage> gemm(
   const integer ldb =
       (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
+  T factor_t(factor);
+
   TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                         factor, left.data(), lda, right.data(), ldb, T(0),
+                         factor_t, left.data(), lda, right.data(), ldb, T(0),
                          result.data(), n);
 
   return result;
 }
 
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage>
 void gemm(btas::Tensor<T, Range, Storage>& result,
           const btas::Tensor<T, Range, Storage>& left,
-          const btas::Tensor<T, Range, Storage>& right, T factor,
+          const btas::Tensor<T, Range, Storage>& right, Scalar factor,
           const TiledArray::math::GemmHelper& gemm_helper) {
   // Check that this tensor is not empty and has the correct rank
   TA_ASSERT(!result.empty());
@@ -228,8 +230,10 @@ void gemm(btas::Tensor<T, Range, Storage>& result,
   const integer ldb =
       (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
+  T factor_t(factor);
+
   TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                         factor, left.data(), lda, right.data(), ldb, T(1),
+                         factor_t, left.data(), lda, right.data(), ldb, T(1),
                          result.data(), n);
 }
 
