@@ -49,10 +49,10 @@ const cudaStream_t &get_stream_based_on_range(const Range &range) {
 
 }  // namespace detail
 
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
     const btas::Tensor<T, Range, Storage> &left,
-    const btas::Tensor<T, Range, Storage> &right, T factor,
+    const btas::Tensor<T, Range, Storage> &right, Scalar factor,
     const TiledArray::math::GemmHelper &gemm_helper) {
   // either both arguments are on host or both on device ... mixed case TBI
   //  TA_ASSERT(left.storage().on_host() == right.storage().on_host() &&
@@ -110,13 +110,15 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   const integer ldb =
       (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
+  T factor_t = T(factor);
+
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
     auto zero = T(0);
     auto status = cublasSetStream(handle, cuda_stream);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
     status = cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
-                        to_cublas_op(gemm_helper.left_op()), n, m, k, &factor,
+                        to_cublas_op(gemm_helper.left_op()), n, m, k, &factor_t,
                         device_data(right.storage()), ldb,
                         device_data(left.storage()), lda, &zero,
                         device_data(result.storage()), n);
@@ -137,11 +139,11 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   return result;
 }
 
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage>
 void btas_tensor_gemm_cuda_impl(
     btas::Tensor<T, Range, Storage> &result,
     const btas::Tensor<T, Range, Storage> &left,
-    const btas::Tensor<T, Range, Storage> &right, T factor,
+    const btas::Tensor<T, Range, Storage> &right, Scalar factor,
     const TiledArray::math::GemmHelper &gemm_helper) {
   // the result determines were to do gemm
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
@@ -219,13 +221,15 @@ void btas_tensor_gemm_cuda_impl(
   const integer ldb =
       (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
+  T factor_t = T(factor);
+
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
     auto one = T(1);
     auto status = cublasSetStream(handle, stream);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
     status = cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
-                        to_cublas_op(gemm_helper.left_op()), n, m, k, &factor,
+                        to_cublas_op(gemm_helper.left_op()), n, m, k, &factor_t,
                         device_data(right.storage()), ldb,
                         device_data(left.storage()), lda, &one,
                         device_data(result.storage()), n);

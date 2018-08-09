@@ -84,6 +84,7 @@ namespace TiledArray {
     /// Tensor type used to represent tile data
     typedef T tensor_type;
 
+    typedef typename tensor_type::size_type size_type;
   private:
 
     std::shared_ptr<tensor_type> pimpl_;
@@ -144,6 +145,16 @@ namespace TiledArray {
       return not bool(pimpl_);
     }
 
+    // data accessor ----------------------------------------------------------
+    decltype(auto) data()
+    {
+      return tensor().data();
+    }
+
+    decltype(auto) data() const
+    {
+      return tensor().data();
+    }
     // Tile accessor -----------------------------------------------------------
 
     tensor_type& tensor() { return *pimpl_; }

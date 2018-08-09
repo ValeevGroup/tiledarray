@@ -42,33 +42,9 @@ using btasUMTensorVarray =
     btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
 
-#ifndef TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
-
 /// serialize functions
 namespace madness {
 namespace archive {
-
-template <class Archive, typename T>
-struct ArchiveLoadImpl<Archive, btas::varray<T>> {
-  static inline void load(const Archive &ar,
-                          TiledArray::cuda_um_btas_varray<T> &x) {
-    typename btas::varray<T>::size_type n{};
-    ar &n;
-    x.resize(n);
-    for (typename TiledArray::cuda_um_btas_varray<T>::value_type &xi : x)
-      ar &xi;
-  }
-};
-
-template <class Archive, typename T>
-struct ArchiveStoreImpl<Archive, btas::varray<T>> {
-  static inline void store(const Archive &ar,
-                           const TiledArray::cuda_um_btas_varray<T> &x) {
-    ar &x.size();
-    for (const typename TiledArray::cuda_um_btas_varray<T>::value_type &xi : x)
-      ar &xi;
-  }
-};
 
 template <class Archive, typename T>
 struct ArchiveLoadImpl<Archive, btasUMTensorVarray<T>> {
@@ -90,8 +66,6 @@ struct ArchiveStoreImpl<Archive, btasUMTensorVarray<T>> {
 }  // namespace archive
 }  // namespace madness
 
-#endif //TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
-
 namespace TiledArray {
 
 template <typename T, typename Range>
@@ -103,18 +77,18 @@ struct eval_trait<btasUMTensorVarray<T, Range>> {
 /// gemm
 ///
 
-template <typename T, typename Range>
+template <typename T, typename Scalar, typename Range>
 btasUMTensorVarray<T, Range> gemm(
     const btasUMTensorVarray<T, Range> &left,
-    const btasUMTensorVarray<T, Range> &right, T factor,
+    const btasUMTensorVarray<T, Range> &right, Scalar factor,
     const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(left, right, factor, gemm_helper);
 }
 
-template <typename T, typename Range>
+template <typename T, typename Scalar, typename Range>
 void gemm(btasUMTensorVarray<T, Range> &result,
           const btasUMTensorVarray<T, Range> &left,
-          const btasUMTensorVarray<T, Range> &right, T factor,
+          const btasUMTensorVarray<T, Range> &right, Scalar factor,
           const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(result, left, right, factor, gemm_helper);
 }

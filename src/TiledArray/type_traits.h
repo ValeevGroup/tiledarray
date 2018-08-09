@@ -468,6 +468,22 @@ namespace TiledArray {
     { }; // struct is_non_array_lazy_tile
 
 
+    /// Type trait for extracting the value type of tensors and arrays
+    template <typename T, typename Enabler = void> struct value_type;
+
+    template<typename T>
+    struct value_type<T,typename std::enable_if<
+            has_member_type_value_type<T>::value>::type> {
+       typedef typename T::value_type type;
+    };
+
+    template<typename T>
+    struct value_type<Tile<T>,void>
+          : public value_type<typename Tile<T>::tensor_type>
+          {};
+
+
+
     /// Type trait for extracting the numeric type of tensors and arrays.
 
     /// \tparam T The type to extract a numeric type from
