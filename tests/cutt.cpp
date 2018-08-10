@@ -28,16 +28,16 @@
 #include "unit_test_config.h"
 
 struct cuTTFixture {
-  cuTTFixture()
-      : A(100),
-        B(50),
-        C(20),
-        rank(2),
-        extent({100, 100}),
-        extent_nonsym({100, 50}),
-        perm({1, 0}) {}
-  //  cuTTFixture() : A(10), B(5), C(2), rank(2), extent({10,10}),
-  //  extent_nonsym({10,5}), perm({1,0}) {}
+//  cuTTFixture()
+//      : A(100),
+//        B(50),
+//        C(20),
+//        rank(2),
+//        extent({100, 100}),
+//        extent_nonsym({100, 50}),
+//        perm({1, 0}) {}
+    cuTTFixture() : A(10), B(5), C(2), rank(2), extent({10,10}),
+    extent_nonsym({10,5}), perm({1,0}) {}
 
   std::size_t A;
   std::size_t B;
@@ -133,6 +133,60 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym) {
   for (std::size_t i = 0; i < B; i++) {
     for (std::size_t j = 0; j < A; j++) {
       BOOST_CHECK(b_host[j * B + i] == iter);
+      iter++;
+    }
+  }
+
+  free(a_host);
+  free(b_host);
+
+  cudaFree(a_device);
+  cudaFree(b_device);
+}
+
+BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym_rank_three) {
+  int* a_host = (int*)std::malloc(A * B * C * sizeof(int));
+  int* b_host = (int*)std::malloc(A * B * C * sizeof(int));
+  int iter = 0;
+  for (std::size_t i = 0; i < A; i++) {
+    for (std::size_t j = 0; j < B; j++) {
+      for (std::size_t k = 0; k < C; k++) {
+        a_host[iter] = iter;
+        iter++;
+      }
+    }
+  }
+
+  int* a_device;
+  cudaMalloc(&a_device, A * B * C * sizeof(int));
+  int* b_device;
+  cudaMalloc(&b_device, A * B * C * sizeof(int));
+
+  cudaMemcpy(a_device, a_host, A * B * C * sizeof(int), cudaMemcpyHostToDevice);
+
+  cuttHandle plan;
+  cuttResult_t status;
+
+  std::vector<int> extent3 {B,A,C};
+
+  std::vector<int> perm3 {1,0,2};
+  status =
+          cuttPlan(&plan, 3, extent3.data(), perm3.data(), sizeof(int), 0);
+
+  BOOST_CHECK(status == CUTT_SUCCESS);
+
+  status = cuttExecute(plan, a_device, b_device);
+
+  BOOST_CHECK(status == CUTT_SUCCESS);
+  cuttDestroy(plan);
+
+  cudaMemcpy(b_host, b_device, A * B * C * sizeof(int), cudaMemcpyDeviceToHost);
+
+  iter = 0;
+  for (std::size_t i = 0; i < A; i++) {
+    for (std::size_t j = 0; j < B; j++) {
+      for (std::size_t k = 0; k < C; k++)
+      BOOST_CHECK(b_host[j*A*C + i * C + k ] == iter);
       iter++;
     }
   }
@@ -356,18 +410,112 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_three) {
     }
   }
 
-  TiledArray::Permutation permutation({1, 2, 0});
+  // b(k,i,j) = a(i,j,k)
+  {
+    TiledArray::Permutation permutation({1, 2, 0});
 
-  auto b = permute(a, permutation);
+    auto b = permute(a, permutation);
 
-  cudaDeviceSynchronize();
+    cudaDeviceSynchronize();
 
-  iter = 0;
-  for (std::size_t i = 0; i < A; i++) {
-    for (std::size_t j = 0; j < B; j++) {
-      for (std::size_t k = 0; k < C; k++) {
-        BOOST_CHECK(b(k, i, j) == iter);
-        iter++;
+    iter = 0;
+    for (std::size_t i = 0; i < A; i++) {
+      for (std::size_t j = 0; j < B; j++) {
+        for (std::size_t k = 0; k < C; k++) {
+          BOOST_CHECK(b(k, i, j) == iter);
+          iter++;
+        }
+      }
+    }
+  }
+
+
+  // b(j,i,k) = a(i,j,k)
+  {
+    TiledArray::Permutation permutation({1, 0, 2});
+
+    auto b = permute(a, permutation);
+
+    cudaDeviceSynchronize();
+
+    iter = 0;
+    for (std::size_t i = 0; i < A; i++) {
+      for (std::size_t j = 0; j < B; j++) {
+        for (std::size_t k = 0; k < C; k++) {
+          BOOST_CHECK(b(j, i, k) == iter);
+          iter++;
+        }
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_four) {
+  std::size_t a = 2;
+  std::size_t b = 3;
+  std::size_t c = 6;
+  std::size_t d = 4;
+
+  TiledArray::Range range(std::vector<std::size_t>({a, b, c, d}));
+
+  using Tile = btasUMTensorVarray<int, TiledArray::Range>;
+
+  auto tile_a = Tile(range);
+
+  std::size_t iter = 0;
+
+  // initialize tensor
+  for (std::size_t i = 0; i < a; i++) {
+    for (std::size_t j = 0; j < b; j++) {
+      for (std::size_t k = 0; k < c; k++) {
+        for (std::size_t l = 0; l < d; l++) {
+          tile_a[iter] = iter;
+          iter++;
+        }
+      }
+    }
+  }
+
+  // b(i,l,k,j) = a(i,j,k,l)
+  {
+    TiledArray::Permutation permutation({0, 3, 2, 1});
+
+    auto tile_b = permute(tile_a, permutation);
+
+    cudaDeviceSynchronize();
+
+    // validate
+    iter = 0;
+    for (std::size_t i = 0; i < a; i++) {
+      for (std::size_t j = 0; j < b; j++) {
+        for (std::size_t k = 0; k < c; k++) {
+          for (std::size_t l = 0; l < d; l++) {
+            BOOST_CHECK_EQUAL(tile_b(i, l, k, j), iter);
+            iter++;
+          }
+        }
+      }
+    }
+  }
+
+  // b(j,i,l,k) = a(i,j,k,l)
+  {
+    TiledArray::Permutation permutation({1, 0, 3, 2});
+
+    auto tile_b = permute(tile_a, permutation);
+
+    cudaDeviceSynchronize();
+
+    // validate
+    iter = 0;
+    for (std::size_t i = 0; i < a; i++) {
+      for (std::size_t j = 0; j < b; j++) {
+        for (std::size_t k = 0; k < c; k++) {
+          for (std::size_t l = 0; l < d; l++) {
+            BOOST_CHECK_EQUAL(tile_b(j, i, l, k), iter);
+            iter++;
+          }
+        }
       }
     }
   }
@@ -407,7 +555,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
 
   // b(i,j,k,l,m,n) = a(i,l,k,j,n,m)
   {
-    TiledArray::Permutation permutation({0,3,2,1,5,4});
+    TiledArray::Permutation permutation({0, 3, 2, 1, 5, 4});
 
     auto tile_b = permute(tile_a, permutation);
 
@@ -421,7 +569,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
           for (std::size_t l = 0; l < d; l++) {
             for (std::size_t m = 0; m < e; m++) {
               for (std::size_t n = 0; n < f; n++) {
-                BOOST_CHECK_EQUAL(tile_b(i,l,k,j,n,m), iter);
+                BOOST_CHECK_EQUAL(tile_b(i, l, k, j, n, m), iter);
                 iter++;
               }
             }
@@ -429,13 +577,11 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
         }
       }
     }
-
   }
-
 
   // b(j,i,m,l,k,n) = a(i,j,k,l,m,n)
   {
-    TiledArray::Permutation permutation({1,0,4,3,2,5});
+    TiledArray::Permutation permutation({1, 0, 4, 3, 2, 5});
 
     auto tile_b = permute(tile_a, permutation);
 
@@ -449,7 +595,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
           for (std::size_t l = 0; l < d; l++) {
             for (std::size_t m = 0; m < e; m++) {
               for (std::size_t n = 0; n < f; n++) {
-                BOOST_CHECK_EQUAL(tile_b(j,i,m,l,k,n), iter);
+                BOOST_CHECK_EQUAL(tile_b(j, i, m, l, k, n), iter);
                 iter++;
               }
             }
@@ -457,7 +603,6 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
         }
       }
     }
-
   }
 }
 
