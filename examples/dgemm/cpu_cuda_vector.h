@@ -171,7 +171,7 @@ bool in_memory_space(const cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) noex
 }
 
 template <ExecutionSpace Space, typename T, typename HostAlloc, typename DeviceAlloc>
-void to_execution_space(cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) {
+void to_execution_space(cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec, cudaStream_t stream=0) {
   switch(Space) {
     case ExecutionSpace::CPU: {
       vec.to_host();

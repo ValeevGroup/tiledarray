@@ -26,6 +26,7 @@
 #include <tiledarray.h>
 #include <TiledArray/tensor/cuda/btas_um_tensor.h>
 #include "cpu_cuda_vector.h"
+#include <TiledArray/external/btas.h>
 // clang-format on
 
 namespace TiledArray {
@@ -34,15 +35,11 @@ namespace TiledArray {
 /// cuda gemm interface function on left*right
 ///
 
-template <typename T, typename Range, typename AllocHost, typename AllocDevice>
-btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-gemm(const btas::Tensor<T, Range,
-                        TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-         &left,
-     const btas::Tensor<T, Range,
-                        TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-         &right,
-     T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+template <typename T, typename Range>
+btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> gemm(
+    const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &left,
+    const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &right,
+    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(left, right, factor, gemm_helper);
 }
 
@@ -50,17 +47,11 @@ gemm(const btas::Tensor<T, Range,
 /// cuda gemm interface function on result = left*right
 ///
 
-template <typename T, typename Range, typename AllocHost, typename AllocDevice>
-void gemm(
-    btas::Tensor<T, Range,
-                 TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-        &result,
-    const btas::Tensor<
-        T, Range, TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>> &left,
-    const btas::Tensor<T, Range,
-                       TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-        &right,
-    T factor, const TiledArray::math::GemmHelper &gemm_helper) {
+template <typename T, typename Range>
+void gemm(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &result,
+          const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &left,
+          const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &right,
+          T factor, const TiledArray::math::GemmHelper &gemm_helper) {
   return btas_tensor_gemm_cuda_impl(result, left, right, factor, gemm_helper);
 }
 
@@ -68,29 +59,77 @@ void gemm(
 /// cuda axpy interface function
 ///
 
-template <typename T, typename Range, typename AllocHost, typename AllocDevice>
-void add_to(
-    btas::Tensor<T, Range,
-                 TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-        &result,
-    const btas::Tensor<T, Range,
-                       TiledArray::cpu_cuda_vector<T, AllocHost, AllocDevice>>
-        &arg) {
-  btas_tensor_add_to_cuda_impl(result, arg);
+template <typename T, typename Range>
+void add_to(btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &result,
+            const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &arg) {
+  btas_tensor_add_to_cuda_impl(result, arg, T(1.0));
 }
 
 ///
 /// cuda dot interface function
 ///
 
-template <typename T>
-typename btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                      TiledArray::cpu_cuda_vector<T>>::value_type
+template <typename T, typename Range>
+typename btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>::value_type
 squared_norm(
-    const btas::Tensor<T, btas::RangeNd<CblasRowMajor, std::array<short, 2>>,
-                       TiledArray::cpu_cuda_vector<T>> &arg) {
+    const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &arg) {
   return btas_tensor_squared_norm_cuda_impl(arg);
 }
+
+template <typename T, typename Range>
+typename btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>::value_type
+norm(const btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>> &arg) {
+  return std::sqrt(squared_norm(arg));
+}
+
+/// to host for CPU GPU Array
+template <typename T, typename Range, typename Policy>
+void to_host(
+    TiledArray::DistArray<TiledArray::Tile<btas::Tensor<
+                              T, Range, TiledArray::cpu_cuda_vector<T>>>,
+                          Policy> &cpu_cuda_array) {
+  auto to_host =
+      [](TiledArray::Tile<
+          btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>> &tile) {
+
+        auto &stream = detail::get_stream_based_on_range(tile.range());
+
+        // do norm on GPU
+        auto tile_norm = norm(tile.tensor());
+
+        TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
+            tile.tensor().storage(), stream);
+
+        return tile_norm;
+      };
+
+  foreach_inplace(cpu_cuda_array, to_host);
+  cpu_cuda_array.world().gop.fence();
+  cudaDeviceSynchronize();
+};
+
+/// to device for CPU GPU array
+template <typename T, typename Range, typename Policy>
+void to_device(
+    TiledArray::DistArray<TiledArray::Tile<btas::Tensor<
+                              T, Range, TiledArray::cpu_cuda_vector<T>>>,
+                          Policy> &cpu_gpu_array) {
+  auto to_device =
+      [](TiledArray::Tile<
+          btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>> &tile) {
+
+        auto &stream = detail::get_stream_based_on_range(tile.range());
+
+        TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+            tile.tensor().storage(), stream);
+
+        return norm(tile.tensor());
+      };
+
+  foreach_inplace(cpu_gpu_array, to_device);
+  cpu_gpu_array.world().gop.fence();
+  cudaDeviceSynchronize();
+};
 
 }  // namespace TiledArray
 
@@ -178,22 +217,14 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   {
     // Construct and initialize arrays
 
-    TAMatrix a_ta(world, trange_a);
-    TAMatrix b_ta(world, trange_b);
+    CUDAMatrix a(world, trange_a);
+    CUDAMatrix b(world, trange_b);
 
-    a_ta.fill(val_a);
-    b_ta.fill(val_b);
+    a.fill(val_a);
+    b.fill(val_b);
 
-    // convert from TA tensor to UM tensor
-    CUDAMatrix a =
-        TA::ta_tensor_to_um_tensor<value_type, CUDATile, TA::DensePolicy>(a_ta);
-    CUDAMatrix b =
-        TA::ta_tensor_to_um_tensor<value_type, CUDATile, TA::DensePolicy>(b_ta);
-
-    // foreach_inplace(a, to_device);
-    // foreach_inplace(b, to_device);
-    //    world.gop.fence();
-    //    cudaDeviceSynchronize();
+    TA::to_device(a);
+    TA::to_device(b);
 
     // Start clock
     const double wall_time_start = madness::wall_time();
@@ -233,13 +264,14 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   //  }
 
   CUDAMatrix::wait_for_lazy_cleanup(world);
+  TA::to_host(c);
 
   // test permutation
-  c("m,n") = c("n,m");
-//  cudaDeviceSynchronize();
-//  c("m,n") = c("n,m");
+  //  c("m,n") = c("n,m");
+  //  cudaDeviceSynchronize();
+  //  c("m,n") = c("n,m");
 
-//  cudaDeviceSynchronize();
+  //  cudaDeviceSynchronize();
   // verify it with gpu result
 
   // convert um array to ta tensor array
@@ -399,16 +431,14 @@ int try_main(int argc, char **argv) {
     }
   }  // print device properties
 
-  //  if (storage_type == "cpu_cuda_vector") {
-  //    if (real_type_str == "double")
-  //      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn,
-  //      Bn,
-  //                                                        Nk, Bk, nrepeat);
-  //    else
-  //      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn,
-  //      Bn,
-  //                                                       Nk, Bk, nrepeat);
-  if (storage_type == "cuda_um_btas_varray") {
+  if (storage_type == "cpu_cuda_vector") {
+    if (real_type_str == "double")
+      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
+                                                        Nk, Bk, nrepeat);
+    else
+      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn,
+                                                       Nk, Bk, nrepeat);
+  } else if (storage_type == "cuda_um_btas_varray") {
     //  } else if (storage_type == "cuda_um_btas_varray") {
     if (real_type_str == "double")
       do_main_body<TiledArray::cuda_um_btas_varray<double>>(
@@ -417,14 +447,14 @@ int try_main(int argc, char **argv) {
       do_main_body<TiledArray::cuda_um_btas_varray<float>>(world, Nm, Bm, Nn,
                                                            Bn, Nk, Bk, nrepeat);
   }
-// else if (storage_type == "cuda_um_thrust_vector") {
-//    if (real_type_str == "double")
-//      do_main_body<TiledArray::cuda_um_thrust_vector<double>>(
-//          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-//    else
-//      do_main_body<TiledArray::cuda_um_thrust_vector<float>>(
-//          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
-//  }
+  // else if (storage_type == "cuda_um_thrust_vector") {
+  //    if (real_type_str == "double")
+  //      do_main_body<TiledArray::cuda_um_thrust_vector<double>>(
+  //          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+  //    else
+  //      do_main_body<TiledArray::cuda_um_thrust_vector<float>>(
+  //          world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
+  //  }
   else {
     throw std::runtime_error("Invalid storage type!\n");
   }
