@@ -28,10 +28,10 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
+#include <TiledArray/external/cutt.h>
 #include <TiledArray/range.h>
 #include <TiledArray/tensor/cuda/btas_cublas.h>
 #include <TiledArray/tensor/tensor.h>
-#include <cutt.h>
 
 /*
  * btas::Tensor with UM storage cuda_um_btas_varray
@@ -40,7 +40,6 @@
 template <typename T, typename Range = TiledArray::Range>
 using btasUMTensorVarray =
     btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
-
 
 /// serialize functions
 namespace madness {
@@ -109,17 +108,22 @@ btasUMTensorVarray<T, Range> clone(const btasUMTensorVarray<T, Range> &arg) {
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
                                      const TiledArray::Permutation &perm) {
-
-  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
-
   // compute result range
   auto result_range = perm * arg.range();
+  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
+
   auto &stream = detail::get_stream_based_on_range(result_range);
 
-  auto extent = result_range.extent();
+  auto extent = arg.range().extent();
   std::vector<int> extent_int(extent.begin(), extent.end());
 
-  std::vector<int> perm_int(perm.begin(), perm.end());
+  // cuTT uses FROM notation
+  auto perm_inv = perm.inv();
+  std::vector<int> perm_int(perm_inv.begin(), perm_inv.end());
+
+  // cuTT uses ColMajor
+  TiledArray::extent_to_col_major(extent_int);
+  TiledArray::permutation_to_col_major(perm_int);
 
   // allocate result memory
   typename btasUMTensorVarray<T, Range>::storage_type storage;
@@ -317,7 +321,6 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
   assert(false);
 }
 
-
 template <typename T, typename Scalar, typename Range>
 btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
@@ -329,7 +332,7 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
-                                  const TiledArray::Permutation& perm) {
+                                  const TiledArray::Permutation &perm) {
   auto result = mult(arg1, arg2);
   return permute(result, perm);
 }
@@ -338,7 +341,7 @@ template <typename T, typename Scalar, typename Range>
 btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor,
-                                  const TiledArray::Permutation& perm) {
+                                  const TiledArray::Permutation &perm) {
   auto result = mult(arg1, arg2, factor);
   return permute(result, perm);
 }
@@ -346,16 +349,15 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
 ///
 /// mult to
 ///
-template <typename T,typename Range>
+template <typename T, typename Range>
 void mult_to(btasUMTensorVarray<T, Range> &result,
              const btasUMTensorVarray<T, Range> &arg) {
   assert(false);
 }
 
-
 template <typename T, typename Scalar, typename Range>
 void mult_to(btasUMTensorVarray<T, Range> &result,
-            const btasUMTensorVarray<T, Range> &arg, const Scalar factor) {
+             const btasUMTensorVarray<T, Range> &arg, const Scalar factor) {
   mult_to(result, arg);
   scale_to(result, factor);
 }
