@@ -155,6 +155,7 @@ if(CUDA_FOUND)
 
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
+     TiledArray/external/cutt.h
      TiledArray/math/cublas.h
      TiledArray/tensor/cuda/btas_cublas.h
      TiledArray/tensor/cuda/btas_um_tensor.h
@@ -181,7 +182,7 @@ if(CUDA_FOUND)
           TiledArray/tensor/cuda/um_storage.cu)
 
   # the list of libraries on which TiledArray depends on
-  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" TiledArray_CUTT TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" umpire TiledArray_CUTT TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
   # Create the TiledArray library
   cuda_add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})

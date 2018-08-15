@@ -28,7 +28,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <cuda_runtime.h>
+#include <TiledArray/external/cuda.h>
 
 #include <memory>
 #include <stdexcept>
@@ -44,7 +44,8 @@ class cuda_um_allocator_impl {
   using reference = T&;
   using const_reference = const T&;
 
-  cuda_um_allocator_impl() noexcept {}
+  cuda_um_allocator_impl() noexcept
+      : um_dynamic_pool_(&cudaEnv::instance()->um_dynamic_pool()) {}
 
   template <class U>
   cuda_um_allocator_impl(const cuda_um_allocator_impl<U>&) noexcept {}
@@ -52,23 +53,30 @@ class cuda_um_allocator_impl {
   value_type* allocate(size_t n) {
     value_type* result = nullptr;
 
-    cudaError_t error =
-        cudaMallocManaged(&result, n * sizeof(T), cudaMemAttachGlobal);
+    result = static_cast<value_type*>(um_dynamic_pool_->allocate(n * sizeof(T)));
 
-    if (error != cudaSuccess) {
-      throw std::bad_alloc();
-    }
+    //    cudaError_t error =
+    //        cudaMallocManaged(&result, n * sizeof(T),
+    //        cudaMemAttachGlobal);
+
+    //    if (error != cudaSuccess) {
+    //      throw std::bad_alloc();
+    //    }
 
     return result;
   }
 
   void deallocate(value_type* ptr, size_t) {
-    cudaError_t error = cudaFree(ptr);
+    //    cudaError_t error = cudaFree(ptr);
 
-    if (error != cudaSuccess) {
-      throw std::bad_alloc();
-    }
+    //    if (error != cudaSuccess) {
+    //      throw std::bad_alloc();
+    //    }
+    um_dynamic_pool_->deallocate(ptr);
   }
+
+ private:
+  umpire::Allocator* um_dynamic_pool_;
 };  // class cuda_um_allocator
 
 template <class T1, class T2>

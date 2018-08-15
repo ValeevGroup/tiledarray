@@ -31,96 +31,21 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 
-#include <mpi.h>
-#include <madness/tensor/cblas.h>
+// for memory management
+#include <umpire/Umpire.hpp>
+#include <umpire/strategy/DynamicPool.hpp>
+#include <umpire/strategy/ThreadSafeAllocator.hpp>
 
-#include <TiledArray/math/cublas.h>
+#include <madness/tensor/cblas.h>
+#include <mpi.h>
+
 #include <TiledArray/error.h>
+#include <TiledArray/math/cublas.h>
 
 #include <cassert>
 #include <vector>
 
 namespace TiledArray {
-
-/**
- * cudaEnv set up global environment
- *
- * Singleton class
- */
-
-class cudaEnv {
- public:
-  cudaEnv(int num_devices, int device_id, int num_streams)
-      : num_cuda_devices_(num_devices),
-        current_cuda_device_id_(device_id),
-        num_cuda_streams_(num_streams) {
-    // set device for current MPI process
-    auto error = cudaSetDevice(current_cuda_device_id_);
-    TA_ASSERT(error == cudaSuccess);
-    //    if (error != cudaSuccess) {
-    //      std::cout << "error(cudaSetDevice) = " << error << std::endl;
-    //    }
-
-    /// TODO set device for all MAD_THREADS
-
-    // creates cuda streams on current device
-    cuda_streams_.resize(num_cuda_streams_);
-    for (auto& stream : cuda_streams_) {
-      auto error = cudaStreamCreate(&stream);
-      TA_ASSERT(error == cudaSuccess);
-    }
-  }
-
-  ~cudaEnv() {
-    // destroy cuda streams on current device
-    for (auto& stream : cuda_streams_) {
-      auto error = cudaStreamDestroy(stream);
-      TA_ASSERT(error == cudaSuccess);
-    }
-  }
-
-  /// no copy constructor
-  cudaEnv(cudaEnv& cuda_global) = delete;
-
-  /// no assignment constructor
-  cudaEnv operator=(cudaEnv& cuda_global) = delete;
-
-  /// access to static member
-  static std::unique_ptr<cudaEnv>& instance() {
-    TA_ASSERT(instance_);
-    return instance_;
-  }
-
-  /// initialize static member
-  static void initialize(std::unique_ptr<cudaEnv>& instance) {
-    instance_ = std::move(instance);
-  }
-
-  /// finalize the static member
-  static void finalize(){
-    instance_.reset(nullptr);
-  }
-
-  int num_cuda_devices() const { return num_cuda_devices_; }
-
-  int current_cuda_device_id() const { return current_cuda_device_id_; }
-
-  int num_cuda_streams() const { return num_cuda_streams_; }
-
-  const cudaStream_t& cuda_stream(int i) const {
-    TA_ASSERT(i < cuda_streams_.size());
-    return cuda_streams_[i];
-  }
-
- private:
-  static std::unique_ptr<cudaEnv> instance_;
-
-  int num_cuda_devices_;
-  int current_cuda_device_id_;
-
-  int num_cuda_streams_;
-  std::vector<cudaStream_t> cuda_streams_;
-};
 
 namespace detail {
 
@@ -188,16 +113,122 @@ inline int current_cuda_device_id() {
 
 }  // namespace detail
 
+
+/**
+ * cudaEnv set up global environment
+ *
+ * Singleton class
+ */
+
+class cudaEnv {
+ public:
+  cudaEnv(int num_devices, int device_id, int num_streams,
+          umpire::Allocator alloc)
+      : um_dynamic_pool_(alloc),
+        num_cuda_devices_(num_devices),
+        current_cuda_device_id_(device_id),
+        num_cuda_streams_(num_streams) {
+    // set device for current MPI process
+    auto error = cudaSetDevice(current_cuda_device_id_);
+    TA_ASSERT(error == cudaSuccess);
+    //    if (error != cudaSuccess) {
+    //      std::cout << "error(cudaSetDevice) = " << error << std::endl;
+    //    }
+
+    /// TODO set device for all MAD_THREADS
+
+    // creates cuda streams on current device
+    cuda_streams_.resize(num_cuda_streams_);
+    for (auto& stream : cuda_streams_) {
+      auto error = cudaStreamCreate(&stream);
+      TA_ASSERT(error == cudaSuccess);
+    }
+  }
+
+  ~cudaEnv() {
+    // destroy cuda streams on current device
+    for (auto& stream : cuda_streams_) {
+      auto error = cudaStreamDestroy(stream);
+      TA_ASSERT(error == cudaSuccess);
+    }
+  }
+
+  /// no copy constructor
+  cudaEnv(cudaEnv& cuda_global) = delete;
+
+  /// no assignment constructor
+  cudaEnv operator=(cudaEnv& cuda_global) = delete;
+
+  /// access to static member
+  static std::unique_ptr<cudaEnv>& instance() {
+    TA_ASSERT(instance_);
+    return instance_;
+  }
+
+  /// initialize static member
+  static void initialize() {
+
+    // initialize only when not initialized
+    if(instance_ == nullptr){
+
+      int num_streams = detail::num_cuda_streams();
+      int num_devices = detail::num_cuda_devices();
+      int device_id = detail::current_cuda_device_id();
+
+      // make Thread Safe UM Dynamic POOL
+
+      auto& rm = umpire::ResourceManager::getInstance();
+
+      auto um_alloc = rm.getAllocator("UM");
+      auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
+              "UMDynamicPool", um_alloc);
+      auto thread_safe_um_dynamic_pool =
+              rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
+                      "ThreadSafeUMDynamicPool", um_dynamic_pool);
+
+      auto cuda_env = std::make_unique<cudaEnv>(
+              num_devices, device_id, num_streams, thread_safe_um_dynamic_pool);
+      instance_ = std::move(cuda_env);
+    }
+  }
+
+  /// finalize the static member
+  static void finalize() { instance_.reset(nullptr); }
+
+  int num_cuda_devices() const { return num_cuda_devices_; }
+
+  int current_cuda_device_id() const { return current_cuda_device_id_; }
+
+  int num_cuda_streams() const { return num_cuda_streams_; }
+
+  const cudaStream_t& cuda_stream(int i) const {
+    TA_ASSERT(i < cuda_streams_.size());
+    return cuda_streams_[i];
+  }
+
+  umpire::Allocator& um_dynamic_pool() {
+    return um_dynamic_pool_;
+  }
+
+ private:
+  static std::unique_ptr<cudaEnv> instance_;
+
+  /// a Thread Safe, Dynamic memory poll for Unified Memory
+  umpire::Allocator um_dynamic_pool_;
+
+  int num_cuda_devices_;
+  int current_cuda_device_id_;
+
+  int num_cuda_streams_;
+  std::vector<cudaStream_t> cuda_streams_;
+};
+
+
 /// initialize cuda environment
 inline void cuda_initialize() {
   /// initialize cudaGlobal
 
-  int num_streams = detail::num_cuda_streams();
-  int num_devices = detail::num_cuda_devices();
-  int device_id = detail::current_cuda_device_id();
-
-  auto cuda_env = std::make_unique<cudaEnv>(num_devices, device_id, num_streams);
-  cudaEnv::initialize(cuda_env);
+  cudaEnv::initialize();
 
   //
   cuBLASHandlePool::handle();
@@ -209,7 +240,6 @@ inline void cuda_finalize() {
   cudaEnv::finalize();
   cublasDestroy(cuBLASHandlePool::handle());
 }
-
 
 }  // namespace TiledArray
 
