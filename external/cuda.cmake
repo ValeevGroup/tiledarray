@@ -23,6 +23,8 @@ if(CUDA_FOUND)
           INTERFACE_LINK_LIBRARIES
           "${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES}"
           )
+
+  install(TARGETS TiledArray_CUDA EXPORT tiledarray COMPONENT tiledarray)
 #include_directories(${CUDA_INCLUDE_DIRS})
 
 ##
