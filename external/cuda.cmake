@@ -1,5 +1,9 @@
 find_package(CUDA)
 
+message(STATUS "CUDA version:      ${CUDA_VERSION_STRING}")
+message(STATUS "CUDA Include Path: ${CUDA_INCLUDE_DIRS}")
+message(STATUS "CUDA Libraries:    ${CUDA_LIBRARIES}")
+message(STATUS "cuBLAS Libraries:    ${CUDA_CUBLAS_LIBRARIES}")
 
 if(CUDA_FOUND)
   set (TILEDARRAY_HAS_CUDA 1)
@@ -19,7 +23,7 @@ if(CUDA_FOUND)
           INTERFACE_INCLUDE_DIRECTORIES
           ${CUDA_INCLUDE_DIRS}
           INTERFACE_LINK_LIBRARIES
-          "${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES}"
+          "${CUDA_LIBRARIES};${CUDA_CUBLAS_LIBRARIES}"
           )
 
   set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
