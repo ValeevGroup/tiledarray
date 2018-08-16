@@ -11,8 +11,6 @@ endif(CUDA_FOUND)
 if(CUDA_FOUND)
 
   # TODO test CUDA
-  set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
-  set(CUDA_CUBLAS_LIBRARIES PUBLIC ${CUDA_CUBLAS_LIBRARIES})
   # make cuda interface library
   add_library(TiledArray_CUDA INTERFACE)
 
@@ -23,6 +21,9 @@ if(CUDA_FOUND)
           INTERFACE_LINK_LIBRARIES
           "${CUDA_LIBRARIES} ${CUDA_CUBLAS_LIBRARIES}"
           )
+
+  set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
+  set(CUDA_CUBLAS_LIBRARIES PUBLIC ${CUDA_CUBLAS_LIBRARIES})
 
   install(TARGETS TiledArray_CUDA EXPORT tiledarray COMPONENT tiledarray)
 #include_directories(${CUDA_INCLUDE_DIRS})
