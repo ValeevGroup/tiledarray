@@ -8,7 +8,7 @@ if(UMPIRE_INSTALL_DIR)
     ## check umpire
     set(umpire_DIR ${UMPIRE_INSTALL_DIR}/share/umpire/cmake)
 
-    find_package(umpire)
+    find_package(umpire REQUIRED)
 
 elseif(TA_EXPERT)
 

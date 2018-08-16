@@ -23,6 +23,14 @@ if(NOT TARGET MADworld)
   find_package(MADNESS 0.10.1 CONFIG QUIET REQUIRED COMPONENTS world PATHS ${MADNESS_CONFIG_DIR} NO_DEFAULT_PATH)
 endif()
 
+set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
+if(TILEDARRAY_HAS_CUDA)
+    if(NOT TARGET umpire)
+        # find the path to config dir
+        set(UMPIRE_CONFIG_DIR "@umpire_DIR@")
+        find_package(umpire PATHS ${UMPIRE_CONFIG_DIR})
+    endif()
+endif()
 # Set the tiledarray compiled library target
 set(TILEDARRAY_LIBRARIES tiledarray)
 
