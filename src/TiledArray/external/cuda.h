@@ -113,7 +113,6 @@ inline int current_cuda_device_id() {
 
 }  // namespace detail
 
-
 /**
  * cudaEnv set up global environment
  *
@@ -167,27 +166,27 @@ class cudaEnv {
 
   /// initialize static member
   static void initialize() {
-
     // initialize only when not initialized
-    if(instance_ == nullptr){
-
+    if (instance_ == nullptr) {
       int num_streams = detail::num_cuda_streams();
       int num_devices = detail::num_cuda_devices();
       int device_id = detail::current_cuda_device_id();
 
-      // make Thread Safe UM Dynamic POOL
+//      umpire::util::Logger::getActiveLogger()->setLoggingMsgLevel(
+//          umpire::util::message::Debug);
+      //       make Thread Safe UM Dynamic POOL
 
       auto& rm = umpire::ResourceManager::getInstance();
 
-      auto um_alloc = rm.getAllocator("UM");
       auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
-              "UMDynamicPool", um_alloc);
+          "UMDynamicPool", rm.getAllocator("UM"));
       auto thread_safe_um_dynamic_pool =
-              rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
-                      "ThreadSafeUMDynamicPool", um_dynamic_pool);
+          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
+              "ThreadSafeUMDynamicPool", rm.getAllocator("UMDynamicPool"));
 
-      auto cuda_env = std::make_unique<cudaEnv>(
-              num_devices, device_id, num_streams, thread_safe_um_dynamic_pool);
+      auto cuda_env =
+          std::make_unique<cudaEnv>(num_devices, device_id, num_streams,
+                                    rm.getAllocator("ThreadSafeUMDynamicPool"));
       instance_ = std::move(cuda_env);
     }
   }
@@ -206,14 +205,12 @@ class cudaEnv {
     return cuda_streams_[i];
   }
 
-  umpire::Allocator& um_dynamic_pool() {
-    return um_dynamic_pool_;
-  }
+  umpire::Allocator& um_dynamic_pool() { return um_dynamic_pool_; }
 
  private:
   static std::unique_ptr<cudaEnv> instance_;
 
-  /// a Thread Safe, Dynamic memory poll for Unified Memory
+  /// a Thread Safe, Dynamic memory pool for Unified Memory
   umpire::Allocator um_dynamic_pool_;
 
   int num_cuda_devices_;
@@ -222,7 +219,6 @@ class cudaEnv {
   int num_cuda_streams_;
   std::vector<cudaStream_t> cuda_streams_;
 };
-
 
 /// initialize cuda environment
 inline void cuda_initialize() {

@@ -41,37 +41,29 @@ template <class T>
 class cuda_um_allocator_impl {
  public:
   using value_type = T;
+  using pointer = T*;
   using reference = T&;
   using const_reference = const T&;
+
 
   cuda_um_allocator_impl() noexcept
       : um_dynamic_pool_(&cudaEnv::instance()->um_dynamic_pool()) {}
 
   template <class U>
-  cuda_um_allocator_impl(const cuda_um_allocator_impl<U>&) noexcept {}
+  cuda_um_allocator_impl(const cuda_um_allocator_impl<U>& rhs) noexcept
+      : um_dynamic_pool_(rhs.um_dynamic_pool_) {}
 
-  value_type* allocate(size_t n) {
-    value_type* result = nullptr;
+  /// allocates um memory using umpire dynamic pool
+  pointer allocate(size_t n) {
+    pointer result = nullptr;
 
-    result = static_cast<value_type*>(um_dynamic_pool_->allocate(n * sizeof(T)));
-
-    //    cudaError_t error =
-    //        cudaMallocManaged(&result, n * sizeof(T),
-    //        cudaMemAttachGlobal);
-
-    //    if (error != cudaSuccess) {
-    //      throw std::bad_alloc();
-    //    }
+    result = static_cast<pointer>(um_dynamic_pool_->allocate(n * sizeof(T)));
 
     return result;
   }
 
+  /// deallocate um memory using umpire dynamic pool
   void deallocate(value_type* ptr, size_t) {
-    //    cudaError_t error = cudaFree(ptr);
-
-    //    if (error != cudaSuccess) {
-    //      throw std::bad_alloc();
-    //    }
     um_dynamic_pool_->deallocate(ptr);
   }
 
@@ -80,9 +72,9 @@ class cuda_um_allocator_impl {
 };  // class cuda_um_allocator
 
 template <class T1, class T2>
-bool operator==(const cuda_um_allocator_impl<T1>&,
-                const cuda_um_allocator_impl<T2>&) noexcept {
-  return true;
+bool operator==(const cuda_um_allocator_impl<T1>& lhs,
+                const cuda_um_allocator_impl<T2>& rhs) noexcept {
+  return lhs.um_dynamic_pool_ == rhs.um_dynamic_pool_;
 }
 
 template <class T1, class T2>
@@ -123,7 +115,7 @@ class default_init_allocator : public A {
 };
 
 template <typename T>
-using cuda_um_allocator = default_init_allocator<T, cuda_um_allocator_impl<T>>;
+using cuda_um_allocator = default_init_allocator<T,cuda_um_allocator_impl<T>>;
 
 }  // namespace TiledArray
 
