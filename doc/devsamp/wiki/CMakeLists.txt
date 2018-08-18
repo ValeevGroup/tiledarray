@@ -1,6 +1,6 @@
 #
 #  This file is a part of TiledArray.
-#  Copyright (C) 2013  Virginia Tech
+#  Copyright (C) 2018  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,22 +15,13 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#  Justus Calvin
-#  Department of Chemistry, Virginia Tech
-#
-#  CMakeLists.txt
-#  Jul 19, 2013
-#
 
-#-- Add an Option to toggle the generation of the API documentation
+# List of all complete examples
+set(wikiexamples user-guide-1;user-guide-2)
 
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  configure_file(Doxyfile.in Doxyfile @ONLY IMMEDIATE)
-  add_custom_target (doc
-    COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doc/Doxyfile
-    SOURCES ${PROJECT_BINARY_DIR}/doc/Doxyfile)
-endif()
+foreach(example ${wikiexamples})
+  add_executable(${example} EXCLUDE_FROM_ALL ${example}.cpp)
+  target_link_libraries(${example} PRIVATE tiledarray)
+  add_dependencies(examples ${example})
+endforeach()
 
-#-- include devsamp code
-add_subdirectory(devsamp)

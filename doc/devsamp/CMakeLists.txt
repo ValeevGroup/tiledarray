@@ -1,6 +1,6 @@
 #
 #  This file is a part of TiledArray.
-#  Copyright (C) 2013  Virginia Tech
+#  Copyright (C) 2018  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -22,15 +22,5 @@
 #  Jul 19, 2013
 #
 
-#-- Add an Option to toggle the generation of the API documentation
-
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  configure_file(Doxyfile.in Doxyfile @ONLY IMMEDIATE)
-  add_custom_target (doc
-    COMMAND ${DOXYGEN_EXECUTABLE} ${PROJECT_BINARY_DIR}/doc/Doxyfile
-    SOURCES ${PROJECT_BINARY_DIR}/doc/Doxyfile)
-endif()
-
-#-- include devsamp code
-add_subdirectory(devsamp)
+#-- include wiki examples
+add_subdirectory(wiki)
