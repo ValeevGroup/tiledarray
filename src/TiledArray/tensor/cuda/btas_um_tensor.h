@@ -457,17 +457,22 @@ void to_host(
 
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
-    // do norm on GPU
-    auto tile_norm = norm(tile.tensor());
-
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
         tile.tensor().storage(), stream);
-
-    return tile_norm;
   };
 
-  foreach_inplace(um_array, to_host);
-  um_array.world().gop.fence();
+  auto &world = um_array.world();
+
+  auto start = um_array.pmap()->begin();
+  auto end = um_array.pmap()->end();
+
+  for (; start != end; ++start) {
+    if (!um_array.is_zero(*start)) {
+      world.taskq.add(to_host, um_array.find(*start));
+    }
+  }
+
+  world.gop.fence();
   cudaDeviceSynchronize();
 };
 
@@ -475,6 +480,7 @@ void to_host(
 template <typename UMTensor, typename Policy>
 void to_device(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
+
   auto to_device = [](TiledArray::Tile<UMTensor> &tile) {
 
     auto &stream = detail::get_stream_based_on_range(tile.range());
@@ -482,11 +488,20 @@ void to_device(
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
         tile.tensor().storage(), stream);
 
-    return norm(tile.tensor());
   };
 
-  foreach_inplace(um_array, to_device);
-  um_array.world().gop.fence();
+  auto &world = um_array.world();
+
+  auto start = um_array.pmap()->begin();
+  auto end = um_array.pmap()->end();
+
+  for (; start != end; ++start) {
+    if (!um_array.is_zero(*start)) {
+      world.taskq.add(to_device, um_array.find(*start));
+    }
+  }
+
+  world.gop.fence();
   cudaDeviceSynchronize();
 };
 
