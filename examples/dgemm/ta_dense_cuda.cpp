@@ -226,6 +226,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     TA::to_device(a);
     TA::to_device(b);
 
+    c("m,n") = a("m,k") * b("k,n");
     // Start clock
     const double wall_time_start = madness::wall_time();
 
