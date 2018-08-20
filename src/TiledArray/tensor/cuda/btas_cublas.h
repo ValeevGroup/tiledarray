@@ -85,10 +85,10 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   // auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
   // auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
 
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-      left.storage(), cuda_stream);
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-      right.storage(), cuda_stream);
+  //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+  //    left.storage(), cuda_stream);
+  //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+  //    right.storage(), cuda_stream);
 
   // Check that the inner dimensions of left and right match
   TA_ASSERT(
@@ -206,10 +206,10 @@ void btas_tensor_gemm_cuda_impl(
 
   auto &stream = detail::get_stream_based_on_range(result.range());
 
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-      left.storage(), stream);
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-      right.storage(), stream);
+//  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+//      left.storage(), stream);
+//  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+//      right.storage(), stream);
 
   // Compute gemm dimensions
   integer m, n, k;

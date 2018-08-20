@@ -509,16 +509,20 @@ void to_device(
 template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tensor<T>, Policy> um_tensor_to_ta_tensor(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
+
+
   const auto convert_tile = [](const TiledArray::Tile<UMTensor> &tile) {
     TiledArray::Tensor<T> result(tile.tensor().range());
     using std::begin;
     const auto n = tile.tensor().size();
-    for (std::size_t i = 0; i < n; i++) {
-      result[i] = tile[i];
-    }
+
+    std::copy_n(tile.data(), n, result.data());
+
+
     return result;
   };
 
+  // prefetch data to host
   to_host(um_array);
 
   auto ta_array = to_new_tile_type(um_array, convert_tile);
@@ -532,15 +536,22 @@ template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
 ta_tensor_to_um_tensor(
     TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
+
   auto convert_tile = [](const TiledArray::Tensor<T> &tile) {
+
     typename UMTensor::storage_type storage(tile.range().area());
 
     UMTensor result(tile.range(), std::move(storage));
 
     const auto n = tile.size();
-    for (std::size_t i = 0; i < n; i++) {
-      result[i] = tile[i];
-    }
+
+    std::copy_n(tile.data(), n, result.data());
+
+    auto &stream = detail::get_stream_based_on_range(result.range());
+
+    // prefetch data to GPU
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+            result.storage(), stream);
 
     return TiledArray::Tile<UMTensor>(result);
   };
