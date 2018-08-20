@@ -17,11 +17,11 @@
 #
 
 # List of all complete examples
-set(wikiexamples user-guide-1;user-guide-2)
+set(wikiexamples user-guide-1;user-guide-1a;user-guide-2)
 
 foreach(example ${wikiexamples})
   add_executable(${example} EXCLUDE_FROM_ALL ${example}.cpp)
-  target_link_libraries(${example} PRIVATE tiledarray)
+  target_link_libraries(${example} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
   add_dependencies(examples ${example})
 endforeach()
 
