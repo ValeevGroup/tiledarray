@@ -158,6 +158,8 @@ if(CUDA_FOUND)
      TiledArray/external/cutt.h
      TiledArray/math/cublas.h
      TiledArray/tensor/cuda/btas_cublas.h
+     TiledArray/tensor/cuda/mult_kernel.h
+     TiledArray/tensor/cuda/mult_kernel.cu
      TiledArray/tensor/cuda/btas_um_tensor.h
      TiledArray/tensor/cuda/platform.h
      TiledArray/tensor/cuda/thrust.h

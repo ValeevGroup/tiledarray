@@ -32,6 +32,7 @@
 #include <btas/tensor.h>
 
 #include <TiledArray/math/gemm_helper.h>
+#include <TiledArray/tensor/cuda/mult_kernel.h>
 #include <TiledArray/tensor/cuda/platform.h>
 #include <TiledArray/tensor/cuda/um_storage.h>
 
@@ -85,9 +86,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   // auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
   // auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
 
-  //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+  // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
   //    left.storage(), cuda_stream);
-  //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+  // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
   //    right.storage(), cuda_stream);
 
   // Check that the inner dimensions of left and right match
@@ -206,10 +207,10 @@ void btas_tensor_gemm_cuda_impl(
 
   auto &stream = detail::get_stream_based_on_range(result.range());
 
-//  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-//      left.storage(), stream);
-//  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-//      right.storage(), stream);
+  //  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+  //      left.storage(), stream);
+  //  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+  //      right.storage(), stream);
 
   // Compute gemm dimensions
   integer m, n, k;
@@ -408,6 +409,43 @@ void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
     TA_ASSERT(false);
     //    btas::axpy(1.0, arg, result);
   }
+}
+
+/// result[i] = result[i] * arg[i]
+template <typename T, typename Range, typename Storage>
+void btas_tensor_mult_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
+                                   const btas::Tensor<T, Range, Storage> &arg) {
+  auto device_id = cudaEnv::instance()->current_cuda_device_id();
+  auto &stream = detail::get_stream_based_on_range(result.range());
+
+  std::size_t n = result.size();
+
+  TA_ASSERT(n == arg.size());
+
+  mult_to_cuda_kernel(result.data(), arg.data(), n, stream, device_id);
+}
+
+/// result[i] = arg1[i] * arg2[i]
+template <typename T, typename Range, typename Storage>
+btas::Tensor<T, Range, Storage> btas_tensor_mult_cuda_impl(
+    const btas::Tensor<T, Range, Storage> &arg1,
+    const btas::Tensor<T, Range, Storage> &arg2) {
+
+  std::size_t n = arg1.size();
+
+  TA_ASSERT(arg2.size() == n);
+
+  auto device_id = cudaEnv::instance()->current_cuda_device_id();
+  auto &cuda_stream = detail::get_stream_based_on_range(arg1.range());
+
+  Storage result_storage;
+  make_device_storage(result_storage, n, cuda_stream);
+  btas::Tensor<T, Range, Storage> result(arg1.range(),
+                                         std::move(result_storage));
+
+  mult_cuda_kernel(result.data(), arg1.data(), arg2.data(), n, cuda_stream, device_id);
+
+  return result;
 }
 
 // foreach(i) result += arg[i] * arg[i]

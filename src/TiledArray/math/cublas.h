@@ -166,11 +166,28 @@ inline cublasStatus_t cublasScal<float,int>(cublasHandle_t handle, int n,
   float alpha_float = float(*alpha);
   return cublasSscal(handle, n, &alpha_float, x, incx);
 };
+
+template <>
+inline cublasStatus_t cublasScal<float,double>(cublasHandle_t handle, int n,
+                                            const double *alpha, float*x,
+                                            int incx) {
+  float alpha_float = float(*alpha);
+  return cublasSscal(handle, n, &alpha_float, x, incx);
+};
+
 //
 template <>
 inline cublasStatus_t cublasScal<double,int>(cublasHandle_t handle, int n,
                                                 const int *alpha, double *x,
                                                 int incx) {
+  double alpha_double = double(*alpha);
+  return cublasDscal(handle, n, &alpha_double, x, incx);
+};
+
+template <>
+inline cublasStatus_t cublasScal<double,float>(cublasHandle_t handle, int n,
+                                             const float *alpha, double *x,
+                                             int incx) {
   double alpha_double = double(*alpha);
   return cublasDscal(handle, n, &alpha_double, x, incx);
 };

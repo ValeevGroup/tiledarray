@@ -100,6 +100,7 @@ struct UMExpressionsFixture : public TiledRangeFixture {
 
   const static TiledRange trange1;
   const static TiledRange trange2;
+  //  const static TiledRange trange3;
 
   using TArrayUMD = TiledArray::DistArray<TA::Tile<btasUMTensorVarray<double>>,
                                           TA::DensePolicy>;
@@ -117,6 +118,8 @@ struct UMExpressionsFixture : public TiledRangeFixture {
 const TiledRange UMExpressionsFixture::trange1 = {{0, 2, 5, 10, 17, 28, 41}};
 const TiledRange UMExpressionsFixture::trange2 = {{0, 2, 5, 10, 17, 28, 41},
                                                   {0, 3, 6, 11, 18, 29, 42}};
+// const TiledRange UMExpressionsFixture::trange3 = {{0,11,20}, {0,10,20},
+// {0,15,20,30}};
 
 BOOST_FIXTURE_TEST_SUITE(um_expressions_suite, UMExpressionsFixture)
 
@@ -130,8 +133,8 @@ BOOST_AUTO_TEST_CASE(tensor_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") + a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") -= a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") - a("c,b,a"));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") *= a("c,b,a"));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") * a("c,b,a"));
+  BOOST_CHECK_NO_THROW(c("a,b,c") *= a("c,b,a"));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") * a("c,b,a"));
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a").conj());
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3,3,3}, {5,5,5}));
@@ -192,16 +195,16 @@ BOOST_AUTO_TEST_CASE(scaled_tensor_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * a("c,b,a")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * a("c,b,a")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("c,b,a")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * a("c,b,a"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a")) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("c,b,a")) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * a("c,b,a")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * a("c,b,a")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("c,b,a")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * a("c,b,a"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a")) * 2);
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("c,b,a")) * 2);
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * a("c,b,a")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * a("c,b,a")));
 }
 //
 BOOST_AUTO_TEST_CASE(add_factories) {
@@ -212,17 +215,18 @@ BOOST_AUTO_TEST_CASE(add_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * (a("c,b,a") + b("a,b,c"))));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(a("c,b,a") + b("a,b,c")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * (a("c,b,a") + b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") + b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") + b("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (conj(a("c,b,a") + b("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") + b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") + b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") + b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") + b("a,b,c"))) * 2);
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") + b("a,b,c"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") +
+  //  b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
+  //  (conj(a("c,b,a") + b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") =
+  //  conj(a("c,b,a") + b("a,b,c")) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
+  //  conj(a("c,b,a") + b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
+  //  (a("c,b,a") + b("a,b,c"))) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
+  //  conj(2 * (a("c,b,a") + b("a,b,c")))); BOOST_CHECK_NO_THROW(c("a,b,c") =
+  //  -conj(a("c,b,a") + b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2
+  //  * (a("c,b,a") + b("a,b,c"))) * 2);
 }
 //
 //
@@ -234,43 +238,42 @@ BOOST_AUTO_TEST_CASE(subt_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * (a("c,b,a") - b("a,b,c"))));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(a("c,b,a") - b("a,b,c")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * (a("c,b,a") - b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") - b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") - b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") - b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") - b("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (conj(a("c,b,a") - b("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") - b("a,b,c")) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") - b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") - b("a,b,c"))) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") - b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") - b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") - b("a,b,c"))) * 2);
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") - b("a,b,c")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") - b("a,b,c"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") - b("a,b,c"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") -
+  //  b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
+  //  (conj(a("c,b,a") - b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") =
+  //  conj(a("c,b,a") - b("a,b,c")) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
+  //  conj(a("c,b,a") - b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
+  //  (a("c,b,a") - b("a,b,c"))) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
+  //  conj(2 * (a("c,b,a") - b("a,b,c")))); BOOST_CHECK_NO_THROW(c("a,b,c") =
+  //  -conj(a("c,b,a") - b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2
+  //  * (a("c,b,a") - b("a,b,c"))) * 2);
 }
 
-// BOOST_AUTO_TEST_CASE( mult_factories )
-//{
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a") * b("a,b,c"));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = (a("c,b,a") * b("a,b,c")) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (a("c,b,a") * b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = (2 * (a("c,b,a") * b("a,b,c"))) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * (a("c,b,a") * b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -(a("c,b,a") * b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * (a("c,b,a") * b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") * b("a,b,c")));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") * b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") * b("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") *
-//  b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (conj(a("c,b,a")
-//  * b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") *
-//  b("a,b,c")) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") *
-//  b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") *
-//  b("a,b,c"))) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 *
-//  (a("c,b,a") * b("a,b,c")))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-//  -conj(a("c,b,a") * b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 *
-//  (a("c,b,a") * b("a,b,c"))) * 2);
-//
-//}
-
+BOOST_AUTO_TEST_CASE(mult_factories) {
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a") * b("a,b,c"));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = (a("c,b,a") * b("a,b,c")) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (a("c,b,a") * b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = (2 * (a("c,b,a") * b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * (a("c,b,a") * b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -(a("c,b,a") * b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * (a("c,b,a") * b("a,b,c"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") * b("a,b,c")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") * b("a,b,c"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") * b("a,b,c"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") *
+  //  b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
+  //  (conj(a("c,b,a")
+  //  * b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") *
+  //  b("a,b,c")) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") *
+  //  b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") *
+  //  b("a,b,c"))) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 *
+  //  (a("c,b,a") * b("a,b,c")))); BOOST_CHECK_NO_THROW(c("a,b,c") =
+  //  -conj(a("c,b,a") * b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2
+  //  * (a("c,b,a") * b("a,b,c"))) * 2);
+}
 
 // BOOST_AUTO_TEST_CASE( complex_tensor_factories )
 //{
@@ -964,171 +967,156 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
   }
 }
 
-// BOOST_AUTO_TEST_CASE( mult )
-//{
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * b("a,b,c") );
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * b_tile[j]);
-//  }
-//
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * b("a,b,c"));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * b_tile[j]);
-//  }
-//
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * (3 * b("a,b,c")));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * (3 * b_tile[j]));
-//  }
-//
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * (3 * b("a,b,c")));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
-//  }
-//}
-//
-//
-// BOOST_AUTO_TEST_CASE( mult_to )
-//{
-//  c("a,b,c") = a("a,b,c");
-//  BOOST_REQUIRE_NO_THROW( a("a,b,c") *= b("a,b,c") );
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] * b_tile[j]);
-//  }
-//
-//  c("a,b,c") = a("a,b,c");
-//  BOOST_REQUIRE_NO_THROW( a("a,b,c") = a("a,b,c") * b("a,b,c") );
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] * b_tile[j]);
-//  }
-//
-//}
-//
-// BOOST_AUTO_TEST_CASE( mult_permute )
-//{
-//  Permutation perm({2, 1, 0});
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) * (3 * b("a,b,c")));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-//    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
-//  }
-//
-//}
-//
-// BOOST_AUTO_TEST_CASE( scale_mult )
-//{
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") * b("a,b,c")));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] * b_tile[j]));
-//  }
-//
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) * b("a,b,c")));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * b_tile[j]));
-//  }
-//
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") * (3 * b("a,b,c"))));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] * (3 * b_tile[j])));
-//  }
-//
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) * (3 *
-//  b("a,b,c"))));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    TArrayUMD::value_type a_tile = a.find(i).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * (3 * b_tile[j])));
-//  }
-//}
-//
-// BOOST_AUTO_TEST_CASE( scale_mult_permute )
-//{
-//  Permutation perm({2, 1, 0});
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5*(2 * a("c,b,a")) * (3 * b("a,b,c")));
-//
-//  for(std::size_t i = 0ul; i < c.size(); ++i) {
-//    TArrayUMD::value_type c_tile = c.find(i).get();
-//    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-//    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
-//    TArrayUMD::value_type b_tile = b.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < c_tile.size(); ++j)
-//      BOOST_CHECK_EQUAL(c_tile[j], 5*(2 * a_tile[j]) * (3 * b_tile[j]));
-//  }
-//
-//}
+BOOST_AUTO_TEST_CASE(mult) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * b_tile[j]);
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * b_tile[j]);
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") * (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], a_tile[j] * (3 * b_tile[j]));
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c")) * (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(mult_to) {
+  c("a,b,c") = a("a,b,c");
+  BOOST_REQUIRE_NO_THROW(a("a,b,c") *= b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] * b_tile[j]);
+  }
+
+  c("a,b,c") = a("a,b,c");
+  BOOST_REQUIRE_NO_THROW(a("a,b,c") = a("a,b,c") * b("a,b,c"));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(a_tile[j], c_tile[j] * b_tile[j]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(mult_permute) {
+  Permutation perm({2, 1, 0});
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) * (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(scale_mult) {
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] * b_tile[j]));
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c")) * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * b_tile[j]));
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (a("a,b,c") * (3 * b("a,b,c"))));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (a_tile[j] * (3 * b_tile[j])));
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =
+                             5 * ((2 * a("a,b,c")) * (3 * b("a,b,c"))));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    TArrayUMD::value_type a_tile = a.find(i).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) * (3 * b_tile[j])));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(scale_mult_permute) {
+  Permutation perm({2, 1, 0});
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) * (3 * b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    TArrayUMD::value_type c_tile = c.find(i).get();
+    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+      BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) * (3 * b_tile[j]));
+  }
+}
 
 BOOST_AUTO_TEST_CASE(cont) {
   const std::size_t m = a.trange().elements_range().extent(0);

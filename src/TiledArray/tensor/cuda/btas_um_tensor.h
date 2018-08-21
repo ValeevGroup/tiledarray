@@ -318,7 +318,7 @@ typename btasUMTensorVarray<T, Range>::value_type dot(
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2) {
-  assert(false);
+  return  btas_tensor_mult_cuda_impl(arg1, arg2);
 }
 
 template <typename T, typename Scalar, typename Range>
@@ -327,6 +327,7 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const Scalar factor) {
   auto result = mult(arg1, arg2);
   scale_to(result, factor);
+  return result;
 }
 
 template <typename T, typename Range>
@@ -352,7 +353,7 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
 template <typename T, typename Range>
 void mult_to(btasUMTensorVarray<T, Range> &result,
              const btasUMTensorVarray<T, Range> &arg) {
-  assert(false);
+  btas_tensor_mult_to_cuda_impl(result, arg);
 }
 
 template <typename T, typename Scalar, typename Range>
