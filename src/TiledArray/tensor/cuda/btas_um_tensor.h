@@ -243,8 +243,8 @@ void subt_to(btasUMTensorVarray<T, Range> &result,
 template <typename T, typename Scalar, typename Range>
 void subt_to(btasUMTensorVarray<T, Range> &result,
              const btasUMTensorVarray<T, Range> &arg1, const Scalar factor) {
-  btas_tensor_subt_to_cuda_impl(result, arg1, T(1.0));
-  btas_tensor_scale_to_cuda_impl(result, factor);
+  subt_to(result, arg1);
+  scale_to(result, factor);
 }
 
 ///
@@ -298,8 +298,8 @@ void add_to(btasUMTensorVarray<T, Range> &result,
 template <typename T, typename Scalar, typename Range>
 void add_to(btasUMTensorVarray<T, Range> &result,
             const btasUMTensorVarray<T, Range> &arg, const Scalar factor) {
-  btas_tensor_add_to_cuda_impl(result, arg, T(1.0));
-  btas_tensor_scale_cuda_impl(result, factor);
+  add_to(result, arg);
+  scale_to(result, factor);
 }
 
 ///
