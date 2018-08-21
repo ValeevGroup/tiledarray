@@ -436,7 +436,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_mult_cuda_impl(
   TA_ASSERT(arg2.size() == n);
 
   auto device_id = cudaEnv::instance()->current_cuda_device_id();
+  cudaSetDevice(device_id);
   auto &cuda_stream = detail::get_stream_based_on_range(arg1.range());
+
 
   Storage result_storage;
   make_device_storage(result_storage, n, cuda_stream);

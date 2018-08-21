@@ -456,6 +456,7 @@ void to_host(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
   auto to_host = [](TiledArray::Tile<UMTensor> &tile) {
 
+    cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
@@ -484,6 +485,7 @@ void to_device(
 
   auto to_device = [](TiledArray::Tile<UMTensor> &tile) {
 
+    cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
@@ -539,6 +541,8 @@ ta_tensor_to_um_tensor(
     TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
 
   auto convert_tile = [](const TiledArray::Tensor<T> &tile) {
+
+    cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
 
     typename UMTensor::storage_type storage(tile.range().area());
 
