@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE( constructor_dense_policy )
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.world(), GlobalFixture::world);
   BOOST_CHECK(x.pmap() == pmap);
-  BOOST_CHECK_EQUAL(x.range(), tr.tiles_range());
+  BOOST_CHECK_EQUAL(x.tiles_range(), tr.tiles_range());
   BOOST_CHECK_EQUAL(x.trange(), tr);
   BOOST_CHECK_EQUAL(x.size(), tr.tiles_range().volume());
   BOOST_CHECK(x.is_dense());
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE( constructor_shape_policy )
   // Check that the initial conditions are correct after constructution.
   BOOST_CHECK_EQUAL(& x.world(), GlobalFixture::world);
   BOOST_CHECK(x.pmap() == pmap);
-  BOOST_CHECK_EQUAL(x.range(), tr.tiles_range());
+  BOOST_CHECK_EQUAL(x.tiles_range(), tr.tiles_range());
   BOOST_CHECK_EQUAL(x.trange(), tr);
   BOOST_CHECK_EQUAL(x.size(), tr.tiles_range().volume());
   BOOST_CHECK(! x.is_dense());

@@ -84,11 +84,11 @@ namespace TiledArray {
       /// \throw nothing
       const std::shared_ptr<pmap_interface>& pmap() const { return pmap_; }
 
-      /// Tensor tile size array accessor
+      /// Tiles range accessor
 
-      /// \return The size array of the tensor tiles
+      /// \return The range of tile indices
       /// \throw nothing
-      const range_type& range() const { return trange_.tiles_range(); }
+      const range_type& tiles_range() const { return trange_.tiles_range(); }
 
       /// Tensor tile volume accessor
 

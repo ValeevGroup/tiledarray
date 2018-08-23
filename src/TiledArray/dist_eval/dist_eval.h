@@ -291,7 +291,7 @@ namespace TiledArray {
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
-      const range_type& range() const { return pimpl_->range(); }
+      const range_type& range() const { return pimpl_->tiles_range(); }
 
       /// Tensor tile volume accessor
 

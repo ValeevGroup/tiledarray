@@ -554,7 +554,7 @@ namespace TiledArray {
     /// \return A const reference to the range object for the array tiles
     const range_type& range() const {
       check_pimpl();
-      return pimpl_->range();
+      return pimpl_->tiles_range();
     }
 
     /// \deprecated use DistArray::elements_range()
@@ -778,7 +778,7 @@ namespace TiledArray {
     typename std::enable_if<std::is_integral<Index>::value>::type
     check_index(const Index i) const {
       check_pimpl();
-      TA_USER_ASSERT(pimpl_->range().includes(i),
+      TA_USER_ASSERT(pimpl_->tiles_range().includes(i),
           "The ordinal index used to access an array tile is out of range.");
     }
 
@@ -786,7 +786,7 @@ namespace TiledArray {
     typename std::enable_if<! std::is_integral<Index>::value>::type
     check_index(const Index& i) const {
       check_pimpl();
-      TA_USER_ASSERT(pimpl_->range().includes(i),
+      TA_USER_ASSERT(pimpl_->tiles_range().includes(i),
           "The coordinate index used to access an array tile is out of range.");
       TA_USER_ASSERT(i.size() == pimpl_->trange().tiles_range().rank(),
           "The number of elements in the coordinate index does not match the dimension of the array.");

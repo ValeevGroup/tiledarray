@@ -97,7 +97,7 @@ namespace TiledArray {
       /// \return The coordinate index of the current tile
       index_type index() const {
         TA_ASSERT(tensor_);
-        return tensor_->range().idx(index_);
+        return tensor_->tiles_range().idx(index_);
       }
 
       /// Tile ordinal index accessor
@@ -388,7 +388,7 @@ namespace TiledArray {
       /// \return The coordinate index of the current tile
       index_type index() const {
         TA_ASSERT(array_);
-        return array_->range().idx(*it_);
+        return array_->tiles_range().idx(*it_);
       }
 
       /// Tile ordinal index accessor
