@@ -31,8 +31,8 @@ int main(int argc, char* argv[]) {
     tile_boundaries.push_back(i);
 
   // Construct a set of TiledRange1's
-  std::vector<TiledArray::TiledRange1>
-    ranges(2, TiledArray::TiledRange1(tile_boundaries.begin(), tile_boundaries.end()));
+  std::vector<TA::TiledRange1>
+    ranges(2, TA::TiledRange1(tile_boundaries.begin(), tile_boundaries.end()));
 
   // Construct the 2D TiledRange
   TA::TiledRange trange(ranges.begin(), ranges.end());
