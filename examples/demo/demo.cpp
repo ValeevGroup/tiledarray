@@ -48,6 +48,7 @@ int main(int argc, char *argv[]) {
   TiledRange1 TR0{0, 3, 8, 10};
   TiledRange1 TR1{0, 4, 7, 10};
   TiledRange TR{TR0, TR1};
+  assert((TiledRange{{0, 3, 8, 10}, {0, 4, 7, 10}} == TR));
   cout << TR << endl;
   for (const auto &i: TR.elements_range()) {
     cout << i << endl;
