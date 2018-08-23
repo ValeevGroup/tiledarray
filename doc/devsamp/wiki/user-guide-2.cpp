@@ -1,9 +1,10 @@
 #include <tiledarray.h>
 
-// Construct an order-2 tensor tile filled with v
+// Construct a Tensor<T> filled with v
+template <typename T>
 auto make_tile(const TA::Range& range, const double v) {
   // Allocate a tile
-  TA::TensorD tile(range);
+  TA::Tensor<T> tile(range);
   std::fill(tile.begin(), tile.end(), v);
 
   return tile;
@@ -12,9 +13,9 @@ auto make_tile(const TA::Range& range, const double v) {
 // Fill array x with value v
 void init_array(TA::TArrayD& x, const double v) {
   // Add local tiles to a
-  for(auto it = x.begin(); it != x.end(); ++it) {
+  for(auto it = begin(x); it != end(x); ++it) {
     // Construct a tile using a MADNESS task.
-    auto tile = x.world().taskq.add(make_tile, x.trange().make_tile_range(it.ordinal()), v);
+    auto tile = x.world().taskq.add(make_tile<double>, x.trange().make_tile_range(it.index()), v);
 
     // Insert the tile into the array
     *it = tile;
