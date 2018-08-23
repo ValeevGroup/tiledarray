@@ -673,7 +673,7 @@ namespace TiledArray {
 
     /// \tparam Index The coordinate index array type
     /// \param index The coordinate index to check for inclusion in the range
-    /// \return \c true when <tt>i >= start</tt> and <tt>i < finish</tt>,
+    /// \return \c true when <tt>i >= lobound</tt> and <tt>i < upbound</tt>,
     /// otherwise \c false
     /// \throw TiledArray::Exception When the rank of this range is not
     /// equal to the size of the index.
@@ -701,7 +701,7 @@ namespace TiledArray {
     /// \tparam Integer An integer type
     /// \param index The element index to check for inclusion in the range,
     ///              as an \c std::initializer_list<Integer>
-    /// \return \c true when <tt>i >= start</tt> and <tt>i < finish</tt>,
+    /// \return \c true when <tt>i >= lobound</tt> and <tt>i < upbound</tt>,
     /// otherwise \c false
     /// \throw TiledArray::Exception When the rank of this range is not
     /// equal to the size of the index.
