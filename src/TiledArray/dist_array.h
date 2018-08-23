@@ -57,7 +57,7 @@ namespace TiledArray {
     typedef typename detail::numeric_type<Tile>::type element_type; ///< The tile element type
     typedef typename detail::scalar_type<Tile>::type scalar_type; ///< The tile scalar type
     typedef typename impl_type::trange_type trange_type; ///< Tile range type
-    typedef typename impl_type::range_type range_type; ///< Range type for array tiling
+    typedef typename impl_type::range_type range_type; ///< Elements/tiles range type
     typedef typename impl_type::shape_type shape_type; ///< Shape type for array tiling
     typedef typename impl_type::range_type::index index; ///< Array coordinate index type
     typedef typename impl_type::size_type size_type; ///< Size type
@@ -558,14 +558,14 @@ namespace TiledArray {
     }
 
     /// \deprecated use DistArray::elements_range()
-    DEPRECATED const typename trange_type::tiles_range_type& elements() const {
+    DEPRECATED const typename trange_type::range_type& elements() const {
       return elements_range();
     }
 
     /// Element range accessor
 
     /// \return A const reference to the range object for the array elements
-    const typename trange_type::tiles_range_type& elements_range() const {
+    const typename trange_type::range_type& elements_range() const {
       check_pimpl();
       return pimpl_->trange().elements_range();
     }

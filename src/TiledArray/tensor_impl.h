@@ -41,7 +41,7 @@ namespace TiledArray {
       typedef TensorImpl<Policy> TensorImpl_;
       typedef Policy policy_type; ///< Policy type
       typedef typename Policy::trange_type trange_type; ///< Tiled range type
-      typedef typename Policy::range_type range_type; ///< Tile range type
+      typedef typename Policy::range_type range_type; ///< Element/tile range type
       typedef typename Policy::size_type size_type; ///< Size type
       typedef typename Policy::shape_type shape_type; ///< Tensor shape type
       typedef typename Policy::pmap_interface pmap_interface; ///< Process map interface type

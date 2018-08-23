@@ -138,11 +138,11 @@ BOOST_AUTO_TEST_CASE( make_tiles_range )
     }
 
     // construct a range object that should match the range constructed by TiledRange.
-    TiledRange::tiles_range_type range(start, finish);
+    TiledRange::range_type range(start, finish);
 
     // Get the two ranges to be tested.
-    TiledRange::tiles_range_type range_index = tr.make_tile_range(*it);
-    TiledRange::tiles_range_type range_ordinal = tr.make_tile_range(i);
+    TiledRange::range_type range_index = tr.make_tile_range(*it);
+    TiledRange::range_type range_ordinal = tr.make_tile_range(i);
 
     BOOST_CHECK_EQUAL(range_index, range);
     BOOST_CHECK_EQUAL(range_ordinal, range);

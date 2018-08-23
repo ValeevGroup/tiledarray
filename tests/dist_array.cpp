@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE( assign_tiles )
   ArrayN a(world, tr);
 
   for(ArrayN::range_type::const_iterator it = a.range().begin(); it != a.range().end(); ++it) {
-    ArrayN::trange_type::tiles_range_type range = a.trange().make_tile_range(*it);
+    ArrayN::trange_type::range_type range = a.trange().make_tile_range(*it);
     if(a.is_local(*it)) {
       if(data.size() < range.volume())
         data.resize(range.volume(), 1);
