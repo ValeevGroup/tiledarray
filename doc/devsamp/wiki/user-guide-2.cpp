@@ -2,7 +2,7 @@
 
 // Construct a Tensor<T> filled with v
 template <typename T>
-auto make_tile(const TA::Range& range, const double v) {
+TA::Tensor<T> make_tile(const TA::Range& range, const double v) {
   // Allocate a tile
   TA::Tensor<T> tile(range);
   std::fill(tile.begin(), tile.end(), v);
