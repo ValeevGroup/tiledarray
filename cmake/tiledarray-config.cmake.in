@@ -26,8 +26,11 @@ endif()
 set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
 if(TILEDARRAY_HAS_CUDA)
     # use the same CUDA path
-    set(CUDA_ROOT "@CUDA_TOOLKIT_ROOT_DIR@")
-    find_package(CUDA PATHS ${CUDA_ROOT})
+    set(CUDA_TOOLKIT_ROOT_DIR "@CUDA_TOOLKIT_ROOT_DIR@")
+    find_package(CUDA)
+    set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
+    set(CUDA_CUBLAS_LIBRARIES PUBLIC ${CUDA_CUBLAS_LIBRARIES})
+
     if(NOT TARGET umpire)
         # find the path to config dir
         set(UMPIRE_CONFIG_DIR "@umpire_DIR@")
