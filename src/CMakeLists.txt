@@ -158,9 +158,9 @@ if(CUDA_FOUND)
      TiledArray/external/cutt.h
      TiledArray/math/cublas.h
      TiledArray/tensor/cuda/btas_cublas.h
-     TiledArray/tensor/cuda/mult_kernel.h
-     TiledArray/tensor/cuda/mult_kernel.cu
      TiledArray/tensor/cuda/btas_um_tensor.h
+     TiledArray/tensor/cuda/cpu_cuda_vector.h
+     TiledArray/tensor/cuda/mult_kernel.h
      TiledArray/tensor/cuda/platform.h
      TiledArray/tensor/cuda/thrust.h
      TiledArray/tensor/cuda/um_allocator.h
@@ -181,6 +181,8 @@ if(CUDA_FOUND)
 
   list(APPEND TILEDARRAY_SOURCE_FILES
           TiledArray/tensor/cuda/btas_um_tensor.cpp
+          TiledArray/tensor/cuda/cpu_cuda_vector.cu
+          TiledArray/tensor/cuda/mult_kernel.cu
           TiledArray/tensor/cuda/um_storage.cu)
 
   # the list of libraries on which TiledArray depends on

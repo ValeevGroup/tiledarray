@@ -25,7 +25,7 @@
 
 #include <tiledarray.h>
 #include <TiledArray/tensor/cuda/btas_um_tensor.h>
-#include "cpu_cuda_vector.h"
+#include "TiledArray/tensor/cuda/cpu_cuda_vector.h"
 #include <TiledArray/external/btas.h>
 // clang-format on
 
