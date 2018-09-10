@@ -255,7 +255,7 @@ btas_tensor_to_array(World& world, const TiledArray::TiledRange& trange,
 /// \return A \c btas::Tensor object that is a copy of \c src
 /// \throw TiledArray::Exception When world size is greater than 1 and \c src is not replicated
 template <typename Tile, typename Policy>
-btas::Tensor<typename Tile::value_type>
+btas::Tensor<typename Tile::value_type, btas::DEFAULT::range, btas::varray< typename Tile::value_type> >
 array_to_btas_tensor(const TiledArray::DistArray<Tile,Policy>& src)
 {
   // Test preconditions
@@ -264,7 +264,12 @@ array_to_btas_tensor(const TiledArray::DistArray<Tile,Policy>& src)
                    "TiledArray::array_to_btas_tensor(): a non-replicated array can only be converted to a btas::Tensor if the number of World ranks is 1.");
 
   // Construct the result
-  using result_type = btas::Tensor<typename TiledArray::DistArray<Tile,Policy>::element_type>;
+  using result_type = btas::Tensor<typename TiledArray::DistArray<Tile,Policy>::element_type,
+                                    btas::DEFAULT::range, 
+                                    btas::varray<
+                                        typename TiledArray::DistArray<Tile,Policy>::element_type
+                                        >
+                                    >;
   using result_range_type = typename result_type::range_type;
   // if array is sparse must initialize to zero
   result_type result(result_range_type(src.trange().elements_range().extent()), 0.0);
