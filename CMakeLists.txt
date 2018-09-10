@@ -88,6 +88,9 @@ endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
 option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
 add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks support shared-memory parallel programs")
 
+option(ENABLE_CUDA "Enable use of CUDA with TiledArray" OFF)
+add_feature_info(CUDA ENABLE_CUDA "NVIDIA CUDA support for GPU")
+
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
 add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
 option(ENABLE_TCMALLOC_MINIMAL "Enable linking with tcmalloc_minimal" OFF)
@@ -243,8 +246,9 @@ if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
 include(external/btas.cmake)
-include(external/cuda.cmake)
-
+if(ENABLE_CUDA)
+  include(external/cuda.cmake)
+endif()
 # optional deps:
 # 1. ccache
 find_program(CCACHE ccache)
