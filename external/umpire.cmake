@@ -29,7 +29,7 @@ else()
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/external/Umpire)
 
     if (NOT UMPIRE_URL)
-        set(UMPIRE_URL https://github.com/pchong90/Umpire)
+        set(UMPIRE_URL https://github.com/pchong90/Umpire.git)
     endif (NOT UMPIRE_URL)
 
     set(UMPIRE_TAG develop)
@@ -87,7 +87,7 @@ set_property(TARGET
 set_property(TARGET TiledArray_UMPIRE
         PROPERTY
         INTERFACE_LINK_LIBRARIES
-        ${_UMPIRE_INSTALL_DIR}/lib/libumpire.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_op.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_resource.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_strategy.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_tpl_judy.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_util.a
+        ${_UMPIRE_INSTALL_DIR}/lib/libumpire.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_op.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_resource.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_strategy.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_util.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_tpl_judy.a
         )
 
 install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)

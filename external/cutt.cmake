@@ -61,7 +61,9 @@ else()
 
     # Add cuTT dependency to External
     add_dependencies(External cutt)
-    add_dependencies(cutt Umpire)
+    if(TARGET Umpire)
+        add_dependencies(cutt Umpire)
+    endif()
 
     set(_CUTT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
