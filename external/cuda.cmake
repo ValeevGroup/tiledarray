@@ -30,16 +30,16 @@ if(CUDA_FOUND)
   set(CUDA_CUBLAS_LIBRARIES PUBLIC ${CUDA_CUBLAS_LIBRARIES})
 
   install(TARGETS TiledArray_CUDA EXPORT tiledarray COMPONENT tiledarray)
-#include_directories(${CUDA_INCLUDE_DIRS})
 
-##
-## cuTT
-##
-include(external/cutt.cmake)
+  ##
+  ## Umpire
+  ##
+  include(external/umpire.cmake)
 
-##
-## Umpire
-##
-include(external/umpire.cmake)
+  ##
+  ## cuTT
+  ##
+  include(external/cutt.cmake)
+
 
 endif(CUDA_FOUND)

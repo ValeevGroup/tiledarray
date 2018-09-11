@@ -36,7 +36,9 @@ else()
     # set source and build path for cuTT in the TiledArray project
     set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/cutt)
     # cutt only supports in source build
-    set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/source/cutt)
+    set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/cutt)
+    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/cutt)
+
     if (NOT CUTT_URL)
         set(CUTT_URL https://github.com/pchong90/cutt.git)
     endif (NOT CUTT_URL)
@@ -54,12 +56,18 @@ else()
             GIT_TAG ${CUTT_TAG}
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
-            CONFIGURE_COMMAND ""
+            CONFIGURE_COMMAND cmake
+            -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
+            -DENABLE_NO_ALIGNED_ALLOC=ON
+            -DENABLE_UMPIRE=ON
+            -DUMPIRE_INSTALL_DIR=${UMPIRE_INSTALL_DIR}
+            -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
+            ${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
             BUILD_COMMAND make
             #--Install step---------------
-            INSTALL_COMMAND ""
+            INSTALL_COMMAND make install
             #--Custom targets-------------
             STEP_TARGETS download
             )
@@ -70,25 +78,14 @@ else()
     # create an exportable interface target for BTAS
     add_library(TiledArray_CUTT INTERFACE)
 
-    set_property(TARGET TiledArray_CUTT PROPERTY
+    set_target_properties(TiledArray_CUTT
+            PROPERTIES
             INTERFACE_INCLUDE_DIRECTORIES
-            $<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}>
-            $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}>
+            ${EXTERNAL_INSTALL_DIR}/include
+            INTERFACE_LINK_LIBRARIES
+            ${EXTERNAL_INSTALL_DIR}/lib/libcutt.a
             )
 
     install(TARGETS TiledArray_CUTT EXPORT tiledarray COMPONENT tiledarray)
-
-    # how to install BTAS
-    install(
-            DIRECTORY
-            ${EXTERNAL_SOURCE_DIR}/cutt/include
-            ${EXTERNAL_SOURCE_DIR}/cutt/lib
-            ${EXTERNAL_SOURCE_DIR}/cutt/lib64
-            DESTINATION
-            ${CMAKE_INSTALL_INCLUDEDIR}
-            #          ${CMAKE_INSTALL_PREFIX}/lib
-            #          ${CMAKE_INSTALL_PREFIX}/lib
-            COMPONENT cutt
-    )
 
 endif(_CUTT_INSTALL_DIR)
