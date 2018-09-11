@@ -2,13 +2,15 @@
 ## find Umpire
 ##
 
+find_path(_UMPIRE_INSTALL_DIR NAMES include/umpire/Umpire.hpp HINTS ${UMPIRE_INSTALL_DIR})
+
 # if user provides UMPIRE, use it
-if(UMPIRE_INSTALL_DIR)
+if(_UMPIRE_INSTALL_DIR)
 
     ## check umpire
-    set(umpire_DIR ${UMPIRE_INSTALL_DIR}/share/umpire/cmake)
-
-    find_package(umpire REQUIRED)
+#    set(umpire_DIR ${UMPIRE_INSTALL_DIR}/share/umpire/cmake)
+#    find_package(umpire REQUIRED)
+    message(STATUS "Umpire found at ${_UMPIRE_INSTALL_DIR}")
 
 elseif(TA_EXPERT)
 
@@ -17,20 +19,20 @@ elseif(TA_EXPERT)
 
 else()
 
-    # TODO need to fix this
     ## build umpire automatically
 
     include(ExternalProject)
 
-    # set source and build path for cuTT in the TiledArray project
+    # set source and build path for Umpire in the TiledArray project
     set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/Umpire)
-    # cutt only supports in source build
     set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/Umpire)
+    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/external/Umpire)
+
     if (NOT UMPIRE_URL)
         set(UMPIRE_URL https://github.com/LLNL/Umpire.git)
     endif (NOT UMPIRE_URL)
 
-    set(UMPIRE_TAG master)
+    set(UMPIRE_TAG develop)
 
     message("** Will clone Umpire from ${UMPIRE_URL}")
 
@@ -42,18 +44,24 @@ else()
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${UMPIRE_URL}
             GIT_TAG ${UMPIRE_TAG}
+            #--Update step----------------
+            UPDATE_COMMAND git submodule init && git submodule update
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
-            CONFIGURE_COMMAND "cmake -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX} -DENABLE_CUDA=ON
-                               -DENABLE_OPENMP=OFF
-                               -DENABLE_TESTS=OFF
-                               -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
-                                ${EXTERNAL_SOURCE_DIR}"
+            CONFIGURE_COMMAND cmake
+                -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
+                -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                -DENABLE_CUDA=ON
+                -DENABLE_OPENMP=OFF
+                -DENABLE_TESTS=OFF
+                -DENABLE_ASSERTS=${TA_DEFAULT_ERROR}
+                -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
+                ${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
-            BUILD_COMMAND "make"
+            BUILD_COMMAND make
             #--Install step---------------
-            INSTALL_COMMAND "make install"
+            INSTALL_COMMAND make install
             #--Custom targets-------------
             STEP_TARGETS download
             )
@@ -61,15 +69,27 @@ else()
     # Add Umpire dependency to External
     add_dependencies(External Umpire)
 
-    # create an exportable interface target for Umpire
-    add_library(TiledArray_UMPIRE INTERFACE)
+    set(_UMPIRE_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
-    set_property(TARGET TiledArray_UMPIRE PROPERTY
-            INTERFACE_INCLUDE_DIRECTORIES
-            $<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}>
-            $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}>
-            )
+endif(_UMPIRE_INSTALL_DIR)
 
-#    install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)
+# manually add Umpire library
 
-endif(UMPIRE_INSTALL_DIR)
+add_library(TiledArray_UMPIRE INTERFACE)
+
+set_property(TARGET
+        TiledArray_UMPIRE
+        PROPERTY
+        INTERFACE_INCLUDE_DIRECTORIES
+        ${_UMPIRE_INSTALL_DIR}/include
+        )
+
+set_property(TARGET TiledArray_UMPIRE
+        PROPERTY
+        INTERFACE_LINK_LIBRARIES
+        ${_UMPIRE_INSTALL_DIR}/lib/libumpire.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_op.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_resource.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_strategy.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_tpl_judy.a ${_UMPIRE_INSTALL_DIR}/lib/libumpire_util.a
+        )
+
+install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)
+
+#TODO test Umpire

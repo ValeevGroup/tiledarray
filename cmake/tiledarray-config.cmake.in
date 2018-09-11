@@ -32,12 +32,6 @@ if(TILEDARRAY_HAS_CUDA)
     find_package(CUDA)
     set(CUDA_LIBRARIES PUBLIC ${CUDA_LIBRARIES})
     set(CUDA_CUBLAS_LIBRARIES PUBLIC ${CUDA_CUBLAS_LIBRARIES})
-
-    if(NOT TARGET umpire)
-        # find the path to config dir
-        set(UMPIRE_CONFIG_DIR "@umpire_DIR@")
-        find_package(umpire PATHS ${UMPIRE_CONFIG_DIR})
-    endif()
 endif()
 # Set the tiledarray compiled library target
 set(TILEDARRAY_LIBRARIES tiledarray)
