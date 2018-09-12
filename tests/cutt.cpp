@@ -443,6 +443,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor) {
 
   auto b = permute(a, permutation);
 
+  cudaDeviceSynchronize();
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {
     for (std::size_t j = 0; j < A; j++) {
@@ -474,6 +475,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_nonsym) {
 
   auto b = permute(a, permutation);
 
+  cudaDeviceSynchronize();
   iter = 0;
   for (std::size_t i = 0; i < B; i++) {
     for (std::size_t j = 0; j < A; j++) {
@@ -507,6 +509,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_three) {
 
     auto b = permute(a, permutation);
 
+    cudaDeviceSynchronize();
     iter = 0;
     for (std::size_t i = 0; i < A; i++) {
       for (std::size_t j = 0; j < B; j++) {
@@ -524,6 +527,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_three) {
 
     auto b = permute(a, permutation);
 
+    cudaDeviceSynchronize();
     iter = 0;
     for (std::size_t i = 0; i < A; i++) {
       for (std::size_t j = 0; j < B; j++) {
@@ -568,6 +572,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_four) {
 
     auto tile_b = permute(tile_a, permutation);
 
+    cudaDeviceSynchronize();
     // validate
     iter = 0;
     for (std::size_t i = 0; i < a; i++) {
@@ -588,6 +593,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_four) {
 
     auto tile_b = permute(tile_a, permutation);
 
+    cudaDeviceSynchronize();
     // validate
     iter = 0;
     for (std::size_t i = 0; i < a; i++) {
@@ -641,6 +647,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
 
     auto tile_b = permute(tile_a, permutation);
 
+    cudaDeviceSynchronize();
     // validate
     iter = 0;
     for (std::size_t i = 0; i < a; i++) {
@@ -665,6 +672,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
 
     auto tile_b = permute(tile_a, permutation);
 
+    cudaDeviceSynchronize();
     // validate
     iter = 0;
     for (std::size_t i = 0; i < a; i++) {
