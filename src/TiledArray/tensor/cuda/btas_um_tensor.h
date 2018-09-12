@@ -140,12 +140,20 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
 
   TA_ASSERT(status == CUTT_SUCCESS);
 
+  cudaEvent_t cutt_event;
+  cudaEventCreate(&cutt_event);
+
   status = cuttExecute(plan, const_cast<T *>(device_data(arg.storage())),
                        device_data(result.storage()));
 
   TA_ASSERT(status == CUTT_SUCCESS);
 
   cuttDestroy(plan);
+
+  cudaEventRecord(cutt_event, stream);
+  // TODO need to avoid explicit sync
+  cudaEventSynchronize(cutt_event);
+  cudaEventDestroy(cutt_event);
   return result;
 }
 
