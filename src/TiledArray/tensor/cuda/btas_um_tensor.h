@@ -140,20 +140,16 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
 
   TA_ASSERT(status == CUTT_SUCCESS);
 
-  cudaEvent_t cutt_event;
-  cudaEventCreate(&cutt_event);
 
   status = cuttExecute(plan, const_cast<T *>(device_data(arg.storage())),
                        device_data(result.storage()));
 
   TA_ASSERT(status == CUTT_SUCCESS);
 
-  cuttDestroy(plan);
+  status = cuttDestroy(plan);
 
-  cudaEventRecord(cutt_event, stream);
-  // TODO need to avoid explicit sync
-  cudaEventSynchronize(cutt_event);
-  cudaEventDestroy(cutt_event);
+  TA_ASSERT(status == CUTT_SUCCESS);
+
   return result;
 }
 
@@ -168,17 +164,19 @@ btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
 }
 
 template <typename T, typename Range, typename Scalar>
-btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
-                                   const Scalar factor,
-                                   const TiledArray::Permutation &perm) {
-  auto result = scale(arg, factor);
-  return permute(result, perm);
-}
-
-template <typename T, typename Range, typename Scalar>
 void scale_to(btasUMTensorVarray<T, Range> &arg, const Scalar factor) {
   btas_tensor_scale_to_cuda_impl(arg, factor);
 }
+
+template <typename T, typename Range, typename Scalar>
+btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
+                                   const Scalar factor,
+                                   const TiledArray::Permutation &perm) {
+  auto result = permute(arg, perm);
+  scale_to(result, factor);
+  return result;
+}
+
 
 ///
 /// neg
@@ -192,8 +190,9 @@ btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg) {
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg,
                                  const TiledArray::Permutation &perm) {
-  auto result = scale(arg, T(-1.0));
-  return permute(result, perm);
+  auto result = permute(arg, perm);
+  scale_to(result, T(-1.0));
+  return result;
 }
 
 template <typename T, typename Range>
