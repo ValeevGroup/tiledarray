@@ -465,6 +465,7 @@ BOOST_AUTO_TEST_CASE(permute) {
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
       TArrayUMD::value_type perm_b_tile = perm * b.find(i).get();
+      cudaDeviceSynchronize();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -478,6 +479,7 @@ BOOST_AUTO_TEST_CASE(permute) {
     if (a.is_local(i)) {
       TArrayUMD::value_type a_tile = a.find(i).get();
       TArrayUMD::value_type b_tile = b.find(i).get();
+      cudaDeviceSynchronize();
 
       BOOST_CHECK_EQUAL(a_tile.range(), b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -493,6 +495,7 @@ BOOST_AUTO_TEST_CASE(permute) {
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
       TArrayUMD::value_type perm_b_tile = perm2 * b.find(i).get();
+      cudaDeviceSynchronize();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -510,6 +513,7 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
       TArrayUMD::value_type perm_b_tile = perm * b.find(i).get();
+      cudaDeviceSynchronize();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -746,6 +750,7 @@ BOOST_AUTO_TEST_CASE(add_permute) {
     TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    cudaDeviceSynchronize();
     TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
@@ -810,6 +815,7 @@ BOOST_AUTO_TEST_CASE(scale_add_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = b.find(i).get();
+    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) + (3 * b_tile[j]));
@@ -898,6 +904,7 @@ BOOST_AUTO_TEST_CASE(subt_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = b.find(i).get();
+    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) - (3 * b_tile[j]));
@@ -961,6 +968,7 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = perm * b.find(perm_index).get();
+    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) - (3 * b_tile[j]));
@@ -1049,6 +1057,7 @@ BOOST_AUTO_TEST_CASE(mult_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = b.find(i).get();
+    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
@@ -1112,6 +1121,7 @@ BOOST_AUTO_TEST_CASE(scale_mult_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = b.find(i).get();
+    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) * (3 * b_tile[j]));
@@ -1937,6 +1947,7 @@ BOOST_AUTO_TEST_CASE(dot_permute) {
     TArrayUMD::value_type a_tile = a.find(i).get();
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     TArrayUMD::value_type b_tile = perm * b.find(perm_index).get();
+    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < a_tile.size(); ++j)
       expected += a_tile[j] * b_tile[j];

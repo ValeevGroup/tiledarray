@@ -179,7 +179,7 @@ class cudaEnv {
       auto& rm = umpire::ResourceManager::getInstance();
 
       auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
-          "UMDynamicPool", rm.getAllocator("UM"));
+          "UMDynamicPool", rm.getAllocator("UM"), 2048*1024*1024ul, 10*1024*1024ul);
       auto thread_safe_um_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
               "ThreadSafeUMDynamicPool", rm.getAllocator("UMDynamicPool"));
