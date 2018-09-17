@@ -36,6 +36,9 @@ else()
 
     message("** Will clone Umpire from ${UMPIRE_URL}")
 
+    set(CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
+    string(REPLACE ";" "::" CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
+
     ExternalProject_Add(Umpire
             PREFIX ${CMAKE_INSTALL_PREFIX}
             STAMP_DIR ${PROJECT_BINARY_DIR}/external/Umpire-stamp
@@ -48,7 +51,9 @@ else()
             UPDATE_COMMAND git submodule init && git submodule update
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
-            CONFIGURE_COMMAND cmake
+            LIST_SEPARATOR ::
+            UPDATE_DISCONNECTED 1
+            CMAKE_ARGS
                 -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                 -DENABLE_CUDA=ON
@@ -56,6 +61,7 @@ else()
                 -DENABLE_TESTS=OFF
                 -DENABLE_ASSERTS=${TA_DEFAULT_ERROR}
                 -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
+                -DCUDA_NVCC_FLAGS=${CUDA_FLAGS}
                 ${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}

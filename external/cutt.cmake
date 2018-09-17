@@ -32,6 +32,11 @@ else()
 
     message("** Will clone cuTT from ${CUTT_URL}")
 
+    # need to change the separator of list to avoid issues with ExternalProject parsing
+    set(CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
+    string(REPLACE ";" "::" CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
+    #message(STATUS "CUDA_FLAGS: " "${CUDA_FLAGS}")
+
     ExternalProject_Add(cutt
             PREFIX ${CMAKE_INSTALL_PREFIX}
             STAMP_DIR ${PROJECT_BINARY_DIR}/external/cutt-stamp
@@ -42,13 +47,16 @@ else()
             GIT_TAG ${CUTT_TAG}
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
-            CONFIGURE_COMMAND cmake
+            LIST_SEPARATOR ::
+            UPDATE_DISCONNECTED 1
+            CMAKE_ARGS
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
             -DENABLE_NO_ALIGNED_ALLOC=ON
             -DENABLE_UMPIRE=OFF
             -DUMPIRE_INSTALL_DIR=${_UMPIRE_INSTALL_DIR}
             -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
+            -DCUDA_NVCC_FLAGS=${CUDA_FLAGS}
             ${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}

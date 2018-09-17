@@ -1,4 +1,4 @@
-find_package(CUDA)
+find_package(CUDA REQUIRED)
 
 message(STATUS "CUDA version:      ${CUDA_VERSION_STRING}")
 message(STATUS "CUDA Include Path: ${CUDA_INCLUDE_DIRS}")
