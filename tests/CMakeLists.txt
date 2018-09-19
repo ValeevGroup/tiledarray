@@ -97,7 +97,7 @@ if(ENABLE_ELEMENTAL)
 endif()
 
 if(CUDA_FOUND)
-    list(APPEND ta_test_src_files cutt.cpp expressions_cuda_um.cpp)
+    list(APPEND ta_test_src_files cutt.cpp expressions_cuda_um.cpp tensor_um.cpp)
 endif()
 add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
 
