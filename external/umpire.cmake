@@ -36,24 +36,6 @@ else()
 
     message("** Will clone Umpire from ${UMPIRE_URL}")
 
-    # find HOST compiler
-    if(${CUDA_HOST_COMPILER})
-        set(UMPIRE_CUDA_HOST_COMPILER ${CUDA_HOST_COMPILER})
-    else()
-        # find HOST compiler if set in NVCC_FLAGS
-        list(FIND CUDA_NVCC_FLAGS -ccbin CCBIN_INDEX)
-        if(NOT ${CCBIN_INDEX} EQUAL -1)
-            #message(STATUS ${CCBIN_INDEX})
-            math(EXPR CCBIN_INDEX "${CCBIN_INDEX}+1")
-            #message(STATUS ${CCBIN_INDEX})
-            list(GET CUDA_NVCC_FLAGS ${CCBIN_INDEX} UMPIRE_CUDA_HOST_COMPILER)
-        endif()
-    endif()
-    message(STATUS "UMPIRE CUDA_HOST_COMPILER: " "${UMPIRE_CUDA_HOST_COMPILER}")
-
-    set(CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
-    string(REPLACE ";" "::" CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
-    message(STATUS "UMPIRE CUDA_NVCC_FLAGS: " "${CUDA_FLAGS}")
 
     ExternalProject_Add(Umpire
             PREFIX ${CMAKE_INSTALL_PREFIX}
@@ -77,8 +59,7 @@ else()
                 -DENABLE_TESTS=OFF
                 -DENABLE_ASSERTS=${TA_DEFAULT_ERROR}
                 -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
-                -DCUDA_NVCC_FLAGS=${CUDA_FLAGS}
-                -DCMAKE_CUDA_HOST_COMPILER=${UMPIRE_CUDA_HOST_COMPILER}/g++
+                -DCMAKE_CUDA_FLAGS=${CMAKE_CUDA_FLAGS}
                 ${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}

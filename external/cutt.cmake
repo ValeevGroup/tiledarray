@@ -33,8 +33,8 @@ else()
     message("** Will clone cuTT from ${CUTT_URL}")
 
     # need to change the separator of list to avoid issues with ExternalProject parsing
-    set(CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
-    string(REPLACE ";" "::" CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
+#    set(CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
+#    string(REPLACE ";" "::" CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
     #message(STATUS "CUDA_FLAGS: " "${CUDA_FLAGS}")
 
     ExternalProject_Add(cutt
@@ -56,7 +56,7 @@ else()
             -DENABLE_UMPIRE=OFF
             -DUMPIRE_INSTALL_DIR=${_UMPIRE_INSTALL_DIR}
             -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
-            -DCUDA_NVCC_FLAGS=${CUDA_FLAGS}
+            -DCMAKE_CUDA_FLAGS=${CMAKE_CUDA_FLAGS}
             ${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
