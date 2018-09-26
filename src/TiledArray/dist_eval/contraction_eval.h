@@ -962,6 +962,9 @@ namespace TiledArray {
           }
         }
 
+#ifdef TILEDARRAY_HAS_CUDA
+        cudaDeviceSynchronize();
+#endif
         // Deallocate the memory for the reduce pair tasks.
         std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
             proc_grid_.local_size());
@@ -1009,6 +1012,9 @@ namespace TiledArray {
           }
         }
 
+#ifdef TILEDARRAY_HAS_CUDA
+        cudaDeviceSynchronize();
+#endif
         // Deallocate the memory for the reduce pair tasks.
         std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
             proc_grid_.local_size());
