@@ -52,12 +52,18 @@ struct ArchiveLoadImpl<Archive, btasUMTensorVarray<T>> {
     TiledArray::cuda_um_btas_varray<T> store{};
     ar &range &store;
     t = btasUMTensorVarray<T>(std::move(range), std::move(store));
+    cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id());
+    auto &stream = TiledArray::detail::get_stream_based_on_range(range);
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(t.storage(), stream);
   }
 };
 
 template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, btasUMTensorVarray<T>> {
   static inline void store(const Archive &ar, const btasUMTensorVarray<T> &t) {
+    cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id());
+    auto &stream = TiledArray::detail::get_stream_based_on_range(t.range());
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(t.storage(), stream);
     ar &t.range() & t.storage();
   }
 };
