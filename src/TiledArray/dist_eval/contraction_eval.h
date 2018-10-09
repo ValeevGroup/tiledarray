@@ -1662,7 +1662,8 @@ namespace TiledArray {
             depth = mem_bound_depth(depth, left_sparsity, right_sparsity);
 
             // Enforce user defined depth bound
-            if(max_depth_) std::min(depth, max_depth_);
+            if(max_depth_)
+              depth = std::min(depth, max_depth_);
 
             TensorImpl_::world().taskq.add(new SparseStepTask(shared_from_this(),
                                                               depth));

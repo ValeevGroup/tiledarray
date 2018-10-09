@@ -147,8 +147,7 @@ class cudaEnv {
   ~cudaEnv() {
     // destroy cuda streams on current device
     for (auto& stream : cuda_streams_) {
-      auto error = cudaStreamDestroy(stream);
-      TA_ASSERT(error == cudaSuccess);
+      cudaStreamDestroy(stream);
     }
   }
 

@@ -430,7 +430,6 @@ template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_mult_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg1,
     const btas::Tensor<T, Range, Storage> &arg2) {
-
   std::size_t n = arg1.size();
 
   TA_ASSERT(arg2.size() == n);
@@ -439,13 +438,13 @@ btas::Tensor<T, Range, Storage> btas_tensor_mult_cuda_impl(
   cudaSetDevice(device_id);
   auto &cuda_stream = detail::get_stream_based_on_range(arg1.range());
 
-
   Storage result_storage;
   make_device_storage(result_storage, n, cuda_stream);
   btas::Tensor<T, Range, Storage> result(arg1.range(),
                                          std::move(result_storage));
 
-  mult_cuda_kernel(result.data(), arg1.data(), arg2.data(), n, cuda_stream, device_id);
+  mult_cuda_kernel(result.data(), arg1.data(), arg2.data(), n, cuda_stream,
+                   device_id);
 
   return result;
 }

@@ -14,6 +14,8 @@ endif(CUDA_FOUND)
 
 if(CUDA_FOUND)
 
+  set(CUDA_NVCC_FLAGS ${CMAKE_CUDA_FLAGS})
+
   # TODO test CUDA
   # make cuda interface library
   add_library(TiledArray_CUDA INTERFACE)
