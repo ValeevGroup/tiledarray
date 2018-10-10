@@ -206,8 +206,6 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
               << "\n";
   }
 
-  TA::to_device(t2);
-  TA::to_device(v);
 
   double total_time = 0.0;
   double total_gflop_rate = 0.0;
