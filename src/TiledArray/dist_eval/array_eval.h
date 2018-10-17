@@ -149,7 +149,7 @@ namespace TiledArray {
       typedef typename DistEvalImpl_::shape_type shape_type; ///< Shape type
       typedef typename DistEvalImpl_::pmap_interface pmap_interface; ///< Process map interface type
       typedef typename DistEvalImpl_::trange_type trange_type; ///< tiled range type
-      typedef typename DistEvalImpl_::value_type value_type; ///< value type
+      typedef typename DistEvalImpl_::value_type value_type; ///< value type = LazyArrayTile
       typedef Op op_type; ///< Tile evaluation operator type
 
       using std::enable_shared_from_this<ArrayEvalImpl<Array, Op, Policy> >::shared_from_this;

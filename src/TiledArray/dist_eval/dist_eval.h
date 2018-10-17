@@ -281,11 +281,13 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Evaluate this tensor object with the given result variable list
+      /// Evaluate this object
 
-      /// \c v is the dimension ordering that the parent expression expects.
-      /// The returned future will be evaluated once the tensor has been evaluated.
-      void eval() { return pimpl_->eval(); }
+      /// This function will evaluate the children of this distributed evaluator
+      /// and evaluate the tiles for this distributed evaluator. It will block
+      /// until the tasks for the children are evaluated (not for the tasks of
+      /// this object).
+      void eval() { pimpl_->eval(); }
 
 
       /// Tensor tile size array accessor
