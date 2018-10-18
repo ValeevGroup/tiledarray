@@ -14,6 +14,7 @@ addons:
     sources: &clang_sources
       - llvm-toolchain-trusty-5.0
       - llvm-toolchain-trusty-6.0
+      - llvm-toolchain-trusty-7
       - llvm-toolchain-trusty
     packages: &base_packages
     - libeigen3-dev
