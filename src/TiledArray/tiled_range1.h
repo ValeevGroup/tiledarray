@@ -24,6 +24,7 @@
 #include <TiledArray/type_traits.h>
 #include <vector>
 #include <initializer_list>
+#include <mutex>
 
 namespace TiledArray {
 
@@ -43,9 +44,8 @@ namespace TiledArray {
     /// Default constructor, range of 0 tiles and elements.
     TiledRange1() :
         range_(0,0), elements_range_(0,0),
-        tiles_ranges_(1, range_type(0,0)), elem2tile_(1, 0)
+        tiles_ranges_(), elem2tile_()
     {
-      init_map_();
     }
 
     /// Constructs a range with the boundaries provided by [first, last).
@@ -56,7 +56,6 @@ namespace TiledArray {
         range_(), elements_range_(), tiles_ranges_(), elem2tile_()
     {
       init_tiles_(first, last, 0);
-      init_map_();
     }
 
     /// Copy constructor
@@ -78,7 +77,6 @@ namespace TiledArray {
       const size_type n = sizeof...(_sizes) + 1;
       size_type tile_boundaries[n] = {t0, static_cast<size_type>(t_rest)...};
       init_tiles_(tile_boundaries, tile_boundaries+n, 0);
-      init_map_();
     }
 
     /// Construct a 1D tiled range.
@@ -90,7 +88,6 @@ namespace TiledArray {
     explicit TiledRange1(const std::initializer_list<size_type>& list)
     {
       init_tiles_(list.begin(), list.end(), 0);
-      init_map_();
     }
 
     /// Copy assignment operator
@@ -146,8 +143,22 @@ namespace TiledArray {
       return tiles_ranges_[i - range_.first];
     }
 
+    /// Maps element index to tile index
+
+    /// \param i element index
+    /// \return tile index
+    /// \pre
+    /// \code
+    /// assert(i >= elements_range().first && i < elements_range().second);
+    /// \endcode
+    /// \note element->tile map is memoized, thus complexity of the first call is linear in the number of elements,
+    ///       complexity of subsequent calls is constant. Note that the memoization assumes infrequent (or serial) use as it
+    ///       is serialized across ALL TiledRange1 instances.
     const size_type& element_to_tile(const size_type& i) const {
       TA_ASSERT( includes(elements_range_, i) );
+      if (elem2tile_.empty()) {
+        init_elem2tile_();
+      }
       return elem2tile_[i - elements_range_.first];
     }
 
@@ -192,18 +203,24 @@ namespace TiledArray {
         tiles_ranges_.emplace_back(*first, *(first + 1));
     }
 
-    /// Initialize secondary data
-    void init_map_() {
+    /// Initialize elem2tile
+    void init_elem2tile_() const {
       // check for 0 size range.
       if((elements_range_.second - elements_range_.first) == 0)
         return;
 
-      // initialize elem2tile map
-      elem2tile_.resize(elements_range_.second - elements_range_.first);
-      const size_type end = range_.second - range_.first;
-      for(size_type t = 0; t < end; ++t)
-        for(size_type e = tiles_ranges_[t].first; e < tiles_ranges_[t].second; ++e)
-          elem2tile_[e - elements_range_.first] = t + range_.first;
+      static std::mutex mtx;
+      {
+        std::lock_guard<std::mutex> lock(mtx);
+        if (elem2tile_.empty()) {
+          // initialize elem2tile map
+          elem2tile_.resize(elements_range_.second - elements_range_.first);
+          const size_type end = range_.second - range_.first;
+          for (size_type t = 0; t < end; ++t)
+            for (size_type e = tiles_ranges_[t].first; e < tiles_ranges_[t].second; ++e)
+              elem2tile_[e - elements_range_.first] = t + range_.first;
+        }
+      }
     }
 
     friend std::ostream& operator <<(std::ostream&, const TiledRange1&);
@@ -212,7 +229,7 @@ namespace TiledArray {
     range_type range_; ///< the range of tile indices
     range_type elements_range_; ///< the range of element indices
     std::vector<range_type> tiles_ranges_; ///< ranges of each tile.
-    std::vector<size_type> elem2tile_; ///< maps element index to tile index (secondary data).
+    mutable std::vector<size_type> elem2tile_; ///< maps element index to tile index (memoized data).
 
   }; // class TiledRange1
 
