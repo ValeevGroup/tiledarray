@@ -272,6 +272,29 @@ namespace TiledArray {
     return out;
   }
 
+  /// Concatenates two ranges
+
+  /// Tiles of the second range are concatenated to the tiles of the first. For example:
+  /// \code
+  /// assert(concat((TiledRange1{1, 3, 7, 9}),(TiledRange1{0, 3, 4, 5})) == (TiledRange1{1, 3, 7, 9, 12, 13, 14}));
+  /// assert(concat((TiledRange1{0, 3, 4, 5}),(TiledRange1{1, 3, 7, 9})) == (TiledRange1{0, 3, 4, 5, 7, 11, 13}));
+  /// \endcode
+  /// \param r1 first range
+  /// \param r2 second range
+  /// \return concatenated range
+  inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
+    std::vector<TiledRange1::size_type> hashmarks;
+    hashmarks.reserve(r1.tile_extent() + r2.tile_extent() + 1);
+    hashmarks.push_back(r1.tile(0).first);
+    for(const auto& tile: r1) {
+      hashmarks.push_back(tile.second);
+    }
+    for(const auto& tile: r2) {
+      hashmarks.push_back(hashmarks.back() + tile.second - tile.first);
+    }
+    return TiledRange1(hashmarks.begin(), hashmarks.end());
+  }
+
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TILED_RANGE1_H__INCLUDED
