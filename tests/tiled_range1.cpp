@@ -225,4 +225,12 @@ BOOST_AUTO_TEST_CASE( assignment )
   BOOST_CHECK_EQUAL(r1, tr1);
 }
 
+BOOST_AUTO_TEST_CASE( concatenation )
+{
+  TiledRange1 r1{1, 3, 7, 9};
+  TiledRange1 r2{0, 3, 4, 5};
+  BOOST_CHECK(concat(r1, r2) == (TiledRange1{1, 3, 7, 9, 12, 13, 14}));
+  BOOST_CHECK(concat(r2, r1) == (TiledRange1{0, 3, 4, 5, 7, 11, 13}));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
