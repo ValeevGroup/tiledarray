@@ -60,10 +60,10 @@ namespace TiledArray {
     }
 
     /// Copy constructor
-    TiledRange1(const TiledRange1& rng) :
-        range_(rng.range_), elements_range_(rng.elements_range_),
-        tiles_ranges_(rng.tiles_ranges_), elem2tile_(rng.elem2tile_)
-    { }
+    TiledRange1(const TiledRange1& rng) = default;
+
+    /// Move constructor
+    TiledRange1(TiledRange1&& rng) = default;
 
     /// Construct a 1D tiled range.
 
@@ -93,11 +93,11 @@ namespace TiledArray {
       init_map_();
     }
 
-    /// Assignment operator
-    TiledRange1& operator =(const TiledRange1& rng) {
-      TiledRange1(rng).swap(*this);
-      return *this;
-    }
+    /// Copy assignment operator
+    TiledRange1& operator =(const TiledRange1& rng) = default;
+
+    /// Move assignment operator
+    TiledRange1& operator =(TiledRange1&& rng) = default;
 
     /// Returns an iterator to the first tile in the range.
     const_iterator begin() const { return tiles_ranges_.begin(); }
