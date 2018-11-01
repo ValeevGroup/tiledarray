@@ -41,7 +41,14 @@ namespace TiledArray {
     typedef std::pair<size_type, size_type> range_type;
     typedef std::vector<range_type>::const_iterator const_iterator;
 
-    /// Default constructor, range of 0 tiles and elements.
+    /// Default constructor creates an empty range (tile and element ranges are both [0,0))
+    /// \post
+    /// \code
+    ///   TiledRange1 tr;
+    ///   assert(tr.tiles_range() == (TiledRange1::range_type{0,0}));
+    ///   assert(tr.elements_range() == (TiledRange1::range_type{0,0}));
+    ///   assert(tr.begin() == tr.end());
+    /// \endcode
     TiledRange1() :
         range_(0,0), elements_range_(0,0),
         tiles_ranges_(), elem2tile_()
@@ -84,6 +91,7 @@ namespace TiledArray {
     /// This will construct a 1D tiled range with tile boundaries {t0, t_rest}
     /// The number of tile boundaries is n + 1, where n is the number of tiles.
     /// Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
+    /// Tiles are indexed starting with 0.
     /// \param list The list of tile boundaries in order from smallest to largest
     explicit TiledRange1(const std::initializer_list<size_type>& list)
     {
@@ -135,9 +143,12 @@ namespace TiledArray {
 
     /// Tile range accessor
 
-    /// \param i The coordinate index for the tile range to be returned
-    /// \return A const reference to a the tile range for tile \c i
-    /// \throw std::out_of_range When \c i \c >= \c tiles().size()
+    /// \param i tile index
+    /// \return A const reference to the range of tile \c i
+    /// \pre
+    /// \code
+    /// assert(i >= tiles_range().first && i < tiles_range().second);
+    /// \endcode
     const range_type& tile(const size_type i) const {
       TA_ASSERT(includes(range_, i));
       return tiles_ranges_[i - range_.first];
@@ -162,10 +173,14 @@ namespace TiledArray {
       return elem2tile_[i - elements_range_.first];
     }
 
+    /// \deprecated use TiledRange1::element_to_tile()
     DEPRECATED const size_type& element2tile(const size_type& i) const {
       return element_to_tile(i);
     }
 
+    /// swapper
+
+    /// \param other the range with which the contents of this range will be swapped
     void swap(TiledRange1& other) { // no throw
       std::swap(range_, other.range_);
       std::swap(elements_range_, other.elements_range_);
@@ -193,6 +208,7 @@ namespace TiledArray {
     template <typename RandIter>
     void init_tiles_(RandIter first, RandIter last, size_type start_tile_index) {
 #ifndef NDEBUG
+      assert(start_tile_index == 0);  // non-zero-based tile indices are not (yet?) supported
       valid_(first, last);
 #endif // NDEBUG
       range_.first = start_tile_index;
@@ -228,7 +244,7 @@ namespace TiledArray {
     // TiledRange1 data
     range_type range_; ///< the range of tile indices
     range_type elements_range_; ///< the range of element indices
-    std::vector<range_type> tiles_ranges_; ///< ranges of each tile.
+    std::vector<range_type> tiles_ranges_; ///< ranges of each tile (NO GAPS between tiles)
     mutable std::vector<size_type> elem2tile_; ///< maps element index to tile index (memoized data).
 
   }; // class TiledRange1
