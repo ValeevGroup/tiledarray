@@ -186,7 +186,7 @@ namespace TiledArray {
     /// \param pmap The tile index -> process map
     DistArray(World& world, const trange_type& trange,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(init(world, trange, shape_type(), pmap))
+      pimpl_(init(world, trange, shape_type(1, trange), pmap))
     { }
 
     /// Sparse array constructor
