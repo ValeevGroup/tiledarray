@@ -25,6 +25,7 @@
 #include <vector>
 #include <initializer_list>
 #include <mutex>
+#include <cassert>
 
 namespace TiledArray {
 
