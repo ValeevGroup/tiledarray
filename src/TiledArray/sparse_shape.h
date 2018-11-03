@@ -209,6 +209,19 @@ namespace TiledArray {
     /// Construct a shape with no data.
     SparseShape() : tile_norms_(), size_vectors_(), zero_tile_count_(0ul) { }
 
+    /// "Dense" Constructor
+
+    /// This constructor set the tile norms to the same value.
+    /// \param tile_norm the value of the (per-element) norm for every tile
+    /// \param trange The tiled range of the tensor
+    /// \note this ctor does not normalize tile norms
+    /// \note if @c tile_norm is less than the threshold then all tile norms are set to zero
+    SparseShape(const value_type& tile_norm, const TiledRange& trange) :
+        tile_norms_(trange.tiles_range(), (tile_norm < threshold_ ? 0 : tile_norm)), size_vectors_(initialize_size_vectors(trange)),
+        zero_tile_count_(tile_norm < threshold_ ? trange.tiles_range().area() : 0ul)
+    {
+    }
+
     /// Constructor
 
     /// This constructor will normalize the tile norm, where the normalization
@@ -236,17 +249,21 @@ namespace TiledArray {
     ///         where \c index is a directly-addressable sequence indices.
     /// \param tile_norms The Frobenius norm of tiles
     /// \param trange The tiled range of the tensor
-    template<typename SparseNormSequence>
-    SparseShape(const SparseNormSequence& tile_norms,
-                const TiledRange& trange) :
-      tile_norms_(trange.tiles_range(), value_type(0)), size_vectors_(initialize_size_vectors(trange)),
-      zero_tile_count_(trange.tiles_range().volume())
-    {
+    template <typename SparseNormSequence,
+              typename = std::enable_if_t<
+                  TiledArray::detail::has_member_function_begin_anyreturn<
+                      std::decay_t<SparseNormSequence>>::value &&
+                  TiledArray::detail::has_member_function_end_anyreturn<
+                      std::decay_t<SparseNormSequence>>::value>>
+    SparseShape(const SparseNormSequence& tile_norms, const TiledRange& trange)
+        : tile_norms_(trange.tiles_range(), value_type(0)),
+          size_vectors_(initialize_size_vectors(trange)),
+          zero_tile_count_(trange.tiles_range().volume()) {
       const auto dim = tile_norms_.range().rank();
-      for(const auto& pair_idx_norm: tile_norms) {
-        auto compute_tile_volume = [dim,this,pair_idx_norm]() -> uint64_t {
+      for (const auto& pair_idx_norm : tile_norms) {
+        auto compute_tile_volume = [dim, this, pair_idx_norm]() -> uint64_t {
           uint64_t tile_volume = 1;
-          for(size_t d=0;d != dim; ++d)
+          for (size_t d = 0; d != dim; ++d)
             tile_volume *= size_vectors_.get()[d].at(pair_idx_norm.first[d]);
           return tile_volume;
         };
