@@ -100,13 +100,18 @@ namespace TiledArray {
       /// Dereference operator
 
       /// \return A \c reference to the current data
-      reference operator*() const { return current_; }
+      /// \note this asserts that the iterator is valid
+      reference operator*() const {
+        TA_ASSERT(container_->includes(current_));
+        return current_;
+      }
 
       /// Increment operator
 
       /// Increment the iterator
       /// \return The modified iterator
       RangeIterator_& operator++() {
+        TA_ASSERT(container_->includes(current_));
         container_->increment(current_);
         return *this;
       }
@@ -116,6 +121,7 @@ namespace TiledArray {
       /// Increment the iterator
       /// \return An unmodified copy of the iterator
       RangeIterator_ operator++(int) {
+        TA_ASSERT(container_->includes(current_));
         RangeIterator_ temp(*this);
         container_->increment(current_);
         return temp;
@@ -124,15 +130,20 @@ namespace TiledArray {
       /// Pointer operator
 
       /// \return A \c pointer to the current data
-      pointer operator->() const { return & current_; }
+      pointer operator->() const {
+        TA_ASSERT(container_->includes(current_));
+        return & current_;
+      }
 
 
       void advance(difference_type n) {
+        TA_ASSERT(container_->includes(current_));
         container_->advance(current_, n);
       }
 
       difference_type distance_to(const RangeIterator_& other) const {
         TA_ASSERT(container_ == other.container_);
+        TA_ASSERT(container_->includes(current_));
         return container_->distance_to(current_, other.current_);
       }
 
@@ -140,6 +151,15 @@ namespace TiledArray {
 
       const Container* container_;  ///< The container that the iterator references
       std::vector<T> current_;      ///< The current value of the iterator
+
+      template <typename U, typename C> friend bool operator==(const RangeIterator<U,C>& left_it, const RangeIterator<U,C>& right_it);
+
+      /// \return A \c reference to the current data
+      /// \note this does not check that the iterator is valid, hence only useful for implementing other methods
+      reference value() const {
+        return current_;
+      }
+
     }; // class RangeIterator
 
     /// Equality operator
@@ -156,7 +176,7 @@ namespace TiledArray {
     bool operator==(const RangeIterator<T, Container>& left_it,
         const RangeIterator<T, Container>& right_it)
     {
-      return ((*left_it) == (*right_it)) &&
+      return (left_it.value() == right_it.value()) &&
           (left_it.container() == right_it.container());
     }
 
@@ -173,8 +193,9 @@ namespace TiledArray {
     bool operator!=(const RangeIterator<T, Container>& left_it,
         const RangeIterator<T, Container>& right_it)
     {
-      return ((*left_it) != (*right_it)) ||
-          (left_it.container() != right_it.container());
+//      return (left_it.value() != right_it.value()) ||
+//          (left_it.container() != right_it.container());
+       return !(left_it == right_it);
     }
 
   } // namespace detail
