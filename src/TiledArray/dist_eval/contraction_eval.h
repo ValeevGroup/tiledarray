@@ -1332,7 +1332,7 @@ namespace TiledArray {
         virtual ~StepTask() { }
 
         // return the pointer to finalize_task
-        FinalizeTask* finalize_task() {
+        const FinalizeTask* finalize_task() const{
           return finalize_task_;
         }
 
@@ -1692,7 +1692,7 @@ namespace TiledArray {
 
 
         // finalize task to call in mainthread
-        FinalizeTask* finalize_task = nullptr;
+        const FinalizeTask* finalize_task = nullptr;
 
         // function return true until depedency of finalize_task reaches 0
         auto probe_finalize_task = [&finalize_task](){
