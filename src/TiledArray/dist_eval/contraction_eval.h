@@ -953,20 +953,21 @@ namespace TiledArray {
         const size_type row_stride = // The stride to iterate across a row
             proc_grid_.proc_cols();
         const size_type end = TensorImpl_::size();
+        const size_type local_size = proc_grid_.local_size();
 
         // place to hold the future from reduce tasks
         std::vector<madness::Future<typename op_type::result_type>>
-            reduce_future(proc_grid_.size());
+            reduce_future(local_size);
 
 
         // submit reduce task for MPI process within ProcGrid
-        if(proc_grid_.local_size()){
+        if(local_size){
           // Iterate over all local tiles
-          std::size_t result_future_iter = 0;
+          std::size_t reduce_future_iter = 0;
           ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-          for(; result_future_iter < proc_grid_.size(); ++result_future_iter, ++reduce_task){
+          for(; reduce_future_iter < local_size; ++reduce_future_iter, ++reduce_task){
             // store the result tile
-            reduce_future[result_future_iter] = reduce_task->submit();
+            reduce_future[reduce_future_iter] = reduce_task->submit();
 
             // Destroy the reduce task
             reduce_task->~ReducePairTask<op_type>();
@@ -984,7 +985,7 @@ namespace TiledArray {
 #endif
 
         // set results back to orginal distribution for MPI process within ProcGrid
-        if(proc_grid_.local_size()){
+        if(local_size){
           // Iterate over all local tiles
           for(std::size_t reduce_future_iter = 0;
               row_start < end; row_start += col_stride, row_end += col_stride) {
@@ -1022,17 +1023,18 @@ namespace TiledArray {
         const size_type row_stride = // The stride to iterate across a row
             proc_grid_.proc_cols();
         const size_type end = TensorImpl_::size();
+        const size_type local_size = proc_grid_.local_size();
 
         // place to hold the future from reduce tasks
         std::vector<madness::Future<typename op_type::result_type>>
-                reduce_future(proc_grid_.size());
+                reduce_future(local_size);
 
         // submit reduce task for MPI process within ProcGrid
-        if(proc_grid_.local_size()){
+        if(local_size){
           // Iterate over all local tiles
-          std::size_t result_future_iter = 0;
+          std::size_t reduce_future_iter = 0;
           ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-          for(; result_future_iter < proc_grid_.size(); ++result_future_iter, ++reduce_task){
+          for(;reduce_future_iter < local_size; ++reduce_future_iter, ++reduce_task){
             // if reduce_task not default initialized, submit task and store future
             if(*reduce_task) {
 
@@ -1041,7 +1043,7 @@ namespace TiledArray {
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
 
               // Set the result tile
-              reduce_future[result_future_iter] = reduce_task->submit();
+              reduce_future[reduce_future_iter] = reduce_task->submit();
             }
 
             // Destroy the reduce task
@@ -1060,7 +1062,7 @@ namespace TiledArray {
 #endif
 
         // submit reduce task for MPI process within ProcGrid
-        if(proc_grid_.local_size()){
+        if(local_size){
           // Iterate over all local tiles
           for(std::size_t reduce_future_iter = 0;
               row_start < end; row_start += col_stride, row_end += col_stride) {
