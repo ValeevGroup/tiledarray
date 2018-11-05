@@ -1770,6 +1770,8 @@ namespace TiledArray {
             fprintf(stderr, "!!TiledArray ERROR: Exception thrown in ThreadPool::await() for FinalizeTask in SUMMA\n");
             throw;
           }
+
+          delete finalize_task;
         }
         // main thread calls the finialize function when finalize_task is ready
         // must call from all MPI process, since finalize() will call `fence()` when CUDA enabled
