@@ -121,18 +121,8 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   auto result_range = perm * arg.range();
   cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
 
+  // compute the stream to use
   auto &stream = detail::get_stream_based_on_range(result_range);
-
-  auto extent = arg.range().extent();
-  std::vector<int> extent_int(extent.begin(), extent.end());
-
-  // cuTT uses FROM notation
-  auto perm_inv = perm.inv();
-  std::vector<int> perm_int(perm_inv.begin(), perm_inv.end());
-
-  // cuTT uses ColMajor
-  TiledArray::extent_to_col_major(extent_int);
-  TiledArray::permutation_to_col_major(perm_int);
 
   // allocate result memory
   typename btasUMTensorVarray<T, Range>::storage_type storage;
@@ -141,23 +131,9 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   btasUMTensorVarray<T, Range> result(std::move(result_range),
                                       std::move(storage));
 
-  cuttResult_t status;
-
-  cuttHandle plan;
-  status = cuttPlan(&plan, arg.rank(), extent_int.data(), perm_int.data(),
-                    sizeof(T), stream);
-
-  TA_ASSERT(status == CUTT_SUCCESS);
-
-
-  status = cuttExecute(plan, const_cast<T *>(device_data(arg.storage())),
-                       device_data(result.storage()));
-
-  TA_ASSERT(status == CUTT_SUCCESS);
-
-  status = cuttDestroy(plan);
-
-  TA_ASSERT(status == CUTT_SUCCESS);
+  // invoke the permute function
+  cutt_permute(const_cast<T *>(device_data(arg.storage())),
+               device_data(result.storage()), arg.range(), perm, stream);
 
   return result;
 }

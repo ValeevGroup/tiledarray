@@ -57,6 +57,8 @@ class cuda_um_allocator_impl {
   pointer allocate(size_t n) {
     pointer result = nullptr;
 
+    TA_ASSERT(um_dynamic_pool_);
+
     result = static_cast<pointer>(um_dynamic_pool_->allocate(n * sizeof(T)));
 
     return result;
@@ -64,6 +66,7 @@ class cuda_um_allocator_impl {
 
   /// deallocate um memory using umpire dynamic pool
   void deallocate(value_type* ptr, size_t) {
+    TA_ASSERT(um_dynamic_pool_);
     um_dynamic_pool_->deallocate(ptr);
   }
 

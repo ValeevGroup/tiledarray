@@ -34,6 +34,8 @@
 
 #include <cutt.h>
 
+#include <TiledArray/range.h>
+#include <TiledArray/permutation.h>
 
 namespace TiledArray {
 
@@ -67,6 +69,46 @@ inline void permutation_to_col_major(std::vector<int> &perm) {
   }
 
   perm.swap(col_major_perm);
+}
+
+/**
+ * @param inData  pointer to data in input Tensor, must be accessible on GPU
+ * @param outData pointer to data in output Tensor, must be accessible on GPU
+ * @param range the Range of input Tensor inData
+ * @param perm  the permutation object
+ * @param stream  the CUDA stream this permutation will be submitted to
+ */
+template <typename T>
+void cutt_permute(T* inData, T* outData, const TiledArray::Range& range,
+                  const TiledArray::Permutation& perm, cudaStream_t stream) {
+
+  auto extent = range.extent();
+  std::vector<int> extent_int(extent.begin(), extent.end());
+
+  // cuTT uses FROM notation
+  auto perm_inv = perm.inv();
+  std::vector<int> perm_int(perm_inv.begin(), perm_inv.end());
+
+  // cuTT uses ColMajor
+  TiledArray::extent_to_col_major(extent_int);
+  TiledArray::permutation_to_col_major(perm_int);
+
+  cuttResult_t status;
+
+  cuttHandle plan;
+  status = cuttPlan(&plan, range.rank(), extent_int.data(), perm_int.data(),
+                    sizeof(T), stream);
+
+  TA_ASSERT(status == CUTT_SUCCESS);
+
+  status = cuttExecute(plan, inData, outData);
+
+  TA_ASSERT(status == CUTT_SUCCESS);
+
+  status = cuttDestroy(plan);
+
+  TA_ASSERT(status == CUTT_SUCCESS);
+
 }
 
 } // namespace TiledArray
