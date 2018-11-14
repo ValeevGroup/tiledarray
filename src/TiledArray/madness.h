@@ -26,11 +26,15 @@
 #endif // WORLD_INSTANTIATE_STATIC_TEMPLATES
 
 #include <memory>
+#if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC system_header
+#endif
 #include <madness/world/MADworld.h>
 #include <madness/tensor/cblas.h>
+#if defined(__GNUC__)
 #pragma GCC diagnostic pop
+#endif
 #include <TiledArray/error.h>
 
 namespace TiledArray {
