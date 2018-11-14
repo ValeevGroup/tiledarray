@@ -91,10 +91,11 @@ namespace TiledArray {
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
       /// Convert tile to evaluation type using the op object
-#ifdef __clang__  // clang's operator auto behavior is severely broken
-                  // (e.g. explicit operator auto() is not considered in conversions,
-                  //  looking it up as From::operator To does not work, etc.)
-                  // so must work around
+#if   defined(__clang__)  // clang's operator auto behavior is severely broken
+                          // (e.g. explicit operator auto() is not considered in conversions,
+                          //  looking it up as From::operator To does not work, etc.)
+                          //
+   || defined(__GNUC__)   // on some platforms (macos) seem to get internal compiler error in g++
       using conversion_result_type =
           decltype(((!Op::is_consumable) && consume_ ? op_->consume(tile_)
                                                      : (*op_)(tile_)));
