@@ -199,7 +199,7 @@ class cudaEnv {
 
   int num_cuda_streams() const { return num_cuda_streams_; }
 
-  const cudaStream_t& cuda_stream(int i) const {
+  const cudaStream_t& cuda_stream(std::size_t i) const {
     TA_ASSERT(i < cuda_streams_.size());
     return cuda_streams_[i];
   }

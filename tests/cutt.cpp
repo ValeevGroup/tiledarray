@@ -424,7 +424,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three) {
 BOOST_AUTO_TEST_CASE(cutt_um_tensor) {
   TiledArray::Range range{A, A};
 
-  using Tile = btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
 
   auto a = Tile(range);
 
@@ -456,7 +456,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor) {
 BOOST_AUTO_TEST_CASE(cutt_um_tensor_nonsym) {
   TiledArray::Range range{B, A};
 
-  using Tile = btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
 
   auto a = Tile(range);
 
@@ -488,7 +488,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_nonsym) {
 BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_three) {
   TiledArray::Range range{A, B, C};
 
-  using Tile = btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
 
   auto a = Tile(range);
 
@@ -548,7 +548,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_four) {
 
   TiledArray::Range range(std::vector<std::size_t>({a, b, c, d}));
 
-  using Tile = btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
 
   auto tile_a = Tile(range);
 
@@ -619,7 +619,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
 
   TiledArray::Range range(std::vector<std::size_t>({a, b, c, d, e, f}));
 
-  using Tile = btasUMTensorVarray<int, TiledArray::Range>;
+  using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
 
   auto tile_a = Tile(range);
 
