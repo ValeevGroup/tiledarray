@@ -29,7 +29,11 @@ namespace Eigen { // fwd define Eigen's aligned allocator for TiledArray::Tensor
 
 namespace TiledArray {
 
-  //TiledArray Policy
+  // Ranges
+  class TiledRange1;
+  class TiledRange;
+
+  // TiledArray Policy
   class DensePolicy;
   class SparsePolicy;
 
