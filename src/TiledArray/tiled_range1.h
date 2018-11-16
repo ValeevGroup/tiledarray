@@ -111,6 +111,9 @@ namespace TiledArray {
     /// Returns an iterator to the end of the range.
     const_iterator end() const { return tiles_ranges_.end(); }
 
+    /// Returns true if this range is empty (i.e. has no tiles)
+    bool empty() const { return tiles_ranges_.empty(); }
+
     /// Return tile iterator associated with ordinal_index
     const_iterator find(const size_type& e) const{
       if(! includes(elements_range_, e))
@@ -286,14 +289,18 @@ namespace TiledArray {
   inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
     std::vector<TiledRange1::size_type> hashmarks;
     hashmarks.reserve(r1.tile_extent() + r2.tile_extent() + 1);
-    hashmarks.push_back(r1.tile(0).first);
-    for(const auto& tile: r1) {
-      hashmarks.push_back(tile.second);
+    if (!r1.empty()) {
+      hashmarks.push_back(r1.tile(0).first);
+      for (const auto &tile: r1) {
+        hashmarks.push_back(tile.second);
+      }
+      for(const auto& tile: r2) {
+        hashmarks.push_back(hashmarks.back() + tile.second - tile.first);
+      }
+      return TiledRange1(hashmarks.begin(), hashmarks.end());
+    } else {
+      return r2;
     }
-    for(const auto& tile: r2) {
-      hashmarks.push_back(hashmarks.back() + tile.second - tile.first);
-    }
-    return TiledRange1(hashmarks.begin(), hashmarks.end());
   }
 
 } // namespace TiledArray
