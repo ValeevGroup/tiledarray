@@ -48,6 +48,40 @@ const cudaStream_t &get_stream_based_on_range(const Range &range) {
   return stream;
 }
 
+inline void CUDART_CB cuda_readyflag_callback(cudaStream_t stream, cudaError_t status,
+                             void *userData) {
+  // convert void * to std::atomic<bool>
+  std::atomic<bool>* flag = static_cast<std::atomic<bool>*>(userData);
+  // set the flag to be true
+  flag->store(true);
+}
+
+struct ProbeFlag {
+
+    ProbeFlag(std::atomic<bool>* f) : flag(f) {}
+
+    bool operator() () const {
+      return flag->load();
+    }
+
+    std::atomic<bool>* flag;
+};
+
+inline void thread_wait_cuda_stream(const cudaStream_t& stream) {
+
+  std::atomic<bool>* flag = new std::atomic<bool>(false);
+
+  cudaStreamAddCallback(stream, detail::cuda_readyflag_callback,flag, 0);
+
+  detail::ProbeFlag probe(flag);
+
+  // wait with sleep and do not do work
+  madness::ThreadPool::await(probe, false, true);
+  //  madness::ThreadPool::await(probe, true, false);
+
+  delete flag;
+}
+
 }  // namespace detail
 
 template <typename T, typename Scalar, typename Range, typename Storage>
@@ -124,6 +158,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
                         device_data(left.storage()), lda, &zero,
                         device_data(result.storage()), n);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+
+    detail::thread_wait_cuda_stream(cuda_stream);
+
   } else {
     TA_ASSERT(false);
     //    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(),
@@ -131,11 +168,6 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
     //                           k, factor, left.data(), lda, right.data(), ldb,
     //                           T(0), result.data(), n);
   }
-
-  // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(left.storage(),
-  // cuda_streams[stream_left]);
-  // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(right.storage(),
-  // cuda_streams[stream_right]);
 
   return result;
 }
@@ -234,6 +266,9 @@ void btas_tensor_gemm_cuda_impl(
                         device_data(left.storage()), lda, &one,
                         device_data(result.storage()), n);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+
+    detail::thread_wait_cuda_stream(stream);
+
   } else {
     TA_ASSERT(false);
     //    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(),
