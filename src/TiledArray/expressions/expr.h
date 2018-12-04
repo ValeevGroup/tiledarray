@@ -269,10 +269,10 @@ namespace TiledArray {
       Expr_& operator=(const Expr_&) = delete;
       Expr_& operator=(Expr_&&) = delete;
 
-      /// Cast this object to it's derived type
+      /// Cast this object to its derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
 
-      /// Cast this object to it's derived type
+      /// Cast this object to its derived type
       const derived_type& derived() const { return *static_cast<const derived_type*>(this); }
 
       /// Evaluate this object and assign it to \c tsr

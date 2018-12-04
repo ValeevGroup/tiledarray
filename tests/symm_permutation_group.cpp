@@ -118,7 +118,7 @@ struct PermutationGroupFixture {
       // Check that inv is a member of the group
       BOOST_CHECK(j < S.order());
 
-      // Check that the any element multiplied by it's own inverse is the identity
+      // Check that the any element multiplied by its own inverse is the identity
       BOOST_CHECK_EQUAL(inv * S[i], S.identity());
       BOOST_CHECK_EQUAL(S[i] * inv, S.identity());
     }

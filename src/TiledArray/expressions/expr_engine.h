@@ -182,10 +182,10 @@ namespace TiledArray {
           return derived().make_tile_op();
       }
 
-      /// Cast this object to it's derived type
+      /// Cast this object to its derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
 
-      /// Cast this object to it's derived type
+      /// Cast this object to its derived type
       const derived_type& derived() const { return *static_cast<const derived_type*>(this); }
 
       /// World accessor
