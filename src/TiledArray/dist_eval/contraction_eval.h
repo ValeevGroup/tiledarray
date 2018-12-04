@@ -826,7 +826,6 @@ namespace TiledArray {
       // Initialization functions ----------------------------------------------
 
       /// Initialize reduce tasks and construct broadcast groups
-      /// @attention this function only gets called in MPI process within ProcGrid
       size_type initialize(const DenseShape&) {
         // Construct static broadcast groups for dense arguments
         const madness::DistributedID col_did(DistEvalImpl_::id(), 0ul);
@@ -863,7 +862,6 @@ namespace TiledArray {
       }
 
       /// Initialize reduce tasks
-      /// @attention this function only gets called in MPI process within ProcGrid
       template <typename Shape>
       size_type initialize(const Shape& shape) {
 
@@ -937,12 +935,7 @@ namespace TiledArray {
 
       // Finalize functions ----------------------------------------------------
 
-
       /// Set the result tiles, destroy reduce tasks, and destroy broadcast groups
-      /// @attention with CUDA enabled, this function will require to call `fence()` to synchronize
-      /// this function must be called from all MPI processes, not just those in ProcGrid
-      /// this function must be called from the main thread
-      // TODO need to avoid the `fence()` when CUDA is enabled
       void finalize(const DenseShape&) {
         // Initialize iteration variables
         size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
@@ -953,60 +946,32 @@ namespace TiledArray {
         const size_type row_stride = // The stride to iterate across a row
             proc_grid_.proc_cols();
         const size_type end = TensorImpl_::size();
-        const size_type local_size = proc_grid_.local_size();
 
-        // place to hold the future from reduce tasks
-        std::vector<madness::Future<typename op_type::result_type>>
-            reduce_future(local_size);
+        // Iterate over all local tiles
+        for(ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+            row_start < end; row_start += col_stride, row_end += col_stride) {
+          for(size_type index = row_start; index < row_end; index += row_stride, ++reduce_task) {
 
 
-        // submit reduce task for MPI process within ProcGrid
-        if(local_size){
-          // Iterate over all local tiles
-          std::size_t reduce_future_iter = 0;
-          ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-          for(; reduce_future_iter < local_size; ++reduce_future_iter, ++reduce_task){
-            // store the result tile
-            reduce_future[reduce_future_iter] = reduce_task->submit();
+            // Set the result tile
+            DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index),
+                reduce_task->submit());
 
             // Destroy the reduce task
             reduce_task->~ReducePairTask<op_type>();
           }
         }
 
-        // Deallocate the memory for the reduce pair tasks.
-        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
-                                                              proc_grid_.local_size());
-
 #ifdef TILEDARRAY_HAS_CUDA
-        /// @attention when CUDA enabled, need to force synchrization to make sure CUDA task is finished before set the results back to the original distribution
-        this->world().gop.fence();
         cudaDeviceSynchronize();
 #endif
-
-        // set results back to orginal distribution for MPI process within ProcGrid
-        if(local_size){
-          // Iterate over all local tiles
-          for(std::size_t reduce_future_iter = 0;
-              row_start < end; row_start += col_stride, row_end += col_stride) {
-            for(size_type index = row_start; index < row_end; index += row_stride, ++reduce_future_iter) {
-
-              // Set the result tile
-              DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index),
-                                      reduce_future[reduce_future_iter]);
-
-            }
-          }
-        }
-
+        // Deallocate the memory for the reduce pair tasks.
+        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
+            proc_grid_.local_size());
       }
 
       /// Set the result tiles and destroy reduce tasks
       template <typename Shape>
-      /// @attention with CUDA enabled, this function will require to call `fence()` to synchronize
-      /// this function must be called from all MPI processes, not just those in ProcGrid
-      /// this function must be called from the main thread
-      // TODO need to avoid the `fence()` when CUDA is enabled
       void finalize(const Shape& shape) {
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
@@ -1023,27 +988,23 @@ namespace TiledArray {
         const size_type row_stride = // The stride to iterate across a row
             proc_grid_.proc_cols();
         const size_type end = TensorImpl_::size();
-        const size_type local_size = proc_grid_.local_size();
 
-        // place to hold the future from reduce tasks
-        std::vector<madness::Future<typename op_type::result_type>>
-                reduce_future(local_size);
+        // Iterate over all local tiles
+        for(ReducePairTask<op_type>* reduce_task = reduce_tasks_;
+            row_start < end; row_start += col_stride, row_end += col_stride) {
+          for(size_type index = row_start; index < row_end; index += row_stride, ++reduce_task) {
+            // Compute the permuted index
+            const size_type perm_index = DistEvalImpl_::perm_index_to_target(index);
 
-        // submit reduce task for MPI process within ProcGrid
-        if(local_size){
-          // Iterate over all local tiles
-          std::size_t reduce_future_iter = 0;
-          ReducePairTask<op_type>* reduce_task = reduce_tasks_;
-          for(;reduce_future_iter < local_size; ++reduce_future_iter, ++reduce_task){
-            // if reduce_task not default initialized, submit task and store future
-            if(*reduce_task) {
+            // Skip zero tiles
+            if(! shape.is_zero(perm_index)) {
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
               ss << index << " ";
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
 
               // Set the result tile
-              reduce_future[reduce_future_iter] = reduce_task->submit();
+              DistEvalImpl_::set_tile(perm_index, reduce_task->submit());
             }
 
             // Destroy the reduce task
@@ -1051,39 +1012,12 @@ namespace TiledArray {
           }
         }
 
-        // Deallocate the memory for the reduce pair tasks.
-        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
-                                                              proc_grid_.local_size());
-
 #ifdef TILEDARRAY_HAS_CUDA
-        /// @attention when CUDA enabled, need to force synchrization to make sure CUDA task is finished before set the results back to the original distribution
-        this->world().gop.fence();
         cudaDeviceSynchronize();
 #endif
-
-        // submit reduce task for MPI process within ProcGrid
-        if(local_size){
-          // Iterate over all local tiles
-          for(std::size_t reduce_future_iter = 0;
-              row_start < end; row_start += col_stride, row_end += col_stride) {
-            for(size_type index = row_start; index < row_end; index += row_stride, ++reduce_future_iter) {
-              // Compute the permuted index
-              const size_type perm_index = DistEvalImpl_::perm_index_to_target(index);
-
-              // Skip zero tiles
-              if(! shape.is_zero(perm_index)) {
-
-#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
-                ss << index << " ";
-#endif // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
-
-                // Set the result tile
-                DistEvalImpl_::set_tile(perm_index, reduce_future[reduce_future_iter]);
-              }
-
-            }
-          }
-        }
+        // Deallocate the memory for the reduce pair tasks.
+        std::allocator<ReducePairTask<op_type> >().deallocate(reduce_tasks_,
+            proc_grid_.local_size());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
         ss << "}\n";
@@ -1118,13 +1052,7 @@ namespace TiledArray {
 
         virtual ~FinalizeTask() { }
 
-        // call finalize function of SUMMA
-        void finalize() const {
-          owner_->finalize();
-        }
-
-        // call finalize function in ThreadPool
-        virtual void run(const madness::TaskThreadEnv&) { finalize(); }
+        virtual void run(const madness::TaskThreadEnv&) { owner_->finalize(); }
 
       }; // class FinalizeTask
 
@@ -1310,8 +1238,7 @@ namespace TiledArray {
           finalize_task_(new FinalizeTask(owner, finalize_ndep))
         {
           TA_ASSERT(owner_);
-          // TODO this is the original interface, need to be enable later with main thread task support in MADNESS
-//          owner_->world().taskq.add(finalize_task_);
+          owner_->world().taskq.add(finalize_task_);
         }
 
         /// Construct the task for the next step
@@ -1332,11 +1259,6 @@ namespace TiledArray {
         }
 
         virtual ~StepTask() { }
-
-        // return the pointer to finalize_task
-        const FinalizeTask* finalize_task() const{
-          return finalize_task_;
-        }
 
         void spawn_get_row_col_tasks(const size_type k) {
           // Submit the task to collect column tiles of left for iteration k
@@ -1440,7 +1362,6 @@ namespace TiledArray {
         using StepTask::owner_;
 
       public:
-
         DenseStepTask(const std::shared_ptr<Summa_>& owner, const size_type depth) :
           StepTask(owner, owner->k_ + 1ul), k_(0)
         {
@@ -1691,17 +1612,6 @@ namespace TiledArray {
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
 
         size_type tile_count = 0ul;
-
-
-        // finalize task to call in mainthread
-        const FinalizeTask* finalize_task = nullptr;
-
-        // function return true until depedency of finalize_task reaches 0
-        auto probe_finalize_task = [&finalize_task](){
-          return finalize_task->probe();
-        };
-
-        // only do SUMMA using process in current process grid
         if(proc_grid_.local_size() > 0ul) {
           tile_count = initialize();
 
@@ -1727,9 +1637,8 @@ namespace TiledArray {
             if(max_depth_)
               depth = std::min(depth, max_depth_);
 
-            DenseStepTask* task = new DenseStepTask(shared_from_this(), depth);
-            finalize_task = task->finalize_task();
-            TensorImpl_::world().taskq.add(task);
+            TensorImpl_::world().taskq.add(new DenseStepTask(shared_from_this(),
+                                                             depth));
           } else {
             // Increase the depth based on the amount of sparsity in an iteration.
 
@@ -1756,28 +1665,10 @@ namespace TiledArray {
             if(max_depth_)
               depth = std::min(depth, max_depth_);
 
-            SparseStepTask* task = new SparseStepTask(shared_from_this(), depth);
-            finalize_task = task->finalize_task();
-            TensorImpl_::world().taskq.add(task);
+            TensorImpl_::world().taskq.add(new SparseStepTask(shared_from_this(),
+                                                              depth));
           }
-
         }
-
-        // main thread wait for finalize_task to be ready while doing work
-        if(finalize_task != nullptr){
-          try {
-            madness::ThreadPool::await(probe_finalize_task, true);
-          }
-          catch(...) {
-            fprintf(stderr, "!!TiledArray ERROR: Exception thrown in ThreadPool::await() for FinalizeTask in SUMMA\n");
-            throw;
-          }
-
-          delete finalize_task;
-        }
-        // main thread calls the finialize function when finalize_task is ready
-        // must call from all MPI process, since finalize() will call `fence()` when CUDA enabled
-        this->finalize();
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
         printf("eval: start wait children rank=%i\n", TensorImpl_::world().rank());
