@@ -25,6 +25,7 @@
 #define TILEDARRAY_BTAS_TENSOR_CUDA_CUBLAS_H__INCLUDED
 
 #include <TiledArray/math/cublas.h>
+#include <TiledArray/math/blas.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
@@ -48,36 +49,33 @@ const cudaStream_t &get_stream_based_on_range(const Range &range) {
   return stream;
 }
 
-inline void CUDART_CB cuda_readyflag_callback(cudaStream_t stream, cudaError_t status,
-                             void *userData) {
+inline void CUDART_CB cuda_readyflag_callback(cudaStream_t stream,
+                                              cudaError_t status,
+                                              void *userData) {
   // convert void * to std::atomic<bool>
-  std::atomic<bool>* flag = static_cast<std::atomic<bool>*>(userData);
+  std::atomic<bool> *flag = static_cast<std::atomic<bool> *>(userData);
   // set the flag to be true
   flag->store(true);
 }
 
 struct ProbeFlag {
+  ProbeFlag(std::atomic<bool> *f) : flag(f) {}
 
-    ProbeFlag(std::atomic<bool>* f) : flag(f) {}
+  bool operator()() const { return flag->load(); }
 
-    bool operator() () const {
-      return flag->load();
-    }
-
-    std::atomic<bool>* flag;
+  std::atomic<bool> *flag;
 };
 
-inline void thread_wait_cuda_stream(const cudaStream_t& stream) {
+inline void thread_wait_cuda_stream(const cudaStream_t &stream) {
+  std::atomic<bool> *flag = new std::atomic<bool>(false);
 
-  std::atomic<bool>* flag = new std::atomic<bool>(false);
-
-  cudaStreamAddCallback(stream, detail::cuda_readyflag_callback,flag, 0);
+  cudaStreamAddCallback(stream, detail::cuda_readyflag_callback, flag, 0);
 
   detail::ProbeFlag probe(flag);
 
   // wait with sleep and do not do work
   madness::ThreadPool::await(probe, false, true);
-  //  madness::ThreadPool::await(probe, true, false);
+  //    madness::ThreadPool::await(probe, true, true);
 
   delete flag;
 }
@@ -89,41 +87,11 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
     const btas::Tensor<T, Range, Storage> &left,
     const btas::Tensor<T, Range, Storage> &right, Scalar factor,
     const TiledArray::math::GemmHelper &gemm_helper) {
-  // either both arguments are on host or both on device ... mixed case TBI
-  //  TA_ASSERT(left.storage().on_host() == right.storage().on_host() &&
-  //            left.storage().on_device() == right.storage().on_device());
-
-  TA_ASSERT((in_memory_space<MemorySpace::CPU>(left.storage()) &&
-             in_memory_space<MemorySpace::CPU>(right.storage())) ||
-            (in_memory_space<MemorySpace::CUDA>(left.storage()) &&
-             in_memory_space<MemorySpace::CUDA>(right.storage())));
-
   // Check that the arguments are not empty and have the correct ranks
   TA_ASSERT(!left.empty());
   TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
   TA_ASSERT(!right.empty());
   TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
-
-  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
-  // Construct the result Tensor
-  typedef btas::Tensor<T, Range, Storage> Tensor;
-  //  typedef typename Tensor::storage_type storage_type;
-  auto result_range =
-      gemm_helper.make_result_range<Range>(left.range(), right.range());
-
-  auto &cuda_stream = detail::get_stream_based_on_range(result_range);
-
-  Storage result_storage;
-  make_device_storage(result_storage, result_range.area(), cuda_stream);
-  Tensor result(std::move(result_range), std::move(result_storage));
-
-  // auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
-  // auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
-
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-  	left.storage(), cuda_stream);
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-  	right.storage(), cuda_stream);
 
   // Check that the inner dimensions of left and right match
   TA_ASSERT(
@@ -146,27 +114,86 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
       (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
   T factor_t = T(factor);
+  T zero(0);
 
-  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
+  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
+
+  //  typedef typename Tensor::storage_type storage_type;
+  auto result_range =
+      gemm_helper.make_result_range<Range>(left.range(), right.range());
+
+  auto &cuda_stream = detail::get_stream_based_on_range(result_range);
+
+  // the result Tensor type
+  typedef btas::Tensor<T, Range, Storage> Tensor;
+  Tensor result;
+
+  // check if stream is busy
+  auto stream_status = cudaStreamQuery(cuda_stream);
+
+
+  // if stream is completed, use GPU
+//  if (stream_status == cudaSuccess) {
+  if(true) {
+    Storage result_storage;
+    make_device_storage(result_storage, result_range.area(), cuda_stream);
+    result = Tensor(std::move(result_range), std::move(result_storage));
+
+    // left and right are readonly!!
+    cudaMemAdvise(device_data(left), left.size() * sizeof(T),
+                  cudaMemAdviseSetReadMostly,
+                  cudaEnv::instance()->current_cuda_device_id());
+    cudaMemAdvise(device_data(right), right.size() * sizeof(T),
+                  cudaMemAdviseSetReadMostly,
+                  cudaEnv::instance()->current_cuda_device_id());
+
+    // prefetch data
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+        left.storage(), cuda_stream);
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+        right.storage(), cuda_stream);
+
     const auto &handle = cuBLASHandlePool::handle();
-    auto zero = T(0);
     auto status = cublasSetStream(handle, cuda_stream);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+
     status = cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
                         to_cublas_op(gemm_helper.left_op()), n, m, k, &factor_t,
                         device_data(right.storage()), ldb,
                         device_data(left.storage()), lda, &zero,
                         device_data(result.storage()), n);
+
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
 
+    // wait for cuda calls to finish
     detail::thread_wait_cuda_stream(cuda_stream);
 
-  } else {
-    TA_ASSERT(false);
-    //    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(),
-    //    m, n,
-    //                           k, factor, left.data(), lda, right.data(), ldb,
-    //                           T(0), result.data(), n);
+  }
+  // otherwise, use CPU
+  else {
+    Storage result_storage(result_range.area());
+    result = Tensor(std::move(result_range), std::move(result_storage));
+
+//    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
+//        result.storage(), cuda_stream);
+
+//    // left and right are readonly!!
+//    cudaMemAdvise(device_data(left), left.size() * sizeof(T),
+//                  cudaMemAdviseSetReadMostly,
+//                  cudaEnv::instance()->current_cuda_device_id());
+//    cudaMemAdvise(device_data(right), right.size() * sizeof(T),
+//                  cudaMemAdviseSetReadMostly,
+//                  cudaEnv::instance()->current_cuda_device_id());
+//
+//    // prefetch data
+//    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
+//        left.storage(), cuda_stream);
+//    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
+//        right.storage(), cuda_stream);
+
+    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
+                           k, factor_t, left.data(), lda, right.data(), ldb, zero,
+                           result.data(), n);
   }
 
   return result;
@@ -178,15 +205,6 @@ void btas_tensor_gemm_cuda_impl(
     const btas::Tensor<T, Range, Storage> &left,
     const btas::Tensor<T, Range, Storage> &right, Scalar factor,
     const TiledArray::math::GemmHelper &gemm_helper) {
-  // the result determines were to do gemm
-  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
-    TA_ASSERT(in_memory_space<MemorySpace::CUDA>(left.storage()) &&
-              in_memory_space<MemorySpace::CUDA>(right.storage()));
-  } else {
-    TA_ASSERT(in_memory_space<MemorySpace::CPU>(result.storage()) &&
-              in_memory_space<MemorySpace::CPU>(left.storage()) &&
-              in_memory_space<MemorySpace::CPU>(right.storage()));
-  }
 
   // Check that the result is not empty and has the correct rank
   TA_ASSERT(!result.empty());
@@ -232,33 +250,49 @@ void btas_tensor_gemm_cuda_impl(
   TA_ASSERT(gemm_helper.left_right_congruent(
       std::cbegin(left.range().extent()), std::cbegin(right.range().extent())));
 
-  // auto stream_left = left.range().ordinal().offset() % num_cuda_streams;
-  // auto stream_right = right.range().ordinal().offset() % num_cuda_streams;
-
-  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
-
-  auto &stream = detail::get_stream_based_on_range(result.range());
-
-  // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-  // 	left.storage(), stream);
-  // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-  //	right.storage(), stream);
   // Compute gemm dimensions
   integer m, n, k;
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
   const integer lda =
-      (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+          (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
   const integer ldb =
-      (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+          (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+
+  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
+  auto &cuda_stream = detail::get_stream_based_on_range(result.range());
+
+
 
   T factor_t = T(factor);
+  T one(1);
+  // check if stream is busy
+  auto stream_status = cudaStreamQuery(cuda_stream);
 
-  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
+  // if stream is completed, use GPU
+//  if (stream_status == cudaSuccess) {
+  if (true) {
+
+    // left and right are readonly!!
+    cudaMemAdvise(device_data(left), left.size() * sizeof(T),
+                  cudaMemAdviseSetReadMostly,
+                  cudaEnv::instance()->current_cuda_device_id());
+    cudaMemAdvise(device_data(right), right.size() * sizeof(T),
+                  cudaMemAdviseSetReadMostly,
+                  cudaEnv::instance()->current_cuda_device_id());
+
+    // prefetch all data
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+            left.storage(), cuda_stream);
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+            right.storage(), cuda_stream);
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+            result.storage(), cuda_stream);
+
+
     const auto &handle = cuBLASHandlePool::handle();
-    auto one = T(1);
-    auto status = cublasSetStream(handle, stream);
+    auto status = cublasSetStream(handle, cuda_stream);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
     status = cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
                         to_cublas_op(gemm_helper.left_op()), n, m, k, &factor_t,
@@ -267,14 +301,20 @@ void btas_tensor_gemm_cuda_impl(
                         device_data(result.storage()), n);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
 
-    detail::thread_wait_cuda_stream(stream);
+    detail::thread_wait_cuda_stream(cuda_stream);
 
   } else {
-    TA_ASSERT(false);
-    //    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(),
-    //    m, n,
-    //                           k, factor, left.data(), lda, right.data(), ldb,
-    //                           T(1), result.data(), n);
+    // left and right are readonly!!
+//    cudaMemAdvise(device_data(left), left.size() * sizeof(T),
+//                  cudaMemAdviseSetReadMostly,
+//                  cudaEnv::instance()->current_cuda_device_id());
+//    cudaMemAdvise(device_data(right), right.size() * sizeof(T),
+//                  cudaMemAdviseSetReadMostly,
+//                  cudaEnv::instance()->current_cuda_device_id());
+
+    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
+                           k, factor_t, left.data(), lda, right.data(), ldb, one,
+                           result.data(), n);
   }
 }
 
