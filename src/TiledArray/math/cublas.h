@@ -46,7 +46,8 @@ namespace TiledArray {
 class cuBLASHandlePool {
  public:
   static const cublasHandle_t &handle() {
-    if (handle_ == 0) {
+    static thread_local cublasHandle_t* handle_{nullptr};
+    if (handle_ == nullptr) {
       handle_ = new cublasHandle_t;
       auto error = cublasCreate(handle_);
       TA_ASSERT(error == CUBLAS_STATUS_SUCCESS);
@@ -55,9 +56,6 @@ class cuBLASHandlePool {
     }
     return *handle_;
   }
-
- private:
-  static thread_local cublasHandle_t *handle_;
 };
 // thread_local cublasHandle_t *cuBLASHandlePool::handle_;
 

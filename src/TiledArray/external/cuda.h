@@ -113,6 +113,17 @@ inline int current_cuda_device_id() {
 
 }  // namespace detail
 
+
+
+inline const cudaStream_t* & tls_cudastreamptr_accessor() {
+  static thread_local const cudaStream_t* thread_local_stream_ptr {nullptr};
+  return thread_local_stream_ptr;
+}
+
+inline void synchronize_stream(const cudaStream_t* stream) {
+  tls_cudastreamptr_accessor() = stream;
+}
+
 /**
  * cudaEnv set up global environment
  *
@@ -159,14 +170,17 @@ class cudaEnv {
 
   /// access to static member
   static std::unique_ptr<cudaEnv>& instance() {
-    TA_ASSERT(instance_);
+    static std::unique_ptr<cudaEnv> instance_{nullptr};
+    if (!instance_) {
+      initialize(instance_);
+    }
     return instance_;
   }
 
   /// initialize static member
-  static void initialize() {
+  static void initialize(std::unique_ptr<cudaEnv>& instance) {
     // initialize only when not initialized
-    if (instance_ == nullptr) {
+    if (instance == nullptr) {
       int num_streams = detail::num_cuda_streams();
       int num_devices = detail::num_cuda_devices();
       int device_id = detail::current_cuda_device_id();
@@ -186,12 +200,9 @@ class cudaEnv {
       auto cuda_env =
           std::make_unique<cudaEnv>(num_devices, device_id, num_streams,
                                     rm.getAllocator("ThreadSafeUMDynamicPool"));
-      instance_ = std::move(cuda_env);
+      instance = std::move(cuda_env);
     }
   }
-
-  /// finalize the static member
-  static void finalize() { instance_.reset(nullptr); }
 
   int num_cuda_devices() const { return num_cuda_devices_; }
 
@@ -207,8 +218,6 @@ class cudaEnv {
   umpire::Allocator& um_dynamic_pool() { return um_dynamic_pool_; }
 
  private:
-  static std::unique_ptr<cudaEnv> instance_;
-
   /// a Thread Safe, Dynamic memory pool for Unified Memory
   umpire::Allocator um_dynamic_pool_;
 
@@ -222,9 +231,7 @@ class cudaEnv {
 /// initialize cuda environment
 inline void cuda_initialize() {
   /// initialize cudaGlobal
-
-  cudaEnv::initialize();
-
+  cudaEnv::instance();
   //
   cuBLASHandlePool::handle();
 }
@@ -232,7 +239,6 @@ inline void cuda_initialize() {
 /// finalize cuda environment
 inline void cuda_finalize() {
   cudaDeviceSynchronize();
-  cudaEnv::finalize();
   cublasDestroy(cuBLASHandlePool::handle());
 }
 
