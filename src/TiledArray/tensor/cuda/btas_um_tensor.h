@@ -32,6 +32,7 @@
 #include <TiledArray/range.h>
 #include <TiledArray/tensor/cuda/btas_cublas.h>
 #include <TiledArray/tensor/tensor.h>
+#include <TiledArray/tile.h>
 
 namespace TiledArray {
 
@@ -39,10 +40,11 @@ namespace TiledArray {
  * btas::Tensor with UM storage cuda_um_btas_varray
  */
 
-template<typename T, typename Range = TiledArray::Range>
-using btasUMTensorVarray = btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
+template <typename T, typename Range = TiledArray::Range>
+using btasUMTensorVarray =
+    ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
-} // end of namespace TiledArray
+}  // end of namespace TiledArray
 
 /// serialize functions
 namespace madness {
@@ -50,23 +52,27 @@ namespace archive {
 
 template <class Archive, typename T>
 struct ArchiveLoadImpl<Archive, TiledArray::btasUMTensorVarray<T>> {
-  static inline void load(const Archive &ar, TiledArray::btasUMTensorVarray<T> &t) {
+  static inline void load(const Archive &ar,
+                          TiledArray::btasUMTensorVarray<T> &t) {
     TiledArray::Range range{};
     TiledArray::cuda_um_btas_varray<T> store{};
     ar &range &store;
     t = TiledArray::btasUMTensorVarray<T>(std::move(range), std::move(store));
-    //cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id());
-    //auto &stream = TiledArray::detail::get_stream_based_on_range(range);
-    //TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(t.storage(), stream);
+    // cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id());
+    // auto &stream = TiledArray::detail::get_stream_based_on_range(range);
+    // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(t.storage(),
+    // stream);
   }
 };
 
 template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, TiledArray::btasUMTensorVarray<T>> {
-  static inline void store(const Archive &ar, const TiledArray::btasUMTensorVarray<T> &t) {
+  static inline void store(const Archive &ar,
+                           const TiledArray::btasUMTensorVarray<T> &t) {
     cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id());
     auto &stream = TiledArray::detail::get_stream_based_on_range(t.range());
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(t.storage(), stream);
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(t.storage(),
+                                                                    stream);
     ar &t.range() & t.storage();
   }
 };
@@ -161,7 +167,6 @@ btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
   scale_to(result, factor);
   return result;
 }
-
 
 ///
 /// neg
@@ -310,7 +315,7 @@ typename btasUMTensorVarray<T, Range>::value_type dot(
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2) {
-  return  btas_tensor_mult_cuda_impl(arg1, arg2);
+  return btas_tensor_mult_cuda_impl(arg1, arg2);
 }
 
 template <typename T, typename Scalar, typename Range>
@@ -474,7 +479,6 @@ void to_host(
 template <typename UMTensor, typename Policy>
 void to_device(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
-
   auto to_device = [](TiledArray::Tile<UMTensor> &tile) {
 
     cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
@@ -504,15 +508,12 @@ void to_device(
 template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tensor<T>, Policy> um_tensor_to_ta_tensor(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
-
-
   const auto convert_tile = [](const TiledArray::Tile<UMTensor> &tile) {
     TiledArray::Tensor<T> result(tile.tensor().range());
     using std::begin;
     const auto n = tile.tensor().size();
 
     std::copy_n(tile.data(), n, result.data());
-
 
     return result;
   };
@@ -531,7 +532,6 @@ template <typename T, typename UMTensor, typename Policy>
 TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
 ta_tensor_to_um_tensor(
     TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
-
   auto convert_tile = [](const TiledArray::Tensor<T> &tile) {
 
     cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
@@ -548,7 +548,7 @@ ta_tensor_to_um_tensor(
 
     // prefetch data to GPU
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-            result.storage(), stream);
+        result.storage(), stream);
 
     return TiledArray::Tile<UMTensor>(result);
   };
@@ -563,24 +563,29 @@ ta_tensor_to_um_tensor(
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
-//  extern template class
-//  btas::Tensor<double,TiledArray::Range,TiledArray::cuda_um_btas_varray<double>>;
-//  extern template class
-//  btas::Tensor<float,TiledArray::Range,TiledArray::cuda_um_btas_varray<float>>;
-//  extern template class
-//  btas::Tensor<int,TiledArray::Range,TiledArray::cuda_um_btas_varray<int>>;
-//  extern template class
-//  btas::Tensor<long,TiledArray::Range,TiledArray::cuda_um_btas_varray<long>>;
-//
-//
-//  extern template class
-//  btas::Tensor<double,TiledArray::Range,TiledArray::cuda_um_thrust_vector<double>>;
-//  extern template class
-//  btas::Tensor<float,TiledArray::Range,TiledArray::cuda_um_thrust_vector<float>>;
-//  extern template class
-//  btas::Tensor<int,TiledArray::Range,TiledArray::cuda_um_thrust_vector<int>>;
-//  extern template class
-//  btas::Tensor<long,TiledArray::Range,TiledArray::cuda_um_thrust_vector<long>>;
+extern template class btas::varray<double,
+                                   TiledArray::cuda_um_allocator<double>>;
+extern template class btas::varray<float, TiledArray::cuda_um_allocator<float>>;
+extern template class btas::varray<int, TiledArray::cuda_um_allocator<int>>;
+extern template class btas::varray<long, TiledArray::cuda_um_allocator<long>>;
+
+extern template class btas::Tensor<double, TiledArray::Range,
+                                   TiledArray::cuda_um_btas_varray<double>>;
+extern template class btas::Tensor<float, TiledArray::Range,
+                                   TiledArray::cuda_um_btas_varray<float>>;
+extern template class btas::Tensor<int, TiledArray::Range,
+                                   TiledArray::cuda_um_btas_varray<int>>;
+extern template class btas::Tensor<long, TiledArray::Range,
+                                   TiledArray::cuda_um_btas_varray<long>>;
+
+extern template class TiledArray::Tile<btas::Tensor<
+    double, TiledArray::Range, TiledArray::cuda_um_btas_varray<double>>>;
+extern template class TiledArray::Tile<btas::Tensor<
+    float, TiledArray::Range, TiledArray::cuda_um_btas_varray<float>>>;
+extern template class TiledArray::Tile<
+    btas::Tensor<int, TiledArray::Range, TiledArray::cuda_um_btas_varray<int>>>;
+extern template class TiledArray::Tile<btas::Tensor<
+    long, TiledArray::Range, TiledArray::cuda_um_btas_varray<long>>>;
 
 #endif
 
