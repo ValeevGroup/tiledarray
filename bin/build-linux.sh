@@ -2,11 +2,7 @@
 
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
-
-# to test both separate CMake install and during-build eigen download, pre-install only for Debug builds
-if [ "$BUILD_TYPE" = "Debug" ]; then
-  ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
-fi
+${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
 
 # Exit on error
 set -ev
