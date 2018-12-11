@@ -73,7 +73,7 @@ else()
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
   set(EIGEN3_URL https://bitbucket.org/eigen/eigen)
-  set(EIGEN3_TAG 3.3.6)
+  set(EIGEN3_TAG 3.3.5)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
 
