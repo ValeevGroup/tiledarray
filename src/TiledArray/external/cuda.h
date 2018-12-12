@@ -115,13 +115,13 @@ inline int current_cuda_device_id() {
 
 
 
-inline const cudaStream_t* & tls_cudastreamptr_accessor() {
+inline const cudaStream_t* & tls_cudastream_accessor() {
   static thread_local const cudaStream_t* thread_local_stream_ptr {nullptr};
   return thread_local_stream_ptr;
 }
 
 inline void synchronize_stream(const cudaStream_t* stream) {
-  tls_cudastreamptr_accessor() = stream;
+  tls_cudastream_accessor() = stream;
 }
 
 /**
