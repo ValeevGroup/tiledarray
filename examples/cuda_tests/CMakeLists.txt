@@ -29,4 +29,8 @@ if(CUDA_FOUND)
   target_link_libraries(cuda_cutt PUBLIC tiledarray)
   add_dependencies(examples cuda_cutt)
 
+  cuda_add_executable(cuda_task EXCLUDE_FROM_ALL cuda_task.cpp)
+  target_link_libraries(cuda_task PUBLIC tiledarray)
+  add_dependencies(examples cuda_task)
+
 endif()
