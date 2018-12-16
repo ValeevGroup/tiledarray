@@ -20,6 +20,7 @@ cat > $setup << END
 curl -sSL "http://apt.llvm.org/llvm-snapshot.gpg.key" | apt-key add -
 echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main" | tee -a /etc/apt/sources.list > /dev/null
 echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main" | tee -a /etc/apt/sources.list > /dev/null
+echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-7 main" | tee -a /etc/apt/sources.list > /dev/null
 echo "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty main" | tee -a /etc/apt/sources.list > /dev/null
 apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
 apt-add-repository -y "ppa:boost-latest/ppa"
@@ -49,7 +50,8 @@ chmod +x $build
 # make Dockerfile
 cat > Dockerfile << END
 # Travis default 'Trusty' image
-FROM travisci/ci-garnet:packer-1503972846
+# for up-to-date info: https://docs.travis-ci.com/user/common-build-problems/#troubleshooting-locally-in-a-docker-image
+FROM travisci/ci-garnet:packer-1512502276-986baf0
 
 # Use baseimage-docker's init system.
 CMD ["/sbin/my_init"]
