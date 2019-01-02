@@ -55,7 +55,14 @@ set(TILEDARRAY_INSTALL_DOCDIR "${TILEDARRAY_INSTALL_SHAREDIR}/doc"
 set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
     CACHE PATH "TiledArray CMAKE install directory")
 
-# User features ===============================================================
+# Add module directory and modules =============================================
+list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
+include(CMakePushCheckState)
+include(GNUInstallDirs)
+include(AppendFlags)
+include(RedefaultableOption)
+
+# Load extra CMake features ====================================================
 
 include(CMakeDependentOption)
 include(CMakePackageConfigHelpers)
@@ -74,7 +81,7 @@ set(TILEDARRAY_INSTALL_DOCDIR "share/tiledarray/${TILEDARRAY_VERSION}/doc"
 set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
     CACHE PATH "TiledArray CMAKE install directory")
 
-# Configure options
+# Configure options =======================================================
 option(ENABLE_MPI "Enable MPI" ON)
 add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-memory parallel programs")
 
@@ -85,8 +92,11 @@ if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
     set(ELEMENTAL_TAG 50e24bb92b6b2e30d657decda3a903d967f00f0b)
 endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
 
-option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
-add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks support shared-memory parallel programs")
+redefaultable_option(ENABLE_MKL "Enable use of MKL (info passed to MADNESS)" ON)
+add_feature_info(MKL ENABLE_MKL "Intel Math Kernel Library provides linear algebra and other math functionality")
+
+redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
+add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks supports programming shared-memory systems")
 
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
 add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
@@ -129,13 +139,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
 endif()
 
 
-
-# extra cmake files are shipped with TiledArray
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/modules/)
-
-include(CMakePushCheckState)
-include(GNUInstallDirs)
-include(AppendFlags)
 
 ##########################
 # Standard build variables
