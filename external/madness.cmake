@@ -98,7 +98,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "4179a70c8ca645b6bcabd15d283d7602d6e57309" CACHE STRING
+  set(MADNESS_TAG "8c6b889ce0d64e89a5894c58c3d900e3c4c5e345" CACHE STRING
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -272,11 +272,12 @@ else()
   set(error_code 1)
   message (STATUS "** Configuring MADNESS")
   message (STATUS "MADNESS Extra Args: ${MADNESS_CMAKE_EXTRA_ARGS}") 
+  message (STATUS "MADNESS CMake generator: ${CMAKE_GENERATOR}")
   execute_process(
       COMMAND ${CMAKE_COMMAND}
       ARGS
       ${MADNESS_SOURCE_DIR}
-      -G${CMAKE_GENERATOR}
+      -GNinja
       -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
       "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
       -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
