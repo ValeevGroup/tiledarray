@@ -317,7 +317,7 @@ namespace TiledArray {
             // delete ReduceObject
             ReduceObject::destroy(reduce_object);
           }
-          delete userData;
+          delete objects;
         }
 
         static void CUDART_CB cuda_dependency_dec_callback(cudaStream_t stream, cudaError_t status,
@@ -330,7 +330,7 @@ namespace TiledArray {
             // call dec
             dep->dec();
           }
-          delete userData;
+          delete objects;
         }
 
         static void CUDART_CB cuda_dependency_dec_reduceobject_delete_callback(cudaStream_t stream, cudaError_t status,
@@ -350,7 +350,7 @@ namespace TiledArray {
           // delete ReduceObject
           ReduceObject::destroy(reduce_object);
 
-          delete userData;
+          delete objects;
         }
 
 
