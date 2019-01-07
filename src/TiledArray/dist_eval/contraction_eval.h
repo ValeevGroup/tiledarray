@@ -1678,6 +1678,10 @@ namespace TiledArray {
         left_.wait();
         right_.wait();
 
+#ifdef TILEDARRAY_HAS_CUDA
+        cudaDeviceSynchronize();
+#endif
+
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
         printf("eval: finished wait children rank=%i\n", TensorImpl_::world().rank());
 #endif // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL

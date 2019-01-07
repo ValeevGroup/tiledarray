@@ -189,9 +189,6 @@ namespace TiledArray {
             std::cerr << ss.str().c_str();
             throw;
           }
-#ifdef TILEDARRAY_HAS_CUDA
-          cudaDeviceSynchronize();
-#endif
         }
       }
 

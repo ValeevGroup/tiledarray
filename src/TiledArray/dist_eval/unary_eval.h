@@ -150,6 +150,9 @@ namespace TiledArray {
 
         // Wait for local tiles of argument to be evaluated
         arg_.wait();
+#ifdef TILEDARRAY_HAS_CUDA
+        cudaDeviceSynchronize();
+#endif
 
         return task_count;
       }
