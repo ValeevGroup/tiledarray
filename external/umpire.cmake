@@ -29,7 +29,7 @@ else()
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/external/Umpire)
 
     if (NOT UMPIRE_URL)
-        set(UMPIRE_URL https://github.com/pchong90/Umpire.git)
+        set(UMPIRE_URL https://github.com/LLNL/Umpire.git)
     endif (NOT UMPIRE_URL)
 
     set(UMPIRE_TAG develop)
