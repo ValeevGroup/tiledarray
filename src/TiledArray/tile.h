@@ -83,6 +83,16 @@ namespace TiledArray {
     typedef Tile<T> Tile_;
     /// Tensor type used to represent tile data
     typedef T tensor_type;
+    // import types from T
+    using value_type = typename tensor_type::value_type; ///< value type
+    using range_type = typename tensor_type::range_type; ///< Tensor range type
+    using size_type = typename range_type::size_type; ///< size type
+    using reference = typename tensor_type::reference; ///< Element reference type
+    using const_reference = typename tensor_type::const_reference; ///< Element reference type
+    using iterator = typename tensor_type::iterator; ///< Element iterator type
+    using const_iterator = typename tensor_type::const_iterator; ///< Element const iterator type
+    using numeric_type = typename TiledArray::detail::numeric_type<tensor_type>::type; ///< the numeric type that supports T
+    using scalar_type = typename TiledArray::detail::scalar_type<tensor_type>::type; ///< the scalar type that supports T
 
   private:
 

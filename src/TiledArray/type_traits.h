@@ -511,11 +511,6 @@ namespace TiledArray {
         public numeric_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
     { };
 
-    template <typename T>
-    struct numeric_type<Tile<T>, void> :
-        public numeric_type<typename Tile<T>::tensor_type>
-    { };
-
     template <typename PlainObjectType, int MapOptions, typename StrideType>
     struct numeric_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
         public numeric_type<PlainObjectType>
