@@ -187,6 +187,19 @@ namespace TiledArray {
     decltype(auto) end() const
     { return std::end(tensor()); }
 
+    // Data accessor -------------------------------------------------------
+
+    /// Data direct access
+
+    /// \return A pointer to the tensor data
+    decltype(auto) data()
+    { return tensor().data(); }
+
+    /// Data direct access
+
+    /// \return A const pointer to the tensor data
+    decltype(auto) data() const
+    { return tensor().data(); }
 
     // Dimension information accessors -----------------------------------------
 
