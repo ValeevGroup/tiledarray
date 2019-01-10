@@ -28,6 +28,7 @@
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/tile_interface/cast.h"
+#include "TiledArray/range.h"
 
 #include <btas/features.h>
 #include <btas/generic/axpy_impl.h>
@@ -83,6 +84,13 @@ bool operator==(const TiledArray::Range& range1,
 
 /// Computes the result of applying permutation \c perm to \c arg
 template <typename T, typename Range, typename Storage>
+btas::Tensor<T, Range, Storage> clone(
+    const btas::Tensor<T, Range, Storage>& arg) {
+  return arg;
+}
+
+/// Computes the result of applying permutation \c perm to \c arg
+template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> permute(
     const btas::Tensor<T, Range, Storage>& arg,
     const TiledArray::Permutation& perm) {
@@ -93,11 +101,52 @@ btas::Tensor<T, Range, Storage> permute(
   return result;
 }
 
+/// result[i] = arg1[i] + arg2[i]
+template <typename T, typename Range, typename Storage>
+btas::Tensor<T, Range, Storage> add(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2) {
+  assert(false);
+}
+
+/// result[i] = arg1[i] + arg2[i]
+template <typename T, typename Range, typename Storage>
+btas::Tensor<T, Range, Storage> add(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const TiledArray::Permutation& perm) {
+  assert(false);
+}
+
 /// result[i] += arg[i]
 template <typename T, typename Range, typename Storage>
 void add_to(btas::Tensor<T, Range, Storage>& result,
             const btas::Tensor<T, Range, Storage>& arg) {
   btas::axpy(1.0, arg, result);
+}
+
+/// result[i] = arg1[i] - arg2[i]
+template <typename T, typename Range, typename Storage>
+btas::Tensor<T, Range, Storage> subt(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2) {
+  assert(false);
+}
+
+/// result[i] -= arg[i]
+template <typename T, typename Range, typename Storage>
+void subt_to(btas::Tensor<T, Range, Storage>& result,
+             const btas::Tensor<T, Range, Storage>& arg) {
+  btas::axpy(-1.0, arg, result);
+}
+
+/// result = perm ^ (arg1 - arg2)
+template <typename T, typename Range, typename Storage>
+btas::Tensor<T, Range, Storage> subt(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const TiledArray::Permutation& perm) {
+  assert(false);
 }
 
 /// result[i] = arg1[i] * arg2[i]
@@ -123,6 +172,46 @@ btas::Tensor<T, Range, Storage>& mult_to(
     btas::Tensor<T, Range, Storage>& result,
     const btas::Tensor<T, Range, Storage>& arg) {
   assert(false);
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage>& scale_to(btas::Tensor<T, Range, Storage>& result, const Scalar factor) {
+  std::for_each(result.begin(), result.end(), [=] (auto a) { return a * factor; });
+  return result;
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  btas::Tensor<T, Range, Storage> result(arg);
+  std::for_each(result.begin(), result.end(), [=] (auto a) { return a * factor; });
+  return result;
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline decltype(auto)
+scale(const btas::Tensor<T, Range, Storage>& arg, const Scalar factor, const TiledArray::Permutation& perm) {
+  btas::Tensor<T, Range, Storage> result = btas::permute(arg, perm);
+  std::for_each(result.begin(), result.end(), [=] (auto a) { return a * factor; });
+  return result;
+}
+
+template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage>& neg_to(btas::Tensor<T, Range, Storage>& result) {
+  return scale_to(result, T(-1));
+}
+
+template <typename T, typename Range, typename Storage>
+inline decltype(auto) neg(const btas::Tensor<T, Range, Storage>& arg) {
+  return scale(arg, T(-1));
+}
+
+template <typename T, typename Range, typename Storage>
+inline decltype(auto)
+neg(const btas::Tensor<T, Range, Storage>& arg, const TiledArray::Permutation& perm) {
+  return scale(arg, T(-1), perm);
 }
 
 template <typename T, typename Range, typename Storage>
@@ -256,6 +345,15 @@ typename btas::Tensor<T, Range, Storage>::value_type squared_norm(
   double result = 0.0;
   result = TiledArray::math::dot(size, arg.data(), arg.data());
   return result;
+};
+
+// foreach(i) result += arg1[i] * arg2[i]
+template <typename T, typename Range, typename Storage>
+typename btas::Tensor<T, Range, Storage>::value_type dot(
+    const btas::Tensor<T, Range, Storage>& arg1, const btas::Tensor<T, Range, Storage>& arg2) {
+  integer size = arg1.size();
+  TA_ASSERT(arg1.size() == arg2.size());
+  return TiledArray::math::dot(size, arg1.data(), arg2.data());
 };
 
 // sqrt(squared_norm(arg))
