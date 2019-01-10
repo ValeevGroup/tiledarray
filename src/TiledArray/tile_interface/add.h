@@ -53,7 +53,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(left + right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+      typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
   inline auto add(const Left& left, const Right& right, const Scalar factor)
   { return left.add(right, factor); }
 
@@ -80,7 +80,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
   template <typename Left, typename Right, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+      typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
   inline auto add(const Left& left, const Right& right, const Scalar factor,
       const Permutation& perm)
   { return left.add(right, factor, perm); }
@@ -106,7 +106,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
   template <typename Result, typename Arg, typename Scalar,
-      typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+      typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
   inline Result& add_to(Result& result, const Arg& arg, const Scalar factor)
   { return result.add_to(arg, factor); }
 

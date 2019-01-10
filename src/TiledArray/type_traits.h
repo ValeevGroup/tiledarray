@@ -537,7 +537,7 @@ namespace TiledArray {
 
     template <typename T>
     struct numeric_type<T,
-        typename std::enable_if<is_numeric<T>::value>::type>
+        typename std::enable_if<is_numeric_v<T>>::type>
     {
       typedef T type;
     };
@@ -554,7 +554,7 @@ namespace TiledArray {
     template <typename T>
     struct numeric_type<T, typename std::enable_if<
           is_lazy_tile<T>::value
-          && ! is_numeric<T>::value>::type> :
+          && ! is_numeric_v<T>>::type> :
         public numeric_type<typename eval_trait<T>::type>
     { };
 
@@ -601,7 +601,7 @@ namespace TiledArray {
     struct scalar_type<std::complex<T>, void > : public scalar_type<T> { };
 
     template <typename T>
-    struct scalar_type<T, typename std::enable_if<!is_numeric<T>::value>::type > :
+    struct scalar_type<T, typename std::enable_if<!is_numeric_v<T>>::type > :
     public scalar_type<typename numeric_type<T>::type> { };
 
     /// \c scalar_t<T> is an alias for \c scalar_type<T>::type
@@ -744,7 +744,7 @@ namespace TiledArray {
     };
 
     template <typename T>
-    struct param<T, typename std::enable_if<is_numeric<T>::value>::type> {
+    struct param<T, typename std::enable_if<is_numeric_v<T>>::type> {
       typedef typename std::add_const<T>::type type;
     };
 
