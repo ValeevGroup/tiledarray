@@ -101,10 +101,10 @@ namespace TiledArray {
           detail::is_tensor<Ts...>::value || detail::is_tensor_of_tensor<Ts...>::value;
     };
 
-    template <typename U, typename std::enable_if<std::is_scalar<U>::value>::type* = nullptr>
+    template <typename U, typename std::enable_if<detail::is_scalar_v<U>>::type* = nullptr>
     static void default_init(size_type, U*) { }
 
-    template <typename U, typename std::enable_if<! std::is_scalar<U>::value>::type* = nullptr>
+    template <typename U, typename std::enable_if<! detail::is_scalar_v<U>>::type* = nullptr>
     static void default_init(size_type n, U* u) {
       math::uninitialized_fill_vector(n, U(), u);
     }

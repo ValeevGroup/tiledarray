@@ -485,7 +485,7 @@ namespace TiledArray {
     template <typename T>
     struct is_scalar<std::complex<T> > : public std::false_type { };
 
-    /// \c is_scalar_v<T> is an alias for \c is_scalar<T>::value
+    /// \c is_scalar_v<T> is an alias for \c is_scalar_v<T>
     template <typename T>
     constexpr const bool is_scalar_v = is_scalar<T>::value;
 
@@ -582,7 +582,7 @@ namespace TiledArray {
     /// \tparam T The type to extract a numeric type from
     /// \tparam Enabler Type used to selectively implement partial
     /// specializations
-    /// -# if T is a scalar type, i.e. \c is_scalar<T>::value is true (e.g. \c
+    /// -# if T is a scalar type, i.e. \c is_scalar_v<T> is true (e.g. \c
     ///    int or \c float), \c scalar_type<T>::type evaluates to \c T
     /// -# if T is std::complex<U>, scalar_type<T>::type evaluates to U
     /// -# if T is not a scalar or complex type, will evaluate to \c
@@ -593,7 +593,7 @@ namespace TiledArray {
 
     template <typename T>
     struct scalar_type<
-        T, typename std::enable_if<is_scalar<T>::value>::type> {
+        T, typename std::enable_if<is_scalar_v<T>>::type> {
       typedef T type;
     };
 
