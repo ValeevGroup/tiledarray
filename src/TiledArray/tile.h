@@ -745,6 +745,7 @@ namespace TiledArray {
   /// \tparam Arg The tile argument type
   /// \param arg The argument to be negated
   /// \return A tile that is equal to <tt>-arg</tt>
+  /// \note equivalent to @c scale(arg,-1)
   template <typename Arg>
   inline decltype(auto) neg(const Tile<Arg>& arg)
   { return detail::make_tile(neg(arg.tensor())); }
@@ -755,15 +756,17 @@ namespace TiledArray {
   /// \param arg The argument to be negated
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ -arg</tt>
+  /// \note equivalent to @c scale(arg,-1,perm)
   template <typename Arg>
   inline decltype(auto) neg(const Tile<Arg>& arg, const Permutation& perm)
   { return detail::make_tile(neg(arg.tensor(), perm)); }
 
-  /// Multiplication constant scalar to a tile
+  /// In-place negate tile
 
   /// \tparam Result The result tile type
   /// \param result The result tile to be negated
-  /// \return A tile that is equal to <tt>result = -result</tt>
+  /// \return negated <tt>result</tt>
+  /// \note equivalent to @c scale_to(arg,-1)
   template <typename Result>
   inline Tile<Result>& neg_to(Tile<Result>& result) {
     neg_to(result.tensor());
