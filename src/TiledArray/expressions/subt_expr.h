@@ -189,7 +189,7 @@ namespace TiledArray {
     /// \return A scaled-subtraction expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalSubtExpr<Left, Right, Scalar>
     operator*(const SubtExpr<Left, Right>& expr, const Scalar& factor) {
@@ -207,7 +207,7 @@ namespace TiledArray {
     /// \return A scaled-subtraction expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalSubtExpr<Left, Right, Scalar>
     operator*(const Scalar& factor, const SubtExpr<Left, Right>& expr) {
@@ -226,7 +226,7 @@ namespace TiledArray {
     /// \return A scaled-subtraction expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalSubtExpr<Left, Right, mult_t<Scalar1, Scalar2> >
     operator*(const ScalSubtExpr<Left, Right, Scalar1>& expr,
@@ -247,7 +247,7 @@ namespace TiledArray {
     /// \return A scaled-subtraction expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type* = nullptr>
     inline ScalSubtExpr<Left, Right, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalSubtExpr<Left, Right, Scalar2>& expr) {
@@ -343,7 +343,7 @@ namespace TiledArray {
     /// \return A scaled-tensor expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalConjSubtExpr<Left, Right, Scalar>
     operator*(const ConjSubtExpr<Left, Right>& expr, const Scalar& factor) {
@@ -361,7 +361,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated subtraction expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalConjSubtExpr<Left, Right, Scalar>
     operator*(const Scalar& factor, const ConjSubtExpr<Left, Right>& expr) {
@@ -380,7 +380,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated subtraction expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalConjSubtExpr<Left, Right, mult_t<Scalar1, Scalar2> >
     operator*(const ScalConjSubtExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
@@ -399,7 +399,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated subtraction expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type* = nullptr>
     inline ScalConjSubtExpr<Left, Right, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalConjSubtExpr<Left, Right, Scalar2>& expr) {

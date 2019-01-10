@@ -97,7 +97,7 @@ namespace TiledArray {
         typename Enabler = void>
     class Scale {
     public:
-      static_assert(TiledArray::detail::is_numeric<Scalar>::value,
+      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
           "Cannot scale tiles by a non-scalar type");
 
       typedef Result result_type; ///< Result tile type
@@ -126,7 +126,7 @@ namespace TiledArray {
         >::type>
     {
     public:
-      static_assert(TiledArray::detail::is_numeric<Scalar>::value,
+      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
           "Cannot scale tiles by a non-scalar type");
 
       typedef Result result_type; ///< Result tile type
@@ -157,7 +157,7 @@ namespace TiledArray {
         typename Enabler = void>
     class ScaleTo {
     public:
-      static_assert(TiledArray::detail::is_numeric<Scalar>::value,
+      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
           "Cannot scale tiles by a non-scalar type");
 
       typedef Result result_type; ///< Result tile type
@@ -180,7 +180,7 @@ namespace TiledArray {
         >::type>
     {
     public:
-      static_assert(TiledArray::detail::is_numeric<Scalar>::value,
+      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
           "Cannot scale tiles by a non-scalar type");
 
       typedef Result result_type; ///< Result tile type

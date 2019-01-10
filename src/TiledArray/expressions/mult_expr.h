@@ -114,7 +114,7 @@ namespace TiledArray {
       /// \return The dot product of this expression.
       template <typename Numeric,
           typename std::enable_if<
-              TiledArray::detail::is_numeric<Numeric>::value
+              TiledArray::detail::is_numeric_v<Numeric>
           >::type* = nullptr>
       explicit operator Numeric() const {
         auto result = BinaryExpr_::left().dot(BinaryExpr_::right());
@@ -127,7 +127,7 @@ namespace TiledArray {
       /// \return The dot product of this expression.
       template <typename Numeric,
           typename std::enable_if<
-              TiledArray::detail::is_numeric<Numeric>::value
+              TiledArray::detail::is_numeric_v<Numeric>
           >::type* = nullptr>
       explicit operator Future<Numeric>() const {
         return BinaryExpr_::left().dot(BinaryExpr_::right());
@@ -209,7 +209,7 @@ namespace TiledArray {
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalMultExpr<Left, Right, Scalar>
     operator*(const MultExpr<Left, Right>& expr, const Scalar& factor) {
@@ -227,7 +227,7 @@ namespace TiledArray {
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalMultExpr<Left, Right, Scalar>
     operator*(const Scalar& factor, const MultExpr<Left, Right>& expr) {
@@ -246,7 +246,7 @@ namespace TiledArray {
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalMultExpr<Left, Right, mult_t<Scalar1, Scalar2> >
     operator*(const ScalMultExpr<Left, Right, Scalar1>& expr,
@@ -267,7 +267,7 @@ namespace TiledArray {
     /// \return A scaled-multiplication expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type* = nullptr>
     inline ScalMultExpr<Left, Right, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor,
@@ -363,7 +363,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated multiplication expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalConjMultExpr<Left, Right, Scalar>
     operator*(const ConjMultExpr<Left, Right>& expr, const Scalar& factor) {
@@ -381,7 +381,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated multiplication expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalConjMultExpr<Left, Right, Scalar>
     operator*(const Scalar& factor, const ConjMultExpr<Left, Right>& expr) {
@@ -400,7 +400,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated multiplication expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalConjMultExpr<Left, Right, mult_t<Scalar1, Scalar2> >
     operator*(const ScalConjMultExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
@@ -419,7 +419,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated multiplication expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type* = nullptr>
     inline ScalConjMultExpr<Left, Right, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalConjMultExpr<Left, Right, Scalar2>& expr) {
@@ -468,7 +468,7 @@ namespace TiledArray {
     /// \return A reference to result
     template <typename Numeric, typename Left, typename Right,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Numeric>::value
+            TiledArray::detail::is_numeric_v<Numeric>
         >::type* = nullptr>
     inline Numeric&
     operator +=(Numeric& result, const MultExpr<Left, Right>& expr) {
@@ -486,7 +486,7 @@ namespace TiledArray {
     /// \return A reference to result
     template <typename Numeric, typename Left, typename Right,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Numeric>::value
+            TiledArray::detail::is_numeric_v<Numeric>
         >::type* = nullptr>
     inline Numeric&
     operator -=(Numeric& result, const MultExpr<Left, Right>& expr) {
@@ -504,7 +504,7 @@ namespace TiledArray {
     /// \return A reference to result
     template <typename Numeric, typename Left, typename Right,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Numeric>::value
+            TiledArray::detail::is_numeric_v<Numeric>
         >::type* = nullptr>
     inline Numeric&
     operator *=(Numeric& result, const MultExpr<Left, Right>& expr) {

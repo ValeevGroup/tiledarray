@@ -546,7 +546,7 @@ namespace TiledArray {
     struct numeric_type<T, typename std::enable_if<
           has_member_type_value_type<T>::value &&
           (! is_lazy_tile<T>::value) &&
-          (! is_numeric<T>::value)>::type> :
+          (! is_numeric_v<T>)>::type> :
         public numeric_type<typename T::value_type>
     { };
 

@@ -545,7 +545,7 @@ namespace TiledArray {
   /// \return A complex conjugated and scaled copy of `arg`
   template <typename Arg, typename Scalar,
       typename std::enable_if<
-          TiledArray::detail::is_numeric<Scalar>::value
+          TiledArray::detail::is_numeric_v<Scalar>
       >::type* = nullptr>
   inline auto conj(const Arg& arg, const Scalar factor)
   { return arg.conj(factor); }
@@ -570,7 +570,7 @@ namespace TiledArray {
   /// \return A complex conjugated, scaled, and permuted copy of `arg`
   template <typename Arg, typename Scalar,
       typename std::enable_if<
-          TiledArray::detail::is_numeric<Scalar>::value
+          TiledArray::detail::is_numeric_v<Scalar>
       >::type* = nullptr>
   inline auto conj(const Arg& arg, const Scalar factor, const Permutation& perm)
   { return arg.conj(factor, perm); }
@@ -594,7 +594,7 @@ namespace TiledArray {
   /// \return A reference to `result`
   template <typename Result, typename Scalar,
       typename std::enable_if<
-          TiledArray::detail::is_numeric<Scalar>::value
+          TiledArray::detail::is_numeric_v<Scalar>
       >::type* = nullptr>
   inline Result& conj_to(Result& result, const Scalar factor) {
     return result.conj_to(factor);
