@@ -474,7 +474,7 @@ namespace TiledArray {
   /// \param result The result tile
   /// \param arg The argument to be added to \c result
   /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
+  /// \return A tile that is equal to <tt>(result[i] += arg[i]) * factor</tt>
   template <typename Result, typename Arg, typename Scalar,
       typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
   inline Tile<Result>&
