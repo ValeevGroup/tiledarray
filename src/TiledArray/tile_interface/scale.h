@@ -40,7 +40,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>arg * factor</tt>
   template <typename Arg, typename Scalar,
-      typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
+      std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
   inline auto scale(const Arg& arg, const Scalar factor)
   { return arg.scale(factor); }
 
@@ -53,7 +53,7 @@ namespace TiledArray {
   /// \param perm The permutation to be applied to the result
   /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
   template <typename Arg, typename Scalar,
-      typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
+      std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
   inline auto scale(const Arg& arg, const Scalar factor, const Permutation& perm)
   { return arg.scale(factor, perm); }
 
@@ -65,7 +65,7 @@ namespace TiledArray {
   /// \param factor The scaling factor
   /// \return A tile that is equal to <tt>result *= factor</tt>
   template <typename Result, typename Scalar,
-      typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value>::type* = nullptr>
+      std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
   inline Result& scale_to(Result& result, const Scalar factor)
   { return result.scale_to(factor); }
 
@@ -97,7 +97,7 @@ namespace TiledArray {
         typename Enabler = void>
     class Scale {
     public:
-      static_assert(TiledArray::detail::is_numeric<Scalar>::value,
+      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
           "Cannot scale tiles by a non-scalar type");
 
       typedef Result result_type; ///< Result tile type
@@ -126,7 +126,7 @@ namespace TiledArray {
         >::type>
     {
     public:
-      static_assert(TiledArray::detail::is_numeric<Scalar>::value,
+      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
           "Cannot scale tiles by a non-scalar type");
 
       typedef Result result_type; ///< Result tile type
@@ -157,7 +157,7 @@ namespace TiledArray {
         typename Enabler = void>
     class ScaleTo {
     public:
-      static_assert(TiledArray::detail::is_numeric<Scalar>::value,
+      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
           "Cannot scale tiles by a non-scalar type");
 
       typedef Result result_type; ///< Result tile type
@@ -180,7 +180,7 @@ namespace TiledArray {
         >::type>
     {
     public:
-      static_assert(TiledArray::detail::is_numeric<Scalar>::value,
+      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
           "Cannot scale tiles by a non-scalar type");
 
       typedef Result result_type; ///< Result tile type

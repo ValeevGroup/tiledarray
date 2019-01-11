@@ -113,7 +113,7 @@ namespace TiledArray {
     static DenseShape block(const Index&, const Index&) { return DenseShape(); }
 
     template <typename Index, typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     static DenseShape block(const Index&, const Index&, const Scalar)
     { return DenseShape(); }
 

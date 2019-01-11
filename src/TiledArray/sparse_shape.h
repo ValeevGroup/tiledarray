@@ -56,7 +56,7 @@ namespace TiledArray {
   public:
     typedef SparseShape<T> SparseShape_; ///< This object type
     typedef T value_type; ///< The norm value type
-    static_assert(TiledArray::detail::is_scalar<T>::value,
+    static_assert(TiledArray::detail::is_scalar_v<T>,
                   "SparseShape<T> only supports scalar numeric types for T");
     typedef typename Tensor<value_type>::size_type size_type;  ///< Size type
 

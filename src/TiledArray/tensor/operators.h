@@ -93,7 +93,7 @@ namespace TiledArray {
       typename std::enable_if<
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value) &&
-          detail::is_numeric<N>::value>::type* = nullptr>
+          detail::is_numeric_v<N>>::type* = nullptr>
   inline auto operator*(const T& left, N right)
   { return left.scale(right); }
 
@@ -106,7 +106,7 @@ namespace TiledArray {
   /// \return A tensor where element \c i is equal to <tt> left * right[i] </tt>
   template <typename N, typename T,
       typename std::enable_if<
-          detail::is_numeric<N>::value &&
+          detail::is_numeric_v<N> &&
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value)>::type* = nullptr>
   inline auto operator*(N left, const T& right)
@@ -198,7 +198,7 @@ namespace TiledArray {
       typename std::enable_if<
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value) &&
-          detail::is_numeric<N>::value>::type* = nullptr>
+          detail::is_numeric_v<N>>::type* = nullptr>
   inline auto operator+=(T& left, N right)
   { return left.add_to(right); }
 
@@ -214,7 +214,7 @@ namespace TiledArray {
       typename std::enable_if<
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value) &&
-          detail::is_numeric<N>::value>::type* = nullptr>
+          detail::is_numeric_v<N>>::type* = nullptr>
   inline auto operator-=(T& left, N right)
   { return left.subt_to(right); }
 
@@ -230,7 +230,7 @@ namespace TiledArray {
       typename std::enable_if<
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value) &&
-          detail::is_numeric<N>::value>::type* = nullptr>
+          detail::is_numeric_v<N>>::type* = nullptr>
   inline auto operator*=(T& left, N right)
   { return left.scale_to(right); }
 

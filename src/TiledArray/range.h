@@ -437,7 +437,7 @@ namespace TiledArray {
     /// \param extents A pack of pairs of lobound and upbound for each dimension
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename ... IndexPairs,
-              typename std::enable_if<detail::is_integral_pair_list<IndexPairs...>::value>::type* = nullptr
+              std::enable_if_t<detail::is_integral_pair_list_v<IndexPairs...>>* = nullptr
              >
     explicit Range(const IndexPairs... bounds) :
     Range(std::array<std::pair<std::size_t,std::size_t>, sizeof...(IndexPairs)>{{static_cast<std::pair<std::size_t,std::size_t>>(bounds)...}})

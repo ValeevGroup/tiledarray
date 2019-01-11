@@ -110,7 +110,7 @@ namespace TiledArray {
     /// \return A scaled expression object
     template <typename Arg, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalExpr<Arg, Scalar>
     operator*(const Expr<Arg>& expr, const Scalar& factor) {
@@ -129,7 +129,7 @@ namespace TiledArray {
     /// \return A scaled expression object
     template <typename Arg, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalExpr<Arg, Scalar>
     operator*(const Scalar& factor, const Expr<Arg>& expr) {
@@ -148,7 +148,7 @@ namespace TiledArray {
     /// \return A scaled expression object
     template <typename Arg, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalExpr<Arg, mult_t<Scalar1, Scalar2> >
     operator*(const ScalExpr<Arg, Scalar1>& expr, const Scalar2& factor) {
@@ -164,7 +164,7 @@ namespace TiledArray {
     /// \return A scaled expression object
     template <typename Arg, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type* = nullptr>
     inline ScalExpr<Arg, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalExpr<Arg, Scalar2>& expr) {
