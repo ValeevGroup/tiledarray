@@ -252,6 +252,41 @@ namespace TiledArray {
     decltype(auto) operator()(const I... i)
     { return tensor()(i...); }
 
+    // Block accessors -----------------------------------------------------------
+
+    template <typename Index>
+    decltype(auto)
+    block(const Index& lower_bound, const Index& upper_bound) {
+      TA_ASSERT(pimpl_);
+      return detail::TensorInterface<value_type, BlockRange>(BlockRange(tensor().range(),
+          lower_bound, upper_bound), tensor().data());
+    }
+
+    decltype(auto)
+    block(const std::initializer_list<size_type>& lower_bound,
+          const std::initializer_list<size_type>& upper_bound)
+    {
+      TA_ASSERT(pimpl_);
+      return detail::TensorInterface<value_type, BlockRange>(BlockRange(tensor().range(),
+          lower_bound, upper_bound), tensor().data());
+    }
+
+    template <typename Index>
+    decltype(auto)
+    block(const Index& lower_bound, const Index& upper_bound) const {
+      TA_ASSERT(pimpl_);
+      return detail::TensorInterface<const value_type, BlockRange>(BlockRange(tensor().range(),
+          lower_bound, upper_bound), tensor().data());
+    }
+
+    decltype(auto)
+    block(const std::initializer_list<size_type>& lower_bound,
+          const std::initializer_list<size_type>& upper_bound) const
+    {
+      TA_ASSERT(pimpl_);
+      return detail::TensorInterface<const value_type, BlockRange>(BlockRange(tensor().range(),
+          lower_bound, upper_bound), tensor().data());
+    }
 
     // Serialization -----------------------------------------------------------
 
