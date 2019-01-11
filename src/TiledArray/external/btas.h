@@ -109,11 +109,32 @@ btas::Tensor<T, Range, Storage> add(
   assert(false);
 }
 
-/// result[i] = arg1[i] + arg2[i]
+/// result[i] = (arg1[i] + arg2[i]) * factor
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+btas::Tensor<T, Range, Storage> add(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const Scalar factor) {
+  assert(false);
+}
+
+/// result[i] = perm ^ (arg1[i] + arg2[i])
 template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2,
+    const TiledArray::Permutation& perm) {
+  assert(false);
+}
+
+/// result[i] = perm ^ (arg1[i] + arg2[i]) * factor
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+btas::Tensor<T, Range, Storage> add(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const Scalar factor,
     const TiledArray::Permutation& perm) {
   assert(false);
 }
@@ -125,11 +146,40 @@ void add_to(btas::Tensor<T, Range, Storage>& result,
   btas::axpy(1.0, arg, result);
 }
 
+/// result[i] += factor * arg[i]
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+void add_to(btas::Tensor<T, Range, Storage>& result,
+            const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+  btas::axpy(factor, arg, result);
+}
+
 /// result[i] = arg1[i] - arg2[i]
 template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2) {
+  assert(false);
+}
+
+/// result[i] = (arg1[i] - arg2[i]) * factor
+template <typename T, typename Range, typename Storage, typename Scalar,
+typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+btas::Tensor<T, Range, Storage> subt(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const Scalar factor) {
+  assert(false);
+}
+
+/// result[i] = perm ^ (arg1[i] - arg2[i]) * factor
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+btas::Tensor<T, Range, Storage> subt(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const Scalar factor,
+    const TiledArray::Permutation& perm) {
   assert(false);
 }
 
