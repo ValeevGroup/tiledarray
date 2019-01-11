@@ -91,6 +91,8 @@ namespace TiledArray {
     using const_reference = typename tensor_type::const_reference; ///< Element reference type
     using iterator = typename tensor_type::iterator; ///< Element iterator type
     using const_iterator = typename tensor_type::const_iterator; ///< Element const iterator type
+    using pointer = typename tensor_type::pointer; ///< Element pointer type
+    using const_pointer = typename tensor_type::const_pointer; ///< Element const pointer type
     using numeric_type = typename TiledArray::detail::numeric_type<tensor_type>::type; ///< the numeric type that supports T
     using scalar_type = typename TiledArray::detail::scalar_type<tensor_type>::type; ///< the scalar type that supports T
 
