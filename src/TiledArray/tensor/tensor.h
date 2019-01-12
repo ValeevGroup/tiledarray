@@ -318,33 +318,40 @@ namespace TiledArray {
       return (pimpl_ ? pimpl_->range_.volume() : 0ul);
     }
 
-    /// Element accessor
+    /// Const element accessor
 
-    /// \return The element at the \c i position.
-    const_reference operator[](const size_type i) const {
+    /// \tparam Ordinal an integer type that represents an ordinal
+    /// \param[in] ord an ordinal index
+    /// \return Const reference to the element at position \c ord .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Ordinal, std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+    const_reference operator[](const Ordinal ord) const {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.includes(i));
-      return pimpl_->data_[i];
+      TA_ASSERT(pimpl_->range_.includes(ord));
+      return pimpl_->data_[ord];
     }
 
     /// Element accessor
 
-    /// \return The element at the \c i position.
-    /// \throw TiledArray::Exception When this tensor is empty.
-    reference operator[](const size_type i) {
+    /// \tparam Ordinal an integer type that represents an ordinal
+    /// \param[in] ord an ordinal index
+    /// \return Reference to the element at position \c ord .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Ordinal, std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+    reference operator[](const Ordinal ord) {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.includes(i));
-      return pimpl_->data_[i];
+      TA_ASSERT(pimpl_->range_.includes(ord));
+      return pimpl_->data_[ord];
     }
 
 
-    /// Element accessor
+    /// Const element accessor
 
-    /// \return The element at the \c i position.
-    /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename Index,
-        typename std::enable_if<
-            ! std::is_integral<Index>::value>::type* = nullptr>
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
     const_reference operator[](const Index& i) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
@@ -353,12 +360,25 @@ namespace TiledArray {
 
     /// Element accessor
 
-    /// \return The element at the \c i position.
-    /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename Index,
-      typename std::enable_if<
-          ! std::is_integral<Index>::value>::type* = nullptr>
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
     reference operator[](const Index& i) {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.includes(i));
+      return pimpl_->data_[pimpl_->range_.ordinal(i)];
+    }
+
+    /// Const element accessor
+
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
+    const_reference operator()(const Index& i) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
       return pimpl_->data_[pimpl_->range_.ordinal(i)];
@@ -366,25 +386,43 @@ namespace TiledArray {
 
     /// Element accessor
 
-    /// \tparam Index index type pack
-    /// \param idx The index pack
-    template<typename... Index>
-    reference operator()(const Index&... idx) {
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
+    reference operator()(const Index& i) {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.includes(idx...));
-      return pimpl_->data_[pimpl_->range_.ordinal(idx...)];
+      TA_ASSERT(pimpl_->range_.includes(i));
+      return pimpl_->data_[pimpl_->range_.ordinal(i)];
+    }
+
+    /// Const element accessor
+
+    /// \tparam Index an integral list ( see TiledArray::detail::is_integral_list )
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename ... Index, std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+    const_reference operator()(const Index&... i) const {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.includes(i...));
+      return pimpl_->data_[pimpl_->range_.ordinal(i...)];
     }
 
     /// Element accessor
 
-    /// \tparam Index index type pack
-    /// \param idx The index pack
-    template<typename... Index>
-    const_reference operator()(const Index&... idx) const {
+    /// \tparam Index an integral list ( see TiledArray::detail::is_integral_list )
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename ... Index, std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+    reference operator()(const Index&... i) {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.includes(idx...));
-      return pimpl_->data_[pimpl_->range_.ordinal(idx...)];
+      TA_ASSERT(pimpl_->range_.includes(i...));
+      return pimpl_->data_[pimpl_->range_.ordinal(i...)];
     }
+
 
     /// Iterator factory
 

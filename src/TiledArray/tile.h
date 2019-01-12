@@ -220,38 +220,110 @@ namespace TiledArray {
 
     // Element accessors -------------------------------------------------------
 
-    /// Const element accessor via subscript operator
+    /// Const element accessor
 
-    /// \param i The ordinal index of the element to be returned
-    /// \return The i-th element of the tensor
-    decltype(auto) operator[](std::size_t i) const
-    { return tensor()[i]; }
+    /// \tparam Ordinal an integer type that represents an ordinal
+    /// \param[in] ord an ordinal index
+    /// \return Const reference to the element at position \c ord .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Ordinal, std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+    const_reference operator[](const Ordinal ord) const {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(tensor().range().includes(ord));
+      return tensor().data()[ord];
+    }
 
-    /// Element accessor via subscript operator
+    /// Element accessor
 
-    /// \param i The ordinal index of the element to be returned
-    /// \return The i-th element of the tensor
-    decltype(auto) operator[](std::size_t i)
-    { return tensor()[i]; }
+    /// \tparam Ordinal an integer type that represents an ordinal
+    /// \param[in] ord an ordinal index
+    /// \return Reference to the element at position \c ord .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Ordinal, std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+    reference operator[](const Ordinal ord) {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(tensor().range().includes(ord));
+      return tensor().data()[ord];
+    }
 
-    /// Const element accessor via parentheses operator
 
-    /// \tparam I The set of coordinate index types (integral types)
-    /// \param i The set of coordinate indices of the tile element
-    /// \return The element of the tensor at the coordinate (i...)
-    template <typename... I>
-    decltype(auto) operator()(const I... i) const
-    { return tensor()(i...); }
+    /// Const element accessor
 
-    /// Element accessor via parentheses operator
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
+    const_reference operator[](const Index& i) const {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(tensor().range().includes(i));
+      return tensor().data()[tensor().range().ordinal(i)];
+    }
 
-    /// \tparam I The set of coordinate index types (integral types)
-    /// \param i The set of coordinate indices of the tile element
-    /// \return The element of the tensor at the coordinate (i...)
-    template <typename... I>
-    decltype(auto) operator()(const I... i)
-    { return tensor()(i...); }
+    /// Element accessor
 
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
+    reference operator[](const Index& i) {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(tensor().range().includes(i));
+      return tensor().data()[tensor().range().ordinal(i)];
+    }
+
+    /// Const element accessor
+
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
+    const_reference operator()(const Index& i) const {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(tensor().range().includes(i));
+      return tensor().data()[tensor().range().ordinal(i)];
+    }
+
+    /// Element accessor
+
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
+    reference operator()(const Index& i) {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(tensor().range().includes(i));
+      return tensor().data()[tensor().range().ordinal(i)];
+    }
+
+    /// Const element accessor
+
+    /// \tparam Index an integral list ( see TiledArray::detail::is_integral_list )
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename ... Index, std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+    const_reference operator()(const Index&... i) const {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(tensor().range().includes(i...));
+      return tensor().data()[tensor().range().ordinal(i...)];
+    }
+
+    /// Element accessor
+
+    /// \tparam Index an integral list ( see TiledArray::detail::is_integral_list )
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename ... Index, std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+    reference operator()(const Index&... i) {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(tensor().range().includes(i...));
+      return tensor().data()[tensor().range().ordinal(i...)];
+    }
     // Block accessors -----------------------------------------------------------
 
     template <typename Index>
