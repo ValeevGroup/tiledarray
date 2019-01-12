@@ -113,6 +113,28 @@ inline btas::Tensor<T, Range, Storage> permute(
   return result;
 }
 
+// Shift operations ----------------------------------------------------------
+
+/// Shift the range of \c arg
+
+/// \param arg The tile argument to be shifted
+/// \param range_shift The offset to be applied to the argument range
+/// \return A copy of the tile with a new range
+template <typename T, typename Range, typename Storage, typename Index>
+inline btas::Tensor<T, Range, Storage> shift(const btas::Tensor<T, Range, Storage>& arg, const Index& range_shift) {
+  assert(false);
+}
+
+/// Shift the range of \c arg in place
+
+/// \param arg The tile argument to be shifted
+/// \param range_shift The offset to be applied to the argument range
+/// \return A copy of the tile with a new range
+template <typename T, typename Range, typename Storage, typename Index>
+inline btas::Tensor<T, Range, Storage>& shift_to(btas::Tensor<T, Range, Storage>& arg, const Index& range_shift) {
+  assert(false);
+}
+
 /// result[i] = arg1[i] + arg2[i]
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> add(
@@ -131,7 +153,7 @@ inline btas::Tensor<T, Range, Storage> add(
   assert(false);
 }
 
-/// result[i] = perm ^ (arg1[i] + arg2[i])
+/// result[perm ^ i] = (arg1[i] + arg2[i])
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
@@ -140,7 +162,7 @@ inline btas::Tensor<T, Range, Storage> add(
   assert(false);
 }
 
-/// result[i] = perm ^ (arg1[i] + arg2[i]) * factor
+/// result[perm ^ i] = (arg1[i] + arg2[i]) * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
     typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> add(
@@ -184,7 +206,16 @@ inline btas::Tensor<T, Range, Storage> subt(
   assert(false);
 }
 
-/// result[i] = perm ^ (arg1[i] - arg2[i]) * factor
+/// result[perm ^ i] = (arg1[i] - arg2[i]) * factor
+template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage> subt(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const TiledArray::Permutation& perm) {
+  assert(false);
+}
+
+/// result[perm ^ i] = (arg1[i] - arg2[i]) * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
     typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> subt(
@@ -210,20 +241,21 @@ inline btas::Tensor<T, Range, Storage>& subt_to(btas::Tensor<T, Range, Storage>&
   assert(false);
 }
 
-/// result = perm ^ (arg1 - arg2)
-template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage> subt(
-    const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const TiledArray::Permutation& perm) {
-  assert(false);
-}
-
 /// result[i] = arg1[i] * arg2[i]
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2) {
+  assert(false);
+}
+
+/// result[i] = arg1[i] * arg2[i] * factor
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline btas::Tensor<T, Range, Storage> mult(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const Scalar factor) {
   assert(false);
 }
 
@@ -236,11 +268,32 @@ inline btas::Tensor<T, Range, Storage> mult(
   assert(false);
 }
 
+/// result[perm ^ i] = arg1[i] * arg2[i] * factor
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline btas::Tensor<T, Range, Storage> mult(
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2,
+    const Scalar factor,
+    const TiledArray::Permutation& perm) {
+  assert(false);
+}
+
 /// result[i] *= arg[i]
 template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage>& mult_to(
     btas::Tensor<T, Range, Storage>& result,
     const btas::Tensor<T, Range, Storage>& arg) {
+  assert(false);
+}
+
+/// result[i] *= arg[i] * factor
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline btas::Tensor<T, Range, Storage>& mult_to(
+    btas::Tensor<T, Range, Storage>& result,
+    const btas::Tensor<T, Range, Storage>& arg,
+    const Scalar factor) {
   assert(false);
 }
 
@@ -391,9 +444,7 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
                          result.data(), n);
 }
 
-//
-// these are not used, but still must be declared for expressions to work
-//
+// sum of the hyperdiagonal elements
 template <typename T, typename Range, typename Storage>
 inline typename btas::Tensor<T, Range, Storage>::value_type trace(
     const btas::Tensor<T, Range, Storage>& arg) {
