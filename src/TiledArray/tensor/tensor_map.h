@@ -35,17 +35,17 @@ namespace TiledArray {
 
   namespace detail {
 
-    template <typename, typename> class TensorInterface;
+    template <typename, typename, typename> class TensorInterface;
 
   }  // namespace detail
 
-  template <typename T, typename Range_ = Range>
+  template <typename T, typename Range_ = Range, typename OpResult = Tensor<T>>
   using TensorMap =
-      detail::TensorInterface<T, Range_>;
+      detail::TensorInterface<T, Range_, OpResult>;
 
-  template <typename T, typename Range_ = Range>
+  template <typename T, typename Range_ = Range, typename OpResult = Tensor<T>>
   using TensorConstMap =
-      detail::TensorInterface<typename std::add_const<T>::type, Range_>;
+      detail::TensorInterface<typename std::add_const<T>::type, Range_, OpResult>;
 
   template <typename T, typename Index>
   inline TensorMap<T> make_map(T* const data, const Index& lower_bound,

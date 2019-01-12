@@ -66,13 +66,13 @@ namespace btas {
 template <typename T, typename Range, typename Storage>
 decltype(auto)
 make_ti(const btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<const T, Range>(arg.range(), arg.data());
+  return TiledArray::detail::TensorInterface<const T, Range, btas::Tensor<T, Range, Storage>>(arg.range(), arg.data());
 }
 
 template <typename T, typename Range, typename Storage>
 decltype(auto)
 make_ti(btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<T, Range>(arg.range(), arg.data());
+  return TiledArray::detail::TensorInterface<T, Range, btas::Tensor<T, Range, Storage>>(arg.range(), arg.data());
 }
 
 template <typename... Args>

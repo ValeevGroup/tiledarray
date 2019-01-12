@@ -31,7 +31,7 @@ namespace TiledArray {
 
   /// \tparam T the value type of this tensor
   /// \tparam A The allocator type for the data
-  template <typename T, typename A = Eigen::aligned_allocator<T> >
+  template <typename T, typename A>
   class Tensor {
   public:
     typedef Tensor<T, A> Tensor_; ///< This class type

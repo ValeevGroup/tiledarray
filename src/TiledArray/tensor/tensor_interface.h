@@ -18,7 +18,7 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  tensor_view.h
+ *  tensor_interface.h
  *  May 29, 2015
  *
  */
@@ -26,37 +26,31 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_VIEW_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_VIEW_H__INCLUDED
 
+#include <TiledArray/type_traits.h>
 #include <TiledArray/tensor/kernels.h>
 #include <TiledArray/tensor/complex.h>
-
-namespace Eigen {
-
-  // Forward declarations
-  template <typename> class aligned_allocator;
-
-} // namespace Eigen
 
 namespace TiledArray {
 
   // Forward declarations
   class Permutation;
-  template <typename, typename> class Tensor;
+  template <typename T, typename A> class Tensor;
   class Range;
   namespace detail {
-    template <typename, typename>
+    template <typename T, typename Range, typename OpResult>
     class TensorInterface;
   }
-  template <typename T, typename Index>
-  void remap(detail::TensorInterface<T, Range> &, T* const, const Index&, const Index&);
-  template <typename T, typename Index>
-  void remap(detail::TensorInterface<const T, Range> &, T* const,
+  template <typename T, typename Index, typename ... TIArgs>
+  void remap(detail::TensorInterface<T, TIArgs...> &, T* const, const Index&, const Index&);
+  template <typename T, typename Index, typename ... TIArgs>
+  void remap(detail::TensorInterface<const T, TIArgs...> &, T* const,
           const Index&, const Index&);
-  template <typename T>
-  void remap(detail::TensorInterface<T, Range> &, T* const,
+  template <typename T, typename ... TIArgs>
+  void remap(detail::TensorInterface<T, TIArgs...> &, T* const,
           const std::initializer_list<std::size_t>&,
           const std::initializer_list<std::size_t>&);
-  template <typename T>
-  void remap(detail::TensorInterface<const T, Range> &, T* const,
+  template <typename T, typename ... TIArgs>
+  void remap(detail::TensorInterface<const T, TIArgs...> &, T* const,
       const std::initializer_list<std::size_t>&,
       const std::initializer_list<std::size_t>&);
 
@@ -75,10 +69,11 @@ namespace TiledArray {
     /// own the data it references. Use \c Tensor for that purpose.
     /// \tparam T The tensor value type
     /// \tparam R The range type
-    template <typename T, typename R>
+    /// \tparam OpResult tensor type used as the return type from operations that produce a tensor
+    template <typename T, typename R, typename OpResult>
     class TensorInterface {
     public:
-      typedef TensorInterface<T, R> TensorInterface_; ///< This class type
+      typedef TensorInterface<T, R, OpResult> TensorInterface_; ///< This class type
       typedef R range_type; ///< Tensor range type
       typedef typename range_type::size_type size_type; ///< size type
       typedef typename std::remove_const<T>::type
@@ -97,33 +92,33 @@ namespace TiledArray {
       typedef typename detail::scalar_type<value_type>::type
           scalar_type; ///< the scalar type that supports T
 
-      typedef Tensor<T, Eigen::aligned_allocator<T> > result_tensor;
-             ///< Tensor type used as the return type from arithmetic operations
+      typedef OpResult result_tensor;
+             ///< Tensor type used as the return type from operations that produce a tensor
 
     private:
 
       template <typename X>
       using numeric_t = typename TiledArray::detail::numeric_type<X>::type;
 
-      template <typename, typename>
+      template <typename, typename, typename>
       friend class TensorInterface;
 
-      template <typename U, typename Index>
-      friend void TiledArray::remap(detail::TensorInterface<U, Range>&,
+      template <typename U, typename Index, typename ... TIArgs>
+      friend void TiledArray::remap(detail::TensorInterface<U, TIArgs...>&,
                                     U* const, const Index&, const Index&);
 
-      template <typename U, typename Index>
-      friend void TiledArray::remap(detail::TensorInterface<const U, Range>&,
+      template <typename U, typename Index, typename ... TIArgs>
+      friend void TiledArray::remap(detail::TensorInterface<const U, TIArgs...>&,
                                     U* const, const Index&, const Index&);
 
-      template <typename U>
-      friend void TiledArray::remap(detail::TensorInterface<U, Range> &,
+      template <typename U, typename ... TIArgs>
+      friend void TiledArray::remap(detail::TensorInterface<U, TIArgs...> &,
               U* const,
               const std::initializer_list<std::size_t>&,
               const std::initializer_list<std::size_t>&);
 
-      template <typename U>
-      friend void TiledArray::remap(detail::TensorInterface<const U, Range>&,
+      template <typename U, typename ... TIArgs>
+      friend void TiledArray::remap(detail::TensorInterface<const U, TIArgs...>&,
                                     U* const,
                                     const std::initializer_list<std::size_t>&,
                                     const std::initializer_list<std::size_t>&);
@@ -145,11 +140,11 @@ namespace TiledArray {
 
       /// \tparam U The value type of the other view
       /// \param other The other tensor view to be copied
-      template <typename U,
+      template <typename U, typename UOpResult,
           typename std::enable_if<std::is_convertible<
-              typename TensorInterface<U, R>::pointer, pointer>::value
+              typename TensorInterface<U, R, UOpResult>::pointer, pointer>::value
           >::type* = nullptr>
-      TensorInterface(const TensorInterface<U, R>& other) :
+      TensorInterface(const TensorInterface<U, R, UOpResult>& other) :
         range_(other.range_), data_(other.data_)
       { }
 
@@ -157,11 +152,11 @@ namespace TiledArray {
 
       /// \tparam U The value type of the other tensor view
       /// \param other The other tensor view to be moved
-      template <typename U,
+      template <typename U, typename UOpResult,
           typename std::enable_if<std::is_convertible<
-              typename TensorInterface<U, R>::pointer, pointer>::value
+              typename TensorInterface<U, R, UOpResult>::pointer, pointer>::value
           >::type* = nullptr>
-      TensorInterface(TensorInterface<U, R>&& other) :
+      TensorInterface(TensorInterface<U, R, UOpResult>&& other) :
         range_(std::move(other.range_)), data_(other.data_)
       {
         other.data_ = nullptr;
