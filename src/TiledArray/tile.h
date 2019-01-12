@@ -54,15 +54,15 @@ namespace TiledArray {
   /// \li \c subt_to
   /// \li \c mult
   /// \li \c mult_to
-  /// \li \c scal
-  /// \li \c scal_to
+  /// \li \c scale
+  /// \li \c scale_to
   /// \li \c gemm
   /// \li \c neg
   /// \li \c permute
   /// \li \c empty
   /// \li \c shift
   /// \li \c shift_to
-  /// \li \c trance
+  /// \li \c trace
   /// \li \c sum
   /// \li \c product
   /// \li \c squared_norm
