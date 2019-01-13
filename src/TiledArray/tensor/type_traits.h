@@ -135,7 +135,13 @@ namespace TiledArray {
     template <typename ... Ts>
     constexpr const bool is_tensor_of_tensor_v = is_tensor_of_tensor<Ts...>::value;
 
-  // Test if the tensor is contiguous
+    // Test if the tensor is contiguous
+
+    template <typename T>
+    struct is_contiguous_range_helper : public std::false_type { };
+
+    template <>
+    struct is_contiguous_range_helper<Range> : public std::true_type { };
 
     template <typename T>
     struct is_contiguous_tensor_helper : public std::false_type { };
@@ -143,9 +149,9 @@ namespace TiledArray {
     template <typename T, typename A>
     struct is_contiguous_tensor_helper<Tensor<T, A> > : public std::true_type { };
 
-    template <typename ... Args>
-    struct is_contiguous_tensor_helper<TensorInterface<Args...> > :
-        public std::true_type { };
+    template <typename T, typename R, typename OpResult>
+    struct is_contiguous_tensor_helper<TensorInterface<T, R, OpResult> > :
+        public is_contiguous_range_helper<R> { };
 
     template <typename T>
     struct is_contiguous_tensor_helper<ShiftWrapper<T> > :
