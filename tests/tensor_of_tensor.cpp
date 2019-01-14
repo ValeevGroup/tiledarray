@@ -35,9 +35,6 @@
 
 #include <boost/mpl/list.hpp>
 
-/// this works around the left-shift op instantiation issues with GCC
-static_assert(boost::has_left_shift<std::ostream,btas::Tensor<int>>::value, "oy");
-
 using namespace TiledArray;
 
 struct TensorOfTensorFixture {
