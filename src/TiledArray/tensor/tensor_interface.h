@@ -379,6 +379,15 @@ namespace TiledArray {
         return *this;
       }
 
+      // permute operation
+      // construct a permuted copy of this tensor
+      result_tensor permute(const Permutation& perm) const {
+        auto op = [] (const T& arg) { return arg; };
+        result_tensor new_tensor(perm * this->range());
+        TiledArray::detail::tensor_init(op, perm, new_tensor, *this);
+        return new_tensor;
+      }
+
       // Scale operation
 
       /// Construct a scaled copy of this tensor
@@ -588,7 +597,7 @@ namespace TiledArray {
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
           detail::is_numeric_v<Scalar>>::type* = nullptr>
-      result_tensor subt(const Right& right, const numeric_type factor) const {
+      result_tensor subt(const Right& right, const Scalar factor) const {
         return binary(right, [=] (const numeric_type l,
             const numeric_t<Right> r)
             -> numeric_type { return (l - r) * factor; });
