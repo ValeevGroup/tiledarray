@@ -138,7 +138,7 @@ inline btas::Tensor<T, Range, Storage> shift(const btas::Tensor<T, Range, Storag
 /// \return A copy of the tile with a new range
 template <typename T, typename Range, typename Storage, typename Index>
 inline btas::Tensor<T, Range, Storage>& shift_to(btas::Tensor<T, Range, Storage>& arg, const Index& range_shift) {
-  arg.range().inplace_shift(range_shift);
+  const_cast<Range&>(arg.range()).inplace_shift(range_shift);
   return arg;
 }
 
