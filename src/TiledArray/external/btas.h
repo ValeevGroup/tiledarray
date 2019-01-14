@@ -29,6 +29,7 @@
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/tile_interface/cast.h"
 #include "TiledArray/range.h"
+#include <TiledArray/tensor/kernels.h>
 
 #include <btas/features.h>
 #include <btas/generic/axpy_impl.h>
@@ -107,11 +108,13 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> permute(
     const btas::Tensor<T, Range, Storage>& arg,
     const TiledArray::Permutation& perm) {
-  btas::Tensor<T, Range, Storage> result;
-  std::vector<size_t> p(perm.dim());
-  std::copy(perm.begin(), perm.end(), p.begin());
-  btas::permute(arg, p, result);
-  return result;
+//  btas::Tensor<T, Range, Storage> result;
+//  std::vector<size_t> p(perm.dim());
+//  std::copy(perm.begin(), perm.end(), p.begin());
+//  btas::permute(arg, p, result);
+//  return result;
+  auto arg_view = make_ti(arg);
+  return arg_view.permute(perm);
 }
 
 // Shift operations ----------------------------------------------------------
@@ -258,7 +261,7 @@ inline btas::Tensor<T, Range, Storage>& subt_to(btas::Tensor<T, Range, Storage>&
              const btas::Tensor<T, Range, Storage>& arg) {
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
-  result_view.sub_to(arg_view);
+  result_view.subt_to(arg_view);
   return result;
 }
 
@@ -269,7 +272,7 @@ inline btas::Tensor<T, Range, Storage>& subt_to(btas::Tensor<T, Range, Storage>&
     const Scalar factor) {
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
-  result_view.sub_to(arg_view,factor);
+  result_view.subt_to(arg_view,factor);
   return result;
 }
 
@@ -386,9 +389,50 @@ inline btas::Tensor<T, Range, Storage> neg(const btas::Tensor<T, Range, Storage>
 }
 
 template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage>& arg){
+  auto arg_view = make_ti(arg);
+  return arg_view.conj();
+}
+
+template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage>& arg, const TiledArray::Permutation& perm){
+  auto arg_view = make_ti(arg);
+  return arg_view.conj(perm);
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+        std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage>& arg, const Scalar factor){
+  auto arg_view = make_ti(arg);
+  return arg_view.conj(factor);
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+        std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage>& arg, const Scalar factor, const TiledArray::Permutation& perm){
+  auto arg_view = make_ti(arg);
+  return arg_view.conj(factor,perm);
+}
+
+template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage>& conj(const btas::Tensor<T, Range, Storage>& arg){
+  auto arg_view = make_ti(arg);
+  arg_view.conj_to();
+  return arg;
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar,
+        std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage>& conj_to(const btas::Tensor<T, Range, Storage>& arg, const Scalar factor){
+  auto arg_view = make_ti(arg);
+  arg_view.conj(factor);
+  return arg;
+}
+
+template <typename T, typename Range, typename Storage, typename Scalar>
 inline btas::Tensor<T, Range, Storage> gemm(
     const btas::Tensor<T, Range, Storage>& left,
-    const btas::Tensor<T, Range, Storage>& right, T factor,
+    const btas::Tensor<T, Range, Storage>& right, Scalar factor,
     const TiledArray::math::GemmHelper& gemm_helper) {
   // Check that the arguments are not empty and have the correct ranks
   TA_ASSERT(!left.empty());
@@ -428,10 +472,10 @@ inline btas::Tensor<T, Range, Storage> gemm(
   return result;
 }
 
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Range, typename Storage, typename Scalar>
 inline void gemm(btas::Tensor<T, Range, Storage>& result,
           const btas::Tensor<T, Range, Storage>& left,
-          const btas::Tensor<T, Range, Storage>& right, T factor,
+          const btas::Tensor<T, Range, Storage>& right, Scalar factor,
           const TiledArray::math::GemmHelper& gemm_helper) {
   // Check that this tensor is not empty and has the correct rank
   TA_ASSERT(!result.empty());
