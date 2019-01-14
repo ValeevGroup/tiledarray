@@ -33,7 +33,12 @@ namespace TiledArray {
   /// \tparam A The allocator type for the data
   template <typename T, typename A>
   class Tensor {
-  public:
+
+    // meaningful error if T& is not assignable, see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=48101
+    static_assert(std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
+        "Tensor<T>: T must be an assignable type (e.g. cannot be const)");
+
+   public:
     typedef Tensor<T, A> Tensor_; ///< This class type
     typedef Range range_type; ///< Tensor range type
     typedef typename range_type::size_type size_type; ///< size type
