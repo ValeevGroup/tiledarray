@@ -46,7 +46,7 @@ namespace TiledArray {
   namespace detail {
 
     // Forward declarations
-    template <typename T, typename R, typename = Tensor<T>> class TensorInterface;
+    template <typename T, typename R, typename = Tensor<std::remove_const_t<T>>> class TensorInterface;
     template <typename> class ShiftWrapper;
 
 
