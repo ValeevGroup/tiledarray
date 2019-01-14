@@ -223,10 +223,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     a.fill(val_a);
     b.fill(val_b);
 
-    TA::to_device(a);
-    TA::to_device(b);
+    world.gop.fence();
 
-    c("m,n") = a("m,k") * b("k,n");
+//    TA::to_device(a);
+//    TA::to_device(b);
+
+//    c("m,n") = a("m,k") * b("k,n");
     // Start clock
     const double wall_time_start = madness::wall_time();
 
@@ -264,8 +266,8 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   //    std::cout << std::endl;
   //  }
 
-  CUDAMatrix::wait_for_lazy_cleanup(world);
-  TA::to_host(c);
+//  CUDAMatrix::wait_for_lazy_cleanup(world);
+//  TA::to_host(c);
 
   // test permutation
   //  c("m,n") = c("n,m");
@@ -285,21 +287,26 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   //  auto result = dot_length * val_a * val_b + val_a - val_b;
   auto result = dot_length * val_a * val_b;
 
-  auto verify = [&threshold, &result,
+  auto verify = [&world,&threshold, &result,
                  &dot_length](TA::Tensor<value_type> &tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = fabs(tile[i] - result);
       double abs_val = fabs(tile[i]);
       double rel_err = abs_err / result / dot_length;
-      TA_USER_ASSERT(rel_err < threshold,
-                     std::string("gpu: " + std::to_string(tile[i]) +
-                                 " cpu: " + std::to_string(result) + "\n")
-                         .c_str());
+      if(rel_err > threshold){
+        std::cout << "Node: " << world.rank() <<  " Tile: " << tile.range()  << " id: " << i << std::string(" gpu: " + std::to_string(tile[i]) + " cpu: " + std::to_string(result) + "\n");
+        break;
+      }
     }
   };
 
-  foreach_inplace(c_ta, verify);
+//  foreach_inplace(c_ta, verify);
+
+  for(auto iter = c_ta.begin(); iter != c_ta.end(); iter++){
+     verify(c_ta.find(iter.index()).get());
+  }
+
   world.gop.fence();
 
   if (world.rank() == 0) {
