@@ -292,7 +292,10 @@ namespace TiledArray {
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       result_tensor binary(const Right& right, Op&& op) const {
-        return result_tensor(*this, right, op);
+//        return result_tensor(*this, right, op);
+          result_tensor new_tensor(detail::clone_range(*this));
+          detail::tensor_init(op, new_tensor, *this, right);
+          return new_tensor;
       }
 
       /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -307,7 +310,10 @@ namespace TiledArray {
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       result_tensor binary(const Right& right, Op&& op, const Permutation& perm) const {
-        return result_tensor(*this, right, op, perm);
+//        return result_tensor(*this, right, op, perm);
+        result_tensor new_tensor(perm * this->range());
+        detail::tensor_init(op, perm, new_tensor, *this, right);
+        return new_tensor;
       }
 
       /// Use a binary, element wise operation to modify this tensor
@@ -338,7 +344,10 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When this tensor is empty.
       template <typename Op>
       result_tensor unary(Op&& op) const {
-        return result_tensor(*this, op);
+//        return result_tensor(*this, op);
+          result_tensor new_tensor(detail::clone_range(*this));
+          detail::tensor_init(op,new_tensor, *this);
+          return new_tensor;
       }
 
       /// Use a unary, element wise operation to construct a new, permuted tensor
@@ -352,7 +361,10 @@ namespace TiledArray {
       /// that of this tensor.
       template <typename Op>
       result_tensor unary(Op&& op, const Permutation& perm) const {
-        return result_tensor(*this, op, perm);
+//        return result_tensor(*this, op, perm);
+        result_tensor new_tensor(perm * this->range());
+        detail::tensor_init(op, perm, new_tensor, *this);
+        return new_tensor;
       }
 
       /// Use a unary, element wise operation to modify this tensor
