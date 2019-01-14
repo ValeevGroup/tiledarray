@@ -25,14 +25,18 @@
 
 #include "TiledArray/tensor.h"
 #include "tiledarray.h"
-#include "unit_test_config.h"
-
-#include <boost/mpl/list.hpp>
 
 #ifdef TILEDARRAY_HAS_BTAS
 #include <TiledArray/external/btas.h>
 #include "btas/optimize/contract.h"
 #endif
+
+#include "unit_test_config.h"
+
+#include <boost/mpl/list.hpp>
+
+/// this works around the left-shift op instantiation issues with GCC
+static_assert(boost::has_left_shift<std::ostream,btas::Tensor<int>>::value, "oy");
 
 using namespace TiledArray;
 
