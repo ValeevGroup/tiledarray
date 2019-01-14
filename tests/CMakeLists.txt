@@ -87,6 +87,7 @@ set(ta_test_src_files  ta_test.cpp
     proc_grid.cpp
     dist_eval_contraction_eval.cpp
     expressions.cpp
+    expressions_btas.cpp
     expressions_mixed.cpp
     expressions_sparse.cpp
     foreach.cpp
