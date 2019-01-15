@@ -540,8 +540,8 @@ BOOST_AUTO_TEST_CASE(permute) {
   BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
 
   for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-    Tensor<int> result_tile = c.find(index).get();
+    TArrayBTAS::value_type arg_tile = a.find(block_range.ordinal(index)).get();
+    TArrayBTAS::value_type result_tile = c.find(index).get();
 
     for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
       BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
@@ -574,8 +574,8 @@ BOOST_AUTO_TEST_CASE(permute) {
   BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
 
   for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-    Tensor<int> result_tile = c.find(index).get();
+    typename TArrayBTAS::value_type arg_tile = a.find(block_range.ordinal(index)).get();
+    typename TArrayBTAS::value_type result_tile = c.find(index).get();
 
     for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
       BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
@@ -607,8 +607,8 @@ BOOST_AUTO_TEST_CASE(permute) {
   BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
 
   for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-    Tensor<int> result_tile = c.find(index).get();
+    typename TArrayBTAS::value_type arg_tile = a.find(block_range.ordinal(index)).get();
+    typename TArrayBTAS::value_type result_tile = c.find(index).get();
 
     for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
       BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
@@ -642,8 +642,8 @@ BOOST_AUTO_TEST_CASE(permute) {
   BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
 
   for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-    Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
+    typename TArrayBTAS::value_type arg_tile = a.find(block_range.ordinal(index)).get();
+    typename TArrayBTAS::value_type result_tile = c.find(block_range.ordinal(index)).get();
 
     BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
 

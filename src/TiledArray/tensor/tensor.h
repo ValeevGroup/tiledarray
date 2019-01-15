@@ -138,7 +138,7 @@ namespace TiledArray {
     /// Construct a tensor with a range equal to \c range. The data is
     /// uninitialized.
     /// \param range The range of the tensor
-    Tensor(const range_type& range) :
+    explicit Tensor(const range_type& range) :
       pimpl_(std::make_shared<Impl>(range))
     {
       default_init(range.volume(), pimpl_->data_);
@@ -200,7 +200,7 @@ namespace TiledArray {
     template <typename T1,
         typename std::enable_if<is_tensor<T1>::value &&
             ! std::is_same<T1, Tensor_>::value>::type* = nullptr>
-    Tensor(const T1& other) :
+    explicit Tensor(const T1& other) :
       pimpl_(std::make_shared<Impl>(detail::clone_range(other)))
     {
       auto op =
