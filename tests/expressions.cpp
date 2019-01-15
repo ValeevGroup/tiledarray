@@ -639,8 +639,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block, F, Fixtures, F) {
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index))) {
-      Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-      Tensor<int> result_tile = c.find(index).get();
+      auto arg_tile = a.find(block_range.ordinal(index)).get();
+      auto result_tile = c.find(index).get();
 
       for (unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
         BOOST_CHECK_EQUAL(
@@ -680,8 +680,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(const_block, F, Fixtures, F) {
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index))) {
-      Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-      Tensor<int> result_tile = c.find(index).get();
+      auto arg_tile = a.find(block_range.ordinal(index)).get();
+      auto result_tile = c.find(index).get();
 
       for (unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
         BOOST_CHECK_EQUAL(
@@ -721,8 +721,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scal_block, F, Fixtures, F) {
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index))) {
-      Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-      Tensor<int> result_tile = c.find(index).get();
+      auto arg_tile = a.find(block_range.ordinal(index)).get();
+      auto result_tile = c.find(index).get();
 
       for (unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
         BOOST_CHECK_EQUAL(
@@ -762,8 +762,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_sub_blockscal_block, F, Fixtures, F) {
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!c.is_zero(block_range.ordinal(index))) {
-      Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-      Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
+      auto arg_tile = a.find(block_range.ordinal(index)).get();
+      auto result_tile = c.find(block_range.ordinal(index)).get();
 
       BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
 
