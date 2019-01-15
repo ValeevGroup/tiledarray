@@ -600,58 +600,58 @@ BOOST_AUTO_TEST_CASE(permute) {
   }
 }
 
-// BOOST_AUTO_TEST_CASE( scal_block )
-//{
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block({3,3,3}, {5,5,5}));
-//
-//  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
-//
-//  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-//    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-//    Tensor<int> result_tile = c.find(index).get();
-//
-//    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
-//      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
-//          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
-//          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
-//          arg_tile.range().extent(r));
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
-//          arg_tile.range().stride(r));
-//    }
-//    BOOST_CHECK_EQUAL(result_tile.range().volume(),
-//    arg_tile.range().volume());
-//
-//    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-//      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
-//    }
-//  }
-//}
+ BOOST_AUTO_TEST_CASE( scal_block )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block({3,3,3}, {5,5,5}));
 
-// BOOST_AUTO_TEST_CASE( assign_sub_block )
-//{
-//  c.fill_local(0.0);
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) = 2 *
-//  a("a,b,c").block({3,3,3}, {5,5,5}));
-//
-//  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
-//
-//  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-//    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-//    Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
-//
-//    BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
-//
-//    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-//      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
-//    }
-//  }
-//}
+  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
+    Tensor<int> result_tile = c.find(index).get();
+
+    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
+      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
+          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
+          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
+          arg_tile.range().extent(r));
+
+      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
+          arg_tile.range().stride(r));
+    }
+    BOOST_CHECK_EQUAL(result_tile.range().volume(),
+    arg_tile.range().volume());
+
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
+    }
+  }
+}
+
+ BOOST_AUTO_TEST_CASE( assign_sub_block )
+{
+  c.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) = 2 *
+  a("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
+    Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
+
+    BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
+
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
+    }
+  }
+}
 
 
  BOOST_AUTO_TEST_CASE(assign_subblock_block_contract)
@@ -1921,10 +1921,10 @@ BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
  BOOST_AUTO_TEST_CASE(dot) {
   // Test the dot expression function
   double result = 0;
-//  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("a,b,c"));
-//  BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("a,b,c"));
-//  BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("a,b,c"));
-//  BOOST_REQUIRE_NO_THROW(result *= a("a,b,c") * b("a,b,c"));
+  BOOST_REQUIRE_NO_THROW(result = static_cast<double>(a("a,b,c") * b("a,b,c")));
+  BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("a,b,c"));
+  BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("a,b,c"));
+  BOOST_REQUIRE_NO_THROW(result *= a("a,b,c") * b("a,b,c"));
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c").dot(b("a,b,c")).get());
 
   // Compute the expected value for the dot function.
@@ -1945,10 +1945,10 @@ BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
   Permutation perm({2, 1, 0});
   // Test the dot expression function
   double result = 0;
-//  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("c,b,a"));
-//  BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("c,b,a"));
-//  BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("c,b,a"));
-//  BOOST_REQUIRE_NO_THROW(result *= a("a,b,c") * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(result = static_cast<double>(a("a,b,c") * b("c,b,a")));
+  BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(result *= a("a,b,c") * b("c,b,a"));
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c").dot(b("c,b,a")).get());
 
   // Compute the expected value for the dot function.
@@ -1966,24 +1966,24 @@ BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
   BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
 }
 
-//BOOST_AUTO_TEST_CASE(dot_expr) {
-//  // Test the dot expression function
-//  double result = 0;
-//  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("a,b,c"));
-//
-//  // Compute the expected value for the dot function.
-//  double expected = 0;
-//  for (std::size_t i = 0ul; i < a.size(); ++i) {
-//    TArrayBTAS::value_type a_tile = a.find(i).get();
-//    TArrayBTAS::value_type b_tile = b.find(i).get();
-//
-//    for (std::size_t j = 0ul; j < a_tile.size(); ++j)
-//      expected += a_tile[j] * b_tile[j];
-//  }
-//
-//  // Check the result of dot
-//  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
-//}
+BOOST_AUTO_TEST_CASE(dot_expr) {
+  // Test the dot expression function
+  double result = 0;
+  BOOST_REQUIRE_NO_THROW(result = static_cast<double>(a("a,b,c") * b("a,b,c")));
+
+  // Compute the expected value for the dot function.
+  double expected = 0;
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    TArrayBTAS::value_type a_tile = a.find(i).get();
+    TArrayBTAS::value_type b_tile = b.find(i).get();
+
+    for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+      expected += a_tile[j] * b_tile[j];
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
+}
 
  BOOST_AUTO_TEST_CASE(dot_contr) {
   for (int i = 0; i != 10; ++i)
