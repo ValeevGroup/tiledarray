@@ -531,7 +531,7 @@ namespace TiledArray {
       init_tiles([op] (const TiledArray::Range& range) -> value_type
       {
         // Initialize the tile with the given range object
-        TiledArray::Tensor<double> tile(range);
+        Tile tile(range);
 
         // Initialize tile elements
         for(auto& idx: range)
