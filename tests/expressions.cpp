@@ -39,6 +39,9 @@ template <typename Tile, typename Policy>
 struct ExpressionsFixture : public TiledRangeFixture {
   using TArray = TA::DistArray<Tile, Policy>;
   using element_type = typename Tile::value_type;
+  using scalar_type = typename Tile::scalar_type;
+  using Matrix = Eigen::Matrix<element_type, Eigen::Dynamic, Eigen::Dynamic,
+                               Eigen::RowMajor>;
 
   template <typename P = Policy,
             std::enable_if_t<
@@ -83,19 +86,32 @@ struct ExpressionsFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.fence();
   }
 
-  template <typename T, typename P>
-  static void random_fill(DistArray<T, P>& array) {
-    typename DistArray<T, P>::pmap_interface::const_iterator it =
-        array.pmap()->begin();
-    typename DistArray<T, P>::pmap_interface::const_iterator end =
-        array.pmap()->end();
+  /// make array for SparsePolicy
+  template <typename P = Policy,
+            std::enable_if_t<
+                std::is_same<P, TiledArray::SparsePolicy>::value>* = nullptr>
+  static TA::DistArray<Tile, Policy> make_array(TA::TiledRange& range) {
+    return TA::DistArray<Tile, Policy>(*GlobalFixture::world, range,
+                                       make_random_sparseshape(range));
+  }
+
+  /// make array for DensePolicy
+  template <typename P = Policy,
+            std::enable_if_t<std::is_same<P, TiledArray::DensePolicy>::value>* =
+                nullptr>
+  static TA::DistArray<Tile, Policy> make_array(TA::TiledRange& range) {
+    return TA::DistArray<Tile, Policy>(*GlobalFixture::world, range);
+  }
+
+  /// randomly fill an array
+  static void random_fill(DistArray<Tile, Policy>& array) {
+    auto it = array.pmap()->begin();
+    auto end = array.pmap()->end();
     for (; it != end; ++it) {
       if (!array.is_zero(*it))
-        array.set(
-            *it, array.world().taskq.add(
-                     &ExpressionsFixture<Tile, Policy>::template make_rand_tile<
-                         DistArray<T, P>>,
-                     array.trange().make_tile_range(*it)));
+        array.set(*it,
+                  array.world().taskq.add(make_rand_tile,
+                                          array.trange().make_tile_range(*it)));
     }
   }
 
@@ -111,10 +127,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
   }
 
   // Fill a tile with random data
-  template <typename A>
-  static typename A::value_type make_rand_tile(
-      const typename A::value_type::range_type& r) {
-    typename A::value_type tile(r);
+  static Tile make_rand_tile(const typename Tile::range_type& r) {
+    Tile tile(r);
     for (std::size_t i = 0ul; i < tile.size(); ++i) set_random(tile[i]);
     return tile;
   }
@@ -125,8 +139,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
     return tile;
   }
 
-  template <typename M, typename A>
-  static void rand_fill_matrix_and_array(M& matrix, A& array, int seed = 42) {
+  static void rand_fill_matrix_and_array(Matrix& matrix, TArray& array,
+                                         int seed = 42) {
     TA_ASSERT(std::size_t(matrix.size()) ==
               array.trange().elements_range().volume());
     matrix.fill(0);
@@ -134,8 +148,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
     GlobalFixture::world->srand(seed);
 
     // Iterate over local tiles
-    for (typename A::iterator it = array.begin(); it != array.end(); ++it) {
-      typename A::value_type tile(array.trange().make_tile_range(it.index()));
+    for (auto it = array.begin(); it != array.end(); ++it) {
+      Tile tile(array.trange().make_tile_range(it.index()));
       for (Range::const_iterator rit = tile.range().begin();
            rit != tile.range().end(); ++rit) {
         const std::size_t elem_index = array.elements_range().ordinal(*rit);
@@ -147,17 +161,15 @@ struct ExpressionsFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.sum(&matrix(0, 0), matrix.size());
   }
 
-  Eigen::Matrix<element_type, Eigen::Dynamic, Eigen::Dynamic> make_matrix(
-      DistArray<Tile, Policy>& array) {
+  Matrix make_matrix(DistArray<Tile, Policy>& array) {
     // Check that the array will fit in a matrix or vector
 
     // Construct the Eigen matrix
-    Eigen::Matrix<element_type, Eigen::Dynamic, Eigen::Dynamic> matrix =
-        Eigen::Matrix<element_type, Eigen::Dynamic, Eigen::Dynamic>::Zero(
-            array.trange().elements_range().extent(0),
-            (array.trange().tiles_range().rank() == 2
-                 ? array.trange().elements_range().extent(1)
-                 : 1));
+    Matrix matrix =
+        Matrix::Zero(array.trange().elements_range().extent(0),
+                     (array.trange().tiles_range().rank() == 2
+                          ? array.trange().elements_range().extent(1)
+                          : 1));
 
     // Spawn tasks to copy array tiles to the Eigen matrix
     for (std::size_t i = 0; i < array.size(); ++i) {
@@ -203,24 +215,31 @@ struct ExpressionsFixture : public TiledRangeFixture {
   TArray w;
 };  // ExpressionsFixture
 
+/// define ExpressionsFixture with different Tile and Policy types
 typedef ExpressionsFixture<TiledArray::Tensor<int>, TA::SparsePolicy>
     EF_TAspTensorI;
 
 typedef ExpressionsFixture<TiledArray::Tensor<int>, TA::DensePolicy>
     EF_TATensorI;
 
+typedef ExpressionsFixture<TiledArray::Tensor<std::complex<int>>,
+                           TA::DensePolicy>
+    EF_TATensorCI;
+
 #ifdef TILEDARRAY_HAS_BTAS
 typedef ExpressionsFixture<
     TA::Tile<btas::Tensor<int, TiledArray::Range, btas::varray<int>>>,
     TA::DensePolicy>
     EF_TABtasI;
+
+typedef boost::mpl::vector<EF_TATensorI, EF_TAspTensorI, EF_TATensorCI,
+                           EF_TABtasI>
+    Fixtures;
+#else
+typedef boost::mpl::vector<EF_TATensorI, EF_TAspTensorI, EF_TATensorCI>
+    Fixtures;
 #endif
 
-#ifdef TILEDARRAY_HAS_BTAS
-typedef boost::mpl::vector<EF_TATensorI, EF_TAspTensorI, EF_TABtasI> Fixtures;
-#else
-typedef boost::mpl::vector<EF_TATensorI, EF_TAspTensorI, > Fixtures;
-#endif
 BOOST_AUTO_TEST_SUITE(expressions_suite)
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(tensor_factories, F, Fixtures, F) {
@@ -383,209 +402,18 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mult_factories, F, Fixtures, F) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * (a("c,b,a") * b("a,b,c"))));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(a("c,b,a") * b("a,b,c")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * (a("c,b,a") * b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") * b("a,b,c")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") * b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") * b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") *
-  //  b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
-  //  (conj(a("c,b,a") * b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-  //  conj(a("c,b,a") * b("a,b,c")) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
-  //  conj(a("c,b,a") * b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
-  //  (a("c,b,a") * b("a,b,c"))) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
-  //  conj(2 * (a("c,b,a") * b("a,b,c")))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-  //  -conj(a("c,b,a") * b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2
-  //  * (a("c,b,a") * b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") * b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") * b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") * b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") * b("a,b,c")))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (conj(a("c,b,a") * b("a,b,c")))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") * b("a,b,c")) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") * b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") * b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") * b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") * b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") * b("a,b,c"))) * 2);
 }
-
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(complex_tensor_factories, F, Fixtures, F) {
-//  TSpArrayZ x(*GlobalFixture::world, tr, s_tr_1);
-//  TSpArrayZ z(*GlobalFixture::world, tr, s_tr_1);
-//  random_fill(x);
-//  const auto& cx = x;
-//  const std::array<int, 3> lobound{{3, 3, 3}};
-//  const std::array<int, 3> upbound{{5, 5, 5}};
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") += x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") -= x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") *= x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a").conj());
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block({3, 3, 3}, {5, 5, 5}));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = cx("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = cx("c,b,a").conj());
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = cx("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = cx("a,b,c").block({3, 3, 3}, {5, 5, 5}));
-//}
-//
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(complex_block_tensor_factories) {
-//  TSpArrayZ x(*GlobalFixture::world, tr, s_tr_1);
-//  TSpArrayZ z;
-//  random_fill(x);
-//  const auto& cx = x;
-//  const std::array<int, 3> lobound{{3, 3, 3}};
-//  const std::array<int, 3> upbound{{5, 5, 5}};
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block({3, 3, 3}, {5, 5, 5}));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block(lobound,
-//  upbound).conj()); BOOST_CHECK_NO_THROW(z("a,b,c") = cx("a,b,c").block({3, 3,
-//  3}, {5, 5, 5})); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  cx("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  cx("a,b,c").block(lobound, upbound).conj()); BOOST_CHECK_NO_THROW(z("a,b,c")
-//  += x("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(z("a,b,c") -=
-//  x("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(z("a,b,c") *=
-//  x("a,b,c").block(lobound, upbound));
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * x("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block(lobound, upbound) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           2.0 * (2.0 * x("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           (2.0 * x("a,b,c").block(lobound, upbound)) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -x("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           -(2.0 * x("a,b,c").block(lobound, upbound)));
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(conj(x("a,b,c").block(lobound, upbound))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(2.0 * x("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(
-//      z("a,b,c") = conj(conj(2.0 * x("a,b,c").block(lobound, upbound))));
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           2.0 * conj(x("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(x("a,b,c").block(lobound, upbound)) * 2.0);
-//  BOOST_CHECK_NO_THROW(
-//      z("a,b,c") = 2.0 * conj(2.0 * x("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(
-//      z("a,b,c") = conj(2.0 * x("a,b,c").block(lobound, upbound)) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(x("a,b,c").block(lobound,
-//  upbound))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           -conj(2.0 * x("a,b,c").block(lobound, upbound)));
-//}
-//
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(complex_scaled_tensor_factories) {
-//  TSpArrayZ x(*GlobalFixture::world, tr, s_tr_1);
-//  TSpArrayZ z;
-//  random_fill(x);
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a") * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 * x("c,b,a")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(2.0 * x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("c,b,a"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(2.0 * x("c,b,a"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * x("c,b,a")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(2.0 * x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(2.0 * x("c,b,a")));
-//}
-//
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(complex_add_factories) {
-//  TSpArrayZ x(*GlobalFixture::world, tr, s_tr_1);
-//  TSpArrayZ y(*GlobalFixture::world, tr, s_tr_2);
-//  TSpArrayZ z;
-//  random_fill(x);
-//  random_fill(y);
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a") + y("a,b,c"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (x("c,b,a") + y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (x("c,b,a") + y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 * (x("c,b,a") + y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * (x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(x("c,b,a") + y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(2.0 * (x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") + y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * (x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(conj(2.0 * (x("c,b,a") + y("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(2.0 * (conj(x("c,b,a") + y("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") + y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(x("c,b,a") + y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(2.0 * (x("c,b,a") + y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           2.0 * conj(2.0 * (x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(x("c,b,a") + y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           -conj(2.0 * (x("c,b,a") + y("a,b,c"))) * 2.0);
-//}
-//
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(complex_subt_factories) {
-//  TSpArrayZ x(*GlobalFixture::world, tr, s_tr_1);
-//  TSpArrayZ y(*GlobalFixture::world, tr, s_tr_2);
-//  TSpArrayZ z;
-//  random_fill(x);
-//  random_fill(y);
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a") - y("a,b,c"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (x("c,b,a") - y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (x("c,b,a") - y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 * (x("c,b,a") - y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * (x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(x("c,b,a") - y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(2.0 * (x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") - y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * (x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(conj(2.0 * (x("c,b,a") - y("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(2.0 * (conj(x("c,b,a") - y("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") - y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(x("c,b,a") - y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(2.0 * (x("c,b,a") - y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           2.0 * conj(2.0 * (x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(x("c,b,a") - y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           -conj(2.0 * (x("c,b,a") - y("a,b,c"))) * 2.0);
-//}
-//
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(complex_mult_factories) {
-//  TSpArrayZ x(*GlobalFixture::world, tr, s_tr_1);
-//  TSpArrayZ y(*GlobalFixture::world, tr, s_tr_2);
-//  TSpArrayZ z;
-//  random_fill(x);
-//  random_fill(y);
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a") * y("a,b,c"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (x("c,b,a") * y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (x("c,b,a") * y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 * (x("c,b,a") * y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * (x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(x("c,b,a") * y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(2.0 * (x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") * y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * (x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(conj(2.0 * (x("c,b,a") * y("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(2.0 * (conj(x("c,b,a") * y("a,b,c")))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") * y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(x("c,b,a") * y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           conj(2.0 * (x("c,b,a") * y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           2.0 * conj(2.0 * (x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(x("c,b,a") * y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") =
-//                           -conj(2.0 * (x("c,b,a") * y("a,b,c"))) * 2.0);
-//}
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute, F, Fixtures, F) {
   auto& a = F::a;
@@ -1553,7 +1381,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont, F, Fixtures, F) {
                         a.trange().elements_range().extent(2);
   const std::size_t n = b.trange().elements_range().extent(2);
 
-  TiledArray::EigenMatrixXi left(m, k);
+  typename F::Matrix left(m, k);
   left.fill(0);
 
   for (auto it = a.begin(); it != a.end(); ++it) {
@@ -1579,7 +1407,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont, F, Fixtures, F) {
 
   GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
 
-  TiledArray::EigenMatrixXi right(n, k);
+  typename F::Matrix right(n, k);
   right.fill(0);
 
   for (auto it = b.begin(); it != b.end(); ++it) {
@@ -1605,7 +1433,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont, F, Fixtures, F) {
 
   GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
 
-  TiledArray::EigenMatrixXi result(m, n);
+  typename F::Matrix result(m, n);
 
   result = left * right.transpose();
 
@@ -1682,7 +1510,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_permute, F, Fixtures, F) {
                         a.trange().elements_range().extent(2);
   const std::size_t n = b.trange().elements_range().extent(2);
 
-  TiledArray::EigenMatrixXi left(m, k);
+  typename F::Matrix left(m, k);
   left.fill(0);
 
   for (auto it = a.begin(); it != a.end(); ++it) {
@@ -1708,7 +1536,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_permute, F, Fixtures, F) {
 
   GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
 
-  TiledArray::EigenMatrixXi right(n, k);
+  typename F::Matrix right(n, k);
   right.fill(0);
 
   for (auto it = b.begin(); it != b.end(); ++it) {
@@ -1734,7 +1562,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_permute, F, Fixtures, F) {
 
   GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
 
-  TiledArray::EigenMatrixXi result(m, n);
+  typename F::Matrix result(m, n);
 
   result = left * right.transpose();
 
@@ -1811,7 +1639,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont, F, Fixtures, F) {
                         a.trange().elements_range().extent(2);
   const std::size_t n = b.trange().elements_range().extent(2);
 
-  TiledArray::EigenMatrixXi left(m, k);
+  typename F::Matrix left(m, k);
   left.fill(0);
 
   for (auto it = a.begin(); it != a.end(); ++it) {
@@ -1837,7 +1665,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont, F, Fixtures, F) {
 
   GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
 
-  TiledArray::EigenMatrixXi right(n, k);
+  typename F::Matrix right(n, k);
   right.fill(0);
 
   for (auto it = b.begin(); it != b.end(); ++it) {
@@ -1863,7 +1691,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont, F, Fixtures, F) {
 
   GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
 
-  TiledArray::EigenMatrixXi result(m, n);
+  typename F::Matrix result(m, n);
 
   result = left * right.transpose();
 
@@ -1942,7 +1770,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont_permute, F, Fixtures, F) {
                         a.trange().elements_range().extent(2);
   const std::size_t n = b.trange().elements_range().extent(2);
 
-  TiledArray::EigenMatrixXi left(m, k);
+  typename F::Matrix left(m, k);
   left.fill(0);
 
   for (auto it = a.begin(); it != a.end(); ++it) {
@@ -1968,7 +1796,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont_permute, F, Fixtures, F) {
 
   GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
 
-  TiledArray::EigenMatrixXi right(n, k);
+  typename F::Matrix right(n, k);
   right.fill(0);
 
   for (auto it = b.begin(); it != b.end(); ++it) {
@@ -1994,7 +1822,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont_permute, F, Fixtures, F) {
 
   GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
 
-  TiledArray::EigenMatrixXi result(m, n);
+  typename F::Matrix result(m, n);
 
   result = left * right.transpose();
 
@@ -2063,211 +1891,209 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont_permute, F, Fixtures, F) {
   }
 }
 
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_non_uniform1, F, Fixtures, F) {
-//  // Construct the tiled range
-//  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
-//  std::array<std::size_t, 2> tiling2 = {{0, 40}};
-//  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
-//  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
-//  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_2, tr1_1, tr1_1}};
-//  TiledRange trange(tiling4.begin(), tiling4.end());
-//
-//  const std::size_t m = 5;
-//  const std::size_t k = 40 * 5 * 5;
-//  const std::size_t n = 5;
-//
-//  // Construct the test arguments
-//  TArray left(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//  TArray right(*GlobalFixture::world, trange,
-//  make_random_sparseshape(trange));
-//
-//  // Construct the reference matrices
-//  TiledArray::EigenMatrixXi left_ref(m, k);
-//  TiledArray::EigenMatrixXi right_ref(n, k);
-//
-//  // Initialize input
-//  rand_fill_matrix_and_array(left_ref, left, 23);
-//  rand_fill_matrix_and_array(right_ref, right, 42);
-//
-//  // Compute the reference result
-//  TiledArray::EigenMatrixXi result_ref = 5 * left_ref * right_ref.transpose();
-//
-//  // Compute the result to be tested
-//  TArray result;
-//  BOOST_REQUIRE_NO_THROW(result("x,y") =
-//                             5 * left("x,i,j,k") * right("y,i,j,k"));
-//
-//  // Check the result
-//  for (TArray::iterator it = result.begin(); it != result.end(); ++it) {
-//    const auto tile = *it;
-//    for (Range::const_iterator rit = tile.range().begin();
-//         rit != tile.range().end(); ++rit) {
-//      const std::size_t elem_index = result.elements_range().ordinal(*rit);
-//      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
-//    }
-//  }
-//}
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_non_uniform1, F, Fixtures, F) {
+  // Construct the tiled range
+  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
+  std::array<std::size_t, 2> tiling2 = {{0, 40}};
+  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
+  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
+  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_2, tr1_1, tr1_1}};
+  TiledRange trange(tiling4.begin(), tiling4.end());
 
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_non_uniform2) {
-//  // Construct the tiled range
-//  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
-//  std::array<std::size_t, 2> tiling2 = {{0, 40}};
-//  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
-//  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
-//  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_1, tr1_2, tr1_2}};
-//  TiledRange trange(tiling4.begin(), tiling4.end());
-//
-//  const std::size_t m = 5;
-//  const std::size_t k = 5 * 40 * 40;
-//  const std::size_t n = 5;
-//
-//  // Construct the test arguments
-//  TArray left(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//  TArray right(*GlobalFixture::world, trange,
-//  make_random_sparseshape(trange));
-//
-//  // Construct the reference matrices
-//  TiledArray::EigenMatrixXi left_ref(m, k);
-//  TiledArray::EigenMatrixXi right_ref(n, k);
-//
-//  // Initialize input
-//  rand_fill_matrix_and_array(left_ref, left, 23);
-//  rand_fill_matrix_and_array(right_ref, right, 42);
-//
-//  // Compute the reference result
-//  TiledArray::EigenMatrixXi result_ref = 5 * left_ref * right_ref.transpose();
-//
-//  // Compute the result to be tested
-//  TArray result;
-//  BOOST_REQUIRE_NO_THROW(result("x,y") =
-//                             5 * left("x,i,j,k") * right("y,i,j,k"));
-//
-//  // Check the result
-//  for (TArray::iterator it = result.begin(); it != result.end(); ++it) {
-//    const auto tile = *it;
-//    for (Range::const_iterator rit = tile.range().begin();
-//         rit != tile.range().end(); ++rit) {
-//      const std::size_t elem_index = result.elements_range().ordinal(*rit);
-//      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
-//    }
-//  }
-//}
+  const std::size_t m = 5;
+  const std::size_t k = 40 * 5 * 5;
+  const std::size_t n = 5;
 
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_plus_reduce) {
-//  // Construct the tiled range
-//  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
-//  std::array<std::size_t, 2> tiling2 = {{0, 40}};
-//  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
-//  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
-//  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_2, tr1_1, tr1_1}};
-//  TiledRange trange(tiling4.begin(), tiling4.end());
-//
-//  const std::size_t m = 5;
-//  const std::size_t k = 40 * 5 * 5;
-//  const std::size_t n = 5;
-//
-//  // Construct the test arrays
-//  TArray arg1(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//  TArray arg2(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//  TArray arg3(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//  TArray arg4(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//
-//  // Construct the reference matrices
-//  TiledArray::EigenMatrixXi arg1_ref(m, k);
-//  TiledArray::EigenMatrixXi arg2_ref(n, k);
-//  TiledArray::EigenMatrixXi arg3_ref(m, k);
-//  TiledArray::EigenMatrixXi arg4_ref(n, k);
-//
-//  // Initialize input
-//  rand_fill_matrix_and_array(arg1_ref, arg1, 23);
-//  rand_fill_matrix_and_array(arg2_ref, arg2, 42);
-//  rand_fill_matrix_and_array(arg3_ref, arg3, 79);
-//  rand_fill_matrix_and_array(arg4_ref, arg4, 19);
-//
-//  // Compute the reference result
-//  TiledArray::EigenMatrixXi result_ref =
-//      2 * (arg1_ref * arg2_ref.transpose() + arg1_ref * arg4_ref.transpose() +
-//           arg3_ref * arg4_ref.transpose() + arg3_ref * arg2_ref.transpose());
-//
-//  // Compute the result to be tested
-//  TArray result;
-//  result("x,y") = arg1("x,i,j,k") * arg2("y,i,j,k");
-//  result("x,y") += arg3("x,i,j,k") * arg4("y,i,j,k");
-//  result("x,y") += arg1("x,i,j,k") * arg4("y,i,j,k");
-//  result("x,y") += arg3("x,i,j,k") * arg2("y,i,j,k");
-//  result("x,y") += arg3("x,i,j,k") * arg2("y,i,j,k");
-//  result("x,y") += arg1("x,i,j,k") * arg2("y,i,j,k");
-//  result("x,y") += arg3("x,i,j,k") * arg4("y,i,j,k");
-//  result("x,y") += arg1("x,i,j,k") * arg4("y,i,j,k");
-//
-//  // Check the result
-//  for (TArray::iterator it = result.begin(); it != result.end(); ++it) {
-//    const auto tile = *it;
-//    for (Range::const_iterator rit = tile.range().begin();
-//         rit != tile.range().end(); ++rit) {
-//      const std::size_t elem_index = result.elements_range().ordinal(*rit);
-//      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
-//    }
-//  }
-//}
+  // Construct the test arguments
+  auto left = F::make_array(trange);
+  auto right = F::make_array(trange);
 
-// BOOST_FIXTURE_TEST_CASE_TEMPLATE(no_alias_plus_reduce, F, Fixtures, F) {
-//  // Construct the tiled range
-//  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
-//  std::array<std::size_t, 2> tiling2 = {{0, 40}};
-//  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
-//  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
-//  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_2, tr1_1, tr1_1}};
-//  TiledRange trange(tiling4.begin(), tiling4.end());
-//
-//  const std::size_t m = 5;
-//  const std::size_t k = 40 * 5 * 5;
-//  const std::size_t n = 5;
-//
-//  // Construct the test arrays
-//  TArray arg1(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//  TArray arg2(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//  TArray arg3(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//  TArray arg4(*GlobalFixture::world, trange, make_random_sparseshape(trange));
-//
-//  // Construct the reference matrices
-//  TiledArray::EigenMatrixXi arg1_ref(m, k);
-//  TiledArray::EigenMatrixXi arg2_ref(n, k);
-//  TiledArray::EigenMatrixXi arg3_ref(m, k);
-//  TiledArray::EigenMatrixXi arg4_ref(n, k);
-//
-//  // Initialize input
-//  rand_fill_matrix_and_array(arg1_ref, arg1, 23);
-//  rand_fill_matrix_and_array(arg2_ref, arg2, 42);
-//  rand_fill_matrix_and_array(arg3_ref, arg3, 79);
-//  rand_fill_matrix_and_array(arg4_ref, arg4, 19);
-//
-//  // Compute the reference result
-//  TiledArray::EigenMatrixXi result_ref =
-//      2 * (arg1_ref * arg2_ref.transpose() + arg1_ref * arg4_ref.transpose() +
-//           arg3_ref * arg4_ref.transpose() + arg3_ref * arg2_ref.transpose());
-//
-//  // Compute the result to be tested
-//  TArray result;
-//  result("x,y") = arg1("x,i,j,k") * arg2("y,i,j,k");
-//  result("x,y").no_alias() += arg3("x,i,j,k") * arg4("y,i,j,k");
-//  result("x,y").no_alias() += arg1("x,i,j,k") * arg4("y,i,j,k");
-//  result("x,y").no_alias() += arg3("x,i,j,k") * arg2("y,i,j,k");
-//  result("x,y").no_alias() += arg3("x,i,j,k") * arg2("y,i,j,k");
-//  result("x,y").no_alias() += arg1("x,i,j,k") * arg2("y,i,j,k");
-//  result("x,y").no_alias() += arg3("x,i,j,k") * arg4("y,i,j,k");
-//  result("x,y").no_alias() += arg1("x,i,j,k") * arg4("y,i,j,k");
-//
-//  // Check the result
-//  for (TArray::iterator it = result.begin(); it != result.end(); ++it) {
-//    const auto tile = *it;
-//    for (Range::const_iterator rit = tile.range().begin();
-//         rit != tile.range().end(); ++rit) {
-//      const std::size_t elem_index = result.elements_range().ordinal(*rit);
-//      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
-//    }
-//  }
-//}
+  // Construct the reference matrices
+  typename F::Matrix left_ref(m, k);
+  typename F::Matrix right_ref(n, k);
+
+  // Initialize input
+  F::rand_fill_matrix_and_array(left_ref, left, 23);
+  F::rand_fill_matrix_and_array(right_ref, right, 42);
+
+  // Compute the reference result
+  typename F::Matrix result_ref = 5 * left_ref * right_ref.transpose();
+
+  // Compute the result to be tested
+  typename F::TArray result;
+  BOOST_REQUIRE_NO_THROW(result("x,y") =
+                             5 * left("x,i,j,k") * right("y,i,j,k"));
+
+  // Check the result
+  for (auto it = result.begin(); it != result.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+    for (Range::const_iterator rit = tile.range().begin();
+         rit != tile.range().end(); ++rit) {
+      const std::size_t elem_index = result.elements_range().ordinal(*rit);
+      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
+    }
+  }
+}
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_non_uniform2, F, Fixtures, F) {
+  // Construct the tiled range
+  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
+  std::array<std::size_t, 2> tiling2 = {{0, 40}};
+  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
+  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
+  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_1, tr1_2, tr1_2}};
+  TiledRange trange(tiling4.begin(), tiling4.end());
+
+  const std::size_t m = 5;
+  const std::size_t k = 5 * 40 * 40;
+  const std::size_t n = 5;
+
+  // Construct the test arguments
+  auto left = F::make_array(trange);
+  auto right = F::make_array(trange);
+
+  // Construct the reference matrices
+  typename F::Matrix left_ref(m, k);
+  typename F::Matrix right_ref(n, k);
+
+  // Initialize input
+  F::rand_fill_matrix_and_array(left_ref, left, 23);
+  F::rand_fill_matrix_and_array(right_ref, right, 42);
+
+  // Compute the reference result
+  typename F::Matrix result_ref = 5 * left_ref * right_ref.transpose();
+
+  // Compute the result to be tested
+  typename F::TArray result;
+  BOOST_REQUIRE_NO_THROW(result("x,y") =
+                             5 * left("x,i,j,k") * right("y,i,j,k"));
+
+  // Check the result
+  for (auto it = result.begin(); it != result.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+    for (Range::const_iterator rit = tile.range().begin();
+         rit != tile.range().end(); ++rit) {
+      const std::size_t elem_index = result.elements_range().ordinal(*rit);
+      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
+    }
+  }
+}
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_plus_reduce, F, Fixtures, F) {
+  // Construct the tiled range
+  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
+  std::array<std::size_t, 2> tiling2 = {{0, 40}};
+  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
+  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
+  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_2, tr1_1, tr1_1}};
+  TiledRange trange(tiling4.begin(), tiling4.end());
+
+  const std::size_t m = 5;
+  const std::size_t k = 40 * 5 * 5;
+  const std::size_t n = 5;
+
+  // Construct the test arrays
+  auto arg1 = F::make_array(trange);
+  auto arg2 = F::make_array(trange);
+  auto arg3 = F::make_array(trange);
+  auto arg4 = F::make_array(trange);
+
+  // Construct the reference matrices
+  typename F::Matrix arg1_ref(m, k);
+  typename F::Matrix arg2_ref(n, k);
+  typename F::Matrix arg3_ref(m, k);
+  typename F::Matrix arg4_ref(n, k);
+
+  // Initialize input
+  F::rand_fill_matrix_and_array(arg1_ref, arg1, 23);
+  F::rand_fill_matrix_and_array(arg2_ref, arg2, 42);
+  F::rand_fill_matrix_and_array(arg3_ref, arg3, 79);
+  F::rand_fill_matrix_and_array(arg4_ref, arg4, 19);
+
+  // Compute the reference result
+  typename F::Matrix result_ref =
+      2 * (arg1_ref * arg2_ref.transpose() + arg1_ref * arg4_ref.transpose() +
+           arg3_ref * arg4_ref.transpose() + arg3_ref * arg2_ref.transpose());
+
+  // Compute the result to be tested
+  typename F::TArray result;
+  result("x,y") = arg1("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y") += arg3("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y") += arg1("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y") += arg3("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y") += arg3("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y") += arg1("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y") += arg3("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y") += arg1("x,i,j,k") * arg4("y,i,j,k");
+
+  // Check the result
+  for (auto it = result.begin(); it != result.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+    for (Range::const_iterator rit = tile.range().begin();
+         rit != tile.range().end(); ++rit) {
+      const std::size_t elem_index = result.elements_range().ordinal(*rit);
+      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
+    }
+  }
+}
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(no_alias_plus_reduce, F, Fixtures, F) {
+  // Construct the tiled range
+  std::array<std::size_t, 6> tiling1 = {{0, 1, 2, 3, 4, 5}};
+  std::array<std::size_t, 2> tiling2 = {{0, 40}};
+  TiledRange1 tr1_1(tiling1.begin(), tiling1.end());
+  TiledRange1 tr1_2(tiling2.begin(), tiling2.end());
+  std::array<TiledRange1, 4> tiling4 = {{tr1_1, tr1_2, tr1_1, tr1_1}};
+  TiledRange trange(tiling4.begin(), tiling4.end());
+
+  const std::size_t m = 5;
+  const std::size_t k = 40 * 5 * 5;
+  const std::size_t n = 5;
+
+  // Construct the test arrays
+  auto arg1 = F::make_array(trange);
+  auto arg2 = F::make_array(trange);
+  auto arg3 = F::make_array(trange);
+  auto arg4 = F::make_array(trange);
+
+  // Construct the reference matrices
+  typename F::Matrix arg1_ref(m, k);
+  typename F::Matrix arg2_ref(n, k);
+  typename F::Matrix arg3_ref(m, k);
+  typename F::Matrix arg4_ref(n, k);
+
+  // Initialize input
+  F::rand_fill_matrix_and_array(arg1_ref, arg1, 23);
+  F::rand_fill_matrix_and_array(arg2_ref, arg2, 42);
+  F::rand_fill_matrix_and_array(arg3_ref, arg3, 79);
+  F::rand_fill_matrix_and_array(arg4_ref, arg4, 19);
+
+  // Compute the reference result
+  typename F::Matrix result_ref =
+      2 * (arg1_ref * arg2_ref.transpose() + arg1_ref * arg4_ref.transpose() +
+           arg3_ref * arg4_ref.transpose() + arg3_ref * arg2_ref.transpose());
+
+  // Compute the result to be tested
+  typename F::TArray result;
+  result("x,y") = arg1("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y").no_alias() += arg3("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y").no_alias() += arg1("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y").no_alias() += arg3("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y").no_alias() += arg3("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y").no_alias() += arg1("x,i,j,k") * arg2("y,i,j,k");
+  result("x,y").no_alias() += arg3("x,i,j,k") * arg4("y,i,j,k");
+  result("x,y").no_alias() += arg1("x,i,j,k") * arg4("y,i,j,k");
+
+  // Check the result
+  for (auto it = result.begin(); it != result.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+    for (Range::const_iterator rit = tile.range().begin();
+         rit != tile.range().end(); ++rit) {
+      const std::size_t elem_index = result.elements_range().ordinal(*rit);
+      BOOST_CHECK_EQUAL(result_ref.array()(elem_index), tile[*rit]);
+    }
+  }
+}
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(outer_product, F, Fixtures, F) {
   auto& u = F::u;
@@ -2295,7 +2121,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
   auto& b = F::b;
 
   // Test the dot expression function
-  int result = 0;
+  typename F::element_type result = 0;
   BOOST_REQUIRE_NO_THROW(
       result = static_cast<typename F::element_type>(a("a,b,c") * b("a,b,c")));
   BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("a,b,c"));
@@ -2304,7 +2130,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c").dot(b("a,b,c")).get());
 
   // Compute the expected value for the dot function.
-  int expected = 0;
+  typename F::element_type expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     if (!a.is_zero(i) && !b.is_zero(i)) {
       auto a_tile = a.find(i).get();
@@ -2324,7 +2150,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   auto& b = F::b;
   Permutation perm({2, 1, 0});
   // Test the dot expression function
-  int result = 0;
+  typename F::element_type result = 0;
   BOOST_REQUIRE_NO_THROW(
       result = static_cast<typename F::element_type>(a("a,b,c") * b("c,b,a")));
   BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("c,b,a"));
@@ -2333,7 +2159,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(result = a("a,b,c").dot(b("c,b,a")).get());
 
   // Compute the expected value for the dot function.
-  int expected = 0;
+  typename F::element_type expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (!a.is_zero(i) && !b.is_zero(perm_index)) {
@@ -2353,12 +2179,12 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_expr, F, Fixtures, F) {
   auto& a = F::a;
   auto& b = F::b;
   // Test the dot expression function
-  int result = 0;
+  typename F::element_type result = 0;
   BOOST_REQUIRE_NO_THROW(
       result = static_cast<typename F::element_type>(a("a,b,c") * b("a,b,c")));
 
   // Compute the expected value for the dot function.
-  int expected = 0;
+  typename F::element_type expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     if (!a.is_zero(i) && !b.is_zero(i)) {
       auto a_tile = a.find(i).get();
@@ -2381,30 +2207,30 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_contr, F, Fixtures, F) {
         (a("a,b,c") * b("d,b,c")).dot(b("d,e,f") * a("a,e,f")));
 }
 
-// BOOST_AUTO_TEST_CASE( inner_product)
-//{
-//  // Test the inner_product expression function
-//  TArrayZ x(*GlobalFixture::world, tr);
-//  TArrayZ y(*GlobalFixture::world, tr);
-//  random_fill(x);
-//  random_fill(y);
-//  std::complex<double> result = 0;
-//  BOOST_REQUIRE_NO_THROW(result = x("a,b,c").inner_product(y("a,b,c")).get()
-//  );
-//
-//  // Compute the expected value for the dot function.
-//  std::complex<double> expected = 0;
-//  for(std::size_t i = 0ul; i < x.size(); ++i) {
-//    auto x_tile = x.find(i).get();
-//    auto y_tile = y.find(i).get();
-//
-//    for(std::size_t j = 0ul; j < x_tile.size(); ++j)
-//      expected += TiledArray::detail::conj(x_tile[j]) * y_tile[j];
-//  }
-//
-//  // Check the result of dot
-//  BOOST_CHECK_CLOSE(result.real(), expected.real(), 1e-9);
-//  BOOST_CHECK_CLOSE(result.imag(), expected.imag(), 1e-9);
-//}
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(inner_product, F, Fixtures, F) {
+  // Test the inner_product expression function
+  auto x = F::make_array(F::tr);
+  auto y = F::make_array(F::tr);
+  F::random_fill(x);
+  F::random_fill(y);
+  typename F::element_type result = 0;
+  BOOST_REQUIRE_NO_THROW(result = x("a,b,c").inner_product(y("a,b,c")).get());
+
+  // Compute the expected value for the dot function.
+  typename F::element_type expected = 0;
+  for (std::size_t i = 0ul; i < x.size(); ++i) {
+    if (!x.is_zero(i) && !y.is_zero(i)) {
+      auto x_tile = x.find(i).get();
+      auto y_tile = y.find(i).get();
+
+      for (std::size_t j = 0ul; j < x_tile.size(); ++j)
+        expected += TiledArray::detail::conj(x_tile[j]) * y_tile[j];
+    }
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_EQUAL(result, expected);
+  //  BOOST_CHECK_CLOSE(result.imag(), expected.imag(), 1e-9);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
