@@ -952,7 +952,7 @@ namespace TiledArray {
   /// \param result The tile to be conjugated
   /// \return A reference to `result`
   template <typename Result>
-  inline Result& conj_to(Tile<Result>& result) {
+  inline Tile<Result>& conj_to(Tile<Result>& result) {
     conj_to(result.tensor());
     return result;
   }
@@ -968,7 +968,7 @@ namespace TiledArray {
       typename std::enable_if<
           TiledArray::detail::is_numeric_v<Scalar>
       >::type* = nullptr>
-  inline Result& conj_to(Tile<Result>& result, const Scalar factor) {
+  inline Tile<Result>& conj_to(Tile<Result>& result, const Scalar factor) {
     conj_to(result.tensor(), factor);
     return result;
   }
@@ -1111,6 +1111,17 @@ namespace TiledArray {
   template <typename Left, typename Right>
   inline decltype(auto) dot(const Tile<Left>& left, const Tile<Right>& right)
   { return dot(left.tensor(), right.tensor()); }
+
+  /// Vector inner product of a tile
+
+  /// \tparam Left The left-hand argument type
+  /// \tparam Right The right-hand argument type
+  /// \param left The left-hand argument tile to be contracted
+  /// \param right The right-hand argument tile to be contracted
+  template <typename Left, typename Right>
+  inline decltype(auto) inner_product(const Tile<Left>& left, const Tile<Right>& right)
+  { return inner_product(left.tensor(), right.tensor()); }
+
 
   // Tile arithmetic operators -------------------------------------------------
 
