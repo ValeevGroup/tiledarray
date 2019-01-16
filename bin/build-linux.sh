@@ -78,11 +78,7 @@ else
 fi
 
 # Build all libraries, examples, and applications
-if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then
-make -j1 all VERBOSE=1
-else
 make -j2 all VERBOSE=1
-fi
 make install
 
 # Validate
