@@ -1,4 +1,6 @@
  # Team Yaml
+codecov:
+ token: 61cfdbc8-5e68-415c-990b-5593eae1be3f
 coverage:
   round: down
   precision: 5
