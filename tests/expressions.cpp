@@ -219,9 +219,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
 typedef ExpressionsFixture<TiledArray::Tensor<int>, TA::SparsePolicy>
     EF_TAspTensorI;
 
-typedef ExpressionsFixture<TiledArray::Tensor<std::complex<int>>,
-                           TA::DensePolicy>
-    EF_TATensorCI;
+typedef ExpressionsFixture<TiledArray::Tensor<int>,TA::DensePolicy>
+    EF_TATensorI;
 
 #ifdef TILEDARRAY_HAS_BTAS
 typedef ExpressionsFixture<
@@ -229,11 +228,10 @@ typedef ExpressionsFixture<
     TA::DensePolicy>
     EF_TABtasI;
 
-typedef boost::mpl::vector<EF_TAspTensorI, EF_TATensorCI,
-                           EF_TABtasI>
+typedef boost::mpl::vector<EF_TAspTensorI, EF_TATensorI,EF_TABtasI>
     Fixtures;
 #else
-typedef boost::mpl::vector<EF_TAspTensorI, EF_TATensorCI>
+typedef boost::mpl::vector<EF_TAspTensorI, EF_TATensorI>
     Fixtures;
 #endif
 
