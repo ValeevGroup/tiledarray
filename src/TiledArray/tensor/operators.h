@@ -46,7 +46,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
   operator+(const T1& left, const T2& right)
-  { return left.add(right); }
+  { return add(left, right); }
 
   /// Tensor minus operator
 
@@ -62,7 +62,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
   operator-(const T1& left, const T2& right)
-  { return left.subt(right); }
+  { return subt(left, right); }
 
   /// Tensor multiplication operator
 
@@ -78,7 +78,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
   operator*(const T1& left, const T2& right)
-  { return left.mult(right); }
+  { return mult(left, right); }
 
 
   /// Create a copy of \c left that is scaled by \c right
@@ -95,7 +95,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T>::value) &&
           detail::is_numeric_v<N>>::type* = nullptr>
   inline auto operator*(const T& left, N right)
-  { return left.scale(right); }
+  { return scale(left, right); }
 
   /// Create a copy of \c right that is scaled by \c left
 
@@ -110,7 +110,7 @@ namespace TiledArray {
           (detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value)>::type* = nullptr>
   inline auto operator*(N left, const T& right)
-  { return right.scale(left); }
+  { return scale(right, left); }
 
   /// Create a negated copy of \c arg
 
@@ -122,7 +122,7 @@ namespace TiledArray {
           detail::is_tensor<T>::value ||
           detail::is_tensor_of_tensor<T>::value>::type* = nullptr>
   inline auto operator-(const T& arg) -> decltype(arg.neg())
-  { return arg.neg(); }
+  { return neg(arg); }
 
   /// Create a permuted copy of \c arg
 
@@ -135,7 +135,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T>::value>::type* = nullptr>
   inline auto
   operator*(const Permutation& perm, const T& arg)
-  { return arg.permute(perm); }
+  { return permute(arg, perm); }
 
   /// Tensor plus operator
 
@@ -151,7 +151,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
   operator+=(T1& left, const T2& right)
-  { return left.add_to(right); }
+  { return add_to(left, right); }
 
   /// Tensor minus operator
 
@@ -167,7 +167,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
   operator-=(T1& left, const T2& right)
-  { return left.subt_to(right); }
+  { return sub_to(left, right); }
 
   /// In place tensor multiplication
 
@@ -183,7 +183,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T1, T2>::value>::type* = nullptr>
   inline auto
   operator*=(T1& left, const T2& right)
-  { return left.mult_to(right); }
+  { return mult_to(left, right); }
 
 
   /// In place tensor add constant
@@ -200,7 +200,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T>::value) &&
           detail::is_numeric_v<N>>::type* = nullptr>
   inline auto operator+=(T& left, N right)
-  { return left.add_to(right); }
+  { return add_to(left, right); }
 
   /// In place tensor subtract constant
 
@@ -216,7 +216,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T>::value) &&
           detail::is_numeric_v<N>>::type* = nullptr>
   inline auto operator-=(T& left, N right)
-  { return left.subt_to(right); }
+  { return subt_to(left, right); }
 
   /// In place tensor scale
 
@@ -232,7 +232,7 @@ namespace TiledArray {
           detail::is_tensor_of_tensor<T>::value) &&
           detail::is_numeric_v<N>>::type* = nullptr>
   inline auto operator*=(T& left, N right)
-  { return left.scale_to(right); }
+  { return scale_to(left, right); }
 
 } // namespace TiledArray
 
