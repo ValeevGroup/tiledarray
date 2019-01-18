@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE( constructor_new_group )
 BOOST_AUTO_TEST_CASE( copy_group )
 {
   Group group(* GlobalFixture::world, group_list, did);
-  BOOST_CHECK_NO_THROW(Group(group));
+  BOOST_CHECK_NO_THROW(Group copy_group(group));
 
   // Check copy constructor
   Group copy_group(group);

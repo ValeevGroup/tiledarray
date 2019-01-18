@@ -193,7 +193,7 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+    inline typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>,
         ScalAddExpr<Left, Right, Scalar> >::type
     operator*(const AddExpr<Left, Right>& expr, const Scalar& factor) {
       return ScalAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
@@ -209,7 +209,7 @@ namespace TiledArray {
     /// \param expr The addition expression object
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar>
-    inline typename std::enable_if<TiledArray::detail::is_numeric<Scalar>::value,
+    inline typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>,
         ScalAddExpr<Left, Right, Scalar> >::type
     operator*(const Scalar& factor, const AddExpr<Left, Right>& expr) {
       return ScalAddExpr<Left, Right, Scalar>(expr.left(), expr.right(),
@@ -227,7 +227,7 @@ namespace TiledArray {
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >
     operator*(const ScalAddExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
@@ -246,7 +246,7 @@ namespace TiledArray {
     /// \return A scaled-addition expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type* = nullptr>
     inline ScalAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalAddExpr<Left, Right, Scalar2>& expr) {
@@ -342,7 +342,7 @@ namespace TiledArray {
     /// \return A scaled-tensor expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalConjAddExpr<Left, Right, Scalar>
     operator*(const ConjAddExpr<Left, Right>& expr, const Scalar& factor) {
@@ -360,7 +360,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated addition expression object
     template <typename Left, typename Right, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalConjAddExpr<Left, Right, Scalar>
     operator*(const Scalar& factor, const ConjAddExpr<Left, Right>& expr) {
@@ -379,7 +379,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated addition expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalConjAddExpr<Left, Right, mult_t<Scalar1, Scalar2> >
     operator*(const ScalConjAddExpr<Left, Right, Scalar1>& expr, const Scalar2& factor) {
@@ -398,7 +398,7 @@ namespace TiledArray {
     /// \return A scaled-conjugated addition expression object
     template <typename Left, typename Right, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type* = nullptr>
     inline ScalConjAddExpr<Left, Right, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalConjAddExpr<Left, Right, Scalar2>& expr) {

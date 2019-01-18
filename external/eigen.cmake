@@ -6,7 +6,9 @@ include(AppendFlags)
 
 # Check for existing Eigen
 # prefer CMake-configured-and-installed instance
-find_package(Eigen3 3.3 NO_MODULE QUIET)
+# re:NO_CMAKE_PACKAGE_REGISTRY: eigen3 registers its *build* tree with the user package registry ...
+#                               to avoid issues with wiped build directory look for installed eigen
+find_package(Eigen3 3.3 NO_MODULE QUIET NO_CMAKE_PACKAGE_REGISTRY)
 if (TARGET Eigen3::Eigen)
   # import alias into TiledArray "namespace"
   # TODO bump CMake requirement to 3.11 when available, uncomment this and remove the rest of this clause
@@ -71,7 +73,7 @@ else()
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
   set(EIGEN3_URL https://bitbucket.org/eigen/eigen)
-  set(EIGEN3_TAG 3.3.4)
+  set(EIGEN3_TAG 3.3.5)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
 

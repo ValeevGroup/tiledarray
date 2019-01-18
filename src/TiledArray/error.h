@@ -70,10 +70,10 @@ namespace TiledArray {
   "TiledArray: exception at " file "(" TA_STRINGIZE( line ) "): " mess
 
 #define TA_EXCEPTION( m ) \
-    { \
+    do { \
       TiledArray::exception_break(); \
       throw TiledArray::Exception ( TA_EXCEPTION_MESSAGE( __FILE__ , __LINE__ , m ) ); \
-    }
+    } while (0)
 
 #ifdef TA_EXCEPTION_ERROR
 // This section defines the behavior for TiledArray assertion error checking
@@ -85,7 +85,7 @@ namespace TiledArray {
 #undef TA_ABORT_ERROR
 #endif
 
-#define TA_ASSERT( a )  if(! ( a ) ) TA_EXCEPTION( "assertion failure" )
+#define TA_ASSERT( a )  do { if(! ( a ) ) TA_EXCEPTION( "assertion failure" ); } while (0)
 #define TA_TEST( a )  TA_ASSERT( a )
 
 #elif defined(TA_ASSERT_ERROR)
@@ -98,18 +98,19 @@ namespace TiledArray {
 // This sections defines behavior for TiledArray assertion error checking which
 // calls std::abort
 #include <cstdlib>
-#define TA_ASSERT( a )  if(! ( a ) ) std::abort();
+#define TA_ASSERT( a )  do { if(! ( a ) ) std::abort(); } while (0)
 #define TA_TEST( a )  TA_ASSERT( a )
 #else
 // This section defines behavior for TiledArray assertion error checking which
 // does no error checking.
 // WARNING: TiledArray will perform no error checking.
-#define TA_ASSERT( a ) { ; }
-#define TA_TEST( a )  a
+// this avoids unused variable warnings, see http://cnicholson.net/2009/02/stupid-c-tricks-adventures-in-assert/
+#define TA_ASSERT( a ) do { (void)sizeof(a);} while (0)
+#define TA_TEST( a )  (a)
 
 #endif //TA_EXCEPTION_ERROR
 
-#define TA_CHECK( a ) if(! ( a ) ) TA_EXCEPTION( "check failure" )
+#define TA_CHECK( a ) do { if(! ( a ) ) TA_EXCEPTION( "check failure" ); } while (0)
 
 #ifdef TILEDARRAY_NO_USER_ERROR_MESSAGES
 #define TA_USER_ERROR_MESSAGE( m )
@@ -121,17 +122,20 @@ namespace TiledArray {
 #ifndef NDEBUG
 // User interface assertion
 #define TA_USER_ASSERT( a , m ) \
-  if(! ( a ) ) \
-    { \
-      TA_USER_ERROR_MESSAGE( m ) \
-      TiledArray::exception_break(); \
-      throw TiledArray::Exception( m ); \
-    }
+  do { \
+    if(! ( a ) ) \
+      { \
+        TA_USER_ERROR_MESSAGE( m ) \
+        TiledArray::exception_break(); \
+        throw TiledArray::Exception( m ); \
+      } \
+  } while (0)
 
 #else
 
 // Disable user interface assertion when NDEBUG is defined
-#define TA_USER_ASSERT( a , m )
+// this avoids unused variable warnings, see http://cnicholson.net/2009/02/stupid-c-tricks-adventures-in-assert/
+#define TA_USER_ASSERT( a , m ) do { (void)sizeof(a);} while (0)
 #define TA_USER_ASSERT_DISABLED 1
 
 #endif

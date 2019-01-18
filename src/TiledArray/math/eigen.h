@@ -26,11 +26,15 @@
 #ifndef TILEDARRAY_MATH_EIGEN_H__INCLUDED
 #define TILEDARRAY_MATH_EIGEN_H__INCLUDED
 
+#if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC system_header
+#endif
 #include <Eigen/Core>
 #include <Eigen/QR>
+#if defined(__GNUC__)
 #pragma GCC diagnostic pop
+#endif
 
 #include <TiledArray/error.h>
 

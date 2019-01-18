@@ -26,11 +26,15 @@
 #endif // WORLD_INSTANTIATE_STATIC_TEMPLATES
 
 #include <memory>
+#if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC system_header
+#endif
 #include <madness/world/MADworld.h>
 #include <madness/tensor/cblas.h>
+#if defined(__GNUC__)
 #pragma GCC diagnostic pop
+#endif
 #include <TiledArray/error.h>
 
 namespace TiledArray {
@@ -54,6 +58,10 @@ namespace TiledArray {
       }
       static void set(World* w) {
         world() = w;
+      }
+      /// @return pointer to the default world, if set, or nullptr otherwise
+      static World* query() {
+        return world();
       }
      private:
       static World*& world() {
@@ -111,7 +119,7 @@ namespace TiledArray {
   ///         value
   static std::unique_ptr<World, decltype(world_resetter)>
   push_default_world(World& world) {
-    World* current_world = &get_default_world();
+    World* current_world = detail::default_world::query();
     set_default_world(world);
     return std::unique_ptr<World, decltype(world_resetter)>(
         current_world, world_resetter);

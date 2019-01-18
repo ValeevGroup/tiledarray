@@ -31,7 +31,7 @@ foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform
 
   # Add executable
   add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
-  target_link_libraries(${_exec} PRIVATE tiledarray)
+  target_link_libraries(${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
   add_dependencies(${_exec} External)
   add_dependencies(examples ${_exec})
 
@@ -48,8 +48,8 @@ endif(ENABLE_ELEMENTAL)
 
 if(CUDA_FOUND)
     # Add the ta_dense_cuda executable
-    cuda_add_executable(ta_dense_cuda ta_dense_cuda.cpp )
-    target_link_libraries(ta_dense_cuda PRIVATE tiledarray)
+    cuda_add_executable(ta_dense_cuda ta_dense_cuda.cpp)
+    target_link_libraries(ta_dense_cuda PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
     add_dependencies(ta_dense_cuda External)
     add_dependencies(examples ta_dense_cuda)
 

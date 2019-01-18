@@ -18,7 +18,7 @@
  *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
- *  tensor_view.h
+ *  tensor_interface.h
  *  May 29, 2015
  *
  */
@@ -26,37 +26,32 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_VIEW_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_VIEW_H__INCLUDED
 
+#include <TiledArray/type_traits.h>
 #include <TiledArray/tensor/kernels.h>
 #include <TiledArray/tensor/complex.h>
-
-namespace Eigen {
-
-  // Forward declarations
-  template <typename> class aligned_allocator;
-
-} // namespace Eigen
 
 namespace TiledArray {
 
   // Forward declarations
   class Permutation;
-  template <typename, typename> class Tensor;
+  template <typename T, typename A> class Tensor;
   class Range;
   namespace detail {
-    template <typename, typename>
+    template <typename T, typename Range, typename OpResult>
     class TensorInterface;
   }
-  template <typename T, typename Index>
-  void remap(detail::TensorInterface<T, Range> &, T* const, const Index&, const Index&);
-  template <typename T, typename Index>
-  void remap(detail::TensorInterface<const T, Range> &, T* const,
+
+  template <typename T, typename Range_, typename OpResult, typename Index>
+  void remap(detail::TensorInterface<T, Range_, OpResult> &, T* const, const Index&, const Index&);
+  template <typename T, typename Range_, typename OpResult, typename Index>
+  void remap(detail::TensorInterface<const T, Range_, OpResult> &, T* const,
           const Index&, const Index&);
-  template <typename T>
-  void remap(detail::TensorInterface<T, Range> &, T* const,
+  template <typename T, typename Range_, typename OpResult>
+  void remap(detail::TensorInterface<T, Range_, OpResult> &, T* const,
           const std::initializer_list<std::size_t>&,
           const std::initializer_list<std::size_t>&);
-  template <typename T>
-  void remap(detail::TensorInterface<const T, Range> &, T* const,
+  template <typename T, typename Range_, typename OpResult>
+  void remap(detail::TensorInterface<const T, Range_, OpResult> &, T* const,
       const std::initializer_list<std::size_t>&,
       const std::initializer_list<std::size_t>&);
 
@@ -75,10 +70,11 @@ namespace TiledArray {
     /// own the data it references. Use \c Tensor for that purpose.
     /// \tparam T The tensor value type
     /// \tparam R The range type
-    template <typename T, typename R>
+    /// \tparam OpResult tensor type used as the return type from operations that produce a tensor
+    template <typename T, typename R, typename OpResult>
     class TensorInterface {
     public:
-      typedef TensorInterface<T, R> TensorInterface_; ///< This class type
+      typedef TensorInterface<T, R, OpResult> TensorInterface_; ///< This class type
       typedef R range_type; ///< Tensor range type
       typedef typename range_type::size_type size_type; ///< size type
       typedef typename std::remove_const<T>::type
@@ -97,36 +93,30 @@ namespace TiledArray {
       typedef typename detail::scalar_type<value_type>::type
           scalar_type; ///< the scalar type that supports T
 
-      typedef Tensor<T, Eigen::aligned_allocator<T> > result_tensor;
-             ///< Tensor type used as the return type from arithmetic operations
+      typedef OpResult result_tensor;
+             ///< Tensor type used as the return type from operations that produce a tensor
 
     private:
 
       template <typename X>
       using numeric_t = typename TiledArray::detail::numeric_type<X>::type;
 
-      template <typename, typename>
+      template <typename, typename, typename>
       friend class TensorInterface;
 
-      template <typename U, typename Index>
-      friend void TiledArray::remap(detail::TensorInterface<U, Range>&,
-                                    U* const, const Index&, const Index&);
-
-      template <typename U, typename Index>
-      friend void TiledArray::remap(detail::TensorInterface<const U, Range>&,
-                                    U* const, const Index&, const Index&);
-
-      template <typename U>
-      friend void TiledArray::remap(detail::TensorInterface<U, Range> &,
-              U* const,
-              const std::initializer_list<std::size_t>&,
-              const std::initializer_list<std::size_t>&);
-
-      template <typename U>
-      friend void TiledArray::remap(detail::TensorInterface<const U, Range>&,
-                                    U* const,
-                                    const std::initializer_list<std::size_t>&,
-                                    const std::initializer_list<std::size_t>&);
+      template <typename U, typename Range_, typename OpResult_, typename Index>
+      friend void TiledArray::remap(detail::TensorInterface<U, Range_, OpResult_> &, U* const, const Index&, const Index&);
+      template <typename U, typename Range_, typename OpResult_, typename Index>
+      friend void TiledArray::remap(detail::TensorInterface<const U, Range_, OpResult_> &, U* const,
+                 const Index&, const Index&);
+      template <typename U, typename Range_, typename OpResult_>
+      friend void TiledArray::remap(detail::TensorInterface<U, Range_, OpResult_> &, U* const,
+                 const std::initializer_list<std::size_t>&,
+                 const std::initializer_list<std::size_t>&);
+      template <typename U, typename Range_, typename OpResult_>
+      friend void TiledArray::remap(detail::TensorInterface<const U, Range_, OpResult_> &, U* const,
+                 const std::initializer_list<std::size_t>&,
+                 const std::initializer_list<std::size_t>&);
 
       range_type range_;  ///< View sub-block range
       pointer data_;  ///< Pointer to the original tensor data
@@ -145,11 +135,11 @@ namespace TiledArray {
 
       /// \tparam U The value type of the other view
       /// \param other The other tensor view to be copied
-      template <typename U,
+      template <typename U, typename UOpResult,
           typename std::enable_if<std::is_convertible<
-              typename TensorInterface<U, R>::pointer, pointer>::value
+              typename TensorInterface<U, R, UOpResult>::pointer, pointer>::value
           >::type* = nullptr>
-      TensorInterface(const TensorInterface<U, R>& other) :
+      TensorInterface(const TensorInterface<U, R, UOpResult>& other) :
         range_(other.range_), data_(other.data_)
       { }
 
@@ -157,11 +147,11 @@ namespace TiledArray {
 
       /// \tparam U The value type of the other tensor view
       /// \param other The other tensor view to be moved
-      template <typename U,
+      template <typename U, typename UOpResult,
           typename std::enable_if<std::is_convertible<
-              typename TensorInterface<U, R>::pointer, pointer>::value
+              typename TensorInterface<U, R, UOpResult>::pointer, pointer>::value
           >::type* = nullptr>
-      TensorInterface(TensorInterface<U, R>&& other) :
+      TensorInterface(TensorInterface<U, R, UOpResult>&& other) :
         range_(std::move(other.range_)), data_(other.data_)
       {
         other.data_ = nullptr;
@@ -302,7 +292,10 @@ namespace TiledArray {
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       result_tensor binary(const Right& right, Op&& op) const {
-        return result_tensor(*this, right, op);
+//        return result_tensor(*this, right, op);
+          result_tensor new_tensor(detail::clone_range(*this));
+          detail::tensor_init(op, new_tensor, *this, right);
+          return new_tensor;
       }
 
       /// Use a binary, element wise operation to construct a new, permuted tensor
@@ -317,7 +310,10 @@ namespace TiledArray {
       template <typename Right, typename Op,
           typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
       result_tensor binary(const Right& right, Op&& op, const Permutation& perm) const {
-        return result_tensor(*this, right, op, perm);
+//        return result_tensor(*this, right, op, perm);
+        result_tensor new_tensor(perm * this->range());
+        detail::tensor_init(op, perm, new_tensor, *this, right);
+        return new_tensor;
       }
 
       /// Use a binary, element wise operation to modify this tensor
@@ -348,7 +344,10 @@ namespace TiledArray {
       /// \throw TiledArray::Exception When this tensor is empty.
       template <typename Op>
       result_tensor unary(Op&& op) const {
-        return result_tensor(*this, op);
+//        return result_tensor(*this, op);
+          result_tensor new_tensor(detail::clone_range(*this));
+          detail::tensor_init(op,new_tensor, *this);
+          return new_tensor;
       }
 
       /// Use a unary, element wise operation to construct a new, permuted tensor
@@ -362,7 +361,10 @@ namespace TiledArray {
       /// that of this tensor.
       template <typename Op>
       result_tensor unary(Op&& op, const Permutation& perm) const {
-        return result_tensor(*this, op, perm);
+//        return result_tensor(*this, op, perm);
+        result_tensor new_tensor(perm * this->range());
+        detail::tensor_init(op, perm, new_tensor, *this);
+        return new_tensor;
       }
 
       /// Use a unary, element wise operation to modify this tensor
@@ -377,6 +379,15 @@ namespace TiledArray {
         return *this;
       }
 
+      // permute operation
+      // construct a permuted copy of this tensor
+      result_tensor permute(const Permutation& perm) const {
+        auto op = [] (const T& arg) { return arg; };
+        result_tensor new_tensor(perm * this->range());
+        TiledArray::detail::tensor_init(op, perm, new_tensor, *this);
+        return new_tensor;
+      }
+
       // Scale operation
 
       /// Construct a scaled copy of this tensor
@@ -386,9 +397,9 @@ namespace TiledArray {
       /// \return A new tensor where the elements of this tensor are scaled by
       /// \c factor
       template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+          typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor scale(const Scalar factor) const {
-        return unary([=] (const numeric_type a) -> numeric_type
+        return unary([factor] (const numeric_type a) -> numeric_type
             { return a * factor; });
       }
 
@@ -400,9 +411,9 @@ namespace TiledArray {
       /// \return A new tensor where the elements of this tensor are scaled by
       /// \c factor and permuted
       template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+          typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor scale(const Scalar factor, const Permutation& perm) const {
-        return unary([=] (const numeric_type a) -> numeric_type
+        return unary([factor] (const numeric_type a) -> numeric_type
             { return a * factor; }, perm);
       }
 
@@ -412,9 +423,9 @@ namespace TiledArray {
       /// \param factor The scaling factor
       /// \return A reference to this tensor
       template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+          typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
       TensorInterface_& scale_to(const Scalar factor) {
-        return inplace_unary([=] (numeric_type& MADNESS_RESTRICT res) { res *= factor; });
+        return inplace_unary([factor] (numeric_type& MADNESS_RESTRICT res) { res *= factor; });
       }
 
 
@@ -459,9 +470,9 @@ namespace TiledArray {
       /// \c this and \c other, scaled by \c factor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor add(const Right& right, const Scalar factor) const {
-        return binary(right, [=] (const numeric_type l,
+        return binary(right, [factor] (const numeric_type l,
             const numeric_t<Right> r)
             -> numeric_type { return (l + r) * factor; });
       }
@@ -477,11 +488,11 @@ namespace TiledArray {
       /// \c this and \c other, scaled by \c factor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor add(const Right& right, const Scalar factor,
           const Permutation& perm) const
       {
-        return binary(right,  [=] (const numeric_type l,
+        return binary(right,  [factor] (const numeric_type l,
             const numeric_t<Right> r)
             -> numeric_type { return (l + r) * factor; }, perm);
       }
@@ -492,7 +503,7 @@ namespace TiledArray {
       /// \return A new tensor where the elements are the sum of the elements of
       /// \c this and \c value
       result_tensor add(const numeric_type value) const {
-        return unary([=] (const numeric_type a) -> numeric_type
+        return unary([value] (const numeric_type a) -> numeric_type
             { return a + value; });
       }
 
@@ -503,7 +514,7 @@ namespace TiledArray {
       /// \return A new tensor where the elements are the sum of the elements of
       /// \c this and \c value
       result_tensor add(const numeric_type value, const Permutation& perm) const {
-        return unary([=] (const numeric_type a) -> numeric_type
+        return unary([value] (const numeric_type a) -> numeric_type
             { return a + value; }, perm);
       }
 
@@ -529,9 +540,9 @@ namespace TiledArray {
       /// \return A reference to this tensor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
       TensorInterface_& add_to(const Right& right, const Scalar factor) {
-        return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+        return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { (l += r) *= factor; });
       }
@@ -541,7 +552,7 @@ namespace TiledArray {
       /// \param value The constant to be added
       /// \return A reference to this tensor
       TensorInterface_& add_to(const numeric_type value) {
-        return inplace_unary([=] (numeric_type& MADNESS_RESTRICT res) { res += value; });
+        return inplace_unary([value] (numeric_type& MADNESS_RESTRICT res) { res += value; });
       }
 
       // Subtraction operations
@@ -585,9 +596,9 @@ namespace TiledArray {
       /// elements of \c this and \c right, scaled by \c factor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
-      result_tensor subt(const Right& right, const numeric_type factor) const {
-        return binary(right, [=] (const numeric_type l,
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
+      result_tensor subt(const Right& right, const Scalar factor) const {
+        return binary(right, [factor] (const numeric_type l,
             const numeric_t<Right> r)
             -> numeric_type { return (l - r) * factor; });
       }
@@ -603,11 +614,11 @@ namespace TiledArray {
       /// elements of \c this and \c right, scaled by \c factor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor subt(const Right& right, const Scalar factor,
           const Permutation& perm) const
       {
-        return binary(right, [=] (const numeric_type l,
+        return binary(right, [factor] (const numeric_type l,
             const numeric_t<Right> r)
             -> numeric_type { return (l - r) * factor; }, perm);
       }
@@ -652,9 +663,9 @@ namespace TiledArray {
       /// \return A reference to this tensor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
       TensorInterface_& subt_to(const Right& right, const Scalar factor) {
-        return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+        return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { (l -= r) *= factor; });
       }
@@ -707,9 +718,9 @@ namespace TiledArray {
       /// of \c this and \c right, scaled by \c factor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor mult(const Right& right, const Scalar factor) const {
-        return binary(right, [=] (const numeric_type l,
+        return binary(right, [factor] (const numeric_type l,
             const numeric_t<Right> r)
             -> numeric_type { return (l * r) * factor; });
       }
@@ -725,11 +736,11 @@ namespace TiledArray {
       /// of \c this and \c right, scaled by \c factor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor mult(const Right& right, const Scalar factor,
           const Permutation& perm) const
       {
-        return binary(right,  [=] (const numeric_type l,
+        return binary(right,  [factor] (const numeric_type l,
             const numeric_t<Right> r)
             -> numeric_type { return (l * r) * factor; }, perm);
       }
@@ -756,9 +767,9 @@ namespace TiledArray {
       /// \return A reference to this tensor
       template <typename Right, typename Scalar,
           typename std::enable_if<is_tensor<Right>::value &&
-          detail::is_numeric<Scalar>::value>::type* = nullptr>
+          detail::is_numeric_v<Scalar>>::type* = nullptr>
       TensorInterface_& mult_to(const Right& right, const Scalar factor) {
-        return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+        return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
             const numeric_t<Right> r)
             { (l *= r) *= factor; });
       }
@@ -802,7 +813,7 @@ namespace TiledArray {
       /// \return A copy of this tensor that contains the scaled complex
       /// conjugate the values
       template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+          typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor conj(const Scalar factor) const {
         return scale(conj_op(factor));
       }
@@ -824,7 +835,7 @@ namespace TiledArray {
       /// \return A permuted copy of this tensor that contains the complex
       /// conjugate values
       template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+          typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
       result_tensor conj(const Scalar factor, const Permutation& perm) const {
         return scale(conj_op(factor), perm);
       }
@@ -842,7 +853,7 @@ namespace TiledArray {
       /// \param factor The scaling factor
       /// \return A reference to this tensor
       template <typename Scalar,
-          typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+          typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
       TensorInterface_& conj_to(const Scalar factor) {
         return scale_to(conj_op(factor));
       }
@@ -980,6 +991,23 @@ namespace TiledArray {
                   { res += l * r; };
         auto add_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type value)
               { res += value; };
+        return reduce(other, mult_add_op, add_op, numeric_type(0));
+      }
+
+      /// Vector inner product
+      /// \tparam Right The right-hand tensor type
+      /// \param other The right-hand tensor to be reduced
+      /// \return The dot product of the this and \c other
+      /// If numeric_type is real, this is equivalent to dot product
+      /// \sa Tensor::dot
+      template <typename Right,
+              typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+      numeric_type inner_product(const Right& other) const {
+        auto mult_add_op = [] (numeric_type& res, const numeric_type l,
+                               const numeric_t<Right> r)
+        { res += TiledArray::detail::inner_product(l, r); };
+        auto add_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type value)
+        { res += value; };
         return reduce(other, mult_add_op, add_op, numeric_type(0));
       }
 

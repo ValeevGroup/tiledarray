@@ -23,6 +23,16 @@
 #include <tiledarray.h>
 #include <random>
 
+auto make_tile(const TA::Range& range) {
+  // Construct a tile
+  TA::TArrayD::value_type tile(range);
+
+  // Fill tile with data
+  std::fill(tile.begin(), tile.end(), 0.0);
+
+  return tile;
+}
+
 int main(int argc, char *argv[]) {
   using namespace std;
 
@@ -48,6 +58,7 @@ int main(int argc, char *argv[]) {
   TiledRange1 TR0{0, 3, 8, 10};
   TiledRange1 TR1{0, 4, 7, 10};
   TiledRange TR{TR0, TR1};
+  assert((TiledRange{{0, 3, 8, 10}, {0, 4, 7, 10}} == TR));
   cout << TR << endl;
   for (const auto &i: TR.elements_range()) {
     cout << i << endl;
@@ -134,6 +145,22 @@ int main(int argc, char *argv[]) {
     cout << tile << endl;
   }, a1.find({0,1}));
   // auto tile_1_0 = a1.find({1,0});
+
+  // Construct a replicated array.
+  {
+    auto replicated_pmap = std::make_shared<TA::detail::ReplicatedPmap>(world, TR.tiles_range().volume());
+    TA::TArrayD array(world, TR, replicated_pmap);
+
+    // Construct *all* tiles in each process
+    for(TArrayD::size_type i = 0; i < array.size(); ++i) {
+      // Construct a tile using a MADNESS task.
+      array.set(i, world.taskq.add(& make_tile, array.trange().make_tile_range(i)));
+    }
+
+    world.gop.fence();
+    std::cout << array << std::endl;
+  }
+
 
   return 0;
 }

@@ -97,7 +97,7 @@ namespace TiledArray {
       /// \return The coordinate index of the current tile
       index_type index() const {
         TA_ASSERT(tensor_);
-        return tensor_->range().idx(index_);
+        return tensor_->tiles_range().idx(index_);
       }
 
       /// Tile ordinal index accessor
@@ -388,7 +388,7 @@ namespace TiledArray {
       /// \return The coordinate index of the current tile
       index_type index() const {
         TA_ASSERT(array_);
-        return array_->range().idx(*it_);
+        return array_->tiles_range().idx(*it_);
       }
 
       /// Tile ordinal index accessor
@@ -427,7 +427,7 @@ namespace TiledArray {
       typedef typename TensorImpl_::size_type size_type; ///< Size type
       typedef typename TensorImpl_::policy_type policy_type; ///< Policy type for this object
       typedef typename TensorImpl_::trange_type trange_type; ///< Tiled range type for this object
-      typedef typename TensorImpl_::range_type range_type; ///< Range type this tensor
+      typedef typename TensorImpl_::range_type range_type; ///< Elements/tiles range type
       typedef typename TensorImpl_::shape_type shape_type; ///< Shape type
       typedef typename TensorImpl_::pmap_interface pmap_interface; ///< process map interface type
       typedef Tile value_type; ///< Tile or data type

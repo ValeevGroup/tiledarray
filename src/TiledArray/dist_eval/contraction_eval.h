@@ -1449,7 +1449,7 @@ namespace TiledArray {
           if(parent->k_.probe() && (parent->k_.get() >= owner_->k_)) {
             // Avoid running extra tasks if not needed.
             k_.set(parent->k_.get());
-            MADNESS_ASSERT(ndep == 1);  // ensure that this does not get executed immediately
+            TA_ASSERT(ndep == 1);  // ensure that this does not get executed immediately
           } else {
             // Spawn a task to find the next non-zero iteration
             if (trace_tasks)

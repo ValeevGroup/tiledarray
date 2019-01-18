@@ -45,10 +45,6 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_CHECK_EQUAL(pmap.procs(), GlobalFixture::world->size());
     BOOST_CHECK_EQUAL(pmap.size(), tiles);
   }
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(TiledArray::detail::BlockedPmap pmap(* GlobalFixture::world, 0ul), TiledArray::Exception);
-#endif // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE( owner )

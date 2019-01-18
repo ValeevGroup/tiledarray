@@ -52,9 +52,9 @@ namespace TiledArray {
     typedef typename DistArray<Tile, SparsePolicy>::value_type value_type;
     array =
         foreach(array, [] (value_type& result_tile, const value_type& arg_tile) {
-          typename detail::scalar_type<value_type>::type norm_value = norm(arg_tile);
+          typename detail::scalar_type<value_type>::type arg_tile_norm = norm(arg_tile);
           result_tile = arg_tile; // Assume this is shallow copy
-          return norm_value;
+          return arg_tile_norm;
         });
   }
 

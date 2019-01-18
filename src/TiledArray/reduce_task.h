@@ -267,7 +267,7 @@ namespace TiledArray {
           ReduceObject(ReduceTaskImpl* parent, const Arg& arg, madness::CallbackInterface* callback) :
           parent_(parent), arg_(arg), callback_(callback)
           {
-            MADNESS_ASSERT(parent_);
+            TA_ASSERT(parent_);
             register_callbacks(arg_);
           }
 
@@ -564,7 +564,7 @@ namespace TiledArray {
 
         /// Task function
         virtual void run(const madness::TaskThreadEnv&) {
-          MADNESS_ASSERT(ready_result_);
+          TA_ASSERT(ready_result_);
           result_.set(op_(*ready_result_));
 
 #ifdef TILEDARRAY_HAS_CUDA
@@ -583,20 +583,20 @@ namespace TiledArray {
         /// are used to spawn a task
         /// \param object The reduction object that is ready to be reduced
         void ready(ReduceObject* object) {
-          MADNESS_ASSERT(object);
+          TA_ASSERT(object);
           lock_.lock(); // <<< Begin critical section
           if(ready_result_) {
             std::shared_ptr<result_type> ready_result = ready_result_;
             ready_result_.reset();
             lock_.unlock(); // <<< End critical section
-            MADNESS_ASSERT(ready_result);
+            TA_ASSERT(ready_result);
             world_.taskq.add(this, & ReduceTaskImpl::reduce_result_object,
                 ready_result, object, TaskAttributes::hipri());
           } else if(ready_object_) {
             ReduceObject* ready_object = const_cast<ReduceObject*>(ready_object_);
             ready_object_ = nullptr;
             lock_.unlock(); // <<< End critical section
-            MADNESS_ASSERT(ready_object);
+            TA_ASSERT(ready_object);
             world_.taskq.add(this, & ReduceTaskImpl::reduce_object_object,
                 object, ready_object, TaskAttributes::hipri());
           } else {
@@ -680,7 +680,7 @@ namespace TiledArray {
       /// pair has been reduced [ default = nullptr ]
       template <typename Arg>
       int add(const Arg& arg, madness::CallbackInterface* callback = nullptr) {
-        MADNESS_ASSERT(pimpl_);
+        TA_ASSERT(pimpl_);
         pimpl_->inc();
         new typename ReduceTaskImpl::ReduceObject(pimpl_, arg, callback);
         return ++count_;
@@ -697,7 +697,7 @@ namespace TiledArray {
       /// \note Arguments can no longer be added to the reduction after
       /// calling \c submit().
       Future<result_type> submit() {
-        MADNESS_ASSERT(pimpl_);
+        TA_ASSERT(pimpl_);
 
         // Get the result before submitting/running the task, otherwise the
         // task could run and be deleted before we are done here.

@@ -114,7 +114,11 @@ namespace TiledArray {
   template <class T>                                               \
   struct has_member_type_##Type                                    \
       : public std::integral_constant<bool,                        \
-                                      __has_member_type_##Type<T>::value> {};
+                                      __has_member_type_##Type<T>::value> {}; \
+                                                                   \
+  template <class T>                                               \
+  constexpr const bool has_member_type_##Type##_v =                \
+    has_member_type_##Type<T>::value;
 
 /// this generates struct \c has_member_function_Member<T,R,Args...> whose
 /// public constexpr member variable \c value is true if \c T::Member is a
@@ -152,7 +156,11 @@ namespace TiledArray {
   struct has_member_function_##Member                                          \
       : public std::integral_constant<                                         \
             bool, __has_member_function_##Member<T, Result, Args...>::value> { \
-  };
+  };                                                                           \
+                                                                               \
+  template <class T, typename Result, typename... Args>                        \
+  constexpr const bool has_member_function_##Member##_v =                      \
+    has_member_function_##Member<T, Result, Args...>::value;
 
 /// this generates struct \c has_member_function_Member_anyreturn<T,Args...>
 /// whose public constexpr member variable \c value is true if \c T::Member
@@ -183,7 +191,11 @@ namespace TiledArray {
   struct has_member_function_##Member##_anyreturn                         \
       : public std::integral_constant<                                    \
             bool,                                                         \
-            __has_member_function_##Member##_anyreturn<T, Args...>::value> {};
+            __has_member_function_##Member##_anyreturn<T, Args...>::value> {}; \
+                                                                          \
+  template <class T, typename... Args>                                    \
+  constexpr const bool has_member_function_##Member##_anyreturn_v =       \
+    has_member_function_##Member##_anyreturn<T, Args...>::value;
 
 /// this generates struct \c is_free_function_Function_anyreturn<Args...> whose
 /// public constexpr member variable \c value is true if \c Function is a
@@ -210,7 +222,11 @@ namespace TiledArray {
   struct is_free_function_##Function##_anyreturn                               \
       : public std::integral_constant<                                         \
             bool, __is_free_function_##Function##_anyreturn<Args...>::value> { \
-  };
+  };                                                                           \
+                                                                               \
+  template <typename... Args>                                                  \
+  constexpr const bool is_free_function_##Function##_anyreturn_v =             \
+    is_free_function_##Function##_anyreturn<Args...>::value;
 
 namespace TiledArray {
   namespace detail {
@@ -268,8 +284,13 @@ namespace TiledArray {
 
 namespace TiledArray {
 namespace detail {
-// helps to implement other metafunctions
+/// @brief helper to implement other metafunctions
+/// @c is_type<T>::value is true if @c T is a valid type
+/// @tparam T a type
 template<typename> struct is_type : public std::true_type { };
+/// @tparam T a type
+/// @c is_type_v<T> is an alias for @c is_type<T>::value
+template<typename T> constexpr const bool is_type_v = is_type<T>::value;
 
 // import some existing C++17 features, or implement them
 #if __cplusplus <= 201402L
@@ -321,12 +342,20 @@ namespace TiledArray {
   struct is_explicitly_convertible
       : public std::is_constructible<To, From> {};
 
+  /// \c is_explicitly_convertible_v<From, To> is an alias for \c is_explicitly_convertible<From, To>::value
+  template <class From, class To>
+  constexpr const bool is_explicitly_convertible_v = is_explicitly_convertible<From, To>::value;
+
   /// evaluates to true if can implicitly convert \c To from \c From , i.e.
   /// if \c From has an implicit
   /// conversion function to \c To, i.e. \c operator \c To()
   /// \note this is just an alias to std::is_convertible
   template <class From, class To>
   struct is_implicitly_convertible : public std::is_convertible<From, To> {};
+
+  /// \c is_implicitly_convertible_v<From, To> is an alias for \c is_implicitly_convertible<From, To>::value
+  template <class From, class To>
+  constexpr const bool is_implicitly_convertible_v = is_implicitly_convertible<From, To>::value;
 
   /// evaluates to true if can convert \c To from \c From , either explicitly
   /// or implicitly
@@ -337,6 +366,10 @@ namespace TiledArray {
       : public std::integral_constant<
             bool, is_implicitly_convertible<From, To>::value ||
                       is_explicitly_convertible<From, To>::value> {};
+
+  /// \c is_convertible_v<From, To> is an alias for \c is_convertible<From, To>::value
+  template <class From, class To>
+  constexpr const bool is_convertible_v = is_convertible<From, To>::value;
 
   template <typename T, typename Enabler = void>
   struct eval_trait_base {
@@ -392,6 +425,9 @@ namespace TiledArray {
   template <typename Tile, typename Policy>
   struct is_lazy_tile<DistArray<Tile, Policy> > : public std::false_type { };
 
+  /// \c is_lazy_tile_v<T> is an alias for \c is_lazy_tile<T>::value
+  template <typename T>
+  constexpr const bool is_lazy_tile_v = is_lazy_tile<T>::value;
 
   /// Consumable tile type trait
 
@@ -410,9 +446,12 @@ namespace TiledArray {
   template <>
   struct is_consumable_tile<ZeroTensor> : public std::false_type { };
 
+  /// \c is_consumable_tile_v<T> is an alias for \c is_consumable_tile<T>::value
+  template <typename T>
+  constexpr const bool is_consumable_tile_v = is_consumable_tile<T>::value;
 
 
-  /** @}*/
+/** @}*/
 
 
   namespace detail {
@@ -423,6 +462,10 @@ namespace TiledArray {
     template <typename T>
     struct is_complex<std::complex<T> > : public std::true_type { };
 
+    /// \c is_complex_v<T> is an alias for \c is_complex<T>::value
+    template <typename T>
+    constexpr const bool is_complex_v = is_complex<T>::value;
+
     template <typename T>
     struct is_numeric : public std::is_arithmetic<T> { };
 
@@ -432,12 +475,19 @@ namespace TiledArray {
     template <>
     struct is_numeric<bool> : public std::false_type { };
 
+    /// \c is_numeric_v<T> is an alias for \c is_numeric<T>::value
+    template <typename T>
+    constexpr const bool is_numeric_v = is_numeric<T>::value;
+
     template <typename T>
     struct is_scalar : public is_numeric<T> { };
 
     template <typename T>
     struct is_scalar<std::complex<T> > : public std::false_type { };
 
+    /// \c is_scalar_v<T> is an alias for \c is_scalar_v<T>
+    template <typename T>
+    constexpr const bool is_scalar_v = is_scalar<T>::value;
 
     /// Detect tiles used by \c ArrayEvalImpl
 
@@ -455,6 +505,10 @@ namespace TiledArray {
         public std::true_type
     { }; // struct is_array_tile
 
+    /// \c is_array_tile_v<T> is an alias for \c is_array_tile<T>::value
+    template <typename T>
+    constexpr const bool is_array_tile_v = is_array_tile<T>::value;
+
     /// Detect a lazy evaluation tile that are not a \c LazyArrayTile
 
     /// \c is_non_array_lazy_tile evaluates to \c std::true_type when T is a
@@ -467,6 +521,9 @@ namespace TiledArray {
         public std::integral_constant<bool, is_lazy_tile<T>::value && (! is_array_tile<T>::value)>
     { }; // struct is_non_array_lazy_tile
 
+    /// \c is_non_array_lazy_tile_v<T> is an alias for \c is_non_array_lazy_tile<T>::value
+    template <typename T>
+    constexpr const bool is_non_array_lazy_tile_v = is_non_array_lazy_tile<T>::value;
 
     /// Type trait for extracting the value type of tensors and arrays
     template <typename T, typename Enabler = void> struct value_type;
@@ -496,7 +553,7 @@ namespace TiledArray {
 
     template <typename T>
     struct numeric_type<T,
-        typename std::enable_if<is_numeric<T>::value>::type>
+        typename std::enable_if<is_numeric_v<T>>::type>
     {
       typedef T type;
     };
@@ -505,7 +562,7 @@ namespace TiledArray {
     struct numeric_type<T, typename std::enable_if<
           has_member_type_value_type<T>::value &&
           (! is_lazy_tile<T>::value) &&
-          (! is_numeric<T>::value)>::type> :
+          (! is_numeric_v<T>)>::type> :
         public numeric_type<typename T::value_type>
     { };
 
@@ -513,7 +570,7 @@ namespace TiledArray {
     template <typename T>
     struct numeric_type<T, typename std::enable_if<
           is_lazy_tile<T>::value
-          && ! is_numeric<T>::value>::type> :
+          && ! is_numeric_v<T>>::type> :
         public numeric_type<typename eval_trait<T>::type>
     { };
 
@@ -527,16 +584,12 @@ namespace TiledArray {
         public numeric_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>::Scalar>
     { };
 
-    template <typename T>
-    struct numeric_type<Tile<T>, void> :
-        public numeric_type<typename Tile<T>::tensor_type>
-    { };
-
     template <typename PlainObjectType, int MapOptions, typename StrideType>
     struct numeric_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void> :
         public numeric_type<PlainObjectType>
     { };
 
+    /// \c numeric_t<T> is an alias for \c numeric_type<T>::type
     template <typename T>
     using numeric_t = typename TiledArray::detail::numeric_type<T>::type;
 
@@ -545,7 +598,7 @@ namespace TiledArray {
     /// \tparam T The type to extract a numeric type from
     /// \tparam Enabler Type used to selectively implement partial
     /// specializations
-    /// -# if T is a scalar type, i.e. \c is_scalar<T>::value is true (e.g. \c
+    /// -# if T is a scalar type, i.e. \c is_scalar_v<T> is true (e.g. \c
     ///    int or \c float), \c scalar_type<T>::type evaluates to \c T
     /// -# if T is std::complex<U>, scalar_type<T>::type evaluates to U
     /// -# if T is not a scalar or complex type, will evaluate to \c
@@ -556,7 +609,7 @@ namespace TiledArray {
 
     template <typename T>
     struct scalar_type<
-        T, typename std::enable_if<is_scalar<T>::value>::type> {
+        T, typename std::enable_if<is_scalar_v<T>>::type> {
       typedef T type;
     };
 
@@ -564,9 +617,10 @@ namespace TiledArray {
     struct scalar_type<std::complex<T>, void > : public scalar_type<T> { };
 
     template <typename T>
-    struct scalar_type<T, typename std::enable_if<!is_numeric<T>::value>::type > :
+    struct scalar_type<T, typename std::enable_if<!is_numeric_v<T>>::type > :
     public scalar_type<typename numeric_type<T>::type> { };
 
+    /// \c scalar_t<T> is an alias for \c scalar_type<T>::type
     template <typename T>
     using scalar_t = typename TiledArray::detail::scalar_type<T>::type;
 
@@ -593,6 +647,10 @@ namespace TiledArray {
                                         is_strictly_ordered_helper<T>::value> {
     };
 
+    /// \c is_strictly_ordered_v<T> is an alias for \c is_strictly_ordered<T>::value
+    template <typename T>
+    constexpr const bool is_strictly_ordered_v = is_strictly_ordered<T>::value;
+
     template <typename...> struct is_integral_list_helper;
 
     template <typename T, typename...Ts>
@@ -602,12 +660,17 @@ namespace TiledArray {
 
     template <> struct is_integral_list_helper<> { static constexpr bool value = true; };
 
-    ///
+    /// @tparam Ts parameter pack
+    /// @c is_integral_list<Ts...>::value is true if for every type @c T in @c Ts... std::is_integral<T>::value is true
     template <typename...Ts>
     struct is_integral_list : std::conditional<(sizeof...(Ts) > 0ul),
         is_integral_list_helper<Ts...>,
         std::false_type>::type
     { };
+
+    /// \c is_integral_list_v<T> is an alias for \c is_integral_list<T>::value
+    template <typename ... Ts>
+    constexpr const bool is_integral_list_v = is_integral_list<Ts...>::value;
 
     ///////////
 
@@ -618,9 +681,15 @@ namespace TiledArray {
     struct is_tuple_< T,
       typename std::enable_if<( std::tuple_size<T>::value >= 0 )>::type
     > : std::true_type {};
+    /// @tparam T a type
+    /// @c is_tuple<T>::value is true if @c T is an @c std::tuple<...>
     template<class T>
     struct is_tuple
       : is_tuple_<T> {};
+
+    /// \c is_tuple_v<T> is an alias for \c is_tuple<T>::value
+    template <typename T>
+    constexpr const bool is_tuple_v = is_tuple<T>::value;
 
     template<class T, class = void>
     struct is_integral_pair_
@@ -629,9 +698,16 @@ namespace TiledArray {
     struct is_integral_pair_< std::pair<T1, T2>,
       typename std::enable_if<std::is_integral<T1>::value && std::is_integral<T2>::value>::type
     > : std::true_type {};
+    /// @tparam T a type
+    /// @c is_integral_pair<T>::value is true if @c T is an @c std::pair<T1,T2> and
+    /// both @c std::is_integral<T1>::value and @c std::is_integral<T2>::value are true
     template<class T>
     struct is_integral_pair
       : is_integral_pair_<T> {};
+
+    /// \c is_integral_pair_v<T> is an alias for \c is_integral_pair<T>::value
+    template <typename T>
+    constexpr const bool is_integral_pair_v = is_integral_pair<T>::value;
 
     //////////
 
@@ -644,19 +720,29 @@ namespace TiledArray {
 
     template <> struct is_integral_pair_list_helper<> { static constexpr bool value = true; };
 
-    ///
+    /// @tparam Ts a parameter pack
+    /// @c is_integral_pair_list<Ts...>::value is true if for every @c T in @c Ts... @c is_integral_pair<T>::value is true
     template <typename...Ts>
     struct is_integral_pair_list : std::conditional<(sizeof...(Ts) > 0ul),
         is_integral_pair_list_helper<Ts...>,
         std::false_type>::type
     { };
 
-    ///
+    /// \c is_integral_pair_list_v<T> is an alias for \c is_integral_pair_list<T>::value
+    template <typename ... Ts>
+    constexpr const bool is_integral_pair_list_v = is_integral_pair_list<Ts...>::value;
+
+    /// @tparam T a type
+    /// @c is_integral_tuple<T>::value is true if @c T is @c std::tuple<Ts...> and @c std::is_integral_list<Ts...>::value is true
     template <typename T>
     struct is_integral_tuple : std::false_type
     { };
     template <typename ... Ts>
     struct is_integral_tuple<std::tuple<Ts...>> : is_integral_list<Ts...> { };
+
+    /// \c is_integral_tuple_v<T> is an alias for \c is_integral_tuple<T>::value
+    template <typename T>
+    constexpr const bool is_integral_tuple_v = is_integral_tuple<T>::value;
 
     /// Remove const, volatile, and reference qualifiers.
     template <typename T>
@@ -674,7 +760,7 @@ namespace TiledArray {
     };
 
     template <typename T>
-    struct param<T, typename std::enable_if<is_numeric<T>::value>::type> {
+    struct param<T, typename std::enable_if<is_numeric_v<T>>::type> {
       typedef typename std::add_const<T>::type type;
     };
 

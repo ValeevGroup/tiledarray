@@ -52,6 +52,14 @@ BOOST_AUTO_TEST_CASE( constructor )
     BOOST_CHECK_EQUAL(r1.elements_range(), elements_range);
   }
 
+  // construct with empty ranges
+  {
+    BOOST_REQUIRE_NO_THROW(TiledRange r1({dims[0], TiledRange1{}}));
+    TiledRange r1{dims[0], TiledRange1{}};
+    BOOST_CHECK_EQUAL(r1.tiles_range().area(), 0);
+    BOOST_CHECK_EQUAL(r1.elements_range().area(), 0);
+  }
+
   // check initializer list of initializer list constructor
   {
     TiledRange r1 { {0,2,5,10,17,28},
@@ -138,11 +146,11 @@ BOOST_AUTO_TEST_CASE( make_tiles_range )
     }
 
     // construct a range object that should match the range constructed by TiledRange.
-    TiledRange::tiles_range_type range(start, finish);
+    TiledRange::range_type range(start, finish);
 
     // Get the two ranges to be tested.
-    TiledRange::tiles_range_type range_index = tr.make_tile_range(*it);
-    TiledRange::tiles_range_type range_ordinal = tr.make_tile_range(i);
+    TiledRange::range_type range_index = tr.make_tile_range(*it);
+    TiledRange::range_type range_ordinal = tr.make_tile_range(i);
 
     BOOST_CHECK_EQUAL(range_index, range);
     BOOST_CHECK_EQUAL(range_ordinal, range);

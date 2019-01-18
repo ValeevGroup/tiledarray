@@ -25,14 +25,15 @@
 
 #include "TiledArray/tensor.h"
 #include "tiledarray.h"
-#include "unit_test_config.h"
-
-#include <boost/mpl/list.hpp>
 
 #ifdef TILEDARRAY_HAS_BTAS
 #include <TiledArray/external/btas.h>
 #include "btas/optimize/contract.h"
 #endif
+
+#include "unit_test_config.h"
+
+#include <boost/mpl/list.hpp>
 
 using namespace TiledArray;
 

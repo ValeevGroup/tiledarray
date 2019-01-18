@@ -64,12 +64,9 @@ namespace TiledArray {
     /// Process map constructor
 
     /// \param world The world where the tiles will be mapped
-    /// \param size The number of processes to be mapped
+    /// \param size The number of tiles to be mapped
     Pmap(World& world, const size_type size) :
-      rank_(world.rank()), procs_(world.size()), size_(size), local_()
-    {
-      TA_ASSERT(size_ > 0ul);
-    }
+      rank_(world.rank()), procs_(world.size()), size_(size), local_() {}
 
     virtual ~Pmap() { }
 

@@ -119,7 +119,7 @@ DistArray<Tensor<T>, DensePolicy> el_to_matrix(
     TA_USER_ASSERT(uniformly_blocked(trange), "The output TiledRange must be uniformly blocked.");
 #if !defined(EL_RELEASE)
     TA_USER_ASSERT(madness::ThreadPool::size() == 0, "TA::el_to_matrix(): Elemental compiled in Debug mode is not re-entrant," \
-     " can only with MAD_NUM_THREADS=1 (and without TBB). Recompile Elemental in Release mode to use MAD_NUM_THREADS>1 or to use TBB.");
+     " must execute with MAD_NUM_THREADS=1 (and without TBB). Recompile Elemental in Release mode to use MAD_NUM_THREADS>1 or to use TBB.");
 #endif
 
     // Determine block size

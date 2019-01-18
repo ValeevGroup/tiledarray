@@ -2,11 +2,7 @@
 
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
-
-# to test both separate CMake install and during-build eigen download, pre-install only for Debug builds
-if [ "$BUILD_TYPE" = "Debug" ]; then
-  ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
-fi
+${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
 
 # Exit on error
 set -ev
@@ -94,9 +90,8 @@ setarch `uname -m` -R make check
 make -j2 examples VERBOSE=1
 
 # run evd example manually TODO add run_examples target
-# must use 1 thread only since Debug El is not reentrant
-if [ "$BUILD_TYPE" = "Debug" ]; then
-  export MAD_NUM_THREADS=1
+# with Debug can only use 1 thread , but since TBB is ON for Debug builds let's just skip it entirely
+if [ "$BUILD_TYPE" = "Release" ]; then
+  ${MPI_HOME}/bin/mpirun -n 1 examples/elemental/evd 512 64 2
+  setarch `uname -m` -R ${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2
 fi
-${MPI_HOME}/bin/mpirun -n 1 examples/elemental/evd 512 64 2
-setarch `uname -m` -R ${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2

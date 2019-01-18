@@ -38,12 +38,12 @@ add_dependencies(inputlib External)
 
 # Add the ccd executable
 add_executable(ccd EXCLUDE_FROM_ALL ccd.cpp $<TARGET_OBJECTS:inputlib>)
-target_link_libraries(ccd PRIVATE tiledarray)
+target_link_libraries(ccd PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
 add_dependencies(ccd External)
 add_dependencies(examples ccd)
 
 # Add the ccsd executable
 add_executable(ccsd EXCLUDE_FROM_ALL ccsd.cpp $<TARGET_OBJECTS:inputlib>)
-target_link_libraries(ccsd PRIVATE tiledarray)
+target_link_libraries(ccsd PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
 add_dependencies(ccsd External)
 add_dependencies(examples ccsd)

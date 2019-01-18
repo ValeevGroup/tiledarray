@@ -178,16 +178,30 @@ namespace TiledArray {
       void wait() const {
         const int task_count = task_count_;
         if(task_count > 0) {
+          auto report_and_abort = [&,this](const char* type, const char* what = nullptr) {
+            std::stringstream ss;
+            ss << "!! ERROR TiledArray: Aborting due to " << type << " exception.\n"
+               << (what != nullptr ? "!! ERROR TiledArray: " : "")
+               << (what != nullptr ? what : "")
+               << (what != nullptr ? "\n" : "")
+               << "!! ERROR TiledArray: rank=" << TensorImpl_::world().rank()
+               << " id=" << id_ << " " << set_counter_ << " of " << task_count << " tiles set" << std::endl;
+            std::cerr << ss.str().c_str();
+            abort();
+          };
           try {
             TensorImpl_::world().await([this,task_count] ()
                 { return this->set_counter_ == task_count; });
+          } catch(TiledArray::Exception& e) {
+            report_and_abort("TiledArray", e.what());
+          } catch(madness::MadnessException& e) {
+            report_and_abort("MADNESS", e.what());
+          } catch(SafeMPI::Exception& e) {
+            report_and_abort("SafeMPI", e.what());
+          } catch(std::exception& e) {
+            report_and_abort("std", e.what());
           } catch(...) {
-            std::stringstream ss;
-            ss << "!! ERROR TiledArray: Aborting due to exception.\n"
-               << "!! ERROR TiledArray: rank=" << TensorImpl_::world().rank()
-               << " id=" << id_ << " " << set_counter_ << " of " << task_count << " tiles set\n";
-            std::cerr << ss.str().c_str();
-            throw;
+            report_and_abort("", nullptr);
           }
         }
       }
@@ -271,17 +285,19 @@ namespace TiledArray {
         return *this;
       }
 
-      /// Evaluate this tensor object with the given result variable list
+      /// Evaluate this object
 
-      /// \c v is the dimension ordering that the parent expression expects.
-      /// The returned future will be evaluated once the tensor has been evaluated.
-      void eval() { return pimpl_->eval(); }
+      /// This function will evaluate the children of this distributed evaluator
+      /// and evaluate the tiles for this distributed evaluator. It will block
+      /// until the tasks for the children are evaluated (not for the tasks of
+      /// this object).
+      void eval() { pimpl_->eval(); }
 
 
       /// Tensor tile size array accessor
 
       /// \return The size array of the tensor tiles
-      const range_type& range() const { return pimpl_->range(); }
+      const range_type& range() const { return pimpl_->tiles_range(); }
 
       /// Tensor tile volume accessor
 

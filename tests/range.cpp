@@ -95,11 +95,10 @@ BOOST_AUTO_TEST_CASE( constructors )
 
   // Constructor that takes extents
   BOOST_REQUIRE_NO_THROW(Range r5(p5));       // uses index container
+  BOOST_REQUIRE_NO_THROW(Range r5({0,2,3}));  // uses initializer_list
   BOOST_REQUIRE_NO_THROW(Range r5({1,2,3}));  // uses initializer_list
   BOOST_REQUIRE_NO_THROW(Range r5(1u,2,3ul,4l));  // uses param pack
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(Range r5({0,0,0}), Exception);
-#endif // TA_EXCEPTION_ERROR
+  BOOST_REQUIRE_NO_THROW(Range r5({0,0,0}));  // zero extents are OK
   Range r5(p5);
   BOOST_CHECK_EQUAL_COLLECTIONS(r5.lobound_data(), r5.lobound_data() + r5.rank(), p0.begin(), p0.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r5.upbound_data(), r5.upbound_data() + r5.rank(), p5.begin(), p5.end());
@@ -111,8 +110,7 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_REQUIRE_NO_THROW(Range r2({std::make_pair(1,2),std::make_pair(3,4),std::make_pair(5,6)}));   // uses initializer_list of pairs
   BOOST_REQUIRE_NO_THROW(Range r2(std::make_pair(1,2),std::make_pair(3,4),std::make_pair(5,6)));   // uses param pack of pairs
 #ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(Range r2(f2, p2), Exception);  // lobound >= upbound
-  BOOST_CHECK_THROW(Range(p2, p2), Exception);     // lobound = upbound
+  BOOST_CHECK_THROW(Range r2(f2, p2), Exception);  // lobound > upbound
 #endif // TA_EXCEPTION_ERROR
   Range r2(p2, f2);
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.lobound_data(), r2.lobound_data() + r2.rank(), p2.begin(), p2.end());
@@ -120,6 +118,21 @@ BOOST_AUTO_TEST_CASE( constructors )
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.extent_data(), r2.extent_data() + r2.rank(), size.begin(), size.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.stride_data(), r2.stride_data() + r2.rank(), weight.begin(), weight.end());
   BOOST_CHECK_EQUAL(r2.volume(), volume);
+
+  // make sure zero extents are OK also with start/finish indices
+  {
+    BOOST_REQUIRE_NO_THROW(Range r2(std::make_pair(2,2),std::make_pair(4,5),std::make_pair(5,6)));   // uses param pack of pairs
+    Range r2(std::make_pair(2,2),std::make_pair(4,5),std::make_pair(5,6));
+    auto lobound_ref = {2, 4, 5};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r2.lobound_data(), r2.lobound_data() + r2.rank(), lobound_ref.begin(), lobound_ref.end());
+    auto upbound_ref = {2, 5, 6};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r2.upbound_data(), r2.upbound_data() + r2.rank(), upbound_ref.begin(), upbound_ref.end());
+    auto extent_ref = {0, 1, 1};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r2.extent_data(), r2.extent_data() + r2.rank(), extent_ref.begin(), extent_ref.end());
+    auto stride_ref = {1, 1, 1};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r2.stride_data(), r2.stride_data() + r2.rank(), stride_ref.begin(), stride_ref.end());
+    BOOST_CHECK_EQUAL(r2.volume(), 0);
+  }
 
   // Copy Constructor
   BOOST_REQUIRE_NO_THROW(Range r4(r));
@@ -285,6 +298,12 @@ BOOST_AUTO_TEST_CASE( include )
   }
 
   BOOST_CHECK(! r.includes(o));
+
+  // ensure that includes always fails if any extent is zero
+  {
+    Range r({0,1,2});
+    BOOST_CHECK(!r.includes({0,0,0}));
+  }
 }
 
 BOOST_AUTO_TEST_CASE( iteration )

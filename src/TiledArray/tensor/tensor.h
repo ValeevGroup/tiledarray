@@ -31,9 +31,14 @@ namespace TiledArray {
 
   /// \tparam T the value type of this tensor
   /// \tparam A The allocator type for the data
-  template <typename T, typename A = Eigen::aligned_allocator<T> >
+  template <typename T, typename A>
   class Tensor {
-  public:
+
+    // meaningful error if T& is not assignable, see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=48101
+    static_assert(std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
+        "Tensor<T>: T must be an assignable type (e.g. cannot be const)");
+
+   public:
     typedef Tensor<T, A> Tensor_; ///< This class type
     typedef Range range_type; ///< Tensor range type
     typedef typename range_type::size_type size_type; ///< size type
@@ -101,10 +106,10 @@ namespace TiledArray {
           detail::is_tensor<Ts...>::value || detail::is_tensor_of_tensor<Ts...>::value;
     };
 
-    template <typename U, typename std::enable_if<std::is_scalar<U>::value>::type* = nullptr>
+    template <typename U, typename std::enable_if<detail::is_scalar_v<U>>::type* = nullptr>
     static void default_init(size_type, U*) { }
 
-    template <typename U, typename std::enable_if<! std::is_scalar<U>::value>::type* = nullptr>
+    template <typename U, typename std::enable_if<! detail::is_scalar_v<U>>::type* = nullptr>
     static void default_init(size_type n, U* u) {
       math::uninitialized_fill_vector(n, U(), u);
     }
@@ -133,7 +138,7 @@ namespace TiledArray {
     /// Construct a tensor with a range equal to \c range. The data is
     /// uninitialized.
     /// \param range The range of the tensor
-    Tensor(const range_type& range) :
+    explicit Tensor(const range_type& range) :
       pimpl_(std::make_shared<Impl>(range))
     {
       default_init(range.volume(), pimpl_->data_);
@@ -161,11 +166,11 @@ namespace TiledArray {
     /// \param range An array with the size of of each dimension
     /// \param value The value of the tensor elements
     template <typename Value,
-        typename std::enable_if<detail::is_numeric<Value>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Value>>::type* = nullptr>
     Tensor(const range_type& range, const Value& value) :
       pimpl_(std::make_shared<Impl>(range))
     {
-      detail::tensor_init([=] () -> Value { return value; }, *this);
+      detail::tensor_init([value] () -> Value { return value; }, *this);
     }
 
     /// Construct an evaluated tensor
@@ -195,7 +200,7 @@ namespace TiledArray {
     template <typename T1,
         typename std::enable_if<is_tensor<T1>::value &&
             ! std::is_same<T1, Tensor_>::value>::type* = nullptr>
-    Tensor(const T1& other) :
+    explicit Tensor(const T1& other) :
       pimpl_(std::make_shared<Impl>(detail::clone_range(other)))
     {
       auto op =
@@ -318,33 +323,40 @@ namespace TiledArray {
       return (pimpl_ ? pimpl_->range_.volume() : 0ul);
     }
 
-    /// Element accessor
+    /// Const element accessor
 
-    /// \return The element at the \c i position.
-    const_reference operator[](const size_type i) const {
+    /// \tparam Ordinal an integer type that represents an ordinal
+    /// \param[in] ord an ordinal index
+    /// \return Const reference to the element at position \c ord .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Ordinal, std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+    const_reference operator[](const Ordinal ord) const {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.includes(i));
-      return pimpl_->data_[i];
+      TA_ASSERT(pimpl_->range_.includes(ord));
+      return pimpl_->data_[ord];
     }
 
     /// Element accessor
 
-    /// \return The element at the \c i position.
-    /// \throw TiledArray::Exception When this tensor is empty.
-    reference operator[](const size_type i) {
+    /// \tparam Ordinal an integer type that represents an ordinal
+    /// \param[in] ord an ordinal index
+    /// \return Reference to the element at position \c ord .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Ordinal, std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
+    reference operator[](const Ordinal ord) {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.includes(i));
-      return pimpl_->data_[i];
+      TA_ASSERT(pimpl_->range_.includes(ord));
+      return pimpl_->data_[ord];
     }
 
 
-    /// Element accessor
+    /// Const element accessor
 
-    /// \return The element at the \c i position.
-    /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename Index,
-        typename std::enable_if<
-            ! std::is_integral<Index>::value>::type* = nullptr>
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
     const_reference operator[](const Index& i) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
@@ -353,12 +365,25 @@ namespace TiledArray {
 
     /// Element accessor
 
-    /// \return The element at the \c i position.
-    /// \throw TiledArray::Exception When this tensor is empty.
-    template <typename Index,
-      typename std::enable_if<
-          ! std::is_integral<Index>::value>::type* = nullptr>
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
     reference operator[](const Index& i) {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.includes(i));
+      return pimpl_->data_[pimpl_->range_.ordinal(i)];
+    }
+
+    /// Const element accessor
+
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
+    const_reference operator()(const Index& i) const {
       TA_ASSERT(pimpl_);
       TA_ASSERT(pimpl_->range_.includes(i));
       return pimpl_->data_[pimpl_->range_.ordinal(i)];
@@ -366,25 +391,43 @@ namespace TiledArray {
 
     /// Element accessor
 
-    /// \tparam Index index type pack
-    /// \param idx The index pack
-    template<typename... Index>
-    reference operator()(const Index&... idx) {
+    /// \tparam Index an index type (sequence of indices for each mode)
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename Index, std::enable_if_t<!std::is_integral<Index>::value>* = nullptr>
+    reference operator()(const Index& i) {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.includes(idx...));
-      return pimpl_->data_[pimpl_->range_.ordinal(idx...)];
+      TA_ASSERT(pimpl_->range_.includes(i));
+      return pimpl_->data_[pimpl_->range_.ordinal(i)];
+    }
+
+    /// Const element accessor
+
+    /// \tparam Index an integral list ( see TiledArray::detail::is_integral_list )
+    /// \param[in] i an index
+    /// \return Const reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename ... Index, std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+    const_reference operator()(const Index&... i) const {
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.includes(i...));
+      return pimpl_->data_[pimpl_->range_.ordinal(i...)];
     }
 
     /// Element accessor
 
-    /// \tparam Index index type pack
-    /// \param idx The index pack
-    template<typename... Index>
-    const_reference operator()(const Index&... idx) const {
+    /// \tparam Index an integral list ( see TiledArray::detail::is_integral_list )
+    /// \param[in] i an index
+    /// \return Reference to the element at position \c i .
+    /// \note This asserts (using TA_ASSERT) that this is not empty and ord is included in the range
+    template <typename ... Index, std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
+    reference operator()(const Index&... i) {
       TA_ASSERT(pimpl_);
-      TA_ASSERT(pimpl_->range_.includes(idx...));
-      return pimpl_->data_[pimpl_->range_.ordinal(idx...)];
+      TA_ASSERT(pimpl_->range_.includes(i...));
+      return pimpl_->data_[pimpl_->range_.ordinal(i...)];
     }
+
 
     /// Iterator factory
 
@@ -495,7 +538,7 @@ namespace TiledArray {
 
     detail::TensorInterface<T, BlockRange>
     block(const std::initializer_list<size_type>& lower_bound,
-        const std::initializer_list<size_type>& upper_bound)
+          const std::initializer_list<size_type>& upper_bound)
     {
       TA_ASSERT(pimpl_);
       return detail::TensorInterface<T, BlockRange>(BlockRange(pimpl_->range_,
@@ -512,7 +555,7 @@ namespace TiledArray {
 
     detail::TensorInterface<const T, BlockRange>
     block(const std::initializer_list<size_type>& lower_bound,
-        const std::initializer_list<size_type>& upper_bound) const
+          const std::initializer_list<size_type>& upper_bound) const
     {
       TA_ASSERT(pimpl_);
       return detail::TensorInterface<const T, BlockRange>(BlockRange(pimpl_->range_,
@@ -650,9 +693,9 @@ namespace TiledArray {
     /// \return A new tensor where the elements of this tensor are scaled by
     /// \c factor
     template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ scale(const Scalar factor) const {
-      return unary([=] (const numeric_type a) -> numeric_type
+      return unary([factor] (const numeric_type a) -> numeric_type
           { return a * factor; });
     }
 
@@ -664,9 +707,9 @@ namespace TiledArray {
     /// \return A new tensor where the elements of this tensor are scaled by
     /// \c factor and permuted
     template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ scale(const Scalar factor, const Permutation& perm) const {
-      return unary([=] (const numeric_type a) -> numeric_type
+      return unary([factor] (const numeric_type a) -> numeric_type
           { return a * factor; }, perm);
     }
 
@@ -676,9 +719,9 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A reference to this tensor
     template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& scale_to(const Scalar factor) {
-      return inplace_unary([=] (numeric_type& MADNESS_RESTRICT res) { res *= factor; });
+      return inplace_unary([factor] (numeric_type& MADNESS_RESTRICT res) { res *= factor; });
     }
 
     // Addition operations
@@ -722,9 +765,9 @@ namespace TiledArray {
     /// \c this and \c other, scaled by \c factor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ add(const Right& right, const Scalar factor) const {
-      return binary(right, [=] (const numeric_type l,
+      return binary(right, [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l + r) * factor; });
     }
@@ -740,11 +783,11 @@ namespace TiledArray {
     /// \c this and \c other, scaled by \c factor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ add(const Right& right, const Scalar factor,
         const Permutation& perm) const
     {
-      return binary(right,  [=] (const numeric_type l,
+      return binary(right,  [factor] (const numeric_type l,
           const numeric_t<Right> r) -> numeric_type
           { return (l + r) * factor; }, perm);
     }
@@ -755,7 +798,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value) const {
-      return unary([=] (const numeric_type a) -> numeric_type
+      return unary([value] (const numeric_type a) -> numeric_type
           { return a + value; });
     }
 
@@ -766,7 +809,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value, const Permutation& perm) const {
-      return unary([=] (const numeric_type a) -> numeric_type
+      return unary([value] (const numeric_type a) -> numeric_type
           { return a + value; }, perm);
     }
 
@@ -791,9 +834,9 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& add_to(const Right& right, const Scalar factor) {
-      return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+      return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
           const numeric_t<Right> r)
           { (l += r) *= factor; });
     }
@@ -803,7 +846,7 @@ namespace TiledArray {
     /// \param value The constant to be added
     /// \return A reference to this tensor
     Tensor_& add_to(const numeric_type value) {
-      return inplace_unary([=] (numeric_type& MADNESS_RESTRICT res) { res += value; });
+      return inplace_unary([value] (numeric_type& MADNESS_RESTRICT res) { res += value; });
     }
 
     // Subtraction operations
@@ -847,9 +890,9 @@ namespace TiledArray {
     /// elements of \c this and \c right, scaled by \c factor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ subt(const Right& right, const Scalar factor) const {
-      return binary(right, [=] (const numeric_type l,
+      return binary(right, [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l - r) * factor; });
     }
@@ -865,11 +908,11 @@ namespace TiledArray {
     /// elements of \c this and \c right, scaled by \c factor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ subt(const Right& right, const Scalar factor,
         const Permutation& perm) const
     {
-      return binary(right, [=] (const numeric_type l,
+      return binary(right, [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l - r) * factor; }, perm);
     }
@@ -914,9 +957,9 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& subt_to(const Right& right, const Scalar factor) {
-      return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+      return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
           const numeric_t<Right> r)
           { (l -= r) *= factor; });
     }
@@ -969,9 +1012,9 @@ namespace TiledArray {
     /// of \c this and \c right, scaled by \c factor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ mult(const Right& right, const Scalar factor) const {
-      return binary(right, [=] (const numeric_type l,
+      return binary(right, [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l * r) * factor; });
     }
@@ -987,11 +1030,11 @@ namespace TiledArray {
     /// of \c this and \c right, scaled by \c factor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ mult(const Right& right, const Scalar factor,
         const Permutation& perm) const
     {
-      return binary(right,  [=] (const numeric_type l,
+      return binary(right,  [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l * r) * factor; }, perm);
     }
@@ -1018,9 +1061,9 @@ namespace TiledArray {
     /// \return A reference to this tensor
     template <typename Right, typename Scalar,
         typename std::enable_if<is_tensor<Right>::value &&
-        detail::is_numeric<Scalar>::value>::type* = nullptr>
+        detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& mult_to(const Right& right, const Scalar factor) {
-      return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+      return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
           const numeric_t<Right> r)
           { (l *= r) *= factor; });
     }
@@ -1067,7 +1110,7 @@ namespace TiledArray {
     /// \return A copy of this tensor that contains the scaled complex
     /// conjugate the values
     template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ conj(const Scalar factor) const {
       TA_ASSERT(pimpl_);
       return scale(detail::conj_op(factor));
@@ -1091,7 +1134,7 @@ namespace TiledArray {
     /// \return A permuted copy of this tensor that contains the complex
     /// conjugate values
     template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ conj(const Scalar factor, const Permutation& perm) const {
       TA_ASSERT(pimpl_);
       return scale(detail::conj_op(factor), perm);
@@ -1111,7 +1154,7 @@ namespace TiledArray {
     /// \param factor The scaling factor
     /// \return A reference to this tensor
     template <typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& conj_to(const Scalar factor) {
       TA_ASSERT(pimpl_);
       return scale_to(detail::conj_op(factor));
@@ -1382,7 +1425,7 @@ namespace TiledArray {
               { res += TiledArray::detail::norm(arg); };
       auto sum_op = [] (scalar_type& MADNESS_RESTRICT res, const scalar_type arg)
               { res += arg; };
-      return detail::tensor_reduce(square_op, sum_op, scalar_type(0), *this);
+      return reduce(square_op, sum_op, scalar_type(0));
     }
 
     /// Vector 2-norm
@@ -1440,11 +1483,13 @@ namespace TiledArray {
       return reduce(abs_max_op, max_op, scalar_type(0));
     }
 
-    /// Vector dot product
+    /// Vector dot (not inner!) product
 
     /// \tparam Right The right-hand tensor type
     /// \param other The right-hand tensor to be reduced
-    /// \return The inner product of the this and \c other
+    /// \return The dot product of the this and \c other
+    /// If numeric_type is real, this is equivalent to inner product
+    /// \sa Tensor::inner_product
     template <typename Right,
         typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
     numeric_type dot(const Right& other) const {
@@ -1453,6 +1498,24 @@ namespace TiledArray {
                 { res += l * r; };
       auto add_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type value)
             { res += value; };
+      return reduce(other, mult_add_op, add_op, numeric_type(0));
+    }
+
+    /// Vector inner product
+
+    /// \tparam Right The right-hand tensor type
+    /// \param other The right-hand tensor to be reduced
+    /// \return The dot product of the this and \c other
+    /// If numeric_type is real, this is equivalent to dot product
+    /// \sa Tensor::dot
+    template <typename Right,
+        typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
+    numeric_type inner_product(const Right& other) const {
+      auto mult_add_op = [] (numeric_type& res, const numeric_type l,
+                             const numeric_t<Right> r)
+      { res += TiledArray::detail::inner_product(l, r); };
+      auto add_op = [] (numeric_type& MADNESS_RESTRICT res, const numeric_type value)
+      { res += value; };
       return reduce(other, mult_add_op, add_op, numeric_type(0));
     }
 

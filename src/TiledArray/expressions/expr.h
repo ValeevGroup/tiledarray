@@ -269,10 +269,10 @@ namespace TiledArray {
       Expr_& operator=(const Expr_&) = delete;
       Expr_& operator=(Expr_&&) = delete;
 
-      /// Cast this object to it's derived type
+      /// Cast this object to its derived type
       derived_type& derived() { return *static_cast<derived_type*>(this); }
 
-      /// Cast this object to it's derived type
+      /// Cast this object to its derived type
       const derived_type& derived() const { return *static_cast<const derived_type*>(this); }
 
       /// Evaluate this object and assign it to \c tsr
@@ -753,6 +753,25 @@ namespace TiledArray {
           typename EngineTrait<typename D::engine_type>::eval_type>::result_type>
       dot(const Expr<D>& right_expr) const {
         return dot(right_expr, default_world());
+      }
+
+      template <typename D>
+      Future<typename TiledArray::InnerProductReduction<
+          typename EngineTrait<engine_type>::eval_type,
+          typename EngineTrait<typename D::engine_type>::eval_type>::result_type>
+      inner_product(const Expr<D>& right_expr, World& world) const {
+        typedef typename EngineTrait<engine_type>::eval_type left_value_type;
+        typedef typename EngineTrait<typename D::engine_type>::eval_type right_value_type;
+        return reduce(right_expr, TiledArray::InnerProductReduction<left_value_type,
+                                                                    right_value_type>(), world);
+      }
+
+      template <typename D>
+      Future<typename TiledArray::InnerProductReduction<
+          typename EngineTrait<engine_type>::eval_type,
+          typename EngineTrait<typename D::engine_type>::eval_type>::result_type>
+      inner_product(const Expr<D>& right_expr) const {
+        return inner_product(right_expr, default_world());
       }
 
     }; // class Expr

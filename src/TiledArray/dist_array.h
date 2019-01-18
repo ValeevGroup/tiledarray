@@ -57,7 +57,7 @@ namespace TiledArray {
     typedef typename detail::numeric_type<Tile>::type element_type; ///< The tile element type
     typedef typename detail::scalar_type<Tile>::type scalar_type; ///< The tile scalar type
     typedef typename impl_type::trange_type trange_type; ///< Tile range type
-    typedef typename impl_type::range_type range_type; ///< Range type for array tiling
+    typedef typename impl_type::range_type range_type; ///< Elements/tiles range type
     typedef typename impl_type::shape_type shape_type; ///< Shape type for array tiling
     typedef typename impl_type::range_type::index index; ///< Array coordinate index type
     typedef typename impl_type::size_type size_type; ///< Size type
@@ -186,7 +186,7 @@ namespace TiledArray {
     /// \param pmap The tile index -> process map
     DistArray(World& world, const trange_type& trange,
         const std::shared_ptr<pmap_interface>& pmap = std::shared_ptr<pmap_interface>()) :
-      pimpl_(init(world, trange, shape_type(), pmap))
+      pimpl_(init(world, trange, shape_type(1, trange), pmap))
     { }
 
     /// Sparse array constructor
@@ -434,7 +434,7 @@ namespace TiledArray {
     /// \param value The fill value
     /// \param skip_set If false, will throw if any tiles are already set
     void fill_local(const element_type& value = element_type(), bool skip_set = false) {
-      init_tiles([=] (const range_type& range)
+      init_tiles([value] (const range_type& range)
           { return value_type(range, value); }, skip_set);
     }
 
@@ -531,7 +531,7 @@ namespace TiledArray {
       init_tiles([op] (const TiledArray::Range& range) -> value_type
       {
         // Initialize the tile with the given range object
-        TiledArray::Tensor<double> tile(range);
+        Tile tile(range);
 
         // Initialize tile elements
         for(auto& idx: range)
@@ -554,18 +554,18 @@ namespace TiledArray {
     /// \return A const reference to the range object for the array tiles
     const range_type& range() const {
       check_pimpl();
-      return pimpl_->range();
+      return pimpl_->tiles_range();
     }
 
     /// \deprecated use DistArray::elements_range()
-    DEPRECATED const typename trange_type::tiles_range_type& elements() const {
+    DEPRECATED const typename trange_type::range_type& elements() const {
       return elements_range();
     }
 
     /// Element range accessor
 
     /// \return A const reference to the range object for the array elements
-    const typename trange_type::tiles_range_type& elements_range() const {
+    const typename trange_type::range_type& elements_range() const {
       check_pimpl();
       return pimpl_->trange().elements_range();
     }
@@ -778,7 +778,7 @@ namespace TiledArray {
     typename std::enable_if<std::is_integral<Index>::value>::type
     check_index(const Index i) const {
       check_pimpl();
-      TA_USER_ASSERT(pimpl_->range().includes(i),
+      TA_USER_ASSERT(pimpl_->tiles_range().includes(i),
           "The ordinal index used to access an array tile is out of range.");
     }
 
@@ -786,7 +786,7 @@ namespace TiledArray {
     typename std::enable_if<! std::is_integral<Index>::value>::type
     check_index(const Index& i) const {
       check_pimpl();
-      TA_USER_ASSERT(pimpl_->range().includes(i),
+      TA_USER_ASSERT(pimpl_->tiles_range().includes(i),
           "The coordinate index used to access an array tile is out of range.");
       TA_USER_ASSERT(i.size() == pimpl_->trange().tiles_range().rank(),
           "The number of elements in the coordinate index does not match the dimension of the array.");

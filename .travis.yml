@@ -9,16 +9,11 @@ addons:
   apt:
     sources: &base_sources
       - ubuntu-toolchain-r-test
-      - boost-latest
-      - kubuntu-backports
     sources: &clang_sources
-      - llvm-toolchain-trusty-5.0
-      - llvm-toolchain-trusty-6.0
-      - llvm-toolchain-trusty-7
-      - llvm-toolchain-trusty
+      - llvm-toolchain-xenial-7
     packages: &base_packages
     - libeigen3-dev
-    - libboost1.55-all-dev
+    - libboost-all-dev
     - libblas-dev
     - liblapack-dev
     - libtbb-dev
@@ -141,58 +136,6 @@ matrix:
            - *base_packages
            - g++-8
            - gfortran-8
-    # fatal error: error in backend: Unsupported library call operation!
-    - compiler: clang
-      env: CLANG_VERSION=5.0 GCC_VERSION=8 BUILD_TYPE=Debug
-      addons:
-        apt:
-          sources:
-           - *base_sources
-           - *clang_sources
-          packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
-           - clang-5.0
-    # fatal error: error in backend: Unsupported library call operation!
-    - compiler: clang
-      env: CLANG_VERSION=5.0 GCC_VERSION=8 BUILD_TYPE=Release
-      addons:
-        apt:
-          sources:
-           - *base_sources
-           - *clang_sources
-          packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
-           - clang-5.0
-    # fatal error: error in backend: Unsupported library call operation!
-    - compiler: clang
-      env: CLANG_VERSION=6.0 GCC_VERSION=8 BUILD_TYPE=Debug
-      addons:
-        apt:
-          sources:
-           - *base_sources
-           - *clang_sources
-          packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
-           - clang-6.0
-    # fatal error: error in backend: Unsupported library call operation!
-    - compiler: clang
-      env: CLANG_VERSION=6.0 GCC_VERSION=8 BUILD_TYPE=Release
-      addons:
-        apt:
-          sources:
-           - *base_sources
-           - *clang_sources
-          packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
-           - clang-6.0
 
 #notifications:
 #  email:
@@ -220,4 +163,4 @@ after_success:
   - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then lcov --remove coverage.info '/usr/*' '*/madness/*' '*/btas/*' '*/tests/*' --output-file coverage.info; fi; # filter out non-project files
   - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then lcov --list coverage.info; fi; #debug info
   # upload report to CodeCov
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then bash <(curl -s https://codecov.io/bash); fi;
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then bash <(curl -s https://codecov.io/bash) -t token; fi;

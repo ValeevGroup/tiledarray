@@ -188,7 +188,7 @@ namespace TiledArray {
       template <typename Index>
       BlkTsrExpr<const Array, Alias>
       block(const Index& lower_bound, const Index& upper_bound) const {
-        return BlkTsrExpr<const Array, Alias>(*this, lower_bound,
+        return BlkTsrExpr<const Array, Alias>(array_, vars_, lower_bound,
             upper_bound);
       }
 
@@ -199,7 +199,7 @@ namespace TiledArray {
       BlkTsrExpr<const Array, Alias>
       block(const std::initializer_list<std::size_t>& lower_bound,
           const std::initializer_list<std::size_t>& upper_bound) const {
-        return BlkTsrExpr<const Array, Alias>(*this, lower_bound,
+        return BlkTsrExpr<const Array, Alias>(array_, vars_, lower_bound,
             upper_bound);
       }
 

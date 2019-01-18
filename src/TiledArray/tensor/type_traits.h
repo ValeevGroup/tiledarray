@@ -28,23 +28,31 @@
 
 #include <type_traits>
 
+namespace Eigen {
+
+// Forward declarations
+template <typename> class aligned_allocator;
+
+} // namespace Eigen
+
 namespace TiledArray {
 
   // Forward declarations
   class Range;
   class BlockRange;
-  template <typename, typename> class Tensor;
+  template <typename T, typename A = Eigen::aligned_allocator<T>> class Tensor;
+  template <typename> class Tile;
 
   namespace detail {
 
     // Forward declarations
-    template <typename, typename> class TensorInterface;
+    template <typename T, typename R, typename = Tensor<std::remove_const_t<T>>> class TensorInterface;
     template <typename> class ShiftWrapper;
 
 
     // Type traits for detecting tensors and tensors of tensors.
     // is_tensor_helper tests if individual types are tensors, while is_tensor
-    // tests zero or more tensor types. Similarly is_tensor_of_tensor tests if
+    // tests a pack of types. Similarly is_tensor_of_tensor tests if
     // one or more types are tensors of tensors.
     // To extend the definition of tensors and tensors of tensor, add additional
     // is_tensor_helper and is_tensor_of_tensor_helper (partial) specializations.
@@ -60,8 +68,8 @@ namespace TiledArray {
     template <typename T, typename A>
     struct is_tensor_helper<Tensor<T, A> > : public std::true_type { };
 
-    template <typename T, typename R>
-    struct is_tensor_helper<TensorInterface<T, R> > : public std::true_type { };
+    template <typename ... Args>
+    struct is_tensor_helper<TensorInterface<Args...> > : public std::true_type { };
 
     template <typename T>
     struct is_tensor_helper<ShiftWrapper<T> > : public is_tensor_helper<T> { };
@@ -70,20 +78,25 @@ namespace TiledArray {
     struct is_tensor_helper<ShiftWrapper<const T> > : public is_tensor_helper<T> { };
 
     template <typename T>
+    struct is_tensor_helper<Tile<T> > : public is_tensor_helper<T> { };
+
+    template <typename T>
     struct is_tensor_of_tensor_helper : public std::false_type { };
 
     template <typename T, typename A>
     struct is_tensor_of_tensor_helper<Tensor<T, A> > :
         public is_tensor_helper<T> { };
 
-    template <typename T, typename RangeType>
-    struct is_tensor_of_tensor_helper<TensorInterface<T, RangeType> > :
+    template <typename T, typename ... Args>
+    struct is_tensor_of_tensor_helper<TensorInterface<T, Args...> > :
         public is_tensor_helper<T> { };
 
     template <typename T>
     struct is_tensor_of_tensor_helper<ShiftWrapper<T> > :
       public is_tensor_of_tensor_helper<T> { };
 
+    template <typename T>
+    struct is_tensor_of_tensor_helper<Tile<T> > : public is_tensor_of_tensor_helper<T> { };
 
     template <> struct is_tensor<> : public std::false_type { };
 
@@ -99,6 +112,10 @@ namespace TiledArray {
                                  && is_tensor<T2, Ts...>::value;
     };
 
+    /// @tparam Ts a parameter pack
+    /// @c is_tensor_v<Ts...> is an alias for @c is_tensor<Ts...>::value
+    template <typename ... Ts>
+    constexpr const bool is_tensor_v = is_tensor<Ts...>::value;
 
     template <> struct is_tensor_of_tensor<> : public std::false_type { };
 
@@ -113,8 +130,18 @@ namespace TiledArray {
                                  && is_tensor_of_tensor<T2, Ts...>::value;
     };
 
+    /// @tparam Ts a parameter pack
+    /// @c is_tensor_of_tensor_v<Ts...> is an alias for @c is_tensor_of_tensor<Ts...>::value
+    template <typename ... Ts>
+    constexpr const bool is_tensor_of_tensor_v = is_tensor_of_tensor<Ts...>::value;
 
     // Test if the tensor is contiguous
+
+    template <typename T>
+    struct is_contiguous_range_helper : public std::false_type { };
+
+    template <>
+    struct is_contiguous_range_helper<Range> : public std::true_type { };
 
     template <typename T>
     struct is_contiguous_tensor_helper : public std::false_type { };
@@ -122,15 +149,17 @@ namespace TiledArray {
     template <typename T, typename A>
     struct is_contiguous_tensor_helper<Tensor<T, A> > : public std::true_type { };
 
-    template <typename T>
-    struct is_contiguous_tensor_helper<TensorInterface<T, Range> > :
-        public std::true_type { };
+    template <typename T, typename R, typename OpResult>
+    struct is_contiguous_tensor_helper<TensorInterface<T, R, OpResult> > :
+        public is_contiguous_range_helper<R> { };
 
     template <typename T>
     struct is_contiguous_tensor_helper<ShiftWrapper<T> > :
         public is_contiguous_tensor_helper<T> { };
 
-
+    template <typename T>
+    struct is_contiguous_tensor_helper<Tile<T> > :
+        public is_contiguous_tensor_helper<T> { };
 
     template <typename...Ts> struct is_contiguous_tensor;
 
@@ -144,6 +173,11 @@ namespace TiledArray {
       static constexpr bool value = is_contiguous_tensor_helper<T1>::value
                                  && is_contiguous_tensor<T2, Ts...>::value;
     };
+
+    /// @tparam Ts a parameter pack
+    /// @c is_contiguous_tensor_v<Ts...> is an alias for @c is_contiguous_tensor<Ts...>::value
+    template <typename ... Ts>
+    constexpr const bool is_contiguous_tensor_v = is_contiguous_tensor<Ts...>::value;
 
     // Test if the tensor is shifted
 
@@ -166,6 +200,11 @@ namespace TiledArray {
       static constexpr bool value = is_shifted_helper<T1>::value
                                  && is_shifted<T2, Ts...>::value;
     };
+
+    /// @tparam Ts a parameter pack
+    /// @c is_shifted_v<Ts...> is an alias for @c is_shifted<Ts...>::value
+    template <typename ... Ts>
+    constexpr const bool is_shifted_v = is_shifted<Ts...>::value;
 
   }  // namespace detail
 } // namespace TiledArray

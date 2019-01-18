@@ -92,7 +92,7 @@ namespace TiledArray {
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check input dimensions
         TA_ASSERT(lower_data[i] >= 0);
-        TA_ASSERT(lower_data[i] < upper_data[i]);
+        TA_ASSERT(lower_data[i] <= upper_data[i]);
 
         // Compute data for element i of lower, upper, and extent
         const size_type lower_bound_i = lower_data[i];
@@ -141,7 +141,7 @@ namespace TiledArray {
 
         // Check input dimensions
         TA_ASSERT(lower_bound_i >= 0ul);
-        TA_ASSERT(lower_bound_i < upper_bound_i);
+        TA_ASSERT(lower_bound_i <= upper_bound_i);
 
         lower[i]  = lower_bound_i;
         upper[i]  = upper_bound_i;
@@ -178,7 +178,7 @@ namespace TiledArray {
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check bounds of the input extent
-        TA_ASSERT(extent_data[i] > 0);
+        TA_ASSERT(extent_data[i] >= 0);
 
         // Get extent i
         const size_type extent_i = extent_data[i];
@@ -222,7 +222,7 @@ namespace TiledArray {
     template <std::size_t I, typename ... Indices>
     void init_range_data_helper_iter(const std::tuple<Indices...>& extents) {
       // Check bounds of the input extent
-      TA_ASSERT(std::get<I>(extents) > 0ul);
+      TA_ASSERT(std::get<I>(extents) >= 0ul);
 
       // Get extent i
       const size_type extent_i = std::get<I>(extents);
@@ -437,7 +437,7 @@ namespace TiledArray {
     /// \param extents A pack of pairs of lobound and upbound for each dimension
     /// \throw std::bad_alloc When memory allocation fails.
     template <typename ... IndexPairs,
-              typename std::enable_if<detail::is_integral_pair_list<IndexPairs...>::value>::type* = nullptr
+              std::enable_if_t<detail::is_integral_pair_list_v<IndexPairs...>>* = nullptr
              >
     explicit Range(const IndexPairs... bounds) :
     Range(std::array<std::pair<std::size_t,std::size_t>, sizeof...(IndexPairs)>{{static_cast<std::pair<std::size_t,std::size_t>>(bounds)...}})
@@ -487,7 +487,7 @@ namespace TiledArray {
         if(perm) {
           init_range_data(perm, other.data_, other.data_ + rank_);
         } else {
-          // Simple copy will due.
+          // Simple copy will do
           memcpy(data_, other.data_, (sizeof(size_type) << 2) * rank_);
           offset_ = other.offset_;
           volume_ = other.volume_;
@@ -656,24 +656,28 @@ namespace TiledArray {
     /// Index iterator factory
 
     /// The iterator dereferences to an index. The order of iteration matches
-    /// the data layout of a dense tensor.
-    /// \return An iterator that holds the lower bound index of a tensor
+    /// the data layout of a row-major tensor.
+    /// \return An iterator that holds the lower bound index of a tensor (unless it has zero volume, then it returns same result as end())
     /// \throw nothing
-    const_iterator begin() const { return const_iterator(data_, this); }
+    const_iterator begin() const {
+      return (volume_ > 0) ? const_iterator(data_, this) : end();
+    }
 
     /// Index iterator factory
 
     /// The iterator dereferences to an index. The order of iteration matches
-    /// the data layout of a dense tensor.
-    /// \return An iterator that holds the lower bound element index of a tensor
+    /// the data layout of a row-major tensor.
+    /// \return An iterator that holds the upper bound element index of a tensor
     /// \throw nothing
-    const_iterator end() const { return const_iterator(data_ + rank_, this); }
+    const_iterator end() const {
+      return const_iterator(data_ + rank_, this);
+    }
 
     /// Check the coordinate to make sure it is within the range.
 
     /// \tparam Index The coordinate index array type
     /// \param index The coordinate index to check for inclusion in the range
-    /// \return \c true when <tt>i >= start</tt> and <tt>i < finish</tt>,
+    /// \return \c true when <tt>i >= lobound</tt> and <tt>i < upbound</tt>,
     /// otherwise \c false
     /// \throw TiledArray::Exception When the rank of this range is not
     /// equal to the size of the index.
@@ -685,7 +689,8 @@ namespace TiledArray {
       const size_type* MADNESS_RESTRICT const upper = lower + rank_;
 
       bool result = (rank_ > 0u);
-      auto it = std::begin(index); // TODO C++14 switch to std::cbegin
+      using std::cbegin;
+      auto it = cbegin(index);
       for(unsigned int i = 0u; result && (i < rank_); ++i, ++it) {
         const size_type index_i = *it;
         const size_type lower_i = lower[i];
@@ -701,7 +706,7 @@ namespace TiledArray {
     /// \tparam Integer An integer type
     /// \param index The element index to check for inclusion in the range,
     ///              as an \c std::initializer_list<Integer>
-    /// \return \c true when <tt>i >= start</tt> and <tt>i < finish</tt>,
+    /// \return \c true when <tt>i >= lobound</tt> and <tt>i < upbound</tt>,
     /// otherwise \c false
     /// \throw TiledArray::Exception When the rank of this range is not
     /// equal to the size of the index.
@@ -844,7 +849,8 @@ namespace TiledArray {
       size_type* MADNESS_RESTRICT const stride = data_ + rank_ + rank_ + rank_;
 
       size_type result = 0ul;
-      auto index_it = std::begin(index);
+      using std::cbegin;
+      auto index_it = cbegin(index);
       for(unsigned int i = 0u; i < rank_; ++i, ++index_it) {
         const size_type stride_i = stride[i];
         result += *(index_it) * stride_i;
@@ -876,6 +882,7 @@ namespace TiledArray {
     /// \throw std::bad_alloc When memory allocation fails
     index idx(size_type index) const {
       // Check that index is contained by range.
+      // N.B. this will fail if any extent is zero
       TA_ASSERT(includes(index));
 
       // Construct result coordinate index object and allocate its memory.

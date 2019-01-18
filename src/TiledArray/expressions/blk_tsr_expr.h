@@ -471,7 +471,7 @@ namespace TiledArray {
     /// \return Array scaled-block expression object
     template <typename Array, typename Scalar, bool Alias,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>
     operator*(const BlkTsrExpr<Array, Alias>& expr, const Scalar& factor) {
@@ -490,7 +490,7 @@ namespace TiledArray {
     /// \return A scaled-block expression object
     template <typename Array, typename Scalar, bool Alias,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>
     operator*(const Scalar& factor, const BlkTsrExpr<Array, Alias>& expr) {
@@ -509,7 +509,7 @@ namespace TiledArray {
     /// \return A scaled-block expression object
     template <typename Array, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2> >
     operator*(const ScalBlkTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
@@ -528,7 +528,7 @@ namespace TiledArray {
     /// \return A scaled-block expression object
     template <typename Array, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type * = nullptr>
     inline ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalBlkTsrExpr<Array, Scalar2>& expr) {
@@ -630,7 +630,7 @@ namespace TiledArray {
     /// \return A scaled-tensor expression object
     template <typename Array, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalConjBlkTsrExpr<Array, Scalar>
     operator*(const ConjBlkTsrExpr<const Array>& expr, const Scalar& factor) {
@@ -647,7 +647,7 @@ namespace TiledArray {
     /// \return A scaled-tensor expression object
     template <typename Array, typename Scalar,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar>::value
+            TiledArray::detail::is_numeric_v<Scalar>
         >::type* = nullptr>
     inline ScalConjBlkTsrExpr<Array, Scalar>
     operator*(const Scalar& factor, const ConjBlkTsrExpr<Array>& expr) {
@@ -664,7 +664,7 @@ namespace TiledArray {
     /// \return A scaled-tensor expression object
     template <typename Array, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar2>::value
+            TiledArray::detail::is_numeric_v<Scalar2>
         >::type* = nullptr>
     inline ScalConjBlkTsrExpr<Array, mult_t<Scalar1, Scalar2> >
     operator*(const ScalConjBlkTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
@@ -682,7 +682,7 @@ namespace TiledArray {
     /// \return A scaled-tensor expression object
     template <typename Array, typename Scalar1, typename Scalar2,
         typename std::enable_if<
-            TiledArray::detail::is_numeric<Scalar1>::value
+            TiledArray::detail::is_numeric_v<Scalar1>
         >::type* = nullptr>
     inline ScalConjBlkTsrExpr<Array, mult_t<Scalar2, Scalar1> >
     operator*(const Scalar1& factor, const ScalConjBlkTsrExpr<Array, Scalar2>& expr) {

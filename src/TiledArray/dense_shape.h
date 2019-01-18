@@ -43,6 +43,7 @@ namespace TiledArray {
   } // namespace math
   class Range;
   class Permutation;
+  class TiledRange;
   using madness::World;
 
 
@@ -56,6 +57,15 @@ namespace TiledArray {
     // There is no data in DenseShape so the compiler generated constructors,
     // assignment operator, and destructor are OK.
 
+    DenseShape() = default;
+    DenseShape(const DenseShape&) = default;
+    DenseShape(DenseShape&&) = default;
+    DenseShape& operator=(const DenseShape&) = default;
+    DenseShape& operator=(DenseShape&&) = default;
+    ~DenseShape() = default;
+
+    // Several no-op constructors are needed to make it interoperable with SparseShape
+    template <typename Real> DenseShape(Real &&, const TiledRange&) {}
 
     /// Collective initialization of a shape
 
@@ -103,7 +113,7 @@ namespace TiledArray {
     static DenseShape block(const Index&, const Index&) { return DenseShape(); }
 
     template <typename Index, typename Scalar,
-        typename std::enable_if<detail::is_numeric<Scalar>::value>::type* = nullptr>
+        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     static DenseShape block(const Index&, const Index&, const Scalar)
     { return DenseShape(); }
 
