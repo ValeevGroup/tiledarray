@@ -25,11 +25,10 @@
 
 #include "expressions_fixture.h"
 
-typedef ExpressionsFixture<TiledArray::Tensor<int>,TA::DensePolicy>
-    EF_TATensorI;
+typedef ExpressionsFixture<TiledArray::Tensor<int>, TA::SparsePolicy>
+    EF_TAspTensorI;
+typedef boost::mpl::vector<EF_TAspTensorI>
+    Fixtures;
 
-typedef boost::mpl::vector<EF_TATensorI> Fixtures;
-
-BOOST_AUTO_TEST_SUITE(expressions_suite)
-
+BOOST_AUTO_TEST_SUITE(expressions_sparse_suite)
 #include "expressions_impl.h"

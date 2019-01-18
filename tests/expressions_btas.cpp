@@ -23,13 +23,23 @@
  *
  */
 
+
+
+#ifdef TILEDARRAY_HAS_BTAS
 #include "expressions_fixture.h"
 
-typedef ExpressionsFixture<TiledArray::Tensor<int>,TA::DensePolicy>
-    EF_TATensorI;
+typedef ExpressionsFixture<
+    TA::Tile<btas::Tensor<int, TiledArray::Range, btas::varray<int>>>,
+    TA::DensePolicy>
+    EF_TABtasI;
 
-typedef boost::mpl::vector<EF_TATensorI> Fixtures;
+typedef boost::mpl::vector<EF_TABtasI>
+    Fixtures;
 
-BOOST_AUTO_TEST_SUITE(expressions_suite)
+BOOST_AUTO_TEST_SUITE(expressions_btas_suite)
 
 #include "expressions_impl.h"
+
+#endif
+
+
