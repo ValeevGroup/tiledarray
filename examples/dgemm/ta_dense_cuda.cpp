@@ -439,15 +439,15 @@ int try_main(int argc, char **argv) {
     }
   }  // print device properties
 
-  if (storage_type == "cpu_cuda_vector") {
-    if (real_type_str == "double")
-      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
-                                                        Nk, Bk, nrepeat);
-    else
-      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn,
-                                                       Nk, Bk, nrepeat);
-  } else if (storage_type == "cuda_um_btas_varray") {
-    //  } else if (storage_type == "cuda_um_btas_varray") {
+//  if (storage_type == "cpu_cuda_vector") {
+//    if (real_type_str == "double")
+//      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
+//                                                        Nk, Bk, nrepeat);
+//    else
+//      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn,
+//                                                       Nk, Bk, nrepeat);
+//  } else if (storage_type == "cuda_um_btas_varray") {
+   if(storage_type == "cuda_um_btas_varray") {
     if (real_type_str == "double")
       do_main_body<TiledArray::cuda_um_btas_varray<double>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);

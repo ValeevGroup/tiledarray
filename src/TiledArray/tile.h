@@ -21,6 +21,7 @@
 #define TILEDARRAY_TILE_H__INCLUDED
 
 #include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tile_interface/cast.h>
 #include <memory>
 
@@ -330,7 +331,7 @@ namespace TiledArray {
     decltype(auto)
     block(const Index& lower_bound, const Index& upper_bound) {
       TA_ASSERT(pimpl_);
-      return detail::TensorInterface<value_type, BlockRange>(BlockRange(tensor().range(),
+      return detail::TensorInterface<value_type, BlockRange, tensor_type>(BlockRange(tensor().range(),
           lower_bound, upper_bound), tensor().data());
     }
 
@@ -339,7 +340,7 @@ namespace TiledArray {
           const std::initializer_list<size_type>& upper_bound)
     {
       TA_ASSERT(pimpl_);
-      return detail::TensorInterface<value_type, BlockRange>(BlockRange(tensor().range(),
+      return detail::TensorInterface<value_type, BlockRange, tensor_type>(BlockRange(tensor().range(),
           lower_bound, upper_bound), tensor().data());
     }
 
@@ -347,7 +348,7 @@ namespace TiledArray {
     decltype(auto)
     block(const Index& lower_bound, const Index& upper_bound) const {
       TA_ASSERT(pimpl_);
-      return detail::TensorInterface<const value_type, BlockRange>(BlockRange(tensor().range(),
+      return detail::TensorInterface<const value_type, BlockRange, tensor_type>(BlockRange(tensor().range(),
           lower_bound, upper_bound), tensor().data());
     }
 
@@ -356,7 +357,7 @@ namespace TiledArray {
           const std::initializer_list<size_type>& upper_bound) const
     {
       TA_ASSERT(pimpl_);
-      return detail::TensorInterface<const value_type, BlockRange>(BlockRange(tensor().range(),
+      return detail::TensorInterface<const value_type, BlockRange, tensor_type>(BlockRange(tensor().range(),
           lower_bound, upper_bound), tensor().data());
     }
 
