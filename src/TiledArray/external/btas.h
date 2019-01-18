@@ -415,7 +415,7 @@ inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage
 }
 
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage>& conj(const btas::Tensor<T, Range, Storage>& arg){
+inline btas::Tensor<T, Range, Storage>& conj_to(btas::Tensor<T, Range, Storage>& arg){
   auto arg_view = make_ti(arg);
   arg_view.conj_to();
   return arg;
@@ -423,9 +423,9 @@ inline btas::Tensor<T, Range, Storage>& conj(const btas::Tensor<T, Range, Storag
 
 template <typename T, typename Range, typename Storage, typename Scalar,
         std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline btas::Tensor<T, Range, Storage>& conj_to(const btas::Tensor<T, Range, Storage>& arg, const Scalar factor){
+inline btas::Tensor<T, Range, Storage>& conj_to(btas::Tensor<T, Range, Storage>& arg, const Scalar factor){
   auto arg_view = make_ti(arg);
-  arg_view.conj(factor);
+  arg_view.conj_to(factor);
   return arg;
 }
 
@@ -567,6 +567,12 @@ template <typename T, typename Range, typename Storage>
 inline decltype(auto) dot(
     const btas::Tensor<T, Range, Storage>& arg1, const btas::Tensor<T, Range, Storage>& arg2) {
   return make_ti(arg1).dot(make_ti(arg2));
+};
+
+template <typename T, typename Range, typename Storage>
+inline decltype(auto) inner_product(
+        const btas::Tensor<T, Range, Storage>& arg1, const btas::Tensor<T, Range, Storage>& arg2) {
+  return make_ti(arg1).inner_product(make_ti(arg2));
 };
 
 // sqrt(squared_norm(arg))
