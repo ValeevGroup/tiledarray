@@ -87,8 +87,11 @@ set(ta_test_src_files  ta_test.cpp
     proc_grid.cpp
     dist_eval_contraction_eval.cpp
     expressions.cpp
-        expressions_mixed.cpp
-        foreach.cpp
+    expressions_sparse.cpp
+    expressions_complex.cpp
+    expressions_btas.cpp
+    expressions_mixed.cpp
+    foreach.cpp
 )
         
 if(ENABLE_ELEMENTAL)
