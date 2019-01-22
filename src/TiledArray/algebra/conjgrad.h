@@ -33,7 +33,7 @@
 
 namespace TiledArray {
 
-  /// Solves linear system <tt> a(x) = b </tt> using conjugate gradient solver
+  /// Solves real linear system <tt> a(x) = b </tt> using conjugate gradient solver
   /// where \c a is a linear function of \c x .
 
   /// \tparam D type of \c x and \c b, as well as the preconditioner;
