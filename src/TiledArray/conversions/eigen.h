@@ -423,10 +423,10 @@ namespace TiledArray {
   /// is not equal to 1 or 2.
   template <typename Tile, typename Policy,
             unsigned int EigenStorageOrder = Eigen::ColMajor>
-  Eigen::Matrix<typename detail::value_type<Tile>::type, Eigen::Dynamic, Eigen::Dynamic,
+  Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic,
                 EigenStorageOrder>
   array_to_eigen(const DistArray<Tile, Policy>& array) {
-    typedef Eigen::Matrix<typename detail::value_type<Tile>::type, Eigen::Dynamic,
+    typedef Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic,
                           Eigen::Dynamic, EigenStorageOrder>
         EigenMatrix;
 
