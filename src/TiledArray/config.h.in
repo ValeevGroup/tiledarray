@@ -54,9 +54,14 @@
 #endif  // __has_include
 #endif  // !defined(TILEDARRAY_HAS_BTAS)
 
-/* if have BTAS and MADNESS detected MKL, define _HAS_INTEL_MKL if it is not yet defined */
-#if !defined(_HAS_INTEL_MKL) && defined(TILEDARRAY_HAS_BTAS) && defined(HAVE_INTEL_MKL)
+/* if have BTAS and MADNESS detected MKL, define _HAS_INTEL_MKL and BTAS_HAS_CBLAS if not yet defined */
+#if defined(TILEDARRAY_HAS_BTAS) && defined(HAVE_INTEL_MKL)
+#ifndef _HAS_INTEL_MKL
 #  define _HAS_INTEL_MKL
+#endif
+#ifndef BTAS_HAS_CBLAS
+#  define BTAS_HAS_CBLAS
+#endif
 #endif
 
 /* Add macro TILEDARRAY_FORCE_INLINE which does as the name implies. */
