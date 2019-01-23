@@ -36,14 +36,14 @@ using namespace TiledArray;
 // using both btas::RangeNd<> and TiledArray::Range as the range type
 typedef boost::mpl::list<
 DistArray<Tile<btas::Tensor<double, TiledArray::Range, btas::varray<double>>>, DensePolicy>,
-DistArray<     btas::Tensor<double, TiledArray::Range, btas::varray<double>> , DensePolicy>,
-DistArray<Tile<btas::Tensor<double>>                                         , DensePolicy>,
-DistArray<     btas::Tensor<double>                                          , DensePolicy>
+DistArray<     btas::Tensor<double, TiledArray::Range, btas::varray<double>> , DensePolicy>
+//DistArray<Tile<btas::Tensor<double>>                                         , DensePolicy>,
+//DistArray<     btas::Tensor<double>                                          , DensePolicy>
 > array_types;
 
 typedef boost::mpl::list<
-btas::Tensor<double, TiledArray::Range, btas::varray<double>>,
-btas::Tensor<double>
+btas::Tensor<double, TiledArray::Range, btas::varray<double>>
+//btas::Tensor<double>
 > tensor_types;
 
 struct BTASFixture : public TiledRangeFixture {

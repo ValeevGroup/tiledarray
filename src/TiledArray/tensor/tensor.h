@@ -138,7 +138,7 @@ namespace TiledArray {
     /// Construct a tensor with a range equal to \c range. The data is
     /// uninitialized.
     /// \param range The range of the tensor
-    Tensor(const range_type& range) :
+    explicit Tensor(const range_type& range) :
       pimpl_(std::make_shared<Impl>(range))
     {
       default_init(range.volume(), pimpl_->data_);
@@ -170,7 +170,7 @@ namespace TiledArray {
     Tensor(const range_type& range, const Value& value) :
       pimpl_(std::make_shared<Impl>(range))
     {
-      detail::tensor_init([=] () -> Value { return value; }, *this);
+      detail::tensor_init([value] () -> Value { return value; }, *this);
     }
 
     /// Construct an evaluated tensor
@@ -200,7 +200,7 @@ namespace TiledArray {
     template <typename T1,
         typename std::enable_if<is_tensor<T1>::value &&
             ! std::is_same<T1, Tensor_>::value>::type* = nullptr>
-    Tensor(const T1& other) :
+    explicit Tensor(const T1& other) :
       pimpl_(std::make_shared<Impl>(detail::clone_range(other)))
     {
       auto op =
@@ -695,7 +695,7 @@ namespace TiledArray {
     template <typename Scalar,
         typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ scale(const Scalar factor) const {
-      return unary([=] (const numeric_type a) -> numeric_type
+      return unary([factor] (const numeric_type a) -> numeric_type
           { return a * factor; });
     }
 
@@ -709,7 +709,7 @@ namespace TiledArray {
     template <typename Scalar,
         typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ scale(const Scalar factor, const Permutation& perm) const {
-      return unary([=] (const numeric_type a) -> numeric_type
+      return unary([factor] (const numeric_type a) -> numeric_type
           { return a * factor; }, perm);
     }
 
@@ -721,7 +721,7 @@ namespace TiledArray {
     template <typename Scalar,
         typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& scale_to(const Scalar factor) {
-      return inplace_unary([=] (numeric_type& MADNESS_RESTRICT res) { res *= factor; });
+      return inplace_unary([factor] (numeric_type& MADNESS_RESTRICT res) { res *= factor; });
     }
 
     // Addition operations
@@ -767,7 +767,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value &&
         detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ add(const Right& right, const Scalar factor) const {
-      return binary(right, [=] (const numeric_type l,
+      return binary(right, [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l + r) * factor; });
     }
@@ -787,7 +787,7 @@ namespace TiledArray {
     Tensor_ add(const Right& right, const Scalar factor,
         const Permutation& perm) const
     {
-      return binary(right,  [=] (const numeric_type l,
+      return binary(right,  [factor] (const numeric_type l,
           const numeric_t<Right> r) -> numeric_type
           { return (l + r) * factor; }, perm);
     }
@@ -798,7 +798,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value) const {
-      return unary([=] (const numeric_type a) -> numeric_type
+      return unary([value] (const numeric_type a) -> numeric_type
           { return a + value; });
     }
 
@@ -809,7 +809,7 @@ namespace TiledArray {
     /// \return A new tensor where the elements are the sum of the elements of
     /// \c this and \c value
     Tensor_ add(const numeric_type value, const Permutation& perm) const {
-      return unary([=] (const numeric_type a) -> numeric_type
+      return unary([value] (const numeric_type a) -> numeric_type
           { return a + value; }, perm);
     }
 
@@ -836,7 +836,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value &&
         detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& add_to(const Right& right, const Scalar factor) {
-      return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+      return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
           const numeric_t<Right> r)
           { (l += r) *= factor; });
     }
@@ -846,7 +846,7 @@ namespace TiledArray {
     /// \param value The constant to be added
     /// \return A reference to this tensor
     Tensor_& add_to(const numeric_type value) {
-      return inplace_unary([=] (numeric_type& MADNESS_RESTRICT res) { res += value; });
+      return inplace_unary([value] (numeric_type& MADNESS_RESTRICT res) { res += value; });
     }
 
     // Subtraction operations
@@ -892,7 +892,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value &&
         detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ subt(const Right& right, const Scalar factor) const {
-      return binary(right, [=] (const numeric_type l,
+      return binary(right, [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l - r) * factor; });
     }
@@ -912,7 +912,7 @@ namespace TiledArray {
     Tensor_ subt(const Right& right, const Scalar factor,
         const Permutation& perm) const
     {
-      return binary(right, [=] (const numeric_type l,
+      return binary(right, [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l - r) * factor; }, perm);
     }
@@ -959,7 +959,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value &&
         detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& subt_to(const Right& right, const Scalar factor) {
-      return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+      return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
           const numeric_t<Right> r)
           { (l -= r) *= factor; });
     }
@@ -1014,7 +1014,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value &&
         detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_ mult(const Right& right, const Scalar factor) const {
-      return binary(right, [=] (const numeric_type l,
+      return binary(right, [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l * r) * factor; });
     }
@@ -1034,7 +1034,7 @@ namespace TiledArray {
     Tensor_ mult(const Right& right, const Scalar factor,
         const Permutation& perm) const
     {
-      return binary(right,  [=] (const numeric_type l,
+      return binary(right,  [factor] (const numeric_type l,
           const numeric_t<Right> r)
           -> numeric_type { return (l * r) * factor; }, perm);
     }
@@ -1063,7 +1063,7 @@ namespace TiledArray {
         typename std::enable_if<is_tensor<Right>::value &&
         detail::is_numeric_v<Scalar>>::type* = nullptr>
     Tensor_& mult_to(const Right& right, const Scalar factor) {
-      return inplace_binary(right, [=] (numeric_type& MADNESS_RESTRICT l,
+      return inplace_binary(right, [factor] (numeric_type& MADNESS_RESTRICT l,
           const numeric_t<Right> r)
           { (l *= r) *= factor; });
     }

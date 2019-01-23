@@ -267,7 +267,7 @@ BOOST_AUTO_TEST_CASE( foreach_binary_to_double )
   for(auto index : * result.pmap()) {
     TensorI tilea = a.find(index).get();
     TensorI tileb = b.find(index).get();
-    TensorI tile = result.find(index).get();
+    auto tile = TensorI(result.find(index).get());
     for(std::size_t i = 0; i < tile.size(); ++i) {
       BOOST_CHECK_EQUAL(tile[i], tilea[i] + tileb[i]);
     }

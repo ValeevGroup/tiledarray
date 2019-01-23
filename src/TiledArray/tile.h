@@ -952,7 +952,7 @@ namespace TiledArray {
   /// \param result The tile to be conjugated
   /// \return A reference to `result`
   template <typename Result>
-  inline Result& conj_to(Tile<Result>& result) {
+  inline Tile<Result>& conj_to(Tile<Result>& result) {
     conj_to(result.tensor());
     return result;
   }
@@ -968,7 +968,7 @@ namespace TiledArray {
       typename std::enable_if<
           TiledArray::detail::is_numeric_v<Scalar>
       >::type* = nullptr>
-  inline Result& conj_to(Tile<Result>& result, const Scalar factor) {
+  inline Tile<Result>& conj_to(Tile<Result>& result, const Scalar factor) {
     conj_to(result.tensor(), factor);
     return result;
   }
@@ -1112,122 +1112,22 @@ namespace TiledArray {
   inline decltype(auto) dot(const Tile<Left>& left, const Tile<Right>& right)
   { return dot(left.tensor(), right.tensor()); }
 
+  /// Vector inner product of a tile
+
+  /// \tparam Left The left-hand argument type
+  /// \tparam Right The right-hand argument type
+  /// \param left The left-hand argument tile to be contracted
+  /// \param right The right-hand argument tile to be contracted
+  template <typename Left, typename Right>
+  inline decltype(auto) inner_product(const Tile<Left>& left, const Tile<Right>& right)
+  { return inner_product(left.tensor(), right.tensor()); }
+
+
   // Tile arithmetic operators -------------------------------------------------
 
+  // see operators.h
 
-  /// Add tiles operator
-
-  /// \tparam Left The left-hand tensor type
-  /// \tparam Right The right-hand tensor type
-  /// \param left The left-hand tile
-  /// \param right The right-hand tile
-  /// \return The sum of the \c left and \c right tiles
-  template <typename Left, typename Right>
-  inline decltype(auto) operator+(const Tile<Left>& left, const Tile<Right>& right)
-  { return add(left, right); }
-
-  /// In-place add tile operator
-
-  /// Add the elements of the \c right tile to that of the \c left tile.
-  /// \tparam Left The left-hand tensor type
-  /// \tparam Right The right-hand tensor type
-  /// \param left The left-hand tile
-  /// \param right The right-hand tile
-  /// \return The \c left tile, <tt>left[i] += right[i]</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left>& operator+=(Tile<Left>& left, const Tile<Right>& right)
-  { return add_to(left, right); }
-
-  /// Subtract tiles operator
-
-  /// \tparam Left The left-hand tensor type
-  /// \tparam Right The right-hand tensor type
-  /// \param left The left-hand tile
-  /// \param right The right-hand tile
-  /// \return The difference of the \c left and \c right tiles
-  template <typename Left, typename Right>
-  inline decltype(auto) operator-(const Tile<Left>& left, const Tile<Right>& right)
-  { return subt(left, right); }
-
-  /// In-place subtract tile operator
-
-  /// Subtract the elements of the \c right tile from that of the \c left tile.
-  /// \tparam Left The left-hand tensor type
-  /// \tparam Right The right-hand tensor type
-  /// \param left The left-hand tile
-  /// \param right The right-hand tile
-  /// \return The \c left tile, <tt>left[i] -= right[i]</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left>& operator-=(Tile<Left>& left, const Tile<Right>& right)
-  { return subt_to(left, right); }
-
-  /// Product tiles operator
-
-  /// \tparam Left The left-hand tensor type
-  /// \tparam Right The right-hand tensor type
-  /// \param left The left-hand tile
-  /// \param right The right-hand tile
-  /// \return The product of the \c left and \c right tiles
-  template <typename Left, typename Right>
-  inline decltype(auto) operator*(const Tile<Left>& left, const Tile<Right>& right)
-  { return mult(left, right); }
-
-  /// Scale tile operator
-
-  /// \tparam Left The left-hand tensor type
-  /// \tparam Right The right-hand scalar type
-  /// \param left The left-hand tile
-  /// \param right The right-hand scaling factor
-  /// \return The \c left tile scaled by \c right
-  template <typename Left, typename Right,
-      typename std::enable_if<detail::is_numeric_v<Right>>::type* = nullptr>
-  inline decltype(auto) operator*(const Tile<Left>& left, const Right right)
-  { return scale(left, right); }
-
-  /// Scale tile operator
-
-  /// \tparam Left The left-hand scalar type
-  /// \tparam Right The right-hand scalar type
-  /// \param left The left-hand scaling factor
-  /// \param right The right-hand tile
-  /// \return The \c right tile scaled by \c left
-  template <typename Left, typename Right,
-      typename std::enable_if<TiledArray::detail::is_numeric_v<Left>>::type* = nullptr>
-  inline decltype(auto) operator*(const Left left, const Tile<Right>& right)
-  { return scale(right, left); }
-
-  /// In-place product tile operator
-
-  /// Multiply the elements of the \c right tile by that of the \c left tile.
-  /// \tparam Left The left-hand tensor type
-  /// \tparam Right The right-hand tensor type
-  /// \param left The left-hand tile
-  /// \param right The right-hand tile
-  /// \return The \c left tile, <tt>left[i] *= right[i]</tt>
-  template <typename Left, typename Right>
-  inline Tile<Left>& operator*=(Tile<Left>& left, const Tile<Right>& right)
-  { return mult_to(left, right); }
-
-  /// Negate tile operator
-
-  /// \tparam Arg The argument tensor type
-  /// \param arg The argument tile
-  /// \return A negated copy of \c arg
-  template <typename Arg>
-  inline decltype(auto) operator-(const Tile<Arg>& arg)
-  { return neg(arg); }
-
-  /// Permute tile operator
-
-  /// \tparam Arg The argument tensor type
-  /// \param perm The permutation to be applied to \c arg
-  /// \param arg The argument tile
-  /// \return A permuted copy of \c arg
-  template <typename Arg>
-  inline decltype(auto) operator*(const Permutation& perm, Tile<Arg> const arg)
-  { return permute(arg, perm); }
-
-  /// Tile output stream operator
+  /// Tile output stream operator -------------------------------------------------
 
   /// \tparam T The tensor type
   /// \param os The output stream

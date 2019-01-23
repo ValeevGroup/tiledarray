@@ -9,7 +9,7 @@ set -ev
 if [ "$CXX" = "g++" ]; then
   export CC=/usr/bin/gcc-$GCC_VERSION
   export CXX=/usr/bin/g++-$GCC_VERSION
-  export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
+  export EXTRACXXFLAGS="-mno-avx"
 else
   export CC=/usr/bin/clang-$CLANG_VERSION
   export CXX=/usr/bin/clang++-$CLANG_VERSION

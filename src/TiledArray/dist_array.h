@@ -434,7 +434,7 @@ namespace TiledArray {
     /// \param value The fill value
     /// \param skip_set If false, will throw if any tiles are already set
     void fill_local(const element_type& value = element_type(), bool skip_set = false) {
-      init_tiles([=] (const range_type& range)
+      init_tiles([value] (const range_type& range)
           { return value_type(range, value); }, skip_set);
     }
 
@@ -531,7 +531,7 @@ namespace TiledArray {
       init_tiles([op] (const TiledArray::Range& range) -> value_type
       {
         // Initialize the tile with the given range object
-        TiledArray::Tensor<double> tile(range);
+        Tile tile(range);
 
         // Initialize tile elements
         for(auto& idx: range)
