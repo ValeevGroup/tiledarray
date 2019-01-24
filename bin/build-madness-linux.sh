@@ -10,7 +10,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
-    export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
+    export EXTRACXXFLAGS="-mno-avx"
     export F77=gfortran-$GCC_VERSION
   else
     export CC=/usr/bin/clang-$CLANG_VERSION
