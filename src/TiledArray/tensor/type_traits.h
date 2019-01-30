@@ -27,7 +27,6 @@
 #define TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
 
 #include <type_traits>
-
 namespace Eigen {
 
 // Forward declarations
@@ -37,12 +36,23 @@ template <typename> class aligned_allocator;
 
 namespace TiledArray {
 
-  // Forward declarations
-  class Range;
-  class BlockRange;
-  template <typename T, typename A = Eigen::aligned_allocator<T>> class Tensor;
-  template <typename> class Tile;
+// Forward declarations
+class Range;
+class BlockRange;
+template<typename T, typename A = Eigen::aligned_allocator<T>> class Tensor;
+template<typename> class Tile;
 
+} // namespce TiledArray
+
+namespace btas{
+// forward declarations
+//class Range;
+template <typename _T, typename _Allocator> class varray;
+template <typename _T, class _Range, class _Storage, typename X> class Tensor;
+
+} // name space btas
+
+namespace TiledArray{
   namespace detail {
 
     // Forward declarations
@@ -80,6 +90,9 @@ namespace TiledArray {
     template <typename T>
     struct is_tensor_helper<Tile<T> > : public is_tensor_helper<T> { };
 
+    template <typename T, typename Range, typename Storage, typename X>
+    struct is_tensor_helper<btas::Tensor<T,Range,Storage,X>> : public std::true_type {};
+
     template <typename T>
     struct is_tensor_of_tensor_helper : public std::false_type { };
 
@@ -97,6 +110,7 @@ namespace TiledArray {
 
     template <typename T>
     struct is_tensor_of_tensor_helper<Tile<T> > : public is_tensor_of_tensor_helper<T> { };
+
 
     template <> struct is_tensor<> : public std::false_type { };
 
@@ -148,6 +162,12 @@ namespace TiledArray {
 
     template <typename T, typename A>
     struct is_contiguous_tensor_helper<Tensor<T, A> > : public std::true_type { };
+
+    template <typename T, typename Range, typename Storage, typename X>
+    struct is_contiguous_tensor_helper<btas::Tensor<T,Range,Storage,X>> : public is_contiguous_tensor_helper<Storage> {};
+
+    template <typename T, typename A>
+    struct is_contiguous_tensor_helper<btas::varray<T,A>> : public std::true_type {};
 
     template <typename T, typename R, typename OpResult>
     struct is_contiguous_tensor_helper<TensorInterface<T, R, OpResult> > :
