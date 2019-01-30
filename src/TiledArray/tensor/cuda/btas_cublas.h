@@ -371,8 +371,6 @@ btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
 
   TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
 
-  std::cout << "used cuda stream: " << cuda_stream << std::endl;
-
   synchronize_stream(&cuda_stream);
 
   return result;
