@@ -129,7 +129,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   Tensor result;
 
   // check if stream is busy
-  auto stream_status = cudaStreamQuery(cuda_stream);
+//  auto stream_status = cudaStreamQuery(cuda_stream);
 
 
   // if stream is completed, use GPU
@@ -140,12 +140,12 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
     result = Tensor(std::move(result_range), std::move(result_storage));
 
     // left and right are readonly!!
-    cudaMemAdvise(device_data(left), left.size() * sizeof(T),
-                  cudaMemAdviseSetReadMostly,
-                  cudaEnv::instance()->current_cuda_device_id());
-    cudaMemAdvise(device_data(right), right.size() * sizeof(T),
-                  cudaMemAdviseSetReadMostly,
-                  cudaEnv::instance()->current_cuda_device_id());
+//    cudaMemAdvise(device_data(left), left.size() * sizeof(T),
+//                  cudaMemAdviseSetReadMostly,
+//                  cudaEnv::instance()->current_cuda_device_id());
+//    cudaMemAdvise(device_data(right), right.size() * sizeof(T),
+//                  cudaMemAdviseSetReadMostly,
+//                  cudaEnv::instance()->current_cuda_device_id());
 
     // prefetch data
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
@@ -167,7 +167,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
 
     // wait for cuda calls to finish
 //    detail::thread_wait_cuda_stream(cuda_stream);
-
+    synchronize_stream(&cuda_stream);
   }
   // otherwise, use CPU
   else {
@@ -196,7 +196,6 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
                            result.data(), n);
   }
 
-  synchronize_stream(&cuda_stream);
   return result;
 }
 
@@ -269,19 +268,19 @@ void btas_tensor_gemm_cuda_impl(
   T factor_t = T(factor);
   T one(1);
   // check if stream is busy
-  auto stream_status = cudaStreamQuery(cuda_stream);
+//  auto stream_status = cudaStreamQuery(cuda_stream);
 
   // if stream is completed, use GPU
 //  if (stream_status == cudaSuccess) {
   if (true) {
 
     // left and right are readonly!!
-    cudaMemAdvise(device_data(left), left.size() * sizeof(T),
-                  cudaMemAdviseSetReadMostly,
-                  cudaEnv::instance()->current_cuda_device_id());
-    cudaMemAdvise(device_data(right), right.size() * sizeof(T),
-                  cudaMemAdviseSetReadMostly,
-                  cudaEnv::instance()->current_cuda_device_id());
+//    cudaMemAdvise(device_data(left), left.size() * sizeof(T),
+//                  cudaMemAdviseSetReadMostly,
+//                  cudaEnv::instance()->current_cuda_device_id());
+//    cudaMemAdvise(device_data(right), right.size() * sizeof(T),
+//                  cudaMemAdviseSetReadMostly,
+//                  cudaEnv::instance()->current_cuda_device_id());
 
     // prefetch all data
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
@@ -301,6 +300,7 @@ void btas_tensor_gemm_cuda_impl(
                         device_data(left.storage()), lda, &one,
                         device_data(result.storage()), n);
     TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+    synchronize_stream(&cuda_stream);
 
 //    detail::thread_wait_cuda_stream(cuda_stream);
 
@@ -325,7 +325,6 @@ void btas_tensor_gemm_cuda_impl(
                            k, factor_t, left.data(), lda, right.data(), ldb, one,
                            result.data(), n);
   }
-  synchronize_stream(&cuda_stream);
 }
 
 /// result[i] = arg[i]
@@ -508,13 +507,14 @@ template <typename T, typename Range, typename Storage>
 void btas_tensor_mult_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                    const btas::Tensor<T, Range, Storage> &arg) {
   auto device_id = cudaEnv::instance()->current_cuda_device_id();
-  auto &stream = detail::get_stream_based_on_range(result.range());
+  auto &cuda_stream = detail::get_stream_based_on_range(result.range());
 
   std::size_t n = result.size();
 
   TA_ASSERT(n == arg.size());
 
-  mult_to_cuda_kernel(result.data(), arg.data(), n, stream, device_id);
+  mult_to_cuda_kernel(result.data(), arg.data(), n, cuda_stream, device_id);
+  synchronize_stream(&cuda_stream);
 }
 
 /// result[i] = arg1[i] * arg2[i]
@@ -538,6 +538,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_mult_cuda_impl(
   mult_cuda_kernel(result.data(), arg1.data(), arg2.data(), n, cuda_stream,
                    device_id);
 
+  synchronize_stream(&cuda_stream);
   return result;
 }
 
