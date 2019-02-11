@@ -357,10 +357,11 @@ namespace TiledArray {
         static void CUDART_CB cuda_readyresult_reset_callback(cudaStream_t stream, cudaError_t status,
                                                            void* userData) {
 
-          // convert void* to DependencyInterface
-          std::shared_ptr<result_type>* dep = static_cast<std::shared_ptr<result_type>*>(userData);
-          // call reset
-          dep->reset();
+          // convert void* to the correct type
+          std::shared_ptr<result_type>* result = static_cast<std::shared_ptr<result_type>*>(userData);
+          // call reset on shared_ptr
+          result->reset();
+          delete result;
         }
 
 #endif
@@ -398,12 +399,10 @@ namespace TiledArray {
                 this->dec();
               }
               else{
-                auto callback_object = new std::vector<void*>();
-                callback_object->push_back(this);
-                callback_object->push_back(ready_object);
+                auto callback_object = new std::vector<void*>(2);
+                (*callback_object)[0] = this;
+                (*callback_object)[1] = ready_object;
                 cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_reduceobject_delete_callback, callback_object, 0);
-                // reset stream_ptr to nullptr
-                synchronize_stream(nullptr);
               }
 #else
               ReduceObject::destroy(ready_object);
@@ -425,9 +424,8 @@ namespace TiledArray {
                 ready_result.reset();
               }
               else{
-                cudaStreamAddCallback(*stream_ptr, cuda_readyresult_reset_callback, &ready_result, 0);
-                // reset stream_ptr to nullptr
-                synchronize_stream(nullptr);
+                auto ready_result_heap = new std::shared_ptr<result_type>(ready_result);
+                cudaStreamAddCallback(*stream_ptr, cuda_readyresult_reset_callback, ready_result_heap, 0);
               }
 #else
               ready_result.reset();
@@ -456,9 +454,10 @@ namespace TiledArray {
             ReduceObject::destroy(object);
           }
           else{
-            auto callback_object = new std::vector<void*>();
-            callback_object->push_back(const_cast<ReduceObject*>(object));
+            auto callback_object = new std::vector<void*>(1);
+            (*callback_object)[0] = const_cast<ReduceObject*>(object);
             cudaStreamAddCallback(*stream_ptr, cuda_reduceobject_delete_callback,callback_object, 0);
+//            synchronize_stream(nullptr);
           }
 #else
           ReduceObject::destroy(object);
@@ -470,15 +469,16 @@ namespace TiledArray {
           // Decrement the dependency counter for the argument. This must
           // be done after the reduce call to avoid a race condition.
 #ifdef TILEDARRAY_HAS_CUDA
+          stream_ptr = tls_cudastream_accessor();
           if(stream_ptr == nullptr){
             this->dec();
           }
           else{
-            auto callback_object2 = new std::vector<void*>();
-            callback_object2->push_back(this);
+            auto callback_object2 = new std::vector<void*>(1);
+            (*callback_object2)[0] = this;
             cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_callback, callback_object2, 0);
             // reset stream_ptr to nullptr
-            synchronize_stream(nullptr);
+//            synchronize_stream(nullptr);
           }
 #else
           this->dec();
@@ -502,9 +502,9 @@ namespace TiledArray {
             ReduceObject::destroy(object2);
           }
           else{
-            auto callback_object1 = new std::vector<void*>();
-            callback_object1->push_back(const_cast<ReduceObject*>(object1));
-            callback_object1->push_back(const_cast<ReduceObject*>(object2));
+            auto callback_object1 = new std::vector<void*>(2);
+            (*callback_object1)[0] = const_cast<ReduceObject*>(object1);
+            (*callback_object1)[1] = const_cast<ReduceObject*>(object2);
             cudaStreamAddCallback(*stream_ptr, cuda_reduceobject_delete_callback, callback_object1, 0);
           }
 #else
@@ -524,12 +524,12 @@ namespace TiledArray {
             this->dec();
           }
           else{
-            auto callback_object2 = new std::vector<void*>();
-            callback_object2->push_back(this);
-            callback_object2->push_back(this);
+            auto callback_object2 = new std::vector<void*>(2);
+            (*callback_object2)[0] = this;
+            (*callback_object2)[1] = this;
             cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_callback, callback_object2, 0);
             // reset stream_ptr to nullptr
-            synchronize_stream(nullptr);
+//            synchronize_stream(nullptr);
           }
 
 #else

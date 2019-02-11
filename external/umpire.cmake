@@ -55,6 +55,7 @@ else()
                 -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
                 -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                 -DENABLE_CUDA=ON
+                -DENABLE_BENCHMARKS=OFF
                 -DENABLE_OPENMP=OFF
                 -DENABLE_TESTS=OFF
                 -DENABLE_ASSERTS=${TA_DEFAULT_ERROR}
