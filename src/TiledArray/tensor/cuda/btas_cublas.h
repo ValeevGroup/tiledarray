@@ -154,16 +154,13 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
         right.storage(), cuda_stream);
 
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasSetStream(handle, cuda_stream);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+    CublasSafeCall(cublasSetStream(handle, cuda_stream));
 
-    status = cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
+    CublasSafeCall(cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
                         to_cublas_op(gemm_helper.left_op()), n, m, k, &factor_t,
                         device_data(right.storage()), ldb,
                         device_data(left.storage()), lda, &zero,
-                        device_data(result.storage()), n);
-
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+                        device_data(result.storage()), n));
 
     // wait for cuda calls to finish
 //    detail::thread_wait_cuda_stream(cuda_stream);
@@ -292,14 +289,12 @@ void btas_tensor_gemm_cuda_impl(
 
 
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasSetStream(handle, cuda_stream);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
+    CublasSafeCall(cublasSetStream(handle, cuda_stream));
+    CublasSafeCall(cublasGemm(handle, to_cublas_op(gemm_helper.right_op()),
                         to_cublas_op(gemm_helper.left_op()), n, m, k, &factor_t,
                         device_data(right.storage()), ldb,
                         device_data(left.storage()), lda, &one,
-                        device_data(result.storage()), n);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+                        device_data(result.storage()), n));
     synchronize_stream(&cuda_stream);
 
 //    detail::thread_wait_cuda_stream(cuda_stream);
@@ -341,13 +336,10 @@ btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
 
   // call cublasCopy
   const auto &handle = cuBLASHandlePool::handle();
-  auto status = cublasSetStream(handle, cuda_stream);
-  TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+  CublasSafeCall(cublasSetStream(handle, cuda_stream));
 
-  status = cublasCopy(handle, result.size(), device_data(arg.storage()), 1,
-                      device_data(result.storage()), 1);
-
-  TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+  CublasSafeCall(cublasCopy(handle, result.size(), device_data(arg.storage()), 1,
+                      device_data(result.storage()), 1));
 
   synchronize_stream(&cuda_stream);
   return result;
@@ -364,11 +356,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
 
   // call cublasScale
   const auto &handle = cuBLASHandlePool::handle();
-  auto status = cublasSetStream(handle, cuda_stream);
-  status =
-      cublasScal(handle, result.size(), &a, device_data(result.storage()), 1);
-
-  TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+  CublasSafeCall(cublasSetStream(handle, cuda_stream));
+  CublasSafeCall(cublasScal(handle, result.size(), &a, device_data(result.storage()), 1));
 
   synchronize_stream(&cuda_stream);
 
@@ -383,11 +372,9 @@ void btas_tensor_scale_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
   // call cublasScale
   const auto &handle = cuBLASHandlePool::handle();
-  auto status = cublasSetStream(handle, cuda_stream);
-  status =
-      cublasScal(handle, result.size(), &a, device_data(result.storage()), 1);
+  CublasSafeCall(cublasSetStream(handle, cuda_stream));
+  CublasSafeCall(cublasScal(handle, result.size(), &a, device_data(result.storage()), 1));
 
-  TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
   synchronize_stream(&cuda_stream);
 }
 
@@ -406,11 +393,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
 
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasSetStream(handle, cuda_stream);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasAxpy(handle, result.size(), &b, device_data(arg2.storage()),
-                        1, device_data(result.storage()), 1);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+    CublasSafeCall(cublasSetStream(handle, cuda_stream));
+    CublasSafeCall(cublasAxpy(handle, result.size(), &b, device_data(arg2.storage()),
+                        1, device_data(result.storage()), 1));
   } else {
     TA_ASSERT(false);
     //    btas::axpy(1.0, arg, result);
@@ -432,12 +417,9 @@ void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
   T b = T(-1) * a;
 
   const auto &handle = cuBLASHandlePool::handle();
-  auto status = cublasSetStream(handle, cuda_stream);
-  TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-
-  status = cublasAxpy(handle, result.size(), &b, device_data(arg1.storage()), 1,
-                      device_data(result.storage()), 1);
-  TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+  CublasSafeCall(cublasSetStream(handle, cuda_stream));
+  CublasSafeCall(cublasAxpy(handle, result.size(), &b, device_data(arg1.storage()), 1,
+                      device_data(result.storage()), 1));
   synchronize_stream(&cuda_stream);
 }
 
@@ -454,11 +436,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
   if (in_memory_space<MemorySpace::CUDA>(result.storage()) &&
       in_memory_space<MemorySpace::CUDA>(arg2.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasSetStream(handle, cuda_stream);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasAxpy(handle, result.size(), &a, device_data(arg2.storage()),
-                        1, device_data(result.storage()), 1);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+    CublasSafeCall(cublasSetStream(handle, cuda_stream));
+    CublasSafeCall(cublasAxpy(handle, result.size(), &a, device_data(arg2.storage()),
+                        1, device_data(result.storage()), 1));
   } else {
     TA_ASSERT(false);
     //    btas::axpy(1.0, arg, result);
@@ -490,11 +470,9 @@ void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 
   if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasSetStream(handle, cuda_stream);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasAxpy(handle, result.size(), &a, device_data(arg.storage()),
-                        1, device_data(result.storage()), 1);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+    CublasSafeCall(cublasSetStream(handle, cuda_stream));
+    CublasSafeCall(cublasAxpy(handle, result.size(), &a, device_data(arg.storage()),
+                        1, device_data(result.storage()), 1));
   } else {
     TA_ASSERT(false);
     //    btas::axpy(1.0, arg, result);
@@ -555,11 +533,9 @@ btas_tensor_squared_norm_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
   T result = 0;
   if (in_memory_space<MemorySpace::CUDA>(storage)) {
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasSetStream(handle, cuda_stream);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasDot(handle, size, device_data(storage), 1,
-                       device_data(storage), 1, &result);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+    CublasSafeCall(cublasSetStream(handle, cuda_stream));
+    CublasSafeCall(cublasDot(handle, size, device_data(storage), 1,
+                       device_data(storage), 1, &result));
   } else {
     TA_ASSERT(false);
     //    result = TiledArray::math::dot(size, storage.data(), storage.data());
@@ -585,11 +561,9 @@ typename btas::Tensor<T, Range, Storage>::value_type btas_tensor_dot_cuda_impl(
   if (in_memory_space<MemorySpace::CUDA>(arg1.storage()) &&
       in_memory_space<MemorySpace::CUDA>(arg2.storage())) {
     const auto &handle = cuBLASHandlePool::handle();
-    auto status = cublasSetStream(handle, cuda_stream);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
-    status = cublasDot(handle, size, device_data(arg1.storage()), 1,
-                       device_data(arg2.storage()), 1, &result);
-    TA_ASSERT(status == CUBLAS_STATUS_SUCCESS);
+    CublasSafeCall(cublasSetStream(handle, cuda_stream));
+    CublasSafeCall(cublasDot(handle, size, device_data(arg1.storage()), 1,
+                       device_data(arg2.storage()), 1, &result));
   } else {
     TA_ASSERT(false);
     //    result = TiledArray::math::dot(size, storage.data(), storage.data());

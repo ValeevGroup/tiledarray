@@ -1911,7 +1911,7 @@ BOOST_AUTO_TEST_CASE(outer_product) {
 BOOST_AUTO_TEST_CASE(dot) {
   // Test the dot expression function
   double result = 0;
-  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("a,b,c"));
+  BOOST_REQUIRE_NO_THROW(result = static_cast<double>(a("a,b,c") * b("a,b,c")));
   BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("a,b,c"));
   BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("a,b,c"));
   BOOST_REQUIRE_NO_THROW(result *= a("a,b,c") * b("a,b,c"));
@@ -1935,7 +1935,7 @@ BOOST_AUTO_TEST_CASE(dot_permute) {
   Permutation perm({2, 1, 0});
   // Test the dot expression function
   double result = 0;
-  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(result = static_cast<double>(a("a,b,c") * b("c,b,a")));
   BOOST_REQUIRE_NO_THROW(result += a("a,b,c") * b("c,b,a"));
   BOOST_REQUIRE_NO_THROW(result -= a("a,b,c") * b("c,b,a"));
   BOOST_REQUIRE_NO_THROW(result *= a("a,b,c") * b("c,b,a"));
@@ -1960,7 +1960,7 @@ BOOST_AUTO_TEST_CASE(dot_permute) {
 BOOST_AUTO_TEST_CASE(dot_expr) {
   // Test the dot expression function
   double result = 0;
-  BOOST_REQUIRE_NO_THROW(result = a("a,b,c") * b("a,b,c"));
+  BOOST_REQUIRE_NO_THROW(result = static_cast<double>(a("a,b,c") * b("a,b,c")));
 
   // Compute the expected value for the dot function.
   double expected = 0;

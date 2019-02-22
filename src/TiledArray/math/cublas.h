@@ -30,6 +30,27 @@
 
 #include <TiledArray/error.h>
 #include <cublas_v2.h>
+#include <thrust/system_error.h>
+#include <thrust/system/cuda/error.h>
+
+#define CUBLAS_ERROR_CHECK
+
+#define CublasSafeCall(err) __cublasSafeCall(err, __FILE__, __LINE__)
+
+inline void __cublasSafeCall( cublasStatus_t err, const char *file, const int line )
+{
+#ifdef CUBLAS_ERROR_CHECK
+  if ( CUBLAS_STATUS_SUCCESS != err )
+  {
+    std::stringstream ss;
+    ss << "cublasSafeCall() failed at: " << file << "(" << line << ")";
+    std::string what = ss.str();
+    throw std::runtime_error(what);
+  }
+#endif
+
+  return;
+}
 
 namespace TiledArray {
 
@@ -49,10 +70,8 @@ class cuBLASHandlePool {
     static thread_local cublasHandle_t* handle_{nullptr};
     if (handle_ == nullptr) {
       handle_ = new cublasHandle_t;
-      auto error = cublasCreate(handle_);
-      TA_ASSERT(error == CUBLAS_STATUS_SUCCESS);
-      error = cublasSetPointerMode(*handle_, CUBLAS_POINTER_MODE_HOST);
-      TA_ASSERT(error == CUBLAS_STATUS_SUCCESS);
+      CublasSafeCall(cublasCreate(handle_));
+      CublasSafeCall(cublasSetPointerMode(*handle_, CUBLAS_POINTER_MODE_HOST));
     }
     return *handle_;
   }
