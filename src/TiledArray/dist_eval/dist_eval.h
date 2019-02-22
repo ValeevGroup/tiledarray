@@ -26,7 +26,7 @@
 #include <TiledArray/type_traits.h>
 #include <TiledArray/config.h>
 #ifdef TILEDARRAY_HAS_CUDA
-#include <cuda_runtime.h>
+#include <TiledArray/external/cuda.h>
 #endif
 
 namespace TiledArray {

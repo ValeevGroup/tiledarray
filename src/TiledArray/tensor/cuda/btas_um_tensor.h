@@ -70,7 +70,7 @@ template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, TiledArray::btasUMTensorVarray<T>> {
   static inline void store(const Archive &ar,
                            const TiledArray::btasUMTensorVarray<T> &t) {
-    cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id());
+    CudaSafeCall(cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id()));
     auto &stream = TiledArray::detail::get_stream_based_on_range(t.range());
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(t.storage(),
                                                                     stream);
@@ -126,7 +126,7 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
                                      const TiledArray::Permutation &perm) {
   // compute result range
   auto result_range = perm * arg.range();
-  cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
+  CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
   // compute the stream to use
   auto &stream = detail::get_stream_based_on_range(result_range);
@@ -454,7 +454,7 @@ void to_host(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
   auto to_host = [](TiledArray::Tile<UMTensor> &tile) {
 
-    cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
+    CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
@@ -473,7 +473,7 @@ void to_host(
   }
 
   world.gop.fence();
-  cudaDeviceSynchronize();
+  CudaSafeCall(cudaDeviceSynchronize());
 };
 
 /// to device for UM Array
@@ -482,7 +482,7 @@ void to_device(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
   auto to_device = [](TiledArray::Tile<UMTensor> &tile) {
 
-    cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
+    CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
@@ -502,7 +502,7 @@ void to_device(
   }
 
   world.gop.fence();
-  cudaDeviceSynchronize();
+  CudaSafeCall(cudaDeviceSynchronize());
 };
 
 /// convert array from UMTensor to TiledArray::Tensor
@@ -535,7 +535,7 @@ ta_tensor_to_um_tensor(
     TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
   auto convert_tile = [](const TiledArray::Tensor<T> &tile) {
 
-    cudaSetDevice(cudaEnv::instance()->current_cuda_device_id());
+    CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
     typename UMTensor::storage_type storage(tile.range().area());
 

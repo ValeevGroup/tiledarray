@@ -30,6 +30,8 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <thrust/system_error.h>
+#include <thrust/system/cuda/error.h>
 
 // for memory management
 #include <umpire/Umpire.hpp>
@@ -44,6 +46,42 @@
 
 #include <cassert>
 #include <vector>
+
+#define CUDA_ERROR_CHECK
+
+#define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
+#define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
+
+inline void __cudaSafeCall( cudaError err, const char *file, const int line )
+{
+#ifdef CUDA_ERROR_CHECK
+  if ( cudaSuccess != err )
+  {
+    std::stringstream ss;
+    ss << "cudaSafeCall() failed at: " << file << "(" << line << ")";
+    std::string what = ss.str();
+    throw thrust::system_error(err, thrust::cuda_category(), what);
+  }
+#endif
+
+  return;
+}
+
+inline void __cudaCheckError( const char *file, const int line )
+{
+#ifdef CUDA_ERROR_CHECK
+  cudaError err = cudaGetLastError();
+  if ( cudaSuccess != err )
+  {
+    std::stringstream ss;
+    ss << "cudaCheckError() failed at: " << file << "(" << line << ")";
+    std::string what = ss.str();
+    throw thrust::system_error(err, thrust::cuda_category(), what);
+  }
+#endif
+
+  return;
+}
 
 namespace TiledArray {
 
@@ -81,11 +119,7 @@ inline int num_cuda_streams() {
 
 inline int num_cuda_devices() {
   int num_devices = -1;
-  auto error = cudaGetDeviceCount(&num_devices);
-  TA_ASSERT(error == cudaSuccess);
-  //  if (error != cudaSuccess) {
-  //    std::cout << "error(cudaGetDeviceCount) = " << error << std::endl;
-  //  }
+  CudaSafeCall(cudaGetDeviceCount(&num_devices));
   return num_devices;
 }
 
@@ -132,33 +166,11 @@ inline void synchronize_stream(const cudaStream_t* stream) {
 
 class cudaEnv {
  public:
-  cudaEnv(int num_devices, int device_id, int num_streams,
-          umpire::Allocator alloc)
-      : um_dynamic_pool_(alloc),
-        num_cuda_devices_(num_devices),
-        current_cuda_device_id_(device_id),
-        num_cuda_streams_(num_streams) {
-    // set device for current MPI process
-    auto error = cudaSetDevice(current_cuda_device_id_);
-    TA_ASSERT(error == cudaSuccess);
-    //    if (error != cudaSuccess) {
-    //      std::cout << "error(cudaSetDevice) = " << error << std::endl;
-    //    }
-
-    /// TODO set device for all MAD_THREADS
-
-    // creates cuda streams on current device
-    cuda_streams_.resize(num_cuda_streams_);
-    for (auto& stream : cuda_streams_) {
-      auto error = cudaStreamCreate(&stream);
-      TA_ASSERT(error == cudaSuccess);
-    }
-  }
 
   ~cudaEnv() {
     // destroy cuda streams on current device
     for (auto& stream : cuda_streams_) {
-      cudaStreamDestroy(stream);
+      CudaSafeCall(cudaStreamDestroy(stream));
     }
   }
 
@@ -181,6 +193,7 @@ class cudaEnv {
   static void initialize(std::unique_ptr<cudaEnv>& instance) {
     // initialize only when not initialized
     if (instance == nullptr) {
+
       int num_streams = detail::num_cuda_streams();
       int num_devices = detail::num_cuda_devices();
       int device_id = detail::current_cuda_device_id();
@@ -198,8 +211,8 @@ class cudaEnv {
               "ThreadSafeUMDynamicPool", rm.getAllocator("UMDynamicPool"));
 
       auto cuda_env =
-          std::make_unique<cudaEnv>(num_devices, device_id, num_streams,
-                                    rm.getAllocator("ThreadSafeUMDynamicPool"));
+          std::unique_ptr<cudaEnv> (new cudaEnv(num_devices, device_id, num_streams,
+                                    rm.getAllocator("ThreadSafeUMDynamicPool")));
       instance = std::move(cuda_env);
     }
   }
@@ -210,6 +223,8 @@ class cudaEnv {
 
   int num_cuda_streams() const { return num_cuda_streams_; }
 
+  bool concurrent_managed_access() const {return cuda_device_concurrent_manged_access_; }
+
   const cudaStream_t& cuda_stream(std::size_t i) const {
     TA_ASSERT(i < cuda_streams_.size());
     return cuda_streams_[i];
@@ -217,12 +232,49 @@ class cudaEnv {
 
   umpire::Allocator& um_dynamic_pool() { return um_dynamic_pool_; }
 
+ protected:
+
+  cudaEnv(int num_devices, int device_id, int num_streams,
+          umpire::Allocator alloc)
+          : um_dynamic_pool_(alloc),
+            num_cuda_devices_(num_devices),
+            current_cuda_device_id_(device_id),
+            num_cuda_streams_(num_streams) {
+
+    if (num_devices <= 0) {
+      throw std::runtime_error("No CUDA-Enabled GPUs Found!\n");
+    }
+
+    // set device for current MPI process
+    CudaSafeCall(cudaSetDevice(current_cuda_device_id_));
+
+    /// check the capability of CUDA device
+    cudaDeviceProp prop;
+    CudaSafeCall(cudaGetDeviceProperties(&prop, device_id));
+    if(!prop.managedMemory){
+      throw std::runtime_error("CUDA Device doesn't support managedMemory\n");
+    }
+    int concurrent_managed_access;
+    CudaSafeCall(cudaDeviceGetAttribute(&concurrent_managed_access, cudaDevAttrConcurrentManagedAccess, device_id));
+    cuda_device_concurrent_manged_access_ = concurrent_managed_access;
+    if(!cuda_device_concurrent_manged_access_){
+      std::cout << "\nWarning: CUDA Device doesn't support ConcurrentManagedAccess!\n\n";
+    }
+
+    // creates cuda streams on current device
+    cuda_streams_.resize(num_cuda_streams_);
+    for (auto& stream : cuda_streams_) {
+      CudaSafeCall(cudaStreamCreate(&stream));
+    }
+  }
+
  private:
   /// a Thread Safe, Dynamic memory pool for Unified Memory
   umpire::Allocator um_dynamic_pool_;
 
   int num_cuda_devices_;
   int current_cuda_device_id_;
+  bool cuda_device_concurrent_manged_access_;
 
   int num_cuda_streams_;
   std::vector<cudaStream_t> cuda_streams_;
@@ -238,7 +290,7 @@ inline void cuda_initialize() {
 
 /// finalize cuda environment
 inline void cuda_finalize() {
-  cudaDeviceSynchronize();
+  CudaSafeCall(cudaDeviceSynchronize());
   cublasDestroy(cuBLASHandlePool::handle());
 }
 

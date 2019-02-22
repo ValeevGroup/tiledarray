@@ -482,7 +482,10 @@ int main(int argc, char *argv[]) {
     auto result = cudaMemGetInfo(&free_mem, &total_mem);
     std::cout << "CUDA memory stats: {total,free} = {" << total_mem << ","
               << free_mem << "}" << std::endl;
-  } catch (...) {
+  } catch(std::exception& ex){
+    std::cout << ex.what() << std::endl;
+  }
+  catch (...) {
     std::cerr << "unknown exception" << std::endl;
   }
 

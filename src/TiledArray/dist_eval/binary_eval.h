@@ -207,7 +207,8 @@ namespace TiledArray {
         left_.wait();
         right_.wait();
 #ifdef TILEDARRAY_HAS_CUDA
-        cudaDeviceSynchronize();
+        CudaCheckError();
+        CudaSafeCall(cudaDeviceSynchronize());
 #endif
 
         return task_count;

@@ -21,6 +21,7 @@
  *
  */
 
+#include <TiledArray/external/cuda.h>
 #include <TiledArray/tensor/cuda/mult_kernel.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
@@ -30,7 +31,7 @@ namespace TiledArray {
 template <>
 void mult_to_cuda_kernel(float* result, const float* arg, std::size_t n,
                        cudaStream_t stream, int device_id) {
-  cudaSetDevice(device_id);
+  CudaSafeCall(cudaSetDevice(device_id));
 
   thrust::multiplies<float> mul_op;
   thrust::transform(
@@ -42,7 +43,7 @@ void mult_to_cuda_kernel(float* result, const float* arg, std::size_t n,
 template <>
 void mult_to_cuda_kernel(double* result, const double* arg, std::size_t n,
                        cudaStream_t stream, int device_id) {
-  cudaSetDevice(device_id);
+  CudaSafeCall(cudaSetDevice(device_id));
 
   thrust::multiplies<double> mul_op;
   thrust::transform(
@@ -55,7 +56,7 @@ template <>
 void mult_cuda_kernel(float* result, const float* arg1,
                     const float* arg2, std::size_t n, cudaStream_t stream,
                     int device_id) {
-  cudaSetDevice(device_id);
+  CudaSafeCall(cudaSetDevice(device_id));
 
   thrust::multiplies<float> mul_op;
   thrust::transform(
@@ -69,7 +70,7 @@ template <>
 void mult_cuda_kernel(double* result, const double* arg1,
                     const double* arg2, std::size_t n, cudaStream_t stream,
                     int device_id) {
-  cudaSetDevice(device_id);
+  CudaSafeCall(cudaSetDevice(device_id));
 
   thrust::multiplies<double> mul_op;
   thrust::transform(
