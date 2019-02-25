@@ -47,14 +47,13 @@
 #include <cassert>
 #include <vector>
 
-#define CUDA_ERROR_CHECK
 
 #define CudaSafeCall( err ) __cudaSafeCall( err, __FILE__, __LINE__ )
 #define CudaCheckError()    __cudaCheckError( __FILE__, __LINE__ )
 
 inline void __cudaSafeCall( cudaError err, const char *file, const int line )
 {
-#ifdef CUDA_ERROR_CHECK
+#ifdef TILEDARRAY_CHECK_CUDA_ERROR
   if ( cudaSuccess != err )
   {
     std::stringstream ss;
@@ -69,7 +68,7 @@ inline void __cudaSafeCall( cudaError err, const char *file, const int line )
 
 inline void __cudaCheckError( const char *file, const int line )
 {
-#ifdef CUDA_ERROR_CHECK
+#ifdef TILEDARRAY_CHECK_CUDA_ERROR
   cudaError err = cudaGetLastError();
   if ( cudaSuccess != err )
   {

@@ -33,13 +33,12 @@
 #include <thrust/system_error.h>
 #include <thrust/system/cuda/error.h>
 
-#define CUBLAS_ERROR_CHECK
 
 #define CublasSafeCall(err) __cublasSafeCall(err, __FILE__, __LINE__)
 
 inline void __cublasSafeCall( cublasStatus_t err, const char *file, const int line )
 {
-#ifdef CUBLAS_ERROR_CHECK
+#ifdef TILEDARRAY_CHECK_CUDA_ERROR
   if ( CUBLAS_STATUS_SUCCESS != err )
   {
     std::stringstream ss;

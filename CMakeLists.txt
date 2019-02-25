@@ -101,6 +101,11 @@ add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks supports programmi
 option(ENABLE_CUDA "Enable use of CUDA with TiledArray" OFF)
 add_feature_info(CUDA ENABLE_CUDA "NVIDIA CUDA support for GPU")
 
+if(ENABLE_CUDA)
+  option(ENABLE_CUDA_ERROR_CHECK "TiledArray will always check errors in CUDA calls" ON)
+  add_feature_info(CUDA_ERROR_CHECK ENABLE_CUDA_ERROR_CHECK "Checks CUDA Error")
+endif()
+
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
 add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
 option(ENABLE_TCMALLOC_MINIMAL "Enable linking with tcmalloc_minimal" OFF)
