@@ -291,6 +291,7 @@ inline void cuda_initialize() {
 inline void cuda_finalize() {
   CudaSafeCall(cudaDeviceSynchronize());
   cublasDestroy(cuBLASHandlePool::handle());
+  cudaEnv::instance().reset(nullptr);
 }
 
 }  // namespace TiledArray

@@ -136,58 +136,51 @@ BOOST_AUTO_TEST_CASE(tensor_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") *= a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") * a("c,b,a"));
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a").conj());
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3,3,3}, {5,5,5}));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3,3,3}, {5,5,5}));
   BOOST_CHECK_NO_THROW(c("a,b,c") = ca("c,b,a"));
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("c,b,a").conj());
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block(lobound, upbound));
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block({3,3,3}, {5,5,5}));
 }
-//
-// BOOST_AUTO_TEST_CASE( block_tensor_factories )
-//{
-//  const auto& ca = a;
-//  const std::array<int,3> lobound{{3,3,3}};
-//  const std::array<int,3> upbound{{5,5,5}};
-//
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3,3,3},
-//  {5,5,5}).conj()); BOOST_CHECK_NO_THROW(c("a,b,c") =
-//  a("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(c("a,b,c") +=
-//  a("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(c("a,b,c") =
-//  c("b,a,c") + a("b,a,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") -= a("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = c("b,a,c") - a("b,a,c").block(lobound,
-//  upbound)); BOOST_CHECK_NO_THROW(c("a,b,c") *= a("a,b,c").block(lobound,
-//  upbound)); BOOST_CHECK_NO_THROW(c("a,b,c") = c("b,a,c") *
-//  a("b,a,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(c("a,b,c") =
-//  a("a,b,c").block(lobound, upbound).conj()); BOOST_CHECK_NO_THROW(c("a,b,c")
-//  = ca("a,b,c").block(lobound, upbound).conj());
-//
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * a("a,b,c").block(lobound,
-//  upbound))); BOOST_CHECK_NO_THROW(c("a,b,c") = (2 * a("a,b,c").block(lobound,
-//  upbound)) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = -a("a,b,c").block(lobound,
-//  upbound)); BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * a("a,b,c").block(lobound,
-//  upbound)));
-//
+
+ BOOST_AUTO_TEST_CASE( block_tensor_factories )
+{
+  const auto& ca = a;
+  const std::array<int,3> lobound{{3,3,3}};
+  const std::array<int,3> upbound{{5,5,5}};
+
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3, 3, 3},{5, 5, 5}).conj());
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") += a("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = c("b,a,c") + a("b,a,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") -= a("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = c("b,a,c") - a("b,a,c").block(lobound,upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") *= a("a,b,c").block(lobound,upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = c("b,a,c") * a("b,a,c").block(lobound, upbound));
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound).conj());
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block(lobound, upbound).conj());
+
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * a("a,b,c").block(lobound,upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = (2 * a("a,b,c").block(lobound,upbound)) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -a("a,b,c").block(lobound,upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * a("a,b,c").block(lobound,upbound)));
+
 //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("a,b,c").block(lobound,
-//  upbound)))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
-//  a("a,b,c").block(lobound, upbound))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-//  conj(conj(2 * a("a,b,c").block(lobound, upbound))));
-//
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("a,b,c").block(lobound,
-//  upbound))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("a,b,c").block(lobound,
-//  upbound)) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 *
-//  a("a,b,c").block(lobound, upbound))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-//  conj(2 * a("a,b,c").block(lobound, upbound)) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("a,b,c").block(lobound,
-//  upbound))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 *
-//  a("a,b,c").block(lobound, upbound)));
-//}
-//
-//
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("a,b,c").block(lobound,upbound))));
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("a,b,c").block(lobound, upbound)));
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * a("a,b,c").block(lobound, upbound))));
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("a,b,c").block(lobound, upbound)));
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("a,b,c").block(lobound, upbound)) * 2);
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * a("a,b,c").block(lobound, upbound)));
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("a,b,c").block(lobound, upbound)) * 2);
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("a,b,c").block(lobound,upbound)));
+//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * a("a,b,c").block(lobound, upbound)));
+}
+
+
 BOOST_AUTO_TEST_CASE(scaled_tensor_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a") * 2);
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * a("c,b,a"));
@@ -218,15 +211,14 @@ BOOST_AUTO_TEST_CASE(add_factories) {
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")));
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") + b("a,b,c"))));
   //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") +
-  //  b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
-  //  (conj(a("c,b,a") + b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-  //  conj(a("c,b,a") + b("a,b,c")) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
-  //  conj(a("c,b,a") + b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
-  //  (a("c,b,a") + b("a,b,c"))) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
-  //  conj(2 * (a("c,b,a") + b("a,b,c")))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-  //  -conj(a("c,b,a") + b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2
-  //  * (a("c,b,a") + b("a,b,c"))) * 2);
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") + b("a,b,c")))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *(conj(a("c,b,a") + b("a,b,c")))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")) * 2);
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") + b("a,b,c")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))) * 2);
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") + b("a,b,c"))));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") + b("a,b,c")));
+  //  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") + b("a,b,c"))) * 2);
 }
 //
 //
@@ -465,7 +457,6 @@ BOOST_AUTO_TEST_CASE(permute) {
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
       TArrayUMD::value_type perm_b_tile = perm * b.find(i).get();
-      cudaDeviceSynchronize();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -479,7 +470,6 @@ BOOST_AUTO_TEST_CASE(permute) {
     if (a.is_local(i)) {
       TArrayUMD::value_type a_tile = a.find(i).get();
       TArrayUMD::value_type b_tile = b.find(i).get();
-      cudaDeviceSynchronize();
 
       BOOST_CHECK_EQUAL(a_tile.range(), b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -495,7 +485,6 @@ BOOST_AUTO_TEST_CASE(permute) {
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
       TArrayUMD::value_type perm_b_tile = perm2 * b.find(i).get();
-      cudaDeviceSynchronize();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -513,7 +502,6 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
       TArrayUMD::value_type perm_b_tile = perm * b.find(i).get();
-      cudaDeviceSynchronize();
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -522,152 +510,151 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
   }
 }
 
-// BOOST_AUTO_TEST_CASE( block )
-//{
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c").block({3,3,3}, {5,5,5}));
-//
-//  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
-//
-//  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-//    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-//    Tensor<int> result_tile = c.find(index).get();
-//
-//    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
-//      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
-//          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
-//          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
-//          arg_tile.range().extent(r));
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
-//          arg_tile.range().stride(r));
-//    }
-//    BOOST_CHECK_EQUAL(result_tile.range().volume(),
-//    arg_tile.range().volume());
-//
-//    // Check that the data is correct for the result array.
-//    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-//      BOOST_CHECK_EQUAL(result_tile[j], arg_tile[j]);
-//    }
-//  }
-//}
-//
-// BOOST_AUTO_TEST_CASE( const_block )
-//{
-//  const TArrayUMD& ca = a;
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = ca("a,b,c").block({3,3,3}, {5,5,5}));
-//
-//  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
-//
-//  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-//    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-//    Tensor<int> result_tile = c.find(index).get();
-//
-//    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
-//      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
-//          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
-//          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
-//          arg_tile.range().extent(r));
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
-//          arg_tile.range().stride(r));
-//    }
-//    BOOST_CHECK_EQUAL(result_tile.range().volume(),
-//    arg_tile.range().volume());
-//
-//    // Check that the data is correct for the result array.
-//    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-//      BOOST_CHECK_EQUAL(result_tile[j], arg_tile[j]);
-//    }
-//  }
-//}
-//
-// BOOST_AUTO_TEST_CASE( scal_block )
-//{
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block({3,3,3}, {5,5,5}));
-//
-//  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
-//
-//  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-//    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-//    Tensor<int> result_tile = c.find(index).get();
-//
-//    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
-//      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
-//          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
-//          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
-//          arg_tile.range().extent(r));
-//
-//      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
-//          arg_tile.range().stride(r));
-//    }
-//    BOOST_CHECK_EQUAL(result_tile.range().volume(),
-//    arg_tile.range().volume());
-//
-//    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-//      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
-//    }
-//  }
-//}
-//
-// BOOST_AUTO_TEST_CASE( assign_sub_block )
-//{
-//  c.fill_local(0.0);
-//
-//  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) = 2 *
-//  a("a,b,c").block({3,3,3}, {5,5,5}));
-//
-//  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
-//
-//  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
-//    Tensor<int> arg_tile = a.find(block_range.ordinal(index)).get();
-//    Tensor<int> result_tile = c.find(block_range.ordinal(index)).get();
-//
-//    BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
-//
-//    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-//      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
-//    }
-//  }
-//}
-// BOOST_AUTO_TEST_CASE(assign_subblock_block_contract)
-//{
-//  w.fill_local(0.0);
-//
-//  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
-//      a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
-//}
-//
-// BOOST_AUTO_TEST_CASE(assign_subblock_block_permute_contract)
-//{
-//  w.fill_local(0.0);
-//
-//  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
-//      a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
-//}
-//
-// BOOST_AUTO_TEST_CASE(block_contract)
-//{
-//  BOOST_REQUIRE_NO_THROW(w("a,b") =
-//  a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
-//}
-//
-// BOOST_AUTO_TEST_CASE(block_permute_contract)
-//{
-//  BOOST_REQUIRE_NO_THROW(w("a,b") =
-//  a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
-//}
+ BOOST_AUTO_TEST_CASE( block )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    auto arg_tile = a.find(block_range.ordinal(index)).get();
+    auto result_tile = c.find(index).get();
+
+    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
+      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
+          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
+          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
+          arg_tile.range().extent(r));
+
+      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
+          arg_tile.range().stride(r));
+    }
+    BOOST_CHECK_EQUAL(result_tile.range().volume(),
+    arg_tile.range().volume());
+
+    // Check that the data is correct for the result array.
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], arg_tile[j]);
+    }
+  }
+}
+
+ BOOST_AUTO_TEST_CASE( const_block )
+{
+  const TArrayUMD& ca = a;
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = ca("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    auto arg_tile = a.find(block_range.ordinal(index)).get();
+    auto result_tile = c.find(index).get();
+
+    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
+      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
+          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
+          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
+          arg_tile.range().extent(r));
+
+      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
+          arg_tile.range().stride(r));
+    }
+    BOOST_CHECK_EQUAL(result_tile.range().volume(),
+    arg_tile.range().volume());
+
+    // Check that the data is correct for the result array.
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], arg_tile[j]);
+    }
+  }
+}
+
+ BOOST_AUTO_TEST_CASE( scal_block )
+{
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    auto arg_tile = a.find(block_range.ordinal(index)).get();
+    auto result_tile = c.find(index).get();
+
+    for(unsigned int r = 0u; r < arg_tile.range().rank(); ++r) {
+      BOOST_CHECK_EQUAL(result_tile.range().lobound(r),
+          arg_tile.range().lobound(r) - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().upbound(r),
+          arg_tile.range().upbound(r) - a.trange().data()[r].tile(3).first);
+
+      BOOST_CHECK_EQUAL(result_tile.range().extent(r),
+          arg_tile.range().extent(r));
+
+      BOOST_CHECK_EQUAL(result_tile.range().stride(r),
+          arg_tile.range().stride(r));
+    }
+    BOOST_CHECK_EQUAL(result_tile.range().volume(),
+    arg_tile.range().volume());
+
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
+    }
+  }
+}
+
+ BOOST_AUTO_TEST_CASE( assign_sub_block )
+{
+  c.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) = 2.0 * a("a,b,c").block({3,3,3}, {5,5,5}));
+
+  BlockRange block_range(a.trange().tiles_range(), {3,3,3}, {5,5,5});
+
+  for(std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    auto arg_tile = a.find(block_range.ordinal(index)).get();
+    auto result_tile = c.find(block_range.ordinal(index)).get();
+
+    BOOST_CHECK_EQUAL(result_tile.range(), arg_tile.range());
+
+    for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+      BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
+    }
+  }
+}
+ BOOST_AUTO_TEST_CASE(assign_subblock_block_contract)
+{
+  w.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
+      a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
+}
+
+ BOOST_AUTO_TEST_CASE(assign_subblock_block_permute_contract)
+{
+  w.fill_local(0.0);
+
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3,2},{5,5}) = \
+      a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
+}
+
+ BOOST_AUTO_TEST_CASE(block_contract)
+{
+  BOOST_REQUIRE_NO_THROW(w("a,b") =
+  a("a,c,d").block({3,2,3},{5,5,5})*b("c,d,b").block({2,3,3},{5,5,5}));
+}
+
+ BOOST_AUTO_TEST_CASE(block_permute_contract)
+{
+  BOOST_REQUIRE_NO_THROW(w("a,b") =
+  a("a,c,d").block({3,2,3},{5,5,5})*b("d,c,b").block({3,2,3},{5,5,5}));
+}
 
 BOOST_AUTO_TEST_CASE(add) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("a,b,c") + b("a,b,c"));
@@ -750,7 +737,6 @@ BOOST_AUTO_TEST_CASE(add_permute) {
     TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
-    cudaDeviceSynchronize();
     TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
@@ -815,7 +801,6 @@ BOOST_AUTO_TEST_CASE(scale_add_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = b.find(i).get();
-    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) + (3 * b_tile[j]));
@@ -904,7 +889,6 @@ BOOST_AUTO_TEST_CASE(subt_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = b.find(i).get();
-    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) - (3 * b_tile[j]));
@@ -968,7 +952,6 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = perm * b.find(perm_index).get();
-    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) - (3 * b_tile[j]));
@@ -1057,7 +1040,6 @@ BOOST_AUTO_TEST_CASE(mult_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = b.find(i).get();
-    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) * (3 * b_tile[j]));
@@ -1121,7 +1103,6 @@ BOOST_AUTO_TEST_CASE(scale_mult_permute) {
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
     TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
     TArrayUMD::value_type b_tile = b.find(i).get();
-    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) * (3 * b_tile[j]));
@@ -1891,16 +1872,21 @@ BOOST_AUTO_TEST_CASE(no_alias_plus_reduce) {
 }
 
 BOOST_AUTO_TEST_CASE(outer_product) {
-  // Generate Eigen matrices from input arrays.
-  EigenMatrixXd ev = TA::array_to_eigen(v);
-  EigenMatrixXd eu = TA::array_to_eigen(u);
-
-  // Generate the expected result
-  EigenMatrixXd ew_test = eu * ev.transpose();
 
   // Test that outer product works
   BOOST_REQUIRE_NO_THROW(w("i,j") = u("i") * v("j"));
 
+  v.make_replicated();
+  u.make_replicated();
+  // Generate Eigen matrices from input arrays.
+  EigenMatrixXd ev = TA::array_to_eigen(v);
+  EigenMatrixXd eu = TA::array_to_eigen(u);
+  GlobalFixture::world->gop.fence();
+
+  // Generate the expected result
+  EigenMatrixXd ew_test = eu * ev.transpose();
+
+  w.make_replicated();
   GlobalFixture::world->gop.fence();
 
   EigenMatrixXd ew = TA::array_to_eigen(w);
@@ -1947,7 +1933,6 @@ BOOST_AUTO_TEST_CASE(dot_permute) {
     TArrayUMD::value_type a_tile = a.find(i).get();
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     TArrayUMD::value_type b_tile = perm * b.find(perm_index).get();
-    cudaDeviceSynchronize();
 
     for (std::size_t j = 0ul; j < a_tile.size(); ++j)
       expected += a_tile[j] * b_tile[j];
@@ -1977,7 +1962,7 @@ BOOST_AUTO_TEST_CASE(dot_expr) {
 }
 
 BOOST_AUTO_TEST_CASE(dot_contr) {
-  for (int i = 0; i != 10; ++i)
+  for (int i = 0; i != 3; ++i)
     BOOST_REQUIRE_NO_THROW(
         (a("a,b,c") * b("d,b,c")).dot(b("d,e,f") * a("a,e,f")));
 }

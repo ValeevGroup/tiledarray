@@ -237,8 +237,6 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
       double iter_time_start = madness::wall_time();
       //      c("m,n") = a("m,k") * b("k,n") + a("m,n") - b("m,n");
       c("m,n") = a("m,k") * b("k,n");
-      world.gop.fence();
-      cudaDeviceSynchronize();
       double iter_time_stop = madness::wall_time();
       if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
