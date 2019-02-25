@@ -307,13 +307,15 @@ namespace TiledArray {
 #ifdef TILEDARRAY_HAS_CUDA
 
         static void CUDART_CB cuda_reduceobject_delete_callback(cudaStream_t stream, cudaError_t status,
-                                                                void* userData) {
+                                                                void *userData) {
 
-          std::vector<void*>* objects = static_cast<std::vector<void*>*>(userData);
+          CudaSafeCall(status);
 
-          for(auto& item : *objects){
+          std::vector<void *> *objects = static_cast<std::vector<void *> *>(userData);
+
+          for (auto &item : *objects) {
             // convert void* to ReduceObject*
-            ReduceObject* reduce_object = static_cast<ReduceObject*>(item);
+            ReduceObject *reduce_object = static_cast<ReduceObject *>(item);
             // delete ReduceObject
             ReduceObject::destroy(reduce_object);
           }
@@ -321,12 +323,15 @@ namespace TiledArray {
         }
 
         static void CUDART_CB cuda_dependency_dec_callback(cudaStream_t stream, cudaError_t status,
-                                                           void* userData) {
-          std::vector<void*>* objects = static_cast<std::vector<void*>*>(userData);
+                                                           void *userData) {
 
-          for(auto& item : *objects){
+          CudaSafeCall(status);
+
+          std::vector<void *> *objects = static_cast<std::vector<void *> *>(userData);
+
+          for (auto &item : *objects) {
             // convert void* to DependencyInterface
-            ReduceTaskImpl* dep = static_cast<ReduceTaskImpl*>(item);
+            ReduceTaskImpl *dep = static_cast<ReduceTaskImpl *>(item);
             // call dec
             dep->dec();
           }
@@ -334,19 +339,21 @@ namespace TiledArray {
         }
 
         static void CUDART_CB cuda_dependency_dec_reduceobject_delete_callback(cudaStream_t stream, cudaError_t status,
-                                                                               void* userData) {
+                                                                               void *userData) {
 
-          std::vector<void*>* objects = static_cast<std::vector<void*>*>(userData);
+          CudaSafeCall(status);
+
+          std::vector<void *> *objects = static_cast<std::vector<void *> *>(userData);
 
           assert(objects->size() == 2);
 
           // convert void* to DependencyInterface
-          ReduceTaskImpl* dep = static_cast<ReduceTaskImpl*>(objects->at(0));
+          ReduceTaskImpl *dep = static_cast<ReduceTaskImpl *>(objects->at(0));
           // call dec
           dep->dec();
 
           // convert void* to ReduceObject*
-          ReduceObject* reduce_object = static_cast<ReduceObject*>(objects->at(1));
+          ReduceObject *reduce_object = static_cast<ReduceObject *>(objects->at(1));
           // delete ReduceObject
           ReduceObject::destroy(reduce_object);
 
@@ -355,10 +362,10 @@ namespace TiledArray {
 
 
         static void CUDART_CB cuda_readyresult_reset_callback(cudaStream_t stream, cudaError_t status,
-                                                           void* userData) {
-
+                                                              void *userData) {
+          CudaSafeCall(status);
           // convert void* to the correct type
-          std::shared_ptr<result_type>* result = static_cast<std::shared_ptr<result_type>*>(userData);
+          std::shared_ptr<result_type> *result = static_cast<std::shared_ptr<result_type> *>(userData);
           // call reset on shared_ptr
           result->reset();
           delete result;
