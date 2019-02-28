@@ -1,3 +1,4 @@
+set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 find_package(CUDA REQUIRED)
 
 message(STATUS "CUDA version:      ${CUDA_VERSION_STRING}")

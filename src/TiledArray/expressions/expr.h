@@ -35,6 +35,10 @@
 #include "../tile_op/unary_reduction.h"
 #include "../tile_op/binary_reduction.h"
 #include "../tile_op/reduce_wrapper.h"
+#include <TiledArray/config.h>
+#ifdef TILEDARRAY_HAS_CUDA
+#include <TiledArray/external/cuda.h>
+#endif
 
 namespace TiledArray {
   namespace expressions {

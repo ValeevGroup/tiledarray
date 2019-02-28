@@ -107,11 +107,11 @@ inline std::pair<int, int> mpi_local_rank_size(int mpi_rank) {
 inline int num_cuda_streams() {
   int num_streams = -1;
   char* num_stream_char = std::getenv("TA_NUM_STREAMS");
-  /// default num of streams is 1
+  /// default num of streams is 3
   if (num_stream_char) {
     num_streams = std::atoi(num_stream_char);
   } else {
-    num_streams = 1;
+    num_streams = 3;
   }
   return num_streams;
 }
@@ -263,7 +263,7 @@ class cudaEnv {
     // creates cuda streams on current device
     cuda_streams_.resize(num_cuda_streams_);
     for (auto& stream : cuda_streams_) {
-      CudaSafeCall(cudaStreamCreate(&stream));
+      CudaSafeCall(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
     }
   }
 
@@ -291,6 +291,7 @@ inline void cuda_initialize() {
 inline void cuda_finalize() {
   CudaSafeCall(cudaDeviceSynchronize());
   cublasDestroy(cuBLASHandlePool::handle());
+  delete &cuBLASHandlePool::handle();
   cudaEnv::instance().reset(nullptr);
 }
 

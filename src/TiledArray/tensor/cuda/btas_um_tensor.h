@@ -224,8 +224,9 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const Scalar factor,
                                   const TiledArray::Permutation &perm) {
   auto result = subt(arg1, arg2);
-  scale_to(result, factor);
-  return permute(result, perm);
+  auto permute_result = permute(result, perm);
+  scale_to(permute_result, factor);
+  return permute_result;
 }
 
 ///
@@ -270,8 +271,8 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const Scalar factor,
                                  const TiledArray::Permutation &perm) {
   auto result = add(arg1, arg2);
-  scale_to(result, factor);
   auto perm_result = permute(result, perm);
+  scale_to(perm_result, factor);
   return perm_result;
 }
 
@@ -588,7 +589,7 @@ extern template class TiledArray::Tile<
 extern template class TiledArray::Tile<btas::Tensor<
     long, TiledArray::Range, TiledArray::cuda_um_btas_varray<long>>>;
 
-#endif
+#endif // TILEDARRAY_HEADER_ONLY
 
 #endif  // TILEDARRAY_HAS_CUDA
 

@@ -327,11 +327,13 @@ template <typename T, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg) {
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
-  auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
 
   Storage result_storage;
+  auto result_range = arg.range();
+  auto &cuda_stream = detail::get_stream_based_on_range(result_range);
+
   make_device_storage(result_storage, arg.size(), cuda_stream);
-  btas::Tensor<T, Range, Storage> result(arg.range(),
+  btas::Tensor<T, Range, Storage> result(std::move(result_range),
                                          std::move(result_storage));
 
   // call cublasCopy
@@ -351,6 +353,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
   auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
+//  std::cout << "scale, tile offset: " << arg.range().offset() << " stream: " << arg.range().offset() % cudaEnv::instance()->num_cuda_streams() << "\n";
 
   auto result = btas_tensor_clone_cuda_impl(arg);
 
@@ -433,16 +436,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
 
-  if (in_memory_space<MemorySpace::CUDA>(result.storage()) &&
-      in_memory_space<MemorySpace::CUDA>(arg2.storage())) {
-    const auto &handle = cuBLASHandlePool::handle();
-    CublasSafeCall(cublasSetStream(handle, cuda_stream));
-    CublasSafeCall(cublasAxpy(handle, result.size(), &a, device_data(arg2.storage()),
-                        1, device_data(result.storage()), 1));
-  } else {
-    TA_ASSERT(false);
-    //    btas::axpy(1.0, arg, result);
-  }
+  const auto &handle = cuBLASHandlePool::handle();
+  CublasSafeCall(cublasSetStream(handle, cuda_stream));
+  CublasSafeCall(cublasAxpy(handle, result.size(), &a, device_data(arg2.storage()),1, device_data(result.storage()), 1));
 
   synchronize_stream(&cuda_stream);
   return result;
@@ -453,30 +449,17 @@ template <typename T, typename Range, typename Storage>
 void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                   const btas::Tensor<T, Range, Storage> &arg,
                                   const T a) {
-  // the result determines were to do gemm
-  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
-    TA_ASSERT(in_memory_space<MemorySpace::CUDA>(arg.storage()));
-  } else {
-    TA_ASSERT(in_memory_space<MemorySpace::CPU>(result.storage()) &&
-              in_memory_space<MemorySpace::CPU>(arg.storage()));
-  }
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
+//  std::cout << "add_to, tile offset: " << arg.range().offset() << " stream: " << arg.range().offset() % cudaEnv::instance()->num_cuda_streams() << " " << cuda_stream << "\n";
 
-  // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(result.storage(),
-  // cuda_streams[cuda_stream]);
-  // TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(arg.storage(),
-  // cuda_streams[cuda_stream]);
+//   TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(result.storage(),cuda_stream);
+//   TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(arg.storage(),cuda_stream);
 
-  if (in_memory_space<MemorySpace::CUDA>(result.storage())) {
-    const auto &handle = cuBLASHandlePool::handle();
-    CublasSafeCall(cublasSetStream(handle, cuda_stream));
-    CublasSafeCall(cublasAxpy(handle, result.size(), &a, device_data(arg.storage()),
-                        1, device_data(result.storage()), 1));
-  } else {
-    TA_ASSERT(false);
-    //    btas::axpy(1.0, arg, result);
-  }
+  const auto &handle = cuBLASHandlePool::handle();
+  CublasSafeCall(cublasSetStream(handle, cuda_stream));
+  CublasSafeCall(cublasAxpy(handle, result.size(), &a, device_data(arg.storage()),1, device_data(result.storage()), 1));
+
   synchronize_stream(&cuda_stream);
 }
 
