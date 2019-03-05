@@ -4,14 +4,14 @@
 
 namespace thrust {
 template<>
-void resize<double,thrust::device_malloc_allocator<double>>(
-    thrust::device_vector<double, thrust::device_malloc_allocator<double>>& dev_vec,
+void resize<double,thrust::device_allocator<double>>(
+    thrust::device_vector<double, thrust::device_allocator<double>>& dev_vec,
     size_t size) {
     dev_vec.resize(size);
 }
 template<>
-void resize<float,thrust::device_malloc_allocator<float>>(
-    thrust::device_vector<float, thrust::device_malloc_allocator<float>>& dev_vec,
+void resize<float,thrust::device_allocator<float>>(
+    thrust::device_vector<float, thrust::device_allocator<float>>& dev_vec,
     size_t size) {
     dev_vec.resize(size);
 }

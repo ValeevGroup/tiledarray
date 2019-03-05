@@ -70,6 +70,9 @@ class cuda_um_allocator_impl {
     um_dynamic_pool_->deallocate(ptr);
   }
 
+  template <typename T1, typename T2>
+  friend bool operator==(const cuda_um_allocator_impl<T1>& lhs, const cuda_um_allocator_impl<T2>& rhs) noexcept;
+
  private:
   umpire::Allocator* um_dynamic_pool_;
 };  // class cuda_um_allocator

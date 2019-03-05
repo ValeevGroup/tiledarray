@@ -17,7 +17,7 @@ namespace TiledArray {
 /// \tparam HostAlloc The allocator type used for host data
 /// \tparam DeviceAlloc The allocator type used for device data
 template <typename T, typename HostAlloc = std::allocator<T>,
-    typename DeviceAlloc = thrust::device_malloc_allocator<T>>
+    typename DeviceAlloc = thrust::device_allocator<T>>
 class cpu_cuda_vector {
   public:
     typedef T value_type;
