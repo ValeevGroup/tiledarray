@@ -39,48 +39,7 @@
 
 namespace TiledArray {
 
-namespace detail {
 
-template <typename Range>
-const cudaStream_t &get_stream_based_on_range(const Range &range) {
-  // TODO better way to get stream based on the id of tensor
-  auto stream_id = range.offset() % cudaEnv::instance()->num_cuda_streams();
-  auto &stream = cudaEnv::instance()->cuda_stream(stream_id);
-  return stream;
-}
-
-inline void CUDART_CB cuda_readyflag_callback(cudaStream_t stream,
-                                              cudaError_t status,
-                                              void *userData) {
-  // convert void * to std::atomic<bool>
-  std::atomic<bool> *flag = static_cast<std::atomic<bool> *>(userData);
-  // set the flag to be true
-  flag->store(true);
-}
-
-struct ProbeFlag {
-  ProbeFlag(std::atomic<bool> *f) : flag(f) {}
-
-  bool operator()() const { return flag->load(); }
-
-  std::atomic<bool> *flag;
-};
-
-inline void thread_wait_cuda_stream(const cudaStream_t &stream) {
-  std::atomic<bool> *flag = new std::atomic<bool>(false);
-
-  CudaSafeCall(cudaStreamAddCallback(stream, detail::cuda_readyflag_callback, flag, 0));
-
-  detail::ProbeFlag probe(flag);
-
-  // wait with sleep and do not do work
-  madness::ThreadPool::await(probe, false, true);
-  //    madness::ThreadPool::await(probe, true, true);
-
-  delete flag;
-}
-
-}  // namespace detail
 
 template <typename T, typename Scalar, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
@@ -451,7 +410,6 @@ void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                   const T a) {
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
-//  std::cout << "add_to, tile offset: " << arg.range().offset() << " stream: " << arg.range().offset() % cudaEnv::instance()->num_cuda_streams() << " " << cuda_stream << "\n";
 
 //   TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(result.storage(),cuda_stream);
 //   TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(arg.storage(),cuda_stream);

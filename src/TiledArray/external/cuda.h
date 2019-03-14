@@ -39,6 +39,7 @@
 #include <umpire/strategy/ThreadSafeAllocator.hpp>
 
 #include <madness/tensor/cblas.h>
+#include <madness/world/thread.h>
 #include <mpi.h>
 
 #include <TiledArray/error.h>
@@ -142,6 +143,39 @@ inline int current_cuda_device_id() {
   int cuda_device_id = mpi_local_rank % num_devices;
 
   return cuda_device_id;
+}
+
+
+
+inline void CUDART_CB cuda_readyflag_callback(cudaStream_t stream,
+                                              cudaError_t status,
+                                              void *userData) {
+  // convert void * to std::atomic<bool>
+  std::atomic<bool> *flag = static_cast<std::atomic<bool> *>(userData);
+  // set the flag to be true
+  flag->store(true);
+}
+
+struct ProbeFlag {
+  ProbeFlag(std::atomic<bool> *f) : flag(f) {}
+
+  bool operator()() const { return flag->load(); }
+
+  std::atomic<bool> *flag;
+};
+
+inline void thread_wait_cuda_stream(const cudaStream_t &stream) {
+  std::atomic<bool> *flag = new std::atomic<bool>(false);
+
+  CudaSafeCall(cudaStreamAddCallback(stream, detail::cuda_readyflag_callback, flag, 0));
+
+  detail::ProbeFlag probe(flag);
+
+  // wait with sleep and do not do work
+  madness::ThreadPool::await(probe, false, true);
+  //    madness::ThreadPool::await(probe, true, true);
+
+  delete flag;
 }
 
 }  // namespace detail
@@ -294,6 +328,18 @@ inline void cuda_finalize() {
   delete &cuBLASHandlePool::handle();
   cudaEnv::instance().reset(nullptr);
 }
+
+namespace detail {
+
+template <typename Range>
+const cudaStream_t &get_stream_based_on_range(const Range &range) {
+  // TODO better way to get stream based on the id of tensor
+  auto stream_id = range.offset() % cudaEnv::instance()->num_cuda_streams();
+  auto &stream = cudaEnv::instance()->cuda_stream(stream_id);
+  return stream;
+}
+
+} //namespace detail
 
 }  // namespace TiledArray
 
