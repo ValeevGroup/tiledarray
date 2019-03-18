@@ -319,7 +319,7 @@ namespace TiledArray {
             // delete ReduceObject
             ReduceObject::destroy(reduce_object);
           }
-          std::cout << std::to_string(TiledArray::get_default_world().rank()) + "call\n";
+//          std::cout << std::to_string(TiledArray::get_default_world().rank()) + "call\n";
           delete objects;
         }
 
@@ -336,7 +336,7 @@ namespace TiledArray {
             // call dec
             dep->dec();
           }
-          std::cout << std::to_string(TiledArray::get_default_world().rank()) + "call\n";
+//          std::cout << std::to_string(TiledArray::get_default_world().rank()) + "call\n";
           delete objects;
         }
 
@@ -359,7 +359,7 @@ namespace TiledArray {
           // delete ReduceObject
           ReduceObject::destroy(reduce_object);
 
-          std::cout << std::to_string(TiledArray::get_default_world().rank()) + "call\n";
+//          std::cout << std::to_string(TiledArray::get_default_world().rank()) + "call\n";
           delete objects;
         }
 
@@ -371,7 +371,7 @@ namespace TiledArray {
           std::shared_ptr<result_type> *result = static_cast<std::shared_ptr<result_type> *>(userData);
           // call reset on shared_ptr
           result->reset();
-          std::cout << std::to_string(TiledArray::get_default_world().rank()) + "call\n";
+//          std::cout << std::to_string(TiledArray::get_default_world().rank()) + "call\n";
           delete result;
         }
 
@@ -417,7 +417,7 @@ namespace TiledArray {
                 CudaSafeCall(
                         cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_reduceobject_delete_callback, callback_object, 0)
                 );
-                std::cout << std::to_string(world().rank()) + "add\n";
+//                std::cout << std::to_string(world().rank()) + "add\n";
               }
 #else
               ReduceObject::destroy(ready_object);
@@ -444,7 +444,7 @@ namespace TiledArray {
                 CudaSafeCall(
                         cudaStreamAddCallback(*stream_ptr, cuda_readyresult_reset_callback, ready_result_heap, 0)
                 );
-                std::cout << std::to_string(world().rank()) + "add\n";
+//                std::cout << std::to_string(world().rank()) + "add\n";
               }
 #else
               ready_result.reset();
@@ -479,7 +479,7 @@ namespace TiledArray {
             CudaSafeCall(
                     cudaStreamAddCallback(*stream_ptr, cuda_reduceobject_delete_callback,callback_object, 0)
             );
-            std::cout << std::to_string(world().rank()) + "add\n";
+//            std::cout << std::to_string(world().rank()) + "add\n";
 //            synchronize_stream(nullptr);
           }
 #else
@@ -503,7 +503,7 @@ namespace TiledArray {
             CudaSafeCall(
                     cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_callback, callback_object2, 0)
             );
-            std::cout << std::to_string(world().rank()) + "add\n";
+//            std::cout << std::to_string(world().rank()) + "add\n";
             // reset stream_ptr to nullptr
 //            synchronize_stream(nullptr);
           }
@@ -536,7 +536,7 @@ namespace TiledArray {
             CudaSafeCall(
                     cudaStreamAddCallback(*stream_ptr, cuda_reduceobject_delete_callback, callback_object1, 0)
             );
-            std::cout << std::to_string(world().rank()) + "add\n";
+//            std::cout << std::to_string(world().rank()) + "add\n";
           }
 #else
           ReduceObject::destroy(object1);
@@ -562,7 +562,7 @@ namespace TiledArray {
             CudaSafeCall(
                     cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_callback, callback_object2, 0)
             );
-            std::cout << std::to_string(world().rank()) + "add\n";
+//            std::cout << std::to_string(world().rank()) + "add\n";
             // reset stream_ptr to nullptr
 //            synchronize_stream(nullptr);
           }

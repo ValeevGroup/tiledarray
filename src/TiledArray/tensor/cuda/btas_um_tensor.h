@@ -70,7 +70,8 @@ template <class Archive, typename T>
 struct ArchiveStoreImpl<Archive, TiledArray::btasUMTensorVarray<T>> {
   static inline void store(const Archive &ar,
                            const TiledArray::btasUMTensorVarray<T> &t) {
-    CudaSafeCall(cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id()));
+    CudaSafeCall(cudaSetDevice(
+        TiledArray::cudaEnv::instance()->current_cuda_device_id()));
     auto &stream = TiledArray::detail::get_stream_based_on_range(t.range());
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(t.storage(),
                                                                     stream);
@@ -454,7 +455,6 @@ template <typename UMTensor, typename Policy>
 void to_host(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
   auto to_host = [](TiledArray::Tile<UMTensor> &tile) {
-
     CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
@@ -482,13 +482,11 @@ template <typename UMTensor, typename Policy>
 void to_device(
     TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
   auto to_device = [](TiledArray::Tile<UMTensor> &tile) {
-
     CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
     auto &stream = detail::get_stream_based_on_range(tile.range());
 
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
         tile.tensor().storage(), stream);
-
   };
 
   auto &world = um_array.world();
@@ -507,21 +505,25 @@ void to_device(
 };
 
 /// convert array from UMTensor to TiledArray::Tensor
-template <typename T, typename UMTensor, typename Policy>
-TiledArray::DistArray<TiledArray::Tensor<T>, Policy> um_tensor_to_ta_tensor(
-    TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy> &um_array) {
-  const auto convert_tile = [](const TiledArray::Tile<UMTensor> &tile) {
-    TiledArray::Tensor<T> result(tile.tensor().range());
+template <typename UMTensor, typename TATensor, typename Policy>
+typename std::enable_if<!std::is_same<UMTensor, TATensor>::value,
+                        TiledArray::DistArray<TATensor, Policy>>::type
+um_tensor_to_ta_tensor(const TiledArray::DistArray<UMTensor, Policy> &um_array) {
+  const auto convert_tile = [](const UMTensor &tile) {
+    TATensor result(tile.tensor().range());
     using std::begin;
     const auto n = tile.tensor().size();
+
+    CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+    auto &stream = detail::get_stream_based_on_range(tile.range());
+
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
+        tile.tensor().storage(), stream);
 
     std::copy_n(tile.data(), n, result.data());
 
     return result;
   };
-
-  // prefetch data to host
-  to_host(um_array);
 
   auto ta_array = to_new_tile_type(um_array, convert_tile);
 
@@ -529,18 +531,31 @@ TiledArray::DistArray<TiledArray::Tensor<T>, Policy> um_tensor_to_ta_tensor(
   return ta_array;
 };
 
+/// no-op if UMTensor is the same type as TATensor type
+template <typename UMTensor, typename TATensor, typename Policy>
+typename std::enable_if<std::is_same<UMTensor, TATensor>::value,
+                        TiledArray::DistArray<UMTensor, Policy>>::type
+um_tensor_to_ta_tensor(
+    const TiledArray::DistArray<UMTensor, Policy> &um_array) {
+  return um_array;
+}
+
 /// convert array from TiledArray::Tensor to UMTensor
-template <typename T, typename UMTensor, typename Policy>
-TiledArray::DistArray<TiledArray::Tile<UMTensor>, Policy>
+template <typename UMTensor, typename TATensor, typename Policy>
+typename std::enable_if<
+    !std::is_same<UMTensor, TATensor>::value,
+    TiledArray::DistArray<UMTensor, Policy>>::type
 ta_tensor_to_um_tensor(
-    TiledArray::DistArray<TiledArray::Tensor<T>, Policy> &array) {
-  auto convert_tile = [](const TiledArray::Tensor<T> &tile) {
+    const TiledArray::DistArray<TATensor, Policy> &array) {
+  auto convert_tile = [](const TATensor &tile) {
+    /// UMTensor must be wrapped into TA::Tile
 
     CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
-    typename UMTensor::storage_type storage(tile.range().area());
+    using Tensor = typename UMTensor::tensor_type;
+    typename Tensor::storage_type storage(tile.range().area());
 
-    UMTensor result(tile.range(), std::move(storage));
+    Tensor result(tile.range(), std::move(storage));
 
     const auto n = tile.size();
 
@@ -552,7 +567,7 @@ ta_tensor_to_um_tensor(
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
         result.storage(), stream);
 
-    return TiledArray::Tile<UMTensor>(result);
+    return TiledArray::Tile<Tensor>(result);
   };
 
   auto um_array = to_new_tile_type(array, convert_tile);
@@ -560,6 +575,15 @@ ta_tensor_to_um_tensor(
   array.world().gop.fence();
   return um_array;
 };
+
+/// no-op if array is the same as return type
+template <typename UMTensor, typename TATensor, typename Policy>
+typename std::enable_if<
+    std::is_same<UMTensor, TATensor>::value,
+    TiledArray::DistArray<UMTensor, Policy>>::type
+ta_tensor_to_um_tensor(const TiledArray::DistArray<UMTensor, Policy> &array) {
+  return array;
+}
 
 }  // namespace TiledArray
 
@@ -589,7 +613,7 @@ extern template class TiledArray::Tile<
 extern template class TiledArray::Tile<btas::Tensor<
     long, TiledArray::Range, TiledArray::cuda_um_btas_varray<long>>>;
 
-#endif // TILEDARRAY_HEADER_ONLY
+#endif  // TILEDARRAY_HEADER_ONLY
 
 #endif  // TILEDARRAY_HAS_CUDA
 

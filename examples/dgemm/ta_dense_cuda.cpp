@@ -276,7 +276,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   // verify it with gpu result
 
   // convert um array to ta tensor array
-  auto c_ta = TiledArray::um_tensor_to_ta_tensor<Real, CUDATile,
+  auto c_ta = TiledArray::um_tensor_to_ta_tensor<TA::Tile<CUDATile>, TA::Tensor<value_type>,
                                                  TiledArray::DensePolicy>(c);
 
   double threshold =
