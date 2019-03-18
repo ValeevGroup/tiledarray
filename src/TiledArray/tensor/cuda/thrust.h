@@ -34,8 +34,15 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
+
 // thrust::device_vector::data() returns a proxy, provide an overload for std::data() to provide raw ptr
 namespace thrust {
+
+#if (__CUDACC_VER_MAJOR__ == 9) || (__CUDACC_VER_MAJOR__ == 8)
+  template <typename T>
+  using device_allocator=thrust::device_malloc_allocator<T>;
+#endif
+
 template<typename T, typename Alloc>
 const T* data (const thrust::device_vector<T, Alloc>& dev_vec) {
   return thrust::raw_pointer_cast(dev_vec.data());
