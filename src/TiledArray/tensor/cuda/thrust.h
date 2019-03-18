@@ -31,6 +31,7 @@
 #ifdef TILEDARRAY_HAS_CUDA
 
 
+#include <cuda_runtime_api.h>
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 
@@ -38,7 +39,8 @@
 // thrust::device_vector::data() returns a proxy, provide an overload for std::data() to provide raw ptr
 namespace thrust {
 
-#if (__CUDACC_VER_MAJOR__ == 9) || (__CUDACC_VER_MAJOR__ == 8)
+// thrust::device_malloc_allocator name changed to device_allocator after version 10
+#if  CUDART_VERSION < 10000
   template <typename T>
   using device_allocator=thrust::device_malloc_allocator<T>;
 #endif
