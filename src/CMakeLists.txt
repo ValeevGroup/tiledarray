@@ -157,14 +157,14 @@ if(CUDA_FOUND)
      TiledArray/external/cuda.h
      TiledArray/external/cutt.h
      TiledArray/math/cublas.h
-     TiledArray/tensor/cuda/btas_cublas.h
-     TiledArray/tensor/cuda/btas_um_tensor.h
-     TiledArray/tensor/cuda/cpu_cuda_vector.h
-     TiledArray/tensor/cuda/mult_kernel.h
-     TiledArray/tensor/cuda/platform.h
-     TiledArray/tensor/cuda/thrust.h
-     TiledArray/tensor/cuda/um_allocator.h
-     TiledArray/tensor/cuda/um_storage.h)
+          TiledArray/cuda/btas_cublas.h
+          TiledArray/cuda/btas_um_tensor.h
+          TiledArray/cuda/cpu_cuda_vector.h
+          TiledArray/cuda/mult_kernel.h
+          TiledArray/cuda/platform.h
+          TiledArray/cuda/thrust.h
+          TiledArray/cuda/um_allocator.h
+          TiledArray/cuda/um_storage.h)
 
 endif(CUDA_FOUND)
 
@@ -180,10 +180,10 @@ TiledArray/dist_array.cpp)
 if(CUDA_FOUND)
 
   list(APPEND TILEDARRAY_SOURCE_FILES
-          TiledArray/tensor/cuda/btas_um_tensor.cpp
-          TiledArray/tensor/cuda/cpu_cuda_vector.cu
-          TiledArray/tensor/cuda/mult_kernel.cu
-          TiledArray/tensor/cuda/um_storage.cu)
+          TiledArray/cuda/btas_um_tensor.cpp
+          TiledArray/cuda/cpu_cuda_vector.cu
+          TiledArray/cuda/mult_kernel.cu
+          TiledArray/cuda/um_storage.cu)
 
   # the list of libraries on which TiledArray depends on
   set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_CUDA TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")

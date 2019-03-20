@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_TENSOR_CUDA_UM_ALLOCATOR_H___INCLUDED
-#define TILEDARRAY_TENSOR_CUDA_UM_ALLOCATOR_H___INCLUDED
+#ifndef TILEDARRAY_CUDA_UM_ALLOCATOR_H___INCLUDED
+#define TILEDARRAY_CUDA_UM_ALLOCATOR_H___INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -127,4 +127,4 @@ using cuda_um_allocator = default_init_allocator<T,cuda_um_allocator_impl<T>>;
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_TENSOR_CUDA_UM_ALLOCATOR_H___INCLUDED
+#endif  // TILEDARRAY_CUDA_UM_ALLOCATOR_H___INCLUDED

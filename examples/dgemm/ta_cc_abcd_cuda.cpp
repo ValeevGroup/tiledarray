@@ -17,7 +17,7 @@
  *
  */
 
-#include <TiledArray/tensor/cuda/btas_um_tensor.h>
+#include <TiledArray/cuda/btas_um_tensor.h>
 #include <TiledArray/version.h>
 #include <tiledarray.h>
 #include <iostream>

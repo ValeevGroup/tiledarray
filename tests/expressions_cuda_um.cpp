@@ -27,7 +27,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/tensor/cuda/btas_um_tensor.h>
+#include <TiledArray/cuda/btas_um_tensor.h>
 #include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"

@@ -1,5 +1,5 @@
 
-#include <TiledArray/tensor/cuda/cpu_cuda_vector.h>
+#include <TiledArray/cuda/cpu_cuda_vector.h>
 
 
 namespace thrust {

@@ -1,12 +1,12 @@
 
-#ifndef TILEDARRAY_BTAS_TENSOR_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
-#define TILEDARRAY_BTAS_TENSOR_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
+#ifndef TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
+#define TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
 
 
 #include <btas/array_adaptor.h>
 
-#include <TiledArray/tensor/cuda/platform.h>
-#include <TiledArray/tensor/cuda/thrust.h>
+#include <TiledArray/cuda/platform.h>
+#include <TiledArray/cuda/thrust.h>
 
 
 namespace TiledArray {
@@ -240,4 +240,4 @@ struct ArchiveStoreImpl<Archive, TiledArray::cpu_cuda_vector<T> > {
 } // namespace archive
 } // namespace madness
 
-#endif // TILEDARRAY_BTAS_TENSOR_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
+#endif // TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED

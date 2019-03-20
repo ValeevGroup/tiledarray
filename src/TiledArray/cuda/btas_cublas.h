@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_BTAS_TENSOR_CUDA_CUBLAS_H__INCLUDED
-#define TILEDARRAY_BTAS_TENSOR_CUDA_CUBLAS_H__INCLUDED
+#ifndef TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
+#define TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
 
 #include <TiledArray/math/cublas.h>
 #include <TiledArray/math/blas.h>
@@ -33,9 +33,9 @@
 #include <btas/tensor.h>
 
 #include <TiledArray/math/gemm_helper.h>
-#include <TiledArray/tensor/cuda/mult_kernel.h>
-#include <TiledArray/tensor/cuda/platform.h>
-#include <TiledArray/tensor/cuda/um_storage.h>
+#include <TiledArray/cuda/mult_kernel.h>
+#include <TiledArray/cuda/platform.h>
+#include <TiledArray/cuda/um_storage.h>
 
 namespace TiledArray {
 
@@ -517,4 +517,4 @@ typename btas::Tensor<T, Range, Storage>::value_type btas_tensor_dot_cuda_impl(
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_BTAS_TENSOR_CUDA_CUBLAS_H__INCLUDED
+#endif  // TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED

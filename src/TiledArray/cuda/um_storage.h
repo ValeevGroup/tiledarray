@@ -21,18 +21,18 @@
  *
  */
 
-#ifndef TILEDARRAY_TENSOR_CUDA_UM_VECTOR_H__INCLUDED
-#define TILEDARRAY_TENSOR_CUDA_UM_VECTOR_H__INCLUDED
+#ifndef TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
+#define TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
 
-#include <TiledArray/tensor/cuda/thrust.h>
-#include <TiledArray/tensor/cuda/um_allocator.h>
+#include <TiledArray/cuda/thrust.h>
+#include <TiledArray/cuda/um_allocator.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
 #include <btas/array_adaptor.h>
 #include <btas/varray/varray.h>
 
-#include <TiledArray/tensor/cuda/platform.h>
+#include <TiledArray/cuda/platform.h>
 #include <TiledArray/utility.h>
 
 namespace TiledArray {
@@ -182,4 +182,4 @@ struct ArchiveStoreImpl<Archive, TiledArray::cuda_um_btas_varray<T>> {
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_TENSOR_CUDA_UM_VECTOR_H__INCLUDED
+#endif  // TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED

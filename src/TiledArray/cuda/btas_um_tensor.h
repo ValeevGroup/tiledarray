@@ -21,17 +21,17 @@
  *
  */
 
-#ifndef TILEDARRAY_CUDA_TENSOR_CUDA_UM_TENSOR_H
-#define TILEDARRAY_CUDA_TENSOR_CUDA_UM_TENSOR_H
+#ifndef TILEDARRAY_CUDA_CUDA_UM_TENSOR_H
+#define TILEDARRAY_CUDA_CUDA_UM_TENSOR_H
 
 #include <TiledArray/external/btas.h>
-#include <TiledArray/tensor/cuda/um_storage.h>
+#include <TiledArray/cuda/um_storage.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
 #include <TiledArray/external/cutt.h>
 #include <TiledArray/range.h>
-#include <TiledArray/tensor/cuda/btas_cublas.h>
+#include <TiledArray/cuda/btas_cublas.h>
 #include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tile.h>
 
@@ -617,4 +617,4 @@ extern template class TiledArray::Tile<btas::Tensor<
 
 #endif  // TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_CUDA_TENSOR_CUDA_UM_TENSOR_H
+#endif  // TILEDARRAY_CUDA_CUDA_UM_TENSOR_H

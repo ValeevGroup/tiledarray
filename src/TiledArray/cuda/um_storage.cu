@@ -22,8 +22,8 @@
  */
 
 
-#include <TiledArray/tensor/cuda/um_allocator.h>
-#include <TiledArray/tensor/cuda/thrust.h>
+#include <TiledArray/cuda/um_allocator.h>
+#include <TiledArray/cuda/thrust.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 

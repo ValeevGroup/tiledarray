@@ -2,7 +2,7 @@
 // Created by Chong Peng on 7/24/18.
 //
 
-#include <TiledArray/tensor/cuda/btas_um_tensor.h>
+#include <TiledArray/cuda/btas_um_tensor.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 

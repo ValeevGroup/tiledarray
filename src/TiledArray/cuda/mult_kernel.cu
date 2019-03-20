@@ -22,7 +22,7 @@
  */
 
 #include <TiledArray/external/cuda.h>
-#include <TiledArray/tensor/cuda/mult_kernel.h>
+#include <TiledArray/cuda/mult_kernel.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
 
