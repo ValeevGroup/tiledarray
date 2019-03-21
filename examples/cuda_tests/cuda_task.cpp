@@ -58,24 +58,17 @@ tile_type scale(const tile_type& arg, value_type a,
   return tile_type(std::move(result));
 }
 
-int try_main(int argc, char** argv) {
+void process_task(madness::World* world, const std::vector<cudaStream_t>* streams, std::size_t ntask){
 
-  auto& world = TiledArray::get_default_world();
-
-  const std::size_t n_stream = 5;
   const std::size_t iter = 50;
   const std::size_t M = 1000;
   const std::size_t N = 1000;
 
-  std::vector<cudaStream_t> streams(n_stream);
-  for (auto& stream : streams) {
-    // create the streams
-    CudaSafeCall(cudaStreamCreate(&stream));
-//    std::cout << "stream: " << stream << "\n";
-  }
+  std::size_t n_stream = streams->size();
 
   for (std::size_t i = 0; i < iter; i++) {
-    auto& stream = streams[i % n_stream];
+
+    auto& stream = (*streams)[i % n_stream];
 
     TiledArray::Range range{M, N};
 
@@ -85,23 +78,43 @@ int try_main(int argc, char** argv) {
 
     // function pointer to the scale function to call
     tile_type (*scale_fn)(const tile_type&, double,
-                            const cudaStream_t*, std::size_t) = &::scale;
+                          const cudaStream_t*, std::size_t) = &::scale;
 
     madness::Future<tile_type> scale_future;
 
     auto* scale_taskfn = new madness::cudaTaskFn<decltype(scale_fn), tile_type,
-                                                 double, cudaStream_t*, std::size_t>(
-            scale_future, scale_fn, tensor, scale_factor, &stream, i,
-        madness::TaskAttributes());
+            double, const cudaStream_t*, std::size_t>(
+            scale_future, scale_fn, tensor, scale_factor, &stream, ntask*iter + i,
+            madness::TaskAttributes());
 
 //    std::stringstream address;
 //    address << (void*) scale_taskfn;
 //    std::string message = "cudaTaskFn: " + address.str() + " Tensor: " + std::to_string(i) + '\n';
 //    std::cout << message;
-    world.taskq.add(static_cast<madness::TaskInterface*>(scale_taskfn));
+    world->taskq.add(static_cast<madness::TaskInterface*>(scale_taskfn));
 
     /// this should start until scale_taskfn is finished
-    world.taskq.add(verify, scale_future, scale_factor, i);
+    world->taskq.add(verify, scale_future, scale_factor,  ntask*iter + i);
+  }
+}
+
+int try_main(int argc, char** argv) {
+
+  auto& world = TiledArray::get_default_world();
+
+  const std::size_t n_stream = 5;
+  const std::size_t n_tasks = 5;
+
+  std::vector<cudaStream_t> streams(n_stream);
+  for (auto& stream : streams) {
+    // create the streams
+    CudaSafeCall(cudaStreamCreate(&stream));
+//    std::cout << "stream: " << stream << "\n";
+  }
+
+  // add process_task to different tasks/threads
+  for(auto i = 0; i < n_tasks; i++){
+    world.taskq.add(process_task, &world, &streams, i);
   }
 
   world.gop.fence();
