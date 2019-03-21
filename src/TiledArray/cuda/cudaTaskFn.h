@@ -21,9 +21,9 @@ namespace madness {
 ///
 
 template <typename fnT, typename arg1T = void, typename arg2T = void,
-        typename arg3T = void, typename arg4T = void, typename arg5T = void,
-        typename arg6T = void, typename arg7T = void, typename arg8T = void,
-        typename arg9T = void>
+          typename arg3T = void, typename arg4T = void, typename arg5T = void,
+          typename arg6T = void, typename arg7T = void, typename arg8T = void,
+          typename arg9T = void>
 struct cudaTaskFn : public TaskInterface {
   static_assert(not(std::is_const<arg1T>::value ||
                     std::is_reference<arg1T>::value),
@@ -62,11 +62,11 @@ struct cudaTaskFn : public TaskInterface {
                 "improper instantiation of cudaTaskFn, arg9T cannot be a const "
                 "or reference type");
 
-private:
+ private:
   /// This class type
   typedef cudaTaskFn<fnT, arg1T, arg2T, arg3T, arg4T, arg5T, arg6T, arg7T,
-          arg8T, arg9T>
-          cudaTaskFn_;
+                     arg8T, arg9T>
+      cudaTaskFn_;
 
   friend class AsyncTaskInterface;
 
@@ -74,36 +74,45 @@ private:
   struct AsyncTaskInterface : public madness::TaskInterface {
     AsyncTaskInterface(cudaTaskFn_* task, int ndpend = 0,
                        const TaskAttributes attr = TaskAttributes())
-            : TaskInterface(ndpend, attr), task_(task) {}
+        : TaskInterface(ndpend, attr), task_(task) {}
 
     virtual ~AsyncTaskInterface() = default;
-  protected:
+
+   protected:
     void run(const TaskThreadEnv& env) override {
       // run the async function, the function must call synchronize_stream() to
       // set the stream it used!!
       task_->run_async();
 
       // get the stream used by async function
-      const cudaStream_t* stream = TiledArray::tls_cudastream_accessor();
+      auto stream = TiledArray::tls_cudastream_accessor();
 
       TA_ASSERT(stream != nullptr);
 
+      // TODO should we use cuda callback or cuda events??
       // insert cuda callback
       cudaStreamAddCallback(*stream, cuda_callback, task_, 0);
     }
 
-  private:
+   private:
     static void CUDART_CB cuda_callback(cudaStream_t stream, cudaError_t status,
-    void* userData) {
+                                        void* userData) {
+      CudaSafeCall(status);
       // convert void * to AsyncTaskInterface*
-      AsyncTaskInterface* callback = static_cast<AsyncTaskInterface*>(userData);
+      auto* callback = static_cast<cudaTaskFn_*>(userData);
+      //      std::stringstream address;
+      //      address << (void*) callback;
+      //      std::stringstream stream_str;
+      //      stream_str << stream;
+      //      std::string message = "callback on cudaTaskFn: " + address.str() +
+      //      " from stream: " + stream_str.str() + '\n'; std::cout << message;
       callback->notify();
     }
 
     cudaTaskFn_* task_;
   };
 
-public:
+ public:
   typedef fnT functionT;  ///< The task function type
   typedef typename detail::task_result_type<fnT>::resultT resultT;
   ///< The result type of the function
@@ -112,40 +121,40 @@ public:
   // argument value typedefs
 
   static const unsigned int arity =
-          detail::ArgCount<arg1T, arg2T, arg3T, arg4T, arg5T, arg6T, arg7T, arg8T,
-                  arg9T>::value;
+      detail::ArgCount<arg1T, arg2T, arg3T, arg4T, arg5T, arg6T, arg7T, arg8T,
+                       arg9T>::value;
   ///< The number of arguments given for the function
   ///< \note This may not match the arity of the function
   ///< if it has default parameter values
 
-private:
+ private:
   futureT result_;             ///< The task Future result
   const functionT func_;       ///< The task function
   TaskInterface* async_task_;  ///< The internal AsyncTaskInterface that wraps
   ///< the async cuda function
-  futureT async_result_;       ///< the future returned from the async task
+  futureT async_result_;  ///< the future returned from the async task
 
   // If the value of the argument is known at the time the
   // Note: The type argNT for argN, where N  is > arity should be void
 
   typename detail::task_arg<arg1T>::holderT
-          arg1_;  ///< Argument 1 that will be given to the function
+      arg1_;  ///< Argument 1 that will be given to the function
   typename detail::task_arg<arg2T>::holderT
-          arg2_;  ///< Argument 2 that will be given to the function
+      arg2_;  ///< Argument 2 that will be given to the function
   typename detail::task_arg<arg3T>::holderT
-          arg3_;  ///< Argument 3 that will be given to the function
+      arg3_;  ///< Argument 3 that will be given to the function
   typename detail::task_arg<arg4T>::holderT
-          arg4_;  ///< Argument 4 that will be given to the function
+      arg4_;  ///< Argument 4 that will be given to the function
   typename detail::task_arg<arg5T>::holderT
-          arg5_;  ///< Argument 5 that will be given to the function
+      arg5_;  ///< Argument 5 that will be given to the function
   typename detail::task_arg<arg6T>::holderT
-          arg6_;  ///< Argument 6 that will be given to the function
+      arg6_;  ///< Argument 6 that will be given to the function
   typename detail::task_arg<arg7T>::holderT
-          arg7_;  ///< Argument 7 that will be given to the function
+      arg7_;  ///< Argument 7 that will be given to the function
   typename detail::task_arg<arg8T>::holderT
-          arg8_;  ///< Argument 8 that will be given to the function
+      arg8_;  ///< Argument 8 that will be given to the function
   typename detail::task_arg<arg9T>::holderT
-          arg9_;  ///< Argument 9 that will be given to the function
+      arg9_;  ///< Argument 9 that will be given to the function
 
   template <typename fT>
   static fT& get_func(fT& f) {
@@ -154,7 +163,7 @@ private:
 
   template <typename ptrT, typename memfnT, typename resT>
   static memfnT get_func(
-          const detail::MemFuncWrapper<ptrT, memfnT, resT>& wrapper) {
+      const detail::MemFuncWrapper<ptrT, memfnT, resT>& wrapper) {
     return detail::get_mem_func_ptr(wrapper);
   }
 
@@ -197,7 +206,7 @@ private:
   /// None future arguments are always ready => no op
   template <typename T>
   inline void check_dependency(
-          detail::ArgHolder<std::vector<Future<T> > >& arg) {
+      detail::ArgHolder<std::vector<Future<T> > >& arg) {
     check_dependency(static_cast<std::vector<Future<T> >&>(arg));
   }
 
@@ -205,8 +214,8 @@ private:
   template <typename T>
   inline void check_dependency(std::vector<Future<T> >& vec) {
     for (typename std::vector<Future<T> >::iterator it = vec.begin();
-            it != vec.end(); ++it)
-    check_dependency(*it);
+         it != vec.end(); ++it)
+      check_dependency(*it);
   }
 
   /// Future<void> is always ready => no op
@@ -234,6 +243,11 @@ private:
     check_dependency(arg9_);
   }
 
+  // Copies are not allowed.
+  cudaTaskFn(const cudaTaskFn_&);
+  cudaTaskFn_ operator=(cudaTaskFn_&);
+
+ protected:
   // not only register final callback
   // but also submit the asyn task to taskq
   void register_submit_callback() override {
@@ -241,17 +255,15 @@ private:
     TaskInterface::register_submit_callback();
   }
 
-  // Copies are not allowed.
-  cudaTaskFn(const cudaTaskFn_&);
-  cudaTaskFn_ operator=(cudaTaskFn_&);
-
-public:
+ public:
 #if MADNESS_TASKQ_VARIADICS
 
   cudaTaskFn(const futureT& result, functionT func, const TaskAttributes& attr)
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(),
         arg2_(),
         arg3_(),
@@ -260,9 +272,7 @@ public:
         arg6_(),
         arg7_(),
         arg8_(),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 0u);
     check_dependencies();
   }
@@ -273,6 +283,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(),
         arg3_(),
@@ -281,9 +293,7 @@ public:
         arg6_(),
         arg7_(),
         arg8_(),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 1u);
     check_dependencies();
   }
@@ -294,6 +304,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(std::forward<a2T>(a2)),
         arg3_(),
@@ -302,9 +314,7 @@ public:
         arg6_(),
         arg7_(),
         arg8_(),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 2u);
     check_dependencies();
   }
@@ -315,6 +325,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(std::forward<a2T>(a2)),
         arg3_(std::forward<a3T>(a3)),
@@ -323,9 +335,7 @@ public:
         arg6_(),
         arg7_(),
         arg8_(),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 3u);
     check_dependencies();
   }
@@ -336,6 +346,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(std::forward<a2T>(a2)),
         arg3_(std::forward<a3T>(a3)),
@@ -344,9 +356,7 @@ public:
         arg6_(),
         arg7_(),
         arg8_(),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 4u);
     check_dependencies();
   }
@@ -358,6 +368,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(std::forward<a2T>(a2)),
         arg3_(std::forward<a3T>(a3)),
@@ -366,9 +378,7 @@ public:
         arg6_(),
         arg7_(),
         arg8_(),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 5u);
     check_dependencies();
   }
@@ -380,6 +390,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(std::forward<a2T>(a2)),
         arg3_(std::forward<a3T>(a3)),
@@ -388,9 +400,7 @@ public:
         arg6_(std::forward<a6T>(a6)),
         arg7_(),
         arg8_(),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 6u);
     check_dependencies();
   }
@@ -403,6 +413,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(std::forward<a2T>(a2)),
         arg3_(std::forward<a3T>(a3)),
@@ -411,9 +423,7 @@ public:
         arg6_(std::forward<a6T>(a6)),
         arg7_(std::forward<a7T>(a7)),
         arg8_(),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 7u);
     check_dependencies();
   }
@@ -426,6 +436,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(std::forward<a2T>(a2)),
         arg3_(std::forward<a3T>(a3)),
@@ -434,9 +446,7 @@ public:
         arg6_(std::forward<a6T>(a6)),
         arg7_(std::forward<a7T>(a7)),
         arg8_(std::forward<a8T>(a8)),
-        arg9_(),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_() {
     MADNESS_ASSERT(arity == 8u);
     check_dependencies();
   }
@@ -450,6 +460,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(std::forward<a1T>(a1)),
         arg2_(std::forward<a2T>(a2)),
         arg3_(std::forward<a3T>(a3)),
@@ -458,9 +470,7 @@ public:
         arg6_(std::forward<a6T>(a6)),
         arg7_(std::forward<a7T>(a7)),
         arg8_(std::forward<a8T>(a8)),
-        arg9_(std::forward<a9T>(a9)),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_(std::forward<a9T>(a9)) {
     MADNESS_ASSERT(arity == 9u);
     check_dependencies();
   }
@@ -470,6 +480,8 @@ public:
       : TaskInterface(attr),
         result_(result),
         func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
         arg1_(input_arch),
         arg2_(input_arch),
         arg3_(input_arch),
@@ -478,27 +490,25 @@ public:
         arg6_(input_arch),
         arg7_(input_arch),
         arg8_(input_arch),
-        arg9_(input_arch),
-        async_task_(new AsyncTaskInterface(this)),
-        async_result_() {
+        arg9_(input_arch) {
     check_dependencies();
   }
 #else   // MADNESS_TASKQ_VARIADICS
   cudaTaskFn(const futureT& result, functionT func, const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(),
-            arg2_(),
-            arg3_(),
-            arg4_(),
-            arg5_(),
-            arg6_(),
-            arg7_(),
-            arg8_(),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(),
+        arg2_(),
+        arg3_(),
+        arg4_(),
+        arg5_(),
+        arg6_(),
+        arg7_(),
+        arg8_(),
+        arg9_() {
     MADNESS_ASSERT(arity == 0u);
     check_dependencies();
   }
@@ -506,20 +516,20 @@ public:
   template <typename a1T>
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(),
-            arg3_(),
-            arg4_(),
-            arg5_(),
-            arg6_(),
-            arg7_(),
-            arg8_(),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(),
+        arg3_(),
+        arg4_(),
+        arg5_(),
+        arg6_(),
+        arg7_(),
+        arg8_(),
+        arg9_() {
     MADNESS_ASSERT(arity == 1u);
     check_dependencies();
   }
@@ -527,20 +537,20 @@ public:
   template <typename a1T, typename a2T>
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const a2T& a2, const TaskAttributes& attr = TaskAttributes())
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(a2),
-            arg3_(),
-            arg4_(),
-            arg5_(),
-            arg6_(),
-            arg7_(),
-            arg8_(),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(a2),
+        arg3_(),
+        arg4_(),
+        arg5_(),
+        arg6_(),
+        arg7_(),
+        arg8_(),
+        arg9_() {
     MADNESS_ASSERT(arity == 2u);
     check_dependencies();
   }
@@ -548,20 +558,20 @@ public:
   template <typename a1T, typename a2T, typename a3T>
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const a2T& a2, const a3T& a3, const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(a2),
-            arg3_(a3),
-            arg4_(),
-            arg5_(),
-            arg6_(),
-            arg7_(),
-            arg8_(),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(a2),
+        arg3_(a3),
+        arg4_(),
+        arg5_(),
+        arg6_(),
+        arg7_(),
+        arg8_(),
+        arg9_() {
     MADNESS_ASSERT(arity == 3u);
     check_dependencies();
   }
@@ -570,158 +580,158 @@ public:
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const a2T& a2, const a3T& a3, const a4T& a4,
              const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(a2),
-            arg3_(a3),
-            arg4_(a4),
-            arg5_(),
-            arg6_(),
-            arg7_(),
-            arg8_(),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(a2),
+        arg3_(a3),
+        arg4_(a4),
+        arg5_(),
+        arg6_(),
+        arg7_(),
+        arg8_(),
+        arg9_() {
     MADNESS_ASSERT(arity == 4u);
     check_dependencies();
   }
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
-          typename a5T>
+            typename a5T>
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
              const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(a2),
-            arg3_(a3),
-            arg4_(a4),
-            arg5_(a5),
-            arg6_(),
-            arg7_(),
-            arg8_(),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(a2),
+        arg3_(a3),
+        arg4_(a4),
+        arg5_(a5),
+        arg6_(),
+        arg7_(),
+        arg8_(),
+        arg9_() {
     MADNESS_ASSERT(arity == 5u);
     check_dependencies();
   }
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
-          typename a5T, typename a6T>
+            typename a5T, typename a6T>
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
              const a6T& a6, const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(a2),
-            arg3_(a3),
-            arg4_(a4),
-            arg5_(a5),
-            arg6_(a6),
-            arg7_(),
-            arg8_(),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(a2),
+        arg3_(a3),
+        arg4_(a4),
+        arg5_(a5),
+        arg6_(a6),
+        arg7_(),
+        arg8_(),
+        arg9_() {
     MADNESS_ASSERT(arity == 6u);
     check_dependencies();
   }
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
-          typename a5T, typename a6T, typename a7T>
+            typename a5T, typename a6T, typename a7T>
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
              const a6T& a6, const a7T& a7, const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(a2),
-            arg3_(a3),
-            arg4_(a4),
-            arg5_(a5),
-            arg6_(a6),
-            arg7_(a7),
-            arg8_(),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(a2),
+        arg3_(a3),
+        arg4_(a4),
+        arg5_(a5),
+        arg6_(a6),
+        arg7_(a7),
+        arg8_(),
+        arg9_() {
     MADNESS_ASSERT(arity == 7u);
     check_dependencies();
   }
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
-          typename a5T, typename a6T, typename a7T, typename a8T>
+            typename a5T, typename a6T, typename a7T, typename a8T>
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
              const a6T& a6, const a7T& a7, const a8T& a8,
              const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(a2),
-            arg3_(a3),
-            arg4_(a4),
-            arg5_(a5),
-            arg6_(a6),
-            arg7_(a7),
-            arg8_(a8),
-            arg9_(),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(a2),
+        arg3_(a3),
+        arg4_(a4),
+        arg5_(a5),
+        arg6_(a6),
+        arg7_(a7),
+        arg8_(a8),
+        arg9_() {
     MADNESS_ASSERT(arity == 8u);
     check_dependencies();
   }
 
   template <typename a1T, typename a2T, typename a3T, typename a4T,
-          typename a5T, typename a6T, typename a7T, typename a8T,
-          typename a9T>
+            typename a5T, typename a6T, typename a7T, typename a8T,
+            typename a9T>
   cudaTaskFn(const futureT& result, functionT func, const a1T& a1,
              const a2T& a2, const a3T& a3, const a4T& a4, const a5T& a5,
              const a6T& a6, const a7T& a7, const a8T& a8, const a9T& a9,
              const TaskAttributes& attr)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(a1),
-            arg2_(a2),
-            arg3_(a3),
-            arg4_(a4),
-            arg5_(a5),
-            arg6_(a6),
-            arg7_(a7),
-            arg8_(a8),
-            arg9_(a9),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(a1),
+        arg2_(a2),
+        arg3_(a3),
+        arg4_(a4),
+        arg5_(a5),
+        arg6_(a6),
+        arg7_(a7),
+        arg8_(a8),
+        arg9_(a9) {
     MADNESS_ASSERT(arity == 9u);
     check_dependencies();
   }
 
   cudaTaskFn(const futureT& result, functionT func, const TaskAttributes& attr,
              archive::BufferInputArchive& input_arch)
-          : TaskInterface(attr),
-            result_(result),
-            func_(func),
-            arg1_(input_arch),
-            arg2_(input_arch),
-            arg3_(input_arch),
-            arg4_(input_arch),
-            arg5_(input_arch),
-            arg6_(input_arch),
-            arg7_(input_arch),
-            arg8_(input_arch),
-            arg9_(input_arch),
-            async_task_(new AsyncTaskInterface(this)),
-            async_result_() {
+      : TaskInterface(attr),
+        result_(result),
+        func_(func),
+        async_task_(new AsyncTaskInterface(this)),
+        async_result_(),
+        arg1_(input_arch),
+        arg2_(input_arch),
+        arg3_(input_arch),
+        arg4_(input_arch),
+        arg5_(input_arch),
+        arg6_(input_arch),
+        arg7_(input_arch),
+        arg8_(input_arch),
+        arg9_(input_arch) {
     check_dependencies();
   }
 #endif  // MADNESS_TASKQ_VARIADICS
@@ -737,7 +747,7 @@ public:
     return nullptr;
   }
 #else
-protected:
+ protected:
   /// when this cudaTaskFn gets run, it means the AsyncTaskInterface is done
   /// set the result with async_result_, which is finished
   void run(const TaskThreadEnv& env) override { result_.set(async_result_); }
@@ -747,5 +757,5 @@ protected:
 
 }  // namespace madness
 
-#endif //TILDARRAY_HAS_CUDA
-#endif //TILEDARRAY_CUDATASKFN_H
+#endif  // TILDARRAY_HAS_CUDA
+#endif  // TILEDARRAY_CUDATASKFN_H

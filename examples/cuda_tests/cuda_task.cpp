@@ -11,57 +11,67 @@ using tensor_type = TA::btasUMTensorVarray<value_type>;
 using tile_type = TA::Tile<tensor_type>;
 
 /// verify the elements in tile is equal to value
-void verify(const tile_type& tile, value_type value) {
+void verify(const tile_type& tile, value_type value, std::size_t index) {
   //  const auto size = tile.size();
-  std::cout << "verify" << std::endl;
+  std::string message = "verify Tensor: " + std::to_string(index) + '\n';
+  std::cout << message;
   for (auto& num : tile) {
     if (num != value) {
-      std::cout << "Error: " << num << " " << value << std::endl;
+      std::string error("Error: " + std::to_string(num) + " " + std::to_string(value) + " Tensor: " + std::to_string(index) + "\n");
+      std::cout << error;
     }
     break;
   }
 }
 
 tile_type scale(const tile_type& arg, value_type a,
-                const cudaStream_t& stream) {
+                const cudaStream_t* stream, std::size_t index) {
+
+  CudaSafeCall(cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id()));
   /// make result Tensor
   using Storage = typename tile_type::tensor_type::storage_type;
   Storage result_storage;
   auto result_range = arg.range();
-  make_device_storage(result_storage, arg.size(), stream);
+  make_device_storage(result_storage, arg.size(), *stream);
 
   typename tile_type::tensor_type result(std::move(result_range),
                                          std::move(result_storage));
 
   /// copy the original Tensor
   const auto& handle = TiledArray::cuBLASHandlePool::handle();
-  CublasSafeCall(cublasSetStream(handle, stream));
+  CublasSafeCall(cublasSetStream(handle, *stream));
 
   CublasSafeCall(TiledArray::cublasCopy(handle, result.size(), arg.data(), 1,
                                         device_data(result.storage()), 1));
 
-  /// scale the Tensor
   CublasSafeCall(TiledArray::cublasScal(handle, result.size(), &a,
                                         device_data(result.storage()), 1));
 
-  TiledArray::synchronize_stream(&stream);
+//  cudaStreamSynchronize(stream);
 
-  return tile_type(result);
+  TiledArray::synchronize_stream(stream);
+
+//  std::stringstream stream_str;
+//  stream_str << *stream;
+//  std::string message = "run scale on Tensor: " + std::to_string(index) +  " on stream: " + stream_str.str() +'\n';
+//  std::cout << message;
+  return tile_type(std::move(result));
 }
 
 int try_main(int argc, char** argv) {
-  // Initialize runtime
-  TiledArray::World& world = TiledArray::initialize(argc, argv);
 
-  const std::size_t n_stream = 2;
-  const std::size_t iter = 20;
+  auto& world = TiledArray::get_default_world();
+
+  const std::size_t n_stream = 5;
+  const std::size_t iter = 50;
   const std::size_t M = 1000;
   const std::size_t N = 1000;
 
-  std::vector<cudaStream_t> streams(2);
+  std::vector<cudaStream_t> streams(n_stream);
   for (auto& stream : streams) {
     // create the streams
-    cudaStreamCreate(&stream);
+    CudaSafeCall(cudaStreamCreate(&stream));
+//    std::cout << "stream: " << stream << "\n";
   }
 
   for (std::size_t i = 0; i < iter; i++) {
@@ -75,25 +85,26 @@ int try_main(int argc, char** argv) {
 
     // function pointer to the scale function to call
     tile_type (*scale_fn)(const tile_type&, double,
-                            const cudaStream_t&) = &::scale;
+                            const cudaStream_t*, std::size_t) = &::scale;
 
-    madness::Future<tile_type> result;
+    madness::Future<tile_type> scale_future;
 
     auto* scale_taskfn = new madness::cudaTaskFn<decltype(scale_fn), tile_type,
-                                                 double, cudaStream_t>(
-        result, scale_fn, tensor, scale_factor, stream,
+                                                 double, cudaStream_t*, std::size_t>(
+            scale_future, scale_fn, tensor, scale_factor, &stream, i,
         madness::TaskAttributes());
 
-    /// add the cudaTaskFn
-    auto scale_future = scale_taskfn->result();
+//    std::stringstream address;
+//    address << (void*) scale_taskfn;
+//    std::string message = "cudaTaskFn: " + address.str() + " Tensor: " + std::to_string(i) + '\n';
+//    std::cout << message;
     world.taskq.add(static_cast<madness::TaskInterface*>(scale_taskfn));
 
     /// this should start until scale_taskfn is finished
-    world.taskq.add(verify, scale_future, scale_factor);
+    world.taskq.add(verify, scale_future, scale_factor, i);
   }
 
   world.gop.fence();
-  TiledArray::finalize();
 
   for (auto& stream : streams) {
     // create the streams
@@ -104,7 +115,10 @@ int try_main(int argc, char** argv) {
 
 int main(int argc, char* argv[]) {
   try {
+    // Initialize runtime
+    TiledArray::World& world = TiledArray::initialize(argc, argv);
     try_main(argc, argv);
+    TiledArray::finalize();
   } catch (thrust::system::detail::bad_alloc& ex) {
     std::cout << ex.what() << std::endl;
 
