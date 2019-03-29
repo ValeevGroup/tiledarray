@@ -27,6 +27,7 @@
 #define TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
 
 #include <type_traits>
+#include <TiledArray/type_traits.h>
 
 namespace Eigen {
 

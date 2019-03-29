@@ -29,6 +29,7 @@
 #include <initializer_list>
 #include <type_traits>
 
+#include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/range.h>
 
 namespace TiledArray {
