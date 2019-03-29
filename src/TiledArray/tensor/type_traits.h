@@ -207,7 +207,18 @@ namespace TiledArray {
     template <typename ... Ts>
     constexpr const bool is_shifted_v = is_shifted<Ts...>::value;
 
-  }  // namespace detail
+    // check if reduce_op can reduce set of types
+    template <typename Enabler, typename ReduceOp, typename Result, typename ... Args>
+    struct is_reduce_op_ : public std::false_type {};
+
+    template <typename ReduceOp, typename Result, typename ... Args>
+    struct is_reduce_op_<detail::void_t<decltype(std::declval<ReduceOp&>()(std::declval<Result&>(),std::declval<const Args*>()...))>,
+        ReduceOp, Result, Args...> : public std::true_type {};
+
+    template <typename ReduceOp, typename Result, typename ... Args>
+    constexpr const bool is_reduce_op_v = is_reduce_op_<void, ReduceOp, Result, Args...>::value;
+
+}  // namespace detail
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
