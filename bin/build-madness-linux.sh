@@ -15,7 +15,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   else
     export CC=/usr/bin/clang-$CLANG_VERSION
     export CXX=/usr/bin/clang++-$CLANG_VERSION
-    export EXTRACXXFLAGS="-mno-avx"
+    export EXTRACXXFLAGS="-mno-avx -stdlib=libc++"
     export F77=gfortran-$GCC_VERSION
   fi
 

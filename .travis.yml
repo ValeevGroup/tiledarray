@@ -10,8 +10,10 @@ addons:
   apt:
     sources: &base_sources
       - ubuntu-toolchain-r-test
-    sources: &clang_sources
+    sources: &clang7_sources
       - llvm-toolchain-xenial-7
+    sources: &clang8_sources
+      - llvm-toolchain-xenial-8
     packages: &base_packages
     - libeigen3-dev
     - libboost-all-dev
@@ -96,24 +98,56 @@ matrix:
         apt:
           sources:
            - *base_sources
-           - *clang_sources
+           - *clang7_sources
           packages:
            - *base_packages
            - g++-8
            - gfortran-8
            - clang-7
+           - libc++-7-dev
+           - libc++abi-7-dev
     - compiler: clang
       env: CLANG_VERSION=7 GCC_VERSION=8 BUILD_TYPE=Release
       addons:
         apt:
           sources:
            - *base_sources
-           - *clang_sources
+           - *clang7_sources
           packages:
            - *base_packages
            - g++-8
            - gfortran-8
            - clang-7
+           - libc++-7-dev
+           - libc++abi-7-dev
+    - compiler: clang
+      env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Debug
+      addons:
+        apt:
+          sources:
+            - *base_sources
+            - *clang8_sources
+          packages:
+            - *base_packages
+            - g++-8
+            - gfortran-8
+            - clang-8
+            - libc++-8-dev
+            - libc++abi-8-dev
+    - compiler: clang
+      env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Release
+      addons:
+        apt:
+          sources:
+            - *base_sources
+            - *clang8_sources
+          packages:
+            - *base_packages
+            - g++-8
+            - gfortran-8
+            - clang-8
+            - libc++-8-dev
+            - libc++abi-8-dev
   allow_failures:
     # ambiguous template specialization ‘Copy<>’ for ‘void El::Copy(const El::Matrix<int>&, El::Matrix<int>&)’
     - compiler: gcc

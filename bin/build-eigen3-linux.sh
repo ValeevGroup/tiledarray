@@ -13,7 +13,7 @@ if [ "$CXX" = "g++" ]; then
 else
   export CC=/usr/bin/clang-$CLANG_VERSION
   export CXX=/usr/bin/clang++-$CLANG_VERSION
-  export EXTRACXXFLAGS="-mno-avx"
+  export EXTRACXXFLAGS="-mno-avx  -stdlib=libc++"
 fi
 
 # Print compiler information
