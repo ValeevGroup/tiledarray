@@ -20,9 +20,10 @@ cmake --version
 export INSTALL_DIR=${INSTALL_PREFIX}/mpich
 if [ ! -d "${INSTALL_DIR}" ]; then
     cd ${BUILD_PREFIX}
-    wget --no-check-certificate -q http://www.mpich.org/static/downloads/3.2/mpich-3.2.tar.gz
-    tar -xzf mpich-3.2.tar.gz
-    cd mpich-3.2
+    export MPICH_VERSION=3.3
+    wget --no-check-certificate -q http://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
+    tar -xzf mpich-${MPICH_VERSION}.tar.gz
+    cd mpich-${MPICH_VERSION}
     ./configure CC=$CC CXX=$CXX --disable-fortran --disable-romio --prefix=${INSTALL_DIR}
     make -j2
     make install
