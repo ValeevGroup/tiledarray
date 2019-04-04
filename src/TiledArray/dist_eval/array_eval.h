@@ -258,15 +258,6 @@ namespace TiledArray {
         return value_type(tile, op_, consume);
       }
 
-      /// Make an array tile and insert it into the distributed storage container
-
-      /// \param i The tile index
-      /// \param tile The array tile that is the basis for lazy tile
-//      void set_tile(const size_type i, const typename array_type::value_type& tile, const bool consume) {
-//        /// TODO handle async op_ here
-//        DistEvalImpl_::set_tile(i, value_type(tile, op_, consume));
-//      }
-
       /// Evaluate the tiles of this tensor
 
       /// This function will evaluate the children of this distributed evaluator
