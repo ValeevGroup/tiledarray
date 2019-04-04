@@ -755,7 +755,76 @@ struct cudaTaskFn : public TaskInterface {
 
 };  // class cudaTaskFn
 
+
+///
+/// \tparam Tensor  the tensor type this task will act on, enable when is_cuda_tile<Tensor>
+/// \tparam fnT  A function pointer or functor
+/// \tparam argsT types of all argument
+/// \return A future to the result
+//template <typename Tensor, typename fnT, typename... argsT,
+//          typename = std::enable_if_t<
+//              TiledArray::detail::is_cuda_tile<Tensor>::value, void>>
+//decltype(auto) add_tensor_task(madness::World& world, fnT&& fn,
+//                               argsT&&... args) {
+//  /// type of cudaTaskFn object
+//  using taskT =
+//      cudaTaskFn<std::decay_t<fnT>,
+//                 std::remove_const_t<std::remove_reference_t<argsT>>...>;
+//
+//  std::cout << "add cudaTaskFn\n";
+//
+//  return world.taskq.add(
+//      new taskT(typename taskT::futureT(), std::forward<fnT>(fn),
+//                     std::forward<argsT>(args)..., TaskAttributes()));
+//}
+
+///
+/// \tparam Tensor  the tensor type this task will act on, enable when !is_cuda_tile<Tensor>
+/// \tparam fnT  A function pointer or functor
+/// \tparam argsT types of all argument
+/// \return A future to the result
+template <typename Tensor, typename fnT, typename... argsT,
+    typename = std::enable_if_t<
+        !TiledArray::detail::is_cuda_tile<Tensor>::value, void> >
+decltype(auto) add_tensor_task(madness::World& world, fnT&& fn,
+                               argsT&&... args) {
+  return world.taskq.add(std::forward<fnT>(fn), std::forward<argsT>(args)...);
+}
+
+///
+/// \tparam Tensor the tensor type this task will act on,  enable when is_cuda_tile<Tensor>
+/// \tparam objT    the object type
+/// \tparam memfnT  the member function type
+/// \tparam argsT   variadic template for arguments
+/// \return A future to the result
+//template <typename Tensor, typename objT, typename memfnT, typename... argsT,
+//          typename = std::enable_if_t<
+//              TiledArray::detail::is_cuda_tile<Tensor>::value, void>>
+//decltype(auto) add_tensor_task(madness::World& world, objT&& obj, memfnT memfn,
+//                               argsT&&... args) {
+//  return add_tensor_task<Tensor>(
+//      detail::wrap_mem_fn(std::forward<objT>(obj), memfn),
+//      std::forward<argsT>(args)...);
+//}
+
+///
+/// \tparam Tensor the tensor type this task will act on,  enable when !is_cuda_tile<Tensor>
+/// \tparam objT    the object type
+/// \tparam memfnT  the member function type
+/// \tparam argsT   variadic template for arguments
+/// \return A future to the result
+template <typename Tensor, typename objT, typename memfnT, typename... argsT,
+          typename = std::enable_if_t<
+              !TiledArray::detail::is_cuda_tile<Tensor>::value, void> >
+decltype(auto) add_tensor_task(madness::World& world, objT&& obj, memfnT memfn,
+                               argsT&&... args) {
+  return world.taskq.add(std::forward<objT>(obj), memfn,
+                         std::forward<argsT>(args)...);
+}
+
 }  // namespace madness
+
+
 
 #endif  // TILDARRAY_HAS_CUDA
 #endif  // TILEDARRAY_CUDATASKFN_H

@@ -45,6 +45,16 @@ template <typename T, typename Range = TiledArray::Range>
 using btasUMTensorVarray =
     ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
+
+namespace detail {
+
+// template <typename T, typename Range>
+// struct is_cuda_tile<::btas::Tensor<T,Range,TiledArray::cuda_um_btas_varray<T>>> : public std::true_type {};
+
+}
+
+
+
 }  // end of namespace TiledArray
 
 /// serialize functions

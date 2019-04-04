@@ -27,6 +27,8 @@
 #define TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
 
 #include <type_traits>
+#include <TiledArray/config.h>
+
 namespace Eigen {
 
 // Forward declarations
@@ -208,6 +210,17 @@ namespace TiledArray{
     /// @c is_shifted_v<Ts...> is an alias for @c is_shifted<Ts...>::value
     template <typename ... Ts>
     constexpr const bool is_shifted_v = is_shifted<Ts...>::value;
+
+
+
+  /// detect cuda tile
+#ifdef TILEDARRAY_HAS_CUDA
+    template <typename T>
+    struct is_cuda_tile : public std::false_type {};
+
+    template <typename T>
+    struct is_cuda_tile<Tile<T>> : public is_cuda_tile<T> {};
+#endif
 
   }  // namespace detail
 } // namespace TiledArray

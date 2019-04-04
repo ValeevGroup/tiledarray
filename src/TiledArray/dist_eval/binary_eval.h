@@ -121,6 +121,7 @@ namespace TiledArray {
       /// \param right The right-hand tile
       template <typename L, typename R>
       void eval_tile(const size_type i, L left, R right) {
+        /// TODO handle async op_ here
         DistEvalImpl_::set_tile(i, op_(left, right));
       }
 

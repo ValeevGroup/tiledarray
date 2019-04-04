@@ -27,6 +27,7 @@
 #include <TiledArray/config.h>
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/external/cuda.h>
+#include <TiledArray/cuda/cudaTaskFn.h>
 #endif
 
 namespace TiledArray {

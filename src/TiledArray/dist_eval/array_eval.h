@@ -226,10 +226,17 @@ namespace TiledArray {
           return result;
         } else {
           // Spawn a task to set the tile when the input tile is ready.
+#ifdef TILEDARRAY_HAS_CUDA
+          Future<value_type> result = madness::add_tensor_task<value_type>(
+              TensorImpl_::world(), shared_from_this(),
+              &ArrayEvalImpl_::make_tile, tile, consumable_tile,
+              madness::TaskAttributes::hipri());
+#else
           Future<value_type> result =
               TensorImpl_::world().taskq.add(shared_from_this(),
               & ArrayEvalImpl_::make_tile, tile, consumable_tile,
               madness::TaskAttributes::hipri());
+#endif
 
           result.register_callback(const_cast<ArrayEvalImpl_*>(this));
           return result;
@@ -247,6 +254,7 @@ namespace TiledArray {
     private:
 
       value_type make_tile(const typename array_type::value_type& tile, const bool consume) const {
+        /// TODO handle async op_ here
         return value_type(tile, op_, consume);
       }
 
@@ -254,9 +262,10 @@ namespace TiledArray {
 
       /// \param i The tile index
       /// \param tile The array tile that is the basis for lazy tile
-      void set_tile(const size_type i, const typename array_type::value_type& tile, const bool consume) {
-        DistEvalImpl_::set_tile(i, value_type(tile, op_, consume));
-      }
+//      void set_tile(const size_type i, const typename array_type::value_type& tile, const bool consume) {
+//        /// TODO handle async op_ here
+//        DistEvalImpl_::set_tile(i, value_type(tile, op_, consume));
+//      }
 
       /// Evaluate the tiles of this tensor
 

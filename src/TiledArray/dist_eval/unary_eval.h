@@ -108,6 +108,7 @@ namespace TiledArray {
       /// \param i The tile index
       /// \param tile The tile to be evaluated
       void eval_tile(const size_type i, tile_argument_type tile) {
+        /// TODO handle async op_ here
         DistEvalImpl_::set_tile(i, op_(tile));
       }
 
