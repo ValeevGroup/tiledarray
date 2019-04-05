@@ -217,30 +217,8 @@ namespace TiledArray {
             array_.find(array_index);
 
         const bool consumable_tile = ! array_.is_local(array_index);
-        // Insert the tile into this evaluator for subsequent processing
-        if(tile.probe()) {
-          // Skip the task since the tile is ready
-          Future<value_type> result;
-          result.set(make_tile(tile, consumable_tile));
-          const_cast<ArrayEvalImpl_*>(this)->notify();
-          return result;
-        } else {
-          // Spawn a task to set the tile when the input tile is ready.
-#ifdef TILEDARRAY_HAS_CUDA
-          Future<value_type> result = madness::add_tensor_task<value_type>(
-              TensorImpl_::world(), shared_from_this(),
-              &ArrayEvalImpl_::make_tile, tile, consumable_tile,
-              madness::TaskAttributes::hipri());
-#else
-          Future<value_type> result =
-              TensorImpl_::world().taskq.add(shared_from_this(),
-              & ArrayEvalImpl_::make_tile, tile, consumable_tile,
-              madness::TaskAttributes::hipri());
-#endif
 
-          result.register_callback(const_cast<ArrayEvalImpl_*>(this));
-          return result;
-        }
+        return eval_tile(tile, consumable_tile);
       }
 
       /// Discard a tile that is not needed
@@ -254,10 +232,54 @@ namespace TiledArray {
     private:
 
       value_type make_tile(const typename array_type::value_type& tile, const bool consume) const {
-        /// TODO handle async op_ here
         return value_type(tile, op_, consume);
       }
 
+      /// Evaluate a single tile
+
+#ifdef TILEDARRAY_HAS_CUDA
+
+      template <typename U = value_type>
+      std::enable_if_t<detail::is_cuda_tile<U>::value,
+                       madness::Future<value_type>>
+      eval_tile(const madness::Future<typename array_type::value_type>& tile,
+                const bool consumable_tile) const {
+        // Spawn a cuda task to set the tile when the input tile is ready.
+        Future<value_type> result = madness::add_cuda_task(
+            TensorImpl_::world(), shared_from_this(),
+            &ArrayEvalImpl_::make_tile, tile, consumable_tile,
+            madness::TaskAttributes::hipri());
+        result.register_callback(const_cast<ArrayEvalImpl_*>(this));
+        return result;
+      }
+
+      template <typename U = value_type>
+      std::enable_if_t<!detail::is_cuda_tile<U>::value,
+                       madness::Future<value_type>>
+      eval_tile(const madness::Future<typename array_type::value_type>& tile,
+                const bool consumable_tile) const {
+#else
+      madness::Future<value_type> eval_tile(
+          const madness::Future<typename array_type::value_type>& tile,
+          const bool consumable_tile) const {
+#endif
+        // Insert the tile into this evaluator for subsequent processing
+        if(tile.probe()) {
+          // Skip the task since the tile is ready
+          Future<value_type> result;
+          result.set(make_tile(tile, consumable_tile));
+          const_cast<ArrayEvalImpl_*>(this)->notify();
+          return result;
+        } else {
+          // Spawn a task to set the tile when the input tile is ready.
+          Future<value_type> result =
+              TensorImpl_::world().taskq.add(shared_from_this(),
+                                             & ArrayEvalImpl_::make_tile, tile, consumable_tile,
+                                             madness::TaskAttributes::hipri());
+          result.register_callback(const_cast<ArrayEvalImpl_*>(this));
+          return result;
+        }
+      }
       /// Evaluate the tiles of this tensor
 
       /// This function will evaluate the children of this distributed evaluator

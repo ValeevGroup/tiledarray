@@ -116,15 +116,34 @@ namespace TiledArray {
 
       /// Task function for evaluating tiles
 
+#ifdef TILEDARRAY_HAS_CUDA
+      /// \param i The tile index
+      /// \param left The left-hand tile
+      /// \param right The right-hand tile
+      template <typename L, typename R, typename U = value_type>
+      std::enable_if_t<!detail::is_cuda_tile<U>::value, void>
+      eval_tile(const size_type i, L left, R right) {
+        DistEvalImpl_::set_tile(i, op_(left, right));
+      }
+
+      /// \param i The tile index
+      /// \param left The left-hand tile
+      /// \param right The right-hand tile
+      template <typename L, typename R, typename U = value_type>
+      std::enable_if_t<detail::is_cuda_tile<U>::value, void>
+      eval_tile(const size_type i, L left, R right) {
+        auto result_tile = madness::add_cuda_task(DistEvalImpl_::world(), op_, left, right);
+        DistEvalImpl_::set_tile(i, result_tile);
+      }
+#else
       /// \param i The tile index
       /// \param left The left-hand tile
       /// \param right The right-hand tile
       template <typename L, typename R>
       void eval_tile(const size_type i, L left, R right) {
-        /// TODO handle async op_ here
         DistEvalImpl_::set_tile(i, op_(left, right));
       }
-
+#endif
       /// Evaluate the tiles of this tensor
 
       /// This function will evaluate the children of this distributed evaluator
