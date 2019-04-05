@@ -220,6 +220,10 @@ namespace TiledArray{
 
     template <typename T>
     struct is_cuda_tile<Tile<T>> : public is_cuda_tile<T> {};
+
+    template <typename T, typename Op>
+    struct is_cuda_tile<LazyArrayTile<T, Op>>
+        : public is_cuda_tile<typename LazyArrayTile<T, Op>::eval_type> {};
 #endif
 
   }  // namespace detail

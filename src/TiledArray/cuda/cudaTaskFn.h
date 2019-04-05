@@ -87,11 +87,20 @@ struct cudaTaskFn : public TaskInterface {
       // get the stream used by async function
       auto stream = TiledArray::tls_cudastream_accessor();
 
-      TA_ASSERT(stream != nullptr);
+//      TA_ASSERT(stream != nullptr);
+      // WARNING, handle noop here
 
-      // TODO should we use cuda callback or cuda events??
-      // insert cuda callback
-      cudaStreamAddCallback(*stream, cuda_callback, task_, 0);
+      if(stream == nullptr){
+        task_->notify();
+      }
+      else{
+        // TODO should we use cuda callback or cuda events??
+        // insert cuda callback
+        cudaStreamAddCallback(*stream, cuda_callback, task_, 0);
+        // reset stream to nullptr
+        TiledArray::synchronize_stream(nullptr);
+      }
+
     }
 
    private:
@@ -167,7 +176,7 @@ struct cudaTaskFn : public TaskInterface {
     return detail::get_mem_func_ptr(wrapper);
   }
 
-  virtual void get_id(std::pair<void*, unsigned short>& id) const {
+  void get_id(std::pair<void*, unsigned short>& id) const override {
     return make_id(id, get_func(func_));
   }
 
@@ -743,17 +752,42 @@ struct cudaTaskFn : public TaskInterface {
 
 #ifdef HAVE_INTEL_TBB
   virtual tbb::task* execute() {
-    result_.set(async_result_);
+    result_.set(std::move(async_result_));
     return nullptr;
   }
 #else
  protected:
   /// when this cudaTaskFn gets run, it means the AsyncTaskInterface is done
   /// set the result with async_result_, which is finished
-  void run(const TaskThreadEnv& env) override { result_.set(async_result_); }
+  void run(const TaskThreadEnv& env) override { result_.set(std::move(async_result_)); }
 #endif  // HAVE_INTEL_TBB
 
 };  // class cudaTaskFn
+
+/// add a cudaTaskFn object to World
+/// \tparam fnT A function pointer or functor
+/// \tparam a1T Type of argument 1.
+/// \tparam a2T Type of argument 2.
+/// \tparam a3T Type of argument 3.
+/// \tparam a4T Type of argument 4.
+/// \tparam a5T Type of argument 5.
+/// \tparam a6T Type of argument 6.
+/// \tparam a7T Type of argument 7.
+/// \tparam a8T Type of argument 8.
+/// \tparam a9T Type of argument 9.
+/// \param[in] t Description needed.
+/// \return Description needed.
+template <typename fnT, typename a1T, typename a2T, typename a3T, typename a4T,
+          typename a5T, typename a6T, typename a7T, typename a8T, typename a9T>
+typename cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
+add_cuda_taskfn(
+    madness::World& world,
+    cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>* t) {
+  typename TaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
+      res(t->result());
+  world.taskq.add(static_cast<TaskInterface*>(t));
+  return res;
+}
 
 /// enabled if last argument is not TaskAttributes
 /// \tparam fnT  A function pointer or functor
@@ -762,17 +796,16 @@ struct cudaTaskFn : public TaskInterface {
 template <
     typename fnT, typename... argsT,
     typename = std::enable_if_t<!meta::taskattr_is_last_arg<argsT...>::value>>
-decltype(auto) add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
+typename detail::function_enabler<fnT(future_to_ref_t<argsT>...)>::type
+add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
   /// type of cudaTaskFn object
   using taskT =
       cudaTaskFn<std::decay_t<fnT>,
                  std::remove_const_t<std::remove_reference_t<argsT>>...>;
 
-  std::cout << "add cudaTaskFn\n";
-
-  return world.taskq.add(
-      new taskT(typename taskT::futureT(), std::forward<fnT>(fn),
-                std::forward<argsT>(args)..., TaskAttributes()));
+  return add_cuda_taskfn(
+      world, new taskT(typename taskT::futureT(), std::forward<fnT>(fn),
+                       std::forward<argsT>(args)..., TaskAttributes()));
 }
 
 /// enabled if last argument is  TaskAttributes
@@ -782,89 +815,32 @@ decltype(auto) add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
 template <
     typename fnT, typename... argsT,
     typename = std::enable_if_t<meta::taskattr_is_last_arg<argsT...>::value>>
-decltype(auto) add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
+typename meta::drop_last_arg_and_apply_callable<
+    detail::function_enabler, fnT, future_to_ref_t<argsT>...>::type::type
+add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
   /// type of cudaTaskFn object
   using taskT = typename meta::drop_last_arg_and_apply<
       cudaTaskFn, std::decay_t<fnT>,
       std::remove_const_t<std::remove_reference_t<argsT>>...>::type;
 
-  std::cout << "add cudaTaskFn\n";
-
-  return world.taskq.add(new taskT(typename taskT::futureT(),
-                                   std::forward<fnT>(fn),
-                                   std::forward<argsT>(args)...));
+  return add_cuda_taskfn(
+      world, new taskT(typename taskT::futureT(), std::forward<fnT>(fn),
+                       std::forward<argsT>(args)...));
 }
 
 ///
-/// \tparam Tensor the tensor type this task will act on
 /// \tparam objT    the object type
 /// \tparam memfnT  the member function type
 /// \tparam argsT   variadic template for arguments
 /// \return A future to the result
-template <typename Tensor, typename objT, typename memfnT, typename... argsT>
-decltype(auto) add_cuda_task(madness::World& world, objT&& obj, memfnT memfn,
-                               argsT&&... args) {
-  return add_cuda_task(
-      detail::wrap_mem_fn(std::forward<objT>(obj), memfn),
-      std::forward<argsT>(args)...);
+template <typename objT, typename memfnT, typename... argsT>
+typename detail::memfunc_enabler<objT, memfnT>::type
+add_cuda_task(madness::World& world, objT&& obj, memfnT memfn,
+                             argsT&&... args) {
+  return add_cuda_task(world,
+                       detail::wrap_mem_fn(std::forward<objT>(obj), memfn),
+                       std::forward<argsT>(args)...);
 }
-
-///
-/// \tparam Tensor  the tensor type this task will act on, enable when is_cuda_tile<Tensor>
-/// \tparam fnT  A function pointer or functor
-/// \tparam argsT types of all argument
-/// \return A future to the result
-//template <typename Tensor, typename fnT, typename... argsT,
-//          typename = std::enable_if_t<
-//              TiledArray::detail::is_cuda_tile<Tensor>::value, void>>
-//decltype(auto) add_tensor_task(madness::World& world, fnT&& fn,
-//                               argsT&&... args) {
-//  add_cuda_task(world, std::forward<fnT>(fn), std::forward<argsT>(args)...);
-//}
-
-///
-/// \tparam Tensor  the tensor type this task will act on, enable when !is_cuda_tile<Tensor>
-/// \tparam fnT  A function pointer or functor
-/// \tparam argsT types of all argument
-/// \return A future to the result
-//template <typename Tensor, typename fnT, typename... argsT,
-//    typename = std::enable_if_t<
-//        !TiledArray::detail::is_cuda_tile<Tensor>::value, void> >
-//decltype(auto) add_tensor_task(madness::World& world, fnT&& fn,
-//                               argsT&&... args) {
-//  return world.taskq.add(std::forward<fnT>(fn), std::forward<argsT>(args)...);
-//}
-
-///
-/// \tparam Tensor the tensor type this task will act on,  enable when is_cuda_tile<Tensor>
-/// \tparam objT    the object type
-/// \tparam memfnT  the member function type
-/// \tparam argsT   variadic template for arguments
-/// \return A future to the result
-//template <typename Tensor, typename objT, typename memfnT, typename... argsT,
-//          typename = std::enable_if_t<
-//              TiledArray::detail::is_cuda_tile<Tensor>::value, void>>
-//decltype(auto) add_tensor_task(madness::World& world, objT&& obj, memfnT memfn,
-//                               argsT&&... args) {
-//  return add_cuda_task(
-//      detail::wrap_mem_fn(std::forward<objT>(obj), memfn),
-//      std::forward<argsT>(args)...);
-//}
-
-///
-/// \tparam Tensor the tensor type this task will act on,  enable when !is_cuda_tile<Tensor>
-/// \tparam objT    the object type
-/// \tparam memfnT  the member function type
-/// \tparam argsT   variadic template for arguments
-/// \return A future to the result
-//template <typename Tensor, typename objT, typename memfnT, typename... argsT,
-//          typename = std::enable_if_t<
-//              !TiledArray::detail::is_cuda_tile<Tensor>::value, void> >
-//decltype(auto) add_tensor_task(madness::World& world, objT&& obj, memfnT memfn,
-//                               argsT&&... args) {
-//  return world.taskq.add(std::forward<objT>(obj), memfn,
-//                         std::forward<argsT>(args)...);
-//}
 
 }  // namespace madness
 

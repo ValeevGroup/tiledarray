@@ -244,7 +244,7 @@ namespace TiledArray {
                        madness::Future<value_type>>
       eval_tile(const madness::Future<typename array_type::value_type>& tile,
                 const bool consumable_tile) const {
-        // Spawn a cuda task to set the tile when the input tile is ready.
+        // Spawn a cuda task to set the tile when the input tile is not ready.
         Future<value_type> result = madness::add_cuda_task(
             TensorImpl_::world(), shared_from_this(),
             &ArrayEvalImpl_::make_tile, tile, consumable_tile,
@@ -271,7 +271,7 @@ namespace TiledArray {
           const_cast<ArrayEvalImpl_*>(this)->notify();
           return result;
         } else {
-          // Spawn a task to set the tile when the input tile is ready.
+          // Spawn a task to set the tile when the input tile is not ready.
           Future<value_type> result =
               TensorImpl_::world().taskq.add(shared_from_this(),
                                              & ArrayEvalImpl_::make_tile, tile, consumable_tile,

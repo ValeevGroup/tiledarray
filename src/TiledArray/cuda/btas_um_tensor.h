@@ -45,15 +45,18 @@ template <typename T, typename Range = TiledArray::Range>
 using btasUMTensorVarray =
     ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
+template <typename T, typename Range>
+struct eval_trait<btasUMTensorVarray<T, Range>> {
+  typedef btasUMTensorVarray<T, Range> type;
+};
 
 namespace detail {
+template <typename T, typename Range>
+struct is_cuda_tile<
+    ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>>
+    : public std::true_type {};
 
-// template <typename T, typename Range>
-// struct is_cuda_tile<::btas::Tensor<T,Range,TiledArray::cuda_um_btas_varray<T>>> : public std::true_type {};
-
-}
-
-
+} // end of namespace detail
 
 }  // end of namespace TiledArray
 
@@ -92,13 +95,7 @@ struct ArchiveStoreImpl<Archive, TiledArray::btasUMTensorVarray<T>> {
 }  // namespace archive
 }  // namespace madness
 
-namespace TiledArray {
-
-template <typename T, typename Range>
-struct eval_trait<btasUMTensorVarray<T, Range>> {
-  typedef btasUMTensorVarray<T, Range> type;
-};
-
+namespace TiledArray{
 ///
 /// gemm
 ///
