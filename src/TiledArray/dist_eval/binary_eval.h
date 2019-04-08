@@ -132,6 +132,7 @@ namespace TiledArray {
       template <typename L, typename R, typename U = value_type>
       std::enable_if_t<detail::is_cuda_tile<U>::value, void>
       eval_tile(const size_type i, L left, R right) {
+        // TODO avoid copy the Op object
         auto result_tile = madness::add_cuda_task(DistEvalImpl_::world(), op_, left, right);
         DistEvalImpl_::set_tile(i, result_tile);
       }
