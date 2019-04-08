@@ -235,34 +235,10 @@ namespace TiledArray {
         return value_type(tile, op_, consume);
       }
 
-      /// Evaluate a single tile
-
-#ifdef TILEDARRAY_HAS_CUDA
-
-      template <typename U = value_type>
-      std::enable_if_t<detail::is_cuda_tile<U>::value,
-                       madness::Future<value_type>>
-      eval_tile(const madness::Future<typename array_type::value_type>& tile,
-                const bool consumable_tile) const {
-        // Spawn a cuda task to set the tile when the input tile is not ready.
-        Future<value_type> result = madness::add_cuda_task(
-            TensorImpl_::world(), shared_from_this(),
-            &ArrayEvalImpl_::make_tile, tile, consumable_tile,
-            madness::TaskAttributes::hipri());
-        result.register_callback(const_cast<ArrayEvalImpl_*>(this));
-        return result;
-      }
-
-      template <typename U = value_type>
-      std::enable_if_t<!detail::is_cuda_tile<U>::value,
-                       madness::Future<value_type>>
-      eval_tile(const madness::Future<typename array_type::value_type>& tile,
-                const bool consumable_tile) const {
-#else
+      /// Evaluate a single LazyArrayTile
       madness::Future<value_type> eval_tile(
           const madness::Future<typename array_type::value_type>& tile,
           const bool consumable_tile) const {
-#endif
         // Insert the tile into this evaluator for subsequent processing
         if(tile.probe()) {
           // Skip the task since the tile is ready
