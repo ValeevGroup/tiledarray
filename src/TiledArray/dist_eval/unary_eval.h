@@ -160,8 +160,13 @@ namespace TiledArray {
             const size_type target_index = DistEvalImpl_::perm_index_to_target(index);
 
             // Schedule tile evaluation task
+#ifdef TILEDARRAY_HAS_CUDA
+            TensorImpl_::world().taskq.add(self, & UnaryEvalImpl_::template eval_tile<>,
+                                           target_index, arg_.get(index));
+#else
             TensorImpl_::world().taskq.add(self, & UnaryEvalImpl_::eval_tile,
                 target_index, arg_.get(index));
+#endif
 
             ++task_count;
           }
