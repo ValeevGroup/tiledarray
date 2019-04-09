@@ -55,23 +55,32 @@ namespace TiledArray {
       template <typename T>
       using eval_t = typename eval_trait<typename std::decay<T>::type>::type;
 
-      // TODO need a better design on how to manage the lifetime of converted Tile
       using conversion_result_type =
           decltype(((!Op::is_consumable) && consume_
                         ? op_->consume(tile_)
                         : (*op_)(tile_)));  ///< conversion_type
 
-      mutable conversion_result_type conversion_tile_;
+#ifdef TILEDARRAY_HAS_CUDA
+      // TODO need a better design on how to manage the lifetime of converted Tile
       mutable std::atomic<bool> converted_; /// if has converted
+      mutable conversion_result_type conversion_tile_;
+#endif
      public:
       /// Default constructor
-      LazyArrayTile() : tile_(), op_(), consume_(false), converted_(false), conversion_tile_()  { }
+      LazyArrayTile() : tile_(), op_(), consume_(false)
+#ifdef TILEDARRAY_HAS_CUDA
+      , converted_(false), conversion_tile_()
+#endif
+      { }
 
       /// Copy constructor
 
       /// \param other The LazyArrayTile object to be copied
       LazyArrayTile(const LazyArrayTile_& other) :
-        tile_(other.tile_), op_(other.op_), consume_(other.consume_), converted_(false), conversion_tile_()
+        tile_(other.tile_), op_(other.op_), consume_(other.consume_)
+#ifdef TILEDARRAY_HAS_CUDA
+        , converted_(false), conversion_tile_()
+#endif
       { }
 
       /// Construct from tile and operation
@@ -80,7 +89,10 @@ namespace TiledArray {
       /// \param op The operation to be applied to the input tile
       /// \param consume If true, the input tile may be consumed by \c op
       LazyArrayTile(const tile_type& tile, const std::shared_ptr<op_type>& op, const bool consume) :
-        tile_(tile), op_(op), consume_(consume), converted_(false), conversion_tile_()
+        tile_(tile), op_(op), consume_(consume)
+#ifdef TILEDARRAY_HAS_CUDA
+        , converted_(false), conversion_tile_()
+#endif
       { }
 
       /// Assignment operator
@@ -90,8 +102,10 @@ namespace TiledArray {
         tile_ = other.tile_;
         op_ = other.op_;
         consume_ = other.consume_;
+#ifdef TILEDARRAY_HAS_CUDA
         converted_ = false;
         conversion_tile_ = conversion_result_type();
+#endif
         return *this;
       }
 
@@ -101,6 +115,7 @@ namespace TiledArray {
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
       /// Convert tile to evaluation type using the op object
+#ifdef TILEDARRAY_HAS_CUDA
       explicit operator conversion_result_type& () const {
         if(converted_){
           throw std::logic_error("LazzyArrayTile gets converted more than once!");
@@ -112,6 +127,12 @@ namespace TiledArray {
           return conversion_tile_;
         }
       }
+#else
+    explicit operator conversion_result_type() const {
+        return ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
+                                                 : (*op_)(tile_));
+      }
+#endif
 
       /// return ref to input tile
       const tile_type& tile() const { return tile_; }
