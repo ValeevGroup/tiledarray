@@ -122,6 +122,8 @@ void gemm(btasUMTensorVarray<T, Range> &result,
 
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> clone(const btasUMTensorVarray<T, Range> &arg) {
+  // TODO how to copy Unified Memory? from CPU or GPU? currently
+  //  always copy on GPU, but need to investigate
   return btas_tensor_clone_cuda_impl(arg);
 }
 
