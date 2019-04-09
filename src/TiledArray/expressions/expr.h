@@ -38,6 +38,7 @@
 #include <TiledArray/config.h>
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/external/cuda.h>
+#include <TiledArray/cuda/cudaTaskFn.h>
 #endif
 
 namespace TiledArray {
@@ -182,15 +183,42 @@ namespace TiledArray {
       /// \param index The tile index
       /// \param tile The lazy tile
       template <typename A, typename I, typename T,
-          typename std::enable_if<
-              ! std::is_same<typename A::value_type, T>::value &&
-              is_lazy_tile<T>::value
-          >::type* = nullptr>
+                typename std::enable_if<
+                    !std::is_same<typename A::value_type, T>::value &&
+                    is_lazy_tile<T>::value
+#ifdef TILEDARRAY_HAS_CUDA
+                    && !::TiledArray::detail::is_cuda_tile<T>::value
+#endif
+                    >::type* = nullptr>
       void set_tile(A& array, const I& index, const Future<T>& tile) const {
-        array.set(index, array.world().taskq.add(
-            TiledArray::Cast<typename A::value_type, T>(), tile));
+        array.set(index,
+                  array.world().taskq.add(
+                      TiledArray::Cast<typename A::value_type, T>(), tile));
       }
 
+#ifdef TILEDARRAY_HAS_CUDA
+      /// Set an array tile with a lazy tile
+
+      /// Spawn a task to evaluate a lazy tile and set the \a array tile at
+      /// \c index with the result.
+      /// \tparam A The array type
+      /// \tparam I The index type
+      /// \tparam T The lazy tile type
+      /// \param array The result array
+      /// \param index The tile index
+      /// \param tile The lazy tile
+      template <typename A, typename I, typename T,
+                typename std::enable_if<
+                    !std::is_same<typename A::value_type, T>::value &&
+                    is_lazy_tile<T>::value &&
+                    ::TiledArray::detail::is_cuda_tile<T>::value>::type* = nullptr>
+      void set_tile(A& array, const I& index, const Future<T>& tile) const {
+        array.set(index,
+                  madness::add_cuda_task(
+                      array.world(),
+                      TiledArray::Cast<typename A::value_type, T>(), tile));
+      }
+#endif
 
       /// Set the \c array tile at \c index with \c tile
 
@@ -220,12 +248,14 @@ namespace TiledArray {
       /// \param index The tile index
       /// \param tile The lazy tile
       template <typename A, typename I, typename T, typename Op,
-          typename std::enable_if<
-              ! std::is_same<typename A::value_type, T>::value
-          >::type* = nullptr>
+                typename std::enable_if<
+                    !std::is_same<typename A::value_type, T>::value
+#ifdef TILEDARRAY_HAS_CUDA
+                    && !::TiledArray::detail::is_cuda_tile<T>::value
+#endif
+                    >::type* = nullptr>
       void set_tile(A& array, const I index, const Future<T>& tile,
-          const std::shared_ptr<Op>& op) const
-      {
+                    const std::shared_ptr<Op>& op) const {
         auto eval_tile_fn = &Expr_::template eval_tile<
             typename A::value_type, const T&,
             TiledArray::Cast<typename A::value_type, T>, Op>;
@@ -234,6 +264,33 @@ namespace TiledArray {
                       eval_tile_fn, tile,
                       TiledArray::Cast<typename A::value_type, T>(), op));
       }
+
+#ifdef TILEDARRAY_HAS_CUDA
+      /// Set an array tile with a lazy tile
+
+      /// Spawn a task to evaluate a lazy tile and set the \a array tile at
+      /// \c index with the result.
+      /// \tparam A The array type
+      /// \tparam I The index type
+      /// \tparam T The lazy tile type
+      /// \param array The result array
+      /// \param index The tile index
+      /// \param tile The lazy tile
+      template <typename A, typename I, typename T, typename Op,
+                typename std::enable_if<
+                    !std::is_same<typename A::value_type, T>::value &&
+                    ::TiledArray::detail::is_cuda_tile<T>::value>::type* = nullptr>
+      void set_tile(A& array, const I index, const Future<T>& tile,
+                    const std::shared_ptr<Op>& op) const {
+        auto eval_tile_fn = &Expr_::template eval_tile<
+            typename A::value_type, const T&,
+            TiledArray::Cast<typename A::value_type, T>, Op>;
+        array.set(index,
+                  madness::add_cuda_task(
+                      array.world(), eval_tile_fn, tile,
+                      TiledArray::Cast<typename A::value_type, T>(), op));
+      }
+#endif
 
 
       /// Set an array tile with a lazy tile
@@ -248,20 +305,50 @@ namespace TiledArray {
       /// \param index The tile index
       /// \param tile The lazy tile
       /// \param op The tile mutating operation
-      template <typename A, typename I, typename T, typename Op,
-          typename std::enable_if<
-              std::is_same<typename A::value_type, T>::value
-          >::type* = nullptr>
+      template <
+          typename A, typename I, typename T, typename Op,
+          typename std::enable_if<std::is_same<typename A::value_type, T>::value
+#ifdef TILEDARRAY_HAS_CUDA
+                                  && !::TiledArray::detail::is_cuda_tile<T>::value
+#endif
+                                  >::type* = nullptr>
       void set_tile(A& array, const I index, const Future<T>& tile,
-          const std::shared_ptr<Op>& op) const
-      {
+                    const std::shared_ptr<Op>& op) const {
         auto eval_tile_fn_ptr = &Expr_::template eval_tile<const T&, Op>;
         using fn_ptr_type = decltype(eval_tile_fn_ptr);
-        static_assert(
-            madness::detail::function_traits<fn_ptr_type(const T&,const std::shared_ptr<Op>&)>::value,
-            "ouch");
+        static_assert(madness::detail::function_traits<fn_ptr_type(
+                          const T&, const std::shared_ptr<Op>&)>::value,
+                      "ouch");
         array.set(index, array.world().taskq.add(eval_tile_fn_ptr, tile, op));
       }
+
+#ifdef TILEDARRAY_HAS_CUDA
+
+      /// Spawn a task to evaluate a lazy tile and set the \a array tile at
+      /// \c index with the result.
+      /// \tparam A The array type
+      /// \tparam I The index type
+      /// \tparam T The lazy tile type
+      /// \tparam Op Tile operation type
+      /// \param array The result array
+      /// \param index The tile index
+      /// \param tile The lazy tile
+      /// \param op The tile mutating operation
+      template <typename A, typename I, typename T, typename Op,
+                typename std::enable_if<
+                    std::is_same<typename A::value_type, T>::value &&
+                    ::TiledArray::detail::is_cuda_tile<T>::value>::type* = nullptr>
+      void set_tile(A& array, const I index, const Future<T>& tile,
+                    const std::shared_ptr<Op>& op) const {
+        auto eval_tile_fn_ptr = &Expr_::template eval_tile<const T&, Op>;
+        using fn_ptr_type = decltype(eval_tile_fn_ptr);
+        static_assert(madness::detail::function_traits<fn_ptr_type(
+                          const T&, const std::shared_ptr<Op>&)>::value,
+                      "ouch");
+        array.set(index, madness::add_cuda_task(array.world(), eval_tile_fn_ptr,
+                                                tile, op));
+      }
+#endif
 
      public:
 

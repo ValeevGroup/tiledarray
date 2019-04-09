@@ -87,8 +87,9 @@ struct cudaTaskFn : public TaskInterface {
       // get the stream used by async function
       auto stream = TiledArray::tls_cudastream_accessor();
 
-      TA_ASSERT(stream != nullptr);
+//      TA_ASSERT(stream != nullptr);
 
+      // WARNING, need to handle NoOp
       if(stream == nullptr){
         task_->notify();
       }
