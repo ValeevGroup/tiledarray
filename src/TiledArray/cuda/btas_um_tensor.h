@@ -25,15 +25,15 @@
 #define TILEDARRAY_CUDA_CUDA_UM_TENSOR_H
 
 #include <TiledArray/external/btas.h>
-#include <TiledArray/cuda/um_storage.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/external/cutt.h>
-#include <TiledArray/range.h>
-#include <TiledArray/cuda/btas_cublas.h>
-#include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tile.h>
+#include <TiledArray/range.h>
+#include <TiledArray/tensor/tensor.h>
+#include <TiledArray/cuda/btas_cublas.h>
+#include <TiledArray/cuda/um_storage.h>
+#include <TiledArray/external/cutt.h>
 
 namespace TiledArray {
 
@@ -46,8 +46,8 @@ using btasUMTensorVarray =
     ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
 template <typename T, typename Range>
-struct eval_trait<btasUMTensorVarray<T, Range>> {
-  typedef btasUMTensorVarray<T, Range> type;
+struct eval_trait<::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>> {
+  typedef ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> type;
 };
 
 namespace detail {
@@ -137,7 +137,7 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
   // compute the stream to use
-  auto &stream = detail::get_stream_based_on_range(result_range);
+  auto &stream = detail::get_stream_based_on_range(arg.range());
 
   // allocate result memory
   typename btasUMTensorVarray<T, Range>::storage_type storage;
@@ -149,6 +149,8 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   // invoke the permute function
   cutt_permute(const_cast<T *>(device_data(arg.storage())),
                device_data(result.storage()), arg.range(), perm, stream);
+
+  synchronize_stream(&stream);
 
   return result;
 }
