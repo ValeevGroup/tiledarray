@@ -227,10 +227,6 @@ namespace TiledArray {
         // Wait for child tensors to be evaluated, and process tasks while waiting.
         left_.wait();
         right_.wait();
-#ifdef TILEDARRAY_HAS_CUDA
-        CudaCheckError();
-        CudaSafeCall(cudaDeviceSynchronize());
-#endif
 
         return task_count;
       }

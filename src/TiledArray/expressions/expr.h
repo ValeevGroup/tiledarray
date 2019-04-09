@@ -332,10 +332,6 @@ namespace TiledArray {
 
         // Wait for child expressions of dist_eval
         dist_eval.wait();
-#ifdef TILEDARRAY_HAS_CUDA
-        CudaCheckError();
-        CudaSafeCall(cudaDeviceSynchronize());
-#endif
         // Swap the new array with the result array object.
         result.swap(tsr.array());
       }
@@ -430,11 +426,6 @@ namespace TiledArray {
 
         // Wait for child expressions of dist_eval
         dist_eval.wait();
-#ifdef TILEDARRAY_HAS_CUDA
-        CudaCheckError();
-        CudaSafeCall(cudaDeviceSynchronize());
-#endif
-
         // Swap the new array with the result array object.
         result.swap(tsr.array());
       }
@@ -506,10 +497,6 @@ namespace TiledArray {
         // All reduce the result of the expression
         auto result = world.gop.all_reduce(key_type(dist_eval.id()), reduce_task.submit(), op);
         dist_eval.wait();
-#ifdef TILEDARRAY_HAS_CUDA
-        CudaCheckError();
-        CudaSafeCall(cudaDeviceSynchronize());
-#endif
         return result;
       }
 
@@ -592,10 +579,6 @@ namespace TiledArray {
             local_reduce_task.submit(), op);
         left_dist_eval.wait();
         right_dist_eval.wait();
-#ifdef TILEDARRAY_HAS_CUDA
-        CudaCheckError();
-        CudaSafeCall(cudaDeviceSynchronize());
-#endif
         return result;
       }
 
