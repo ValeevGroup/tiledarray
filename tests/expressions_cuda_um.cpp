@@ -135,13 +135,13 @@ BOOST_AUTO_TEST_CASE(tensor_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") - a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") *= a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") * a("c,b,a"));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a").conj());
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a").conj());
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3,3,3}, {5,5,5}));
   BOOST_CHECK_NO_THROW(c("a,b,c") = ca("c,b,a"));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("c,b,a").conj());
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block(lobound, upbound));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block({3,3,3}, {5,5,5}));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("c,b,a").conj());
+  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block(lobound, upbound));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block({3,3,3}, {5,5,5}));
 }
 
  BOOST_AUTO_TEST_CASE( block_tensor_factories )
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(tensor_factories) {
   const std::array<int,3> lobound{{3,3,3}};
   const std::array<int,3> upbound{{5,5,5}};
 
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3, 3, 3},{5, 5, 5}).conj());
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3, 3, 3},{5, 5, 5}).conj());
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") += a("a,b,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("b,a,c") + a("b,a,c").block(lobound, upbound));
@@ -158,8 +158,8 @@ BOOST_AUTO_TEST_CASE(tensor_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("b,a,c") - a("b,a,c").block(lobound,upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") *= a("a,b,c").block(lobound,upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("b,a,c") * a("b,a,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound).conj());
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block(lobound, upbound).conj());
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound).conj());
+  BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block(lobound, upbound).conj());
 
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * a("a,b,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound) * 2);
@@ -168,16 +168,16 @@ BOOST_AUTO_TEST_CASE(tensor_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = -a("a,b,c").block(lobound,upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * a("a,b,c").block(lobound,upbound)));
 
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("a,b,c").block(lobound,upbound))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * a("a,b,c").block(lobound, upbound))));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("a,b,c").block(lobound, upbound)) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * a("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("a,b,c").block(lobound, upbound)) * 2);
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("a,b,c").block(lobound,upbound)));
-//  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * a("a,b,c").block(lobound, upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("a,b,c").block(lobound, upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("a,b,c").block(lobound,upbound))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("a,b,c").block(lobound, upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * a("a,b,c").block(lobound, upbound))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("a,b,c").block(lobound, upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("a,b,c").block(lobound, upbound)) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * a("a,b,c").block(lobound, upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("a,b,c").block(lobound, upbound)) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("a,b,c").block(lobound,upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * a("a,b,c").block(lobound, upbound)));
 }
 
 
@@ -188,16 +188,16 @@ BOOST_AUTO_TEST_CASE(scaled_tensor_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * a("c,b,a")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * a("c,b,a")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("c,b,a")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * a("c,b,a"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a")) * 2);
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("c,b,a")) * 2);
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * a("c,b,a")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * a("c,b,a")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("c,b,a")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * a("c,b,a"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a")) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * a("c,b,a")) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * a("c,b,a")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * a("c,b,a")));
 }
 //
 BOOST_AUTO_TEST_CASE(add_factories) {
@@ -208,17 +208,17 @@ BOOST_AUTO_TEST_CASE(add_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * (a("c,b,a") + b("a,b,c"))));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(a("c,b,a") + b("a,b,c")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * (a("c,b,a") + b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") + b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") + b("a,b,c")))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *(conj(a("c,b,a") + b("a,b,c")))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")) * 2);
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") + b("a,b,c")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))) * 2);
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") + b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") + b("a,b,c")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") + b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") + b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") + b("a,b,c")))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *(conj(a("c,b,a") + b("a,b,c")))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") + b("a,b,c")) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") + b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") + b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") + b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") + b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") + b("a,b,c"))) * 2);
 }
 //
 //
@@ -230,18 +230,17 @@ BOOST_AUTO_TEST_CASE(subt_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * (a("c,b,a") - b("a,b,c"))));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(a("c,b,a") - b("a,b,c")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * (a("c,b,a") - b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") - b("a,b,c")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") - b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") - b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") -
-  //  b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
-  //  (conj(a("c,b,a") - b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-  //  conj(a("c,b,a") - b("a,b,c")) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
-  //  conj(a("c,b,a") - b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
-  //  (a("c,b,a") - b("a,b,c"))) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 *
-  //  conj(2 * (a("c,b,a") - b("a,b,c")))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-  //  -conj(a("c,b,a") - b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2
-  //  * (a("c,b,a") - b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") - b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") - b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") - b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") - b("a,b,c")))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *(conj(a("c,b,a") - b("a,b,c")))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") - b("a,b,c")) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") - b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") - b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") - b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") - b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") - b("a,b,c"))) * 2);
 }
 
 BOOST_AUTO_TEST_CASE(mult_factories) {
@@ -252,201 +251,19 @@ BOOST_AUTO_TEST_CASE(mult_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * (2 * (a("c,b,a") * b("a,b,c"))));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(a("c,b,a") * b("a,b,c")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -(2 * (a("c,b,a") * b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") * b("a,b,c")));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") * b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") * b("a,b,c"))));
-  //  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") *
-  //  b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 *
-  //  (conj(a("c,b,a")
-  //  * b("a,b,c"))))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") *
-  //  b("a,b,c")) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") *
-  //  b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") *
-  //  b("a,b,c"))) * 2); BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 *
-  //  (a("c,b,a") * b("a,b,c")))); BOOST_CHECK_NO_THROW(c("a,b,c") =
-  //  -conj(a("c,b,a") * b("a,b,c"))); BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2
-  //  * (a("c,b,a") * b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") * b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(a("c,b,a") * b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") * b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(conj(2 * (a("c,b,a") * b("a,b,c")))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (conj(a("c,b,a") * b("a,b,c")))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(a("c,b,a") * b("a,b,c")) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(a("c,b,a") * b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = conj(2 * (a("c,b,a") * b("a,b,c"))) * 2);
+  BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") * b("a,b,c"))));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") * b("a,b,c")));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") * b("a,b,c"))) * 2);
 }
 
-// BOOST_AUTO_TEST_CASE( complex_tensor_factories )
-//{
-//  TArrayZ x(*GlobalFixture::world, tr);
-//  TArrayZ z(*GlobalFixture::world, tr);
-//  random_fill(x);
-//  const auto& cx = x;
-//  const std::array<int,3> lobound{{3,3,3}};
-//  const std::array<int,3> upbound{{5,5,5}};
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") += x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") -= x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") *= x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a").conj());
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block({3,3,3}, {5,5,5}));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = cx("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = cx("c,b,a").conj());
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = cx("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = cx("a,b,c").block({3,3,3}, {5,5,5}));
-//}
-//
-// BOOST_AUTO_TEST_CASE( complex_block_tensor_factories )
-//{
-//  TArrayZ x(*GlobalFixture::world, tr);
-//  TArrayZ z(*GlobalFixture::world, tr);
-//  random_fill(x);
-//  const auto& cx = x;
-//  const std::array<int,3> lobound{{3,3,3}};
-//  const std::array<int,3> upbound{{5,5,5}};
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block({3,3,3}, {5,5,5}));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block(lobound,
-//  upbound).conj()); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  cx("a,b,c").block({3,3,3}, {5,5,5})); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  cx("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  cx("a,b,c").block(lobound, upbound).conj()); BOOST_CHECK_NO_THROW(z("a,b,c")
-//  += x("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(z("a,b,c") -=
-//  x("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(z("a,b,c") *=
-//  x("a,b,c").block(lobound, upbound));
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * x("a,b,c").block(lobound, upbound));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("a,b,c").block(lobound, upbound) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * x("a,b,c").block(lobound,
-//  upbound))); BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 *
-//  x("a,b,c").block(lobound, upbound)) * 2.0); BOOST_CHECK_NO_THROW(z("a,b,c")
-//  = -x("a,b,c").block(lobound, upbound)); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  -(2.0 * x("a,b,c").block(lobound, upbound)));
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("a,b,c").block(lobound, upbound)));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("a,b,c").block(lobound,
-//  upbound)))); BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 *
-//  x("a,b,c").block(lobound, upbound))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  conj(conj(2.0 * x("a,b,c").block(lobound, upbound))));
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(x("a,b,c").block(lobound,
-//  upbound))); BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("a,b,c").block(lobound,
-//  upbound)) * 2.0); BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(2.0 *
-//  x("a,b,c").block(lobound, upbound))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  conj(2.0 * x("a,b,c").block(lobound, upbound)) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(x("a,b,c").block(lobound,
-//  upbound))); BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(2.0 *
-//  x("a,b,c").block(lobound, upbound)));
-//}
-//
-//
-// BOOST_AUTO_TEST_CASE( complex_scaled_tensor_factories )
-//{
-//  TArrayZ x(*GlobalFixture::world, tr);
-//  TArrayZ z(*GlobalFixture::world, tr);
-//  random_fill(x);
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a") * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 * x("c,b,a")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -x("c,b,a"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(2.0 * x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("c,b,a"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(2.0 * x("c,b,a"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * x("c,b,a")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * conj(2.0 * x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(x("c,b,a")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(2.0 * x("c,b,a")));
-//}
-//
-// BOOST_AUTO_TEST_CASE( complex_add_factories )
-//{
-//  TArrayZ x(*GlobalFixture::world, tr);
-//  TArrayZ y(*GlobalFixture::world, tr);
-//  TArrayZ z(*GlobalFixture::world, tr);
-//  random_fill(x);
-//  random_fill(y);
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a") + y("a,b,c"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (x("c,b,a") + y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (x("c,b,a") + y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 * (x("c,b,a") + y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * (x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(x("c,b,a") + y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(2.0 * (x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") + y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * (x("c,b,a") + y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(2.0 * (x("c,b,a") +
-//  y("a,b,c"))))); BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 *
-//  (conj(x("c,b,a") + y("a,b,c"))))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  conj(x("c,b,a") + y("a,b,c")) * 2.0); BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0
-//  * conj(x("c,b,a") + y("a,b,c"))); BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0
-//  * (x("c,b,a") + y("a,b,c"))) * 2.0); BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 *
-//  conj(2.0 * (x("c,b,a") + y("a,b,c")))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  -conj(x("c,b,a") + y("a,b,c"))); BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(2.0
-//  * (x("c,b,a") + y("a,b,c"))) * 2.0);
-//}
-//
-//
-// BOOST_AUTO_TEST_CASE( complex_subt_factories )
-//{
-//  TArrayZ x(*GlobalFixture::world, tr);
-//  TArrayZ y(*GlobalFixture::world, tr);
-//  TArrayZ z(*GlobalFixture::world, tr);
-//  random_fill(x);
-//  random_fill(y);
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a") - y("a,b,c"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (x("c,b,a") - y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (x("c,b,a") - y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 * (x("c,b,a") - y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * (x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(x("c,b,a") - y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(2.0 * (x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") - y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * (x("c,b,a") - y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(2.0 * (x("c,b,a") -
-//  y("a,b,c"))))); BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 *
-//  (conj(x("c,b,a") - y("a,b,c"))))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  conj(x("c,b,a") - y("a,b,c")) * 2.0); BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0
-//  * conj(x("c,b,a") - y("a,b,c"))); BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0
-//  * (x("c,b,a") - y("a,b,c"))) * 2.0); BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 *
-//  conj(2.0 * (x("c,b,a") - y("a,b,c")))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  -conj(x("c,b,a") - y("a,b,c"))); BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(2.0
-//  * (x("c,b,a") - y("a,b,c"))) * 2.0);
-//
-//}
-//
-// BOOST_AUTO_TEST_CASE( complex_mult_factories )
-//{
-//  TArrayZ x(*GlobalFixture::world, tr);
-//  TArrayZ y(*GlobalFixture::world, tr);
-//  TArrayZ z(*GlobalFixture::world, tr);
-//  random_fill(x);
-//  random_fill(y);
-//
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = x("c,b,a") * y("a,b,c"));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (x("c,b,a") * y("a,b,c")) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (x("c,b,a") * y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = (2.0 * (x("c,b,a") * y("a,b,c"))) * 2.0);
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 * (2.0 * (x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(x("c,b,a") * y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = -(2.0 * (x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(x("c,b,a") * y("a,b,c")));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 * (x("c,b,a") * y("a,b,c"))));
-//  BOOST_CHECK_NO_THROW(z("a,b,c") = conj(conj(2.0 * (x("c,b,a") *
-//  y("a,b,c"))))); BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0 *
-//  (conj(x("c,b,a") * y("a,b,c"))))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  conj(x("c,b,a") * y("a,b,c")) * 2.0); BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0
-//  * conj(x("c,b,a") * y("a,b,c"))); BOOST_CHECK_NO_THROW(z("a,b,c") = conj(2.0
-//  * (x("c,b,a") * y("a,b,c"))) * 2.0); BOOST_CHECK_NO_THROW(z("a,b,c") = 2.0 *
-//  conj(2.0 * (x("c,b,a") * y("a,b,c")))); BOOST_CHECK_NO_THROW(z("a,b,c") =
-//  -conj(x("c,b,a") * y("a,b,c"))); BOOST_CHECK_NO_THROW(z("a,b,c") = -conj(2.0
-//  * (x("c,b,a") * y("a,b,c"))) * 2.0);
-//
-//}
 
 BOOST_AUTO_TEST_CASE(permute) {
   Permutation perm({2, 1, 0});
@@ -533,8 +350,7 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
       BOOST_CHECK_EQUAL(result_tile.range().stride(r),
           arg_tile.range().stride(r));
     }
-    BOOST_CHECK_EQUAL(result_tile.range().volume(),
-    arg_tile.range().volume());
+    BOOST_CHECK_EQUAL(result_tile.range().volume(),arg_tile.range().volume());
 
     // Check that the data is correct for the result array.
     for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {

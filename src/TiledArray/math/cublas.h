@@ -29,6 +29,7 @@
 #ifdef TILEDARRAY_HAS_CUDA
 
 #include <TiledArray/error.h>
+#include <TiledArray/tensor/complex.h>
 #include <cublas_v2.h>
 #include <thrust/system_error.h>
 #include <thrust/system/cuda/error.h>
@@ -179,7 +180,7 @@ template <>
 inline cublasStatus_t cublasScal<float,int>(cublasHandle_t handle, int n,
                                              const int *alpha, float*x,
                                              int incx) {
-  float alpha_float = float(*alpha);
+  const float alpha_float = float(*alpha);
   return cublasSscal(handle, n, &alpha_float, x, incx);
 };
 
@@ -187,7 +188,7 @@ template <>
 inline cublasStatus_t cublasScal<float,double>(cublasHandle_t handle, int n,
                                             const double *alpha, float*x,
                                             int incx) {
-  float alpha_float = float(*alpha);
+  const float alpha_float = float(*alpha);
   return cublasSscal(handle, n, &alpha_float, x, incx);
 };
 
@@ -196,7 +197,7 @@ template <>
 inline cublasStatus_t cublasScal<double,int>(cublasHandle_t handle, int n,
                                                 const int *alpha, double *x,
                                                 int incx) {
-  double alpha_double = double(*alpha);
+  const double alpha_double = double(*alpha);
   return cublasDscal(handle, n, &alpha_double, x, incx);
 };
 
@@ -204,9 +205,89 @@ template <>
 inline cublasStatus_t cublasScal<double,float>(cublasHandle_t handle, int n,
                                              const float *alpha, double *x,
                                              int incx) {
-  double alpha_double = double(*alpha);
+  const double alpha_double = double(*alpha);
   return cublasDscal(handle, n, &alpha_double, x, incx);
 };
+
+template <>
+inline cublasStatus_t cublasScal<float, detail::ComplexConjugate<void>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<void> *alpha,
+    float *x, int incx) {
+  return CUBLAS_STATUS_SUCCESS;
+}
+
+template <>
+inline cublasStatus_t cublasScal<float, detail::ComplexConjugate<detail::ComplexNegTag>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
+    float *x, int incx) {
+  const float alpha_float = float(-1.0);
+  return cublasSscal(handle, n, &alpha_float, x, incx);
+}
+
+template <>
+inline cublasStatus_t cublasScal<float, detail::ComplexConjugate<int>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<int> *alpha,
+    float *x, int incx) {
+  const float alpha_float = float(alpha->factor());
+  return cublasSscal(handle, n, &alpha_float, x, incx);
+}
+
+template <>
+inline cublasStatus_t cublasScal<float, detail::ComplexConjugate<float>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<float> *alpha,
+    float *x, int incx) {
+  const float alpha_float = float(alpha->factor());
+  return cublasSscal(handle, n, &alpha_float, x, incx);
+}
+
+template <>
+inline cublasStatus_t cublasScal<float, detail::ComplexConjugate<double>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<double> *alpha,
+    float *x, int incx) {
+  const float alpha_float = float(alpha->factor());
+  return cublasSscal(handle, n, &alpha_float, x, incx);
+}
+
+template <>
+inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<void>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<void> *alpha,
+    double *x, int incx) {
+  return CUBLAS_STATUS_SUCCESS;
+}
+
+template <>
+inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<detail::ComplexNegTag>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
+    double *x, int incx) {
+  const double alpha_double = double(-1.0);
+  return cublasDscal(handle, n, &alpha_double, x, incx);
+}
+
+template <>
+inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<int>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<int> *alpha,
+    double *x, int incx) {
+  const double alpha_double = double(alpha->factor());
+  return cublasDscal(handle, n, &alpha_double, x, incx);
+}
+
+template <>
+inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<float>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<float> *alpha,
+    double *x, int incx) {
+  const double alpha_double =  double(alpha->factor());
+  return cublasDscal(handle, n, &alpha_double, x, incx);
+}
+
+template <>
+inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<double>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<double> *alpha,
+    double *x, int incx) {
+  const double alpha_double = double(alpha->factor());
+  return cublasDscal(handle, n, &alpha_double, x, incx);
+}
+
+
 
 /// COPY inerface function
 template <typename T>
