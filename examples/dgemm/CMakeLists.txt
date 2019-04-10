@@ -46,15 +46,4 @@ if(ENABLE_ELEMENTAL)
 #    add_dependencies(examples ta_dense_elem)
 endif(ENABLE_ELEMENTAL)
 
-if(CUDA_FOUND)
-    # Add the ta_dense_cuda executable
-    cuda_add_executable(ta_dense_cuda ta_dense_cuda.cpp)
-    target_link_libraries(ta_dense_cuda PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-    add_dependencies(ta_dense_cuda External)
-    add_dependencies(examples ta_dense_cuda)
 
-    cuda_add_executable(ta_cc_abcd_cuda ta_cc_abcd_cuda.cpp )
-    target_link_libraries(ta_cc_abcd_cuda PRIVATE tiledarray)
-    add_dependencies(ta_cc_abcd_cuda External)
-    add_dependencies(examples ta_cc_abcd_cuda)
-endif(CUDA_FOUND)

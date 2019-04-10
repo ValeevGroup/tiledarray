@@ -79,7 +79,7 @@ class cuBLASHandlePool {
 
 inline cublasOperation_t to_cublas_op(
     madness::cblas::CBLAS_TRANSPOSE cblas_op) {
-  cublasOperation_t result;
+  cublasOperation_t result {};
   switch (cblas_op) {
     case madness::cblas::NoTrans:
       result = CUBLAS_OP_N;

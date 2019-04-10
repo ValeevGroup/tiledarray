@@ -33,4 +33,12 @@ if(CUDA_FOUND)
   target_link_libraries(cuda_task PUBLIC tiledarray)
   add_dependencies(examples cuda_task)
 
-endif()
+  # Add the ta_dense_cuda executable
+  cuda_add_executable(ta_dense_cuda ta_dense_cuda.cpp)
+  target_link_libraries(ta_dense_cuda PRIVATE tiledarray)
+  add_dependencies(examples ta_dense_cuda)
+
+  cuda_add_executable(ta_cc_abcd_cuda ta_cc_abcd_cuda.cpp)
+  target_link_libraries(ta_cc_abcd_cuda PRIVATE tiledarray)
+  add_dependencies(examples ta_cc_abcd_cuda)
+endif(CUDA_FOUND)
