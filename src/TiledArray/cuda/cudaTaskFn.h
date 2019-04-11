@@ -16,7 +16,7 @@ namespace madness {
 ///
 /// cudaTaskFn class
 /// represent a task that calls an async cuda kernel
-/// the function must call synchronize_stream function to tell which stream it
+/// the task must call synchronize_stream function to tell which stream it
 /// used
 ///
 

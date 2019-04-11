@@ -35,6 +35,10 @@
 using namespace TiledArray;
 
 struct UMExpressionsFixture : public TiledRangeFixture {
+
+  using UMTensor = TA::Tile<btasUMTensorVarray<double>>;
+  using TArrayUMD = TiledArray::DistArray<UMTensor,TA::DensePolicy>;
+
   UMExpressionsFixture()
       : a(*GlobalFixture::world, tr),
         b(*GlobalFixture::world, tr),
@@ -64,6 +68,14 @@ struct UMExpressionsFixture : public TiledRangeFixture {
   template <typename T>
   static void set_random(T& t) {
     t = GlobalFixture::world->drand();
+  }
+
+  static UMTensor permute_task(const UMTensor& tensor, const Permutation& perm){
+    return perm * tensor;
+  }
+
+  static UMTensor permute_fn(const madness::Future<UMTensor>& tensor_f, const Permutation& perm){
+    return madness::add_cuda_task(*GlobalFixture::world, permute_task, tensor_f, perm).get();
   }
 
   // Fill a tile with random data
@@ -96,14 +108,14 @@ struct UMExpressionsFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.sum(&matrix(0, 0), matrix.size());
   }
 
+
+
   ~UMExpressionsFixture() { GlobalFixture::world->gop.fence(); }
 
   const static TiledRange trange1;
   const static TiledRange trange2;
   //  const static TiledRange trange3;
 
-  using TArrayUMD = TiledArray::DistArray<TA::Tile<btasUMTensorVarray<double>>,
-                                          TA::DensePolicy>;
 
   TArrayUMD a;
   TArrayUMD b;
@@ -273,7 +285,7 @@ BOOST_AUTO_TEST_CASE(permute) {
     const std::size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
-      TArrayUMD::value_type perm_b_tile = perm * b.find(i).get();
+      TArrayUMD::value_type perm_b_tile = permute_fn(b.find(i), perm);
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -301,7 +313,7 @@ BOOST_AUTO_TEST_CASE(permute) {
     const std::size_t perm_index = a.range().ordinal(perm2 * b.range().idx(i));
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
-      TArrayUMD::value_type perm_b_tile = perm2 * b.find(i).get();
+      TArrayUMD::value_type perm_b_tile = permute_fn(b.find(i),perm2);
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -318,7 +330,7 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
     const std::size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (a.is_local(perm_index)) {
       TArrayUMD::value_type a_tile = a.find(perm_index).get();
-      TArrayUMD::value_type perm_b_tile = perm * b.find(i).get();
+      TArrayUMD::value_type perm_b_tile = permute_fn(b.find(i),perm);
 
       BOOST_CHECK_EQUAL(a_tile.range(), perm_b_tile.range());
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
@@ -423,7 +435,26 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
       BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
     }
   }
-}
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =
+                             2 * (a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+
+  for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    if (!a.is_zero(block_range.ordinal(index)) &&
+        !b.is_zero(block_range.ordinal(index))) {
+      auto a_tile = a.find(block_range.ordinal(index)).get();
+      auto b_tile = b.find(block_range.ordinal(index)).get();
+      auto result_tile = c.find(index).get();
+
+      for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+        BOOST_CHECK_EQUAL(result_tile[j], 2 * (a_tile[j] + b_tile[j]));
+      }
+    } else {
+      BOOST_CHECK(c.is_zero(index));
+    }
+  }
+ }
 
  BOOST_AUTO_TEST_CASE( assign_sub_block )
 {
@@ -441,6 +472,25 @@ BOOST_AUTO_TEST_CASE(scale_permute) {
 
     for(std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
       BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3},{5,5,5}) =
+                             2 * (a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+
+  for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    if (!a.is_zero(block_range.ordinal(index)) &&
+        !b.is_zero(block_range.ordinal(index))) {
+      auto a_tile = a.find(block_range.ordinal(index)).get();
+      auto b_tile = b.find(block_range.ordinal(index)).get();
+      auto result_tile = c.find(block_range.ordinal(index)).get();
+
+      for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+        BOOST_CHECK_EQUAL(result_tile[j], 2 * (a_tile[j] + b_tile[j]));
+      }
+    } else {
+      BOOST_CHECK(c.is_zero(index));
     }
   }
 }
@@ -516,6 +566,22 @@ BOOST_AUTO_TEST_CASE(add) {
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) + (3 * b_tile[j]));
   }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c") + 3 * b("a,b,c")) +
+                                      2 * (a("a,b,c") - b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    if (!c.is_zero(i)) {
+      auto c_tile = c.find(i).get();
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], (4 * a_tile[j]) + (b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE(add_to) {
@@ -552,7 +618,7 @@ BOOST_AUTO_TEST_CASE(add_permute) {
   for (std::size_t i = 0ul; i < c.size(); ++i) {
     TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type a_tile = permute_fn(a.find(perm_index),perm);
     TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
@@ -605,6 +671,22 @@ BOOST_AUTO_TEST_CASE(add_permute) {
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) + (3 * b_tile[j])));
   }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5*((2 * a("a,b,c") + 3 * b("a,b,c")) +
+                                      2 * (a("a,b,c") - b("a,b,c"))));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    if (!c.is_zero(i)) {
+      auto c_tile = c.find(i).get();
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], 5*(4 * a_tile[j]) + (b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE(scale_add_permute) {
@@ -615,7 +697,7 @@ BOOST_AUTO_TEST_CASE(scale_add_permute) {
   for (std::size_t i = 0ul; i < c.size(); ++i) {
     TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type a_tile = permute_fn(a.find(perm_index),perm);
     TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
@@ -703,7 +785,7 @@ BOOST_AUTO_TEST_CASE(subt_permute) {
   for (std::size_t i = 0ul; i < c.size(); ++i) {
     TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type a_tile = permute_fn(a.find(perm_index),perm);
     TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
@@ -766,8 +848,8 @@ BOOST_AUTO_TEST_CASE(scale_subt_permute) {
   for (std::size_t i = 0ul; i < c.size(); ++i) {
     TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
-    TArrayUMD::value_type b_tile = perm * b.find(perm_index).get();
+    TArrayUMD::value_type a_tile = permute_fn(a.find(perm_index),perm);
+    TArrayUMD::value_type b_tile = permute_fn(b.find(perm_index),perm);
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
       BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) - (3 * b_tile[j]));
@@ -854,7 +936,7 @@ BOOST_AUTO_TEST_CASE(mult_permute) {
   for (std::size_t i = 0ul; i < c.size(); ++i) {
     TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type a_tile = permute_fn(a.find(perm_index),perm);
     TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
@@ -917,7 +999,7 @@ BOOST_AUTO_TEST_CASE(scale_mult_permute) {
   for (std::size_t i = 0ul; i < c.size(); ++i) {
     TArrayUMD::value_type c_tile = c.find(i).get();
     const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-    TArrayUMD::value_type a_tile = perm * a.find(perm_index).get();
+    TArrayUMD::value_type a_tile = permute_fn(a.find(perm_index),perm);
     TArrayUMD::value_type b_tile = b.find(i).get();
 
     for (std::size_t j = 0ul; j < c_tile.size(); ++j)
@@ -1748,7 +1830,7 @@ BOOST_AUTO_TEST_CASE(dot_permute) {
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     TArrayUMD::value_type a_tile = a.find(i).get();
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
-    TArrayUMD::value_type b_tile = perm * b.find(perm_index).get();
+    TArrayUMD::value_type b_tile = permute_fn(b.find(perm_index),perm);
 
     for (std::size_t j = 0ul; j < a_tile.size(); ++j)
       expected += a_tile[j] * b_tile[j];

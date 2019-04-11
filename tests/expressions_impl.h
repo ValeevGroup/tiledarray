@@ -326,6 +326,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(const_block, F, Fixtures, F) {
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(scal_block, F, Fixtures, F) {
   auto& a = F::a;
+  auto& b = F::b;
   auto& c = F::c;
   BOOST_REQUIRE_NO_THROW(c("a,b,c") =
                              2 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
@@ -362,10 +363,30 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scal_block, F, Fixtures, F) {
       BOOST_CHECK(c.is_zero(index));
     }
   }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =
+                             2 * (a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+
+  for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    if (!a.is_zero(block_range.ordinal(index)) &&
+        !b.is_zero(block_range.ordinal(index))) {
+      auto a_tile = a.find(block_range.ordinal(index)).get();
+      auto b_tile = b.find(block_range.ordinal(index)).get();
+      auto result_tile = c.find(index).get();
+
+      for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+        BOOST_CHECK_EQUAL(result_tile[j], 2 * (a_tile[j] + b_tile[j]));
+      }
+    } else {
+      BOOST_CHECK(c.is_zero(index));
+    }
+  }
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_sub_blockscal_block, F, Fixtures, F) {
   auto& a = F::a;
+  auto& b = F::b;
   auto& c = F::c;
 
   BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
@@ -387,7 +408,28 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_sub_blockscal_block, F, Fixtures, F) {
       BOOST_CHECK(a.is_zero(block_range.ordinal(index)));
     }
   }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3},{5,5,5}) =
+                             2 * (a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+
+  for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
+    if (!a.is_zero(block_range.ordinal(index)) &&
+        !b.is_zero(block_range.ordinal(index))) {
+      auto a_tile = a.find(block_range.ordinal(index)).get();
+      auto b_tile = b.find(block_range.ordinal(index)).get();
+      auto result_tile = c.find(block_range.ordinal(index)).get();
+
+      for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
+        BOOST_CHECK_EQUAL(result_tile[j], 2 * (a_tile[j] + b_tile[j]));
+      }
+    } else {
+      BOOST_CHECK(c.is_zero(index));
+    }
+  }
 }
+
+// TODO need to test the correctness here
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_contract, F, Fixtures,
                                  F) {
   auto& a = F::a;
@@ -398,7 +440,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_contract, F, Fixtures,
                              a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
                              b("c,d,b").block({2, 3, 3}, {5, 5, 5}));
 }
-
+// TODO need to test the correctness here
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_permute_contract, F,
                                  Fixtures, F) {
   auto& a = F::a;
@@ -409,7 +451,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_permute_contract, F,
                              a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
                              b("d,c,b").block({3, 2, 3}, {5, 5, 5}));
 }
-
+// TODO need to test the correctness here
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_contract, F, Fixtures, F) {
   auto& a = F::a;
   auto& b = F::b;
@@ -418,7 +460,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_contract, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
                                     b("c,d,b").block({2, 3, 3}, {5, 5, 5}));
 }
-
+// TODO need to test the correctness here
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_permute_contract, F, Fixtures, F) {
   auto& a = F::a;
   auto& b = F::b;
@@ -495,6 +537,24 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(add, F, Fixtures, F) {
 
       for (std::size_t j = 0ul; j < c_tile.size(); ++j)
         BOOST_CHECK_EQUAL(c_tile[j], (2 * a_tile[j]) + (3 * b_tile[j]));
+    } else {
+      BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("a,b,c") + 3 * b("a,b,c")) +
+                                      2 * (a("a,b,c") - b("a,b,c")));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    if (!c.is_zero(i)) {
+      auto c_tile = c.find(i).get();
+      auto a_tile =
+          a.is_zero(i) ? F::make_zero_tile(c_tile.range()) : a.find(i).get();
+      auto b_tile =
+          b.is_zero(i) ? F::make_zero_tile(c_tile.range()) : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], (4 * a_tile[j]) + (b_tile[j]));
     } else {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
     }
@@ -638,6 +698,24 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_add, F, Fixtures, F) {
 
       for (std::size_t j = 0ul; j < c_tile.size(); ++j)
         BOOST_CHECK_EQUAL(c_tile[j], 5 * ((2 * a_tile[j]) + (3 * b_tile[j])));
+    } else {
+      BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * ((2 * a("a,b,c") + 3 * b("a,b,c")) +
+                                           2 * (a("a,b,c") - b("a,b,c"))));
+
+  for (std::size_t i = 0ul; i < c.size(); ++i) {
+    if (!c.is_zero(i)) {
+      auto c_tile = c.find(i).get();
+      auto a_tile =
+          a.is_zero(i) ? F::make_zero_tile(c_tile.range()) : a.find(i).get();
+      auto b_tile =
+          b.is_zero(i) ? F::make_zero_tile(c_tile.range()) : b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], 5 * (4 * a_tile[j] + b_tile[j]));
     } else {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
     }
