@@ -17,62 +17,39 @@
  *
  *  Chong Peng
  *  Department of Chemistry, Virginia Tech
- *  Aug 21, 2018
+ *  Apir 11, 2018
  *
  */
 
-#include <TiledArray/external/cuda.h>
-#include <TiledArray/cuda/mult_kernel.h>
+#ifndef TILEDARRAY_CUDA_MULT_KERNEL_IMPL_H__INCLUDED
+#define TILEDARRAY_CUDA_MULT_KERNEL_IMPL_H__INCLUDED
+
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
+#include <TiledArray/external/cuda.h>
 
 namespace TiledArray {
 
-template <>
-void mult_to_cuda_kernel(float* result, const float* arg, std::size_t n,
-                       cudaStream_t stream, int device_id) {
+/// result[i] = result[i] * arg[i]
+template <typename T>
+void mult_to_cuda_kernel_impl(T *result, const T *arg, std::size_t n,
+                         cudaStream_t stream, int device_id) {
   CudaSafeCall(cudaSetDevice(device_id));
 
-  thrust::multiplies<float> mul_op;
+  thrust::multiplies<T> mul_op;
   thrust::transform(
       thrust::cuda::par.on(stream), thrust::device_pointer_cast(arg),
       thrust::device_pointer_cast(arg) + n, thrust::device_pointer_cast(result),
       thrust::device_pointer_cast(result), mul_op);
 }
 
-template <>
-void mult_to_cuda_kernel(double* result, const double* arg, std::size_t n,
-                       cudaStream_t stream, int device_id) {
+/// result[i] = arg1[i] * arg2[i]
+template <typename T>
+void mult_cuda_kernel_impl(T *result, const T *arg1, const T *arg2, std::size_t n,
+                      cudaStream_t stream, int device_id) {
   CudaSafeCall(cudaSetDevice(device_id));
 
-  thrust::multiplies<double> mul_op;
-  thrust::transform(
-      thrust::cuda::par.on(stream), thrust::device_pointer_cast(arg),
-      thrust::device_pointer_cast(arg) + n, thrust::device_pointer_cast(result),
-      thrust::device_pointer_cast(result), mul_op);
-}
-
-template <>
-void mult_cuda_kernel(float* result, const float* arg1,
-                    const float* arg2, std::size_t n, cudaStream_t stream,
-                    int device_id) {
-  CudaSafeCall(cudaSetDevice(device_id));
-
-  thrust::multiplies<float> mul_op;
-  thrust::transform(
-      thrust::cuda::par.on(stream), thrust::device_pointer_cast(arg1),
-      thrust::device_pointer_cast(arg1) + n, thrust::device_pointer_cast(arg2),
-      thrust::device_pointer_cast(result), mul_op);
-}
-
-
-template <>
-void mult_cuda_kernel(double* result, const double* arg1,
-                    const double* arg2, std::size_t n, cudaStream_t stream,
-                    int device_id) {
-  CudaSafeCall(cudaSetDevice(device_id));
-
-  thrust::multiplies<double> mul_op;
+  thrust::multiplies<T> mul_op;
   thrust::transform(
       thrust::cuda::par.on(stream), thrust::device_pointer_cast(arg1),
       thrust::device_pointer_cast(arg1) + n, thrust::device_pointer_cast(arg2),
@@ -80,3 +57,5 @@ void mult_cuda_kernel(double* result, const double* arg1,
 }
 
 }  // namespace TiledArray
+
+#endif  // TILEDARRAY_CUDA_MULT_KERNEL_IMPL_H__INCLUDED

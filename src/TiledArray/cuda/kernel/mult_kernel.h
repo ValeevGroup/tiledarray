@@ -31,14 +31,24 @@
 namespace TiledArray {
 
 /// result[i] = result[i] * arg[i]
-template <typename T>
-void mult_to_cuda_kernel(T *result, const T *arg, std::size_t n,
+void mult_to_cuda_kernel(int *result, const int *arg, std::size_t n,
+                         cudaStream_t stream, int device_id);
+
+void mult_to_cuda_kernel(float *result, const float *arg, std::size_t n,
+                         cudaStream_t stream, int device_id);
+
+void mult_to_cuda_kernel(double *result, const double *arg, std::size_t n,
                          cudaStream_t stream, int device_id);
 
 /// result[i] = arg1[i] * arg2[i]
-template <typename T>
-void mult_cuda_kernel(T *result, const T *arg1, const T *arg2,
-                      std::size_t n, cudaStream_t stream, int device_id);
+void mult_cuda_kernel(int *result, const int *arg1, const int *arg2, std::size_t n,
+                      cudaStream_t stream, int device_id);
+
+void mult_cuda_kernel(float *result, const float *arg1, const float *arg2, std::size_t n,
+                      cudaStream_t stream, int device_id);
+
+void mult_cuda_kernel(double *result, const double *arg1, const double *arg2, std::size_t n,
+                      cudaStream_t stream, int device_id);
 
 }  // namespace TiledArray
 
