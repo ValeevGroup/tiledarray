@@ -83,7 +83,8 @@ struct make_Ax<DistArray<Tile,Policy>> {
     }
 
     Ax(): A_(TA::get_default_world(), TiledRange({TiledRange1{0,3}, TiledRange1{0,3}})) {
-      A_.set(0, A_.world().taskq.add(& Ax::make_tile, A_.trange().make_tile_range(0)));
+      if (A_.is_local(0))
+        A_.set(0, A_.world().taskq.add(& Ax::make_tile, A_.trange().make_tile_range(0)));
     }
     void operator()(const T& x, T& result) const {
       T Ax;
@@ -113,7 +114,8 @@ struct make_b<DistArray<Tile,Policy>> {
 
   T operator()() const {
     T result(get_default_world(), TiledRange{TiledRange1{0,3}});
-    result.set(0, result.world().taskq.add(& make_b::make_tile, result.trange().make_tile_range(0)));
+    if (result.is_local(0))
+      result.set(0, result.world().taskq.add(& make_b::make_tile, result.trange().make_tile_range(0)));
     return result;
   }
 };
@@ -136,7 +138,8 @@ struct make_pc<DistArray<Tile,Policy>> {
 
   T operator()() const {
     T result(get_default_world(), TiledRange{TiledRange1{0,3}});
-    result.set(0, result.world().taskq.add(& make_pc::make_tile, result.trange().make_tile_range(0)));
+    if (result.is_local(0))
+      result.set(0, result.world().taskq.add(& make_pc::make_tile, result.trange().make_tile_range(0)));
     return result;
   }
 };
