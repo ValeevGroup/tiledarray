@@ -1,4 +1,4 @@
-# load the following modules: gcc, cmake, mercurial, essl, boost, netlib-lapack
+# load the following modules: gcc, cmake, essl, boost, netlib-lapack
 
 # Set environment paths
 # N.B. since loading gcc purges xl must specify XLF root manually

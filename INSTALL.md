@@ -8,7 +8,6 @@
 - [CMake](https://cmake.org/), version 3.1 or higher
 - [Git]() 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher
-  - (optional) Mercurial, to download Eigen from [Bitbucket](http://bitbucket.com/) if it is not already installed on your system.
 - BLAS library
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness)
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.
@@ -240,8 +239,7 @@ variable:
 
 * `EIGEN3_INCLUDE_DIR` -- The path to the Eigen 3 include directory
 
-If Eigen is not found at the configure time, it will be downloaded from the
-hg repository on Bitbucket.
+If Eigen is not found at the configure time, it will be downloaded from the Bitbucket repository.
 
 ## MADNESS
 
