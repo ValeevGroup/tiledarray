@@ -27,6 +27,7 @@
 #define TILEDARRAY_NONINTRUSIVE_API_TENSOR_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
+#include <iterator>
 #include <vector>
 
 namespace TiledArray {
@@ -127,7 +128,7 @@ namespace TiledArray {
    * return \c false, if the tile type does not support default construction
    * (or uninitialized) objects.
    *
-   * Non-intrusive interface:
+   * Non-intrusive interface (not needed if C++17 and later is used):
    *
    * \code
    * bool empty(const TensorType& tensor);
@@ -258,6 +259,8 @@ namespace TiledArray {
 
   // Empty operations ----------------------------------------------------------
 
+#if __cplusplus <= 201402L
+
   /// Check that `arg` is empty (no data)
 
   /// \tparam Arg The tile argument type
@@ -267,7 +270,9 @@ namespace TiledArray {
   inline bool empty(const Arg& arg) {
     return arg.empty();
   }
-
+#else
+  using std::empty;
+#endif
 
   // Subtraction ---------------------------------------------------------------
 
