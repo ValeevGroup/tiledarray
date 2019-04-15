@@ -27,8 +27,8 @@ cmake --version
 export INSTALL_DIR=${INSTALL_PREFIX}/eigen3
 if [ ! -d "${INSTALL_DIR}" ]; then
     cd ${BUILD_PREFIX}
-    wget -q http://bitbucket.org/eigen/eigen/get/3.3.5.tar.bz2
-    tar -xjf 3.3.5.tar.bz2
+    wget -q http://bitbucket.org/eigen/eigen/get/3.3.7.tar.bz2
+    tar -xjf 3.3.7.tar.bz2
     cd eigen-*
     mkdir build
     cd build
