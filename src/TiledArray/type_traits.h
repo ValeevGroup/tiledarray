@@ -295,13 +295,24 @@ template<typename T> constexpr const bool is_type_v = is_type<T>::value;
 // import some existing C++17 features, or implement them
 #if __cplusplus <= 201402L
 
+// GNU stdlibc++ provides void_t if -gnu++11 or -gnu++14 are given
+#if __GNUC__ && defined(__GLIBCXX__) && !__STRICT_ANSI__ && __cplusplus >= 201103L
+#define HAVE_VOID_T
+#endif
+
+#ifndef HAVE_VOID_T  // implement void_t if needed
 template <typename... Ts>
 struct make_void {
   using type = void;
 };
 template <typename... Ts>
 using void_t = typename make_void<Ts...>::type;
+#else
+using std::void_t;
+#endif
 
+#else // C++17 features
+using std::void_t;
 #endif  // C++17 features
 
 }  // namespace detail

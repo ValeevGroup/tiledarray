@@ -33,10 +33,12 @@
 #include <vector>
 #include <array>
 #include <initializer_list>
+#include <iterator>
 
 namespace TiledArray {
   namespace detail {
 
+#if __cplusplus <= 201402L
 
     /// Array size accessor
 
@@ -142,6 +144,11 @@ namespace TiledArray {
     /// \return A const pointer to the first element of the initializer list, \c l
     template <typename T>
     inline const T* data(const std::initializer_list<T>& l) { return l.begin(); }
+
+#else
+    using std::size;
+    using std::data;
+#endif // C++14 only
 
     /// Print the content of an array like object
 
