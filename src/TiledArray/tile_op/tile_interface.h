@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Justusu Calvin
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  tile_interface.h
