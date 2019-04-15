@@ -33,8 +33,8 @@
 
 namespace TiledArray {
 
-  /// Solves real linear system <tt> a(x) = b </tt> using conjugate gradient solver
-  /// where \c a is a linear function of \c x .
+  /// Solves real linear system <tt> a(x) = b </tt>, with \c a is a linear function of \c x , using
+  /// conjugate gradient solver with a diagonal preconditioner.
 
   /// \tparam D type of \c x and \c b, as well as the preconditioner;
   /// \tparam F type that evaluates the LHS, will call \c F::operator()(x,result) ,
@@ -67,8 +67,7 @@ namespace TiledArray {
         value_type convergence_target = -1.0)
     {
 
-      std::size_t n = size(x);
-      assert(n == size(preconditioner));
+      std::size_t n = size(preconditioner);
 
       const bool use_diis = false;
       DIIS<D> diis;
@@ -165,10 +164,11 @@ namespace TiledArray {
         ++iter;
         //std::cout << "iter=" << iter << " dnorm=" << r_ip1_norm << std::endl;
 
-        if (iter >= max_niter) {
+        if (converged) {
           assign(x, XX_i);
-          throw std::domain_error("ConjugateGradient: max # of iterations exceeded");
         }
+        else if (iter >= max_niter)
+          throw std::domain_error("ConjugateGradient: max # of iterations exceeded");
       } // solver loop
 
       assign(x, XX_i);
