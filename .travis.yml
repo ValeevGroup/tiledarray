@@ -15,7 +15,6 @@ addons:
     sources: &clang8_sources
       - llvm-toolchain-xenial-8
     packages: &base_packages
-    - libeigen3-dev
     - libboost-all-dev
     - libblas-dev
     - liblapack-dev
