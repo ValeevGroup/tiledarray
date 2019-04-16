@@ -308,11 +308,13 @@ namespace TiledArray {
   // GENERATE_HAS_MEMBER_TYPE(pointer)
   GENERATE_HAS_MEMBER_TYPE(iterator_category)
 
-  /////////////////////////////
-  // standard iterator range facilities
+  ///////////////////////////////////////////
+  // standard C++17 iterator range facilities
+#if __cplusplus >= 201703L
   GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(size)
   GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(data)
   GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(empty)
+#endif
 
   }  // namespace detail
 }  // namespace TiledArray
