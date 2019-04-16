@@ -250,8 +250,7 @@ automatically download, configure, and build MADNESS (this is the default
 behavior). When CMake is configuring TiledArray, it will checkout
 the correct revision of MADNESS.
 
-The following CMake options may be used to modify build behavior or find
-MADNESS:
+The following CMake options may be used to modify build behavior or find MADNESS:
 
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
 * `ENABLE_ELEMENTAL` -- Enable use of MADNESS provided Elemental [Default=OFF]
@@ -292,9 +291,9 @@ support may be added.
 # Build TiledArray
 
 ```
-    $ make -j
+    $ cmake --build .
     ... many lines omitted ...
-    $ make check
+    $ cmake --build . --target check
     ... many lines omitted ...
-    $ make install
+    $ cmake --build . --target install
 ```

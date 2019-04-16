@@ -118,6 +118,8 @@ $ cmake \
     -D CMAKE_INSTALL_PREFIX=/path/to/tiledarray/install \
     -D CMAKE_TOOLCHAIN_FILE=../cmake/toolchains/osx-clang-mpi-accelerate.cmake \
     ..
+$ cmake --build .
+$ cmake --build . --target install
 ```
 
 Common CMake cache variables that you may want to define include:
@@ -139,6 +141,8 @@ Common CMake cache variables that you may want to define include:
 -D CMAKE_CXX_STANDARD=(14|17|20)
 -D TA_ERROR=(none|throw|assert)
 ```
+
+Note that currently `BUILD_SHARED_LIBS=TRUE` is only supported for single-process runs due to the limitations of the MADWorld runtime.
 
 ### Library Variables
 
