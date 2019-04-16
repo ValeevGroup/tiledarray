@@ -128,7 +128,7 @@ namespace TiledArray {
    * return \c false, if the tile type does not support default construction
    * (or uninitialized) objects.
    *
-   * Non-intrusive interface (not needed if C++17 and later is used):
+   * Non-intrusive interface:
    *
    * \code
    * bool empty(const TensorType& tensor);
@@ -259,20 +259,17 @@ namespace TiledArray {
 
   // Empty operations ----------------------------------------------------------
 
-#if __cplusplus <= 201402L
-
   /// Check that `arg` is empty (no data)
 
   /// \tparam Arg The tile argument type
   /// \param arg The tile argument to be checked
   /// \return `true` if `arg` is empty, otherwise `false`.
   template <typename Arg>
-  inline bool empty(const Arg& arg) {
+  inline std::enable_if_t<!detail::is_free_function_std_empty_anyreturn_v<const Arg&> &&
+      detail::has_member_function_empty_v<Arg,bool>, bool>
+      empty(const Arg& arg) {
     return arg.empty();
   }
-#else
-  using std::empty;
-#endif
 
   // Subtraction ---------------------------------------------------------------
 
