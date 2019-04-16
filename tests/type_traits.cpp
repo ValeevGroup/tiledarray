@@ -203,9 +203,9 @@ GENERATE_IS_FREE_FUNCTION_ANYRETURN(max)
 
 BOOST_AUTO_TEST_CASE(_max_) {
   constexpr bool there_is_max_int_int =
-      is_free_function_max_anyreturn<int, int>::value;
+      is_free_function_max_anyreturn_v<int, int>;
   constexpr bool there_is_max_int_double =
-      is_free_function_max_anyreturn<int, double>::value;
+      is_free_function_max_anyreturn_v<int, double>;
   BOOST_CHECK(there_is_max_int_int);
   BOOST_CHECK(!there_is_max_int_double);
 }
@@ -215,9 +215,9 @@ GENERATE_IS_FREE_FUNCTION_ANYRETURN(min)
 
 BOOST_AUTO_TEST_CASE(_min_) {
   constexpr bool there_is_min_int_int =
-      is_free_function_min_anyreturn<int, int>::value;
+      is_free_function_min_anyreturn_v<int, int>;
   constexpr bool there_is_min_int_double =
-      is_free_function_min_anyreturn<int, double>::value;
+      is_free_function_min_anyreturn_v<int, double>;
   BOOST_CHECK(there_is_min_int_int);
   BOOST_CHECK(!there_is_min_int_double);
 }
