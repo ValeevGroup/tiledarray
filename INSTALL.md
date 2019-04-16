@@ -143,8 +143,8 @@ Additional CMake variables are given below.
 * `CMAKE_EXE_LINKER_FLAGS` -- The linker flags
 * `CMAKE_BUILD_TYPE` -- Optimization/debug build type options include empty,
   Debug, Release, RelWithDebInfo and MinSizeRel.
-* `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported
-        by the platform]
+* `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported by the platform]. With `BUILD_SHARED_LIBS=ON` only uniprocess runs will be possible due to the limitations of the MADWorld runtime.
+* `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `14` (default), `17`, and `20`.
 
 It is typically not necessary to specify optimization or debug flags as the
 default values provided by CMake are usually correct.

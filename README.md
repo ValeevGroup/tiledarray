@@ -136,6 +136,7 @@ Common CMake cache variables that you may want to define include:
 ```cmake
 -D CMAKE_BUILD_TYPE=(Release|Debug|RelWithDebInfo)
 -D BUILD_SHARED_LIBS=(TRUE|FALSE)
+-D CMAKE_CXX_STANDARD=(14|17|20)
 -D TA_ERROR=(none|throw|assert)
 ```
 
