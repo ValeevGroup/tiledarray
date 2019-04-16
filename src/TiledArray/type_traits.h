@@ -314,6 +314,10 @@ namespace TiledArray {
   GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(size)
   GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(data)
   GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(empty)
+#else
+template <typename... Args> constexpr const bool is_free_function_std_size_anyreturn_v = false;
+template <typename... Args> constexpr const bool is_free_function_std_data_anyreturn_v = false;
+template <typename... Args> constexpr const bool is_free_function_std_empty_anyreturn_v = false;
 #endif
 
   }  // namespace detail
