@@ -95,16 +95,17 @@ This figure was obtained with the help of an allocation from [Advanced Research 
   * Clang 3.4 and later, 
   * Apple Clang 5.0 and later, and
   * ~~Intel C/C++ Compiler 17 and later.~~
-* **Cmake** 3.1 or later
-* **Eigen** - Version 3.0 and later. http://eigen.tuxfamily.org
-* **MADNESS** - While it is possible to compile MADNESS separately, we recommend compiling MADNESS automatically as part of TiledArray. Compilation of MADNESS requires the following additional prerequisites (see the [MADNESS GitHub page](https://github.com/m-a-d-n-e-s-s/madness) for details):
+* **Cmake** 3.8 or later
+* **Eigen** - Version 3.3 and later, available from [http://eigen.tuxfamily.org]. Will be downloaded automatically, if missing.
+* **BTAS** - master branch, available from [http://github.com/BTAS/BTAS]. Will be downloaded automatically, if missing.
+* **MADNESS** - While it is possible to compile MADNESS separately, we recommend that MADNESS is downloaded and compiled automatically as part of TiledArray. Compilation of MADNESS requires the following additional prerequisites (see the [MADNESS GitHub page](https://github.com/m-a-d-n-e-s-s/madness) for details):
   * **Pthreads**
-  * **MPI-2 or MPI-3 library** - [MPICH](http://www.mpich.org), [MVAPICH](http://mvapich.cse.ohio-state.edu), and [Intel MPI](https://software.intel.com/en-us/intel-mpi-library) have been tested. Intel MPI is recommended on x86/Infiniband hardware, but any of these libraries will do. ~~We do not recommend OpenMPI as `MPI_THREAD_MULTIPLE` support is [broken](https://github.com/open-mpi/ompi/issues/157).~~
+  * **MPI-2 or MPI-3 library** - [Open-MPI](https://www.open-mpi.org/), [MPICH](http://www.mpich.org), [MVAPICH](http://mvapich.cse.ohio-state.edu), and [Intel MPI](https://software.intel.com/en-us/intel-mpi-library) have been tested. Support for `MPI_THREAD_MULTIPLE` must be enabled in come of these libraries at configuration time.
   * **LAPACK** and **BLAS** - Serial (sequential, or 1-thread) versions of these libraries is recommended. If you have to use threaded version of these libraries, to avoid poor performance (or even errors) due to non-interoperable threading runtimes it is recommended to configure these libraries to use single thread at runtime before entering the block of TiledArray code.
   * **Intel Threading Building Blocks** (optional, but **strongly recommended**) Version 4.3 Update 5 or later. 
+* **Boost** - Version 1.33.0 or later, used for for unit tests only. Will be downloaded automatically, if missing.
 * **Doxygen** (optional) - Used to generate for documentation only. We strongly recommend to use the most recent version of Doxygen to produce the most accurate documentation.
-* **Boost** (optional) - Version 1.33.0 or later for unit tests only
- 
+
 ## Build
 
 TiledArray includes several tool chain files for common platforms. These files contain system specific settings that have been tested on the various platforms. We recommend using one of these 

@@ -5,10 +5,12 @@
   - [Clang](https://clang.llvm.org/), version 3.4 or higher
   - Apple Clang, version 5.0 or higher
   See the current [Travis CI matrix]() for the most up-to-date list of compilers that are known to work.
-- [CMake](https://cmake.org/), version 3.1 or higher
+- [CMake](https://cmake.org/), version 3.8 or higher
 - [Git]() 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
-- [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher
+- [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), master branch (will be downloaded automatically, if missing)
 - BLAS library
+- [Boost libraries](www.boost.org/), version 1.33 or higher, used for unit tests only (will be downloaded atuomatically, if missing)
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness)
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
@@ -19,7 +21,7 @@
 
   Compiling MADNESS requires the following prerequisites:
   - An implementation of Message Passing Interface version 2 or 3, with suppport
-    for MPI_THREAD_MULTIPLE.
+    for `MPI_THREAD_MULTIPLE`.
   - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
   - (optional) [Elemental](http://libelemental.org/), a distributed-memory linear algebra library
   - (optional, strongly recommended on x86 platforms)
@@ -27,8 +29,7 @@
     an [open-source](https://www.threadingbuildingblocks.org/) form
 
 Optional prerequisites:
-- Doxygen (required to generating documentation)
-- [Boost libraries](www.boost.org/), version 1.30 or higher, required for unit tests
+- Doxygen (required to generate documentation)
 
 Most of the dependencies (except for MADNESS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
