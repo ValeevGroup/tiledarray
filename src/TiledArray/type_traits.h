@@ -228,6 +228,35 @@ namespace TiledArray {
   constexpr const bool is_free_function_##Function##_anyreturn_v =             \
     is_free_function_##Function##_anyreturn<Args...>::value;
 
+/// this generates struct \c is_free_function_std_Function_anyreturn<Args...> whose
+/// public constexpr member variable \c value is true if \c ::std::Function is a
+/// free function that takes \c Args and returns any value.
+#define GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(Function)                      \
+  template <typename... Args>                                                  \
+  class __is_free_function_std_##Function##_anyreturn {                        \
+    using Yes = char;                                                          \
+    using No = int;                                                            \
+    template <typename... Args_>                                               \
+    static auto func(void*) -> decltype(                                       \
+        std::add_pointer_t<decltype(::std::Function(std::declval<Args_>()...))>{},\
+        Yes{});                                                                \
+    template <typename...>                                                     \
+    static No func(...);                                                       \
+                                                                               \
+   public:                                                                     \
+    static constexpr const bool value =                                        \
+        sizeof(func<Args...>(0)) == sizeof(Yes);                               \
+  };                                                                           \
+  template <typename... Args>                                                  \
+  struct is_free_function_std_##Function##_anyreturn                           \
+      : public std::integral_constant<                                         \
+            bool, __is_free_function_std_##Function##_anyreturn<Args...>::value> { \
+  };                                                                           \
+                                                                               \
+  template <typename... Args>                                                  \
+  constexpr const bool is_free_function_std_##Function##_anyreturn_v =         \
+    is_free_function_std_##Function##_anyreturn<Args...>::value;
+
 namespace TiledArray {
   namespace detail {
 
@@ -278,6 +307,12 @@ namespace TiledArray {
   // GENERATE_HAS_MEMBER_TYPE(reference)
   // GENERATE_HAS_MEMBER_TYPE(pointer)
   GENERATE_HAS_MEMBER_TYPE(iterator_category)
+
+  /////////////////////////////
+  // standard iterator range facilities
+  GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(size)
+  GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(data)
+  GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(empty)
 
   }  // namespace detail
 }  // namespace TiledArray
