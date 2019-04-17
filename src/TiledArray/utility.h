@@ -62,7 +62,7 @@ namespace TiledArray {
     /// \param a An array object
     /// \return The size of array \c a
     template <typename T,
-        typename std::enable_if<! std::is_array<T>::value>::type* = nullptr>
+        typename = std::enable_if_t<has_member_function_size_anyreturn_v<const T>>>
     inline auto size(const T &a){ return a.size(); }
 
     /// Array size accessor
@@ -87,10 +87,9 @@ namespace TiledArray {
     /// \param t A container object
     /// \return A pointer to the first element of the container, \c v
     template <typename T,
-        typename std::enable_if<! std::is_pointer<T>::value>::type* = nullptr>
+        typename = std::enable_if_t<has_member_function_data_anyreturn_v<T>>>
     inline auto data(T& t)
     { return t.data(); }
-
 
 
     /// Container data pointer accessor
@@ -99,7 +98,7 @@ namespace TiledArray {
     /// \param t A container object
     /// \return A pointer to the first element of the container, \c v
     template <typename T,
-        typename std::enable_if<! std::is_pointer<T>::value>::type* = nullptr>
+        typename = std::enable_if_t<has_member_function_data_anyreturn_v<const T>>>
     inline auto data(const T& t)
     { return t.data(); }
 
