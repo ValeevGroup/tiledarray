@@ -43,7 +43,6 @@
 #include <mpi.h>
 
 #include <TiledArray/error.h>
-#include <TiledArray/math/cublas.h>
 
 #include <cassert>
 #include <vector>
@@ -307,21 +306,7 @@ class cudaEnv {
   std::vector<cudaStream_t> cuda_streams_;
 };
 
-/// initialize cuda environment
-inline void cuda_initialize() {
-  /// initialize cudaGlobal
-  cudaEnv::instance();
-  //
-  cuBLASHandlePool::handle();
-}
 
-/// finalize cuda environment
-inline void cuda_finalize() {
-  CudaSafeCall(cudaDeviceSynchronize());
-  cublasDestroy(cuBLASHandlePool::handle());
-  delete &cuBLASHandlePool::handle();
-  cudaEnv::instance().reset(nullptr);
-}
 
 namespace detail {
 
