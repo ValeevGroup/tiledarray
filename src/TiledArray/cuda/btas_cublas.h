@@ -32,10 +32,10 @@
 #include <TiledArray/external/cuda.h>
 #include <btas/tensor.h>
 
-#include <TiledArray/math/gemm_helper.h>
-#include <TiledArray/cuda/mult_kernel.h>
+#include <TiledArray/cuda/kernel/mult_kernel.h>
 #include <TiledArray/cuda/platform.h>
 #include <TiledArray/cuda/um_storage.h>
+#include <TiledArray/math/gemm_helper.h>
 
 namespace TiledArray {
 
