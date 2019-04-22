@@ -682,7 +682,7 @@ BOOST_AUTO_TEST_CASE(add_permute) {
       auto b_tile = b.find(i).get();
 
       for (std::size_t j = 0ul; j < c_tile.size(); ++j)
-        BOOST_CHECK_EQUAL(c_tile[j], 5*(4 * a_tile[j]) + (b_tile[j]));
+        BOOST_CHECK_EQUAL(c_tile[j], 5*( 4 * a_tile[j] + b_tile[j]));
     } else {
       BOOST_CHECK(a.is_zero(i) && b.is_zero(i));
     }
