@@ -372,9 +372,12 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scal_block, F, Fixtures, F) {
     if (!a.is_zero(block_range.ordinal(index)) ||
         !b.is_zero(block_range.ordinal(index))) {
       auto result_tile = c.find(index).get();
-      auto a_tile = a.is_zero(i) ? F::make_zero_tile(result_tile.range()) : a.find(i).get();
-      auto b_tile = b.is_zero(i) ? F::make_zero_tile(result_tile.range()) : b.find(i).get();
-
+      auto a_tile = a.is_zero(block_range.ordinal(index))
+                        ? F::make_zero_tile(result_tile.range())
+                        : a.find(block_range.ordinal(index)).get();
+      auto b_tile = b.is_zero(block_range.ordinal(index))
+                        ? F::make_zero_tile(result_tile.range())
+                        : b.find(block_range.ordinal(index)).get();
 
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
         BOOST_CHECK_EQUAL(result_tile[j], 2 * (a_tile[j] + b_tile[j]));
@@ -418,8 +421,12 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_sub_blockscal_block, F, Fixtures, F) {
     if (!a.is_zero(block_range.ordinal(index)) ||
         !b.is_zero(block_range.ordinal(index))) {
       auto result_tile = c.find(index).get();
-      auto a_tile = a.is_zero(i) ? F::make_zero_tile(result_tile.range()) : a.find(i).get();
-      auto b_tile = b.is_zero(i) ? F::make_zero_tile(result_tile.range()) : b.find(i).get();
+      auto a_tile = a.is_zero(block_range.ordinal(index))
+                        ? F::make_zero_tile(result_tile.range())
+                        : a.find(block_range.ordinal(index)).get();
+      auto b_tile = b.is_zero(block_range.ordinal(index))
+                        ? F::make_zero_tile(result_tile.range())
+                        : b.find(block_range.ordinal(index)).get();
 
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
         BOOST_CHECK_EQUAL(result_tile[j], 2 * (a_tile[j] + b_tile[j]));
