@@ -121,20 +121,131 @@ inline cublasStatus_t cublasGemm<double>(
 
 /// AXPY interface functions
 
-template <typename T>
-cublasStatus_t cublasAxpy(cublasHandle_t handle, int n, const T *alpha,
+template <typename T, typename Scalar>
+cublasStatus_t cublasAxpy(cublasHandle_t handle, int n, const Scalar *alpha,
                           const T *x, int incx, T *y, int incy);
 template <>
-inline cublasStatus_t cublasAxpy<float>(cublasHandle_t handle, int n,
+inline cublasStatus_t cublasAxpy<float,float>(cublasHandle_t handle, int n,
                                         const float *alpha, const float *x,
                                         int incx, float *y, int incy) {
   return cublasSaxpy(handle, n, alpha, x, incx, y, incy);
 }
+
 template <>
-inline cublasStatus_t cublasAxpy<double>(cublasHandle_t handle, int n,
+inline cublasStatus_t cublasAxpy<double,double>(cublasHandle_t handle, int n,
                                          const double *alpha, const double *x,
                                          int incx, double *y, int incy) {
   return cublasDaxpy(handle, n, alpha, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<float,int>(cublasHandle_t handle, int n,
+                                              const int *alpha, const float *x,
+                                              int incx, float *y, int incy) {
+  const float alpha_float = float(*alpha);
+  return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<float,double>(cublasHandle_t handle, int n,
+                                            const double *alpha, const float *x,
+                                            int incx, float *y, int incy) {
+  const float alpha_float = float(*alpha);
+  return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<double,int>(cublasHandle_t handle, int n,
+                                                const int *alpha, const double *x,
+                                                int incx, double *y, int incy) {
+  const double alpha_double = double(*alpha);
+  return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<double,float>(cublasHandle_t handle, int n,
+                                             const float *alpha, const double *x,
+                                             int incx, double *y, int incy) {
+  const double alpha_double = double(*alpha);
+  return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<float, detail::ComplexConjugate<void>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<void> *alpha,
+    const float *x, int incx, float *y, int incy) {
+  return CUBLAS_STATUS_SUCCESS;
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<float, detail::ComplexConjugate<detail::ComplexNegTag>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
+    const float *x, int incx, float *y, int incy) {
+  const float alpha_float = float(-1.0);
+  return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<float, detail::ComplexConjugate<int>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<int> *alpha,
+    const float *x, int incx, float *y, int incy) {
+  const float alpha_float = float(alpha->factor());
+  return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<float, detail::ComplexConjugate<float>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<float> *alpha,
+    const float *x, int incx, float *y, int incy) {
+  const float alpha_float = float(alpha->factor());
+  return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<float, detail::ComplexConjugate<double>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<double> *alpha,
+    const float *x, int incx, float *y, int incy) {
+  const float alpha_float = float(alpha->factor());
+  return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<double, detail::ComplexConjugate<void>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<void> *alpha,
+    const double *x, int incx, double *y, int incy) {
+  return CUBLAS_STATUS_SUCCESS;
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<double, detail::ComplexConjugate<detail::ComplexNegTag>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
+    const double *x, int incx, double *y, int incy) {
+  const double alpha_double = double(-1.0);
+  return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<double, detail::ComplexConjugate<int>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<int> *alpha,
+    const double *x, int incx, double *y, int incy) {
+  const double alpha_double = double(alpha->factor());
+  return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<double, detail::ComplexConjugate<float>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<float> *alpha,
+    const double *x, int incx, double *y, int incy) {
+  const double alpha_double = double(alpha->factor());
+  return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
+}
+
+template <>
+inline cublasStatus_t cublasAxpy<double, detail::ComplexConjugate<double>>(
+    cublasHandle_t handle, int n, const detail::ComplexConjugate<double> *alpha,
+    const double *x, int incx, double *y, int incy) {
+  const double alpha_double = double(alpha->factor());
+  return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
 }
 
 /// DOT interface functions

@@ -41,4 +41,8 @@ if(CUDA_FOUND)
   cuda_add_executable(ta_cc_abcd_cuda ta_cc_abcd_cuda.cpp)
   target_link_libraries(ta_cc_abcd_cuda PRIVATE tiledarray)
   add_dependencies(examples ta_cc_abcd_cuda)
+
+  cuda_add_executable(ta_vector_cuda ta_vector_cuda.cpp)
+  target_link_libraries(ta_vector_cuda PRIVATE tiledarray)
+  add_dependencies(examples ta_vector_cuda)
 endif(CUDA_FOUND)

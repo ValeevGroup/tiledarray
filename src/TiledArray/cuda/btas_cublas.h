@@ -341,14 +341,14 @@ void btas_tensor_scale_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 }
 
 /// result[i] = arg1[i] - a * arg2[i]
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg1,
-    const btas::Tensor<T, Range, Storage> &arg2, const T a) {
+    const btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
   auto result = btas_tensor_clone_cuda_impl(arg1);
 
   // revert the sign of a
-  T b = T(-1) * a;
+  auto b = -a;
 
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
@@ -368,15 +368,15 @@ btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
 }
 
 /// result[i] -= a * arg1[i]
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage>
 void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                    const btas::Tensor<T, Range, Storage> &arg1,
-                                   const T a) {
+                                   const Scalar a) {
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
 
   // revert the sign of a
-  T b = T(-1) * a;
+  auto b = -a;
 
   const auto &handle = cuBLASHandlePool::handle();
   CublasSafeCall(cublasSetStream(handle, cuda_stream));
@@ -386,10 +386,10 @@ void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 }
 
 /// result[i] = arg1[i] + a * arg2[i]
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage>
 btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg1,
-    const btas::Tensor<T, Range, Storage> &arg2, const T a) {
+    const btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
   auto result = btas_tensor_clone_cuda_impl(arg1);
 
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
@@ -404,10 +404,10 @@ btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
 }
 
 /// result[i] += a * arg[i]
-template <typename T, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage>
 void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                   const btas::Tensor<T, Range, Storage> &arg,
-                                  const T a) {
+                                  const Scalar a) {
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());
 
