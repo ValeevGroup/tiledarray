@@ -160,6 +160,7 @@ if(CUDA_FOUND)
           TiledArray/cuda/btas_cublas.h
           TiledArray/cuda/btas_um_tensor.h
           TiledArray/cuda/cpu_cuda_vector.h
+          TiledArray/cuda/cuda_task_fn.h
           TiledArray/cuda/kernel/mult_kernel.h
           TiledArray/cuda/kernel/mult_kernel_impl.h
           TiledArray/cuda/platform.h

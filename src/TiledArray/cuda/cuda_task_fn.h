@@ -2,8 +2,8 @@
 // Created by Chong Peng on 2019-03-20.
 //
 
-#ifndef TILEDARRAY_CUDATASKFN_H
-#define TILEDARRAY_CUDATASKFN_H
+#ifndef TILEDARRAY_CUDA_CUDA_TASK_FN_H__INCLUDED
+#define TILEDARRAY_CUDA_CUDA_TASK_FN_H__INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -847,4 +847,4 @@ add_cuda_task(madness::World& world, objT&& obj, memfnT memfn,
 
 
 #endif  // TILDARRAY_HAS_CUDA
-#endif  // TILEDARRAY_CUDATASKFN_H
+#endif  // TILEDARRAY_CUDA_CUDA_TASK_FN_H__INCLUDED

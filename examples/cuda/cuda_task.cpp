@@ -4,7 +4,7 @@
 
 #include <tiledarray.h>
 #include <TiledArray/cuda/btas_um_tensor.h>
-#include <TiledArray/cuda/cudaTaskFn.h>
+#include <TiledArray/cuda/cuda_task_fn.h>
 
 using value_type = double;
 using tensor_type = TA::btasUMTensorVarray<value_type>;
