@@ -1813,6 +1813,52 @@ BOOST_AUTO_TEST_CASE(dot) {
 
   // Check the result of dot
   BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (a("a,b,c") - b("a,b,c") ).dot((a("a,b,c") + b("a,b,c"))).get());
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    if (!a.is_zero(i) && !b.is_zero(i)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
+    }
+  }
+
+  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
+
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (2*a("a,b,c")).dot(3*b("a,b,c")).get());
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    if (!a.is_zero(i) && !b.is_zero(i)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += 6 * (a_tile[j] * b_tile[j]);
+    }
+  }
+
+  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = 2*(a("a,b,c") - b("a,b,c") ).dot(3*(a("a,b,c") + b("a,b,c"))).get());
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    if (!a.is_zero(i) && !b.is_zero(i)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += 6 * (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
+    }
+  }
+
+  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
 }
 
 BOOST_AUTO_TEST_CASE(dot_permute) {
@@ -1838,21 +1884,60 @@ BOOST_AUTO_TEST_CASE(dot_permute) {
 
   // Check the result of dot
   BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
-}
 
-BOOST_AUTO_TEST_CASE(dot_expr) {
-  // Test the dot expression function
-  double result = 0;
-  BOOST_REQUIRE_NO_THROW(result = static_cast<double>(a("a,b,c") * b("a,b,c")));
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (a("a,b,c") - b("c,b,a")).dot(a("a,b,c") + b("c,b,a")).get());
 
   // Compute the expected value for the dot function.
-  double expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    TArrayUMD::value_type a_tile = a.find(i).get();
-    TArrayUMD::value_type b_tile = b.find(i).get();
+    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = perm * b.find(perm_index).get();
 
-    for (std::size_t j = 0ul; j < a_tile.size(); ++j)
-      expected += a_tile[j] * b_tile[j];
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
+    }
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (2*a("a,b,c")).dot(3*b("c,b,a")).get());
+
+  // Compute the expected value for the dot function.
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = perm * b.find(perm_index).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += 6 * a_tile[j] * b_tile[j];
+    }
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_CLOSE_FRACTION(result, expected, tolerance);
+
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (2*(a("a,b,c") - b("c,b,a"))).dot(3*(a("a,b,c") + b("c,b,a"))).get());
+
+  // Compute the expected value for the dot function.
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = perm * b.find(perm_index).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += 6* (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
+    }
   }
 
   // Check the result of dot

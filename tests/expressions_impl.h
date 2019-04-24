@@ -2014,6 +2014,52 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
 
   // Check the result of dot
   BOOST_CHECK_EQUAL(result, expected);
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (a("a,b,c") - b("a,b,c") ).dot((a("a,b,c") + b("a,b,c"))).get());
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    if (!a.is_zero(i) && !b.is_zero(i)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
+    }
+  }
+
+  BOOST_CHECK_EQUAL(result, expected);
+
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (2*a("a,b,c")).dot(3*b("a,b,c")).get());
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    if (!a.is_zero(i) && !b.is_zero(i)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += 6 * (a_tile[j] * b_tile[j]);
+    }
+  }
+
+  BOOST_CHECK_EQUAL(result, expected);
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = 2*(a("a,b,c") - b("a,b,c") ).dot(3*(a("a,b,c") + b("a,b,c"))).get());
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    if (!a.is_zero(i) && !b.is_zero(i)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += 6 * (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
+    }
+  }
+
+  BOOST_CHECK_EQUAL(result, expected);
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
@@ -2044,30 +2090,66 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
 
   // Check the result of dot
   BOOST_CHECK_EQUAL(result, expected);
-}
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_expr, F, Fixtures, F) {
-  auto& a = F::a;
-  auto& b = F::b;
-  // Test the dot expression function
-  typename F::element_type result = 0;
-  BOOST_REQUIRE_NO_THROW(
-      result = static_cast<typename F::element_type>(a("a,b,c") * b("a,b,c")));
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (a("a,b,c") - b("c,b,a")).dot(a("a,b,c") + b("c,b,a")).get());
 
   // Compute the expected value for the dot function.
-  typename F::element_type expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    if (!a.is_zero(i) && !b.is_zero(i)) {
+    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
       auto a_tile = a.find(i).get();
-      auto b_tile = b.find(i).get();
+      auto b_tile = perm * b.find(perm_index).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
-        expected += a_tile[j] * b_tile[j];
+        expected += (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
     }
   }
 
   // Check the result of dot
   BOOST_CHECK_EQUAL(result, expected);
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (2*a("a,b,c")).dot(3*b("c,b,a")).get());
+
+  // Compute the expected value for the dot function.
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = perm * b.find(perm_index).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += 6 * a_tile[j] * b_tile[j];
+    }
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_EQUAL(result, expected);
+
+
+  result = 0;
+  expected = 0;
+  BOOST_REQUIRE_NO_THROW(result = (2*(a("a,b,c") - b("c,b,a"))).dot(3*(a("a,b,c") + b("c,b,a"))).get());
+
+  // Compute the expected value for the dot function.
+  for (std::size_t i = 0ul; i < a.size(); ++i) {
+    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
+      auto a_tile = a.find(i).get();
+      auto b_tile = perm * b.find(perm_index).get();
+
+      for (std::size_t j = 0ul; j < a_tile.size(); ++j)
+        expected += 6* (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
+    }
+  }
+
+  // Check the result of dot
+  BOOST_CHECK_EQUAL(result, expected);
+
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_contr, F, Fixtures, F) {
