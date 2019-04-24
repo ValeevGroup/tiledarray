@@ -45,4 +45,8 @@ if(CUDA_FOUND)
   cuda_add_executable(ta_vector_cuda ta_vector_cuda.cpp)
   target_link_libraries(ta_vector_cuda PRIVATE tiledarray)
   add_dependencies(examples ta_vector_cuda)
+
+  cuda_add_executable(ta_reduce_cuda ta_reduce_cuda.cpp)
+  target_link_libraries(ta_reduce_cuda PRIVATE tiledarray)
+  add_dependencies(examples ta_reduce_cuda)
 endif(CUDA_FOUND)
