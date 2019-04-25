@@ -148,7 +148,7 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
   // compute the stream to use
-  auto &stream = detail::get_stream_based_on_range(arg.range());
+  auto &stream = detail::get_stream_based_on_range(result_range);
 
   // allocate result memory
   typename btasUMTensorVarray<T, Range>::storage_type storage;
