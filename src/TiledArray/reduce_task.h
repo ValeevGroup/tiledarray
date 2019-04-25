@@ -306,73 +306,103 @@ namespace TiledArray {
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-        static void CUDART_CB cuda_reduceobject_delete_callback(cudaStream_t stream, cudaError_t status,
-                                                                void *userData) {
-
+        static void CUDART_CB cuda_reduceobject_delete_callback(
+            cudaStream_t stream, cudaError_t status, void* userData) {
           CudaSafeCall(status);
 
-          std::vector<void *> *objects = static_cast<std::vector<void *> *>(userData);
+          std::vector<void*>* objects =
+              static_cast<std::vector<void*>*>(userData);
 
-          for (auto &item : *objects) {
-            // convert void* to ReduceObject*
-            ReduceObject *reduce_object = static_cast<ReduceObject *>(item);
-            // delete ReduceObject
-            ReduceObject::destroy(reduce_object);
-          }
-          delete objects;
-          std::cout << std::to_string(TiledArray::get_default_world().rank()) + " call 1\n";
+          /// first pointer is always madness::World*
+          madness::World* world = static_cast<madness::World*>((*objects)[0]);
+
+          auto destroy_vector = [](std::vector<void*>* objects) {
+            std::size_t n_objects = objects->size();
+            /// skip the first pointer since it is always World*
+            for (std::size_t i = 1; i < n_objects; i++) {
+              // convert void* to ReduceObject*
+              ReduceObject* reduce_object =
+                  static_cast<ReduceObject*>((*objects)[i]);
+              // delete ReduceObject
+              ReduceObject::destroy(reduce_object);
+            }
+            /// delete objects pointer
+            delete objects;
+//            std::cout << std::to_string(
+//                             TiledArray::get_default_world().rank()) +
+//                             " call 1\n";
+          };
+
+          /// use madness task to call the destroy function, since it might call
+          /// cuda API
+          world->taskq.add(destroy_vector, objects, TaskAttributes::hipri());
         }
 
-        static void CUDART_CB cuda_dependency_dec_callback(cudaStream_t stream, cudaError_t status,
-                                                           void *userData) {
-
+        static void CUDART_CB cuda_dependency_dec_callback(cudaStream_t stream,
+                                                           cudaError_t status,
+                                                           void* userData) {
           CudaSafeCall(status);
 
-          std::vector<void *> *objects = static_cast<std::vector<void *> *>(userData);
+          std::vector<void*>* objects =
+              static_cast<std::vector<void*>*>(userData);
 
-          for (auto &item : *objects) {
+          for (auto& item : *objects) {
             // convert void* to DependencyInterface
-            ReduceTaskImpl *dep = static_cast<ReduceTaskImpl *>(item);
+            ReduceTaskImpl* dep = static_cast<ReduceTaskImpl*>(item);
             // call dec
             dep->dec();
           }
           delete objects;
-          std::cout << std::to_string(TiledArray::get_default_world().rank()) + " call 2\n";
+//          std::cout << std::to_string(TiledArray::get_default_world().rank()) +
+//                           " call 2\n";
         }
 
-        static void CUDART_CB cuda_dependency_dec_reduceobject_delete_callback(cudaStream_t stream, cudaError_t status,
-                                                                               void *userData) {
+        static void CUDART_CB cuda_dependency_dec_reduceobject_delete_callback(
+            cudaStream_t stream, cudaError_t status, void* userData) {
 
           CudaSafeCall(status);
 
-          std::vector<void *> *objects = static_cast<std::vector<void *> *>(userData);
+          std::vector<void*>* objects =
+              static_cast<std::vector<void*>*>(userData);
 
-          assert(objects->size() == 2);
+          assert(objects->size() == 3);
+
+          /// convert void* to madness::World*
+          madness::World* world = static_cast<madness::World*>(objects->at(0));
 
           // convert void* to DependencyInterface
-          ReduceTaskImpl *dep = static_cast<ReduceTaskImpl *>(objects->at(0));
+          ReduceTaskImpl* dep = static_cast<ReduceTaskImpl*>(objects->at(1));
           // call dec
           dep->dec();
 
           // convert void* to ReduceObject*
-          ReduceObject *reduce_object = static_cast<ReduceObject *>(objects->at(1));
+          ReduceObject* reduce_object =
+              static_cast<ReduceObject*>(objects->at(2));
+
+          auto destroy = [](ReduceObject* object) {
+            ReduceObject::destroy(object);
+//            std::cout << std::to_string(
+//                             TiledArray::get_default_world().rank()) +
+//                             " call 3\n";
+          };
+
           // delete ReduceObject
-          ReduceObject::destroy(reduce_object);
+          world->taskq.add(destroy, reduce_object, TaskAttributes::hipri());
 
           delete objects;
-          std::cout << std::to_string(TiledArray::get_default_world().rank()) + " call 3\n";
         }
 
-
-        static void CUDART_CB cuda_readyresult_reset_callback(cudaStream_t stream, cudaError_t status,
-                                                              void *userData) {
+        static void CUDART_CB cuda_readyresult_reset_callback(
+            cudaStream_t stream, cudaError_t status, void* userData) {
           CudaSafeCall(status);
           // convert void* to the correct type
-          std::shared_ptr<result_type> *result = static_cast<std::shared_ptr<result_type> *>(userData);
+          std::shared_ptr<result_type>* result =
+              static_cast<std::shared_ptr<result_type>*>(userData);
           // call reset on shared_ptr
           result->reset();
           delete result;
-          std::cout << std::to_string(TiledArray::get_default_world().rank()) + " call 4\n";
+//          std::cout << std::to_string(TiledArray::get_default_world().rank()) +
+//                           " call 4\n";
         }
 
 #endif
@@ -410,15 +440,16 @@ namespace TiledArray {
                 this->dec();
               }
               else{
-                auto callback_object = new std::vector<void*>(2);
-                (*callback_object)[0] = this;
-                (*callback_object)[1] = ready_object;
+                auto callback_object = new std::vector<void*>(3);
+                (*callback_object)[0] = &world_;
+                (*callback_object)[1] = this;
+                (*callback_object)[2] = ready_object;
                 CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
                 CudaSafeCall(
                         cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_reduceobject_delete_callback, callback_object, 0)
                 );
                 synchronize_stream(nullptr);
-                std::cout << std::to_string(world().rank()) + " add 3\n";
+//                std::cout << std::to_string(world().rank()) + " add 3\n";
               }
 #else
               ReduceObject::destroy(ready_object);
@@ -446,7 +477,7 @@ namespace TiledArray {
                         cudaStreamAddCallback(*stream_ptr, cuda_readyresult_reset_callback, ready_result_heap, 0)
                 );
                 synchronize_stream(nullptr);
-                std::cout << std::to_string(world().rank()) + " add 4\n";
+//                std::cout << std::to_string(world().rank()) + " add 4\n";
               }
 #else
               ready_result.reset();
@@ -475,14 +506,15 @@ namespace TiledArray {
             ReduceObject::destroy(object);
           }
           else{
-            auto callback_object = new std::vector<void*>(1);
-            (*callback_object)[0] = const_cast<ReduceObject*>(object);
+            auto callback_object = new std::vector<void*>(2);
+            (*callback_object)[0] = &world_;
+            (*callback_object)[1] = const_cast<ReduceObject*>(object);
             CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
             CudaSafeCall(
                     cudaStreamAddCallback(*stream_ptr, cuda_reduceobject_delete_callback,callback_object, 0)
             );
             synchronize_stream(nullptr);
-            std::cout << std::to_string(world().rank()) + " add 1\n";
+//            std::cout << std::to_string(world().rank()) + " add 1\n";
           }
 #else
           ReduceObject::destroy(object);
@@ -503,7 +535,7 @@ namespace TiledArray {
             CudaSafeCall(
                     cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_callback, callback_object2, 0)
             );
-            std::cout << std::to_string(world().rank()) + " add 2\n";
+//            std::cout << std::to_string(world().rank()) + " add 2\n";
           }
 #else
           this->dec();
@@ -527,15 +559,16 @@ namespace TiledArray {
             ReduceObject::destroy(object2);
           }
           else{
-            auto callback_object1 = new std::vector<void*>(2);
-            (*callback_object1)[0] = const_cast<ReduceObject*>(object1);
-            (*callback_object1)[1] = const_cast<ReduceObject*>(object2);
+            auto callback_object1 = new std::vector<void*>(3);
+            (*callback_object1)[0] = &world_;
+            (*callback_object1)[1] = const_cast<ReduceObject*>(object1);
+            (*callback_object1)[2] = const_cast<ReduceObject*>(object2);
             CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
             CudaSafeCall(
                     cudaStreamAddCallback(*stream_ptr, cuda_reduceobject_delete_callback, callback_object1, 0)
             );
             synchronize_stream(nullptr);
-            std::cout << std::to_string(world().rank()) + " add 1\n";
+//            std::cout << std::to_string(world().rank()) + " add 1\n";
           }
 #else
           ReduceObject::destroy(object1);
@@ -560,7 +593,7 @@ namespace TiledArray {
             CudaSafeCall(
                     cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_callback, callback_object2, 0)
             );
-            std::cout << std::to_string(world().rank()) + " add 2\n";
+//            std::cout << std::to_string(world().rank()) + " add 2\n";
           }
 
 #else

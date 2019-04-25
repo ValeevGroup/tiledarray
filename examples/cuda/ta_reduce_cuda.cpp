@@ -91,7 +91,49 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      auto d = TiledArray::dot(a("m,n"), b("m,n"));
+      value_type d = TiledArray::dot(a("m,n"), b("m,n"));
+
+      double iter_time_stop = madness::wall_time();
+      if (world.rank() == 0){
+        std::cout << "dot result: " << d << std::endl;
+        std::cout << "Iteration " << i + 1
+                  << " wall time: " << (iter_time_stop - iter_time_start)
+                  << "\n";
+      }
+
+//      TA_ASSERT(d == val_a*val_b*Nm*Nn);
+    }
+    // Stop clock
+    const double wall_time_stop = madness::wall_time();
+
+    if (world.rank() == 0)
+      std::cout << "Average wall time   = "
+                << (wall_time_stop - wall_time_start) / double(nrepeat)
+                << " sec\nAverage GFLOPS      = "
+                << double(nrepeat) * 2 * double(Nn * Nm) /
+                   (wall_time_stop - wall_time_start) / 1.0e9
+                << "\n";
+  }
+
+
+  {
+    if (world.rank() == 0){
+      std::cout << "\nDot permute test: dot(a(m,n), b(n,m))\n";
+    }
+
+    TArray a(world, trange);
+    TArray b(world, trange);
+
+    a.fill(val_a);
+    b.fill(val_b);
+
+    // Start clock
+    const double wall_time_start = madness::wall_time();
+
+    // Do
+    for (int i = 0; i < nrepeat; ++i) {
+      double iter_time_start = madness::wall_time();
+      value_type d = TiledArray::dot(a("m,n"), b("n,m"));
 
       double iter_time_stop = madness::wall_time();
       if (world.rank() == 0){
@@ -133,7 +175,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      auto d = TiledArray::dot(2*a("m,n"), 3*b("m,n"));
+      value_type d = TiledArray::dot(2*a("m,n"), 3*b("m,n"));
 
       double iter_time_stop = madness::wall_time();
       if (world.rank() == 0){
@@ -175,7 +217,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      auto d = TiledArray::dot(2*a("m,n"), 3*b("n,m"));
+      value_type d = TiledArray::dot(2*a("m,n"), 3*b("n,m"));
 
       double iter_time_stop = madness::wall_time();
       if (world.rank() == 0){
