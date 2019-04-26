@@ -395,14 +395,26 @@ namespace TiledArray {
         static void CUDART_CB cuda_readyresult_reset_callback(
             cudaStream_t stream, cudaError_t status, void* userData) {
           CudaSafeCall(status);
-          // convert void* to the correct type
-          std::shared_ptr<result_type>* result =
-              static_cast<std::shared_ptr<result_type>*>(userData);
-          // call reset on shared_ptr
-          result->reset();
-          delete result;
-//          std::cout << std::to_string(TiledArray::get_default_world().rank()) +
-//                           " call 4\n";
+
+          std::vector<void*>* objects =
+              static_cast<std::vector<void*>*>(userData);
+
+          /// convert first void* to madness::World*
+          madness::World* world = static_cast<madness::World*>((*objects)[0]);
+
+          auto reset = []( std::vector<void*>* objects){
+            // skip the first one since it always be madness::World*
+            // convert void* to the correct type
+            std::shared_ptr<result_type>* result =
+                static_cast<std::shared_ptr<result_type>*>((*objects)[1]);
+            // call reset on shared_ptr
+            result->reset();
+            delete objects;
+//            std::cout << std::to_string(TiledArray::get_default_world().rank()) +
+//                         " call 4\n";
+          };
+
+          world->taskq.add(reset, objects, TaskAttributes::hipri());
         }
 
 #endif
@@ -472,9 +484,12 @@ namespace TiledArray {
               }
               else{
                 auto ready_result_heap = new std::shared_ptr<result_type>(ready_result);
+                auto callback_object = new std::vector<void*>(2);
+                (*callback_object)[0] = &world_;
+                (*callback_object)[1] = ready_result_heap;
                 CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
                 CudaSafeCall(
-                        cudaStreamAddCallback(*stream_ptr, cuda_readyresult_reset_callback, ready_result_heap, 0)
+                        cudaStreamAddCallback(*stream_ptr, cuda_readyresult_reset_callback, callback_object, 0)
                 );
                 synchronize_stream(nullptr);
 //                std::cout << std::to_string(world().rank()) + " add 4\n";
