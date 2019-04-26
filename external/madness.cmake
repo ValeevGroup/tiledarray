@@ -98,7 +98,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "8c6b889ce0d64e89a5894c58c3d900e3c4c5e345" CACHE STRING
+  set(MADNESS_TAG "e2e09204d4cbcd08bf0d33ca72b7e23dd9e053eb" CACHE STRING
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -293,6 +293,8 @@ else()
       "-DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}"
       "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${CMAKE_CXX_FLAGS_RELWITHDEBINFO}"
       "-DCMAKE_CXX_FLAGS_MINSIZEREL=${CMAKE_CXX_FLAGS_MINSIZEREL}"
+      -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
+      -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
 # F Fortran, assume we can link without its runtime
 # if you need Fortran checks enable Elemental
 #      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}

@@ -559,7 +559,7 @@ namespace TiledArray {
     /// Reduction operation for contiguous tensors
 
     /// Perform an element-wise reduction of the tensors by
-    /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for each
+    /// executing <tt>join_op(result, reduce_op(result, &tensor1[i], &tensors[i]...))</tt> for each
     /// \c i in the index range of \c tensor1 . \c result is initialized to \c identity .
     /// If HAVE_INTEL_TBB is defined, the reduction will be executed in an undefined order,
     /// otherwise will execute in the order of increasing \c i .
@@ -574,8 +574,12 @@ namespace TiledArray {
     /// \param tensors The other tensors to be reduced
     /// \return The reduced value of the tensor(s)
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
-    typename std::enable_if<is_numeric_v<Scalar> && is_tensor<T1, Ts...>::value
-             && is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
+    typename std::enable_if_t<is_tensor<T1, Ts...>::value
+             && is_contiguous_tensor<T1, Ts...>::value
+             && !is_reduce_op_v<std::decay_t<ReduceOp>,
+                                std::decay_t<Scalar>,
+                                std::decay_t<T1>,
+                                std::decay_t<Ts>...>>* = nullptr>
     Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         Scalar identity, const T1& tensor1, const Ts&... tensors)
     {
@@ -590,7 +594,36 @@ namespace TiledArray {
       return identity;
     }
 
-    /// Reduction operation for contiguous tensors of tensors
+    /// Reduction operation for tensors
+
+    /// Perform reduction of the tensors by
+    /// executing <tt>reduce_op(result, &tensor1, &tensors...)</tt>.
+    /// \c result is initialized to \c identity .
+    /// \tparam ReduceOp The element-wise reduction operation type
+    /// \tparam JoinOp The result operation type
+    /// \tparam Scalar A scalar type
+    /// \tparam T1 The first argument tensor type
+    /// \tparam Ts The argument tensor types
+    /// \param reduce_op The element-wise reduction operation
+    /// \param identity The initial value for the reduction and the result
+    /// \param tensor1 The first tensor to be reduced
+    /// \param tensors The other tensors to be reduced
+    /// \return The reduced value of the tensor(s)
+    template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
+        typename std::enable_if_t<is_tensor<T1, Ts...>::value
+                                      && is_contiguous_tensor<T1, Ts...>::value
+                                      && is_reduce_op_v<std::decay_t<ReduceOp>,
+                                                        std::decay_t<Scalar>,
+                                                        std::decay_t<T1>,
+                                                        std::decay_t<Ts>...>>* = nullptr>
+    Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
+                         Scalar identity, const T1& tensor1, const Ts&... tensors)
+    {
+      reduce_op(identity, &tensor1, &tensors...);
+      return identity;
+    }
+
+  /// Reduction operation for contiguous tensors of tensors
 
     /// Perform an element-wise reduction of the tensors by
     /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for each
@@ -609,8 +642,7 @@ namespace TiledArray {
     /// \param tensors The other tensors to be reduced
     /// \return The reduced value of the tensor(s)
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
-        typename std::enable_if<is_numeric_v<Scalar>
-            && is_tensor_of_tensor<T1, Ts...>::value
+        typename std::enable_if<is_tensor_of_tensor<T1, Ts...>::value
             && is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         Scalar identity, const T1& tensor1, const Ts&... tensors)
@@ -649,7 +681,7 @@ namespace TiledArray {
     /// \param tensors The other tensors to be reduced
     /// \return The reduced value of the tensor(s)
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
-        typename std::enable_if<is_numeric_v<Scalar> && is_tensor<T1, Ts...>::value
+        typename std::enable_if<is_tensor<T1, Ts...>::value
             && ! is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         const Scalar identity, const T1& tensor1, const Ts&... tensors)
@@ -691,8 +723,8 @@ namespace TiledArray {
     /// \param tensors The other tensors to be reduced
     /// \return The reduced value of the tensor(s)
     template <typename ReduceOp, typename JoinOp, typename Scalar, typename T1, typename... Ts,
-        typename std::enable_if<is_numeric_v<Scalar>
-            && is_tensor_of_tensor<T1, Ts...>::value
+        typename std::enable_if<
+            is_tensor_of_tensor<T1, Ts...>::value
             && ! is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
     Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
         const Scalar identity, const T1& tensor1, const Ts&... tensors)

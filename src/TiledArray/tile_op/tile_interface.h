@@ -15,7 +15,7 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Justusu Calvin
+ *  Justus Calvin
  *  Department of Chemistry, Virginia Tech
  *
  *  tile_interface.h
@@ -27,6 +27,7 @@
 #define TILEDARRAY_NONINTRUSIVE_API_TENSOR_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
+#include <iterator>
 #include <vector>
 
 namespace TiledArray {
@@ -264,10 +265,11 @@ namespace TiledArray {
   /// \param arg The tile argument to be checked
   /// \return `true` if `arg` is empty, otherwise `false`.
   template <typename Arg>
-  inline bool empty(const Arg& arg) {
+  inline std::enable_if_t<!detail::is_free_function_std_empty_anyreturn_v<const Arg&> &&
+      detail::has_member_function_empty_v<Arg,bool>, bool>
+      empty(const Arg& arg) {
     return arg.empty();
   }
-
 
   // Subtraction ---------------------------------------------------------------
 

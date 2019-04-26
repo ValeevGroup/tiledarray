@@ -5,11 +5,12 @@
   - [Clang](https://clang.llvm.org/), version 3.4 or higher
   - Apple Clang, version 5.0 or higher
   See the current [Travis CI matrix]() for the most up-to-date list of compilers that are known to work.
-- [CMake](https://cmake.org/), version 3.1 or higher
+- [CMake](https://cmake.org/), version 3.8 or higher
 - [Git]() 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
-- [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher
-  - (optional) Mercurial, to download Eigen from [Bitbucket](http://bitbucket.com/) if it is not already installed on your system.
+- [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), master branch (will be downloaded automatically, if missing)
 - BLAS library
+- [Boost libraries](www.boost.org/), version 1.33 or higher, used for unit tests only (will be downloaded atuomatically, if missing)
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness)
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
@@ -20,7 +21,7 @@
 
   Compiling MADNESS requires the following prerequisites:
   - An implementation of Message Passing Interface version 2 or 3, with suppport
-    for MPI_THREAD_MULTIPLE.
+    for `MPI_THREAD_MULTIPLE`.
   - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
   - (optional) [Elemental](http://libelemental.org/), a distributed-memory linear algebra library
   - (optional, strongly recommended on x86 platforms)
@@ -28,8 +29,7 @@
     an [open-source](https://www.threadingbuildingblocks.org/) form
 
 Optional prerequisites:
-- Doxygen (required to generating documentation)
-- [Boost libraries](www.boost.org/), version 1.30 or higher, required for unit tests
+- Doxygen (required to generate documentation)
 
 Most of the dependencies (except for MADNESS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
@@ -144,8 +144,8 @@ Additional CMake variables are given below.
 * `CMAKE_EXE_LINKER_FLAGS` -- The linker flags
 * `CMAKE_BUILD_TYPE` -- Optimization/debug build type options include empty,
   Debug, Release, RelWithDebInfo and MinSizeRel.
-* `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported
-        by the platform]
+* `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported by the platform]. With `BUILD_SHARED_LIBS=ON` only uniprocess runs will be possible due to the limitations of the MADWorld runtime.
+* `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `14` (default), `17`, and `20`.
 
 It is typically not necessary to specify optimization or debug flags as the
 default values provided by CMake are usually correct.
@@ -240,8 +240,7 @@ variable:
 
 * `EIGEN3_INCLUDE_DIR` -- The path to the Eigen 3 include directory
 
-If Eigen is not found at the configure time, it will be downloaded from the
-hg repository on Bitbucket.
+If Eigen is not found at the configure time, it will be downloaded from the Bitbucket repository.
 
 ## MADNESS
 
@@ -252,8 +251,7 @@ automatically download, configure, and build MADNESS (this is the default
 behavior). When CMake is configuring TiledArray, it will checkout
 the correct revision of MADNESS.
 
-The following CMake options may be used to modify build behavior or find
-MADNESS:
+The following CMake options may be used to modify build behavior or find MADNESS:
 
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
 * `ENABLE_ELEMENTAL` -- Enable use of MADNESS provided Elemental [Default=OFF]
@@ -294,9 +292,9 @@ support may be added.
 # Build TiledArray
 
 ```
-    $ make -j
+    $ cmake --build .
     ... many lines omitted ...
-    $ make check
+    $ cmake --build . --target check
     ... many lines omitted ...
-    $ make install
+    $ cmake --build . --target install
 ```

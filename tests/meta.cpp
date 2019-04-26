@@ -34,8 +34,6 @@ struct MetaFixture {
 
 BOOST_FIXTURE_TEST_SUITE(meta_suite, MetaFixture)
 
-using namespace TiledArray::meta;
-
 double sin(double x) {
   return std::sin(x);
 }
@@ -47,8 +45,9 @@ madness::Future<double> async_cos(double x) {
 }
 
 BOOST_AUTO_TEST_CASE(sanity) {
-  invoke(sin, invoke(cos, 2.0));
-  invoke(sin, invoke(async_cos, 2.0));
+  using namespace TiledArray;
+  meta::invoke(sin, meta::invoke(cos, 2.0));
+  meta::invoke(sin, meta::invoke(async_cos, 2.0));
 }
 
 template <typename T>
@@ -123,8 +122,9 @@ madness::Future<vec<double>> async_vcos(const vec<double>& x) {
 }
 
 BOOST_AUTO_TEST_CASE(movability) {
-  invoke(vsin, invoke(vcos, vec<double>(13, 2.0)));
-  invoke(vsin, invoke(async_vcos, vec<double>(13, 2.0)));
+  using namespace TiledArray;
+  meta::invoke(vsin, meta::invoke(vcos, vec<double>(13, 2.0)));
+  meta::invoke(vsin, meta::invoke(async_vcos, vec<double>(13, 2.0)));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

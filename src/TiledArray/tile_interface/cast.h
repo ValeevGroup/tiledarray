@@ -152,8 +152,7 @@ namespace TiledArray {
       auto operator()(Arg_&& arg) const {
         arg_to_eval_caster_type cast_to_eval;
         eval_to_result_caster_type cast_to_result;
-        using TiledArray::meta::invoke;
-        return invoke(cast_to_result, invoke(cast_to_eval, arg));
+        return meta::invoke(cast_to_result, meta::invoke(cast_to_eval, arg));
       }
 
     }; // class Cast

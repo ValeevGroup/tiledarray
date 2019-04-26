@@ -24,7 +24,7 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 3.1.0)
+cmake_minimum_required (VERSION 3.8.0)
 project (TiledArray LANGUAGES CXX)
 
 # Set TiledArray version =======================================================
@@ -184,9 +184,9 @@ set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (
 mark_as_advanced(CACHE_LINE_SIZE)
 set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
 
-set(BUILD_TESTING FALSE CACHE BOOLEAN "BUILD_TESTING")
-set(BUILD_TESTING_STATIC FALSE CACHE BOOLEAN "BUILD_TESTING_STATIC")
-set(BUILD_TESTING_SHARED FALSE CACHE BOOLEAN "BUILD_TESTING_SHARED")
+set(BUILD_TESTING FALSE CACHE STRING "BUILD_TESTING")
+set(BUILD_TESTING_STATIC FALSE CACHE STRING "BUILD_TESTING_STATIC")
+set(BUILD_TESTING_SHARED FALSE CACHE STRING "BUILD_TESTING_SHARED")
 
 ##########################
 # Get the git revision tag information
@@ -209,9 +209,16 @@ endif()
 ##########################
 # need for C++14 will be inherited from madness
 # but insist on strict standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ ISO Standard version")
+if (NOT(CMAKE_CXX_STANDARD EQUAL 14 OR CMAKE_CXX_STANDARD EQUAL 17 OR CMAKE_CXX_STANDARD EQUAL 20))
+  message(FATAL_ERROR "C++ 2014 ISO Standard or higher is required to compile TiledArray")
+endif()
+# C++20 is only configurable via compile features with cmake 3.12 and older
+if (CMAKE_CXX_STANDARD EQUAL 20 AND CMAKE_VERSION VERSION_LESS 3.12.0)
+    message(FATAL_ERROR "C++ 2020 ISO Standard requires CMake version 3.12 or higher")
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOLEAN "Whether to use extensions of C++ ISO Standard version")
 # Check type support
 include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE LANGUAGE CXX)

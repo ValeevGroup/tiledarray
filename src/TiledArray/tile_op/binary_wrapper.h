@@ -216,8 +216,7 @@ namespace TiledArray {
         auto continuation = [this](decltype(eval_left)& l, decltype(eval_right)& r) {
           return BinaryWrapper_::operator()(l, r);
         };
-        using TiledArray::meta::invoke;
-        return invoke(continuation, eval_left, eval_right);
+        return meta::invoke(continuation, eval_left, eval_right);
       }
 
       /// Evaluate lazy and non-lazy tiles
@@ -241,8 +240,7 @@ namespace TiledArray {
         auto continuation = [this](decltype(eval_left)& l, R&& r) {
           return BinaryWrapper_::operator()(l, std::forward<R>(r));
         };
-        using TiledArray::meta::invoke;
-        return invoke(continuation, eval_left, right);
+        return meta::invoke(continuation, eval_left, right);
       }
 
       /// Evaluate non-lazy and lazy tiles
@@ -284,10 +282,8 @@ namespace TiledArray {
         auto eval_left = invoke_cast(std::forward<L>(left));
         auto eval_right = invoke_cast(std::forward<R>(right));
 
-        using TiledArray::meta::invoke;
-
         if(perm_)
-          return invoke(op_, eval_left, eval_right, perm_);
+          return meta::invoke(op_, eval_left, eval_right, perm_);
 
         auto op_left =[=](eval_t<L>&_left, eval_t<R>& _right) {
           return op_.consume_left(_left, _right);
@@ -297,11 +293,11 @@ namespace TiledArray {
         };
         // Override consumable
         if(is_consumable_tile<eval_t<L> >::value && left.is_consumable())
-          return invoke(op_left, eval_left, eval_right);
+          return meta::invoke(op_left, eval_left, eval_right);
         if(is_consumable_tile<eval_t<R> >::value && right.is_consumable())
-          return invoke(op_right, eval_left, eval_right);
+          return meta::invoke(op_right, eval_left, eval_right);
 
-        return invoke(op_, eval_left, eval_right);
+        return meta::invoke(op_, eval_left, eval_right);
       }
 
       template <typename L, typename R,

@@ -92,8 +92,9 @@ set(ta_test_src_files  ta_test.cpp
     expressions_btas.cpp
     expressions_mixed.cpp
     foreach.cpp
+    solvers.cpp
 )
-        
+
 if(ENABLE_ELEMENTAL)
     list(APPEND ta_test_src_files elemental.cpp)
 endif()

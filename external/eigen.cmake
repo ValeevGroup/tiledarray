@@ -72,8 +72,7 @@ else()
   # Set source and build path for Eigen3 in the TiledArray Project
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
-  set(EIGEN3_URL https://bitbucket.org/eigen/eigen)
-  set(EIGEN3_TAG 3.3.5)
+  set(EIGEN3_URL http://bitbucket.org/eigen/eigen/get/3.3.7.tar.bz2)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
 
@@ -83,8 +82,8 @@ else()
     TMP_DIR ${EXTERNAL_BUILD_DIR}/tmp
    #--Download step--------------
     DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
-    HG_REPOSITORY ${EIGEN3_URL}
-    HG_TAG ${EIGEN3_TAG}
+    URL ${EIGEN3_URL}
+    URL_HASH MD5=05b1f7511c93980c385ebe11bd3c93fa
    #--Configure step-------------
     SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
     CONFIGURE_COMMAND ""

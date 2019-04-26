@@ -33,10 +33,12 @@
 #include <vector>
 #include <array>
 #include <initializer_list>
+#include <iterator>
 
 namespace TiledArray {
   namespace detail {
 
+#if __cplusplus <= 201402L
 
     /// Array size accessor
 
@@ -60,7 +62,7 @@ namespace TiledArray {
     /// \param a An array object
     /// \return The size of array \c a
     template <typename T,
-        typename std::enable_if<! std::is_array<T>::value>::type* = nullptr>
+        typename = std::enable_if_t<has_member_function_size_anyreturn_v<const T>>>
     inline auto size(const T &a){ return a.size(); }
 
     /// Array size accessor
@@ -85,10 +87,9 @@ namespace TiledArray {
     /// \param t A container object
     /// \return A pointer to the first element of the container, \c v
     template <typename T,
-        typename std::enable_if<! std::is_pointer<T>::value>::type* = nullptr>
+        typename = std::enable_if_t<has_member_function_data_anyreturn_v<T>>>
     inline auto data(T& t)
     { return t.data(); }
-
 
 
     /// Container data pointer accessor
@@ -97,7 +98,7 @@ namespace TiledArray {
     /// \param t A container object
     /// \return A pointer to the first element of the container, \c v
     template <typename T,
-        typename std::enable_if<! std::is_pointer<T>::value>::type* = nullptr>
+        typename = std::enable_if_t<has_member_function_data_anyreturn_v<const T>>>
     inline auto data(const T& t)
     { return t.data(); }
 
@@ -142,6 +143,11 @@ namespace TiledArray {
     /// \return A const pointer to the first element of the initializer list, \c l
     template <typename T>
     inline const T* data(const std::initializer_list<T>& l) { return l.begin(); }
+
+#else
+    using std::size;
+    using std::data;
+#endif // C++14 only
 
     /// Print the content of an array like object
 

@@ -27,7 +27,7 @@
 #define TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
 
 #include <type_traits>
-#include <TiledArray/config.h>
+#include <TiledArray/type_traits.h>
 
 namespace Eigen {
 
@@ -38,15 +38,12 @@ template <typename> class aligned_allocator;
 
 namespace TiledArray {
 
-// Forward declarations
-class Range;
-class BlockRange;
-template<typename T, typename A = Eigen::aligned_allocator<T>> class Tensor;
-template<typename> class Tile;
+  // Forward declarations
+  class Range;
+  class BlockRange;
+  template <typename T, typename A = Eigen::aligned_allocator<T>> class Tensor;
+  template <typename> class Tile;
 
-} // namespce TiledArray
-
-namespace TiledArray{
   namespace detail {
 
     // Forward declarations
@@ -101,7 +98,6 @@ namespace TiledArray{
 
     template <typename T>
     struct is_tensor_of_tensor_helper<Tile<T> > : public is_tensor_of_tensor_helper<T> { };
-
 
     template <> struct is_tensor<> : public std::false_type { };
 
@@ -211,7 +207,16 @@ namespace TiledArray{
     template <typename ... Ts>
     constexpr const bool is_shifted_v = is_shifted<Ts...>::value;
 
+    // check if reduce_op can reduce set of types
+    template <typename Enabler, typename ReduceOp, typename Result, typename ... Args>
+    struct is_reduce_op_ : public std::false_type {};
 
+    template <typename ReduceOp, typename Result, typename ... Args>
+    struct is_reduce_op_<detail::void_t<decltype(std::declval<ReduceOp&>()(std::declval<Result&>(),std::declval<const Args*>()...))>,
+        ReduceOp, Result, Args...> : public std::true_type {};
+
+    template <typename ReduceOp, typename Result, typename ... Args>
+    constexpr const bool is_reduce_op_v = is_reduce_op_<void, ReduceOp, Result, Args...>::value;
 
   /// detect cuda tile
 #ifdef TILEDARRAY_HAS_CUDA

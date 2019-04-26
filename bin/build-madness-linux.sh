@@ -15,7 +15,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   else
     export CC=/usr/bin/clang-$CLANG_VERSION
     export CXX=/usr/bin/clang++-$CLANG_VERSION
-    export EXTRACXXFLAGS="-mno-avx"
+    export EXTRACXXFLAGS="-mno-avx -stdlib=libc++"
     export F77=gfortran-$GCC_VERSION
   fi
 
@@ -64,7 +64,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77
 
-    # Build all libraries, examples, and applications
+    # Build MADworld + LAPACK/BLAS interface + Elemental
     make -j2 install-elemental install-world install-clapack install-common install-config VERBOSE=1
   fi
 

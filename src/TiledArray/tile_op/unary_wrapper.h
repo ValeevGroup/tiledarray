@@ -155,9 +155,8 @@ namespace TiledArray {
       template <typename A,
                 std::enable_if_t<is_nonarray_lazy_tile_v<A>>* = nullptr>
       auto operator()(A&& arg) const {
-        using TiledArray::meta::invoke;
-        return (perm_ ? invoke(op_, invoke_cast(std::forward<A>(arg)), perm_)
-                      : invoke(op_, invoke_cast(std::forward<A>(arg))));
+        return (perm_ ? meta::invoke(op_, invoke_cast(std::forward<A>(arg)), perm_)
+                      : meta::invoke(op_, invoke_cast(std::forward<A>(arg))));
       }
 
       /// Evaluate a lazy array tile
@@ -181,11 +180,10 @@ namespace TiledArray {
         auto op_consume = [this](eval_t<A>& arg) {
           return op_.consume(arg);
         };
-        using TiledArray::meta::invoke;
-        return (perm_ ? invoke(op_, std::move(cast_arg), perm_)
+        return (perm_ ? meta::invoke(op_, std::move(cast_arg), perm_)
                       : (arg.is_consumable()
-                             ? invoke(op_consume, cast_arg)
-                             : invoke(op_, std::move(cast_arg))));
+                             ? meta::invoke(op_consume, cast_arg)
+                             : meta::invoke(op_, std::move(cast_arg))));
       }
 
       /// Consume a lazy tile
@@ -202,10 +200,9 @@ namespace TiledArray {
         auto op_consume = [this](eval_t<A>& arg) {
           return op_.consume(arg);
         };
-        using TiledArray::meta::invoke;
         return (perm_ ?
-            invoke(op_, std::move(cast_arg), perm_) :
-            invoke(op_consume, cast_arg));
+                meta::invoke(op_, std::move(cast_arg), perm_) :
+                meta::invoke(op_consume, cast_arg));
       }
 
       template <typename A, std::enable_if_t<!is_lazy_tile_v<A>>* = nullptr>

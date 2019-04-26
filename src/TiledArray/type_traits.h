@@ -228,6 +228,35 @@ namespace TiledArray {
   constexpr const bool is_free_function_##Function##_anyreturn_v =             \
     is_free_function_##Function##_anyreturn<Args...>::value;
 
+/// this generates struct \c is_free_function_std_Function_anyreturn<Args...> whose
+/// public constexpr member variable \c value is true if \c ::std::Function is a
+/// free function that takes \c Args and returns any value.
+#define GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(Function)                      \
+  template <typename... Args>                                                  \
+  class __is_free_function_std_##Function##_anyreturn {                        \
+    using Yes = char;                                                          \
+    using No = int;                                                            \
+    template <typename... Args_>                                               \
+    static auto func(void*) -> decltype(                                       \
+        std::add_pointer_t<decltype(::std::Function(std::declval<Args_>()...))>{},\
+        Yes{});                                                                \
+    template <typename...>                                                     \
+    static No func(...);                                                       \
+                                                                               \
+   public:                                                                     \
+    static constexpr const bool value =                                        \
+        sizeof(func<Args...>(0)) == sizeof(Yes);                               \
+  };                                                                           \
+  template <typename... Args>                                                  \
+  struct is_free_function_std_##Function##_anyreturn                           \
+      : public std::integral_constant<                                         \
+            bool, __is_free_function_std_##Function##_anyreturn<Args...>::value> { \
+  };                                                                           \
+                                                                               \
+  template <typename... Args>                                                  \
+  constexpr const bool is_free_function_std_##Function##_anyreturn_v =         \
+    is_free_function_std_##Function##_anyreturn<Args...>::value;
+
 namespace TiledArray {
   namespace detail {
 
@@ -249,6 +278,8 @@ namespace TiledArray {
 
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(size)
   GENERATE_HAS_MEMBER_FUNCTION(size)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(data)
+  GENERATE_HAS_MEMBER_FUNCTION(data)
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(empty)
   GENERATE_HAS_MEMBER_FUNCTION(empty)
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(clear)
@@ -279,6 +310,18 @@ namespace TiledArray {
   // GENERATE_HAS_MEMBER_TYPE(pointer)
   GENERATE_HAS_MEMBER_TYPE(iterator_category)
 
+  ///////////////////////////////////////////
+  // standard C++17 iterator range facilities
+#if __cplusplus >= 201703L
+  GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(size)
+  GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(data)
+  GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(empty)
+#else
+template <typename... Args> constexpr const bool is_free_function_std_size_anyreturn_v = false;
+template <typename... Args> constexpr const bool is_free_function_std_data_anyreturn_v = false;
+template <typename... Args> constexpr const bool is_free_function_std_empty_anyreturn_v = false;
+#endif
+
   }  // namespace detail
 }  // namespace TiledArray
 
@@ -295,13 +338,24 @@ template<typename T> constexpr const bool is_type_v = is_type<T>::value;
 // import some existing C++17 features, or implement them
 #if __cplusplus <= 201402L
 
+// GNU stdlibc++ provides void_t if -gnu++11 or -gnu++14 are given
+#if __GNUC__ && defined(__GLIBCXX__) && !__STRICT_ANSI__ && __cplusplus >= 201103L
+#define HAVE_VOID_T
+#endif
+
+#ifndef HAVE_VOID_T  // implement void_t if needed
 template <typename... Ts>
 struct make_void {
   using type = void;
 };
 template <typename... Ts>
 using void_t = typename make_void<Ts...>::type;
+#else
+using std::void_t;
+#endif
 
+#else // C++17 features
+using std::void_t;
 #endif  // C++17 features
 
 }  // namespace detail

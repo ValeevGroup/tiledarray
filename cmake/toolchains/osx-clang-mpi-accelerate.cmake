@@ -19,8 +19,7 @@ set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -march=native -DNDEBUG" CACHE STRING "In
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ release with debug info compile flags")
 
 # Set BLAS/LAPACK flags
-set(ENABLE_MKL OFF)
-set(BLAS_LINKER_FLAGS "-framework Accelerate" CACHE STRING "BLAS linker flags")
+set(BLAS_LINKER_FLAGS "-framework;Accelerate" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES ${BLAS_LINKER_FLAGS} CACHE STRING "LAPACK linker flags")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
