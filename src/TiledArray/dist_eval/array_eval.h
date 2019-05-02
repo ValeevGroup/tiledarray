@@ -116,6 +116,7 @@ namespace TiledArray {
 
       /// Convert tile to evaluation type using the op object
 #ifdef TILEDARRAY_HAS_CUDA
+// TODO convert directly for non-cuda tiles
       explicit operator conversion_result_type& () const {
         if(converted_){
           throw std::logic_error("LazzyArrayTile gets converted more than once!");

@@ -136,6 +136,48 @@ btasUMTensorVarray<T, Range> clone(const btasUMTensorVarray<T, Range> &arg) {
 }
 
 ///
+/// shift
+///
+template <typename T, typename Range, typename Index>
+btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range>& arg, const Index& range_shift){
+  // make a copy of the old range
+  Range result_range(arg.range());
+  // shift the range
+  result_range.inplace_shift(range_shift);
+
+
+  CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+
+  // @important select the stream using the shifted range
+  auto &cuda_stream = detail::get_stream_based_on_range(result_range);
+
+  typename btasUMTensorVarray<T, Range>::storage_type result_storage;
+
+  make_device_storage(result_storage, result_range.volume(), cuda_stream);
+  btasUMTensorVarray<T, Range> result(std::move(result_range),
+                                         std::move(result_storage));
+
+  // call cublasCopy
+  const auto &handle = cuBLASHandlePool::handle();
+  CublasSafeCall(cublasSetStream(handle, cuda_stream));
+
+  CublasSafeCall(cublasCopy(handle, result.size(), device_data(arg.storage()), 1,
+                            device_data(result.storage()), 1));
+
+  synchronize_stream(&cuda_stream);
+  return result;
+}
+
+///
+/// shift to
+///
+template <typename T, typename Range, typename Index>
+btasUMTensorVarray<T, Range> shift_to(btasUMTensorVarray<T, Range>& arg, const Index& range_shift){
+  const_cast<Range&>(arg.range()).inplace_shift(range_shift);
+  return arg;
+}
+
+///
 /// permute
 ///
 
