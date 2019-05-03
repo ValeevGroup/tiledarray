@@ -287,11 +287,17 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block, F, Fixtures, F) {
                                       b("a,b,c").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    if (!a.is_zero(block_range.ordinal(index)) &&
+    if (!a.is_zero(block_range.ordinal(index)) ||
         !b.is_zero(block_range.ordinal(index))) {
-      auto a_tile = a.find(block_range.ordinal(index)).get();
-      auto b_tile = b.find(block_range.ordinal(index)).get();
+
       auto result_tile = c.find(index).get();
+
+      auto a_tile = a.is_zero(block_range.ordinal(index))
+                    ? F::make_zero_tile(result_tile.range())
+                    : a.find(block_range.ordinal(index)).get();
+      auto b_tile = b.is_zero(block_range.ordinal(index))
+                    ? F::make_zero_tile(result_tile.range())
+                    : b.find(block_range.ordinal(index)).get();
 
       // Check that the data is correct for the result array.
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
@@ -348,11 +354,17 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(const_block, F, Fixtures, F) {
                                       b("a,b,c").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    if (!a.is_zero(block_range.ordinal(index)) &&
+    if (!a.is_zero(block_range.ordinal(index)) ||
         !b.is_zero(block_range.ordinal(index))) {
-      auto a_tile = a.find(block_range.ordinal(index)).get();
-      auto b_tile = b.find(block_range.ordinal(index)).get();
+
       auto result_tile = c.find(index).get();
+
+      auto a_tile = a.is_zero(block_range.ordinal(index))
+                    ? F::make_zero_tile(result_tile.range())
+                    : a.find(block_range.ordinal(index)).get();
+      auto b_tile = b.is_zero(block_range.ordinal(index))
+                    ? F::make_zero_tile(result_tile.range())
+                    : b.find(block_range.ordinal(index)).get();
 
       // Check that the data is correct for the result array.
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
@@ -428,22 +440,22 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scal_block, F, Fixtures, F) {
   }
 
   BOOST_REQUIRE_NO_THROW(c("a,b,c") =
-                                 2 * (3*a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
-                                      4*b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+                             2 * (3 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index)) ||
         !b.is_zero(block_range.ordinal(index))) {
       auto result_tile = c.find(index).get();
       auto a_tile = a.is_zero(block_range.ordinal(index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : a.find(block_range.ordinal(index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : a.find(block_range.ordinal(index)).get();
       auto b_tile = b.is_zero(block_range.ordinal(index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : b.find(block_range.ordinal(index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : b.find(block_range.ordinal(index)).get();
 
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-        BOOST_CHECK_EQUAL(result_tile[j], 2 * (3*a_tile[j] + 4*b_tile[j]));
+        BOOST_CHECK_EQUAL(result_tile[j], 2 * (3 * a_tile[j] + 4 * b_tile[j]));
       }
     } else {
       BOOST_CHECK(c.is_zero(index));
@@ -476,7 +488,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
     }
   }
 
-  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 2 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c") =
+                             2 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     const size_t perm_index = c.range().ordinal(perm * c.range().idx(index));
@@ -487,7 +500,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
 
       // Check that the data is correct for the result array.
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-        BOOST_CHECK_EQUAL(result_tile[j], 2*arg_tile[j]);
+        BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
       }
     } else {
       BOOST_CHECK(c.is_zero(index));
@@ -499,18 +512,17 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
                                   4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-
     const size_t perm_index = c.range().ordinal(perm * c.range().idx(index));
 
     if (!a.is_zero(block_range.ordinal(perm_index)) ||
         !b.is_zero(block_range.ordinal(index))) {
       auto result_tile = c.find(index).get();
       auto a_tile = a.is_zero(block_range.ordinal(perm_index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : perm * a.find(block_range.ordinal(perm_index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : perm * a.find(block_range.ordinal(perm_index)).get();
       auto b_tile = b.is_zero(block_range.ordinal(index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : b.find(block_range.ordinal(index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : b.find(block_range.ordinal(index)).get();
 
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
         BOOST_CHECK_EQUAL(result_tile[j], 2 * (3 * a_tile[j] + 4 * b_tile[j]));
@@ -519,25 +531,23 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
       BOOST_CHECK(c.is_zero(index));
     }
   }
-
 
   BOOST_REQUIRE_NO_THROW(c("a,b,c") =
                              2 * (3 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}) +
                                   4 * b("c,b,a").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-
     const size_t perm_index = c.range().ordinal(perm * c.range().idx(index));
 
     if (!a.is_zero(block_range.ordinal(perm_index)) ||
         !b.is_zero(block_range.ordinal(perm_index))) {
       auto result_tile = c.find(index).get();
       auto a_tile = a.is_zero(block_range.ordinal(perm_index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : perm * a.find(block_range.ordinal(perm_index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : perm * a.find(block_range.ordinal(perm_index)).get();
       auto b_tile = b.is_zero(block_range.ordinal(perm_index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : perm * b.find(block_range.ordinal(perm_index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : perm * b.find(block_range.ordinal(perm_index)).get();
 
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
         BOOST_CHECK_EQUAL(result_tile[j], 2 * (3 * a_tile[j] + 4 * b_tile[j]));
@@ -546,7 +556,6 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
       BOOST_CHECK(c.is_zero(index));
     }
   }
-
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block, F, Fixtures, F) {
@@ -623,7 +632,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block, F, Fixtures, F) {
   }
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(assgin_subblock_permute_block, F, Fixtures, F) {
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(assgin_subblock_permute_block, F, Fixtures,
+                                 F) {
   auto& a = F::a;
   auto& b = F::b;
   auto& c = F::c;
@@ -633,10 +643,12 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assgin_subblock_permute_block, F, Fixtures, F) 
   Permutation perm({2, 1, 0});
   BlockRange block_range(a.trange().tiles_range(), {3, 3, 3}, {5, 5, 5});
 
-  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) = a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-//    const size_t perm_index = block_range.ordinal(perm * c.range().idx(index));
+    //    const size_t perm_index = block_range.ordinal(perm *
+    //    c.range().idx(index));
     auto perm_index = perm * block_range.idx(index);
 
     if (!a.is_zero(block_range.ordinal(perm_index))) {
@@ -652,7 +664,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assgin_subblock_permute_block, F, Fixtures, F) 
     }
   }
 
-  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3},{5,5,5}) = 2 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             2 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     auto perm_index = perm * block_range.idx(index);
@@ -663,30 +676,29 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assgin_subblock_permute_block, F, Fixtures, F) 
 
       // Check that the data is correct for the result array.
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
-        BOOST_CHECK_EQUAL(result_tile[j], 2*arg_tile[j]);
+        BOOST_CHECK_EQUAL(result_tile[j], 2 * arg_tile[j]);
       }
     } else {
       BOOST_CHECK(c.is_zero(block_range.ordinal(index)));
     }
   }
 
-  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3}, {5,5,5}) =
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
                              2 * (3 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}) +
                                   4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-
     auto perm_index = perm * block_range.idx(index);
 
     if (!a.is_zero(block_range.ordinal(perm_index)) ||
         !b.is_zero(block_range.ordinal(index))) {
       auto result_tile = c.find(block_range.ordinal(index)).get();
       auto a_tile = a.is_zero(block_range.ordinal(perm_index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : perm * a.find(block_range.ordinal(perm_index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : perm * a.find(block_range.ordinal(perm_index)).get();
       auto b_tile = b.is_zero(block_range.ordinal(index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : b.find(block_range.ordinal(index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : b.find(block_range.ordinal(index)).get();
 
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
         BOOST_CHECK_EQUAL(result_tile[j], 2 * (3 * a_tile[j] + 4 * b_tile[j]));
@@ -696,24 +708,22 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assgin_subblock_permute_block, F, Fixtures, F) 
     }
   }
 
-
-  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3,3,3},{5,5,5}) =
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
                              2 * (3 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}) +
                                   4 * b("c,b,a").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-
     auto perm_index = perm * block_range.idx(index);
 
     if (!a.is_zero(block_range.ordinal(perm_index)) ||
         !b.is_zero(block_range.ordinal(perm_index))) {
       auto result_tile = c.find(block_range.ordinal(index)).get();
       auto a_tile = a.is_zero(block_range.ordinal(perm_index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : perm * a.find(block_range.ordinal(perm_index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : perm * a.find(block_range.ordinal(perm_index)).get();
       auto b_tile = b.is_zero(block_range.ordinal(perm_index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : perm * b.find(block_range.ordinal(perm_index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : perm * b.find(block_range.ordinal(perm_index)).get();
 
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
         BOOST_CHECK_EQUAL(result_tile[j], 2 * (3 * a_tile[j] + 4 * b_tile[j]));
@@ -722,7 +732,6 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assgin_subblock_permute_block, F, Fixtures, F) 
       BOOST_CHECK(c.is_zero(block_range.ordinal(index)));
     }
   }
-
 }
 
 // TODO need to test the correctness here
