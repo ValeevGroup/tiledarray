@@ -289,15 +289,14 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block, F, Fixtures, F) {
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index)) ||
         !b.is_zero(block_range.ordinal(index))) {
-
       auto result_tile = c.find(index).get();
 
       auto a_tile = a.is_zero(block_range.ordinal(index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : a.find(block_range.ordinal(index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : a.find(block_range.ordinal(index)).get();
       auto b_tile = b.is_zero(block_range.ordinal(index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : b.find(block_range.ordinal(index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : b.find(block_range.ordinal(index)).get();
 
       // Check that the data is correct for the result array.
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
@@ -356,15 +355,14 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(const_block, F, Fixtures, F) {
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index)) ||
         !b.is_zero(block_range.ordinal(index))) {
-
       auto result_tile = c.find(index).get();
 
       auto a_tile = a.is_zero(block_range.ordinal(index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : a.find(block_range.ordinal(index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : a.find(block_range.ordinal(index)).get();
       auto b_tile = b.is_zero(block_range.ordinal(index))
-                    ? F::make_zero_tile(result_tile.range())
-                    : b.find(block_range.ordinal(index)).get();
+                        ? F::make_zero_tile(result_tile.range())
+                        : b.find(block_range.ordinal(index)).get();
 
       // Check that the data is correct for the result array.
       for (std::size_t j = 0ul; j < result_tile.range().volume(); ++j) {
@@ -2424,10 +2422,13 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
   expected = 0;
   BOOST_REQUIRE_NO_THROW(
       result = (a("a,b,c") - b("a,b,c")).dot((a("a,b,c") + b("a,b,c"))).get());
+
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     if (!a.is_zero(i) && !b.is_zero(i)) {
-      auto a_tile = a.find(i).get();
-      auto b_tile = b.find(i).get();
+      auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
+                                 : a.find(i).get();
+      auto b_tile = b.is_zero(i) ? F::make_zero_tile(b.trange().tile(i))
+                                 : b.find(i).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
@@ -2441,8 +2442,10 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(result = (2 * a("a,b,c")).dot(3 * b("a,b,c")).get());
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     if (!a.is_zero(i) && !b.is_zero(i)) {
-      auto a_tile = a.find(i).get();
-      auto b_tile = b.find(i).get();
+      auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
+                                 : a.find(i).get();
+      auto b_tile = b.is_zero(i) ? F::make_zero_tile(b.trange().tile(i))
+                                 : b.find(i).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += 6 * (a_tile[j] * b_tile[j]);
@@ -2459,8 +2462,10 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
           (a("a,b,c") - b("a,b,c")).dot(3 * (a("a,b,c") + b("a,b,c"))).get());
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     if (!a.is_zero(i) && !b.is_zero(i)) {
-      auto a_tile = a.find(i).get();
-      auto b_tile = b.find(i).get();
+      auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
+                                 : a.find(i).get();
+      auto b_tile = b.is_zero(i) ? F::make_zero_tile(b.trange().tile(i))
+                                 : b.find(i).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += 6 * (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
@@ -2508,8 +2513,11 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (!a.is_zero(i) && !b.is_zero(perm_index)) {
-      auto a_tile = a.find(i).get();
-      auto b_tile = perm * b.find(perm_index).get();
+      auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
+                                 : a.find(i).get();
+      auto b_tile = b.is_zero(perm_index)
+                        ? perm * F::make_zero_tile(b.trange().tile(perm_index))
+                        : perm * b.find(perm_index).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
@@ -2527,8 +2535,11 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (!a.is_zero(i) && !b.is_zero(perm_index)) {
-      auto a_tile = a.find(i).get();
-      auto b_tile = perm * b.find(perm_index).get();
+      auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
+                                 : a.find(i).get();
+      auto b_tile = b.is_zero(perm_index)
+                        ? perm * F::make_zero_tile(b.trange().tile(perm_index))
+                        : perm * b.find(perm_index).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += 6 * a_tile[j] * b_tile[j];
@@ -2548,8 +2559,11 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (!a.is_zero(i) && !b.is_zero(perm_index)) {
-      auto a_tile = a.find(i).get();
-      auto b_tile = perm * b.find(perm_index).get();
+      auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
+                                 : a.find(i).get();
+      auto b_tile = b.is_zero(perm_index)
+                        ? perm * F::make_zero_tile(b.trange().tile(perm_index))
+                        : perm * b.find(perm_index).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += 6 * (a_tile[j] - b_tile[j]) * (a_tile[j] + b_tile[j]);
