@@ -28,12 +28,12 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/tile.h>
-#include <TiledArray/range.h>
-#include <TiledArray/tensor/tensor.h>
 #include <TiledArray/cuda/btas_cublas.h>
 #include <TiledArray/cuda/um_storage.h>
 #include <TiledArray/external/cutt.h>
+#include <TiledArray/range.h>
+#include <TiledArray/tensor/tensor.h>
+#include <TiledArray/tile.h>
 
 namespace TiledArray {
 
@@ -46,7 +46,8 @@ using btasUMTensorVarray =
     ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
 template <typename T, typename Range>
-struct eval_trait<::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>> {
+struct eval_trait<
+    ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>> {
   typedef ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>> type;
 };
 
@@ -60,11 +61,11 @@ template <typename T>
 void to_cuda(const TiledArray::btasUMTensorVarray<T> &tile) {
   cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id());
   auto &stream = TiledArray::detail::get_stream_based_on_range(tile.range());
-  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(tile.storage(),
-                                                                   stream);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+      tile.storage(), stream);
 }
 
-} // end of namespace detail
+}  // end of namespace detail
 
 }  // end of namespace TiledArray
 
@@ -103,7 +104,7 @@ struct ArchiveStoreImpl<Archive, TiledArray::btasUMTensorVarray<T>> {
 }  // namespace archive
 }  // namespace madness
 
-namespace TiledArray{
+namespace TiledArray {
 ///
 /// gemm
 ///
@@ -139,12 +140,12 @@ btasUMTensorVarray<T, Range> clone(const btasUMTensorVarray<T, Range> &arg) {
 /// shift
 ///
 template <typename T, typename Range, typename Index>
-btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range>& arg, const Index& range_shift){
+btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range> &arg,
+                                   const Index &range_shift) {
   // make a copy of the old range
   Range result_range(arg.range());
   // shift the range
   result_range.inplace_shift(range_shift);
-
 
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
@@ -155,14 +156,14 @@ btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range>& arg, cons
 
   make_device_storage(result_storage, result_range.volume(), cuda_stream);
   btasUMTensorVarray<T, Range> result(std::move(result_range),
-                                         std::move(result_storage));
+                                      std::move(result_storage));
 
   // call cublasCopy
   const auto &handle = cuBLASHandlePool::handle();
   CublasSafeCall(cublasSetStream(handle, cuda_stream));
 
-  CublasSafeCall(cublasCopy(handle, result.size(), device_data(arg.storage()), 1,
-                            device_data(result.storage()), 1));
+  CublasSafeCall(cublasCopy(handle, result.size(), device_data(arg.storage()),
+                            1, device_data(result.storage()), 1));
 
   synchronize_stream(&cuda_stream);
   return result;
@@ -172,8 +173,9 @@ btasUMTensorVarray<T, Range> shift(const btasUMTensorVarray<T, Range>& arg, cons
 /// shift to
 ///
 template <typename T, typename Range, typename Index>
-btasUMTensorVarray<T, Range> shift_to(btasUMTensorVarray<T, Range>& arg, const Index& range_shift){
-  const_cast<Range&>(arg.range()).inplace_shift(range_shift);
+btasUMTensorVarray<T, Range> shift_to(btasUMTensorVarray<T, Range> &arg,
+                                      const Index &range_shift) {
+  const_cast<Range &>(arg.range()).inplace_shift(range_shift);
   return arg;
 }
 
@@ -184,13 +186,12 @@ btasUMTensorVarray<T, Range> shift_to(btasUMTensorVarray<T, Range>& arg, const I
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
                                      const TiledArray::Permutation &perm) {
-
   // compute result range
   auto result_range = perm * arg.range();
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
   // compute the stream to use
-  auto &stream = detail::get_stream_based_on_range(result_range);
+  auto &stream = detail::get_stream_based_on_range(arg.range());
 
   // allocate result memory
   typename btasUMTensorVarray<T, Range>::storage_type storage;
@@ -229,10 +230,8 @@ template <typename T, typename Range, typename Scalar>
 btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
                                    const Scalar factor,
                                    const TiledArray::Permutation &perm) {
-  detail::to_cuda(arg);
-  auto result = permute(arg, perm);
-  btas_tensor_scale_to_cuda_impl(result, factor);
-  return result;
+  auto result = scale(arg, factor);
+  return permute(result, perm);
 }
 
 ///
@@ -248,10 +247,8 @@ btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg) {
 template <typename T, typename Range>
 btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg,
                                  const TiledArray::Permutation &perm) {
-  detail::to_cuda(arg);
-  auto result = permute(arg, perm);
-  btas_tensor_scale_to_cuda_impl(result, T(-1.0));
-  return result;
+  auto result = neg(arg);
+  return permute(result, perm);
 }
 
 template <typename T, typename Range>
@@ -276,9 +273,7 @@ template <typename T, typename Scalar, typename Range>
 btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor) {
-  detail::to_cuda(arg1);
-  detail::to_cuda(arg2);
-  auto result = btas_tensor_subt_cuda_impl(arg1, arg2, T(1.0));
+  auto result = subt(arg1, arg2);
   btas_tensor_scale_to_cuda_impl(result, factor);
   return result;
 }
@@ -296,10 +291,8 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor,
                                   const TiledArray::Permutation &perm) {
-  auto result = subt(arg1, arg2);
-  auto permute_result = permute(result, perm);
-  btas_tensor_scale_to_cuda_impl(permute_result, factor);
-  return permute_result;
+  auto result = subt(arg1, arg2, factor);
+  return permute(result, perm);
 }
 
 ///
@@ -309,6 +302,7 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
 template <typename T, typename Range>
 void subt_to(btasUMTensorVarray<T, Range> &result,
              const btasUMTensorVarray<T, Range> &arg1) {
+  detail::to_cuda(result);
   detail::to_cuda(arg1);
   btas_tensor_subt_to_cuda_impl(result, arg1, T(1.0));
 }
@@ -346,10 +340,8 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2,
                                  const Scalar factor,
                                  const TiledArray::Permutation &perm) {
-  auto result = add(arg1, arg2);
-  auto perm_result = permute(result, perm);
-  btas_tensor_scale_to_cuda_impl(perm_result, factor);
-  return perm_result;
+  auto result = add(arg1, arg2, factor);
+  return permute(result, perm);
 }
 
 template <typename T, typename Range>
@@ -367,6 +359,7 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
 template <typename T, typename Range>
 void add_to(btasUMTensorVarray<T, Range> &result,
             const btasUMTensorVarray<T, Range> &arg) {
+  detail::to_cuda(result);
   detail::to_cuda(arg);
   btas_tensor_add_to_cuda_impl(result, arg, T(1.0));
 }
@@ -433,6 +426,7 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
 template <typename T, typename Range>
 void mult_to(btasUMTensorVarray<T, Range> &result,
              const btasUMTensorVarray<T, Range> &arg) {
+  detail::to_cuda(result);
   detail::to_cuda(arg);
   btas_tensor_mult_to_cuda_impl(result, arg);
 }
@@ -591,7 +585,8 @@ void to_device(
 template <typename UMTensor, typename TATensor, typename Policy>
 typename std::enable_if<!std::is_same<UMTensor, TATensor>::value,
                         TiledArray::DistArray<TATensor, Policy>>::type
-um_tensor_to_ta_tensor(const TiledArray::DistArray<UMTensor, Policy> &um_array) {
+um_tensor_to_ta_tensor(
+    const TiledArray::DistArray<UMTensor, Policy> &um_array) {
   const auto convert_tile = [](const UMTensor &tile) {
     TATensor result(tile.tensor().range());
     using std::begin;
@@ -625,11 +620,9 @@ um_tensor_to_ta_tensor(
 
 /// convert array from TiledArray::Tensor to UMTensor
 template <typename UMTensor, typename TATensor, typename Policy>
-typename std::enable_if<
-    !std::is_same<UMTensor, TATensor>::value,
-    TiledArray::DistArray<UMTensor, Policy>>::type
-ta_tensor_to_um_tensor(
-    const TiledArray::DistArray<TATensor, Policy> &array) {
+typename std::enable_if<!std::is_same<UMTensor, TATensor>::value,
+                        TiledArray::DistArray<UMTensor, Policy>>::type
+ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
   auto convert_tile = [](const TATensor &tile) {
     /// UMTensor must be wrapped into TA::Tile
 
@@ -661,9 +654,8 @@ ta_tensor_to_um_tensor(
 
 /// no-op if array is the same as return type
 template <typename UMTensor, typename TATensor, typename Policy>
-typename std::enable_if<
-    std::is_same<UMTensor, TATensor>::value,
-    TiledArray::DistArray<UMTensor, Policy>>::type
+typename std::enable_if<std::is_same<UMTensor, TATensor>::value,
+                        TiledArray::DistArray<UMTensor, Policy>>::type
 ta_tensor_to_um_tensor(const TiledArray::DistArray<UMTensor, Policy> &array) {
   return array;
 }

@@ -87,20 +87,18 @@ struct cudaTaskFn : public TaskInterface {
       // get the stream used by async function
       auto stream = TiledArray::tls_cudastream_accessor();
 
-//      TA_ASSERT(stream != nullptr);
+      //      TA_ASSERT(stream != nullptr);
 
       // WARNING, need to handle NoOp
-      if(stream == nullptr){
+      if (stream == nullptr) {
         task_->notify();
-      }
-      else{
+      } else {
         // TODO should we use cuda callback or cuda events??
         // insert cuda callback
         cudaStreamAddCallback(*stream, cuda_callback, task_, 0);
         // reset stream to nullptr
         TiledArray::synchronize_stream(nullptr);
       }
-
     }
 
    private:
@@ -214,21 +212,20 @@ struct cudaTaskFn : public TaskInterface {
 
   /// None future arguments are always ready => no op
   template <typename T>
-  inline void check_dependency(
-      detail::ArgHolder<std::vector<Future<T> > >& arg) {
-    check_dependency(static_cast<std::vector<Future<T> >&>(arg));
+  inline void check_dependency(detail::ArgHolder<std::vector<Future<T>>>& arg) {
+    check_dependency(static_cast<std::vector<Future<T>>&>(arg));
   }
 
   /// None future arguments are always ready => no op
   template <typename T>
-  inline void check_dependency(std::vector<Future<T> >& vec) {
-    for (typename std::vector<Future<T> >::iterator it = vec.begin();
+  inline void check_dependency(std::vector<Future<T>>& vec) {
+    for (typename std::vector<Future<T>>::iterator it = vec.begin();
          it != vec.end(); ++it)
       check_dependency(*it);
   }
 
   /// Future<void> is always ready => no op
-  inline void check_dependency(const std::vector<Future<void> >&) {}
+  inline void check_dependency(const std::vector<Future<void>>&) {}
 
   /// None future arguments are always ready => no op
   template <typename T>
@@ -753,7 +750,9 @@ struct cudaTaskFn : public TaskInterface {
  protected:
   /// when this cudaTaskFn gets run, it means the AsyncTaskInterface is done
   /// set the result with async_result_, which is finished
-  void run(const TaskThreadEnv& env) override { result_.set(std::move(async_result_)); }
+  void run(const TaskThreadEnv& env) override {
+    result_.set(std::move(async_result_));
+  }
 #endif  // HAVE_INTEL_TBB
 
 };  // class cudaTaskFn
@@ -777,7 +776,7 @@ typename cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
 add_cuda_taskfn(
     madness::World& world,
     cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>* t) {
-  typename TaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
+  typename cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
       res(t->result());
   // add the cuda task
   world.taskq.add(static_cast<TaskInterface*>(t));
@@ -831,17 +830,14 @@ add_cuda_task(madness::World& world, fnT&& fn, argsT&&... args) {
 /// \tparam argsT   variadic template for arguments
 /// \return A future to the result
 template <typename objT, typename memfnT, typename... argsT>
-typename detail::memfunc_enabler<objT, memfnT>::type
-add_cuda_task(madness::World& world, objT&& obj, memfnT memfn,
-                             argsT&&... args) {
+typename detail::memfunc_enabler<objT, memfnT>::type add_cuda_task(
+    madness::World& world, objT&& obj, memfnT memfn, argsT&&... args) {
   return add_cuda_task(world,
                        detail::wrap_mem_fn(std::forward<objT>(obj), memfn),
                        std::forward<argsT>(args)...);
 }
 
 }  // namespace madness
-
-
 
 #endif  // TILDARRAY_HAS_CUDA
 #endif  // TILEDARRAY_CUDA_CUDA_TASK_FN_H__INCLUDED
