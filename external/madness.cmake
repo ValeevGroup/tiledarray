@@ -11,6 +11,9 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
+set(MADNESS_OLDEST_TAG "b62bb8b93673a5f772b5dae698979012f31c5e59" CACHE STRING
+        "The oldest revision hash or tag of MADNESS that can be used")
+
 find_package(MADNESS 0.10.1 CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
 
 macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
@@ -71,6 +74,22 @@ if(MADNESS_FOUND)
     set(TILEDARRAY_HAS_ELEMENTAL ${MADNESS_HAS_ELEMENTAL_SUPPORT})
   endif()
 
+  # esnure fresh MADNESS
+  CHECK_CXX_SOURCE_COMPILES(
+          "
+    #include <madness/world/worldmem.h>
+    int main(int argc, char** argv) {
+      // test 1
+      madness::print_meminfo_enable();
+
+      return 0;
+    }
+    "  MADNESS_IS_FRESH)
+
+  if (NOT MADNESS_IS_FRESH)
+    message(FATAL_ERROR "MADNESS is not fresh enough; update to ${MADNESS_OLDEST_TAG} or more recent")
+  endif()
+
   cmake_pop_check_state()
 
   # Set config variables
@@ -98,7 +117,7 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "e2e09204d4cbcd08bf0d33ca72b7e23dd9e053eb" CACHE STRING
+  set(MADNESS_TAG "${MADNESS_OLDEST_TAG}" CACHE STRING
         "Revision hash or tag to use when building MADNESS")
   
   if("${MADNESS_TAG}" STREQUAL "")
@@ -317,6 +336,7 @@ else()
       -DASSERTION_TYPE=${MAD_ASSERT_TYPE}
       "-DCMAKE_EXE_LINKER_FLAGS=${MAD_LDFLAGS}"
       -DDISABLE_WORLD_GET_DEFAULT=ON
+      -DENABLE_MEM_PROFILE=ON
       "-DENABLE_TASK_DEBUG_TRACE=${TILEDARRAY_ENABLE_TASK_DEBUG_TRACE}"
       ${MADNESS_CMAKE_EXTRA_ARGS}
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
