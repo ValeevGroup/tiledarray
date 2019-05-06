@@ -2424,7 +2424,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
       result = (a("a,b,c") - b("a,b,c")).dot((a("a,b,c") + b("a,b,c"))).get());
 
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    if (!a.is_zero(i) && !b.is_zero(i)) {
+    if (!a.is_zero(i) || !b.is_zero(i)) {
       auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
                                  : a.find(i).get();
       auto b_tile = b.is_zero(i) ? F::make_zero_tile(b.trange().tile(i))
@@ -2442,10 +2442,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(result = (2 * a("a,b,c")).dot(3 * b("a,b,c")).get());
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     if (!a.is_zero(i) && !b.is_zero(i)) {
-      auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
-                                 : a.find(i).get();
-      auto b_tile = b.is_zero(i) ? F::make_zero_tile(b.trange().tile(i))
-                                 : b.find(i).get();
+      auto a_tile = a.find(i).get();
+      auto b_tile = b.find(i).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += 6 * (a_tile[j] * b_tile[j]);
@@ -2461,7 +2459,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot, F, Fixtures, F) {
           2 *
           (a("a,b,c") - b("a,b,c")).dot(3 * (a("a,b,c") + b("a,b,c"))).get());
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    if (!a.is_zero(i) && !b.is_zero(i)) {
+    if (!a.is_zero(i) || !b.is_zero(i)) {
       auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
                                  : a.find(i).get();
       auto b_tile = b.is_zero(i) ? F::make_zero_tile(b.trange().tile(i))
@@ -2512,7 +2510,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   // Compute the expected value for the dot function.
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
-    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
+    if (!a.is_zero(i) || !b.is_zero(perm_index)) {
       auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
                                  : a.find(i).get();
       auto b_tile = b.is_zero(perm_index)
@@ -2535,11 +2533,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
     if (!a.is_zero(i) && !b.is_zero(perm_index)) {
-      auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
-                                 : a.find(i).get();
-      auto b_tile = b.is_zero(perm_index)
-                        ? perm * F::make_zero_tile(b.trange().tile(perm_index))
-                        : perm * b.find(perm_index).get();
+      auto a_tile = a.find(i).get();
+      auto b_tile = perm * b.find(perm_index).get();
 
       for (std::size_t j = 0ul; j < a_tile.size(); ++j)
         expected += 6 * a_tile[j] * b_tile[j];
@@ -2558,7 +2553,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   // Compute the expected value for the dot function.
   for (std::size_t i = 0ul; i < a.size(); ++i) {
     const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
-    if (!a.is_zero(i) && !b.is_zero(perm_index)) {
+    if (!a.is_zero(i) || !b.is_zero(perm_index)) {
       auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
                                  : a.find(i).get();
       auto b_tile = b.is_zero(perm_index)
