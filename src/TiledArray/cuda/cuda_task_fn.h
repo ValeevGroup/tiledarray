@@ -256,14 +256,6 @@ struct cudaTaskFn : public TaskInterface {
   cudaTaskFn(const cudaTaskFn_&);
   cudaTaskFn_ operator=(cudaTaskFn_&);
 
- protected:
-  // not only register final callback
-  // but also submit the asyn task to taskq
-  void register_submit_callback() override {
-    this->get_world()->taskq.add(async_task_);
-    TaskInterface::register_submit_callback();
-  }
-
  public:
 #if MADNESS_TASKQ_VARIADICS
 
@@ -750,6 +742,8 @@ struct cudaTaskFn : public TaskInterface {
 
   const futureT& result() const { return result_; }
 
+  TaskInterface* async_task() { return async_task_; }
+
 #ifdef HAVE_INTEL_TBB
   virtual tbb::task* execute() {
     result_.set(std::move(async_result_));
@@ -785,7 +779,10 @@ add_cuda_taskfn(
     cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>* t) {
   typename TaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
       res(t->result());
+  // add the cuda task
   world.taskq.add(static_cast<TaskInterface*>(t));
+  // add the internal async task in cuda task as well
+  world.taskq.add(t->async_task());
   return res;
 }
 
