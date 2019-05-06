@@ -45,6 +45,7 @@ inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm
 #ifdef TILEDARRAY_HAS_CUDA
     TiledArray::cuda_initialize();
 #endif
+  madness::print_meminfo_disable();
   return default_world;
 }
 
