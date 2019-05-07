@@ -62,14 +62,13 @@ namespace TiledArray {
 
 #ifdef TILEDARRAY_HAS_CUDA
       // TODO need a better design on how to manage the lifetime of converted Tile
-      mutable std::atomic<bool> converted_; /// if has converted
       mutable conversion_result_type conversion_tile_;
 #endif
      public:
       /// Default constructor
       LazyArrayTile() : tile_(), op_(), consume_(false)
 #ifdef TILEDARRAY_HAS_CUDA
-      , converted_(false), conversion_tile_()
+       , conversion_tile_()
 #endif
       { }
 
@@ -79,7 +78,7 @@ namespace TiledArray {
       LazyArrayTile(const LazyArrayTile_& other) :
         tile_(other.tile_), op_(other.op_), consume_(other.consume_)
 #ifdef TILEDARRAY_HAS_CUDA
-        , converted_(false), conversion_tile_()
+        , conversion_tile_()
 #endif
       { }
 
@@ -91,7 +90,7 @@ namespace TiledArray {
       LazyArrayTile(const tile_type& tile, const std::shared_ptr<op_type>& op, const bool consume) :
         tile_(tile), op_(op), consume_(consume)
 #ifdef TILEDARRAY_HAS_CUDA
-        , converted_(false), conversion_tile_()
+        , conversion_tile_()
 #endif
       { }
 
@@ -103,8 +102,7 @@ namespace TiledArray {
         op_ = other.op_;
         consume_ = other.consume_;
 #ifdef TILEDARRAY_HAS_CUDA
-        converted_ = false;
-        conversion_tile_ = conversion_result_type();
+        conversion_tile_ = other.conversion_tile_;
 #endif
         return *this;
       }
@@ -116,18 +114,13 @@ namespace TiledArray {
 
       /// Convert tile to evaluation type using the op object
 #ifdef TILEDARRAY_HAS_CUDA
-// TODO convert directly for non-cuda tiles
+
       explicit operator conversion_result_type& () const {
-        if(converted_){
-          throw std::logic_error("LazzyArrayTile gets converted more than once!");
-        }
-        else{
-          converted_.store(true);
-          conversion_tile_ = std::move(((!Op::is_consumable) && consume_ ? op_->consume(tile_)
-                                                   : (*op_)(tile_)));
-          return conversion_tile_;
-        }
+        conversion_tile_ = std::move(((!Op::is_consumable) && consume_ ? op_->consume(tile_)
+                                                                         : (*op_)(tile_)));
+        return conversion_tile_;
       }
+
 #else
     explicit operator conversion_result_type() const {
         return ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
