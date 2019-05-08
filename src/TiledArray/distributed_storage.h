@@ -98,18 +98,16 @@ namespace TiledArray {
       }
 
       struct DelayedSet : public madness::CallbackInterface {
-      private:
-        DistributedStorage_& ds_; ///< A reference to the owning object
-        size_type index_; ///< The index that will own the future
-        future future_; ///< The future that we are waiting on.
+       private:
+        DistributedStorage_& ds_;  ///< A reference to the owning object
+        size_type index_;          ///< The index that will own the future
+        future future_;            ///< The future that we are waiting on.
 
-      public:
+       public:
+        DelayedSet(DistributedStorage_& ds, size_type i, const future& f)
+            : ds_(ds), index_(i), future_(f) {}
 
-        DelayedSet(DistributedStorage_& ds, size_type i, const future& f) :
-            ds_(ds), index_(i), future_(f)
-        { }
-
-        virtual ~DelayedSet() { }
+        virtual ~DelayedSet() {}
 
         virtual void notify() {
           ds_.set_remote(index_, future_);
