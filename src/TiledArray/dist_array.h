@@ -803,7 +803,7 @@ namespace TiledArray {
           "The Array has not been initialized, likely reason: it was default constructed and used.");
     }
 
-  }; // class Array
+  }; // class DistArray
 
 
   template <typename Tile, typename Policy>
