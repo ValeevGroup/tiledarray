@@ -33,6 +33,7 @@
 #include <btas/tensor.h>
 
 #include <TiledArray/cuda/kernel/mult_kernel.h>
+#include <TiledArray/cuda/kernel/reduce_kernel.h>
 #include <TiledArray/cuda/platform.h>
 #include <TiledArray/cuda/um_storage.h>
 #include <TiledArray/math/gemm_helper.h>
@@ -509,6 +510,96 @@ typename btas::Tensor<T, Range, Storage>::value_type btas_tensor_dot_cuda_impl(
     TA_ASSERT(false);
     //    result = TiledArray::math::dot(size, storage.data(), storage.data());
   }
+  synchronize_stream(&cuda_stream);
+  return result;
+}
+
+template <typename T, typename Range, typename Storage>
+T btas_tensor_sum_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+
+  auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
+  auto device_id = cudaEnv::instance()->current_cuda_device_id();
+
+  auto &storage = arg.storage();
+  auto n = storage.size();
+
+  auto result = sum_cuda_kernel(arg.data(), n, cuda_stream, device_id);
+
+  synchronize_stream(&cuda_stream);
+  return result;
+}
+
+template <typename T, typename Range, typename Storage>
+T btas_tensor_product_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+
+  auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
+  auto device_id = cudaEnv::instance()->current_cuda_device_id();
+
+  auto &storage = arg.storage();
+  auto n = storage.size();
+
+  auto result = product_cuda_kernel(arg.data(), n, cuda_stream, device_id);
+
+  synchronize_stream(&cuda_stream);
+  return result;
+}
+
+template <typename T, typename Range, typename Storage>
+T btas_tensor_min_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+
+  auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
+  auto device_id = cudaEnv::instance()->current_cuda_device_id();
+
+  auto &storage = arg.storage();
+  auto n = storage.size();
+
+  auto result = min_cuda_kernel(arg.data(), n, cuda_stream, device_id);
+
+  synchronize_stream(&cuda_stream);
+  return result;
+}
+
+template <typename T, typename Range, typename Storage>
+T btas_tensor_max_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+
+  auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
+  auto device_id = cudaEnv::instance()->current_cuda_device_id();
+
+  auto &storage = arg.storage();
+  auto n = storage.size();
+
+  auto result = max_cuda_kernel(arg.data(), n, cuda_stream, device_id);
+
+  synchronize_stream(&cuda_stream);
+  return result;
+}
+
+template <typename T, typename Range, typename Storage>
+T btas_tensor_absmin_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+
+  auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
+  auto device_id = cudaEnv::instance()->current_cuda_device_id();
+
+  auto &storage = arg.storage();
+  auto n = storage.size();
+
+  auto result = absmin_cuda_kernel(arg.data(), n, cuda_stream, device_id);
+
+  synchronize_stream(&cuda_stream);
+  return result;
+}
+
+template <typename T, typename Range, typename Storage>
+T btas_tensor_absmax_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
+
+  auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
+  auto device_id = cudaEnv::instance()->current_cuda_device_id();
+
+  auto &storage = arg.storage();
+  auto n = storage.size();
+
+  auto result = absmax_cuda_kernel(arg.data(), n, cuda_stream, device_id);
+
   synchronize_stream(&cuda_stream);
   return result;
 }

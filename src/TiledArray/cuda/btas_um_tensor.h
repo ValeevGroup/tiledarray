@@ -31,8 +31,6 @@
 #include <TiledArray/cuda/btas_cublas.h>
 #include <TiledArray/cuda/um_storage.h>
 #include <TiledArray/external/cutt.h>
-#include <TiledArray/range.h>
-#include <TiledArray/tensor/tensor.h>
 #include <TiledArray/tile.h>
 
 namespace TiledArray {
@@ -479,7 +477,8 @@ typename btasUMTensorVarray<T, Range>::value_type trace(
 template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type sum(
     const btasUMTensorVarray<T, Range> &arg) {
-  assert(false);
+  detail::to_cuda(arg);
+  return btas_tensor_sum_cuda_impl(arg);
 }
 
 ///
@@ -488,7 +487,8 @@ typename btasUMTensorVarray<T, Range>::value_type sum(
 template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type product(
     const btasUMTensorVarray<T, Range> &arg) {
-  assert(false);
+  detail::to_cuda(arg);
+  return btas_tensor_product_cuda_impl(arg);
 }
 
 ///
@@ -497,7 +497,8 @@ typename btasUMTensorVarray<T, Range>::value_type product(
 template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type max(
     const btasUMTensorVarray<T, Range> &arg) {
-  assert(false);
+  detail::to_cuda(arg);
+  return btas_tensor_max_cuda_impl(arg);
 }
 
 ///
@@ -506,7 +507,8 @@ typename btasUMTensorVarray<T, Range>::value_type max(
 template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type abs_max(
     const btasUMTensorVarray<T, Range> &arg) {
-  assert(false);
+  detail::to_cuda(arg);
+  return btas_tensor_absmax_cuda_impl(arg);
 }
 
 ///
@@ -515,16 +517,18 @@ typename btasUMTensorVarray<T, Range>::value_type abs_max(
 template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type min(
     const btasUMTensorVarray<T, Range> &arg) {
-  assert(false);
+  detail::to_cuda(arg);
+  return btas_tensor_min_cuda_impl(arg);
 }
 
 ///
-/// min
+/// abs min
 ///
 template <typename T, typename Range>
 typename btasUMTensorVarray<T, Range>::value_type abs_min(
     const btasUMTensorVarray<T, Range> &arg) {
-  assert(false);
+  detail::to_cuda(arg);
+  return btas_tensor_absmin_cuda_impl(arg);
 }
 
 /// to host for UM Array
