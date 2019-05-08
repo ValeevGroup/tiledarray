@@ -28,8 +28,8 @@
 #ifdef TILEDARRAY_HAS_CUDA
 
 #include <TiledArray/cuda/btas_um_tensor.h>
-#include "range_fixture.h"
-#include "tiledarray.h"
+#include <range_fixture.h>
+#include <tiledarray.h>
 #include "unit_test_config.h"
 
 using namespace TiledArray;
@@ -286,6 +286,18 @@ BOOST_AUTO_TEST_CASE(mult_factories) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = 2 * conj(2 * (a("c,b,a") * b("a,b,c"))));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(a("c,b,a") * b("a,b,c")));
   BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") * b("a,b,c"))) * 2);
+}
+
+BOOST_AUTO_TEST_CASE(reduce_factories){
+
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").sum().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").product().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").squared_norm().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").norm().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").min().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").max().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").abs_min().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").abs_max().get());
 }
 
 BOOST_AUTO_TEST_CASE(permute) {
@@ -942,18 +954,18 @@ BOOST_AUTO_TEST_CASE(scale_add) {
 BOOST_AUTO_TEST_CASE(scale_add_permute) {
   Permutation perm({2, 1, 0});
 
-  //  BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) + (3 *
-  //  b("a,b,c")));
-  //
-  //  for (std::size_t i = 0ul; i < c.size(); ++i) {
-  //    TArrayUMD::value_type c_tile = c.find(i).get();
-  //    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
-  //    TArrayUMD::value_type a_tile = permute_fn(a.find(perm_index), perm);
-  //    TArrayUMD::value_type b_tile = b.find(i).get();
-  //
-  //    for (std::size_t j = 0ul; j < c_tile.size(); ++j)
-  //      BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) + (3 * b_tile[j]));
-  //  }
+    BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) + (3 *
+    b("a,b,c")));
+
+    for (std::size_t i = 0ul; i < c.size(); ++i) {
+      TArrayUMD::value_type c_tile = c.find(i).get();
+      const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+      TArrayUMD::value_type a_tile = permute_fn(a.find(perm_index), perm);
+      TArrayUMD::value_type b_tile = b.find(i).get();
+
+      for (std::size_t j = 0ul; j < c_tile.size(); ++j)
+        BOOST_CHECK_EQUAL(c_tile[j], 5 * (2 * a_tile[j]) + (3 * b_tile[j]));
+    }
 
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) + (3 * b("c,b,a")));
 

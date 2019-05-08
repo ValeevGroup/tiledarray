@@ -163,6 +163,8 @@ if(CUDA_FOUND)
           TiledArray/cuda/cuda_task_fn.h
           TiledArray/cuda/kernel/mult_kernel.h
           TiledArray/cuda/kernel/mult_kernel_impl.h
+          TiledArray/cuda/kernel/reduce_kernel.h
+          TiledArray/cuda/kernel/reduce_kernel_impl.h
           TiledArray/cuda/platform.h
           TiledArray/cuda/thrust.h
           TiledArray/cuda/um_allocator.h
@@ -185,6 +187,7 @@ if(CUDA_FOUND)
           TiledArray/cuda/btas_um_tensor.cpp
           TiledArray/cuda/cpu_cuda_vector.cu
           TiledArray/cuda/kernel/mult_kernel.cu
+          TiledArray/cuda/kernel/reduce_kernel.cu
           TiledArray/cuda/um_storage.cu)
 
   # the list of libraries on which TiledArray depends on

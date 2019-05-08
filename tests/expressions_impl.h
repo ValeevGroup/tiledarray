@@ -199,6 +199,20 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mult_factories, F, Fixtures, F) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = -conj(2 * (a("c,b,a") * b("a,b,c"))) * 2);
 }
 
+// TODO need to check if result is correct
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(reduce_factories, F, Fixtures, F) {
+  auto& a = F::a;
+
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").sum().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").product().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").squared_norm().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").norm().get());
+//  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").min().get());
+//  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").max().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").abs_min().get());
+  BOOST_CHECK_NO_THROW(auto result = a("a,b,c").abs_max().get());
+}
+
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute, F, Fixtures, F) {
   auto& a = F::a;
   auto& b = F::b;
