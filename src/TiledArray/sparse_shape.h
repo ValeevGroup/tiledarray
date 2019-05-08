@@ -227,16 +227,19 @@ namespace TiledArray {
     /// This constructor will normalize the tile norm, where the normalization
     /// constant for each tile is the inverse of the number of elements in the
     /// tile.
-    /// \param tile_norms The Frobenius norm of tiles
+    /// \param tile_norms The Frobenius norm of tiles by default
     /// \param trange The tiled range of the tensor
-    SparseShape(const Tensor<value_type>& tile_norms, const TiledRange& trange) :
+    /// \param normalized  if the tile_norms are already normalized
+    SparseShape(const Tensor<value_type>& tile_norms, const TiledRange& trange, bool normalized = false) :
       tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
       zero_tile_count_(0ul)
     {
       TA_ASSERT(! tile_norms_.empty());
       TA_ASSERT(tile_norms_.range() == trange.tiles_range());
 
-      normalize();
+      if(!normalized){
+        normalize();
+      }
     }
 
     /// "Sparse" constructor
@@ -283,11 +286,12 @@ namespace TiledArray {
     /// Next, the norms are converted to per-element norms by dividing each
     /// norm by the number of elements in the corresponding tile.
     /// \param world The world where the shape will live
-    /// \param tile_norms The Frobenius norm of tiles; expected to contain nonzeros
+    /// \param tile_norms The Frobenius norm of tiles by default; expected to contain nonzeros
     ///        for this rank's subset of tiles, or be replicated.
     /// \param trange The tiled range of the tensor
+    /// \param normalized  if the tile_norms are already normalized
     SparseShape(World& world, const Tensor<value_type>& tile_norms,
-                const TiledRange& trange) :
+                const TiledRange& trange, bool normalized = false) :
       tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
       zero_tile_count_(0ul)
     {
@@ -297,7 +301,9 @@ namespace TiledArray {
       // reduce norm data from all processors
       world.gop.max(tile_norms_.data(), tile_norms_.size());
 
-      normalize();
+      if(!normalized){
+        normalize();
+      }
     }
 
     /// Collective "sparse" constructor
