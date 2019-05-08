@@ -750,7 +750,7 @@ namespace TiledArray {
       }
 
       template <typename Derived_ = Derived>
-      std::enable_if<
+      std::enable_if_t<
           TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
               typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
                   eval_type>>::value,
@@ -763,7 +763,7 @@ namespace TiledArray {
       }
 
       template <typename Derived_ = Derived>
-      std::enable_if<
+      std::enable_if_t<
           TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
               typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
                   eval_type>>::value,
@@ -775,7 +775,7 @@ namespace TiledArray {
       }
 
       template <typename Derived_ = Derived>
-      std::enable_if<
+      std::enable_if_t<
           TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
               typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
                   eval_type>>::value,
@@ -788,7 +788,7 @@ namespace TiledArray {
       }
 
       template <typename Derived_ = Derived>
-      std::enable_if<
+      std::enable_if_t<
           TiledArray::detail::is_strictly_ordered<TiledArray::detail::numeric_t<
               typename EngineTrait<typename ExprTrait<Derived_>::engine_type>::
                   eval_type>>::value,
