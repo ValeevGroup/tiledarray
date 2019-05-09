@@ -21,7 +21,7 @@ if (TARGET Eigen3::Eigen)
   endforeach()
   install(TARGETS TiledArray_Eigen EXPORT tiledarray COMPONENT tiledarray)
 else (TARGET Eigen3::Eigen)
-  # otherwise use bundled FindEigen3.cmake module controlled by EIGEN3_INCLUDE_DIR
+  # otherwise use system-provided FindEigen3.cmake module controlled by EIGEN3_INCLUDE_DIR
   find_package(Eigen3 3.3)
 
   if (EIGEN3_FOUND)
