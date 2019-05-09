@@ -1,10 +1,12 @@
 option(CUDA_PROPAGATE_HOST_FLAGS OFF)
+
 find_package(CUDA REQUIRED)
 
 message(STATUS "CUDA version:      ${CUDA_VERSION_STRING}")
 message(STATUS "CUDA Include Path: ${CUDA_INCLUDE_DIRS}")
 message(STATUS "CUDA Libraries:    ${CUDA_LIBRARIES}")
 message(STATUS "cuBLAS Libraries:    ${CUDA_CUBLAS_LIBRARIES}")
+set(CUDA_HOST_COMPILER ${CMAKE_CUDA_HOST_COMPILER})
 
 if(CUDA_FOUND)
   set (TILEDARRAY_HAS_CUDA 1)
