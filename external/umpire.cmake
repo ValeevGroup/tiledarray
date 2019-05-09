@@ -76,7 +76,8 @@ else()
                 -DENABLE_TESTS=OFF
                 -DENABLE_ASSERTS=${TA_DEFAULT_ERROR}
                 -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
-                -DCMAKE_CUDA_FLAGS=${CMAKE_CUDA_FLAGS}
+                -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
+                "-DCMAKE_CUDA_FLAGS=${CMAKE_CUDA_FLAGS}"
                 ${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}

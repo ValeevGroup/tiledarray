@@ -95,7 +95,7 @@ This figure was obtained with the help of an allocation from [Advanced Research 
   * Clang 3.4 and later, 
   * Apple Clang 5.0 and later, and
   * ~~Intel C/C++ Compiler 17 and later.~~
-* **Cmake** 3.8 or later
+* **Cmake** 3.9 or later
 * **Eigen** - Version 3.3 and later, available from [http://eigen.tuxfamily.org]. Will be downloaded automatically, if missing.
 * **BTAS** - master branch, available from [http://github.com/BTAS/BTAS]. Will be downloaded automatically, if missing.
 * **MADNESS** - While it is possible to compile MADNESS separately, we recommend that MADNESS is downloaded and compiled automatically as part of TiledArray. Compilation of MADNESS requires the following additional prerequisites (see the [MADNESS GitHub page](https://github.com/m-a-d-n-e-s-s/madness) for details):

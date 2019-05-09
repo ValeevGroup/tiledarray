@@ -5,7 +5,7 @@
   - [Clang](https://clang.llvm.org/), version 3.4 or higher
   - Apple Clang, version 5.0 or higher
   See the current [Travis CI matrix]() for the most up-to-date list of compilers that are known to work.
-- [CMake](https://cmake.org/), version 3.8 or higher
+- [CMake](https://cmake.org/), version 3.9 or higher
 - [Git]() 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher (will be downloaded automatically, if missing)
 - [BTAS](http://github.com/BTAS/BTAS), master branch (will be downloaded automatically, if missing)
