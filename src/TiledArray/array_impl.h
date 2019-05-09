@@ -505,12 +505,12 @@ namespace TiledArray {
 
       /// Array begin iterator
 
-      /// \return A const iterator to the first element of the array.
+      /// \return A const iterator to the first local element of the array.
       iterator begin() {
         // Get the pmap iterator
         typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
 
-        // Find the fist non-zero iterator
+        // Find the first non-zero iterator
         const typename pmap_interface::const_iterator end = TensorImpl_::pmap()->end();
         while((it != end) && TensorImpl_::is_zero(*it)) ++it;
 
@@ -520,7 +520,7 @@ namespace TiledArray {
 
       /// Array begin iterator
 
-      /// \return A const iterator to the first element of the array.
+      /// \return A const iterator to the first local element of the array.
       const_iterator cbegin() const {
         // Get the pmap iterator
         typename pmap_interface::const_iterator it = TensorImpl_::pmap()->begin();
@@ -535,14 +535,14 @@ namespace TiledArray {
 
       /// Array end iterator
 
-      /// \return A const iterator to one past the last element of the array.
+      /// \return A const iterator to one past the last local element of the array.
       iterator end() {
         return iterator(this, TensorImpl_::pmap()->end());
       }
 
       /// Array end iterator
 
-      /// \return A const iterator to one past the last element of the array.
+      /// \return A const iterator to one past the last local element of the array.
       const_iterator cend() const {
         return const_iterator(this, TensorImpl_::pmap()->end());
       }
