@@ -98,6 +98,14 @@ add_feature_info(MKL ENABLE_MKL "Intel Math Kernel Library provides linear algeb
 redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
 add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks supports programming shared-memory systems")
 
+option(ENABLE_CUDA "Enable use of CUDA with TiledArray" OFF)
+add_feature_info(CUDA ENABLE_CUDA "NVIDIA CUDA support for GPU")
+
+if(ENABLE_CUDA)
+  option(ENABLE_CUDA_ERROR_CHECK "TiledArray will always check errors in CUDA calls" ON)
+  add_feature_info(CUDA_ERROR_CHECK ENABLE_CUDA_ERROR_CHECK "Checks CUDA Error")
+endif()
+
 option(ENABLE_GPERFTOOLS "Enable linking with Gperftools" OFF)
 add_feature_info(GPERFTOOLS ENABLE_GPERFTOOLS "Google Performance Tools provide fast memory allocation and performance profiling")
 option(ENABLE_TCMALLOC_MINIMAL "Enable linking with tcmalloc_minimal" OFF)
@@ -253,7 +261,9 @@ if (TA_BUILD_UNITTEST)
   include(external/boost.cmake)
 endif()
 include(external/btas.cmake)
-
+if(ENABLE_CUDA)
+  include(external/cuda.cmake)
+endif()
 # optional deps:
 # 1. ccache
 find_program(CCACHE ccache)

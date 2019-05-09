@@ -27,6 +27,7 @@ add_custom_target(examples)
 
 # Add Subdirectories
 add_subdirectory (cc)
+add_subdirectory(cuda)
 add_subdirectory (dgemm)
 add_subdirectory (demo)
 add_subdirectory (elemental)

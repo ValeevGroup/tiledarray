@@ -142,9 +142,12 @@ namespace TiledArray {
       /// \param right The right-hand argument
       /// \return The result tile from the binary operation applied to the
       /// \c left and \c right arguments.
-      template <typename L, typename R,
-                std::enable_if_t<!(is_lazy_tile_v<L> || is_lazy_tile_v<R>)>* =
-                    nullptr>
+      template <
+          typename L, typename R,
+          std::enable_if_t<!(is_lazy_tile_v<L> || is_lazy_tile_v<R>)
+                            && !std::is_same<std::decay_t<L>, ZeroTensor>::value
+                            && !std::is_same<std::decay_t<R>, ZeroTensor>::value>* =
+              nullptr>
       auto operator()(L&& left, R&& right) const {
         static_assert(std::is_same<std::decay_t<L>, left_type>::value,
                       "BinaryWrapper::operator()(L&&,R&&): invalid argument type L");

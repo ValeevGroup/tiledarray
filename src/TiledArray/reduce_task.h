@@ -22,10 +22,16 @@
 
 #include <TiledArray/config.h>
 #include <TiledArray/error.h>
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
+
+#ifdef TILEDARRAY_HAS_CUDA
+#include <TiledArray/external/cuda.h>
+#endif
 
 namespace TiledArray {
   namespace detail {
+
+
 
     template <typename T>
     struct ArgumentHelper {
@@ -298,6 +304,120 @@ namespace TiledArray {
 
         }; // class ReduceObject
 
+#ifdef TILEDARRAY_HAS_CUDA
+
+        static void CUDART_CB cuda_reduceobject_delete_callback(
+            cudaStream_t stream, cudaError_t status, void* userData) {
+          CudaSafeCall(status);
+
+          std::vector<void*>* objects =
+              static_cast<std::vector<void*>*>(userData);
+
+          /// first pointer is always madness::World*
+          madness::World* world = static_cast<madness::World*>((*objects)[0]);
+
+          auto destroy_vector = [](std::vector<void*>* objects) {
+            std::size_t n_objects = objects->size();
+            /// skip the first pointer since it is always World*
+            for (std::size_t i = 1; i < n_objects; i++) {
+              // convert void* to ReduceObject*
+              ReduceObject* reduce_object =
+                  static_cast<ReduceObject*>((*objects)[i]);
+              // delete ReduceObject
+              ReduceObject::destroy(reduce_object);
+            }
+            /// delete objects pointer
+            delete objects;
+//            std::cout << std::to_string(
+//                             TiledArray::get_default_world().rank()) +
+//                             " call 1\n";
+          };
+
+          /// use madness task to call the destroy function, since it might call
+          /// cuda API
+          world->taskq.add(destroy_vector, objects, TaskAttributes::hipri());
+        }
+
+        static void CUDART_CB cuda_dependency_dec_callback(cudaStream_t stream,
+                                                           cudaError_t status,
+                                                           void* userData) {
+          CudaSafeCall(status);
+
+          std::vector<void*>* objects =
+              static_cast<std::vector<void*>*>(userData);
+
+          for (auto& item : *objects) {
+            // convert void* to DependencyInterface
+            ReduceTaskImpl* dep = static_cast<ReduceTaskImpl*>(item);
+            // call dec
+            dep->dec();
+          }
+          delete objects;
+//          std::cout << std::to_string(TiledArray::get_default_world().rank()) +
+//                           " call 2\n";
+        }
+
+        static void CUDART_CB cuda_dependency_dec_reduceobject_delete_callback(
+            cudaStream_t stream, cudaError_t status, void* userData) {
+
+          CudaSafeCall(status);
+
+          std::vector<void*>* objects =
+              static_cast<std::vector<void*>*>(userData);
+
+          assert(objects->size() == 3);
+
+          /// convert void* to madness::World*
+          madness::World* world = static_cast<madness::World*>(objects->at(0));
+
+          // convert void* to DependencyInterface
+          ReduceTaskImpl* dep = static_cast<ReduceTaskImpl*>(objects->at(1));
+          // call dec
+          dep->dec();
+
+          // convert void* to ReduceObject*
+          ReduceObject* reduce_object =
+              static_cast<ReduceObject*>(objects->at(2));
+
+          auto destroy = [](ReduceObject* object) {
+            ReduceObject::destroy(object);
+//            std::cout << std::to_string(
+//                             TiledArray::get_default_world().rank()) +
+//                             " call 3\n";
+          };
+
+          // delete ReduceObject
+          world->taskq.add(destroy, reduce_object, TaskAttributes::hipri());
+
+          delete objects;
+        }
+
+        static void CUDART_CB cuda_readyresult_reset_callback(
+            cudaStream_t stream, cudaError_t status, void* userData) {
+          CudaSafeCall(status);
+
+          std::vector<void*>* objects =
+              static_cast<std::vector<void*>*>(userData);
+
+          /// convert first void* to madness::World*
+          madness::World* world = static_cast<madness::World*>((*objects)[0]);
+
+          auto reset = []( std::vector<void*>* objects){
+            // skip the first one since it always be madness::World*
+            // convert void* to the correct type
+            std::shared_ptr<result_type>* result =
+                static_cast<std::shared_ptr<result_type>*>((*objects)[1]);
+            // call reset on shared_ptr
+            result->reset();
+            delete objects;
+//            std::cout << std::to_string(TiledArray::get_default_world().rank()) +
+//                         " call 4\n";
+          };
+
+          world->taskq.add(reset, objects, TaskAttributes::hipri());
+        }
+
+#endif
         virtual void get_id(std::pair<void*,unsigned short>& id) const {
           return PoolTaskInterface::make_id(id, *this);
         }
@@ -323,8 +443,30 @@ namespace TiledArray {
               op_(*result, ready_object->arg());
 
               // cleanup the argument
+#ifdef TILEDARRAY_HAS_CUDA
+              auto stream_ptr = tls_cudastream_accessor();
+
+              /// non-CUDA op
+              if(stream_ptr == nullptr){
+                ReduceObject::destroy(ready_object);
+                this->dec();
+              }
+              else{
+                auto callback_object = new std::vector<void*>(3);
+                (*callback_object)[0] = &world_;
+                (*callback_object)[1] = this;
+                (*callback_object)[2] = ready_object;
+                CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+                CudaSafeCall(
+                        cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_reduceobject_delete_callback, callback_object, 0)
+                );
+                synchronize_stream(nullptr);
+//                std::cout << std::to_string(world().rank()) + " add 3\n";
+              }
+#else
               ReduceObject::destroy(ready_object);
               this->dec();
+#endif
             } else if(ready_result_) {
               // Get the ready result
               std::shared_ptr<result_type> ready_result = ready_result_;
@@ -335,7 +477,26 @@ namespace TiledArray {
               op_(*result, *ready_result);
 
               // cleanup the result
+#ifdef TILEDARRAY_HAS_CUDA
+              auto stream_ptr = tls_cudastream_accessor();
+              if(stream_ptr == nullptr){
+                ready_result.reset();
+              }
+              else{
+                auto ready_result_heap = new std::shared_ptr<result_type>(ready_result);
+                auto callback_object = new std::vector<void*>(2);
+                (*callback_object)[0] = &world_;
+                (*callback_object)[1] = ready_result_heap;
+                CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+                CudaSafeCall(
+                        cudaStreamAddCallback(*stream_ptr, cuda_readyresult_reset_callback, callback_object, 0)
+                );
+                synchronize_stream(nullptr);
+//                std::cout << std::to_string(world().rank()) + " add 4\n";
+              }
+#else
               ready_result.reset();
+#endif
             } else {
               // Nothing is ready, so place result in the ready state.
               ready_result_ = result;
@@ -354,14 +515,46 @@ namespace TiledArray {
           op_(*result, object->arg());
 
           // Cleanup the argument
+#ifdef TILEDARRAY_HAS_CUDA
+          auto stream_ptr = tls_cudastream_accessor();
+          if(stream_ptr == nullptr){
+            ReduceObject::destroy(object);
+          }
+          else{
+            auto callback_object = new std::vector<void*>(2);
+            (*callback_object)[0] = &world_;
+            (*callback_object)[1] = const_cast<ReduceObject*>(object);
+            CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+            CudaSafeCall(
+                    cudaStreamAddCallback(*stream_ptr, cuda_reduceobject_delete_callback,callback_object, 0)
+            );
+            synchronize_stream(nullptr);
+//            std::cout << std::to_string(world().rank()) + " add 1\n";
+          }
+#else
           ReduceObject::destroy(object);
-
+#endif
           // Check for more reductions
           reduce(result);
 
           // Decrement the dependency counter for the argument. This must
           // be done after the reduce call to avoid a race condition.
+#ifdef TILEDARRAY_HAS_CUDA
+          if(stream_ptr == nullptr){
+            this->dec();
+          }
+          else{
+            auto callback_object2 = new std::vector<void*>(1);
+            (*callback_object2)[0] = this;
+            CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+            CudaSafeCall(
+                    cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_callback, callback_object2, 0)
+            );
+//            std::cout << std::to_string(world().rank()) + " add 2\n";
+          }
+#else
           this->dec();
+#endif
         }
 
         /// Reduce two reduction arguments
@@ -374,16 +567,54 @@ namespace TiledArray {
           op_(*result, object2->arg());
 
           // Cleanup arguments
+#ifdef TILEDARRAY_HAS_CUDA
+          auto stream_ptr = tls_cudastream_accessor();
+          if(stream_ptr == nullptr){
+            ReduceObject::destroy(object1);
+            ReduceObject::destroy(object2);
+          }
+          else{
+            auto callback_object1 = new std::vector<void*>(3);
+            (*callback_object1)[0] = &world_;
+            (*callback_object1)[1] = const_cast<ReduceObject*>(object1);
+            (*callback_object1)[2] = const_cast<ReduceObject*>(object2);
+            CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+            CudaSafeCall(
+                    cudaStreamAddCallback(*stream_ptr, cuda_reduceobject_delete_callback, callback_object1, 0)
+            );
+            synchronize_stream(nullptr);
+//            std::cout << std::to_string(world().rank()) + " add 1\n";
+          }
+#else
           ReduceObject::destroy(object1);
           ReduceObject::destroy(object2);
+#endif
 
           // Check for more reductions
           reduce(result);
 
           // Decrement the dependency counter for the two arguments. This
           // must be done after the reduce call to avoid a race condition.
+#ifdef TILEDARRAY_HAS_CUDA
+          if(stream_ptr == nullptr){
+            this->dec();
+            this->dec();
+          }
+          else{
+            auto callback_object2 = new std::vector<void*>(2);
+            (*callback_object2)[0] = this;
+            (*callback_object2)[1] = this;
+            CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+            CudaSafeCall(
+                    cudaStreamAddCallback(*stream_ptr, cuda_dependency_dec_callback, callback_object2, 0)
+            );
+//            std::cout << std::to_string(world().rank()) + " add 2\n";
+          }
+
+#else
           this->dec();
           this->dec();
+#endif
         }
 
         World& world_; ///< The world that owns this task
@@ -414,6 +645,14 @@ namespace TiledArray {
         virtual void run(const madness::TaskThreadEnv&) {
           TA_ASSERT(ready_result_);
           result_.set(op_(*ready_result_));
+
+#ifdef TILEDARRAY_HAS_CUDA
+          // TODO need to fix async post process op
+          auto stream_ptr = tls_cudastream_accessor();
+          if(stream_ptr != nullptr){
+            detail::thread_wait_cuda_stream(*stream_ptr);
+          }
+#endif
           if(callback_)
             callback_->notify();
         }

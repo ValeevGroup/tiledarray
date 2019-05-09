@@ -46,6 +46,7 @@ namespace TiledArray {
       typedef typename op_type::result_type eval_type;
       typedef Tile tile_type; ///< The input tile type
 
+
     private:
       mutable tile_type tile_; ///< The input tile
       std::shared_ptr<op_type> op_; ///< The operation that will be applied to argument tiles
@@ -54,15 +55,31 @@ namespace TiledArray {
       template <typename T>
       using eval_t = typename eval_trait<typename std::decay<T>::type>::type;
 
-    public:
+      using conversion_result_type =
+          decltype(((!Op::is_consumable) && consume_
+                        ? op_->consume(tile_)
+                        : (*op_)(tile_)));  ///< conversion_type
+
+#ifdef TILEDARRAY_HAS_CUDA
+      // TODO need a better design on how to manage the lifetime of converted Tile
+      mutable conversion_result_type conversion_tile_;
+#endif
+     public:
       /// Default constructor
-      LazyArrayTile() : tile_(), op_(), consume_(false) { }
+      LazyArrayTile() : tile_(), op_(), consume_(false)
+#ifdef TILEDARRAY_HAS_CUDA
+       , conversion_tile_()
+#endif
+      { }
 
       /// Copy constructor
 
       /// \param other The LazyArrayTile object to be copied
       LazyArrayTile(const LazyArrayTile_& other) :
         tile_(other.tile_), op_(other.op_), consume_(other.consume_)
+#ifdef TILEDARRAY_HAS_CUDA
+        , conversion_tile_()
+#endif
       { }
 
       /// Construct from tile and operation
@@ -72,6 +89,9 @@ namespace TiledArray {
       /// \param consume If true, the input tile may be consumed by \c op
       LazyArrayTile(const tile_type& tile, const std::shared_ptr<op_type>& op, const bool consume) :
         tile_(tile), op_(op), consume_(consume)
+#ifdef TILEDARRAY_HAS_CUDA
+        , conversion_tile_()
+#endif
       { }
 
       /// Assignment operator
@@ -81,7 +101,9 @@ namespace TiledArray {
         tile_ = other.tile_;
         op_ = other.op_;
         consume_ = other.consume_;
-
+#ifdef TILEDARRAY_HAS_CUDA
+        conversion_tile_ = other.conversion_tile_;
+#endif
         return *this;
       }
 
@@ -90,21 +112,17 @@ namespace TiledArray {
       /// \return \c true if this tile is consumable, otherwise \c false .
       bool is_consumable() const { return consume_ || op_->permutation(); }
 
-#ifdef __clang__  // clang's operator auto behavior is severely broken
-                  // (e.g. explicit operator auto() is not considered in conversions,
-                  //  looking it up as From::operator To does not work, etc.)
-                  // so must work around
-      using conversion_result_type =
-          decltype(((!Op::is_consumable) && consume_ ? op_->consume(tile_)
-                                                     : (*op_)(tile_)));
       /// Convert tile to evaluation type using the op object
-      explicit operator conversion_result_type() const {
-        return ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
-                                                 : (*op_)(tile_));
+#ifdef TILEDARRAY_HAS_CUDA
+
+      explicit operator conversion_result_type& () const {
+        conversion_tile_ = std::move(((!Op::is_consumable) && consume_ ? op_->consume(tile_)
+                                                                         : (*op_)(tile_)));
+        return conversion_tile_;
       }
+
 #else
-      /// Convert tile to evaluation type using the op object
-      explicit operator auto() const {
+    explicit operator conversion_result_type() const {
         return ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
                                                  : (*op_)(tile_));
       }
@@ -217,23 +235,8 @@ namespace TiledArray {
             array_.find(array_index);
 
         const bool consumable_tile = ! array_.is_local(array_index);
-        // Insert the tile into this evaluator for subsequent processing
-        if(tile.probe()) {
-          // Skip the task since the tile is ready
-          Future<value_type> result;
-          result.set(make_tile(tile, consumable_tile));
-          const_cast<ArrayEvalImpl_*>(this)->notify();
-          return result;
-        } else {
-          // Spawn a task to set the tile when the input tile is ready.
-          Future<value_type> result =
-              TensorImpl_::world().taskq.add(shared_from_this(),
-              & ArrayEvalImpl_::make_tile, tile, consumable_tile,
-              madness::TaskAttributes::hipri());
 
-          result.register_callback(const_cast<ArrayEvalImpl_*>(this));
-          return result;
-        }
+        return eval_tile(tile, consumable_tile);
       }
 
       /// Discard a tile that is not needed
@@ -250,14 +253,27 @@ namespace TiledArray {
         return value_type(tile, op_, consume);
       }
 
-      /// Make an array tile and insert it into the distributed storage container
-
-      /// \param i The tile index
-      /// \param tile The array tile that is the basis for lazy tile
-      void set_tile(const size_type i, const typename array_type::value_type& tile, const bool consume) {
-        DistEvalImpl_::set_tile(i, value_type(tile, op_, consume));
+      /// Evaluate a single LazyArrayTile
+      madness::Future<value_type> eval_tile(
+          const madness::Future<typename array_type::value_type>& tile,
+          const bool consumable_tile) const {
+        // Insert the tile into this evaluator for subsequent processing
+        if(tile.probe()) {
+          // Skip the task since the tile is ready
+          Future<value_type> result;
+          result.set(make_tile(tile, consumable_tile));
+          const_cast<ArrayEvalImpl_*>(this)->notify();
+          return result;
+        } else {
+          // Spawn a task to set the tile when the input tile is not ready.
+          Future<value_type> result =
+              TensorImpl_::world().taskq.add(shared_from_this(),
+                                             & ArrayEvalImpl_::make_tile, tile, consumable_tile,
+                                             madness::TaskAttributes::hipri());
+          result.register_callback(const_cast<ArrayEvalImpl_*>(this));
+          return result;
+        }
       }
-
       /// Evaluate the tiles of this tensor
 
       /// This function will evaluate the children of this distributed evaluator

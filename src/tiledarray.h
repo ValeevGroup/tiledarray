@@ -22,7 +22,8 @@
 
 #include <tiledarray_fwd.h>
 
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
+#include <TiledArray/initialize.h>
 
 // Array class
 #include <TiledArray/tensor.h>
@@ -54,10 +55,10 @@
 
 // Linear algebra
 #include <TiledArray/algebra/conjgrad.h>
-#include "TiledArray/dist_array.h"
+#include <TiledArray/dist_array.h>
 
 #ifdef TILEDARRAY_HAS_ELEMENTAL
-#include <TiledArray/elemental.h> 
+#include <TiledArray/external/elemental.h>
 #endif
 
 #endif // TILEDARRAY_H__INCLUDED

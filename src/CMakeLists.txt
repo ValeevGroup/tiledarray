@@ -33,9 +33,10 @@ TiledArray/block_range.h
 TiledArray/dense_shape.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
-TiledArray/elemental.h
+TiledArray/external/elemental.h
 TiledArray/error.h
-TiledArray/madness.h
+TiledArray/external/madness.h
+TiledArray/initialize.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/proc_grid.h
@@ -150,6 +151,27 @@ TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h)
 
+if(CUDA_FOUND)
+
+  list(APPEND TILEDARRAY_HEADER_FILES
+     TiledArray/external/cuda.h
+     TiledArray/external/cutt.h
+     TiledArray/math/cublas.h
+          TiledArray/cuda/btas_cublas.h
+          TiledArray/cuda/btas_um_tensor.h
+          TiledArray/cuda/cpu_cuda_vector.h
+          TiledArray/cuda/cuda_task_fn.h
+          TiledArray/cuda/kernel/mult_kernel.h
+          TiledArray/cuda/kernel/mult_kernel_impl.h
+          TiledArray/cuda/kernel/reduce_kernel.h
+          TiledArray/cuda/kernel/reduce_kernel_impl.h
+          TiledArray/cuda/platform.h
+          TiledArray/cuda/thrust.h
+          TiledArray/cuda/um_allocator.h
+          TiledArray/cuda/um_storage.h)
+
+endif(CUDA_FOUND)
+
 set(TILEDARRAY_SOURCE_FILES
 TiledArray/tensor/tensor.cpp
 TiledArray/sparse_shape.cpp
@@ -157,16 +179,40 @@ TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp)
 
+
+# TODO better ways to handle tiledarray cuda dependency
+if(CUDA_FOUND)
+
+  list(APPEND TILEDARRAY_SOURCE_FILES
+          TiledArray/cuda/btas_um_tensor.cpp
+          TiledArray/cuda/cpu_cuda_vector.cu
+          TiledArray/cuda/kernel/mult_kernel.cu
+          TiledArray/cuda/kernel/reduce_kernel.cu
+          TiledArray/cuda/um_storage.cu)
+
+  # the list of libraries on which TiledArray depends on
+  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_CUDA TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+
+  # Create the TiledArray library
+  cuda_add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+
+else(CUDA_FOUND)
+
 # the list of libraries on which TiledArray depends on
 set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 # Create the TiledArray library
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+
+endif(CUDA_FOUND)
+
+
 target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
 )
+
 target_link_libraries(tiledarray PUBLIC ${TILEDARRAY_DEPENDENCIES})
 if(TARGET build-madness)
   add_dependencies(tiledarray build-madness)
@@ -176,6 +222,12 @@ if(TARGET eigen3)
 endif()
 if(TARGET btas)
   add_dependencies(tiledarray btas)
+endif()
+if (TARGET cutt)
+  add_dependencies(tiledarray cutt)
+endif()
+if (TARGET Umpire)
+  add_dependencies(tiledarray Umpire)
 endif()
 # append current CMAKE_CXX_FLAGS
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")

@@ -27,7 +27,7 @@
 #define TILEDARRAY_TILE_OP_REDUCE_INTERFACE_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 
 namespace TiledArray {
   namespace math {

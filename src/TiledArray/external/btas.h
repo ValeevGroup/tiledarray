@@ -20,12 +20,13 @@
  *
  */
 
-#ifndef TILEDARRAY_MATH_BTAS_H__INCLUDED
-#define TILEDARRAY_MATH_BTAS_H__INCLUDED
+#ifndef TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
+#define TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
 
 #include "TiledArray/config.h"
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
+#include "TiledArray/range.h"
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/tile_interface/cast.h"
 #include "TiledArray/range.h"
@@ -465,8 +466,10 @@ inline btas::Tensor<T, Range, Storage> gemm(
   const integer ldb =
       (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
+  T factor_t(factor);
+
   TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                         factor, left.data(), lda, right.data(), ldb, T(0),
+                         factor_t, left.data(), lda, right.data(), ldb, T(0),
                          result.data(), n);
 
   return result;
@@ -531,8 +534,10 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
   const integer ldb =
       (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
+  T factor_t(factor);
+
   TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                         factor, left.data(), lda, right.data(), ldb, T(1),
+                         factor_t, left.data(), lda, right.data(), ldb, T(1),
                          result.data(), n);
 }
 
@@ -751,4 +756,4 @@ struct ArchiveStoreImpl<Archive, btas::Tensor<_T, _Range, _Store>> {
 }  // namespace archive
 }  // namespace madness
 
-#endif /* TILEDARRAY_MATH_BTAS_H__INCLUDED */
+#endif /* TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED */

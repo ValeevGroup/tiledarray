@@ -23,7 +23,7 @@
 
 #ifdef HAVE_ELEMENTAL_H
 
-#include "TiledArray/elemental.h"
+#include "TiledArray/external/elemental.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
 

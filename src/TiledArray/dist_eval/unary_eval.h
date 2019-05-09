@@ -105,12 +105,31 @@ namespace TiledArray {
 
       /// Task function for evaluating tiles
 
+#ifdef TILEDARRAY_HAS_CUDA
+      /// \param i The tile index
+      /// \param tile The tile to be evaluated
+      template <typename U = value_type>
+      std::enable_if_t<detail::is_cuda_tile<U>::value, void>
+      eval_tile(const size_type i, tile_argument_type tile) {
+        // TODO avoid copy Op object
+        auto result_tile = madness::add_cuda_task(DistEvalImpl_::world(), op_, tile);
+        DistEvalImpl_::set_tile(i, result_tile);
+      }
+
+      /// \param i The tile index
+      /// \param tile The tile to be evaluated
+      template <typename U = value_type>
+      std::enable_if_t<!detail::is_cuda_tile<U>::value, void>
+      eval_tile(const size_type i, tile_argument_type tile) {
+        DistEvalImpl_::set_tile(i, op_(tile));
+      }
+#else
       /// \param i The tile index
       /// \param tile The tile to be evaluated
       void eval_tile(const size_type i, tile_argument_type tile) {
         DistEvalImpl_::set_tile(i, op_(tile));
       }
-
+#endif
       /// Evaluate the tiles of this tensor
 
       /// This function will evaluate the children of this distributed evaluator
@@ -141,8 +160,13 @@ namespace TiledArray {
             const size_type target_index = DistEvalImpl_::perm_index_to_target(index);
 
             // Schedule tile evaluation task
+#ifdef TILEDARRAY_HAS_CUDA
+            TensorImpl_::world().taskq.add(self, & UnaryEvalImpl_::template eval_tile<>,
+                                           target_index, arg_.get(index));
+#else
             TensorImpl_::world().taskq.add(self, & UnaryEvalImpl_::eval_tile,
                 target_index, arg_.get(index));
+#endif
 
             ++task_count;
           }

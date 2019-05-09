@@ -27,7 +27,7 @@
 #define TILEDARRAY_MATH_VECTOR_OP_H__INCLUDED
 
 #include <TiledArray/type_traits.h>
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 #include <TiledArray/config.h>
 
 #define TILEDARRAY_LOOP_UNWIND ::TiledArray::math::LoopUnwind::value

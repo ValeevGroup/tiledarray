@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_PARALLEL_GEMM_H__INCLUDED
 #define TILEDARRAY_PARALLEL_GEMM_H__INCLUDED
 
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 #include <TiledArray/vector_op.h>
 #include <TiledArray/blas.h>
 

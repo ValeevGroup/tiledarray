@@ -22,7 +22,6 @@
 #  Sep 4, 2013
 #
 
-find_package(CUDA)
 
 # Create example executable
 
@@ -47,11 +46,4 @@ if(ENABLE_ELEMENTAL)
 #    add_dependencies(examples ta_dense_elem)
 endif(ENABLE_ELEMENTAL)
 
-if(CUDA_FOUND)
-    # Add the ta_dense_cuda executable
-    cuda_add_executable(ta_dense_cuda EXCLUDE_FROM_ALL ta_dense_cuda.cpp cpu_cuda_vector.h cpu_cuda_vector.cu)
-    cuda_add_cublas_to_target(ta_dense_cuda)
-    target_link_libraries(ta_dense_cuda general tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-    add_dependencies(ta_dense_cuda External)
-    add_dependencies(examples ta_dense_cuda)
-endif(CUDA_FOUND)
+

@@ -21,7 +21,7 @@
 #define TILEDARRAY_TRANSFORM_ITERATOR_H__INCLUDED
 
 #include <cstddef>
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 
 namespace TiledArray {
   namespace detail {

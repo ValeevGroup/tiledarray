@@ -1,25 +1,13 @@
-#include <thrust/host_vector.h>
-#include <thrust/device_vector.h>
-#include <cublas_v2.h>
-#include "platform.h"
 
-// thrust::device_vector::data() returns a proxy, provide an overload for std::data() to provide raw ptr
-namespace thrust {
-  template<typename T, typename Alloc>
-  const T* data (const thrust::device_vector<T, Alloc>& dev_vec) {
-    return thrust::raw_pointer_cast(dev_vec.data());
-  }
-  template<typename T, typename Alloc>
-  T* data (thrust::device_vector<T, Alloc>& dev_vec) {
-    return thrust::raw_pointer_cast(dev_vec.data());
-  }
+#ifndef TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
+#define TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED
 
-  // this must be instantiated in a .cu file
-  template <typename T, typename Alloc>
-  void resize(thrust::device_vector<T, Alloc>& dev_vec, size_t size);
-}  // namespace thrust
 
 #include <btas/array_adaptor.h>
+
+#include <TiledArray/cuda/platform.h>
+#include <TiledArray/cuda/thrust.h>
+
 
 namespace TiledArray {
 
@@ -29,7 +17,7 @@ namespace TiledArray {
 /// \tparam HostAlloc The allocator type used for host data
 /// \tparam DeviceAlloc The allocator type used for device data
 template <typename T, typename HostAlloc = std::allocator<T>,
-    typename DeviceAlloc = thrust::device_malloc_allocator<T>>
+    typename DeviceAlloc = thrust::device_allocator<T>>
 class cpu_cuda_vector {
   public:
     typedef T value_type;
@@ -152,6 +140,16 @@ class cpu_cuda_vector {
       return std::cend(host_vec_);
     }
 
+    const_reference operator[] (std::size_t i) const {
+      assert(on_host());
+      return host_vec_[i];
+    }
+
+    reference operator[] (std::size_t i) {
+      assert(on_host());
+      return host_vec_[i];
+    }
+
     bool on_host() const {
       return static_cast<int>(state_) & static_cast<int>(state::host);
     }
@@ -179,7 +177,7 @@ bool in_memory_space(const cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) noex
 }
 
 template <ExecutionSpace Space, typename T, typename HostAlloc, typename DeviceAlloc>
-void to_execution_space(cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) {
+void to_execution_space(cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec, cudaStream_t stream=0) {
   switch(Space) {
     case ExecutionSpace::CPU: {
       vec.to_host();
@@ -194,6 +192,22 @@ void to_execution_space(cpu_cuda_vector<T, HostAlloc, DeviceAlloc>& vec) {
   }
 }
 
+template <typename T>
+void make_device_storage(cpu_cuda_vector<T> &storage, std::size_t n,
+                         cudaStream_t stream = 0) {
+  storage = cpu_cuda_vector<T>(n, cpu_cuda_vector<T>::state::device);
+}
+
+template <typename T>
+T *device_data(cpu_cuda_vector<T> &storage) {
+  return storage.device_data();
+}
+
+template <typename T>
+const T *device_data(const cpu_cuda_vector<T> &storage) {
+  return storage.device_data();
+}
+
 }  // namespace TiledArray
 
 namespace madness {
@@ -206,7 +220,7 @@ template<class Archive, typename T> struct ArchiveStoreImpl;
 template<class Archive, typename T>
 struct ArchiveLoadImpl<Archive, TiledArray::cpu_cuda_vector<T> > {
   static inline void load(const Archive& ar, TiledArray::cpu_cuda_vector<T>& x) {
-    typename TiledArray::cpu_cuda_vector<T>::size_type n;
+    typename TiledArray::cpu_cuda_vector<T>::size_type n(0);
     ar & n;
     x.resize(n);
     for (auto& xi : x)
@@ -223,6 +237,7 @@ struct ArchiveStoreImpl<Archive, TiledArray::cpu_cuda_vector<T> > {
   }
 };
 
-}
-}
+} // namespace archive
+} // namespace madness
 
+#endif // TILEDARRAY_CUDA_CPU_CUDA_VECTOR_H__INCLUDED

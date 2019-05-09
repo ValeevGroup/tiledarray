@@ -26,7 +26,7 @@
 
 #include <tiledarray_fwd.h>
 
-#include <TiledArray/madness.h>
+#include <TiledArray/external/madness.h>
 
 // Array class
 #include <TiledArray/tensor.h>

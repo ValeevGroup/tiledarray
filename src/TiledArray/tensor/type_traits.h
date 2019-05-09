@@ -218,7 +218,20 @@ namespace TiledArray {
     template <typename ReduceOp, typename Result, typename ... Args>
     constexpr const bool is_reduce_op_v = is_reduce_op_<void, ReduceOp, Result, Args...>::value;
 
-}  // namespace detail
+  /// detect cuda tile
+#ifdef TILEDARRAY_HAS_CUDA
+    template <typename T>
+    struct is_cuda_tile : public std::false_type {};
+
+    template <typename T>
+    struct is_cuda_tile<Tile<T>> : public is_cuda_tile<T> {};
+
+    template <typename T, typename Op>
+    struct is_cuda_tile<LazyArrayTile<T, Op>>
+        : public is_cuda_tile<typename LazyArrayTile<T, Op>::eval_type> {};
+#endif
+
+  }  // namespace detail
 } // namespace TiledArray
 
 #endif // TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED

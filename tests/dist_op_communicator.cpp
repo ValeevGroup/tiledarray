@@ -23,7 +23,7 @@
  *
  */
 
-#include "TiledArray/madness.h"
+#include "TiledArray/external/madness.h"
 #include "unit_test_config.h"
 
 struct DistOpFixture {

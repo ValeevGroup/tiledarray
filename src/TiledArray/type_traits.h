@@ -389,6 +389,13 @@ namespace TiledArray {
                     std::declval<From>().operator To())>::value>::type>
       : std::true_type {};
 
+  template <typename From, typename To>
+  struct has_conversion_operator<
+      From, To,
+      typename std::enable_if<
+          is_type<decltype(std::declval<From>().operator To&())>::value>::type>
+      : std::true_type {};
+
   /// evaluates to true if can construct \c To from \c From , i.e. if there is
   /// a converting constructor \c To::To(From) or if \c From has an implicit
   /// or explicit conversion function to \c To, i.e. \c operator \c To()
