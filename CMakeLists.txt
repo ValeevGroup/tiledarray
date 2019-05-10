@@ -24,8 +24,9 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 3.9.0)
-project (TiledArray LANGUAGES CXX)
+cmake_minimum_required (VERSION 3.10.0)
+project (TiledArray LANGUAGES)
+enable_language(CXX)
 
 # Set TiledArray version =======================================================
 
