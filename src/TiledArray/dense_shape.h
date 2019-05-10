@@ -183,6 +183,10 @@ namespace TiledArray {
     static DenseShape gemm(const DenseShape&, const Scalar, const math::GemmHelper&, const Permutation&)
     { return DenseShape(); }
 
+    template <typename Archive>
+    void serialize(const Archive& ar) const {
+    }
+
   }; // class DenseShape
 
   constexpr inline bool operator==(const DenseShape& a, const DenseShape& b) { return true; }

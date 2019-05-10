@@ -274,7 +274,19 @@ namespace TiledArray {
       std::swap(ranges_, other.ranges_);
     }
 
-  private:
+    template <typename Archive,
+        typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type* = nullptr>
+    void serialize(const Archive& ar) {
+      ar & range_ & elements_range_ & ranges_;
+    }
+
+    template <typename Archive,
+        typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type* = nullptr>
+    void serialize(const Archive& ar) const {
+      ar & range_ & elements_range_ & ranges_;
+    }
+
+   private:
     range_type range_; ///< Stores information on tile indexing for the range.
     range_type elements_range_; ///< Stores information on element indexing for the range.
     Ranges ranges_; ///< Stores tile boundaries for each dimension.

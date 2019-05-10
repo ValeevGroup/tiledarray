@@ -192,7 +192,19 @@ namespace TiledArray {
       std::swap(elem2tile_, other.elem2tile_);
     }
 
-  private:
+    template <typename Archive,
+        typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type* = nullptr>
+    void serialize(const Archive& ar) {
+      ar & range_ & elements_range_ & tiles_ranges_ & elem2tile_;
+    }
+
+    template <typename Archive,
+        typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type* = nullptr>
+    void serialize(const Archive& ar) const {
+      ar & range_ & elements_range_ & tiles_ranges_ & elem2tile_;
+    }
+
+   private:
 
     static bool includes(const range_type& r, size_type i) { return (i >= r.first) && (i < r.second); }
 
