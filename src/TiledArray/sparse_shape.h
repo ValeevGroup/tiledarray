@@ -70,7 +70,7 @@ namespace TiledArray {
     typedef detail::ValArray<value_type> vector_type;
 
     Tensor<value_type> tile_norms_; ///< Tile magnitude data
-    std::shared_ptr<vector_type> size_vectors_; ///< Tile size information; size_vectors_[d][i] reports the size of i-th tile in dimension d
+    std::shared_ptr<vector_type> size_vectors_; ///< Tile size information; size_vectors_.get()[d][i] reports the size of i-th tile in dimension d
     size_type zero_tile_count_; ///< Number of zero tiles
     static value_type threshold_; ///< The zero threshold
 
@@ -504,6 +504,24 @@ namespace TiledArray {
           });
 
       return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
+    }
+
+    /// Bitwise comparison
+
+    /// \param other a SparseShape object
+    /// \return true if this object and @c other object are bitwise identical
+    inline bool operator==(const SparseShape<T>& other) const {
+      bool equal = this->zero_tile_count_ == other.zero_tile_count_;
+      if (equal) {
+        const unsigned int dim = tile_norms_.range().rank();
+        for(unsigned d=0; d!=dim && equal; ++d) {
+          equal = equal && (size_vectors_.get()[d] == other.size_vectors_.get()[d]);
+        }
+        if (equal) {
+          equal = equal && (tile_norms_ == other.tile_norms_);
+        }
+      }
+      return equal;
     }
 
   private:
@@ -1158,7 +1176,29 @@ namespace TiledArray {
       return gemm(other, factor, gemm_helper).perm(perm);
     }
 
-  private:
+    template <typename Archive,
+        typename std::enable_if<madness::archive::is_input_archive<Archive>::value>::type* = nullptr>
+    void serialize(const Archive& ar) {
+      ar & tile_norms_;
+      const unsigned int dim = tile_norms_.range().rank();
+      // allocate size_vectors_
+      size_vectors_ = std::move(std::shared_ptr<vector_type>(new vector_type[dim], std::default_delete<vector_type[]>()));
+      for(unsigned d=0; d!=dim; ++d)
+        ar & size_vectors_.get()[d];
+      ar & zero_tile_count_;
+    }
+
+    template <typename Archive,
+        typename std::enable_if<madness::archive::is_output_archive<Archive>::value>::type* = nullptr>
+    void serialize(const Archive& ar) const {
+      ar & tile_norms_;
+      const unsigned int dim = tile_norms_.range().rank();
+      for(unsigned d=0; d!=dim; ++d)
+        ar & size_vectors_.get()[d];
+      ar & zero_tile_count_;
+    }
+
+   private:
     template <typename Factor>
     static value_type to_abs_factor(const Factor factor) {
       using std::abs;
