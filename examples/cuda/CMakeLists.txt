@@ -25,28 +25,28 @@
 
 if(CUDA_FOUND)
 
-  cuda_add_executable(cuda_cutt EXCLUDE_FROM_ALL cuda_cutt.cpp)
+  add_executable(cuda_cutt EXCLUDE_FROM_ALL cuda_cutt.cpp)
   target_link_libraries(cuda_cutt PUBLIC tiledarray)
   add_dependencies(examples cuda_cutt)
 
-  cuda_add_executable(cuda_task EXCLUDE_FROM_ALL cuda_task.cpp)
+  add_executable(cuda_task EXCLUDE_FROM_ALL cuda_task.cpp)
   target_link_libraries(cuda_task PUBLIC tiledarray)
   add_dependencies(examples cuda_task)
 
   # Add the ta_dense_cuda executable
-  cuda_add_executable(ta_dense_cuda ta_dense_cuda.cpp)
-  target_link_libraries(ta_dense_cuda PRIVATE tiledarray)
+  add_executable(ta_dense_cuda ta_dense_cuda.cpp)
+  target_link_libraries(ta_dense_cuda PUBLIC tiledarray)
   add_dependencies(examples ta_dense_cuda)
 
-  cuda_add_executable(ta_cc_abcd_cuda ta_cc_abcd_cuda.cpp)
-  target_link_libraries(ta_cc_abcd_cuda PRIVATE tiledarray)
+  add_executable(ta_cc_abcd_cuda ta_cc_abcd_cuda.cpp)
+  target_link_libraries(ta_cc_abcd_cuda PUBLIC tiledarray)
   add_dependencies(examples ta_cc_abcd_cuda)
 
-  cuda_add_executable(ta_vector_cuda ta_vector_cuda.cpp)
-  target_link_libraries(ta_vector_cuda PRIVATE tiledarray)
+  add_executable(ta_vector_cuda ta_vector_cuda.cpp)
+  target_link_libraries(ta_vector_cuda PUBLIC tiledarray)
   add_dependencies(examples ta_vector_cuda)
 
-  cuda_add_executable(ta_reduce_cuda ta_reduce_cuda.cpp)
-  target_link_libraries(ta_reduce_cuda PRIVATE tiledarray)
+  add_executable(ta_reduce_cuda ta_reduce_cuda.cpp)
+  target_link_libraries(ta_reduce_cuda PUBLIC tiledarray)
   add_dependencies(examples ta_reduce_cuda)
 endif(CUDA_FOUND)

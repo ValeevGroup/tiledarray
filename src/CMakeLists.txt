@@ -191,20 +191,17 @@ if(CUDA_FOUND)
           TiledArray/cuda/um_storage.cu)
 
   # the list of libraries on which TiledArray depends on
-  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_CUDA TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
-
-  # Create the TiledArray library
-  cuda_add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 else(CUDA_FOUND)
 
-# the list of libraries on which TiledArray depends on
-set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  # the list of libraries on which TiledArray depends on
+  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+
+endif(CUDA_FOUND)
 
 # Create the TiledArray library
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
-
-endif(CUDA_FOUND)
 
 
 target_include_directories(tiledarray INTERFACE

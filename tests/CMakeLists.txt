@@ -116,7 +116,7 @@ target_include_directories(${executable} PRIVATE
 target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
     TA_EXCEPTION_ERROR=1 MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
 # if tiledarray library was compiled without exceptions, use TA header-only
-if (NOT TA_DEFAULT_ERROR EQUAL 1)
+if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND)
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
   #
   target_link_libraries(${executable} PUBLIC ${TILEDARRAY_DEPENDENCIES})

@@ -50,17 +50,32 @@ else()
             LIST_SEPARATOR ::
             UPDATE_DISCONNECTED 1
             CMAKE_ARGS
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-            -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
-            -DENABLE_NO_ALIGNED_ALLOC=ON
-            -DENABLE_UMPIRE=OFF
-            -DUMPIRE_INSTALL_DIR=${_UMPIRE_INSTALL_DIR}
-            -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
-            -DCMAKE_CUDA_FLAGS=${CMAKE_CUDA_FLAGS}
-            ${EXTERNAL_SOURCE_DIR}
+            	-DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
+	    	-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+            	-DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+            	-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+                -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+                -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                -DCMAKE_C_FLAGS_DEBUG=${CMAKE_C_FLAGS_DEBUG}
+                -DCMAKE_C_FLAGS_RELEASE=${CMAKE_C_FLAGS_RELEASE}
+                -DCMAKE_C_FLAGS_RELWITHDEBINFO=${CMAKE_C_FLAGS_RELWITHDEBINFO}
+                -DCMAKE_C_FLAGS_MINSIZEREL=${CMAKE_C_FLAGS_MINSIZEREL}
+                -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
+                -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                -DCMAKE_CXX_FLAGS_DEBUG=${CMAKE_CXX_FLAGS_DEBUG}
+                -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
+                -DCMAKE_CXX_FLAGS_RELWITHDEBINFO=${CMAKE_CXX_FLAGS_RELWITHDEBINFO}
+                -DCMAKE_CXX_FLAGS_MINSIZEREL=${CMAKE_CXX_FLAGS_MINSIZEREL}
+                -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
+                -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
+            	-DENABLE_NO_ALIGNED_ALLOC=ON
+            	-DENABLE_UMPIRE=OFF
+            	-DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
+            	-DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
+            	${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
-            BUILD_COMMAND make
+            BUILD_COMMAND make VERBOSE=1
             #--Install step---------------
             INSTALL_COMMAND make install
             #--Custom targets-------------
@@ -69,9 +84,6 @@ else()
 
     # Add cuTT dependency to External
     add_dependencies(External cutt)
-    if(TARGET Umpire)
-        add_dependencies(cutt Umpire)
-    endif()
 
     set(_CUTT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
