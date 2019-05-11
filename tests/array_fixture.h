@@ -41,6 +41,7 @@ struct ArrayFixture : public TiledRangeFixture {
   TiledArray::Tensor<float> shape_tensor;
   TiledArray::World& world;
   ArrayN a;
+  SpArrayN b;
 }; // struct ArrayFixture
 
 

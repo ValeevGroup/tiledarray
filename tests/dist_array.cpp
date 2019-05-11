@@ -19,6 +19,8 @@
 
 #include <random>
 #include <chrono>
+#include <cstdio>
+#include <unistd.h>
 
 #include <madness/world/text_fstream_archive.h>
 #include <madness/world/binary_fstream_archive.h>
@@ -39,11 +41,16 @@ ArrayFixture::ArrayFixture() :
     if(a.is_local(*it))
       a.set(*it, world.rank() + 1); // Fill the tile at *it (the index)
 
-  world.gop.fence();
+  for(std::size_t i = 0; i < tr.tiles_range().volume(); ++i) {
+    if (i % 3) shape_tensor[i] = 1.0;
+  }
 
-  for(std::size_t i = 0; i < tr.tiles_range().volume(); ++i)
-    if(i % 3)
-      shape_tensor[i] = 1.0;
+  b = decltype(b)(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr));
+  for(SpArrayN::range_type::const_iterator it = b.range().begin(); it != b.range().end(); ++it)
+    if(!b.is_zero(*it) && b.is_local(*it))
+      b.set(*it, world.rank() + 1); // Fill the tile at *it (the index)
+
+  world.gop.fence();
 }
 
 ArrayFixture::~ArrayFixture() {
@@ -280,7 +287,7 @@ BOOST_AUTO_TEST_CASE( make_replicated )
   }
 }
 
-BOOST_AUTO_TEST_CASE( serialization )
+BOOST_AUTO_TEST_CASE( serialization_by_tile )
 {
   decltype(a) acopy(a.world(), a.trange(), a.shape());
 
@@ -309,7 +316,9 @@ BOOST_AUTO_TEST_CASE( serialization )
     buf.reset();
   }
   else {  // ... else use TextFstreamOutputArchive
-    madness::archive::TextFstreamOutputArchive oar("tmp");
+    char archive_file_name[] = "tmp.XXXXXX";
+    mktemp(archive_file_name);
+    madness::archive::TextFstreamOutputArchive oar(archive_file_name);
 
     for(auto tile : a) {
       BOOST_REQUIRE_NO_THROW(oar & tile.get());
@@ -317,18 +326,92 @@ BOOST_AUTO_TEST_CASE( serialization )
 
     oar.close();
 
-    madness::archive::TextFstreamInputArchive iar("tmp");
+    madness::archive::TextFstreamInputArchive iar(archive_file_name);
     for(auto tile : acopy) {
       decltype(acopy)::value_type tile_value;
       BOOST_REQUIRE_NO_THROW(iar & tile_value);
       tile.future().set(std::move(tile_value));
     }
     iar.close();
+
+    std::remove(archive_file_name);
   }
 
   BOOST_CHECK_EQUAL(a.trange(), acopy.trange());
   BOOST_REQUIRE(a.shape() == acopy.shape());
   BOOST_CHECK_EQUAL_COLLECTIONS(a.begin(), a.end(), acopy.begin(), acopy.end());
+}
+
+BOOST_AUTO_TEST_CASE( dense_serialization )
+{
+  char archive_file_name[] = "tmp.XXXXXX";
+  mktemp(archive_file_name);
+  madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+  a.serialize(oar);
+
+  oar.close();
+
+  madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+  decltype(a) aread;
+  aread.serialize(iar);
+
+  BOOST_CHECK_EQUAL(aread.trange(), a.trange());
+  BOOST_REQUIRE(aread.shape() == a.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(aread.begin(), aread.end(), a.begin(), a.end());
+}
+
+BOOST_AUTO_TEST_CASE( sparse_serialization )
+{
+  char archive_file_name[] = "tmp.XXXXXX";
+  mktemp(archive_file_name);
+  madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+  b.serialize(oar);
+
+  oar.close();
+
+  madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+  decltype(b) bread;
+  bread.serialize(iar);
+
+  BOOST_CHECK_EQUAL(bread.trange(), b.trange());
+  BOOST_REQUIRE(bread.shape() == b.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(bread.begin(), bread.end(), b.begin(), b.end());
+}
+
+BOOST_AUTO_TEST_CASE( parallel_serialization )
+{
+  const int nio = 1; // use 1 rank for 1
+  char archive_file_name[] = "tmp.XXXXXX";
+  mktemp(archive_file_name);
+  madness::archive::ParallelOutputArchive oar(world, archive_file_name, nio);
+  oar & a;
+  oar.close();
+
+  madness::archive::ParallelInputArchive iar(world, archive_file_name, nio);
+  decltype(a) aread;
+  aread.load(world, iar);
+
+  BOOST_CHECK_EQUAL(aread.trange(), a.trange());
+  BOOST_REQUIRE(aread.shape() == a.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(aread.begin(), aread.end(), a.begin(), a.end());
+}
+
+BOOST_AUTO_TEST_CASE( parallel_sparse_serialization )
+{
+  const int nio = 1; // use 1 rank for 1
+  char archive_file_name[] = "tmp.XXXXXX";
+  mktemp(archive_file_name);
+  madness::archive::ParallelOutputArchive oar(world, archive_file_name, nio);
+  oar & b;
+  oar.close();
+
+  madness::archive::ParallelInputArchive iar(world, archive_file_name, nio);
+  decltype(b) bread;
+  bread.load(world, iar);
+
+  BOOST_CHECK_EQUAL(bread.trange(), b.trange());
+  BOOST_REQUIRE(bread.shape() == b.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(bread.begin(), bread.end(), b.begin(), b.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -22,6 +22,8 @@
 
 #include <cstdlib>
 
+#include <madness/world/parallel_archive.h>
+
 #include <TiledArray/replicator.h>
 #include <TiledArray/pmap/replicated_pmap.h>
 //#include <TiledArray/tensor.h>
@@ -49,7 +51,7 @@ namespace TiledArray {
   /// \tparam Tile The tile type [ Default = \c Tensor<T> ]
   template <typename Tile = Tensor<double, Eigen::aligned_allocator<double> >,
       typename Policy = DensePolicy>
-  class DistArray {
+  class DistArray : public madness::archive::ParallelSerializableObject {
   public:
     typedef DistArray<Tile, Policy> DistArray_; ///< This object's type
     typedef TiledArray::detail::ArrayImpl<Tile, Policy> impl_type;
@@ -772,7 +774,213 @@ namespace TiledArray {
     /// \c true.
     bool is_initialized() const { return static_cast<bool>(pimpl_); }
 
-  private:
+    /// serialize local contents of a DistArray to an Archive object
+
+    /// @note use Parallel{Input,Output}Archive for parallel serialization
+    /// @tparam Archive an Archive type
+    /// @warning this does not fence; it is user's responsibility to do that
+    template <typename Archive, typename = std::enable_if_t<!Archive::is_parallel_archive && madness::archive::is_output_archive<Archive>::value> >
+    void serialize(const Archive& ar) const {
+      // serialize array type, world size, rank, and pmap type to be able
+      // to ensure same data type and same data distribution expected
+      ar& typeid(*this).hash_code()& world().size() & world().rank() & trange() &
+          shape() & typeid(pmap().get()).hash_code();
+      int64_t count = 0;
+      for (auto it = begin(); it != end(); ++it) ++count;
+      ar& count;
+      for (auto it = begin(); it != end(); ++it) ar & it->get();
+    }
+
+    /// deserialize local contents of a DistArray from an Archive object
+
+    /// @note use Parallel{Input,Output}Archive for parallel serialization
+    /// @tparam Archive an Archive type
+    /// @warning this does not fence; it is user's responsibility to do that
+    template <typename Archive, typename = std::enable_if_t<!Archive::is_parallel_archive && madness::archive::is_input_archive<Archive>::value> >
+    void serialize(const Archive& ar) {
+      auto& world = TiledArray::get_default_world();
+
+      std::size_t typeid_hash = 0l;
+      ar& typeid_hash;
+      if(typeid_hash != typeid(*this).hash_code())
+        TA_EXCEPTION("DistArray::serialize: source DistArray type != this DistArray type");
+
+      ProcessID world_size = -1;
+      ProcessID world_rank = -1;
+      ar& world_size& world_rank;
+      if (world_size != world.size() || world_rank != world.rank())
+        TA_EXCEPTION("DistArray::serialize: source DistArray world != this DistArray world");
+
+      trange_type trange;
+      shape_type shape;
+      ar& trange& shape;
+
+      // use default pmap, ensure it's the same pmap used to serialize
+      auto volume = trange.tiles_range().volume();
+      auto pmap =
+          detail::policy_t<DistArray_>::default_pmap(
+              world, volume);
+      size_t pmap_hash_code = 0;
+      ar& pmap_hash_code;
+      if (pmap_hash_code != typeid(pmap.get()).hash_code())
+        TA_EXCEPTION("DistArray::serialize: source DistArray pmap != this DistArray pmap");
+      pimpl_.reset(
+          new impl_type(world, std::move(trange), std::move(shape), pmap));
+
+      int64_t count = 0;
+      ar& count;
+      for (auto it = begin(); it != end(); ++it, --count) {
+        Tile tile;
+        ar& tile;
+        this->set(it.ordinal(), std::move(tile));
+      }
+      if (count != 0)
+        TA_EXCEPTION("DistArray::serialize: # of tiles in archive != # of tiles expected");
+    }
+
+    /// Replaces this array with one loaded from an Archive object using the default processor map
+
+    /// @tparam Archive a parallel MADWorld Archive type
+    /// @param world a World object with which this object will be associated
+    /// @param ar an Archive object from which this object's data will be read
+    ///
+    /// @note The & operator for serializing will only work with parallel
+    ///       MADWorld archives.
+    /// @note This is a collective operation that fences before and after
+    ///       completion, if @c ar.dofence() is true
+    template <typename Archive>
+    void load(World& world, Archive& ar) {
+
+      auto me = world.rank();
+      const Tag tag = world.mpi.unique_tag();  // for broadcasting metadata
+
+      if (ar.dofence()) world.gop.fence();
+
+      if (ar.is_io_node()) {  // on each io node ...
+
+        auto& localar = ar.local_archive();
+
+        // make sure source data matches the expected type
+        // TODO would be nice to be able to convert the data upon reading
+        std::size_t typeid_hash = 0l;
+        localar& typeid_hash;
+        if (typeid_hash != typeid(*this).hash_code())
+          TA_EXCEPTION(
+              "DistArray::load: source DistArray type != this DistArray type");
+
+        // make sure same number of clients for every I/O node
+        int num_io_clients = 0;
+        localar& num_io_clients;
+        if (num_io_clients != ar.num_io_clients())
+          TA_EXCEPTION(
+              "DistArray::load: invalid parallel archive");
+
+        trange_type trange;
+        shape_type shape;
+        localar& trange& shape;
+
+        // send trange and shape to every client
+        for (ProcessID p=0; p<world.size(); ++p) {
+          if (p != me && ar.io_node(p) == me) {
+            world.mpi.Send(int(1),p,tag); // Tell client to expect the data
+            madness::archive::MPIOutputArchive dest(world, p);
+            dest & trange & shape;
+            dest.flush();
+          }
+        }
+
+        // use default pmap
+        auto volume = trange.tiles_range().volume();
+        auto pmap = detail::policy_t<DistArray_>::default_pmap(world, volume);
+        pimpl_.reset(
+            new impl_type(world, std::move(trange), std::move(shape), pmap));
+
+        int64_t count = 0;
+        localar& count;
+        for (size_t ord=0; ord!=volume; ++ord) {
+          if (!is_zero(ord)) {
+            auto owner_rank = pmap->owner(ord);
+            if (ar.io_node(owner_rank) == me) {
+              Tile tile;
+              localar& tile;
+              this->set(ord, std::move(tile));
+              --count;
+            }
+          }
+        }
+        if (count != 0)
+          TA_EXCEPTION(
+              "DistArray::load: # of tiles in archive != # of tiles expected");
+      }
+      else {  // non-I/O node still needs to initialize metadata
+
+        trange_type trange;
+        shape_type shape;
+
+        ProcessID p = ar.my_io_node();
+        int flag;
+        world.mpi.Recv(flag,p,tag);
+        TA_ASSERT(flag == 1);
+        madness::archive::MPIInputArchive source(world, p);
+        source & trange & shape;
+
+        // use default pmap
+        auto volume = trange.tiles_range().volume();
+        auto pmap = detail::policy_t<DistArray_>::default_pmap(world, volume);
+        pimpl_.reset(
+            new impl_type(world, std::move(trange), std::move(shape), pmap));
+      }
+
+      if (ar.dofence()) world.gop.fence();
+    }
+
+    /// Stores this array to an Archive object
+
+    /// @tparam Archive a parallel MADWorld Archive type
+    /// @param ar an Archive object that will contain this object's data
+    ///
+    /// @note The & operator for serializing will only work with parallel
+    ///       MADWorld archives.
+    /// @note this is a collective operation that fences before and after
+    ///       completion if @c ar.dofence() is true
+    template <typename Archive>
+    void store(Archive& ar) const {
+
+      auto me = world().rank();
+
+      if (ar.dofence()) world().gop.fence();
+
+      if (ar.is_io_node()) {  // on each io node ...
+        auto& localar = ar.local_archive();
+        // ... store metadata first ...
+        localar& typeid(*this).hash_code() & ar.num_io_clients()
+               & trange() & shape();
+        // ... then loop over tiles and dump the data from ranks
+        // assigned to this I/O node in order ...
+        // for sanity check dump tile count assigned to this I/O node
+        const auto volume = trange().tiles_range().volume();
+        int64_t count = 0;
+        for (size_t ord=0; ord!=volume; ++ord) {
+          if (!is_zero(ord)) {
+            const auto owner_rank = pmap()->owner(ord);
+            if (ar.io_node(owner_rank) == me) {
+              ++count;
+            }
+          }
+        }
+        localar& count;
+        for (size_t ord=0; ord!=volume; ++ord) {
+          if (!is_zero(ord)) {
+            auto owner_rank = pmap()->owner(ord);
+            if (ar.io_node(owner_rank) == me)
+              localar & find(ord).get();
+          }
+        }
+      }  // am I an I/O node?
+      if (ar.dofence()) world().gop.fence();
+    }
+
+   private:
 
     template <typename Index>
     typename std::enable_if<std::is_integral<Index>::value>::type
@@ -863,5 +1071,37 @@ namespace TiledArray {
   }
 
 } // namespace TiledArray
+
+// serialization
+namespace madness {
+namespace archive {
+template <class Tile, class Policy>
+struct ArchiveLoadImpl< ParallelInputArchive, TiledArray::DistArray<Tile,Policy> > {
+static inline void load(const ParallelInputArchive& ar, TiledArray::DistArray<Tile,Policy>& x) {
+  x.load(*ar.get_world(), ar);
+}
+};
+
+template <class Tile, class Policy>
+struct ArchiveStoreImpl< ParallelOutputArchive, TiledArray::DistArray<Tile,Policy> > {
+static inline void store(const ParallelOutputArchive& ar, const TiledArray::DistArray<Tile,Policy>& x) {
+  x.store(ar);
+}
+};
+}
+
+template <class Tile, class Policy>
+void save(const TiledArray::DistArray<Tile,Policy>& x, const std::string name) {
+  archive::ParallelOutputArchive ar2(x.world(), name.c_str(), 1);
+  ar2 & x;
+}
+
+template <class Tile, class Policy>
+void load(TiledArray::DistArray<Tile,Policy>& x, const std::string name) {
+  archive::ParallelInputArchive ar2(x.world(), name.c_str(), 1);
+  ar2 & x;
+}
+
+}
 
 #endif // TILEDARRAY_ARRAY_H__INCLUDED
