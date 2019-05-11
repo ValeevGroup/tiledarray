@@ -427,10 +427,6 @@ namespace TiledArray {
         math::outer_fill(m, n, left, right, base, first_, op);
       }
 
-      // Common reduction operations
-
-
-
     }; // class SizeArray
 
     template <typename T>
