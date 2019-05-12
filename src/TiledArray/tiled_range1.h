@@ -27,6 +27,16 @@
 #include <mutex>
 #include <cassert>
 
+// Forward declaration of MADNESS archive type traits
+namespace madness {
+namespace archive {
+
+template <typename> struct is_output_archive;
+template <typename> struct is_input_archive;
+
+}  // namespace archive
+}  // namespace madness
+
 namespace TiledArray {
 
   /// TiledRange1 class defines a non-uniformly-tiled, contiguous, one-dimensional
