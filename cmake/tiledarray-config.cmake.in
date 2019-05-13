@@ -25,10 +25,9 @@ endif()
 
 set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
 if(TILEDARRAY_HAS_CUDA)
-   enable_language(CUDA)
-   set(CMAKE_CUDA_STANDARD 14)
-   set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+    set(CMAKE_CUDA_HOST_COMPILER "@CMAKE_CUDA_HOST_COMPILER@")
 endif()
+
 # Set the tiledarray compiled library target
 set(TILEDARRAY_LIBRARIES tiledarray)
 
