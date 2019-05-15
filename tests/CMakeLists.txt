@@ -31,7 +31,7 @@ CONFIGURE_FILE(
 set(executable ta_test)
 # N.B.: The order of files here represents the order in which the tests are run.
 # N.B. 2: if you want to trim this down you may need to resolve linker errors due to missing fixture deps manually
-set(ta_test_src_files  ta_test.cpp
+set(ta_test_src_files2  ta_test.cpp
     btas.cpp
     meta.cpp
     type_traits.cpp
@@ -93,6 +93,11 @@ set(ta_test_src_files  ta_test.cpp
     expressions_mixed.cpp
     foreach.cpp
     solvers.cpp
+)
+
+set(ta_test_src_files  ta_test.cpp
+    dist_array.cpp
+    range.cpp
 )
 
 if(ENABLE_ELEMENTAL)
