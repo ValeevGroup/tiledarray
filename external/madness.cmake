@@ -390,21 +390,19 @@ else()
   
   # Since 'install-madness' target cannot be linked to the 'install' target,
   # we will do it manually here.
-  install(CODE
+  set(INSTALL_MADNESS_SUBTARGETS install-world install-clapack install-config install-common ${ELEMENTAL_INSTALL_TARGET})
+  foreach(INSTALL_MADNESS_SUBTARGET IN LISTS INSTALL_MADNESS_SUBTARGETS)
+    install(CODE
+      "execute_process(
+         COMMAND \"${CMAKE_COMMAND}\" \"--build\" \".\" \"--target\" \"${INSTALL_MADNESS_SUBTARGET}\"
+         WORKING_DIRECTORY \"${MADNESS_BINARY_DIR}\"
+         RESULT_VARIABLE error_code)
+       if(error_code)
+         message(FATAL_ERROR \"Failed to install 'madness'\")
+       endif()
       "
-      execute_process(
-          COMMAND \"${CMAKE_COMMAND}\" \"--build\" \".\" \"--target\" \"install-world\"
-          COMMAND \"${CMAKE_COMMAND}\" \"--build\" \".\" \"--target\" \"install-clapack\"
-          COMMAND \"${CMAKE_COMMAND}\" \"--build\" \".\" \"--target\" \"install-config\"
-          COMMAND \"${CMAKE_COMMAND}\" \"--build\" \".\" \"--target\" \"install-common\"
-          COMMAND \"${CMAKE_COMMAND}\" \"--build\" \".\" \"--target\" \"${ELEMENTAL_INSTALL_TARGET}\"
-          WORKING_DIRECTORY \"${MADNESS_BINARY_DIR}\"
-          RESULT_VARIABLE error_code)
-      if(error_code)
-        message(FATAL_ERROR \"Failed to install 'madness'\")
-      endif()
-      "
-      )
+    )
+  endforeach()
 
   # Set build dependencies and compiler arguments
   add_dependencies(External build-madness)
