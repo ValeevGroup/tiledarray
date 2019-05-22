@@ -27,6 +27,7 @@
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/external/cuda.h>
 #include <TiledArray/cuda/cuda_task_fn.h>
+#include <TiledArray/tensor/type_traits.h>
 #endif
 
 namespace TiledArray {
