@@ -26,6 +26,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/external/cuda.h>
+#include <TiledArray/cuda/cuda_task_fn.h>
 #endif
 
 namespace TiledArray {
@@ -617,6 +618,35 @@ namespace TiledArray {
 #endif
         }
 
+#ifdef TILEDARRAY_HAS_CUDA
+        template <typename Result = result_type>
+        std::enable_if_t<detail::is_cuda_tile<Result>::value, void>
+        internal_run(const madness::TaskThreadEnv&){
+          TA_ASSERT(ready_result_);
+
+          auto post_result = madness::add_cuda_task(world_, op_, *ready_result_);
+          result_.set(post_result);
+
+          if(callback_){
+            result_.register_callback(callback_);
+          }
+        }
+
+
+
+        template <typename Result = result_type>
+        std::enable_if_t<!detail::is_cuda_tile<Result>::value, void>
+#else
+        void
+#endif
+        internal_run(const madness::TaskThreadEnv&){
+          TA_ASSERT(ready_result_);
+          result_.set(op_(*ready_result_));
+
+          if(callback_)
+            callback_->notify();
+        }
+
         World& world_; ///< The world that owns this task
         opT op_; ///< The reduction operation
         std::shared_ptr<result_type> ready_result_; ///< Result object that is ready to be reduced
@@ -642,19 +672,8 @@ namespace TiledArray {
         virtual ~ReduceTaskImpl() { }
 
         /// Task function
-        virtual void run(const madness::TaskThreadEnv&) {
-          TA_ASSERT(ready_result_);
-          result_.set(op_(*ready_result_));
-
-#ifdef TILEDARRAY_HAS_CUDA
-          // TODO need to fix async post process op
-          auto stream_ptr = tls_cudastream_accessor();
-          if(stream_ptr != nullptr){
-            detail::thread_wait_cuda_stream(*stream_ptr);
-          }
-#endif
-          if(callback_)
-            callback_->notify();
+        virtual void run(const madness::TaskThreadEnv& threadEnv) {
+            internal_run(threadEnv);
         }
 
         /// Callback function invoked by \c ReductionObject
