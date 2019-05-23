@@ -173,7 +173,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   TA::TiledRange trange_vvvv(
       {trange_uocc, trange_uocc, trange_uocc, trange_uocc});
 
-  const bool do_validate = false;  // set to true if need to validate the result
+//  const bool do_validate = false;  // set to true if need to validate the result
 
   const auto complex_T = TA::detail::is_complex<T>::value;
   const double flops_per_fma =
@@ -191,13 +191,13 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   CUDAMatrix v(world, trange_vvvv);
   CUDAMatrix t2_v;
   // To validate, fill input tensors with random data, otherwise just with 1s
-  if (do_validate) {
-    rand_fill_array(t2);
-    rand_fill_array(v);
-  } else {
-    t2.fill_local(1.0);
-    v.fill_local(1.0);
-  }
+//  if (do_validate) {
+//    rand_fill_array(t2);
+//    rand_fill_array(v);
+//  } else {
+    t2.fill_local(0.2);
+    v.fill_local(0.3);
+//  }
 
   // Start clock
   world.gop.fence();
@@ -215,7 +215,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
     const double start = madness::wall_time();
 
     // this is how the user would express this contraction
-    t2_v("i,j,a,b") = t2("i,j,c,d") * v("a,b,c,d");
+    t2_v("i,j,a,b") =  v("a,b,c,d") * t2("i,j,c,d");
 
     const double stop = madness::wall_time();
     const double time = stop - start;
@@ -237,6 +237,33 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
               << total_time / static_cast<double>(repeat-1)
               << " sec\nAverage GFLOPS      = "
               << total_gflop_rate / static_cast<double>(repeat-1) << "\n";
+
+  double threshold = std::numeric_limits<T>::epsilon();
+  auto dot_length = n_uocc*n_uocc;
+  auto result = dot_length * 0.2 * 0.3;
+
+  auto verify = [&world, &threshold, &result, &dot_length] (const TA::Tile<CUDATile>& tile) {
+    auto n_elements = tile.size();
+    for (std::size_t i = 0; i < n_elements; i++) {
+      double abs_err = fabs(tile[i] - result);
+//      double abs_val = fabs(tile[i]);
+      double rel_err = abs_err / result / dot_length;
+      if(rel_err > threshold){
+        std::cout << "Node: " << world.rank() <<  " Tile: " << tile.range()  << " id: " << i << std::string(" gpu: " + std::to_string(tile[i]) + " cpu: " + std::to_string(result) + "\n");
+        break;
+      }
+    }
+  };
+
+  for(auto iter = t2_v.begin(); iter != t2_v.end(); iter++){
+    world.taskq.add(verify, t2_v.find(iter.index()));
+  }
+
+  world.gop.fence();
+
+  if (world.rank() == 0) {
+    std::cout << "Verification Passed" << std::endl;
+  }
 }
 
 template <typename Tile, typename Policy>

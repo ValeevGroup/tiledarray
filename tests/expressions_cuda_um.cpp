@@ -1622,6 +1622,135 @@ BOOST_AUTO_TEST_CASE(cont_permute) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(cont_permute_permute) {
+  const std::size_t m = a.trange().elements_range().extent(0);
+  const std::size_t k = a.trange().elements_range().extent(1) *
+                        a.trange().elements_range().extent(2);
+  const std::size_t n = b.trange().elements_range().extent(2);
+
+  TiledArray::EigenMatrixXd left(m, k);
+  left.fill(0);
+
+  for (TArrayUMD::const_iterator it = a.begin(); it != a.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      const std::size_t r = i[0];
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        for (i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2);
+             ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1) +
+                                i[2] * a.trange().elements_range().stride(2);
+
+          left(r, c) = tile(i[0], i[1], i[2]);
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
+
+  TiledArray::EigenMatrixXd right(n, k);
+  right.fill(0);
+
+  for (TArrayUMD::const_iterator it = b.begin(); it != b.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      const std::size_t r = i[0];
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        for (i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2);
+             ++i[2]) {
+          const std::size_t c = i[2] * a.trange().elements_range().stride(1) +
+                                i[1] * a.trange().elements_range().stride(2);
+
+          right(r, c) = tile(i[0], i[1], i[2]);
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
+
+  TiledArray::EigenMatrixXd result(m, n);
+
+  result = right * left.transpose();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = a("j,b,c") * b("i,c,b"));
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]),
+                                   tolerance);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("j,b,c")) * b("i,c,b"));
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 2,
+                                   tolerance);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = a("j,b,c") * (3 * b("i,c,b")));
+
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 3,
+                                   tolerance);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("j,b,c")) * (3 * b("i,c,b")));
+
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 6,
+                                   tolerance);
+      }
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE(scale_cont) {
   const std::size_t m = a.trange().elements_range().extent(0);
   const std::size_t k = a.trange().elements_range().extent(1) *
@@ -1867,6 +1996,137 @@ BOOST_AUTO_TEST_CASE(scale_cont_permute) {
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * (3 * b("j,c,b"))));
+
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 30,
+                                   tolerance);
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(scale_cont_permute_permute) {
+  const std::size_t m = a.trange().elements_range().extent(0);
+  const std::size_t k = a.trange().elements_range().extent(1) *
+                        a.trange().elements_range().extent(2);
+  const std::size_t n = b.trange().elements_range().extent(2);
+
+  TiledArray::EigenMatrixXd left(m, k);
+  left.fill(0);
+
+  for (TArrayUMD::const_iterator it = a.begin(); it != a.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      const std::size_t r = i[0];
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        for (i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2);
+             ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1) +
+                                i[2] * a.trange().elements_range().stride(2);
+
+          left(r, c) = tile(i[0], i[1], i[2]);
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
+
+  TiledArray::EigenMatrixXd right(n, k);
+  right.fill(0);
+
+  for (TArrayUMD::const_iterator it = b.begin(); it != b.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      const std::size_t r = i[0];
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        for (i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2);
+             ++i[2]) {
+          const std::size_t c = i[2] * a.trange().elements_range().stride(1) +
+                                i[1] * a.trange().elements_range().stride(2);
+
+          right(r, c) = tile(i[0], i[1], i[2]);
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
+
+  TiledArray::EigenMatrixXd result(m, n);
+
+  result = right * left.transpose();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("j,b,c") * b("i,c,b")));
+
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 5,
+                                   tolerance);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("j,b,c")) * b("i,c,b")));
+
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 10,
+                                   tolerance);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("j,b,c") * (3 * b("i,c,b"))));
+
+  for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
+    TArrayUMD::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_CLOSE_FRACTION(tile(i[0], i[1]), result(i[0], i[1]) * 15,
+                                   tolerance);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("j,b,c")) * (3 * b("i,c,b"))));
 
   for (TArrayUMD::const_iterator it = w.begin(); it != w.end(); ++it) {
     TArrayUMD::value_type tile = *it;

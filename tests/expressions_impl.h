@@ -1917,6 +1917,135 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_permute, F, Fixtures, F) {
   }
 }
 
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(cont_permute_permute, F, Fixtures, F) {
+  auto& a = F::a;
+  auto& b = F::b;
+  auto& w = F::w;
+
+  const std::size_t m = a.trange().elements_range().extent(0);
+  const std::size_t k = a.trange().elements_range().extent(1) *
+                        a.trange().elements_range().extent(2);
+  const std::size_t n = b.trange().elements_range().extent(2);
+
+  typename F::Matrix left(m, k);
+  left.fill(0);
+
+  for (auto it = a.begin(); it != a.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      const std::size_t r = i[0];
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        for (i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2);
+             ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1) +
+                                i[2] * a.trange().elements_range().stride(2);
+
+          left(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
+
+  typename F::Matrix right(n, k);
+  right.fill(0);
+
+  for (auto it = b.begin(); it != b.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      const std::size_t r = i[0];
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        for (i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2);
+             ++i[2]) {
+          const std::size_t c = i[2] * a.trange().elements_range().stride(1) +
+                                i[1] * a.trange().elements_range().stride(2);
+
+          right(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
+
+  typename F::Matrix result(m, n);
+
+  result = right * left.transpose();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = a("j,b,c") * b("i,c,b"));
+  for (auto it = w.begin(); it != w.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]));
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("j,b,c")) * b("i,c,b"));
+  for (auto it = w.begin(); it != w.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 2);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = a("j,b,c") * (3 * b("i,c,b")));
+
+  for (auto it = w.begin(); it != w.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 3);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = (2 * a("j,b,c")) * (3 * b("i,c,b")));
+
+  for (auto it = w.begin(); it != w.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 6);
+      }
+    }
+  }
+}
+
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont, F, Fixtures, F) {
   auto& a = F::a;
   auto& b = F::b;
@@ -2163,6 +2292,137 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont_permute, F, Fixtures, F) {
   }
 
   BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("i,b,c")) * (3 * b("j,c,b"))));
+
+  for (auto it = w.begin(); it != w.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 30);
+      }
+    }
+  }
+}
+
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_cont_permute_permute, F, Fixtures, F) {
+  auto& a = F::a;
+  auto& b = F::b;
+  auto& w = F::w;
+
+  const std::size_t m = a.trange().elements_range().extent(0);
+  const std::size_t k = a.trange().elements_range().extent(1) *
+                        a.trange().elements_range().extent(2);
+  const std::size_t n = b.trange().elements_range().extent(2);
+
+  typename F::Matrix left(m, k);
+  left.fill(0);
+
+  for (auto it = a.begin(); it != a.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      const std::size_t r = i[0];
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        for (i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2);
+             ++i[2]) {
+          const std::size_t c = i[1] * a.trange().elements_range().stride(1) +
+                                i[2] * a.trange().elements_range().stride(2);
+
+          left(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(&left(0, 0), left.rows() * left.cols());
+
+  typename F::Matrix right(n, k);
+  right.fill(0);
+
+  for (auto it = b.begin(); it != b.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 3> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      const std::size_t r = i[0];
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        for (i[2] = tile.range().lobound(2); i[2] < tile.range().upbound(2);
+             ++i[2]) {
+          const std::size_t c = i[2] * a.trange().elements_range().stride(1) +
+                                i[1] * a.trange().elements_range().stride(2);
+
+          right(r, c) = tile[i];
+        }
+      }
+    }
+  }
+
+  GlobalFixture::world->gop.sum(&right(0, 0), right.rows() * right.cols());
+
+  typename F::Matrix result(m, n);
+
+  result = right * left.transpose();
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("j,b,c") * b("i,c,b")));
+
+  for (auto it = w.begin(); it != w.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 5);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("j,b,c")) * b("i,c,b")));
+
+  for (auto it = w.begin(); it != w.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 10);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * (a("j,b,c") * (3 * b("i,c,b"))));
+
+  for (auto it = w.begin(); it != w.end(); ++it) {
+    typename F::TArray::value_type tile = *it;
+
+    std::array<std::size_t, 2> i;
+
+    for (i[0] = tile.range().lobound(0); i[0] < tile.range().upbound(0);
+         ++i[0]) {
+      for (i[1] = tile.range().lobound(1); i[1] < tile.range().upbound(1);
+           ++i[1]) {
+        BOOST_CHECK_EQUAL(tile[i], result(i[0], i[1]) * 15);
+      }
+    }
+  }
+
+  BOOST_REQUIRE_NO_THROW(w("i,j") = 5 * ((2 * a("j,b,c")) * (3 * b("i,c,b"))));
 
   for (auto it = w.begin(); it != w.end(); ++it) {
     typename F::TArray::value_type tile = *it;
