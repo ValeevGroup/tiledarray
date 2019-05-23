@@ -329,6 +329,7 @@ else()
       -DMPI_THREAD=multiple
       -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER}
       -DMPI_C_COMPILER=${MPI_C_COMPILER}
+      -DMPI_CXX_SKIP_MPICXX=ON  # introduced in cmake 3.10, disables search for C++ MPI-2 bindings
       -DENABLE_MKL=${ENABLE_MKL}
       -DENABLE_TBB=${ENABLE_TBB}
       "-DTBB_ROOT_DIR=${TBB_ROOT_DIR}"
