@@ -205,7 +205,7 @@ namespace TiledArray {
         auto result_tile = op_caller(std::forward<Op>(op), tile_norms[index],
             arg_tile, arg_tiles...);
         ++counter;
-        return std::move(result_tile);
+        return result_tile;
       };
 
       World& world = arg.world();
