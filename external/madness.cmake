@@ -11,7 +11,7 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-set(MADNESS_OLDEST_TAG "36480e571f4bace856d7e4dd73a087543c714f14" CACHE STRING
+set(MADNESS_OLDEST_TAG "2b1e436f3f45ad34d4bad19de16a3227cbe18150" CACHE STRING
         "The oldest revision hash or tag of MADNESS that can be used")
 
 find_package(MADNESS 0.10.1 CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
@@ -81,6 +81,9 @@ if(MADNESS_FOUND)
     int main(int argc, char** argv) {
       // test 1
       madness::print_meminfo_enable();
+
+      // test 2
+      madness::World::is_default(SafeMPI::COMM_WORLD);
 
       return 0;
     }

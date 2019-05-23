@@ -34,19 +34,61 @@ inline void cuda_finalize() {
 }
 #endif
 
+namespace detail {
+  static bool& initialized_madworld_accessor() {
+    static bool flag = false;
+    return flag;
+  }
+  static bool initialized_madworld() {
+    return initialized_madworld_accessor();
+  }
+  static bool& initialized_accessor() {
+    static bool flag = false;
+    return flag;
+  }
+  static bool& finalized_accessor() {
+    static bool flag = false;
+    return flag;
+  }
+}
+
 /// @name TiledArray initialization.
-///       These functions initialize TiledArray AND MADWorld runtime components.
-///       @note the default World object is set to the object returned by these.
+///       These functions initialize (if needed) MADWorld runtime and
+///       TiledArray.
+/// @note the default World object is set to the object returned by these.
+/// @warning MADWorld can only be initialized/finalized once, hence if TiledArray initializes MADWorld
+///          it can also be initialized/finalized only once.
 
 /// @{
+
+static bool initialized() {
+  return initialized_accessor();
+}
+
+/// @throw TiledArray::Exception if TiledArray initialized MADWorld and TiledArray::finalize() had been called
 inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm) {
-  auto& default_world = madness::initialize(argc, argv, comm);
-  TiledArray::set_default_world(default_world);
+  if (detail::initialized_madworld() && finalized())
+    throw Exception("TiledArray finalized MADWorld already, cannot re-initialize MADWorld again");
+  if (!initialized()) {
+    if (!madness::initialized())
+      detail::initialized_madworld_accessor() = true;
+    else {  // if MADWorld initialized, we must assume that comm is its default World.
+      if (madness::World::is_default(comm))
+        throw Exception("MADWorld initialized before TiledArray::initialize(argc, argv, comm), but not initialized with comm");
+    }
+    auto& default_world =
+        detail::initialized_madworld()
+            ? madness::initialize(argc, argv, comm)
+            : *madness::World::find_instance(comm);
 #ifdef TILEDARRAY_HAS_CUDA
     TiledArray::cuda_initialize();
 #endif
-  madness::print_meminfo_disable();
-  return default_world;
+    madness::print_meminfo_disable();
+    detail::initialized_accessor() = true;
+    return default_world;
+  }
+  else
+    throw Exception("TiledArray already initialized");
 }
 
 inline World& initialize(int& argc, char**& argv) {
@@ -57,12 +99,20 @@ inline World& initialize(int& argc, char**& argv, const MPI_Comm& comm) {
   return TiledArray::initialize(argc, argv, SafeMPI::Intracomm(comm));
 }
 
+static bool finalized() {
+  return finalized_accessor();
+}
+
 inline void finalize() {
-  madness::finalize();
-  TiledArray::reset_default_world();
 #ifdef TILEDARRAY_HAS_CUDA
-    TiledArray::cuda_finalize();
+  TiledArray::cuda_finalize();
 #endif
+  if (detail::initialized_madworld()) {
+    madness::finalize();
+  }
+  TiledArray::reset_default_world();
+  detail::initialized_accessor() = false;
+  detail::finalized_accessor() = true;
 }
 
 /// @}
