@@ -215,7 +215,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
     const double start = madness::wall_time();
 
     // this is how the user would express this contraction
-    t2_v("i,j,a,b") = t2("i,j,c,d") * v("a,b,c,d");
+    t2_v("i,j,a,b") =  v("a,b,c,d") * t2("i,j,c,d");
 
     const double stop = madness::wall_time();
     const double time = stop - start;
@@ -256,7 +256,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   };
 
   for(auto iter = t2_v.begin(); iter != t2_v.end(); iter++){
-    world.taskq.add(verify, c.find(iter.index()));
+    world.taskq.add(verify, t2_v.find(iter.index()));
   }
 
   world.gop.fence();
