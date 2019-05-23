@@ -52,18 +52,23 @@ namespace detail {
   }
 }
 
+/// @return true if TiledArray (and, necessarily, MADWorld runtime) is in an initialized state
+static bool initialized() {
+  return detail::initialized_accessor();
+}
+
+/// @return true if TiledArray has been finalized at least once
+static bool finalized() {
+  return detail::finalized_accessor();
+}
+
 /// @name TiledArray initialization.
-///       These functions initialize (if needed) MADWorld runtime and
-///       TiledArray.
+///       These functions initialize TiledArray and (if needed) MADWorld runtime.
 /// @note the default World object is set to the object returned by these.
 /// @warning MADWorld can only be initialized/finalized once, hence if TiledArray initializes MADWorld
 ///          it can also be initialized/finalized only once.
 
 /// @{
-
-static bool initialized() {
-  return initialized_accessor();
-}
 
 /// @throw TiledArray::Exception if TiledArray initialized MADWorld and TiledArray::finalize() had been called
 inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm) {
@@ -100,10 +105,9 @@ inline World& initialize(int& argc, char**& argv, const MPI_Comm& comm) {
   return TiledArray::initialize(argc, argv, SafeMPI::Intracomm(comm));
 }
 
-static bool finalized() {
-  return finalized_accessor();
-}
+/// @}
 
+/// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized when TiledArray::initialize was called).
 inline void finalize() {
 #ifdef TILEDARRAY_HAS_CUDA
   TiledArray::cuda_finalize();
@@ -116,8 +120,6 @@ inline void finalize() {
   detail::initialized_accessor() = false;
   detail::finalized_accessor() = true;
 }
-
-/// @}
 
 }
 
