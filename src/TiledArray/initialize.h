@@ -80,6 +80,7 @@ inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm
         detail::initialized_madworld()
             ? madness::initialize(argc, argv, comm)
             : *madness::World::find_instance(comm);
+    TiledArray::set_default_world(default_world);
 #ifdef TILEDARRAY_HAS_CUDA
     TiledArray::cuda_initialize();
 #endif
@@ -107,6 +108,7 @@ inline void finalize() {
 #ifdef TILEDARRAY_HAS_CUDA
   TiledArray::cuda_finalize();
 #endif
+  TiledArray::get_default_world().gop.fence(); // TODO remove when madness::finalize() fences
   if (detail::initialized_madworld()) {
     madness::finalize();
   }
