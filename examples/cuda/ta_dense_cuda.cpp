@@ -255,29 +255,6 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                 << "\n";
   }
 
-  //  for (auto iter = c.begin(); iter != c.end(); iter++){
-  //    auto tile = iter->get();
-  //    std::cout << "tile: " << iter.index() << " ";
-  //    for (int i = 0; i < tile.size(); i++){
-  //      std::cout << tile[i] << " ";
-  //    }
-  //    std::cout << std::endl;
-  //  }
-
-//  CUDAMatrix::wait_for_lazy_cleanup(world);
-//  TA::to_host(c);
-
-  // test permutation
-  //  c("m,n") = c("n,m");
-  //  cudaDeviceSynchronize();
-  //  c("m,n") = c("n,m");
-
-  //  cudaDeviceSynchronize();
-  // verify it with gpu result
-
-  // convert um array to ta tensor array
-  auto c_ta = TiledArray::um_tensor_to_ta_tensor<TA::Tile<CUDATile>, TA::Tensor<value_type>,
-                                                 TiledArray::DensePolicy>(c);
 
   double threshold =
       std::numeric_limits<typename Storage::value_type>::epsilon();
@@ -286,11 +263,11 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   auto result = dot_length * val_a * val_b;
 
   auto verify = [&world,&threshold, &result,
-                 &dot_length](TA::Tensor<value_type> &tile) {
+                 &dot_length](TA::Tile<CUDATile> &tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = fabs(tile[i] - result);
-      double abs_val = fabs(tile[i]);
+//      double abs_val = fabs(tile[i]);
       double rel_err = abs_err / result / dot_length;
       if(rel_err > threshold){
         std::cout << "Node: " << world.rank() <<  " Tile: " << tile.range()  << " id: " << i << std::string(" gpu: " + std::to_string(tile[i]) + " cpu: " + std::to_string(result) + "\n");
@@ -299,10 +276,9 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     }
   };
 
-//  foreach_inplace(c_ta, verify);
 
-  for(auto iter = c_ta.begin(); iter != c_ta.end(); iter++){
-     verify(c_ta.find(iter.index()).get());
+  for(auto iter = c.begin(); iter != c.end(); iter++){
+     world.taskq.add(verify, c.find(iter.index()));
   }
 
   world.gop.fence();

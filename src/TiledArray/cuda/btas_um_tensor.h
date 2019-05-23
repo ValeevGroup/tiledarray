@@ -189,7 +189,7 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
   // compute the stream to use
-  auto &stream = detail::get_stream_based_on_range(arg.range());
+  auto &stream = detail::get_stream_based_on_range(result_range);
 
   // allocate result memory
   typename btasUMTensorVarray<T, Range>::storage_type storage;
@@ -229,6 +229,11 @@ btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
                                    const Scalar factor,
                                    const TiledArray::Permutation &perm) {
   auto result = scale(arg, factor);
+
+  // wait to finish before switch stream
+  auto stream = tls_cudastream_accessor();
+  cudaStreamSynchronize(*stream);
+
   return permute(result, perm);
 }
 
@@ -246,6 +251,11 @@ template <typename T, typename Range>
 btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg,
                                  const TiledArray::Permutation &perm) {
   auto result = neg(arg);
+
+  // wait to finish before switch stream
+  auto stream = tls_cudastream_accessor();
+  cudaStreamSynchronize(*stream);
+
   return permute(result, perm);
 }
 
@@ -281,6 +291,11 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const TiledArray::Permutation &perm) {
   auto result = subt(arg1, arg2);
+
+  // wait to finish before switch stream
+  auto stream = tls_cudastream_accessor();
+  cudaStreamSynchronize(*stream);
+
   return permute(result, perm);
 }
 
@@ -290,6 +305,11 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const Scalar factor,
                                   const TiledArray::Permutation &perm) {
   auto result = subt(arg1, arg2, factor);
+
+  // wait to finish before switch stream
+  auto stream = tls_cudastream_accessor();
+  cudaStreamSynchronize(*stream);
+
   return permute(result, perm);
 }
 
@@ -339,6 +359,11 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const Scalar factor,
                                  const TiledArray::Permutation &perm) {
   auto result = add(arg1, arg2, factor);
+
+  // wait to finish before switch stream
+  auto stream = tls_cudastream_accessor();
+  cudaStreamSynchronize(*stream);
+
   return permute(result, perm);
 }
 
@@ -347,6 +372,11 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2,
                                  const TiledArray::Permutation &perm) {
   auto result = add(arg1, arg2);
+
+  // wait to finish before switch stream
+  auto stream = tls_cudastream_accessor();
+  cudaStreamSynchronize(*stream);
+
   return permute(result, perm);
 }
 
@@ -406,6 +436,11 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const TiledArray::Permutation &perm) {
   auto result = mult(arg1, arg2);
+
+  // wait to finish before switch stream
+  auto stream = tls_cudastream_accessor();
+  cudaStreamSynchronize(*stream);
+
   return permute(result, perm);
 }
 
@@ -415,6 +450,11 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const Scalar factor,
                                   const TiledArray::Permutation &perm) {
   auto result = mult(arg1, arg2, factor);
+
+  // wait to finish before switch stream
+  auto stream = tls_cudastream_accessor();
+  cudaStreamSynchronize(*stream);
+
   return permute(result, perm);
 }
 

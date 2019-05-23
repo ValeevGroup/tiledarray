@@ -2,9 +2,9 @@
 // Created by Chong Peng on 11/14/18.
 //
 
-#include <tiledarray.h>
 #include <TiledArray/cuda/btas_um_tensor.h>
 #include <TiledArray/cuda/cuda_task_fn.h>
+#include <tiledarray.h>
 
 using value_type = double;
 using tensor_type = TA::btasUMTensorVarray<value_type>;
@@ -17,17 +17,19 @@ void verify(const tile_type& tile, value_type value, std::size_t index) {
   std::cout << message;
   for (auto& num : tile) {
     if (num != value) {
-      std::string error("Error: " + std::to_string(num) + " " + std::to_string(value) + " Tensor: " + std::to_string(index) + "\n");
+      std::string error("Error: " + std::to_string(num) + " " +
+                        std::to_string(value) +
+                        " Tensor: " + std::to_string(index) + "\n");
       std::cout << error;
     }
     break;
   }
 }
 
-tile_type scale(const tile_type& arg, value_type a,
-                const cudaStream_t* stream, std::size_t index) {
-
-  CudaSafeCall(cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id()));
+tile_type scale(const tile_type& arg, value_type a, const cudaStream_t* stream,
+                std::size_t index) {
+  CudaSafeCall(
+      cudaSetDevice(TiledArray::cudaEnv::instance()->current_cuda_device_id()));
   /// make result Tensor
   using Storage = typename tile_type::tensor_type::storage_type;
   Storage result_storage;
@@ -47,19 +49,19 @@ tile_type scale(const tile_type& arg, value_type a,
   CublasSafeCall(TiledArray::cublasScal(handle, result.size(), &a,
                                         device_data(result.storage()), 1));
 
-//  cudaStreamSynchronize(stream);
+  //  cudaStreamSynchronize(stream);
 
   TiledArray::synchronize_stream(stream);
 
-//  std::stringstream stream_str;
-//  stream_str << *stream;
-//  std::string message = "run scale on Tensor: " + std::to_string(index) +  " on stream: " + stream_str.str() +'\n';
-//  std::cout << message;
+  //  std::stringstream stream_str;
+  //  stream_str << *stream;
+  //  std::string message = "run scale on Tensor: " + std::to_string(index) +  "
+  //  on stream: " + stream_str.str() +'\n'; std::cout << message;
   return tile_type(std::move(result));
 }
 
-void process_task(madness::World* world, const std::vector<cudaStream_t>* streams, std::size_t ntask){
-
+void process_task(madness::World* world,
+                  const std::vector<cudaStream_t>* streams, std::size_t ntask) {
   const std::size_t iter = 50;
   const std::size_t M = 1000;
   const std::size_t N = 1000;
@@ -67,7 +69,6 @@ void process_task(madness::World* world, const std::vector<cudaStream_t>* stream
   std::size_t n_stream = streams->size();
 
   for (std::size_t i = 0; i < iter; i++) {
-
     auto& stream = (*streams)[i % n_stream];
 
     TiledArray::Range range{M, N};
@@ -77,29 +78,18 @@ void process_task(madness::World* world, const std::vector<cudaStream_t>* stream
     const double scale_factor = 2.0;
 
     // function pointer to the scale function to call
-    tile_type (*scale_fn)(const tile_type&, double,
-                          const cudaStream_t*, std::size_t) = &::scale;
+    tile_type (*scale_fn)(const tile_type&, double, const cudaStream_t*,
+                          std::size_t) = &::scale;
 
-    madness::Future<tile_type> scale_future;
-
-    auto* scale_taskfn = new madness::cudaTaskFn<decltype(scale_fn), tile_type,
-            double, const cudaStream_t*, std::size_t>(
-            scale_future, scale_fn, tensor, scale_factor, &stream, ntask*iter + i,
-            madness::TaskAttributes());
-
-//    std::stringstream address;
-//    address << (void*) scale_taskfn;
-//    std::string message = "cudaTaskFn: " + address.str() + " Tensor: " + std::to_string(i) + '\n';
-//    std::cout << message;
-    world->taskq.add(static_cast<madness::TaskInterface*>(scale_taskfn));
+    madness::Future<tile_type> scale_future = madness::add_cuda_task(
+        *world, ::scale, tensor, scale_factor, &stream, ntask*iter + i);
 
     /// this should start until scale_taskfn is finished
-    world->taskq.add(verify, scale_future, scale_factor,  ntask*iter + i);
+    world->taskq.add(verify, scale_future, scale_factor, ntask * iter + i);
   }
 }
 
 int try_main(int argc, char** argv) {
-
   auto& world = TiledArray::get_default_world();
 
   const std::size_t n_stream = 5;
@@ -109,11 +99,11 @@ int try_main(int argc, char** argv) {
   for (auto& stream : streams) {
     // create the streams
     CudaSafeCall(cudaStreamCreate(&stream));
-//    std::cout << "stream: " << stream << "\n";
+    //    std::cout << "stream: " << stream << "\n";
   }
 
   // add process_task to different tasks/threads
-  for(auto i = 0; i < n_tasks; i++){
+  for (auto i = 0; i < n_tasks; i++) {
     world.taskq.add(process_task, &world, &streams, i);
   }
 
@@ -127,11 +117,10 @@ int try_main(int argc, char** argv) {
 }
 
 int main(int argc, char* argv[]) {
+  TiledArray::World& world = TiledArray::initialize(argc, argv);
   try {
     // Initialize runtime
-    TiledArray::World& world = TiledArray::initialize(argc, argv);
     try_main(argc, argv);
-    TiledArray::finalize();
   } catch (thrust::system::detail::bad_alloc& ex) {
     std::cout << ex.what() << std::endl;
 
@@ -142,6 +131,8 @@ int main(int argc, char* argv[]) {
   } catch (...) {
     std::cerr << "unknown exception" << std::endl;
   }
+
+  TiledArray::finalize();
 
   return 0;
 }
