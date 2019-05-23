@@ -77,6 +77,7 @@ if(MADNESS_FOUND)
   # esnure fresh MADNESS
   CHECK_CXX_SOURCE_COMPILES(
           "
+    #include <madness/world/world.h>
     #include <madness/world/worldmem.h>
     int main(int argc, char** argv) {
       // test 1
