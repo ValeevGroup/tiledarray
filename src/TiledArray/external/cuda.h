@@ -40,6 +40,7 @@
 
 #include <madness/tensor/cblas.h>
 #include <madness/world/thread.h>
+#include <madness/world/print.h>
 #include <mpi.h>
 
 #include <TiledArray/error.h>
@@ -48,19 +49,26 @@
 #include <vector>
 
 #define CudaSafeCall(err) __cudaSafeCall(err, __FILE__, __LINE__)
+#define CudaSafeCallNoThrow(err) __cudaSafeCallNoThrow(err, __FILE__, __LINE__)
 #define CudaCheckError() __cudaCheckError(__FILE__, __LINE__)
 
 inline void __cudaSafeCall(cudaError err, const char* file, const int line) {
 #ifdef TILEDARRAY_CHECK_CUDA_ERROR
   if (cudaSuccess != err) {
     std::stringstream ss;
-    ss << "cudaSafeCall() failed at: " << file << "(" << line << ")";
+    ss << "cudaSafeCall() failed at: " << file << ":" << line;
     std::string what = ss.str();
     throw thrust::system_error(err, thrust::cuda_category(), what);
   }
 #endif
+}
 
-  return;
+inline void __cudaSafeCallNoThrow(cudaError err, const char* file, const int line) {
+#ifdef TILEDARRAY_CHECK_CUDA_ERROR
+  if (cudaSuccess != err) {
+    madness::print_error("cudaSafeCallNoThrow() failed at: ", file, ":", line);
+  }
+#endif
 }
 
 inline void __cudaCheckError(const char* file, const int line) {
@@ -68,13 +76,11 @@ inline void __cudaCheckError(const char* file, const int line) {
   cudaError err = cudaGetLastError();
   if (cudaSuccess != err) {
     std::stringstream ss;
-    ss << "cudaCheckError() failed at: " << file << "(" << line << ")";
+    ss << "cudaCheckError() failed at: " << file << ":" << line;
     std::string what = ss.str();
     throw thrust::system_error(err, thrust::cuda_category(), what);
   }
 #endif
-
-  return;
 }
 
 namespace TiledArray {
@@ -193,7 +199,7 @@ class cudaEnv {
   ~cudaEnv() {
     // destroy cuda streams on current device
     for (auto& stream : cuda_streams_) {
-      CudaSafeCall(cudaStreamDestroy(stream));
+      CudaSafeCallNoThrow(cudaStreamDestroy(stream));
     }
   }
 
