@@ -132,6 +132,8 @@ Common CMake cache variables that you may want to define include:
 -D CMAKE_CXX_COMPILER=/path/to/bin/c++
 -D MPI_C_COMPILER=/path/to/bin/mpicc
 -D MPI_CXX_COMPILER=/path/to/bin/mpicxx
+-D CMAKE_CUDA_HOST_COMPILER=/path/to/cuda/host/c++/compiler  # only when ENABLE_CUDA is true
+
 ```
 
 ### Option Variables
@@ -141,6 +143,8 @@ Common CMake cache variables that you may want to define include:
 -D BUILD_SHARED_LIBS=(TRUE|FALSE)
 -D CMAKE_CXX_STANDARD=(14|17|20)
 -D TA_ERROR=(none|throw|assert)
+-D ENABLE_CUDA=(TRUE|FALSE)
+-D ENABLE_CUDA_ERROR_CHECK=(TRUE|FALSE) # only when ENABLE_CUDA is true
 ```
 
 Note that currently `BUILD_SHARED_LIBS=TRUE` is only supported for single-process runs due to the limitations of the MADWorld runtime.
@@ -155,6 +159,8 @@ Note that currently `BUILD_SHARED_LIBS=TRUE` is only supported for single-proces
 -D BLA_STATIC=(TRUE|FALSE)
 -D INTEGER4=(TRUE|FALSE)
 -D EIGEN3_INCLUDE_DIR=/path/to/eigen3/include
+-D CUTT_INSTALL_DIR=/path/to/cutt/install # only when ENABLE_CUDA is true
+-D UMPIRE_INSTALL_DIR=/path/to/Umpire/install # only when ENABLE_CUDA is true
 ```
 
 `BLA_STATIC` indicates static LAPACK and BLAS libraries will be perferred. `INTEGER4` indicated the Fortran integer width used by BLAS and LAPACK; if `TRUE` (the default), the integer size is `integer*4`, otherwise `integer*8` is used.

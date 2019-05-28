@@ -108,16 +108,20 @@ int main(int argc, char** argv) {
     const auto real_type_str =
             (argc >= 7) ? std::string(argv[6]) : std::string("double");
 
+    if( !(real_type_str == "double" || real_type_str == "float")){
+      std::cerr << "Error: unrecognized floating point precision type, it is either float or double.\n";
+      return 1;
+    }
 
     if (world.rank() == 0){
-
       std::cout << "TiledArray: CC T2.V term test..."
                 << "\nGit HASH: " << TILEDARRAY_REVISION
                 << "\nNumber of nodes     = " << world.size()
                 << "\nocc size            = " << n_occ
                 << "\nocc nblocks         = " << nblk_occ
                 << "\nuocc size           = " << n_uocc
-                << "\nuocc nblocks        = " << nblk_uocc;
+                << "\nuocc nblocks        = " << nblk_uocc
+                << "\nprecision           = " << real_type_str;
     }
 
     // Construct TiledRange1's
@@ -215,7 +219,7 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
     const double start = madness::wall_time();
 
     // this is how the user would express this contraction
-    t2_v("i,j,a,b") =  v("a,b,c,d") * t2("i,j,c,d");
+    t2_v("i,j,a,b") =  t2("i,j,c,d") * v("a,b,c,d");
 
     const double stop = madness::wall_time();
     const double time = stop - start;

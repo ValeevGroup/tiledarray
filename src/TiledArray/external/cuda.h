@@ -237,11 +237,10 @@ class cudaEnv {
           10 * 1024 * 1024ul);
       auto thread_safe_um_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
-              "ThreadSafeUMDynamicPool", rm.getAllocator("UMDynamicPool"));
+              "ThreadSafeUMDynamicPool", um_dynamic_pool);
 
       auto cuda_env = std::unique_ptr<cudaEnv>(
-          new cudaEnv(num_devices, device_id, num_streams,
-                      rm.getAllocator("ThreadSafeUMDynamicPool")));
+          new cudaEnv(num_devices, device_id, num_streams,thread_safe_um_dynamic_pool));
       instance = std::move(cuda_env);
     }
   }
