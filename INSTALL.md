@@ -256,14 +256,21 @@ The following CMake options may be used to modify build behavior or find MADNESS
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
 * `ENABLE_ELEMENTAL` -- Enable use of MADNESS provided Elemental [Default=OFF]
 * `ENABLE_TBB` -- Enable the use of TBB when building MADNESS [Default=ON]
-* `TBB_ROOT_DIR` -- The install directory for TBB
-* `TBB_INCLUDE_DIR` -- The include directory for TBB header files
-* `TBB_LIBRARY` -- The library directory for TBB shared libraries
+* `ENABLE_MKL` -- Enable the use of MKL when building MADNESS [Default=ON]
+* `ENABLE_GPERFTOOLS` -- Enable the use of gperftools when building MADNESS [Default=OFF]
+* `ENABLE_TCMALLOC_MINIMAL` -- Enable the use of gperftool's tcmalloc_minimal library only (the rest of gperftools is skipped) when building MADNESS [Default=OFF]
+* `ENABLE_LIBUNWIND` -- Force the discovery of libunwind library when building MADNESS [Default=OFF]
 * `MADNESS_SOURCE_DIR` -- Path to the MADNESS source directory
 * `MADNESS_BINARY_DIR` -- Path to the MADNESS build directory
 * `MADNESS_URL` -- Path to the MADNESS repository [Default=MADNESS git repository]
 * `MADNESS_TAG` -- Revision hash or tag to use when building MADNESS (expert only)
 * `MADNESS_CMAKE_EXTRA_ARGS` -- Extra flags passed to MADNESS cmake command
+
+The following environment variables can be used to help discovery of MADNESS dependencies:
+* `TBBROOT` -- the install prefix of TBB
+* `MKLROOT` -- the install prefix of MKL
+* `GPERFTOOLS_DIR` -- the install prefix of gperftools
+* `LIBUNWIND_DIR` -- the install prefix of libunwind
 
 If you wish to install MADNESS yourself, we recommend downloading the latest
 version from the MADNESS git repository. You should not expect the latest 
