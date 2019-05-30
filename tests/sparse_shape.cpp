@@ -99,14 +99,18 @@ BOOST_AUTO_TEST_CASE( non_comm_constructor )
     if(expected < SparseShape<float>::threshold())
       expected = 0.0f;
 
-    // Check that the tile has been normalized correctly
+    // Check that the tile norm has been scaled correctly
     BOOST_CHECK_CLOSE(x[i], expected, tolerance);
+
+    // Check that the unscaled tile norm is correct
+    BOOST_CHECK_CLOSE(x.tile_norms()[i], tile_norms[i], tolerance);
 
     // Check zero threshold
     if(x[i] < SparseShape<float>::threshold()) {
       BOOST_CHECK(x.is_zero(i));
       // "zero" tile norms are set to hard 0
       BOOST_CHECK(x[i] == 0.0f);
+      BOOST_CHECK(x.tile_norms()[i] == 0.0f);
       ++zero_tile_count;
     } else {
       BOOST_CHECK(! x.is_zero(i));
@@ -134,6 +138,7 @@ BOOST_AUTO_TEST_CASE( non_comm_constructor )
     // Check that the dense and sparse ctors produced same data
     for(Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
       BOOST_CHECK_CLOSE(x[i], x_sp[i], tolerance);
+      BOOST_CHECK_CLOSE(x.tile_norms()[i], x_sp.tile_norms()[i], tolerance);
     }
   }
 }

@@ -35,18 +35,35 @@
 
 namespace TiledArray {
 
-  /// Arbitrary sparse shape
+  /// Frobenius-norm-based sparse shape
 
-  /// Sparse shape uses a \c Tensor of Frobenius norms to estimate the magnitude
+  /// Sparse shape uses a \c Tensor of Frobenius norms to describe the magnitude
   /// of the data contained in tiles of an Array object. Because tiles may have
-  /// an arbitrary size, the norm data is normalized, internally, by dividing
-  /// the norms by the number of elements in each tile.
+  /// an arbitrary size, screening of tiles uses *scaled* (per-element) Frobenius norms
+  /// obtained by dividing the tile's Frobenius norm by the tile volume
+  /// (=its number of elements):
   /// \f[
   /// {\rm{shape}}_{ij...} = \frac{\|A_{ij...}\|}{N_i N_j ...}
   /// \f]
   /// where \f$ij...\f$ are tile indices, \f$\|A_{ij}\|\f$ is norm of tile
   /// \f$ij...\f$, and \f$N_i N_j ...\f$ is the product of tile \f$ij...\f$ in
-  /// each dimension.
+  /// each dimension. Note that such scaled Frobenius norms no longer have the properties
+  /// of the Frobenius norms such as the submiltiplicativity.
+  ///
+  /// All constructors will zero out tiles whose scaled norms are below the
+  /// threshold. The screening threshold is accessed via
+  /// SparseShape:::threshold() ; it is the global, but not immutable.
+  /// Thus it is possible to screen each operation separately, by changing the
+  /// screening threshold between each operation.
+  /// \warning If tile's scaled norm is below threshold, its scaled norm is set to
+  ///          to zero and thus lost forever. E.g.
+  ///          \c shape.scale(1e-10).scale(1e10) does not in general
+  ///          equal \c shape , whereas \c shape.scale(1e10).scale(1e-10)
+  ///          does.
+  ///
+  /// \internal Thus the norms are stored in scaled form, and must be unscaled
+  ///           to obtain Frobenius norms, e.g. for estimating the shapes of
+  ///           arithmetic operation results.
   /// \tparam T The sparse element value type
   /// \note Scaling operations, such as SparseShape<T>::scale , SparseShape<T>::gemm , etc.
   ///       accept generic scaling factors; internally (modulus of) the scaling factor is first
@@ -69,7 +86,8 @@ namespace TiledArray {
     // Internal typedefs
     typedef detail::ValArray<value_type> vector_type;
 
-    Tensor<value_type> tile_norms_; ///< Tile magnitude data
+    Tensor<value_type> tile_norms_; ///< scaled Tile norms
+    mutable std::unique_ptr<Tensor<value_type>> tile_norms_unscaled_ = nullptr; ///< unscaled Tile norms (memoized)
     std::shared_ptr<vector_type> size_vectors_; ///< Tile size information; size_vectors_.get()[d][i] reports the size of i-th tile in dimension d
     size_type zero_tile_count_; ///< Number of zero tiles
     static value_type threshold_; ///< The zero threshold
@@ -100,65 +118,86 @@ namespace TiledArray {
       return result;
     }
 
+    enum class ScaleBy { Volume, InverseVolume };
 
-    /// Normalize tile norms
+    /// scales the contents of \c tile_norms by the corresponding tile's (inverse) volume
 
-    /// This function will divide each norm by the number of elements in the
-    /// tile. If the normalized norm is less than threshold, the value is set to
-    /// zero.
-    void normalize() {
+    /// \tparam ScaleBy_ defines the scaling factor: tile's volume, if ScaleBy::Volume, or tile's inverse volume, if ScaleBy::InverseVolume .
+    /// \tparam Screen if true, will Screen the resulting contents of tile_norms
+    /// \return the number of zero tiles if \c Screen is true, 0 otherwise.
+    /// \note \c Screen=true can be useful even in ScaleBy_==ScaleBy::Volume ,
+    ///       e.g. in SparseShape::mult()
+    ///       where product of the scaled
+    ///       norms of 2 tiles needs to be converted to the scaled norm of
+    ///       the product tile by multiplying by its volume; the result needs
+    ///       to be screened.
+    template <ScaleBy ScaleBy_, bool Screen = true>
+    static size_type scale_tile_norms(Tensor<T>& tile_norms,
+                                      const vector_type* MADNESS_RESTRICT const size_vectors)
+    {
+      const unsigned int dim = tile_norms.range().rank();
       const value_type threshold = threshold_;
-      const unsigned int dim = tile_norms_.range().rank();
-      const vector_type* MADNESS_RESTRICT const size_vectors = size_vectors_.get();
       madness::AtomicInt zero_tile_count;
       zero_tile_count = 0;
 
       if(dim == 1u) {
-        auto normalize_op = [threshold, &zero_tile_count] (value_type& norm, const value_type size) {
-          TA_ASSERT(norm >= value_type(0));
-          norm /= size;
-          if(norm < threshold) {
-            norm = value_type(0);
-            ++zero_tile_count;
-          }
-        };
-
         // This is the easy case where the data is a vector and can be
         // normalized directly.
-        math::inplace_vector_op(normalize_op, size_vectors[0].size(), tile_norms_.data(),
-            size_vectors[0].data());
-
+        math::inplace_vector_op(
+            [threshold, &zero_tile_count] (value_type& norm, const value_type size) {
+              if (ScaleBy_ == ScaleBy::Volume)
+                norm *= size;
+              else
+                norm /= size;
+              if (Screen && norm < threshold) {
+                norm = value_type(0);
+                ++zero_tile_count;
+              }
+            },
+            size_vectors[0].size(), tile_norms.data(), size_vectors[0].data());
       } else {
         // Here the normalization constants are computed and multiplied by the
-        // norm data using a recursive, outer-product algorithm. This is done to
+        // norm data using a recursive, outer algorithm. This is done to
         // minimize temporary memory requirements, memory bandwidth, and work.
 
-        auto inv_vec_op = [] (const vector_type& size_vector) {
-          return vector_type(size_vector,
-              [] (const value_type size) { return value_type(1) / size; });
+        /// for scaling by volume
+        auto noop = [](const vector_type& size_vector) -> const vector_type& {
+          return size_vector;
+        };
+        /// for scaling by inverse volume
+        auto inv_vec_op = [](const vector_type& size_vector) {
+          return vector_type(size_vector, [](const value_type size) {
+            return value_type(1) / size;
+          });
         };
 
         // Compute the left and right outer products
         const unsigned int middle = (dim >> 1u) + (dim & 1u);
-        const vector_type left = recursive_outer_product(size_vectors, middle, inv_vec_op);
-        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, inv_vec_op);
+        const vector_type left =
+            ScaleBy_ == ScaleBy::Volume
+                ? recursive_outer_product(size_vectors, middle, noop)
+                : recursive_outer_product(size_vectors, middle, inv_vec_op);
+        const vector_type right =
+            ScaleBy_ == ScaleBy::Volume
+                ? recursive_outer_product(size_vectors + middle, dim - middle,
+                                          noop)
+                : recursive_outer_product(size_vectors + middle, dim - middle,
+                                          inv_vec_op);
 
-        auto normalize_op = [threshold, &zero_tile_count] (value_type& norm,
-            const value_type x, const value_type y)
-        {
-          TA_ASSERT(norm >= value_type(0));
-          norm *= x * y;
-          if(norm < threshold) {
-            norm = value_type(0);
-            ++zero_tile_count;
-          }
-        };
-
-        math::outer(left.size(), right.size(), left.data(), right.data(),
-            tile_norms_.data(), normalize_op);
+        math::outer(
+            left.size(), right.size(), left.data(), right.data(),
+            tile_norms.data(),
+            [threshold, &zero_tile_count](value_type& norm, const value_type x,
+                                          const value_type y) {
+              norm *= x * y;
+              if (Screen && norm < threshold) {
+                norm = value_type(0);
+                ++zero_tile_count;
+              }
+            });
       }
 
-      zero_tile_count_ = zero_tile_count;
+      return Screen ? zero_tile_count : 0;
     }
 
     static std::shared_ptr<vector_type>
@@ -214,7 +253,7 @@ namespace TiledArray {
     /// This constructor set the tile norms to the same value.
     /// \param tile_norm the value of the (per-element) norm for every tile
     /// \param trange The tiled range of the tensor
-    /// \note this ctor does not normalize tile norms
+    /// \note this ctor *does not* scale tile norms
     /// \note if @c tile_norm is less than the threshold then all tile norms are set to zero
     SparseShape(const value_type& tile_norm, const TiledRange& trange) :
         tile_norms_(trange.tiles_range(), (tile_norm < threshold_ ? 0 : tile_norm)), size_vectors_(initialize_size_vectors(trange)),
@@ -222,23 +261,23 @@ namespace TiledArray {
     {
     }
 
-    /// Constructor
+    /// "Dense" constructor
 
-    /// This constructor will normalize the tile norm, where the normalization
-    /// constant for each tile is the inverse of the number of elements in the
-    /// tile.
+    /// This constructor will scale the tile norms, i.e. multiply each tile norm
+    /// byt the inverse of its volume.
     /// \param tile_norms The Frobenius norm of tiles by default
     /// \param trange The tiled range of the tensor
-    /// \param normalized  if the tile_norms are already normalized
-    SparseShape(const Tensor<value_type>& tile_norms, const TiledRange& trange, bool normalized = false) :
+    /// \param do_not_scale if true, assume that the tile norms in \c tile_norms are already scaled
+    SparseShape(const Tensor<value_type>& tile_norms, const TiledRange& trange,
+        bool do_not_scale = false) :
       tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
       zero_tile_count_(0ul)
     {
       TA_ASSERT(! tile_norms_.empty());
       TA_ASSERT(tile_norms_.range() == trange.tiles_range());
 
-      if(!normalized){
-        normalize();
+      if(!do_not_scale) {
+        zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(tile_norms_, size_vectors_.get());
       }
     }
 
@@ -246,8 +285,7 @@ namespace TiledArray {
 
     /// This constructor uses tile norms given as a sparse tensor,
     /// represented as a sequence of {index,value_type} data.
-    /// The tile norms are normalized to per-element norms by dividing each
-    /// norm by the number of elements in the corresponding tile.
+    /// The tile norms are scaled by the inverse of the corresponding tile's volumes.
     /// \tparam SparseNormSequence the sequence of \c std::pair<index,value_type> objects,
     ///         where \c index is a directly-addressable sequence indices.
     /// \param tile_norms The Frobenius norm of tiles
@@ -281,17 +319,16 @@ namespace TiledArray {
     /// Collective "dense" constructor
 
     /// This constructor uses tile norms given as a dense tensor.
-    /// The tile norms data are max-reduced across all processes (via
+    /// The tile norms are max-reduced across all processes (via
     /// an all reduce).
-    /// Next, the norms are converted to per-element norms by dividing each
-    /// norm by the number of elements in the corresponding tile.
+    /// Next, the norms are scaled by the inverse of the corresponding tile's volumes.
     /// \param world The world where the shape will live
     /// \param tile_norms The Frobenius norm of tiles by default; expected to contain nonzeros
     ///        for this rank's subset of tiles, or be replicated.
     /// \param trange The tiled range of the tensor
-    /// \param normalized  if the tile_norms are already normalized
+    /// \param do_not_scale if true, assume that the tile norms in \c tile_norms are already scaled
     SparseShape(World& world, const Tensor<value_type>& tile_norms,
-                const TiledRange& trange, bool normalized = false) :
+                const TiledRange& trange, bool do_not_scale = false) :
       tile_norms_(tile_norms.clone()), size_vectors_(initialize_size_vectors(trange)),
       zero_tile_count_(0ul)
     {
@@ -301,8 +338,8 @@ namespace TiledArray {
       // reduce norm data from all processors
       world.gop.max(tile_norms_.data(), tile_norms_.size());
 
-      if(!normalized){
-        normalize();
+      if(!do_not_scale){
+        zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(tile_norms_, size_vectors_.get());;
       }
     }
 
@@ -310,8 +347,8 @@ namespace TiledArray {
 
     /// This constructor uses tile norms given as a sparse tensor,
     /// represented as a sequence of {index,value_type} data.
-    /// The tile norms are normalized to per-element norms by dividing each
-    /// norm by the number of elements in the corresponding tile.
+    /// The tile norms are scaled to per-element norms by dividing each
+    /// norm by the tile's volume.
     /// Lastly, the norms are max-reduced across all processors.
     /// \tparam SparseNormSequence the sequence of \c std::pair<index,value_type> objects,
     ///         where \c index is a directly-addressable sequence of integers.
@@ -332,7 +369,9 @@ namespace TiledArray {
     /// Shallow copy of \c other.
     /// \param other The other shape object to be copied
     SparseShape(const SparseShape<T>& other) :
-      tile_norms_(other.tile_norms_), size_vectors_(other.size_vectors_),
+      tile_norms_(other.tile_norms_),
+      tile_norms_unscaled_(other.tile_norms_unscaled_ ? std::make_unique<decltype(tile_norms_)>(other.tile_norms_unscaled_.get()->clone()) : nullptr),
+      size_vectors_(other.size_vectors_),
       zero_tile_count_(other.zero_tile_count_)
     { }
 
@@ -343,6 +382,10 @@ namespace TiledArray {
     /// \return A reference to this object.
     SparseShape<T>& operator=(const SparseShape<T>& other) {
       tile_norms_ = other.tile_norms_;
+      tile_norms_unscaled_ = other.tile_norms_unscaled_
+                                 ? std::make_unique<decltype(tile_norms_)>(
+                                       other.tile_norms_unscaled_.get()->clone())
+                                 : nullptr;
       size_vectors_ = other.size_vectors_;
       zero_tile_count_ = other.zero_tile_count_;
       return *this;
@@ -403,15 +446,15 @@ namespace TiledArray {
 
     /// Transform the norm tensor with an operation
 
-    /// \return A deep copy of the norms of the object having 
-    /// performed the operation Op.  
+    /// \return A deep copy of the norms of the object having
+    /// performed the operation Op.
     /// Op should take a const ref to a Tensor<T> and return a Tensor<T>
-    /// Since the input tile norms have already been normalized the output
-    /// norms will avoid normalization, which is neccesary for correct behavior.  
-    /// One example is when Op is an identity operation the output
+    /// Since the input tile norms have already been scaled the output
+    /// norms will be identically scaled, e.g.
+    /// when Op is an identity operation the output
     /// SparseShape data will have the same values as this.
     template<typename Op>
-    SparseShape_ transform(Op &&op) const { 
+    SparseShape_ transform(Op &&op) const {
 
         Tensor<T> new_norms = op(tile_norms_);
         madness::AtomicInt zero_tile_count;
@@ -426,17 +469,29 @@ namespace TiledArray {
             }
         };
 
-        math::inplace_vector_op(apply_threshold, new_norms.range().volume(), 
+        math::inplace_vector_op(apply_threshold, new_norms.range().volume(),
                 new_norms.data());
 
-        return SparseShape_(std::move(new_norms), size_vectors_, 
-                            zero_tile_count); 
+        return SparseShape_(std::move(new_norms), size_vectors_,
+                            zero_tile_count);
     }
 
     /// Data accessor
 
-    /// \return A reference to the \c Tensor object that stores shape data
+    /// \return A const reference to the \c Tensor object that stores the scaled (per-element) Frobenius norms of tiles
     const Tensor<value_type>& data() const { return tile_norms_; }
+
+    /// Data accessor
+
+    /// \return A const reference to the \c Tensor object that stores the Frobenius norms of tiles
+    const Tensor<value_type>& tile_norms() const {
+      if (tile_norms_unscaled_ == nullptr) {
+        tile_norms_unscaled_ = std::make_unique<decltype(tile_norms_)>(tile_norms_.clone());
+        auto should_be_zero = scale_tile_norms<ScaleBy::Volume, false>(*tile_norms_unscaled_, size_vectors_.get());
+        assert(should_be_zero == 0);
+      }
+      return *(tile_norms_unscaled_.get());
+    }
 
     /// Initialization check
 
@@ -965,80 +1020,27 @@ namespace TiledArray {
       return add(value, perm);
     }
 
-  private:
-
-    static size_type scale_by_size(Tensor<T>& tile_norms,
-        const vector_type* MADNESS_RESTRICT const size_vectors)
-    {
-      const unsigned int dim = tile_norms.range().rank();
-      const value_type threshold = threshold_;
-      madness::AtomicInt zero_tile_count;
-      zero_tile_count = 0;
-
-      if(dim == 1u) {
-        // This is the easy case where the data is a vector and can be
-        // normalized directly.
-        math::inplace_vector_op(
-            [threshold, &zero_tile_count] (value_type& norm, const value_type size) {
-              norm *= size;
-              if(norm < threshold) {
-                norm = value_type(0);
-                ++zero_tile_count;
-              }
-            },
-            size_vectors[0].size(), tile_norms.data(), size_vectors[0].data());
-      } else {
-        // Here the normalization constants are computed and multiplied by the
-        // norm data using a recursive, outer algorithm. This is done to
-        // minimize temporary memory requirements, memory bandwidth, and work.
-
-        auto noop = [](const vector_type& size_vector) -> const vector_type& {
-          return size_vector;
-        };
-
-        // Compute the left and right outer products
-        const unsigned int middle = (dim >> 1u) + (dim & 1u);
-        const vector_type left = recursive_outer_product(size_vectors, middle, noop);
-        const vector_type right = recursive_outer_product(size_vectors + middle, dim - middle, noop);
-
-        math::outer(left.size(), right.size(), left.data(), right.data(), tile_norms.data(),
-            [threshold, &zero_tile_count] (value_type& norm, const value_type x,
-                const value_type y)
-            {
-              norm *= x * y;
-              if(norm < threshold) {
-                norm = value_type(0);
-                ++zero_tile_count;
-              }
-            });
-      }
-
-      return zero_tile_count;
-    }
-
-  public:
-
     SparseShape_ mult(const SparseShape_& other) const {
       // TODO: Optimize this function so that the tensor arithmetic and
-      // scale_by_size operations are performed in one step instead of two.
+      // scale_tile_norms operations are performed in one step instead of two.
 
       TA_ASSERT(! tile_norms_.empty());
       Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_);
       const size_type zero_tile_count =
-          scale_by_size(result_tile_norms, size_vectors_.get());
+          scale_tile_norms<ScaleBy::Volume>(result_tile_norms, size_vectors_.get());
 
       return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
 
     SparseShape_ mult(const SparseShape_& other, const Permutation& perm) const {
       // TODO: Optimize this function so that the tensor arithmetic and
-      // scale_by_size operations are performed in one step instead of two.
+      // scale_tile_norms operations are performed in one step instead of two.
 
       TA_ASSERT(! tile_norms_.empty());
       Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, perm);
       std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
       const size_type zero_tile_count =
-                scale_by_size(result_tile_norms, result_size_vector.get());
+          scale_tile_norms<ScaleBy::Volume>(result_tile_norms, result_size_vector.get());
 
       return SparseShape_(result_tile_norms, result_size_vector, zero_tile_count);
     }
@@ -1048,13 +1050,13 @@ namespace TiledArray {
     template <typename Factor>
     SparseShape_ mult(const SparseShape_& other, const Factor factor) const {
       // TODO: Optimize this function so that the tensor arithmetic and
-      // scale_by_size operations are performed in one step instead of two.
+      // scale_tile_norms operations are performed in one step instead of two.
 
       TA_ASSERT(! tile_norms_.empty());
       const value_type abs_factor = to_abs_factor(factor);
       Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, abs_factor);
       const size_type zero_tile_count =
-          scale_by_size(result_tile_norms, size_vectors_.get());
+          scale_tile_norms<ScaleBy::Volume>(result_tile_norms, size_vectors_.get());
 
       return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
     }
@@ -1066,14 +1068,14 @@ namespace TiledArray {
         const Permutation& perm) const
     {
       // TODO: Optimize this function so that the tensor arithmetic and
-      // scale_by_size operations are performed in one step instead of two.
+      // scale_tile_norms operations are performed in one step instead of two.
 
       TA_ASSERT(! tile_norms_.empty());
       const value_type abs_factor = to_abs_factor(factor);
       Tensor<T> result_tile_norms = tile_norms_.mult(other.tile_norms_, abs_factor, perm);
       std::shared_ptr<vector_type> result_size_vector = perm_size_vectors(perm);
       const size_type zero_tile_count =
-          scale_by_size(result_tile_norms, result_size_vector.get());
+          scale_tile_norms<ScaleBy::Volume>(result_tile_norms, result_size_vector.get());
 
       return SparseShape_(result_tile_norms, result_size_vector, zero_tile_count);
     }
