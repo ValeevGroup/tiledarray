@@ -41,7 +41,6 @@ namespace TiledArray {
       using Pmap::rank_; ///< The rank of this process
       using Pmap::procs_; ///< The number of processes
       using Pmap::size_; ///< The number of tiles mapped among all processes
-      using Pmap::local_; ///< A list of local tiles
 
     public:
       typedef Pmap::size_type size_type; ///< Size type
@@ -53,15 +52,7 @@ namespace TiledArray {
       ReplicatedPmap(World& world, size_type size) :
           Pmap(world, size)
       {
-        // Construct a map of all local processes
-        local_.reserve(size_);
-        // Warning: This is non-scaling code because it iterates over all
-        // elements. However, it is for replicated data so the number of
-        // elements is assumed to be reasonable.
-        for(size_type i = 0; i < size_; ++i) {
-          TA_ASSERT(ReplicatedPmap::owner(i) == rank_);
-          local_.push_back(i);
-        }
+        this->local_size_ = this->size_;
       }
 
       virtual ~ReplicatedPmap() { }
@@ -88,6 +79,9 @@ namespace TiledArray {
 
       /// \return \c true if the array is replicated, and false otherwise
       virtual bool is_replicated() const { return true; }
+
+      virtual const_iterator begin() const { return Iterator(*this, 0, this->size_, 0, false); }
+      virtual const_iterator end() const { return Iterator(*this, 0, this->size_, this->size_, false); }
 
     }; // class MapByRow
 

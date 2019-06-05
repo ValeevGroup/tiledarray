@@ -39,7 +39,6 @@ namespace TiledArray {
       using Pmap::rank_; ///< The rank of this process
       using Pmap::procs_; ///< The number of processes
       using Pmap::size_; ///< The number of tiles mapped among all processes
-      using Pmap::local_; ///< A list of local tiles
 
     private:
 
@@ -56,12 +55,6 @@ namespace TiledArray {
       HashPmap(World& world, const size_type size, madness::hashT seed = 0ul) :
           Pmap(world, size), seed_(seed)
       {
-        // Construct a map of all local processes
-        // TODO: NON-SCALING!!!
-        // This code is non-scaling because it iterates over all elements
-        for(size_type i = 0ul; i < size_; ++i)
-          if(HashPmap::owner(i) == rank_)
-            local_.push_back(i);
       }
 
       virtual ~HashPmap() { }
@@ -85,6 +78,8 @@ namespace TiledArray {
       virtual bool is_local(const size_type tile) const {
         return HashPmap::owner(tile) == rank_;
       }
+
+      virtual bool known_local_size() const { return false; }
 
     }; // class HashPmap
 
