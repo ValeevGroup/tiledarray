@@ -15,6 +15,7 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
 include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
 
+# despite enable_language(CUDA), this is still needed to find cuBLAS
 find_package(CUDA REQUIRED)
 
 message(STATUS "CUDA Include Dirs: " ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
