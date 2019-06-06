@@ -110,6 +110,10 @@ elseif(TA_EXPERT)
 
 else()
 
+  # look for C and MPI here to make troubleshooting easier and be able to override defaults for MADNESS
+  enable_language(C)
+  find_package(MPI REQUIRED)
+
   find_package(Git REQUIRED)
   message(STATUS "git found: ${GIT_EXECUTABLE}")
 
