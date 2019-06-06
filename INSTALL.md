@@ -10,7 +10,7 @@
 - [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher (will be downloaded automatically, if missing)
 - [BTAS](http://github.com/BTAS/BTAS), master branch (will be downloaded automatically, if missing)
 - BLAS library
-- [Boost libraries](www.boost.org/), version 1.33 or higher, used for unit tests only (will be downloaded atuomatically, if missing)
+- [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded atuomatically, if missing)
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness)
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile

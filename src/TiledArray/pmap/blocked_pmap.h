@@ -42,7 +42,6 @@ namespace TiledArray {
       using Pmap::rank_; ///< The rank of this process
       using Pmap::procs_; ///< The number of processes
       using Pmap::size_; ///< The number of tiles mapped among all processes
-      using Pmap::local_; ///< A list of local tiles
 
     private:
 
@@ -69,14 +68,7 @@ namespace TiledArray {
           local_first_(rank_ * block_size_ + std::min<size_type>(rank_, remainder_)),
           local_last_((rank_ + 1) * block_size_ + std::min<size_type>((rank_ + 1), remainder_))
       {
-        local_.reserve(local_last_ - local_first_);
-
-
-        // Construct a map of all local processes
-        for(size_type first = local_first_; first < local_last_; ++first) {
-          TA_ASSERT(BlockedPmap::owner(first) == rank_);
-          local_.push_back(first);
-        }
+        this->local_size_ = local_last_ - local_first_;
       }
 
       virtual ~BlockedPmap() { }
@@ -100,6 +92,10 @@ namespace TiledArray {
       virtual bool is_local(const size_type tile) const {
         return ((tile >= local_first_) && (tile < local_last_));
       }
+
+      virtual const_iterator begin() const { return Iterator(*this, local_first_, local_last_, local_first_, false); }
+      virtual const_iterator end() const { return Iterator(*this, local_first_, local_last_, local_last_, false); }
+
     }; // class BlockedPmap
 
   }  // namespace detail

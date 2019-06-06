@@ -76,17 +76,8 @@ BOOST_AUTO_TEST_CASE( owner )
 
 BOOST_AUTO_TEST_CASE( local_size )
 {
-  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
-    TiledArray::detail::HashPmap pmap(* GlobalFixture::world, tiles);
-
-    std::size_t total_size = pmap.local_size();
-    GlobalFixture::world->gop.sum(total_size);
-
-    // Check that the total number of elements in all local groups is equal to
-    // the number of tiles in the map.
-    BOOST_CHECK_EQUAL(total_size, tiles);
-    BOOST_CHECK(pmap.empty() == (pmap.local_size() == 0ul));
-  }
+  TiledArray::detail::HashPmap pmap(* GlobalFixture::world, 100);
+  BOOST_CHECK(!pmap.known_local_size());
 }
 
 BOOST_AUTO_TEST_CASE( local_group )

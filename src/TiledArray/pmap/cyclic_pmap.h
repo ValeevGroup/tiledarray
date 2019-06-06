@@ -50,7 +50,6 @@ namespace TiledArray {
       using Pmap::rank_; ///< The rank of this process
       using Pmap::procs_; ///< The number of processes
       using Pmap::size_; ///< The number of tiles mapped among all processes
-      using Pmap::local_; ///< A list of local tiles
 
     private:
 
@@ -58,6 +57,10 @@ namespace TiledArray {
       const size_type cols_; ///< Number of tile columns to be mapped
       const size_type proc_cols_; ///< Number of process columns
       const size_type proc_rows_; ///< Number of process rows
+      size_type rank_row_ = 0;  ///< This rank's row in the process grid
+      size_type rank_col_ = 0;  ///< This rank's column in the process grid
+      size_type local_rows_ = 0;  ///< The number of rows that belong to this rank
+      size_type local_cols_ = 0;  ///< The number of columns that belong to this rank
 
     public:
       typedef Pmap::size_type size_type; ///< Size type
@@ -86,28 +89,19 @@ namespace TiledArray {
         TA_ASSERT(proc_cols_ >= 1ul);
         TA_ASSERT((proc_rows_ * proc_cols_) <= procs_);
 
-        // Initialize local tile list
+        // Compute local size_, if have any
         if(rank_ < (proc_rows_ * proc_cols_)) {
           // Compute rank coordinates
-          const size_type rank_row = rank_ / proc_cols_;
-          const size_type rank_col = rank_ % proc_cols_;
+          rank_row_ = rank_ / proc_cols_;
+          rank_col_ = rank_ % proc_cols_;
 
-          const size_type local_rows =
-              (rows_ / proc_rows_) + ((rows_ % proc_rows_) < rank_row ? 1ul : 0ul);
-          const size_type local_cols =
-              (cols_ / proc_cols_) + ((cols_ % proc_cols_) < rank_col ? 1ul : 0ul);
+          local_rows_ =
+              (rows_ / proc_rows_) + ((rows_ % proc_rows_) > rank_row_ ? 1ul : 0ul);
+          local_cols_ =
+              (cols_ / proc_cols_) + ((cols_ % proc_cols_) > rank_col_ ? 1ul : 0ul);
 
           // Allocate memory for the local tile list
-          local_.reserve(local_rows * local_cols);
-
-          // Iterate over local tiles
-          for(size_type i = rank_row; i < rows_; i += proc_rows_) {
-            const size_type row_end = (i + 1) * cols_;
-            for(size_type tile = i * cols_ + rank_col; tile < row_end; tile += proc_cols_) {
-              TA_ASSERT(CyclicPmap::owner(tile) == rank_);
-              local_.push_back(tile);
-            }
-          }
+          this->local_size_ = local_rows_ * local_cols_;
         }
       }
 
@@ -142,13 +136,60 @@ namespace TiledArray {
         return proc;
       }
 
-
       /// Check that the tile is owned by this process
 
       /// \param tile The tile to be checked
       /// \return \c true if \c tile is owned by this process, otherwise \c false .
       virtual bool is_local(const size_type tile) const {
         return (CyclicPmap::owner(tile) == rank_);
+      }
+
+     private:
+
+      virtual void advance(size_type& value, bool increment) const {
+        if (increment) {
+          auto row = value / cols_;
+          const auto row_end = (row + 1) * cols_;
+          value += proc_cols_;
+          if (value >= row_end) {  // if past the end of row ...
+            row += proc_rows_;
+            if (row < rows_) {  // still have tiles
+              value = row * cols_ + rank_col_;  // first tile in this row
+            }
+            else  // done
+              value = size_;
+          }
+        }
+        else {  // decrement
+          auto row = value / cols_;
+          const auto row_begin = row * cols_;
+          if (value < proc_cols_) {  // protect against unsigned wraparound
+            return;
+          }
+          value -= proc_cols_;
+          if (value < row_begin) {  // if past the beginning of row ...
+            if (row < proc_rows_)  // protect against unsigned wraparound
+              return;
+            row -= proc_rows_;
+            value = row * cols_ + rank_col_ + (local_cols_ - 1) * proc_cols_;  // last tile in this row
+          }
+        }
+      }
+
+     public:
+
+      virtual const_iterator begin() const {
+        return this->local_size_ > 0
+                   ? Iterator(*this, rank_row_ * cols_ + rank_col_, this->size_,
+                              rank_row_ * cols_ + rank_col_, false, true)
+                   : end();  // make end() if empty
+      }
+      virtual const_iterator end() const {
+        return this->local_size_ > 0
+               ? Iterator(*this, rank_row_ * cols_ + rank_col_, this->size_,
+                          this->size_, false, true)
+               : Iterator(*this, 0, this->size_,
+                          this->size_, false, true);
       }
 
     }; // class CyclicPmap

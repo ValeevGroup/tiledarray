@@ -22,11 +22,18 @@
 #include "TiledArray/external/madness.h"
 #include <TiledArray/initialize.h>
 
+int wait_for_debugger = 0;
+
 GlobalFixture::GlobalFixture() {
   world = & TiledArray::initialize(
       boost::unit_test::framework::master_test_suite().argc,
       boost::unit_test::framework::master_test_suite().argv);
   world->gop.fence();
+  if (wait_for_debugger) {
+    if (world->rank() == 0) std::cerr << "waiting for debugger to attach ... then set wait_for_debugger to 0 to proceed" << std::endl;
+    while (wait_for_debugger) {
+    }
+  }
 }
 
 GlobalFixture::~GlobalFixture() {

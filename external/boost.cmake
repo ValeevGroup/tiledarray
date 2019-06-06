@@ -41,18 +41,10 @@ else()
   set(BOOST_DOWNLOAD_DIR ${PROJECT_BINARY_DIR}/external/source)
   set(BOOST_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/boost)
   set(BOOST_BUILD_DIR   ${PROJECT_BINARY_DIR}/external/build/boost)
-
-  # Set the external source
-  if (EXISTS ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
-    # Use local file
-    set(BOOST_URL ${PROJECT_SOURCE_DIR}/external/src/boost.tar.gz)
-    set(BOOST_URL_HASH "")
-  else()
-    # Downlaod remote file
-    set(BOOST_URL
-        http://downloads.sourceforge.net/project/boost/boost/1.57.0/boost_1_57_0.tar.gz)
-    set(BOOST_URL_HASH MD5=25f9a8ac28beeb5ab84aa98510305299)
-  endif()
+  # where to get boost
+  set(BOOST_URL
+          https://dl.bintray.com/boostorg/release/1.70.0/source/boost_1_70_0.tar.gz)
+  set(BOOST_URL_HASH SHA256=882b48708d211a5f48e60b0124cf5863c1534cd544ecd0664bb534a4b5d506e9)
 
   message("** Will build Boost from ${BOOST_URL}")
 
