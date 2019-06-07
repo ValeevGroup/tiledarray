@@ -142,21 +142,36 @@ namespace TiledArray {
 
    public:
 
-    /// iterates over an integer range, optionally checking locality of each element, or simply use local_::iterator
+    /// \brief Pmap iterator type
+    ///
+    /// Iterates over an integer range, with possible help of Pmap itself; if Pmap keeps list of local indices
+    /// simply proxies the Pmap::local_::iterator
     class Iterator : public boost::iterator_facade<Iterator, const size_type, boost::bidirectional_traversal_tag> {
      public:
-      Iterator(const Pmap& pmap, size_type begin_idx, size_type end_idx, size_type val, bool checking, bool use_pmap_advance = false) :
-      pmap_(&pmap), use_it_(false), value_(val), begin_idx_(begin_idx), end_idx_(end_idx), checking_(checking), use_pmap_advance_(use_pmap_advance) {
-        if (value_ != end_idx) {  // unless this is end
-          if (checking_ && value_ == begin_idx_) { // create valid begin iterator if needed
-            while (value_ < end_idx_ && !pmap_->is_local(value_)) {
-              ++value_;
+      /// \brief Creates an iterator of an integer range \c [begin_idx,end_idx)
+      /// \param pmap the host Pmap object
+      /// \param begin_idx start of the range
+      /// \param end_idx end of the range (one past the last element)
+      /// \param idx the current index to which points; if \c idx==end_idx this creates an end iterator
+      /// \param checking whether to use \c pmap.is_local() when iterating
+      /// \param use_pmap_advance whether to use \c pmap.advance() to increment/decrement
+      Iterator(const Pmap& pmap, size_type begin_idx, size_type end_idx, size_type idx, bool checking, bool use_pmap_advance = false) :
+      pmap_(&pmap), use_it_(false),
+            idx_(idx), begin_idx_(begin_idx), end_idx_(end_idx), checking_(checking), use_pmap_advance_(use_pmap_advance) {
+        if (idx_ != end_idx) {  // unless this is end
+          if (checking_ &&
+              idx_ == begin_idx_) { // create valid begin iterator if needed
+            while (idx_ < end_idx_ && !pmap_->is_local(idx_)) {
+              ++idx_;
             }
           }
           else  // else assert that this is a valid iterator
-            TA_ASSERT(pmap_->is_local(value_));
+            TA_ASSERT(pmap_->is_local(idx_));
         }
       }
+      /// \brief Creates an iterator over \c pmap.local_
+      /// \param pmap the host Pmap object
+      /// \param it the current iterator value
       Iterator(const Pmap& pmap, std::vector<size_type>::const_iterator it) : use_it_(true), it_(it) {
         TA_ASSERT(it_ == pmap_->local_.end() || pmap_->is_local(*it_));
       }
@@ -171,36 +186,40 @@ namespace TiledArray {
       std::vector<size_type>::const_iterator it_ = pmap_->local_.end();
 
       /// have range
-      size_type value_ = 0;
+      size_type idx_ = 0;
       size_type begin_idx_ = 0;
       size_type end_idx_ = 0;
       bool checking_ = true;
       bool use_pmap_advance_ = false;
 
+      /// \brief increments this iterator
+      /// \warning asserts that it is not already at the end of the range
       void increment() {
         if (use_it_) {
           TA_ASSERT(it_ != pmap_->local_.end());
           ++it_;
         }
         else {
-          if (value_ == end_idx_)
+          if (idx_ == end_idx_)
             return;
           if (!use_pmap_advance_) {
-            ++value_;
+            ++idx_;
             if (checking_) {
-              while (value_ < end_idx_ && !pmap_->is_local(value_)) {
-                ++value_;
+              while (idx_ < end_idx_ && !pmap_->is_local(idx_)) {
+                ++idx_;
               }
             }
           }
           else {
-            pmap_->advance(value_, true);
+            pmap_->advance(idx_, true);
           }
-          if (value_ > end_idx_)  // normalize if past end
-            value_ = end_idx_;
-          TA_ASSERT(value_ == end_idx_ || pmap_->is_local(value_));
+          if (idx_ > end_idx_)  // normalize if past end
+            idx_ = end_idx_;
+          TA_ASSERT(idx_ == end_idx_ || pmap_->is_local(idx_));
         }
       }
+      /// \brief decrements this iterator
+      /// \warning asserts that it is not already at the beginning or the end of the range
       void decrement() {
         if (use_it_) {
           TA_ASSERT(it_ != pmap_->local_.begin()); // no good will happen if we decrement begin
@@ -208,31 +227,37 @@ namespace TiledArray {
           --it_;
         }
         else {
-          TA_ASSERT(value_ != begin_idx_);
-          TA_ASSERT(value_ != end_idx_);
+          TA_ASSERT(idx_ != begin_idx_);
+          TA_ASSERT(idx_ != end_idx_);
           if (!use_pmap_advance_) {
-            --value_;
+            --idx_;
             if (checking_) {
-              while (value_ > begin_idx_ && !pmap_->is_local(value_)) {
-                --value_;
+              while (idx_ > begin_idx_ && !pmap_->is_local(idx_)) {
+                --idx_;
               }
             }
           }
           else {
-            pmap_->advance(value_, false);
+            pmap_->advance(idx_, false);
           }
-          if (value_ < begin_idx_)  // normalize if past begin
-            value_ = begin_idx_;
-          TA_ASSERT(value_ == begin_idx_ || pmap_->is_local(value_));
+          if (idx_ < begin_idx_)  // normalize if past begin
+            idx_ = begin_idx_;
+          TA_ASSERT(idx_ == begin_idx_ || pmap_->is_local(idx_));
         }
       }
 
+      /// \brief Iterator comparer
+      /// \warning asserts that \c this and \c other have the same attributes (host, range, etc.)
+      /// \param other an Iterator
+      /// \return true, if \c **this==*other
       bool equal(Iterator const& other) const {
         TA_ASSERT(this->pmap_ == other.pmap_ && this->use_it_ == other.use_it_);
-        return use_it_ ? this->it_ == other.it_ : this->value_ == other.value_;
+        return use_it_ ? this->it_ == other.it_ : this->idx_ == other.idx_;
       }
 
-      const size_type& dereference() const { return use_it_ ? *it_ : value_; }
+      /// \brief dereferences this iterator
+      /// \return const reference to the current index
+      const size_type& dereference() const { return use_it_ ? *it_ : idx_; }
     };
     friend class Iterator;
 
