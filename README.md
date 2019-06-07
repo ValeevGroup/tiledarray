@@ -88,87 +88,21 @@ This figure was obtained with the help of an allocation from [Advanced Research 
 
 # Installing TiledArray
 
-## Dependencies
-
-* **C++ compiler with C++14 support** - Compilers that have been tested include:
-  * GCC 4.9 and later, 
-  * Clang 3.4 and later, 
-  * Apple Clang 5.0 and later, and
-  * ~~Intel C/C++ Compiler 17 and later.~~
-* **Cmake** 3.9 or later
-* **Eigen** - Version 3.3 and later, available from [http://eigen.tuxfamily.org]. Will be downloaded automatically, if missing.
-* **BTAS** - master branch, available from [http://github.com/BTAS/BTAS]. Will be downloaded automatically, if missing.
-* **MADNESS** - While it is possible to compile MADNESS separately, we recommend that MADNESS is downloaded and compiled automatically as part of TiledArray. Compilation of MADNESS requires the following additional prerequisites (see the [MADNESS GitHub page](https://github.com/m-a-d-n-e-s-s/madness) for details):
-  * **Pthreads**
-  * **MPI-2 or MPI-3 library** - [Open-MPI](https://www.open-mpi.org/), [MPICH](http://www.mpich.org), [MVAPICH](http://mvapich.cse.ohio-state.edu), and [Intel MPI](https://software.intel.com/en-us/intel-mpi-library) have been tested. Support for `MPI_THREAD_MULTIPLE` must be enabled in come of these libraries at configuration time.
-  * **LAPACK** and **BLAS** - Serial (sequential, or 1-thread) versions of these libraries is recommended. If you have to use threaded version of these libraries, to avoid poor performance (or even errors) due to non-interoperable threading runtimes it is recommended to configure these libraries to use single thread at runtime before entering the block of TiledArray code.
-  * **Intel Threading Building Blocks** (optional, but **strongly recommended**) Version 4.3 Update 5 or later. 
-* **Boost** - Version 1.33.0 or later, used for for unit tests only. Will be downloaded automatically, if missing.
-* **Doxygen** (optional) - Used to generate for documentation only. We strongly recommend to use the most recent version of Doxygen to produce the most accurate documentation.
-
-## Build
-
-TiledArray includes several tool chain files for common platforms. These files contain system specific settings that have been tested on the various platforms. We recommend using one of these 
-
+The short version: assuming that MPI compiler wrappers are in your path, and this is a platform with BLAS/LAPACK installed system-wide in a standard location:
 ```{.sh}
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
-$ mkdir build
-$ cd build
-$ cmake \
+$ cmake -B build \
     -D CMAKE_INSTALL_PREFIX=/path/to/tiledarray/install \
-    -D CMAKE_TOOLCHAIN_FILE=../cmake/toolchains/osx-clang-mpi-accelerate.cmake \
-    ..
-$ cmake --build .
-$ cmake --build . --target install
+    -D CMAKE_TOOLCHAIN_FILE=../cmake/toolchains/toolchain-file-for-your-platform.cmake \
+    .
+$ cmake --build build
+(optional) $ cmake --build build --target check
+$ cmake --build build --target install
 ```
+On some standard platforms (e.g. MacOS) the toolchain file can be skipped.
 
-Common CMake cache variables that you may want to define include:
-
-### Compiler Variables
-
-```cmake
--D CMAKE_C_COMPILER=/path/to/bin/cc
--D CMAKE_CXX_COMPILER=/path/to/bin/c++
--D MPI_C_COMPILER=/path/to/bin/mpicc
--D MPI_CXX_COMPILER=/path/to/bin/mpicxx
--D CMAKE_CUDA_HOST_COMPILER=/path/to/cuda/host/c++/compiler  # only when ENABLE_CUDA is true
-
-```
-
-### Option Variables
-
-```cmake
--D CMAKE_BUILD_TYPE=(Release|Debug|RelWithDebInfo)
--D BUILD_SHARED_LIBS=(TRUE|FALSE)
--D CMAKE_CXX_STANDARD=(14|17|20)
--D TA_ERROR=(none|throw|assert)
--D ENABLE_CUDA=(TRUE|FALSE)
--D ENABLE_CUDA_ERROR_CHECK=(TRUE|FALSE) # only when ENABLE_CUDA is true
-```
-
-Note that currently `BUILD_SHARED_LIBS=TRUE` is only supported for single-process runs due to the limitations of the MADWorld runtime.
-
-### Library Variables
-
-```cmake
--D MADNESS_ROOT_DIR=/path/to/madness/root/dir
--D TBB_ROOT_DIR=/path/to/tbb/root/dir
--D LAPACK_LIBRARIES=(semicolon seperated list of LAPACK libraries)
--D BLAS_LIBRARIES=(semicolon seperated list of BLAS libraries)
--D BLA_STATIC=(TRUE|FALSE)
--D INTEGER4=(TRUE|FALSE)
--D EIGEN3_INCLUDE_DIR=/path/to/eigen3/include
--D CUTT_INSTALL_DIR=/path/to/cutt/install # only when ENABLE_CUDA is true
--D UMPIRE_INSTALL_DIR=/path/to/Umpire/install # only when ENABLE_CUDA is true
-```
-
-`BLA_STATIC` indicates static LAPACK and BLAS libraries will be perferred. `INTEGER4` indicated the Fortran integer width used by BLAS and LAPACK; if `TRUE` (the default), the integer size is `integer*4`, otherwise `integer*8` is used.
-
-### Expert Variables
-
-- Note, when configuring TiledArray, CMake will download and build MADNESS, Eigen, and Boost if they are not found on the system. Boost will only be installed if unit testing is enabled. This behavior can be disable with `-D TA_EXPERT=TRUE`.
-- To enable tracing of MADNESS tasks add `-D TA_TRACE_TASKS=ON`
+The detailed instructions can be found in [INSTALL.md](INSTALL.md).
 
 # Developers
 TiledArray is developed by the [Valeev Group](http://valeevgroup.github.io/) at [Virginia Tech](http://www.vt.edu).
