@@ -3,7 +3,24 @@
 
 Following is a brief summary of changes made in each release of TiledArray.
 
-- 14-Feb-2018: 0.7.0
+- day-month-year: 1.0.0-alpha.3
+  -
+
+- 07-June-2019: 1.0.0-alpha.2
+  - modernized CMake handling of CUDA, CMake 3.10 is now required
+  - improved CMake handling of MADNESS arguments, e.g. gperftools
+  - Pmaps no longer have to store O(N) data, and no existing Pmap does
+
+- 09-May-2019: 1.0.0-alpha.1
+  - first-class support for CUDA; requires Umpire [github.com/LLNL/Umpire] and cuTT [github.com/ValeevGroup/cutt
+    fork of github.com/ap-hynninen/cutt], both can be installed automatically
+  - better usability with BTAS tensors and hierarchical tiles (i.e. tensors of tensors)
+  - disabled automatic conversion of multiply expressions into scalars
+  - updates to support C++17 (but only C++14 is required)
+  - resolved issues 145, 157
+  - bump to CMake 3.8
+
+- 15-Feb-2018: 0.7.0
   - MADNESS bump to 0.11.0, requires C++14 as the result
   - added interface to latest Elemental ('El')
   - resolved issues 96, 100, 101, 102, 104, 106, 107, 108, 110, 124
