@@ -26,7 +26,7 @@ else()
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/external/cutt)
 
     if (NOT CUTT_URL)
-        set(CUTT_URL https://github.com/pchong90/cutt.git)
+        set(CUTT_URL https://github.com/ValeevGroup/cutt.git)
     endif (NOT CUTT_URL)
     set(CUTT_TAG master)
 
