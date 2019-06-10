@@ -66,6 +66,7 @@ TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
 TiledArray/conversions/eigen.h
 TiledArray/conversions/foreach.h
+TiledArray/conversions/fuse_arrays.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/elemental.h
