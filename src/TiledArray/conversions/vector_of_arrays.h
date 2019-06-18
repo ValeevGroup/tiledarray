@@ -2,8 +2,8 @@
 // Created by Chong Peng on 2019-05-01.
 //
 
-#ifndef SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_FUSE_ARRAYS_H_
-#define SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_FUSE_ARRAYS_H_
+#ifndef SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_VECTOR_OF_ARRAYS_H_
+#define SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_VECTOR_OF_ARRAYS_H_
 
 #include "mpqc/math/external/tiledarray/tiledarray.h"
 
@@ -11,11 +11,12 @@ namespace mpqc {
 
 namespace detail {
 
-/// fuse the TRanges of a vector of Arrays into 1 Tranges
-/// the new dimension will be the leading dimension, and will be blocked by 1
-/// all the arrays must have the same TiledRange object
+/// @brief fuses the TRanges of a vector of Arrays into 1 TRange, with the vector index forming the first mode
+
+/// The vector dimension will be the leading dimension, and will be blocked by 1.
+/// @warning all arrays in the vector must have the same TiledRange
 template <typename Tile, typename Policy>
-TA::TiledRange fuse_tranges(
+TA::TiledRange fuse_vector_of_tranges(
     const std::vector<TA::DistArray<Tile, Policy>>& arrays) {
   std::size_t n_array = arrays.size();
   auto array_trange = arrays[0].trange();
@@ -39,23 +40,23 @@ TA::TiledRange fuse_tranges(
   return new_trange;
 }
 
-/// fuse the Shapes of a vector of Arrays into 1 Shape
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
 ///
-/// \param arrays a vector of DistArray with the same TiledRanges
-/// \param trange the TiledRange of fused Array object
+/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+/// @param trange the TiledRange of the fused @c arrays
 template <typename Tile>
-TA::DenseShape fuse_shapes(
+TA::DenseShape fuse_vector_of_shapes(
     const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
     const TA::TiledRange& trange) {
   return TA::DenseShape(1, trange);
 }
 
-/// fuse the Shapes of a vector of Arrays into 1 Shape
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
 ///
-/// \param arrays a vector of DistArray with the same TiledRanges
-/// \param trange the TiledRange of fused Array object
+/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+/// @param trange the TiledRange of the fused @c arrays
 template <typename Tile>
-TA::SparseShape<float> fuse_shapes(
+TA::SparseShape<float> fuse_vector_of_shapes(
     const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
     const TA::TiledRange& trange) {
   std::size_t array_tiles_volume = arrays[0].trange().tiles_range().volume();
@@ -83,26 +84,28 @@ TA::SparseShape<float> fuse_shapes(
 
 
 
-/// split the ith mode of a fused Array, the leading dimension of Array must blocked by 1
-///
-/// \param arrays a vector of DistArray with the same TiledRanges
-/// \param i  the number of mode to split
-/// \param trange the TiledRange of the split Array object
+/// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
+
+/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
+/// @param[in] i the index of the subarray whose Shape will be extracted (i.e. the index of the corresponding tile of the leading dimension)
+/// @param[in] split_trange TiledRange of the target subarray objct
+/// @return the Shape of the @c i -th subarray
 template <typename Tile>
-TA::DenseShape split_fused_shape(
+TA::DenseShape subshape_from_fused_array(
     const TA::DistArray<Tile, TA::DensePolicy>& fused_array,
     const std::size_t i,
     const TA::TiledRange& split_trange) {
   return TA::DenseShape(1, split_trange);
 }
 
-/// split the ith mode of a fused Array, the leading dimension of Array must blocked by 1
-///
-/// \param arrays a vector of DistArray with the same TiledRanges
-/// \param i  the number of mode to split
-/// \param trange the TiledRange of the split Array object
+/// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
+
+/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
+/// @param[in] i the index of the subarray whose Shape will be extracted (i.e. the index of the corresponding tile of the leading dimension)
+/// @param[in] split_trange TiledRange of the target subarray objct
+/// @return the Shape of the @c i -th subarray
 template <typename Tile>
-TA::SparseShape<float> split_fused_shape(
+TA::SparseShape<float> subshape_from_fused_array(
     const TA::DistArray<Tile, TA::SparsePolicy>& fused_array,
     const std::size_t i,
     const TA::TiledRange& split_trange) {
@@ -127,22 +130,24 @@ TA::SparseShape<float> split_fused_shape(
 
 }  // namespace detail
 
-/// Fuse a vector of N dimension Array of the same TiledRange into a N+1
-/// dimension Array. The new dimension will be the leading dimension, and will
-/// be blocked by 1. All the arrays must have the same TiledRange object.
+/// @brief fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimensions
+
+/// The leading dimension of the resulting array is the vector dimension, and will
+/// be blocked by 1.
 ///
-/// \param arrays a vector of DistArray object with the same TiledRanges
+/// @param[in] arrays a vector of DistArray objects; every element of @c arrays must have the same TiledRange object
+/// @return @c arrays fused into a DistArray
 template <typename Tile, typename Policy>
-TA::DistArray<Tile, Policy> fuse_arrays(
+TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
     const std::vector<TA::DistArray<Tile, Policy>>& arrays) {
   auto& world = arrays[0].world();
   auto array_trange = arrays[0].trange();
 
   // make fused tiledrange
-  auto fused_trange = detail::fuse_tranges(arrays);
+  auto fused_trange = detail::fuse_vector_of_tranges(arrays);
 
   // make fused shape
-  auto fused_shape = detail::fuse_shapes(arrays, fused_trange);
+  auto fused_shape = detail::fuse_vector_of_shapes(arrays, fused_trange);
 
   // make fused arrays
   TA::DistArray<Tile, Policy> fused_array(world, fused_trange, fused_shape);
@@ -176,18 +181,20 @@ TA::DistArray<Tile, Policy> fuse_arrays(
 }
 
 
-/// split the ith mode of a fused Array into a Array object
-/// \param fused_array a DistArray object with leading dimension blocked by 1
-/// \param i the number of mode to split
-/// \param trange  TiledRange of the split Array object
+/// @brief extracts a subarray of a fused array created with fuse_vector_of_arrays
+
+/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
+/// @param[in] i the index of the subarray to extract (i.e. the index of the corresponding tile of the leading dimension)
+/// @param[in] split_trange TiledRange of the split Array object
+/// @return the @c i -th subarray
 template <typename Tile, typename Policy>
-TA::DistArray<Tile, Policy> split_fused_array(
+TA::DistArray<Tile, Policy> subarray_from_fused_array(
     const TA::DistArray<Tile, Policy>& fused_array, std::size_t i, const TA::TiledRange& split_trange) {
 
   auto& world = fused_array.world();
 
   // get the shape of split Array
-  auto split_shape = detail::split_fused_shape(fused_array, i, split_trange);
+  auto split_shape = detail::subshape_from_fused_array(fused_array, i, split_trange);
 
   // create split Array object
   TA::DistArray<Tile,Policy> split_array(world, split_trange, split_shape);
@@ -217,4 +224,4 @@ TA::DistArray<Tile, Policy> split_fused_array(
 
 }  // namespace mpqc
 
-#endif  // SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_FUSE_ARRAYS_H_
+#endif  // SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_VECTOR_OF_ARRAYS_H_
