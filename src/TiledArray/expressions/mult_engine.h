@@ -210,7 +210,10 @@ namespace TiledArray {
         BinaryEngine_::left_.init_vars();
         BinaryEngine_::right_.init_vars();
 
-        if(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars())) {
+        // it's either pure Hadamard (detect by checking that left arg's and target's vars are the "same") or contraction
+        // TODO add mixed Hadamard+contraction
+        if(BinaryEngine_::left_.vars().is_permutation(target_vars)) {
+          TA_ASSERT(BinaryEngine_::left_.vars().is_permutation(BinaryEngine_::right_.vars()));
           BinaryEngine_::perm_vars(target_vars);
         } else {
           contract_ = true;
