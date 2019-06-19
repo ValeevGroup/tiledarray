@@ -2,12 +2,12 @@
 // Created by Chong Peng on 2019-05-01.
 //
 
-#ifndef SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_VECTOR_OF_ARRAYS_H_
-#define SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_VECTOR_OF_ARRAYS_H_
+#ifndef TILEDARRAY_CONVERSIONS_VECTOR_OF_ARRAYS_H_
+#define TILEDARRAY_CONVERSIONS_VECTOR_OF_ARRAYS_H_
 
-#include "mpqc/math/external/tiledarray/tiledarray.h"
+#include <tiledarray.h>
 
-namespace mpqc {
+namespace TiledArray {
 
 namespace detail {
 
@@ -222,6 +222,6 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
   return split_array;
 }
 
-}  // namespace mpqc
+}  // namespace TiledArray
 
-#endif  // SRC_MPQC_MATH_EXTERNAL_TILEDARRAY_VECTOR_OF_ARRAYS_H_
+#endif  // TILEDARRAY_CONVERSIONS_VECTOR_OF_ARRAYS_H_
