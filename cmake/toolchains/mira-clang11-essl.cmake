@@ -29,16 +29,16 @@ set(MPI_C_COMPILER         "mpicc")
 set(MPI_CXX_COMPILER       "mpicxx")
 
 # Set compile flags
-set(CMAKE_C_FLAGS_INIT             "-std=c99 -mcpu=a2 -mtune=a2" CACHE STRING "Inital C compile flags")
-set(CMAKE_C_FLAGS_DEBUG            "-g -Wall" CACHE STRING "Inital C debug compile flags")
-set(CMAKE_C_FLAGS_MINSIZEREL       "-Os -DNDEBUG" CACHE STRING "Inital C minimum size release compile flags")
-set(CMAKE_C_FLAGS_RELEASE          "-O3 -DNDEBUG" CACHE STRING "Inital C release compile flags")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-O2 -g -Wall" CACHE STRING "Inital C release with debug info compile flags")
-set(CMAKE_CXX_FLAGS_INIT           "-mcpu=a2 -mtune=a2" CACHE STRING "Inital C++ compile flags")
-set(CMAKE_CXX_FLAGS_DEBUG          "-g -Wall" CACHE STRING "Inital C++ debug compile flags")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG" CACHE STRING "Inital C++ minimum size release compile flags")
-set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG" CACHE STRING "Inital C++ release compile flags")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ release with debug info compile flags")
+set(CMAKE_C_FLAGS_INIT             "-std=c99 -mcpu=a2 -mtune=a2" CACHE STRING "Initial C compile flags")
+set(CMAKE_C_FLAGS_DEBUG            "-g -Wall" CACHE STRING "Initial C debug compile flags")
+set(CMAKE_C_FLAGS_MINSIZEREL       "-Os -DNDEBUG" CACHE STRING "Initial C minimum size release compile flags")
+set(CMAKE_C_FLAGS_RELEASE          "-O3 -DNDEBUG" CACHE STRING "Initial C release compile flags")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-O2 -g -Wall" CACHE STRING "Initial C release with debug info compile flags")
+set(CMAKE_CXX_FLAGS_INIT           "-mcpu=a2 -mtune=a2" CACHE STRING "Initial C++ compile flags")
+set(CMAKE_CXX_FLAGS_DEBUG          "-g -Wall" CACHE STRING "Initial C++ debug compile flags")
+set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG" CACHE STRING "Initial C++ minimum size release compile flags")
+set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG" CACHE STRING "Initial C++ release compile flags")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Initial C++ release with debug info compile flags")
 
 # Set library
 
