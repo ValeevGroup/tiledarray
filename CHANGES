@@ -4,7 +4,7 @@
 Following is a brief summary of changes made in each release of TiledArray.
 
 - day-month-year: 1.0.0-alpha.3
-  -
+  - added ability to fuse vector<DistArray> -> DistArray and extract subarray from the fused array (PR #160)
 
 - 07-June-2019: 1.0.0-alpha.2
   - modernized CMake handling of CUDA, CMake 3.10 is now required
