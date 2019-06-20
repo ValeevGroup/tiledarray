@@ -231,6 +231,7 @@ endif()
 string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
 target_compile_options(tiledarray PUBLIC ${CMAKE_CXX_FLAG_LIST})
 target_compile_features(tiledarray PUBLIC "cxx_std_${CMAKE_CXX_STANDARD}")
+target_include_directories(tiledarray PUBLIC ${Boost_INCLUDE_DIRS})
 
 if (LAPACK_INCLUDE_DIRS)
   target_include_directories(tiledarray PUBLIC ${LAPACK_INCLUDE_DIRS})
