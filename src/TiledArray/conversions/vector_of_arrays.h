@@ -127,7 +127,7 @@ TA::DenseShape subshape_from_fused_array(
 /// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
 
 /// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
-/// @param[in] i the index of the subarray whose Shape will be extracted (i.e. the index of the corresponding tile of the leading dimension)
+/// @param[in] i the index of the subarray whose Shape will be extracted (i.e. the index of the corresponding *element* index of the leading dimension)
 /// @param[in] split_trange TiledRange of the target subarray objct
 /// @return the Shape of the @c i -th subarray
 template <typename Tile>
@@ -176,7 +176,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
   // make fused shape
-  // TODO handle the sparse case
   auto fused_shape = detail::fuse_vector_of_shapes(arrays, fused_trange);
 
   // make fused array
