@@ -17,15 +17,21 @@ namespace detail {
 /// @warning all arrays in the vector must have the same TiledRange
 template <typename Tile, typename Policy>
 TA::TiledRange fuse_vector_of_tranges(
-    const std::vector<TA::DistArray<Tile, Policy>>& arrays) {
+        const std::vector<TA::DistArray<Tile, Policy>>& arrays,
+        std::size_t block_size) {
   std::size_t n_array = arrays.size();
   auto array_trange = arrays[0].trange();
 
   /// make the new TiledRange1 for new dimension
   TA::TiledRange1 new_trange1;
   {
-    std::vector<std::size_t> new_trange1_v(n_array + 1);
-    std::iota(new_trange1_v.begin(), new_trange1_v.end(), 0);
+    std::vector<std::size_t> new_trange1_v;
+    auto range_size = arrays.size();
+    new_trange1_v.push_back(0);
+    for (std::size_t i = block_size; i < range_size; i += block_size) {
+      new_trange1_v.push_back(i);
+    }
+    new_trange1_v.push_back(range_size);
     new_trange1 = TA::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
   }
 
@@ -139,12 +145,13 @@ TA::SparseShape<float> subshape_from_fused_array(
 /// @return @c arrays fused into a DistArray
 template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
-    const std::vector<TA::DistArray<Tile, Policy>>& arrays) {
+    const std::vector<TA::DistArray<Tile, Policy>>& arrays,
+    std::size_t block_size = 1) {
   auto& world = arrays[0].world();
   auto array_trange = arrays[0].trange();
 
   // make fused tiledrange
-  auto fused_trange = detail::fuse_vector_of_tranges(arrays);
+  auto fused_trange = detail::fuse_vector_of_tranges(arrays, block_size);
 
   // make fused shape
   auto fused_shape = detail::fuse_vector_of_shapes(arrays, fused_trange);
