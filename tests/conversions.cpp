@@ -224,6 +224,8 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays){
 
   //convert vector of arrays back into dense array
   auto b_dense_fused = TiledArray::fuse_vector_of_arrays(b_dense_vector);
+
+  // Check to see if the fused and original arrays are the same
   for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
     for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
       auto tile_orig = b_dense.find({i,j}).get();
