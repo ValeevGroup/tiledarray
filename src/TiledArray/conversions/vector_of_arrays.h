@@ -79,7 +79,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
     }
   }
 
-  TA::Tensor<float> fused_tile_norms(trange.tiles_range());
+  TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range());
 
   // compute norms of fused tiles
   // N.B. tile norms are stored in scaled format, unscale in order to compute norms of fused tiles
@@ -103,7 +103,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
     }
   }
 
-  auto fused_shapes = TA::SparseShape<float>(fused_tile_norms, trange, true);
+  auto fused_shapes = TA::SparseShape<float>(fused_tile_norms, fused_trange, true);
 
   return fused_shapes;
 }
@@ -190,7 +190,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
       TA_ASSERT(fut_of_tile.probe());
       const auto& tile = fut_of_tile.get();
       const auto* tile_data = tile.data();
-      const auto tile_volume = tile.volume();
+      const auto tile_volume = tile.size();
       std::copy(tile_data, tile_data + tile_volume, result_ptr);
       result_ptr += tile_volume;
     }
@@ -213,7 +213,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
       v!=block_size; ++v, ++vidx) {
         input_tiles.emplace_back(arrays[vidx].find(tile_ord_array));
       }
-      fused_array.set(index, world.taskq.add(
+      fused_array.set(fused_tile_ord, world.taskq.add(
           make_tile, std::move(fused_tile_range),
           std::move(input_tiles)));
     }
@@ -245,7 +245,7 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
 
   /// copy the data from tile
   auto make_tile = [](const TA::Range& range, const Tile& fused_tile) {
-    return Tile(range, tile.data());
+    return Tile(range, fused_tile.data());
   };
 
   /// write to blocks of fused_array
