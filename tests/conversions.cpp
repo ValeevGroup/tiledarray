@@ -27,6 +27,8 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+#include "TiledArray/conversions/vector_of_arrays.h"
+
 using namespace TiledArray;
 
 struct ConversionsFixture : public TiledRangeFixture {
@@ -182,6 +184,60 @@ BOOST_AUTO_TEST_CASE(make_array_test) {
   BOOST_CHECK_NO_THROW(
       auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, this->tr,
                                             &this->init_rand_tile<TensorI>));
+}
+
+BOOST_AUTO_TEST_CASE(vector_of_arrays){
+
+  // Make a tiled range with block size of 1
+  TiledArray::TiledRange tr;
+  TiledArray::TiledRange tr_split;
+  {
+    TA::TiledRange1 trange1_mode0;
+    TA::TiledRange1 trange1_mode1;
+    std::vector<std::size_t> tr1_mode0_vector(10);
+    std::vector<std::size_t> tr1_mode1_vector(7);
+    std::iota(tr1_mode0_vector.begin(), tr1_mode0_vector.end(), 0);
+    std::iota(tr1_mode1_vector.begin(), tr1_mode1_vector.end(), 0);
+
+    TiledRange1 tr1_mode0(tr1_mode0_vector.begin(), tr1_mode0_vector.end());
+    TiledRange1 tr1_mode1(tr1_mode1_vector.begin(), tr1_mode1_vector.end());
+    tr = TiledArray::TiledRange({tr1_mode0,tr1_mode1});
+    tr_split = TiledArray::TiledRange({tr1_mode1});
+  }
+
+  // Make an array with tiled range from above.
+  auto b_dense = make_array<TArrayI>(*GlobalFixture::world, tr,
+          &this->init_rand_tile<TensorI>);
+
+  // Grab number of tiles in fused mode
+  auto text = b_dense.trange().tiles_range().extent_data();
+  auto num_mode0_tiles = text[0];
+  auto num_mode1_tiles = text[1];
+
+  // Convert dense array to vector of arrays
+  std::vector<TArrayI> b_dense_vector;
+  for(int i = 0; i < num_mode0_tiles; ++i){
+    b_dense_vector.push_back(
+            TiledArray::subarray_from_fused_array(b_dense,
+                    i, tr_split));
+  }
+
+  //convert vector of arrays back into dense array
+  auto b_dense_fused = TiledArray::fuse_vector_of_arrays(b_dense_vector);
+  for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
+    for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+      auto tile_orig = b_dense.find({i,j}).get();
+      auto tile_fused = b_dense_fused.find({i,j}).get();
+
+      auto lo = tile_orig.range().lobound_data();
+      auto up = tile_orig.range().upbound_data();
+      for (auto k = lo[0]; k < up[0]; ++k) {
+        for (auto l = lo[1]; l < up[1]; ++l) {
+          BOOST_CHECK_EQUAL(tile_orig(k,l), tile_fused(k,l));
+        }
+      }
+    }
+  }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
