@@ -249,6 +249,42 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_block_by_one_both){
     }
   }
 
+  // Make an sparse array with tiled range from above.
+  auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
+                                     &this->init_rand_tile<TensorI>);
+
+  // Grab number of tiles in fused mode
+  text = b_dense.trange().tiles_range().extent_data();
+  num_mode0_tiles = text[0];
+  num_mode1_tiles = text[1];
+
+  // Convert sparse array to vector of arrays
+  std::vector<TSpArrayI> b_sparse_vector;
+  for(int i = 0; i < 10; ++i){
+    b_sparse_vector.push_back(
+            TiledArray::subarray_from_fused_array(b_sparse,
+                                                  i, tr_split));
+  }
+
+  // convert vector of arrays back into sparse array
+  auto b_sparse_fused = TiledArray::fuse_vector_of_arrays(b_sparse_vector);
+
+  // Check to see if the fused and original arrays are the same
+  for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
+    for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+      auto tile_orig = b_dense.find({i,j}).get();
+      auto tile_fused = b_dense_fused.find({i,j}).get();
+
+      auto lo = tile_orig.range().lobound_data();
+      auto up = tile_orig.range().upbound_data();
+      for (auto k = lo[0]; k < up[0]; ++k) {
+        for (auto l = lo[1]; l < up[1]; ++l) {
+          BOOST_CHECK_EQUAL(tile_orig(k,l), tile_fused(k,l));
+        }
+      }
+    }
+  }
+}
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
                                        &this->init_rand_tile<TensorI>);
