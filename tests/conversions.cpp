@@ -345,7 +345,7 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking){
 
     // Convert sparse array to vector of arrays
     std::vector<TSpArrayI> b_sparse_vector;
-    for(int i = 0; i < num_mode0_tiles; ++i){
+    for(int i = 0; i < 10; ++i){
       b_sparse_vector.push_back(
               TiledArray::subarray_from_fused_array(b_sparse,
                                                     i, tr_split));
