@@ -224,10 +224,10 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_block_by_one_both){
 
   // Convert dense array to vector of arrays
   std::vector<TArrayI> b_dense_vector;
-  for(int i = 0; i < num_mode0_tiles; ++i){
+  for(int i = 0; i < 10; ++i){
     b_dense_vector.push_back(
             TiledArray::subarray_from_fused_array(b_dense,
-                    i, tr_split));
+                                                  i, tr_split));
   }
 
   //convert vector of arrays back into dense array
