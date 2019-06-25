@@ -255,8 +255,9 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
 
   // determine where subtile i starts
   size_t i_offset_in_tile;
+  size_t tile_idx_of_i;
   {
-    const auto tile_idx_of_i = fused_array.trange().dim(0).element_to_tile(i);
+    tile_idx_of_i = fused_array.trange().dim(0).element_to_tile(i);
     const auto tile_of_i = fused_array.trange().dim(0).tile(tile_idx_of_i);
     TA_ASSERT(i >= tile_of_i.first && i < tile_of_i.second);
     i_offset_in_tile = i - tile_of_i.first;
@@ -276,7 +277,7 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
   /// write to blocks of fused_array
   for (std::size_t index : *split_array.pmap()) {
     if (!split_array.is_zero(index)) {
-      std::size_t fused_array_index = i*split_ntiles + index;
+      std::size_t fused_array_index = tile_idx_of_i*split_ntiles + index;
 
       split_array.set(index, world.taskq.add(
           make_tile, split_array.trange().make_tile_range(index),
