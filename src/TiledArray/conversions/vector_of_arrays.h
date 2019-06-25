@@ -182,6 +182,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
     std::size_t block_size = 1) {
   auto& world = arrays[0].world();
   auto array_trange = arrays[0].trange();
+  const auto mode0_extent = arrays.size();
 
   // make fused tiledrange
   auto fused_trange = detail::fuse_vector_of_tranges(arrays, block_size);
@@ -222,7 +223,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
       // make a vector of Futures to the input tiles
       std::vector<madness::Future<Tile>> input_tiles; input_tiles.reserve(fused_tile_range.extent(0));
       for(size_t v=0, vidx=tile_idx_mode0*block_size;
-      v!=block_size; ++v, ++vidx) {
+      v!=block_size && vidx<mode0_extent; ++v, ++vidx) {
         input_tiles.emplace_back(arrays[vidx].find(tile_ord_array));
       }
       fused_array.set(fused_tile_ord, world.taskq.add(
