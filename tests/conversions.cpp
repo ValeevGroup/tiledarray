@@ -120,6 +120,21 @@ struct ConversionsFixture : public TiledRangeFixture {
   TSpArrayI a_sparse;
 };
 
+TiledArray::TiledRange1 compute_trange1(std::size_t range_size,
+                                std::size_t block_size) {
+  if (range_size > 0) {
+    std::vector<std::size_t> blocks;
+    blocks.push_back(0);
+    for (std::size_t i = block_size; i < range_size; i += block_size) {
+      blocks.push_back(i);
+    }
+    blocks.push_back(range_size);
+    return TA::TiledRange1(blocks.begin(), blocks.end());
+  }
+  else
+    return TA::TiledRange1{};
+}
+
 BOOST_FIXTURE_TEST_SUITE(conversions_suite, ConversionsFixture)
 
 BOOST_AUTO_TEST_CASE(policy_conversions) {
