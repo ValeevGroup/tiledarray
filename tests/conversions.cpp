@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE(make_array_test) {
                                             &this->init_rand_tile<TensorI>));
 }
 
-BOOST_AUTO_TEST_CASE(vector_of_arrays_block_by_one_both){
+BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
 
   // Make a tiled range with block size of 1
   TiledArray::TiledRange tr;
