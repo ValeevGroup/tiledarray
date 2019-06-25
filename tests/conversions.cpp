@@ -207,15 +207,8 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays){
   TiledArray::TiledRange tr;
   TiledArray::TiledRange tr_split;
   {
-    TA::TiledRange1 trange1_mode0;
-    TA::TiledRange1 trange1_mode1;
-    std::vector<std::size_t> tr1_mode0_vector(10);
-    std::vector<std::size_t> tr1_mode1_vector(7);
-    std::iota(tr1_mode0_vector.begin(), tr1_mode0_vector.end(), 0);
-    std::iota(tr1_mode1_vector.begin(), tr1_mode1_vector.end(), 0);
-
-    TiledRange1 tr1_mode0(tr1_mode0_vector.begin(), tr1_mode0_vector.end());
-    TiledRange1 tr1_mode1(tr1_mode1_vector.begin(), tr1_mode1_vector.end());
+    TA::TiledRange1 tr1_mode0 = compute_trange1(10, 1);
+    TA::TiledRange1 tr1_mode1 = compute_trange1(7, 1);
     tr = TiledArray::TiledRange({tr1_mode0,tr1_mode1});
     tr_split = TiledArray::TiledRange({tr1_mode1});
   }
