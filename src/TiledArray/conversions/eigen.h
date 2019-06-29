@@ -440,7 +440,7 @@ namespace TiledArray {
     // array is replicated
     if(! array.pmap()->is_replicated())
       TA_USER_ASSERT(array.world().size() == 1,
-          "TiledArray::array_to_eigen(): Array cannot be assigned with an Eigen::Matrix when the number of World ranks is greater than 1.");
+          "TiledArray::array_to_eigen(): non-replicated Array cannot be assigned to an Eigen::Matrix when the number of World ranks is greater than 1.");
 
     // Construct the Eigen matrix
     const auto* MADNESS_RESTRICT const array_extent = array.trange().elements_range().extent_data();
