@@ -255,7 +255,7 @@ namespace TiledArray {
     /// Accessor of the tiled range for one of the dimensions
 
     /// \param d the dimension index, a nonnegative integer less than rank()
-    /// \return TIledRange1 object for dimension \c d
+    /// \return TiledRange1 object for dimension \c d
     const TiledRange1& dim(std::size_t d) const {
       TA_ASSERT(d < rank());
       return ranges_[d];
