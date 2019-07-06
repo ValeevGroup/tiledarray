@@ -20,7 +20,6 @@
 #ifndef TILEDARRAY_TILE_H__INCLUDED
 #define TILEDARRAY_TILE_H__INCLUDED
 
-#include <TiledArray/tile_op/tile_interface.h>
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tile_interface/cast.h>
 #include <memory>
