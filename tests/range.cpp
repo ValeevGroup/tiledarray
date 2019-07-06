@@ -65,6 +65,11 @@ BOOST_AUTO_TEST_CASE( dimension_accessor )
   BOOST_CHECK_EQUAL_COLLECTIONS(r.extent_data(), r.extent_data() + r.rank(), size.begin(), size.end()); // check size()
   BOOST_CHECK_EQUAL_COLLECTIONS(r.stride_data(), r.stride_data() + r.rank(), weight.begin(), weight.end()); // check weight()
   BOOST_CHECK_EQUAL(r.volume(), volume);  // check volume()
+  for(size_t d=0; d!=r.rank(); ++d) {
+    auto range_d = r.dim(d);
+    BOOST_CHECK_EQUAL(range_d.first, start[d]);
+    BOOST_CHECK_EQUAL(range_d.second, finish[d]);
+  }
 }
 
 BOOST_AUTO_TEST_CASE( constructors )

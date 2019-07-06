@@ -544,6 +544,15 @@ namespace TiledArray {
     /// \throw nothing
     unsigned int rank() const { return rank_; }
 
+    /// Accessor of the \c d-th dimension of the range
+
+    /// \param d the dimension index, a nonnegative integer less than rank()
+    /// \return the pair of {lower,upper} bounds for dimension \c d
+    std::pair<size_type,size_type> dim(std::size_t d) const {
+      TA_ASSERT(d < rank());
+      return std::make_pair(lobound(d), upbound(d));
+    }
+
     /// Range lower bound data accessor
 
     /// \return A pointer to the lower bound data (see <tt>lobound()</tt>)
