@@ -29,8 +29,8 @@
 #include "TiledArray/range.h"
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/tile_interface/cast.h"
-#include "TiledArray/range.h"
 #include <TiledArray/tensor/kernels.h>
+#include "TiledArray/utilities.h"
 
 #include <btas/features.h>
 #include <btas/generic/axpy_impl.h>
