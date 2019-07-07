@@ -67,7 +67,12 @@ namespace TiledArray {
     /// \param r2 The second Range to compare
     template <typename Range>
     inline bool is_congruent(const Range& r1, const Range& r2){
-      return r1 == r2;
+      if (ignore_tile_position())
+        return (r1.rank() == r2.rank()) &&
+            std::equal(r1.extent_data(),
+                       r1.extent_data() + r1.rank(), r2.extent_data());
+      else
+        return r1 == r2;
     }
 
     /// Test that two BlockRange are congruent

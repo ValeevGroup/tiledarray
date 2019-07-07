@@ -54,10 +54,10 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
   // Check that the inner dimensions of left and right match
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
                                        std::cbegin(right.range().lobound())));
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
                                        std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(
@@ -175,10 +175,10 @@ void btas_tensor_gemm_cuda_impl(
 
   // Check that the outer dimensions of left match the the corresponding
   // dimensions in result
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_result_congruent(std::cbegin(left.range().lobound()),
                                         std::cbegin(result.range().lobound())));
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_result_congruent(std::cbegin(left.range().upbound()),
                                         std::cbegin(result.range().upbound())));
   TA_ASSERT(
@@ -187,10 +187,10 @@ void btas_tensor_gemm_cuda_impl(
 
   // Check that the outer dimensions of right match the the corresponding
   // dimensions in result
-  TA_ASSERT(gemm_helper.right_result_congruent(
+  TA_ASSERT(ignore_tile_position() || gemm_helper.right_result_congruent(
       std::cbegin(right.range().lobound()),
       std::cbegin(result.range().lobound())));
-  TA_ASSERT(gemm_helper.right_result_congruent(
+  TA_ASSERT(ignore_tile_position() || gemm_helper.right_result_congruent(
       std::cbegin(right.range().upbound()),
       std::cbegin(result.range().upbound())));
   TA_ASSERT(
@@ -198,10 +198,10 @@ void btas_tensor_gemm_cuda_impl(
                                          std::cbegin(result.range().extent())));
 
   // Check that the inner dimensions of left and right match
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
                                        std::cbegin(right.range().lobound())));
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
                                        std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(

@@ -447,10 +447,10 @@ inline btas::Tensor<T, Range, Storage> gemm(
       gemm_helper.make_result_range<Range>(left.range(), right.range()));
 
   // Check that the inner dimensions of left and right match
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
                                        std::cbegin(right.range().lobound())));
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
                                        std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(
@@ -492,10 +492,10 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
 
   // Check that the outer dimensions of left match the the corresponding
   // dimensions in result
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_result_congruent(std::cbegin(left.range().lobound()),
                                         std::cbegin(result.range().lobound())));
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_result_congruent(std::cbegin(left.range().upbound()),
                                         std::cbegin(result.range().upbound())));
   TA_ASSERT(
@@ -504,10 +504,10 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
 
   // Check that the outer dimensions of right match the the corresponding
   // dimensions in result
-  TA_ASSERT(gemm_helper.right_result_congruent(
+  TA_ASSERT(ignore_tile_position() || gemm_helper.right_result_congruent(
       std::cbegin(right.range().lobound()),
       std::cbegin(result.range().lobound())));
-  TA_ASSERT(gemm_helper.right_result_congruent(
+  TA_ASSERT(ignore_tile_position() || gemm_helper.right_result_congruent(
       std::cbegin(right.range().upbound()),
       std::cbegin(result.range().upbound())));
   TA_ASSERT(
@@ -515,10 +515,10 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
                                          std::cbegin(result.range().extent())));
 
   // Check that the inner dimensions of left and right match
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
                                        std::cbegin(right.range().lobound())));
-  TA_ASSERT(
+  TA_ASSERT(ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
                                        std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(

@@ -29,6 +29,7 @@
 #include <TiledArray/external/madness.h>
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
+#include <atomic>
 #include <iosfwd>
 #include <vector>
 #include <array>
@@ -176,7 +177,32 @@ namespace TiledArray {
       print_array(out, a, size(a));
     }
 
+    inline std::atomic<bool>& ignore_tile_position_accessor() {
+      static std::atomic<bool> val{false};
+      return val;
+    }
   } // namespace detail
+
+  /// Controls whether tile positions are checked in binary array operations.
+  /// These checks are disabled if preprocessor symbol \c NDEBUG is defined.
+  /// By default, tile positions are checked.
+  /// \param[in] b if true, tile positions will be ignored in binary array
+  ///            operations.
+  /// \warning this function should be called following a fence
+  ///          from the main thread only.
+  inline void ignore_tile_position(bool b) {
+    detail::ignore_tile_position_accessor() = b;
+  }
+
+  /// Reports whether tile positions are checked in binary array operations.
+  /// These checks are disabled if preprocessor symbol \c NDEBUG is defined.
+  /// By default, tile positions are checked.
+  /// \return if true, tile positions will be ignored in binary array
+  ///         operations.
+  inline bool ignore_tile_position() {
+    return detail::ignore_tile_position_accessor();
+  }
+
 } // namespace TiledArray
 
 namespace std {
