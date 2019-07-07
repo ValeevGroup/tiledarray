@@ -42,7 +42,7 @@ namespace TiledArray {
         return op_(tile);
       }
 
-      const Op& op_;
+      Op op_;
     };
 
     template <typename DstTile, typename SrcTile, typename Op>
@@ -53,7 +53,7 @@ namespace TiledArray {
         return op_(Cast<DstTile,SrcTile>{}(tile));
       }
 
-      const Op& op_;
+      Op op_;
     };
 
   }  // namespace detail
