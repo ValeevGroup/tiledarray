@@ -30,10 +30,12 @@
 
 namespace TiledArray {
 
-  template <typename Tile>
-  DistArray<Tile, DensePolicy>
-  to_dense(DistArray<Tile, SparsePolicy> const& sparse_array) {
-      typedef DistArray<Tile, DensePolicy> ArrayType;
+  template <typename Tile, typename ResultPolicy = DensePolicy, typename ArgPolicy>
+  inline
+  std::enable_if_t<is_dense_v<ResultPolicy> && !is_dense_v<ArgPolicy>,
+                   DistArray<Tile, ResultPolicy>>
+  to_dense(DistArray<Tile, ArgPolicy> const& sparse_array) {
+      typedef DistArray<Tile, ResultPolicy> ArrayType;
       ArrayType dense_array(sparse_array.world(), sparse_array.trange());
 
       typedef typename ArrayType::pmap_interface pmap_interface;
@@ -59,9 +61,10 @@ namespace TiledArray {
   }
 
   // If array is already dense just use the copy constructor.
-  template <typename Tile>
-  DistArray<Tile, DensePolicy>
-  to_dense(DistArray<Tile, DensePolicy> const& other) {
+  template <typename Tile, typename Policy>
+  inline
+  std::enable_if_t<is_dense_v<Policy>,DistArray<Tile, Policy>>
+  to_dense(DistArray<Tile, Policy> const& other) {
       return other;
   }
 

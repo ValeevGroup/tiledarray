@@ -198,7 +198,7 @@ btas_tensor_to_array(World& world, const TiledArray::TiledRange& trange,
 
   using Tensor_ = btas::Tensor<T,Range,Storage>;
   using Policy_ = typename DistArray_::policy_type;
-  const auto is_sparse = std::is_same<Policy_,TiledArray::SparsePolicy>::value;
+  const auto is_sparse = !is_dense<Policy_>::value;
 
   // Check that this is not a distributed computing environment
   if(! replicated)
