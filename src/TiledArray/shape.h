@@ -26,6 +26,7 @@
 namespace TiledArray {
 
   template <typename, typename> class DistArray;
+  class DensePolicy;
 
   /// Type trait to detect dense shape types
   template <typename S>
@@ -34,10 +35,15 @@ namespace TiledArray {
   template <>
   struct is_dense<DenseShape> : public std::true_type { };
 
+  template <>
+  struct is_dense<DensePolicy> : public std::true_type { };
+
   template <typename Tile, typename Policy>
   struct is_dense<DistArray<Tile, Policy> > :
       public is_dense<typename DistArray<Tile, Policy>::shape_type>
   { };
+
+  template <typename T> constexpr const bool is_dense_v = is_dense<T>::value;
 
 }  // namespace TiledArray
 
