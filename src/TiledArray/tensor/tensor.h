@@ -316,6 +316,15 @@ namespace TiledArray {
       return (pimpl_ ? pimpl_->range_ : empty_range_);
     }
 
+    /// Tensor range object mutable accessor
+
+    /// \return The tensor range object
+    /// \note asserts that this object has been already initialized
+    range_type& range() {
+      TA_ASSERT(pimpl_);
+      return pimpl_->range_;
+    }
+
     /// Tensor dimension size accessor
 
     /// \return The number of elements in the tensor
@@ -1430,9 +1439,11 @@ namespace TiledArray {
 
     /// Vector 2-norm
 
+    /// \tparam ResultType return type
+    /// \note This evaluates \c std::sqrt(ResultType(this->squared_norm()))
     /// \return The vector norm of this tensor
-    scalar_type norm() const {
-      return std::sqrt(squared_norm());
+    template <typename ResultType = scalar_type> ResultType norm() const {
+      return std::sqrt(static_cast<ResultType>(squared_norm()));
     }
 
     /// Minimum element

@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE( default_constructor ) {
   // Check that range data is correct
   BOOST_CHECK_EQUAL(x.data(), static_cast<int*>(NULL));
   BOOST_CHECK_EQUAL(x.size(), 0ul);
-  BOOST_CHECK_EQUAL(x.range().volume(), 0ul);
+  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(x).range().volume(), 0ul);
 
   // Check the element data
   BOOST_CHECK_EQUAL(x.begin(), x.end());

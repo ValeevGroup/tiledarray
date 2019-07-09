@@ -11,25 +11,27 @@ namespace TiledArray {
   /// If the input array is dense then create a copy by checking the norms of the
   /// tiles in the dense array and then cloning the significant tiles into the
   /// sparse array.
-  template <typename Tile>
-  DistArray<Tile, SparsePolicy>
-  to_sparse(DistArray<Tile, DensePolicy> const &dense_array) {
-      typedef DistArray<Tile, SparsePolicy> ArrayType;  // return type
+  template <typename Tile, typename ResultPolicy = SparsePolicy, typename ArgPolicy>
+  std::enable_if_t<!is_dense_v<ResultPolicy> && is_dense_v<ArgPolicy>, DistArray<Tile, ResultPolicy>>
+  to_sparse(DistArray<Tile, ArgPolicy> const &dense_array) {
+      typedef DistArray<Tile, ResultPolicy> ArrayType;  // return type
+      using ShapeType = typename ResultPolicy::shape_type;
+      using ShapeValueType = typename ShapeType::value_type;
 
       // Constructing a tensor to hold the norm of each tile in the Dense Array
-      TiledArray::Tensor<float> tile_norms(dense_array.trange().tiles_range(), 0.0);
+      TiledArray::Tensor<ShapeValueType> tile_norms(dense_array.trange().tiles_range(), 0.0);
 
       const auto end = dense_array.end();
       const auto begin = dense_array.begin();
       for (auto it = begin; it != end; ++it) {
           // write the norm of each local tile to the tensor
-          tile_norms[it.ordinal()] = it->get().norm();
+          norm(it->get(), tile_norms[it.ordinal()]);
       }
 
       // Construct a sparse shape the constructor will handle communicating the
       // norms of the local tiles to the other nodes
-      TiledArray::SparseShape<float> shape(dense_array.world(), tile_norms,
-                                           dense_array.trange());
+      ShapeType shape(dense_array.world(), tile_norms,
+                      dense_array.trange());
 
       ArrayType sparse_array(dense_array.world(), dense_array.trange(),
                              shape);
@@ -48,9 +50,9 @@ namespace TiledArray {
   }
 
   /// If the array is already sparse return a copy of the array.
-  template <typename Tile>
-  DistArray<Tile, SparsePolicy>
-  to_sparse(DistArray<Tile, SparsePolicy> const &sparse_array) {
+  template <typename Tile, typename Policy>
+  std::enable_if_t<!is_dense_v<Policy>, DistArray<Tile, Policy>>
+  to_sparse(DistArray<Tile, Policy> const &sparse_array) {
       return sparse_array;
   }
 

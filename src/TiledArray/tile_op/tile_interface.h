@@ -704,7 +704,17 @@ namespace TiledArray {
   inline auto norm(const Arg& arg)
   { return arg.norm(); }
 
-  /// Maximum element of a tile
+  /// Vector 2-norm of a tile
+
+  /// \tparam Arg The tile argument type
+  /// \tparam ResultType The result type
+  /// \param arg The argument to be multiplied and summed
+  /// \return A scalar that is equal to <tt>sqrt(sum_i arg[i] * arg[i])</tt>
+  template <typename Arg, typename ResultType>
+  inline void norm(const Arg& arg, ResultType& result)
+  { result = arg.template norm<ResultType>(); }
+
+/// Maximum element of a tile
 
   /// \tparam Arg The tile argument type
   /// \param arg The argument to find the maximum
@@ -774,8 +784,8 @@ namespace TiledArray {
   template <typename T>
   using result_of_squared_norm_t = decltype(squared_norm(std::declval<T>()));
 
-  template <typename T>
-  using result_of_norm_t = decltype(norm(std::declval<T>()));
+  template <typename T, typename ResultType = T>
+  using result_of_norm_t = decltype(norm(std::declval<T>(), std::declval<ResultType&>()));
 
   template <typename T>
   using result_of_max_t = decltype(max(std::declval<T>()));

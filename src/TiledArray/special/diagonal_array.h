@@ -127,19 +127,20 @@ void write_tiles_to_array(Array &A, T val){
 }  // namespace detail
 
 
-/// Create a DensePolicy DistArray with only diagonal elements, 
+/// Create a dense DistArray with only diagonal elements,
 /// the expected behavior is that every element (n,n,n, ..., n) will be nonzero.
 
 /// \param world The world for the array
 /// \param trange The trange for the array
 /// \param val The value to be written along the diagonal elements 
 
-template <typename T>
-DistArray<Tensor<T>,DensePolicy> dense_diagonal_array(World &world,
-                                               TiledRange const &trange,
-                                               T val = 1) {
+template <typename T, typename Policy = DensePolicy>
+std::enable_if_t<is_dense_v<Policy>, DistArray<Tensor<T>,Policy>>
+dense_diagonal_array(World &world,
+    TiledRange const &trange,
+    T val = 1) {
     // Init the array
-    DistArray<Tensor<T>, DensePolicy> A(world, trange);
+    DistArray<Tensor<T>, Policy> A(world, trange);
 
     detail::write_tiles_to_array(A, val);
 
@@ -147,22 +148,24 @@ DistArray<Tensor<T>,DensePolicy> dense_diagonal_array(World &world,
     return A;
 }
 
-/// Create a SparsePolicy DistArray with only diagonal elements, 
+/// Create a sparse DistArray with only diagonal elements,
 /// the expected behavior is that every element (n,n,n, ..., n) will be nonzero.
 
 /// \param world The world for the array
 /// \param trange The trange for the array
 /// \param val The value to be written along the diagonal elements 
 
-template <typename T>
-DistArray<Tensor<T>, SparsePolicy> sparse_diagonal_array(World &world,
-                                               TiledRange const &trange,
-                                               T val = 1) {
+template <typename T, typename Policy = SparsePolicy>
+std::enable_if_t<!is_dense_v<Policy>, DistArray<Tensor<T>, Policy>>
+sparse_diagonal_array(World &world,
+    TiledRange const &trange,
+    T val = 1) {
 
     // Compute shape and init the Array
     auto shape_norm = detail::diagonal_shape(trange, val);
-    SparseShape<float> shape(shape_norm, trange);
-    DistArray<Tensor<T>, SparsePolicy> A(world, trange, shape);
+    using ShapeType = typename Policy::shape_type;
+    ShapeType shape(shape_norm, trange);
+    DistArray<Tensor<T>, Policy> A(world, trange, shape);
 
     detail::write_tiles_to_array(A, val);
 
@@ -171,17 +174,13 @@ DistArray<Tensor<T>, SparsePolicy> sparse_diagonal_array(World &world,
 }
 
 template <typename T, typename Policy>
-DistArray<Tensor<T>, 
-  std::enable_if_t<std::is_same<Policy, DensePolicy>::value, Policy>
-> 
+std::enable_if_t<is_dense_v<Policy>, DistArray<Tensor<T>,Policy>>
 diagonal_array(World &world, TiledRange const &trange, T val = 1) {
   return dense_diagonal_array<T>(world, trange, val);
 }
 
 template <typename T, typename Policy>
-DistArray<Tensor<T>, 
-  std::enable_if_t<std::is_same<Policy, SparsePolicy>::value, Policy>
-> 
+std::enable_if_t<!is_dense_v<Policy>, DistArray<Tensor<T>,Policy>>
 diagonal_array(World &world, TiledRange const &trange, T val = 1) {
   return sparse_diagonal_array<T>(world, trange, val);
 }

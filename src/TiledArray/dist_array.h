@@ -215,7 +215,7 @@ namespace TiledArray {
     explicit DistArray(const DistArray<OtherTile,Policy>& other) :
         pimpl_()
     {
-      *this = foreach<Tile,OtherTile>(other, [](Tile& result, const OtherTile& source) { result = TiledArray::Cast<Tile,OtherTile>{}(source); });
+      *this = foreach<Tile>(other, [](Tile& result, const OtherTile& source) { result = TiledArray::Cast<Tile,OtherTile>{}(source); });
     }
 
     /// Unary transform constructor
@@ -229,7 +229,7 @@ namespace TiledArray {
     DistArray(const DistArray<OtherTile,Policy>& other, Op&& op) :
       pimpl_()
     {
-      *this = foreach<Tile,OtherTile,Op>(other, std::forward<Op>(op));
+      *this = foreach<Tile,OtherTile,Policy,Op>(other, std::forward<Op>(op));
     }
 
     /// Destructor

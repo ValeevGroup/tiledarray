@@ -437,7 +437,7 @@ namespace TiledArray {
 
     /// \tparam Index The index type
     /// \param index The index of the tile norm to retrieve
-    /// \return The norm of the tile at \c index
+    /// \return The (scaled) norm of the tile at \c index
     template <typename Index>
     value_type operator[](const Index& index) const {
       TA_ASSERT(! tile_norms_.empty());

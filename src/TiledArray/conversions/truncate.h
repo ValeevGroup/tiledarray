@@ -37,22 +37,30 @@ namespace TiledArray {
 
   /// Truncate a dense Array
 
-  /// This is a no op
-  /// \tparam Tile The tile type of the array
+  /// This is a no-op
+  /// \tparam Tile The tile type of \c array
+  /// \tparam Policy The policy type of \c array
   /// \param[in,out] array The array object to be truncated
-  template <typename Tile>
-  inline void truncate(DistArray<Tile, DensePolicy>& array) { }
+  template <typename Tile, typename Policy>
+  inline
+  std::enable_if_t<is_dense_v<Policy>, void>
+  truncate(DistArray<Tile, Policy>& array) { }
 
   /// Truncate a sparse Array
 
-  /// \tparam Tile The tile type of the array
+  /// \tparam Tile The tile type of \c array
+  /// \tparam Policy The policy type of \c array
   /// \param[in,out] array The array object to be truncated
-  template <typename Tile>
-  inline void truncate(DistArray<Tile, SparsePolicy>& array) {
-    typedef typename DistArray<Tile, SparsePolicy>::value_type value_type;
+  template <typename Tile, typename Policy>
+  inline
+  std::enable_if_t<!is_dense_v<Policy>, void>
+  truncate(DistArray<Tile, Policy>& array) {
+    typedef typename DistArray<Tile, Policy>::value_type value_type;
     array =
-        foreach(array, [] (value_type& result_tile, const value_type& arg_tile) {
-          typename detail::scalar_type<value_type>::type arg_tile_norm = norm(arg_tile);
+        foreach(array, [] (value_type& result_tile, const value_type& arg_tile) -> typename Policy::shape_type::value_type {
+          using result_type = typename Policy::shape_type::value_type;
+          result_type arg_tile_norm;
+          norm(arg_tile, arg_tile_norm);
           result_tile = arg_tile; // Assume this is shallow copy
           return arg_tile_norm;
         });
