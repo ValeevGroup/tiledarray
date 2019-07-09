@@ -94,7 +94,38 @@ namespace TiledArray {
         }
       };
 
-      template <typename Tile, typename Policy>
+      template <bool inplace, typename Result>
+      struct op_helper {
+        template <typename Op, typename OpResult, typename Arg,
+                  typename... Args>
+        std::enable_if_t<
+            detail::is_invocable_void<Op, Result&, const std::decay_t<Arg>&,
+                                      const std::decay_t<Args>&...>::value ||
+                detail::is_invocable_void<Op, std::decay_t<Arg>&,
+                                          const std::decay_t<Args>&...>::value,
+            Result>
+        operator()(Op&& op, OpResult& op_result, Arg&& arg, Args&&... args) {
+          void_op_helper<inplace, Result> op_caller;
+          return op_caller(std::forward<Op>(op), std::forward<Arg>(arg),
+                           std::forward<Args>(args)...);
+        }
+        template <typename Op, typename OpResult, typename Arg,
+                  typename... Args>
+        std::enable_if_t<!(
+            detail::is_invocable_void<Op, Result&, const std::decay_t<Arg>&,
+                                      const std::decay_t<Args>&...>::value ||
+                detail::is_invocable_void<Op, std::decay_t<Arg>&,
+                                          const std::decay_t<Args>&...>::value),
+            Result>
+        operator()(Op&& op, OpResult& op_result, Arg&& arg, Args&&... args) {
+          nonvoid_op_helper<inplace, Result> op_caller;
+          return op_caller(std::forward<Op>(op), op_result,
+                           std::forward<Arg>(arg), std::forward<Args>(args)...);
+        }
+      };
+
+
+    template <typename Tile, typename Policy>
       inline bool compare_trange(const DistArray<Tile, Policy>& array1) {
         return true;
       }
@@ -223,20 +254,11 @@ namespace TiledArray {
       auto task = [&op,&counter,&tile_norms](const size_type index,
           const_if_t<not inplace, arg_value_type>& arg_tile,
           const ArgTiles&... arg_tiles) -> result_value_type {
-        if (op_returns_void) {
-          void_op_helper<inplace, result_value_type> op_caller;
-          auto result_tile = op_caller(std::forward<Op>(op),
-                                       arg_tile, arg_tiles...);
-          ++counter;
-          return result_tile;
-        }
-        else {
-          nonvoid_op_helper<inplace, result_value_type> op_caller;
-          auto result_tile = op_caller(std::forward<Op>(op), tile_norms[index],
-                                       arg_tile, arg_tiles...);
-          ++counter;
-          return result_tile;
-        }
+        op_helper<inplace, result_value_type> op_caller;
+        auto result_tile = op_caller(std::forward<Op>(op), tile_norms[index],
+                                     arg_tile, arg_tiles...);
+        ++counter;
+        return result_tile;
       };
 
       World& world = arg.world();

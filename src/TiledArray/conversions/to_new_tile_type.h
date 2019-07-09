@@ -68,52 +68,20 @@ namespace TiledArray {
   /// \param array The array to be converted
   /// \param op The tile type conversion operation
   template <typename Tile, typename ConvTile = Tile, typename Policy, typename Op>
-  inline DistArray<typename std::result_of<Op(ConvTile)>::type, Policy>
+  inline decltype(auto)
   to_new_tile_type(DistArray<Tile, Policy> const &old_array, Op &&op) {
     using OutTileType = typename std::result_of<Op(ConvTile)>::type;
-    using OutArray = DistArray<OutTileType, Policy>;
 
     static_assert(!std::is_same<Tile, OutTileType>::value,
-        "Can't call new tile type if tile type does not change.");
+                  "Can't call new tile type if tile type does not change.");
 
-    auto &world = old_array.world();
+    const detail::cast_then_op<ConvTile, Tile, std::remove_reference_t<Op>>
+        cast_op(op);
 
-    // Create new array
-    OutArray new_array(world, old_array.trange(), old_array.shape(), old_array.pmap());
-
-    using pmap_iter = decltype(old_array.pmap()->begin());
-    pmap_iter it = old_array.pmap()->begin();
-    pmap_iter end = old_array.pmap()->end();
-
-#if __cplusplus < 201703L
-    const detail::cast_then_op<ConvTile, Tile, std::remove_reference_t<Op>> cast_op(op);
-#endif
-
-    for(; it != end; ++it) {
-      // Must check for zero because pmap_iter does not.
-      if(!old_array.is_zero(*it)) {
-        // Spawn a task to evaluate the tile
-        // 2 cases:
-        // - ConvTile = Tile -> call op directly
-        // - ConvTile != Tile -> chain Cast<> and op
-#if __cplusplus >= 201703L
-        if constexpr (std::is_same<ConvTile,Tile>::value) {
-          new_array.set(*it, world.taskq.add(op, old_array.find(*it)));
-        }
-        else {
-          auto cast_op = [=] (const Tile& tile) {
-            return op(Cast<ConvTile, Tile>{}(tile));
-          };
-          new_array.set(*it, world.taskq.add(cast_op, old_array.find(*it)));
-        }
-#else
-        new_array.set(*it, world.taskq.add(cast_op, old_array.find(*it)));
-#endif
-
-      }
-    }
-
-    return new_array;
+    return foreach<OutTileType>(old_array,
+                                [cast_op](auto& out, const auto& in) {
+                                  out = cast_op(in);
+                                });
   }
 
 } // namespace TiledArray
