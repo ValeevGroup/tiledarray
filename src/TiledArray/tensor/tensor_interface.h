@@ -933,9 +933,12 @@ namespace TiledArray {
 
       /// Vector 2-norm
 
+      /// \tparam ResultType the return type
+      /// \note This evaluates \c std::sqrt(ResultType(this->squared_norm()))
       /// \return The vector norm of this tensor
-      numeric_type norm() const {
-        return std::sqrt(squared_norm());
+      template <typename ResultType = numeric_type>
+      ResultType norm() const {
+        return std::sqrt(static_cast<ResultType>(squared_norm()));
       }
 
       /// Minimum element
