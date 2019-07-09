@@ -316,6 +316,15 @@ namespace TiledArray {
       return (pimpl_ ? pimpl_->range_ : empty_range_);
     }
 
+    /// Tensor range object mutable accessor
+
+    /// \return The tensor range object
+    /// \note asserts that this object has been already initialized
+    range_type& range() {
+      TA_ASSERT(pimpl_);
+      return pimpl_->range_;
+    }
+
     /// Tensor dimension size accessor
 
     /// \return The number of elements in the tensor
