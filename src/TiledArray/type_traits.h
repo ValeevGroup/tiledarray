@@ -929,6 +929,35 @@ namespace TiledArray {
     template <typename T1, typename T2>
     struct is_pair<std::pair<T1,T2> > : public std::true_type { };
 
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    // https://stackoverflow.com/questions/51187974/can-stdis-invocable-be-emulated-within-c11
+
+    template <typename F, typename... Args>
+    struct is_invocable :
+        std::is_constructible<
+            std::function<void(Args ...)>,
+            std::reference_wrapper<typename std::remove_reference<F>::type>
+        >
+    {
+    };
+
+    template <typename R, typename F, typename... Args>
+    struct is_invocable_r :
+        std::is_constructible<
+            std::function<R(Args ...)>,
+            std::reference_wrapper<typename std::remove_reference<F>::type>
+        >
+    {
+    };
+
+    template <typename Enabler, typename F, typename... Args>
+    struct is_invocable_void_helper : std::false_type {};
+    template <typename F, typename... Args>
+    struct is_invocable_void_helper<std::enable_if_t<std::is_void_v<std::result_of_t<F(Args...)>>,void>, F, Args...> : std::true_type {};
+    template <typename F, typename... Args>
+    struct is_invocable_void : is_invocable_void_helper<void, F, Args...> {};
+
+    template <typename T> struct type_printer;
   } // namespace detail
 
 } // namespace TiledArray
