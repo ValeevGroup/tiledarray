@@ -140,6 +140,12 @@ namespace TiledArray {
         const_if_t<not inplace, DistArray<ArgTile, Policy>>& arg,
         const DistArray<ArgTiles, Policy>&... args) {
 
+      constexpr const bool op_returns_void = detail::is_invocable_void<Op, ResultTile&, const ArgTile&, const ArgTiles&...>::value ||
+          detail::is_invocable_void<Op, ArgTile&, const ArgTiles&...>::value;
+      static_assert(!inplace || std::is_same<ResultTile,ArgTile>::value, "if inplace==true, ResultTile and ArgTile must be the same");
+      static_assert(!inplace || op_returns_void, "if inplace==true, Op must be callable with signature void(ArgTile&, const ArgTiles&...)");
+      static_assert(inplace || op_returns_void, "if inplace==false, Op must be callable with signature void(ResultTile&,const ArgTile&, const ArgTiles&...)");
+
       TA_USER_ASSERT(compare_trange(arg, args...), "Tiled ranges of args must match");
 
       typedef DistArray<ArgTile, Policy> arg_array_type;
@@ -185,6 +191,12 @@ namespace TiledArray {
         const_if_t<not inplace, DistArray<ArgTile, Policy>>& arg,
         const DistArray<ArgTiles, Policy>&... args) {
 
+      constexpr const bool op_returns_void = detail::is_invocable_void<Op, ResultTile&, const ArgTile&, const ArgTiles&...>::value ||
+          detail::is_invocable_void<Op, ArgTile&, const ArgTiles&...>::value;
+      static_assert(!inplace || std::is_same<ResultTile,ArgTile>::value, "if inplace==true, ResultTile and ArgTile must be the same");
+      static_assert(!inplace || detail::is_invocable<Op, ArgTile&, const ArgTiles&...>::value, "if inplace==true, Op must be callable with signature ret(ArgTile&, const ArgTiles&...), where ret={void,Policy::shape_type::value_type}");
+      static_assert(inplace || detail::is_invocable<Op, ResultTile&, const ArgTile&, const ArgTiles&...>::value, "if inplace==false, Op must be callable with signature ret(ResultTile&,const ArgTile&, const ArgTiles&...), where ret={void,Policy::shape_type::value_type}");
+
       TA_USER_ASSERT(detail::compare_trange(arg, args...), "Tiled ranges of args must match");
 
       typedef DistArray<ArgTile, Policy> arg_array_type;
@@ -211,15 +223,25 @@ namespace TiledArray {
       auto task = [&op,&counter,&tile_norms](const size_type index,
           const_if_t<not inplace, arg_value_type>& arg_tile,
           const ArgTiles&... arg_tiles) -> result_value_type {
-        nonvoid_op_helper<inplace, result_value_type> op_caller;
-        auto result_tile = op_caller(std::forward<Op>(op), tile_norms[index],
-            arg_tile, arg_tiles...);
-        ++counter;
-        return result_tile;
+        if (op_returns_void) {
+          void_op_helper<inplace, result_value_type> op_caller;
+          auto result_tile = op_caller(std::forward<Op>(op),
+                                       arg_tile, arg_tiles...);
+          ++counter;
+          return result_tile;
+        }
+        else {
+          nonvoid_op_helper<inplace, result_value_type> op_caller;
+          auto result_tile = op_caller(std::forward<Op>(op), tile_norms[index],
+                                       arg_tile, arg_tiles...);
+          ++counter;
+          return result_tile;
+        }
       };
 
       World& world = arg.world();
 
+      const auto& arg_shape_data = arg.shape().data();
       switch (shape_reduction) {
       case ShapeReductionMethod::Intersect:
         // Get local tile index iterator
@@ -230,6 +252,8 @@ namespace TiledArray {
               args.find(index)...);
           ++task_count;
           tiles.emplace_back(index, std::move(result_tile));
+          if (op_returns_void)  // if Op does not evaluate norms, use the (scaled) norms of the first arg
+            tile_norms[index] = arg_shape_data[index];
         }
         break;
       case ShapeReductionMethod::Union:
@@ -241,6 +265,9 @@ namespace TiledArray {
               detail::get_sparse_tile(index, args)...);
           ++task_count;
           tiles.emplace_back(index, std::move(result_tile));
+          if (op_returns_void)  // if Op does not evaluate norms, use the (scaled) norms of the first arg
+                                // need max reduction here, hencr c++17, until then just assert false
+            TA_ASSERT(false && "ShapeReductionMethod::Union not supported with void-returning Op");
         }
         break;
       default:
@@ -254,7 +281,7 @@ namespace TiledArray {
 
       // Construct the new array
       result_array_type result(world, arg.trange(),
-          shape_type(world, tile_norms, arg.trange()), arg.pmap());
+          shape_type(world, tile_norms, arg.trange(), op_returns_void), arg.pmap());  // if Op returns void tile_norms contains scaled norms, so do not scale again
       for(typename std::vector<datum_type>::const_iterator it = tiles.begin(); it != tiles.end(); ++it) {
         const size_type index = it->first;
         if(! result.is_zero(index))
