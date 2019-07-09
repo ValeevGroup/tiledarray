@@ -900,13 +900,6 @@ namespace TiledArray {
     template <typename T, typename P>
     struct is_array<DistArray<T, P> > : public std::true_type { };
 
-    /// is_dense<T> is a true type if `T` is a dense array
-    template <typename T>
-    struct is_dense : public std::false_type { };
-
-    template <typename Tile>
-    struct is_dense<DistArray<Tile, DensePolicy> > : public std::true_type { };
-
     template <typename T>
     using trange_t = typename T::trange_type;
 
