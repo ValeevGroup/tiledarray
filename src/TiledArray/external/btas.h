@@ -586,6 +586,12 @@ inline decltype(auto) norm(
     const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).norm();
 }
+// sqrt(squared_norm(arg))
+template <typename T, typename Range, typename Storage, typename ResultType>
+inline void norm(
+    const btas::Tensor<T, Range, Storage>& arg, ResultType& result) {
+  result = make_ti(arg).template norm<ResultType>();
+}
 // foreach(i) result = max(result, arg[i])
 template <typename T, typename Range, typename Storage>
 inline decltype(auto) max(const btas::Tensor<T, Range, Storage>& arg) {

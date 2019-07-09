@@ -86,7 +86,9 @@ struct ConversionsFixture : public TiledRangeFixture {
           Tile& tile, const typename Tile::range_type& r) {
     tile =  Tile(r);
     for (std::size_t i = 0ul; i < tile.size(); ++i) set_random(tile[i]);
-    return tile.norm();
+    double result;
+    norm(tile, result);
+    return result;
   }
 
   template <typename T>

@@ -16,15 +16,16 @@ namespace TiledArray {
   to_sparse(DistArray<Tile, ArgPolicy> const &dense_array) {
       typedef DistArray<Tile, ResultPolicy> ArrayType;  // return type
       using ShapeType = typename ResultPolicy::shape_type;
+      using ShapeValueType = typename ShapeType::value_type;
 
       // Constructing a tensor to hold the norm of each tile in the Dense Array
-      TiledArray::Tensor<float> tile_norms(dense_array.trange().tiles_range(), 0.0);
+      TiledArray::Tensor<ShapeValueType> tile_norms(dense_array.trange().tiles_range(), 0.0);
 
       const auto end = dense_array.end();
       const auto begin = dense_array.begin();
       for (auto it = begin; it != end; ++it) {
           // write the norm of each local tile to the tensor
-          tile_norms[it.ordinal()] = it->get().norm();
+          norm(it->get(), tile_norms[it.ordinal()]);
       }
 
       // Construct a sparse shape the constructor will handle communicating the

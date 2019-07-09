@@ -199,9 +199,9 @@ BOOST_AUTO_TEST_CASE( foreach_unary_inplace )
 BOOST_AUTO_TEST_CASE( foreach_unary_sparse_inplace )
 {
   TSpArrayI result = c.clone();
-  foreach_inplace(result, [] (TensorI& arg) -> float {
+  foreach_inplace(result, [] (TensorI& arg) {
     arg.scale_to(2);
-    return arg.norm();
+    return arg.norm<float>();
   });
 
   for(auto index : * result.pmap()) {
