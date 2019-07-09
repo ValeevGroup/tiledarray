@@ -25,6 +25,7 @@
 #include <madness/world/type_traits.h>
 #include <complex>
 #include <utility>
+#include <functional>
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // forward declarations
