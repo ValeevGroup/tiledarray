@@ -1073,7 +1073,7 @@ namespace TiledArray {
   /// \param arg[out] Will contain the vector 2-norm of \c arg , i.e. <tt>sqrt(sum_i arg[i] * arg[i])</tt>
   template <typename Arg, typename ResultType>
   inline void norm(const Tile<Arg>& arg, ResultType& result)
-  { result = norm(arg.tensor(), result); }
+  { norm(arg.tensor(), result); }
 
   /// Maximum element of a tile
 
