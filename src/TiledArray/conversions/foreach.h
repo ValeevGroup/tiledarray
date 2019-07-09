@@ -291,6 +291,7 @@ namespace TiledArray {
   /// and used to construct the shape of the result, whereas in the former
   /// case the shape of the result is computed from the shapes of the DistArray
   /// arguments (e.g. assigned to the shape of the first DistArray argument).
+  /// \note \c foreach/foreach_inplace are collective, with sparse variants synchronizing due to the need to compute and replicate shapes.
 
   /// @{
 

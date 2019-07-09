@@ -142,12 +142,10 @@ BOOST_FIXTURE_TEST_SUITE(conversions_suite, ConversionsFixture)
 BOOST_AUTO_TEST_CASE(policy_conversions) {
   GlobalFixture::world->gop.fence();
   // convert sparse to dense
-//  std::cout << a_sparse.shape() << std::endl;
   BOOST_CHECK_NO_THROW(a_dense = to_dense(a_sparse));
   // convert dense back to sparse
   TSpArrayI b_sparse;
   BOOST_CHECK_NO_THROW(b_sparse = to_sparse(a_dense));
-//  std::cout << b_sparse.shape() << std::endl;
 
   BOOST_CHECK_EQUAL(a_sparse.shape().data(), b_sparse.shape().data());
 
