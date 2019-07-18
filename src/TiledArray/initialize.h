@@ -71,7 +71,7 @@ static bool finalized() {
 /// @{
 
 /// @throw TiledArray::Exception if TiledArray initialized MADWorld and TiledArray::finalize() had been called
-inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm) {
+inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm, bool quiet = true) {
   if (detail::initialized_madworld() && finalized())
     throw Exception("TiledArray finalized MADWorld already, cannot re-initialize MADWorld again");
   if (!initialized()) {
@@ -83,7 +83,7 @@ inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm
     }
     auto& default_world =
         detail::initialized_madworld()
-            ? madness::initialize(argc, argv, comm)
+            ? madness::initialize(argc, argv, comm, quiet)
             : *madness::World::find_instance(comm);
     TiledArray::set_default_world(default_world);
 #ifdef TILEDARRAY_HAS_CUDA
@@ -97,12 +97,12 @@ inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm
     throw Exception("TiledArray already initialized");
 }
 
-inline World& initialize(int& argc, char**& argv) {
-  return TiledArray::initialize(argc, argv, SafeMPI::COMM_WORLD);
+inline World& initialize(int& argc, char**& argv, bool quiet = true) {
+  return TiledArray::initialize(argc, argv, SafeMPI::COMM_WORLD, quiet);
 }
 
-inline World& initialize(int& argc, char**& argv, const MPI_Comm& comm) {
-  return TiledArray::initialize(argc, argv, SafeMPI::Intracomm(comm));
+inline World& initialize(int& argc, char**& argv, const MPI_Comm& comm, bool quiet = true) {
+  return TiledArray::initialize(argc, argv, SafeMPI::Intracomm(comm), quiet);
 }
 
 /// @}
