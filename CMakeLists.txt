@@ -140,6 +140,7 @@ set(CMAKE_FIND_NO_INSTALL_PREFIX TRUE)  # do not search in CMAKE_INSTALL_PREFIX
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 set(CMAKE_SKIP_INSTALL_RPATH FALSE)
+set(CMAKE_NO_SYSTEM_FROM_IMPORTED TRUE)  # do not use -isystem by default to avoid include dir ordering issues as well as other issues like https://gcc.gnu.org/onlinedocs/cpp/System-Headers.html
 
 if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
   # look for frameworks and appbundles last
