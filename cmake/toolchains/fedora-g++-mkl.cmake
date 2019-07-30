@@ -4,6 +4,7 @@ set(CMAKE_C_COMPILER gcc)
 set(CMAKE_CXX_COMPILER g++)
 set(MPI_C_COMPILER ${MPICHROOT}/bin/mpicc)
 set(MPI_CXX_COMPILER ${MPICHROOT}/bin/mpicxx)
+set(MPI_CXX_SKIP_MPICXX ON)
 
 set(MKLROOT "/opt/intel/mkl")
 

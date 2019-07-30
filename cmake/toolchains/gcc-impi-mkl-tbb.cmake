@@ -29,6 +29,7 @@ set(CMAKE_C_COMPILER gcc)
 set(CMAKE_CXX_COMPILER g++)
 set(MPI_C_COMPILER mpiicc)
 set(MPI_CXX_COMPILER mpiicpc)
+set(MPI_CXX_SKIP_MPICXX ON)
 
 # Set compile flags
 set(CMAKE_C_FLAGS_INIT             "-std=c99" CACHE STRING "Initial C compile flags")
