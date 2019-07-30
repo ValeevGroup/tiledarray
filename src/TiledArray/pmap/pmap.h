@@ -173,17 +173,17 @@ namespace TiledArray {
       /// \param pmap the host Pmap object
       /// \param it the current iterator value
       Iterator(const Pmap& pmap, std::vector<size_type>::const_iterator it) : use_it_(true), it_(it) {
-        TA_ASSERT(it_ == pmap_->local_.end() || pmap_->is_local(*it_));
+        TA_ASSERT(it_ == pmap.local_.end() || pmap.is_local(*it_));
       }
 
      private:
       friend class boost::iterator_core_access;
-      const Pmap* pmap_;
+      const Pmap* pmap_ = nullptr;
 
       bool use_it_;
 
       // have iterator
-      std::vector<size_type>::const_iterator it_ = pmap_->local_.end();
+      std::vector<size_type>::const_iterator it_;
 
       /// have range
       size_type idx_ = 0;
