@@ -30,6 +30,7 @@
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/tile_op/contract_reduce.h>
 #include <TiledArray/proc_grid.h>
+#include <TiledArray/tensor/utility.h>
 
 namespace TiledArray {
   namespace expressions {
@@ -465,22 +466,11 @@ namespace TiledArray {
 
 #ifndef NDEBUG
 
-        // Get left and right tile extents.
-        const auto* MADNESS_RESTRICT const left_extent =
-            left_.trange().tiles_range().extent_data();
-        const auto* MADNESS_RESTRICT const right_extent =
-            right_.trange().tiles_range().extent_data();
-
-        // Check that the contracted dimensions are have congruent tilings
+        // Check that the contracted dimensions have congruent tilings
         for(unsigned int l = left_outer_rank, r = 0ul; l < left_rank; ++l, ++r) {
-          if(left_.trange().data()[l] != right_.trange().data()[r]) {
+          if(!is_congruent(left_.trange().data()[l], right_.trange().data()[r])) {
             if(TiledArray::get_default_world().rank() == 0) {
 
-              if(left_extent[l] == right_extent[r]) {
-                TA_USER_ERROR_MESSAGE( "The tilings of the contracted dimensions " \
-                    "of the left- and right-hand arguments are not equal.");
-
-              } else {
                 TA_USER_ERROR_MESSAGE( "The contracted dimensions of the left- " \
                     "and right-hand arguments are not congruent:" \
                     << "\n    left  = " << left_.trange() \
@@ -488,7 +478,6 @@ namespace TiledArray {
 
                 TA_EXCEPTION("The contracted dimensions of the left- and " \
                     "right-hand expressions are not congruent.");
-              }
             }
 
             TA_EXCEPTION("The contracted dimensions of the left- and "
