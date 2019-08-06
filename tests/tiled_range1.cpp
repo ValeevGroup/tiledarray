@@ -18,6 +18,7 @@
  */
 
 #include "TiledArray/tiled_range1.h"
+#include "TiledArray/utility.h"
 #include "unit_test_config.h"
 #include "range_fixture.h"
 #include <sstream>
@@ -193,6 +194,16 @@ BOOST_AUTO_TEST_CASE( comparison )
   BOOST_CHECK(! (r1 != r2)); // check not-equal operator
   BOOST_CHECK(! (r1 == r3)); // check for inequality with different number of tiles.
   BOOST_CHECK(r1 != r3);
+}
+
+BOOST_AUTO_TEST_CASE( congruency )
+{
+  TiledRange1 r1{ 1, 2, 4, 6, 8, 10 };
+  TiledRange1 r2{ 2, 3, 5, 7, 9, 11 };
+  BOOST_CHECK(!is_congruent(r1, r2));
+  TiledArray::ignore_tile_position(true);
+  BOOST_CHECK(is_congruent(r1, r2));
+  TiledArray::ignore_tile_position(false);
 }
 
 BOOST_AUTO_TEST_CASE( iteration )

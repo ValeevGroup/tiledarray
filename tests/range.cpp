@@ -183,6 +183,16 @@ BOOST_AUTO_TEST_CASE( comparision )
   BOOST_CHECK( ! (r1 != r) ); // check for failure
 }
 
+BOOST_AUTO_TEST_CASE( congruency )
+{
+  Range r1(r);
+  r1.inplace_shift(index(GlobalFixture::dim, 1));
+  BOOST_CHECK(!is_congruent(r1, r));
+  TA::ignore_tile_position(true);
+  BOOST_CHECK(is_congruent(r1, r));
+  TA::ignore_tile_position(false);
+}
+
 BOOST_AUTO_TEST_CASE( assignment )
 {
   Range r1;
