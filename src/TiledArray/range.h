@@ -825,6 +825,16 @@ namespace TiledArray {
 
     /// \tparam Index The shift array type
     /// \param bound_shift The shift to be applied to the range
+    /// \return A reference to this range
+    template <typename I>
+    Range_& inplace_shift(const std::initializer_list<I>& bound_shift) {
+      inplace_shift<std::initializer_list<I>>(bound_shift);
+    }
+
+    /// Shift the lower and upper bound of this range
+
+    /// \tparam Index The shift array type
+    /// \param bound_shift The shift to be applied to the range
     /// \return A shifted copy of this range
     template <typename Index>
     Range_ shift(const Index& bound_shift) {
@@ -1111,6 +1121,22 @@ namespace TiledArray {
     detail::print_array(os, r.upbound_data(), r.rank());
     os << " )";
     return os;
+  }
+
+  /// Test the two ranges are congruent
+
+  /// This function tests that the rank, lower bound, and upper bound of
+  /// \c r1 is equal to that of \c r2.
+  /// \param r1 The first Range to compare
+  /// \param r2 The second Range to compare
+  /// \warning if ignore_tile_position()==false, returns false unless the origins of the two ranges coincide
+  inline bool is_congruent(const Range& r1, const Range& r2){
+    if (ignore_tile_position())
+      return (r1.rank() == r2.rank()) &&
+          std::equal(r1.extent_data(),
+                     r1.extent_data() + r1.rank(), r2.extent_data());
+    else
+      return r1 == r2;
   }
 
 } // namespace TiledArray

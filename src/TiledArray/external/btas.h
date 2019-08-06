@@ -65,6 +65,23 @@ inline TiledArray::Range make_ta_range(
 
 namespace btas {
 
+/// Test if the two ranges are congruent
+
+/// This function tests that the rank, lower bound, and upper bound of
+/// \c r1 is equal to that of \c r2.
+/// \param r1 The first Range to compare
+/// \param r2 The second Range to compare
+/// \warning if TiledArray::ignore_tile_position()==false, returns false unless the origins of the two ranges coincide
+template <CBLAS_ORDER Order, typename... Args>
+inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1, const btas::RangeNd<Order, Args...>& r2){
+  if (TiledArray::ignore_tile_position())
+    return (r1.rank() == r2.rank()) &&
+        std::equal(r1.extent_data(),
+                   r1.extent_data() + r1.rank(), r2.extent_data());
+  else
+    return r1 == r2;
+}
+
 template <typename T, typename Range, typename Storage>
 decltype(auto)
 make_ti(const btas::Tensor<T, Range, Storage>& arg) {

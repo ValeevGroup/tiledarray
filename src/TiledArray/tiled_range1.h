@@ -22,6 +22,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/utility.h>
 #include <vector>
 #include <initializer_list>
 #include <mutex>
@@ -323,6 +324,24 @@ namespace TiledArray {
     } else {
       return r2;
     }
+  }
+
+  /// Test that two TiledRange1 objects are congruent
+
+  /// This function tests that the tile sizes of the two ranges coincide.
+  /// \tparam Range The range type
+  /// \param r1 an TiledRange1 object
+  /// \param r2 an TiledRange1 object
+  /// \warning if ignore_tile_position()==false, returns false unless the origins of the two ranges coincide
+  inline bool is_congruent(const TiledRange1& r1, const TiledRange1& r2) {
+    if (ignore_tile_position())
+      return std::equal(r1.begin(), r1.end(), r2.begin(),
+                        [](const auto& tile1, const auto& tile2) {
+                          return (tile1.second - tile1.first) ==
+                                 (tile2.second - tile2.first);
+                        });
+    else
+      return r1 == r2;
   }
 
 } // namespace TiledArray
