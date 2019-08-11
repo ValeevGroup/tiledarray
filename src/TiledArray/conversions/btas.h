@@ -25,6 +25,7 @@
 
 #include <limits>
 
+#include <TiledArray/shape.h>
 #include <TiledArray/block_range.h>
 #include <TiledArray/external/btas.h>
 #include <TiledArray/tensor.h>
@@ -198,7 +199,7 @@ btas_tensor_to_array(World& world, const TiledArray::TiledRange& trange,
 
   using Tensor_ = btas::Tensor<T,Range,Storage>;
   using Policy_ = typename DistArray_::policy_type;
-  const auto is_sparse = !is_dense<Policy_>::value;
+  const auto is_sparse = !is_dense_v<Policy_>;
 
   // Check that this is not a distributed computing environment
   if(! replicated)
