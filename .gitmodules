@@ -1,0 +1,3 @@
+[submodule "doc/wiki"]
+	path = doc/wiki
+	url = ../tiledarray.wiki.git
