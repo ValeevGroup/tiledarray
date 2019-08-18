@@ -1125,18 +1125,14 @@ namespace TiledArray {
 
   /// Test the two ranges are congruent
 
-  /// This function tests that the rank, lower bound, and upper bound of
-  /// \c r1 is equal to that of \c r2.
+  /// This function tests that the rank and extent of
+  /// \c r1 are equal to those of \c r2.
   /// \param r1 The first Range to compare
   /// \param r2 The second Range to compare
-  /// \warning if ignore_tile_position()==false, returns false unless the origins of the two ranges coincide
-  inline bool is_congruent(const Range& r1, const Range& r2){
-    if (ignore_tile_position())
-      return (r1.rank() == r2.rank()) &&
-          std::equal(r1.extent_data(),
-                     r1.extent_data() + r1.rank(), r2.extent_data());
-    else
-      return r1 == r2;
+  inline bool is_congruent(const Range& r1, const Range& r2) {
+    return (r1.rank() == r2.rank()) &&
+           std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
+                      r2.extent_data());
   }
 
 } // namespace TiledArray

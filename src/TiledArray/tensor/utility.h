@@ -61,13 +61,13 @@ namespace TiledArray {
 
     /// Test that the ranges of a pair of tensors are congruent
 
-    /// This function tests that the rank, lower bound, and upper bound of
-    /// \c tensor1 is equal to that of \c tensor2.
+    /// This function tests that the rank and extent of
+    /// \c tensor1 are equal to those of \c tensor2.
     /// \tparam T1 The first tensor type
     /// \tparam T2 The second tensor type
     /// \param tensor1 The first tensor to be compared
     /// \param tensor2 The second tensor to be compared
-    /// \return \c true if the rank and extents of the two tensors equal,
+    /// \return \c true if the rank and extent of the two tensors equal,
     /// otherwise \c false.
     template <typename T1, typename T2,
         typename std::enable_if<! (is_shifted<T1>::value
@@ -85,7 +85,7 @@ namespace TiledArray {
     /// \param tensor1 The first tensor to be compared
     /// \param tensor2 The second tensor to be compared
     /// \param perm The permutation to be applied to \c tensor2
-    /// \return \c true if the rank and extents of the two tensors equal,
+    /// \return \c true if the rank and extent of the two tensors equal,
     /// otherwise \c false.
     template <typename T1, typename T2,
         typename std::enable_if<! (is_shifted<T1>::value
@@ -104,7 +104,7 @@ namespace TiledArray {
     /// \tparam T2 The second tensor type
     /// \param tensor1 The first tensor to be compared
     /// \param tensor2 The second tensor to be compared
-    /// \return \c true if the rank and extents of the two tensors equal,
+    /// \return \c true if the rank and extent of the two tensors equal,
     /// otherwise \c false.
     template <typename T1, typename T2,
         typename std::enable_if<is_shifted<T1>::value

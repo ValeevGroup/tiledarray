@@ -215,7 +215,6 @@ namespace TiledArray {
   /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
   /// \param r1 The first BlockRange to compare
   /// \param r2 The second BlockRange to compare
-  /// \warning if ignore_tile_position()==false, returns false unless the origins of the two ranges coincide
   inline bool is_congruent(const BlockRange& r1, const BlockRange& r2){
     return is_congruent(static_cast<const Range&>(r1), static_cast<const Range&>(r2));
   }
@@ -225,7 +224,6 @@ namespace TiledArray {
   /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
   /// \param r1 The BlockRange to compare
   /// \param r2 The Range to compare
-  /// \warning if ignore_tile_position()==false, returns false unless the origins of the two ranges coincide
   inline bool is_congruent(const BlockRange& r1, const Range& r2) {
     return is_congruent(static_cast<const Range&>(r1), r2);
   }
@@ -235,7 +233,6 @@ namespace TiledArray {
   /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
   /// \param r1 The Range to compare
   /// \param r2 The BlockRange to compare
-  /// \warning if ignore_tile_position()==false, returns false unless the origins of the two ranges coincide
   inline bool is_congruent(const Range& r1, const BlockRange& r2) {
     return is_congruent(r2,r1);
   }

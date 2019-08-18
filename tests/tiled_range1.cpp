@@ -200,10 +200,7 @@ BOOST_AUTO_TEST_CASE( congruency )
 {
   TiledRange1 r1{ 1, 2, 4, 6, 8, 10 };
   TiledRange1 r2{ 2, 3, 5, 7, 9, 11 };
-  BOOST_CHECK(!is_congruent(r1, r2));
-  TiledArray::ignore_tile_position(true);
   BOOST_CHECK(is_congruent(r1, r2));
-  TiledArray::ignore_tile_position(false);
 }
 
 BOOST_AUTO_TEST_CASE( iteration )
