@@ -100,13 +100,13 @@ namespace TiledArray {
       static constexpr bool right_is_consumable = Op::right_is_consumable;
 
       template <typename T>
-      static constexpr auto is_lazy_tile_v = is_lazy_tile<std::decay_t<T> >::value;
+      static constexpr bool is_lazy_tile_v = is_lazy_tile<std::decay_t<T> >::value;
 
       template <typename T>
-      static constexpr auto is_array_tile_v = is_array_tile<std::decay_t<T> >::value;
+      static constexpr bool is_array_tile_v = is_array_tile<std::decay_t<T> >::value;
 
       template <typename T>
-      static constexpr auto is_nonarray_lazy_tile_v = is_lazy_tile_v<T> && !is_array_tile_v<T>;
+      static constexpr bool is_nonarray_lazy_tile_v = is_lazy_tile_v<T> && !is_array_tile_v<T>;
 
       template <typename T>
       using eval_t = typename eval_trait<std::decay_t<T> >::type;
