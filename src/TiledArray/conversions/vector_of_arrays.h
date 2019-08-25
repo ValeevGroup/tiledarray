@@ -193,6 +193,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
 
   // make fused array
   TA::DistArray<Tile, Policy> fused_array(world, fused_trange, fused_shape);
+  fused_array.make_replicated();
 
   /// copy the data from a sequence of tiles
   auto make_tile = [](const TA::Range& range, const std::vector<madness::Future<Tile>>& tiles) {
@@ -224,6 +225,9 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
       std::vector<madness::Future<Tile>> input_tiles; input_tiles.reserve(fused_tile_range.extent(0));
       for(size_t v=0, vidx=tile_idx_mode0*block_size;
       v!=block_size && vidx<mode0_extent; ++v, ++vidx) {
+        if(!arrays[vidx].is_local(tile_ord_array)){
+          continue;
+        }
         input_tiles.emplace_back(arrays[vidx].find(tile_ord_array));
       }
       fused_array.set(fused_tile_ord, world.taskq.add(
@@ -231,6 +235,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
           std::move(input_tiles)));
     }
   }
+  world.gop.fence();
 
   return fused_array;
 }
@@ -250,43 +255,46 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
     const TA::TiledRange& split_trange) {
 
   auto& world = fused_array.world();
+  auto wsize = world.size();
 
-  // get the shape of split Array
-  auto split_shape = detail::subshape_from_fused_array(fused_array, i, split_trange);
+  if(world.rank() == i % wsize) {
+    // get the shape of split Array
+    auto split_shape = detail::subshape_from_fused_array(fused_array, i, split_trange);
 
-  // determine where subtile i starts
-  size_t i_offset_in_tile;
-  size_t tile_idx_of_i;
-  {
-    tile_idx_of_i = fused_array.trange().dim(0).element_to_tile(i);
-    const auto tile_of_i = fused_array.trange().dim(0).tile(tile_idx_of_i);
-    TA_ASSERT(i >= tile_of_i.first && i < tile_of_i.second);
-    i_offset_in_tile = i - tile_of_i.first;
-  }
-
-  // create split Array object
-  TA::DistArray<Tile,Policy> split_array(world, split_trange, split_shape);
-
-  std::size_t split_ntiles= split_trange.tiles_range().volume();
-
-  /// copy the data from tile
-  auto make_tile = [i_offset_in_tile](const TA::Range& range, const Tile& fused_tile) {
-    const auto split_tile_volume = range.volume();
-    return Tile(range, fused_tile.data() + i_offset_in_tile * split_tile_volume);
-  };
-
-  /// write to blocks of fused_array
-  for (std::size_t index : *split_array.pmap()) {
-    if (!split_array.is_zero(index)) {
-      std::size_t fused_array_index = tile_idx_of_i*split_ntiles + index;
-
-      split_array.set(index, world.taskq.add(
-          make_tile, split_array.trange().make_tile_range(index),
-          fused_array.find(fused_array_index)));
+    // determine where subtile i starts
+    size_t i_offset_in_tile;
+    size_t tile_idx_of_i;
+    {
+      tile_idx_of_i = fused_array.trange().dim(0).element_to_tile(i);
+      const auto tile_of_i = fused_array.trange().dim(0).tile(tile_idx_of_i);
+      TA_ASSERT(i >= tile_of_i.first && i < tile_of_i.second);
+      i_offset_in_tile = i - tile_of_i.first;
     }
-  }
 
-  return split_array;
+    // create split Array object
+    TA::DistArray<Tile, Policy> split_array(world, split_trange, split_shape);
+
+    std::size_t split_ntiles = split_trange.tiles_range().volume();
+
+    /// copy the data from tile
+    auto make_tile = [i_offset_in_tile](const TA::Range &range, const Tile &fused_tile) {
+      const auto split_tile_volume = range.volume();
+      return Tile(range, fused_tile.data() + i_offset_in_tile * split_tile_volume);
+    };
+
+    /// write to blocks of fused_array
+    for (std::size_t index : *split_array.pmap()) {
+      if (!split_array.is_zero(index)) {
+        std::size_t fused_array_index = tile_idx_of_i * split_ntiles + index;
+
+        split_array.set(index, world.taskq.add(
+                make_tile, split_array.trange().make_tile_range(index),
+                fused_array.find(fused_array_index)));
+      }
+    }
+
+    return split_array;
+  }
 }
 
 }  // namespace TiledArray
