@@ -28,11 +28,11 @@ public:
     return split_array[r].find(i);
   }
 
-  const std::vector<Array>& array_accessor(){
+  const std::vector<Array>& array_accessor() const {
     return split_array;
   }
 
-  const int size(){
+  const unsigned long size() const {
     return split_array.size();
   }
 private:
