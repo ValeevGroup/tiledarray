@@ -368,7 +368,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
             v!=block_size && vidx<mode0_extent; ++v, ++vidx) {
           //auto & membrfn = Dist_Vector_of_Arrays<TA::DistArray<Tile,Policy>>::get_tile();
           input_tiles.emplace_back(arrays.task(rank,
-                  Dist_Vector_of_Arrays<TA::DistArray<Tile,Policy>>::get_tile();,
+                  Dist_Vector_of_Arrays<TA::DistArray<Tile,Policy>>::get_tile,
                   vidx, tile_ord_array));
         }
         fused_array.set(fused_tile_ord, global_world.taskq.add(

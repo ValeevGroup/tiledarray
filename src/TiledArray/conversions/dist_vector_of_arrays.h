@@ -16,7 +16,7 @@ public:
   using Tile = typename Array::value_type;
   using Policy = typename Array::policy_type;
 
-  Dist_Vector_of_Arrays(madness::World &world, const std::vector<Array> &array) :
+  Dist_Vector_of_Arrays(madness::World &world, std::vector<Array> &array) :
           madness::WorldObject<Dist_Vector_of_Arrays<Array>>(world), split_array(array) {
     this->process_pending();
   }
