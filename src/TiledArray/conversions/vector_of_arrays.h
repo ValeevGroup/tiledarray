@@ -323,6 +323,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
     //auto& world = arrays[0].world();
     //auto array_trange = arrays[0].trange();
     auto rank = global_world.rank();
+    auto size = global_world.size();
     const auto mode0_extent = arrays.size();
 
     // make fused tiledrange
@@ -367,9 +368,10 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
         input_tiles.reserve(fused_tile_range.extent(0));
         for(size_t v=0, vidx=tile_idx_mode0*block_size;
             v!=block_size && vidx<mode0_extent; ++v, ++vidx) {
-          //auto & membrfn = Dist_Vector_of_Arrays<TA::DistArray<Tile,Policy>>::get_tile();
-          input_tiles.emplace_back(arrays.task(rank,
-                  Dist_Vector_of_Arrays<TA::DistArray<Tile,Policy>>::template get_tile<Index>,
+          int owner_rank = v % size;
+
+          input_tiles.emplace_back(arrays.task(owner_rank,
+                  &Dist_Vector_of_Arrays<DistArray<Tile, Policy>>:: template get_tile<Index>,
                   vidx, tile_ord_array));
         }
         fused_array.set(fused_tile_ord, global_world.taskq.add(
