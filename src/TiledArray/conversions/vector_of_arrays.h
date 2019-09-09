@@ -6,7 +6,6 @@
 #define TILEDARRAY_CONVERSIONS_VECTOR_OF_ARRAYS_H_
 
 #include <tiledarray.h>
-#include <TiledArray/conversions/dist_vector_of_arrays.h>
 
 namespace TiledArray {
 
@@ -49,10 +48,8 @@ TA::TiledRange fuse_vector_of_tranges(
 template <typename Tile, typename Policy>
 TA::TiledRange fuse_vector_of_tranges(
         const std::vector<TA::DistArray<Tile, Policy>>& arrays,
-        TiledArray::TiledRange& array_trange,
+        const TiledArray::TiledRange& array_trange,
         std::size_t block_size = 1) {
-  //auto array_trange = arrays[0].trange();
-
   /// make the new TiledRange1 for new dimension
   TA::TiledRange1 new_trange1;
   {
@@ -316,14 +313,48 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   return fused_array;
 }
 
+namespace detail {
+template<typename Array>
+class dist_subarray_vec : public madness::WorldObject<dist_subarray_vec<Array>> {
+
+ public:
+  using Tile = typename Array::value_type;
+  using Policy = typename Array::policy_type;
+
+  dist_subarray_vec(madness::World &world, const std::vector<Array> &array) :
+      madness::WorldObject<dist_subarray_vec<Array>>(world), split_array(array) {
+    this->process_pending();
+  }
+
+  virtual ~dist_subarray_vec(){ }
+
+  template <typename Index>
+  madness::Future<Tile> get_tile(int r, Index & i){
+    return split_array.at(r).find(i);
+  }
+
+  const std::vector<Array>& array_accessor() const {
+    return split_array;
+  }
+
+  const unsigned long size() const {
+    return split_array.size();
+  }
+ private:
+  const std::vector<Array> &split_array;
+};
+}
   template <typename Tile, typename Policy>
   TA::DistArray<Tile, Policy> fuse_vector_of_arrays(madness::World & global_world,
-          const Dist_Vector_of_Arrays<TA::DistArray<Tile, Policy>>& arrays,
-          TiledArray::TiledRange array_trange, std::size_t block_size = 1) {
-    //auto& world = arrays[0].world();
-    //auto array_trange = arrays[0].trange();
+          const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
+          const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
     auto rank = global_world.rank();
     auto size = global_world.size();
+
+    // make instances of array_vec globally accessible
+    using Array = TA::DistArray<Tile, Policy>;
+    detail::dist_subarray_vec<Array> arrays(global_world, array_vec);
+
     const auto mode0_extent = arrays.size();
 
     // make fused tiledrange
@@ -340,6 +371,8 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
     auto make_tile = [](const TA::Range& range, const std::vector<madness::Future<Tile>>& tiles) {
       TA_ASSERT( range.extent(0) == tiles.size() );
       Tile result(range);
+      const auto volume = range.volume();
+      size_t result_volume = 0;
       auto* result_ptr = result.data();
       for(auto&& fut_of_tile: tiles) {
         TA_ASSERT(fut_of_tile.probe());
@@ -348,17 +381,19 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
         const auto tile_volume = tile.size();
         std::copy(tile_data, tile_data + tile_volume, result_ptr);
         result_ptr += tile_volume;
+        result_volume += tile_volume;
       }
+      TA_ASSERT(volume == result_volume);
       return result;
     };
 
     /// write to blocks of fused_array
     for (auto&& fused_tile_ord : *fused_array.pmap()) {
       if (!fused_array.is_zero(fused_tile_ord)) {
-        // convert ordinal of the fused tile to the ordinals of its consituent tiles
+        // convert ordinal of the fused tile to the ordinals of its constituent tiles
         const auto div = std::ldiv(fused_tile_ord, ntiles_per_array);
         const auto tile_idx_mode0 = div.quot;
-        // ordinal of the coresponding tile in the arrays
+        // ordinal of the corresponding tile in the arrays
         const auto tile_ord_array = div.rem;
         using Index = decltype(tile_ord_array);
 
@@ -371,7 +406,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
           int owner_rank = v % size;
 
           input_tiles.emplace_back(arrays.task(owner_rank,
-                  &Dist_Vector_of_Arrays<DistArray<Tile, Policy>>:: template get_tile<Index>,
+                  &detail::dist_subarray_vec<DistArray<Tile, Policy>>:: template get_tile<Index>,
                   vidx, tile_ord_array));
         }
         fused_array.set(fused_tile_ord, global_world.taskq.add(
