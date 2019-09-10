@@ -415,6 +415,9 @@ class dist_subarray_vec : public madness::WorldObject<dist_subarray_vec<Array>> 
       }
     }
 
+    // keep arrays around until everyone is done
+    global_world.gop.fence();
+
     return fused_array;
   }
 
