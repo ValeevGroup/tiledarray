@@ -828,7 +828,7 @@ namespace TiledArray {
     /// \return A reference to this range
     template <typename I>
     Range_& inplace_shift(const std::initializer_list<I>& bound_shift) {
-      inplace_shift<std::initializer_list<I>>(bound_shift);
+      return inplace_shift<std::initializer_list<I>>(bound_shift);
     }
 
     /// Shift the lower and upper bound of this range
