@@ -31,8 +31,9 @@ else()
     if (NOT UMPIRE_URL)
         set(UMPIRE_URL https://github.com/LLNL/Umpire.git)
     endif (NOT UMPIRE_URL)
-
-    set(UMPIRE_TAG develop)
+    if (NOT UMPIRE_TAG)
+        set(UMPIRE_TAG c71d0bcbabf8a1e138fddcb94c73c8305f21dd71)
+    endif (NOT UMPIRE_TAG)
 
     message("** Will clone Umpire from ${UMPIRE_URL}")
 
