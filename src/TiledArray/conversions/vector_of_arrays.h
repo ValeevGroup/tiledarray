@@ -459,7 +459,7 @@ class dist_subarray_vec : public madness::WorldObject<dist_subarray_vec<Array>> 
         input_tiles.reserve(fused_tile_range.extent(0));
         for(size_t v=0, vidx=tile_idx_mode0*block_size;
             v!=block_size && vidx<mode0_extent; ++v, ++vidx) {
-          int owner_rank = v % size;
+          int owner_rank = vidx % size;
 
           input_tiles.emplace_back(arrays.task(owner_rank,
                   &detail::dist_subarray_vec<DistArray<Tile, Policy>>:: template get_tile<Index>,
