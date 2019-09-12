@@ -26,9 +26,14 @@
 #ifndef TILEDARRAY_MATH_EIGEN_H__INCLUDED
 #define TILEDARRAY_MATH_EIGEN_H__INCLUDED
 
+#include <madness/config.h>
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC system_header
+#endif
+#if HAVE_INTEL_MKL
+# define EIGEN_USE_MKL_ALL 1
+# define MKL_DIRECT_CALL 1
 #endif
 #include <Eigen/Core>
 #include <Eigen/QR>
