@@ -53,7 +53,7 @@ else()
     set(BTAS_URL https://github.com/BTAS/BTAS)
   endif (NOT BTAS_URL)
   if (NOT BTAS_TAG)
-    set(BTAS_TAG 7a4fae1259da91f988a56f6bfa54ab18c1481393)
+    set(BTAS_TAG aa15a285092212c7d7fa26bb1c334f848c284dae)
   endif (NOT BTAS_TAG)
 
   message("** Will clone BTAS from ${BTAS_URL}")
