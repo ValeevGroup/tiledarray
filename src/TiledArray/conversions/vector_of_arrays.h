@@ -15,6 +15,10 @@ namespace detail {
 
 /// The vector dimension will be the leading dimension, and will be blocked by 1.
 /// @warning all arrays in the vector must have the same TiledRange
+
+/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+/// @param block_size blocking range for the new dimension, the dimension being fused
+/// @return TiledRange of fused Array object
 template <typename Tile, typename Policy>
 TA::TiledRange fuse_vector_of_tranges(
         const std::vector<TA::DistArray<Tile, Policy>>& arrays,
@@ -45,6 +49,15 @@ TA::TiledRange fuse_vector_of_tranges(
   return new_trange;
 }
 
+/// @brief fuses the TRanges of a vector of Arrays into 1 TRange, with the vector index forming the first mode
+
+/// The vector dimension will be the leading dimension, and will be blocked by 1.
+/// @warning all arrays in the vector must have the same TiledRange
+
+/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+/// @param array_trange TiledRange of subvectors in @c arrays.
+/// @param block_size blocking range for the new dimension, the dimension being fused
+/// @return TiledRange of fused Array object
 template <typename Tile, typename Policy>
 TA::TiledRange fuse_vector_of_tranges(
         const std::vector<TA::DistArray<Tile, Policy>>& arrays,
@@ -75,9 +88,10 @@ TA::TiledRange fuse_vector_of_tranges(
 }
 
 /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
-///
+
 /// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
 /// @param trange the TiledRange of the fused @c arrays
+/// @return Shape of fused Array object
 template <typename Tile>
 TA::DenseShape fuse_vector_of_shapes(
     const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
@@ -86,9 +100,23 @@ TA::DenseShape fuse_vector_of_shapes(
 }
 
 /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
-///
+
+/// @param global_world the world object which the new fused array will live in.
+/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+/// @param trange the TiledRange of the fused @c arrays
+/// @return Shape of fused Array object
+template <typename Tile>
+TA::DenseShape fuse_vector_of_shapes(madness::World& global_world,
+        const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
+        const TA::TiledRange& trange) {
+  return TA::DenseShape(1, trange);
+}
+
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+
 /// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
+/// @return Shape of fused Array object
 template <typename Tile>
 TA::SparseShape<float> fuse_vector_of_shapes(
     const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
@@ -136,6 +164,12 @@ TA::SparseShape<float> fuse_vector_of_shapes(
   return fused_shapes;
 }
 
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+///
+/// @param global_world the world object which the new fused array will live in.
+/// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+/// @param[in] fused_trange the TiledRange of the fused @c arrays
+/// @return Shape of fused Array object
 template <typename Tile>
 TA::SparseShape<float> fuse_vector_of_shapes( madness::World& global_world,
         const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
@@ -314,6 +348,9 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
 }
 
 namespace detail {
+/// @brief There is no guarantee that subvectors will live in the same world. @c dist_subarray_vec
+/// manages the subvectors and must have a world object that encompases all the world which the
+/// subvectors live in.
 template<typename Array>
 class dist_subarray_vec : public madness::WorldObject<dist_subarray_vec<Array>> {
 
@@ -321,6 +358,8 @@ class dist_subarray_vec : public madness::WorldObject<dist_subarray_vec<Array>> 
   using Tile = typename Array::value_type;
   using Policy = typename Array::policy_type;
 
+  /// @param world world object that contains all the worlds which arrays in @c split_array live in
+  /// @param array possibly distributed vector of arrays
   dist_subarray_vec(madness::World &world, const std::vector<Array> &array) :
       madness::WorldObject<dist_subarray_vec<Array>>(world), split_array(array) {
     this->process_pending();
@@ -328,22 +367,40 @@ class dist_subarray_vec : public madness::WorldObject<dist_subarray_vec<Array>> 
 
   virtual ~dist_subarray_vec(){ }
 
+  /// Tile accessor for distributed arrays
+  /// @param r index of the requested array in @c split_array
+  /// @param i tile index for the @c r array in @c split_array
+  /// @return @c i -th tile of the @c r -th array in @c split_array
   template <typename Index>
   madness::Future<Tile> get_tile(int r, Index & i){
     return split_array.at(r).find(i);
   }
 
+  /// @return Accessor to @c split_array
   const std::vector<Array>& array_accessor() const {
     return split_array;
   }
 
+  /// @return number of Array in @c split_array
   const unsigned long size() const {
     return split_array.size();
   }
  private:
-  const std::vector<Array> &split_array;
+  const std::vector<Array> &split_array;  // distributed vector of arrays
 };
 }
+
+/// @brief fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimensions
+
+/// The leading dimension of the resulting array is the vector dimension, and will
+/// be blocked by @block_size .
+///
+/// @param[in] global_world the world object which the new fused array will live in, must contain all the worlds
+///            which Arrays in @c arrays live in.
+/// @param[in] arrays a vector of DistArray objects; every element of @c arrays must have the same TiledRange object
+/// @param[in] array_trange TiledRange of subvectors in @c arrays.
+/// @param[in] block_size the block size for the "vector" dimension of the tiled range of the result
+/// @return @c arrays fused into a DistArray
   template <typename Tile, typename Policy>
   TA::DistArray<Tile, Policy> fuse_vector_of_arrays(madness::World & global_world,
           const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
@@ -474,6 +531,17 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
   return split_array;
 }
 
+/// @brief extracts a subarray of a fused array created with fuse_vector_of_arrays
+/// and creates the array in @c local_world.
+
+/// @param[in] local_world The World object where the @i -th subarray is
+///             created
+/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
+/// @param[in] i the index of the subarray to be extracted
+///            (i.e. the index of the corresponding *element* index of the
+///            leading dimension)
+/// @param[in] split_trange TiledRange of the split Array object
+/// @return the @c i -th subarray
 template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> subarray_from_fused_array( madness::World & local_world,
         const TA::DistArray<Tile, Policy>& fused_array, std::size_t i,
