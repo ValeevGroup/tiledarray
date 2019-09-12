@@ -181,7 +181,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
       float unscaled_fused_tile_norm2 = 0;
       const auto tile_volume = tile_volumes[tile_ord];
       for (size_t v = 0, vv = vidx; v != vblk_size; ++v, ++vv) {
-        if (rank == v % size) {
+        if (rank == vv % size) {
           const auto unscaled_tile_norm =
               arrays[vv].shape().data()[tile_ord] * tile_volume;
           unscaled_fused_tile_norm2 += unscaled_tile_norm * unscaled_tile_norm;
@@ -434,7 +434,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
       input_tiles.reserve(fused_tile_range.extent(0));
       for (size_t v = 0, vidx = tile_idx_mode0 * block_size;
            v != block_size && vidx < mode0_extent; ++v, ++vidx) {
-        int owner_rank = v % size;
+        int owner_rank = vidx % size;
 
         input_tiles.emplace_back(
             arrays.task(owner_rank,
