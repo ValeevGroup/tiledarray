@@ -405,7 +405,6 @@ class dist_subarray_vec : public madness::WorldObject<dist_subarray_vec<Array>> 
   TA::DistArray<Tile, Policy> fuse_vector_of_arrays(madness::World & global_world,
           const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
           const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
-    auto rank = global_world.rank();
     auto size = global_world.size();
 
     // make instances of array_vec globally accessible
