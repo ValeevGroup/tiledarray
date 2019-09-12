@@ -33,7 +33,7 @@
 #endif
 #if HAVE_INTEL_MKL
 # define EIGEN_USE_MKL_ALL 1
-# define MKL_DIRECT_CALL 1
+//# define MKL_DIRECT_CALL 1
 #endif
 #include <Eigen/Core>
 #include <Eigen/QR>
