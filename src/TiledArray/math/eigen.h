@@ -32,8 +32,9 @@
 #pragma GCC system_header
 #endif
 #if HAVE_INTEL_MKL
-# define EIGEN_USE_MKL_ALL 1
-//# define MKL_DIRECT_CALL 1
+# ifndef EIGEN_USE_MKL_ALL
+#  define EIGEN_USE_MKL_ALL 1
+# endif
 #endif
 #include <Eigen/Core>
 #include <Eigen/QR>
