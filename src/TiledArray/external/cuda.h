@@ -136,8 +136,9 @@ inline int current_cuda_device_id() {
 
   if (mpi_local_size > num_devices) {
     throw std::runtime_error(
-        "TiledArray only support 1 MPI Process per CUDA Device Model "
-        "Currently!\n");
+        std::string("TiledArray found") + std::to_string(mpi_local_size) +
+        " MPI ranks on a node with " + std::to_string(num_devices) +
+        " CUDA devices; only 1 MPI process / CUDA device model is currently supported");
   }
 
   int cuda_device_id = mpi_local_rank % num_devices;
