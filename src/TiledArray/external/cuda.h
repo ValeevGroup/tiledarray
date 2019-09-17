@@ -136,24 +136,27 @@ inline int current_cuda_device_id() {
   int num_devices = detail::num_cuda_devices();
 
   int cuda_device_id = -1;
-  // are devices already mapped?
-  char* cvd_cstr = std::getenv("CUDA_VISIBLE_DEVICES");
-  if (cvd_cstr) { // yes
-    // make sure that there is only 1 device available here
-    if (num_devices != 1) {
-      throw std::runtime_error(
-          std::string("CUDA_VISIBLE_DEVICES environment variable is set, hence using the provided device-to-rank mapping; BUT TiledArray found ") + std::to_string(num_devices) +
-          " CUDA devices; only 1 CUDA device / MPI process is supported");
-    }
-    cuda_device_id = 0;
-  } else {
-    if (mpi_local_size > num_devices) {
+  // devices may already be pre-mapped
+  // if mpi_local_size <= num_devices : all ranks are in same resource set, map round robin
+  if (mpi_local_size <= num_devices) {
+    cuda_device_id = mpi_local_rank % num_devices;
+  }
+  else {  // mpi_local_size > num_devices
+    char* cvd_cstr = std::getenv("CUDA_VISIBLE_DEVICES");
+    if (cvd_cstr) { // CUDA_VISIBLE_DEVICES is set, assume that pre-mapped
+      // make sure that there is only 1 device available here
+      if (num_devices != 1) {
+        throw std::runtime_error(
+            std::string("CUDA_VISIBLE_DEVICES environment variable is set, hence using the provided device-to-rank mapping; BUT TiledArray found ") + std::to_string(num_devices) +
+            " CUDA devices; only 1 CUDA device / MPI process is supported");
+      }
+      cuda_device_id = 0;
+    } else {  // not enough devices + devices are not pre-mapped
       throw std::runtime_error(
           std::string("TiledArray found ") + std::to_string(mpi_local_size) +
           " MPI ranks on a node with " + std::to_string(num_devices) +
           " CUDA devices; only 1 MPI process / CUDA device model is currently supported");
     }
-    cuda_device_id = mpi_local_rank % num_devices;
   }
 
   return cuda_device_id;
