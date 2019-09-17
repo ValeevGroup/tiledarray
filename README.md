@@ -104,6 +104,10 @@ On some standard platforms (e.g. MacOS) the toolchain file can be skipped.
 
 The detailed instructions can be found in [INSTALL.md](INSTALL.md).
 
+# Using TiledArray
+
+The  [TiledArray wiki](https://github.com/ValeevGroup/tiledarray/wiki) includes a [Developer Guide](https://github.com/ValeevGroup/tiledarray/wiki/Developer-Guide), an [Optimization Guide](https://github.com/ValeevGroup/tiledarray/wiki/Optimizaation-Guide), and additional tutorials on advanced topics.
+
 # Developers
 TiledArray is developed by the [Valeev Group](http://valeevgroup.github.io/) at [Virginia Tech](http://www.vt.edu).
 
