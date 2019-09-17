@@ -230,7 +230,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
   }
 
   auto fused_shapes =
-      TA::SparseShape<float>(fused_tile_norms, fused_trange, true);
+      TA::SparseShape<float>(global_world, fused_tile_norms, fused_trange, true);
 
   return fused_shapes;
 }
