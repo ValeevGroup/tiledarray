@@ -24,6 +24,10 @@
 #ifndef TILEDARRAY_EXTERNAL_CUDA_H__INCLUDED
 #define TILEDARRAY_EXTERNAL_CUDA_H__INCLUDED
 
+#include <cassert>
+#include <cstdlib>
+#include <vector>
+
 #include <TiledArray/config.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
@@ -44,9 +48,6 @@
 #include <mpi.h>
 
 #include <TiledArray/error.h>
-
-#include <cassert>
-#include <vector>
 
 #define CudaSafeCall(err) __cudaSafeCall(err, __FILE__, __LINE__)
 #define CudaSafeCallNoThrow(err) __cudaSafeCallNoThrow(err, __FILE__, __LINE__)
@@ -107,7 +108,7 @@ inline std::pair<int, int> mpi_local_rank_size(int mpi_rank) {
 
 inline int num_cuda_streams() {
   int num_streams = -1;
-  char* num_stream_char = std::getenv("TA_NUM_STREAMS");
+  char* num_stream_char = std::getenv("TA_CUDA_NUM_STREAMS");
   /// default num of streams is 3
   if (num_stream_char) {
     num_streams = std::atoi(num_stream_char);
@@ -134,14 +135,26 @@ inline int current_cuda_device_id() {
 
   int num_devices = detail::num_cuda_devices();
 
-  if (mpi_local_size > num_devices) {
-    throw std::runtime_error(
-        std::string("TiledArray found") + std::to_string(mpi_local_size) +
-        " MPI ranks on a node with " + std::to_string(num_devices) +
-        " CUDA devices; only 1 MPI process / CUDA device model is currently supported");
+  int cuda_device_id = -1;
+  // are devices already mapped?
+  char* cvd_cstr = std::getenv("CUDA_VISIBLE_DEVICES");
+  if (cvd_cstr) { // yes
+    // make sure that there is only 1 device available here
+    if (num_devices != 1) {
+      throw std::runtime_error(
+          std::string("CUDA_VISIBLE_DEVICES environment variable is set, hence using the provided device-to-rank mapping; BUT TiledArray found ") + std::to_string(num_devices) +
+          " CUDA devices; only 1 CUDA device / MPI process is supported");
+    }
+    cuda_device_id = 0;
+  } else {
+    if (mpi_local_size > num_devices) {
+      throw std::runtime_error(
+          std::string("TiledArray found ") + std::to_string(mpi_local_size) +
+          " MPI ranks on a node with " + std::to_string(num_devices) +
+          " CUDA devices; only 1 MPI process / CUDA device model is currently supported");
+    }
+    cuda_device_id = mpi_local_rank % num_devices;
   }
-
-  int cuda_device_id = mpi_local_rank % num_devices;
 
   return cuda_device_id;
 }
