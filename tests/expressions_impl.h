@@ -644,7 +644,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block, F, Fixtures, F) {
   }
 }
 
-BOOST_FIXTURE_TEST_CASE_TEMPLATE(assgin_subblock_permute_block, F, Fixtures,
+BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_permute_block, F, Fixtures,
                                  F) {
   auto& a = F::a;
   auto& b = F::b;
