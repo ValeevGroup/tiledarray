@@ -265,7 +265,7 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
         }
 
         //convert vector of arrays back into dense array
-        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world, b_dense_parallel, tr_split);
+        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world, b_dense_parallel, 11, tr_split);
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
@@ -336,7 +336,7 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
                                                         i, tr_split));
         }
         auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(sparse_global_world, b_sparse_parallel,
-                                                                         tr_split);
+                                                                         11, tr_split);
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
@@ -420,8 +420,8 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking) {
                   TiledArray::subarray_from_fused_array(global_world_dense, b_dense,
                                                         i, tr_split));
         }
-        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(global_world_dense, b_dense_parallel, tr_split,
-                                                                        2);
+        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(global_world_dense, b_dense_parallel,
+                11, tr_split,2);
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
@@ -492,8 +492,8 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking) {
                   TiledArray::subarray_from_fused_array(global_world_sparse, b_sparse,
                                                         i, tr_split));
         }
-        auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(global_world_sparse, b_sparse_parallel, tr_split,
-                                                                         2);
+        auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(global_world_sparse, b_sparse_parallel,
+                11, tr_split, 2);
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
