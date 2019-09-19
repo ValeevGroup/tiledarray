@@ -208,7 +208,7 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
     TiledArray::TiledRange tr_split;
     {
       TA::TiledRange1 tr1_mode0 = compute_trange1(11, 1);
-      TA::TiledRange1 tr1_mode1 = compute_trange1(7, 2);
+      TA::TiledRange1 tr1_mode1 = compute_trange1(7, 1);
       tr = TiledArray::TiledRange({tr1_mode0, tr1_mode1});
       tr_split = TiledArray::TiledRange({tr1_mode1});
     }
