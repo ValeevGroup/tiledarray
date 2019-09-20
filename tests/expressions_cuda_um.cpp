@@ -659,7 +659,7 @@ BOOST_AUTO_TEST_CASE(assign_sub_block) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(assgin_subblock_permute_block) {
+BOOST_AUTO_TEST_CASE(assign_subblock_permute_block) {
   c.fill_local(0.0);
 
   Permutation perm({2, 1, 0});
