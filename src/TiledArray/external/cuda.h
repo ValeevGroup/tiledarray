@@ -269,7 +269,7 @@ class cudaEnv {
   int num_cuda_streams() const { return num_cuda_streams_; }
 
   bool concurrent_managed_access() const {
-    return cuda_device_concurrent_manged_access_;
+    return cuda_device_concurrent_managed_access_;
   }
 
   const cudaStream_t& cuda_stream(std::size_t i) const {
@@ -303,8 +303,8 @@ class cudaEnv {
     CudaSafeCall(cudaDeviceGetAttribute(&concurrent_managed_access,
                                         cudaDevAttrConcurrentManagedAccess,
                                         device_id));
-    cuda_device_concurrent_manged_access_ = concurrent_managed_access;
-    if (!cuda_device_concurrent_manged_access_) {
+    cuda_device_concurrent_managed_access_ = concurrent_managed_access;
+    if (!cuda_device_concurrent_managed_access_) {
       std::cout << "\nWarning: CUDA Device doesn't support "
                    "ConcurrentManagedAccess!\n\n";
     }
@@ -322,7 +322,7 @@ class cudaEnv {
 
   int num_cuda_devices_;
   int current_cuda_device_id_;
-  bool cuda_device_concurrent_manged_access_;
+  bool cuda_device_concurrent_managed_access_;
 
   int num_cuda_streams_;
   std::vector<cudaStream_t> cuda_streams_;
