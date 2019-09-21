@@ -49,19 +49,15 @@ TA::TiledRange fuse_vector_of_tranges(
   return new_trange;
 }
 
-/// @brief fuses the TRanges of a vector of Arrays into 1 TRange, with the vector index forming the first mode
+/// @brief prepends an extra dimension to a TRange
 
-/// The vector dimension will be the leading dimension, and will be blocked by 1.
-/// @warning all arrays in the vector must have the same TiledRange
+/// The extra dimension will be the leading dimension, and will be blocked by @c block_size
 
-/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-/// @param array_trange TiledRange of subvectors in @c arrays.
-/// @param array_rank Number of tensors in arrays (the number on each rank will depend on world.size)
+/// @param array_rank extent of the leading dimension of the result
+/// @param array_trange the base trange
 /// @param block_size blocking range for the new dimension, the dimension being fused
 /// @return TiledRange of fused Array object
-template <typename Tile, typename Policy>
 TA::TiledRange fuse_vector_of_tranges(
-    const std::vector<TA::DistArray<Tile, Policy>>& arrays,
     int array_rank,
     const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
   /// make the new TiledRange1 for new dimension
@@ -178,7 +174,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
 ///
 /// @param global_world the world object which the new fused array will live in.
 /// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-/// @param array_rank Number of tensors in arrays (the number on each rank will depend on world.size)
+/// @param array_rank Number of tensors in the fuzed @c arrays (the size of @c arrays on each rank will depend on world.size)
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
@@ -418,7 +414,7 @@ class dist_subarray_vec
 ///
 /// @param global_world the world in which the result will live and across which this is invoked.
 /// @param[in] arrays a vector of DistArray objects; every element of @c arrays must have the same TiledRange object and live in the same world.
-/// @param array_rank total number of Arrays (sum of arrays per process for each processor)
+/// @param array_rank total number of arrays in a fused @c arrays (sum of @c arrays.size() on each rank)
 /// @param[in] block_size the block size for the "vector" dimension of the tiled range of the result
 /// @return @c arrays fused into a DistArray
 /// @note This is a collective function. It assumes that it is invoked across @c global_world, but the subarrays are "local" to each rank and distributed in round-robin fashion.
@@ -438,7 +434,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   const auto mode0_extent = array_rank;
 
   // make fused tiledrange
-  auto fused_trange = detail::fuse_vector_of_tranges(arrays.array_accessor(), array_rank,
+  auto fused_trange = detail::fuse_vector_of_tranges(array_rank,
                                                      array_trange, block_size);
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
