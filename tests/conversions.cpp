@@ -203,6 +203,25 @@ BOOST_AUTO_TEST_CASE(make_array_test) {
 
 BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
 
+    // get local world
+    const auto rank = (*GlobalFixture::world).rank();
+    const auto size = (*GlobalFixture::world).size();
+
+    madness::World *tmp_ptr;
+    std::shared_ptr<madness::World> world_ptr;
+
+    if (size > 1) {
+      SafeMPI::Group group = (*GlobalFixture::world).mpi.comm().Get_group().Incl(1, &rank);
+      SafeMPI::Intracomm comm = (*GlobalFixture::world).mpi.comm().Create(group);
+      world_ptr = std::make_shared<madness::World>(comm);
+      tmp_ptr = world_ptr.get();
+    } else {
+      tmp_ptr = &(*GlobalFixture::world);
+    }
+    auto &this_world = *tmp_ptr;
+    (*GlobalFixture::world).gop.fence();
+
+
     // Make a tiled range with block size of 1
     TiledArray::TiledRange tr;
     TiledArray::TiledRange tr_split;
@@ -257,15 +276,23 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
       {
         // Convert dense array to vector of arrays
         auto &dense_global_world = b_dense.world();
-        std::vector<TArrayI> b_dense_parallel;
+        auto b_dense_parallel = std::make_unique<std::vector<TArrayI>>();
+        (*b_dense_parallel).reserve(11);
+        set_default_world(this_world);
         for (int i = 0; i < 11; ++i) {
-          b_dense_parallel.push_back(
-                  TiledArray::subarray_from_fused_array(dense_global_world, b_dense,
-                                                        i, tr_split));
+          if(rank == i % size) {
+            (*b_dense_parallel).push_back(
+                    TiledArray::subarray_from_fused_array(this_world, b_dense,
+                                                          i, tr_split));
+          }
         }
+        set_default_world(dense_global_world);
 
         //convert vector of arrays back into dense array
-        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world, b_dense_parallel, 11, tr_split);
+        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world,
+                (*b_dense_parallel), 11, tr_split);
+        b_dense_parallel.reset();
+        TArrayI::wait_for_lazy_cleanup(dense_global_world);
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
@@ -285,7 +312,7 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
       }
     }
 
-    // Parallel test
+    // sparse test
     {
       // Make an sparse array with tiled range from above.
       auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
@@ -331,14 +358,22 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
       {
         // convert vector of arrays back into sparse array
         auto &sparse_global_world = b_sparse.world();
-        std::vector<TSpArrayI> b_sparse_parallel;
+        auto b_sparse_parallel = std::make_unique<std::vector<TSpArrayI>>();
+        (*b_sparse_parallel).reserve(11);
+        set_default_world(this_world);
         for (int i = 0; i < 11; ++i) {
-          b_sparse_parallel.push_back(
-                  TiledArray::subarray_from_fused_array(sparse_global_world, b_sparse,
-                                                        i, tr_split));
+          if(rank == i % size) {
+            (*b_sparse_parallel).push_back(
+                    TiledArray::subarray_from_fused_array(this_world, b_sparse,
+                                                          i, tr_split));
+          }
         }
-        auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(sparse_global_world, b_sparse_parallel,
+        set_default_world(sparse_global_world);
+        auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(sparse_global_world,
+                                                                         (*b_sparse_parallel),
                                                                          11, tr_split);
+        b_sparse_parallel.reset();
+        TSpArrayI::wait_for_lazy_cleanup(sparse_global_world);
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
@@ -363,7 +398,24 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
 
 BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking) {
 
-    // Make a tiled range with block size of 1
+    // Generate a world for each world rank
+    const auto rank = (*GlobalFixture::world).rank();
+    const auto size = (*GlobalFixture::world).size();
+    madness::World *tmp_ptr;
+    std::shared_ptr<madness::World> world_ptr;
+
+    if (size > 1) {
+      SafeMPI::Group group = (*GlobalFixture::world).mpi.comm().Get_group().Incl(1, &rank);
+      SafeMPI::Intracomm comm = (*GlobalFixture::world).mpi.comm().Create(group);
+      world_ptr = std::make_shared<madness::World>(comm);
+      tmp_ptr = world_ptr.get();
+    } else {
+      tmp_ptr = &(*GlobalFixture::world);
+    }
+    auto &this_world = *tmp_ptr;
+    (*GlobalFixture::world).gop.fence();
+
+    // Make a tiled range with arbitrary block size
     TiledArray::TiledRange tr;
     TiledArray::TiledRange tr_split;
     {
@@ -417,15 +469,24 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking) {
       // Parallel test
       {
         //convert vector of arrays back into dense array
-        auto &global_world_dense = b_dense.world();
-        std::vector<TArrayI> b_dense_parallel;
+        auto &dense_global_world = b_dense.world();
+        auto b_dense_parallel = std::make_unique<std::vector<TArrayI>>();
+        (*b_dense_parallel).reserve(11);
+        set_default_world(this_world);
         for (int i = 0; i < 11; ++i) {
-          b_dense_parallel.push_back(
-                  TiledArray::subarray_from_fused_array(global_world_dense, b_dense,
-                                                        i, tr_split));
+          if(rank == i % size) {
+            (*b_dense_parallel).push_back(
+                    TiledArray::subarray_from_fused_array(this_world, b_dense,
+                                                          i, tr_split));
+          }
         }
-        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(global_world_dense, b_dense_parallel,
-                11, tr_split,2);
+        set_default_world(dense_global_world);
+
+        //convert vector of arrays back into dense array
+        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world,
+                (*b_dense_parallel), 11, tr_split, 2);
+        b_dense_parallel.reset();
+        TArrayI::wait_for_lazy_cleanup(dense_global_world);
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
@@ -491,15 +552,23 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking) {
       // Parallel test
       {
         // convert vector of arrays back into sparse array
-        auto &global_world_sparse = b_sparse.world();
-        std::vector<TSpArrayI> b_sparse_parallel;
+        auto &sparse_global_world = b_sparse.world();
+        auto b_sparse_parallel = std::make_unique<std::vector<TSpArrayI>>();
+        (*b_sparse_parallel).reserve(11);
+        set_default_world(this_world);
         for (int i = 0; i < 11; ++i) {
-          b_sparse_parallel.push_back(
-                  TiledArray::subarray_from_fused_array(global_world_sparse, b_sparse,
-                                                        i, tr_split));
+          if(rank == i % size) {
+            (*b_sparse_parallel).push_back(
+                    TiledArray::subarray_from_fused_array(this_world, b_sparse,
+                                                          i, tr_split));
+          }
         }
-        auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(global_world_sparse, b_sparse_parallel,
-                11, tr_split, 2);
+        set_default_world(sparse_global_world);
+        auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(sparse_global_world,
+                                                                         (*b_sparse_parallel),
+                                                                         11, tr_split, 2);
+        b_sparse_parallel.reset();
+        TSpArrayI::wait_for_lazy_cleanup(sparse_global_world);
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
