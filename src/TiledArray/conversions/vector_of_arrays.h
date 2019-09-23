@@ -57,7 +57,7 @@ TA::TiledRange fuse_vector_of_tranges(
 /// @param array_trange the base trange
 /// @param block_size blocking range for the new dimension, the dimension being fused
 /// @return TiledRange of fused Array object
-TA::TiledRange fuse_vector_of_tranges(
+inline TA::TiledRange fuse_vector_of_tranges(
     int array_rank,
     const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
   /// make the new TiledRange1 for new dimension
