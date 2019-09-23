@@ -34,8 +34,17 @@
 #include <boost/test/unit_test.hpp>
 #endif // BOOST_TEST_MAIN
 
-#include <boost/test/test_case_template.hpp>
-#include <boost/test/output_test_stream.hpp>
+
+#if BOOST_VERSION >= 104000
+# include <boost/test/unit_test.hpp>
+#else
+# include <boost/test/test_case_template.hpp>
+#endif
+#if BOOST_VERSION >= 105900
+# include <boost/test/tools/output_test_stream.hpp>
+#else
+# include <boost/test/output_test_stream.hpp>
+#endif
 #include <boost/mpl/list.hpp>
 
 #if defined(__GNUC__)

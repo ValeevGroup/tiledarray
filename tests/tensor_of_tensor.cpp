@@ -23,15 +23,17 @@
  *
  */
 
-#include "TiledArray/tensor.h"
-#include "tiledarray.h"
+#include <TiledArray/config.h>
 
 #ifdef TILEDARRAY_HAS_BTAS
 #include <TiledArray/external/btas.h>
 #include "btas/generic/contract.h"
 #endif
 
-#include "unit_test_config.h"
+#include <TiledArray/tensor.h>
+#include <TiledArray/tile_op/tile_interface.h>
+
+#include <../tests/unit_test_config.h>
 
 #include <boost/mpl/list.hpp>
 
