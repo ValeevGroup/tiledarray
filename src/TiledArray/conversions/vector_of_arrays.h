@@ -11,44 +11,6 @@ namespace TiledArray {
 
 namespace detail {
 
-/// @brief fuses the TRanges of a vector of Arrays into 1 TRange, with the vector index forming the first mode
-
-/// The vector dimension will be the leading dimension, and will be blocked by 1.
-/// @warning all arrays in the vector must have the same TiledRange
-
-/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-/// @param block_size blocking range for the new dimension, the dimension being fused
-/// @return TiledRange of fused Array object
-template <typename Tile, typename Policy>
-TA::TiledRange fuse_vector_of_tranges(
-    const std::vector<TA::DistArray<Tile, Policy>>& arrays,
-    std::size_t block_size = 1) {
-  auto array_trange = arrays[0].trange();
-
-  /// make the new TiledRange1 for new dimension
-  TA::TiledRange1 new_trange1;
-  {
-    std::vector<std::size_t> new_trange1_v;
-    auto range_size = arrays.size();
-    new_trange1_v.push_back(0);
-    for (std::size_t i = block_size; i < range_size; i += block_size) {
-      new_trange1_v.push_back(i);
-    }
-    new_trange1_v.push_back(range_size);
-    new_trange1 = TA::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
-  }
-
-  /// make the new range for N+1 Array
-  TA::TiledRange new_trange;
-  {
-    auto old_trange1s = array_trange.data();
-    old_trange1s.insert(old_trange1s.begin(), new_trange1);
-    new_trange = TA::TiledRange(old_trange1s.begin(), old_trange1s.end());
-  }
-
-  return new_trange;
-}
-
 /// @brief prepends an extra dimension to a TRange
 
 /// The extra dimension will be the leading dimension, and will be blocked by @c block_size
@@ -86,29 +48,25 @@ inline TA::TiledRange fuse_vector_of_tranges(
 
 /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
 
-/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-/// @param trange the TiledRange of the fused @c arrays
+/// @param fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
 TA::DenseShape fuse_vector_of_shapes(
-    const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
-    const TA::TiledRange& trange) {
-  return TA::DenseShape(1, trange);
+    const std::vector<TA::DistArray<Tile, TA::DensePolicy>>&,
+    const TA::TiledRange& fused_trange) {
+  return TA::DenseShape(1, fused_trange);
 }
 
 /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
 
-/// @param global_world the world object which the new fused array will live in.
-/// @param arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-/// @param array_rank Number of tensors in arrays (the number on each rank will depend on world.size)
-/// @param trange the TiledRange of the fused @c arrays
+/// @param fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
-TA::DenseShape fuse_vector_of_shapes(madness::World& global_world,
-        const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
-        int array_rank,
-        const TA::TiledRange& trange) {
-  return TA::DenseShape(1, trange);
+TA::DenseShape fuse_vector_of_shapes(madness::World&,
+        const std::vector<TA::DistArray<Tile, TA::DensePolicy>>&,
+        int,
+        const TA::TiledRange& fused_trange) {
+  return TA::DenseShape(1, fused_trange);
 }
 
 /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
@@ -174,7 +132,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
 ///
 /// @param global_world the world object which the new fused array will live in.
 /// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-/// @param array_rank Number of tensors in the fuzed @c arrays (the size of @c arrays on each rank will depend on world.size)
+/// @param array_rank Number of tensors in the fused @c arrays (the size of @c arrays on each rank will depend on world.size)
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
@@ -313,7 +271,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   const auto mode0_extent = arrays.size();
 
   // make fused tiledrange
-  auto fused_trange = detail::fuse_vector_of_tranges(arrays, block_size);
+  auto fused_trange = detail::fuse_vector_of_tranges(arrays.size(), arrays.at(0).trange(), block_size);
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
   // make fused shape
