@@ -22,7 +22,7 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
-#include <boost/test/test_case_template.hpp>
+#include <boost/test/unit_test.hpp>
 #include <boost/mpl/list.hpp>
 
 namespace detail {
