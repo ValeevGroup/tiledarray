@@ -11,7 +11,7 @@ find_package(Boost 1.33)
 if (Boost_FOUND)
 
   # Perform a compile check with Boost
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${Boost_INCLUDE_DIR})
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${Boost_INCLUDE_DIRS})
 
   CHECK_CXX_SOURCE_COMPILES(
       "
