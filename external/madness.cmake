@@ -74,21 +74,23 @@ if(MADNESS_FOUND)
     set(TILEDARRAY_HAS_ELEMENTAL ${MADNESS_HAS_ELEMENTAL_SUPPORT})
   endif()
 
-  # esnure fresh MADNESS
-  CHECK_CXX_SOURCE_COMPILES(
+  # ensure fresh MADNESS
+  if (DEFINED LAPACK_INCLUDE_DIRS)  # introduced in 093f60398d0b552871ca635b06d0144008c3e183
+    CHECK_CXX_SOURCE_COMPILES(
           "
-    #include <madness/world/world.h>
-    #include <madness/world/worldmem.h>
-    int main(int argc, char** argv) {
-      // test 1
-      madness::print_meminfo_enable();
+      #include <madness/world/world.h>
+      #include <madness/world/worldmem.h>
+      int main(int argc, char** argv) {
+        // test 1
+        madness::print_meminfo_enable();
 
-      // test 2
-      madness::World::is_default(SafeMPI::COMM_WORLD);
+        // test 2
+        madness::World::is_default(SafeMPI::COMM_WORLD);
 
-      return 0;
-    }
-    "  MADNESS_IS_FRESH)
+        return 0;
+      }
+      "  MADNESS_IS_FRESH)
+  endif(DEFINED LAPACK_INCLUDE_DIRS)
 
   if (NOT MADNESS_IS_FRESH)
     message(FATAL_ERROR "MADNESS is not fresh enough; update to ${MADNESS_OLDEST_TAG} or more recent")
