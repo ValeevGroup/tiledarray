@@ -28,6 +28,7 @@
 
 #include <deque>
 #include <TiledArray/math/eigen.h>
+#include <Eigen/QR>
 #include <TiledArray/algebra/utils.h>
 #include "../dist_array.h"
 

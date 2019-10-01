@@ -31,7 +31,7 @@ else()
   set(TBB_ROOT_DIR "/opt/intel/tbb" CACHE PATH "TBB root directory")
 endif()
 
-set(BLAS_LINKER_FLAGS "-L${MKL_ROOT_DIR}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lm" CACHE STRING "BLAS linker flags")
+set(BLAS_LINKER_FLAGS "-L${MKL_ROOT_DIR}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -ldl" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES ${BLAS_LINKER_FLAGS} CACHE STRING "LAPACK linker flags")
 set(LAPACK_INCLUDE_DIRS ${MKL_ROOT_DIR}/include CACHE STRING "LAPACK include directories")
 set(LAPACK_COMPILE_DEFINITIONS BTAS_HAS_CBLAS=1;MADNESS_LINALG_USE_LAPACKE CACHE STRING "LAPACK preprocessor definitions")
