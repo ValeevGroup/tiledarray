@@ -36,7 +36,7 @@
 #pragma GCC system_header
 #endif
 ////////////////////////////////////////////////
-// this duplicates TiledArray_Eigen definition
+// this duplicates TiledArray_Eigen definitions
 #if HAVE_INTEL_MKL
 # ifndef EIGEN_USE_MKL_ALL
 #  define EIGEN_USE_MKL_ALL 1
