@@ -20,7 +20,7 @@ namespace detail {
 /// @param block_size blocking range for the new dimension, the dimension being fused
 /// @return TiledRange of fused Array object
 inline TA::TiledRange fuse_vector_of_tranges(
-    int array_rank,
+    std::size_t array_rank,
     const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
   /// make the new TiledRange1 for new dimension
   TA::TiledRange1 new_trange1;
@@ -28,7 +28,7 @@ inline TA::TiledRange fuse_vector_of_tranges(
     std::vector<std::size_t> new_trange1_v;
     auto range_size = array_rank;
     new_trange1_v.push_back(0);
-    for (std::size_t i = block_size; i < range_size; i += block_size) {
+    for (decltype(range_size) i = block_size; i < range_size; i += block_size) {
       new_trange1_v.push_back(i);
     }
     new_trange1_v.push_back(range_size);
@@ -139,9 +139,9 @@ template <typename Tile>
 TA::SparseShape<float> fuse_vector_of_shapes(
     madness::World& global_world,
     const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
-    int array_rank,
+    const std::size_t array_rank,
     const TA::TiledRange& fused_trange) {
-  auto rank = global_world.rank();
+  const std::size_t rank = global_world.rank();
   auto size = global_world.size();
   auto first_tile_in_mode0 = *fused_trange.dim(0).begin();
   const auto block_size =
@@ -336,7 +336,7 @@ class dist_subarray_vec
   /// @param world world object that contains all the worlds which arrays in @c split_array live in
   /// @param array possibly distributed vector of arrays
   /// @param rank total number of Arrays (sum of arrays per process for each processor)
-  dist_subarray_vec(madness::World& world, const std::vector<Array>& array, const int rank)
+  dist_subarray_vec(madness::World& world, const std::vector<Array>& array, const std::size_t rank)
       : madness::WorldObject<dist_subarray_vec<Array>>(world),
         split_array(array),
         rank_(rank){
@@ -381,7 +381,7 @@ template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
     madness::World& global_world,
     const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
-    const int array_rank,
+    const std::size_t array_rank,
     const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
   auto size = global_world.size();
 

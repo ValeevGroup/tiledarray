@@ -19,7 +19,6 @@ if (TARGET Eigen3::Eigen)
     set_property(TARGET TiledArray_Eigen PROPERTY
             ${prop} ${EIGEN3_${prop}})
   endforeach()
-  install(TARGETS TiledArray_Eigen EXPORT tiledarray COMPONENT tiledarray)
 else (TARGET Eigen3::Eigen)
   # otherwise use bundled FindEigen3.cmake module controlled by EIGEN3_INCLUDE_DIR
   find_package(Eigen3 3.3)
@@ -28,7 +27,6 @@ else (TARGET Eigen3::Eigen)
     add_library(TiledArray_Eigen INTERFACE)
     set_property(TARGET TiledArray_Eigen PROPERTY
             INTERFACE_INCLUDE_DIRECTORIES ${EIGEN3_INCLUDE_DIR})
-    install(TARGETS TiledArray_Eigen EXPORT tiledarray COMPONENT tiledarray)
   endif (EIGEN3_FOUND)
 endif (TARGET Eigen3::Eigen)
 
@@ -38,10 +36,18 @@ if (TARGET TiledArray_Eigen)
   # Perform a compile check with Eigen
   cmake_push_check_state()
 
+  # INTERFACE libraries cannot be used as CMAKE_REQUIRED_LIBRARIES, so must manually transfer deps info
   get_property(EIGEN3_INCLUDE_DIRS TARGET TiledArray_Eigen PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN3_INCLUDE_DIRS})
+  get_property(MADNESS_INCLUDE_DIRS TARGET MADworld PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN3_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/src ${MADNESS_INCLUDE_DIRS} ${LAPACK_INCLUDE_DIRS})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LAPACK_LIBRARIES})
+  foreach(_def ${LAPACK_COMPILE_DEFINITIONS})
+    list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D${_def}")
+  endforeach()
+  list(APPEND CMAKE_REQUIRED_FLAGS ${LAPACK_COMPILE_OPTIONS})
+
   CHECK_CXX_SOURCE_COMPILES("
-    #include <Eigen/Core>
+    #include <TiledArray/external/eigen.h>
     #include <Eigen/Dense>
     #include <Eigen/SparseCore>
     #include <iostream>
@@ -104,7 +110,6 @@ else()
   set_property(TARGET TiledArray_Eigen PROPERTY
           INTERFACE_INCLUDE_DIRECTORIES $<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}>
           $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/eigen3>)
-  install(TARGETS TiledArray_Eigen EXPORT tiledarray COMPONENT tiledarray)
 
   # Install Eigen 3
   install(
@@ -121,3 +126,21 @@ else()
     )
 
 endif()
+
+# finish configuring TiledArray_Eigen and install
+if (TARGET TiledArray_Eigen)
+  # TiledArray_Eigen uses BLAS+LAPACK/MKL
+  target_link_libraries(TiledArray_Eigen INTERFACE ${LAPACK_LIBRARIES})
+  target_include_directories(TiledArray_Eigen INTERFACE ${LAPACK_INCLUDE_DIRS})
+  target_compile_definitions(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_DEFINITIONS})
+  target_compile_options(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_OPTIONS})
+  if (MADNESS_HAS_MKL)
+    target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL_ALL)
+  else(MADNESS_HAS_MKL)
+    target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_BLAS)
+    if ("${LAPACK_COMPILE_DEFINITIONS}" MATCHES "MADNESS_LINALG_USE_LAPACKE")
+      target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_LAPACKE EIGEN_USE_LAPACKE_STRICT)
+    endif ()
+  endif(MADNESS_HAS_MKL)
+  install(TARGETS TiledArray_Eigen EXPORT tiledarray COMPONENT tiledarray)
+endif(TARGET TiledArray_Eigen)

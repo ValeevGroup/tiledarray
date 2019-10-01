@@ -1,0 +1,63 @@
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2019  Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Edward Valeev
+ *  Department of Chemistry, Virginia Tech
+ *
+ *  eigen.h
+ *  Oct 1, 2019
+ *
+ */
+
+#ifndef TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED
+#define TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED
+
+//
+// Configure Eigen and include Eigen/Core, all dependencies should include this before including any Eigen headers
+//
+
+#include <madness/config.h>
+#if defined(__GNUC__)
+#pragma  GCC diagnostic push
+#pragma GCC system_header
+#endif
+////////////////////////////////////////////////
+// this duplicates TiledArray_Eigen definition
+#if HAVE_INTEL_MKL
+# ifndef EIGEN_USE_MKL_ALL
+#  define EIGEN_USE_MKL_ALL 1
+# endif
+#else
+# ifndef EIGEN_USE_BLAS
+#  define EIGEN_USE_BLAS 1
+# endif
+# ifdef MADNESS_LINALG_USE_LAPACKE
+#  ifndef EIGEN_USE_LAPACKE
+#   define EIGEN_USE_LAPACKE 1
+#  endif
+#  ifndef EIGEN_USE_LAPACKE_STRICT
+#   define EIGEN_USE_LAPACKE_STRICT 1
+#  endif
+# endif
+#endif
+/////////////////////////////////////////////////
+#include <Eigen/Core>
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
+#endif // TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED

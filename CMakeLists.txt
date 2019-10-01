@@ -62,6 +62,7 @@ include(CMakePushCheckState)
 include(GNUInstallDirs)
 include(AppendFlags)
 include(RedefaultableOption)
+include(DetectMADNESSConfig)
 
 # Load extra CMake features ====================================================
 
@@ -257,13 +258,15 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 add_custom_target(External)
 
 # required deps:
-include(external/eigen.cmake)
 include(external/madness.cmake)
+detect_MADNESS_configuration()
+include(external/eigen.cmake)
 include(external/boost.cmake)
 include(external/btas.cmake)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
+
 # optional deps:
 # 1. ccache
 find_program(CCACHE ccache)
