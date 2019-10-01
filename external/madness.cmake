@@ -11,7 +11,7 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-set(MADNESS_OLDEST_TAG "82b776ef710de5b50131010917bb24a2777bdbb3" CACHE STRING
+set(MADNESS_OLDEST_TAG "3bfe178a755117e2f6a39bc18b5856afbd2e4e27" CACHE STRING
         "The oldest revision hash or tag of MADNESS that can be used")
 
 find_package(MADNESS 0.10.1 CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
