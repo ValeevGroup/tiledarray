@@ -132,7 +132,7 @@ endif()
 
 # finish configuring TiledArray_Eigen and install
 if (TARGET TiledArray_Eigen)
-  # TiledArray_Eigen uses BLAS+LAPACK/MKL
+  # TiledArray_Eigen uses LAPACK/MKL
   target_link_libraries(TiledArray_Eigen INTERFACE ${LAPACK_LIBRARIES})
   target_include_directories(TiledArray_Eigen INTERFACE ${LAPACK_INCLUDE_DIRS})
   target_compile_definitions(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_DEFINITIONS})
@@ -140,7 +140,9 @@ if (TARGET TiledArray_Eigen)
   if (MADNESS_HAS_MKL)
     target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL_ALL)
   else(MADNESS_HAS_MKL)
-    target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_BLAS)
+    # Eigen's prototypes for non-MKL (i.e. F77) BLAS interface libraries do not match those in MADNESS (and are not const correct)
+    # thus can't use non-MKL BLAS, only LAPACK
+    # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_BLAS)
     if ("${LAPACK_COMPILE_DEFINITIONS}" MATCHES "MADNESS_LINALG_USE_LAPACKE")
       target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_LAPACKE EIGEN_USE_LAPACKE_STRICT)
     endif ()

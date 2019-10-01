@@ -42,9 +42,9 @@
 #  define EIGEN_USE_MKL_ALL 1
 # endif
 #else
-# ifndef EIGEN_USE_BLAS
-#  define EIGEN_USE_BLAS 1
-# endif
+//# ifndef EIGEN_USE_BLAS
+//#  define EIGEN_USE_BLAS 1
+//# endif
 # ifdef MADNESS_LINALG_USE_LAPACKE
 #  ifndef EIGEN_USE_LAPACKE
 #   define EIGEN_USE_LAPACKE 1
