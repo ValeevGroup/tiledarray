@@ -55,6 +55,8 @@
 # endif
 #endif
 /////////////////////////////////////////////////
+// define lapacke types to prevent inclusion of complex.h by Eigen/src/misc/lapacke.h
+#include <madness/tensor/lapacke_types.h>
 #include <Eigen/Core>
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
