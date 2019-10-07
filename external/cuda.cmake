@@ -22,6 +22,8 @@ message(STATUS "CUDA NVCC FLAGS: ${CUDA_NVCC_FLAGS}")
 message(STATUS "cuBLAS Libraries: : ${CUDA_CUBLAS_LIBRARIES}")
 
 # sanitize implicit dirs if CUDA host compiler != C++ compiler
+message(STATUS "CMAKE Implicit Include Directories: ${CMAKE_CUDA_IMPLICIT_INCLUDE_DIRECTORIES}")
+message(STATUS "CMAKE Implicit Link Directories: ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}")
 sanitize_cuda_implicit_directories()
 message(STATUS "CMAKE Implicit Include Directories: ${CMAKE_CUDA_IMPLICIT_INCLUDE_DIRECTORIES}")
 message(STATUS "CMAKE Implicit Link Directories: ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}")
