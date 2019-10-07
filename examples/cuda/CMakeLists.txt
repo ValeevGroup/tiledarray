@@ -34,19 +34,19 @@ if(CUDA_FOUND)
   add_dependencies(examples cuda_task)
 
   # Add the ta_dense_cuda executable
-  add_executable(ta_dense_cuda ta_dense_cuda.cpp)
+  add_executable(ta_dense_cuda EXCLUDE_FROM_ALL ta_dense_cuda.cpp)
   target_link_libraries(ta_dense_cuda PUBLIC tiledarray)
   add_dependencies(examples ta_dense_cuda)
 
-  add_executable(ta_cc_abcd_cuda ta_cc_abcd_cuda.cpp)
+  add_executable(ta_cc_abcd_cuda EXCLUDE_FROM_ALL ta_cc_abcd_cuda.cpp)
   target_link_libraries(ta_cc_abcd_cuda PUBLIC tiledarray)
   add_dependencies(examples ta_cc_abcd_cuda)
 
-  add_executable(ta_vector_cuda ta_vector_cuda.cpp)
+  add_executable(ta_vector_cuda EXCLUDE_FROM_ALL ta_vector_cuda.cpp)
   target_link_libraries(ta_vector_cuda PUBLIC tiledarray)
   add_dependencies(examples ta_vector_cuda)
 
-  add_executable(ta_reduce_cuda ta_reduce_cuda.cpp)
+  add_executable(ta_reduce_cuda EXCLUDE_FROM_ALL ta_reduce_cuda.cpp)
   target_link_libraries(ta_reduce_cuda PUBLIC tiledarray)
   add_dependencies(examples ta_reduce_cuda)
 endif(CUDA_FOUND)
