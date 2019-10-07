@@ -9,6 +9,19 @@ set(TILEDARRAY_VERSION "@TILEDARRAY_VERSION@")
 
 @PACKAGE_INIT@
 
+set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
+if(TILEDARRAY_HAS_CUDA)
+    set(CMAKE_CUDA_HOST_COMPILER "@CMAKE_CUDA_HOST_COMPILER@")
+# if TA is a CUDA-dependent library it needs CUDA to link properly ... unfortunately CMake is not able to do this correctly
+# see https://gitlab.kitware.com/cmake/cmake/issues/18614
+#    set(CMAKE_CUDA_STANDARD 14)
+#    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+#    set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
+#    enable_language(CUDA)
+#    include(SanitizeCUDAImplicitDirectories)
+#    sanitize_cuda_implicit_directories()
+endif()
+
 # Include library IMPORT targets
 if(NOT TARGET tiledarray)
   include("${CMAKE_CURRENT_LIST_DIR}/tiledarray-targets.cmake")
@@ -21,11 +34,6 @@ if(NOT TARGET MADworld)
     set(MADNESS_CONFIG_DIR "${CMAKE_CURRENT_LIST_DIR}/../madness")
   endif()
   find_package(MADNESS 0.10.1 CONFIG QUIET REQUIRED COMPONENTS world PATHS ${MADNESS_CONFIG_DIR} NO_DEFAULT_PATH)
-endif()
-
-set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
-if(TILEDARRAY_HAS_CUDA)
-    set(CMAKE_CUDA_HOST_COMPILER "@CMAKE_CUDA_HOST_COMPILER@")
 endif()
 
 # Set the tiledarray compiled library target
