@@ -12,9 +12,6 @@ set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
-
-include_directories(${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-
 # despite enable_language(CUDA), this is still needed to find cuBLAS
 find_package(CUDA REQUIRED)
 

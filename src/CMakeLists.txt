@@ -233,6 +233,10 @@ target_compile_options(tiledarray PUBLIC ${CMAKE_CXX_FLAG_LIST})
 target_compile_features(tiledarray PUBLIC "cxx_std_${CMAKE_CXX_STANDARD}")
 target_include_directories(tiledarray PUBLIC ${Boost_INCLUDE_DIRS})
 
+if (CUDA_FOUND)
+  target_include_directories(tiledarray PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+endif(CUDA_FOUND)
+
 if (LAPACK_INCLUDE_DIRS)
   target_include_directories(tiledarray PUBLIC ${LAPACK_INCLUDE_DIRS})
 endif(LAPACK_INCLUDE_DIRS)
