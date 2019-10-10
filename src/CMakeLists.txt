@@ -191,6 +191,10 @@ if(CUDA_FOUND)
           TiledArray/cuda/kernel/reduce_kernel.cu
           TiledArray/cuda/um_storage.cu)
 
+  set_source_files_properties(TiledArray/cuda/btas_um_tensor.cpp
+          PROPERTIES
+          LANGUAGE CUDA)
+
   # the list of libraries on which TiledArray depends on
   set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
@@ -203,7 +207,6 @@ endif(CUDA_FOUND)
 
 # Create the TiledArray library
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
-
 
 target_include_directories(tiledarray INTERFACE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -232,6 +235,10 @@ string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
 target_compile_options(tiledarray PUBLIC ${CMAKE_CXX_FLAG_LIST})
 target_compile_features(tiledarray PUBLIC "cxx_std_${CMAKE_CXX_STANDARD}")
 target_include_directories(tiledarray PUBLIC ${Boost_INCLUDE_DIRS})
+
+if (CUDA_FOUND)
+  target_include_directories(tiledarray PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+endif(CUDA_FOUND)
 
 if (LAPACK_INCLUDE_DIRS)
   target_include_directories(tiledarray PUBLIC ${LAPACK_INCLUDE_DIRS})

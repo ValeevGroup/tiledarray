@@ -1,6 +1,6 @@
 #
 #  This file is a part of TiledArray.
-#  Copyright (C) 2018  Virginia Tech
+#  Copyright (C) 2019  Virginia Tech
 #
 #  This program is free software: you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -15,24 +15,26 @@
 #  You should have received a copy of the GNU General Public License
 #  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
-#  Chong Peng
+#  Edward Valeev
 #  Department of Chemistry, Virginia Tech
 #
-#  CMakeLists.txt
-#  Aug 01, 2018
+#  SanitizeCUDAImplicitDirectories.cmake
+#  Oct 7, 2019
 #
 
+#
+# Filter out directories specific to the host compiler from CMAKE_CUDA_IMPLICIT_{INCLUDE,LINK}_DIRECTORIES
+#
 
-if(CUDA_FOUND)
-
-  foreach(_exec cuda_cutt cuda_task ta_dense_cuda ta_cc_abcd_cuda ta_vector_cuda ta_reduce_cuda)
-
-    # Add executable
-    add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
-    target_link_libraries(${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-    add_dependencies(${_exec} External)
-    add_dependencies(examples ${_exec})
-
+macro(sanitize_cuda_implicit_directories)
+  foreach (_type INCLUDE LINK)
+    set(_var CMAKE_CUDA_IMPLICIT_${_type}_DIRECTORIES)
+    set(_sanitized_var )
+    foreach (_component ${${_var}})
+      if (NOT ${_component} MATCHES "/gcc/(.*/|)[0-9]\.[0-9]\.[0-9]")
+        list(APPEND _sanitized_var ${_component})
+      endif()
+    endforeach()
+    set(${_var} ${_sanitized_var})
   endforeach()
-
-endif(CUDA_FOUND)
+endmacro()

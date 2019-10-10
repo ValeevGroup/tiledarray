@@ -343,6 +343,10 @@ CONFIGURE_FILE(
 install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
     DESTINATION lib/pkgconfig)
 
+# include extra cmake files
+install(FILES "${PROJECT_SOURCE_DIR}/cmake/modules/SanitizeCUDAImplicitDirectories.cmake"
+        DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}")
+
 # Create the version file
 write_basic_package_version_file(tiledarray-config-version.cmake
   VERSION ${TILEDARRAY_VERSION} COMPATIBILITY AnyNewerVersion)
