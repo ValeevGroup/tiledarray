@@ -92,7 +92,6 @@ namespace TiledArray {
       // Compute range data
       for(int i = int(rank_) - 1; i >= 0; --i) {
         // Check input dimensions
-        TA_ASSERT(lower_data[i] >= 0);
         TA_ASSERT(lower_data[i] <= upper_data[i]);
 
         // Compute data for element i of lower, upper, and extent
