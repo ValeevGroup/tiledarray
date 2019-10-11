@@ -41,6 +41,7 @@
 #include <umpire/Umpire.hpp>
 #include <umpire/strategy/DynamicPool.hpp>
 #include <umpire/strategy/ThreadSafeAllocator.hpp>
+#include <umpire/strategy/SizeLimiter.hpp>
 
 #include <madness/tensor/cblas.h>
 #include <madness/world/thread.h>
@@ -243,11 +244,16 @@ class cudaEnv {
       int num_devices = detail::num_cuda_devices();
       int device_id = detail::current_cuda_device_id();
 
+      // uncomment to debug umpire ops
+      //
       //      umpire::util::Logger::getActiveLogger()->setLoggingMsgLevel(
       //          umpire::util::message::Debug);
+
       //       make Thread Safe UM Dynamic POOL
 
       auto& rm = umpire::ResourceManager::getInstance();
+
+      auto mem_total_free = cudaEnv::memory_total_and_free();
 
       auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
           "UMDynamicPool", rm.getAllocator("UM"), 2048 * 1024 * 1024ul,
@@ -256,8 +262,19 @@ class cudaEnv {
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
               "ThreadSafeUMDynamicPool", um_dynamic_pool);
 
-      auto cuda_env = std::unique_ptr<cudaEnv>(
-          new cudaEnv(num_devices, device_id, num_streams,thread_safe_um_dynamic_pool));
+      auto dev_size_limited_alloc =
+          rm.makeAllocator<umpire::strategy::SizeLimiter>(
+              "size_limited_alloc", rm.getAllocator("CUDA"),
+              mem_total_free.first);
+      auto dev_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
+          "CUDADynamicPool", dev_size_limited_alloc, 0, 10 * 1024 * 1024ul);
+      auto thread_safe_dev_dynamic_pool =
+          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
+              "ThreadSafeCUDADynamicPool", dev_dynamic_pool);
+
+      auto cuda_env = std::unique_ptr<cudaEnv>(new cudaEnv(
+          num_devices, device_id, num_streams, thread_safe_um_dynamic_pool,
+          thread_safe_dev_dynamic_pool));
       instance = std::move(cuda_env);
     }
   }
@@ -272,6 +289,14 @@ class cudaEnv {
     return cuda_device_concurrent_managed_access_;
   }
 
+  /// @return the total size of all and free device memory
+  static std::pair<size_t,size_t> memory_total_and_free() {
+    std::pair<size_t,size_t> result;
+    // N.B. cudaMemGetInfo returns {free,total}
+    CudaSafeCall(cudaMemGetInfo(&result.second, &result.first));
+    return result;
+  }
+
   const cudaStream_t& cuda_stream(std::size_t i) const {
     TA_ASSERT(i < cuda_streams_.size());
     return cuda_streams_[i];
@@ -279,10 +304,13 @@ class cudaEnv {
 
   umpire::Allocator& um_dynamic_pool() { return um_dynamic_pool_; }
 
+  umpire::Allocator& device_dynamic_pool() { return device_dynamic_pool_; }
+
  protected:
   cudaEnv(int num_devices, int device_id, int num_streams,
-          umpire::Allocator alloc)
-      : um_dynamic_pool_(alloc),
+          umpire::Allocator um_alloc, umpire::Allocator device_alloc)
+      : um_dynamic_pool_(um_alloc),
+        device_dynamic_pool_(device_alloc),
         num_cuda_devices_(num_devices),
         current_cuda_device_id_(device_id),
         num_cuda_streams_(num_streams) {
@@ -319,6 +347,8 @@ class cudaEnv {
  private:
   /// a Thread Safe, Dynamic memory pool for Unified Memory
   umpire::Allocator um_dynamic_pool_;
+  /// a Thread Safe, Size-Limited Dynamic memory pool for CUDA Memory
+  umpire::Allocator device_dynamic_pool_;
 
   int num_cuda_devices_;
   int current_cuda_device_id_;
