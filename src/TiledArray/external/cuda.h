@@ -36,6 +36,7 @@
 #include <cuda_runtime.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
+#include <nvToolsExt.h>
 
 // for memory management
 #include <umpire/Umpire.hpp>
@@ -371,6 +372,42 @@ const cudaStream_t& get_stream_based_on_range(const Range& range) {
 }
 
 }  // namespace detail
+
+namespace nvidia {
+
+// Color definitions for nvtxcalls
+enum class argbColor : uint32_t {
+  red = 0xFFFF0000,
+  blue = 0xFF0000FF,
+  green = 0xFF008000,
+  yellow = 0xFFFFFF00,
+  cyan = 0xFF00FFFF,
+  magenta = 0xFFFF00FF,
+  gray = 0xFF808080,
+  purple = 0xFF800080
+};
+
+/// enter a profiling range by calling nvtxRangePushEx
+/// \param[in] range_title a char string containing the range title
+/// \param[in] range_color the range color
+inline void range_push(const char* range_title,
+                argbColor range_color) {
+  nvtxEventAttributes_t eventAttrib = {0};
+  eventAttrib.version = NVTX_VERSION;
+  eventAttrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
+  eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
+  eventAttrib.colorType = NVTX_COLOR_ARGB;
+  eventAttrib.color = static_cast<uint32_t>(range_color);
+  eventAttrib.message.ascii = range_title;
+  nvtxRangePushEx(&eventAttrib);
+}
+
+/// exits the current profiling range by calling nvtxRangePopEx
+inline void range_pop() {
+  nvtxRangePop();
+}
+
+}
 
 }  // namespace TiledArray
 

@@ -21,6 +21,13 @@ message(STATUS "CUDA Host Compiler: " ${CMAKE_CUDA_HOST_COMPILER})
 message(STATUS "CUDA NVCC FLAGS: ${CUDA_NVCC_FLAGS}")
 message(STATUS "cuBLAS Libraries: : ${CUDA_CUBLAS_LIBRARIES}")
 
+# CUDA_nvToolsExt_LIBRARY found by CMake 3.16 and later
+if (CMAKE_VERSION VERSION_LESS 3.16.0)
+  get_filename_component(CUDA_LIBRARY_DIR ${CUDA_cudart_static_LIBRARY} DIRECTORY)
+  find_library(CUDA_nvToolsExt_LIBRARY nvToolsExt HINTS ${CUDA_LIBRARY_DIR})
+endif()
+message(STATUS "NVTX library : ${CUDA_nvToolsExt_LIBRARY}")
+
 # sanitize implicit dirs if CUDA host compiler != C++ compiler
 message(STATUS "CMAKE Implicit Include Directories: ${CMAKE_CUDA_IMPLICIT_INCLUDE_DIRECTORIES}")
 message(STATUS "CMAKE Implicit Link Directories: ${CMAKE_CUDA_IMPLICIT_LINK_DIRECTORIES}")
