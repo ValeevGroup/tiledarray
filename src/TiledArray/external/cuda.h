@@ -265,7 +265,7 @@ class cudaEnv {
 
       auto dev_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter>(
-              "size_limited_alloc", rm.getAllocator("CUDA"),
+              "size_limited_alloc", rm.getAllocator("DEVICE"),
               mem_total_free.first);
       auto dev_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
           "CUDADynamicPool", dev_size_limited_alloc, 0, 10 * 1024 * 1024ul);
