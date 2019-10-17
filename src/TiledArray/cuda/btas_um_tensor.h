@@ -673,21 +673,16 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
     CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
 
     using Tensor = typename UMTensor::tensor_type;
-    typename Tensor::storage_type storage(tile.range().area());
 
+    auto &stream = detail::get_stream_based_on_range(tile.range());
+    typename Tensor::storage_type storage;
+    make_device_storage(storage, tile.range().area(), stream);
     Tensor result(tile.range(), std::move(storage));
 
-    const auto n = tile.size();
+    CudaSafeCall(cudaMemcpyAsync(result.data(), tile.data(), tile.size() * sizeof(typename Tensor::value_type), cudaMemcpyDefault, stream));
 
-    std::copy_n(tile.data(), n, result.data());
-
-    auto &stream = detail::get_stream_based_on_range(result.range());
-
-    // prefetch data to GPU
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
-        result.storage(), stream);
-
-    return TiledArray::Tile<Tensor>(result);
+    synchronize_stream(&stream);
+    return TiledArray::Tile<Tensor>(std::move(result));
   };
 
   auto um_array = to_new_tile_type(array, convert_tile);
