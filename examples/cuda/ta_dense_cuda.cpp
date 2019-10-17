@@ -29,6 +29,8 @@
 #include <TiledArray/external/btas.h>
 // clang-format on
 
+#include <cuda_profiler_api.h>
+
 namespace TiledArray {
 
 ///
@@ -217,18 +219,27 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   {
     // Construct and initialize arrays
 
-    CUDAMatrix a(world, trange_a);
-    CUDAMatrix b(world, trange_b);
+    TAMatrix a_host(world, trange_a);
+    TAMatrix b_host(world, trange_b);
 
-    a.fill(val_a);
-    b.fill(val_b);
-
+    a_host.fill(val_a);
+    b_host.fill(val_b);
+    CUDAMatrix a =
+        TA::ta_tensor_to_um_tensor<TA::Tile<CUDATile>>(a_host);
+    CUDAMatrix b =
+        TA::ta_tensor_to_um_tensor<TA::Tile<CUDATile>>(b_host);
+    
     world.gop.fence();
 
 //    TA::to_device(a);
 //    TA::to_device(b);
 
 //    c("m,n") = a("m,k") * b("k,n");
+
+
+    // start profiler
+    cudaProfilerStart();
+
     // Start clock
     const double wall_time_start = madness::wall_time();
 
@@ -245,6 +256,9 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
+
+    // stop profiler
+    cudaProfilerStop();
 
     if (world.rank() == 0)
       std::cout << "Average wall time   = "
