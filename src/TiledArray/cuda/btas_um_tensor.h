@@ -204,7 +204,7 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
 
   synchronize_stream(&stream);
 
-  return result;
+  return std::move(result);
 }
 
 ///
@@ -283,7 +283,7 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const Scalar factor) {
   auto result = subt(arg1, arg2);
   btas_tensor_scale_to_cuda_impl(result, factor);
-  return result;
+  return std::move(result);
 }
 
 template <typename T, typename Range>
@@ -350,7 +350,7 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const Scalar factor) {
   auto result = add(arg1, arg2);
   btas_tensor_scale_to_cuda_impl(result, factor);
-  return result;
+  return std::move(result);
 }
 
 template <typename T, typename Scalar, typename Range>
@@ -428,7 +428,7 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const Scalar factor) {
   auto result = mult(arg1, arg2);
   btas_tensor_scale_to_cuda_impl(result, factor);
-  return result;
+  return std::move(result);
 }
 
 template <typename T, typename Range>
