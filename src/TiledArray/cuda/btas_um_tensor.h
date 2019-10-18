@@ -633,18 +633,12 @@ um_tensor_to_ta_tensor(
     const TiledArray::DistArray<UMTensor, Policy> &um_array) {
   const auto convert_tile = [](const UMTensor &tile) {
     TATensor result(tile.tensor().range());
-    using std::begin;
-    const auto n = tile.tensor().size();
 
-    CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
     auto &stream = detail::get_stream_based_on_range(tile.range());
+    CudaSafeCall(cudaMemcpyAsync(result.data(), tile.data(), tile.size() * sizeof(typename TATensor::value_type), cudaMemcpyDefault, stream));
+    synchronize_stream(&stream);
 
-    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
-        tile.tensor().storage(), stream);
-
-    std::copy_n(tile.data(), n, result.data());
-
-    return result;
+    return std::move(result);
   };
 
   auto ta_array = to_new_tile_type(um_array, convert_tile);
