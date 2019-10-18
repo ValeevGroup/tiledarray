@@ -292,7 +292,7 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
         auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world,
                 (*b_dense_parallel), 11, tr_split);
         b_dense_parallel.reset();
-        TArrayI::wait_for_lazy_cleanup(dense_global_world);
+        b_dense.wait_for_lazy_cleanup();
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {

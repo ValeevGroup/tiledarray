@@ -267,6 +267,14 @@ namespace TiledArray {
       }
     }
 
+    /// Wait for lazy tile cleanup
+
+    /// The member version of the static DistArray::wait_for_lazy_cleanup
+    void wait_for_lazy_cleanup() const
+    {
+      DistArray::wait_for_lazy_cleanup(world());
+    }
+
     /// Copy constructor
 
     /// This is a shallow copy, that is no data is copied.
