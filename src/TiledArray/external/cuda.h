@@ -256,21 +256,28 @@ class cudaEnv {
 
       auto mem_total_free = cudaEnv::memory_total_and_free();
 
-      auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
+      // turn off Umpire introspection for non-Debug builds
+#ifndef NDEBUG
+      constexpr auto introspect = true;
+#else
+      constexpr auto introspect = false;
+#endif
+
+      auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
           "UMDynamicPool", rm.getAllocator("UM"), 2048 * 1024 * 1024ul,
           10 * 1024 * 1024ul);
       auto thread_safe_um_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
+          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
               "ThreadSafeUMDynamicPool", um_dynamic_pool);
 
       auto dev_size_limited_alloc =
-          rm.makeAllocator<umpire::strategy::SizeLimiter>(
+          rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
               "size_limited_alloc", rm.getAllocator("DEVICE"),
               mem_total_free.first);
-      auto dev_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
+      auto dev_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
           "CUDADynamicPool", dev_size_limited_alloc, 0, 10 * 1024 * 1024ul);
       auto thread_safe_dev_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
+          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
               "ThreadSafeCUDADynamicPool", dev_dynamic_pool);
 
       auto cuda_env = std::unique_ptr<cudaEnv>(new cudaEnv(
