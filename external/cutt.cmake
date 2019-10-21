@@ -29,7 +29,7 @@ else()
         set(CUTT_URL https://github.com/ValeevGroup/cutt.git)
     endif (NOT CUTT_URL)
     if (NOT CUTT_TAG)
-        set(CUTT_TAG 52c70cb410a1872ec22d5d2dce50e32ec185d66c)
+        set(CUTT_TAG e0661771d76fe4cf61e69d1433f3c9ce1c95cb36)
     endif (NOT CUTT_TAG)
 
     message("** Will clone cuTT from ${CUTT_URL}")
@@ -53,7 +53,7 @@ else()
             UPDATE_DISCONNECTED 1
             CMAKE_ARGS
             	-DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
-	    	-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+                -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
             	-DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
             	-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
                 -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
@@ -70,8 +70,11 @@ else()
                 -DCMAKE_CXX_FLAGS_MINSIZEREL=${CMAKE_CXX_FLAGS_MINSIZEREL}
                 -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
                 -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
-            	-DENABLE_NO_ALIGNED_ALLOC=ON
-            	-DENABLE_UMPIRE=OFF
+                -DCMAKE_CUDA_STANDARD=${CMAKE_CUDA_STANDARD}
+                -DCMAKE_CUDA_EXTENSIONS=${CMAKE_CUDA_EXTENSIONS}
+            	-DENABLE_UMPIRE=ON
+                -DCUTT_USES_THIS_UMPIRE_ALLOCATOR=ThreadSafeUMDynamicPool
+                -DCMAKE_PREFIX_PATH=${_UMPIRE_INSTALL_DIR}
             	-DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
             	-DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
             	${EXTERNAL_SOURCE_DIR}
