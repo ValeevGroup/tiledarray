@@ -77,6 +77,7 @@ else()
                 -DENABLE_OPENMP=OFF
                 -DENABLE_TESTS=OFF
                 -DENABLE_EXAMPLES=OFF
+                -DENABLE_LOGGING=OFF
                 -DENABLE_ASSERTS=${TA_DEFAULT_ERROR}
                 -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
 		        -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
