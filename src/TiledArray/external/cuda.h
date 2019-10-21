@@ -43,6 +43,7 @@
 #include <umpire/strategy/DynamicPool.hpp>
 #include <umpire/strategy/ThreadSafeAllocator.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
+#include "umpire/strategy/AllocationPrefetcher.hpp"
 
 #include <madness/tensor/cblas.h>
 #include <madness/world/thread.h>
@@ -256,8 +257,10 @@ class cudaEnv {
 
       auto mem_total_free = cudaEnv::memory_total_and_free();
 
+      auto um_prefetcher = rm.makeAllocator<umpire::strategy::AllocationPrefetcher>(
+                                   "UMPrefetcher", rm.getAllocator("UM"));
       auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool>(
-          "UMDynamicPool", rm.getAllocator("UM"), 2048 * 1024 * 1024ul,
+          "UMDynamicPool", um_prefetcher, 2048 * 1024 * 1024ul,
           10 * 1024 * 1024ul);
       auto thread_safe_um_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator>(
