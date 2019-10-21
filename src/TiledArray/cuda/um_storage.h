@@ -99,6 +99,8 @@ template <typename Storage>
 void make_device_storage(Storage& storage, std::size_t n,
                          const cudaStream_t& stream = 0) {
   storage = Storage(n);
+  TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(storage,
+                                                                   stream);
 }
 
 /**
