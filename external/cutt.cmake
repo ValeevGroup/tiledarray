@@ -29,7 +29,7 @@ else()
         set(CUTT_URL https://github.com/ValeevGroup/cutt.git)
     endif (NOT CUTT_URL)
     if (NOT CUTT_TAG)
-        set(CUTT_TAG a91c13ec762734e1634d7d2e0fbb7e316e9b8c8f)
+        set(CUTT_TAG 02152734bc534b74e2d0160d12bb73111bb6ffb4)
     endif (NOT CUTT_TAG)
 
     message("** Will clone cuTT from ${CUTT_URL}")
