@@ -10,6 +10,7 @@
 
 #include <TiledArray/external/madness.h>
 #ifdef TILEDARRAY_HAS_CUDA
+#include <cutt.h>
 #include <TiledArray/external/cuda.h>
 #include <TiledArray/math/cublas.h>
 #endif
@@ -23,11 +24,14 @@ inline void cuda_initialize() {
   cudaEnv::instance();
   //
   cuBLASHandlePool::handle();
+  // initialize cuTT
+  cuttInitialize();
 }
 
 /// finalize cuda environment
 inline void cuda_finalize() {
   CudaSafeCall(cudaDeviceSynchronize());
+  cuttFinalize();
   cublasDestroy(cuBLASHandlePool::handle());
   delete &cuBLASHandlePool::handle();
   cudaEnv::instance().reset(nullptr);
