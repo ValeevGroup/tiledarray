@@ -214,13 +214,10 @@ class cudaEnv {
   cudaEnv operator=(cudaEnv& cuda_global) = delete;
 
   /// access to static member
-  static std::unique_ptr<cudaEnv>& instance(World& world) {
+  static std::unique_ptr<cudaEnv>& instance() {
     static std::unique_ptr<cudaEnv> instance_{nullptr};
     if (!instance_) {
-      initialize(instance_, world);
-    }
-    else if (&(instance_->world()) != &world) {
-      throw Exception("cudaEnv::instance(world) called with different world than the initial world value");
+      initialize(instance_, TiledArray::get_default_world());
     }
     return instance_;
   }
