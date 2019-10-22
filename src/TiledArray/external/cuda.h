@@ -299,6 +299,23 @@ class cudaEnv {
     return result;
   }
 
+  /// Collective call to probe CUDA {total,free} memory
+
+  /// @return the total size of all and free device memory on every rank's device
+  std::vector<std::pair<size_t,size_t>> memory_total_and_free() const {
+    auto world_size = world_.size();
+    std::vector<size_t> total_memory(world_size,0), free_memory(world_size,0);
+    auto rank = world_.rank();
+    std::tie(total_memory.at(rank), free_memory.at(rank)) = cudaEnv::memory_total_and_free();
+    world_.gop.sum(total_memory.data(), total_memory.size());
+    world_.gop.sum(free_memory.data(), free_memory.size());
+    std::vector<std::pair<size_t,size_t>> result(world_size);
+    for(int r=0; r!=world_size; ++r) {
+      result.at(r) = {total_memory.at(r), free_memory.at(r)};
+    }
+    return result;
+  }
+
   const cudaStream_t& cuda_stream(std::size_t i) const {
     TA_ASSERT(i < cuda_streams_.size());
     return cuda_streams_[i];
