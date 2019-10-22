@@ -19,9 +19,9 @@ namespace TiledArray{
 
 #ifdef TILEDARRAY_HAS_CUDA
 /// initialize cuda environment
-inline void cuda_initialize() {
+inline void cuda_initialize(World& world) {
   /// initialize cudaGlobal
-  cudaEnv::instance();
+  cudaEnv::instance(world);
   //
   cuBLASHandlePool::handle();
   // initialize cuTT
@@ -91,7 +91,7 @@ inline World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm
             : *madness::World::find_instance(comm);
     TiledArray::set_default_world(default_world);
 #ifdef TILEDARRAY_HAS_CUDA
-    TiledArray::cuda_initialize();
+    TiledArray::cuda_initialize(default_world);
 #endif
     madness::print_meminfo_disable();
     detail::initialized_accessor() = true;

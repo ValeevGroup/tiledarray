@@ -90,22 +90,9 @@ namespace TiledArray {
 
 namespace detail {
 
-inline std::pair<int, int> mpi_local_rank_size(int mpi_rank) {
-  MPI_Comm local_comm;
-  MPI_Info info;
-  MPI_Info_create(&info);
-  MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, mpi_rank, info,
-                      &local_comm);
-
-  int local_rank = -1;
-  int local_size = -1;
-  MPI_Comm_rank(local_comm, &local_rank);
-  MPI_Comm_size(local_comm, &local_size);
-
-  MPI_Comm_free(&local_comm);
-  MPI_Info_free(&info);
-
-  return std::make_pair(local_rank, local_size);
+inline std::pair<int, int> mpi_local_rank_size(World& world) {
+  auto host_comm = world.mpi.comm().Split(SafeMPI::Intracomm::SHARED_SPLIT_TYPE, 0);
+  return std::make_pair(host_comm.Get_rank(), host_comm.Get_size());
 }
 
 inline int num_cuda_streams() {
@@ -126,14 +113,12 @@ inline int num_cuda_devices() {
   return num_devices;
 }
 
-inline int current_cuda_device_id() {
-  int mpi_rank = -1;
-  MPI_Comm_rank(MPI_COMM_WORLD, &mpi_rank);
+inline int current_cuda_device_id(World& world) {
+  auto mpi_rank = world.rank();
 
   int mpi_local_size = -1;
   int mpi_local_rank = -1;
-
-  std::tie(mpi_local_rank, mpi_local_size) = mpi_local_rank_size(mpi_rank);
+  std::tie(mpi_local_rank, mpi_local_size) = mpi_local_rank_size(world);
 
   int num_devices = detail::num_cuda_devices();
 
@@ -229,21 +214,26 @@ class cudaEnv {
   cudaEnv operator=(cudaEnv& cuda_global) = delete;
 
   /// access to static member
-  static std::unique_ptr<cudaEnv>& instance() {
+  static std::unique_ptr<cudaEnv>& instance(World& world) {
     static std::unique_ptr<cudaEnv> instance_{nullptr};
     if (!instance_) {
-      initialize(instance_);
+      initialize(instance_, world);
+    }
+    else if (&(instance_->world()) != &world) {
+      throw Exception("cudaEnv::instance(world) called with different world than the initial world value");
     }
     return instance_;
   }
 
   /// initialize static member
-  static void initialize(std::unique_ptr<cudaEnv>& instance) {
+  static void initialize(std::unique_ptr<cudaEnv>& instance, World& world) {
     // initialize only when not initialized
     if (instance == nullptr) {
       int num_streams = detail::num_cuda_streams();
       int num_devices = detail::num_cuda_devices();
-      int device_id = detail::current_cuda_device_id();
+      int device_id = detail::current_cuda_device_id(world);
+      // set device for current MPI process .. will be set in the ctor as well
+      CudaSafeCall(cudaSetDevice(device_id));
 
       // uncomment to debug umpire ops
       //
@@ -280,11 +270,15 @@ class cudaEnv {
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
               "ThreadSafeCUDADynamicPool", dev_dynamic_pool);
 
-      auto cuda_env = std::unique_ptr<cudaEnv>(new cudaEnv(
+      auto cuda_env = std::unique_ptr<cudaEnv>(new cudaEnv(world,
           num_devices, device_id, num_streams, thread_safe_um_dynamic_pool,
           thread_safe_dev_dynamic_pool));
       instance = std::move(cuda_env);
     }
+  }
+
+  World* world() const {
+    return world_;
   }
 
   int num_cuda_devices() const { return num_cuda_devices_; }
@@ -297,7 +291,7 @@ class cudaEnv {
     return cuda_device_concurrent_managed_access_;
   }
 
-  /// @return the total size of all and free device memory
+  /// @return the total size of all and free device memory on the current device
   static std::pair<size_t,size_t> memory_total_and_free() {
     std::pair<size_t,size_t> result;
     // N.B. cudaMemGetInfo returns {free,total}
@@ -315,9 +309,9 @@ class cudaEnv {
   umpire::Allocator& device_dynamic_pool() { return device_dynamic_pool_; }
 
  protected:
-  cudaEnv(int num_devices, int device_id, int num_streams,
+  cudaEnv(World& world, int num_devices, int device_id, int num_streams,
           umpire::Allocator um_alloc, umpire::Allocator device_alloc)
-      : um_dynamic_pool_(um_alloc),
+      : world_(&world), um_dynamic_pool_(um_alloc),
         device_dynamic_pool_(device_alloc),
         num_cuda_devices_(num_devices),
         current_cuda_device_id_(device_id),
@@ -353,7 +347,10 @@ class cudaEnv {
   }
 
  private:
-  /// a Thread Safe, Dynamic memory pool for Unified Memory
+  // the world used to initialize this
+  World* world_;
+
+  /// a Thread Safe, Dynamic memory pool for CUDA Unified Memory
   umpire::Allocator um_dynamic_pool_;
   /// a Thread Safe, Size-Limited Dynamic memory pool for CUDA Memory
   umpire::Allocator device_dynamic_pool_;
