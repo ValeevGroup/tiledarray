@@ -36,7 +36,7 @@
 
 int main(int argc, char** argv) {
 
-  madness::World& world = madness::initialize(argc,argv);
+  auto& world = TA::initialize(argc,argv);
 
   const std::size_t repeat = 100;
   // Allocate some memory for tests
@@ -524,7 +524,7 @@ int main(int argc, char** argv) {
   free(b);
   free(c);
 
-  madness::finalize();
+  TA::finalize();
 
   return 0;
 }

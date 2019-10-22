@@ -24,7 +24,7 @@ void init_array(TA::TArrayD& x, const double v) {
 
 int main(int argc, char* argv[]) {
   // Initialize runtime
-  madness::World& world = madness::initialize(argc, argv);
+  auto& world = TA::initialize(argc, argv);
 
   // Construct tile boundary vector
   std::vector<std::size_t> tile_boundaries;
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
   // Wait for all the computation to complete before exiting
   world.gop.fence();
 
-  madness::finalize();
+  TA::finalize();
   return 0;
 }
 

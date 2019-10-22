@@ -10,14 +10,14 @@ int main(int argc, char* argv[]) {
   int me;  MPI_Comm_rank(MPI_COMM_WORLD, &me);
   MPI_Comm comm_evens; MPI_Comm_split(MPI_COMM_WORLD, (me % 2 ? MPI_UNDEFINED : 0), 0, &comm_evens);
 
-  // Initialize MADWorld on even ranks only
+  // Initialize TA on even ranks only
   if (comm_evens != MPI_COMM_NULL) {
-    madness::World &world = madness::initialize(argc, argv, comm_evens);
+    auto& world = TA::initialize(argc, argv, comm_evens);
 
     // Do some work here.
 
-    // Finalize MADWorld
-    madness::finalize();
+    // Finalize TA
+    TA::finalize();
   }
 
   // Finalize MPI
