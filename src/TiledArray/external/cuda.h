@@ -241,7 +241,7 @@ class cudaEnv {
 
       auto& rm = umpire::ResourceManager::getInstance();
 
-      auto mem_total_free = cudaEnv::memory_total_and_free();
+      auto mem_total_free = cudaEnv::memory_total_and_free_device();
 
       // turn off Umpire introspection for non-Debug builds
 #ifndef NDEBUG
@@ -274,8 +274,8 @@ class cudaEnv {
     }
   }
 
-  World* world() const {
-    return world_;
+  World& world() const {
+    return *world_;
   }
 
   int num_cuda_devices() const { return num_cuda_devices_; }
@@ -289,7 +289,7 @@ class cudaEnv {
   }
 
   /// @return the total size of all and free device memory on the current device
-  static std::pair<size_t,size_t> memory_total_and_free() {
+  static std::pair<size_t,size_t> memory_total_and_free_device() {
     std::pair<size_t,size_t> result;
     // N.B. cudaMemGetInfo returns {free,total}
     CudaSafeCall(cudaMemGetInfo(&result.second, &result.first));
@@ -300,12 +300,12 @@ class cudaEnv {
 
   /// @return the total size of all and free device memory on every rank's device
   std::vector<std::pair<size_t,size_t>> memory_total_and_free() const {
-    auto world_size = world_.size();
+    auto world_size = world_->size();
     std::vector<size_t> total_memory(world_size,0), free_memory(world_size,0);
-    auto rank = world_.rank();
-    std::tie(total_memory.at(rank), free_memory.at(rank)) = cudaEnv::memory_total_and_free();
-    world_.gop.sum(total_memory.data(), total_memory.size());
-    world_.gop.sum(free_memory.data(), free_memory.size());
+    auto rank = world_->rank();
+    std::tie(total_memory.at(rank), free_memory.at(rank)) = cudaEnv::memory_total_and_free_device();
+    world_->gop.sum(total_memory.data(), total_memory.size());
+    world_->gop.sum(free_memory.data(), free_memory.size());
     std::vector<std::pair<size_t,size_t>> result(world_size);
     for(int r=0; r!=world_size; ++r) {
       result.at(r) = {total_memory.at(r), free_memory.at(r)};
