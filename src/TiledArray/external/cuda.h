@@ -150,9 +150,7 @@ inline int current_cuda_device_id(World& world) {
   return cuda_device_id;
 }
 
-inline void CUDART_CB cuda_readyflag_callback(cudaStream_t stream,
-                                              cudaError_t status,
-                                              void* userData) {
+inline void CUDART_CB cuda_readyflag_callback(void* userData) {
   // convert void * to std::atomic<bool>
   std::atomic<bool>* flag = static_cast<std::atomic<bool>*>(userData);
   // set the flag to be true
@@ -171,7 +169,7 @@ inline void thread_wait_cuda_stream(const cudaStream_t& stream) {
   std::atomic<bool>* flag = new std::atomic<bool>(false);
 
   CudaSafeCall(
-      cudaStreamAddCallback(stream, detail::cuda_readyflag_callback, flag, 0));
+      cudaLaunchHostFunc(stream, detail::cuda_readyflag_callback, flag));
 
   detail::ProbeFlag probe(flag);
 
