@@ -252,19 +252,23 @@ class cudaEnv {
       constexpr auto introspect = false;
 #endif
 
+      // allocate all free memory for UM pool
+      // subsequent allocs will use 1/10 of the total device memory
+      auto alloc_grain = mem_total_free.second/10;
       auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
-          "UMDynamicPool", rm.getAllocator("UM"), 2048 * 1024 * 1024ul,
-          10 * 1024 * 1024ul);
+          "UMDynamicPool", rm.getAllocator("UM"), mem_total_free.second,
+          alloc_grain);
       auto thread_safe_um_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
               "ThreadSafeUMDynamicPool", um_dynamic_pool);
 
+      // allocate zero memory for device pool, same grain for subsequent allocs
       auto dev_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
               "size_limited_alloc", rm.getAllocator("DEVICE"),
               mem_total_free.first);
       auto dev_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
-          "CUDADynamicPool", dev_size_limited_alloc, 0, 10 * 1024 * 1024ul);
+          "CUDADynamicPool", dev_size_limited_alloc, 0, alloc_grain);
       auto thread_safe_dev_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
               "ThreadSafeCUDADynamicPool", dev_dynamic_pool);
