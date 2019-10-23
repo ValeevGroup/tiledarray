@@ -95,7 +95,7 @@ struct cudaTaskFn : public TaskInterface {
       } else {
         // TODO should we use cuda callback or cuda events??
         // insert cuda callback
-        cudaStreamAddCallback(*stream, cuda_callback, task_);
+        cudaLaunchHostFunc(*stream, cuda_callback, task_);
         // reset stream to nullptr
         TiledArray::synchronize_stream(nullptr);
       }
