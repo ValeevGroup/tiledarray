@@ -16,14 +16,14 @@ set(MPI_CXX_COMPILER       "mpicxx")
 # Set compile flags
 set(CMAKE_C_FLAGS_INIT             "-std=c99" CACHE STRING "Initial C compile flags")
 set(CMAKE_C_FLAGS_DEBUG            "-g -Wall" CACHE STRING "Initial C debug compile flags")
-set(CMAKE_C_FLAGS_MINSIZEREL       "-Os -DNDEBUG -m64 -ffast-math -mcpu=power9 -mtune=native" CACHE STRING "Initial C minimum size release compile flags")
-set(CMAKE_C_FLAGS_RELEASE          "-O3 -DNDEBUG -m64 -ffast-math -mcpu=power9 -mtune=native" CACHE STRING "Initial C release compile flags")
-set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-O2 -g -Wall -m64 -ffast-math -mcpu=power9 -mtune=native" CACHE STRING "Initial C release with debug info compile flags")
+set(CMAKE_C_FLAGS_MINSIZEREL       "-Os -DNDEBUG -m64 -fsignaling-nans -mcpu=power9 -mtune=native" CACHE STRING "Initial C minimum size release compile flags")
+set(CMAKE_C_FLAGS_RELEASE          "-O3 -DNDEBUG -m64 -fsignaling-nans -mcpu=power9 -mtune=native" CACHE STRING "Initial C release compile flags")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-O2 -g -Wall -m64 -fsignaling-nans -mcpu=power9 -mtune=native" CACHE STRING "Initial C release with debug info compile flags")
 set(CMAKE_CXX_FLAGS_INIT           "" CACHE STRING "Initial C++ compile flags")
 set(CMAKE_CXX_FLAGS_DEBUG          "-g -Wall" CACHE STRING "Initial C++ debug compile flags")
-set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -m64 -ffast-math -mcpu=power9 -mtune=native" CACHE STRING "Initial C++ minimum size release compile flags")
-set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG -m64 -ffast-math -mcpu=power9 -mtune=native" CACHE STRING "Initial C++ release compile flags")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall -m64 -ffast-math -mcpu=power9 -mtune=native" CACHE STRING "Initial C++ release with debug info compile flags")
+set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG -m64 -fsignaling-nans -mcpu=power9 -mtune=native" CACHE STRING "Initial C++ minimum size release compile flags")
+set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -DNDEBUG -m64 -fsignaling-nans -mcpu=power9 -mtune=native" CACHE STRING "Initial C++ release compile flags")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall -m64 -fsignaling-nans -mcpu=power9 -mtune=native" CACHE STRING "Initial C++ release with debug info compile flags")
 
 
 # Set BLAS/LAPACK libraries
