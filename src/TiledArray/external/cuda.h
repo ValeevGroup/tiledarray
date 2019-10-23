@@ -292,6 +292,12 @@ class cudaEnv {
     return cuda_device_concurrent_managed_access_;
   }
 
+  size_t stream_id(const cudaStream_t& stream) const {
+    auto it = std::find(cuda_streams_.begin(), cuda_streams_.end(), stream);
+    if (it == cuda_streams_.end()) abort();
+    return it - cuda_streams_.begin();
+  }
+
   /// @return the total size of all and free device memory on the current device
   static std::pair<size_t,size_t> memory_total_and_free_device() {
     std::pair<size_t,size_t> result;
@@ -318,8 +324,15 @@ class cudaEnv {
   }
 
   const cudaStream_t& cuda_stream(std::size_t i) const {
-    TA_ASSERT(i < cuda_streams_.size());
-    return cuda_streams_[i];
+    return cuda_streams_.at(i);
+  }
+ 
+  const cudaStream_t& cuda_stream_h2d() const {
+    return cuda_streams_[num_cuda_streams_];
+  }
+
+  const cudaStream_t& cuda_stream_d2h() const {
+    return cuda_streams_[num_cuda_streams_+1];
   }
 
   umpire::Allocator& um_dynamic_pool() { return um_dynamic_pool_; }
@@ -358,10 +371,11 @@ class cudaEnv {
     }
 
     // creates cuda streams on current device
-    cuda_streams_.resize(num_cuda_streams_);
+    cuda_streams_.resize(num_cuda_streams_ + 2);
     for (auto& stream : cuda_streams_) {
       CudaSafeCall(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
     }
+    std::cout << "created " << num_cuda_streams_ << " CUDA streams + 2 I/O streams" << std::endl;
   }
 
  private:
