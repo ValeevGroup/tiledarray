@@ -92,7 +92,7 @@ namespace TiledArray {
 namespace detail {
 
 inline std::pair<int, int> mpi_local_rank_size(World& world) {
-  auto host_comm = world.mpi.comm().Split(SafeMPI::Intracomm::SHARED_SPLIT_TYPE, 0);
+  auto host_comm = world.mpi.comm().Split_type(SafeMPI::Intracomm::SHARED_SPLIT_TYPE, 0);
   return std::make_pair(host_comm.Get_rank(), host_comm.Get_size());
 }
 
@@ -232,6 +232,7 @@ class cudaEnv {
       int device_id = detail::current_cuda_device_id(world);
       // set device for current MPI process .. will be set in the ctor as well
       CudaSafeCall(cudaSetDevice(device_id));
+      CudaSafeCall(cudaDeviceSetCacheConfig(cudaFuncCachePreferShared));
 
       // uncomment to debug umpire ops
       //
