@@ -631,21 +631,44 @@ typename std::enable_if<!std::is_same<UMTensor, TATensor>::value,
                         TiledArray::DistArray<TATensor, Policy>>::type
 um_tensor_to_ta_tensor(
     const TiledArray::DistArray<UMTensor, Policy> &um_array) {
-  const auto convert_tile = [](const UMTensor &tile) {
+  const auto convert_tile_memcpy = [](const UMTensor &tile) {
     TATensor result(tile.tensor().range());
 
     auto &stream = detail::get_stream_based_on_range(tile.range());
-    CudaSafeCall(cudaMemcpyAsync(result.data(), tile.data(), tile.size() * sizeof(typename TATensor::value_type), cudaMemcpyDefault, stream));
+    CudaSafeCall(
+        cudaMemcpyAsync(result.data(), tile.data(),
+                        tile.size() * sizeof(typename TATensor::value_type),
+                        cudaMemcpyDefault, stream));
     synchronize_stream(&stream);
 
     return std::move(result);
   };
 
-  auto ta_array = to_new_tile_type(um_array, convert_tile);
+  const auto convert_tile_um = [](const UMTensor &tile) {
+    TATensor result(tile.tensor().range());
+    using std::begin;
+    const auto n = tile.tensor().size();
+
+    CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+    auto &stream = detail::get_stream_based_on_range(tile.range());
+
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
+        tile.tensor().storage(), stream);
+
+    std::copy_n(tile.data(), n, result.data());
+
+    return std::move(result);
+  };
+
+  const char *use_legacy_conversion =
+      std::getenv("TA_CUDA_LEGACY_UM_CONVERSION");
+  auto ta_array = use_legacy_conversion
+                      ? to_new_tile_type(um_array, convert_tile_um)
+                      : to_new_tile_type(um_array, convert_tile_memcpy);
 
   um_array.world().gop.fence();
   return ta_array;
-};
+}
 
 /// no-op if UMTensor is the same type as TATensor type
 template <typename UMTensor, typename TATensor, typename Policy>
@@ -661,7 +684,7 @@ template <typename UMTensor, typename TATensor, typename Policy>
 typename std::enable_if<!std::is_same<UMTensor, TATensor>::value,
                         TiledArray::DistArray<UMTensor, Policy>>::type
 ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
-  auto convert_tile = [](const TATensor &tile) {
+  auto convert_tile_memcpy = [](const TATensor &tile) {
     /// UMTensor must be wrapped into TA::Tile
 
     CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
@@ -673,17 +696,47 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
     make_device_storage(storage, tile.range().area(), stream);
     Tensor result(tile.range(), std::move(storage));
 
-    CudaSafeCall(cudaMemcpyAsync(result.data(), tile.data(), tile.size() * sizeof(typename Tensor::value_type), cudaMemcpyDefault, stream));
+    CudaSafeCall(
+        cudaMemcpyAsync(result.data(), tile.data(),
+                        tile.size() * sizeof(typename Tensor::value_type),
+                        cudaMemcpyDefault, stream));
 
     synchronize_stream(&stream);
     return TiledArray::Tile<Tensor>(std::move(result));
   };
 
-  auto um_array = to_new_tile_type(array, convert_tile);
+  auto convert_tile_um = [](const TATensor &tile) {
+    /// UMTensor must be wrapped into TA::Tile
+
+    CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
+
+    using Tensor = typename UMTensor::tensor_type;
+    typename Tensor::storage_type storage(tile.range().area());
+
+    Tensor result(tile.range(), std::move(storage));
+
+    const auto n = tile.size();
+
+    std::copy_n(tile.data(), n, result.data());
+
+    auto &stream = detail::get_stream_based_on_range(result.range());
+
+    // prefetch data to GPU
+    TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
+        result.storage(), stream);
+
+    return TiledArray::Tile<Tensor>(std::move(result));
+  };
+
+  const char *use_legacy_conversion =
+      std::getenv("TA_CUDA_LEGACY_UM_CONVERSION");
+  auto um_array = use_legacy_conversion
+                      ? to_new_tile_type(array, convert_tile_um)
+                      : to_new_tile_type(array, convert_tile_memcpy);
 
   array.world().gop.fence();
   return um_array;
-};
+}
 
 /// no-op if array is the same as return type
 template <typename UMTensor, typename TATensor, typename Policy>
