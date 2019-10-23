@@ -634,7 +634,7 @@ um_tensor_to_ta_tensor(
   const auto convert_tile_memcpy = [](const UMTensor &tile) {
     TATensor result(tile.tensor().range());
 
-    auto &stream = detail::get_stream_based_on_range(tile.range());
+    auto &stream = cudaEnv::instance()->cuda_stream_d2h();
     CudaSafeCall(
         cudaMemcpyAsync(result.data(), tile.data(),
                         tile.size() * sizeof(typename TATensor::value_type),
@@ -691,7 +691,7 @@ ta_tensor_to_um_tensor(const TiledArray::DistArray<TATensor, Policy> &array) {
 
     using Tensor = typename UMTensor::tensor_type;
 
-    auto &stream = detail::get_stream_based_on_range(tile.range());
+    auto &stream = cudaEnv::instance()->cuda_stream_h2d();
     typename Tensor::storage_type storage;
     make_device_storage(storage, tile.range().area(), stream);
     Tensor result(tile.range(), std::move(storage));
