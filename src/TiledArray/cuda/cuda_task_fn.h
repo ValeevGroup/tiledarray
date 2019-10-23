@@ -95,24 +95,20 @@ struct cudaTaskFn : public TaskInterface {
       } else {
         // TODO should we use cuda callback or cuda events??
         // insert cuda callback
-        cudaStreamAddCallback(*stream, cuda_callback, task_, 0);
+        cudaStreamAddCallback(*stream, cuda_callback, task_);
         // reset stream to nullptr
         TiledArray::synchronize_stream(nullptr);
       }
     }
 
    private:
-    static void CUDART_CB cuda_callback(cudaStream_t stream, cudaError_t status,
-                                        void* userData) {
-      CudaSafeCall(status);
+    static void CUDART_CB cuda_callback(void* userData) {
       // convert void * to AsyncTaskInterface*
       auto* callback = static_cast<cudaTaskFn_*>(userData);
       //      std::stringstream address;
       //      address << (void*) callback;
-      //      std::stringstream stream_str;
-      //      stream_str << stream;
       //      std::string message = "callback on cudaTaskFn: " + address.str() +
-      //      " from stream: " + stream_str.str() + '\n'; std::cout << message;
+      //        '\n'; std::cout << message;
       callback->notify();
     }
 
