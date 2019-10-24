@@ -51,7 +51,7 @@ struct cudaTaskFn : public TaskInterface {
                 "or reference type");
   static_assert(not(std::is_const<arg7T>::value ||
                     std::is_reference<arg7T>::value),
-                "improper instantiation of cudaTaskFn, arg7T cannot be a consy "
+                "improper instantiation of cudaTaskFn, arg7T cannot be a const "
                 "or reference type");
   static_assert(not(std::is_const<arg8T>::value ||
                     std::is_reference<arg8T>::value),
@@ -72,9 +72,9 @@ struct cudaTaskFn : public TaskInterface {
 
   /// internal Task structure that wraps the Async cuda function
   struct AsyncTaskInterface : public madness::TaskInterface {
-    AsyncTaskInterface(cudaTaskFn_* task, int ndpend = 0,
+    AsyncTaskInterface(cudaTaskFn_* task, int ndepend = 0,
                        const TaskAttributes attr = TaskAttributes())
-        : TaskInterface(ndpend, attr), task_(task) {}
+        : TaskInterface(ndepend, attr), task_(task) {}
 
     virtual ~AsyncTaskInterface() = default;
 
