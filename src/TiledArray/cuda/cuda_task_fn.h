@@ -11,8 +11,27 @@
 
 #include <cuda_runtime.h>
 #include <madness/world/taskfn.h>
+#include <TiledArray/util/time.h>
+
+namespace TiledArray {
+namespace detail {
+
+template <int64_t CallabackId>
+std::atomic<int64_t>& cudaTaskFn_callback_duration_ns() {
+  static std::atomic<int64_t> value{0};
+  return value;
+}
+
+std::atomic<int64_t>& cudaTaskFn_generic_callback_duration_ns() {
+  static std::atomic<int64_t> value{0};
+  return value;
+}
+
+}  // namespace detail
+}  // namespace TiledArray
 
 namespace madness {
+
 ///
 /// cudaTaskFn class
 /// represent a task that calls an async cuda kernel
@@ -103,6 +122,7 @@ struct cudaTaskFn : public TaskInterface {
 
    private:
     static void CUDART_CB cuda_callback(void* userData) {
+      const auto t0 = TiledArray::now();
       // convert void * to AsyncTaskInterface*
       auto* callback = static_cast<cudaTaskFn_*>(userData);
       //      std::stringstream address;
@@ -110,6 +130,9 @@ struct cudaTaskFn : public TaskInterface {
       //      std::string message = "callback on cudaTaskFn: " + address.str() +
       //        '\n'; std::cout << message;
       callback->notify();
+      const auto t1 = TiledArray::now();
+
+      cudaTaskFn_generic_callback_duration_ns() += TiledArray::duration_in_ns(t0, t1);
     }
 
     cudaTaskFn_* task_;

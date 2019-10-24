@@ -28,6 +28,7 @@
 #include <TiledArray/external/cuda.h>
 #include <TiledArray/cuda/cuda_task_fn.h>
 #include <TiledArray/tensor/type_traits.h>
+#include <TiledArray/utility/time.h>
 #endif
 
 namespace TiledArray {
@@ -310,6 +311,8 @@ namespace TiledArray {
 
         static void CUDART_CB cuda_reduceobject_delete_callback(void* userData) {
 
+          const auto t0 = TiledArray::now();
+
           std::vector<void*>* objects =
               static_cast<std::vector<void*>*>(userData);
 
@@ -336,9 +339,14 @@ namespace TiledArray {
           /// use madness task to call the destroy function, since it might call
           /// cuda API
           world->taskq.add(destroy_vector, objects, TaskAttributes::hipri());
+
+          const auto t1 = TiledArray::now();
+          TiledArray::detail::cudaTaskFn_callback_duration_ns<0>() += TiledArray::duration_in_ns(t0, t1);
         }
 
         static void CUDART_CB cuda_dependency_dec_callback(void* userData) {
+
+          const auto t0 = TiledArray::now();
 
           std::vector<void*>* objects =
               static_cast<std::vector<void*>*>(userData);
@@ -352,9 +360,14 @@ namespace TiledArray {
           delete objects;
 //          std::cout << std::to_string(TiledArray::get_default_world().rank()) +
 //                           " call 2\n";
+
+          const auto t1 = TiledArray::now();
+          TiledArray::detail::cudaTaskFn_callback_duration_ns<1>() += TiledArray::duration_in_ns(t0, t1);
         }
 
         static void CUDART_CB cuda_dependency_dec_reduceobject_delete_callback(void* userData) {
+
+          const auto t0 = TiledArray::now();
 
           std::vector<void*>* objects =
               static_cast<std::vector<void*>*>(userData);
@@ -384,9 +397,14 @@ namespace TiledArray {
           world->taskq.add(destroy, reduce_object, TaskAttributes::hipri());
 
           delete objects;
+
+          const auto t1 = TiledArray::now();
+          TiledArray::detail::cudaTaskFn_callback_duration_ns<2>() += TiledArray::duration_in_ns(t0, t1);
         }
 
         static void CUDART_CB cuda_readyresult_reset_callback(void* userData) {
+
+          const auto t0 = TiledArray::now();
 
           std::vector<void*>* objects =
               static_cast<std::vector<void*>*>(userData);
@@ -407,6 +425,9 @@ namespace TiledArray {
           };
 
           world->taskq.add(reset, objects, TaskAttributes::hipri());
+
+          const auto t1 = TiledArray::now();
+          TiledArray::detail::cudaTaskFn_callback_duration_ns<3>() += TiledArray::duration_in_ns(t0, t1);
         }
 
 #endif
