@@ -22,7 +22,7 @@ std::atomic<int64_t>& cuda_callback_duration_ns() {
   return value;
 }
 
-std::atomic<int64_t>& cuda_taskfn_callback_duration_ns() {
+inline std::atomic<int64_t>& cuda_taskfn_callback_duration_ns() {
   static std::atomic<int64_t> value{0};
   return value;
 }
@@ -132,7 +132,7 @@ struct cudaTaskFn : public TaskInterface {
       callback->notify();
       const auto t1 = TiledArray::now();
 
-      cuda_taskfn_callback_duration_ns() += TiledArray::duration_in_ns(t0, t1);
+      TiledArray::detail::cuda_taskfn_callback_duration_ns() += TiledArray::duration_in_ns(t0, t1);
     }
 
     cudaTaskFn_* task_;

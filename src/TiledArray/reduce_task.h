@@ -28,7 +28,7 @@
 #include <TiledArray/external/cuda.h>
 #include <TiledArray/cuda/cuda_task_fn.h>
 #include <TiledArray/tensor/type_traits.h>
-#include <TiledArray/utility/time.h>
+#include <TiledArray/util/time.h>
 #endif
 
 namespace TiledArray {
