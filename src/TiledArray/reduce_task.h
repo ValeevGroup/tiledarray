@@ -341,7 +341,7 @@ namespace TiledArray {
           world->taskq.add(destroy_vector, objects, TaskAttributes::hipri());
 
           const auto t1 = TiledArray::now();
-          TiledArray::detail::cudaTaskFn_callback_duration_ns<0>() += TiledArray::duration_in_ns(t0, t1);
+          TiledArray::detail::cuda_callback_duration_ns<0>() += TiledArray::duration_in_ns(t0, t1);
         }
 
         static void CUDART_CB cuda_dependency_dec_callback(void* userData) {
@@ -362,7 +362,7 @@ namespace TiledArray {
 //                           " call 2\n";
 
           const auto t1 = TiledArray::now();
-          TiledArray::detail::cudaTaskFn_callback_duration_ns<1>() += TiledArray::duration_in_ns(t0, t1);
+          TiledArray::detail::cuda_callback_duration_ns<1>() += TiledArray::duration_in_ns(t0, t1);
         }
 
         static void CUDART_CB cuda_dependency_dec_reduceobject_delete_callback(void* userData) {
@@ -399,7 +399,7 @@ namespace TiledArray {
           delete objects;
 
           const auto t1 = TiledArray::now();
-          TiledArray::detail::cudaTaskFn_callback_duration_ns<2>() += TiledArray::duration_in_ns(t0, t1);
+          TiledArray::detail::cuda_callback_duration_ns<2>() += TiledArray::duration_in_ns(t0, t1);
         }
 
         static void CUDART_CB cuda_readyresult_reset_callback(void* userData) {
@@ -427,7 +427,7 @@ namespace TiledArray {
           world->taskq.add(reset, objects, TaskAttributes::hipri());
 
           const auto t1 = TiledArray::now();
-          TiledArray::detail::cudaTaskFn_callback_duration_ns<3>() += TiledArray::duration_in_ns(t0, t1);
+          TiledArray::detail::cuda_callback_duration_ns<3>() += TiledArray::duration_in_ns(t0, t1);
         }
 
 #endif

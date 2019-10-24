@@ -17,12 +17,12 @@ namespace TiledArray {
 namespace detail {
 
 template <int64_t CallabackId>
-std::atomic<int64_t>& cudaTaskFn_callback_duration_ns() {
+std::atomic<int64_t>& cuda_callback_duration_ns() {
   static std::atomic<int64_t> value{0};
   return value;
 }
 
-std::atomic<int64_t>& cudaTaskFn_generic_callback_duration_ns() {
+std::atomic<int64_t>& cuda_taskfn_callback_duration_ns() {
   static std::atomic<int64_t> value{0};
   return value;
 }
@@ -132,7 +132,7 @@ struct cudaTaskFn : public TaskInterface {
       callback->notify();
       const auto t1 = TiledArray::now();
 
-      cudaTaskFn_generic_callback_duration_ns() += TiledArray::duration_in_ns(t0, t1);
+      cuda_taskfn_callback_duration_ns() += TiledArray::duration_in_ns(t0, t1);
     }
 
     cudaTaskFn_* task_;
