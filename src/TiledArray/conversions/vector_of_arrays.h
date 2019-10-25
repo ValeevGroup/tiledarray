@@ -147,7 +147,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
   const auto block_size =
       first_tile_in_mode0.second - first_tile_in_mode0.first;
 
-  std::size_t ntiles_per_array = arrays[rank].trange().tiles_range().volume();
+  std::size_t ntiles_per_array = arrays[0].trange().tiles_range().volume();
   // precompute tile volumes for later repeated use
   std::vector<size_t> tile_volumes(ntiles_per_array);
   {
@@ -155,7 +155,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
     for (auto&& tile_idx : tiles_range) {
       const auto tile_ord = tiles_range.ordinal(tile_idx);
       tile_volumes[tile_ord] =
-          arrays[rank].trange().make_tile_range(tile_idx).volume();
+          arrays[0].trange().make_tile_range(tile_idx).volume();
     }
   }
 
