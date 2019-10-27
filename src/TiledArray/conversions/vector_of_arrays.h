@@ -197,6 +197,80 @@ TA::SparseShape<float> fuse_vector_of_shapes(
   return fused_shapes;
 }
 
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+///
+/// @param global_world the world object which the new fused array will live in.
+/// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+/// @param array_rank Number of tensors in the fused @c arrays (the size of @c arrays on each rank will depend on world.size)
+/// @param[in] vector_order list which talls which tiles belong to which node.
+/// @param[in] fused_trange the TiledRange of the fused @c arrays
+/// @return Shape of fused Array object
+template <typename Tile>
+TA::SparseShape<float> fuse_vector_of_shapes(
+        madness::World& global_world,
+        const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
+        const std::vector<int>& vector_order,
+        const std::size_t array_rank,
+        const TA::TiledRange& fused_trange) {
+  const std::size_t rank = global_world.rank();
+  auto size = global_world.size();
+  auto first_tile_in_mode0 = *fused_trange.dim(0).begin();
+  const auto block_size =
+          first_tile_in_mode0.second - first_tile_in_mode0.first;
+
+  std::size_t ntiles_per_array = arrays[0].trange().tiles_range().volume();
+  // precompute tile volumes for later repeated use
+  std::vector<size_t> tile_volumes(ntiles_per_array);
+  {
+    const auto& tiles_range = arrays[0].trange().tiles_range();
+    for (auto&& tile_idx : tiles_range) {
+      const auto tile_ord = tiles_range.ordinal(tile_idx);
+      tile_volumes[tile_ord] =
+              arrays[0].trange().make_tile_range(tile_idx).volume();
+    }
+  }
+
+  TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range());
+
+  // compute norms of fused tiles
+  // N.B. tile norms are stored in scaled format, unscale in order to compute norms of fused tiles
+  std::size_t narrays = array_rank;
+  size_t fused_tile_ord = 0;
+  auto counter = 0;
+  for (size_t vidx = 0, fused_vidx = 0; vidx < narrays;
+       vidx += block_size, ++fused_vidx) {
+    bool have_rank = (rank == fused_vidx % size);
+    // how many arrays actually constribute to this fused tile ... last fused tile may have fewer than block_size
+    const auto vblk_size =
+            (narrays - vidx) >= block_size ? block_size : narrays - vidx;
+    for (size_t tile_ord = 0; tile_ord != ntiles_per_array;
+         ++tile_ord, ++fused_tile_ord) {
+      if (have_rank) {
+        auto array_ptr = arrays.begin() + counter * vblk_size;
+        float unscaled_fused_tile_norm2 = 0;
+        const auto tile_volume = tile_volumes[tile_ord];
+        for (size_t v = 0, vv = vidx; v != vblk_size; ++v, ++vv) {
+          const auto unscaled_tile_norm = (*(array_ptr)).shape().data()[tile_ord] * tile_volume;
+          unscaled_fused_tile_norm2 += unscaled_tile_norm * unscaled_tile_norm;
+          ++array_ptr;
+        }
+        //counter = tile_ord == (ntiles_per_array - 1) ? counter : counter - vblk_size;
+        const auto fused_tile_volume = tile_volume * vblk_size;
+        const auto fused_tile_norm =
+                std::sqrt(unscaled_fused_tile_norm2) / fused_tile_volume;
+
+        *(fused_tile_norms.data() + fused_tile_ord) = fused_tile_norm;
+      }
+    }
+    counter = have_rank ? counter + 1 : counter;
+  }
+
+  auto fused_shapes =
+          TA::SparseShape<float>(global_world, fused_tile_norms, fused_trange, true);
+
+  return fused_shapes;
+}
+
 /// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
 
 /// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
@@ -498,6 +572,120 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
           fused_tile_ord,
           global_world.taskq.add(make_tile, std::move(fused_tile_range),
                                  std::move(input_tiles)));
+    }
+  }
+
+  // keep arrays around until everyone is done
+  global_world.gop.fence();
+
+  return fused_array;
+}
+
+/// @brief fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimensions
+
+/// The leading dimension of the resulting array is the vector dimension, and will be blocked by @block_size .
+///
+/// @param global_world the world in which the result will live and across which this is invoked.
+/// @param[in] array_vec a vector of DistArray objects; every element of @c arrays must have the same TiledRange object and live in the same world.
+/// @param[in] vector_order list which talls which tiles belong to which node.
+/// @param array_rank total number of arrays in a fused @c arrays (sum of @c arrays.size() on each rank)
+/// @param[in] block_size the block size for the "vector" dimension of the tiled range of the result
+/// @return @c arrays fused into a DistArray
+/// @note This is a collective function. It assumes that it is invoked across @c global_world, but the subarrays are "local" to each rank and distributed in round-robin fashion.
+///       The result will live in @c global_world.
+template <typename Tile, typename Policy>
+TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
+        madness::World& global_world,
+        const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
+        std::vector<int> & vector_order,
+        const std::size_t array_rank,
+        const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
+  auto size = global_world.size();
+  auto rank = global_world.rank();
+
+  // make instances of array_vec globally accessible
+  using Array = TA::DistArray<Tile, Policy>;
+  detail::dist_subarray_vec<Array> arrays(global_world, array_vec, array_rank);
+
+  const auto mode0_extent = array_rank;
+
+  // make fused tiledrange
+  auto fused_trange = detail::fuse_vector_of_tranges(array_rank,
+                                                     array_trange, block_size);
+  std::size_t ntiles_per_array = array_trange.tiles_range().volume();
+
+  // make fused shape
+  //auto fused_shape = detail::fuse_vector_of_shapes(
+  //        global_world, arrays.array_accessor(), array_rank, fused_trange);
+  auto fused_shape = detail::fuse_vector_of_shapes(
+          global_world, arrays.array_accessor(), vector_order, array_rank, fused_trange);
+
+  // make fused array
+  TA::DistArray<Tile, Policy> fused_array(global_world, fused_trange,
+                                          fused_shape);
+
+  /// copy the data from a sequence of tiles
+  auto make_tile = [](const TA::Range& range,
+                      const std::vector<madness::Future<Tile>>& tiles) {
+    TA_ASSERT(range.extent(0) == tiles.size());
+    Tile result(range);
+    const auto volume = range.volume();
+    size_t result_volume = 0;
+    auto* result_ptr = result.data();
+    for (auto&& fut_of_tile : tiles) {
+      TA_ASSERT(fut_of_tile.probe());
+      const auto& tile = fut_of_tile.get();
+      const auto* tile_data = tile.data();
+      const auto tile_volume = tile.size();
+      std::copy(tile_data, tile_data + tile_volume, result_ptr);
+      result_ptr += tile_volume;
+      result_volume += tile_volume;
+    }
+    TA_ASSERT(volume == result_volume);
+    return result;
+  };
+
+  /// write to blocks of fused_array
+  auto divisor = 1.0 / ((double) size * ntiles_per_array);
+  auto order_ptr = vector_order.begin();
+  auto prev = -1;
+  auto owner_rank = rank;
+  for (auto&& fused_tile_ord : *fused_array.pmap()) {
+    if (!fused_array.is_zero(fused_tile_ord)) {
+      // convert ordinal of the fused tile to the ordinals of its constituent tiles
+      const auto div = std::ldiv(fused_tile_ord, ntiles_per_array);
+      const auto tile_idx_mode0 = div.quot;
+      owner_rank = tile_idx_mode0 % size;
+      int counter = (int) fused_tile_ord * divisor;
+      // ordinal of the corresponding tile in the arrays
+      const auto tile_ord_array = div.rem;
+      using Index = decltype(tile_ord_array);
+      //counter = (int) (tile_idx_mode0 / size) * block_size;
+
+      auto step = counter * block_size;
+      auto order_ptr = vector_order.begin() + step;
+
+      auto fused_tile_range =
+              fused_array.trange().make_tile_range(fused_tile_ord);
+      // make a vector of Futures to the input tiles
+      std::vector<madness::Future<Tile>> input_tiles;
+      input_tiles.reserve(fused_tile_range.extent(0));
+      for (size_t v = 0, vidx = tile_idx_mode0 * block_size;
+           v != block_size && vidx < mode0_extent; ++v, ++vidx) {
+
+        input_tiles.emplace_back(
+                arrays.task(owner_rank,
+                            &detail::dist_subarray_vec<
+                                    DistArray<Tile, Policy>>::template get_tile<Index>,
+                            step +v, tile_ord_array));
+        //++counter;
+        ++order_ptr;
+      }
+      fused_array.set(
+              fused_tile_ord,
+              global_world.taskq.add(make_tile, std::move(fused_tile_range),
+                                     std::move(input_tiles)));
+
     }
   }
 
