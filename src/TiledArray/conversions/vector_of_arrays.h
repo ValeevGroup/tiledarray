@@ -258,7 +258,7 @@ TA::SparseShape<float> subshape_from_fused_array(
 /// @param[in] i the index of the subarray whose Shape will be extracted
 ///            (i.e. the index of the corresponding *element* index of the
 ///            leading dimension)
-/// @param[in] tile_of_i tile range information for tile i 
+/// @param[in] tile_of_i tile range information for tile i
 /// @param[in] split_trange TiledRange of the target subarray object
 /// @return the Shape of the @c i -th subarray
 template <typename Tile, typename TType>
@@ -413,7 +413,7 @@ class dist_subarray_vec
 /// The leading dimension of the resulting array is the vector dimension, and will be blocked by @block_size .
 ///
 /// @param global_world the world in which the result will live and across which this is invoked.
-/// @param[in] arrays a vector of DistArray objects; every element of @c arrays must have the same TiledRange object and live in the same world.
+/// @param[in] array_vec a vector of DistArray objects; every element of @c arrays must have the same TiledRange object and live in the same world.
 /// @param array_rank total number of arrays in a fused @c arrays (sum of @c arrays.size() on each rank)
 /// @param[in] block_size the block size for the "vector" dimension of the tiled range of the result
 /// @return @c arrays fused into a DistArray
