@@ -326,48 +326,6 @@ TA::SparseShape<float> subshape_from_fused_array(
   return split_shape;
 }
 
-/// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
-
-/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
-/// @param[in] i the index of the subarray whose Shape will be extracted
-///            (i.e. the index of the corresponding *element* index of the
-///            leading dimension)
-/// @param[in] tile_of_i tile range information for tile i
-/// @param[in] split_trange TiledRange of the target subarray object
-/// @return the Shape of the @c i -th subarray
-template <typename Tile, typename TType>
-TA::SparseShape<float> subshape_from_fused_array(
-        const TA::DistArray<Tile, TA::SparsePolicy>& fused_array,
-        const std::size_t i, const TType& tile_of_i, const TA::TiledRange& split_trange) {
-  TA_ASSERT(i < fused_array.trange().dim(0).extent());
-
-  std::size_t split_array_ntiles = split_trange.tiles_range().volume();
-
-  TA::Tensor<float> split_tile_norms(split_trange.tiles_range());
-
-  // map element i to its tile index
-  const auto tile_idx_of_i = fused_array.trange().dim(0).element_to_tile(i);
-  std::size_t offset = tile_idx_of_i * split_array_ntiles;
-  const float extent_of_tile_of_i = tile_of_i.second - tile_of_i.first;
-  auto& shape = fused_array.shape();
-
-  // note that unlike fusion we cannot compute exact norm of the split tile
-  // to guarantee upper bound we have to multiply the norms by the number of
-  // split tiles in the fused tile; to see why multiplication is necessary think
-  // of a tile obtained by fusing 1 nonzero tile with one or more zero tiles.
-  const auto* split_tile_begin = shape.data().data() + offset;
-  std::transform(split_tile_begin, split_tile_begin + split_array_ntiles,
-                 split_tile_norms.data(),
-                 [extent_of_tile_of_i](const float& elem) {
-                   return elem * extent_of_tile_of_i;
-                 });
-
-  auto split_shape =
-          TA::SparseShape<float>(split_tile_norms, split_trange, true);
-
-  return split_shape;
-}
-
 }  // namespace detail
 
 /// @brief fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimensions
@@ -808,65 +766,6 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
 
   return split_array;
 }
-
-/// @brief extracts a subarray of a fused array created with fuse_vector_of_arrays
-/// and creates the array in @c local_world.
-
-/// @param[in] local_world The World object where the @i -th subarray is
-///             created
-/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
-/// @param[in] i the index of the subarray to be extracted
-///            (i.e. the index of the corresponding *element* index of the
-///            leading dimension)
-/// @param[in] tile_of_i tile range information for tile i
-/// @param[in] split_trange TiledRange of the split Array object
-/// @return the @c i -th subarray
-  template <typename Tile, typename Policy, typename TType>
-  TA::DistArray<Tile, Policy> subarray_from_fused_array(
-          madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
-          std::size_t i, const TType& tile_of_i, const TA::TiledRange& split_trange) {
-    // get the shape of split Array
-    auto split_shape =
-            detail::subshape_from_fused_array(fused_array, i, tile_of_i, split_trange);
-
-    // determine where subtile i starts
-    size_t i_offset_in_tile;
-    size_t tile_idx_of_i;
-    {
-      tile_idx_of_i = fused_array.trange().dim(0).element_to_tile(i);
-      //const auto tile_of_i = fused_array.trange().dim(0).tile(tile_idx_of_i);
-      TA_ASSERT(i >= tile_of_i.first && i < tile_of_i.second);
-      i_offset_in_tile = i - tile_of_i.first;
-    }
-
-    // create split Array object
-    TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
-                                            split_shape);
-
-    std::size_t split_ntiles = split_trange.tiles_range().volume();
-
-    /// copy the data from tile
-    auto make_tile = [i_offset_in_tile](const TA::Range& range,
-                                        const Tile& fused_tile) {
-      const auto split_tile_volume = range.volume();
-      return Tile(range,
-                  fused_tile.data() + i_offset_in_tile * split_tile_volume);
-    };
-
-    /// write to blocks of fused_array
-    for (std::size_t index : *split_array.pmap()) {
-      if (!split_array.is_zero(index)) {
-        std::size_t fused_array_index = tile_idx_of_i * split_ntiles + index;
-
-        split_array.set(
-                index, local_world.taskq.add(
-                        make_tile, split_array.trange().make_tile_range(index),
-                        fused_array.find(fused_array_index)));
-      }
-    }
-
-    return split_array;
-  }
 
 
 /// @brief extracts a subarray of a fused array created with fuse_vector_of_arrays
