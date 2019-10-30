@@ -205,7 +205,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
-TA::SparseShape<float> fuse_vector_of_shapes(
+TA::SparseShape<float> fuse_vector_of_shapes_tiles(
         madness::World& global_world,
         const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
         const std::size_t array_rank,
@@ -549,7 +549,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
 /// @note This is a collective function. It assumes that it is invoked across @c global_world, but the subarrays are "local" to each rank and distributed in round-robin fashion.
 ///       The result will live in @c global_world.
 template <typename Tile, typename Policy>
-TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
+TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
         madness::World& global_world,
         const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
         const std::size_t array_rank,
@@ -571,8 +571,8 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   // make fused shape
   //auto fused_shape = detail::fuse_vector_of_shapes(
   //        global_world, arrays.array_accessor(), array_rank, fused_trange);
-  auto fused_shape = detail::fuse_vector_of_shapes(
-          global_world, arrays.array_accessor(), vector_order, array_rank, fused_trange);
+  auto fused_shape = detail::fuse_vector_of_shapes_tiles(
+          global_world, arrays.array_accessor(), array_rank, fused_trange);
 
   // make fused array
   TA::DistArray<Tile, Policy> fused_array(global_world, fused_trange,
