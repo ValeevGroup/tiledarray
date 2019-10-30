@@ -830,13 +830,12 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
            array.set(index, local_world.taskq.add(
                    make_tile, array.trange().make_tile_range(index),
                   tile, i_offset_in_tile));
-           //std::cout << array.find(index).get() << std::endl;
         }
       }
     }
-    //std::cout << split_arrays[0] << std::endl;
     return;
   }
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_CONVERSIONS_VECTOR_OF_ARRAYS_H_
