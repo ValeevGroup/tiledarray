@@ -202,14 +202,12 @@ TA::SparseShape<float> fuse_vector_of_shapes(
 /// @param global_world the world object which the new fused array will live in.
 /// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
 /// @param array_rank Number of tensors in the fused @c arrays (the size of @c arrays on each rank will depend on world.size)
-/// @param[in] vector_order list which talls which tiles belong to which node.
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
 TA::SparseShape<float> fuse_vector_of_shapes(
         madness::World& global_world,
         const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
-        const std::vector<int>& vector_order,
         const std::size_t array_rank,
         const TA::TiledRange& fused_trange) {
   const std::size_t rank = global_world.rank();
@@ -545,7 +543,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
 ///
 /// @param global_world the world in which the result will live and across which this is invoked.
 /// @param[in] array_vec a vector of DistArray objects; every element of @c arrays must have the same TiledRange object and live in the same world.
-/// @param[in] vector_order list which talls which tiles belong to which node.
 /// @param array_rank total number of arrays in a fused @c arrays (sum of @c arrays.size() on each rank)
 /// @param[in] block_size the block size for the "vector" dimension of the tiled range of the result
 /// @return @c arrays fused into a DistArray
@@ -555,7 +552,6 @@ template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
         madness::World& global_world,
         const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
-        std::vector<int> & vector_order,
         const std::size_t array_rank,
         const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
   auto size = global_world.size();
@@ -605,7 +601,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
 
   /// write to blocks of fused_array
   auto divisor = 1.0 / ((double) size * ntiles_per_array);
-  auto order_ptr = vector_order.begin();
   auto prev = -1;
   auto owner_rank = rank;
   for (auto&& fused_tile_ord : *fused_array.pmap()) {
@@ -621,7 +616,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
       //counter = (int) (tile_idx_mode0 / size) * block_size;
 
       auto step = counter * block_size;
-      auto order_ptr = vector_order.begin() + step;
 
       auto fused_tile_range =
               fused_array.trange().make_tile_range(fused_tile_ord);
@@ -637,7 +631,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
                                     DistArray<Tile, Policy>>::template get_tile<Index>,
                             step +v, tile_ord_array));
         //++counter;
-        ++order_ptr;
       }
       fused_array.set(
               fused_tile_ord,
