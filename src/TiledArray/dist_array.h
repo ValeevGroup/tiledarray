@@ -988,6 +988,15 @@ namespace TiledArray {
       if (ar.dofence()) world().gop.fence();
     }
 
+    /// Debugging/tracing instrumentation
+
+    /// registers notifier for set() calls
+    /// @param notifier the notifier callable that accepts ref to the implementation object that received set call
+    ///        and the corresponding ordinal index
+    static void register_set_notifier(std::function<void(const impl_type&, int64_t)> notifier = {}) {
+      impl_type::set_notifier_accessor() = notifier;
+    }
+
    private:
 
     template <typename Index>
