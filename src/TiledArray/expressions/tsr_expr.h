@@ -77,8 +77,8 @@ namespace TiledArray {
     /// Expression wrapper for array objects
 
     /// \tparam Array The \c TiledArray::Array type
-    /// \tparam Alias Indicates the array tiles should be computed as a
-    /// temporary before assignment
+    /// \tparam Alias If true, the array tiles should be evaluated as
+    /// temporaries before assignment; if false, can reuse the result tiles
     template <typename Array, bool Alias>
     class TsrExpr : public Expr<TsrExpr<Array, Alias> > {
     public:
