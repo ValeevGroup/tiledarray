@@ -365,9 +365,9 @@ namespace TiledArray {
       unsigned int iter;
       unsigned int ngroup;
       unsigned int ngroupdiis;
-      const scalar_type damping_factor;  //!< provided initially
-      const scalar_type mixing_fraction; //!< provided initially
-      const scalar_type attenuated_damping_threshold;  //!< if nonzero, will start decreasing damping factor once error 2-norm falls below this
+      scalar_type damping_factor;  //!< provided initially
+      scalar_type mixing_fraction; //!< provided initially
+      scalar_type attenuated_damping_threshold;  //!< if nonzero, will start decreasing damping factor once error 2-norm falls below this
 
       EigenMatrixX B_; //!< B(i,j) = <ei|ej>
       EigenVectorX C_; //! DIIS coefficients
