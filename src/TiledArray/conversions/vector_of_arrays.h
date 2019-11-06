@@ -605,7 +605,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
 
   /// write to blocks of fused_array
   auto divisor = 1.0 / ((double) size * ntiles_per_array);
-  auto prev = -1;
   auto owner_rank = rank;
   for (auto&& fused_tile_ord : *fused_array.pmap()) {
     if (!fused_array.is_zero(fused_tile_ord)) {
@@ -784,8 +783,6 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
           std::vector<TA::DistArray<Tile, Policy>> & split_arrays,
           const TA::TiledRange& split_trange) {
     TA_ASSERT(tile_idx < fused_array.trange().dim(0).extent());
-    auto rank = fused_array.world().rank();
-    auto size = fused_array.world().size();
 
     // calculate the number of elements in the 0th dimension are in this tile
     auto tile_range = fused_array.trange().dim(0).tile(tile_idx);
