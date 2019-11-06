@@ -210,6 +210,10 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
         const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
         const std::size_t array_rank,
         const TA::TiledRange& fused_trange) {
+  if(arrays.size() == 0) {
+    TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range(), 1.0);
+    return TA::SparseShape<float>(global_world, fused_tile_norms, fused_trange, true);
+  }
   const std::size_t rank = global_world.rank();
   auto size = global_world.size();
   auto first_tile_in_mode0 = *fused_trange.dim(0).begin();
