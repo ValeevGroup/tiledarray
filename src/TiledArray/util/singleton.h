@@ -81,7 +81,7 @@ class Singleton {
 
   /// @return pointer to the instance, or nullptr if it has not yet been constructed
   template <typename D = Derived> static std::enable_if_t<Singleton<D>::derived_is_default_constructible, D*> get_instance_ptr() {
-    const auto result_ptr = instance_accessor();
+    const auto& result_ptr = instance_accessor();
     if (result_ptr != nullptr) return result_ptr.get();
     set_instance();
     return instance_accessor();
@@ -89,7 +89,7 @@ class Singleton {
 
   /// @return pointer to the instance, or nullptr if it has not yet been constructed
   template <typename D = Derived> static D* get_instance_ptr(std::enable_if_t<!Singleton<Derived>::derived_is_default_constructible>* = nullptr) {
-    const auto result_ptr = instance_accessor();
+    const auto& result_ptr = instance_accessor();
     if (result_ptr != nullptr) return result_ptr.get();
     return nullptr;
   }
