@@ -26,24 +26,26 @@
 #ifndef TILEDARRAY_UTIL_LOGGER_H__INCLUDED
 #define TILEDARRAY_UTIL_LOGGER_H__INCLUDED
 
+#include <functional>
+#include <ostream>
+
 #include <TiledArray/config.h>
 #include <TiledArray/range.h>
 #include <TiledArray/util/singleton.h>
-#include <ostream>
 
 namespace TiledArray {
 
 struct TileOpsLogger : public Singleton<TileOpsLogger> {
 
-  using range_transform_t = Range (*)(const Range&);
-  using range_filter_t = bool (*)(const Range&);
+  using range_transform_t = std::function<Range(const Range&)>;
+  using range_filter_t = std::function<bool(const Range&)>;
 
   // GEMM task logging
   bool gemm = false;
-  range_transform_t gemm_left_range_transform = nullptr;
-  range_transform_t gemm_right_range_transform = nullptr;
-  range_transform_t gemm_result_range_transform = nullptr;
-  range_filter_t gemm_result_range_filter = nullptr;
+  range_transform_t gemm_left_range_transform;
+  range_transform_t gemm_right_range_transform;
+  range_transform_t gemm_result_range_transform;
+  range_filter_t gemm_result_range_filter;
 
   // logging
   std::ostream* log = &std::cout;

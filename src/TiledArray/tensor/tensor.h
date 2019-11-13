@@ -1218,7 +1218,7 @@ namespace TiledArray {
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
       if (TiledArray::TileOpsLogger::get_instance().gemm) {
         auto& logger = TiledArray::TileOpsLogger::get_instance();
-        auto apply = [](auto* fnptr, const Range& arg) {
+        auto apply = [](auto& fnptr, const Range& arg) {
           return fnptr ? fnptr(arg) : arg;
         };
         auto tformed_result_range =
@@ -1334,7 +1334,7 @@ namespace TiledArray {
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
       if (TiledArray::TileOpsLogger::get_instance().gemm) {
         auto& logger = TiledArray::TileOpsLogger::get_instance();
-        auto apply = [](auto* fnptr, const Range& arg) {
+        auto apply = [](auto& fnptr, const Range& arg) {
           return fnptr ? fnptr(arg) : arg;
         };
         auto tformed_result_range =
