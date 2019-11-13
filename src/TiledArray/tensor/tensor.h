@@ -24,6 +24,7 @@
 #include <TiledArray/math/blas.h>
 #include <TiledArray/tensor/kernels.h>
 #include <TiledArray/tensor/complex.h>
+#include <TiledArray/util/logger.h>
 
 namespace TiledArray {
 
@@ -1214,6 +1215,25 @@ namespace TiledArray {
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
           pimpl_->data_, lda, other.data(), ldb, numeric_type(0), result.data(), n);
 
+#ifdef TA_ENABLE_TILE_OPS_LOGGING
+      if (TiledArray::TileOpsLogger::get_instance().gemm) {
+        auto& logger = TiledArray::TileOpsLogger::get_instance();
+        auto apply = [](auto* fnptr, const Range& arg) {
+          return fnptr ? fnptr(arg) : arg;
+        };
+        auto tformed_result_range =
+            apply(logger.gemm_result_range_transform, result.range());
+        if (!logger.gemm_result_range_filter ||
+            logger.gemm_result_range_filter(tformed_result_range)) {
+          logger << "TA::Tensor::gemm=: left="
+                 << apply(logger.gemm_left_range_transform, pimpl_->range_)
+                 << " right="
+                 << apply(logger.gemm_left_range_transform, other.range())
+                 << " result=" << tformed_result_range << std::endl;
+        }
+      }
+#endif // TA_ENABLE_TILE_OPS_LOGGING
+
       return result;
     }
 
@@ -1310,6 +1330,25 @@ namespace TiledArray {
 
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
           left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
+
+#ifdef TA_ENABLE_TILE_OPS_LOGGING
+      if (TiledArray::TileOpsLogger::get_instance().gemm) {
+        auto& logger = TiledArray::TileOpsLogger::get_instance();
+        auto apply = [](auto* fnptr, const Range& arg) {
+          return fnptr ? fnptr(arg) : arg;
+        };
+        auto tformed_result_range =
+            apply(logger.gemm_result_range_transform, pimpl_->range_);
+        if (!logger.gemm_result_range_filter ||
+            logger.gemm_result_range_filter(tformed_result_range)) {
+          logger << "TA::Tensor::gemm+: left="
+                 << apply(logger.gemm_left_range_transform, left.range())
+                 << " right="
+                 << apply(logger.gemm_right_range_transform, right.range())
+                 << " result=" << tformed_result_range << std::endl;
+        }
+      }
+#endif // TA_ENABLE_TILE_OPS_LOGGING
 
       return *this;
     }
