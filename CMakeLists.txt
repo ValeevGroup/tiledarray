@@ -221,7 +221,7 @@ if (CMAKE_CXX_STANDARD EQUAL 20 AND CMAKE_VERSION VERSION_LESS 3.12.0)
     cmake_minimum_required (VERSION 3.12.0)
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOLEAN "Whether to use extensions of C++ ISO Standard version")
+set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL  "Whether to use extensions of C++ ISO Standard version")
 # Check type support
 include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE LANGUAGE CXX)
