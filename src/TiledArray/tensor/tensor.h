@@ -1232,7 +1232,12 @@ namespace TiledArray {
                  << " result=" << tformed_result_range << std::endl;
           if (TiledArray::TileOpsLogger::get_instance()
                   .gemm_print_contributions) {
-            logger << result << std::endl;
+            // must use custom printer if result's range transformed
+            if (!logger.gemm_result_range_transform)
+              logger << result << std::endl;
+            else
+              logger << make_map(result.data(), tformed_result_range)
+                     << std::endl;
           }
         }
       }
@@ -1366,8 +1371,14 @@ namespace TiledArray {
                    << apply(logger.gemm_right_range_transform, right.range())
                    << " result=" << tformed_result_range << std::endl;
             if (TiledArray::TileOpsLogger::get_instance()
-                    .gemm_print_contributions)
-              logger << *this << std::endl;
+                    .gemm_print_contributions) {
+              // must use custom printer if result's range transformed
+              if (!logger.gemm_result_range_transform)
+                logger << *this << std::endl;
+              else
+                logger << make_map(pimpl_->data_, tformed_result_range)
+                       << std::endl;
+            }
           }
         }
 
