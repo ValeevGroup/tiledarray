@@ -118,7 +118,7 @@ namespace TiledArray {
         return os_;
       }
 
-    }; // class ExprTrace
+    }; // class ExprTraceTarget
 
     /// Expression trace factory function
 
