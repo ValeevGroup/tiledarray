@@ -46,6 +46,7 @@ struct TileOpsLogger : public Singleton<TileOpsLogger> {
   range_transform_t gemm_right_range_transform;
   range_transform_t gemm_result_range_transform;
   range_filter_t gemm_result_range_filter;
+  bool gemm_print_contributions = false;
 
   // logging
   std::ostream* log = &std::cout;

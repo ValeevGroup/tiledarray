@@ -1228,8 +1228,12 @@ namespace TiledArray {
           logger << "TA::Tensor::gemm=: left="
                  << apply(logger.gemm_left_range_transform, pimpl_->range_)
                  << " right="
-                 << apply(logger.gemm_left_range_transform, other.range())
+                 << apply(logger.gemm_right_range_transform, other.range())
                  << " result=" << tformed_result_range << std::endl;
+          if (TiledArray::TileOpsLogger::get_instance()
+                  .gemm_print_contributions) {
+            logger << result << std::endl;
+          }
         }
       }
 #endif // TA_ENABLE_TILE_OPS_LOGGING
@@ -1328,26 +1332,54 @@ namespace TiledArray {
       const integer ldb =
           (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
-      math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
-
+      // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
-      if (TiledArray::TileOpsLogger::get_instance().gemm) {
-        auto& logger = TiledArray::TileOpsLogger::get_instance();
-        auto apply = [](auto& fnptr, const Range& arg) {
-          return fnptr ? fnptr(arg) : arg;
-        };
-        auto tformed_result_range =
-            apply(logger.gemm_result_range_transform, pimpl_->range_);
-        if (!logger.gemm_result_range_filter ||
-            logger.gemm_result_range_filter(tformed_result_range)) {
-          logger << "TA::Tensor::gemm+: left="
-                 << apply(logger.gemm_left_range_transform, left.range())
-                 << " right="
-                 << apply(logger.gemm_right_range_transform, right.range())
-                 << " result=" << tformed_result_range << std::endl;
+      {
+        const bool twostep =
+            TiledArray::TileOpsLogger::get_instance().gemm &&
+            TiledArray::TileOpsLogger::get_instance().gemm_print_contributions;
+        std::unique_ptr<T[]> data_copy;
+        size_t tile_volume;
+        if (twostep) {
+          tile_volume = range().volume();
+          data_copy = std::make_unique<T[]>(tile_volume);
+          std::copy(pimpl_->data_, pimpl_->data_ + tile_volume,
+                    data_copy.get());
+        }
+        math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+                   factor, left.data(), lda, right.data(), ldb,
+                   twostep ? numeric_type(0) : numeric_type(1), pimpl_->data_,
+                   n);
+
+        if (TiledArray::TileOpsLogger::get_instance().gemm) {
+          auto& logger = TiledArray::TileOpsLogger::get_instance();
+          auto apply = [](auto& fnptr, const Range& arg) {
+            return fnptr ? fnptr(arg) : arg;
+          };
+          auto tformed_result_range =
+              apply(logger.gemm_result_range_transform, pimpl_->range_);
+          if (!logger.gemm_result_range_filter ||
+              logger.gemm_result_range_filter(tformed_result_range)) {
+            logger << "TA::Tensor::gemm+: left="
+                   << apply(logger.gemm_left_range_transform, left.range())
+                   << " right="
+                   << apply(logger.gemm_right_range_transform, right.range())
+                   << " result=" << tformed_result_range << std::endl;
+            if (TiledArray::TileOpsLogger::get_instance()
+                    .gemm_print_contributions)
+              logger << *this << std::endl;
+          }
+        }
+
+        if (twostep) {
+          for (size_t v=0; v!=tile_volume; ++v) {
+            pimpl_->data_[v] += data_copy[v];
+          }
         }
       }
+#else // TA_ENABLE_TILE_OPS_LOGGING
+      math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
+                 left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
 #endif // TA_ENABLE_TILE_OPS_LOGGING
 
       return *this;
