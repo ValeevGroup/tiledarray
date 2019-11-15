@@ -35,10 +35,12 @@
 
 namespace TiledArray {
 
-struct TileOpsLogger : public Singleton<TileOpsLogger> {
+template <typename T>
+struct TileOpsLogger : public Singleton<TileOpsLogger<T>> {
 
   using range_transform_t = std::function<Range(const Range&)>;
   using range_filter_t = std::function<bool(const Range&)>;
+  using gemm_printer_t = std::function<void(std::ostream& os, const Range&, const T*, const Range&, const T*, const Range&, const T*)>;
 
   // GEMM task logging
   bool gemm = false;
@@ -46,14 +48,17 @@ struct TileOpsLogger : public Singleton<TileOpsLogger> {
   range_transform_t gemm_right_range_transform;
   range_transform_t gemm_result_range_transform;
   range_filter_t gemm_result_range_filter;
+  range_filter_t gemm_left_range_filter;
+  range_filter_t gemm_right_range_filter;
   bool gemm_print_contributions = false;
+  gemm_printer_t gemm_printer;
 
   // logging
   std::ostream* log = &std::cout;
 
-  template <typename T>
-  TileOpsLogger& operator<<(T&& arg) {
-    *log << std::forward<T>(arg);
+  template <typename U>
+  TileOpsLogger& operator<<(U&& arg) {
+    *log << std::forward<U>(arg);
     return *this;
   }
 
