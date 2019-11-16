@@ -123,7 +123,7 @@ option(TA_TRACE_TASKS "Enable debug tracing of MADNESS tasks in (some components
 add_feature_info(TASK_TRACE_DEBUG TA_TRACE_TASKS "Debug tracing of MADNESS tasks in (some components of) TiledArray")
 set(TILEDARRAY_ENABLE_TASK_DEBUG_TRACE ${TA_TRACE_TASKS})
 
-option(TA_ENABLE_TILE_OPS_LOGGING "Enable logging of (some) TiledArray tile ops" ON)
+option(TA_ENABLE_TILE_OPS_LOGGING "Enable logging of (some) TiledArray tile ops" OFF)
 add_feature_info(TILE_OPS_LOGGING TA_ENABLE_TILE_OPS_LOGGING "Debug logging of TiledArray tile ops")
 if(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
   set(TA_TILE_OPS_LOG_LEVEL 1)
