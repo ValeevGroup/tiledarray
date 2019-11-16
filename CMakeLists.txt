@@ -127,7 +127,7 @@ option(TA_ENABLE_TILE_OPS_LOGGING "Enable logging of (some) TiledArray tile ops"
 add_feature_info(TILE_OPS_LOGGING TA_ENABLE_TILE_OPS_LOGGING "Debug logging of TiledArray tile ops")
 if(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
   set(TA_TILE_OPS_LOG_LEVEL 1)
-endif(TA_ENABLE_TILE_OPS_LOGGING  AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
+endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 
 
 # Enable shared library support options

@@ -112,6 +112,6 @@
 
 /* Enables logging of TiledArray tile ops */
 #cmakedefine TA_ENABLE_TILE_OPS_LOGGING 1
-#define TA_TILE_OPS_LOG_LEVEL @TA_TILE_OPS_LOG_LEVEL@
+#define TA_TILE_OPS_LOG_LEVEL 0@TA_TILE_OPS_LOG_LEVEL@
 
 #endif // TILEDARRAY_CONFIG_H__INCLUDED
