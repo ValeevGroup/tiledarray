@@ -106,18 +106,24 @@ namespace TiledArray {
       ///   extrapolation by mixing the input data with the output data for each
       ///   iteration (default = 0.0, which performs no mixing). The approach
       ///   described in Kerker, Phys. Rev. B, 23, p3082, 1981.
+      /// \param adt This real number controls attenuation of damping_factor;
+      ///            if nonzero, once the 2-norm of the error is below this
+      ///            attenuate the damping factor by the ratio of the current
+      ///            2-norm of the error to this value.
       DIIS(unsigned int strt=1,
            unsigned int ndi=5,
            scalar_type dmp =0,
            unsigned int ngr=1,
            unsigned int ngrdiis=1,
-           scalar_type mf=0) :
+           scalar_type mf=0,
+           scalar_type adt =0) :
              error_(0), errorset_(false),
              start(strt), ndiis(ndi),
              iter(0), ngroup(ngr),
              ngroupdiis(ngrdiis),
              damping_factor(dmp),
-             mixing_fraction(mf)
+             mixing_fraction(mf),
+             attenuated_damping_threshold(adt)
            {
             init();
            }
@@ -229,10 +235,6 @@ namespace TiledArray {
           iter++;
         }
 
-        const scalar_type zero_determinant = 1.0e-15;
-        const scalar_type zero_norm = 1.0e-10;
-        const scalar_type scale = 1.0 + damping_factor;
-
         // if have ndiis vectors
         if (errors_.size() == ndiis) { // holding max # of vectors already? drop the least recent error
           errors_.pop_front();
@@ -249,6 +251,19 @@ namespace TiledArray {
         for (unsigned int i=0; i < nvec-1; i++)
           B_(i,nvec-1) = B_(nvec-1,i) = dot_product(errors_[i], errors_[nvec-1]);
         B_(nvec-1,nvec-1) = dot_product(errors_[nvec-1], errors_[nvec-1]);
+        using std::sqrt;
+        using std::abs;
+        const auto current_error_2norm = sqrt(abs(B_(nvec-1,nvec-1)));
+
+        const scalar_type zero_determinant = 1.0e-15;
+        const scalar_type zero_norm = 1.0e-10;
+        const auto current_damping_factor =
+            attenuated_damping_threshold > 0 &&
+                    current_error_2norm < attenuated_damping_threshold
+                ? damping_factor *
+                      (current_error_2norm / attenuated_damping_threshold)
+                : damping_factor;
+        const scalar_type scale = 1.0 + current_damping_factor;
 
         // compute extrapolation coefficients C_ and number of skipped vectors nskip_
         if (iter > start && (((iter - start) % ngroup) < ngroupdiis)) { // not the first iteration and need to extrapolate?
@@ -350,8 +365,9 @@ namespace TiledArray {
       unsigned int iter;
       unsigned int ngroup;
       unsigned int ngroupdiis;
-      scalar_type damping_factor;
-      scalar_type mixing_fraction;
+      scalar_type damping_factor;  //!< provided initially
+      scalar_type mixing_fraction; //!< provided initially
+      scalar_type attenuated_damping_threshold;  //!< if nonzero, will start decreasing damping factor once error 2-norm falls below this
 
       EigenMatrixX B_; //!< B(i,j) = <ei|ej>
       EigenVectorX C_; //! DIIS coefficients

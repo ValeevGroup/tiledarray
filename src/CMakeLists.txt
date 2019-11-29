@@ -150,7 +150,11 @@ TiledArray/tile_op/shift.h
 TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
-TiledArray/tile_op/unary_wrapper.h)
+TiledArray/tile_op/unary_wrapper.h
+TiledArray/util/logger.h
+TiledArray/util/singleton.h
+TiledArray/util/time.h
+)
 
 if(CUDA_FOUND)
 

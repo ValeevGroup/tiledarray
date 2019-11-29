@@ -28,6 +28,7 @@
 #include <iostream>
 #include <algorithm>
 #include <madness/world/timers.h>
+#include "TiledArray/initialize.h"
 #include "TiledArray/math/vector_op.h"
 #include "TiledArray/error.h"
 #include "TiledArray/math/blas.h"
@@ -36,7 +37,7 @@
 
 int main(int argc, char** argv) {
 
-  auto& world = TA::initialize(argc,argv);
+  auto& world = TiledArray::initialize(argc,argv);
 
   const std::size_t repeat = 100;
   // Allocate some memory for tests
@@ -524,7 +525,7 @@ int main(int argc, char** argv) {
   free(b);
   free(c);
 
-  TA::finalize();
+  TiledArray::finalize();
 
   return 0;
 }

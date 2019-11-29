@@ -60,6 +60,7 @@ namespace TiledArray {
       const size_type max_size_; ///< The maximum number of elements that can be stored by this container
       std::shared_ptr<pmap_interface> pmap_; ///< The process map that defines the element distribution
       mutable container_type data_; ///< The local data container
+      madness::AtomicInt num_live_ds_;  ///< Number of live DelayedSet objects
 
       // not allowed
       DistributedStorage(const DistributedStorage_&);
@@ -105,15 +106,20 @@ namespace TiledArray {
 
        public:
         DelayedSet(DistributedStorage_& ds, size_type i, const future& f)
-            : ds_(ds), index_(i), future_(f) {}
+            : ds_(ds), index_(i), future_(f) {
+          ++ds_.num_live_ds_;
+        }
 
-        virtual ~DelayedSet() {}
+        virtual ~DelayedSet() {
+          --ds_.num_live_ds_;
+        }
 
         virtual void notify() {
           ds_.set_remote(index_, future_);
           delete this;
         }
       }; // struct DelayedSet
+      friend struct DelayedSet;
 
     public:
 
@@ -137,10 +143,16 @@ namespace TiledArray {
         TA_ASSERT(pmap_->size() == max_size);
         TA_ASSERT(pmap_->rank() == pmap_interface::size_type(world.rank()));
         TA_ASSERT(pmap_->procs() == pmap_interface::size_type(world.size()));
+        num_live_ds_ = 0;
         WorldObject_::process_pending();
       }
 
-      virtual ~DistributedStorage() { }
+      virtual ~DistributedStorage() {
+        if (num_live_ds_ != 0) {
+          madness::print_error("DistributedStorage (object id=\", id(), \") destroyed while outstanding tasks exist. Add a fence() to extend the lifetime of this object.");
+          abort();
+        }
+      }
 
       using WorldObject_::get_world;
 
