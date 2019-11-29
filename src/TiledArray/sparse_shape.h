@@ -264,7 +264,7 @@ namespace TiledArray {
     /// "Dense" constructor
 
     /// This constructor will scale the tile norms, i.e. multiply each tile norm
-    /// byt the inverse of its volume.
+    /// by the inverse of its volume.
     /// \param tile_norms The Frobenius norm of tiles by default
     /// \param trange The tiled range of the tensor
     /// \param do_not_scale if true, assume that the tile norms in \c tile_norms are already scaled

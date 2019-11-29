@@ -24,6 +24,7 @@
 #include <TiledArray/math/blas.h>
 #include <TiledArray/tensor/kernels.h>
 #include <TiledArray/tensor/complex.h>
+#include <TiledArray/util/logger.h>
 
 namespace TiledArray {
 
@@ -1214,6 +1215,49 @@ namespace TiledArray {
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
           pimpl_->data_, lda, other.data(), ldb, numeric_type(0), result.data(), n);
 
+#ifdef TA_ENABLE_TILE_OPS_LOGGING
+      if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr && TiledArray::TileOpsLogger<T>::get_instance().gemm) {
+        auto& logger = TiledArray::TileOpsLogger<T>::get_instance();
+        auto apply = [](auto& fnptr, const Range& arg) {
+          return fnptr ? fnptr(arg) : arg;
+        };
+        auto tformed_left_range =
+            apply(logger.gemm_left_range_transform, pimpl_->range_);
+        auto tformed_right_range =
+            apply(logger.gemm_right_range_transform, other.range());
+        auto tformed_result_range =
+            apply(logger.gemm_result_range_transform, result.range());
+        if ((!logger.gemm_result_range_filter ||
+            logger.gemm_result_range_filter(tformed_result_range)) &&
+            (!logger.gemm_left_range_filter ||
+                logger.gemm_left_range_filter(tformed_left_range)) &&
+            (!logger.gemm_right_range_filter ||
+                logger.gemm_right_range_filter(tformed_right_range))) {
+          logger << "TA::Tensor::gemm=: left="
+                 << tformed_left_range
+                 << " right="
+                 << tformed_right_range
+                 << " result=" << tformed_result_range << std::endl;
+          if (TiledArray::TileOpsLogger<T>::get_instance()
+                  .gemm_print_contributions) {
+            if (!TiledArray::TileOpsLogger<T>::get_instance().gemm_printer) {
+              // must use custom printer if result's range transformed
+              if (!logger.gemm_result_range_transform)
+                logger << result << std::endl;
+              else
+                logger << make_map(result.data(), tformed_result_range)
+                       << std::endl;
+            } else {
+              TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
+                  *logger.log, tformed_left_range, this->data(),
+                  tformed_right_range, other.data(), tformed_right_range,
+                  result.data());
+            }
+          }
+        }
+      }
+#endif // TA_ENABLE_TILE_OPS_LOGGING
+
       return result;
     }
 
@@ -1308,8 +1352,75 @@ namespace TiledArray {
       const integer ldb =
           (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
+      // may need to split gemm into multiply + accumulate for tracing purposes
+#ifdef TA_ENABLE_TILE_OPS_LOGGING
+      {
+        const bool twostep =
+            TiledArray::TileOpsLogger<T>::get_instance().gemm &&
+            TiledArray::TileOpsLogger<T>::get_instance().gemm_print_contributions;
+        std::unique_ptr<T[]> data_copy;
+        size_t tile_volume;
+        if (twostep) {
+          tile_volume = range().volume();
+          data_copy = std::make_unique<T[]>(tile_volume);
+          std::copy(pimpl_->data_, pimpl_->data_ + tile_volume,
+                    data_copy.get());
+        }
+        math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+                   factor, left.data(), lda, right.data(), ldb,
+                   twostep ? numeric_type(0) : numeric_type(1), pimpl_->data_,
+                   n);
+
+        if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr && TiledArray::TileOpsLogger<T>::get_instance().gemm) {
+          auto& logger = TiledArray::TileOpsLogger<T>::get_instance();
+          auto apply = [](auto& fnptr, const Range& arg) {
+            return fnptr ? fnptr(arg) : arg;
+          };
+          auto tformed_left_range = apply(logger.gemm_left_range_transform, left.range());
+          auto tformed_right_range = apply(logger.gemm_right_range_transform, right.range());
+          auto tformed_result_range =
+              apply(logger.gemm_result_range_transform, pimpl_->range_);
+          if ((!logger.gemm_result_range_filter ||
+               logger.gemm_result_range_filter(tformed_result_range)) &&
+              (!logger.gemm_left_range_filter ||
+               logger.gemm_left_range_filter(tformed_left_range)) &&
+              (!logger.gemm_right_range_filter ||
+               logger.gemm_right_range_filter(tformed_right_range))) {
+            logger << "TA::Tensor::gemm+: left="
+                   << tformed_left_range
+                   << " right="
+                   << tformed_right_range
+                   << " result=" << tformed_result_range << std::endl;
+            if (TiledArray::TileOpsLogger<T>::get_instance()
+                    .gemm_print_contributions) {
+              if (!TiledArray::TileOpsLogger<T>::get_instance()
+                       .gemm_printer) {  // default printer
+                // must use custom printer if result's range transformed
+                if (!logger.gemm_result_range_transform)
+                  logger << *this << std::endl;
+                else
+                  logger << make_map(pimpl_->data_, tformed_result_range)
+                         << std::endl;
+              } else {
+                TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
+                    *logger.log, tformed_left_range, left.data(),
+                    tformed_right_range, right.data(), tformed_right_range,
+                    pimpl_->data_);
+              }
+            }
+          }
+        }
+
+        if (twostep) {
+          for (size_t v=0; v!=tile_volume; ++v) {
+            pimpl_->data_[v] += data_copy[v];
+          }
+        }
+      }
+#else // TA_ENABLE_TILE_OPS_LOGGING
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-          left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
+                 left.data(), lda, right.data(), ldb, numeric_type(1), pimpl_->data_, n);
+#endif // TA_ENABLE_TILE_OPS_LOGGING
 
       return *this;
     }

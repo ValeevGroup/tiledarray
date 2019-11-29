@@ -110,4 +110,8 @@
 /* Enables tracing MADNESS tasks in TiledArray */
 #cmakedefine TILEDARRAY_ENABLE_TASK_DEBUG_TRACE 1
 
+/* Enables logging of TiledArray tile ops */
+#cmakedefine TA_ENABLE_TILE_OPS_LOGGING 1
+#define TA_TILE_OPS_LOG_LEVEL 0@TA_TILE_OPS_LOG_LEVEL@
+
 #endif // TILEDARRAY_CONFIG_H__INCLUDED

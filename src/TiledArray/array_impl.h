@@ -500,7 +500,11 @@ namespace TiledArray {
       template <typename Index, typename Value>
       void set(const Index& i, const Value& value) {
         TA_ASSERT(! TensorImpl_::is_zero(i));
-        data_.set(TensorImpl_::trange().tiles_range().ordinal(i), value);
+        const auto ord = TensorImpl_::trange().tiles_range().ordinal(i);
+        data_.set(ord, value);
+        if (set_notifier_accessor()) {
+          set_notifier_accessor()(*this, ord);
+        }
       }
 
       /// Array begin iterator
@@ -551,6 +555,11 @@ namespace TiledArray {
 
       /// \return A const reference to this object unique id
       const madness::uniqueidT& id() const { return data_.id(); }
+
+      static std::function<void(const ArrayImpl_&, int64_t)>& set_notifier_accessor() {
+        static std::function<void(const ArrayImpl_&, int64_t)> value;
+        return value;
+      }
 
     }; // class ArrayImpl
 

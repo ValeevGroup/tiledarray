@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
 
     // Get command line arguments
     if(argc < 3) {
-      std::cout << "Usage: ta_dense matrix_size block_size [repetitions]\n";
+      std::cout << "Usage: ta_vector matrix_size block_size [repetitions]\n";
       return 0;
     }
     const long matrix_size = atol(argv[1]);
@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
     const std::size_t block_count = num_blocks * num_blocks;
 
     if(world.rank() == 0)
-      std::cout << "TiledArray: dense matrix multiply test..."
+      std::cout << "TiledArray: vector ops test..."
                 << "\nGit HASH: " << TILEDARRAY_REVISION
                 << "\nNumber of nodes     = " << world.size()
                 << "\nMatrix size         = " << matrix_size << "x" << matrix_size
@@ -210,6 +210,15 @@ vector_test(TiledArray::World& world, const TiledArray::TiledRange& trange, long
     stop = madness::wall_time();
     if (world.rank() == 0)
       std::cout << "Norm: " << stop - start << " s\n";
+
+    start = madness::wall_time();
+    for (int i = 0; i < repeat; ++i) {
+      T x = a("i,j").dot(b("i,j"));
+      (void)x;  // to prevent unused var warning
+    }
+    stop = madness::wall_time();
+    if (world.rank() == 0)
+      std::cout << "Dot: " << stop - start << " s\n";
 
   }  // array lifetime scope
   memtrace("stop");
