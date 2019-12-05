@@ -197,13 +197,14 @@ TA::SparseShape<float> fuse_vector_of_shapes(
   return fused_shapes;
 }
 
-/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
-///
-/// @param global_world the world object which the new fused array will live in.
-/// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-/// @param array_rank Number of tensors in the fused @c arrays (the size of @c arrays on each rank will depend on world.size)
-/// @param[in] fused_trange the TiledRange of the fused @c arrays
-/// @return Shape of fused Array object
+//TODO Fix the dox for new functions
+    /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+    ///
+    /// @param global_world the world object which the new fused array will live in.
+    /// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+    /// @param array_rank Number of tensors in the fused @c arrays (the size of @c arrays on each rank will depend on world.size)
+    /// @param[in] fused_trange the TiledRange of the fused @c arrays
+    /// @return Shape of fused Array object
 template <typename Tile>
 TA::SparseShape<float> fuse_vector_of_shapes_tiles(
         madness::World& global_world,
@@ -271,6 +272,18 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
           TA::SparseShape<float>(global_world, fused_tile_norms, fused_trange, true);
 
   return fused_shapes;
+}
+
+    /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+
+    /// @param fused_trange the TiledRange of the fused @c arrays
+    /// @return Shape of fused Array object
+template <typename Tile>
+TA::DenseShape fuse_vector_of_shapes_tiles(madness::World&,
+                                     const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
+                                     const std::size_t array_rank,
+                                     const TA::TiledRange& fused_trange) {
+  return TA::DenseShape(1, fused_trange);
 }
 
 /// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
