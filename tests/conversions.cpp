@@ -651,14 +651,16 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
       // Check to see if the fused and original arrays are the same
       for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
         for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-          auto tile_orig = b_dense.find({i, j}).get();
-          auto tile_fused = b_dense_fused.find({i, j}).get();
+          if(!b_dense.is_zero({i,j}) && !b_dense_fused.is_zero({i,j})) {
+            auto tile_orig = b_dense.find({i, j}).get();
+            auto tile_fused = b_dense_fused.find({i, j}).get();
 
-          auto lo = tile_orig.range().lobound_data();
-          auto up = tile_orig.range().upbound_data();
-          for (auto k = lo[0]; k < up[0]; ++k) {
-            for (auto l = lo[1]; l < up[1]; ++l) {
-              BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+            auto lo = tile_orig.range().lobound_data();
+            auto up = tile_orig.range().upbound_data();
+            for (auto k = lo[0]; k < up[0]; ++k) {
+              for (auto l = lo[1]; l < up[1]; ++l) {
+                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+              }
             }
           }
         }
@@ -697,14 +699,16 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
       // Check to see if the fused and original arrays are the same
       for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
         for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-          auto tile_orig = b_sparse.find({i, j}).get();
-          auto tile_fused = b_sparse_fused.find({i, j}).get();
+          if(!b_sparse.is_zero({i,j}) && !b_sparse_fused.is_zero({i,j})) {
+            auto tile_orig = b_sparse.find({i, j}).get();
+            auto tile_fused = b_sparse_fused.find({i, j}).get();
 
-          auto lo = tile_orig.range().lobound_data();
-          auto up = tile_orig.range().upbound_data();
-          for (auto k = lo[0]; k < up[0]; ++k) {
-            for (auto l = lo[1]; l < up[1]; ++l) {
-              BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+            auto lo = tile_orig.range().lobound_data();
+            auto up = tile_orig.range().upbound_data();
+            for (auto k = lo[0]; k < up[0]; ++k) {
+              for (auto l = lo[1]; l < up[1]; ++l) {
+                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+              }
             }
           }
         }
@@ -772,14 +776,16 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
           for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            auto tile_orig = b_dense.find({i, j}).get();
-            auto tile_fused = b_dense_fused.find({i, j}).get();
+            if(!b_dense.is_zero({i,j}) && !b_dense_fused.is_zero({i,j})) {
+              auto tile_orig = b_dense.find({i, j}).get();
+              auto tile_fused = b_dense_fused.find({i, j}).get();
 
-            auto lo = tile_orig.range().lobound_data();
-            auto up = tile_orig.range().upbound_data();
-            for (auto k = lo[0]; k < up[0]; ++k) {
-              for (auto l = lo[1]; l < up[1]; ++l) {
-                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+              auto lo = tile_orig.range().lobound_data();
+              auto up = tile_orig.range().upbound_data();
+              for (auto k = lo[0]; k < up[0]; ++k) {
+                for (auto l = lo[1]; l < up[1]; ++l) {
+                  BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+                }
               }
             }
           }
@@ -817,14 +823,16 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
           for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            auto tile_orig = b_sparse.find({i, j}).get();
-            auto tile_fused = b_sparse_fused.find({i, j}).get();
+            if(!b_sparse.is_zero({i,j}) && !b_sparse_fused.is_zero({i,j})) {
+              auto tile_orig = b_sparse.find({i, j}).get();
+              auto tile_fused = b_sparse_fused.find({i, j}).get();
 
-            auto lo = tile_orig.range().lobound_data();
-            auto up = tile_orig.range().upbound_data();
-            for (auto k = lo[0]; k < up[0]; ++k) {
-              for (auto l = lo[1]; l < up[1]; ++l) {
-                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+              auto lo = tile_orig.range().lobound_data();
+              auto up = tile_orig.range().upbound_data();
+              for (auto k = lo[0]; k < up[0]; ++k) {
+                for (auto l = lo[1]; l < up[1]; ++l) {
+                  BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+                }
               }
             }
           }
