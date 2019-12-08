@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE(make_array_test) {
                                             &this->init_rand_tile<TensorI>));
 }
 
-BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
+BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking) {
 
     // get local world
     const auto rank = (*GlobalFixture::world).rank();
@@ -258,6 +258,8 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
           for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+            if (b_dense.is_zero({i, j}) && b_dense_fused.is_zero({i, j}))
+              continue;
             auto tile_orig = b_dense.find({i, j}).get();
             auto tile_fused = b_dense_fused.find({i, j}).get();
 
@@ -280,7 +282,7 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
         (*b_dense_parallel).reserve(11);
         set_default_world(this_world);
         for (int i = 0; i < 11; ++i) {
-          if(rank == i % size) {
+          if (rank == i % size) {
             (*b_dense_parallel).push_back(
                     TiledArray::subarray_from_fused_array(this_world, b_dense,
                                                           i, tr_split));
@@ -290,13 +292,15 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
 
         //convert vector of arrays back into dense array
         auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world,
-                (*b_dense_parallel), 11, tr_split);
+                                                                        (*b_dense_parallel), 11, tr_split);
         b_dense_parallel.reset();
         b_dense.wait_for_lazy_cleanup();
 
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
           for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+            if (b_dense.is_zero({i, j}) && b_dense_fused_parallel.is_zero({i, j}))
+              continue;
             auto tile_orig = b_dense.find({i, j}).get();
             auto tile_fused = b_dense_fused_parallel.find({i, j}).get();
 
@@ -338,16 +342,16 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
           for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            if (!b_sparse.is_zero({i, j})) {
-              auto tile_orig = b_sparse.find({i, j}).get();
-              auto tile_fused = b_sparse_fused.find({i, j}).get();
+            if (b_sparse.is_zero({i, j}) && b_sparse_fused.is_zero({i, j}))
+              continue;
+            auto tile_orig = b_sparse.find({i, j}).get();
+            auto tile_fused = b_sparse_fused.find({i, j}).get();
 
-              auto lo = tile_orig.range().lobound_data();
-              auto up = tile_orig.range().upbound_data();
-              for (auto k = lo[0]; k < up[0]; ++k) {
-                for (auto l = lo[1]; l < up[1]; ++l) {
-                  BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-                }
+            auto lo = tile_orig.range().lobound_data();
+            auto up = tile_orig.range().upbound_data();
+            for (auto k = lo[0]; k < up[0]; ++k) {
+              for (auto l = lo[1]; l < up[1]; ++l) {
+                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
               }
             }
           }
@@ -362,7 +366,7 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
         (*b_sparse_parallel).reserve(11);
         set_default_world(this_world);
         for (int i = 0; i < 11; ++i) {
-          if(rank == i % size) {
+          if (rank == i % size) {
             (*b_sparse_parallel).push_back(
                     TiledArray::subarray_from_fused_array(this_world, b_sparse,
                                                           i, tr_split));
@@ -378,211 +382,16 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_unit_blocking){
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
           for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            if (!b_sparse.is_zero({i, j})) {
-              auto tile_orig = b_sparse.find({i, j}).get();
-              auto tile_fused = b_sparse_fused_parallel.find({i, j}).get();
-
-              auto lo = tile_orig.range().lobound_data();
-              auto up = tile_orig.range().upbound_data();
-              for (auto k = lo[0]; k < up[0]; ++k) {
-                for (auto l = lo[1]; l < up[1]; ++l) {
-                  BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking) {
-
-    // Generate a world for each world rank
-    const auto rank = (*GlobalFixture::world).rank();
-    const auto size = (*GlobalFixture::world).size();
-    madness::World *tmp_ptr;
-    std::shared_ptr<madness::World> world_ptr;
-
-    if (size > 1) {
-      SafeMPI::Group group = (*GlobalFixture::world).mpi.comm().Get_group().Incl(1, &rank);
-      SafeMPI::Intracomm comm = (*GlobalFixture::world).mpi.comm().Create(group);
-      world_ptr = std::make_shared<madness::World>(comm);
-      tmp_ptr = world_ptr.get();
-    } else {
-      tmp_ptr = &(*GlobalFixture::world);
-    }
-    auto &this_world = *tmp_ptr;
-    (*GlobalFixture::world).gop.fence();
-
-    // Make a tiled range with arbitrary block size
-    TiledArray::TiledRange tr;
-    TiledArray::TiledRange tr_split;
-    {
-      TA::TiledRange1 tr1_mode0 = compute_trange1(11, 2);
-      TA::TiledRange1 tr1_mode1 = compute_trange1(7, 3);
-      tr = TiledArray::TiledRange({tr1_mode0, tr1_mode1});
-      tr_split = TiledArray::TiledRange({tr1_mode1});
-    }
-
-    // Dense test
-    {
-      // Make an array with tiled range from above.
-      auto b_dense = make_array<TArrayI>(*GlobalFixture::world, tr,
-                                         &this->init_rand_tile < TensorI > );
-
-      // Grab number of tiles in fused mode
-      auto text = b_dense.trange().tiles_range().extent_data();
-      auto num_mode0_tiles = text[0];
-      auto num_mode1_tiles = text[1];
-
-      // one node
-      {
-        // Convert dense array to vector of arrays
-        std::vector<TArrayI> b_dense_vector;
-        for (int i = 0; i < 11; ++i) {
-          b_dense_vector.push_back(
-                  TiledArray::subarray_from_fused_array(b_dense,
-                                                        i, tr_split));
-        }
-
-        //convert vector of arrays back into dense array
-        auto b_dense_fused = TiledArray::fuse_vector_of_arrays(b_dense_vector, 2);
-
-        // Check to see if the fused and original arrays are the same
-        for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
-          for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            auto tile_orig = b_dense.find({i, j}).get();
-            auto tile_fused = b_dense_fused.find({i, j}).get();
+            if (b_sparse.is_zero({i, j}) && b_sparse_fused_parallel.is_zero({i, j}))
+              continue;
+            auto tile_orig = b_sparse.find({i, j}).get();
+            auto tile_fused = b_sparse_fused_parallel.find({i, j}).get();
 
             auto lo = tile_orig.range().lobound_data();
             auto up = tile_orig.range().upbound_data();
             for (auto k = lo[0]; k < up[0]; ++k) {
               for (auto l = lo[1]; l < up[1]; ++l) {
                 BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-              }
-            }
-          }
-        }
-      }
-
-      // Parallel test
-      {
-        //convert vector of arrays back into dense array
-        auto &dense_global_world = b_dense.world();
-        auto b_dense_parallel = std::make_unique<std::vector<TArrayI>>();
-        (*b_dense_parallel).reserve(11);
-        set_default_world(this_world);
-        for (int i = 0; i < 11; ++i) {
-          if(rank == i % size) {
-            (*b_dense_parallel).push_back(
-                    TiledArray::subarray_from_fused_array(this_world, b_dense,
-                                                          i, tr_split));
-          }
-        }
-        set_default_world(dense_global_world);
-
-        //convert vector of arrays back into dense array
-        auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world,
-                (*b_dense_parallel), 11, tr_split, 2);
-        b_dense_parallel.reset();
-        TArrayI::wait_for_lazy_cleanup(dense_global_world);
-
-        // Check to see if the fused and original arrays are the same
-        for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
-          for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            auto tile_orig = b_dense.find({i, j}).get();
-            auto tile_fused = b_dense_fused_parallel.find({i, j}).get();
-
-            auto lo = tile_orig.range().lobound_data();
-            auto up = tile_orig.range().upbound_data();
-            for (auto k = lo[0]; k < up[0]; ++k) {
-              for (auto l = lo[1]; l < up[1]; ++l) {
-                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // Sparse test
-    {
-      // Make an sparse array with tiled range from above.
-      auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
-                                            &this->init_rand_tile < TensorI > );
-
-      // Grab number of tiles in fused mode
-      auto text = b_sparse.trange().tiles_range().extent_data();
-      auto num_mode0_tiles = text[0];
-      auto num_mode1_tiles = text[1];
-
-      // one node
-      {
-        // Convert sparse array to vector of arrays
-        std::vector<TSpArrayI> b_sparse_vector;
-        for (int i = 0; i < 11; ++i) {
-          b_sparse_vector.push_back(
-                  TiledArray::subarray_from_fused_array(b_sparse,
-                                                        i, tr_split));
-        }
-
-        // convert vector of arrays back into sparse array
-        auto b_sparse_fused = TiledArray::fuse_vector_of_arrays(b_sparse_vector, 2);
-
-        // Check to see if the fused and original arrays are the same
-        for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
-          for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            if (!b_sparse.is_zero({i, j})) {
-              auto tile_orig = b_sparse.find({i, j}).get();
-              auto tile_fused = b_sparse_fused.find({i, j}).get();
-
-              auto lo = tile_orig.range().lobound_data();
-              auto up = tile_orig.range().upbound_data();
-              for (auto k = lo[0]; k < up[0]; ++k) {
-                for (auto l = lo[1]; l < up[1]; ++l) {
-                  BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Parallel test
-      {
-        // convert vector of arrays back into sparse array
-        auto &sparse_global_world = b_sparse.world();
-        auto b_sparse_parallel = std::make_unique<std::vector<TSpArrayI>>();
-        (*b_sparse_parallel).reserve(11);
-        set_default_world(this_world);
-        for (int i = 0; i < 11; ++i) {
-          if(rank == i % size) {
-            (*b_sparse_parallel).push_back(
-                    TiledArray::subarray_from_fused_array(this_world, b_sparse,
-                                                          i, tr_split));
-          }
-        }
-        set_default_world(sparse_global_world);
-        auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(sparse_global_world,
-                                                                         (*b_sparse_parallel),
-                                                                         11, tr_split, 2);
-        b_sparse_parallel.reset();
-        TSpArrayI::wait_for_lazy_cleanup(sparse_global_world);
-
-        // Check to see if the fused and original arrays are the same
-        for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
-          for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            if (!b_sparse.is_zero({i, j})) {
-              auto tile_orig = b_sparse.find({i, j}).get();
-              auto tile_fused = b_sparse_fused_parallel.find({i, j}).get();
-
-              auto lo = tile_orig.range().lobound_data();
-              auto up = tile_orig.range().upbound_data();
-              for (auto k = lo[0]; k < up[0]; ++k) {
-                for (auto l = lo[1]; l < up[1]; ++l) {
-                  BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-                }
               }
             }
           }
@@ -591,7 +400,206 @@ BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking) {
     }
   }
 
-BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
+BOOST_AUTO_TEST_CASE(vector_of_arrays_non_unit_blocking) {
+
+  // Generate a world for each world rank
+  const auto rank = (*GlobalFixture::world).rank();
+  const auto size = (*GlobalFixture::world).size();
+  madness::World *tmp_ptr;
+  std::shared_ptr<madness::World> world_ptr;
+
+  if (size > 1) {
+    SafeMPI::Group group = (*GlobalFixture::world).mpi.comm().Get_group().Incl(1, &rank);
+    SafeMPI::Intracomm comm = (*GlobalFixture::world).mpi.comm().Create(group);
+    world_ptr = std::make_shared<madness::World>(comm);
+    tmp_ptr = world_ptr.get();
+  } else {
+    tmp_ptr = &(*GlobalFixture::world);
+  }
+  auto &this_world = *tmp_ptr;
+  (*GlobalFixture::world).gop.fence();
+
+  // Make a tiled range with arbitrary block size
+  TiledArray::TiledRange tr;
+  TiledArray::TiledRange tr_split;
+  {
+    TA::TiledRange1 tr1_mode0 = compute_trange1(11, 2);
+    TA::TiledRange1 tr1_mode1 = compute_trange1(7, 3);
+    tr = TiledArray::TiledRange({tr1_mode0, tr1_mode1});
+    tr_split = TiledArray::TiledRange({tr1_mode1});
+  }
+
+  // Dense test
+  {
+    // Make an array with tiled range from above.
+    auto b_dense = make_array<TArrayI>(*GlobalFixture::world, tr,
+                                       &this->init_rand_tile < TensorI > );
+
+    // Grab number of tiles in fused mode
+    auto text = b_dense.trange().tiles_range().extent_data();
+    auto num_mode0_tiles = text[0];
+    auto num_mode1_tiles = text[1];
+
+    // one node
+    {
+      // Convert dense array to vector of arrays
+      std::vector<TArrayI> b_dense_vector;
+      for (int i = 0; i < 11; ++i) {
+        b_dense_vector.push_back(
+                TiledArray::subarray_from_fused_array(b_dense,
+                                                      i, tr_split));
+      }
+
+      //convert vector of arrays back into dense array
+      auto b_dense_fused = TiledArray::fuse_vector_of_arrays(b_dense_vector, 2);
+
+      // Check to see if the fused and original arrays are the same
+      for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
+        for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+          if (b_dense.is_zero({i, j}) && b_dense_fused.is_zero({i, j}))
+            continue;
+          auto tile_orig = b_dense.find({i, j}).get();
+          auto tile_fused = b_dense_fused.find({i, j}).get();
+
+          auto lo = tile_orig.range().lobound_data();
+          auto up = tile_orig.range().upbound_data();
+          for (auto k = lo[0]; k < up[0]; ++k) {
+            for (auto l = lo[1]; l < up[1]; ++l) {
+              BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+            }
+          }
+        }
+      }
+    }
+
+    // Parallel test
+    {
+      //convert vector of arrays back into dense array
+      auto &dense_global_world = b_dense.world();
+      auto b_dense_parallel = std::make_unique<std::vector<TArrayI>>();
+      (*b_dense_parallel).reserve(11);
+      set_default_world(this_world);
+      for (int i = 0; i < 11; ++i) {
+        if (rank == i % size) {
+          (*b_dense_parallel).push_back(
+                  TiledArray::subarray_from_fused_array(this_world, b_dense,
+                                                        i, tr_split));
+        }
+      }
+      set_default_world(dense_global_world);
+
+      //convert vector of arrays back into dense array
+      auto b_dense_fused_parallel = TiledArray::fuse_vector_of_arrays(dense_global_world,
+                                                                      (*b_dense_parallel), 11, tr_split, 2);
+      b_dense_parallel.reset();
+      TArrayI::wait_for_lazy_cleanup(dense_global_world);
+
+      // Check to see if the fused and original arrays are the same
+      for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
+        for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+          if (b_dense.is_zero({i, j}) && b_dense_fused_parallel.is_zero({i, j}))
+            continue;
+          auto tile_orig = b_dense.find({i, j}).get();
+          auto tile_fused = b_dense_fused_parallel.find({i, j}).get();
+
+          auto lo = tile_orig.range().lobound_data();
+          auto up = tile_orig.range().upbound_data();
+          for (auto k = lo[0]; k < up[0]; ++k) {
+            for (auto l = lo[1]; l < up[1]; ++l) {
+              BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Sparse test
+  {
+    // Make an sparse array with tiled range from above.
+    auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
+                                          &this->init_rand_tile < TensorI > );
+
+    // Grab number of tiles in fused mode
+    auto text = b_sparse.trange().tiles_range().extent_data();
+    auto num_mode0_tiles = text[0];
+    auto num_mode1_tiles = text[1];
+
+    // one node
+    {
+      // Convert sparse array to vector of arrays
+      std::vector<TSpArrayI> b_sparse_vector;
+      for (int i = 0; i < 11; ++i) {
+        b_sparse_vector.push_back(
+                TiledArray::subarray_from_fused_array(b_sparse,
+                                                      i, tr_split));
+      }
+
+      // convert vector of arrays back into sparse array
+      auto b_sparse_fused = TiledArray::fuse_vector_of_arrays(b_sparse_vector, 2);
+
+      // Check to see if the fused and original arrays are the same
+      for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
+        for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+          if (b_sparse_fused.is_zero({i, j}) && b_sparse_fused.is_zero({i, j}))
+            continue;
+          auto tile_orig = b_sparse.find({i, j}).get();
+          auto tile_fused = b_sparse_fused.find({i, j}).get();
+
+          auto lo = tile_orig.range().lobound_data();
+          auto up = tile_orig.range().upbound_data();
+          for (auto k = lo[0]; k < up[0]; ++k) {
+            for (auto l = lo[1]; l < up[1]; ++l) {
+              BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+            }
+          }
+        }
+      }
+    }
+
+    // Parallel test
+    {
+      // convert vector of arrays back into sparse array
+      auto &sparse_global_world = b_sparse.world();
+      auto b_sparse_parallel = std::make_unique<std::vector<TSpArrayI>>();
+      (*b_sparse_parallel).reserve(11);
+      set_default_world(this_world);
+      for (int i = 0; i < 11; ++i) {
+        if (rank == i % size) {
+          (*b_sparse_parallel).push_back(
+                  TiledArray::subarray_from_fused_array(this_world, b_sparse,
+                                                        i, tr_split));
+        }
+      }
+      set_default_world(sparse_global_world);
+      auto b_sparse_fused_parallel = TiledArray::fuse_vector_of_arrays(sparse_global_world,
+                                                                       (*b_sparse_parallel),
+                                                                       11, tr_split, 2);
+      b_sparse_parallel.reset();
+      TSpArrayI::wait_for_lazy_cleanup(sparse_global_world);
+
+      // Check to see if the fused and original arrays are the same
+      for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
+        for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+          if (b_sparse.is_zero({i, j}) && b_sparse_fused_parallel.is_zero({i, j}))
+            continue;
+          auto tile_orig = b_sparse.find({i, j}).get();
+          auto tile_fused = b_sparse_fused_parallel.find({i, j}).get();
+
+          auto lo = tile_orig.range().lobound_data();
+          auto up = tile_orig.range().upbound_data();
+          for (auto k = lo[0]; k < up[0]; ++k) {
+            for (auto l = lo[1]; l < up[1]; ++l) {
+              BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
 
   // get local world
   const auto rank = (*GlobalFixture::world).rank();
@@ -627,7 +635,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
     // Make an array with tiled range from above.
     auto b_dense = make_array<TArrayI>(*GlobalFixture::world, tr,
                                        &this->init_rand_tile < TensorI > );
-    auto & world = b_dense.world();
+    auto &world = b_dense.world();
     // Grab number of tiles in fused mode
     auto text = b_dense.trange().tiles_range().extent_data();
     auto num_mode0_tiles = text[0];
@@ -638,7 +646,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
       std::vector<TArrayI> b_dense_vector;
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
-        if(rank == r % size) {
+        if (rank == r % size) {
           TiledArray::subarray_from_fused_array(this_world, b_dense, r, r, b_dense_vector, tr_split);
         }
       }
@@ -651,16 +659,16 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
       // Check to see if the fused and original arrays are the same
       for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
         for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-          if(!b_dense.is_zero({i,j}) && !b_dense_fused.is_zero({i,j})) {
-            auto tile_orig = b_dense.find({i, j}).get();
-            auto tile_fused = b_dense_fused.find({i, j}).get();
+          if (b_dense.is_zero({i, j}) && b_dense_fused.is_zero({i, j}))
+            continue;
+          auto tile_orig = b_dense.find({i, j}).get();
+          auto tile_fused = b_dense_fused.find({i, j}).get();
 
-            auto lo = tile_orig.range().lobound_data();
-            auto up = tile_orig.range().upbound_data();
-            for (auto k = lo[0]; k < up[0]; ++k) {
-              for (auto l = lo[1]; l < up[1]; ++l) {
-                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-              }
+          auto lo = tile_orig.range().lobound_data();
+          auto up = tile_orig.range().upbound_data();
+          for (auto k = lo[0]; k < up[0]; ++k) {
+            for (auto l = lo[1]; l < up[1]; ++l) {
+              BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
             }
           }
         }
@@ -673,7 +681,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
                                           &this->init_rand_tile < TensorI > );
-    auto & world = b_sparse.world();
+    auto &world = b_sparse.world();
 
     // Grab number of tiles in fused mode
     auto text = b_sparse.trange().tiles_range().extent_data();
@@ -682,24 +690,25 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
 
     {
       // Convert dense array to vector of arrays
-      std::vector<TSpArrayI> b_sparse_vector;
-      TA::set_default_world(this_world);
-      for (int r = 0; r < num_mode0_tiles; ++r) {
-        if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_sparse, r, r, b_sparse_vector, tr_split);
+        std::vector<TSpArrayI> b_sparse_vector;
+        TA::set_default_world(this_world);
+        for (int r = 0; r < num_mode0_tiles; ++r) {
+          if (rank == r % size) {
+            TiledArray::subarray_from_fused_array(this_world, b_sparse, r, r, b_sparse_vector, tr_split);
+          }
         }
-      }
-      TA::set_default_world(world);
-      world.gop.fence();
+        TA::set_default_world(world);
+        world.gop.fence();
 
-      //convert vector of arrays back into dense array
-      auto b_sparse_fused = TiledArray::fuse_vector_of_arrays_tiles(world, b_sparse_vector, 11, tr_split, 1);
-      b_sparse_vector.clear();
+        //convert vector of arrays back into dense array
+        auto b_sparse_fused = TiledArray::fuse_vector_of_arrays_tiles(world, b_sparse_vector, 11, tr_split, 1);
+        b_sparse_vector.clear();
 
-      // Check to see if the fused and original arrays are the same
-      for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
-        for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-          if(!b_sparse.is_zero({i,j}) && !b_sparse_fused.is_zero({i,j})) {
+        // Check to see if the fused and original arrays are the same
+        for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
+          for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+            if (b_sparse.is_zero({i, j}) && b_sparse_fused.is_zero({i, j}))
+              continue;
             auto tile_orig = b_sparse.find({i, j}).get();
             auto tile_fused = b_sparse_fused.find({i, j}).get();
 
@@ -711,7 +720,6 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking){
               }
             }
           }
-        }
       }
     }
   }
@@ -776,16 +784,17 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
           for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            if(!b_dense.is_zero({i,j}) && !b_dense_fused.is_zero({i,j})) {
-              auto tile_orig = b_dense.find({i, j}).get();
-              auto tile_fused = b_dense_fused.find({i, j}).get();
+            if (b_dense.is_zero({i, j}) && b_dense_fused.is_zero({i, j}))
+              continue;
 
-              auto lo = tile_orig.range().lobound_data();
-              auto up = tile_orig.range().upbound_data();
-              for (auto k = lo[0]; k < up[0]; ++k) {
-                for (auto l = lo[1]; l < up[1]; ++l) {
-                  BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-                }
+            auto tile_orig = b_dense.find({i, j}).get();
+            auto tile_fused = b_dense_fused.find({i, j}).get();
+
+            auto lo = tile_orig.range().lobound_data();
+            auto up = tile_orig.range().upbound_data();
+            for (auto k = lo[0]; k < up[0]; ++k) {
+              for (auto l = lo[1]; l < up[1]; ++l) {
+                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
               }
             }
           }
@@ -798,7 +807,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
       // Make an sparse array with tiled range from above.
       auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
                                             &this->init_rand_tile < TensorI > );
-      auto & world = b_sparse.world();
+      auto &world = b_sparse.world();
 
       // Grab number of tiles in fused mode
       auto text = b_sparse.trange().tiles_range().extent_data();
@@ -810,7 +819,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
         std::vector<TSpArrayI> b_sparse_vector;
         TA::set_default_world(this_world);
         for (int r = 0; r < num_mode0_tiles; ++r) {
-          if(rank == r % size) {
+          if (rank == r % size) {
             TiledArray::subarray_from_fused_array(this_world, b_sparse, r, r * block_size, b_sparse_vector, tr_split);
           }
         }
@@ -823,16 +832,16 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
         // Check to see if the fused and original arrays are the same
         for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
           for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
-            if(!b_sparse.is_zero({i,j}) && !b_sparse_fused.is_zero({i,j})) {
-              auto tile_orig = b_sparse.find({i, j}).get();
-              auto tile_fused = b_sparse_fused.find({i, j}).get();
+            if (b_sparse.is_zero({i, j}) && b_sparse_fused.is_zero({i, j}))
+              continue;
+            auto tile_orig = b_sparse.find({i, j}).get();
+            auto tile_fused = b_sparse_fused.find({i, j}).get();
 
-              auto lo = tile_orig.range().lobound_data();
-              auto up = tile_orig.range().upbound_data();
-              for (auto k = lo[0]; k < up[0]; ++k) {
-                for (auto l = lo[1]; l < up[1]; ++l) {
-                  BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
-                }
+            auto lo = tile_orig.range().lobound_data();
+            auto up = tile_orig.range().upbound_data();
+            for (auto k = lo[0]; k < up[0]; ++k) {
+              for (auto l = lo[1]; l < up[1]; ++l) {
+                BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
               }
             }
           }
