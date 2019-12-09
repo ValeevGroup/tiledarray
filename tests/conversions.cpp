@@ -140,16 +140,10 @@ void check_equal(Array & orig, Array& fused){
       auto up = tile_orig.range().upbound_data();
       for (auto k = lo[0]; k < up[0]; ++k) {
         for (auto l = lo[1]; l < up[1]; ++l) {
-          if(orig.world().rank() == 0) {
-            std::cout << tile_orig(k, l) << ", " << tile_fused(k, l) << std::endl;
-          }
           BOOST_CHECK_EQUAL(tile_orig(k, l), tile_fused(k, l));
         }
       }
     }
-  }
-  if(orig.world().rank() == 0) {
-    std::cout << std::endl;
   }
   return;
 }
