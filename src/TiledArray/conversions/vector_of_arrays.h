@@ -824,7 +824,7 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
   template <typename Tile, typename Policy>
   void subarray_from_fused_array(
           madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
-          std::size_t tile_idx, std::size_t start,
+          std::size_t tile_idx,
           std::vector<TA::DistArray<Tile, Policy>> & split_arrays,
           const TA::TiledRange& split_trange) {
     TA_ASSERT(tile_idx < fused_array.trange().dim(0).extent());
@@ -833,16 +833,13 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
     auto tile_range = fused_array.trange().dim(0).tile(tile_idx);
     auto tile_size = tile_range.second - tile_range.first;
     std::size_t split_ntiles = split_trange.tiles_range().volume();
-    auto array_index = split_arrays.size();
-    //auto start = array_index * size;
-    auto limit = start + tile_size;
 
     // Create tile_size arrays and put them into split_arrays
-    for (size_t i = start; i < limit; ++i) {
       // get the shape of split Array
       auto split_shape =
               detail::subshape_from_fused_array(fused_array, i, split_trange);
 
+    for (size_t i = tile_range.first; i < tile_range.second; ++i) {
       // create split Array object
       TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
                                               split_shape);
@@ -869,7 +866,6 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
         std::size_t fused_array_index = tile_idx * split_ntiles + index;
         Tile tile = fused_array.find(fused_array_index).get();
 
-        for (int i = start, j = array_index; i < limit; ++i, ++j) {
           i_offset_in_tile = i - tile_range.first;
           auto & array = *(sarray_ptr + j);
 
