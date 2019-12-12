@@ -341,6 +341,38 @@ TA::SparseShape<float> subshape_from_fused_array(
   return split_shape;
 }
 
+// TODO add documentation to these new functions.
+inline TA::SparseShape<float> subshape_from_fused_tile(
+        const TA::TiledRange& split_trange, const TA::SparsePolicy::shape_type & shape,
+        const std::size_t tile_idx, const std::size_t split_ntiles,
+        const std::size_t tile_size){
+  TA::Tensor<float> split_tile_norms(split_trange.tiles_range());
+
+  // map element i to its tile index
+  std::size_t offset = tile_idx * split_ntiles;
+
+  // note that unlike fusion we cannot compute exact norm of the split tile
+  // to guarantee upper bound we have to multiply the norms by the number of
+  // split tiles in the fused tile; to see why multiplication is necessary think
+  // of a tile obtained by fusing 1 nonzero tile with one or more zero tiles.
+  const auto* split_tile_begin = shape.data().data() + offset;
+  std::transform(split_tile_begin, split_tile_begin + split_ntiles,
+                 split_tile_norms.data(),
+                 [tile_size](const float& elem) {
+                   return elem * tile_size;
+                 });
+
+  auto split_shape =
+          TA::SparseShape<float>(split_tile_norms, split_trange, true);
+  return split_shape;
+}
+
+inline TA::DenseShape subshape_from_fused_tile(
+        const TA::TiledRange& split_trange, const TA::DensePolicy::shape_type & shape,
+        const std::size_t tile_idx, const std::size_t split_ntiles,
+        const std::size_t tile_size){
+  return TA::DenseShape(tile_size, split_trange);
+}
 }  // namespace detail
 
 /// @brief fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimensions
