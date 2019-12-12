@@ -833,13 +833,12 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
     auto tile_range = fused_array.trange().dim(0).tile(tile_idx);
     auto tile_size = tile_range.second - tile_range.first;
     std::size_t split_ntiles = split_trange.tiles_range().volume();
+    auto& shape = fused_array.shape();
 
     // Create tile_size arrays and put them into split_arrays
-      // get the shape of split Array
-      auto split_shape =
-              detail::subshape_from_fused_array(fused_array, i, split_trange);
-
     for (size_t i = tile_range.first; i < tile_range.second; ++i) {
+      auto split_shape = detail::subshape_from_fused_tile(split_trange, shape, tile_idx,
+              split_ntiles, tile_size);
       // create split Array object
       TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
                                               split_shape);
