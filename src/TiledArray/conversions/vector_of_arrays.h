@@ -828,6 +828,7 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
           std::vector<TA::DistArray<Tile, Policy>> & split_arrays,
           const TA::TiledRange& split_trange) {
     TA_ASSERT(tile_idx < fused_array.trange().dim(0).extent());
+    auto arrays_size = split_arrays.size();
 
     // calculate the number of elements in the 0th dimension are in this tile
     auto tile_range = fused_array.trange().dim(0).tile(tile_idx);
@@ -859,18 +860,21 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
 
 
     /// write to blocks of fused_array
-    auto sarray_ptr = split_arrays.data();
-    for (std::size_t index : *(*sarray_ptr).pmap()) {
-      if (!(*sarray_ptr).is_zero(index)) {
-        std::size_t fused_array_index = tile_idx * split_ntiles + index;
-        Tile tile = fused_array.find(fused_array_index).get();
+    auto split_array_ptr = split_arrays.data();
+    for (std::size_t index : *(*split_array_ptr).pmap()) {
+      std::size_t fused_array_index = tile_idx * split_ntiles + index;
+      if (!fused_array.is_zero(fused_array_index)) {
+        //Tile tile = fused_array.find(fused_array_index);
+        const auto div = std::ldiv(fused_array_index, split_ntiles);
+        const auto tile_idx_mode0 = div.quot;
+        const auto tile_ord_array = div.rem;
 
-          i_offset_in_tile = i - tile_range.first;
-          auto & array = *(sarray_ptr + j);
-
-           array.set(index, local_world.taskq.add(
-                   make_tile, array.trange().make_tile_range(index),
-                  tile, i_offset_in_tile));
+        for(std::size_t i = tile_range.first, tile_count = 0;
+            i < tile_range.second; ++i, ++tile_count) {
+          auto &array = *(split_array_ptr + arrays_size + tile_count);
+          array.set(index, local_world.taskq.add(
+                  make_tile, array.trange().make_tile_range(index),
+                  fused_array.find(fused_array_index), tile_count));
         }
       }
     }
