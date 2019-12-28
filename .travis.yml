@@ -1,3 +1,6 @@
+# See http://about.travis-ci.org/docs/user/build-configuration/
+# To validate this file: http://lint.travis-ci.org/
+
 language: cpp
 dist: bionic
 cache: ccache
@@ -61,6 +64,22 @@ matrix:
            - *base_packages
            - g++-7
            - gfortran-7
+    - compiler: gcc
+      env: GCC_VERSION=8 BUILD_TYPE=Debug
+      addons:
+        apt:
+          packages:
+            - *base_packages
+            - g++-8
+            - gfortran-8
+    - compiler: gcc
+      env: GCC_VERSION=8 BUILD_TYPE=Release
+      addons:
+        apt:
+          packages:
+            - *base_packages
+            - g++-8
+            - gfortran-8
     - compiler: gcc
       env: GCC_VERSION=9 BUILD_TYPE=Debug
       addons:
@@ -133,25 +152,34 @@ matrix:
             - clang-8
             - libc++-8-dev
             - libc++abi-8-dev
-  allow_failures:
-    # ambiguous template specialization ‘Copy<>’ for ‘void El::Copy(const El::Matrix<int>&, El::Matrix<int>&)’
-    - compiler: gcc
-      env: GCC_VERSION=8 BUILD_TYPE=Debug
+    - compiler: clang
+      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
-    # ambiguous template specialization ‘Copy<>’ for ‘void El::Copy(const El::Matrix<int>&, El::Matrix<int>&)’
-    - compiler: gcc
-      env: GCC_VERSION=8 BUILD_TYPE=Release
+            - *base_packages
+            - g++-8
+            - gfortran-8
+            - clang-9
+            - libc++-9-dev
+            - libc++abi-9-dev
+    - compiler: clang
+      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Release
       addons:
         apt:
+          sources:
+            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
+            - *base_packages
+            - g++-8
+            - gfortran-8
+            - clang-9
+            - libc++-9-dev
+            - libc++abi-9-dev
 
 #notifications:
 #  email:
