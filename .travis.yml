@@ -8,8 +8,6 @@ os: linux
 
 addons:
   apt:
-    sources: &base_sources
-    - sourceline: "ppa:ubuntu-toolchain-r/test"
     sources: &clang7_sources
     - llvm-toolchain-bionic-7
     sources: &clang8_sources
@@ -35,8 +33,6 @@ matrix:
       env: GCC_VERSION=6 BUILD_TYPE=Debug
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-6
@@ -45,8 +41,6 @@ matrix:
       env: GCC_VERSION=6 BUILD_TYPE=Release
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-6
@@ -55,8 +49,6 @@ matrix:
       env: GCC_VERSION=7 BUILD_TYPE=Debug
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-7
@@ -65,8 +57,6 @@ matrix:
       env: GCC_VERSION=7 BUILD_TYPE=Release
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-7
@@ -76,7 +66,7 @@ matrix:
       addons:
         apt:
           sources:
-            - *base_sources
+            - sourceline: 'ppa:ubuntu-toolchain-r/test'
           packages:
             - *base_packages
             - g++-9
@@ -86,7 +76,7 @@ matrix:
       addons:
         apt:
           sources:
-            - *base_sources
+            - sourceline: 'ppa:ubuntu-toolchain-r/test'
           packages:
             - *base_packages
             - g++-9
@@ -96,7 +86,6 @@ matrix:
       addons:
         apt:
           sources:
-           - *base_sources
            - *clang7_sources
           packages:
            - *base_packages
@@ -110,7 +99,6 @@ matrix:
       addons:
         apt:
           sources:
-           - *base_sources
            - *clang7_sources
           packages:
            - *base_packages
@@ -124,7 +112,6 @@ matrix:
       addons:
         apt:
           sources:
-            - *base_sources
             - *clang8_sources
           packages:
             - *base_packages
@@ -138,7 +125,6 @@ matrix:
       addons:
         apt:
           sources:
-            - *base_sources
             - *clang8_sources
           packages:
             - *base_packages
@@ -153,8 +139,6 @@ matrix:
       env: GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-8
@@ -164,8 +148,6 @@ matrix:
       env: GCC_VERSION=8 BUILD_TYPE=Release
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-8
