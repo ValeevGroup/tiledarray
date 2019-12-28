@@ -9,7 +9,7 @@ os: linux
 addons:
   apt:
     sources: &base_sources
-    - sourceline: 'ppa:ubuntu-toolchain-r/test'
+    - sourceline: "ppa:ubuntu-toolchain-r/test"
     sources: &clang7_sources
     - llvm-toolchain-bionic-7
     sources: &clang8_sources
