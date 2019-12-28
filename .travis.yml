@@ -1,5 +1,5 @@
 language: cpp
-dist: xenial
+dist: bionic
 cache: ccache
 cache:
   directories:
@@ -11,9 +11,9 @@ addons:
     sources: &base_sources
       - ubuntu-toolchain-r-test
     sources: &clang7_sources
-      - llvm-toolchain-xenial-7
+      - llvm-toolchain-bionic-7
     sources: &clang8_sources
-      - llvm-toolchain-xenial-8
+      - llvm-toolchain-bionic-8
     packages: &base_packages
     - libboost-all-dev
     - libblas-dev
