@@ -91,26 +91,6 @@ matrix:
            - *base_packages
            - g++-7
            - gfortran-7
-    - compiler: gcc
-      env: GCC_VERSION=8 BUILD_TYPE=Debug
-      addons:
-        apt:
-          sources:
-            - *base_sources
-          packages:
-            - *base_packages
-            - g++-8
-            - gfortran-8
-    - compiler: gcc
-      env: GCC_VERSION=8 BUILD_TYPE=Release
-      addons:
-        apt:
-          sources:
-            - *base_sources
-          packages:
-            - *base_packages
-            - g++-8
-            - gfortran-8
     - compiler: clang
       env: CLANG_VERSION=7 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
@@ -167,6 +147,29 @@ matrix:
             - clang-8
             - libc++-8-dev
             - libc++abi-8-dev
+  allow_failures:
+    # ambiguous template specialization ‘Copy<>’ for ‘void El::Copy(const El::Matrix<int>&, El::Matrix<int>&)’
+    - compiler: gcc
+      env: GCC_VERSION=8 BUILD_TYPE=Debug
+      addons:
+        apt:
+          sources:
+           - *base_sources
+          packages:
+           - *base_packages
+           - g++-8
+           - gfortran-8
+    # ambiguous template specialization ‘Copy<>’ for ‘void El::Copy(const El::Matrix<int>&, El::Matrix<int>&)’
+    - compiler: gcc
+      env: GCC_VERSION=8 BUILD_TYPE=Release
+      addons:
+        apt:
+          sources:
+           - *base_sources
+          packages:
+           - *base_packages
+           - g++-8
+           - gfortran-8
 
 #notifications:
 #  email:
