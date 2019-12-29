@@ -10,6 +10,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
+    # MADNESS does not yet add -fext-numeric-literals when ENABLE_ELEMENTAL=ON and using GNU C++ .. TA does
     export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
     export F77=gfortran-$GCC_VERSION
   else
