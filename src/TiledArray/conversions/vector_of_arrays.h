@@ -358,7 +358,7 @@ class dist_subarray_vec
   const std::vector<Array>& array_accessor() const { return split_array; }
 
   /// @return number of Array in @c split_array
-  const unsigned long size() const { return rank_; }
+  unsigned long size() const { return rank_; }
 
  private:
   const std::vector<Array>& split_array;
