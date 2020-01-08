@@ -88,7 +88,7 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
   // N.B. tile norms are stored in scaled format, unscale in order to compute norms of fused tiles
   std::size_t narrays = array_rank;
   size_t fused_tile_ord = 0;
-  auto counter = 0;
+  auto element_offset_in_owner = 0;
   for (size_t vidx = 0, fused_vidx = 0; vidx < narrays;
        vidx += block_size, ++fused_vidx) {
     bool have_rank = (rank == fused_vidx % size);
@@ -98,7 +98,7 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
     for (size_t tile_ord = 0; tile_ord != ntiles_per_array;
          ++tile_ord, ++fused_tile_ord) {
       if (have_rank) {
-        auto array_ptr = arrays.begin() + counter * vblk_size;
+        auto array_ptr = arrays.begin() + element_offset_in_owner * vblk_size;
         float unscaled_fused_tile_norm2 = 0;
         const auto tile_volume = tile_volumes[tile_ord];
         for (size_t v = 0, vv = vidx; v != vblk_size; ++v, ++vv) {
@@ -106,7 +106,6 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
           unscaled_fused_tile_norm2 += unscaled_tile_norm * unscaled_tile_norm;
           ++array_ptr;
         }
-        //counter = tile_ord == (ntiles_per_array - 1) ? counter : counter - vblk_size;
         const auto fused_tile_volume = tile_volume * vblk_size;
         const auto fused_tile_norm =
                 std::sqrt(unscaled_fused_tile_norm2) / fused_tile_volume;
@@ -114,7 +113,7 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
         *(fused_tile_norms.data() + fused_tile_ord) = fused_tile_norm;
       }
     }
-    counter = have_rank ? counter + 1 : counter;
+    element_offset_in_owner = have_rank ? element_offset_in_owner + 1 : element_offset_in_owner;
   }
 
   auto fused_shapes =
