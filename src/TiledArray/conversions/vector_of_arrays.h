@@ -298,7 +298,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
       // ordinal of the corresponding tile in the unfused array
       const auto tile_ord_array = div0.rem;
 
-      const auto div1 = std::ldiv(tile_idx_mode0, nproc)
+      const auto div1 = std::ldiv(tile_idx_mode0, nproc);
       const auto tile_idx_on_owner = div1.quot;
       const auto vector_idx_offset_on_owner = tile_idx_on_owner * block_size;
       const auto owner_rank = div1.rem;
