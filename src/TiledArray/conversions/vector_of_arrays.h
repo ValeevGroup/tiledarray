@@ -322,6 +322,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
                             step +v, tile_ord_array));
         //++counter;
       }
+      global_world.gop.fence();
       fused_array.set(
               fused_tile_ord,
               global_world.taskq.add(make_tile, std::move(fused_tile_range),
