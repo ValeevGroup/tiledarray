@@ -73,6 +73,8 @@ namespace TiledArray {
         TA_ASSERT(pmap_->rank() == typename pmap_interface::size_type(world_.rank()));
         TA_ASSERT(pmap_->procs() == typename pmap_interface::size_type(world_.size()));
         TA_ASSERT(shape_.validate(trange_.tiles_range()));
+        // ensure that shapes are identical on every rank
+        TA_ASSERT(is_replicated(world, shape));
       }
 
       /// Virtual destructor
