@@ -336,6 +336,22 @@ template<typename> struct is_type : public std::true_type { };
 /// @c is_type_v<T> is an alias for @c is_type<T>::value
 template<typename T> constexpr const bool is_type_v = is_type<T>::value;
 
+/// @brief helper to implement other metafunctions
+/// @c is_type<T>::value is true if @c T is a valid type
+/// @tparam T a type
+/// @note see https://stackoverflow.com/questions/1625105/how-to-write-is-complete-template
+template <typename T, typename = void>
+struct is_complete_type : std::false_type {};
+
+struct is_complete_type<void> : std::false_type {};
+
+template <typename T>
+struct is_complete_type< T, decltype(void(sizeof(T))) > : std::true_type {};
+
+/// @tparam T a type
+/// @c is_complete_type_v<T> is an alias for @c is_complete_type<T>::value
+template<typename T> constexpr const bool is_complete_type_v = is_complete_type<T>::value;
+
 // import some existing C++17 features, or implement them
 #if __cplusplus <= 201402L
 
@@ -381,59 +397,42 @@ namespace TiledArray {
   /// some observable behavior does depend on this (e.g. given an explicit converting ctor
   /// A::A(C) and an B::operator C(), explicit conversion of B into A will be possible
   /// if B::operator C is implicit.
-#if !defined(__INTEL_COMPILER_BUILD_DATE)
-  template <typename From, typename To, typename Enabler = void>
-  struct has_conversion_operator : std::false_type {};
-
-  template <typename From, typename To>
-  struct has_conversion_operator<
-      From, To, typename std::enable_if<is_type<decltype(
-                    std::declval<From>().operator To())>::value>::type>
-      : std::true_type {};
-
-  template <typename From, typename To>
-  struct has_conversion_operator<
-      From, To,
-      typename std::enable_if<
-          is_type<decltype(std::declval<From>().operator To&())>::value>::type>
-      : std::true_type {};
-#else
-  /*
-   * see https://stackoverflow.com/questions/87372/check-if-a-class-has-a-member-function-of-a-given-signature#answer-10707822
-   * this works for icc and all other compilers tested:
-   * <iframe width="800px" height="200px" src="https://godbolt.org/e?readOnly=true&hideEditorToolbars=true#z:OYLghAFBqd5QCxAYwPYBMCmBRdBLAF1QCcAaPECAM1QDsCBlZAQwBtMQBGAFlICsQAJlKtmtUMgCkggELSZpAM6Z2yAnjqVMtdAGFUrAK4BbWl1Lb0AGTy1MAORMAjTMRDcArKQAOqRYQ1afSNTc19/dTobO0djFzdPJRVMNUCGAmZiAmCTM04k1UjadMyCaIdnV3cvRQysnND82tLy2PjqgEolVENiZA4AcmkAZltkIywAaklh3UN1VkIATxnsSQAGAEENzYJMY29RPenZgiXvbWZjTEmAMWJUY1JJs4vaK5uAFVRVnfHmRSKSYIAEAfTQtAAbq5/HRQagLsRmERiDtJAB2ORbSY4l7nTBYKiTZAg4iTOiYGZYza4ya1YiGNQvADuqGmmOJpMmAA9JB4ZII%2BQARKnskXDak7Wl7A5HG4zXSvS7XO7PJXvFWfNX4jXy4ZCukEdAgECXJzsUF4KigggK2rGkB4RTg0SAhVYcZKiD2k0e1iQtgKiG1O7SABsqwgHQAdAjXMiSJNPlGOqsTQGjJThmts4bkXhkOS7C9MLUIJM/V6fSA/Rmg3QQ7dw5GY3GkSikymAFSTVMSqW4mWHZF6xU6j6qvFvCefVZ59SFgisktl6NrvuSrbeQzmgsgAc47QmdkySYZwx6g3%2BABemFQVAge1qCvuj2e30j6w6HRO4qveFve8IBJTIfwxcVJXRCC0S2EYxgmUclRtJFCEUX5YK2AB6LswDAJMEBuIc5WmMN1hBZ1gwIUFiEwKhXG0fp4W8BUtRzNZSMmTBuV8LIgWYA9JicVADEwMRiQbDJ6BI9Zz0IkECEmJ0XgZG4rSJSRSNnDjvAeSE8CwNDsVxDT1mwJMTTbBNiC7KNxNoZ9SJ2LtMOmLYiJHBUp2VG5XyeLzdSTH5sx2elGQU8jwToaFiFhWgmPjFFBVgzEBOwyYGFuABJexNjMyyUQAWnIgq0GIGi1AK/xgEmEAf2cgT3L2BV1QnbZgqMnFmgXQ0HQIFSbXxFcCAgb5JggTYTS7DpbMosCUo62lJhogheloHqTT6i8BouKMqQE8CYJpXE0oy7LcvJRErIKrinQIIFasmeqFsaxDxxVNqzIErqCwrFJWC9J9hvDCaQHyxNvm/VyjpxQGIErfEIGBizLo7CHSEhVB9MeubqUW46ewAeRRxMbtqRRo0mAB1eTJmYIT5jpPBgBmW5HswgTpXxQlfs9BHYaR0HibJCGf2W1btqzU8OdxMXiDW2W4q9Dd9qgw7aROrKcrM4AJ1QaKavLJ7oZLWUPNON6bg%2Br6Mm66sqDYZQJaGiA12jHHpZxBX1pAe3WEdpXRRVkUMONtLPgQJTmTwVhWEEm5MEIAiyRM6tNswCWTPJZPSLth306VTOjc5i5ufhnbAZfB5jE/Ugvx/Av%2BxD2lvsLSjBOE2PZN/Lz0zYC9RTS6mCwQRSgUIFm2bRVXG82UKmU%2BdYTwOme54Uz5OCX6fqVXu4l6MrjDgLQgLoS8H1hmiSTyWzAVrlzeILFKfoJDuCqG50FQWyz5sCsUFdAJgAsgABUylYbAAAlUEMgACqoChSgiFJsb%2BaJBDDGZJkWgthqrSEEJlXQugKyoFLJMWgqAFKsmIAAa0mFHAgI86E3CoHgGKCloqxXJESBhylmDj0EElbYqCVDKBCjbAsoIATKCyBACKEI2GBHiu2EgL53zrDTCAWSzwcE9BJKovhytYKCJ0FaER%2BZkDiMBK4YauEZFRRhPIsGqJZi3HfJwNRGjph8O0QgVxei9pbBbuYyRw0bFQjsXCBxgonEqLcX3TAmjPGMgQLowQ%2BjZ6iLMRIyxEBrFglkWEuKETlFJlcdmXumZ4mCC8T4lJVIBhdFYCAAYHgBikDMAMdYLTUCNN0PIeQdIeh9HlKgwQLSCCNI6d%2BUglD3DrGjMMYYHhOCCAABxhjDB4bgYYACc6JlkiEadwFpbSOmkC6QMFpigQDrFIGM9pdTSBwFgEgNABxo6uHIJQF53g3luALMgTgWz8hMP%2BjCSgThxktKcLYTISxGmcBaS8649ACa0FYLCu5pAsDGDEMAdgELMXMJSOoaElyMVcRSPMQY8LyD0BUPixYTgkTECWPoLAcLRnEDwMYdlXQaD0CYGwDgPB%2BDmFEOIFAvTZAiDwE4S5kAugIiKKSyqRoZhCikLIeQPALnJFSJoCAlgGh5AsDoVolQ3D5HCAEOgRqwh%2BGtbQM1cQqhNF1UUEo9QDC5HMMoQoaQ6hlFsBUZ1FqlABttU0ANTr2icC6IoAZ/QhD1Mac01p%2BKznclWQVMM3BFLIELAC6MsyN4QFwIQRMIxhCTH0K89gydUGxurZKmQoyIWTIIswLAbgoxTKEIIOZ3BuDDHRJ4dYHhlnrEEFs5ZwgGkDEOWmjFZyLlXJuW2h5MBECg3mNuAgHzgKPG%2BXW8wBJy1uGEHyxgLA8XCuZEibwPL9lNKOemxpIwN60JHpmsM2bc1/MmIW4tra7mTOmcOuZgh1jcC2WGGdyz0SCAQ7wOdC7jmdMaSu65tyJnJoGCMxdJzl1rpA10ORmhuBAA"></iframe>
-   */
 template< typename From, typename To>
-struct has_conversion_operator
-{
-    /* operator-has-correct-sig */
-    template<typename A>
+struct has_conversion_operator {
+    /*
+     * see https://stackoverflow.com/questions/87372/check-if-a-class-has-a-member-function-of-a-given-signature#answer-10707822
+     * this works for icc and all other compilers tested:
+     * <iframe width="800px" height="200px" src="https://godbolt.org/e?readOnly=true&hideEditorToolbars=true#z:OYLghAFBqd5QCxAYwPYBMCmBRdBLAF1QCcAaPECAM1QDsCBlZAQwBtMQBGAFlICsQAJlKtmtUMgCkggELSZpAM6Z2yAnjqVMtdAGFUrAK4BbWl1Lb0AGTy1MAORMAjTMRDcArKQAOqRYQ1afSNTc19/dTobO0djFzdPJRVMNUCGAmZiAmCTM04k1UjadMyCaIdnV3cvRQysnND82tLy2PjqgEolVENiZA4AcmkAZltkIywAaklh3UN1VkIATxnsSQAGAEENzYJMY29RPenZgiXvbWZjTEmAMWJUY1JJs4vaK5uAFVRVnfHmRSKSYIAEAfTQtAAbq5/HRQagLsRmERiDtJAB2ORbSY4l7nTBYKiTZAg4iTOiYGZYza4ya1YiGNQvADuqGmmOJpMmAA9JB4ZII%2BQARKnskXDak7Wl7A5HG4zXSvS7XO7PJXvFWfNX4jXy4ZCukEdAgECXJzsUF4KigggK2rGkB4RTg0SAhVYcZKiD2k0e1iQtgKiG1O7SABsqwgHQAdAjXMiSJNPlGOqsTQGjJThmts4bkXhkOS7C9MLUIJM/V6fSA/Rmg3QQ7dw5GY3GkSikymAFSTVMSqW4mWHZF6xU6j6qvFvCefVZ59SFgisktl6NrvuSrbeQzmgsgAc47QmdkySYZwx6g3%2BABemFQVAge1qCvuj2e30j6w6HRO4qveFve8IBJTIfwxcVJXRCC0S2EYxgmUclRtJFCEUX5YK2AB6LswDAJMEBuIc5WmMN1hBZ1gwIUFiEwKhXG0fp4W8BUtRzNZSMmTBuV8LIgWYA9JicVADEwMRiQbDJ6BI9Zz0IkECEmJ0XgZG4rSJSRSNnDjvAeSE8CwNDsVxDT1mwJMTTbBNiC7KNxNoZ9SJ2LtMOmLYiJHBUp2VG5XyeLzdSTH5sx2elGQU8jwToaFiFhWgmPjFFBVgzEBOwyYGFuABJexNjMyyUQAWnIgq0GIGi1AK/xgEmEAf2cgT3L2BV1QnbZgqMnFmgXQ0HQIFSbXxFcCAgb5JggTYTS7DpbMosCUo62lJhogheloHqTT6i8BouKMqQE8CYJpXE0oy7LcvJRErIKrinQIIFasmeqFsaxDxxVNqzIErqCwrFJWC9J9hvDCaQHyxNvm/VyjpxQGIErfEIGBizLo7CHSEhVB9MeubqUW46ewAeRRxMbtqRRo0mAB1eTJmYIT5jpPBgBmW5HswgTpXxQlfs9BHYaR0HibJCGf2W1btqzU8OdxMXiDW2W4q9Dd9qgw7aROrKcrM4AJ1QaKavLJ7oZLWUPNON6bg%2Br6Mm66sqDYZQJaGiA12jHHpZxBX1pAe3WEdpXRRVkUMONtLPgQJTmTwVhWEEm5MEIAiyRM6tNswCWTPJZPSLth306VTOjc5i5ufhnbAZfB5jE/Ugvx/Av%2BxD2lvsLSjBOE2PZN/Lz0zYC9RTS6mCwQRSgUIFm2bRVXG82UKmU%2BdYTwOme54Uz5OCX6fqVXu4l6MrjDgLQgLoS8H1hmiSTyWzAVrlzeILFKfoJDuCqG50FQWyz5sCsUFdAJgAsgABUylYbAAAlUEMgACqoChSgiFJsb%2BaJBDDGZJkWgthqrSEEJlXQugKyoFLJMWgqAFKsmIAAa0mFHAgI86E3CoHgGKCloqxXJESBhylmDj0EElbYqCVDKBCjbAsoIATKCyBACKEI2GBHiu2EgL53zrDTCAWSzwcE9BJKovhytYKCJ0FaER%2BZkDiMBK4YauEZFRRhPIsGqJZi3HfJwNRGjph8O0QgVxei9pbBbuYyRw0bFQjsXCBxgonEqLcX3TAmjPGMgQLowQ%2BjZ6iLMRIyxEBrFglkWEuKETlFJlcdmXumZ4mCC8T4lJVIBhdFYCAAYHgBikDMAMdYLTUCNN0PIeQdIeh9HlKgwQLSCCNI6d%2BUglD3DrGjMMYYHhOCCAABxhjDB4bgYYACc6JlkiEadwFpbSOmkC6QMFpigQDrFIGM9pdTSBwFgEgNABxo6uHIJQF53g3luALMgTgWz8hMP%2BjCSgThxktKcLYTISxGmcBaS8649ACa0FYLCu5pAsDGDEMAdgELMXMJSOoaElyMVcRSPMQY8LyD0BUPixYTgkTECWPoLAcLRnEDwMYdlXQaD0CYGwDgPB%2BDmFEOIFAvTZAiDwE4S5kAugIiKKSyqRoZhCikLIeQPALnJFSJoCAlgGh5AsDoVolQ3D5HCAEOgRqwh%2BGtbQM1cQqhNF1UUEo9QDC5HMMoQoaQ6hlFsBUZ1FqlABttU0ANTr2icC6IoAZ/QhD1Mac01p%2BKznclWQVMM3BFLIELAC6MsyN4QFwIQRMIxhCTH0K89gydUGxurZKmQoyIWTIIswLAbgoxTKEIIOZ3BuDDHRJ4dYHhlnrEEFs5ZwgGkDEOWmjFZyLlXJuW2h5MBECg3mNuAgHzgKPG%2BXW8wBJy1uGEHyxgLA8XCuZEibwPL9lNKOemxpIwN60JHpmsM2bc1/MmIW4tra7mTOmcOuZgh1jcC2WGGdyz0SCAQ7wOdC7jmdMaSu65tyJnJoGCMxdJzl1rpA10ORmhuBAA"></iframe>
+     */
+
+    /* operator has correct sig */
+    template <typename A>
     static std::true_type test(To (A::*)() const) {
-        return std::true_type();
+      return std::true_type();
     }
 
     /* operator exists */
     template <typename A>
-    static decltype(test(&A::operator To))
-    test(decltype(&A::operator To),void *) {
-        /* Operator exists. What about sig? */
-        typedef decltype(test(&A::operator To)) return_type;
-        return return_type();
+    static decltype(test(&A::operator To)) test(decltype(&A::operator To),
+                                                void*) {
+      /* Operator exists. What about sig? */
+      typedef decltype(test(&A::operator To)) return_type;
+      return return_type();
     }
 
     /* operator does not exist */
-    template<typename A>
+    template <typename A>
     static std::false_type test(...) {
-        return std::false_type();
+      return std::false_type();
     }
 
     /* This will be either `std::true_type` or `std::false_type` */
-    typedef decltype(test<From>(0,0)) type;
+    typedef decltype(test<From>(0, 0)) type;
 
     static const bool value = type::value; /* Which is it? */
-};
-#endif
+  };
 
+  /// \c has_conversion_operator_v<From, To> is an alias for \c has_conversion_operator<From, To>::value
   template <class From, class To>
   constexpr const bool has_conversion_operator_v = has_conversion_operator<From, To>::value;
 
