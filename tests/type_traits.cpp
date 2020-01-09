@@ -222,6 +222,18 @@ BOOST_AUTO_TEST_CASE(_min_) {
   BOOST_CHECK(!there_is_min_int_double);
 }
 
+struct IncompleteType;
+struct CompleteType {};
+
+BOOST_AUTO_TEST_CASE(is_complete_type) {
+  constexpr bool void_is_complete_type = TiledArray::detail::is_complete_type_v<void>;
+  BOOST_CHECK(!void_is_complete_type);
+  constexpr bool IncompleteType_is_complete_type = TiledArray::detail::is_complete_type_v<IncompleteType>;
+  BOOST_CHECK(!IncompleteType_is_complete_type);
+  constexpr bool CompleteType_is_complete_type = TiledArray::detail::is_complete_type_v<CompleteType>;
+  BOOST_CHECK(CompleteType_is_complete_type);
+}
+
 BOOST_AUTO_TEST_CASE(convertibility) {
   using TileD = TiledArray::Tensor<double>;
   using LazyTileD = TiledArray::detail::LazyArrayTile<
