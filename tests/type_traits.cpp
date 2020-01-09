@@ -243,17 +243,17 @@ BOOST_AUTO_TEST_CASE(convertibility) {
         TiledArray::detail::is_implicitly_convertible<
             T, madness::Future<typename T::eval_type>>::value;
     constexpr bool lazy_tile_has_explconv_to_tilefut =
-        TiledArray::detail::has_conversion_operator<
-            T, madness::Future<typename T::eval_type>>::value;
+        TiledArray::detail::has_conversion_operator_v<
+            T, madness::Future<typename T::eval_type>>;
     BOOST_CHECK(!lazy_tile_is_explconv_to_tilefut);
     BOOST_CHECK(!lazy_tile_is_implconv_to_tilefut);
     BOOST_CHECK(!lazy_tile_has_explconv_to_tilefut);
 
     constexpr bool lazy_tile_has_conversion_operator_to_tile =
-        TiledArray::detail::has_conversion_operator<T, TileD>::value;
+        TiledArray::detail::has_conversion_operator_v<T, TileD>;
     constexpr bool lazy_tile_has_conversion_operator_to_tilefut =
-        TiledArray::detail::has_conversion_operator<
-            T, madness::Future<TileD>>::value;
+        TiledArray::detail::has_conversion_operator_v<
+            T, madness::Future<TileD>>;
     BOOST_CHECK(lazy_tile_has_conversion_operator_to_tile);
     BOOST_CHECK(!lazy_tile_has_conversion_operator_to_tilefut);
   }
