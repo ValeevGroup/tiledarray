@@ -1,5 +1,8 @@
+# See http://about.travis-ci.org/docs/user/build-configuration/
+# To validate this file: http://lint.travis-ci.org/
+
 language: cpp
-dist: xenial
+dist: bionic
 cache: ccache
 cache:
   directories:
@@ -8,12 +11,10 @@ os: linux
 
 addons:
   apt:
-    sources: &base_sources
-      - ubuntu-toolchain-r-test
     sources: &clang7_sources
-      - llvm-toolchain-xenial-7
+    - llvm-toolchain-bionic-7
     sources: &clang8_sources
-      - llvm-toolchain-xenial-8
+    - llvm-toolchain-bionic-8
     packages: &base_packages
     - libboost-all-dev
     - libblas-dev
@@ -32,31 +33,9 @@ matrix:
   fast_finish: true
   include:
     - compiler: gcc
-      env: GCC_VERSION=5 BUILD_TYPE=Debug
-      addons:
-        apt:
-          sources:
-           - *base_sources
-          packages:
-           - *base_packages
-           - g++-5
-           - gfortran-5
-    - compiler: gcc
-      env: GCC_VERSION=5 BUILD_TYPE=Release
-      addons:
-        apt:
-          sources:
-           - *base_sources
-          packages:
-           - *base_packages
-           - g++-5
-           - gfortran-5
-    - compiler: gcc
       env: GCC_VERSION=6 BUILD_TYPE=Debug
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-6
@@ -65,8 +44,6 @@ matrix:
       env: GCC_VERSION=6 BUILD_TYPE=Release
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-6
@@ -75,8 +52,6 @@ matrix:
       env: GCC_VERSION=7 BUILD_TYPE=Debug
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-7
@@ -85,18 +60,51 @@ matrix:
       env: GCC_VERSION=7 BUILD_TYPE=Release
       addons:
         apt:
-          sources:
-           - *base_sources
           packages:
            - *base_packages
            - g++-7
            - gfortran-7
+    - compiler: gcc
+      env: GCC_VERSION=8 BUILD_TYPE=Debug
+      addons:
+        apt:
+          packages:
+            - *base_packages
+            - g++-8
+            - gfortran-8
+    - compiler: gcc
+      env: GCC_VERSION=8 BUILD_TYPE=Release
+      addons:
+        apt:
+          packages:
+            - *base_packages
+            - g++-8
+            - gfortran-8
+    - compiler: gcc
+      env: GCC_VERSION=9 BUILD_TYPE=Debug
+      addons:
+        apt:
+          sources:
+            - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          packages:
+            - *base_packages
+            - g++-9
+            - gfortran-9
+    - compiler: gcc
+      env: GCC_VERSION=9 BUILD_TYPE=Release
+      addons:
+        apt:
+          sources:
+            - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          packages:
+            - *base_packages
+            - g++-9
+            - gfortran-9
     - compiler: clang
       env: CLANG_VERSION=7 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
           sources:
-           - *base_sources
            - *clang7_sources
           packages:
            - *base_packages
@@ -110,7 +118,6 @@ matrix:
       addons:
         apt:
           sources:
-           - *base_sources
            - *clang7_sources
           packages:
            - *base_packages
@@ -124,7 +131,6 @@ matrix:
       addons:
         apt:
           sources:
-            - *base_sources
             - *clang8_sources
           packages:
             - *base_packages
@@ -138,7 +144,6 @@ matrix:
       addons:
         apt:
           sources:
-            - *base_sources
             - *clang8_sources
           packages:
             - *base_packages
@@ -147,29 +152,34 @@ matrix:
             - clang-8
             - libc++-8-dev
             - libc++abi-8-dev
-  allow_failures:
-    # ambiguous template specialization ‘Copy<>’ for ‘void El::Copy(const El::Matrix<int>&, El::Matrix<int>&)’
-    - compiler: gcc
-      env: GCC_VERSION=8 BUILD_TYPE=Debug
+    - compiler: clang
+      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
           sources:
-           - *base_sources
+            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
-    # ambiguous template specialization ‘Copy<>’ for ‘void El::Copy(const El::Matrix<int>&, El::Matrix<int>&)’
-    - compiler: gcc
-      env: GCC_VERSION=8 BUILD_TYPE=Release
+            - *base_packages
+            - g++-8
+            - gfortran-8
+            - clang-9
+            - libc++-9-dev
+            - libc++abi-9-dev
+    - compiler: clang
+      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Release
       addons:
         apt:
           sources:
-           - *base_sources
+            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
+            - *base_packages
+            - g++-8
+            - gfortran-8
+            - clang-9
+            - libc++-9-dev
+            - libc++abi-9-dev
 
 #notifications:
 #  email:

@@ -222,6 +222,18 @@ BOOST_AUTO_TEST_CASE(_min_) {
   BOOST_CHECK(!there_is_min_int_double);
 }
 
+struct IncompleteType;
+struct CompleteType {};
+
+BOOST_AUTO_TEST_CASE(is_complete_type) {
+  constexpr bool void_is_complete_type = TiledArray::detail::is_complete_type_v<void>;
+  BOOST_CHECK(!void_is_complete_type);
+  constexpr bool IncompleteType_is_complete_type = TiledArray::detail::is_complete_type_v<IncompleteType>;
+  BOOST_CHECK(!IncompleteType_is_complete_type);
+  constexpr bool CompleteType_is_complete_type = TiledArray::detail::is_complete_type_v<CompleteType>;
+  BOOST_CHECK(CompleteType_is_complete_type);
+}
+
 BOOST_AUTO_TEST_CASE(convertibility) {
   using TileD = TiledArray::Tensor<double>;
   using LazyTileD = TiledArray::detail::LazyArrayTile<
@@ -243,17 +255,17 @@ BOOST_AUTO_TEST_CASE(convertibility) {
         TiledArray::detail::is_implicitly_convertible<
             T, madness::Future<typename T::eval_type>>::value;
     constexpr bool lazy_tile_has_explconv_to_tilefut =
-        TiledArray::detail::has_conversion_operator<
-            T, madness::Future<typename T::eval_type>>::value;
+        TiledArray::detail::has_conversion_operator_v<
+            T, madness::Future<typename T::eval_type>>;
     BOOST_CHECK(!lazy_tile_is_explconv_to_tilefut);
     BOOST_CHECK(!lazy_tile_is_implconv_to_tilefut);
     BOOST_CHECK(!lazy_tile_has_explconv_to_tilefut);
 
     constexpr bool lazy_tile_has_conversion_operator_to_tile =
-        TiledArray::detail::has_conversion_operator<T, TileD>::value;
+        TiledArray::detail::has_conversion_operator_v<T, TileD>;
     constexpr bool lazy_tile_has_conversion_operator_to_tilefut =
-        TiledArray::detail::has_conversion_operator<
-            T, madness::Future<TileD>>::value;
+        TiledArray::detail::has_conversion_operator_v<
+            T, madness::Future<TileD>>;
     BOOST_CHECK(lazy_tile_has_conversion_operator_to_tile);
     BOOST_CHECK(!lazy_tile_has_conversion_operator_to_tilefut);
   }

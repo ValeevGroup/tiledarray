@@ -49,9 +49,9 @@ namespace TiledArray {
     ///       that evaluates to Result.
     template <typename Result, typename Arg>
     class Cast<Result, Arg,
-        std::enable_if_t<detail::has_conversion_operator<
-            Arg, madness::Future<Result>>::value ||
-            detail::is_convertible<Arg, Result>::value>
+        std::enable_if_t<detail::has_conversion_operator_v<
+            Arg, madness::Future<Result>> ||
+            detail::is_convertible_v<Arg, Result>>
     > {
 
      public:
@@ -59,8 +59,8 @@ namespace TiledArray {
        typedef Result result_type; ///< Result tile type
        typedef Arg argument_type; ///< Argument tile type
        static const constexpr bool is_nonblocking =
-           detail::has_conversion_operator<argument_type,
-                                           madness::Future<result_type>>::value;
+           detail::has_conversion_operator_v<argument_type,
+                                           madness::Future<result_type>>;
 
        // basic type sanity checks
        static_assert(
@@ -70,9 +70,9 @@ namespace TiledArray {
            std::is_same<argument_type, std::decay_t<argument_type>>::value,
            "Cast<Result,Arg>: Arg must be a non-const non-ref type");
        static_assert(
-           detail::has_conversion_operator<
-               argument_type, madness::Future<result_type>>::value ||
-               detail::is_convertible<argument_type, result_type>::value,
+           detail::has_conversion_operator_v<
+               argument_type, madness::Future<result_type>> ||
+               detail::is_convertible_v<argument_type, result_type>,
            "Cast<Result,Arg> does not know how to construct Result or "
            "Future<Result> from Arg");
 
@@ -89,8 +89,8 @@ namespace TiledArray {
        template <typename Result_, typename Arg_>
        static auto invoker(
            Arg_&& arg,
-           std::enable_if_t<detail::has_conversion_operator<
-               std::decay_t<Arg_>, madness::Future<Result_>>::value>* =
+           std::enable_if_t<detail::has_conversion_operator_v<
+               std::decay_t<Arg_>, madness::Future<Result_>>>* =
                nullptr) {
          auto exec = [](Arg_&& arg) {
            return static_cast<madness::Future<Result_>>(std::forward<Arg_>(arg));

@@ -75,7 +75,7 @@ class Singleton {
     const auto& result_ptr = instance_accessor();
     if (result_ptr != nullptr) return *result_ptr;
     throw std::logic_error(
-        "sequant::Singleton: is not default-constructible and set_instance() "
+        "TiledArray::Singleton: is not default-constructible and set_instance() "
         "has not been called");
   }
 

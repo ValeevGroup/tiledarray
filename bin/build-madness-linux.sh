@@ -10,7 +10,8 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
-    export EXTRACXXFLAGS="-mno-avx"
+    # MADNESS does not yet add -fext-numeric-literals when ENABLE_ELEMENTAL=ON and using GNU C++ .. TA does
+    export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
     export F77=gfortran-$GCC_VERSION
   else
     export CC=/usr/bin/clang-$CLANG_VERSION
@@ -60,7 +61,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DASSERTION_TYPE=throw \
       -DDISABLE_WORLD_GET_DEFAULT=ON \
       -DENABLE_ELEMENTAL=ON \
-      -DELEMENTAL_TAG=50e24bb92b6b2e30d657decda3a903d967f00f0b \
+      -DELEMENTAL_TAG=de7b5bea1abf5f626b91582f742cf99e2e551bff \
       -DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77
 

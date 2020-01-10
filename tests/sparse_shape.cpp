@@ -280,8 +280,8 @@ BOOST_AUTO_TEST_CASE( block )
         std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
         for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
-          for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i)
-            arg_index[i] = (*it)[i] + lower[i];
+          for(unsigned int j = 0u; j < sparse_shape.data().range().rank(); ++j)
+            arg_index[j] = (*it)[j] + lower[j];
 
           // Check the result elements
           BOOST_CHECK_CLOSE(result.data()(*it), sparse_shape.data()(arg_index), tolerance);
@@ -338,8 +338,8 @@ BOOST_AUTO_TEST_CASE( block_scale )
         std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
         for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
-          for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i)
-            arg_index[i] = (*it)[i] + lower[i];
+          for(unsigned int j = 0u; j < sparse_shape.data().range().rank(); ++j)
+            arg_index[j] = (*it)[j] + lower[j];
 
           // Compute the expected value
           const auto expected = sparse_shape.data()(arg_index) * factor;
@@ -401,9 +401,9 @@ BOOST_AUTO_TEST_CASE( block_perm )
         std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
         for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
-          for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i) {
-            const auto perm_i = perm[i];
-            arg_index[i] = (*it)[perm_i] + lower[i];
+          for(unsigned int j = 0u; j < sparse_shape.data().range().rank(); ++j) {
+            const auto perm_i = perm[j];
+            arg_index[j] = (*it)[perm_i] + lower[j];
           }
 
           // Check the result elements
@@ -463,9 +463,9 @@ BOOST_AUTO_TEST_CASE( block_scale_perm )
         std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(), 0ul);
         for(auto it = result.data().range().begin(); it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
-          for(unsigned int i = 0u; i < sparse_shape.data().range().rank(); ++i) {
-            const auto perm_i = perm[i];
-            arg_index[i] = (*it)[perm_i] + lower[i];
+          for(unsigned int j = 0u; j < sparse_shape.data().range().rank(); ++j) {
+            const auto perm_i = perm[j];
+            arg_index[j] = (*it)[perm_i] + lower[j];
           }
 
           // Compute the expected value

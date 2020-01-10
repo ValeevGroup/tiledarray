@@ -122,7 +122,7 @@ namespace TiledArray {
       }
 
 #else
-    explicit operator conversion_result_type() const {
+      explicit operator conversion_result_type() const {
         return ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
                                                  : (*op_)(tile_));
       }
