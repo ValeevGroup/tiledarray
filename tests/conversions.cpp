@@ -91,6 +91,16 @@ struct ConversionsFixture : public TiledRangeFixture {
     return result;
   }
 
+  template <typename Tile>
+  static double init_unit_tile(
+          Tile& tile, const typename Tile::range_type& r){
+   tile = Tile(r);
+   for (std::size_t i = 0ul; i < tile.size(); ++i) tile[i] = 1;
+   double result;
+   norm(tile, result);
+   return result;
+  }
+
   template <typename T>
   static void set_random(T& t) {
     t = GlobalFixture::world->rand() % 101;
@@ -341,10 +351,12 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
     // Make a tiled range with arbitrary block size
     TiledArray::TiledRange tr;
     TiledArray::TiledRange tr_split;
-    std::size_t block_size = 2;
+    std::size_t block_size = 35;
+    std::size_t dim_one = 1336;
+    std::size_t dim_two = 552;
     {
-      TA::TiledRange1 tr1_mode0 = compute_trange1(11, block_size);
-      TA::TiledRange1 tr1_mode1 = compute_trange1(7, 3);
+      TA::TiledRange1 tr1_mode0 = compute_trange1(dim_one, block_size);
+      TA::TiledRange1 tr1_mode1 = compute_trange1(dim_two, 10);
       tr = TiledArray::TiledRange({tr1_mode0, tr1_mode1});
       tr_split = TiledArray::TiledRange({tr1_mode1});
     }
@@ -383,8 +395,10 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
     // sparse test
     {
       // Make an sparse array with tiled range from above.
+//      auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
+//                                            &this->init_rand_tile < TensorI > );
       auto b_sparse = make_array<TSpArrayI>(*GlobalFixture::world, tr,
-                                            &this->init_rand_tile < TensorI > );
+                                            &this->init_unit_tile < TensorI>);
       auto &world = b_sparse.world();
 
       // Grab number of tiles in fused mode
