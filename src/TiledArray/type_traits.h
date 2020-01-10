@@ -343,6 +343,7 @@ template<typename T> constexpr const bool is_type_v = is_type<T>::value;
 template <typename T, typename = void>
 struct is_complete_type : std::false_type {};
 
+template <>
 struct is_complete_type<void> : std::false_type {};
 
 template <typename T>
