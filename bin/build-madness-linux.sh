@@ -38,7 +38,9 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     mkdir -p madness
     cd madness
 
-    git clone https://github.com/m-a-d-n-e-s-s/madness madness_src
+    # check out the tracked tag of MADNESS
+    export MADNESS_TAG=`grep 'set(MADNESS_OLDEST_TAG' /Users/evaleev/code/tiledarray/external/madness.cmake | awk '{print $2}' | sed s/\"//g`
+    git clone https://github.com/m-a-d-n-e-s-s/madness madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
 
     cmake madness_src \
       -DCMAKE_CXX_COMPILER=$CXX \
