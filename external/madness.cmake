@@ -445,7 +445,7 @@ endif()
 include_directories(${MADNESS_INCLUDE_DIRS})
 list (APPEND TiledArray_LIBRARIES ${MADNESS_LIBRARIES})
 append_flags(CMAKE_CXX_FLAGS "${MADNESS_COMPILE_FLAGS}")
-# gcc needs -fext-numeric-literals to compile/use ELemental
+# gcc needs -fext-numeric-literals to compile/use Elemental
 # neither MADNESS nor Elemental export this compile option
 if (${TILEDARRAY_HAS_ELEMENTAL} AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   append_flags(CMAKE_CXX_FLAGS "-fext-numeric-literals")
