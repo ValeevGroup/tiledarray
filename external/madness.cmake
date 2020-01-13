@@ -297,6 +297,8 @@ else()
     set(MAD_ELEMENTAL_OPTIONS -DELEMENTAL_URL=${ELEMENTAL_URL} ${MAD_ELEMENTAL_OPTIONS})
   endif (DEFINED ELEMENTAL_URL)
   # gcc needs -fext-numeric-literals to compile recent Elemental
+  # N.B. Neither Elemental nor MADNESS will export these flags as part of INTERFACE_COMPILE_OPTIONS
+  #      so will add this for TiledArray globally at the bottom of this file
   if (${ENABLE_ELEMENTAL} AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
     set(MADNESS_EXTRA_CXX_FLAGS "-fext-numeric-literals ${MADNESS_EXTRA_CXX_FLAGS}")
   endif()
@@ -443,5 +445,10 @@ endif()
 include_directories(${MADNESS_INCLUDE_DIRS})
 list (APPEND TiledArray_LIBRARIES ${MADNESS_LIBRARIES})
 append_flags(CMAKE_CXX_FLAGS "${MADNESS_COMPILE_FLAGS}")
+# gcc needs -fext-numeric-literals to compile/use ELemental
+# neither MADNESS nor Elemental export this compile option
+if (${TILEDARRAY_HAS_ELEMENTAL} AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+  append_flags(CMAKE_CXX_FLAGS "-fext-numeric-literals")
+endif()
 append_flags(CMAKE_EXE_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")
 
