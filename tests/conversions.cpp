@@ -385,7 +385,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
         world.gop.fence();
 
         //convert vector of arrays back into dense array
-        auto b_dense_fused = TiledArray::fuse_vector_of_arrays_tiles(world, b_dense_vector, 11, tr_split, block_size);
+        auto b_dense_fused = TiledArray::fuse_vector_of_arrays_tiles(world, b_dense_vector, dim_one, tr_split, block_size);
         b_dense_vector.clear();
 
         check_equal(b_dense, b_dense_fused);
@@ -418,7 +418,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
         world.gop.fence();
 
         //convert vector of arrays back into dense array
-        auto b_sparse_fused = TiledArray::fuse_vector_of_arrays_tiles(world, b_sparse_vector, 11, tr_split, block_size);
+        auto b_sparse_fused = TiledArray::fuse_vector_of_arrays_tiles(world, b_sparse_vector, dim_one, tr_split, block_size);
         b_sparse_vector.clear();
         // Check to see if the fused and original arrays are the same
 
