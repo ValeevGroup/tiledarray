@@ -11,10 +11,10 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-set(MADNESS_OLDEST_TAG "1bef8ad53526648fc9ca99d336b9624a150229b9" CACHE STRING
+set(MADNESS_OLDEST_TAG ${TA_TRACKED_MADNESS_TAG} CACHE STRING
         "The oldest revision hash or tag of MADNESS that can be used")
 
-find_package(MADNESS 0.10.1 CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
+find_package(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
 
 macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
   set(${_mad_config_libs} )
@@ -375,7 +375,7 @@ else()
   endif(error_code)
 
   set(MADNESS_DIR ${MADNESS_BINARY_DIR})
-  find_package(MADNESS 0.10.1 CONFIG REQUIRED
+  find_package(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG REQUIRED
                COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
   set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
   
@@ -445,9 +445,9 @@ endif()
 include_directories(${MADNESS_INCLUDE_DIRS})
 list (APPEND TiledArray_LIBRARIES ${MADNESS_LIBRARIES})
 append_flags(CMAKE_CXX_FLAGS "${MADNESS_COMPILE_FLAGS}")
-# gcc needs -fext-numeric-literals to compile/use ELemental
+# gcc needs -fext-numeric-literals to compile/use Elemental
 # neither MADNESS nor Elemental export this compile option
-if (${TILEDARRAY_HAS_ELEMENTAL} AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+if (TILEDARRAY_HAS_ELEMENTAL AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   append_flags(CMAKE_CXX_FLAGS "-fext-numeric-literals")
 endif()
 append_flags(CMAKE_EXE_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")

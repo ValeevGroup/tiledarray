@@ -83,6 +83,9 @@ set(TILEDARRAY_INSTALL_DOCDIR "share/tiledarray/${TILEDARRAY_VERSION}/doc"
 set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
     CACHE PATH "TiledArray CMAKE install directory")
 
+# Preload versions/tags of all dependencies ====================================
+include(external/versions.cmake)
+
 # Configure options =======================================================
 option(ENABLE_MPI "Enable MPI" ON)
 add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-memory parallel programs")
@@ -91,7 +94,7 @@ option(ENABLE_ELEMENTAL "Enable use of MADNESS-provided Elemental" OFF)
 add_feature_info(Elemental ENABLE_ELEMENTAL "Elemental provides parallel linear algebra")
 
 if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
-    set(ELEMENTAL_TAG de7b5bea1abf5f626b91582f742cf99e2e551bff)
+    set(ELEMENTAL_TAG ${TA_TRACKED_ELEMENTAL_TAG})
 endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
 
 redefaultable_option(ENABLE_MKL "Enable use of MKL (info passed to MADNESS)" ON)
