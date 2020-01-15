@@ -136,7 +136,7 @@ target_link_libraries(${executable} PUBLIC ${MADNESS_DISABLEPIE_LINKER_FLAG})
 
 # Add targets
 add_dependencies(${executable} External)
-add_test(build_${executable} "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR} --target ${executable})
+add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
 
 # Add a test(s)
 if(ENABLE_MPI)
