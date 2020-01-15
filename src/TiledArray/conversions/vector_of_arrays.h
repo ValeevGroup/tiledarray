@@ -245,7 +245,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
         const std::size_t fused_dim_extent,
         const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
   auto nproc = global_world.size();
-  auto rank = global_world.rank();
 
   // make instances of array_vec globally accessible
   using Array = TA::DistArray<Tile, Policy>;
@@ -368,8 +367,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
       split_arrays.push_back(split_array);
     }
 
-    size_t i_offset_in_tile;
-
     /// copy the data from tile
     auto make_tile = [](const TA::Range &range,
                                          const Tile &fused_tile,
@@ -386,11 +383,6 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
     for (std::size_t index : *(*split_array_ptr).pmap()) {
       std::size_t fused_array_index = tile_idx * split_ntiles + index;
       if (!fused_array.is_zero(fused_array_index)) {
-        //Tile tile = fused_array.find(fused_array_index);
-        const auto div = std::ldiv(fused_array_index, split_ntiles);
-        const auto tile_idx_mode0 = div.quot;
-        const auto tile_ord_array = div.rem;
-
         for(std::size_t i = tile_range.first, tile_count = 0;
             i < tile_range.second; ++i, ++tile_count) {
           auto &array = *(split_array_ptr + arrays_size + tile_count);
