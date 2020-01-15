@@ -61,7 +61,7 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
         const std::size_t array_rank,
         const TA::TiledRange& fused_trange) {
   if(arrays.size() == 0) {
-    TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range(), 1.0);
+    TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range(), 0.f);
     return TA::SparseShape<float>(global_world, fused_tile_norms, fused_trange, true);
   }
   const std::size_t rank = global_world.rank();
@@ -150,6 +150,7 @@ inline TA::SparseShape<float> subshape_from_fused_tile(
         const TA::TiledRange& split_trange, const TA::SparsePolicy::shape_type & shape,
         const std::size_t tile_idx, const std::size_t split_ntiles,
         const std::size_t tile_size){
+  TA_ASSERT(split_ntiles == split_trange.tiles_range().volume());
   TA::Tensor<float> split_tile_norms(split_trange.tiles_range());
 
   // map element i to its tile index
