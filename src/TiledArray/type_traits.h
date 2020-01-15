@@ -276,6 +276,8 @@ namespace TiledArray {
   GENERATE_HAS_MEMBER_TYPE(const_iterator)
   GENERATE_HAS_MEMBER_TYPE(reverse_iterator)
   GENERATE_HAS_MEMBER_TYPE(const_reverse_iterator)
+  GENERATE_HAS_MEMBER_TYPE(key_type)
+  GENERATE_HAS_MEMBER_TYPE(mapped_type)
 
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(size)
   GENERATE_HAS_MEMBER_FUNCTION(size)
@@ -285,6 +287,7 @@ namespace TiledArray {
   GENERATE_HAS_MEMBER_FUNCTION(empty)
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(clear)
   GENERATE_HAS_MEMBER_FUNCTION(clear)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(resize)
 
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(begin)
   GENERATE_HAS_MEMBER_FUNCTION(begin)
@@ -398,8 +401,8 @@ namespace TiledArray {
   /// some observable behavior does depend on this (e.g. given an explicit converting ctor
   /// A::A(C) and an B::operator C(), explicit conversion of B into A will be possible
   /// if B::operator C is implicit.
-template< typename From, typename To>
-struct has_conversion_operator {
+  template< typename From, typename To>
+  struct has_conversion_operator {
     /*
      * see https://stackoverflow.com/questions/87372/check-if-a-class-has-a-member-function-of-a-given-signature#answer-10707822
      * this works for icc and all other compilers tested:
