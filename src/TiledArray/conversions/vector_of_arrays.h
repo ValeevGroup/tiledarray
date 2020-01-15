@@ -97,21 +97,21 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
             (narrays - vidx) >= block_size ? block_size : narrays - vidx;
     for (size_t tile_ord = 0; tile_ord != ntiles_per_array;
          ++tile_ord, ++fused_tile_ord) {
-      float unscaled_fused_tile_norm2 = 0;
-      const auto tile_volume = tile_volumes[tile_ord];
       if (have_rank) {
         auto array_ptr = arrays.begin() + element_offset_in_owner * vblk_size;
+        float unscaled_fused_tile_norm2 = 0;
+        const auto tile_volume = tile_volumes[tile_ord];
         for (size_t v = 0, vv = vidx; v != vblk_size; ++v, ++vv) {
           const auto unscaled_tile_norm = (*(array_ptr)).shape().data()[tile_ord] * tile_volume;
           unscaled_fused_tile_norm2 += unscaled_tile_norm * unscaled_tile_norm;
           ++array_ptr;
         }
-      }
-      const auto fused_tile_volume = tile_volume * vblk_size;
-      const auto fused_tile_norm =
-              std::sqrt(unscaled_fused_tile_norm2) / fused_tile_volume;
+        const auto fused_tile_volume = tile_volume * vblk_size;
+        const auto fused_tile_norm =
+                std::sqrt(unscaled_fused_tile_norm2) / fused_tile_volume;
 
-      *(fused_tile_norms.data() + fused_tile_ord) = fused_tile_norm;
+        *(fused_tile_norms.data() + fused_tile_ord) = fused_tile_norm;
+      }
     }
     element_offset_in_owner = have_rank ? element_offset_in_owner + 1 : element_offset_in_owner;
   }
