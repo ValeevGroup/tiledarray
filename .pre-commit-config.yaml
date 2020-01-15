@@ -1,0 +1,43 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+    -   repo: https://github.com/pre-commit/pre-commit-hooks
+        rev: v2.4.0
+        hooks:
+            -   id: check-added-large-files
+            -   id: check-case-conflict
+            -   id: check-merge-conflict
+            #    -   id: check-yaml  ... both .codecov and .travis contain duplicate keys
+            -   id: end-of-file-fixer
+    -   repo: https://github.com/Lucas-C/pre-commit-hooks
+        rev: v1.1.7
+        hooks:
+            -   id: remove-crlf
+            -   id: forbid-tabs
+                # MPQC output and JS/XML/CSS/CMake can contain tabs
+                exclude: \.(out|cmake|js|xml|css)$
+    # see https://github.com/Lucas-C/pre-commit-hooks#forbid--remove-some-unicode-characters
+    -   repo: local
+        hooks:
+            -   id: forbid-unicode-non-breaking-spaces
+                name: Detect unicode non-breaking space character U+00A0 aka M-BM-
+                language: system
+                entry: perl -ne 'print if $m = /\xc2\xa0/; $t ||= $m; END{{exit $t}}'
+                files: ''
+            -   id: forbid-en-dashes
+                name: Detect the EXTREMELY confusing unicode character U+2013
+                language: system
+                entry: perl -ne 'print if $m = /\xe2\x80\x93/; $t ||= $m; END{{exit $t}}'
+                files: ''
+            -   id: dependency-version-update
+                name: Updates versions of dependencies
+                language: system
+                files: versions\.cmake$
+                entry: bin/admin/dependency-versions-update-hook.py
+            -   id: clang-format
+                name: Format C/C++ code using clang-format.
+                language: system
+                files: \.(c|cc|cxx|cpp|h|hpp|hxx)$
+                entry: clang-format -i
+                args: [--style=file]
+                additional_dependencies: [clang-format]
