@@ -153,7 +153,7 @@ namespace TiledArray {
     // State accessor ----------------------------------------------------------
 
     bool empty() const {
-      return not bool(pimpl_);
+      return pimpl_ ? pimpl_->empty() : true;
     }
 
     // Tile accessor -----------------------------------------------------------
@@ -426,6 +426,7 @@ namespace TiledArray {
   }
 
 
+#if __cplusplus <= 201402L
   // Empty operations ----------------------------------------------------------
 
   /// Check that \c arg is empty (no data)
@@ -437,7 +438,7 @@ namespace TiledArray {
   inline bool empty(const Tile<Arg>& arg) {
     return arg.empty() || empty(arg.tensor());
   }
-
+#endif
 
   // Permutation operations ----------------------------------------------------
 
