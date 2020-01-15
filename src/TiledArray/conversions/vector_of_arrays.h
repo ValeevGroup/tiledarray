@@ -82,7 +82,7 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
     }
   }
 
-  TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range());
+  TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range(), 0.f);  // use nonzeroes for local tiles only
 
   // compute norms of fused tiles
   // N.B. tile norms are stored in scaled format, unscale in order to compute norms of fused tiles
