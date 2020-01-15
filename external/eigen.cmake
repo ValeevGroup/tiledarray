@@ -8,7 +8,7 @@ include(AppendFlags)
 # prefer CMake-configured-and-installed instance
 # re:NO_CMAKE_PACKAGE_REGISTRY: eigen3 registers its *build* tree with the user package registry ...
 #                               to avoid issues with wiped build directory look for installed eigen
-find_package(Eigen3 3.3 NO_MODULE QUIET NO_CMAKE_PACKAGE_REGISTRY)
+find_package(Eigen3 ${TA_TRACKED_EIGEN_VERSION} NO_MODULE QUIET NO_CMAKE_PACKAGE_REGISTRY)
 if (TARGET Eigen3::Eigen)
   # import alias into TiledArray "namespace"
   # TODO bump CMake requirement to 3.11 when available, uncomment this and remove the rest of this clause
@@ -21,7 +21,7 @@ if (TARGET Eigen3::Eigen)
   endforeach()
 else (TARGET Eigen3::Eigen)
   # otherwise use bundled FindEigen3.cmake module controlled by EIGEN3_INCLUDE_DIR
-  find_package(Eigen3 3.3)
+  find_package(Eigen3 ${TA_TRACKED_EIGEN_VERSION})
 
   if (EIGEN3_FOUND)
     add_library(TiledArray_Eigen INTERFACE)

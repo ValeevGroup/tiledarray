@@ -32,7 +32,7 @@ else()
         set(UMPIRE_URL https://github.com/LLNL/Umpire.git)
     endif (NOT UMPIRE_URL)
     if (NOT UMPIRE_TAG)
-        set(UMPIRE_TAG f04abd1dd038c84262915a493d8f78576bb80fd0)
+        set(UMPIRE_TAG ${TA_TRACKED_UMPIRE_TAG})
     endif (NOT UMPIRE_TAG)
 
     message("** Will clone Umpire from ${UMPIRE_URL}")

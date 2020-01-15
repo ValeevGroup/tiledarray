@@ -6,7 +6,7 @@ if (BOOST_ROOT OR BOOST_INCLUDEDIR)
 endif()
   
 # Check for Boost
-find_package(Boost 1.33)
+find_package(Boost ${TA_TRACKED_BOOST_VERSION})
 
 if (Boost_FOUND)
 
