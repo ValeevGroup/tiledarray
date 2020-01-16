@@ -13,9 +13,10 @@ TA::Tensor<T> make_tile(const TA::Range& range, const double v) {
 // Fill array x with value v
 void init_array(TA::TArrayD& x, const double v) {
   // Add local tiles to a
-  for(auto it = begin(x); it != end(x); ++it) {
+  for (auto it = begin(x); it != end(x); ++it) {
     // Construct a tile using a MADNESS task.
-    auto tile = x.world().taskq.add(make_tile<double>, x.trange().make_tile_range(it.index()), v);
+    auto tile = x.world().taskq.add(make_tile<double>,
+                                    x.trange().make_tile_range(it.index()), v);
 
     // Insert the tile into the array
     *it = tile;
@@ -28,12 +29,11 @@ int main(int argc, char* argv[]) {
 
   // Construct tile boundary vector
   std::vector<std::size_t> tile_boundaries;
-  for(std::size_t i = 0; i <= 16; i += 4)
-    tile_boundaries.push_back(i);
+  for (std::size_t i = 0; i <= 16; i += 4) tile_boundaries.push_back(i);
 
   // Construct a set of TiledRange1's
-  std::vector<TA::TiledRange1>
-    ranges(2, TA::TiledRange1(tile_boundaries.begin(), tile_boundaries.end()));
+  std::vector<TA::TiledRange1> ranges(
+      2, TA::TiledRange1(tile_boundaries.begin(), tile_boundaries.end()));
 
   // Construct the 2D TiledRange
   TA::TiledRange trange(ranges.begin(), ranges.end());

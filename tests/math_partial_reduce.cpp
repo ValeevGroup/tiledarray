@@ -29,28 +29,25 @@
 using namespace TiledArray;
 
 struct PartialReduceFixture {
-
   PartialReduceFixture() {
     rand_fill(x, 78);
     rand_fill(y, 27);
     rand_fill(a, 388);
   }
 
-  ~PartialReduceFixture() { }
+  ~PartialReduceFixture() {}
 
   template <std::size_t N>
   static void rand_fill(int (&vec)[N], const int seed) {
     GlobalFixture::world->srand(seed);
-    for(std::size_t i = 0ul; i < N; ++i)
+    for (std::size_t i = 0ul; i < N; ++i)
       vec[i] = GlobalFixture::world->rand() % 101;
   }
 
   struct Sum {
     typedef void result_type;
 
-    void operator()(int& result, const int arg) const {
-      result += arg;
-    }
+    void operator()(int& result, const int arg) const { result += arg; }
   };
 
   struct MultSum {
@@ -67,12 +64,11 @@ struct PartialReduceFixture {
   int y[n];
   int a[m * n];
 
-}; // PartialReduceFixture
+};  // PartialReduceFixture
 
-BOOST_FIXTURE_TEST_SUITE( math_partial_reduce_suite, PartialReduceFixture )
+BOOST_FIXTURE_TEST_SUITE(math_partial_reduce_suite, PartialReduceFixture)
 
-BOOST_AUTO_TEST_CASE( unary_row_reduce )
-{
+BOOST_AUTO_TEST_CASE(unary_row_reduce) {
   // Create a copy of the result for later use.
   int x_ref[m];
   std::copy(x, x + m, x_ref);
@@ -81,9 +77,9 @@ BOOST_AUTO_TEST_CASE( unary_row_reduce )
   math::row_reduce(m, n, a, x, Sum());
 
   // Check the result of the partial reduction.
-  for(std::size_t i = 0ul; i < m; ++i) {
+  for (std::size_t i = 0ul; i < m; ++i) {
     int expected = x_ref[i];
-    for(std::size_t j = 0ul; j < n; ++j) {
+    for (std::size_t j = 0ul; j < n; ++j) {
       expected += a[i * n + j];
     }
 
@@ -91,8 +87,7 @@ BOOST_AUTO_TEST_CASE( unary_row_reduce )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_row_reduce )
-{
+BOOST_AUTO_TEST_CASE(binary_row_reduce) {
   // Create a copy of the result for later use.
   int x_ref[m];
   std::copy(x, x + m, x_ref);
@@ -101,9 +96,9 @@ BOOST_AUTO_TEST_CASE( binary_row_reduce )
   math::row_reduce(m, n, a, y, x, MultSum());
 
   // Check the result of the partial reduction.
-  for(std::size_t i = 0ul; i < m; ++i) {
+  for (std::size_t i = 0ul; i < m; ++i) {
     int expected = x_ref[i];
-    for(std::size_t j = 0ul; j < n; ++j) {
+    for (std::size_t j = 0ul; j < n; ++j) {
       expected += a[i * n + j] * y[j];
     }
 
@@ -111,8 +106,7 @@ BOOST_AUTO_TEST_CASE( binary_row_reduce )
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_col_reduce )
-{
+BOOST_AUTO_TEST_CASE(unary_col_reduce) {
   // Create a copy of the result for later use.
   int y_ref[n];
   std::copy(y, y + n, y_ref);
@@ -121,9 +115,9 @@ BOOST_AUTO_TEST_CASE( unary_col_reduce )
   math::col_reduce(m, n, a, y, Sum());
 
   // Check the result of the partial reduction.
-  for(std::size_t j = 0ul; j < n; ++j) {
+  for (std::size_t j = 0ul; j < n; ++j) {
     int expected = y_ref[j];
-    for(std::size_t i = 0ul; i < m; ++i) {
+    for (std::size_t i = 0ul; i < m; ++i) {
       expected += a[i * n + j];
     }
 
@@ -131,8 +125,7 @@ BOOST_AUTO_TEST_CASE( unary_col_reduce )
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_col_reduce )
-{
+BOOST_AUTO_TEST_CASE(binary_col_reduce) {
   // Create a copy of the result for later use.
   int y_ref[n];
   std::copy(y, y + n, y_ref);
@@ -141,9 +134,9 @@ BOOST_AUTO_TEST_CASE( binary_col_reduce )
   math::col_reduce(m, n, a, x, y, MultSum());
 
   // Check the result of the partial reduction.
-  for(std::size_t j = 0ul; j < n; ++j) {
+  for (std::size_t j = 0ul; j < n; ++j) {
     int expected = y_ref[j];
-    for(std::size_t i = 0ul; i < m; ++i) {
+    for (std::size_t i = 0ul; i < m; ++i) {
       expected += a[i * n + j] * x[i];
     }
 

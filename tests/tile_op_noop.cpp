@@ -24,45 +24,38 @@
  */
 
 #include "TiledArray/tile_op/noop.h"
+#include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
 
 using namespace TiledArray;
 using TiledArray::detail::Noop;
 
 struct NoopFixture : public RangeFixture {
-
-  NoopFixture() :
-    a(RangeFixture::r),
-    b(),
-    perm({2,0,1})
-  {
+  NoopFixture() : a(RangeFixture::r), b(), perm({2, 0, 1}) {
     GlobalFixture::world->srand(27);
-    for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    for (std::size_t i = 0ul; i < r.volume(); ++i) {
       a[i] = GlobalFixture::world->rand() / 101;
     }
   }
 
-  ~NoopFixture() { }
+  ~NoopFixture() {}
 
   Tensor<int> a;
   Tensor<int> b;
   Permutation perm;
 
-}; // NoopFixture
+};  // NoopFixture
 
-BOOST_FIXTURE_TEST_SUITE( tile_op_noop_suite, NoopFixture )
+BOOST_FIXTURE_TEST_SUITE(tile_op_noop_suite, NoopFixture)
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions
   BOOST_CHECK_NO_THROW((Noop<Tensor<int>, Tensor<int>, false>()));
   BOOST_CHECK_NO_THROW((Noop<Tensor<int>, Tensor<int>, true>()));
 }
 
-BOOST_AUTO_TEST_CASE( noop )
-{
+BOOST_AUTO_TEST_CASE(noop) {
   Noop<Tensor<int>, Tensor<int>, false> noop_op;
 
   // Store the sum of a and b in c
@@ -75,13 +68,12 @@ BOOST_AUTO_TEST_CASE( noop )
   BOOST_CHECK_NE(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[i], a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( noop_perm )
-{
+BOOST_AUTO_TEST_CASE(noop_perm) {
   Noop<Tensor<int>, Tensor<int>, false> noop_op;
 
   // Store the sum of a and b in c
@@ -94,13 +86,12 @@ BOOST_AUTO_TEST_CASE( noop_perm )
   BOOST_CHECK_NE(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[perm * a.range().idx(i)], a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( noop_consume )
-{
+BOOST_AUTO_TEST_CASE(noop_consume) {
   Noop<Tensor<int>, Tensor<int>, true> noop_op;
   const Tensor<int> ax(a.range(), a.begin());
 
@@ -114,13 +105,12 @@ BOOST_AUTO_TEST_CASE( noop_consume )
   BOOST_CHECK_EQUAL(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[i], ax[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( noop_runtime_consume )
-{
+BOOST_AUTO_TEST_CASE(noop_runtime_consume) {
   Noop<Tensor<int>, Tensor<int>, false> noop_op;
   const Tensor<int> ax(a.range(), a.begin());
 
@@ -134,13 +124,12 @@ BOOST_AUTO_TEST_CASE( noop_runtime_consume )
   BOOST_CHECK_EQUAL(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[i], ax[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( noop_perm_consume )
-{
+BOOST_AUTO_TEST_CASE(noop_perm_consume) {
   Noop<Tensor<int>, Tensor<int>, true> noop_op;
 
   // Store the sum of a and b in c
@@ -153,10 +142,9 @@ BOOST_AUTO_TEST_CASE( noop_perm_consume )
   BOOST_CHECK_NE(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[perm * a.range().idx(i)], a[i]);
   }
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

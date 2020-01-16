@@ -17,17 +17,18 @@
  *
  */
 
-#include <iostream>
-#include <tiledarray.h>
 #include <TiledArray/external/btas.h>
+#include <tiledarray.h>
+#include <iostream>
 
 int main(int argc, char** argv) {
   // Initialize runtime
   TiledArray::World& world = TiledArray::initialize(argc, argv);
 
   // Get command line arguments
-  if(argc < 6) {
-    std::cout << "multiplies A(Nm,Nk) * B(Nk,Nn), with dimensions m, n, and k blocked by Bm, Bn, and Bk, respectively"
+  if (argc < 6) {
+    std::cout << "multiplies A(Nm,Nk) * B(Nk,Nn), with dimensions m, n, and k "
+                 "blocked by Bm, Bn, and Bk, respectively"
               << std::endl
               << "Usage: " << argv[0] << " Nm Bm Nn Bn Nk Bk [repetitions]\n";
     return 0;
@@ -46,8 +47,9 @@ int main(int argc, char** argv) {
     std::cerr << "Error: block sizes must be greater than zero.\n";
     return 1;
   }
-  if((Nm % Bm) != 0ul || Nn % Bn !=0ul || Nk % Bk !=0ul) {
-    std::cerr << "Error: diminsion size must be evenly divisible by block size.\n";
+  if ((Nm % Bm) != 0ul || Nn % Bn != 0ul || Nk % Bk != 0ul) {
+    std::cerr
+        << "Error: diminsion size must be evenly divisible by block size.\n";
     return 1;
   }
   const long repeat = (argc >= 8 ? atol(argv[7]) : 5);
@@ -60,65 +62,74 @@ int main(int argc, char** argv) {
   const std::size_t Tn = Nn / Bn;
   const std::size_t Tk = Nk / Bk;
 
-  if(world.rank() == 0)
+  if (world.rank() == 0)
     std::cout << "TiledArray: dense matrix multiply test...\n"
               << "Number of nodes     = " << world.size()
-              << "\nSize of A         = " << Nm << "x" << Nk << " (" << double(Nm * Nk * sizeof(double)) / 1.0e9 << " GB)"
+              << "\nSize of A         = " << Nm << "x" << Nk << " ("
+              << double(Nm * Nk * sizeof(double)) / 1.0e9 << " GB)"
               << "\nSize of A block   = " << Bm << "x" << Bk
-              << "\nSize of B         = " << Nk << "x" << Nn << " (" << double(Nk * Nn * sizeof(double)) / 1.0e9 << " GB)"
+              << "\nSize of B         = " << Nk << "x" << Nn << " ("
+              << double(Nk * Nn * sizeof(double)) / 1.0e9 << " GB)"
               << "\nSize of B block   = " << Bk << "x" << Bn
-              << "\nSize of C         = " << Nm << "x" << Nn << " (" << double(Nm * Nn * sizeof(double)) / 1.0e9 << " GB)"
+              << "\nSize of C         = " << Nm << "x" << Nn << " ("
+              << double(Nm * Nn * sizeof(double)) / 1.0e9 << " GB)"
               << "\nSize of C block   = " << Bm << "x" << Bn
               << "\n# of blocks of C  = " << Tm * Tn
-              << "\nAverage # of blocks of C/node = " << double(Tm * Tn) / double(world.size()) << "\n";
+              << "\nAverage # of blocks of C/node = "
+              << double(Tm * Tn) / double(world.size()) << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking_m;
   blocking_m.reserve(Tm + 1);
-  for(long i = 0l; i <= Nm; i += Bm)
-    blocking_m.push_back(i);
+  for (long i = 0l; i <= Nm; i += Bm) blocking_m.push_back(i);
 
   std::vector<unsigned int> blocking_n;
   blocking_n.reserve(Tn + 1);
-  for(long i = 0l; i <= Nn; i += Bn)
-    blocking_n.push_back(i);
+  for (long i = 0l; i <= Nn; i += Bn) blocking_n.push_back(i);
 
   std::vector<unsigned int> blocking_k;
   blocking_k.reserve(Tk + 1);
-  for(long i = 0l; i <= Nk; i += Bk)
-    blocking_k.push_back(i);
+  for (long i = 0l; i <= Nk; i += Bk) blocking_k.push_back(i);
 
   // Structure of c
   std::vector<TiledArray::TiledRange1> blocking_C;
   blocking_C.reserve(2);
-  blocking_C.push_back(TiledArray::TiledRange1(blocking_m.begin(),blocking_m.end()));
-  blocking_C.push_back(TiledArray::TiledRange1(blocking_n.begin(), blocking_n.end()));
+  blocking_C.push_back(
+      TiledArray::TiledRange1(blocking_m.begin(), blocking_m.end()));
+  blocking_C.push_back(
+      TiledArray::TiledRange1(blocking_n.begin(), blocking_n.end()));
 
   // Structure of a
   std::vector<TiledArray::TiledRange1> blocking_A;
   blocking_A.reserve(2);
-  blocking_A.push_back(TiledArray::TiledRange1(blocking_m.begin(),blocking_m.end()));
-  blocking_A.push_back(TiledArray::TiledRange1(blocking_k.begin(), blocking_k.end()));
+  blocking_A.push_back(
+      TiledArray::TiledRange1(blocking_m.begin(), blocking_m.end()));
+  blocking_A.push_back(
+      TiledArray::TiledRange1(blocking_k.begin(), blocking_k.end()));
 
   // Structure of b
   std::vector<TiledArray::TiledRange1> blocking_B;
   blocking_B.reserve(2);
-  blocking_B.push_back(TiledArray::TiledRange1(blocking_k.begin(),blocking_k.end()));
-  blocking_B.push_back(TiledArray::TiledRange1(blocking_n.begin(), blocking_n.end()));
+  blocking_B.push_back(
+      TiledArray::TiledRange1(blocking_k.begin(), blocking_k.end()));
+  blocking_B.push_back(
+      TiledArray::TiledRange1(blocking_n.begin(), blocking_n.end()));
 
-  TiledArray::TiledRange // TRange for c
-    trange_c(blocking_C.begin(), blocking_C.end());
+  TiledArray::TiledRange  // TRange for c
+      trange_c(blocking_C.begin(), blocking_C.end());
 
-  TiledArray::TiledRange // TRange for a
-    trange_a(blocking_A.begin(), blocking_A.end());
+  TiledArray::TiledRange  // TRange for a
+      trange_a(blocking_A.begin(), blocking_A.end());
 
-  TiledArray::TiledRange // TRange for b
-    trange_b(blocking_B.begin(), blocking_B.end());
+  TiledArray::TiledRange  // TRange for b
+      trange_b(blocking_B.begin(), blocking_B.end());
 
   // Construct and initialize arrays
-  // by default use TiledArray tensors, uncomment second line if want to use btas::Tensor instead
+  // by default use TiledArray tensors, uncomment second line if want to use
+  // btas::Tensor instead
   using Array = TiledArray::TArrayD;
-  //using Array = TiledArray::DistArray<TiledArray::Tile<btas::Tensor<double>>>;
+  // using Array =
+  // TiledArray::DistArray<TiledArray::Tile<btas::Tensor<double>>>;
   Array a(world, trange_a);
   Array b(world, trange_b);
   Array c(world, trange_c);
@@ -130,20 +141,22 @@ int main(int argc, char** argv) {
   const double wall_time_start = madness::wall_time();
 
   // Do matrix multiplication
-  for(int i = 0; i < repeat; ++i) {
+  for (int i = 0; i < repeat; ++i) {
     c("m,n") = a("m,k") * b("k,n");
     world.gop.fence();
-    if(world.rank() == 0)
-      std::cout << "Iteration " << i + 1 << "\n";
+    if (world.rank() == 0) std::cout << "Iteration " << i + 1 << "\n";
   }
 
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 
-  if(world.rank() == 0)
-    std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
-        << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(Nn *
-            Nm * Nm) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+  if (world.rank() == 0)
+    std::cout << "Average wall time   = "
+              << (wall_time_stop - wall_time_start) / double(repeat)
+              << " sec\nAverage GFLOPS      = "
+              << double(repeat) * 2.0 * double(Nn * Nm * Nm) /
+                     (wall_time_stop - wall_time_start) / 1.0e9
+              << "\n";
 
   TiledArray::finalize();
   return 0;

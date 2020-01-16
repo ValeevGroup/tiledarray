@@ -26,109 +26,97 @@
 #ifndef TILEDARRAY_TILE_INTERFACE_PERMUTE_H__INCLUDED
 #define TILEDARRAY_TILE_INTERFACE_PERMUTE_H__INCLUDED
 
-#include "../type_traits.h"
 #include "../tile_interface/cast.h"
+#include "../type_traits.h"
 
 namespace TiledArray {
 
-  class Permutation;
+class Permutation;
 
-  /// Create a permuted copy of \c arg
+/// Create a permuted copy of \c arg
 
-  /// \tparam Arg The tile argument type
-  /// \param arg The tile argument to be permuted
-  /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ arg</tt>
-  template <typename Arg>
-  inline auto permute(const Arg& arg, const Permutation& perm)
-  { return arg.permute(perm); }
+/// \tparam Arg The tile argument type
+/// \param arg The tile argument to be permuted
+/// \param perm The permutation to be applied to the result
+/// \return A tile that is equal to <tt>perm ^ arg</tt>
+template <typename Arg>
+inline auto permute(const Arg& arg, const Permutation& perm) {
+  return arg.permute(perm);
+}
 
-  template <typename> struct permute_trait;
+template <typename>
+struct permute_trait;
 
-  namespace tile_interface {
+namespace tile_interface {
 
+using TiledArray::permute;
+
+template <typename T>
+using result_of_permute_t = typename std::decay<decltype(
+    permute(std::declval<T>(), std::declval<Permutation>()))>::type;
+
+template <typename Tile, typename Enabler = void>
+struct permute_trait {
+  typedef Tile type;
+};
+
+template <typename Arg>
+struct permute_trait<Arg, typename std::enable_if<TiledArray::detail::is_type<
+                              result_of_permute_t<Arg> >::value>::type> {
+  typedef result_of_permute_t<Arg> type;
+};
+
+template <typename Result, typename Arg, typename Enabler = void>
+class Permute {
+ public:
+  typedef Result result_type;  ///< Result tile type
+  typedef Arg argument_type;   ///< Argument tile type
+
+  result_type operator()(const argument_type& arg,
+                         const Permutation& perm) const {
     using TiledArray::permute;
+    return permute(arg, perm);
+  }
+};
 
-    template <typename T>
-    using result_of_permute_t = typename std::decay<
-        decltype(permute(std::declval<T>(),
-        std::declval<Permutation>()))>::type;
+template <typename Result, typename Arg>
+class Permute<Result, Arg,
+              typename std::enable_if<!std::is_same<
+                  Result, result_of_permute_t<Arg> >::value>::type>
+    : public TiledArray::Cast<Result, result_of_permute_t<Arg> > {
+ private:
+  typedef TiledArray::Cast<Result, result_of_permute_t<Arg> > Cast_;
 
-    template <typename Tile, typename Enabler = void>
-    struct permute_trait {
-      typedef Tile type;
-    };
+ public:
+  typedef Result result_type;  ///< Result tile type
+  typedef Arg argument_type;   ///< Argument tile type
 
-    template <typename Arg>
-    struct permute_trait<Arg,
-        typename std::enable_if<
-            TiledArray::detail::is_type<result_of_permute_t<Arg> >::value
-        >::type>
-    {
-      typedef result_of_permute_t<Arg> type;
-    };
+  result_type operator()(const argument_type& arg,
+                         const Permutation& perm) const {
+    using TiledArray::permute;
+    return Cast_::operator()(permute(arg, perm));
+  }
+};
 
-    template <typename Result, typename Arg, typename Enabler = void>
-    class Permute {
-    public:
+}  // namespace tile_interface
 
-      typedef Result result_type; ///< Result tile type
-      typedef Arg argument_type; ///< Argument tile type
+/// Permute trait
 
-      result_type operator()(const argument_type& arg,
-          const Permutation& perm) const
-      {
-        using TiledArray::permute;
-        return permute(arg, perm);
-      }
-    };
+/// This class defines the default return type for a permutation operation.
+/// The default return type is defined by the `permute()` function, if it
+/// exists, otherwise the return type is assumed to be the same as `Arg` type.
+/// \tparam Arg The argument tile type
+template <typename Arg>
+struct permute_trait : public TiledArray::tile_interface::permute_trait<Arg> {};
 
-    template <typename Result, typename Arg>
-    class Permute<Result, Arg,
-        typename std::enable_if<
-            ! std::is_same<Result, result_of_permute_t<Arg> >::value
-        >::type> :
-        public TiledArray::Cast<Result, result_of_permute_t<Arg> >
-    {
-    private:
-      typedef TiledArray::Cast<Result, result_of_permute_t<Arg> > Cast_;
-    public:
+/// Permute a tile
 
-      typedef Result result_type; ///< Result tile type
-      typedef Arg argument_type; ///< Argument tile type
+/// This operation creates a permuted copy of a tile.
+/// \tparam Result The result tile type
+/// \tparam Argument The argument tile type
+template <typename Result, typename Arg>
+class Permute : public TiledArray::tile_interface::Permute<Result, Arg> {};
 
-      result_type operator()(const argument_type& arg,
-          const Permutation& perm) const
-      {
-        using TiledArray::permute;
-        return Cast_::operator()(permute(arg, perm));
-      }
+}  // namespace TiledArray
 
-    };
-
-  } // namespace tile_interface
-
-
-  /// Permute trait
-
-  /// This class defines the default return type for a permutation operation.
-  /// The default return type is defined by the `permute()` function, if it
-  /// exists, otherwise the return type is assumed to be the same as `Arg` type.
-  /// \tparam Arg The argument tile type
-  template <typename Arg>
-  struct permute_trait :
-      public TiledArray::tile_interface::permute_trait<Arg>
-  { };
-
-
-  /// Permute a tile
-
-  /// This operation creates a permuted copy of a tile.
-  /// \tparam Result The result tile type
-  /// \tparam Argument The argument tile type
-  template <typename Result, typename Arg>
-  class Permute : public TiledArray::tile_interface::Permute<Result, Arg> { };
-
-} // namespace TiledArray
-
-#endif // TILEDARRAY_TILE_INTERFACE_PERMUTE_H__INCLUDED
+#endif  // TILEDARRAY_TILE_INTERFACE_PERMUTE_H__INCLUDED

@@ -28,9 +28,9 @@
 
 namespace TiledArray {
 
-  /// Place-holder object for a zero tensor.
-  struct ZeroTensor { }; // struct ZeroTensor
+/// Place-holder object for a zero tensor.
+struct ZeroTensor {};  // struct ZeroTensor
 
-} // namespace TiledArray
+}  // namespace TiledArray
 
-#endif // TILEDARRAY_ZERO_TENSOR_H__INCLUDED
+#endif  // TILEDARRAY_ZERO_TENSOR_H__INCLUDED

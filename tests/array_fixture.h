@@ -20,9 +20,9 @@
 #ifndef TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED
 #define TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED
 
+#include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
 
 #include "../src/TiledArray/dist_array.h"
 
@@ -37,12 +37,10 @@ struct ArrayFixture : public TiledRangeFixture {
 
   ~ArrayFixture();
 
-
   TiledArray::Tensor<float> shape_tensor;
   TiledArray::World& world;
   ArrayN a;
   SpArrayN b;
-}; // struct ArrayFixture
+};  // struct ArrayFixture
 
-
-#endif // TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED
+#endif  // TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED

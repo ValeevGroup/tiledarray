@@ -34,20 +34,20 @@
 
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <nvToolsExt.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
-#include <nvToolsExt.h>
 
 // for memory management
 #include <umpire/Umpire.hpp>
 #include <umpire/strategy/DynamicPool.hpp>
-#include <umpire/strategy/ThreadSafeAllocator.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
+#include <umpire/strategy/ThreadSafeAllocator.hpp>
 
 #include <TiledArray/external/madness.h>
 #include <madness/tensor/cblas.h>
-#include <madness/world/thread.h>
 #include <madness/world/print.h>
+#include <madness/world/thread.h>
 #include <mpi.h>
 
 #include <TiledArray/error.h>
@@ -67,7 +67,8 @@ inline void __cudaSafeCall(cudaError err, const char* file, const int line) {
 #endif
 }
 
-inline void __cudaSafeCallNoThrow(cudaError err, const char* file, const int line) {
+inline void __cudaSafeCallNoThrow(cudaError err, const char* file,
+                                  const int line) {
 #ifdef TILEDARRAY_CHECK_CUDA_ERROR
   if (cudaSuccess != err) {
     madness::print_error("cudaSafeCallNoThrow() failed at: ", file, ":", line);
@@ -92,7 +93,8 @@ namespace TiledArray {
 namespace detail {
 
 inline std::pair<int, int> mpi_local_rank_size(World& world) {
-  auto host_comm = world.mpi.comm().Split_type(SafeMPI::Intracomm::SHARED_SPLIT_TYPE, 0);
+  auto host_comm =
+      world.mpi.comm().Split_type(SafeMPI::Intracomm::SHARED_SPLIT_TYPE, 0);
   return std::make_pair(host_comm.Get_rank(), host_comm.Get_size());
 }
 
@@ -125,17 +127,20 @@ inline int current_cuda_device_id(World& world) {
 
   int cuda_device_id = -1;
   // devices may already be pre-mapped
-  // if mpi_local_size <= num_devices : all ranks are in same resource set, map round robin
+  // if mpi_local_size <= num_devices : all ranks are in same resource set, map
+  // round robin
   if (mpi_local_size <= num_devices) {
     cuda_device_id = mpi_local_rank % num_devices;
-  }
-  else {  // mpi_local_size > num_devices
+  } else {  // mpi_local_size > num_devices
     char* cvd_cstr = std::getenv("CUDA_VISIBLE_DEVICES");
-    if (cvd_cstr) { // CUDA_VISIBLE_DEVICES is set, assume that pre-mapped
+    if (cvd_cstr) {  // CUDA_VISIBLE_DEVICES is set, assume that pre-mapped
       // make sure that there is only 1 device available here
       if (num_devices != 1) {
         throw std::runtime_error(
-            std::string("CUDA_VISIBLE_DEVICES environment variable is set, hence using the provided device-to-rank mapping; BUT TiledArray found ") + std::to_string(num_devices) +
+            std::string(
+                "CUDA_VISIBLE_DEVICES environment variable is set, hence using "
+                "the provided device-to-rank mapping; BUT TiledArray found ") +
+            std::to_string(num_devices) +
             " CUDA devices; only 1 CUDA device / MPI process is supported");
       }
       cuda_device_id = 0;
@@ -143,7 +148,8 @@ inline int current_cuda_device_id(World& world) {
       throw std::runtime_error(
           std::string("TiledArray found ") + std::to_string(mpi_local_size) +
           " MPI ranks on a node with " + std::to_string(num_devices) +
-          " CUDA devices; only 1 MPI process / CUDA device model is currently supported");
+          " CUDA devices; only 1 MPI process / CUDA device model is currently "
+          "supported");
     }
   }
 
@@ -252,10 +258,11 @@ class cudaEnv {
 
       // allocate all free memory for UM pool
       // subsequent allocs will use 1/10 of the total device memory
-      auto alloc_grain = mem_total_free.second/10;
-      auto um_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
-          "UMDynamicPool", rm.getAllocator("UM"), mem_total_free.second,
-          alloc_grain);
+      auto alloc_grain = mem_total_free.second / 10;
+      auto um_dynamic_pool =
+          rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
+              "UMDynamicPool", rm.getAllocator("UM"), mem_total_free.second,
+              alloc_grain);
       auto thread_safe_um_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
               "ThreadSafeUMDynamicPool", um_dynamic_pool);
@@ -265,22 +272,21 @@ class cudaEnv {
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
               "size_limited_alloc", rm.getAllocator("DEVICE"),
               mem_total_free.first);
-      auto dev_dynamic_pool = rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
-          "CUDADynamicPool", dev_size_limited_alloc, 0, alloc_grain);
+      auto dev_dynamic_pool =
+          rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
+              "CUDADynamicPool", dev_size_limited_alloc, 0, alloc_grain);
       auto thread_safe_dev_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
               "ThreadSafeCUDADynamicPool", dev_dynamic_pool);
 
-      auto cuda_env = std::unique_ptr<cudaEnv>(new cudaEnv(world,
-          num_devices, device_id, num_streams, thread_safe_um_dynamic_pool,
-          thread_safe_dev_dynamic_pool));
+      auto cuda_env = std::unique_ptr<cudaEnv>(new cudaEnv(
+          world, num_devices, device_id, num_streams,
+          thread_safe_um_dynamic_pool, thread_safe_dev_dynamic_pool));
       instance = std::move(cuda_env);
     }
   }
 
-  World& world() const {
-    return *world_;
-  }
+  World& world() const { return *world_; }
 
   int num_cuda_devices() const { return num_cuda_devices_; }
 
@@ -299,8 +305,8 @@ class cudaEnv {
   }
 
   /// @return the total size of all and free device memory on the current device
-  static std::pair<size_t,size_t> memory_total_and_free_device() {
-    std::pair<size_t,size_t> result;
+  static std::pair<size_t, size_t> memory_total_and_free_device() {
+    std::pair<size_t, size_t> result;
     // N.B. cudaMemGetInfo returns {free,total}
     CudaSafeCall(cudaMemGetInfo(&result.second, &result.first));
     return result;
@@ -308,16 +314,18 @@ class cudaEnv {
 
   /// Collective call to probe CUDA {total,free} memory
 
-  /// @return the total size of all and free device memory on every rank's device
-  std::vector<std::pair<size_t,size_t>> memory_total_and_free() const {
+  /// @return the total size of all and free device memory on every rank's
+  /// device
+  std::vector<std::pair<size_t, size_t>> memory_total_and_free() const {
     auto world_size = world_->size();
-    std::vector<size_t> total_memory(world_size,0), free_memory(world_size,0);
+    std::vector<size_t> total_memory(world_size, 0), free_memory(world_size, 0);
     auto rank = world_->rank();
-    std::tie(total_memory.at(rank), free_memory.at(rank)) = cudaEnv::memory_total_and_free_device();
+    std::tie(total_memory.at(rank), free_memory.at(rank)) =
+        cudaEnv::memory_total_and_free_device();
     world_->gop.sum(total_memory.data(), total_memory.size());
     world_->gop.sum(free_memory.data(), free_memory.size());
-    std::vector<std::pair<size_t,size_t>> result(world_size);
-    for(int r=0; r!=world_size; ++r) {
+    std::vector<std::pair<size_t, size_t>> result(world_size);
+    for (int r = 0; r != world_size; ++r) {
       result.at(r) = {total_memory.at(r), free_memory.at(r)};
     }
     return result;
@@ -326,13 +334,13 @@ class cudaEnv {
   const cudaStream_t& cuda_stream(std::size_t i) const {
     return cuda_streams_.at(i);
   }
- 
+
   const cudaStream_t& cuda_stream_h2d() const {
     return cuda_streams_[num_cuda_streams_];
   }
 
   const cudaStream_t& cuda_stream_d2h() const {
-    return cuda_streams_[num_cuda_streams_+1];
+    return cuda_streams_[num_cuda_streams_ + 1];
   }
 
   umpire::Allocator& um_dynamic_pool() { return um_dynamic_pool_; }
@@ -342,7 +350,8 @@ class cudaEnv {
  protected:
   cudaEnv(World& world, int num_devices, int device_id, int num_streams,
           umpire::Allocator um_alloc, umpire::Allocator device_alloc)
-      : world_(&world), um_dynamic_pool_(um_alloc),
+      : world_(&world),
+        um_dynamic_pool_(um_alloc),
         device_dynamic_pool_(device_alloc),
         num_cuda_devices_(num_devices),
         current_cuda_device_id_(device_id),
@@ -375,7 +384,8 @@ class cudaEnv {
     for (auto& stream : cuda_streams_) {
       CudaSafeCall(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
     }
-    std::cout << "created " << num_cuda_streams_ << " CUDA streams + 2 I/O streams" << std::endl;
+    std::cout << "created " << num_cuda_streams_
+              << " CUDA streams + 2 I/O streams" << std::endl;
   }
 
  private:
@@ -394,8 +404,6 @@ class cudaEnv {
   int num_cuda_streams_;
   std::vector<cudaStream_t> cuda_streams_;
 };
-
-
 
 namespace detail {
 
@@ -426,8 +434,7 @@ enum class argbColor : uint32_t {
 /// enter a profiling range by calling nvtxRangePushEx
 /// \param[in] range_title a char string containing the range title
 /// \param[in] range_color the range color
-inline void range_push(const char* range_title,
-                argbColor range_color) {
+inline void range_push(const char* range_title, argbColor range_color) {
   nvtxEventAttributes_t eventAttrib = {0};
   eventAttrib.version = NVTX_VERSION;
   eventAttrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
@@ -439,15 +446,11 @@ inline void range_push(const char* range_title,
 }
 
 /// exits the current profiling range by calling nvtxRangePopEx
-inline void range_pop() {
-  nvtxRangePop();
-}
+inline void range_pop() { nvtxRangePop(); }
 
-}
+}  // namespace nvidia
 
 }  // namespace TiledArray
-
-
 
 #endif  // TILEDARRAY_HAS_CUDA
 

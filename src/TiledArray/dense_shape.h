@@ -29,169 +29,214 @@
 #include <TiledArray/type_traits.h>
 
 namespace madness {
-  class World;
-} // namespace
+class World;
+}  // namespace madness
 
 namespace TiledArray {
 
-  // Forward declarations
-  namespace expressions {
-    class VariableList;
-  }  // namespace expressions
-  namespace math {
-    class GemmHelper;
-  } // namespace math
-  class Range;
-  class Permutation;
-  class TiledRange;
-  using madness::World;
+// Forward declarations
+namespace expressions {
+class VariableList;
+}  // namespace expressions
+namespace math {
+class GemmHelper;
+}  // namespace math
+class Range;
+class Permutation;
+class TiledRange;
+using madness::World;
 
+/// Dense shape of an array
 
-  /// Dense shape of an array
+/// Since all tiles are present in dense arrays, this shape has no data and
+/// and all checks return their logical result. The hope is that the compiler
+/// will optimize branches that use these checks.
+class DenseShape {
+ public:
+  // There is no data in DenseShape so the compiler generated constructors,
+  // assignment operator, and destructor are OK.
 
-  /// Since all tiles are present in dense arrays, this shape has no data and
-  /// and all checks return their logical result. The hope is that the compiler
-  /// will optimize branches that use these checks.
-  class DenseShape {
-  public:
-    // There is no data in DenseShape so the compiler generated constructors,
-    // assignment operator, and destructor are OK.
+  DenseShape() = default;
+  DenseShape(const DenseShape&) = default;
+  DenseShape(DenseShape&&) = default;
+  DenseShape& operator=(const DenseShape&) = default;
+  DenseShape& operator=(DenseShape&&) = default;
+  ~DenseShape() = default;
 
-    DenseShape() = default;
-    DenseShape(const DenseShape&) = default;
-    DenseShape(DenseShape&&) = default;
-    DenseShape& operator=(const DenseShape&) = default;
-    DenseShape& operator=(DenseShape&&) = default;
-    ~DenseShape() = default;
+  // Several no-op constructors are needed to make it interoperable with
+  // SparseShape
+  template <typename Real>
+  DenseShape(Real&&, const TiledRange&) {}
 
-    // Several no-op constructors are needed to make it interoperable with SparseShape
-    template <typename Real> DenseShape(Real &&, const TiledRange&) {}
+  /// Collective initialization of a shape
 
-    /// Collective initialization of a shape
+  /// No operation since there is no data.
+  static void collective_init(World&) {}
 
-    /// No operation since there is no data.
-    static void collective_init(World&) { }
+  /// Validate shape range
 
-    /// Validate shape range
+  /// \return \c true when range matches the range of this shape
+  static constexpr bool validate(const Range&) { return true; }
 
-    /// \return \c true when range matches the range of this shape
-    static constexpr bool validate(const Range&) { return true; }
+  /// Check that a tile is zero
 
-    /// Check that a tile is zero
+  /// \tparam Index The type of the index
+  /// \return false
+  template <typename Index>
+  static constexpr bool is_zero(const Index&) {
+    return false;
+  }
 
-    /// \tparam Index The type of the index
-    /// \return false
-    template <typename Index>
-    static constexpr bool is_zero(const Index&) { return false; }
+  /// Check density
 
-    /// Check density
+  /// \return true
+  static constexpr bool is_dense() { return true; }
 
-    /// \return true
-    static constexpr bool is_dense() { return true; }
+  /// Sparsity fraction
 
+  /// \return The fraction of tiles that are zero tiles.
+  static constexpr float sparsity() { return 0.0f; }
 
-    /// Sparsity fraction
+  /// Check if the shape is empty (uninitialized)
 
-    /// \return The fraction of tiles that are zero tiles.
-    static constexpr float sparsity() { return 0.0f; }
+  /// \return Always \c false
+  static constexpr bool empty() { return false; }
 
+  DenseShape mask(const DenseShape&) const { return DenseShape{}; };
 
-    /// Check if the shape is empty (uninitialized)
+  template <typename Index>
+  static DenseShape update_block(const Index&, const Index&,
+                                 const DenseShape&) {
+    return DenseShape();
+  }
 
-    /// \return Always \c false
-    static constexpr bool empty() { return false; }
-   
-    DenseShape mask(const DenseShape &) const {
-      return DenseShape{};
-    };
+  template <typename Index>
+  static DenseShape block(const Index&, const Index&) {
+    return DenseShape();
+  }
 
-    template <typename Index>
-    static DenseShape update_block(const Index&, const Index&, const DenseShape&)
-    { return DenseShape(); }
+  template <
+      typename Index, typename Scalar,
+      typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+  static DenseShape block(const Index&, const Index&, const Scalar) {
+    return DenseShape();
+  }
 
-    template <typename Index>
-    static DenseShape block(const Index&, const Index&) { return DenseShape(); }
+  template <typename Index>
+  static DenseShape block(const Index&, const Index&, const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Index, typename Scalar,
-        typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-    static DenseShape block(const Index&, const Index&, const Scalar)
-    { return DenseShape(); }
+  template <typename Index, typename Scalar>
+  static DenseShape block(const Index&, const Index&, const Scalar,
+                          const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Index>
-    static DenseShape block(const Index&, const Index&, const Permutation&)
-    { return DenseShape(); }
+  static DenseShape perm(const Permutation&) { return DenseShape(); }
 
-    template <typename Index, typename Scalar>
-    static DenseShape block(const Index&, const Index&, const Scalar, const Permutation&)
-    { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape scale(const Scalar) {
+    return DenseShape();
+  }
 
-    static DenseShape perm(const Permutation&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape scale(const Scalar, const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape scale(const Scalar) { return DenseShape(); }
+  static DenseShape add(const DenseShape&) { return DenseShape(); }
 
-    template <typename Scalar>
-    static DenseShape scale(const Scalar, const Permutation&) { return DenseShape(); }
+  static DenseShape add(const DenseShape&, const Permutation&) {
+    return DenseShape();
+  }
 
-    static DenseShape add(const DenseShape&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape add(const DenseShape&, const Scalar) {
+    return DenseShape();
+  }
 
-    static DenseShape add(const DenseShape&, const Permutation&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape add(const DenseShape&, const Scalar, const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape add(const DenseShape&, const Scalar) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape add(const Scalar) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape add(const DenseShape&, const Scalar, const Permutation&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape add(const Scalar, const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape add(const Scalar) { return DenseShape(); }
+  static DenseShape subt(const DenseShape&) { return DenseShape(); }
 
-    template <typename Scalar>
-    static DenseShape add(const Scalar, const Permutation&) { return DenseShape(); }
+  static DenseShape subt(const DenseShape&, const Permutation&) {
+    return DenseShape();
+  }
 
-    static DenseShape subt(const DenseShape&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape subt(const DenseShape&, const Scalar) {
+    return DenseShape();
+  }
 
-    static DenseShape subt(const DenseShape&, const Permutation&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape subt(const DenseShape&, const Scalar, const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape subt(const DenseShape&, const Scalar) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape subt(const Scalar) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape subt(const DenseShape&, const Scalar, const Permutation&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape subt(const Scalar, const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape subt(const Scalar) { return DenseShape(); }
+  static DenseShape mult(const DenseShape&) { return DenseShape(); }
 
-    template <typename Scalar>
-    static DenseShape subt(const Scalar, const Permutation&) { return DenseShape(); }
+  static DenseShape mult(const DenseShape&, const Permutation&) {
+    return DenseShape();
+  }
 
-    static DenseShape mult(const DenseShape&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape mult(const DenseShape&, const Scalar) {
+    return DenseShape();
+  }
 
-    static DenseShape mult(const DenseShape&, const Permutation&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape mult(const DenseShape&, const Scalar, const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape mult(const DenseShape&, const Scalar) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape gemm(const DenseShape&, const Scalar,
+                         const math::GemmHelper&) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape mult(const DenseShape&, const Scalar, const Permutation&) { return DenseShape(); }
+  template <typename Scalar>
+  static DenseShape gemm(const DenseShape&, const Scalar,
+                         const math::GemmHelper&, const Permutation&) {
+    return DenseShape();
+  }
 
-    template <typename Scalar>
-    static DenseShape gemm(const DenseShape&, const Scalar, const math::GemmHelper&)
-    { return DenseShape(); }
+  template <typename Archive>
+  void serialize(const Archive& ar) const {}
 
-    template <typename Scalar>
-    static DenseShape gemm(const DenseShape&, const Scalar, const math::GemmHelper&, const Permutation&)
-    { return DenseShape(); }
+};  // class DenseShape
 
-    template <typename Archive>
-    void serialize(const Archive& ar) const {
-    }
+constexpr inline bool operator==(const DenseShape& a, const DenseShape& b) {
+  return true;
+}
+constexpr inline bool operator!=(const DenseShape& a, const DenseShape& b) {
+  return !(a == b);
+}
 
-  }; // class DenseShape
+}  // namespace TiledArray
 
-  constexpr inline bool operator==(const DenseShape& a, const DenseShape& b) { return true; }
-  constexpr inline bool operator!=(const DenseShape& a, const DenseShape& b) { return !(a==b); }
-
-} // namespace TiledArray
-
-#endif // TILEDARRAY_DENSE_SHAPE_H__INCLUDED
+#endif  // TILEDARRAY_DENSE_SHAPE_H__INCLUDED

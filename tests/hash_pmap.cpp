@@ -18,47 +18,42 @@
  */
 
 #include "TiledArray/pmap/hash_pmap.h"
-#include "unit_test_config.h"
 #include "global_fixture.h"
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 
 struct HashPmapFixture {
-
-  HashPmapFixture() { }
-
+  HashPmapFixture() {}
 };
-
 
 // =============================================================================
 // BlockdPmap Test Suite
 
+BOOST_FIXTURE_TEST_SUITE(hash_pmap_suite, HashPmapFixture)
 
-BOOST_FIXTURE_TEST_SUITE( hash_pmap_suite, HashPmapFixture )
-
-BOOST_AUTO_TEST_CASE( constructor )
-{
-  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
-    BOOST_REQUIRE_NO_THROW(TiledArray::detail::HashPmap pmap(* GlobalFixture::world, tiles));
-    TiledArray::detail::HashPmap pmap(* GlobalFixture::world, tiles);
+BOOST_AUTO_TEST_CASE(constructor) {
+  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    BOOST_REQUIRE_NO_THROW(
+        TiledArray::detail::HashPmap pmap(*GlobalFixture::world, tiles));
+    TiledArray::detail::HashPmap pmap(*GlobalFixture::world, tiles);
     BOOST_CHECK_EQUAL(pmap.rank(), GlobalFixture::world->rank());
     BOOST_CHECK_EQUAL(pmap.procs(), GlobalFixture::world->size());
     BOOST_CHECK_EQUAL(pmap.size(), tiles);
   }
 }
 
-BOOST_AUTO_TEST_CASE( owner )
-{
+BOOST_AUTO_TEST_CASE(owner) {
   const std::size_t rank = GlobalFixture::world->rank();
   const std::size_t size = GlobalFixture::world->size();
 
   ProcessID* p_owner = new ProcessID[size];
 
   // Check various pmap sizes
-  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
-    TiledArray::detail::HashPmap pmap(* GlobalFixture::world, tiles);
+  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    TiledArray::detail::HashPmap pmap(*GlobalFixture::world, tiles);
 
-    for(std::size_t tile = 0; tile < tiles; ++tile) {
+    for (std::size_t tile = 0; tile < tiles; ++tile) {
       std::fill_n(p_owner, size, 0);
       p_owner[rank] = pmap.owner(tile);
       // check that the value is in range
@@ -66,42 +61,41 @@ BOOST_AUTO_TEST_CASE( owner )
       GlobalFixture::world->gop.sum(p_owner, size);
 
       // Make sure everyone agrees on who owns what.
-      for(std::size_t p = 0ul; p < size; ++p)
+      for (std::size_t p = 0ul; p < size; ++p)
         BOOST_CHECK_EQUAL(p_owner[p], p_owner[rank]);
     }
   }
 
-  delete [] p_owner;
+  delete[] p_owner;
 }
 
-BOOST_AUTO_TEST_CASE( local_size )
-{
-  TiledArray::detail::HashPmap pmap(* GlobalFixture::world, 100);
+BOOST_AUTO_TEST_CASE(local_size) {
+  TiledArray::detail::HashPmap pmap(*GlobalFixture::world, 100);
   BOOST_CHECK(!pmap.known_local_size());
 }
 
-BOOST_AUTO_TEST_CASE( local_group )
-{
+BOOST_AUTO_TEST_CASE(local_group) {
   ProcessID tile_owners[100];
 
-  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
-    TiledArray::detail::HashPmap pmap(* GlobalFixture::world, tiles);
+  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    TiledArray::detail::HashPmap pmap(*GlobalFixture::world, tiles);
 
     // Check that all local elements map to this rank
-    for(detail::HashPmap::const_iterator it = pmap.begin(); it != pmap.end(); ++it) {
+    for (detail::HashPmap::const_iterator it = pmap.begin(); it != pmap.end();
+         ++it) {
       BOOST_CHECK_EQUAL(pmap.owner(*it), GlobalFixture::world->rank());
     }
 
     std::fill_n(tile_owners, tiles, 0);
-    for(detail::HashPmap::const_iterator it = pmap.begin(); it != pmap.end(); ++it) {
+    for (detail::HashPmap::const_iterator it = pmap.begin(); it != pmap.end();
+         ++it) {
       tile_owners[*it] += GlobalFixture::world->rank();
     }
 
     GlobalFixture::world->gop.sum(tile_owners, tiles);
-    for(std::size_t tile = 0; tile < tiles; ++tile) {
+    for (std::size_t tile = 0; tile < tiles; ++tile) {
       BOOST_CHECK_EQUAL(tile_owners[tile], pmap.owner(tile));
     }
-
   }
 }
 

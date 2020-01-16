@@ -18,31 +18,28 @@
  */
 
 #include "TiledArray/tiled_range.h"
+#include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
 
 using namespace TiledArray;
 
-BOOST_FIXTURE_TEST_SUITE( tiled_range_suite, TiledRangeFixture )
+BOOST_FIXTURE_TEST_SUITE(tiled_range_suite, TiledRangeFixture)
 
-BOOST_AUTO_TEST_CASE( accessor )
-{
+BOOST_AUTO_TEST_CASE(accessor) {
   BOOST_CHECK_EQUAL(tr.tiles_range(), tiles_range);
   BOOST_CHECK_EQUAL(tr.elements_range(), elements_range);
 }
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+BOOST_AUTO_TEST_CASE(constructor) {
   // check default constructor
   {
     BOOST_REQUIRE_NO_THROW(TiledRange r0);
     TiledRange r0;
-    std::vector<std::size_t> s0(3,0);
+    std::vector<std::size_t> s0(3, 0);
     BOOST_CHECK(r0.tiles_range().extent_data() == nullptr);
     BOOST_CHECK(r0.elements_range().extent_data() == nullptr);
   }
-
 
   // check ranges constructor
   {
@@ -62,9 +59,8 @@ BOOST_AUTO_TEST_CASE( constructor )
 
   // check initializer list of initializer list constructor
   {
-    TiledRange r1 { {0,2,5,10,17,28},
-                    {0,2,5,10,17,28},
-                    {0,2,5,10,17,28} };
+    TiledRange r1{
+        {0, 2, 5, 10, 17, 28}, {0, 2, 5, 10, 17, 28}, {0, 2, 5, 10, 17, 28}};
     BOOST_CHECK_EQUAL(r1.tiles_range(), tiles_range);
     BOOST_CHECK_EQUAL(r1.elements_range(), elements_range);
   }
@@ -78,35 +74,30 @@ BOOST_AUTO_TEST_CASE( constructor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( ostream )
-{
-
+BOOST_AUTO_TEST_CASE(ostream) {
   std::stringstream stm;
-  stm << "( tiles = " << tr.tiles_range() <<
-      ", elements = " << tr.elements_range() << " )";
+  stm << "( tiles = " << tr.tiles_range()
+      << ", elements = " << tr.elements_range() << " )";
 
   boost::test_tools::output_test_stream output;
   output << tr;
-  BOOST_CHECK( !output.is_empty( false ) );
-  BOOST_CHECK( output.check_length( stm.str().size(), false ) );
-  BOOST_CHECK( output.is_equal( stm.str().c_str() ) );
+  BOOST_CHECK(!output.is_empty(false));
+  BOOST_CHECK(output.check_length(stm.str().size(), false));
+  BOOST_CHECK(output.is_equal(stm.str().c_str()));
 }
 
-BOOST_AUTO_TEST_CASE( comparison ) {
-  TiledRange r1{{ 0, 2, 4, 6, 8, 10 },
-                { 0, 2, 4, 6, 8, 10 }};
-  TiledRange r2{{ 0, 2, 4, 6, 8, 10 },
-                { 0, 2, 4, 6, 8, 10 }};
-  TiledRange r3{{ 0, 3, 6, 9, 12, 15 },
-                { 0, 3, 6, 9, 12, 15 }};
+BOOST_AUTO_TEST_CASE(comparison) {
+  TiledRange r1{{0, 2, 4, 6, 8, 10}, {0, 2, 4, 6, 8, 10}};
+  TiledRange r2{{0, 2, 4, 6, 8, 10}, {0, 2, 4, 6, 8, 10}};
+  TiledRange r3{{0, 3, 6, 9, 12, 15}, {0, 3, 6, 9, 12, 15}};
   BOOST_CHECK(r1 == r2);     // check equality operator
-  BOOST_CHECK(! (r1 != r2)); // check not-equal operator
-  BOOST_CHECK(! (r1 == r3)); // check for inequality with different number of tiles.
+  BOOST_CHECK(!(r1 != r2));  // check not-equal operator
+  BOOST_CHECK(
+      !(r1 == r3));  // check for inequality with different number of tiles.
   BOOST_CHECK(r1 != r3);
 }
 
-BOOST_AUTO_TEST_CASE( assignment )
-{
+BOOST_AUTO_TEST_CASE(assignment) {
   TiledRange r1;
 
   // verify they are not equal before assignment.
@@ -119,33 +110,38 @@ BOOST_AUTO_TEST_CASE( assignment )
   BOOST_CHECK_EQUAL(r1, tr);
 }
 
-BOOST_AUTO_TEST_CASE( permutation )
-{
-  Permutation p({2,0,1});
+BOOST_AUTO_TEST_CASE(permutation) {
+  Permutation p({2, 0, 1});
   TiledRange r1 = p * tr;
-  BOOST_CHECK_EQUAL(r1.tiles_range(), p * tr.tiles_range()); // check that tile data was permuted properly.
-  BOOST_CHECK_EQUAL(r1.elements_range(), p * tr.elements_range()); // check that element data was permuted properly.
+  BOOST_CHECK_EQUAL(
+      r1.tiles_range(),
+      p * tr.tiles_range());  // check that tile data was permuted properly.
+  BOOST_CHECK_EQUAL(r1.elements_range(),
+                    p * tr.elements_range());  // check that element data was
+                                               // permuted properly.
 
   TiledRange r2(tr);
-  BOOST_CHECK_EQUAL((r2 *= p), r1); // check that permutation returns itself.
-  BOOST_CHECK_EQUAL(r2, r1);// check that the permutation was assigned correctly.
+  BOOST_CHECK_EQUAL((r2 *= p), r1);  // check that permutation returns itself.
+  BOOST_CHECK_EQUAL(r2,
+                    r1);  // check that the permutation was assigned correctly.
 }
 
-BOOST_AUTO_TEST_CASE( make_tiles_range )
-{
+BOOST_AUTO_TEST_CASE(make_tiles_range) {
   tile_index start(GlobalFixture::dim);
   tile_index finish(GlobalFixture::dim);
 
   // iterate over all the tile indexes in the tiled range.
   TiledRange::size_type i = 0;
-  for(Range::const_iterator it = tr.tiles_range().begin(); it != tr.tiles_range().end(); ++it, ++i) {
+  for (Range::const_iterator it = tr.tiles_range().begin();
+       it != tr.tiles_range().end(); ++it, ++i) {
     // get the start and finish indexes of the current range.
-    for(unsigned int d = 0; d < GlobalFixture::dim; ++d) {
-      start[d] = a[ (*it)[d] ];
-      finish[d] = a[ (*it)[d] + 1 ];
+    for (unsigned int d = 0; d < GlobalFixture::dim; ++d) {
+      start[d] = a[(*it)[d]];
+      finish[d] = a[(*it)[d] + 1];
     }
 
-    // construct a range object that should match the range constructed by TiledRange.
+    // construct a range object that should match the range constructed by
+    // TiledRange.
     TiledRange::range_type range(start, finish);
 
     // Get the two ranges to be tested.

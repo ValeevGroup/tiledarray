@@ -23,8 +23,8 @@
 #include <array>
 
 namespace madness {
-  class World;
-} // namespace madness
+class World;
+}  // namespace madness
 
 #ifndef TEST_DIM
 #define TEST_DIM 3u
@@ -37,10 +37,10 @@ struct GlobalFixture {
   GlobalFixture();
   ~GlobalFixture();
 
-  static const unsigned int dim = TEST_DIM ;
+  static const unsigned int dim = TEST_DIM;
 
   static madness::World* world;
   static const std::array<std::size_t, 20> primes;
 };
 
-#endif // TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
+#endif  // TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED

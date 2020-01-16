@@ -92,7 +92,6 @@ T min_reduce_cuda_kernel_impl(const T *arg, std::size_t n, cudaStream_t stream,
   return reduce_cuda_kernel_impl(min_op, arg, n, init, stream, device_id);
 }
 
-
 template <typename T>
 T absmax_reduce_cuda_kernel_impl(const T *arg, std::size_t n,
                                  cudaStream_t stream, int device_id) {

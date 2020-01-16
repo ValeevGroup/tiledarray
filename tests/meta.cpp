@@ -29,17 +29,12 @@
 
 #include <cmath>
 
-struct MetaFixture {
-};  // MetaFixture
+struct MetaFixture {};  // MetaFixture
 
 BOOST_FIXTURE_TEST_SUITE(meta_suite, MetaFixture)
 
-double sin(double x) {
-  return std::sin(x);
-}
-double cos(double x) {
-  return std::cos(x);
-}
+double sin(double x) { return std::sin(x); }
+double cos(double x) { return std::cos(x); }
 madness::Future<double> async_cos(double x) {
   return TiledArray::get_default_world().taskq.add(cos, x);
 }
@@ -54,7 +49,8 @@ template <typename T>
 class vec {
  public:
   vec() = default;
-  vec(const vec& other) : size_(other.size_), data_(std::make_unique<T[]>(size_)) {
+  vec(const vec& other)
+      : size_(other.size_), data_(std::make_unique<T[]>(size_)) {
     std::copy(other.begin(), other.end(), this->begin());
   }
   vec(vec& other) : size_(other.size_), data_(std::make_unique<T[]>(size_)) {
@@ -81,8 +77,12 @@ class vec {
   const T* begin() const { return data_.get(); }
   const T* end() const { return begin() + size_; }
   size_t size() const { return size_; }
-  template <typename Archive> void serialize(Archive& ar) {abort();}
+  template <typename Archive>
+  void serialize(Archive& ar) {
+    abort();
+  }
   T& operator[](size_t idx) { return *(data_ + idx); };
+
  private:
   size_t size_;
   std::unique_ptr<T[]> data_;
@@ -99,25 +99,25 @@ vec<double> vcos(const vec<double>& x) {
   return result;
 }
 
-// these must be disabled since call to taskq.add() cannot deduce rvalue refs as args
-//vec<double> vsin(vec<double>&& x) {
+// these must be disabled since call to taskq.add() cannot deduce rvalue refs as
+// args
+// vec<double> vsin(vec<double>&& x) {
 //  for(auto& v : x) {
 //    v = sin(v);
 //  }
 //  return std::move(x);
 //}
-//vec<double> vcos(vec<double>&& x) {
+// vec<double> vcos(vec<double>&& x) {
 //  for(auto& v : x) {
 //    v = cos(v);
 //  }
 //  return std::move(x);
 //}
 
-template <typename T> struct type_printer;
+template <typename T>
+struct type_printer;
 madness::Future<vec<double>> async_vcos(const vec<double>& x) {
-  auto exec = [](const vec<double>& x) {
-    return vcos(x);
-  };
+  auto exec = [](const vec<double>& x) { return vcos(x); };
   return TiledArray::get_default_world().taskq.add(exec, x);
 }
 

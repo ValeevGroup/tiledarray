@@ -24,44 +24,48 @@
 
 #ifdef TILEDARRAY_HAS_BTAS
 
+#include <TiledArray/conversions/btas.h>
+#include <TiledArray/external/btas.h>
+#include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
-#include <TiledArray/external/btas.h>
-#include <TiledArray/conversions/btas.h>
 
 using namespace TiledArray;
 
-// test both bare (deep-copy) BTAS tensor as well as its shallow-copy wrap in Tile<>,
-// using both btas::RangeNd<> and TiledArray::Range as the range type
+// test both bare (deep-copy) BTAS tensor as well as its shallow-copy wrap in
+// Tile<>, using both btas::RangeNd<> and TiledArray::Range as the range type
 typedef boost::mpl::list<
-DistArray<Tile<btas::Tensor<double, TiledArray::Range, btas::varray<double>>>, DensePolicy>,
-DistArray<     btas::Tensor<double, TiledArray::Range, btas::varray<double>> , DensePolicy>
-//DistArray<Tile<btas::Tensor<double>>                                         , DensePolicy>,
-//DistArray<     btas::Tensor<double>                                          , DensePolicy>
-> array_types;
+    DistArray<
+        Tile<btas::Tensor<double, TiledArray::Range, btas::varray<double>>>,
+        DensePolicy>,
+    DistArray<btas::Tensor<double, TiledArray::Range, btas::varray<double>>,
+              DensePolicy>
+    // DistArray<Tile<btas::Tensor<double>> , DensePolicy>, DistArray<
+    // btas::Tensor<double>                                          ,
+    // DensePolicy>
+    >
+    array_types;
 
 typedef boost::mpl::list<
-btas::Tensor<double, TiledArray::Range, btas::varray<double>>
-//btas::Tensor<double>
-> tensor_types;
+    btas::Tensor<double, TiledArray::Range, btas::varray<double>>
+    // btas::Tensor<double>
+    >
+    tensor_types;
 
 struct BTASFixture : public TiledRangeFixture {
-
-  BTASFixture() :
-      a0(*GlobalFixture::world, trange2),
-      b0(*GlobalFixture::world, trange3),
-      c0(*GlobalFixture::world, trange4),
-      a1(*GlobalFixture::world, trange2),
-      b1(*GlobalFixture::world, trange3),
-      c1(*GlobalFixture::world, trange4),
-      a2(*GlobalFixture::world, trange2),
-      b2(*GlobalFixture::world, trange3),
-      c2(*GlobalFixture::world, trange4),
-      a3(*GlobalFixture::world, trange2),
-      b3(*GlobalFixture::world, trange3),
-      c3(*GlobalFixture::world, trange4)
-  {
+  BTASFixture()
+      : a0(*GlobalFixture::world, trange2),
+        b0(*GlobalFixture::world, trange3),
+        c0(*GlobalFixture::world, trange4),
+        a1(*GlobalFixture::world, trange2),
+        b1(*GlobalFixture::world, trange3),
+        c1(*GlobalFixture::world, trange4),
+        a2(*GlobalFixture::world, trange2),
+        b2(*GlobalFixture::world, trange3),
+        c2(*GlobalFixture::world, trange4),
+        a3(*GlobalFixture::world, trange2),
+        b3(*GlobalFixture::world, trange3),
+        c3(*GlobalFixture::world, trange4) {
     random_fill(a0);
     random_fill(b0);
     random_fill(c0);
@@ -77,26 +81,29 @@ struct BTASFixture : public TiledRangeFixture {
     GlobalFixture::world->gop.fence();
   }
 
-  template<typename Tile>
-  static void random_fill(DistArray<Tile> &array) {
+  template <typename Tile>
+  static void random_fill(DistArray<Tile>& array) {
     using Range = typename DistArray<Tile>::range_type;
-    typename DistArray<Tile>::pmap_interface::const_iterator it = array.pmap()->begin();
-    typename DistArray<Tile>::pmap_interface::const_iterator end = array.pmap()->end();
+    typename DistArray<Tile>::pmap_interface::const_iterator it =
+        array.pmap()->begin();
+    typename DistArray<Tile>::pmap_interface::const_iterator end =
+        array.pmap()->end();
     for (; it != end; ++it) {
-      array.set(*it, array.world().taskq.add(BTASFixture::make_rand_tile<Tile, Range>,
-                                             array.trange().make_tile_range(*it)));
+      array.set(
+          *it, array.world().taskq.add(BTASFixture::make_rand_tile<Tile, Range>,
+                                       array.trange().make_tile_range(*it)));
     }
   }
 
-  template<typename T>
-  static void set_random(T &t) {
+  template <typename T>
+  static void set_random(T& t) {
     // with 50% generate nonzero integer value in [0,101)
     auto rand_int = GlobalFixture::world->rand();
     t = (rand_int < 0x8fffff) ? rand_int % 101 : 0;
   }
 
-  template<typename T>
-  static void set_random(std::complex<T> &t) {
+  template <typename T>
+  static void set_random(std::complex<T>& t) {
     // with 50% generate nonzero value
     auto rand_int1 = GlobalFixture::world->rand();
     if (rand_int1 < 0x8ffffful) {
@@ -107,28 +114,29 @@ struct BTASFixture : public TiledRangeFixture {
   }
 
   // Fill a tile with random data
-  template<typename Tile, typename Range>
-  static Tile
-  make_rand_tile(const Range &r) {
+  template <typename Tile, typename Range>
+  static Tile make_rand_tile(const Range& r) {
     Tile tile(r);
-    for(auto& v: tile) {
+    for (auto& v : tile) {
       set_random(v);
     }
     return tile;
   }
 
-  ~BTASFixture() {
-    GlobalFixture::world->gop.fence();
-  }
+  ~BTASFixture() { GlobalFixture::world->gop.fence(); }
 
   const static TiledRange trange1;
   const static TiledRange trange2;
   const static TiledRange trange3;
   const static TiledRange trange4;
 
-  using TArrayDSB = DistArray<Tile<btas::Tensor<double, TiledArray::Range, btas::varray<double>>>, DensePolicy>;
+  using TArrayDSB = DistArray<
+      Tile<btas::Tensor<double, TiledArray::Range, btas::varray<double>>>,
+      DensePolicy>;
   TArrayDSB a0, b0, c0;
-  using TArrayDB = DistArray<btas::Tensor<double, TiledArray::Range, btas::varray<double>>, DensePolicy>;
+  using TArrayDB =
+      DistArray<btas::Tensor<double, TiledArray::Range, btas::varray<double>>,
+                DensePolicy>;
   TArrayDB a1, b1, c1;
   using TArrayDSB0 = DistArray<Tile<btas::Tensor<double>>, DensePolicy>;
   TArrayDSB0 a2, b2, c2;
@@ -138,24 +146,20 @@ struct BTASFixture : public TiledRangeFixture {
   template <typename Array>
   Array& array(size_t idx);
 
-}; // BTASFixture
+};  // BTASFixture
 
 // Instantiate static variables for fixture
-const TiledRange BTASFixture::trange1 =
-    {{0, 2, 5, 10, 17, 28, 41}};
-const TiledRange BTASFixture::trange2 =
-    {{0, 2, 5, 10, 17, 28, 41},
-     {0, 3, 6, 11, 18, 29, 42}};
-const TiledRange BTASFixture::trange3 =
-    {{0, 2, 5, 10, 17, 28, 41},
-     {0, 3, 6, 11, 18, 29, 42},
-     {0, 4, 5, 12, 17, 30, 41}};
-const TiledRange BTASFixture::trange4 =
-    {trange2.data()[0], trange2.data()[1], trange2.data()[0], trange2.data()[1]};
+const TiledRange BTASFixture::trange1 = {{0, 2, 5, 10, 17, 28, 41}};
+const TiledRange BTASFixture::trange2 = {{0, 2, 5, 10, 17, 28, 41},
+                                         {0, 3, 6, 11, 18, 29, 42}};
+const TiledRange BTASFixture::trange3 = {{0, 2, 5, 10, 17, 28, 41},
+                                         {0, 3, 6, 11, 18, 29, 42},
+                                         {0, 4, 5, 12, 17, 30, 41}};
+const TiledRange BTASFixture::trange4 = {trange2.data()[0], trange2.data()[1],
+                                         trange2.data()[0], trange2.data()[1]};
 
-template<>
-BTASFixture::TArrayDSB&
-BTASFixture::array<BTASFixture::TArrayDSB>(size_t idx) {
+template <>
+BTASFixture::TArrayDSB& BTASFixture::array<BTASFixture::TArrayDSB>(size_t idx) {
   if (idx == 0)
     return a0;
   else if (idx == 1)
@@ -166,9 +170,8 @@ BTASFixture::array<BTASFixture::TArrayDSB>(size_t idx) {
     throw std::range_error("idx out of range");
 }
 
-template<>
-BTASFixture::TArrayDB&
-BTASFixture::array<BTASFixture::TArrayDB>(size_t idx) {
+template <>
+BTASFixture::TArrayDB& BTASFixture::array<BTASFixture::TArrayDB>(size_t idx) {
   if (idx == 0)
     return a1;
   else if (idx == 1)
@@ -179,9 +182,9 @@ BTASFixture::array<BTASFixture::TArrayDB>(size_t idx) {
     throw std::range_error("idx out of range");
 }
 
-template<>
-BTASFixture::TArrayDSB0&
-BTASFixture::array<BTASFixture::TArrayDSB0>(size_t idx) {
+template <>
+BTASFixture::TArrayDSB0& BTASFixture::array<BTASFixture::TArrayDSB0>(
+    size_t idx) {
   if (idx == 0)
     return a2;
   else if (idx == 1)
@@ -192,9 +195,8 @@ BTASFixture::array<BTASFixture::TArrayDSB0>(size_t idx) {
     throw std::range_error("idx out of range");
 }
 
-template<>
-BTASFixture::TArrayDB0&
-BTASFixture::array<BTASFixture::TArrayDB0>(size_t idx) {
+template <>
+BTASFixture::TArrayDB0& BTASFixture::array<BTASFixture::TArrayDB0>(size_t idx) {
   if (idx == 0)
     return a3;
   else if (idx == 1)
@@ -214,7 +216,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(copy, Array, array_types) {
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(contract, Array, array_types) {
-
   // contract 2 tensors
   const auto& a = array<Array>(0);
   const auto& b = array<Array>(1);
@@ -230,36 +231,37 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(contract, Array, array_types) {
   TArrayD c_ref;
   c_ref("j,k,l") = a_copy("i,j") * b_copy("i,k,l");
 
-  BOOST_CHECK(std::sqrt((c_copy("i,j,k") - c_ref("i,j,k")).squared_norm().get()) < 1e-10);
+  BOOST_CHECK(
+      std::sqrt((c_copy("i,j,k") - c_ref("i,j,k")).squared_norm().get()) <
+      1e-10);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(from_btas_subtensor, bTensor, tensor_types) {
   using range_type = typename bTensor::range_type;
-  bTensor src = make_rand_tile<bTensor>(range_type({4,5}));
+  bTensor src = make_rand_tile<bTensor>(range_type({4, 5}));
 
-  Tensor<double> dst(TiledArray::Range({1,1}, {3,4}));
+  Tensor<double> dst(TiledArray::Range({1, 1}, {3, 4}));
   BOOST_REQUIRE_NO_THROW(btas_subtensor_to_tensor(src, dst));
 
-//  btas_subtensor_to_tensor(src, dst);
+  //  btas_subtensor_to_tensor(src, dst);
 
-  for(const auto& i: dst.range()) {
+  for (const auto& i : dst.range()) {
     BOOST_CHECK_EQUAL(src(i), dst(i));
   }
-
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(to_btas_subtensor, bTensor, tensor_types) {
-  Tensor<double> src = make_rand_tile<Tensor<double>>(TiledArray::Range({1,1}, {3,3}));
+  Tensor<double> src =
+      make_rand_tile<Tensor<double>>(TiledArray::Range({1, 1}, {3, 3}));
 
   using range_type = typename bTensor::range_type;
-  bTensor dst(range_type({4,5}), 0.0);
+  bTensor dst(range_type({4, 5}), 0.0);
 
   BOOST_REQUIRE_NO_THROW(tensor_to_btas_subtensor(src, dst));
 
-  for(const auto& i: src.range()) {
+  for (const auto& i : src.range()) {
     BOOST_CHECK_EQUAL(src(i), dst(i));
   }
-
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
@@ -267,13 +269,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
   const auto root = 0;
   bTensor src;
   if (GlobalFixture::world->rank() == root)
-    src = make_rand_tile<bTensor>(typename bTensor::range_type({20,22,24}));
+    src = make_rand_tile<bTensor>(typename bTensor::range_type({20, 22, 24}));
   if (GlobalFixture::world->size() != 0)
     GlobalFixture::world->gop.broadcast_serializable(src, root);
 
   // make tiled range
   using trange1_t = TiledArray::TiledRange1;
-  TiledArray::TiledRange trange({trange1_t(0,10,20), trange1_t(0,11,22), trange1_t(0,12,24)});
+  TiledArray::TiledRange trange(
+      {trange1_t(0, 10, 20), trange1_t(0, 11, 22), trange1_t(0, 12, 24)});
 
   // convert to a replicated DistArray
   using T = typename bTensor::value_type;
@@ -282,19 +285,23 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
   const auto replicated = true;
 #if !defined(TA_USER_ASSERT_DISABLED)
   if (GlobalFixture::world->size() > 1)
-    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TArray>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
+    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TArray>(
+                            *GlobalFixture::world, trange, src, not replicated),
+                        TiledArray::Exception);
 #endif
-  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TArray>(*GlobalFixture::world, trange, src, replicated));
+  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TArray>(
+                             *GlobalFixture::world, trange, src, replicated));
 
   // check the array contents
-  for(const auto& t: dst) {
+  for (const auto& t : dst) {
     const auto& tile = t.get();
     const auto& tile_range = tile.range();
-    auto src_blk_range = TiledArray::BlockRange(trange.elements_range(), tile_range.lobound(), tile_range.upbound());
+    auto src_blk_range = TiledArray::BlockRange(
+        trange.elements_range(), tile_range.lobound(), tile_range.upbound());
     using std::data;
     auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
 
-    for(const auto& i: tile_range) {
+    for (const auto& i : tile_range) {
       BOOST_CHECK_EQUAL(src_view(i), tile(i));
     }
   }
@@ -302,23 +309,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
   // convert to the replicated DistArray back to a btas::Tensor
   btas::Tensor<T> src_copy;
   BOOST_REQUIRE_NO_THROW(src_copy = array_to_btas_tensor(dst));
-  for(const auto& i: src.range()) {
+  for (const auto& i : src.range()) {
     BOOST_CHECK_EQUAL(src(i), src_copy(i));
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(sparse_array_conversion, bTensor, tensor_types){
+BOOST_AUTO_TEST_CASE_TEMPLATE(sparse_array_conversion, bTensor, tensor_types) {
   // make random btas::Tensor on World rank 0, and replicate
   const auto root = 0;
   bTensor src;
   if (GlobalFixture::world->rank() == root)
-    src = make_rand_tile<bTensor>(typename bTensor::range_type({20,22,24}));
+    src = make_rand_tile<bTensor>(typename bTensor::range_type({20, 22, 24}));
   if (GlobalFixture::world->size() != 0)
     GlobalFixture::world->gop.broadcast_serializable(src, root);
 
   // make tiled range
   using trange1_t = TiledArray::TiledRange1;
-  TiledArray::TiledRange trange({trange1_t(0,10,20), trange1_t(0,11,22), trange1_t(0,12,24)});
+  TiledArray::TiledRange trange(
+      {trange1_t(0, 10, 20), trange1_t(0, 11, 22), trange1_t(0, 12, 24)});
 
   // convert to a replicated sparse policy DistArray
   using T = typename bTensor::value_type;
@@ -327,19 +335,23 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(sparse_array_conversion, bTensor, tensor_types){
   const auto replicated = true;
 #if !defined(TA_USER_ASSERT_DISABLED)
   if (GlobalFixture::world->size() > 1)
-    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TSpArray>(*GlobalFixture::world, trange, src, not replicated), TiledArray::Exception);
+    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TSpArray>(
+                            *GlobalFixture::world, trange, src, not replicated),
+                        TiledArray::Exception);
 #endif
-  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TSpArray>(*GlobalFixture::world, trange, src, replicated));
+  BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TSpArray>(
+                             *GlobalFixture::world, trange, src, replicated));
 
   // check the array contents
-  for(const auto& t: dst) {
+  for (const auto& t : dst) {
     const auto& tile = t.get();
     const auto& tile_range = tile.range();
-    auto src_blk_range = TiledArray::BlockRange(trange.elements_range(), tile_range.lobound(), tile_range.upbound());
+    auto src_blk_range = TiledArray::BlockRange(
+        trange.elements_range(), tile_range.lobound(), tile_range.upbound());
     using std::data;
     auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
 
-    for(const auto& i: tile_range) {
+    for (const auto& i : tile_range) {
       BOOST_CHECK_EQUAL(src_view(i), tile(i));
     }
   }
@@ -347,7 +359,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(sparse_array_conversion, bTensor, tensor_types){
   // convert to the replicated DistArray back to a btas::Tensor
   btas::Tensor<T> src_copy;
   BOOST_REQUIRE_NO_THROW(src_copy = array_to_btas_tensor(dst));
-  for(const auto& i: src.range()) {
+  for (const auto& i : src.range()) {
     BOOST_CHECK_EQUAL(src(i), src_copy(i));
   }
 }

@@ -27,44 +27,41 @@
 #include "unit_test_config.h"
 
 struct ReplicatedPmapFixture {
+  ReplicatedPmapFixture() {}
 
-  ReplicatedPmapFixture() { }
+  ~ReplicatedPmapFixture() {}
 
-  ~ReplicatedPmapFixture() { }
+};  // Fixture
 
-}; // Fixture
+BOOST_FIXTURE_TEST_SUITE(replicated_pmap_suite, ReplicatedPmapFixture)
 
-BOOST_FIXTURE_TEST_SUITE( replicated_pmap_suite, ReplicatedPmapFixture )
-
-BOOST_AUTO_TEST_CASE( constructor )
-{
-  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
-    BOOST_REQUIRE_NO_THROW(TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, tiles));
-    TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, tiles);
+BOOST_AUTO_TEST_CASE(constructor) {
+  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    BOOST_REQUIRE_NO_THROW(
+        TiledArray::detail::ReplicatedPmap pmap(*GlobalFixture::world, tiles));
+    TiledArray::detail::ReplicatedPmap pmap(*GlobalFixture::world, tiles);
     BOOST_CHECK_EQUAL(pmap.rank(), GlobalFixture::world->rank());
     BOOST_CHECK_EQUAL(pmap.procs(), GlobalFixture::world->size());
     BOOST_CHECK_EQUAL(pmap.size(), tiles);
   }
 }
 
-BOOST_AUTO_TEST_CASE( owner )
-{
+BOOST_AUTO_TEST_CASE(owner) {
   const std::size_t rank = GlobalFixture::world->rank();
 
   // Check various pmap sizes
-  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
-    TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, tiles);
+  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    TiledArray::detail::ReplicatedPmap pmap(*GlobalFixture::world, tiles);
 
-    for(std::size_t tile = 0; tile < tiles; ++tile) {
+    for (std::size_t tile = 0; tile < tiles; ++tile) {
       BOOST_CHECK_EQUAL(pmap.owner(tile), rank);
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE( local_size )
-{
-  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
-    TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, tiles);
+BOOST_AUTO_TEST_CASE(local_size) {
+  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    TiledArray::detail::ReplicatedPmap pmap(*GlobalFixture::world, tiles);
 
     // Check that the total number of elements in all local groups is equal to
     // the number of tiles in the map.
@@ -73,18 +70,19 @@ BOOST_AUTO_TEST_CASE( local_size )
   }
 }
 
-BOOST_AUTO_TEST_CASE( local_group )
-{
-  for(std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
-    TiledArray::detail::ReplicatedPmap pmap(* GlobalFixture::world, tiles);
+BOOST_AUTO_TEST_CASE(local_group) {
+  for (std::size_t tiles = 1ul; tiles < 100ul; ++tiles) {
+    TiledArray::detail::ReplicatedPmap pmap(*GlobalFixture::world, tiles);
 
     // Check that all local elements map to this rank
-    for(TiledArray::detail::ReplicatedPmap::const_iterator it = pmap.begin(); it != pmap.end(); ++it) {
+    for (TiledArray::detail::ReplicatedPmap::const_iterator it = pmap.begin();
+         it != pmap.end(); ++it) {
       BOOST_CHECK_EQUAL(pmap.owner(*it), GlobalFixture::world->rank());
     }
 
     std::size_t i = 0ul;
-    for(TiledArray::detail::ReplicatedPmap::const_iterator it = pmap.begin(); it != pmap.end(); ++it, ++i) {
+    for (TiledArray::detail::ReplicatedPmap::const_iterator it = pmap.begin();
+         it != pmap.end(); ++it, ++i) {
       BOOST_CHECK_EQUAL(*it, i);
     }
   }

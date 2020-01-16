@@ -24,45 +24,38 @@
  */
 
 #include "TiledArray/tile_op/scal.h"
+#include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
 
 using namespace TiledArray;
 using TiledArray::detail::Scal;
 
 struct ScalFixture : public RangeFixture {
-
-  ScalFixture() :
-    a(RangeFixture::r),
-    b(),
-    perm({2,0,1})
-  {
+  ScalFixture() : a(RangeFixture::r), b(), perm({2, 0, 1}) {
     GlobalFixture::world->srand(27);
-    for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    for (std::size_t i = 0ul; i < r.volume(); ++i) {
       a[i] = GlobalFixture::world->rand() / 101;
     }
   }
 
-  ~ScalFixture() { }
+  ~ScalFixture() {}
 
   TensorI a;
   TensorI b;
   Permutation perm;
 
-}; // ScalFixture
+};  // ScalFixture
 
-BOOST_FIXTURE_TEST_SUITE( tile_op_scal_neg_suite, ScalFixture )
+BOOST_FIXTURE_TEST_SUITE(tile_op_scal_neg_suite, ScalFixture)
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions
   BOOST_CHECK_NO_THROW((Scal<TensorI, TensorI, int, false>(7)));
   BOOST_CHECK_NO_THROW((Scal<TensorI, TensorI, int, true>(7)));
 }
 
-BOOST_AUTO_TEST_CASE( unary_scale )
-{
+BOOST_AUTO_TEST_CASE(unary_scale) {
   Scal<TensorI, TensorI, int, false> scal_op(7);
 
   // Store the sum of a and b in c
@@ -75,13 +68,12 @@ BOOST_AUTO_TEST_CASE( unary_scale )
   BOOST_CHECK_NE(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[i], 7 * a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_scale_perm )
-{
+BOOST_AUTO_TEST_CASE(unary_scale_perm) {
   Scal<TensorI, TensorI, int, false> scal_op(7);
 
   // Store the sum of a and b in c
@@ -94,13 +86,12 @@ BOOST_AUTO_TEST_CASE( unary_scale_perm )
   BOOST_CHECK_NE(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[perm * a.range().idx(i)], 7 * a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_scale_consume )
-{
+BOOST_AUTO_TEST_CASE(unary_scale_consume) {
   Scal<TensorI, TensorI, int, true> scal_op(7);
   const TensorI ax(a.range(), a.begin());
 
@@ -114,13 +105,12 @@ BOOST_AUTO_TEST_CASE( unary_scale_consume )
   BOOST_CHECK_EQUAL(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[i], 7 * ax[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_scale_runtime_consume )
-{
+BOOST_AUTO_TEST_CASE(unary_scale_runtime_consume) {
   Scal<TensorI, TensorI, int, false> scal_op(7);
   const TensorI ax(a.range(), a.begin());
 
@@ -134,13 +124,12 @@ BOOST_AUTO_TEST_CASE( unary_scale_runtime_consume )
   BOOST_CHECK_EQUAL(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[i], 7 * ax[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( unary_scale_perm_consume )
-{
+BOOST_AUTO_TEST_CASE(unary_scale_perm_consume) {
   Scal<TensorI, TensorI, int, true> scal_op(7);
 
   // Store the sum of a and b in c
@@ -153,10 +142,9 @@ BOOST_AUTO_TEST_CASE( unary_scale_perm_consume )
   BOOST_CHECK_NE(b.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(b[perm * a.range().idx(i)], 7 * a[i]);
   }
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

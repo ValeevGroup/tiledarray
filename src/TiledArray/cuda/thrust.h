@@ -24,33 +24,31 @@
 #ifndef TILEDARRAY_CUDA_THRUST_H__INCLUDED
 #define TILEDARRAY_CUDA_THRUST_H__INCLUDED
 
-
 #include <TiledArray/config.h>
-
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-
 #include <cuda_runtime_api.h>
-#include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
 
-
-// thrust::device_vector::data() returns a proxy, provide an overload for std::data() to provide raw ptr
+// thrust::device_vector::data() returns a proxy, provide an overload for
+// std::data() to provide raw ptr
 namespace thrust {
 
-// thrust::device_malloc_allocator name changed to device_allocator after version 10
-#if  CUDART_VERSION < 10000
-  template <typename T>
-  using device_allocator=thrust::device_malloc_allocator<T>;
+// thrust::device_malloc_allocator name changed to device_allocator after
+// version 10
+#if CUDART_VERSION < 10000
+template <typename T>
+using device_allocator = thrust::device_malloc_allocator<T>;
 #endif
 
-template<typename T, typename Alloc>
-const T* data (const thrust::device_vector<T, Alloc>& dev_vec) {
+template <typename T, typename Alloc>
+const T* data(const thrust::device_vector<T, Alloc>& dev_vec) {
   return thrust::raw_pointer_cast(dev_vec.data());
 }
-template<typename T, typename Alloc>
-T* data (thrust::device_vector<T, Alloc>& dev_vec) {
+template <typename T, typename Alloc>
+T* data(thrust::device_vector<T, Alloc>& dev_vec) {
   return thrust::raw_pointer_cast(dev_vec.data());
 }
 
@@ -59,7 +57,6 @@ template <typename T, typename Alloc>
 void resize(thrust::device_vector<T, Alloc>& dev_vec, size_t size);
 }  // namespace thrust
 
+#endif  // TILEDARRAY_HAS_CUDA
 
-#endif // TILEDARRAY_HAS_CUDA
-
-#endif //TILEDARRAY_CUDA_THRUST_H__INCLUDED
+#endif  // TILEDARRAY_CUDA_THRUST_H__INCLUDED

@@ -30,44 +30,43 @@
 
 namespace TiledArray {
 
-  template <typename Tile, typename ResultPolicy = DensePolicy, typename ArgPolicy>
-  inline
-  std::enable_if_t<is_dense_v<ResultPolicy> && !is_dense_v<ArgPolicy>,
-                   DistArray<Tile, ResultPolicy>>
-  to_dense(DistArray<Tile, ArgPolicy> const& sparse_array) {
-      typedef DistArray<Tile, ResultPolicy> ArrayType;
-      ArrayType dense_array(sparse_array.world(), sparse_array.trange());
+template <typename Tile, typename ResultPolicy = DensePolicy,
+          typename ArgPolicy>
+inline std::enable_if_t<is_dense_v<ResultPolicy> && !is_dense_v<ArgPolicy>,
+                        DistArray<Tile, ResultPolicy>>
+to_dense(DistArray<Tile, ArgPolicy> const& sparse_array) {
+  typedef DistArray<Tile, ResultPolicy> ArrayType;
+  ArrayType dense_array(sparse_array.world(), sparse_array.trange());
 
-      typedef typename ArrayType::pmap_interface pmap_interface;
-      std::shared_ptr<pmap_interface> const& pmap = dense_array.pmap();
+  typedef typename ArrayType::pmap_interface pmap_interface;
+  std::shared_ptr<pmap_interface> const& pmap = dense_array.pmap();
 
-      typename pmap_interface::const_iterator end = pmap->end();
+  typename pmap_interface::const_iterator end = pmap->end();
 
-      // iterate over sparse tiles
-      for (typename pmap_interface::const_iterator it = pmap->begin(); it != end;
-           ++it) {
-          const std::size_t ord = *it;
-          if (!sparse_array.is_zero(ord)) {
-              // clone because tiles are shallow copied
-              Tile tile(sparse_array.find(ord).get().clone());
-              dense_array.set(ord, tile);
-          } else {
-              // see DistArray::set(ordinal, element_type)
-              dense_array.set(ord, 0);
-          }
-      }
-
-      return dense_array;
+  // iterate over sparse tiles
+  for (typename pmap_interface::const_iterator it = pmap->begin(); it != end;
+       ++it) {
+    const std::size_t ord = *it;
+    if (!sparse_array.is_zero(ord)) {
+      // clone because tiles are shallow copied
+      Tile tile(sparse_array.find(ord).get().clone());
+      dense_array.set(ord, tile);
+    } else {
+      // see DistArray::set(ordinal, element_type)
+      dense_array.set(ord, 0);
+    }
   }
 
-  // If array is already dense just use the copy constructor.
-  template <typename Tile, typename Policy>
-  inline
-  std::enable_if_t<is_dense_v<Policy>,DistArray<Tile, Policy>>
-  to_dense(DistArray<Tile, Policy> const& other) {
-      return other;
-  }
+  return dense_array;
+}
+
+// If array is already dense just use the copy constructor.
+template <typename Tile, typename Policy>
+inline std::enable_if_t<is_dense_v<Policy>, DistArray<Tile, Policy>> to_dense(
+    DistArray<Tile, Policy> const& other) {
+  return other;
+}
 
 }  // namespace TiledArray
 
-#endif // TILEDARRAY_CONVERSIONS_SPARSE_TO_DENSE_H__INCLUDED
+#endif  // TILEDARRAY_CONVERSIONS_SPARSE_TO_DENSE_H__INCLUDED

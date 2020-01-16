@@ -25,11 +25,11 @@
 
 #include "expressions_fixture.h"
 
-typedef ExpressionsFixture<TiledArray::Tensor<std::complex<int>>,TA::DensePolicy>
+typedef ExpressionsFixture<TiledArray::Tensor<std::complex<int>>,
+                           TA::DensePolicy>
     EF_TATensorCI;
 
-typedef boost::mpl::vector<EF_TATensorCI>
-    Fixtures;
+typedef boost::mpl::vector<EF_TATensorCI> Fixtures;
 
 BOOST_AUTO_TEST_SUITE(expressions_complex_suite)
 #include "expressions_impl.h"

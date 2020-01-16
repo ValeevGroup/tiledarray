@@ -24,50 +24,52 @@
  */
 
 #include "TiledArray/tile_op/add.h"
+#include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
 
 using TiledArray::TensorI;
 
 struct ScalAddFixture : public RangeFixture {
-
-  ScalAddFixture() :
-    a(RangeFixture::r),
-    b(RangeFixture::r),
-    c(),
-    perm({2,0,1})
-  {
+  ScalAddFixture()
+      : a(RangeFixture::r), b(RangeFixture::r), c(), perm({2, 0, 1}) {
     GlobalFixture::world->srand(27);
-    for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    for (std::size_t i = 0ul; i < r.volume(); ++i) {
       a[i] = GlobalFixture::world->rand() / 101;
       b[i] = GlobalFixture::world->rand() / 101;
     }
   }
 
-  ~ScalAddFixture() { }
+  ~ScalAddFixture() {}
 
   TensorI a;
   TensorI b;
   TensorI c;
   Permutation perm;
 
-}; // AddFixture
+};  // AddFixture
 
-BOOST_FIXTURE_TEST_SUITE( tile_op_scal_add_suite, ScalAddFixture )
+BOOST_FIXTURE_TEST_SUITE(tile_op_scal_add_suite, ScalAddFixture)
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>(7)));
-  BOOST_CHECK_NO_THROW((TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>(7)));
-  BOOST_CHECK_NO_THROW((TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>(7)));
-  BOOST_CHECK_NO_THROW((TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, true>(7)));
+  BOOST_CHECK_NO_THROW((
+      TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>(
+          7)));
+  BOOST_CHECK_NO_THROW(
+      (TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>(
+          7)));
+  BOOST_CHECK_NO_THROW(
+      (TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>(
+          7)));
+  BOOST_CHECK_NO_THROW(
+      (TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, true>(
+          7)));
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>
+      add_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b));
@@ -80,14 +82,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * (a[i] + b[i]));
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_left_zero) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>
+      add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
@@ -99,14 +101,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_right_zero) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>
+      add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
@@ -118,14 +120,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_perm )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_perm) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>
+      add_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
@@ -138,14 +140,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_perm )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], 7 * (a[i] + b[i]));
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_left_zero_perm) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>
+      add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
@@ -157,14 +159,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], 7 * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_right_zero_perm) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, false>
+      add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));
@@ -176,14 +178,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], 7 * a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_consume_left )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_consume_left) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>
+      add_op(7);
   const TensorI ax(a.range(), a.begin());
 
   // Store the sum of a and b in c
@@ -197,14 +199,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * (ax[i] + b[i]));
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_consume_left )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_left_zero_consume_left) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>
+      add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b));
@@ -216,14 +218,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_consume_left )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_right_zero_consume_left) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>
+      add_op(7);
   const TensorI ax(a.range(), a.begin());
 
   // Store the sum of a and 0 in c
@@ -236,14 +238,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_consume_left )
   BOOST_CHECK_EQUAL(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * ax[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_perm_consume_left )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_perm_consume_left) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>
+      add_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
@@ -256,14 +258,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_perm_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], 7 * (a[i] + b[i]));
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm_consume_left )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_left_zero_perm_consume_left) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>
+      add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
@@ -275,14 +277,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], 7 * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm_consume_left )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_right_zero_perm_consume_left) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, true, false>
+      add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));
@@ -294,14 +296,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm_consume_left )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], 7 * a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_consume_right )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_consume_right) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>
+      add_op(7);
   const TensorI bx(b.range(), b.begin());
 
   // Store the sum of a and b in c
@@ -315,14 +317,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_consume_right )
   BOOST_CHECK_EQUAL(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * (a[i] + bx[i]));
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_consume_right )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_left_zero_consume_right) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>
+      add_op(7);
   const TensorI bx(b.range(), b.begin());
 
   // Store the sum of 0 and b in c
@@ -335,14 +337,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_consume_right )
   BOOST_CHECK_EQUAL(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * bx[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_consume_right )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_right_zero_consume_right) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>
+      add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor()));
@@ -354,14 +356,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_consume_right )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], 7 * a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_perm_consume_right )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_perm_consume_right) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>
+      add_op(7);
 
   // Store the sum of a and b in c
   BOOST_CHECK_NO_THROW(c = add_op(a, b, perm));
@@ -374,14 +376,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_perm_consume_right )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], 7 * (a[i] + b[i]));
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm_consume_right )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_left_zero_perm_consume_right) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>
+      add_op(7);
 
   // Store the sum of 0 and b in c
   BOOST_CHECK_NO_THROW(c = add_op(ZeroTensor(), b, perm));
@@ -393,14 +395,14 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_left_zero_perm_consume_right )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], 7 * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm_consume_right )
-{
-  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true> add_op(7);
+BOOST_AUTO_TEST_CASE(binary_scale_add_right_zero_perm_consume_right) {
+  TiledArray::detail::ScalAdd<TensorI, TensorI, TensorI, int, false, true>
+      add_op(7);
 
   // Store the sum of a and 0 in c
   BOOST_CHECK_NO_THROW(c = add_op(a, ZeroTensor(), perm));
@@ -412,7 +414,7 @@ BOOST_AUTO_TEST_CASE( binary_scale_add_right_zero_perm_consume_right )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], 7 * a[i]);
   }
 }

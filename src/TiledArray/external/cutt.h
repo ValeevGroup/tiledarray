@@ -26,16 +26,15 @@
 
 #include <TiledArray/config.h>
 
-
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <vector>
 #include <algorithm>
+#include <vector>
 
 #include <cutt.h>
 
-#include <TiledArray/range.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/range.h>
 
 namespace TiledArray {
 
@@ -44,16 +43,15 @@ namespace TiledArray {
  *
  * @param extent  the extent of a RowMajor Tensor
  */
-inline void extent_to_col_major(std::vector<int> &extent) {
+inline void extent_to_col_major(std::vector<int>& extent) {
   std::reverse(extent.begin(), extent.end());
 }
-
 
 /**
  * convert the permutation representation of a Tensor from RowMajor to ColMajor
  * @param perm  the permutation of a RowMajor Tensor
  */
-inline void permutation_to_col_major(std::vector<int> &perm) {
+inline void permutation_to_col_major(std::vector<int>& perm) {
   int size = perm.size();
 
   std::vector<int> col_major_perm(size, 0);
@@ -81,7 +79,6 @@ inline void permutation_to_col_major(std::vector<int> &perm) {
 template <typename T>
 void cutt_permute(T* inData, T* outData, const TiledArray::Range& range,
                   const TiledArray::Permutation& perm, cudaStream_t stream) {
-
   auto extent = range.extent();
   std::vector<int> extent_int(extent.begin(), extent.end());
 
@@ -108,11 +105,10 @@ void cutt_permute(T* inData, T* outData, const TiledArray::Range& range,
   status = cuttDestroy(plan);
 
   TA_ASSERT(status == CUTT_SUCCESS);
-
 }
 
-} // namespace TiledArray
+}  // namespace TiledArray
 
-#endif //  TILEDARRAY_HAS_CUDA
+#endif  //  TILEDARRAY_HAS_CUDA
 
-#endif //TILEDARRAY_EXTERNAL_CUTT_H__INCLUDED
+#endif  // TILEDARRAY_EXTERNAL_CUTT_H__INCLUDED

@@ -41,7 +41,6 @@ int main(int argc, char* argv[]) {
   std::vector<int> extent{N, N};
   std::vector<int> perm{1, 0};
 
-
   TiledArray::finalize();
   return 0;
 }

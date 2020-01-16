@@ -34,14 +34,14 @@
 #include <TiledArray/policies/sparse_policy.h>
 
 // Expression functionality
-#include <TiledArray/expressions/scal_expr.h>
-#include <TiledArray/expressions/tsr_expr.h>
-#include <TiledArray/conversions/sparse_to_dense.h>
 #include <TiledArray/conversions/dense_to_sparse.h>
-#include <TiledArray/conversions/to_new_tile_type.h>
-#include <TiledArray/conversions/truncate.h>
 #include <TiledArray/conversions/foreach.h>
 #include <TiledArray/conversions/make_array.h>
+#include <TiledArray/conversions/sparse_to_dense.h>
+#include <TiledArray/conversions/to_new_tile_type.h>
+#include <TiledArray/conversions/truncate.h>
+#include <TiledArray/expressions/scal_expr.h>
+#include <TiledArray/expressions/tsr_expr.h>
 
 // Special Arrays
 #include <TiledArray/special/diagonal_array.h>
@@ -61,4 +61,4 @@
 #include <TiledArray/external/elemental.h>
 #endif
 
-#endif // TILEDARRAY_H__INCLUDED
+#endif  // TILEDARRAY_H__INCLUDED

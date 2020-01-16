@@ -20,11 +20,11 @@
 #ifndef TILEDARRAY_RANGE_FIXTURE_H__INCLUDED
 #define TILEDARRAY_RANGE_FIXTURE_H__INCLUDED
 
-#include "global_fixture.h"
-#include "TiledArray/range.h"
-#include "TiledArray/tiled_range1.h"
-#include "TiledArray/tiled_range.h"
 #include <iostream>
+#include "TiledArray/range.h"
+#include "TiledArray/tiled_range.h"
+#include "TiledArray/tiled_range1.h"
+#include "global_fixture.h"
 
 using namespace TiledArray;
 
@@ -46,15 +46,15 @@ struct RangeFixture {
   static const index p5;
   static const index p6;
 
-  RangeFixture() : r(start, finish) { }
+  RangeFixture() : r(start, finish) {}
 
-  ~RangeFixture() { }
+  ~RangeFixture() {}
 
   template <typename A>
   static std::vector<std::size_t> calc_weight(const A& size, unsigned int n) {
     std::vector<std::size_t> weight(n);
     std::size_t volume = 1ul;
-    for(int i = int(n) - 1; i >= 0; --i) {
+    for (int i = int(n) - 1; i >= 0; --i) {
       weight[i] = volume;
       volume *= size[i];
     }
@@ -64,29 +64,26 @@ struct RangeFixture {
   Range r;
 };
 
-
 struct Range1Fixture {
-
   static const size_t ntiles = 5;
 
-  Range1Fixture() :
-      a(init_tiling<ntiles+1>()),
-      tiles(0, a.size() - 1),
-      elements(a.front(), a.back()),
-      tr1(a.begin(), a.end())
-  { }
-  ~Range1Fixture() { }
+  Range1Fixture()
+      : a(init_tiling<ntiles + 1>()),
+        tiles(0, a.size() - 1),
+        elements(a.front(), a.back()),
+        tr1(a.begin(), a.end()) {}
+  ~Range1Fixture() {}
 
   template <std::size_t D>
   static std::array<std::size_t, D> init_tiling() {
     std::array<std::size_t, D> result;
     result[0] = 0u;
-    for(std::size_t i = 1; i < D; ++i)
+    for (std::size_t i = 1; i < D; ++i)
       result[i] = result[i - 1] + GlobalFixture::primes[i - 1];
     return result;
   }
 
-  const std::array<std::size_t, ntiles+1> a;
+  const std::array<std::size_t, ntiles + 1> a;
   const TiledRange1::range_type tiles;
   const TiledRange1::range_type elements;
   TiledRange1 tr1;
@@ -94,24 +91,22 @@ struct Range1Fixture {
 };
 
 struct TiledRangeFixtureBase : public Range1Fixture {
-  TiledRangeFixtureBase() : dims(GlobalFixture::dim, tr1) { }
+  TiledRangeFixtureBase() : dims(GlobalFixture::dim, tr1) {}
   std::vector<TiledRange1> dims;
-}; // struct TiledRangeFixtureBase
+};  // struct TiledRangeFixtureBase
 
 struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
   typedef TiledRange TRangeN;
   typedef TRangeN::range_type::index tile_index;
 
+  TiledRangeFixture()
+      : tiles_range(TiledRangeFixture::index(GlobalFixture::dim, 0),
+                    TiledRangeFixture::index(GlobalFixture::dim, 5)),
+        elements_range(TiledRangeFixture::tile_index(GlobalFixture::dim, 0),
+                       TiledRangeFixture::tile_index(GlobalFixture::dim, a[5])),
+        tr(dims.begin(), dims.end()) {}
 
-  TiledRangeFixture() :
-    tiles_range(TiledRangeFixture::index(GlobalFixture::dim, 0),
-        TiledRangeFixture::index(GlobalFixture::dim, 5)),
-    elements_range(TiledRangeFixture::tile_index(GlobalFixture::dim, 0),
-        TiledRangeFixture::tile_index(GlobalFixture::dim, a[5])),
-    tr(dims.begin(), dims.end())
-  { }
-
-  ~TiledRangeFixture() { }
+  ~TiledRangeFixture() {}
 
   static tile_index fill_tile_index(TRangeN::range_type::index::value_type);
 
@@ -120,4 +115,4 @@ struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {
   TRangeN tr;
 };
 
-#endif // TILEDARRAY_RANGE_FIXTURE_H__INCLUDED
+#endif  // TILEDARRAY_RANGE_FIXTURE_H__INCLUDED

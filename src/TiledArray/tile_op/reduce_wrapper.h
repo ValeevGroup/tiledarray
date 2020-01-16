@@ -26,187 +26,193 @@
 #ifndef TILEDARRAY_TILE_OP_REDUCE_INTERFACE_H__INCLUDED
 #define TILEDARRAY_TILE_OP_REDUCE_INTERFACE_H__INCLUDED
 
-#include <TiledArray/type_traits.h>
 #include <TiledArray/external/madness.h>
+#include <TiledArray/type_traits.h>
 
 namespace TiledArray {
-  namespace math {
+namespace math {
 
-    /// Unary reduction wrapper class that handles lazy tile evaluation
+/// Unary reduction wrapper class that handles lazy tile evaluation
 
-    /// This allows reduction functors to handle lazy tile types.
-    /// \tparam Tile The tile argument type
-    /// \tparam Op The base reduction operation type
-    template <typename Tile, typename Op>
-    class UnaryReduceWrapper : public Op {
-    public:
-      // typedefs
-      typedef UnaryReduceWrapper<Tile, Op> UnaryReduceWrapper_; ///< This class type
-      typedef typename Op::result_type result_type; ///< The reduction result type
-      typedef Tile argument_type; ///< The reduction argument type
+/// This allows reduction functors to handle lazy tile types.
+/// \tparam Tile The tile argument type
+/// \tparam Op The base reduction operation type
+template <typename Tile, typename Op>
+class UnaryReduceWrapper : public Op {
+ public:
+  // typedefs
+  typedef UnaryReduceWrapper<Tile, Op>
+      UnaryReduceWrapper_;                       ///< This class type
+  typedef typename Op::result_type result_type;  ///< The reduction result type
+  typedef Tile argument_type;  ///< The reduction argument type
 
-      // Constructors
-      UnaryReduceWrapper() : Op() { }
-      UnaryReduceWrapper(const Op& op) : Op(op) { }
-      UnaryReduceWrapper(const UnaryReduceWrapper_& other) : Op(other) { }
+  // Constructors
+  UnaryReduceWrapper() : Op() {}
+  UnaryReduceWrapper(const Op& op) : Op(op) {}
+  UnaryReduceWrapper(const UnaryReduceWrapper_& other) : Op(other) {}
 
-      UnaryReduceWrapper_& operator=(const UnaryReduceWrapper_& other) {
-        Op::operator=(other);
-        return *this;
-      }
+  UnaryReduceWrapper_& operator=(const UnaryReduceWrapper_& other) {
+    Op::operator=(other);
+    return *this;
+  }
 
-      // Import base class functionality
-      using Op::operator();
+  // Import base class functionality
+  using Op::operator();
 
-    private:
+ private:
+  template <typename T>
+  typename std::enable_if<is_lazy_tile<T>::value>::type reduce(
+      result_type& result, const T& arg) const {
+    typename eval_trait<T>::type eval_arg(arg);
+    Op::operator()(result, eval_arg);
+  }
 
-      template <typename T>
-      typename std::enable_if<is_lazy_tile<T>::value>::type
-      reduce(result_type& result, const T& arg) const {
-        typename eval_trait<T>::type eval_arg(arg);
-        Op::operator()(result, eval_arg);
-      }
+  template <typename T>
+  typename std::enable_if<!is_lazy_tile<T>::value>::type reduce(
+      result_type& result, const T& arg) const {
+    Op::operator()(result, arg);
+  }
 
-      template <typename T>
-      typename std::enable_if<! is_lazy_tile<T>::value >::type
-      reduce(result_type& result, const T& arg) const {
-        Op::operator()(result, arg);
-      }
+ public:
+  // Reduce an argument
+  void operator()(result_type& result, const argument_type& arg) const {
+    reduce(result, arg);
+  }
 
-    public:
+};  // struct UnaryReduceWrapper
 
-      // Reduce an argument
-      void operator()(result_type& result, const argument_type& arg) const {
-        reduce(result, arg);
-      }
+/// Unary reduction wrapper class that handles lazy tile evaluation
 
-    }; // struct UnaryReduceWrapper
+/// This class is a shallow wrapper for cases where the argument is not a
+/// lazy tile.
+/// \tparam Op The base reduction operation type
+template <typename Op>
+class UnaryReduceWrapper<typename Op::argument_type, Op> : public Op {
+ public:
+  // typedefs
+  typedef UnaryReduceWrapper<typename Op::argument_type, Op>
+      UnaryReduceWrapper_;                       ///< This class type
+  typedef typename Op::result_type result_type;  ///< The reduction result type
+  typedef typename Op::argument_type
+      argument_type;  ///< The reduction argument type
 
-    /// Unary reduction wrapper class that handles lazy tile evaluation
+  // Constructors
+  UnaryReduceWrapper() : Op() {}
+  UnaryReduceWrapper(const Op& op) : Op(op) {}
+  UnaryReduceWrapper(const UnaryReduceWrapper_& other) : Op(other) {}
 
-    /// This class is a shallow wrapper for cases where the argument is not a
-    /// lazy tile.
-    /// \tparam Op The base reduction operation type
-    template <typename Op>
-    class UnaryReduceWrapper<typename Op::argument_type, Op> : public Op {
-    public:
-      // typedefs
-      typedef UnaryReduceWrapper<typename Op::argument_type, Op>
-          UnaryReduceWrapper_; ///< This class type
-      typedef typename Op::result_type result_type; ///< The reduction result type
-      typedef typename Op::argument_type argument_type; ///< The reduction argument type
+  UnaryReduceWrapper_& operator=(const UnaryReduceWrapper_& other) {
+    Op::operator=(other);
+    return *this;
+  }
 
-      // Constructors
-      UnaryReduceWrapper() : Op() { }
-      UnaryReduceWrapper(const Op& op) : Op(op) { }
-      UnaryReduceWrapper(const UnaryReduceWrapper_& other) : Op(other) { }
+  // Import base class functionality
+  using Op::operator();
 
-      UnaryReduceWrapper_& operator=(const UnaryReduceWrapper_& other) {
-        Op::operator=(other);
-        return *this;
-      }
+};  // struct UnaryReduceWrapper
 
-      // Import base class functionality
-      using Op::operator();
+/// Binary reduction wrapper class that handles lazy tile evaluation
 
-    }; // struct UnaryReduceWrapper
+/// This allows reduction functors to handle lazy tile types.
+/// \tparam Left The left-hand tile argument type
+/// \tparam Right The right-hand tile argument type
+/// \tparam Op The base reduction operation type
+template <typename Left, typename Right, typename Op>
+struct BinaryReduceWrapper : public Op {
+ public:
+  // typedefs
+  typedef BinaryReduceWrapper<Left, Right, Op>
+      BinaryReduceWrapper_;                      ///< This class type
+  typedef typename Op::result_type result_type;  ///< The reduction result type
+  typedef Left first_argument_type;  ///< The reduction left-hand argument type
+  typedef Right
+      second_argument_type;  ///< The reduction right-hand argument type
 
-    /// Binary reduction wrapper class that handles lazy tile evaluation
+  // Constructors
+  BinaryReduceWrapper() : Op() {}
+  BinaryReduceWrapper(const Op& op) : Op(op) {}
+  BinaryReduceWrapper(const BinaryReduceWrapper_& other) : Op(other) {}
 
-    /// This allows reduction functors to handle lazy tile types.
-    /// \tparam Left The left-hand tile argument type
-    /// \tparam Right The right-hand tile argument type
-    /// \tparam Op The base reduction operation type
-    template <typename Left, typename Right, typename Op>
-    struct BinaryReduceWrapper : public Op {
-    public:
-      // typedefs
-      typedef BinaryReduceWrapper<Left, Right, Op> BinaryReduceWrapper_; ///< This class type
-      typedef typename Op::result_type result_type; ///< The reduction result type
-      typedef Left first_argument_type; ///< The reduction left-hand argument type
-      typedef Right second_argument_type; ///< The reduction right-hand argument type
+  BinaryReduceWrapper_& operator=(const BinaryReduceWrapper_& other) {
+    Op::operator=(other);
+    return *this;
+  }
 
-      // Constructors
-      BinaryReduceWrapper() : Op() { }
-      BinaryReduceWrapper(const Op& op) : Op(op) { }
-      BinaryReduceWrapper(const BinaryReduceWrapper_& other) : Op(other) { }
+ private:
+  template <typename L, typename R>
+  typename std::enable_if<is_lazy_tile<L>::value &&
+                          is_lazy_tile<R>::value>::type
+  reduce(result_type& result, const L& left, const R& right) const {
+    typename eval_trait<L>::type eval_left(left);
+    typename eval_trait<R>::type eval_right(right);
+    Op::operator()(result, eval_left, eval_right);
+  }
 
-      BinaryReduceWrapper_& operator=(const BinaryReduceWrapper_& other) {
-        Op::operator=(other);
-        return *this;
-      }
+  template <typename L, typename R>
+  typename std::enable_if<(!is_lazy_tile<L>::value) &&
+                          is_lazy_tile<R>::value>::type
+  reduce(result_type& result, const L& left, const R& right) const {
+    typename eval_trait<R>::type eval_right(right);
+    Op::operator()(result, left, eval_right);
+  }
 
-    private:
+  template <typename L, typename R>
+  typename std::enable_if<is_lazy_tile<L>::value &&
+                          (!is_lazy_tile<R>::value)>::type
+  reduce(result_type& result, const L& left, const R& right) const {
+    typename eval_trait<L>::type eval_left(left);
+    Op::operator()(result, eval_left, right);
+  }
 
-      template <typename L, typename R>
-      typename std::enable_if<is_lazy_tile<L>::value && is_lazy_tile<R>::value>::type
-      reduce(result_type& result, const L& left, const R& right) const {
-        typename eval_trait<L>::type eval_left(left);
-        typename eval_trait<R>::type eval_right(right);
-        Op::operator()(result, eval_left, eval_right);
-      }
+  template <typename L, typename R>
+  typename std::enable_if<!(is_lazy_tile<L>::value ||
+                            is_lazy_tile<R>::value)>::type
+  reduce(result_type& result, const L& left, const R& right) const {
+    Op::operator()(result, left, right);
+  }
 
-      template <typename L, typename R>
-      typename std::enable_if<(!is_lazy_tile<L>::value) && is_lazy_tile<R>::value>::type
-      reduce(result_type& result, const L& left, const R& right) const {
-        typename eval_trait<R>::type eval_right(right);
-        Op::operator()(result, left, eval_right);
-      }
+ public:
+  // Import base class functionality
+  using Op::operator();
 
-      template <typename L, typename R>
-      typename std::enable_if<is_lazy_tile<L>::value && (!is_lazy_tile<R>::value)>::type
-      reduce(result_type& result, const L& left, const R& right) const {
-        typename eval_trait<L>::type eval_left(left);
-        Op::operator()(result, eval_left, right);
-      }
+  // Reduce an argument pair
+  void operator()(result_type& result, const first_argument_type& left,
+                  const second_argument_type& right) const {
+    reduce(result, left, right);
+  }
 
-      template <typename L, typename R>
-      typename std::enable_if<!(is_lazy_tile<L>::value || is_lazy_tile<R>::value)>::type
-      reduce(result_type& result, const L& left, const R& right) const {
-        Op::operator()(result, left, right);
-      }
+};  // struct BinaryReduceWrapper
 
-    public:
+/// Binary reduction operation wrapper
+template <typename Op>
+struct BinaryReduceWrapper<typename Op::first_argument_type,
+                           typename Op::second_argument_type, Op> : public Op {
+  // typedefs
+  typedef BinaryReduceWrapper<typename Op::first_argument_type,
+                              typename Op::second_argument_type, Op>
+      BinaryReduceWrapper_;                      ///< This class type
+  typedef typename Op::result_type result_type;  ///< The reduction result type
+  typedef typename Op::first_argument_type
+      first_argument_type;  ///< The reduction left-hand argument type
+  typedef typename Op::second_argument_type
+      second_argument_type;  ///< The reduction right-hand argument type
 
-      // Import base class functionality
-      using Op::operator();
+  // Constructors
+  BinaryReduceWrapper() : Op() {}
+  BinaryReduceWrapper(const Op& op) : Op(op) {}
+  BinaryReduceWrapper(const BinaryReduceWrapper_& other) : Op(other) {}
 
-      // Reduce an argument pair
-      void operator()(result_type& result, const first_argument_type& left,
-          const second_argument_type& right) const {
-        reduce(result, left, right);
-      }
+  BinaryReduceWrapper_& operator=(const BinaryReduceWrapper_& other) {
+    Op::operator=(other);
+    return *this;
+  }
 
-    }; // struct BinaryReduceWrapper
+  // Import base class functionality
+  using Op::operator();
 
-    /// Binary reduction operation wrapper
-    template <typename Op>
-    struct BinaryReduceWrapper<typename Op::first_argument_type,
-        typename Op::second_argument_type, Op> : public Op
-    {
-      // typedefs
-      typedef BinaryReduceWrapper<typename Op::first_argument_type,
-          typename Op::second_argument_type, Op> BinaryReduceWrapper_; ///< This class type
-      typedef typename Op::result_type result_type; ///< The reduction result type
-      typedef typename Op::first_argument_type first_argument_type; ///< The reduction left-hand argument type
-      typedef typename Op::second_argument_type second_argument_type; ///< The reduction right-hand argument type
+};  // struct BinaryReduceWrapper
 
-      // Constructors
-      BinaryReduceWrapper() : Op() { }
-      BinaryReduceWrapper(const Op& op) : Op(op) { }
-      BinaryReduceWrapper(const BinaryReduceWrapper_& other) : Op(other) { }
+}  // namespace math
+}  // namespace TiledArray
 
-      BinaryReduceWrapper_& operator=(const BinaryReduceWrapper_& other) {
-        Op::operator=(other);
-        return *this;
-      }
-
-      // Import base class functionality
-      using Op::operator();
-
-    }; // struct BinaryReduceWrapper
-
-  }  // namespace math
-} // namespace TiledArray
-
-#endif // TILEDARRAY_TILE_OP_REDUCE_INTERFACE_H__INCLUDED
+#endif  // TILEDARRAY_TILE_OP_REDUCE_INTERFACE_H__INCLUDED

@@ -26,118 +26,107 @@
 #ifndef TILEDARRAY_TILE_INTERFACE_CLONE_H__INCLUDED
 #define TILEDARRAY_TILE_INTERFACE_CLONE_H__INCLUDED
 
+#include "../tile_interface/cast.h"
 #include "../type_traits.h"
 
 namespace TiledArray {
 
+/// Create a copy of \c arg
 
-  /// Create a copy of \c arg
+/// \tparam Arg The tile argument type
+/// \param arg The tile argument to be permuted
+/// \return A (deep) copy of \c arg
+template <typename Arg>
+inline auto clone(const Arg& arg) {
+  return arg.clone();
+}
 
-  /// \tparam Arg The tile argument type
-  /// \param arg The tile argument to be permuted
-  /// \return A (deep) copy of \c arg
-  template <typename Arg>
-  inline auto clone(const Arg& arg) {
-    return arg.clone();
-  }
+namespace tile_interface {
 
-  namespace tile_interface {
+using TiledArray::clone;
 
+template <typename T>
+using result_of_clone_t =
+    typename std::decay<decltype(clone(std::declval<T>()))>::type;
+
+/// Internal clone trait
+
+/// This trait class is used to determine the default output type for tile
+/// clone operations. This version of `clone_trait` is used for tile types
+/// where a `clone` is NOT function defined.
+/// \tparam Arg The argument type to be cloned
+template <typename Arg, typename Enabler = void>
+struct clone_trait {
+  typedef Arg type;
+};
+
+/// Internal clone trait
+
+/// This trait class is used to determine the default output type for tile
+/// clone operations. This version of `clone_trait` is used for tile types
+/// where a `clone` is function defined.
+/// \tparam Arg The argument type to be cloned
+template <typename Arg>
+struct clone_trait<Arg, typename std::enable_if<TiledArray::detail::is_type<
+                            result_of_clone_t<Arg> >::value>::type> {
+  typedef result_of_clone_t<Arg> type;
+};
+
+// Internal tile clone operation
+
+/// Clone a tile using the clone function. Here we rely on ADL to select the
+/// correct clone function.
+/// \tparam Result The result tile type
+/// \tparam Argument The argument tile type
+template <typename Result, typename Arg, typename Enabler = void>
+class Clone {
+ public:
+  typedef Result result_type;  ///< Result tile type
+  typedef Arg argument_type;   ///< Argument tile type
+
+  result_type operator()(const argument_type& arg) const {
     using TiledArray::clone;
+    return clone(arg);
+  }
+};
 
-    template <typename T>
-    using result_of_clone_t = typename std::decay<decltype(clone(std::declval<T>()))>::type;
+// Internal tile clone and cast operation
 
-    /// Internal clone trait
+/// Clone is implemented using a cast operation instead of the `clone`
+/// function.
+/// \tparam Result The result tile type
+/// \tparam Argument The argument tile type
+template <typename Result, typename Arg>
+class Clone<Result, Arg,
+            typename std::enable_if<!std::is_same<
+                Result, typename clone_trait<Arg>::type>::value>::type>
+    : public TiledArray::Cast<Result, Arg> {};
 
-    /// This trait class is used to determine the default output type for tile
-    /// clone operations. This version of `clone_trait` is used for tile types
-    /// where a `clone` is NOT function defined.
-    /// \tparam Arg The argument type to be cloned
-    template <typename Arg, typename Enabler = void>
-    struct clone_trait {
-      typedef Arg type;
-    };
+}  // namespace tile_interface
 
-    /// Internal clone trait
+/// Clone trait
 
-    /// This trait class is used to determine the default output type for tile
-    /// clone operations. This version of `clone_trait` is used for tile types
-    /// where a `clone` is function defined.
-    /// \tparam Arg The argument type to be cloned
-    template <typename Arg>
-    struct clone_trait<Arg,
-        typename std::enable_if<
-            TiledArray::detail::is_type<result_of_clone_t<Arg> >::value
-        >::type>
-    {
-      typedef result_of_clone_t<Arg> type;
-    };
+/// This class defines the default return type for a tile clone operation.
+/// The default return type is defined by the return type of the `clone()`
+/// function, if it exists. Otherwise it is assumed to be `Arg` type.
+/// Users may override this trait by providing a (partial) specialization for
+/// this class.
+/// \tparam Arg The argument tile type
+template <typename Arg>
+struct clone_trait : public TiledArray::tile_interface::clone_trait<Arg> {};
 
+/// Create a deep copy of a tile
 
-    // Internal tile clone operation
+/// This operation creates a deep copy of a tile. The copy operation may
+/// optionally perform a clone or cast operation. If the `Result` and `Arg`
+/// types are the same, the argument tile is copied using the `clone()`
+/// operation is performed, otherwise the argument tile is cast to the
+/// `Result` type using the `TiledArray::Cast<Result, Arg>` functor.
+/// \tparam Result The result tile type
+/// \tparam Argument The argument tile type
+template <typename Result, typename Arg>
+class Clone : public TiledArray::tile_interface::Clone<Result, Arg> {};
 
-    /// Clone a tile using the clone function. Here we rely on ADL to select the
-    /// correct clone function.
-    /// \tparam Result The result tile type
-    /// \tparam Argument The argument tile type
-    template <typename Result, typename Arg, typename Enabler = void>
-    class Clone {
-    public:
+}  // namespace TiledArray
 
-      typedef Result result_type; ///< Result tile type
-      typedef Arg argument_type; ///< Argument tile type
-
-      result_type operator()(const argument_type& arg) const {
-        using TiledArray::clone;
-        return clone(arg);
-      }
-    };
-
-    // Internal tile clone and cast operation
-
-    /// Clone is implemented using a cast operation instead of the `clone`
-    /// function.
-    /// \tparam Result The result tile type
-    /// \tparam Argument The argument tile type
-    template <typename Result, typename Arg>
-    class Clone<Result, Arg,
-        typename std::enable_if<
-            ! std::is_same<Result, typename clone_trait<Arg>::type >::value
-        >::type> :
-        public TiledArray::Cast<Result, Arg>
-    { };
-
-  } // namespace tile_interface
-
-
-  /// Clone trait
-
-  /// This class defines the default return type for a tile clone operation.
-  /// The default return type is defined by the return type of the `clone()`
-  /// function, if it exists. Otherwise it is assumed to be `Arg` type.
-  /// Users may override this trait by providing a (partial) specialization for
-  /// this class.
-  /// \tparam Arg The argument tile type
-  template <typename Arg>
-  struct clone_trait :
-      public TiledArray::tile_interface::clone_trait<Arg>
-  { };
-
-
-  /// Create a deep copy of a tile
-
-  /// This operation creates a deep copy of a tile. The copy operation may
-  /// optionally perform a clone or cast operation. If the `Result` and `Arg`
-  /// types are the same, the argument tile is copied using the `clone()`
-  /// operation is performed, otherwise the argument tile is cast to the
-  /// `Result` type using the `TiledArray::Cast<Result, Arg>` functor.
-  /// \tparam Result The result tile type
-  /// \tparam Argument The argument tile type
-  template <typename Result, typename Arg>
-  class Clone : public TiledArray::tile_interface::Clone<Result, Arg> { };
-
-
-} // namespace TiledArray
-
-#endif // TILEDARRAY_TILE_INTERFACE_CLONE_H__INCLUDED
+#endif  // TILEDARRAY_TILE_INTERFACE_CLONE_H__INCLUDED

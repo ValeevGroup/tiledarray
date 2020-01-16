@@ -26,45 +26,43 @@
 #ifndef TILEDARRAY_EXPRESSIONS_UNARY_EXPR_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_UNARY_EXPR_H__INCLUDED
 
-#include <TiledArray/expressions/expr.h>
 #include <TiledArray/dist_eval/unary_eval.h>
+#include <TiledArray/expressions/expr.h>
 
 namespace TiledArray {
-  namespace expressions {
+namespace expressions {
 
-    template <typename Derived>
-    class UnaryExpr : public Expr<Derived> {
-    public:
-      typedef UnaryExpr<Derived> UnaryExpr_;
-      typedef typename ExprTrait<Derived>::argument_type argument_type; ///< The expression type
+template <typename Derived>
+class UnaryExpr : public Expr<Derived> {
+ public:
+  typedef UnaryExpr<Derived> UnaryExpr_;
+  typedef typename ExprTrait<Derived>::argument_type
+      argument_type;  ///< The expression type
 
-    private:
+ private:
+  argument_type arg_;  ///< The argument expression
 
-      argument_type arg_; ///< The argument expression
+ public:
+  // Compiler generated functions
+  UnaryExpr(const UnaryExpr_&) = default;
+  UnaryExpr(UnaryExpr_&&) = default;
+  ~UnaryExpr() = default;
+  UnaryExpr_& operator=(const UnaryExpr_&) = delete;
+  UnaryExpr_& operator=(UnaryExpr_&&) = delete;
 
-    public:
+  /// Constructor
 
-      // Compiler generated functions
-      UnaryExpr(const UnaryExpr_&) = default;
-      UnaryExpr(UnaryExpr_&&) = default;
-      ~UnaryExpr() = default;
-      UnaryExpr_& operator=(const UnaryExpr_&) = delete;
-      UnaryExpr_& operator=(UnaryExpr_&&) = delete;
+  /// \param arg The argument expression
+  UnaryExpr(const argument_type& arg) : arg_(arg) {}
 
-      /// Constructor
+  /// Argument expression accessor
 
-      /// \param arg The argument expression
-      UnaryExpr(const argument_type& arg) : arg_(arg) { }
+  /// \return A const reference to the argument expression object
+  const argument_type& arg() const { return arg_; }
 
+};  // class UnaryExpr
 
-      /// Argument expression accessor
+}  // namespace expressions
+}  // namespace TiledArray
 
-      /// \return A const reference to the argument expression object
-      const argument_type& arg() const { return arg_; }
-
-    }; // class UnaryExpr
-
-  }  // namespace expressions
-} // namespace TiledArray
-
-#endif // TILEDARRAY_EXPRESSIONS_UNARY_EXPR_H__INCLUDED
+#endif  // TILEDARRAY_EXPRESSIONS_UNARY_EXPR_H__INCLUDED

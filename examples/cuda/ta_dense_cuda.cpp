@@ -93,7 +93,6 @@ void to_host(
   auto to_host =
       [](TiledArray::Tile<
           btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>> &tile) {
-
         auto &stream = detail::get_stream_based_on_range(tile.range());
 
         // do norm on GPU
@@ -119,7 +118,6 @@ void to_device(
   auto to_device =
       [](TiledArray::Tile<
           btas::Tensor<T, Range, TiledArray::cpu_cuda_vector<T>>> &tile) {
-
         auto &stream = detail::get_stream_based_on_range(tile.range());
 
         TiledArray::to_execution_space<TiledArray::ExecutionSpace::CUDA>(
@@ -224,18 +222,15 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
     a_host.fill(val_a);
     b_host.fill(val_b);
-    CUDAMatrix a =
-        TA::ta_tensor_to_um_tensor<TA::Tile<CUDATile>>(a_host);
-    CUDAMatrix b =
-        TA::ta_tensor_to_um_tensor<TA::Tile<CUDATile>>(b_host);
-    
+    CUDAMatrix a = TA::ta_tensor_to_um_tensor<TA::Tile<CUDATile>>(a_host);
+    CUDAMatrix b = TA::ta_tensor_to_um_tensor<TA::Tile<CUDATile>>(b_host);
+
     world.gop.fence();
 
-//    TA::to_device(a);
-//    TA::to_device(b);
+    //    TA::to_device(a);
+    //    TA::to_device(b);
 
-//    c("m,n") = a("m,k") * b("k,n");
-
+    //    c("m,n") = a("m,k") * b("k,n");
 
     // start profiler
     cudaProfilerStart();
@@ -269,30 +264,31 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                 << "\n";
   }
 
-
   double threshold =
       std::numeric_limits<typename Storage::value_type>::epsilon();
   auto dot_length = Nk;
   //  auto result = dot_length * val_a * val_b + val_a - val_b;
   auto result = dot_length * val_a * val_b;
 
-  auto verify = [&world,&threshold, &result,
+  auto verify = [&world, &threshold, &result,
                  &dot_length](TA::Tile<CUDATile> &tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = fabs(tile[i] - result);
-//      double abs_val = fabs(tile[i]);
+      //      double abs_val = fabs(tile[i]);
       double rel_err = abs_err / result / dot_length;
-      if(rel_err > threshold){
-        std::cout << "Node: " << world.rank() <<  " Tile: " << tile.range()  << " id: " << i << std::string(" gpu: " + std::to_string(tile[i]) + " cpu: " + std::to_string(result) + "\n");
+      if (rel_err > threshold) {
+        std::cout << "Node: " << world.rank() << " Tile: " << tile.range()
+                  << " id: " << i
+                  << std::string(" gpu: " + std::to_string(tile[i]) +
+                                 " cpu: " + std::to_string(result) + "\n");
         break;
       }
     }
   };
 
-
-  for(auto iter = c.begin(); iter != c.end(); iter++){
-     world.taskq.add(verify, c.find(iter.index()));
+  for (auto iter = c.begin(); iter != c.end(); iter++) {
+    world.taskq.add(verify, c.find(iter.index()));
   }
 
   world.gop.fence();
@@ -427,15 +423,17 @@ int try_main(int argc, char **argv) {
     }
   }  // print device properties
 
-//  if (storage_type == "cpu_cuda_vector") {
-//    if (real_type_str == "double")
-//      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn, Bn,
-//                                                        Nk, Bk, nrepeat);
-//    else
-//      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn, Bn,
-//                                                       Nk, Bk, nrepeat);
-//  } else if (storage_type == "cuda_um_btas_varray") {
-   if(storage_type == "cuda_um_btas_varray") {
+  //  if (storage_type == "cpu_cuda_vector") {
+  //    if (real_type_str == "double")
+  //      do_main_body<TiledArray::cpu_cuda_vector<double>>(world, Nm, Bm, Nn,
+  //      Bn,
+  //                                                        Nk, Bk, nrepeat);
+  //    else
+  //      do_main_body<TiledArray::cpu_cuda_vector<float>>(world, Nm, Bm, Nn,
+  //      Bn,
+  //                                                       Nk, Bk, nrepeat);
+  //  } else if (storage_type == "cuda_um_btas_varray") {
+  if (storage_type == "cuda_um_btas_varray") {
     if (real_type_str == "double")
       do_main_body<TiledArray::cuda_um_btas_varray<double>>(
           world, Nm, Bm, Nn, Bn, Nk, Bk, nrepeat);
@@ -470,10 +468,9 @@ int main(int argc, char *argv[]) {
     auto result = cudaMemGetInfo(&free_mem, &total_mem);
     std::cout << "CUDA memory stats: {total,free} = {" << total_mem << ","
               << free_mem << "}" << std::endl;
-  } catch(std::exception& ex){
+  } catch (std::exception &ex) {
     std::cout << ex.what() << std::endl;
-  }
-  catch (...) {
+  } catch (...) {
     std::cerr << "unknown exception" << std::endl;
   }
 

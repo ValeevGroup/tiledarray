@@ -28,46 +28,45 @@
 
 namespace TiledArray {
 
-  /// Forward declarations
-  template <typename, typename> class DistArray;
-  class DensePolicy;
-  class SparsePolicy;
+/// Forward declarations
+template <typename, typename>
+class DistArray;
+class DensePolicy;
+class SparsePolicy;
 
-  /// Create a deep copy of an array
+/// Create a deep copy of an array
 
-  /// \tparam Tile The tile type of the array
-  /// \tparam Policy The policy of the array
-  /// \param arg The array to be cloned
-  template <typename Tile, typename Policy>
-  inline DistArray<Tile, Policy>
-  clone(const DistArray<Tile, Policy>& arg) {
-    typedef typename DistArray<Tile, Policy>::value_type value_type;
+/// \tparam Tile The tile type of the array
+/// \tparam Policy The policy of the array
+/// \param arg The array to be cloned
+template <typename Tile, typename Policy>
+inline DistArray<Tile, Policy> clone(const DistArray<Tile, Policy>& arg) {
+  typedef typename DistArray<Tile, Policy>::value_type value_type;
 
-    World& world = arg.world();
+  World& world = arg.world();
 
-    // Make an empty result array
-    DistArray<Tile, Policy> result(world, arg.trange(), arg.shape(), arg.pmap());
+  // Make an empty result array
+  DistArray<Tile, Policy> result(world, arg.trange(), arg.shape(), arg.pmap());
 
-    // Iterate over local tiles of arg
-    for(auto index : * arg.pmap()) {
-      if(arg.is_zero(index))
-        continue;
+  // Iterate over local tiles of arg
+  for (auto index : *arg.pmap()) {
+    if (arg.is_zero(index)) continue;
 
-      // Spawn a task to clone the tiles
-      Future<value_type> tile =
-          world.taskq.add([] (const value_type& tile) -> value_type {
-            using TiledArray::clone;
-            return clone(tile);
-          }, arg.find(index));
+    // Spawn a task to clone the tiles
+    Future<value_type> tile = world.taskq.add(
+        [](const value_type& tile) -> value_type {
+          using TiledArray::clone;
+          return clone(tile);
+        },
+        arg.find(index));
 
-      // Store result tile
-      result.set(index, tile);
-    }
-
-    return result;
+    // Store result tile
+    result.set(index, tile);
   }
+
+  return result;
+}
 
 }  // namespace TiledArray
 
-
-#endif // TILEDARRAY_CONVERSIONS_CLONE_H__INCLUDED
+#endif  // TILEDARRAY_CONVERSIONS_CLONE_H__INCLUDED

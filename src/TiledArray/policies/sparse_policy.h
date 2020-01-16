@@ -26,33 +26,33 @@
 #ifndef TILEDARRAY_SPARSE_ARRAY_H__INCLUDED
 #define TILEDARRAY_SPARSE_ARRAY_H__INCLUDED
 
-#include <TiledArray/tiled_range.h>
 #include <TiledArray/pmap/blocked_pmap.h>
 #include <TiledArray/sparse_shape.h>
+#include <TiledArray/tiled_range.h>
 
 namespace TiledArray {
 
-  class SparsePolicy {
-  public:
-    typedef TiledArray::TiledRange trange_type;
-    typedef trange_type::range_type range_type;
-    typedef range_type::size_type size_type;
-    typedef TiledArray::SparseShape<float> shape_type;
-    typedef TiledArray::Pmap pmap_interface;
-    typedef TiledArray::detail::BlockedPmap default_pmap_type;
+class SparsePolicy {
+ public:
+  typedef TiledArray::TiledRange trange_type;
+  typedef trange_type::range_type range_type;
+  typedef range_type::size_type size_type;
+  typedef TiledArray::SparseShape<float> shape_type;
+  typedef TiledArray::Pmap pmap_interface;
+  typedef TiledArray::detail::BlockedPmap default_pmap_type;
 
-    /// Create a default process map
+  /// Create a default process map
 
-    /// \param world The world of the process map
-    /// \param size The number of tiles in the array
-    /// \return A shared pointer to a process map
-    static std::shared_ptr<pmap_interface>
-    default_pmap(World& world, const std::size_t size) {
-      return std::make_shared<default_pmap_type>(world, size);
-    }
+  /// \param world The world of the process map
+  /// \param size The number of tiles in the array
+  /// \return A shared pointer to a process map
+  static std::shared_ptr<pmap_interface> default_pmap(World& world,
+                                                      const std::size_t size) {
+    return std::make_shared<default_pmap_type>(world, size);
+  }
 
-  }; // class SparsePolicy
+};  // class SparsePolicy
 
-} // namespace TiledArray
+}  // namespace TiledArray
 
-#endif // TILEDARRAY_SPARSE_ARRAY_H__INCLUDED
+#endif  // TILEDARRAY_SPARSE_ARRAY_H__INCLUDED

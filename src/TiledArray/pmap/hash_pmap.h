@@ -29,62 +29,56 @@
 #include <TiledArray/pmap/pmap.h>
 
 namespace TiledArray {
-  namespace detail {
+namespace detail {
 
-    /// Hashed process map
-    class HashPmap : public Pmap {
-    protected:
+/// Hashed process map
+class HashPmap : public Pmap {
+ protected:
+  // Import Pmap protected variables
+  using Pmap::procs_;  ///< The number of processes
+  using Pmap::rank_;   ///< The rank of this process
+  using Pmap::size_;   ///< The number of tiles mapped among all processes
 
-      // Import Pmap protected variables
-      using Pmap::rank_; ///< The rank of this process
-      using Pmap::procs_; ///< The number of processes
-      using Pmap::size_; ///< The number of tiles mapped among all processes
+ private:
+  const madness::hashT seed_;  ///< Hashing seed value
 
-    private:
+ public:
+  typedef Pmap::size_type size_type;  ///< Size type
 
-      const madness::hashT seed_; ///< Hashing seed value
+  /// Construct a hashed process map
 
-    public:
-      typedef Pmap::size_type size_type; ///< Size type
+  /// \param world The world where the tiles are mapped
+  /// \param size The number of tiles to be mapped
+  /// \param seed The hash seed used to generate different maps
+  HashPmap(World& world, const size_type size, madness::hashT seed = 0ul)
+      : Pmap(world, size), seed_(seed) {}
 
-      /// Construct a hashed process map
+  virtual ~HashPmap() {}
 
-      /// \param world The world where the tiles are mapped
-      /// \param size The number of tiles to be mapped
-      /// \param seed The hash seed used to generate different maps
-      HashPmap(World& world, const size_type size, madness::hashT seed = 0ul) :
-          Pmap(world, size), seed_(seed)
-      {
-      }
+  /// Maps \c tile to the processor that owns it
 
-      virtual ~HashPmap() { }
+  /// \param tile The tile to be queried
+  /// \return Processor that logically owns \c tile
+  virtual size_type owner(const size_type tile) const {
+    TA_ASSERT(tile < size_);
+    madness::hashT seed = seed_;
+    madness::hash_combine(seed, tile);
+    return (seed % procs_);
+  }
 
-      /// Maps \c tile to the processor that owns it
+  /// Check that the tile is owned by this process
 
-      /// \param tile The tile to be queried
-      /// \return Processor that logically owns \c tile
-      virtual size_type owner(const size_type tile) const {
-        TA_ASSERT(tile < size_);
-        madness::hashT seed = seed_;
-        madness::hash_combine(seed, tile);
-        return (seed % procs_);
-      }
+  /// \param tile The tile to be checked
+  /// \return \c true if \c tile is owned by this process, otherwise \c false .
+  virtual bool is_local(const size_type tile) const {
+    return HashPmap::owner(tile) == rank_;
+  }
 
+  virtual bool known_local_size() const { return false; }
 
-      /// Check that the tile is owned by this process
+};  // class HashPmap
 
-      /// \param tile The tile to be checked
-      /// \return \c true if \c tile is owned by this process, otherwise \c false .
-      virtual bool is_local(const size_type tile) const {
-        return HashPmap::owner(tile) == rank_;
-      }
-
-      virtual bool known_local_size() const { return false; }
-
-    }; // class HashPmap
-
-  } // namespace detail
+}  // namespace detail
 }  // namespace TiledArray
 
-
-#endif // TILEDARRAY_PMAP_HASH_PMAP_H__INCLUDED
+#endif  // TILEDARRAY_PMAP_HASH_PMAP_H__INCLUDED

@@ -29,50 +29,49 @@
 #include <TiledArray/expressions/expr.h>
 
 namespace TiledArray {
-  namespace expressions {
+namespace expressions {
 
-    /// Binary expression object
+/// Binary expression object
 
-    /// \tparam Derived The derived class type
-    template <typename Derived>
-    class BinaryExpr : public Expr<Derived> {
-    public:
-      typedef BinaryExpr<Derived> BinaryExpr_; ///< This class type
-      typedef typename ExprTrait<Derived>::left_type left_type; ///< The left-hand expression type
-      typedef typename ExprTrait<Derived>::right_type right_type; ///< The right-hand expression type
+/// \tparam Derived The derived class type
+template <typename Derived>
+class BinaryExpr : public Expr<Derived> {
+ public:
+  typedef BinaryExpr<Derived> BinaryExpr_;  ///< This class type
+  typedef typename ExprTrait<Derived>::left_type
+      left_type;  ///< The left-hand expression type
+  typedef typename ExprTrait<Derived>::right_type
+      right_type;  ///< The right-hand expression type
 
-    private:
+ private:
+  left_type left_;    ///< The left-hand argument
+  right_type right_;  ///< The right-hand argument
 
-      left_type left_; ///< The left-hand argument
-      right_type right_; ///< The right-hand argument
+ public:
+  // Compiler generated functions
+  BinaryExpr(const BinaryExpr_&) = default;
+  BinaryExpr(BinaryExpr_&&) = default;
+  ~BinaryExpr() = default;
+  BinaryExpr_& operator=(const BinaryExpr_&) = delete;
+  BinaryExpr_& operator=(BinaryExpr_&&) = delete;
 
-    public:
+  /// Binary expression constructor
+  BinaryExpr(const left_type& left, const right_type& right)
+      : left_(left), right_(right) {}
 
-      // Compiler generated functions
-      BinaryExpr(const BinaryExpr_&) = default;
-      BinaryExpr(BinaryExpr_&&) = default;
-      ~BinaryExpr() = default;
-      BinaryExpr_& operator=(const BinaryExpr_&) = delete;
-      BinaryExpr_& operator=(BinaryExpr_&&) = delete;
+  /// Left-hand expression argument accessor
 
-      /// Binary expression constructor
-      BinaryExpr(const left_type& left, const right_type& right) :
-        left_(left), right_(right)
-      { }
+  /// \return A const reference to the left-hand expression object
+  const left_type& left() const { return left_; }
 
-      /// Left-hand expression argument accessor
+  /// Right-hand expression argument accessor
 
-      /// \return A const reference to the left-hand expression object
-      const left_type& left() const { return left_; }
+  /// \return A const reference to the right-hand expression object
+  const right_type& right() const { return right_; }
 
-      /// Right-hand expression argument accessor
+};  // class BinaryExpr
 
-      /// \return A const reference to the right-hand expression object
-      const right_type& right() const { return right_; }
+}  // namespace expressions
+}  // namespace TiledArray
 
-    }; // class BinaryExpr
-
-  }  // namespace expressions
-} // namespace TiledArray
-
-#endif // TILEDARRAY_EXPRESSIONS_BINARY_BASE_H__INCLUDED
+#endif  // TILEDARRAY_EXPRESSIONS_BINARY_BASE_H__INCLUDED

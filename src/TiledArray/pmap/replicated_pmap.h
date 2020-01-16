@@ -29,64 +29,64 @@
 #include <TiledArray/pmap/pmap.h>
 
 namespace TiledArray {
-  namespace detail {
+namespace detail {
 
-    /// A Replicated process map
+/// A Replicated process map
 
-    /// Defines a process map where all processes own data.
-    class ReplicatedPmap : public Pmap {
-    protected:
+/// Defines a process map where all processes own data.
+class ReplicatedPmap : public Pmap {
+ protected:
+  // Import Pmap protected variables
+  using Pmap::procs_;  ///< The number of processes
+  using Pmap::rank_;   ///< The rank of this process
+  using Pmap::size_;   ///< The number of tiles mapped among all processes
 
-      // Import Pmap protected variables
-      using Pmap::rank_; ///< The rank of this process
-      using Pmap::procs_; ///< The number of processes
-      using Pmap::size_; ///< The number of tiles mapped among all processes
+ public:
+  typedef Pmap::size_type size_type;  ///< Size type
 
-    public:
-      typedef Pmap::size_type size_type; ///< Size type
+  /// Construct Blocked map
 
-      /// Construct Blocked map
+  /// \param world A reference to the world
+  /// \param size The number of elements to be mapped
+  ReplicatedPmap(World& world, size_type size) : Pmap(world, size) {
+    this->local_size_ = this->size_;
+  }
 
-      /// \param world A reference to the world
-      /// \param size The number of elements to be mapped
-      ReplicatedPmap(World& world, size_type size) :
-          Pmap(world, size)
-      {
-        this->local_size_ = this->size_;
-      }
+  virtual ~ReplicatedPmap() {}
 
-      virtual ~ReplicatedPmap() { }
+  /// Maps \c tile to the processor that owns it
 
-      /// Maps \c tile to the processor that owns it
+  /// \param tile The tile to be queried
+  /// \return Processor that logically owns \c tile
+  virtual size_type owner(const size_type tile) const {
+    TA_ASSERT(tile < size_);
+    return rank_;
+  }
 
-      /// \param tile The tile to be queried
-      /// \return Processor that logically owns \c tile
-      virtual size_type owner(const size_type tile) const {
-        TA_ASSERT(tile < size_);
-        return rank_;
-      }
+  /// Check that the tile is owned by this process
 
-      /// Check that the tile is owned by this process
+  /// \param tile The tile to be checked
+  /// \return \c true if \c tile is owned by this process, otherwise \c false .
+  virtual bool is_local(const size_type tile) const {
+    TA_ASSERT(tile < size_);
+    return true;
+  }
 
-      /// \param tile The tile to be checked
-      /// \return \c true if \c tile is owned by this process, otherwise \c false .
-      virtual bool is_local(const size_type tile) const {
-        TA_ASSERT(tile < size_);
-        return true;
-      }
+  /// Replicated array status
 
-      /// Replicated array status
+  /// \return \c true if the array is replicated, and false otherwise
+  virtual bool is_replicated() const { return true; }
 
-      /// \return \c true if the array is replicated, and false otherwise
-      virtual bool is_replicated() const { return true; }
+  virtual const_iterator begin() const {
+    return Iterator(*this, 0, this->size_, 0, false);
+  }
+  virtual const_iterator end() const {
+    return Iterator(*this, 0, this->size_, this->size_, false);
+  }
 
-      virtual const_iterator begin() const { return Iterator(*this, 0, this->size_, 0, false); }
-      virtual const_iterator end() const { return Iterator(*this, 0, this->size_, this->size_, false); }
+};  // class MapByRow
 
-    }; // class MapByRow
-
-  }  // namespace detail
+}  // namespace detail
 }  // namespace TiledArray
 
-
-#endif // TILEDARRAY_PMAP_REPLICATED_PMAP_H__INCLUDED
+#endif  // TILEDARRAY_PMAP_REPLICATED_PMAP_H__INCLUDED

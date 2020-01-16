@@ -23,7 +23,6 @@
  *
  */
 
-
 #ifndef TILEDARRAY_TEST_EXPRESSIONS_FIXTURE_H
 #define TILEDARRAY_TEST_EXPRESSIONS_FIXTURE_H
 
@@ -46,23 +45,23 @@ struct ExpressionsFixture : public TiledRangeFixture {
   using element_type = typename Tile::value_type;
   using scalar_type = typename Tile::scalar_type;
   using Matrix = Eigen::Matrix<element_type, Eigen::Dynamic, Eigen::Dynamic,
-          Eigen::RowMajor>;
+                               Eigen::RowMajor>;
 
   template <typename P = Policy,
-          std::enable_if_t<
-                  std::is_same<P, TiledArray::SparsePolicy>::value>* = nullptr>
+            std::enable_if_t<
+                std::is_same<P, TiledArray::SparsePolicy>::value>* = nullptr>
   ExpressionsFixture()
-          : s_tr_1(make_random_sparseshape(tr)),
-            s_tr_2(make_random_sparseshape(tr)),
-            s_tr1_1(make_random_sparseshape(trange1)),
-            s_tr1_2(make_random_sparseshape(trange1)),
-            s_tr2(make_random_sparseshape(trange2)),
-            a(*GlobalFixture::world, tr, s_tr_1),
-            b(*GlobalFixture::world, tr, s_tr_2),
-            c(*GlobalFixture::world, tr, s_tr_2),
-            u(*GlobalFixture::world, trange1, s_tr1_1),
-            v(*GlobalFixture::world, trange1, s_tr1_2),
-            w(*GlobalFixture::world, trange2, s_tr2) {
+      : s_tr_1(make_random_sparseshape(tr)),
+        s_tr_2(make_random_sparseshape(tr)),
+        s_tr1_1(make_random_sparseshape(trange1)),
+        s_tr1_2(make_random_sparseshape(trange1)),
+        s_tr2(make_random_sparseshape(trange2)),
+        a(*GlobalFixture::world, tr, s_tr_1),
+        b(*GlobalFixture::world, tr, s_tr_2),
+        c(*GlobalFixture::world, tr, s_tr_2),
+        u(*GlobalFixture::world, trange1, s_tr1_1),
+        v(*GlobalFixture::world, trange1, s_tr1_2),
+        w(*GlobalFixture::world, trange2, s_tr2) {
     random_fill(a);
     random_fill(b);
     random_fill(u);
@@ -75,15 +74,15 @@ struct ExpressionsFixture : public TiledRangeFixture {
   }
 
   template <typename P = Policy,
-          std::enable_if_t<std::is_same<P, TiledArray::DensePolicy>::value>* =
-          nullptr>
+            std::enable_if_t<std::is_same<P, TiledArray::DensePolicy>::value>* =
+                nullptr>
   ExpressionsFixture()
-          : a(*GlobalFixture::world, tr),
-            b(*GlobalFixture::world, tr),
-            c(*GlobalFixture::world, tr),
-            u(*GlobalFixture::world, trange1),
-            v(*GlobalFixture::world, trange1),
-            w(*GlobalFixture::world, trange2) {
+      : a(*GlobalFixture::world, tr),
+        b(*GlobalFixture::world, tr),
+        c(*GlobalFixture::world, tr),
+        u(*GlobalFixture::world, trange1),
+        v(*GlobalFixture::world, trange1),
+        w(*GlobalFixture::world, trange2) {
     random_fill(a);
     random_fill(b);
     random_fill(u);
@@ -93,8 +92,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
   /// make array for SparsePolicy
   template <typename P = Policy,
-          std::enable_if_t<
-                  std::is_same<P, TiledArray::SparsePolicy>::value>* = nullptr>
+            std::enable_if_t<
+                std::is_same<P, TiledArray::SparsePolicy>::value>* = nullptr>
   static TA::DistArray<Tile, Policy> make_array(TA::TiledRange& range) {
     return TA::DistArray<Tile, Policy>(*GlobalFixture::world, range,
                                        make_random_sparseshape(range));
@@ -102,8 +101,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
   /// make array for DensePolicy
   template <typename P = Policy,
-          std::enable_if_t<std::is_same<P, TiledArray::DensePolicy>::value>* =
-          nullptr>
+            std::enable_if_t<std::is_same<P, TiledArray::DensePolicy>::value>* =
+                nullptr>
   static TA::DistArray<Tile, Policy> make_array(TA::TiledRange& range) {
     return TA::DistArray<Tile, Policy>(*GlobalFixture::world, range);
   }
@@ -159,7 +158,7 @@ struct ExpressionsFixture : public TiledRangeFixture {
            rit != tile.range().end(); ++rit) {
         const std::size_t elem_index = array.elements_range().ordinal(*rit);
         tile[*rit] =
-                (matrix.array()(elem_index) = (GlobalFixture::world->rand() % 101));
+            (matrix.array()(elem_index) = (GlobalFixture::world->rand() % 101));
       }
       *it = tile;
     }
@@ -171,8 +170,8 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
     // Construct the Eigen matrix
     Matrix matrix =
-            Matrix::Zero(array.trange().elements_range().extent(0),
-                         (array.trange().tiles_range().rank() == 2
+        Matrix::Zero(array.trange().elements_range().extent(0),
+                     (array.trange().tiles_range().rank() == 2
                           ? array.trange().elements_range().extent(1)
                           : 1));
 
@@ -220,4 +219,4 @@ struct ExpressionsFixture : public TiledRangeFixture {
   TArray w;
 };  // ExpressionsFixture
 
-#endif //TILEDARRAY_TEST_EXPRESSIONS_FIXTURE_H
+#endif  // TILEDARRAY_TEST_EXPRESSIONS_FIXTURE_H

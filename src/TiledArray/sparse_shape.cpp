@@ -27,6 +27,6 @@
 
 namespace TiledArray {
 
-  template class SparseShape<float>;
+template class SparseShape<float>;
 
-} // namespace TiledArray
+}  // namespace TiledArray

@@ -26,101 +26,110 @@
 #ifndef TILEDARRAY_TILE_INTERFACE_ADD_H__INCLUDED
 #define TILEDARRAY_TILE_INTERFACE_ADD_H__INCLUDED
 
+#include "../tile_interface/cast.h"
+#include "../tile_interface/permute.h"
 #include "../type_traits.h"
-#include "cast.h"
 
 namespace TiledArray {
 
-  /// Add tile arguments
+/// Add tile arguments
 
-  /// \tparam Left The left-hand tile type
-  /// \tparam Right The right-hand tile type
-  /// \param left The left-hand argument to be added
-  /// \param right The right-hand argument to be added
-  /// \return A tile that is equal to <tt>(left + right)</tt>
-  template <typename Left, typename Right>
-  inline auto add(const Left& left, const Right& right) ->
-      decltype(left.add(right))
-  { return left.add(right); }
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \param left The left-hand argument to be added
+/// \param right The right-hand argument to be added
+/// \return A tile that is equal to <tt>(left + right)</tt>
+template <typename Left, typename Right>
+inline auto add(const Left& left, const Right& right)
+    -> decltype(left.add(right)) {
+  return left.add(right);
+}
 
-  /// Add and scale tile arguments
+/// Add and scale tile arguments
 
-  /// \tparam Left The left-hand tile type
-  /// \tparam Right The right-hand tile type
-  /// \tparam Scalar A scalar type
-  /// \param left The left-hand argument to be added
-  /// \param right The right-hand argument to be added
-  /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>(left + right) * factor</tt>
-  template <typename Left, typename Right, typename Scalar,
-      typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-  inline auto add(const Left& left, const Right& right, const Scalar factor)
-  { return left.add(right, factor); }
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam Scalar A scalar type
+/// \param left The left-hand argument to be added
+/// \param right The right-hand argument to be added
+/// \param factor The scaling factor
+/// \return A tile that is equal to <tt>(left + right) * factor</tt>
+template <
+    typename Left, typename Right, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline auto add(const Left& left, const Right& right, const Scalar factor) {
+  return left.add(right, factor);
+}
 
-  /// Add and permute tile arguments
+/// Add and permute tile arguments
 
-  /// \tparam Left The left-hand tile type
-  /// \tparam Right The right-hand tile type
-  /// \param left The left-hand argument to be added
-  /// \param right The right-hand argument to be added
-  /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ (left + right)</tt>
-  template <typename Left, typename Right>
-  inline auto add(const Left& left, const Right& right, const Permutation& perm)
-  { return left.add(right, perm); }
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \param left The left-hand argument to be added
+/// \param right The right-hand argument to be added
+/// \param perm The permutation to be applied to the result
+/// \return A tile that is equal to <tt>perm ^ (left + right)</tt>
+template <typename Left, typename Right>
+inline auto add(const Left& left, const Right& right, const Permutation& perm) {
+  return left.add(right, perm);
+}
 
-  /// Add, scale, and permute tile arguments
+/// Add, scale, and permute tile arguments
 
-  /// \tparam Left The left-hand tile type
-  /// \tparam Right The right-hand tile type
-  /// \tparam Scalar A scalar type
-  /// \param left The left-hand argument to be added
-  /// \param right The right-hand argument to be added
-  /// \param factor The scaling factor
-  /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
-  template <typename Left, typename Right, typename Scalar,
-      typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-  inline auto add(const Left& left, const Right& right, const Scalar factor,
-      const Permutation& perm)
-  { return left.add(right, factor, perm); }
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam Scalar A scalar type
+/// \param left The left-hand argument to be added
+/// \param right The right-hand argument to be added
+/// \param factor The scaling factor
+/// \param perm The permutation to be applied to the result
+/// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
+template <
+    typename Left, typename Right, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline auto add(const Left& left, const Right& right, const Scalar factor,
+                const Permutation& perm) {
+  return left.add(right, factor, perm);
+}
 
-  /// Add to the result tile
+/// Add to the result tile
 
-  /// \tparam Result The result tile type
-  /// \tparam Arg The argument tile type
-  /// \param result The result tile
-  /// \param arg The argument to be added to the result
-  /// \return A tile that is equal to <tt>result[i] += arg[i]</tt>
-  template <typename Result, typename Arg>
-  inline Result& add_to(Result& result, const Arg& arg)
-  { return result.add_to(arg); }
+/// \tparam Result The result tile type
+/// \tparam Arg The argument tile type
+/// \param result The result tile
+/// \param arg The argument to be added to the result
+/// \return A tile that is equal to <tt>result[i] += arg[i]</tt>
+template <typename Result, typename Arg>
+inline Result& add_to(Result& result, const Arg& arg) {
+  return result.add_to(arg);
+}
 
-  /// Add and scale to the result tile
+/// Add and scale to the result tile
 
-  /// \tparam Result The result tile type
-  /// \tparam Arg The argument tile type
-  /// \tparam Scalar A scalar type
-  /// \param result The result tile
-  /// \param arg The argument to be added to \c result
-  /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
-  template <typename Result, typename Arg, typename Scalar,
-      typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-  inline Result& add_to(Result& result, const Arg& arg, const Scalar factor)
-  { return result.add_to(arg, factor); }
+/// \tparam Result The result tile type
+/// \tparam Arg The argument tile type
+/// \tparam Scalar A scalar type
+/// \param result The result tile
+/// \param arg The argument to be added to \c result
+/// \param factor The scaling factor
+/// \return A tile that is equal to <tt>(result[i] += arg[i]) *= factor</tt>
+template <
+    typename Result, typename Arg, typename Scalar,
+    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline Result& add_to(Result& result, const Arg& arg, const Scalar factor) {
+  return result.add_to(arg, factor);
+}
 
+namespace tile_interface {
 
-  namespace tile_interface {
+using TiledArray::add;
+using TiledArray::add_to;
 
-    using TiledArray::add;
-    using TiledArray::add_to;
+template <typename... T>
+using result_of_add_t = decltype(add(std::declval<T>()...));
 
-    template <typename... T>
-    using result_of_add_t = decltype(add(std::declval<T>()...));
-
-    template <typename... T>
-    using result_of_add_to_t = decltype(add_to(std::declval<T>()...));
+template <typename... T>
+using result_of_add_to_t = decltype(add_to(std::declval<T>()...));
 
 //    template <typename Left, typename Right, typename Enabler = void>
 //    struct add_trait {
@@ -144,268 +153,235 @@ namespace TiledArray {
 //    template <typename Left, typename Right, typename Scalar>
 //    struct scal_add_trait<Left, Right,
 //        typename std::enable_if<
-//            TiledArray::detail::is_type<result_of_add_t<Left, Right, Scalar> >::value
+//            TiledArray::detail::is_type<result_of_add_t<Left, Right, Scalar>
+//            >::value
 //        >::type>
 //    {
 //      typedef result_of_add_t<Left, Right, Scalar> type;
 //    };
 
-    template <typename Result, typename Left, typename Right,
-        typename Enabler = void>
-    class Add {
-    public:
+template <typename Result, typename Left, typename Right,
+          typename Enabler = void>
+class Add {
+ public:
+  typedef Result result_type;  ///< Result tile type
+  typedef Left left_type;      ///< Left-hand argument tile type
+  typedef Right right_type;    ///< Right-hand argument tile type
 
-      typedef Result result_type; ///< Result tile type
-      typedef Left left_type; ///< Left-hand argument tile type
-      typedef Right right_type; ///< Right-hand argument tile type
+  result_type operator()(const left_type& left, const right_type& right) const {
+    using TiledArray::add;
+    return add(left, right);
+  }
 
-      result_type
-      operator()(const left_type& left, const right_type& right) const {
-        using TiledArray::add;
-        return add(left, right);
-      }
+  result_type operator()(const left_type& left, const right_type& right,
+                         const Permutation& perm) const {
+    using TiledArray::add;
+    return add(left, right, perm);
+  }
+};
 
-      result_type operator()(const left_type& left, const right_type& right,
-          const Permutation& perm) const
-      {
-        using TiledArray::add;
-        return add(left, right, perm);
-      }
+template <typename Result, typename Left, typename Right>
+class Add<Result, Left, Right,
+          typename std::enable_if<!(
+              std::is_same<Result, result_of_add_t<Left, Right>>::value &&
+              std::is_same<Result, result_of_add_t<Left, Right, Permutation>>::
+                  value)>::type> {
+ public:
+  typedef Result result_type;  ///< Result tile type
+  typedef Left left_type;      ///< Left-hand argument tile type
+  typedef Right right_type;    ///< Right-hand argument tile type
 
-    };
+  result_type operator()(const left_type& left, const right_type& right) const {
+    using TiledArray::add;
+    TiledArray::Cast<Result, result_of_add_t<Left, Right>> cast;
+    return cast(add(left, right));
+  }
 
+  result_type operator()(const left_type& left, const right_type& right,
+                         const Permutation& perm) const {
+    using TiledArray::add;
+    TiledArray::Cast<Result, result_of_add_t<Left, Right, Permutation>> cast;
+    return cast(add(left, right, perm));
+  }
+};
 
-    template <typename Result, typename Left, typename Right>
-    class Add<Result, Left, Right,
-        typename std::enable_if<
-            ! (std::is_same<Result, result_of_add_t<Left, Right> >::value &&
-            std::is_same<Result, result_of_add_t<Left, Right, Permutation> >::value)
-        >::type>
-    {
-    public:
+template <typename Result, typename Left, typename Right, typename Scalar,
+          typename Enabler = void>
+class ScalAdd {
+ public:
+  static_assert(TiledArray::detail::is_numeric_v<Scalar>,
+                "Cannot scale tiles by a non-scalar type");
 
-      typedef Result result_type; ///< Result tile type
-      typedef Left left_type; ///< Left-hand argument tile type
-      typedef Right right_type; ///< Right-hand argument tile type
+  typedef Result result_type;  ///< Result tile type
+  typedef Left left_type;      ///< Left-hand argument tile type
+  typedef Right right_type;    ///< Right-hand argument tile type
+  typedef Scalar scalar_type;  ///< The scaling factor type
 
-      result_type operator()(const left_type& left,
-          const right_type& right) const
-      {
-        using TiledArray::add;
-        TiledArray::Cast<Result, result_of_add_t<Left, Right> > cast;
-        return cast(add(left, right));
-      }
+  result_type operator()(const left_type& left, const right_type& right,
+                         const scalar_type factor) const {
+    using TiledArray::add;
+    return add(left, right, factor);
+  }
 
-      result_type operator()(const left_type& left, const right_type& right,
-          const Permutation& perm) const
-      {
-        using TiledArray::add;
-        TiledArray::Cast<Result, result_of_add_t<Left, Right, Permutation> > cast;
-        return cast(add(left, right, perm));
-      }
+  result_type operator()(const left_type& left, const right_type& right,
+                         const scalar_type factor,
+                         const Permutation& perm) const {
+    using TiledArray::add;
+    return add(left, right, factor, perm);
+  }
+};
 
-    };
+template <typename Result, typename Left, typename Right, typename Scalar>
+class ScalAdd<
+    Result, Left, Right, Scalar,
+    typename std::enable_if<!(
+        std::is_same<Result, result_of_add_t<Left, Right, Scalar>>::value &&
+        std::is_same<Result, result_of_add_t<Left, Right, Scalar,
+                                             Permutation>>::value)>::type> {
+ public:
+  static_assert(TiledArray::detail::is_numeric_v<Scalar>,
+                "Cannot scale tiles by a non-scalar type");
 
-    template <typename Result, typename Left, typename Right, typename Scalar,
-        typename Enabler = void>
-    class ScalAdd {
-    public:
-      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
-          "Cannot scale tiles by a non-scalar type");
+  typedef Result result_type;  ///< Result tile type
+  typedef Left left_type;      ///< Left-hand argument tile type
+  typedef Right right_type;    ///< Right-hand argument tile type
+  typedef Scalar scalar_type;  ///< The scaling factor type
 
-      typedef Result result_type; ///< Result tile type
-      typedef Left left_type; ///< Left-hand argument tile type
-      typedef Right right_type; ///< Right-hand argument tile type
-      typedef Scalar scalar_type; ///< The scaling factor type
+  result_type operator()(const left_type& left, const right_type& right,
+                         const scalar_type factor) const {
+    using TiledArray::add;
+    TiledArray::Cast<Result, result_of_add_t<Left, Right, Scalar>> cast;
+    return cast(add(left, right, factor));
+  }
 
-      result_type operator()(const left_type& left, const right_type& right,
-          const scalar_type factor) const
-      {
-        using TiledArray::add;
-        return add(left, right, factor);
-      }
+  result_type operator()(const left_type& left, const right_type& right,
+                         const scalar_type factor,
+                         const Permutation& perm) const {
+    using TiledArray::add;
+    TiledArray::Cast<Result, result_of_add_t<Left, Right, Scalar, Permutation>>
+        cast;
+    return cast(add(left, right, factor, perm));
+  }
+};
 
-      result_type operator()(const left_type& left, const right_type& right,
-          const scalar_type factor, const Permutation& perm) const
-      {
-        using TiledArray::add;
-        return add(left, right, factor, perm);
-      }
+template <typename Result, typename Left, typename Right,
+          typename Enabler = void>
+class AddTo {
+ public:
+  typedef Result result_type;  ///< Result tile type
+  typedef Left left_type;      ///< Left-hand argument tile type
+  typedef Right right_type;    ///< Right-hand argument tile type
 
-    };
+  result_type& operator()(left_type& left, const right_type& right) const {
+    using TiledArray::add_to;
+    return add_to(left, right);
+  }
+};
 
+template <typename Result, typename Left, typename Right>
+class AddTo<Result, Left, Right,
+            typename std::enable_if<!std::is_same<
+                Result, result_of_add_to_t<Left, Right>>::value>::type> {
+ public:
+  typedef Result result_type;  ///< Result tile type
+  typedef Left left_type;      ///< Left-hand argument tile type
+  typedef Right right_type;    ///< Right-hand argument tile type
 
-    template <typename Result, typename Left, typename Right, typename Scalar>
-    class ScalAdd<Result, Left, Right, Scalar,
-        typename std::enable_if<
-            ! (std::is_same<Result, result_of_add_t<Left, Right, Scalar> >::value &&
-            std::is_same<Result, result_of_add_t<Left, Right, Scalar, Permutation> >::value)
-        >::type>
-    {
-    public:
-      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
-          "Cannot scale tiles by a non-scalar type");
+  result_type operator()(left_type& left, const right_type& right) const {
+    using TiledArray::add_to;
+    TiledArray::Cast<Result, result_of_add_to_t<Left, Right>> cast;
+    add_to(left, right);
+    return cast(left);
+  }
+};
 
-      typedef Result result_type; ///< Result tile type
-      typedef Left left_type; ///< Left-hand argument tile type
-      typedef Right right_type; ///< Right-hand argument tile type
-      typedef Scalar scalar_type; ///< The scaling factor type
+template <typename Result, typename Left, typename Right, typename Scalar,
+          typename Enabler = void>
+class ScalAddTo {
+ public:
+  static_assert(TiledArray::detail::is_numeric_v<Scalar>,
+                "Cannot scale tiles by a non-scalar type");
 
-      result_type operator()(const left_type& left, const right_type& right,
-          const scalar_type factor) const
-      {
-        using TiledArray::add;
-        TiledArray::Cast<Result, result_of_add_t<Left, Right, Scalar> > cast;
-        return cast(add(left, right, factor));
-      }
+  typedef Result result_type;  ///< Result tile type
+  typedef Left left_type;      ///< Left-hand argument tile type
+  typedef Right right_type;    ///< Right-hand argument tile type
+  typedef Scalar scalar_type;  ///< The scaling factor type
 
-      result_type operator()(const left_type& left, const right_type& right,
-          const scalar_type factor, const Permutation& perm) const
-      {
-        using TiledArray::add;
-        TiledArray::Cast<Result, result_of_add_t<Left, Right, Scalar, Permutation> > cast;
-        return cast(add(left, right, factor, perm));
-      }
-    };
+  result_type& operator()(left_type& left, const right_type& right) const {
+    using TiledArray::add_to;
+    return add_to(left, right);
+  }
+};
 
+template <typename Result, typename Left, typename Right, typename Scalar>
+class ScalAddTo<
+    Result, Left, Right, Scalar,
+    typename std::enable_if<!std::is_same<
+        Result, result_of_add_to_t<Left, Right, Scalar>>::value>::type> {
+ public:
+  static_assert(TiledArray::detail::is_numeric_v<Scalar>,
+                "Cannot scale tiles by a non-scalar type");
 
-    template <typename Result, typename Left, typename Right,
-        typename Enabler = void>
-    class AddTo {
-    public:
+  typedef Result result_type;  ///< Result tile type
+  typedef Left left_type;      ///< Left-hand argument tile type
+  typedef Right right_type;    ///< Right-hand argument tile type
+  typedef Scalar scalar_type;  ///< The scaling factor type
 
-      typedef Result result_type; ///< Result tile type
-      typedef Left left_type; ///< Left-hand argument tile type
-      typedef Right right_type; ///< Right-hand argument tile type
+  result_type operator()(left_type& left, const right_type& right,
+                         const scalar_type factor) const {
+    using TiledArray::add_to;
+    TiledArray::Cast<Result, result_of_add_to_t<Left, Right, Scalar>> cast;
+    add_to(left, right);
+    return cast(left);
+  }
+};
 
-      result_type& operator()(left_type& left, const right_type& right) const {
-        using TiledArray::add_to;
-        return add_to(left, right);
-      }
+}  // namespace tile_interface
 
-    };
+/// Add tile operation
 
+/// This operation adds two tiles of type `Left` and `Right` to create a tile
+/// of type `Result`.
+/// \tparam Result The result tile type
+/// \tparam Left The left-hand argument tile type
+/// \tparam Right The right-hand argument tile type
+template <typename Result, typename Left, typename Right>
+class Add : public TiledArray::tile_interface::Add<Result, Left, Right> {};
 
-    template <typename Result, typename Left, typename Right>
-    class AddTo<Result, Left, Right,
-        typename std::enable_if<
-            ! std::is_same<Result, result_of_add_to_t<Left, Right> >::value
-        >::type>
-    {
-    public:
+/// Add tile operation
 
-      typedef Result result_type; ///< Result tile type
-      typedef Left left_type; ///< Left-hand argument tile type
-      typedef Right right_type; ///< Right-hand argument tile type
+/// This operation adds two tiles of type `Left` and `Right` to create a tile
+/// of type `Result`.
+/// \tparam Result The result tile type
+/// \tparam Left The left-hand argument tile type
+/// \tparam Right The right-hand argument tile type
+/// \tparam Scalar The scaling factor type
+template <typename Result, typename Left, typename Right, typename Scalar>
+class ScalAdd
+    : public TiledArray::tile_interface::ScalAdd<Result, Left, Right, Scalar> {
+};
 
-      result_type operator()(left_type& left, const right_type& right) const {
-        using TiledArray::add_to;
-        TiledArray::Cast<Result, result_of_add_to_t<Left, Right> > cast;
-        add_to(left, right);
-        return cast(left);
-      }
+/// Add-to tile operation
 
-    };
+/// This operation adds a `Right` tile type to a `Left` tile of type.
+/// \tparam Result The result tile type
+/// \tparam Left The left-hand argument tile type
+/// \tparam Right The right-hand argument tile type
+template <typename Result, typename Left, typename Right>
+class AddTo : public TiledArray::tile_interface::AddTo<Result, Left, Right> {};
 
+/// Add-to and scale tile operation
 
+/// This operation adds a `Right` tile type to a `Left` tile of type.
+/// \tparam Result The result tile type
+/// \tparam Left The left-hand argument tile type
+/// \tparam Right The right-hand argument tile type
+/// \tparam Scalar The scaling factor type
+template <typename Result, typename Left, typename Right, typename Scalar>
+class ScalAddTo : public TiledArray::tile_interface::ScalAddTo<Result, Left,
+                                                               Right, Scalar> {
+};
 
-    template <typename Result, typename Left, typename Right, typename Scalar,
-        typename Enabler = void>
-    class ScalAddTo {
-    public:
-      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
-          "Cannot scale tiles by a non-scalar type");
+}  // namespace TiledArray
 
-      typedef Result result_type; ///< Result tile type
-      typedef Left left_type; ///< Left-hand argument tile type
-      typedef Right right_type; ///< Right-hand argument tile type
-      typedef Scalar scalar_type; ///< The scaling factor type
-
-      result_type& operator()(left_type& left, const right_type& right) const {
-        using TiledArray::add_to;
-        return add_to(left, right);
-      }
-
-    };
-
-    template <typename Result, typename Left, typename Right, typename Scalar>
-    class ScalAddTo<Result, Left, Right, Scalar,
-        typename std::enable_if<
-            ! std::is_same<Result, result_of_add_to_t<Left, Right, Scalar> >::value
-        >::type>
-    {
-    public:
-      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
-          "Cannot scale tiles by a non-scalar type");
-
-      typedef Result result_type; ///< Result tile type
-      typedef Left left_type; ///< Left-hand argument tile type
-      typedef Right right_type; ///< Right-hand argument tile type
-      typedef Scalar scalar_type; ///< The scaling factor type
-
-      result_type operator()(left_type& left, const right_type& right,
-          const scalar_type factor) const
-      {
-        using TiledArray::add_to;
-        TiledArray::Cast<Result, result_of_add_to_t<Left, Right, Scalar> > cast;
-        add_to(left, right);
-        return cast(left);
-      }
-
-    };
-
-  }  // namespace tile_interface
-
-
-  /// Add tile operation
-
-  /// This operation adds two tiles of type `Left` and `Right` to create a tile
-  /// of type `Result`.
-  /// \tparam Result The result tile type
-  /// \tparam Left The left-hand argument tile type
-  /// \tparam Right The right-hand argument tile type
-  template <typename Result, typename Left, typename Right>
-  class Add  :
-      public TiledArray::tile_interface::Add<Result, Left, Right>
-  { };
-
-  /// Add tile operation
-
-  /// This operation adds two tiles of type `Left` and `Right` to create a tile
-  /// of type `Result`.
-  /// \tparam Result The result tile type
-  /// \tparam Left The left-hand argument tile type
-  /// \tparam Right The right-hand argument tile type
-  /// \tparam Scalar The scaling factor type
-  template <typename Result, typename Left, typename Right, typename Scalar>
-  class ScalAdd  :
-      public TiledArray::tile_interface::ScalAdd<Result, Left, Right, Scalar>
-  { };
-
-  /// Add-to tile operation
-
-  /// This operation adds a `Right` tile type to a `Left` tile of type.
-  /// \tparam Result The result tile type
-  /// \tparam Left The left-hand argument tile type
-  /// \tparam Right The right-hand argument tile type
-  template <typename Result, typename Left, typename Right>
-  class AddTo  :
-      public TiledArray::tile_interface::AddTo<Result, Left, Right>
-  { };
-
-  /// Add-to and scale tile operation
-
-  /// This operation adds a `Right` tile type to a `Left` tile of type.
-  /// \tparam Result The result tile type
-  /// \tparam Left The left-hand argument tile type
-  /// \tparam Right The right-hand argument tile type
-  /// \tparam Scalar The scaling factor type
-  template <typename Result, typename Left, typename Right, typename Scalar>
-  class ScalAddTo :
-      public TiledArray::tile_interface::ScalAddTo<Result, Left, Right, Scalar>
-  { };
-
-
-} // namespace TiledArray
-
-#endif // TILEDARRAY_TILE_INTERFACE_ADD_H__INCLUDED
+#endif  // TILEDARRAY_TILE_INTERFACE_ADD_H__INCLUDED

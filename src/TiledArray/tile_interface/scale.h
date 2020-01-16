@@ -26,204 +26,182 @@
 #ifndef TILEDARRAY_SRC_TILEDARRAY_TILE_INTERFACE_SCALE_H__INCLUDED
 #define TILEDARRAY_SRC_TILEDARRAY_TILE_INTERFACE_SCALE_H__INCLUDED
 
-#include "../type_traits.h"
 #include "../permutation.h"
+#include "../type_traits.h"
 #include "cast.h"
 
 namespace TiledArray {
 
-  /// Scalar the tile argument
+/// Scalar the tile argument
 
-  /// \tparam Arg The tile argument type
-  /// \tparam Scalar A scalar type
-  /// \param arg The left-hand argument to be scaled
-  /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>arg * factor</tt>
-  template <typename Arg, typename Scalar,
-      std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-  inline auto scale(const Arg& arg, const Scalar factor)
-  { return arg.scale(factor); }
+/// \tparam Arg The tile argument type
+/// \tparam Scalar A scalar type
+/// \param arg The left-hand argument to be scaled
+/// \param factor The scaling factor
+/// \return A tile that is equal to <tt>arg * factor</tt>
+template <typename Arg, typename Scalar,
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline auto scale(const Arg& arg, const Scalar factor) {
+  return arg.scale(factor);
+}
 
-  /// Scale and permute tile argument
+/// Scale and permute tile argument
 
-  /// \tparam Arg The tile argument type
-  /// \tparam Scalar A scalar type
-  /// \param arg The left-hand argument to be scaled
-  /// \param factor The scaling factor
-  /// \param perm The permutation to be applied to the result
-  /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
-  template <typename Arg, typename Scalar,
-      std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-  inline auto scale(const Arg& arg, const Scalar factor, const Permutation& perm)
-  { return arg.scale(factor, perm); }
+/// \tparam Arg The tile argument type
+/// \tparam Scalar A scalar type
+/// \param arg The left-hand argument to be scaled
+/// \param factor The scaling factor
+/// \param perm The permutation to be applied to the result
+/// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
+template <typename Arg, typename Scalar,
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline auto scale(const Arg& arg, const Scalar factor,
+                  const Permutation& perm) {
+  return arg.scale(factor, perm);
+}
 
-  /// Scale to the result tile
+/// Scale to the result tile
 
-  /// \tparam Result The result tile type
-  /// \tparam Scalar A scalar type
-  /// \param result The result tile to be scaled
-  /// \param factor The scaling factor
-  /// \return A tile that is equal to <tt>result *= factor</tt>
-  template <typename Result, typename Scalar,
-      std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-  inline Result& scale_to(Result& result, const Scalar factor)
-  { return result.scale_to(factor); }
+/// \tparam Result The result tile type
+/// \tparam Scalar A scalar type
+/// \param result The result tile to be scaled
+/// \param factor The scaling factor
+/// \return A tile that is equal to <tt>result *= factor</tt>
+template <typename Result, typename Scalar,
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline Result& scale_to(Result& result, const Scalar factor) {
+  return result.scale_to(factor);
+}
 
+namespace tile_interface {
 
-  namespace tile_interface {
+template <typename... T>
+using result_of_scale_t = decltype(scale(std::declval<T>()...));
 
-    template <typename... T>
-    using result_of_scale_t = decltype(scale(std::declval<T>()...));
+template <typename... T>
+using result_of_scale_to_t = decltype(scale_to(std::declval<T>()...));
 
-    template <typename... T>
-    using result_of_scale_to_t = decltype(scale_to(std::declval<T>()...));
+template <typename Arg, typename Scalar, typename Enabler = void>
+struct scale_trait {
+  typedef Arg type;
+};
 
+template <typename Arg, typename Scalar>
+struct scale_trait<Arg, Scalar,
+                   typename std::enable_if<TiledArray::detail::is_type<
+                       result_of_scale_t<Arg, Scalar>>::value>::type> {
+  typedef result_of_scale_t<Arg> type;
+};
 
-    template <typename Arg, typename Scalar, typename Enabler = void>
-    struct scale_trait {
-      typedef Arg type;
-    };
+template <typename Result, typename Arg, typename Scalar,
+          typename Enabler = void>
+class Scale {
+ public:
+  static_assert(TiledArray::detail::is_numeric_v<Scalar>,
+                "Cannot scale tiles by a non-scalar type");
 
-    template <typename Arg, typename Scalar>
-    struct scale_trait<Arg, Scalar,
-        typename std::enable_if<
-            TiledArray::detail::is_type<result_of_scale_t<Arg, Scalar> >::value
-        >::type>
-    {
-      typedef result_of_scale_t<Arg> type;
-    };
+  typedef Result result_type;  ///< Result tile type
+  typedef Arg argument_type;   ///< Argument tile type
+  typedef Scalar scalar_type;  ///< Scaling factor type
 
-    template <typename Result, typename Arg, typename Scalar,
-        typename Enabler = void>
-    class Scale {
-    public:
-      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
-          "Cannot scale tiles by a non-scalar type");
+  result_type operator()(const argument_type& arg,
+                         const scalar_type factor) const {
+    using TiledArray::scale;
+    return scale(arg, factor);
+  }
 
-      typedef Result result_type; ///< Result tile type
-      typedef Arg argument_type; ///< Argument tile type
-      typedef Scalar scalar_type; ///< Scaling factor type
+  result_type operator()(const argument_type& arg, const scalar_type factor,
+                         const Permutation& perm) const {
+    using TiledArray::scale;
+    return scale(arg, factor, perm);
+  }
+};
 
-      result_type operator()(const argument_type& arg,
-          const scalar_type factor) const
-      {
-        using TiledArray::scale;
-        return scale(arg, factor);
-      }
+template <typename Result, typename Arg, typename Scalar>
+class Scale<Result, Arg, Scalar,
+            typename std::enable_if<!std::is_same<
+                Result, result_of_scale_t<Arg, Scalar>>::value>::type> {
+ public:
+  static_assert(TiledArray::detail::is_numeric_v<Scalar>,
+                "Cannot scale tiles by a non-scalar type");
 
-      result_type operator()(const argument_type& arg,
-          const scalar_type factor, const Permutation& perm) const
-      {
-        using TiledArray::scale;
-        return scale(arg, factor, perm);
-      }
-    };
+  typedef Result result_type;  ///< Result tile type
+  typedef Arg argument_type;   ///< Argument tile type
+  typedef Scalar scalar_type;  ///< The scaling factor type
 
-    template <typename Result, typename Arg, typename Scalar>
-    class Scale<Result, Arg, Scalar,
-        typename std::enable_if<
-            ! std::is_same<Result, result_of_scale_t<Arg, Scalar> >::value
-        >::type>
-    {
-    public:
-      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
-          "Cannot scale tiles by a non-scalar type");
+  result_type operator()(const argument_type& arg,
+                         const scalar_type factor) const {
+    using TiledArray::scale;
+    TiledArray::Cast<Result, result_of_scale_t<Arg, Scalar>> cast;
+    return cast(scale(arg, factor));
+  }
 
-      typedef Result result_type; ///< Result tile type
-      typedef Arg argument_type; ///< Argument tile type
-      typedef Scalar scalar_type; ///< The scaling factor type
+  result_type operator()(const argument_type& arg, const scalar_type factor,
+                         const Permutation& perm) const {
+    using TiledArray::scale;
+    TiledArray::Cast<Result, result_of_scale_t<Arg, Scalar, Permutation>> cast;
+    return cast(scale(arg, factor, perm));
+  }
+};
 
-      result_type operator()(const argument_type& arg,
-          const scalar_type factor) const
-      {
-        using TiledArray::scale;
-        TiledArray::Cast<Result, result_of_scale_t<Arg, Scalar> > cast;
-        return cast(scale(arg, factor));
-      }
+template <typename Result, typename Arg, typename Scalar,
+          typename Enabler = void>
+class ScaleTo {
+ public:
+  static_assert(TiledArray::detail::is_numeric_v<Scalar>,
+                "Cannot scale tiles by a non-scalar type");
 
+  typedef Result result_type;  ///< Result tile type
+  typedef Arg argument_type;   ///< Argument tile type
+  typedef Scalar scalar_type;  ///< Scaling factor type
 
-      result_type operator()(const argument_type& arg,
-          const scalar_type factor, const Permutation& perm) const
-      {
-        using TiledArray::scale;
-        TiledArray::Cast<Result, result_of_scale_t<Arg, Scalar, Permutation> > cast;
-        return cast(scale(arg, factor, perm));
-      }
+  result_type operator()(argument_type& arg, const scalar_type factor) const {
+    using TiledArray::scale_to;
+    return scale_to(arg, factor);
+  }
+};
 
-    };
+template <typename Result, typename Arg, typename Scalar>
+class ScaleTo<Result, Arg, Scalar,
+              typename std::enable_if<!std::is_same<
+                  Result, result_of_scale_t<Arg, Scalar>>::value>::type> {
+ public:
+  static_assert(TiledArray::detail::is_numeric_v<Scalar>,
+                "Cannot scale tiles by a non-scalar type");
 
+  typedef Result result_type;  ///< Result tile type
+  typedef Arg argument_type;   ///< Argument tile type
+  typedef Scalar scalar_type;  ///< The scaling factor type
 
-    template <typename Result, typename Arg, typename Scalar,
-        typename Enabler = void>
-    class ScaleTo {
-    public:
-      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
-          "Cannot scale tiles by a non-scalar type");
+  result_type operator()(const argument_type& arg,
+                         const scalar_type factor) const {
+    using TiledArray::scale_to;
+    TiledArray::Cast<Result, result_of_scale_to_t<Arg, Scalar>> cast;
+    return cast(scale_to(arg, factor));
+  }
+};
 
-      typedef Result result_type; ///< Result tile type
-      typedef Arg argument_type; ///< Argument tile type
-      typedef Scalar scalar_type; ///< Scaling factor type
+}  // namespace tile_interface
 
-      result_type operator()(argument_type& arg,
-          const scalar_type factor) const
-      {
-        using TiledArray::scale_to;
-        return scale_to(arg, factor);
-      }
+/// Scale trait
 
-    };
+/// This class defines the default return type for a permutation operation.
+/// The default return type is defined by the `permute()` function, if it
+/// exists, otherwise the return type is assumed to be the same as `Arg` type.
+/// \tparam Arg The argument tile type
+template <typename Arg, typename Scalar>
+struct scale_trait
+    : public TiledArray::tile_interface::scale_trait<Arg, Scalar> {};
 
-    template <typename Result, typename Arg, typename Scalar>
-    class ScaleTo<Result, Arg, Scalar,
-        typename std::enable_if<
-            ! std::is_same<Result, result_of_scale_t<Arg, Scalar> >::value
-        >::type>
-    {
-    public:
-      static_assert(TiledArray::detail::is_numeric_v<Scalar>,
-          "Cannot scale tiles by a non-scalar type");
+/// Scale tile
 
-      typedef Result result_type; ///< Result tile type
-      typedef Arg argument_type; ///< Argument tile type
-      typedef Scalar scalar_type; ///< The scaling factor type
+/// This operation creates a scaled copy of a tile.
+/// \tparam Result The result tile type
+/// \tparam Argument The argument tile type
+/// \tparam Scalar The scaling factor type
+template <typename Result, typename Arg, typename Scalar>
+class Scale : public TiledArray::tile_interface::Scale<Result, Arg, Scalar> {};
 
-      result_type operator()(const argument_type& arg,
-          const scalar_type factor) const
-      {
-        using TiledArray::scale_to;
-        TiledArray::Cast<Result, result_of_scale_to_t<Arg, Scalar> > cast;
-        return cast(scale_to(arg, factor));
-      }
+}  // namespace TiledArray
 
-    };
-
-  } // namespace tile_interface
-
-
-  /// Scale trait
-
-  /// This class defines the default return type for a permutation operation.
-  /// The default return type is defined by the `permute()` function, if it
-  /// exists, otherwise the return type is assumed to be the same as `Arg` type.
-  /// \tparam Arg The argument tile type
-  template <typename Arg, typename Scalar>
-  struct scale_trait :
-      public TiledArray::tile_interface::scale_trait<Arg, Scalar>
-  { };
-
-
-  /// Scale tile
-
-  /// This operation creates a scaled copy of a tile.
-  /// \tparam Result The result tile type
-  /// \tparam Argument The argument tile type
-  /// \tparam Scalar The scaling factor type
-  template <typename Result, typename Arg, typename Scalar>
-  class Scale :
-      public TiledArray::tile_interface::Scale<Result, Arg, Scalar>
-  { };
-
-
-} // namespace TiledArray
-
-#endif // TILEDARRAY_SRC_TILEDARRAY_TILE_INTERFACE_SCALE_H__INCLUDED
+#endif  // TILEDARRAY_SRC_TILEDARRAY_TILE_INTERFACE_SCALE_H__INCLUDED

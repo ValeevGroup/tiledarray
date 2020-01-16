@@ -24,50 +24,46 @@
  */
 
 #include "TiledArray/tile_op/mult.h"
+#include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
 
 using namespace TiledArray;
 using TiledArray::detail::Mult;
 
 struct MultFixture : public RangeFixture {
-
-  MultFixture() :
-    a(RangeFixture::r),
-    b(RangeFixture::r),
-    c(),
-    perm({2,0,1})
-  {
+  MultFixture() : a(RangeFixture::r), b(RangeFixture::r), c(), perm({2, 0, 1}) {
     GlobalFixture::world->srand(27);
-    for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    for (std::size_t i = 0ul; i < r.volume(); ++i) {
       a[i] = GlobalFixture::world->rand() / 101;
       b[i] = GlobalFixture::world->rand() / 101;
     }
   }
 
-  ~MultFixture() { }
+  ~MultFixture() {}
 
   Tensor<int> a;
   Tensor<int> b;
   Tensor<int> c;
   Permutation perm;
 
-}; // MultFixture
+};  // MultFixture
 
-BOOST_FIXTURE_TEST_SUITE( tile_op_mult_suite, MultFixture )
+BOOST_FIXTURE_TEST_SUITE(tile_op_mult_suite, MultFixture)
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false>()));
-  BOOST_CHECK_NO_THROW((Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false>()));
-  BOOST_CHECK_NO_THROW((Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
-  BOOST_CHECK_NO_THROW((Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
+  BOOST_CHECK_NO_THROW(
+      (Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false>()));
+  BOOST_CHECK_NO_THROW(
+      (Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false>()));
+  BOOST_CHECK_NO_THROW(
+      (Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
+  BOOST_CHECK_NO_THROW(
+      (Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
 }
 
-BOOST_AUTO_TEST_CASE( binary_mult )
-{
+BOOST_AUTO_TEST_CASE(binary_mult) {
   Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false> mult_op;
 
   // Store the multiplication of a and b in c
@@ -81,13 +77,12 @@ BOOST_AUTO_TEST_CASE( binary_mult )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], a[i] * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_mult_perm )
-{
+BOOST_AUTO_TEST_CASE(binary_mult_perm) {
   Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, false> mult_op;
 
   // Store the multiplication of a and b in c
@@ -101,13 +96,12 @@ BOOST_AUTO_TEST_CASE( binary_mult_perm )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_mult_consume_left )
-{
+BOOST_AUTO_TEST_CASE(binary_mult_consume_left) {
   Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false> mult_op;
   const Tensor<int> ax(a.range(), a.begin());
 
@@ -122,13 +116,12 @@ BOOST_AUTO_TEST_CASE( binary_mult_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], ax[i] * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_left )
-{
+BOOST_AUTO_TEST_CASE(binary_mult_perm_consume_left) {
   Mult<Tensor<int>, Tensor<int>, Tensor<int>, true, false> mult_op;
 
   // Store the multiplication of a and b in c
@@ -142,13 +135,12 @@ BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] * b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_mult_consume_right )
-{
+BOOST_AUTO_TEST_CASE(binary_mult_consume_right) {
   Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true> mult_op;
   const Tensor<int> bx(b.range(), b.begin());
 
@@ -163,13 +155,12 @@ BOOST_AUTO_TEST_CASE( binary_mult_consume_right )
   BOOST_CHECK_EQUAL(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], a[i] * bx[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_right )
-{
+BOOST_AUTO_TEST_CASE(binary_mult_perm_consume_right) {
   Mult<Tensor<int>, Tensor<int>, Tensor<int>, false, true> mult_op;
 
   // Store the multiplication of a and b in c
@@ -183,7 +174,7 @@ BOOST_AUTO_TEST_CASE( binary_mult_perm_consume_right )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] * b[i]);
   }
 }

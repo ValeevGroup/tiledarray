@@ -17,13 +17,12 @@
  *
  */
 
-#include <iostream>
 #include <tiledarray.h>
+#include <iostream>
 
 int main(int argc, char** argv) {
-
   // Get command line arguments
-  if(argc < 2) {
+  if (argc < 2) {
     std::cout << "Usage: " << argv[0] << " matrix_size [repetitions]\n";
     return 0;
   }
@@ -39,7 +38,8 @@ int main(int argc, char** argv) {
   }
 
   std::cout << "\nMatrix size       = " << matrix_size << "x" << matrix_size
-            << "\nMemory per matrix = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
+            << "\nMemory per matrix = "
+            << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
             << " GB\n";
 
   // Construct matrices
@@ -50,21 +50,24 @@ int main(int argc, char** argv) {
   b.fill(1.0);
   c.fill(0.0);
 
-
   // Start clock
   const double wall_time_start = madness::wall_time();
 
   // Do matrix multiplcation
-  for(int i = 0; i < repeat; ++i) {
+  for (int i = 0; i < repeat; ++i) {
     c.noalias() = 1.0 * a * b + 0.0 * c;
   }
 
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 
-  std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
-      << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
-          matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+  std::cout << "Average wall time = "
+            << (wall_time_stop - wall_time_start) / double(repeat)
+            << "\nAverage GFLOPS = "
+            << double(repeat) * 2.0 *
+                   double(matrix_size * matrix_size * matrix_size) /
+                   (wall_time_stop - wall_time_start) / 1.0e9
+            << "\n";
 
   return 0;
 }

@@ -26,80 +26,74 @@
 #ifndef TILEDARRAY_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_H__INCLUDED
 
-#include <TiledArray/tensor/tensor.h>
-#include <TiledArray/tensor/tensor_map.h>
-#include <TiledArray/tensor/tensor_interface.h>
-#include <TiledArray/tensor/shift_wrapper.h>
-#include <TiledArray/tensor/operators.h>
 #include <TiledArray/block_range.h>
+#include <TiledArray/tensor/operators.h>
+#include <TiledArray/tensor/shift_wrapper.h>
+#include <TiledArray/tensor/tensor.h>
+#include <TiledArray/tensor/tensor_interface.h>
+#include <TiledArray/tensor/tensor_map.h>
 
 namespace TiledArray {
 
-  // Template aliases for TensorInterface objects
+// Template aliases for TensorInterface objects
 
-  template <typename T>
-  using TensorView =
-      detail::TensorInterface<T, BlockRange>;
+template <typename T>
+using TensorView = detail::TensorInterface<T, BlockRange>;
 
-  template <typename T>
-  using TensorConstView =
-      detail::TensorInterface<typename std::add_const<T>::type, BlockRange>;
+template <typename T>
+using TensorConstView =
+    detail::TensorInterface<typename std::add_const<T>::type, BlockRange>;
 
+/// Tensor output operator
 
-  /// Tensor output operator
+/// Output tensor \c t to the output stream, \c os .
+/// \tparam T The tensor type
+/// \param os The output stream
+/// \param t The tensor to be output
+/// \return A reference to the output stream
+template <typename T, typename std::enable_if<detail::is_tensor<T>::value &&
+                                              detail::is_contiguous_tensor<
+                                                  T>::value>::type* = nullptr>
+inline std::ostream& operator<<(std::ostream& os, const T& t) {
+  os << t.range() << " { ";
+  const auto n = t.range().volume();
+  for (auto i = 0ul; i < n; ++i) os << t[i] << " ";
 
-  /// Output tensor \c t to the output stream, \c os .
-  /// \tparam T The tensor type
-  /// \param os The output stream
-  /// \param t The tensor to be output
-  /// \return A reference to the output stream
-  template <typename T,
-      typename std::enable_if<
-          detail::is_tensor<T>::value &&
-          detail::is_contiguous_tensor<T>::value>::type* = nullptr>
-  inline std::ostream& operator<<(std::ostream& os, const T& t) {
-    os << t.range() << " { ";
-    const auto n = t.range().volume();
-    for(auto i = 0ul; i < n; ++i)
-      os << t[i] << " ";
+  os << "}";
 
-    os << "}";
+  return os;
+}
 
-    return os;
-  }
+/// Tensor output operator
 
-  /// Tensor output operator
+/// Output tensor \c t to the output stream, \c os .
+/// \tparam T The tensor type
+/// \param os The output stream
+/// \param t The tensor to be output
+/// \return A reference to the output stream
+template <typename T, typename std::enable_if<detail::is_tensor<T>::value &&
+                                              !detail::is_contiguous_tensor<
+                                                  T>::value>::type* = nullptr>
+inline std::ostream& operator<<(std::ostream& os, const T& t) {
+  const auto stride = inner_size(t);
+  const auto volume = t.range().volume();
 
-  /// Output tensor \c t to the output stream, \c os .
-  /// \tparam T The tensor type
-  /// \param os The output stream
-  /// \param t The tensor to be output
-  /// \return A reference to the output stream
-  template <typename T,
-      typename std::enable_if<
-          detail::is_tensor<T>::value &&
-          ! detail::is_contiguous_tensor<T>::value>::type* = nullptr>
-  inline std::ostream& operator<<(std::ostream& os, const T& t) {
+  auto tensor_print_range =
+      [&os, stride](typename T::const_pointer MADNESS_RESTRICT const t_data) {
+        for (decltype(t.range().volume()) i = 0ul; i < stride; ++i)
+          os << t_data[i] << " ";
+      };
 
-    const auto stride = inner_size(t);
-    const auto volume = t.range().volume();
+  os << t.range() << " { ";
 
-    auto tensor_print_range =
-        [&os,stride] (typename T::const_pointer MADNESS_RESTRICT const t_data) {
-          for(decltype(t.range().volume()) i = 0ul; i < stride; ++i)
-            os << t_data[i] << " ";
-        };
+  for (decltype(t.range().volume()) i = 0ul; i < volume; i += stride)
+    tensor_print_range(t.data() + t.range().ordinal(i));
 
-    os << t.range() << " { ";
+  os << "}";
 
-    for(decltype(t.range().volume()) i = 0ul; i < volume; i += stride)
-      tensor_print_range(t.data() + t.range().ordinal(i));
+  return os;
+}
 
-    os << "}";
+}  // namespace TiledArray
 
-    return os;
-  }
-
-} // namespace TiledArray
-
-#endif // TILEDARRAY_SRC_TILEDARRAY_TENSOR_H__INCLUDED
+#endif  // TILEDARRAY_SRC_TILEDARRAY_TENSOR_H__INCLUDED

@@ -26,10 +26,10 @@
 #include "tensor_impl.h"
 
 namespace TiledArray {
-  namespace detail {
+namespace detail {
 
-    template class TensorImpl<DensePolicy>;
-    template class TensorImpl<SparsePolicy>;
+template class TensorImpl<DensePolicy>;
+template class TensorImpl<SparsePolicy>;
 
-  }  // namespace detail
-} // namespace TiledArray
+}  // namespace detail
+}  // namespace TiledArray

@@ -26,10 +26,10 @@
 #ifndef SRC_TILEDARRAY_META_H_
 #define SRC_TILEDARRAY_META_H_
 
-#include <madness/world/world.h>
-#include <madness/world/future.h>
-#include <madness/world/world_task_queue.h>
 #include <TiledArray/external/madness.h>
+#include <madness/world/future.h>
+#include <madness/world/world.h>
+#include <madness/world/world_task_queue.h>
 
 namespace TiledArray {
 namespace meta {
@@ -50,16 +50,18 @@ struct or_reduce<b> {
 // -  no: direct launch
 template <typename Function, typename... Args>
 auto invoke(Function&& fn, Args&&... args) -> typename std::enable_if<
-    !or_reduce<false,madness::is_future<std::decay_t<Args>>::value...>::value,
+    !or_reduce<false, madness::is_future<std::decay_t<Args>>::value...>::value,
     decltype(fn(args...))>::type {
   return fn(std::forward<Args>(args)...);
 }
 
-template <typename Function, typename... Args,
-          typename = typename std::enable_if<or_reduce<false,
-              madness::is_future<std::decay_t<Args>>::value...>::value>::type>
+template <
+    typename Function, typename... Args,
+    typename = typename std::enable_if<or_reduce<
+        false, madness::is_future<std::decay_t<Args>>::value...>::value>::type>
 auto invoke(Function&& fn, Args&&... args) {
-  return TiledArray::get_default_world().taskq.add(fn, std::forward<Args>(args)...);
+  return TiledArray::get_default_world().taskq.add(fn,
+                                                   std::forward<Args>(args)...);
 }
 
 }  // namespace meta

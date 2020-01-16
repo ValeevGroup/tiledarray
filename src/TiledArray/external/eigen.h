@@ -27,39 +27,41 @@
 #define TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED
 
 //
-// Configure Eigen and include Eigen/Core, all dependencies should include this before including any Eigen headers
+// Configure Eigen and include Eigen/Core, all dependencies should include this
+// before including any Eigen headers
 //
 
 #include <madness/config.h>
 #if defined(__GNUC__)
-#pragma  GCC diagnostic push
+#pragma GCC diagnostic push
 #pragma GCC system_header
 #endif
 ////////////////////////////////////////////////
 // this duplicates TiledArray_Eigen definitions
 #if HAVE_INTEL_MKL
-# ifndef EIGEN_USE_MKL_ALL
-#  define EIGEN_USE_MKL_ALL 1
-# endif
+#ifndef EIGEN_USE_MKL_ALL
+#define EIGEN_USE_MKL_ALL 1
+#endif
 #else
 //# ifndef EIGEN_USE_BLAS
 //#  define EIGEN_USE_BLAS 1
 //# endif
-# ifdef MADNESS_LINALG_USE_LAPACKE
-#  ifndef EIGEN_USE_LAPACKE
-#   define EIGEN_USE_LAPACKE 1
-#  endif
-#  ifndef EIGEN_USE_LAPACKE_STRICT
-#   define EIGEN_USE_LAPACKE_STRICT 1
-#  endif
-# endif
+#ifdef MADNESS_LINALG_USE_LAPACKE
+#ifndef EIGEN_USE_LAPACKE
+#define EIGEN_USE_LAPACKE 1
+#endif
+#ifndef EIGEN_USE_LAPACKE_STRICT
+#define EIGEN_USE_LAPACKE_STRICT 1
+#endif
+#endif
 #endif
 /////////////////////////////////////////////////
-// define lapacke types to prevent inclusion of complex.h by Eigen/src/misc/lapacke.h
+// define lapacke types to prevent inclusion of complex.h by
+// Eigen/src/misc/lapacke.h
 #include <madness/tensor/lapacke_types.h>
 #include <Eigen/Core>
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
 
-#endif // TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED
+#endif  // TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED

@@ -30,213 +30,213 @@
 
 namespace TiledArray {
 
-  /// Range that references a subblock of another range
-  class BlockRange : public Range {
-  private:
-    using Range::data_;
-    using Range::offset_;
-    using Range::volume_;
-    using Range::rank_;
+/// Range that references a subblock of another range
+class BlockRange : public Range {
+ private:
+  using Range::data_;
+  using Range::offset_;
+  using Range::rank_;
+  using Range::volume_;
 
-    Range::ordinal_type block_offset_ = 0ul;
+  Range::ordinal_type block_offset_ = 0ul;
 
+  template <typename Index>
+  void init(const Range& range, const Index& lower_bound,
+            const Index& upper_bound) {
+    TA_ASSERT(range.rank());
+    // Check for valid lower and upper bounds
+    TA_ASSERT(std::equal(
+        lower_bound.begin(), lower_bound.end(), range.lobound_data(),
+        [](const size_type l, const size_type r) { return l >= r; }));
+    TA_ASSERT(
+        std::equal(upper_bound.begin(), upper_bound.end(), lower_bound.begin(),
+                   [](const size_type l, const size_type r) { return l > r; }));
+    TA_ASSERT(std::equal(
+        upper_bound.begin(), upper_bound.end(), range.upbound_data(),
+        [](const size_type l, const size_type r) { return l <= r; }));
 
-    template <typename Index>
-    void init(const Range& range, const Index& lower_bound, const Index& upper_bound) {
-      TA_ASSERT(range.rank());
-      // Check for valid lower and upper bounds
-      TA_ASSERT(std::equal(lower_bound.begin(), lower_bound.end(), range.lobound_data(),
-          [](const size_type l, const size_type r) { return l >= r; }));
-      TA_ASSERT(std::equal(upper_bound.begin(), upper_bound.end(), lower_bound.begin(),
-          [](const size_type l, const size_type r) { return l > r; }));
-      TA_ASSERT(std::equal(upper_bound.begin(), upper_bound.end(), range.upbound_data(),
-          [](const size_type l, const size_type r) { return l <= r; }));
+    // Initialize the block range data members
+    data_ = new size_type[range.rank() << 2];
+    offset_ = range.offset();
+    volume_ = 1ul;
+    rank_ = range.rank();
+    block_offset_ = 0ul;
 
-      // Initialize the block range data members
-      data_ = new size_type[range.rank() << 2];
-      offset_ = range.offset();
-      volume_ = 1ul;
-      rank_ = range.rank();
-      block_offset_ = 0ul;
+    // Construct temp pointers
+    const auto* MADNESS_RESTRICT const range_stride = range.stride_data();
+    const auto* MADNESS_RESTRICT const lower_bound_ptr =
+        detail::data(lower_bound);
+    const auto* MADNESS_RESTRICT const upper_bound_ptr =
+        detail::data(upper_bound);
+    auto* MADNESS_RESTRICT const lower = data_;
+    auto* MADNESS_RESTRICT const upper = lower + rank_;
+    auto* MADNESS_RESTRICT const extent = upper + rank_;
+    auto* MADNESS_RESTRICT const stride = extent + rank_;
 
-      // Construct temp pointers
-      const auto* MADNESS_RESTRICT const range_stride = range.stride_data();
-      const auto* MADNESS_RESTRICT const lower_bound_ptr = detail::data(lower_bound);
-      const auto* MADNESS_RESTRICT const upper_bound_ptr = detail::data(upper_bound);
-      auto* MADNESS_RESTRICT const lower  = data_;
-      auto* MADNESS_RESTRICT const upper  = lower + rank_;
-      auto* MADNESS_RESTRICT const extent = upper + rank_;
-      auto* MADNESS_RESTRICT const stride = extent + rank_;
+    // Compute range data
+    for (int i = int(rank_) - 1; i >= 0; --i) {
+      // Compute data for element i of lower, upper, and extent
+      const auto lower_bound_i = lower_bound_ptr[i];
+      const auto upper_bound_i = upper_bound_ptr[i];
+      const auto range_stride_i = range_stride[i];
+      const auto extent_i = upper_bound_i - lower_bound_i;
 
-      // Compute range data
-      for(int i = int(rank_) - 1; i >= 0; --i) {
-        // Compute data for element i of lower, upper, and extent
-        const auto lower_bound_i = lower_bound_ptr[i];
-        const auto upper_bound_i = upper_bound_ptr[i];
-        const auto range_stride_i = range_stride[i];
-        const auto extent_i = upper_bound_i - lower_bound_i;
+      // Check input dimensions
+      TA_ASSERT(lower_bound_i >= range.lobound(i));
+      TA_ASSERT(lower_bound_i < upper_bound_i);
+      TA_ASSERT(upper_bound_i <= range.upbound(i));
 
-        // Check input dimensions
-        TA_ASSERT(lower_bound_i >= range.lobound(i));
-        TA_ASSERT(lower_bound_i < upper_bound_i);
-        TA_ASSERT(upper_bound_i <= range.upbound(i));
-
-        // Set the block range data
-        lower[i]       = lower_bound_i;
-        upper[i]       = upper_bound_i;
-        extent[i]      = extent_i;
-        stride[i]      = range_stride_i;
-        block_offset_ += lower_bound_i * range_stride_i;
-        volume_       *= extent_i;
-      }
+      // Set the block range data
+      lower[i] = lower_bound_i;
+      upper[i] = upper_bound_i;
+      extent[i] = extent_i;
+      stride[i] = range_stride_i;
+      block_offset_ += lower_bound_i * range_stride_i;
+      volume_ *= extent_i;
     }
-
-  public:
-
-    // Compiler generated functions
-    BlockRange() = default;
-    BlockRange(const BlockRange&) = default;
-    BlockRange(BlockRange&&) = default;
-    ~BlockRange() = default;
-    BlockRange& operator=(const BlockRange&) = default;
-    BlockRange& operator=(BlockRange&&) = default;
-
-    template <typename Index>
-    BlockRange(const Range& range, const Index& lower_bound,
-        const Index& upper_bound) :
-        Range()
-    {
-      init(range, lower_bound, upper_bound);
-    }
-
-
-    BlockRange(const Range& range, const std::initializer_list<size_type>& lower_bound,
-        const std::initializer_list<size_type>& upper_bound) :
-      Range()
-    {
-      init(range, lower_bound, upper_bound);
-    }
-
-
-    /// calculate the ordinal index of \c i
-
-    /// Convert a coordinate index to an ordinal index.
-    /// \tparam Index A coordinate index type (array type)
-    /// \param index The index to be converted to an ordinal index
-    /// \return The ordinal index of \c index
-    /// \throw When \c index is not included in this range.
-    template <typename Index,
-        typename std::enable_if<! std::is_integral<Index>::value>::type* = nullptr>
-    ordinal_type ordinal(const Index& index) const {
-      return Range::ordinal(index);
-    }
-
-    template <typename... Index,
-        typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
-    ordinal_type ordinal(const Index&... index) const {
-      return Range::ordinal(index...);
-    }
-
-    /// calculate the coordinate index of the ordinal index, \c index.
-
-    /// Convert an ordinal index to a coordinate index.
-    /// \param index Ordinal index
-    /// \return The index of the ordinal index
-    /// \throw TiledArray::Exception When \c index is not included in this range
-    /// \throw std::bad_alloc When memory allocation fails
-    ordinal_type ordinal(ordinal_type index) const {
-      // Check that index is contained by range.
-      TA_ASSERT(includes(index));
-
-      // Construct result coordinate index object and allocate its memory.
-      ordinal_type result = 0ul;
-
-      // Get pointers to the data
-      const auto * MADNESS_RESTRICT const size = data_ + rank_ + rank_;
-      const auto * MADNESS_RESTRICT const stride = size + rank_;
-
-      // Compute the coordinate index of o in range.
-      for(int i = int(rank_) - 1; i >= 0; --i) {
-        const auto size_i = size[i];
-        const auto stride_i = stride[i];
-
-        // Compute result index element i
-        result += (index % size_i) * stride_i;
-        index /= size_i;
-      }
-
-      return result + block_offset_ - offset_;
-    }
-
-    /// Resize of block range is not supported
-    template <typename Index>
-    BlockRange& resize(const Index&, const Index&) {
-      // This function is here to shadow the base class resize function
-      TA_EXCEPTION("BlockRange::resize() is not supported");
-      return *this;
-    }
-
-
-    /// Shift the lower and upper bound of this range
-
-    /// \warning This function is here to shadow the base class inplace_shift
-    /// function, and disable it.
-    template <typename Index>
-    Range_& inplace_shift(const Index&) {
-      TA_EXCEPTION("BlockRange::inplace_shift() is not supported");
-      return *this;
-    }
-
-    /// Shift the lower and upper bound of this range
-
-    /// \warning This function is here to shadow the base class shift function,
-    /// and disable it.
-    template <typename Index>
-    Range_ shift(const Index&) {
-      TA_EXCEPTION("BlockRange::shift() is not supported");
-      return *this;
-    }
-
-    void swap(BlockRange& other) {
-      Range::swap(other);
-      std::swap(block_offset_, other.block_offset_);
-    }
-
-    /// Serialization Block range
-    template <typename Archive>
-    void serialize(const Archive& ar) const {
-      Range::serialize(ar);
-      ar & block_offset_;
-    }
-  }; // BlockRange
-
-  /// Test that two BlockRange objects are congruent
-
-  /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
-  /// \param r1 The first BlockRange to compare
-  /// \param r2 The second BlockRange to compare
-  inline bool is_congruent(const BlockRange& r1, const BlockRange& r2){
-    return is_congruent(static_cast<const Range&>(r1), static_cast<const Range&>(r2));
   }
 
-  /// Test that BlockRange and Range are congruent
+ public:
+  // Compiler generated functions
+  BlockRange() = default;
+  BlockRange(const BlockRange&) = default;
+  BlockRange(BlockRange&&) = default;
+  ~BlockRange() = default;
+  BlockRange& operator=(const BlockRange&) = default;
+  BlockRange& operator=(BlockRange&&) = default;
 
-  /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
-  /// \param r1 The BlockRange to compare
-  /// \param r2 The Range to compare
-  inline bool is_congruent(const BlockRange& r1, const Range& r2) {
-    return is_congruent(static_cast<const Range&>(r1), r2);
+  template <typename Index>
+  BlockRange(const Range& range, const Index& lower_bound,
+             const Index& upper_bound)
+      : Range() {
+    init(range, lower_bound, upper_bound);
   }
 
-  /// Test that Range and BlockRange are congruent
-
-  /// This function tests that the rank, extent of \c r1 is equal to that of \c r2.
-  /// \param r1 The Range to compare
-  /// \param r2 The BlockRange to compare
-  inline bool is_congruent(const Range& r1, const BlockRange& r2) {
-    return is_congruent(r2,r1);
+  BlockRange(const Range& range,
+             const std::initializer_list<size_type>& lower_bound,
+             const std::initializer_list<size_type>& upper_bound)
+      : Range() {
+    init(range, lower_bound, upper_bound);
   }
 
-} // namespace TiledArray
+  /// calculate the ordinal index of \c i
 
-#endif // TILEDARRAY_BLOCK_RANGE_H__INCLUDED
+  /// Convert a coordinate index to an ordinal index.
+  /// \tparam Index A coordinate index type (array type)
+  /// \param index The index to be converted to an ordinal index
+  /// \return The ordinal index of \c index
+  /// \throw When \c index is not included in this range.
+  template <
+      typename Index,
+      typename std::enable_if<!std::is_integral<Index>::value>::type* = nullptr>
+  ordinal_type ordinal(const Index& index) const {
+    return Range::ordinal(index);
+  }
+
+  template <typename... Index,
+            typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
+  ordinal_type ordinal(const Index&... index) const {
+    return Range::ordinal(index...);
+  }
+
+  /// calculate the coordinate index of the ordinal index, \c index.
+
+  /// Convert an ordinal index to a coordinate index.
+  /// \param index Ordinal index
+  /// \return The index of the ordinal index
+  /// \throw TiledArray::Exception When \c index is not included in this range
+  /// \throw std::bad_alloc When memory allocation fails
+  ordinal_type ordinal(ordinal_type index) const {
+    // Check that index is contained by range.
+    TA_ASSERT(includes(index));
+
+    // Construct result coordinate index object and allocate its memory.
+    ordinal_type result = 0ul;
+
+    // Get pointers to the data
+    const auto* MADNESS_RESTRICT const size = data_ + rank_ + rank_;
+    const auto* MADNESS_RESTRICT const stride = size + rank_;
+
+    // Compute the coordinate index of o in range.
+    for (int i = int(rank_) - 1; i >= 0; --i) {
+      const auto size_i = size[i];
+      const auto stride_i = stride[i];
+
+      // Compute result index element i
+      result += (index % size_i) * stride_i;
+      index /= size_i;
+    }
+
+    return result + block_offset_ - offset_;
+  }
+
+  /// Resize of block range is not supported
+  template <typename Index>
+  BlockRange& resize(const Index&, const Index&) {
+    // This function is here to shadow the base class resize function
+    TA_EXCEPTION("BlockRange::resize() is not supported");
+    return *this;
+  }
+
+  /// Shift the lower and upper bound of this range
+
+  /// \warning This function is here to shadow the base class inplace_shift
+  /// function, and disable it.
+  template <typename Index>
+  Range_& inplace_shift(const Index&) {
+    TA_EXCEPTION("BlockRange::inplace_shift() is not supported");
+    return *this;
+  }
+
+  /// Shift the lower and upper bound of this range
+
+  /// \warning This function is here to shadow the base class shift function,
+  /// and disable it.
+  template <typename Index>
+  Range_ shift(const Index&) {
+    TA_EXCEPTION("BlockRange::shift() is not supported");
+    return *this;
+  }
+
+  void swap(BlockRange& other) {
+    Range::swap(other);
+    std::swap(block_offset_, other.block_offset_);
+  }
+
+  /// Serialization Block range
+  template <typename Archive>
+  void serialize(const Archive& ar) const {
+    Range::serialize(ar);
+    ar& block_offset_;
+  }
+};  // BlockRange
+
+/// Test that two BlockRange objects are congruent
+
+/// This function tests that the rank, extent of \c r1 is equal to that of \c
+/// r2. \param r1 The first BlockRange to compare \param r2 The second
+/// BlockRange to compare
+inline bool is_congruent(const BlockRange& r1, const BlockRange& r2) {
+  return is_congruent(static_cast<const Range&>(r1),
+                      static_cast<const Range&>(r2));
+}
+
+/// Test that BlockRange and Range are congruent
+
+/// This function tests that the rank, extent of \c r1 is equal to that of \c
+/// r2. \param r1 The BlockRange to compare \param r2 The Range to compare
+inline bool is_congruent(const BlockRange& r1, const Range& r2) {
+  return is_congruent(static_cast<const Range&>(r1), r2);
+}
+
+/// Test that Range and BlockRange are congruent
+
+/// This function tests that the rank, extent of \c r1 is equal to that of \c
+/// r2. \param r1 The Range to compare \param r2 The BlockRange to compare
+inline bool is_congruent(const Range& r1, const BlockRange& r2) {
+  return is_congruent(r2, r1);
+}
+
+}  // namespace TiledArray
+
+#endif  // TILEDARRAY_BLOCK_RANGE_H__INCLUDED

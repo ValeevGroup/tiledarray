@@ -30,59 +30,57 @@
 
 namespace TiledArray {
 
-  namespace detail {
-    template <typename DstTile, typename SrcTile, typename Op, typename Enabler = void>
-    struct cast_then_op;
+namespace detail {
+template <typename DstTile, typename SrcTile, typename Op,
+          typename Enabler = void>
+struct cast_then_op;
 
-    template <typename Tile, typename Op>
-    struct cast_then_op<Tile, Tile, Op, void> {
-      cast_then_op(const Op& op) : op_(op) {}
+template <typename Tile, typename Op>
+struct cast_then_op<Tile, Tile, Op, void> {
+  cast_then_op(const Op& op) : op_(op) {}
 
-      auto operator()(const Tile& tile) const {
-        return op_(tile);
-      }
+  auto operator()(const Tile& tile) const { return op_(tile); }
 
-      Op op_;
-    };
+  Op op_;
+};
 
-    template <typename DstTile, typename SrcTile, typename Op>
-    struct cast_then_op<DstTile, SrcTile, Op, std::enable_if_t<!std::is_same<DstTile,SrcTile>::value>> {
-      cast_then_op(const Op& op) : op_(op) {}
+template <typename DstTile, typename SrcTile, typename Op>
+struct cast_then_op<DstTile, SrcTile, Op,
+                    std::enable_if_t<!std::is_same<DstTile, SrcTile>::value>> {
+  cast_then_op(const Op& op) : op_(op) {}
 
-      auto operator()(const SrcTile& tile) const {
-        return op_(Cast<DstTile,SrcTile>{}(tile));
-      }
-
-      Op op_;
-    };
-
-  }  // namespace detail
-
-  /// Function to convert an array to a new array with a different tile type.
-
-  /// \tparam Tile The array tile type
-  /// \tparam ConvTile The tile type to which Tile can be converted to and
-  ///                  for which \c Op(ConvTile) is well-formed
-  /// \tparam Policy The array policy type
-  /// \tparam Op The tile conversion operation type
-  /// \param array The array to be converted
-  /// \param op The tile type conversion operation
-  template <typename Tile, typename ConvTile = Tile, typename Policy, typename Op>
-  inline decltype(auto)
-  to_new_tile_type(DistArray<Tile, Policy> const &old_array, Op &&op) {
-    using OutTileType = typename std::result_of<Op(ConvTile)>::type;
-
-    static_assert(!std::is_same<Tile, OutTileType>::value,
-                  "Can't call new tile type if tile type does not change.");
-
-    const detail::cast_then_op<ConvTile, Tile, std::remove_reference_t<Op>>
-        cast_op(op);
-
-    return foreach<OutTileType>(old_array,
-                                [cast_op](auto& out, const auto& in) {
-                                  out = cast_op(in);
-                                });
+  auto operator()(const SrcTile& tile) const {
+    return op_(Cast<DstTile, SrcTile>{}(tile));
   }
 
-} // namespace TiledArray
-#endif // TILEDARRAY_CONVERSIONS_TO_NEW_TILE_TYPE_H__INCLUDED
+  Op op_;
+};
+
+}  // namespace detail
+
+/// Function to convert an array to a new array with a different tile type.
+
+/// \tparam Tile The array tile type
+/// \tparam ConvTile The tile type to which Tile can be converted to and
+///                  for which \c Op(ConvTile) is well-formed
+/// \tparam Policy The array policy type
+/// \tparam Op The tile conversion operation type
+/// \param array The array to be converted
+/// \param op The tile type conversion operation
+template <typename Tile, typename ConvTile = Tile, typename Policy, typename Op>
+inline decltype(auto) to_new_tile_type(DistArray<Tile, Policy> const& old_array,
+                                       Op&& op) {
+  using OutTileType = typename std::result_of<Op(ConvTile)>::type;
+
+  static_assert(!std::is_same<Tile, OutTileType>::value,
+                "Can't call new tile type if tile type does not change.");
+
+  const detail::cast_then_op<ConvTile, Tile, std::remove_reference_t<Op>>
+      cast_op(op);
+
+  return foreach<OutTileType>(
+      old_array, [cast_op](auto& out, const auto& in) { out = cast_op(in); });
+}
+
+}  // namespace TiledArray
+#endif  // TILEDARRAY_CONVERSIONS_TO_NEW_TILE_TYPE_H__INCLUDED

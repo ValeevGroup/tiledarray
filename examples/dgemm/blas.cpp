@@ -17,12 +17,12 @@
  *
  */
 
-#include <iostream>
 #include <tiledarray.h>
+#include <iostream>
 
 int main(int argc, char** argv) {
   // Get command line arguments
-  if(argc < 2) {
+  if (argc < 2) {
     std::cout << "Usage: " << argv[0] << " matrix_size [repetitions]\n";
     return 0;
   }
@@ -38,18 +38,22 @@ int main(int argc, char** argv) {
   }
 
   std::cout << "\nMatrix size       = " << matrix_size << "x" << matrix_size
-            << "\nMemory per matrix = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
+            << "\nMemory per matrix = "
+            << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
             << " GB\n";
 
   // Construct matrices
   double* a = NULL;
-  if(posix_memalign(reinterpret_cast<void**>(&a), 128, sizeof(double) * matrix_size * matrix_size) != 0)
+  if (posix_memalign(reinterpret_cast<void**>(&a), 128,
+                     sizeof(double) * matrix_size * matrix_size) != 0)
     return 1;
   double* b = NULL;
-  if(posix_memalign(reinterpret_cast<void**>(&b), 128, sizeof(double) * matrix_size * matrix_size) != 0)
+  if (posix_memalign(reinterpret_cast<void**>(&b), 128,
+                     sizeof(double) * matrix_size * matrix_size) != 0)
     return 1;
   double* c = NULL;
-  if(posix_memalign(reinterpret_cast<void**>(&c), 128, sizeof(double) * matrix_size * matrix_size) != 0)
+  if (posix_memalign(reinterpret_cast<void**>(&c), 128,
+                     sizeof(double) * matrix_size * matrix_size) != 0)
     return 1;
   std::fill_n(a, matrix_size * matrix_size, 1.0);
   std::fill_n(b, matrix_size * matrix_size, 1.0);
@@ -65,8 +69,9 @@ int main(int argc, char** argv) {
   const double wall_time_start = madness::wall_time();
 
   // Do matrix multiplcation
-  // Note: If TiledArray has not been configured with blas, this will be an eigen call.
-  for(int i = 0; i < repeat; ++i) {
+  // Note: If TiledArray has not been configured with blas, this will be an
+  // eigen call.
+  for (int i = 0; i < repeat; ++i) {
     F77_DGEMM(&opb, &opa, &n, &m, &k, &alpha, b, &ldb, a, &lda, &beta, c, &ldc);
   }
 
@@ -78,9 +83,13 @@ int main(int argc, char** argv) {
   free(b);
   free(c);
 
-  std::cout << "Average wall time = " << (wall_time_stop - wall_time_start) / double(repeat)
-      << "\nAverage GFLOPS = " << double(repeat) * 2.0 * double(matrix_size *
-          matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n";
+  std::cout << "Average wall time = "
+            << (wall_time_stop - wall_time_start) / double(repeat)
+            << "\nAverage GFLOPS = "
+            << double(repeat) * 2.0 *
+                   double(matrix_size * matrix_size * matrix_size) /
+                   (wall_time_stop - wall_time_start) / 1.0e9
+            << "\n";
 
   return 0;
 }

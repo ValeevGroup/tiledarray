@@ -9,9 +9,9 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
+#include <TiledArray/util/time.h>
 #include <cuda_runtime.h>
 #include <madness/world/taskfn.h>
-#include <TiledArray/util/time.h>
 
 namespace TiledArray {
 namespace detail {
@@ -132,7 +132,8 @@ struct cudaTaskFn : public TaskInterface {
       callback->notify();
       const auto t1 = TiledArray::now();
 
-      TiledArray::detail::cuda_taskfn_callback_duration_ns() += TiledArray::duration_in_ns(t0, t1);
+      TiledArray::detail::cuda_taskfn_callback_duration_ns() +=
+          TiledArray::duration_in_ns(t0, t1);
     }
 
     cudaTaskFn_* task_;

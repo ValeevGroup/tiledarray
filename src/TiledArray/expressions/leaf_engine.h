@@ -26,148 +26,152 @@
 #ifndef TILEDARRAY_EXPRESSIONS_LEAF_ENGINE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_LEAF_ENGINE_H__INCLUDED
 
-#include <TiledArray/expressions/expr_engine.h>
 #include <TiledArray/dist_eval/array_eval.h>
+#include <TiledArray/expressions/expr_engine.h>
 
 namespace TiledArray {
-  namespace expressions {
+namespace expressions {
 
-    /// Leaf expression engine
+/// Leaf expression engine
 
-    /// \tparam Derived The derived class type
-    template <typename Derived>
-    class LeafEngine : public ExprEngine<Derived> {
-    public:
-      // Class hierarchy typedefs
-      typedef LeafEngine<Derived> LeafEngine_; ///< This class type
-      typedef ExprEngine<Derived> ExprEngine_; ///< Base class type
+/// \tparam Derived The derived class type
+template <typename Derived>
+class LeafEngine : public ExprEngine<Derived> {
+ public:
+  // Class hierarchy typedefs
+  typedef LeafEngine<Derived> LeafEngine_;  ///< This class type
+  typedef ExprEngine<Derived> ExprEngine_;  ///< Base class type
 
-      // Argument typedefs
-      typedef typename EngineTrait<Derived>::array_type array_type; ///< The left-hand expression type
+  // Argument typedefs
+  typedef typename EngineTrait<Derived>::array_type
+      array_type;  ///< The left-hand expression type
 
-      // Operational typedefs
-      typedef typename EngineTrait<Derived>::value_type value_type; ///< Tensor value type
-      typedef typename EngineTrait<Derived>::op_type op_type; ///< Tile operation type
-      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< This expression's distributed evaluator type
+  // Operational typedefs
+  typedef typename EngineTrait<Derived>::value_type
+      value_type;  ///< Tensor value type
+  typedef
+      typename EngineTrait<Derived>::op_type op_type;  ///< Tile operation type
+  typedef
+      typename EngineTrait<Derived>::policy policy;  ///< The result policy type
+  typedef typename EngineTrait<Derived>::dist_eval_type
+      dist_eval_type;  ///< This expression's distributed evaluator type
 
-      // Meta data typedefs
-      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type type
-      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Tensor shape type
-      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
+  // Meta data typedefs
+  typedef typename EngineTrait<Derived>::size_type size_type;  ///< Size type
+  typedef typename EngineTrait<Derived>::trange_type
+      trange_type;  ///< Tiled range type type
+  typedef typename EngineTrait<Derived>::shape_type
+      shape_type;  ///< Tensor shape type
+  typedef typename EngineTrait<Derived>::pmap_interface
+      pmap_interface;  ///< Process map interface type
 
-      static constexpr bool consumable = EngineTrait<Derived>::consumable;
-      static constexpr unsigned int leaves = EngineTrait<Derived>::leaves;
+  static constexpr bool consumable = EngineTrait<Derived>::consumable;
+  static constexpr unsigned int leaves = EngineTrait<Derived>::leaves;
 
-    protected:
+ protected:
+  // Import base class variables to this scope
+  using ExprEngine_::perm_;
+  using ExprEngine_::permute_tiles_;
+  using ExprEngine_::pmap_;
+  using ExprEngine_::shape_;
+  using ExprEngine_::trange_;
+  using ExprEngine_::vars_;
+  using ExprEngine_::world_;
 
-      // Import base class variables to this scope
-      using ExprEngine_::world_;
-      using ExprEngine_::vars_;
-      using ExprEngine_::perm_;
-      using ExprEngine_::trange_;
-      using ExprEngine_::shape_;
-      using ExprEngine_::pmap_;
-      using ExprEngine_::permute_tiles_;
+  array_type array_;  ///< The array object
 
-      array_type array_; ///< The array object
+ public:
+  /// Engine constructor
 
-    public:
+  /// \param expr The argument expression
+  template <typename D>
+  LeafEngine(const Expr<D>& expr)
+      : ExprEngine_(expr), array_(expr.derived().array()) {
+    vars_ = VariableList(expr.derived().vars());
+  }
 
-      /// Engine constructor
+  // Import base class variables to this scope
+  using ExprEngine_::derived;
 
-      /// \param expr The argument expression
-      template <typename D>
-      LeafEngine(const Expr<D>& expr) :
-        ExprEngine_(expr),
-        array_(expr.derived().array())
-      {
-        vars_ = VariableList(expr.derived().vars());
-      }
+  /// Set the variable list for this expression
 
-      // Import base class variables to this scope
-      using ExprEngine_::derived;
+  /// This function is a noop since the variable list is fixed.
+  void perm_vars(const VariableList&) {}
 
-      /// Set the variable list for this expression
+  /// Initialize the variable list of this expression
 
-      /// This function is a noop since the variable list is fixed.
-      void perm_vars(const VariableList&) { }
-
-      /// Initialize the variable list of this expression
-
-      /// This function only checks for valid variable lists.
-      /// \param target_vars The target variable list for this expression
-      void init_vars(const VariableList& target_vars) {
+  /// This function only checks for valid variable lists.
+  /// \param target_vars The target variable list for this expression
+  void init_vars(const VariableList& target_vars) {
 #ifndef NDEBUG
-        if(! target_vars.is_permutation(vars_)) {
-          if(TiledArray::get_default_world().rank() == 0) {
-            TA_USER_ERROR_MESSAGE( \
-                "The array variable list is not compatible with the expected output:" \
-                << "\n    expected = " << target_vars \
-                << "\n    array    = " << vars_ );
-          }
-
-          TA_EXCEPTION("Target variable is not a permutation of the given array variable list.");
-        }
-#endif // NDEBUG
+    if (!target_vars.is_permutation(vars_)) {
+      if (TiledArray::get_default_world().rank() == 0) {
+        TA_USER_ERROR_MESSAGE(
+            "The array variable list is not compatible with the expected "
+            "output:"
+            << "\n    expected = " << target_vars
+            << "\n    array    = " << vars_);
       }
 
+      TA_EXCEPTION(
+          "Target variable is not a permutation of the given array variable "
+          "list.");
+    }
+#endif  // NDEBUG
+  }
 
-      /// Initialize the variable list of this expression
+  /// Initialize the variable list of this expression
 
-      /// This function is a noop since the variable list is fixed.
-      void init_vars() { }
+  /// This function is a noop since the variable list is fixed.
+  void init_vars() {}
 
-      void init_distribution(World* world,
-          const std::shared_ptr<pmap_interface>& pmap)
-      {
-        ExprEngine_::init_distribution(world, (pmap ? pmap : array_.pmap()));
-      }
+  void init_distribution(World* world,
+                         const std::shared_ptr<pmap_interface>& pmap) {
+    ExprEngine_::init_distribution(world, (pmap ? pmap : array_.pmap()));
+  }
 
+  /// Non-permuting tiled range factory function
 
-      /// Non-permuting tiled range factory function
+  /// \return The result tiled range
+  trange_type make_trange() const { return array_.trange(); }
 
-      /// \return The result tiled range
-      trange_type make_trange() const { return array_.trange(); }
+  /// Permuting tiled range factory function
 
-      /// Permuting tiled range factory function
+  /// \param perm The permutation to be applied to the array
+  /// \return The result shape
+  trange_type make_trange(const Permutation& perm) const {
+    return perm * array_.trange();
+  }
 
-      /// \param perm The permutation to be applied to the array
-      /// \return The result shape
-      trange_type make_trange(const Permutation& perm) const {
-        return perm * array_.trange();
-      }
+  /// Non-permuting shape factory function
 
-      /// Non-permuting shape factory function
+  /// \return The result shape
+  shape_type make_shape() { return array_.shape(); }
 
-      /// \return The result shape
-      shape_type make_shape() { return array_.shape(); }
+  /// Permuting shape factory function
 
-      /// Permuting shape factory function
+  /// \param perm The permutation to be applied to the array
+  /// \return The result shape
+  shape_type make_shape(const Permutation& perm) {
+    return array_.shape().perm(perm);
+  }
 
-      /// \param perm The permutation to be applied to the array
-      /// \return The result shape
-      shape_type
-      make_shape(const Permutation& perm) { return array_.shape().perm(perm); }
+  /// Construct the distributed evaluator for array
+  dist_eval_type make_dist_eval() const {
+    // Define the distributed evaluator implementation type
+    typedef TiledArray::detail::ArrayEvalImpl<array_type, op_type, policy>
+        impl_type;
 
+    /// Create the pimpl for the distributed evaluator
+    std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
+        array_, *world_, trange_, shape_, pmap_, perm_, ExprEngine_::make_op());
 
-      /// Construct the distributed evaluator for array
-      dist_eval_type make_dist_eval() const {
-        // Define the distributed evaluator implementation type
-        typedef TiledArray::detail::ArrayEvalImpl<array_type, op_type, policy> impl_type;
+    return dist_eval_type(pimpl);
+  }
 
-        /// Create the pimpl for the distributed evaluator
-        std::shared_ptr<impl_type> pimpl =
-            std::make_shared<impl_type>(array_, *world_, trange_, shape_, pmap_,
-                                        perm_, ExprEngine_::make_op());
+};  // class LeafEngine
 
-        return dist_eval_type(pimpl);
-      }
+}  // namespace expressions
+}  // namespace TiledArray
 
-    }; // class LeafEngine
-
-  }  // namespace expressions
-} // namespace TiledArray
-
-#endif // TILEDARRAY_EXPRESSIONS_LEAF_ENGINE_H__INCLUDED
+#endif  // TILEDARRAY_EXPRESSIONS_LEAF_ENGINE_H__INCLUDED

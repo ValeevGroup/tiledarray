@@ -26,21 +26,33 @@
 #include "array_impl.h"
 
 namespace TiledArray {
-  namespace detail {
+namespace detail {
 
-    template class ArrayImpl<Tensor<double, Eigen::aligned_allocator<double> >, DensePolicy>;
-    template class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float> >, DensePolicy>;
-    template class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int> >, DensePolicy>;
-    template class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long> >, DensePolicy>;
-//    template class ArrayImpl<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>;
-//    template class ArrayImpl<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>
+template class ArrayImpl<Tensor<double, Eigen::aligned_allocator<double> >,
+                         DensePolicy>;
+template class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float> >,
+                         DensePolicy>;
+template class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int> >,
+                         DensePolicy>;
+template class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long> >,
+                         DensePolicy>;
+//    template class ArrayImpl<Tensor<std::complex<double>,
+//    Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>; template
+//    class ArrayImpl<Tensor<std::complex<float>,
+//    Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>
 
-    template class ArrayImpl<Tensor<double, Eigen::aligned_allocator<double> >, SparsePolicy>;
-    template class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float> >, SparsePolicy>;
-    template class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int> >, SparsePolicy>;
-    template class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long> >, SparsePolicy>;
-//    template class ArrayImpl<Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>;
-//    template class ArrayImpl<Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
+template class ArrayImpl<Tensor<double, Eigen::aligned_allocator<double> >,
+                         SparsePolicy>;
+template class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float> >,
+                         SparsePolicy>;
+template class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int> >,
+                         SparsePolicy>;
+template class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long> >,
+                         SparsePolicy>;
+//    template class ArrayImpl<Tensor<std::complex<double>,
+//    Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>; template
+//    class ArrayImpl<Tensor<std::complex<float>,
+//    Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
 
-  }  // namespace detail
-} // namespace TiledArray
+}  // namespace detail
+}  // namespace TiledArray

@@ -106,14 +106,15 @@ int main(int argc, char** argv) {
       return 1;
     }
     const auto real_type_str =
-            (argc >= 7) ? std::string(argv[6]) : std::string("double");
+        (argc >= 7) ? std::string(argv[6]) : std::string("double");
 
-    if( !(real_type_str == "double" || real_type_str == "float")){
-      std::cerr << "Error: unrecognized floating point precision type, it is either float or double.\n";
+    if (!(real_type_str == "double" || real_type_str == "float")) {
+      std::cerr << "Error: unrecognized floating point precision type, it is "
+                   "either float or double.\n";
       return 1;
     }
 
-    if (world.rank() == 0){
+    if (world.rank() == 0) {
       std::cout << "TiledArray: CC T2.V term test..."
                 << "\nGit HASH: " << TILEDARRAY_REVISION
                 << "\nNumber of nodes     = " << world.size()
@@ -130,10 +131,9 @@ int main(int argc, char** argv) {
     auto trange_occ = TA::TiledRange1(tiling_occ.begin(), tiling_occ.end());
     auto trange_uocc = TA::TiledRange1(tiling_uocc.begin(), tiling_uocc.end());
 
-    if(real_type_str == "double"){
+    if (real_type_str == "double") {
       cc_abcd<double>(world, trange_occ, trange_uocc, repeat);
-    }
-    else{
+    } else {
       cc_abcd<float>(world, trange_occ, trange_uocc, repeat);
     }
 
@@ -162,13 +162,14 @@ int main(int argc, char** argv) {
 template <typename T>
 void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
              const TA::TiledRange1& trange_uocc, long repeat) {
-
   double to_gb = 1000000000.0;
   auto n_occ = trange_occ.extent();
   auto n_uocc = trange_uocc.extent();
-  if(world.rank() == 0){
-    std::cout << "\nOOVV memory         = " << n_occ*n_occ*n_uocc*n_uocc* sizeof(T)/to_gb << "GB"
-              << "\nVVVV memory         = " << n_uocc*n_uocc*n_uocc*n_uocc* sizeof(T)/to_gb << "GB"
+  if (world.rank() == 0) {
+    std::cout << "\nOOVV memory         = "
+              << n_occ * n_occ * n_uocc * n_uocc * sizeof(T) / to_gb << "GB"
+              << "\nVVVV memory         = "
+              << n_uocc * n_uocc * n_uocc * n_uocc * sizeof(T) / to_gb << "GB"
               << "\n";
   }
 
@@ -177,7 +178,8 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   TA::TiledRange trange_vvvv(
       {trange_uocc, trange_uocc, trange_uocc, trange_uocc});
 
-//  const bool do_validate = false;  // set to true if need to validate the result
+  //  const bool do_validate = false;  // set to true if need to validate the
+  //  result
 
   const auto complex_T = TA::detail::is_complex<T>::value;
   const double flops_per_fma =
@@ -195,13 +197,13 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   CUDAMatrix v(world, trange_vvvv);
   CUDAMatrix t2_v;
   // To validate, fill input tensors with random data, otherwise just with 1s
-//  if (do_validate) {
-//    rand_fill_array(t2);
-//    rand_fill_array(v);
-//  } else {
-    t2.fill_local(0.2);
-    v.fill_local(0.3);
-//  }
+  //  if (do_validate) {
+  //    rand_fill_array(t2);
+  //    rand_fill_array(v);
+  //  } else {
+  t2.fill_local(0.2);
+  v.fill_local(0.3);
+  //  }
 
   // Start clock
   world.gop.fence();
@@ -209,7 +211,6 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
     std::cout << "Starting iterations: "
               << "\n";
   }
-
 
   double total_time = 0.0;
   double total_gflop_rate = 0.0;
@@ -219,14 +220,14 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
     const double start = madness::wall_time();
 
     // this is how the user would express this contraction
-    t2_v("i,j,a,b") =  t2("i,j,c,d") * v("a,b,c,d");
+    t2_v("i,j,a,b") = t2("i,j,c,d") * v("a,b,c,d");
 
     const double stop = madness::wall_time();
     const double time = stop - start;
     const double gflop_rate = n_gflop / time;
 
     // exclude iteration 1
-    if(i != 0){
+    if (i != 0) {
       total_time += time;
       total_gflop_rate += gflop_rate;
     }
@@ -238,28 +239,32 @@ void cc_abcd(TA::World& world, const TA::TiledRange1& trange_occ,
   // Print results
   if (world.rank() == 0)
     std::cout << "Average wall time   = "
-              << total_time / static_cast<double>(repeat-1)
+              << total_time / static_cast<double>(repeat - 1)
               << " sec\nAverage GFLOPS      = "
-              << total_gflop_rate / static_cast<double>(repeat-1) << "\n";
+              << total_gflop_rate / static_cast<double>(repeat - 1) << "\n";
 
   double threshold = std::numeric_limits<T>::epsilon();
-  auto dot_length = n_uocc*n_uocc;
+  auto dot_length = n_uocc * n_uocc;
   auto result = dot_length * 0.2 * 0.3;
 
-  auto verify = [&world, &threshold, &result, &dot_length] (const TA::Tile<CUDATile>& tile) {
+  auto verify = [&world, &threshold, &result,
+                 &dot_length](const TA::Tile<CUDATile>& tile) {
     auto n_elements = tile.size();
     for (std::size_t i = 0; i < n_elements; i++) {
       double abs_err = fabs(tile[i] - result);
-//      double abs_val = fabs(tile[i]);
+      //      double abs_val = fabs(tile[i]);
       double rel_err = abs_err / result / dot_length;
-      if(rel_err > threshold){
-        std::cout << "Node: " << world.rank() <<  " Tile: " << tile.range()  << " id: " << i << std::string(" gpu: " + std::to_string(tile[i]) + " cpu: " + std::to_string(result) + "\n");
+      if (rel_err > threshold) {
+        std::cout << "Node: " << world.rank() << " Tile: " << tile.range()
+                  << " id: " << i
+                  << std::string(" gpu: " + std::to_string(tile[i]) +
+                                 " cpu: " + std::to_string(result) + "\n");
         break;
       }
     }
   };
 
-  for(auto iter = t2_v.begin(); iter != t2_v.end(); iter++){
+  for (auto iter = t2_v.begin(); iter != t2_v.end(); iter++) {
     world.taskq.add(verify, t2_v.find(iter.index()));
   }
 

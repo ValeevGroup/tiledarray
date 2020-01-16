@@ -24,48 +24,43 @@
  */
 
 #include "TiledArray/utility.h"
-#include "unit_test_config.h"
 #include "TiledArray/size_array.h"
+#include "unit_test_config.h"
 
 using TiledArray::detail::size;
 
 struct UtilityFixture {
+  UtilityFixture() {}
 
-  UtilityFixture() { }
+  ~UtilityFixture() {}
 
-  ~UtilityFixture() { }
+};  // UtilityFixture
 
-}; // UtilityFixture
+BOOST_FIXTURE_TEST_SUITE(utility_suite, UtilityFixture)
 
-BOOST_FIXTURE_TEST_SUITE( utility_suite, UtilityFixture )
-
-BOOST_AUTO_TEST_CASE( vector )
-{
+BOOST_AUTO_TEST_CASE(vector) {
   std::vector<int> array(10, 1);
 
   // Check size()
   BOOST_CHECK_EQUAL(TiledArray::detail::size(array), array.size());
 }
 
-BOOST_AUTO_TEST_CASE( array )
-{
-  std::array<int, 10> array = {{ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 }};
+BOOST_AUTO_TEST_CASE(array) {
+  std::array<int, 10> array = {{1, 1, 1, 1, 1, 1, 1, 1, 1, 1}};
 
   // Check size()
   BOOST_CHECK_EQUAL(TiledArray::detail::size(array), array.size());
 }
 
-BOOST_AUTO_TEST_CASE( c_array )
-{
-  int array[10] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+BOOST_AUTO_TEST_CASE(c_array) {
+  int array[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   // Check size()
   BOOST_CHECK_EQUAL(TiledArray::detail::size(array), 10);
 }
 
-BOOST_AUTO_TEST_CASE( size_array )
-{
-  int buffer[10] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+BOOST_AUTO_TEST_CASE(size_array) {
+  int buffer[10] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
   TiledArray::detail::SizeArray<int> array(buffer, buffer + 10);
 
   // Check size()

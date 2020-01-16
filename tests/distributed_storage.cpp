@@ -18,9 +18,9 @@
  */
 
 #include "TiledArray/distributed_storage.h"
+#include <iterator>
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include <iterator>
 
 using namespace TiledArray;
 
@@ -28,16 +28,12 @@ struct DistributedStorageFixture {
   typedef TiledArray::detail::DistributedStorage<int> Storage;
   typedef Storage::size_type size_type;
 
-  DistributedStorageFixture() :
-      world(* GlobalFixture::world),
-      pmap(new detail::BlockedPmap(world, 10)),
-      t(world, 10, pmap)
-  { }
+  DistributedStorageFixture()
+      : world(*GlobalFixture::world),
+        pmap(new detail::BlockedPmap(world, 10)),
+        t(world, 10, pmap) {}
 
-  ~DistributedStorageFixture() {
-    world.gop.fence();
-  }
-
+  ~DistributedStorageFixture() { world.gop.fence(); }
 
   TiledArray::World& world;
   std::shared_ptr<detail::BlockedPmap> pmap;
@@ -47,44 +43,34 @@ struct DistributedStorageFixture {
 struct DistributeOp {
   static madness::AtomicInt count;
 
-  void operator()(std::size_t, int) const {
-    ++count;
-  }
+  void operator()(std::size_t, int) const { ++count; }
 
   template <typename Archive>
-  void serialize(const Archive&) { }
+  void serialize(const Archive&) {}
 };
 
 madness::AtomicInt DistributeOp::count;
 
-BOOST_FIXTURE_TEST_SUITE( distributed_storage_suite , DistributedStorageFixture )
+BOOST_FIXTURE_TEST_SUITE(distributed_storage_suite, DistributedStorageFixture)
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+BOOST_AUTO_TEST_CASE(constructor) {
   BOOST_CHECK_NO_THROW(Storage s(world, 10, pmap));
   Storage s(world, 10, pmap);
 
   BOOST_CHECK_EQUAL(s.size(), 0ul);
   BOOST_CHECK_EQUAL(s.max_size(), 10ul);
-
 }
 
-BOOST_AUTO_TEST_CASE( get_world )
-{
-  BOOST_CHECK_EQUAL(& t.get_world(), GlobalFixture::world);
+BOOST_AUTO_TEST_CASE(get_world) {
+  BOOST_CHECK_EQUAL(&t.get_world(), GlobalFixture::world);
 }
 
-BOOST_AUTO_TEST_CASE( get_pmap )
-{
-  BOOST_CHECK_EQUAL(t.pmap(), pmap);
-}
+BOOST_AUTO_TEST_CASE(get_pmap) { BOOST_CHECK_EQUAL(t.pmap(), pmap); }
 
-BOOST_AUTO_TEST_CASE( set_value )
-{
+BOOST_AUTO_TEST_CASE(set_value) {
   // Check that we can set all elements
-  for(std::size_t i = 0; i < t.max_size(); ++i)
-    if(t.is_local(i))
-      t.set(i, world.rank());
+  for (std::size_t i = 0; i < t.max_size(); ++i)
+    if (t.is_local(i)) t.set(i, world.rank());
 
   world.gop.fence();
   std::size_t n = t.size();
@@ -96,16 +82,14 @@ BOOST_AUTO_TEST_CASE( set_value )
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t.set(t.max_size(), 1), TiledArray::Exception);
   BOOST_CHECK_THROW(t.set(t.max_size() + 2, 1), TiledArray::Exception);
-#endif // TA_EXCEPTION_ERROR
+#endif  // TA_EXCEPTION_ERROR
 }
 
-BOOST_AUTO_TEST_CASE( array_operator )
-{
+BOOST_AUTO_TEST_CASE(array_operator) {
   // Check that elements are inserted properly for access requests.
-  for(std::size_t i = 0; i < t.max_size(); ++i) {
+  for (std::size_t i = 0; i < t.max_size(); ++i) {
     t.get(i).probe();
-    if(t.is_local(i))
-      t.set(i, world.rank());
+    if (t.is_local(i)) t.set(i, world.rank());
   }
 
   world.gop.fence();
@@ -118,8 +102,7 @@ BOOST_AUTO_TEST_CASE( array_operator )
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t.get(t.max_size()), TiledArray::Exception);
   BOOST_CHECK_THROW(t.get(t.max_size() + 2), TiledArray::Exception);
-#endif // TA_EXCEPTION_ERROR
+#endif  // TA_EXCEPTION_ERROR
 }
-
 
 BOOST_AUTO_TEST_SUITE_END()

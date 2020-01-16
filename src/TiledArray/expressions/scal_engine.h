@@ -31,127 +31,137 @@
 #include <TiledArray/tile_op/unary_wrapper.h>
 
 namespace TiledArray {
-  namespace expressions {
+namespace expressions {
 
-    // Forward declarations
-    template <typename, typename> class ScalExpr;
-    template <typename, typename, typename> class ScalEngine;
+// Forward declarations
+template <typename, typename>
+class ScalExpr;
+template <typename, typename, typename>
+class ScalEngine;
 
+template <typename Arg, typename Scalar, typename Result>
+struct EngineTrait<ScalEngine<Arg, Scalar, Result> > {
+  // Argument typedefs
+  typedef Arg argument_type;  ///< The argument expression engine type
 
-    template <typename Arg, typename Scalar, typename Result>
-    struct EngineTrait<ScalEngine<Arg, Scalar, Result> > {
-      // Argument typedefs
-      typedef Arg argument_type; ///< The argument expression engine type
+  // Operational typedefs
+  typedef Scalar scalar_type;  ///< Tile scalar type
+  typedef TiledArray::detail::Scal<Result, typename EngineTrait<Arg>::eval_type,
+                                   scalar_type,
+                                   EngineTrait<Arg>::consumable>
+      op_base_type;  ///< The tile base operation type
+  typedef TiledArray::detail::UnaryWrapper<op_base_type>
+      op_type;  ///< The tile operation type
+  typedef typename op_type::result_type value_type;  ///< The result tile type
+  typedef typename eval_trait<value_type>::type
+      eval_type;                                  ///< Evaluation tile type
+  typedef typename argument_type::policy policy;  ///< The result policy type
+  typedef TiledArray::detail::DistEval<value_type, policy>
+      dist_eval_type;  ///< The distributed evaluator type
 
-      // Operational typedefs
-      typedef Scalar scalar_type; ///< Tile scalar type
-      typedef TiledArray::detail::Scal<Result,
-          typename EngineTrait<Arg>::eval_type, scalar_type,
-          EngineTrait<Arg>::consumable>
-          op_base_type; ///< The tile base operation type
-      typedef TiledArray::detail::UnaryWrapper<op_base_type>
-          op_type; ///< The tile operation type
-      typedef typename op_type::result_type
-          value_type; ///< The result tile type
-      typedef typename eval_trait<value_type>::type
-          eval_type; ///< Evaluation tile type
-      typedef typename argument_type::policy
-          policy; ///< The result policy type
-      typedef TiledArray::detail::DistEval<value_type, policy>
-      dist_eval_type; ///< The distributed evaluator type
+  // Meta data typedefs
+  typedef typename policy::size_type size_type;      ///< Size type
+  typedef typename policy::trange_type trange_type;  ///< Tiled range type
+  typedef typename policy::shape_type shape_type;    ///< Shape type
+  typedef typename policy::pmap_interface
+      pmap_interface;  ///< Process map interface type
 
-      // Meta data typedefs
-      typedef typename policy::size_type size_type; ///< Size type
-      typedef typename policy::trange_type trange_type; ///< Tiled range type
-      typedef typename policy::shape_type shape_type; ///< Shape type
-      typedef typename policy::pmap_interface
-          pmap_interface; ///< Process map interface type
+  static constexpr bool consumable = true;
+  static constexpr unsigned int leaves = EngineTrait<Arg>::leaves;
+};
 
-      static constexpr bool consumable = true;
-      static constexpr unsigned int leaves = EngineTrait<Arg>::leaves;
-    };
+/// Scaling expression engine
 
+/// \tparam Arg The argument expression engine type
+template <typename Arg, typename Scalar, typename Result>
+class ScalEngine : public UnaryEngine<ScalEngine<Arg, Scalar, Result> > {
+ public:
+  // Class hierarchy typedefs
+  typedef ScalEngine<Arg, Scalar, Result> ScalEngine_;  ///< This class type
+  typedef UnaryEngine<ScalEngine_>
+      UnaryEngine_;  ///< Unary expression engine base type
+  typedef typename UnaryEngine_::ExprEngine_
+      ExprEngine_;  ///< Expression engine base type
 
-    /// Scaling expression engine
+  // Argument typedefs
+  typedef typename EngineTrait<ScalEngine_>::argument_type
+      argument_type;  ///< The argument expression engine type
 
-    /// \tparam Arg The argument expression engine type
-    template <typename Arg, typename Scalar, typename Result>
-    class ScalEngine : public UnaryEngine<ScalEngine<Arg, Scalar, Result> > {
-    public:
-      // Class hierarchy typedefs
-      typedef ScalEngine<Arg, Scalar, Result> ScalEngine_; ///< This class type
-      typedef UnaryEngine<ScalEngine_> UnaryEngine_; ///< Unary expression engine base type
-      typedef typename UnaryEngine_::ExprEngine_ ExprEngine_; ///< Expression engine base type
+  // Operational typedefs
+  typedef typename EngineTrait<ScalEngine_>::value_type
+      value_type;  ///< The result tile type
+  typedef typename EngineTrait<ScalEngine_>::scalar_type
+      scalar_type;  ///< Tile scalar type
+  typedef typename EngineTrait<ScalEngine_>::op_type
+      op_type;  ///< The tile operation type
+  typedef typename EngineTrait<ScalEngine_>::policy
+      policy;  ///< The result policy type
+  typedef typename EngineTrait<ScalEngine_>::dist_eval_type
+      dist_eval_type;  ///< The distributed evaluator type
 
-      // Argument typedefs
-      typedef typename EngineTrait<ScalEngine_>::argument_type argument_type; ///< The argument expression engine type
+  // Meta data typedefs
+  typedef
+      typename EngineTrait<ScalEngine_>::size_type size_type;  ///< Size type
+  typedef typename EngineTrait<ScalEngine_>::trange_type
+      trange_type;  ///< Tiled range type
+  typedef
+      typename EngineTrait<ScalEngine_>::shape_type shape_type;  ///< Shape type
+  typedef typename EngineTrait<ScalEngine_>::pmap_interface
+      pmap_interface;  ///< Process map interface type
 
-      // Operational typedefs
-      typedef typename EngineTrait<ScalEngine_>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<ScalEngine_>::scalar_type scalar_type; ///< Tile scalar type
-      typedef typename EngineTrait<ScalEngine_>::op_type op_type; ///< The tile operation type
-      typedef typename EngineTrait<ScalEngine_>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<ScalEngine_>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+ private:
+  scalar_type factor_;  ///< Scaling factor
 
-      // Meta data typedefs
-      typedef typename EngineTrait<ScalEngine_>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<ScalEngine_>::trange_type trange_type; ///< Tiled range type
-      typedef typename EngineTrait<ScalEngine_>::shape_type shape_type; ///< Shape type
-      typedef typename EngineTrait<ScalEngine_>::pmap_interface pmap_interface; ///< Process map interface type
+ public:
+  /// Constructor
 
-    private:
+  /// \tparam A The argument expression type
+  /// \tparam S The expression scalar type
+  /// \param expr The parent expression
+  template <typename A, typename S>
+  ScalEngine(const ScalExpr<A, S>& expr)
+      : UnaryEngine_(expr), factor_(expr.factor()) {}
 
-      scalar_type factor_; ///< Scaling factor
+  /// Non-permuting shape factory function
 
-    public:
+  /// \return The result shape
+  shape_type make_shape() const {
+    return UnaryEngine_::arg_.shape().scale(factor_);
+  }
 
-      /// Constructor
+  /// Permuting shape factory function
 
-      /// \tparam A The argument expression type
-      /// \tparam S The expression scalar type
-      /// \param expr The parent expression
-      template <typename A, typename S>
-      ScalEngine(const ScalExpr<A, S>& expr) : UnaryEngine_(expr), factor_(expr.factor()) { }
+  /// \param perm The permutation to be applied to the array
+  /// \return The result shape
+  shape_type make_shape(const Permutation& perm) const {
+    return UnaryEngine_::arg_.shape().scale(factor_, perm);
+  }
 
-      /// Non-permuting shape factory function
+  /// Non-permuting tile operation factory function
 
-      /// \return The result shape
-      shape_type make_shape() const {
-        return UnaryEngine_::arg_.shape().scale(factor_);
-      }
+  /// \return The tile operation
+  op_type make_tile_op() const { return op_type(factor_); }
 
-      /// Permuting shape factory function
+  /// Permuting tile operation factory function
 
-      /// \param perm The permutation to be applied to the array
-      /// \return The result shape
-      shape_type make_shape(const Permutation& perm) const {
-        return UnaryEngine_::arg_.shape().scale(factor_, perm);
-      }
+  /// \param perm The permutation to be applied to tiles
+  /// \return The tile operation
+  op_type make_tile_op(const Permutation& perm) const {
+    return op_type(perm, factor_);
+  }
 
-      /// Non-permuting tile operation factory function
+  /// Expression identification tag
 
-      /// \return The tile operation
-      op_type make_tile_op() const { return op_type(factor_); }
+  /// \return An expression tag used to identify this expression
+  std::string make_tag() const {
+    std::stringstream ss;
+    ss << "[" << factor_ << "] ";
+    return ss.str();
+  }
 
-      /// Permuting tile operation factory function
+};  // class ScalEngine
 
-      /// \param perm The permutation to be applied to tiles
-      /// \return The tile operation
-      op_type make_tile_op(const Permutation& perm) const { return op_type(perm, factor_); }
+}  // namespace expressions
+}  // namespace TiledArray
 
-      /// Expression identification tag
-
-      /// \return An expression tag used to identify this expression
-      std::string make_tag() const {
-        std::stringstream ss;
-        ss << "[" << factor_ << "] ";
-        return ss.str();
-      }
-
-    }; // class ScalEngine
-
-
-  }  // namespace expressions
-} // namespace TiledArray
-
-#endif // TILEDARRAY_EXPRESSIONS_SCAL_ENGINE_H__INCLUDED
+#endif  // TILEDARRAY_EXPRESSIONS_SCAL_ENGINE_H__INCLUDED

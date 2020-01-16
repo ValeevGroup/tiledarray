@@ -37,10 +37,11 @@ namespace TiledArray {
 
 template <typename T>
 struct TileOpsLogger : public Singleton<TileOpsLogger<T>> {
-
   using range_transform_t = std::function<Range(const Range&)>;
   using range_filter_t = std::function<bool(const Range&)>;
-  using gemm_printer_t = std::function<void(std::ostream& os, const Range&, const T*, const Range&, const T*, const Range&, const T*)>;
+  using gemm_printer_t =
+      std::function<void(std::ostream& os, const Range&, const T*, const Range&,
+                         const T*, const Range&, const T*)>;
 
   // GEMM task logging
   bool gemm = false;
@@ -76,6 +77,6 @@ struct TileOpsLogger : public Singleton<TileOpsLogger<T>> {
   }
 };
 
-}
+}  // namespace TiledArray
 
-#endif // TILEDARRAY_UTIL_LOGGER_H__INCLUDED
+#endif  // TILEDARRAY_UTIL_LOGGER_H__INCLUDED

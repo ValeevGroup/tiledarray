@@ -82,7 +82,7 @@ void process_task(madness::World* world,
                           std::size_t) = &::scale;
 
     madness::Future<tile_type> scale_future = madness::add_cuda_task(
-        *world, ::scale, tensor, scale_factor, &stream, ntask*iter + i);
+        *world, ::scale, tensor, scale_factor, &stream, ntask * iter + i);
 
     /// this should start until scale_taskfn is finished
     world->taskq.add(verify, scale_future, scale_factor, ntask * iter + i);

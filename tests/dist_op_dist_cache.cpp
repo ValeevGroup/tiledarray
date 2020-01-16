@@ -29,37 +29,34 @@
 using namespace madness::detail;
 
 struct DistCacheFixture {
+  DistCacheFixture() {}
 
-  DistCacheFixture() { }
+  ~DistCacheFixture() {}
 
-  ~DistCacheFixture() { }
+};  // DistCacheFixture
 
-}; // DistCacheFixture
+BOOST_FIXTURE_TEST_SUITE(dist_op_dist_cache_suite, DistCacheFixture)
 
-BOOST_FIXTURE_TEST_SUITE( dist_op_dist_cache_suite, DistCacheFixture )
-
-BOOST_AUTO_TEST_CASE( set_and_get_cache )
-{
+BOOST_AUTO_TEST_CASE(set_and_get_cache) {
   const int key = 1;
   const int value = 42;
 
   TiledArray::Future<int> data = TiledArray::Future<int>::default_initializer();
   BOOST_CHECK_NO_THROW(data = DistCache<int>::get_cache_value<int>(key));
-  BOOST_CHECK(! data.probe());
+  BOOST_CHECK(!data.probe());
   BOOST_CHECK_NO_THROW(DistCache<int>::set_cache_value<int>(key, value));
 
   BOOST_CHECK(data.probe());
   BOOST_CHECK_EQUAL(data.get(), value);
 }
 
-BOOST_AUTO_TEST_CASE( get_and_set_cache )
-{
+BOOST_AUTO_TEST_CASE(get_and_set_cache) {
   const int key = 1;
   const TiledArray::Future<int> value(42);
 
   TiledArray::Future<int> data;
   BOOST_CHECK_NO_THROW(DistCache<int>::get_cache_value(key, data));
-  BOOST_CHECK(! data.probe());
+  BOOST_CHECK(!data.probe());
   BOOST_CHECK_NO_THROW(DistCache<int>::set_cache_value<int>(key, value));
 
   BOOST_CHECK(data.probe());

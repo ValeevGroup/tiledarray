@@ -24,50 +24,46 @@
  */
 
 #include "TiledArray/tile_op/subt.h"
+#include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include "range_fixture.h"
 
 using namespace TiledArray;
 using TiledArray::detail::Subt;
 
 struct SubtFixture : public RangeFixture {
-
-  SubtFixture() :
-    a(RangeFixture::r),
-    b(RangeFixture::r),
-    c(),
-    perm({2,0,1})
-  {
+  SubtFixture() : a(RangeFixture::r), b(RangeFixture::r), c(), perm({2, 0, 1}) {
     GlobalFixture::world->srand(27);
-    for(std::size_t i = 0ul; i < r.volume(); ++i) {
+    for (std::size_t i = 0ul; i < r.volume(); ++i) {
       a[i] = GlobalFixture::world->rand() / 101;
       b[i] = GlobalFixture::world->rand() / 101;
     }
   }
 
-  ~SubtFixture() { }
+  ~SubtFixture() {}
 
   Tensor<int> a;
   Tensor<int> b;
   Tensor<int> c;
   Permutation perm;
 
-}; // SubtFixture
+};  // SubtFixture
 
-BOOST_FIXTURE_TEST_SUITE( tile_op_subt_suite, SubtFixture )
+BOOST_FIXTURE_TEST_SUITE(tile_op_subt_suite, SubtFixture)
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions
-  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false>()));
-  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false>()));
-  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
-  BOOST_CHECK_NO_THROW((Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
+  BOOST_CHECK_NO_THROW(
+      (Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false>()));
+  BOOST_CHECK_NO_THROW(
+      (Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false>()));
+  BOOST_CHECK_NO_THROW(
+      (Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true>()));
+  BOOST_CHECK_NO_THROW(
+      (Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, true>()));
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt )
-{
+BOOST_AUTO_TEST_CASE(binary_subt) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and b in c
@@ -81,13 +77,12 @@ BOOST_AUTO_TEST_CASE( binary_subt )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], a[i] - b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_left_zero )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_left_zero) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of 0 and b in c
@@ -100,13 +95,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], -b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_right_zero )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_right_zero) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and 0 in c
@@ -119,13 +113,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_perm )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_perm) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and b in c
@@ -139,13 +132,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] - b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_left_zero_perm) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of 0 and b in c
@@ -158,13 +150,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], -b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_right_zero_perm) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, false> subt_op;
 
   // Store the difference of a and 0 in c
@@ -177,13 +168,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_consume_left )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_consume_left) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
   const Tensor<int> ax(a.range(), a.begin());
 
@@ -198,13 +188,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], ax[i] - b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_left )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_left_zero_consume_left) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of 0 and b in c
@@ -217,13 +206,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], -b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_left )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_right_zero_consume_left) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
   const Tensor<int> ax(a.range(), a.begin());
 
@@ -237,13 +225,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_left )
   BOOST_CHECK_EQUAL(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], ax[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_left )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_perm_consume_left) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of a and b in c
@@ -257,13 +244,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] - b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_left )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_left_zero_perm_consume_left) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of 0 and b in c
@@ -276,13 +262,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_left )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], -b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_left )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_right_zero_perm_consume_left) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, true, false> subt_op;
 
   // Store the difference of a and 0 in c
@@ -295,13 +280,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_left )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_consume_right )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_consume_right) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
   const Tensor<int> bx(b.range(), b.begin());
 
@@ -316,13 +300,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_consume_right )
   BOOST_CHECK_EQUAL(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], a[i] - bx[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_right )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_left_zero_consume_right) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
   const Tensor<int> bx(b.range(), b.begin());
 
@@ -336,13 +319,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_consume_right )
   BOOST_CHECK_EQUAL(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], -bx[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_right )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_right_zero_consume_right) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of a and 0 in c
@@ -355,13 +337,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_consume_right )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[i], a[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_right )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_perm_consume_right) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of a and b in c
@@ -375,13 +356,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_perm_consume_right )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i] - b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_right )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_left_zero_perm_consume_right) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of 0 and b in c
@@ -394,13 +374,12 @@ BOOST_AUTO_TEST_CASE( binary_subt_left_zero_perm_consume_right )
   BOOST_CHECK_NE(c.data(), b.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * b.range().idx(i)], -b[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_right )
-{
+BOOST_AUTO_TEST_CASE(binary_subt_right_zero_perm_consume_right) {
   Subt<Tensor<int>, Tensor<int>, Tensor<int>, false, true> subt_op;
 
   // Store the difference of a and 0 in c
@@ -413,7 +392,7 @@ BOOST_AUTO_TEST_CASE( binary_subt_right_zero_perm_consume_right )
   BOOST_CHECK_NE(c.data(), a.data());
 
   // Check that the data in the new tile is correct
-  for(std::size_t i = 0ul; i < r.volume(); ++i) {
+  for (std::size_t i = 0ul; i < r.volume(); ++i) {
     BOOST_CHECK_EQUAL(c[perm * a.range().idx(i)], a[i]);
   }
 }

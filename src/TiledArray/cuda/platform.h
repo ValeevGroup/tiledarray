@@ -28,7 +28,8 @@ namespace TiledArray {
 
 /// enumerates the memory spaces
 enum class MemorySpace {
-  // MemorySpace is represented as a bitfield to compute unions and intersections easier
+  // MemorySpace is represented as a bitfield to compute unions and
+  // intersections easier
   Null = 0b00,
   CPU = 0b01,
   CUDA = 0b10,
@@ -40,11 +41,13 @@ enum class MemorySpace {
 
 /// @return intersection of @c space1 and @c space2
 constexpr MemorySpace operator&(MemorySpace space1, MemorySpace space2) {
-  return static_cast<MemorySpace>( static_cast<int>(space1) & static_cast<int>(space2) );
+  return static_cast<MemorySpace>(static_cast<int>(space1) &
+                                  static_cast<int>(space2));
 }
 /// @return union of @c space1 and @c space2
 constexpr MemorySpace operator|(MemorySpace space1, MemorySpace space2) {
-  return static_cast<MemorySpace>( static_cast<int>(space1) | static_cast<int>(space2) );
+  return static_cast<MemorySpace>(static_cast<int>(space1) |
+                                  static_cast<int>(space2));
 }
 /// @return true if intersection of @c space1 and @c space2 is nonnull
 constexpr bool overlap(MemorySpace space1, MemorySpace space2) {
@@ -52,14 +55,11 @@ constexpr bool overlap(MemorySpace space1, MemorySpace space2) {
 }
 
 /// enumerates the execution spaces
-enum class ExecutionSpace {
-  CPU,
-  CUDA
-};
+enum class ExecutionSpace { CPU, CUDA };
 
 // customization point: to_execution_space<S>(O) -> void
 // "moves" O to execution space S
 
 }  // namespace TiledArray
 
-#endif //TILEDARRAY_CUDA_PLATFORM_H__INCLUDED
+#endif  // TILEDARRAY_CUDA_PLATFORM_H__INCLUDED

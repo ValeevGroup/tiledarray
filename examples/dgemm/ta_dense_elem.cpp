@@ -17,23 +17,24 @@
  *
  */
 
-#include <iostream>
 #include <tiledarray.h>
+#include <iostream>
 
 template <typename it, typename tiletype>
-void random_tile_task(it iter, tiletype tile){
+void random_tile_task(it iter, tiletype tile) {
   std::size_t size = tile.size();
-  std::generate(tile.data(), tile.data()+size, []{return std::rand()%100;});
+  std::generate(tile.data(), tile.data() + size,
+                [] { return std::rand() % 100; });
   *iter = tile;
 }
 
-TiledArray::TArrayD
-make_random_array(TiledArray::World &world, TiledArray::TiledRange &trange){
+TiledArray::TArrayD make_random_array(TiledArray::World& world,
+                                      TiledArray::TiledRange& trange) {
   TiledArray::TArrayD array(world, trange);
   typename TiledArray::TArrayD::iterator it = array.begin();
-  for(; it != array.end(); ++it){
+  for (; it != array.end(); ++it) {
     typename TiledArray::TArrayD::value_type tile(
-                                array.trange().make_tile_range(it.ordinal()));
+        array.trange().make_tile_range(it.ordinal()));
     world.taskq.add(&random_tile_task<decltype(it), decltype(tile)>, it, tile);
   }
   return array;
@@ -45,8 +46,9 @@ int main(int argc, char** argv) {
   elem::Grid grid(elem::DefaultGrid().Comm());
 
   // Get command line arguments
-  if(argc < 2) {
-    std::cout << "Usage: " << argv[0] << " matrix_size block_size [repetitions]\n";
+  if (argc < 2) {
+    std::cout << "Usage: " << argv[0]
+              << " matrix_size block_size [repetitions]\n";
     return 0;
   }
   const long matrix_size = atol(argv[1]);
@@ -59,7 +61,7 @@ int main(int argc, char** argv) {
     std::cerr << "Error: block size must be greater than zero.\n";
     return 1;
   }
-  if((matrix_size % block_size) != 0ul) {
+  if ((matrix_size % block_size) != 0ul) {
     std::cerr << "Error: matrix size must be evenly divisible by block size.\n";
     return 1;
   }
@@ -72,32 +74,33 @@ int main(int argc, char** argv) {
   const std::size_t num_blocks = matrix_size / block_size;
   const std::size_t block_count = num_blocks * num_blocks;
 
-  if(world.rank() == 0)
+  if (world.rank() == 0)
     std::cout << "TiledArray: dense matrix multiply test...\n"
               << "Number of nodes     = " << world.size()
               << "\nMatrix size         = " << matrix_size << "x" << matrix_size
               << "\nBlock size          = " << block_size << "x" << block_size
-              << "\nMemory per matrix   = " << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
+              << "\nMemory per matrix   = "
+              << double(matrix_size * matrix_size * sizeof(double)) / 1.0e9
               << " GB\nNumber of blocks    = " << block_count
-              << "\nAverage blocks/node = " << double(block_count) / double(world.size()) << "\n";
+              << "\nAverage blocks/node = "
+              << double(block_count) / double(world.size()) << "\n";
 
   // Construct TiledRange
   std::vector<unsigned int> blocking;
   blocking.reserve(num_blocks + 1);
-  for(std::size_t i = 0; i <= matrix_size; i += block_size)
+  for (std::size_t i = 0; i <= matrix_size; i += block_size)
     blocking.push_back(i);
 
-  std::vector<TiledArray::TiledRange1> blocking2(2,
-      TiledArray::TiledRange1(blocking.begin(), blocking.end()));
+  std::vector<TiledArray::TiledRange1> blocking2(
+      2, TiledArray::TiledRange1(blocking.begin(), blocking.end()));
 
-  TiledArray::TiledRange
-    trange(blocking2.begin(), blocking2.end());
+  TiledArray::TiledRange trange(blocking2.begin(), blocking2.end());
 
   // Construct and initialize arrays
   TiledArray::TArrayD a = make_random_array(world, trange);
   TiledArray::TArrayD b = make_random_array(world, trange);
   TiledArray::TArrayD c(world, trange);
-  if(world.rank() == 0 && matrix_size < 11){
+  if (world.rank() == 0 && matrix_size < 11) {
     std::cout << "a = \n" << a << std::endl;
     std::cout << "b = \n" << b << std::endl;
   }
@@ -107,26 +110,30 @@ int main(int argc, char** argv) {
   const double wall_time_start = madness::wall_time();
 
   // Do matrix multiplication
-  for(int i = 0; i < repeat; ++i) {
+  for (int i = 0; i < repeat; ++i) {
     c("m,n") = a("m,k") * b("k,n");
     world.gop.fence();
-    if(world.rank() == 0)
-      std::cout << "Iteration " << i + 1 << "\n";
+    if (world.rank() == 0) std::cout << "Iteration " << i + 1 << "\n";
   }
   // Stop clock
   const double wall_time_stop = madness::wall_time();
 
-  if(world.rank() == 0){
-    std::cout << "Average wall time   = " << (wall_time_stop - wall_time_start) / double(repeat)
-        << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
-            matrix_size * matrix_size) / (wall_time_stop - wall_time_start) / 1.0e9 << "\n" << std::endl;
+  if (world.rank() == 0) {
+    std::cout << "Average wall time   = "
+              << (wall_time_stop - wall_time_start) / double(repeat)
+              << " sec\nAverage GFLOPS      = "
+              << double(repeat) * 2.0 *
+                     double(matrix_size * matrix_size * matrix_size) /
+                     (wall_time_stop - wall_time_start) / 1.0e9
+              << "\n"
+              << std::endl;
   }
 
   // Copying matrices to elemental
-  elem::DistMatrix<double> a_elem = array_to_elem(a,grid);
-  elem::DistMatrix<double> b_elem = array_to_elem(b,grid);
+  elem::DistMatrix<double> a_elem = array_to_elem(a, grid);
+  elem::DistMatrix<double> b_elem = array_to_elem(b, grid);
   elem::mpi::Barrier(grid.Comm());
-  if(matrix_size < 11){
+  if (matrix_size < 11) {
     Print(a_elem, "a from elem");
     Print(b_elem, "b from elem");
   }
@@ -134,18 +141,19 @@ int main(int argc, char** argv) {
   // Timed copy
   const double wall_time_copy0 = madness::wall_time();
   int j = 0;
-  while(j++ < repeat){
-    a_elem = array_to_elem(a,grid);
-    b_elem = array_to_elem(b,grid);
+  while (j++ < repeat) {
+    a_elem = array_to_elem(a, grid);
+    b_elem = array_to_elem(b, grid);
     elem::mpi::Barrier(grid.Comm());
   }
   const double wall_time_copy1 = madness::wall_time();
 
   // How long the copy took
-  if(world.rank() == 0){
-    std::cout << "Spent " <<
-      (wall_time_copy1 - wall_time_copy0)/(2.0 * double(repeat)) <<
-      " s for an array copy to elemental on average.\n" << std::endl;
+  if (world.rank() == 0) {
+    std::cout << "Spent "
+              << (wall_time_copy1 - wall_time_copy0) / (2.0 * double(repeat))
+              << " s for an array copy to elemental on average.\n"
+              << std::endl;
   }
 
   // Make the data output array
@@ -155,33 +163,39 @@ int main(int argc, char** argv) {
 
   // Do the multiply
   const double wt_elem_start = madness::wall_time();
-  for(std::size_t i = 0; i < repeat; ++i){
+  for (std::size_t i = 0; i < repeat; ++i) {
     elem::Gemm(elem::NORMAL, elem::NORMAL, 1., a_elem, b_elem, 0., c_elem);
     elem::mpi::Barrier(grid.Comm());
-    if(grid.Rank() == 0){
+    if (grid.Rank() == 0) {
       std::cout << "Elem Iteration " << i + 1 << "\n";
     }
   }
   const double wt_elem_end = madness::wall_time();
 
   // Time elemental
-  if(world.rank() == 0){
-    std::cout << "Average Elemental wall time   = " << (wt_elem_end - wt_elem_start) / double(repeat)
-        << " sec\nAverage GFLOPS      = " << double(repeat) * 2.0 * double(matrix_size *
-            matrix_size * matrix_size) / (wt_elem_end - wt_elem_start) / 1.0e9 << "\n";
+  if (world.rank() == 0) {
+    std::cout << "Average Elemental wall time   = "
+              << (wt_elem_end - wt_elem_start) / double(repeat)
+              << " sec\nAverage GFLOPS      = "
+              << double(repeat) * 2.0 *
+                     double(matrix_size * matrix_size * matrix_size) /
+                     (wt_elem_end - wt_elem_start) / 1.0e9
+              << "\n";
   }
 
   // copy back to ta
   int i = 0;
   const double e_to_t_start = madness::wall_time();
-  while(i++ < repeat){
+  while (i++ < repeat) {
     TiledArray::elem_to_array(c, c_elem);
     elem::mpi::Barrier(grid.Comm());
   }
   const double e_to_t_end = madness::wall_time();
 
-  if(world.rank() == 0){
-    std::cout << "Copying to TA from Elemental took " << (e_to_t_end - e_to_t_start)/(double(repeat)) << " s on average." << std::endl;
+  if (world.rank() == 0) {
+    std::cout << "Copying to TA from Elemental took "
+              << (e_to_t_end - e_to_t_start) / (double(repeat))
+              << " s on average." << std::endl;
   }
 
   TiledArray::finalize();

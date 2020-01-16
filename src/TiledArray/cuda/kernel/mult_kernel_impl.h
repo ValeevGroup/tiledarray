@@ -24,16 +24,16 @@
 #ifndef TILEDARRAY_CUDA_MULT_KERNEL_IMPL_H__INCLUDED
 #define TILEDARRAY_CUDA_MULT_KERNEL_IMPL_H__INCLUDED
 
+#include <TiledArray/external/cuda.h>
 #include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
-#include <TiledArray/external/cuda.h>
 
 namespace TiledArray {
 
 /// result[i] = result[i] * arg[i]
 template <typename T>
 void mult_to_cuda_kernel_impl(T *result, const T *arg, std::size_t n,
-                         cudaStream_t stream, int device_id) {
+                              cudaStream_t stream, int device_id) {
   CudaSafeCall(cudaSetDevice(device_id));
 
   thrust::multiplies<T> mul_op;
@@ -45,8 +45,8 @@ void mult_to_cuda_kernel_impl(T *result, const T *arg, std::size_t n,
 
 /// result[i] = arg1[i] * arg2[i]
 template <typename T>
-void mult_cuda_kernel_impl(T *result, const T *arg1, const T *arg2, std::size_t n,
-                      cudaStream_t stream, int device_id) {
+void mult_cuda_kernel_impl(T *result, const T *arg1, const T *arg2,
+                           std::size_t n, cudaStream_t stream, int device_id) {
   CudaSafeCall(cudaSetDevice(device_id));
 
   thrust::multiplies<T> mul_op;

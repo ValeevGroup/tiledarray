@@ -31,17 +31,15 @@
 #include <TiledArray/error.h>
 #include <TiledArray/tensor/complex.h>
 #include <cublas_v2.h>
-#include <thrust/system_error.h>
 #include <thrust/system/cuda/error.h>
-
+#include <thrust/system_error.h>
 
 #define CublasSafeCall(err) __cublasSafeCall(err, __FILE__, __LINE__)
 
-inline void __cublasSafeCall( cublasStatus_t err, const char *file, const int line )
-{
+inline void __cublasSafeCall(cublasStatus_t err, const char *file,
+                             const int line) {
 #ifdef TILEDARRAY_CHECK_CUDA_ERROR
-  if ( CUBLAS_STATUS_SUCCESS != err )
-  {
+  if (CUBLAS_STATUS_SUCCESS != err) {
     std::stringstream ss;
     ss << "cublasSafeCall() failed at: " << file << "(" << line << ")";
     std::string what = ss.str();
@@ -67,7 +65,7 @@ namespace TiledArray {
 class cuBLASHandlePool {
  public:
   static const cublasHandle_t &handle() {
-    static thread_local cublasHandle_t* handle_{nullptr};
+    static thread_local cublasHandle_t *handle_{nullptr};
     if (handle_ == nullptr) {
       handle_ = new cublasHandle_t;
       CublasSafeCall(cublasCreate(handle_));
@@ -80,7 +78,7 @@ class cuBLASHandlePool {
 
 inline cublasOperation_t to_cublas_op(
     madness::cblas::CBLAS_TRANSPOSE cblas_op) {
-  cublasOperation_t result {};
+  cublasOperation_t result{};
   switch (cblas_op) {
     case madness::cblas::NoTrans:
       result = CUBLAS_OP_N;
@@ -125,47 +123,51 @@ template <typename T, typename Scalar>
 cublasStatus_t cublasAxpy(cublasHandle_t handle, int n, const Scalar *alpha,
                           const T *x, int incx, T *y, int incy);
 template <>
-inline cublasStatus_t cublasAxpy<float,float>(cublasHandle_t handle, int n,
-                                        const float *alpha, const float *x,
-                                        int incx, float *y, int incy) {
+inline cublasStatus_t cublasAxpy<float, float>(cublasHandle_t handle, int n,
+                                               const float *alpha,
+                                               const float *x, int incx,
+                                               float *y, int incy) {
   return cublasSaxpy(handle, n, alpha, x, incx, y, incy);
 }
 
 template <>
-inline cublasStatus_t cublasAxpy<double,double>(cublasHandle_t handle, int n,
-                                         const double *alpha, const double *x,
-                                         int incx, double *y, int incy) {
+inline cublasStatus_t cublasAxpy<double, double>(cublasHandle_t handle, int n,
+                                                 const double *alpha,
+                                                 const double *x, int incx,
+                                                 double *y, int incy) {
   return cublasDaxpy(handle, n, alpha, x, incx, y, incy);
 }
 
 template <>
-inline cublasStatus_t cublasAxpy<float,int>(cublasHandle_t handle, int n,
-                                              const int *alpha, const float *x,
-                                              int incx, float *y, int incy) {
+inline cublasStatus_t cublasAxpy<float, int>(cublasHandle_t handle, int n,
+                                             const int *alpha, const float *x,
+                                             int incx, float *y, int incy) {
   const float alpha_float = float(*alpha);
   return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
 }
 
 template <>
-inline cublasStatus_t cublasAxpy<float,double>(cublasHandle_t handle, int n,
-                                            const double *alpha, const float *x,
-                                            int incx, float *y, int incy) {
+inline cublasStatus_t cublasAxpy<float, double>(cublasHandle_t handle, int n,
+                                                const double *alpha,
+                                                const float *x, int incx,
+                                                float *y, int incy) {
   const float alpha_float = float(*alpha);
   return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
 }
 
 template <>
-inline cublasStatus_t cublasAxpy<double,int>(cublasHandle_t handle, int n,
-                                                const int *alpha, const double *x,
-                                                int incx, double *y, int incy) {
+inline cublasStatus_t cublasAxpy<double, int>(cublasHandle_t handle, int n,
+                                              const int *alpha, const double *x,
+                                              int incx, double *y, int incy) {
   const double alpha_double = double(*alpha);
   return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
 }
 
 template <>
-inline cublasStatus_t cublasAxpy<double,float>(cublasHandle_t handle, int n,
-                                             const float *alpha, const double *x,
-                                             int incx, double *y, int incy) {
+inline cublasStatus_t cublasAxpy<double, float>(cublasHandle_t handle, int n,
+                                                const float *alpha,
+                                                const double *x, int incx,
+                                                double *y, int incy) {
   const double alpha_double = double(*alpha);
   return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
 }
@@ -178,8 +180,10 @@ inline cublasStatus_t cublasAxpy<float, detail::ComplexConjugate<void>>(
 }
 
 template <>
-inline cublasStatus_t cublasAxpy<float, detail::ComplexConjugate<detail::ComplexNegTag>>(
-    cublasHandle_t handle, int n, const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
+inline cublasStatus_t
+cublasAxpy<float, detail::ComplexConjugate<detail::ComplexNegTag>>(
+    cublasHandle_t handle, int n,
+    const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
     const float *x, int incx, float *y, int incy) {
   const float alpha_float = float(-1.0);
   return cublasSaxpy(handle, n, &alpha_float, x, incx, y, incy);
@@ -217,8 +221,10 @@ inline cublasStatus_t cublasAxpy<double, detail::ComplexConjugate<void>>(
 }
 
 template <>
-inline cublasStatus_t cublasAxpy<double, detail::ComplexConjugate<detail::ComplexNegTag>>(
-    cublasHandle_t handle, int n, const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
+inline cublasStatus_t
+cublasAxpy<double, detail::ComplexConjugate<detail::ComplexNegTag>>(
+    cublasHandle_t handle, int n,
+    const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
     const double *x, int incx, double *y, int incy) {
   const double alpha_double = double(-1.0);
   return cublasDaxpy(handle, n, &alpha_double, x, incx, y, incy);
@@ -270,52 +276,52 @@ inline cublasStatus_t cublasDot<double>(cublasHandle_t handle, int n,
 
 /// SCAL interface function
 template <typename T, typename Scalar>
-cublasStatus_t cublasScal(cublasHandle_t handle, int n, const Scalar *alpha, T *x,
-                          int incx);
+cublasStatus_t cublasScal(cublasHandle_t handle, int n, const Scalar *alpha,
+                          T *x, int incx);
 
 template <>
-inline cublasStatus_t cublasScal<float,float>(cublasHandle_t handle, int n,
-                                        const float *alpha, float *x,
-                                        int incx) {
+inline cublasStatus_t cublasScal<float, float>(cublasHandle_t handle, int n,
+                                               const float *alpha, float *x,
+                                               int incx) {
   return cublasSscal(handle, n, alpha, x, incx);
 };
 
 template <>
-inline cublasStatus_t cublasScal<double,double>(cublasHandle_t handle, int n,
-                                         const double *alpha, double *x,
-                                         int incx) {
+inline cublasStatus_t cublasScal<double, double>(cublasHandle_t handle, int n,
+                                                 const double *alpha, double *x,
+                                                 int incx) {
   return cublasDscal(handle, n, alpha, x, incx);
 };
 
 template <>
-inline cublasStatus_t cublasScal<float,int>(cublasHandle_t handle, int n,
-                                             const int *alpha, float*x,
+inline cublasStatus_t cublasScal<float, int>(cublasHandle_t handle, int n,
+                                             const int *alpha, float *x,
                                              int incx) {
   const float alpha_float = float(*alpha);
   return cublasSscal(handle, n, &alpha_float, x, incx);
 };
 
 template <>
-inline cublasStatus_t cublasScal<float,double>(cublasHandle_t handle, int n,
-                                            const double *alpha, float*x,
-                                            int incx) {
+inline cublasStatus_t cublasScal<float, double>(cublasHandle_t handle, int n,
+                                                const double *alpha, float *x,
+                                                int incx) {
   const float alpha_float = float(*alpha);
   return cublasSscal(handle, n, &alpha_float, x, incx);
 };
 
 //
 template <>
-inline cublasStatus_t cublasScal<double,int>(cublasHandle_t handle, int n,
-                                                const int *alpha, double *x,
-                                                int incx) {
+inline cublasStatus_t cublasScal<double, int>(cublasHandle_t handle, int n,
+                                              const int *alpha, double *x,
+                                              int incx) {
   const double alpha_double = double(*alpha);
   return cublasDscal(handle, n, &alpha_double, x, incx);
 };
 
 template <>
-inline cublasStatus_t cublasScal<double,float>(cublasHandle_t handle, int n,
-                                             const float *alpha, double *x,
-                                             int incx) {
+inline cublasStatus_t cublasScal<double, float>(cublasHandle_t handle, int n,
+                                                const float *alpha, double *x,
+                                                int incx) {
   const double alpha_double = double(*alpha);
   return cublasDscal(handle, n, &alpha_double, x, incx);
 };
@@ -328,9 +334,11 @@ inline cublasStatus_t cublasScal<float, detail::ComplexConjugate<void>>(
 }
 
 template <>
-inline cublasStatus_t cublasScal<float, detail::ComplexConjugate<detail::ComplexNegTag>>(
-    cublasHandle_t handle, int n, const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
-    float *x, int incx) {
+inline cublasStatus_t
+cublasScal<float, detail::ComplexConjugate<detail::ComplexNegTag>>(
+    cublasHandle_t handle, int n,
+    const detail::ComplexConjugate<detail::ComplexNegTag> *alpha, float *x,
+    int incx) {
   const float alpha_float = float(-1.0);
   return cublasSscal(handle, n, &alpha_float, x, incx);
 }
@@ -367,9 +375,11 @@ inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<void>>(
 }
 
 template <>
-inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<detail::ComplexNegTag>>(
-    cublasHandle_t handle, int n, const detail::ComplexConjugate<detail::ComplexNegTag> *alpha,
-    double *x, int incx) {
+inline cublasStatus_t
+cublasScal<double, detail::ComplexConjugate<detail::ComplexNegTag>>(
+    cublasHandle_t handle, int n,
+    const detail::ComplexConjugate<detail::ComplexNegTag> *alpha, double *x,
+    int incx) {
   const double alpha_double = double(-1.0);
   return cublasDscal(handle, n, &alpha_double, x, incx);
 }
@@ -386,7 +396,7 @@ template <>
 inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<float>>(
     cublasHandle_t handle, int n, const detail::ComplexConjugate<float> *alpha,
     double *x, int incx) {
-  const double alpha_double =  double(alpha->factor());
+  const double alpha_double = double(alpha->factor());
   return cublasDscal(handle, n, &alpha_double, x, incx);
 }
 
@@ -397,8 +407,6 @@ inline cublasStatus_t cublasScal<double, detail::ComplexConjugate<double>>(
   const double alpha_double = double(alpha->factor());
   return cublasDscal(handle, n, &alpha_double, x, incx);
 }
-
-
 
 /// COPY inerface function
 template <typename T>

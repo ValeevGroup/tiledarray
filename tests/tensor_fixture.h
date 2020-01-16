@@ -23,7 +23,6 @@
  *
  */
 
-
 #include "TiledArray/tensor.h"
 #include "global_fixture.h"
 
@@ -43,17 +42,15 @@ struct TensorFixture {
 
   static const range_type r;
 
-  TensorFixture() : t(r) {
-    rand_fill(18, t.size(), t.data());
-  }
+  TensorFixture() : t(r) { rand_fill(18, t.size(), t.data()); }
 
-  ~TensorFixture() { }
+  ~TensorFixture() {}
 
   static range_type make_range(const int seed) {
     GlobalFixture::world->srand(seed);
     std::array<std::size_t, GlobalFixture::dim> start, finish;
 
-    for(unsigned int i = 0ul; i < GlobalFixture::dim; ++i) {
+    for (unsigned int i = 0ul; i < GlobalFixture::dim; ++i) {
       start[i] = GlobalFixture::world->rand() % 10;
       finish[i] = GlobalFixture::world->rand() % 8 + start[i] + 2;
     }
@@ -61,19 +58,19 @@ struct TensorFixture {
     return range_type(start, finish);
   }
 
-
   static void rand_fill(const int seed, const size_type n, int* const data) {
     GlobalFixture::world->srand(seed);
-    for(size_type i = 0ul; i < n; ++i)
+    for (size_type i = 0ul; i < n; ++i)
       data[i] = GlobalFixture::world->rand() % 42;
   }
 
   template <typename T>
-  static void rand_fill(const int seed, const size_type n, std::complex<T>* const data) {
+  static void rand_fill(const int seed, const size_type n,
+                        std::complex<T>* const data) {
     GlobalFixture::world->srand(seed);
-    for(size_type i = 0ul; i < n; ++i)
+    for (size_type i = 0ul; i < n; ++i)
       data[i] = std::complex<T>(GlobalFixture::world->rand() % 42,
-          GlobalFixture::world->rand() % 42);
+                                GlobalFixture::world->rand() % 42);
   }
 
   static TensorN make_tensor(const int range_seed, const int data_seed) {
@@ -85,8 +82,7 @@ struct TensorFixture {
   // make permutation definition object
   static Permutation make_perm() {
     std::array<unsigned int, GlobalFixture::dim> temp;
-    for(std::size_t i = 0; i < temp.size(); ++i)
-      temp[i] = i + 1;
+    for (std::size_t i = 0; i < temp.size(); ++i) temp[i] = i + 1;
 
     temp.back() = 0;
 
@@ -96,4 +92,4 @@ struct TensorFixture {
   TensorN t;
 };
 
-#endif // TILEDARRAY_TEST_TENSOR_FIXTURE_H__INCLUDED
+#endif  // TILEDARRAY_TEST_TENSOR_FIXTURE_H__INCLUDED

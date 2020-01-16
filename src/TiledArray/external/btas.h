@@ -23,14 +23,14 @@
 #ifndef TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
 #define TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
 
+#include <TiledArray/tensor/kernels.h>
+#include <TiledArray/utility.h>
 #include "TiledArray/config.h"
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/range.h"
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/tile_interface/cast.h"
-#include <TiledArray/tensor/kernels.h>
-#include <TiledArray/utility.h>
 
 #include <btas/features.h>
 #include <btas/generic/axpy_impl.h>
@@ -72,24 +72,26 @@ namespace btas {
 /// \param r1 The first Range to compare
 /// \param r2 The second Range to compare
 template <CBLAS_ORDER Order, typename... Args>
-inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1, const btas::RangeNd<Order, Args...>& r2) {
+inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
+                         const btas::RangeNd<Order, Args...>& r2) {
   return (r1.rank() == r2.rank()) &&
          std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
                     r2.extent_data());
 }
 
 template <typename T, typename Range, typename Storage>
-decltype(auto)
-make_ti(const btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<const T, Range, btas::Tensor<T, Range, Storage>>(arg.range(), arg.data());
+decltype(auto) make_ti(const btas::Tensor<T, Range, Storage>& arg) {
+  return TiledArray::detail::TensorInterface<const T, Range,
+                                             btas::Tensor<T, Range, Storage>>(
+      arg.range(), arg.data());
 }
 
 template <typename T, typename Range, typename Storage>
-decltype(auto)
-make_ti(btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<T, Range, btas::Tensor<T, Range, Storage>>(arg.range(), arg.data());
+decltype(auto) make_ti(btas::Tensor<T, Range, Storage>& arg) {
+  return TiledArray::detail::TensorInterface<T, Range,
+                                             btas::Tensor<T, Range, Storage>>(
+      arg.range(), arg.data());
 }
-
 
 template <typename... Args>
 inline bool operator==(const TiledArray::Range& range1,
@@ -122,11 +124,11 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> permute(
     const btas::Tensor<T, Range, Storage>& arg,
     const TiledArray::Permutation& perm) {
-//  btas::Tensor<T, Range, Storage> result;
-//  std::vector<size_t> p(perm.dim());
-//  std::copy(perm.begin(), perm.end(), p.begin());
-//  btas::permute(arg, p, result);
-//  return result;
+  //  btas::Tensor<T, Range, Storage> result;
+  //  std::vector<size_t> p(perm.dim());
+  //  std::copy(perm.begin(), perm.end(), p.begin());
+  //  btas::permute(arg, p, result);
+  //  return result;
   auto arg_view = make_ti(arg);
   return arg_view.permute(perm);
 }
@@ -139,7 +141,8 @@ inline btas::Tensor<T, Range, Storage> permute(
 /// \param range_shift The offset to be applied to the argument range
 /// \return A copy of the tile with a new range
 template <typename T, typename Range, typename Storage, typename Index>
-inline btas::Tensor<T, Range, Storage> shift(const btas::Tensor<T, Range, Storage>& arg, const Index& range_shift) {
+inline btas::Tensor<T, Range, Storage> shift(
+    const btas::Tensor<T, Range, Storage>& arg, const Index& range_shift) {
   auto shifted_arg = clone(arg);
   shift_to(shifted_arg, range_shift);
   return shifted_arg;
@@ -151,7 +154,8 @@ inline btas::Tensor<T, Range, Storage> shift(const btas::Tensor<T, Range, Storag
 /// \param range_shift The offset to be applied to the argument range
 /// \return A copy of the tile with a new range
 template <typename T, typename Range, typename Storage, typename Index>
-inline btas::Tensor<T, Range, Storage>& shift_to(btas::Tensor<T, Range, Storage>& arg, const Index& range_shift) {
+inline btas::Tensor<T, Range, Storage>& shift_to(
+    btas::Tensor<T, Range, Storage>& arg, const Index& range_shift) {
   const_cast<Range&>(arg.range()).inplace_shift(range_shift);
   return arg;
 }
@@ -168,14 +172,14 @@ inline btas::Tensor<T, Range, Storage> add(
 
 /// result[i] = (arg1[i] + arg2[i]) * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
-    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const Scalar factor) {
+    const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
-  return arg1_view.add(arg2_view,factor);
+  return arg1_view.add(arg2_view, factor);
 }
 
 /// result[perm ^ i] = (arg1[i] + arg2[i])
@@ -186,26 +190,27 @@ inline btas::Tensor<T, Range, Storage> add(
     const TiledArray::Permutation& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
-  return arg1_view.add(arg2_view,perm);
+  return arg1_view.add(arg2_view, perm);
 }
 
 /// result[perm ^ i] = (arg1[i] + arg2[i]) * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
-    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const Scalar factor,
+    const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
     const TiledArray::Permutation& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
-  return arg1_view.add(arg2_view,factor,perm);
+  return arg1_view.add(arg2_view, factor, perm);
 }
 
 /// result[i] += arg[i]
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage>& add_to(btas::Tensor<T, Range, Storage>& result,
-            const btas::Tensor<T, Range, Storage>& arg) {
+inline btas::Tensor<T, Range, Storage>& add_to(
+    btas::Tensor<T, Range, Storage>& result,
+    const btas::Tensor<T, Range, Storage>& arg) {
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.add_to(arg_view);
@@ -214,12 +219,14 @@ inline btas::Tensor<T, Range, Storage>& add_to(btas::Tensor<T, Range, Storage>& 
 
 /// result[i] += factor * arg[i]
 template <typename T, typename Range, typename Storage, typename Scalar,
-    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline btas::Tensor<T, Range, Storage>& add_to(btas::Tensor<T, Range, Storage>& result,
-            const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline btas::Tensor<T, Range, Storage>& add_to(
+    btas::Tensor<T, Range, Storage>& result,
+    const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
-  result_view.add_to(arg_view,factor);
+  result_view.add_to(arg_view, factor);
   return result;
 }
 
@@ -235,11 +242,11 @@ inline btas::Tensor<T, Range, Storage> subt(
 
 /// result[i] = (arg1[i] - arg2[i]) * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
-typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const Scalar factor) {
+    const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.subt(arg2_view, factor);
@@ -258,21 +265,22 @@ inline btas::Tensor<T, Range, Storage> subt(
 
 /// result[perm ^ i] = (arg1[i] - arg2[i]) * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
-    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const Scalar factor,
+    const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
     const TiledArray::Permutation& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
-  return arg1_view.subt(arg2_view,factor,perm);
+  return arg1_view.subt(arg2_view, factor, perm);
 }
 
 /// result[i] -= arg[i]
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage>& subt_to(btas::Tensor<T, Range, Storage>& result,
-             const btas::Tensor<T, Range, Storage>& arg) {
+inline btas::Tensor<T, Range, Storage>& subt_to(
+    btas::Tensor<T, Range, Storage>& result,
+    const btas::Tensor<T, Range, Storage>& arg) {
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
   result_view.subt_to(arg_view);
@@ -280,13 +288,14 @@ inline btas::Tensor<T, Range, Storage>& subt_to(btas::Tensor<T, Range, Storage>&
 }
 
 template <typename T, typename Range, typename Storage, typename Scalar,
-    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline btas::Tensor<T, Range, Storage>& subt_to(btas::Tensor<T, Range, Storage>& result,
-    const btas::Tensor<T, Range, Storage>& arg,
-    const Scalar factor) {
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+inline btas::Tensor<T, Range, Storage>& subt_to(
+    btas::Tensor<T, Range, Storage>& result,
+    const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
-  result_view.subt_to(arg_view,factor);
+  result_view.subt_to(arg_view, factor);
   return result;
 }
 
@@ -302,14 +311,14 @@ inline btas::Tensor<T, Range, Storage> mult(
 
 /// result[i] = arg1[i] * arg2[i] * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
-    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const Scalar factor) {
+    const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
-  return arg1_view.mult(arg2_view,factor);
+  return arg1_view.mult(arg2_view, factor);
 }
 
 /// result[perm ^ i] = arg1[i] * arg2[i]
@@ -320,20 +329,20 @@ inline btas::Tensor<T, Range, Storage> mult(
     const TiledArray::Permutation& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
-  return arg1_view.mult(arg2_view,perm);
+  return arg1_view.mult(arg2_view, perm);
 }
 
 /// result[perm ^ i] = arg1[i] * arg2[i] * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
-    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const Scalar factor,
+    const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
     const TiledArray::Permutation& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
-  return arg1_view.mult(arg2_view,factor,perm);
+  return arg1_view.mult(arg2_view, factor, perm);
 }
 
 /// result[i] *= arg[i]
@@ -349,95 +358,110 @@ inline btas::Tensor<T, Range, Storage>& mult_to(
 
 /// result[i] *= arg[i] * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
-    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+          typename std::enable_if<
+              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage>& mult_to(
     btas::Tensor<T, Range, Storage>& result,
-    const btas::Tensor<T, Range, Storage>& arg,
-    const Scalar factor) {
+    const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
   auto result_view = make_ti(result);
   auto arg_view = make_ti(arg);
-  result_view.mult_to(arg_view,factor);
+  result_view.mult_to(arg_view, factor);
   return result;
 }
 
 template <typename T, typename Range, typename Storage, typename Scalar,
-    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline btas::Tensor<T, Range, Storage>& scale_to(btas::Tensor<T, Range, Storage>& result, const Scalar factor) {
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage>& scale_to(
+    btas::Tensor<T, Range, Storage>& result, const Scalar factor) {
   auto result_view = make_ti(result);
   result_view.scale_to(factor);
   return result;
 }
 
 template <typename T, typename Range, typename Storage, typename Scalar,
-    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& result, const Scalar factor) {
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& result,
+                            const Scalar factor) {
   auto result_view = make_ti(result);
   return result_view.scale(factor);
 }
 
 template <typename T, typename Range, typename Storage, typename Scalar,
-    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline decltype(auto)
-scale(const btas::Tensor<T, Range, Storage>& result, const Scalar factor, const TiledArray::Permutation& perm) {
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& result,
+                            const Scalar factor,
+                            const TiledArray::Permutation& perm) {
   auto result_view = make_ti(result);
-  return result_view.scale(factor,perm);
+  return result_view.scale(factor, perm);
 }
 
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage>& neg_to(btas::Tensor<T, Range, Storage>& result) {
+inline btas::Tensor<T, Range, Storage>& neg_to(
+    btas::Tensor<T, Range, Storage>& result) {
   auto result_view = make_ti(result);
   result_view.neg_to();
   return result;
 }
 
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage> neg(const btas::Tensor<T, Range, Storage>& arg) {
+inline btas::Tensor<T, Range, Storage> neg(
+    const btas::Tensor<T, Range, Storage>& arg) {
   auto arg_view = make_ti(arg);
   return arg_view.neg();
 }
 
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage> neg(const btas::Tensor<T, Range, Storage>& arg, const TiledArray::Permutation& perm) {
+inline btas::Tensor<T, Range, Storage> neg(
+    const btas::Tensor<T, Range, Storage>& arg,
+    const TiledArray::Permutation& perm) {
   auto arg_view = make_ti(arg);
   return arg_view.neg(perm);
 }
 
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage>& arg){
+inline btas::Tensor<T, Range, Storage> conj(
+    const btas::Tensor<T, Range, Storage>& arg) {
   auto arg_view = make_ti(arg);
   return arg_view.conj();
 }
 
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage>& arg, const TiledArray::Permutation& perm){
+inline btas::Tensor<T, Range, Storage> conj(
+    const btas::Tensor<T, Range, Storage>& arg,
+    const TiledArray::Permutation& perm) {
   auto arg_view = make_ti(arg);
   return arg_view.conj(perm);
 }
 
 template <typename T, typename Range, typename Storage, typename Scalar,
-        std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage>& arg, const Scalar factor){
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage> conj(
+    const btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
   auto arg_view = make_ti(arg);
   return arg_view.conj(factor);
 }
 
 template <typename T, typename Range, typename Storage, typename Scalar,
-        std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline btas::Tensor<T, Range, Storage> conj(const btas::Tensor<T, Range, Storage>& arg, const Scalar factor, const TiledArray::Permutation& perm){
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage> conj(
+    const btas::Tensor<T, Range, Storage>& arg, const Scalar factor,
+    const TiledArray::Permutation& perm) {
   auto arg_view = make_ti(arg);
-  return arg_view.conj(factor,perm);
+  return arg_view.conj(factor, perm);
 }
 
 template <typename T, typename Range, typename Storage>
-inline btas::Tensor<T, Range, Storage>& conj_to(btas::Tensor<T, Range, Storage>& arg){
+inline btas::Tensor<T, Range, Storage>& conj_to(
+    btas::Tensor<T, Range, Storage>& arg) {
   auto arg_view = make_ti(arg);
   arg_view.conj_to();
   return arg;
 }
 
 template <typename T, typename Range, typename Storage, typename Scalar,
-        std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline btas::Tensor<T, Range, Storage>& conj_to(btas::Tensor<T, Range, Storage>& arg, const Scalar factor){
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+inline btas::Tensor<T, Range, Storage>& conj_to(
+    btas::Tensor<T, Range, Storage>& arg, const Scalar factor) {
   auto arg_view = make_ti(arg);
   arg_view.conj_to(factor);
   return arg;
@@ -460,10 +484,12 @@ inline btas::Tensor<T, Range, Storage> gemm(
       gemm_helper.make_result_range<Range>(left.range(), right.range()));
 
   // Check that the inner dimensions of left and right match
-  TA_ASSERT(TiledArray::ignore_tile_position() ||
+  TA_ASSERT(
+      TiledArray::ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
                                        std::cbegin(right.range().lobound())));
-  TA_ASSERT(TiledArray::ignore_tile_position() ||
+  TA_ASSERT(
+      TiledArray::ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
                                        std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(
@@ -490,9 +516,9 @@ inline btas::Tensor<T, Range, Storage> gemm(
 
 template <typename T, typename Range, typename Storage, typename Scalar>
 inline void gemm(btas::Tensor<T, Range, Storage>& result,
-          const btas::Tensor<T, Range, Storage>& left,
-          const btas::Tensor<T, Range, Storage>& right, Scalar factor,
-          const TiledArray::math::GemmHelper& gemm_helper) {
+                 const btas::Tensor<T, Range, Storage>& left,
+                 const btas::Tensor<T, Range, Storage>& right, Scalar factor,
+                 const TiledArray::math::GemmHelper& gemm_helper) {
   // Check that this tensor is not empty and has the correct rank
   TA_ASSERT(!result.empty());
   TA_ASSERT(result.range().rank() == gemm_helper.result_rank());
@@ -505,10 +531,12 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
 
   // Check that the outer dimensions of left match the the corresponding
   // dimensions in result
-  TA_ASSERT(TiledArray::ignore_tile_position() ||
+  TA_ASSERT(
+      TiledArray::ignore_tile_position() ||
       gemm_helper.left_result_congruent(std::cbegin(left.range().lobound()),
                                         std::cbegin(result.range().lobound())));
-  TA_ASSERT(TiledArray::ignore_tile_position() ||
+  TA_ASSERT(
+      TiledArray::ignore_tile_position() ||
       gemm_helper.left_result_congruent(std::cbegin(left.range().upbound()),
                                         std::cbegin(result.range().upbound())));
   TA_ASSERT(
@@ -517,21 +545,25 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
 
   // Check that the outer dimensions of right match the the corresponding
   // dimensions in result
-  TA_ASSERT(TiledArray::ignore_tile_position() || gemm_helper.right_result_congruent(
-      std::cbegin(right.range().lobound()),
-      std::cbegin(result.range().lobound())));
-  TA_ASSERT(TiledArray::ignore_tile_position() || gemm_helper.right_result_congruent(
-      std::cbegin(right.range().upbound()),
-      std::cbegin(result.range().upbound())));
+  TA_ASSERT(TiledArray::ignore_tile_position() ||
+            gemm_helper.right_result_congruent(
+                std::cbegin(right.range().lobound()),
+                std::cbegin(result.range().lobound())));
+  TA_ASSERT(TiledArray::ignore_tile_position() ||
+            gemm_helper.right_result_congruent(
+                std::cbegin(right.range().upbound()),
+                std::cbegin(result.range().upbound())));
   TA_ASSERT(
       gemm_helper.right_result_congruent(std::cbegin(right.range().extent()),
                                          std::cbegin(result.range().extent())));
 
   // Check that the inner dimensions of left and right match
-  TA_ASSERT(TiledArray::ignore_tile_position() ||
+  TA_ASSERT(
+      TiledArray::ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
                                        std::cbegin(right.range().lobound())));
-  TA_ASSERT(TiledArray::ignore_tile_position() ||
+  TA_ASSERT(
+      TiledArray::ignore_tile_position() ||
       gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
                                        std::cbegin(right.range().upbound())));
   TA_ASSERT(gemm_helper.left_right_congruent(
@@ -562,47 +594,44 @@ inline typename btas::Tensor<T, Range, Storage>::value_type trace(
 }
 // foreach(i) result += arg[i]
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) sum(
-    const btas::Tensor<T, Range, Storage>& arg) {
+inline decltype(auto) sum(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).sum();
 }
 // foreach(i) result *= arg[i]
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) product(
-    const btas::Tensor<T, Range, Storage>& arg) {
+inline decltype(auto) product(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).product();
 }
 
 // foreach(i) result += arg[i] * arg[i]
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) squared_norm(
-    const btas::Tensor<T, Range, Storage>& arg) {
+inline decltype(auto) squared_norm(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).squared_norm();
 };
 
 // foreach(i) result += arg1[i] * arg2[i]
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) dot(
-    const btas::Tensor<T, Range, Storage>& arg1, const btas::Tensor<T, Range, Storage>& arg2) {
+inline decltype(auto) dot(const btas::Tensor<T, Range, Storage>& arg1,
+                          const btas::Tensor<T, Range, Storage>& arg2) {
   return make_ti(arg1).dot(make_ti(arg2));
 };
 
 template <typename T, typename Range, typename Storage>
 inline decltype(auto) inner_product(
-        const btas::Tensor<T, Range, Storage>& arg1, const btas::Tensor<T, Range, Storage>& arg2) {
+    const btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2) {
   return make_ti(arg1).inner_product(make_ti(arg2));
 };
 
 // sqrt(squared_norm(arg))
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) norm(
-    const btas::Tensor<T, Range, Storage>& arg) {
+inline decltype(auto) norm(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).norm();
 }
 // sqrt(squared_norm(arg))
 template <typename T, typename Range, typename Storage, typename ResultType>
-inline void norm(
-    const btas::Tensor<T, Range, Storage>& arg, ResultType& result) {
+inline void norm(const btas::Tensor<T, Range, Storage>& arg,
+                 ResultType& result) {
   result = make_ti(arg).template norm<ResultType>();
 }
 // foreach(i) result = max(result, arg[i])
@@ -630,10 +659,12 @@ inline typename btas::Tensor<T, Range, Storage>::value_type abs_min(
 
 namespace TiledArray {
 /**
- *  permute function for TiledArray::Range class with non-TiledArray Permutation object
+ *  permute function for TiledArray::Range class with non-TiledArray Permutation
+ * object
  */
 template <typename Perm>
-typename std::enable_if<!std::is_same<Perm,TiledArray::Permutation>::value,TiledArray::Range>::type
+typename std::enable_if<!std::is_same<Perm, TiledArray::Permutation>::value,
+                        TiledArray::Range>::type
 permute(const TiledArray::Range& r, const Perm& p) {
   TiledArray::Permutation pp(p.begin(), p.end());
   return pp * r;

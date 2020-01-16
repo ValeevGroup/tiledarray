@@ -29,13 +29,9 @@
 #include <TiledArray/external/btas.h>
 // clang-format on
 
-
-
 template <typename Tile>
 void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
-                  const long Nn, const long Bn,
-                  const long nrepeat) {
-
+                  const long Nn, const long Bn, const long nrepeat) {
   const std::size_t Tm = Nm / Bm;
   const std::size_t Tn = Nn / Bn;
 
@@ -69,17 +65,15 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   TiledArray::TiledRange  // TRange
       trange(blocking.begin(), blocking.end());
 
-
   using value_type = typename Tile::value_type;
-  using TArray = TA::DistArray<Tile,TA::DensePolicy>;
+  using TArray = TA::DistArray<Tile, TA::DensePolicy>;
 
   TArray c(world, trange);
   value_type val_a = 0.03;
   value_type val_b = 0.02;
 
-
   {
-    if (world.rank() == 0){
+    if (world.rank() == 0) {
       std::cout << "\nAdd test: a(m,n) + b(m,n)\n";
     }
 
@@ -115,7 +109,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   }
 
   {
-    if (world.rank() == 0){
+    if (world.rank() == 0) {
       std::cout << "\nAdd scale test: 2*a(m,n) + 2*b(m,n)\n";
     }
 
@@ -131,7 +125,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      c("m,n") = 2*a("m,n") + 2*b("m,n");
+      c("m,n") = 2 * a("m,n") + 2 * b("m,n");
       double iter_time_stop = madness::wall_time();
       if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
@@ -146,12 +140,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                 << (wall_time_stop - wall_time_start) / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
                 << double(nrepeat) * 3 * double(Nn * Nm) /
-                   (wall_time_stop - wall_time_start) / 1.0e9
+                       (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   }
 
   {
-    if (world.rank() == 0){
+    if (world.rank() == 0) {
       std::cout << "\nAdd permute test: 2*a(m,n) + 2*b(n,m)\n";
     }
 
@@ -167,7 +161,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      c("m,n") = 2*a("m,n") + 2*b("n,m");
+      c("m,n") = 2 * a("m,n") + 2 * b("n,m");
       double iter_time_stop = madness::wall_time();
       if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
@@ -181,13 +175,13 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
       std::cout << "Average wall time   = "
                 << (wall_time_stop - wall_time_start) / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
-                << double(nrepeat) *3* double(Nn * Nm) /
-                   (wall_time_stop - wall_time_start) / 1.0e9
+                << double(nrepeat) * 3 * double(Nn * Nm) /
+                       (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   }
 
   {
-    if (world.rank() == 0){
+    if (world.rank() == 0) {
       std::cout << "\nScale add test: 5*(2*a(m,n) + 3*b(m,n))\n";
     }
 
@@ -203,7 +197,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      c("m,n") = 5*(2*a("m,n") + 3*b("m,n"));
+      c("m,n") = 5 * (2 * a("m,n") + 3 * b("m,n"));
       double iter_time_stop = madness::wall_time();
       if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
@@ -218,12 +212,12 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                 << (wall_time_stop - wall_time_start) / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
                 << double(nrepeat) * 4 * double(Nn * Nm) /
-                   (wall_time_stop - wall_time_start) / 1.0e9
+                       (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   }
 
   {
-    if (world.rank() == 0){
+    if (world.rank() == 0) {
       std::cout << "\nScale add permute test: 5*(2*a(m,n) + 3*b(n,m))\n";
     }
 
@@ -239,7 +233,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      c("m,n") = 5*(2*a("m,n") + 3*b("n,m"));
+      c("m,n") = 5 * (2 * a("m,n") + 3 * b("n,m"));
       double iter_time_stop = madness::wall_time();
       if (world.rank() == 0)
         std::cout << "Iteration " << i + 1
@@ -254,7 +248,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
                 << (wall_time_stop - wall_time_start) / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
                 << double(nrepeat) * 4 * double(Nn * Nm) /
-                   (wall_time_stop - wall_time_start) / 1.0e9
+                       (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   }
 }
@@ -268,26 +262,27 @@ int try_main(int argc, char **argv) {
 
   // Get command line arguments
   if (argc < 4) {
-    std::cout << "vector operations on A(Nm,Nn) and B(Nm,Nn), with dimensions m, n"
-                 "blocked by Bm, Bn respectively"
-              << std::endl
-              << "Usage: " << argv[0]
-              << " Nm Bm Nn Bn [# of repetitions = 5] [real = double] \n";
+    std::cout
+        << "vector operations on A(Nm,Nn) and B(Nm,Nn), with dimensions m, n"
+           "blocked by Bm, Bn respectively"
+        << std::endl
+        << "Usage: " << argv[0]
+        << " Nm Bm Nn Bn [# of repetitions = 5] [real = double] \n";
     return 0;
   }
   const long Nm = atol(argv[1]);
   const long Bm = atol(argv[2]);
   const long Nn = atol(argv[3]);
   const long Bn = atol(argv[4]);
-  if (Nm <= 0 || Nn <= 0 ) {
+  if (Nm <= 0 || Nn <= 0) {
     std::cerr << "Error: dimensions must be greater than zero.\n";
     return 1;
   }
-  if (Bm <= 0 || Bn <= 0 ) {
+  if (Bm <= 0 || Bn <= 0) {
     std::cerr << "Error: block sizes must be greater than zero.\n";
     return 1;
   }
-  if ((Nm % Bm) != 0ul || Nn % Bn != 0ul ) {
+  if ((Nm % Bm) != 0ul || Nn % Bn != 0ul) {
     std::cerr
         << "Error: diminsion size must be evenly divisible by block size.\n";
     return 1;
@@ -366,32 +361,27 @@ int try_main(int argc, char **argv) {
     }
   }  // print device properties
 
-
-  if (real_type_str == "double"){
-
-    if(world.rank()== 0){
+  if (real_type_str == "double") {
+    if (world.rank() == 0) {
       std::cout << "\n GPU vector operations. \n\n";
     }
     do_main_body<cudaTile<double>>(world, Nm, Bm, Nn, Bn, nrepeat);
 
-    if(world.rank()== 0){
+    if (world.rank() == 0) {
       std::cout << "\n CPU vector operations. \n\n";
     }
     do_main_body<TiledArray::Tensor<double>>(world, Nm, Bm, Nn, Bn, nrepeat);
 
-  }
-  else {
-
-    if(world.rank()== 0){
+  } else {
+    if (world.rank() == 0) {
       std::cout << "\n GPU vector operations. \n\n";
     }
     do_main_body<cudaTile<float>>(world, Nm, Bm, Nn, Bn, nrepeat);
 
-    if(world.rank()== 0){
+    if (world.rank() == 0) {
       std::cout << "\n CPU vector operations. \n\n";
     }
     do_main_body<TiledArray::Tensor<float>>(world, Nm, Bm, Nn, Bn, nrepeat);
-
   }
 
   TiledArray::finalize();
@@ -409,10 +399,9 @@ int main(int argc, char *argv[]) {
     auto result = cudaMemGetInfo(&free_mem, &total_mem);
     std::cout << "CUDA memory stats: {total,free} = {" << total_mem << ","
               << free_mem << "}" << std::endl;
-  } catch(std::exception& ex){
+  } catch (std::exception &ex) {
     std::cout << ex.what() << std::endl;
-  }
-  catch (...) {
+  } catch (...) {
     std::cerr << "unknown exception" << std::endl;
   }
 

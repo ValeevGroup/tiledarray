@@ -18,19 +18,22 @@
  */
 
 #define BOOST_TEST_MAIN TiledArray Tests
-#include "unit_test_config.h"
-#include "TiledArray/external/madness.h"
 #include <TiledArray/initialize.h>
+#include "TiledArray/external/madness.h"
+#include "unit_test_config.h"
 
 int wait_for_debugger = 0;
 
 GlobalFixture::GlobalFixture() {
-  world = & TiledArray::initialize(
+  world = &TiledArray::initialize(
       boost::unit_test::framework::master_test_suite().argc,
       boost::unit_test::framework::master_test_suite().argv);
   world->gop.fence();
   if (wait_for_debugger) {
-    if (world->rank() == 0) std::cerr << "waiting for debugger to attach ... then set wait_for_debugger to 0 to proceed" << std::endl;
+    if (world->rank() == 0)
+      std::cerr << "waiting for debugger to attach ... then set "
+                   "wait_for_debugger to 0 to proceed"
+                << std::endl;
     while (wait_for_debugger) {
     }
   }
@@ -42,9 +45,9 @@ GlobalFixture::~GlobalFixture() {
 }
 
 TiledArray::World* GlobalFixture::world = NULL;
-const std::array<std::size_t, 20> GlobalFixture::primes =
-    {{ 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71 }};
-
+const std::array<std::size_t, 20> GlobalFixture::primes = {
+    {2,  3,  5,  7,  11, 13, 17, 19, 23, 29,
+     31, 37, 41, 43, 47, 53, 59, 61, 67, 71}};
 
 // This line will initialize mpi and madness.
-BOOST_GLOBAL_FIXTURE( GlobalFixture );
+BOOST_GLOBAL_FIXTURE(GlobalFixture);

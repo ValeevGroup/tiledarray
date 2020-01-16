@@ -23,8 +23,6 @@
  *
  */
 
-
-
 #ifdef TILEDARRAY_HAS_BTAS
 #include "expressions_fixture.h"
 
@@ -33,8 +31,7 @@ typedef ExpressionsFixture<
     TA::DensePolicy>
     EF_TABtasI;
 
-typedef boost::mpl::vector<EF_TABtasI>
-    Fixtures;
+typedef boost::mpl::vector<EF_TABtasI> Fixtures;
 
 BOOST_AUTO_TEST_SUITE(expressions_btas_suite)
 

@@ -23,29 +23,27 @@
  *
  */
 
+#include <chrono>
+#include <random>
 #include "TiledArray/tensor/tensor_interface.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include <random>
-#include <chrono>
 
 using namespace TiledArray;
 
 struct TensorViewFixture {
+  TensorViewFixture() {}
 
-  TensorViewFixture() { }
-
-  ~TensorViewFixture() { }
+  ~TensorViewFixture() {}
 
   static Tensor<int> random_tensor(const Range& range) {
     Tensor<int> result(range);
 
     std::default_random_engine generator(
         std::chrono::system_clock::now().time_since_epoch().count());
-    std::uniform_int_distribution<int> distribution(0,100);
+    std::uniform_int_distribution<int> distribution(0, 100);
 
-    for(auto& value : result)
-      value = distribution(generator);
+    for (auto& value : result) value = distribution(generator);
 
     return result;
   }
@@ -55,34 +53,31 @@ struct TensorViewFixture {
 
   Tensor<int> t{random_tensor(Range(lower_bound, upper_bound))};
 
-}; // TensorViewFixture
+};  // TensorViewFixture
 
-const std::array<int, 3> TensorViewFixture::lower_bound{{0,1,2}};
-const std::array<int, 3> TensorViewFixture::upper_bound{{5,7,11}};
+const std::array<int, 3> TensorViewFixture::lower_bound{{0, 1, 2}};
+const std::array<int, 3> TensorViewFixture::upper_bound{{5, 7, 11}};
 
-BOOST_FIXTURE_TEST_SUITE( tensor_view_suite, TensorViewFixture )
+BOOST_FIXTURE_TEST_SUITE(tensor_view_suite, TensorViewFixture)
 
-BOOST_AUTO_TEST_CASE( non_const_view )
-{
-
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(non_const_view) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
         // Check that the sub-block is constructed without exceptions
-        BOOST_CHECK_NO_THROW(t.block(lower,upper));
-        TensorView<int> view = t.block(lower,upper);
+        BOOST_CHECK_NO_THROW(t.block(lower, upper));
+        TensorView<int> view = t.block(lower, upper);
 
         // Check that the data of the block range is correct
         std::size_t volume = 1ul;
-        for(unsigned int i = 0u; i < t.range().rank(); ++i) {
+        for (unsigned int i = 0u; i < t.range().rank(); ++i) {
           BOOST_CHECK_EQUAL(view.range().lobound(i), lower[i]);
           BOOST_CHECK_EQUAL(view.range().upbound(i), upper[i]);
           BOOST_CHECK_EQUAL(view.range().extent(i), upper[i] - lower[i]);
@@ -94,7 +89,8 @@ BOOST_AUTO_TEST_CASE( non_const_view )
         // Check that the subrange ordinal calculation returns the same offset
         // as the original range.
         Range::size_type i = 0ul;
-        for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+        for (auto it = view.range().begin(); it != view.range().end();
+             ++it, ++i) {
           BOOST_CHECK_EQUAL(view(i), view(*it));
           BOOST_CHECK_EQUAL(view(*it), t(*it));
           BOOST_CHECK_EQUAL(view(i), t(*it));
@@ -104,28 +100,24 @@ BOOST_AUTO_TEST_CASE( non_const_view )
   }
 }
 
-
-BOOST_AUTO_TEST_CASE( const_view )
-{
-
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(const_view) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
         // Check that the sub-block is constructed without exceptions
         BOOST_CHECK_NO_THROW(t.block(lower, upper));
         TensorConstView<int> view = t.block(lower, upper);
 
         // Check that the data of the block range is correct
         std::size_t volume = 1ul;
-        for(unsigned int i = 0u; i < t.range().rank(); ++i) {
+        for (unsigned int i = 0u; i < t.range().rank(); ++i) {
           BOOST_CHECK_EQUAL(view.range().lobound(i), lower[i]);
           BOOST_CHECK_EQUAL(view.range().upbound(i), upper[i]);
           BOOST_CHECK_EQUAL(view.range().extent(i), upper[i] - lower[i]);
@@ -137,7 +129,8 @@ BOOST_AUTO_TEST_CASE( const_view )
         // Check that the subrange ordinal calculation returns the same offset
         // as the original range.
         Range::size_type i = 0ul;
-        for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+        for (auto it = view.range().begin(); it != view.range().end();
+             ++it, ++i) {
           BOOST_CHECK_EQUAL(view(i), view(*it));
           BOOST_CHECK_EQUAL(view(*it), t(*it));
           BOOST_CHECK_EQUAL(view(i), t(*it));
@@ -147,16 +140,15 @@ BOOST_AUTO_TEST_CASE( const_view )
   }
 }
 
-BOOST_AUTO_TEST_CASE( transitive_read_write )
-{
+BOOST_AUTO_TEST_CASE(transitive_read_write) {
   std::default_random_engine generator(
       std::chrono::system_clock::now().time_since_epoch().count());
-  std::uniform_int_distribution<int> distribution(0,100);
+  std::uniform_int_distribution<int> distribution(0, 100);
 
-  TensorView<int> view = t.block({2,1,5}, {4,6,8});
+  TensorView<int> view = t.block({2, 1, 5}, {4, 6, 8});
 
   std::size_t i = 0ul;
-  for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+  for (auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
     // Test that the view and tensor have the same value
     BOOST_CHECK_EQUAL(view(*it), t(*it));
     BOOST_CHECK_EQUAL(view(i), t(*it));
@@ -173,20 +165,18 @@ BOOST_AUTO_TEST_CASE( transitive_read_write )
   }
 }
 
-BOOST_AUTO_TEST_CASE( assign_tensor_to_view )
-{
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(assign_tensor_to_view) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
-        TensorView<int> view = t.block(lower,upper);
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
+        TensorView<int> view = t.block(lower, upper);
         Tensor<int> tensor = random_tensor(Range(lower, upper));
 
         BOOST_CHECK_NO_THROW(view = tensor);
@@ -194,7 +184,8 @@ BOOST_AUTO_TEST_CASE( assign_tensor_to_view )
         // Check that the view values match that of tensor and that the values
         // are also set in t
         std::size_t i = 0ul;
-        for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+        for (auto it = view.range().begin(); it != view.range().end();
+             ++it, ++i) {
           BOOST_CHECK_EQUAL(view(*it), tensor(*it));
           BOOST_CHECK_EQUAL(view(*it), tensor(i));
           BOOST_CHECK_EQUAL(view(i), tensor(*it));
@@ -208,28 +199,25 @@ BOOST_AUTO_TEST_CASE( assign_tensor_to_view )
   }
 }
 
-BOOST_AUTO_TEST_CASE( copy_view_to_tensor )
-{
-
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(copy_view_to_tensor) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
-        TensorView<int> view = t.block(lower,upper);
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
+        TensorView<int> view = t.block(lower, upper);
         BOOST_CHECK_NO_THROW(Tensor<int> tensor(view););
         Tensor<int> tensor(view);
 
-
         // Check that the values of the tensor are equal to that of the view
         std::size_t i = 0ul;
-        for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+        for (auto it = view.range().begin(); it != view.range().end();
+             ++it, ++i) {
           BOOST_CHECK_EQUAL(tensor(*it), view(*it));
           BOOST_CHECK_EQUAL(tensor(*it), view(i));
           BOOST_CHECK_EQUAL(tensor(i), view(*it));
@@ -240,28 +228,26 @@ BOOST_AUTO_TEST_CASE( copy_view_to_tensor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( assign_view_to_tensor )
-{
-
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(assign_view_to_tensor) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
-        TensorView<int> view = t.block(lower,upper);
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
+        TensorView<int> view = t.block(lower, upper);
         Tensor<int> tensor(Range(lower, upper), 0);
 
         BOOST_CHECK_NO_THROW(tensor = view);
 
         // Check that the values of the tensor are equal to that of the view
         std::size_t i = 0ul;
-        for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+        for (auto it = view.range().begin(); it != view.range().end();
+             ++it, ++i) {
           BOOST_CHECK_EQUAL(tensor(*it), view(*it));
           BOOST_CHECK_EQUAL(tensor(*it), view(i));
           BOOST_CHECK_EQUAL(tensor(i), view(*it));
@@ -272,22 +258,19 @@ BOOST_AUTO_TEST_CASE( assign_view_to_tensor )
   }
 }
 
-BOOST_AUTO_TEST_CASE( add_tensor_view )
-{
-
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(add_tensor_view) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
         // Check that the sub-block is constructed without exceptions
-        TensorView<int> view = t.block(lower,upper);
+        TensorView<int> view = t.block(lower, upper);
         Tensor<int> right = random_tensor(detail::clone_range(view));
 
         Tensor<int> result;
@@ -298,7 +281,8 @@ BOOST_AUTO_TEST_CASE( add_tensor_view )
 
         // Check that the subrange ordinal calculation returns the same offset
         // as the original range.
-        for(auto it = result.range().begin(); it != result.range().end(); ++it) {
+        for (auto it = result.range().begin(); it != result.range().end();
+             ++it) {
           BOOST_CHECK_EQUAL(result(*it), view(*it) + right(*it));
         }
       }
@@ -306,24 +290,20 @@ BOOST_AUTO_TEST_CASE( add_tensor_view )
   }
 }
 
-
-BOOST_AUTO_TEST_CASE( add_tensor_to_view )
-{
-
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(add_tensor_to_view) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
         // Check that the sub-block is constructed without exceptions
-        BOOST_CHECK_NO_THROW(t.block(lower,upper));
-        TensorView<int> view = t.block(lower,upper);
+        BOOST_CHECK_NO_THROW(t.block(lower, upper));
+        TensorView<int> view = t.block(lower, upper);
         Tensor<int> tensor = random_tensor(Range(lower, upper));
 
         Tensor<int> temp(view);
@@ -332,7 +312,8 @@ BOOST_AUTO_TEST_CASE( add_tensor_to_view )
         // Check that the subrange ordinal calculation returns the same offset
         // as the original range.
         std::size_t i = 0ul;
-        for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+        for (auto it = view.range().begin(); it != view.range().end();
+             ++it, ++i) {
           BOOST_CHECK_EQUAL(view(*it), temp(*it) + tensor(*it));
           BOOST_CHECK_EQUAL(view(i), temp(*it) + tensor(*it));
         }
@@ -341,23 +322,19 @@ BOOST_AUTO_TEST_CASE( add_tensor_to_view )
   }
 }
 
-
-BOOST_AUTO_TEST_CASE( scale_view )
-{
-
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(scale_view) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
         // Check that the sub-block is constructed without exceptions
-        TensorView<int> view = t.block(lower,upper);
+        TensorView<int> view = t.block(lower, upper);
 
         Tensor<int> result;
         BOOST_CHECK_NO_THROW(result = view.scale(3));
@@ -365,7 +342,8 @@ BOOST_AUTO_TEST_CASE( scale_view )
         // Check that the subrange ordinal calculation returns the same offset
         // as the original range.
         std::size_t i = 0ul;
-        for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+        for (auto it = view.range().begin(); it != view.range().end();
+             ++it, ++i) {
           BOOST_CHECK_EQUAL(result(*it), view(*it) * 3);
         }
       }
@@ -373,22 +351,19 @@ BOOST_AUTO_TEST_CASE( scale_view )
   }
 }
 
-BOOST_AUTO_TEST_CASE( scale_to_view )
-{
-
-  for(auto lower_it = t.range().begin(); lower_it != t.range().end(); ++lower_it) {
+BOOST_AUTO_TEST_CASE(scale_to_view) {
+  for (auto lower_it = t.range().begin(); lower_it != t.range().end();
+       ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = t.range().begin(); upper_it != t.range().end(); ++upper_it) {
+    for (auto upper_it = t.range().begin(); upper_it != t.range().end();
+         ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
         // Check that the sub-block is constructed without exceptions
-        TensorView<int> view = t.block(lower,upper);
+        TensorView<int> view = t.block(lower, upper);
         Tensor<int> tensor = random_tensor(Range(lower, upper));
 
         Tensor<int> temp(view);
@@ -397,7 +372,8 @@ BOOST_AUTO_TEST_CASE( scale_to_view )
         // Check that the subrange ordinal calculation returns the same offset
         // as the original range.
         std::size_t i = 0ul;
-        for(auto it = view.range().begin(); it != view.range().end(); ++it, ++i) {
+        for (auto it = view.range().begin(); it != view.range().end();
+             ++it, ++i) {
           BOOST_CHECK_EQUAL(view(*it), temp(*it) * 3);
           BOOST_CHECK_EQUAL(view(i), temp(*it) * 3);
         }

@@ -27,22 +27,20 @@
 #include "unit_test_config.h"
 
 struct IrrepFixture {
+  IrrepFixture() {}
 
-  IrrepFixture() { }
+  ~IrrepFixture() {}
 
-  ~IrrepFixture() { }
-
-}; // IrrepFixture
+};  // IrrepFixture
 
 using TiledArray::Irrep;
 
-BOOST_FIXTURE_TEST_SUITE( symm_irrep_suite, IrrepFixture )
+BOOST_FIXTURE_TEST_SUITE(symm_irrep_suite, IrrepFixture)
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
+BOOST_AUTO_TEST_CASE(constructor) {
   {
-    BOOST_CHECK_NO_THROW(Irrep e_111_123({1,1,1}, {1,2,3}));
-    Irrep e_111_123({1,1,1}, {1,2,3});
+    BOOST_CHECK_NO_THROW(Irrep e_111_123({1, 1, 1}, {1, 2, 3}));
+    Irrep e_111_123({1, 1, 1}, {1, 2, 3});
 
     BOOST_CHECK_EQUAL(e_111_123.degree(), 3u);
     BOOST_CHECK_EQUAL(e_111_123.data()[0], 1u);
@@ -54,8 +52,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   }
 
   {
-    BOOST_CHECK_NO_THROW(Irrep e_3_111({3}, {1,1,1}));
-    Irrep e_3_111({3}, {1,1,1});
+    BOOST_CHECK_NO_THROW(Irrep e_3_111({3}, {1, 1, 1}));
+    Irrep e_3_111({3}, {1, 1, 1});
 
     BOOST_CHECK_EQUAL(e_3_111.degree(), 3u);
     BOOST_CHECK_EQUAL(e_3_111.data()[0], 3u);
@@ -67,8 +65,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   }
 
   {
-    BOOST_CHECK_NO_THROW(Irrep e_21_112({2,1}, {1,1,2}));
-    Irrep e_21_112({2,1}, {1,1,2});
+    BOOST_CHECK_NO_THROW(Irrep e_21_112({2, 1}, {1, 1, 2}));
+    Irrep e_21_112({2, 1}, {1, 1, 2});
 
     BOOST_CHECK_EQUAL(e_21_112.degree(), 3u);
     BOOST_CHECK_EQUAL(e_21_112.data()[0], 2u);
@@ -80,8 +78,8 @@ BOOST_AUTO_TEST_CASE( constructor )
   }
 
   {
-    BOOST_CHECK_NO_THROW(Irrep e_21_121({2,1}, {1,2,1}));
-    Irrep e_21_121({2,1}, {1,2,1});
+    BOOST_CHECK_NO_THROW(Irrep e_21_121({2, 1}, {1, 2, 1}));
+    Irrep e_21_121({2, 1}, {1, 2, 1});
 
     BOOST_CHECK_EQUAL(e_21_121.degree(), 3u);
     BOOST_CHECK_EQUAL(e_21_121.data()[0], 2u);

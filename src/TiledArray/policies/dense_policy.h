@@ -26,36 +26,36 @@
 #ifndef TILEDARRAY_DENSE_ARRAY_H__INCLUDED
 #define TILEDARRAY_DENSE_ARRAY_H__INCLUDED
 
-#include <TiledArray/tiled_range.h>
-#include <TiledArray/pmap/blocked_pmap.h>
 #include <TiledArray/dense_shape.h>
+#include <TiledArray/pmap/blocked_pmap.h>
+#include <TiledArray/tiled_range.h>
 
 namespace TiledArray {
 
-  // Forward declarations
-  class DenseShape;
+// Forward declarations
+class DenseShape;
 
-  class DensePolicy {
-  public:
-    typedef TiledArray::TiledRange trange_type;
-    typedef trange_type::range_type range_type;
-    typedef range_type::size_type size_type;
-    typedef TiledArray::DenseShape shape_type;
-    typedef TiledArray::Pmap pmap_interface;
-    typedef TiledArray::detail::BlockedPmap default_pmap_type;
+class DensePolicy {
+ public:
+  typedef TiledArray::TiledRange trange_type;
+  typedef trange_type::range_type range_type;
+  typedef range_type::size_type size_type;
+  typedef TiledArray::DenseShape shape_type;
+  typedef TiledArray::Pmap pmap_interface;
+  typedef TiledArray::detail::BlockedPmap default_pmap_type;
 
-    /// Create a default process map
+  /// Create a default process map
 
-    /// \param world The world of the process map
-    /// \param size The number of tiles in the array
-    /// \return A shared pointer to a process map
-    static std::shared_ptr<pmap_interface>
-    default_pmap(World& world, const std::size_t size) {
-      return std::make_shared<default_pmap_type>(world, size);
-    }
+  /// \param world The world of the process map
+  /// \param size The number of tiles in the array
+  /// \return A shared pointer to a process map
+  static std::shared_ptr<pmap_interface> default_pmap(World& world,
+                                                      const std::size_t size) {
+    return std::make_shared<default_pmap_type>(world, size);
+  }
 
-  }; // class DensePolicy
+};  // class DensePolicy
 
-} // namespace TiledArray
+}  // namespace TiledArray
 
-#endif // TILEDARRAY_DENSE_ARRAY_H__INCLUDED
+#endif  // TILEDARRAY_DENSE_ARRAY_H__INCLUDED

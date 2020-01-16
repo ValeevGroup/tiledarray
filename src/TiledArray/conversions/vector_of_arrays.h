@@ -13,15 +13,17 @@ namespace detail {
 
 /// @brief prepends an extra dimension to a TRange
 
-/// The extra dimension will be the leading dimension, and will be blocked by @c block_size
+/// The extra dimension will be the leading dimension, and will be blocked by @c
+/// block_size
 
 /// @param array_rank extent of the leading dimension of the result
 /// @param array_trange the base trange
-/// @param block_size blocking range for the new dimension, the dimension being fused
+/// @param block_size blocking range for the new dimension, the dimension being
+/// fused
 /// @return TiledRange of fused Array object
 inline TA::TiledRange fuse_vector_of_tranges(
-    std::size_t array_rank,
-    const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
+    std::size_t array_rank, const TiledArray::TiledRange& array_trange,
+    std::size_t block_size = 1) {
   /// make the new TiledRange1 for new dimension
   TA::TiledRange1 new_trange1;
   {
@@ -46,7 +48,8 @@ inline TA::TiledRange fuse_vector_of_tranges(
   return new_trange;
 }
 
-/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector
+/// index forming the first mode
 
 /// @param fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
@@ -57,21 +60,23 @@ TA::DenseShape fuse_vector_of_shapes(
   return TA::DenseShape(1, fused_trange);
 }
 
-/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector
+/// index forming the first mode
 
 /// @param fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
-TA::DenseShape fuse_vector_of_shapes(madness::World&,
-        const std::vector<TA::DistArray<Tile, TA::DensePolicy>>&,
-        int,
-        const TA::TiledRange& fused_trange) {
+TA::DenseShape fuse_vector_of_shapes(
+    madness::World&, const std::vector<TA::DistArray<Tile, TA::DensePolicy>>&,
+    int, const TA::TiledRange& fused_trange) {
   return TA::DenseShape(1, fused_trange);
 }
 
-/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector
+/// index forming the first mode
 
-/// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
+/// @param[in] arrays a vector of DistArray objects; all members of @c arrays
+/// must have the same TiledRange
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
@@ -97,12 +102,14 @@ TA::SparseShape<float> fuse_vector_of_shapes(
   TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range());
 
   // compute norms of fused tiles
-  // N.B. tile norms are stored in scaled format, unscale in order to compute norms of fused tiles
+  // N.B. tile norms are stored in scaled format, unscale in order to compute
+  // norms of fused tiles
   std::size_t narrays = arrays.size();
   size_t fused_tile_ord = 0;
   for (size_t vidx = 0, fused_vidx = 0; vidx < narrays;
        vidx += block_size, ++fused_vidx) {
-    // how many arrays actually constribute to this fused tile ... last fused tile may have fewer than block_size
+    // how many arrays actually constribute to this fused tile ... last fused
+    // tile may have fewer than block_size
     const auto vblk_size =
         (narrays - vidx) >= block_size ? block_size : narrays - vidx;
     for (size_t tile_ord = 0; tile_ord != ntiles_per_array;
@@ -128,19 +135,21 @@ TA::SparseShape<float> fuse_vector_of_shapes(
   return fused_shapes;
 }
 
-/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
+/// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector
+/// index forming the first mode
 ///
 /// @param global_world the world object which the new fused array will live in.
-/// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-/// @param array_rank Number of tensors in the fused @c arrays (the size of @c arrays on each rank will depend on world.size)
+/// @param[in] arrays a vector of DistArray objects; all members of @c arrays
+/// must have the same TiledRange
+/// @param array_rank Number of tensors in the fused @c arrays (the size of @c
+/// arrays on each rank will depend on world.size)
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
 /// @return Shape of fused Array object
 template <typename Tile>
 TA::SparseShape<float> fuse_vector_of_shapes(
     madness::World& global_world,
     const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
-    const std::size_t array_rank,
-    const TA::TiledRange& fused_trange) {
+    const std::size_t array_rank, const TA::TiledRange& fused_trange) {
   const std::size_t rank = global_world.rank();
   auto size = global_world.size();
   auto first_tile_in_mode0 = *fused_trange.dim(0).begin();
@@ -162,13 +171,15 @@ TA::SparseShape<float> fuse_vector_of_shapes(
   TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range());
 
   // compute norms of fused tiles
-  // N.B. tile norms are stored in scaled format, unscale in order to compute norms of fused tiles
+  // N.B. tile norms are stored in scaled format, unscale in order to compute
+  // norms of fused tiles
   std::size_t narrays = array_rank;
   size_t fused_tile_ord = 0;
-  double divisor = 1.0 / (double) size;
+  double divisor = 1.0 / (double)size;
   for (size_t vidx = 0, fused_vidx = 0; vidx < narrays;
        vidx += block_size, ++fused_vidx) {
-    // how many arrays actually constribute to this fused tile ... last fused tile may have fewer than block_size
+    // how many arrays actually constribute to this fused tile ... last fused
+    // tile may have fewer than block_size
     const auto vblk_size =
         (narrays - vidx) >= block_size ? block_size : narrays - vidx;
     for (size_t tile_ord = 0; tile_ord != ntiles_per_array;
@@ -177,7 +188,7 @@ TA::SparseShape<float> fuse_vector_of_shapes(
       const auto tile_volume = tile_volumes[tile_ord];
       for (size_t v = 0, vv = vidx; v != vblk_size; ++v, ++vv) {
         if (rank == vv % size) {
-          int dim = (int) (vv * divisor);
+          int dim = (int)(vv * divisor);
           const auto unscaled_tile_norm =
               arrays[dim].shape().data()[tile_ord] * tile_volume;
           unscaled_fused_tile_norm2 += unscaled_tile_norm * unscaled_tile_norm;
@@ -191,16 +202,18 @@ TA::SparseShape<float> fuse_vector_of_shapes(
     }
   }
 
-  auto fused_shapes =
-      TA::SparseShape<float>(global_world, fused_tile_norms, fused_trange, true);
+  auto fused_shapes = TA::SparseShape<float>(global_world, fused_tile_norms,
+                                             fused_trange, true);
 
   return fused_shapes;
 }
 
-/// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
+/// @brief extracts the shape of a subarray of a fused array created with
+/// fuse_vector_of_arrays
 
 /// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
-/// @param[in] i the index of the subarray whose Shape will be extracted (i.e. the index of the corresponding tile of the leading dimension)
+/// @param[in] i the index of the subarray whose Shape will be extracted (i.e.
+/// the index of the corresponding tile of the leading dimension)
 /// @param[in] split_trange TiledRange of the target subarray objct
 /// @return the Shape of the @c i -th subarray
 template <typename Tile>
@@ -210,7 +223,8 @@ TA::DenseShape subshape_from_fused_array(
   return TA::DenseShape(1, split_trange);
 }
 
-/// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
+/// @brief extracts the shape of a subarray of a fused array created with
+/// fuse_vector_of_arrays
 
 /// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
 /// @param[in] i the index of the subarray whose Shape will be extracted
@@ -254,14 +268,20 @@ TA::SparseShape<float> subshape_from_fused_array(
 
 }  // namespace detail
 
-/// @brief fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimensions
+/// @brief fuses a vector of DistArray objects, each with the same TiledRange
+/// into a DistArray with 1 more dimensions
 
-/// The leading dimension of the resulting array is the vector dimension, and will be blocked by @block_size .
+/// The leading dimension of the resulting array is the vector dimension, and
+/// will be blocked by @block_size .
 ///
-/// @param[in] arrays a vector of DistArray objects; every element of @c arrays must have the same TiledRange object and live in the same world.
-/// @param[in] block_size the block size for the "vector" dimension of the tiled range of the result
+/// @param[in] arrays a vector of DistArray objects; every element of @c arrays
+/// must have the same TiledRange object and live in the same world.
+/// @param[in] block_size the block size for the "vector" dimension of the tiled
+/// range of the result
 /// @return @c arrays fused into a DistArray
-/// @note This is a collective function. It assumes that it is invoked across the world in which all subarrays live; the result will live in the same world.
+/// @note This is a collective function. It assumes that it is invoked across
+/// the world in which all subarrays live; the result will live in the same
+/// world.
 template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
     const std::vector<TA::DistArray<Tile, Policy>>& arrays,
@@ -271,7 +291,8 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   const auto mode0_extent = arrays.size();
 
   // make fused tiledrange
-  auto fused_trange = detail::fuse_vector_of_tranges(arrays.size(), arrays.at(0).trange(), block_size);
+  auto fused_trange = detail::fuse_vector_of_tranges(
+      arrays.size(), arrays.at(0).trange(), block_size);
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
   // make fused shape
@@ -300,7 +321,8 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   /// write to blocks of fused_array
   for (auto&& fused_tile_ord : *fused_array.pmap()) {
     if (!fused_array.is_zero(fused_tile_ord)) {
-      // convert ordinal of the fused tile to the ordinals of its consituent tiles
+      // convert ordinal of the fused tile to the ordinals of its consituent
+      // tiles
       const auto div = std::ldiv(fused_tile_ord, ntiles_per_array);
       const auto tile_idx_mode0 = div.quot;
       // ordinal of the coresponding tile in the arrays
@@ -333,13 +355,16 @@ class dist_subarray_vec
   using Tile = typename Array::value_type;
   using Policy = typename Array::policy_type;
 
-  /// @param world world object that contains all the worlds which arrays in @c split_array live in
+  /// @param world world object that contains all the worlds which arrays in @c
+  /// split_array live in
   /// @param array possibly distributed vector of arrays
-  /// @param rank total number of Arrays (sum of arrays per process for each processor)
-  dist_subarray_vec(madness::World& world, const std::vector<Array>& array, const std::size_t rank)
+  /// @param rank total number of Arrays (sum of arrays per process for each
+  /// processor)
+  dist_subarray_vec(madness::World& world, const std::vector<Array>& array,
+                    const std::size_t rank)
       : madness::WorldObject<dist_subarray_vec<Array>>(world),
         split_array(array),
-        rank_(rank){
+        rank_(rank) {
     this->process_pending();
   }
 
@@ -364,25 +389,33 @@ class dist_subarray_vec
   const std::vector<Array>& split_array;
   const int rank_;
 };
-}
+}  // namespace detail
 
-/// @brief fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimensions
+/// @brief fuses a vector of DistArray objects, each with the same TiledRange
+/// into a DistArray with 1 more dimensions
 
-/// The leading dimension of the resulting array is the vector dimension, and will be blocked by @block_size .
+/// The leading dimension of the resulting array is the vector dimension, and
+/// will be blocked by @block_size .
 ///
-/// @param global_world the world in which the result will live and across which this is invoked.
-/// @param[in] arrays a vector of DistArray objects; every element of @c arrays must have the same TiledRange object and live in the same world.
-/// @param array_rank total number of arrays in a fused @c arrays (sum of @c arrays.size() on each rank)
-/// @param[in] block_size the block size for the "vector" dimension of the tiled range of the result
+/// @param global_world the world in which the result will live and across which
+/// this is invoked.
+/// @param[in] arrays a vector of DistArray objects; every element of @c arrays
+/// must have the same TiledRange object and live in the same world.
+/// @param array_rank total number of arrays in a fused @c arrays (sum of @c
+/// arrays.size() on each rank)
+/// @param[in] block_size the block size for the "vector" dimension of the tiled
+/// range of the result
 /// @return @c arrays fused into a DistArray
-/// @note This is a collective function. It assumes that it is invoked across @c global_world, but the subarrays are "local" to each rank and distributed in round-robin fashion.
+/// @note This is a collective function. It assumes that it is invoked across @c
+/// global_world, but the subarrays are "local" to each rank and distributed in
+/// round-robin fashion.
 ///       The result will live in @c global_world.
 template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
     madness::World& global_world,
     const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
-    const std::size_t array_rank,
-    const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
+    const std::size_t array_rank, const TiledArray::TiledRange& array_trange,
+    std::size_t block_size = 1) {
   auto size = global_world.size();
 
   // make instances of array_vec globally accessible
@@ -392,8 +425,8 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   const auto mode0_extent = array_rank;
 
   // make fused tiledrange
-  auto fused_trange = detail::fuse_vector_of_tranges(array_rank,
-                                                     array_trange, block_size);
+  auto fused_trange =
+      detail::fuse_vector_of_tranges(array_rank, array_trange, block_size);
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
   // make fused shape
@@ -426,10 +459,11 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   };
 
   /// write to blocks of fused_array
-  auto divisor = 1.0 / (double) size;
+  auto divisor = 1.0 / (double)size;
   for (auto&& fused_tile_ord : *fused_array.pmap()) {
     if (!fused_array.is_zero(fused_tile_ord)) {
-      // convert ordinal of the fused tile to the ordinals of its constituent tiles
+      // convert ordinal of the fused tile to the ordinals of its constituent
+      // tiles
       const auto div = std::ldiv(fused_tile_ord, ntiles_per_array);
       const auto tile_idx_mode0 = div.quot;
       // ordinal of the corresponding tile in the arrays
@@ -444,7 +478,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
       for (size_t v = 0, vidx = tile_idx_mode0 * block_size;
            v != block_size && vidx < mode0_extent; ++v, ++vidx) {
         int owner_rank = vidx % size;
-        int new_vidx = (int) (vidx * divisor);
+        int new_vidx = (int)(vidx * divisor);
 
         input_tiles.emplace_back(
             arrays.task(owner_rank,
@@ -465,7 +499,8 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays(
   return fused_array;
 }
 
-/// @brief extracts a subarray of a fused array created with fuse_vector_of_arrays
+/// @brief extracts a subarray of a fused array created with
+/// fuse_vector_of_arrays
 
 /// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
 /// @param[in] i the index of the subarray to be extracted
@@ -521,8 +556,8 @@ TA::DistArray<Tile, Policy> subarray_from_fused_array(
   return split_array;
 }
 
-/// @brief extracts a subarray of a fused array created with fuse_vector_of_arrays
-/// and creates the array in @c local_world.
+/// @brief extracts a subarray of a fused array created with
+/// fuse_vector_of_arrays and creates the array in @c local_world.
 
 /// @param[in] local_world The World object where the @i -th subarray is
 ///             created

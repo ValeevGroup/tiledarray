@@ -89,8 +89,7 @@ const TensorUMFixture::range_type TensorUMFixture::r = make_range(81);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_um_suite, TensorUMFixture)
 
-
-BOOST_AUTO_TEST_CASE( default_constructor ) {
+BOOST_AUTO_TEST_CASE(default_constructor) {
   // check constructor
   BOOST_REQUIRE_NO_THROW(TensorN x);
   TensorN x;
@@ -104,44 +103,46 @@ BOOST_AUTO_TEST_CASE( default_constructor ) {
 
   // Check the element data
   BOOST_CHECK_EQUAL(x.begin(), x.end());
-  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end());
+  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(x).begin(),
+                    const_cast<const TensorN&>(x).end());
 }
 
-BOOST_AUTO_TEST_CASE( range_constructor )
-{
+BOOST_AUTO_TEST_CASE(range_constructor) {
   BOOST_REQUIRE_NO_THROW(TensorN x(r));
   TensorN x(r);
 
-  BOOST_CHECK(! x.empty());
+  BOOST_CHECK(!x.empty());
 
   // Check that range data is correct
   BOOST_CHECK_NE(x.data(), static_cast<int*>(NULL));
   BOOST_CHECK_EQUAL(x.size(), r.volume());
   BOOST_CHECK_EQUAL(x.range(), r);
   BOOST_CHECK_EQUAL(std::distance(x.begin(), x.end()), r.volume());
-  BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
-
+  BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(),
+                                  const_cast<const TensorN&>(x).end()),
+                    r.volume());
 }
 
-BOOST_AUTO_TEST_CASE( value_constructor )
-{
+BOOST_AUTO_TEST_CASE(value_constructor) {
   BOOST_REQUIRE_NO_THROW(TensorN x(r, 8));
   TensorN x(r, 8);
 
-  BOOST_CHECK(! x.empty());
+  BOOST_CHECK(!x.empty());
 
   // Check that range data is correct
   BOOST_CHECK_NE(x.data(), static_cast<int*>(NULL));
   BOOST_CHECK_EQUAL(x.size(), r.volume());
   BOOST_CHECK_EQUAL(x.range(), r);
   BOOST_CHECK_EQUAL(std::distance(x.begin(), x.end()), r.volume());
-  BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(), const_cast<const TensorN&>(x).end()), r.volume());
+  BOOST_CHECK_EQUAL(std::distance(const_cast<const TensorN&>(x).begin(),
+                                  const_cast<const TensorN&>(x).end()),
+                    r.volume());
 
-  for(TensorN::const_iterator it = x.begin(); it != x.end(); ++it)
+  for (TensorN::const_iterator it = x.begin(); it != x.end(); ++it)
     BOOST_CHECK_EQUAL(*it, 8);
 }
 
-//BOOST_AUTO_TEST_CASE( copy_constructor ) {
+// BOOST_AUTO_TEST_CASE( copy_constructor ) {
 //  // check constructor
 //  BOOST_REQUIRE_NO_THROW(TensorN tc(t));
 //  TensorN tc(t);
@@ -154,48 +155,49 @@ BOOST_AUTO_TEST_CASE( value_constructor )
 //  BOOST_CHECK_EQUAL(tc.range(), t.range());
 //  BOOST_CHECK_EQUAL(tc.begin(), t.begin());
 //  BOOST_CHECK_EQUAL(tc.end(), t.end());
-//  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(tc).begin(), const_cast<const TensorN&>(t).begin());
-//  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(tc).end(), const_cast<const TensorN&>(t).end());
+//  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(tc).begin(), const_cast<const
+//  TensorN&>(t).begin()); BOOST_CHECK_EQUAL(const_cast<const
+//  TensorN&>(tc).end(), const_cast<const TensorN&>(t).end());
 //  BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
 //}
 
-BOOST_AUTO_TEST_CASE( range_accessor )
-{
-  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().lobound_data(), t.range().lobound_data() + t.range().rank(),
-                                r.lobound_data(), r.lobound_data() + r.rank());  // check start accessor
-  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().upbound_data(), t.range().upbound_data() + t.range().rank(),
-                                r.upbound_data(), r.upbound_data() + r.rank());// check finish accessor
-  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().extent_data(), t.range().extent_data() + t.range().rank(),
-                                r.extent_data(), r.extent_data() + r.rank());    // check size accessor
-  BOOST_CHECK_EQUAL_COLLECTIONS(t.range().stride_data(), t.range().stride_data() + t.range().rank(),
-                                r.stride_data(), r.stride_data() + r.rank());    // check weight accessor
-  BOOST_CHECK_EQUAL(t.range().volume(), r.volume());// check volume accessor
-  BOOST_CHECK_EQUAL(t.range(), r);          // check range accessof
+BOOST_AUTO_TEST_CASE(range_accessor) {
+  BOOST_CHECK_EQUAL_COLLECTIONS(
+      t.range().lobound_data(), t.range().lobound_data() + t.range().rank(),
+      r.lobound_data(), r.lobound_data() + r.rank());  // check start accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(
+      t.range().upbound_data(), t.range().upbound_data() + t.range().rank(),
+      r.upbound_data(), r.upbound_data() + r.rank());  // check finish accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(
+      t.range().extent_data(), t.range().extent_data() + t.range().rank(),
+      r.extent_data(), r.extent_data() + r.rank());  // check size accessor
+  BOOST_CHECK_EQUAL_COLLECTIONS(
+      t.range().stride_data(), t.range().stride_data() + t.range().rank(),
+      r.stride_data(), r.stride_data() + r.rank());   // check weight accessor
+  BOOST_CHECK_EQUAL(t.range().volume(), r.volume());  // check volume accessor
+  BOOST_CHECK_EQUAL(t.range(), r);                    // check range accessof
 }
 
-BOOST_AUTO_TEST_CASE( element_access )
-{
+BOOST_AUTO_TEST_CASE(element_access) {
   // check operator[] with array coordinate index and ordinal index
-  for(std::size_t i = 0ul; i < t.size(); ++i) {
+  for (std::size_t i = 0ul; i < t.size(); ++i) {
     BOOST_CHECK_LT(t[i], 42);
     BOOST_CHECK_EQUAL(t[r.idx(i)], t[i]);
   }
 
   // check access via call operator, if implemented
 #if defined(TILEDARRAY_HAS_VARIADIC_TEMPLATES)
-  # if TEST_DIM == 3u
-  BOOST_CHECK_EQUAL(t(0,0,0), t[0]);
-# endif
+#if TEST_DIM == 3u
+  BOOST_CHECK_EQUAL(t(0, 0, 0), t[0]);
 #endif
-
+#endif
 }
 
-BOOST_AUTO_TEST_CASE( iteration )
-{
+BOOST_AUTO_TEST_CASE(iteration) {
   BOOST_CHECK_EQUAL(t.begin(), const_cast<const TensorN&>(t).begin());
   BOOST_CHECK_EQUAL(t.end(), const_cast<const TensorN&>(t).end());
 
-  for(TensorN::iterator it = t.begin(); it != t.end(); ++it) {
+  for (TensorN::iterator it = t.begin(); it != t.end(); ++it) {
     BOOST_CHECK_LT(*it, 42);
     BOOST_CHECK_EQUAL(*it, t[std::distance(t.begin(), it)]);
   }
@@ -211,20 +213,19 @@ BOOST_AUTO_TEST_CASE( iteration )
   BOOST_CHECK_EQUAL(t2.begin(), t2.end());
 }
 
-BOOST_AUTO_TEST_CASE( element_assignment )
-{
-
+BOOST_AUTO_TEST_CASE(element_assignment) {
   // verify preassignment conditions
   BOOST_CHECK_NE(t[1], 2);
   // check that assignment returns itself.
-  BOOST_CHECK_EQUAL(t[1] = 2, 2) ;
+  BOOST_CHECK_EQUAL(t[1] = 2, 2);
   // check for correct assignment.
   BOOST_CHECK_EQUAL(t[1], 2);
 }
 
-BOOST_AUTO_TEST_CASE( serialization )
-{
-  std::size_t buf_size = (t.range().volume() * sizeof(int) + sizeof(size_type) * (r.rank() * 4 + 2))*2;
+BOOST_AUTO_TEST_CASE(serialization) {
+  std::size_t buf_size = (t.range().volume() * sizeof(int) +
+                          sizeof(size_type) * (r.rank() * 4 + 2)) *
+                         2;
   unsigned char* buf = new unsigned char[buf_size];
   madness::archive::BufferOutputArchive oar(buf, buf_size);
   BOOST_REQUIRE_NO_THROW(oar & t);
@@ -232,11 +233,11 @@ BOOST_AUTO_TEST_CASE( serialization )
   oar.close();
 
   TensorN ts;
-  madness::archive::BufferInputArchive iar(buf,nbyte);
+  madness::archive::BufferInputArchive iar(buf, nbyte);
   BOOST_REQUIRE_NO_THROW(iar & ts);
   iar.close();
 
-  delete [] buf;
+  delete[] buf;
 
   BOOST_CHECK_EQUAL(t.range(), ts.range());
   BOOST_CHECK_EQUAL_COLLECTIONS(t.begin(), t.end(), ts.begin(), ts.end());

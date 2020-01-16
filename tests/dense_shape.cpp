@@ -27,20 +27,16 @@
 #include "unit_test_config.h"
 
 struct DenseShapeFixture {
+  DenseShapeFixture() {}
 
-  DenseShapeFixture() { }
+  ~DenseShapeFixture() {}
 
-  ~DenseShapeFixture() { }
-
-}; // DenseShapeFixture
+};  // DenseShapeFixture
 
 using namespace TiledArray;
 
-BOOST_FIXTURE_TEST_SUITE( dense_shape_suite, DenseShapeFixture )
+BOOST_FIXTURE_TEST_SUITE(dense_shape_suite, DenseShapeFixture)
 
-BOOST_AUTO_TEST_CASE( constructor )
-{
-  BOOST_CHECK_NO_THROW(DenseShape());
-}
+BOOST_AUTO_TEST_CASE(constructor) { BOOST_CHECK_NO_THROW(DenseShape()); }
 
 BOOST_AUTO_TEST_SUITE_END()

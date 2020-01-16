@@ -45,7 +45,6 @@ class cuda_um_allocator_impl {
   using reference = T&;
   using const_reference = const T&;
 
-
   cuda_um_allocator_impl() noexcept
       : um_dynamic_pool_(&cudaEnv::instance()->um_dynamic_pool()) {}
 
@@ -71,7 +70,8 @@ class cuda_um_allocator_impl {
   }
 
   template <typename T1, typename T2>
-  friend bool operator==(const cuda_um_allocator_impl<T1>& lhs, const cuda_um_allocator_impl<T2>& rhs) noexcept;
+  friend bool operator==(const cuda_um_allocator_impl<T1>& lhs,
+                         const cuda_um_allocator_impl<T2>& rhs) noexcept;
 
  private:
   umpire::Allocator* um_dynamic_pool_;
@@ -121,7 +121,7 @@ class default_init_allocator : public A {
 };
 
 template <typename T>
-using cuda_um_allocator = default_init_allocator<T,cuda_um_allocator_impl<T>>;
+using cuda_um_allocator = default_init_allocator<T, cuda_um_allocator_impl<T>>;
 
 }  // namespace TiledArray
 

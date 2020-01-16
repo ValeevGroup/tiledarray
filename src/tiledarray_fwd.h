@@ -22,64 +22,73 @@
 
 #include <complex>
 
-namespace Eigen { // fwd define Eigen's aligned allocator for TiledArray::Tensor
-  template<class>
-  class aligned_allocator;
-} // namespace Eigen
+namespace Eigen {  // fwd define Eigen's aligned allocator for
+                   // TiledArray::Tensor
+template <class>
+class aligned_allocator;
+}  // namespace Eigen
 
 namespace TiledArray {
 
-  // Ranges
-  class TiledRange1;
-  class TiledRange;
+// Ranges
+class TiledRange1;
+class TiledRange;
 
-  // TiledArray Policy
-  class DensePolicy;
-  class SparsePolicy;
+// TiledArray Policy
+class DensePolicy;
+class SparsePolicy;
 
-  // TiledArray Tensors
-  template<typename, typename>
-  class Tensor;
+// TiledArray Tensors
+template <typename, typename>
+class Tensor;
 
-  typedef Tensor<double, Eigen::aligned_allocator<double> > TensorD;
-  typedef Tensor<int, Eigen::aligned_allocator<int> > TensorI;
-  typedef Tensor<float, Eigen::aligned_allocator<float> > TensorF;
-  typedef Tensor<long, Eigen::aligned_allocator<long> > TensorL;
-  typedef Tensor<std::complex<double>, Eigen::aligned_allocator<std::complex<double> > > TensorZ;
-  typedef Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> > > TensorC;
+typedef Tensor<double, Eigen::aligned_allocator<double> > TensorD;
+typedef Tensor<int, Eigen::aligned_allocator<int> > TensorI;
+typedef Tensor<float, Eigen::aligned_allocator<float> > TensorF;
+typedef Tensor<long, Eigen::aligned_allocator<long> > TensorL;
+typedef Tensor<std::complex<double>,
+               Eigen::aligned_allocator<std::complex<double> > >
+    TensorZ;
+typedef Tensor<std::complex<float>,
+               Eigen::aligned_allocator<std::complex<float> > >
+    TensorC;
 
-  // TiledArray Arrays
-  template <typename, typename> class DistArray;
+// TiledArray Arrays
+template <typename, typename>
+class DistArray;
 
+// Dense Array Typedefs
+template <typename T>
+using TArray = DistArray<Tensor<T, Eigen::aligned_allocator<T> >, DensePolicy>;
+typedef TArray<double> TArrayD;
+typedef TArray<int> TArrayI;
+typedef TArray<float> TArrayF;
+typedef TArray<long> TArrayL;
+typedef TArray<std::complex<double> > TArrayZ;
+typedef TArray<std::complex<float> > TArrayC;
 
-  // Dense Array Typedefs
-  template <typename T>
-  using TArray = DistArray<Tensor<T, Eigen::aligned_allocator<T> >, DensePolicy>;
-  typedef TArray<double>                  TArrayD;
-  typedef TArray<int>                     TArrayI;
-  typedef TArray<float>                   TArrayF;
-  typedef TArray<long>                    TArrayL;
-  typedef TArray<std::complex<double> >   TArrayZ;
-  typedef TArray<std::complex<float> >    TArrayC;
+// Sparse Array Typedefs
+template <typename T>
+using TSpArray =
+    DistArray<Tensor<T, Eigen::aligned_allocator<T> >, SparsePolicy>;
+typedef TSpArray<double> TSpArrayD;
+typedef TSpArray<int> TSpArrayI;
+typedef TSpArray<float> TSpArrayF;
+typedef TSpArray<long> TSpArrayL;
+typedef TSpArray<std::complex<double> > TSpArrayZ;
+typedef TSpArray<std::complex<float> > TSpArrayC;
 
-  // Sparse Array Typedefs
-  template <typename T>
-  using TSpArray = DistArray<Tensor<T, Eigen::aligned_allocator<T> >, SparsePolicy>;
-  typedef TSpArray<double>                TSpArrayD;
-  typedef TSpArray<int>                   TSpArrayI;
-  typedef TSpArray<float>                 TSpArrayF;
-  typedef TSpArray<long>                  TSpArrayL;
-  typedef TSpArray<std::complex<double> > TSpArrayZ;
-  typedef TSpArray<std::complex<float> >  TSpArrayC;
+// type alias for backward compatibility: the old Array has static type,
+// DistArray is rank-polymorphic
+template <typename T, unsigned int = 0,
+          typename Tile = Tensor<T, Eigen::aligned_allocator<T> >,
+          typename Policy = DensePolicy>
+using Array = DistArray<Tile, Policy>;
 
-  // type alias for backward compatibility: the old Array has static type, DistArray is rank-polymorphic
-  template <typename T, unsigned int = 0, typename Tile = Tensor<T, Eigen::aligned_allocator<T> >, typename Policy = DensePolicy>
-  using Array = DistArray<Tile, Policy>;
-
-} // namespace TiledArray
+}  // namespace TiledArray
 
 #ifndef TILEDARRAY_DISABLE_NAMESPACE_TA
 namespace TA = TiledArray;
 #endif  // TILEDARRAY_DISABLE_NAMESPACE_TA
 
-#endif // TILEDARRAY_FWD_H__INCLUDED
+#endif  // TILEDARRAY_FWD_H__INCLUDED

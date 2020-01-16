@@ -26,169 +26,167 @@
 #ifndef TILEDARRAY_EXPRESSIONS_UNARY_ENGINE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_UNARY_ENGINE_H__INCLUDED
 
-#include <TiledArray/expressions/expr_engine.h>
 #include <TiledArray/dist_eval/unary_eval.h>
+#include <TiledArray/expressions/expr_engine.h>
 
 namespace TiledArray {
-  namespace expressions {
+namespace expressions {
 
+// Forward declarations
+template <typename>
+class UnaryExpr;
 
-    // Forward declarations
-    template <typename> class UnaryExpr;
+template <typename Derived>
+class UnaryEngine : ExprEngine<Derived> {
+ public:
+  // Class hierarchy typedefs
+  typedef UnaryEngine<Derived> UnaryEngine_;  ///< This class type
+  typedef ExprEngine<Derived> ExprEngine_;    ///< Base class type
 
+  // Argument typedefs
+  typedef typename EngineTrait<Derived>::argument_type
+      argument_type;  ///< The argument expression engine type
 
-    template <typename Derived>
-    class UnaryEngine : ExprEngine<Derived> {
-    public:
-      // Class hierarchy typedefs
-      typedef UnaryEngine<Derived> UnaryEngine_; ///< This class type
-      typedef ExprEngine<Derived> ExprEngine_; ///< Base class type
+  // Operational typedefs
+  typedef typename EngineTrait<Derived>::value_type
+      value_type;  ///< The result tile type
+  typedef typename EngineTrait<Derived>::op_type
+      op_type;  ///< The tile operation type
+  typedef
+      typename EngineTrait<Derived>::policy policy;  ///< The result policy type
+  typedef typename EngineTrait<Derived>::dist_eval_type
+      dist_eval_type;  ///< The distributed evaluator type
 
-      // Argument typedefs
-      typedef typename EngineTrait<Derived>::argument_type argument_type; ///< The argument expression engine type
+  // Meta data typedefs
+  typedef typename EngineTrait<Derived>::size_type size_type;  ///< Size type
+  typedef typename EngineTrait<Derived>::trange_type
+      trange_type;  ///< Tiled range type
+  typedef typename EngineTrait<Derived>::shape_type shape_type;  ///< Shape type
+  typedef typename EngineTrait<Derived>::pmap_interface
+      pmap_interface;  ///< Process map interface type
 
-      // Operational typedefs
-      typedef typename EngineTrait<Derived>::value_type value_type; ///< The result tile type
-      typedef typename EngineTrait<Derived>::op_type op_type; ///< The tile operation type
-      typedef typename EngineTrait<Derived>::policy policy; ///< The result policy type
-      typedef typename EngineTrait<Derived>::dist_eval_type dist_eval_type; ///< The distributed evaluator type
+  static constexpr bool consumable = true;
+  static constexpr unsigned int leaves = argument_type::leaves;
 
-      // Meta data typedefs
-      typedef typename EngineTrait<Derived>::size_type size_type; ///< Size type
-      typedef typename EngineTrait<Derived>::trange_type trange_type; ///< Tiled range type
-      typedef typename EngineTrait<Derived>::shape_type shape_type; ///< Shape type
-      typedef typename EngineTrait<Derived>::pmap_interface pmap_interface; ///< Process map interface type
+ protected:
+  // Import base class variables to this scope
+  using ExprEngine_::perm_;
+  using ExprEngine_::permute_tiles_;
+  using ExprEngine_::pmap_;
+  using ExprEngine_::shape_;
+  using ExprEngine_::trange_;
+  using ExprEngine_::vars_;
+  using ExprEngine_::world_;
 
+  argument_type arg_;  ///< The argument
 
-      static constexpr bool consumable = true;
-      static constexpr unsigned int leaves = argument_type::leaves;
+ private:
+  // Not allowed
+  UnaryEngine(const UnaryEngine_&);
+  UnaryEngine_& operator=(const UnaryEngine_&);
 
-    protected:
+ public:
+  template <typename D>
+  UnaryEngine(const UnaryExpr<D>& expr) : ExprEngine_(expr), arg_(expr.arg()) {}
 
-      // Import base class variables to this scope
-      using ExprEngine_::world_;
-      using ExprEngine_::vars_;
-      using ExprEngine_::perm_;
-      using ExprEngine_::trange_;
-      using ExprEngine_::shape_;
-      using ExprEngine_::pmap_;
-      using ExprEngine_::permute_tiles_;
+  // Pull base class functions into this class.
+  using ExprEngine_::derived;
+  using ExprEngine_::vars;
 
-      argument_type arg_; ///< The argument
+  /// Set the variable list for this expression
 
-    private:
+  /// This function will set the variable list for this expression and its
+  /// children such that the number of permutations is minimized.
+  /// \param target_vars The target variable list for this expression
+  void perm_vars(const VariableList& target_vars) {
+    TA_ASSERT(permute_tiles_);
 
-      // Not allowed
-      UnaryEngine(const UnaryEngine_&);
-      UnaryEngine_& operator=(const UnaryEngine_&);
+    vars_ = target_vars;
+    if (arg_.vars() != target_vars) arg_.perm_vars(target_vars);
+  }
 
-    public:
+  /// Initialize the variable list of this expression
 
-      template <typename D>
-      UnaryEngine(const UnaryExpr<D>& expr) :
-        ExprEngine_(expr), arg_(expr.arg())
-      { }
+  /// \param target_vars The target variable list for this expression
+  void init_vars(const VariableList& target_vars) {
+    arg_.init_vars(target_vars);
+    perm_vars(target_vars);
+  }
 
-      // Pull base class functions into this class.
-      using ExprEngine_::derived;
-      using ExprEngine_::vars;
+  /// Initialize the variable list of this expression
+  void init_vars() {
+    arg_.init_vars();
+    vars_ = arg_.vars();
+  }
 
-      /// Set the variable list for this expression
+  /// Initialize result tensor structure
 
-      /// This function will set the variable list for this expression and its
-      /// children such that the number of permutations is minimized.
-      /// \param target_vars The target variable list for this expression
-      void perm_vars(const VariableList& target_vars) {
-        TA_ASSERT(permute_tiles_);
+  /// This function will initialize the permutation, tiled range, and shape
+  /// for the left-hand, right-hand, and result tensor.
+  /// \param target_vars The target variable list for the result tensor
+  void init_struct(const VariableList& target_vars) {
+    arg_.init_struct(ExprEngine_::vars());
+    ExprEngine_::init_struct(target_vars);
+  }
 
-        vars_ = target_vars;
-        if(arg_.vars() != target_vars)
-          arg_.perm_vars(target_vars);
-      }
+  /// Initialize result tensor distribution
 
-      /// Initialize the variable list of this expression
+  /// This function will initialize the world and process map for the result
+  /// tensor.
+  /// \param world The world were the result will be distributed
+  /// \param pmap The process map for the result tensor tiles
+  void init_distribution(World* world,
+                         const std::shared_ptr<pmap_interface>& pmap) {
+    arg_.init_distribution(world, pmap);
+    ExprEngine_::init_distribution(world, arg_.pmap());
+  }
 
-      /// \param target_vars The target variable list for this expression
-      void init_vars(const VariableList& target_vars) {
-        arg_.init_vars(target_vars);
-        perm_vars(target_vars);
-      }
+  /// Non-permuting tiled range factory function
 
-      /// Initialize the variable list of this expression
-      void init_vars() {
-        arg_.init_vars();
-        vars_ = arg_.vars();
-      }
+  /// \return The result tiled range
+  trange_type make_trange() const { return arg_.trange(); }
 
+  /// Permuting tiled range factory function
 
-      /// Initialize result tensor structure
+  /// \param perm The permutation to be applied to the tiled range
+  /// \return The result shape
+  trange_type make_trange(const Permutation& perm) const {
+    return perm ^ arg_.trange();
+  }
 
-      /// This function will initialize the permutation, tiled range, and shape
-      /// for the left-hand, right-hand, and result tensor.
-      /// \param target_vars The target variable list for the result tensor
-      void init_struct(const VariableList& target_vars) {
-        arg_.init_struct(ExprEngine_::vars());
-        ExprEngine_::init_struct(target_vars);
-      }
+  /// Construct the distributed evaluator for this expression
 
-      /// Initialize result tensor distribution
+  /// \return The distributed evaluator that will evaluate this expression
+  dist_eval_type make_dist_eval() const {
+    typedef TiledArray::detail::UnaryEvalImpl<
+        typename argument_type::dist_eval_type, typename Derived::op_type,
+        typename dist_eval_type::policy>
+        impl_type;
 
-      /// This function will initialize the world and process map for the result
-      /// tensor.
-      /// \param world The world were the result will be distributed
-      /// \param pmap The process map for the result tensor tiles
-      void init_distribution(World* world,
-          const std::shared_ptr<pmap_interface>& pmap)
-      {
-        arg_.init_distribution(world, pmap);
-        ExprEngine_::init_distribution(world, arg_.pmap());
-      }
+    // Construct left and right distributed evaluators
+    const typename argument_type::dist_eval_type arg = arg_.make_dist_eval();
 
-      /// Non-permuting tiled range factory function
+    // Construct the distributed evaluator type
+    std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
+        arg, *world_, trange_, shape_, pmap_, perm_, ExprEngine_::make_op());
 
-      /// \return The result tiled range
-      trange_type make_trange() const { return arg_.trange(); }
+    return dist_eval_type(pimpl);
+  }
 
-      /// Permuting tiled range factory function
+  /// Expression print
 
-      /// \param perm The permutation to be applied to the tiled range
-      /// \return The result shape
-      trange_type make_trange(const Permutation& perm) const {
-        return perm ^ arg_.trange();
-      }
+  /// \param os The output stream
+  /// \param target_vars The target variable list for this expression
+  void print(ExprOStream os, const VariableList& target_vars) const {
+    ExprEngine_::print(os, target_vars);
+    os.inc();
+    arg_.print(os, vars_);
+    os.dec();
+  }
 
-      /// Construct the distributed evaluator for this expression
+};  // class UnaryEngine
 
-      /// \return The distributed evaluator that will evaluate this expression
-      dist_eval_type make_dist_eval() const {
-        typedef TiledArray::detail::UnaryEvalImpl<typename argument_type::dist_eval_type,
-            typename Derived::op_type, typename dist_eval_type::policy> impl_type;
+}  // namespace expressions
+}  // namespace TiledArray
 
-        // Construct left and right distributed evaluators
-        const typename argument_type::dist_eval_type arg = arg_.make_dist_eval();
-
-        // Construct the distributed evaluator type
-        std::shared_ptr<impl_type> pimpl =
-            std::make_shared<impl_type>(arg, *world_, trange_, shape_, pmap_,
-                                        perm_, ExprEngine_::make_op());
-
-        return dist_eval_type(pimpl);
-      }
-
-      /// Expression print
-
-      /// \param os The output stream
-      /// \param target_vars The target variable list for this expression
-      void print(ExprOStream os, const VariableList& target_vars) const {
-        ExprEngine_::print(os, target_vars);
-        os.inc();
-        arg_.print(os, vars_);
-        os.dec();
-      }
-
-    }; // class UnaryEngine
-
-  }  // namespace expressions
-} // namespace TiledArray
-
-#endif // TILEDARRAY_EXPRESSIONS_UNARY_ENGINE_H__INCLUDED
+#endif  // TILEDARRAY_EXPRESSIONS_UNARY_ENGINE_H__INCLUDED

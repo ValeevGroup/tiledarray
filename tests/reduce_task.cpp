@@ -18,8 +18,8 @@
  */
 
 #include "TiledArray/reduce_task.h"
-#include "unit_test_config.h"
 #include <functional>
+#include "unit_test_config.h"
 
 using namespace TiledArray;
 using namespace TiledArray::detail;
@@ -37,22 +37,19 @@ struct plus {
     result += arg;
   }
 
-  void operator()(result_type& result, const argument_type& arg1, const argument_type& arg2) const {
+  void operator()(result_type& result, const argument_type& arg1,
+                  const argument_type& arg2) const {
     result += arg1 + arg2;
   }
 };
 
-
 struct ReduceTaskFixture {
-
-  ReduceTaskFixture() : world(*GlobalFixture::world), rt(world) {
-
-  }
+  ReduceTaskFixture() : world(*GlobalFixture::world), rt(world) {}
 
   TiledArray::World& world;
   ReduceTask<plus<int> > rt;
 
-}; // struct ReduceTaskFixture
+};  // struct ReduceTaskFixture
 
 struct ReduceOp {
   typedef int result_type;
@@ -67,35 +64,32 @@ struct ReduceOp {
     result += arg;
   }
 
-  void operator()(result_type& result, const first_argument_type& first, const second_argument_type& second) const {
+  void operator()(result_type& result, const first_argument_type& first,
+                  const second_argument_type& second) const {
     result += first * second;
   }
 
-  void operator()(result_type& result,
-      const first_argument_type& first1, const second_argument_type& second1,
-      const first_argument_type& first2, const second_argument_type& second2) const
-  {
+  void operator()(result_type& result, const first_argument_type& first1,
+                  const second_argument_type& second1,
+                  const first_argument_type& first2,
+                  const second_argument_type& second2) const {
     result += first1 * second1 + first2 * second2;
   }
-}; // struct ReduceOp
+};  // struct ReduceOp
 
 struct ReducePairTaskFixture {
-
-  ReducePairTaskFixture() : world(*GlobalFixture::world), rt(world) {
-
-  }
+  ReducePairTaskFixture() : world(*GlobalFixture::world), rt(world) {}
 
   TiledArray::World& world;
   ReducePairTask<ReduceOp> rt;
 
-}; // struct ReducePairTaskFixture
+};  // struct ReducePairTaskFixture
 
-BOOST_FIXTURE_TEST_SUITE( reduce_task_suite, ReduceTaskFixture )
+BOOST_FIXTURE_TEST_SUITE(reduce_task_suite, ReduceTaskFixture)
 
-BOOST_AUTO_TEST_CASE( reduce_value )
-{
+BOOST_AUTO_TEST_CASE(reduce_value) {
   int sum = 0;
-  for(int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i) {
     sum += i;
     rt.add(i);
   }
@@ -105,11 +99,10 @@ BOOST_AUTO_TEST_CASE( reduce_value )
   BOOST_CHECK_EQUAL(result.get(), sum);
 }
 
-BOOST_AUTO_TEST_CASE( reduce_future )
-{
+BOOST_AUTO_TEST_CASE(reduce_future) {
   std::vector<Future<int> > fut_vec;
 
-  for(int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i) {
     Future<int> f;
     fut_vec.push_back(f);
     rt.add(f);
@@ -120,7 +113,7 @@ BOOST_AUTO_TEST_CASE( reduce_future )
   BOOST_CHECK(!(result.probe()));
 
   int sum = 0;
-  for(int i = 0; i < 99; ++i) {
+  for (int i = 0; i < 99; ++i) {
     sum += i;
     fut_vec[i].set(i);
     BOOST_CHECK(!(result.probe()));
@@ -134,19 +127,15 @@ BOOST_AUTO_TEST_CASE( reduce_future )
   BOOST_CHECK(result.probe());
 
   BOOST_CHECK_EQUAL(result.get(), sum);
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_FIXTURE_TEST_SUITE(reduce_pair_task_suite, ReducePairTaskFixture)
 
-
-BOOST_FIXTURE_TEST_SUITE( reduce_pair_task_suite, ReducePairTaskFixture )
-
-BOOST_AUTO_TEST_CASE( reduce_value )
-{
+BOOST_AUTO_TEST_CASE(reduce_value) {
   int sum = 0;
-  for(int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i) {
     sum += i * i;
     BOOST_CHECK_EQUAL(rt.count(), i);
     rt.add(i, i);
@@ -158,9 +147,7 @@ BOOST_AUTO_TEST_CASE( reduce_value )
   BOOST_CHECK_EQUAL(result.get(), sum);
 }
 
-BOOST_AUTO_TEST_CASE( reduce_one_value )
-{
-
+BOOST_AUTO_TEST_CASE(reduce_one_value) {
   BOOST_CHECK_EQUAL(rt.count(), 0);
   rt.add(2, 3);
   BOOST_CHECK_EQUAL(rt.count(), 1);
@@ -170,12 +157,11 @@ BOOST_AUTO_TEST_CASE( reduce_one_value )
   BOOST_CHECK_EQUAL(result.get(), 6);
 }
 
-BOOST_AUTO_TEST_CASE( reduce_future )
-{
+BOOST_AUTO_TEST_CASE(reduce_future) {
   std::vector<Future<int> > fut1_vec;
   std::vector<Future<int> > fut2_vec;
 
-  for(int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i) {
     Future<int> f1;
     Future<int> f2;
     fut1_vec.push_back(f1);
@@ -190,7 +176,7 @@ BOOST_AUTO_TEST_CASE( reduce_future )
   BOOST_CHECK(!(result.probe()));
 
   int sum = 0;
-  for(int i = 0; i < 100; ++i) {
+  for (int i = 0; i < 100; ++i) {
     BOOST_CHECK(!(result.probe()));
     sum += i * i;
     fut1_vec[i].set(i);
@@ -198,12 +184,9 @@ BOOST_AUTO_TEST_CASE( reduce_future )
   }
 
   BOOST_CHECK_EQUAL(result.get(), sum);
-
 }
 
-BOOST_AUTO_TEST_CASE( reduce_one_future )
-{
-
+BOOST_AUTO_TEST_CASE(reduce_one_future) {
   Future<int> f1;
   Future<int> f2;
   rt.add(f1, f2);
@@ -217,11 +200,9 @@ BOOST_AUTO_TEST_CASE( reduce_one_future )
   f2.set(3);
 
   BOOST_CHECK_EQUAL(result.get(), 6);
-
 }
 
-BOOST_AUTO_TEST_CASE( reduce_zero )
-{
+BOOST_AUTO_TEST_CASE(reduce_zero) {
   BOOST_CHECK_EQUAL(rt.count(), 0);
   Future<int> result = rt.submit();
 

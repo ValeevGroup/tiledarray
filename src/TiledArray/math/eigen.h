@@ -26,80 +26,87 @@
 #ifndef TILEDARRAY_MATH_EIGEN_H__INCLUDED
 #define TILEDARRAY_MATH_EIGEN_H__INCLUDED
 
-#include <TiledArray/external/eigen.h>
 #include <TiledArray/error.h>
+#include <TiledArray/external/eigen.h>
 
 namespace TiledArray {
-  namespace math {
+namespace math {
 
+/// Construct a const Eigen::Map object for a given Tensor object
 
-    /// Construct a const Eigen::Map object for a given Tensor object
+/// \tparam T The element type
+/// \param t The buffer pointer
+/// \param m The number of rows in the result matrix
+/// \param n The number of columns in the result matrix
+/// \return An m x n Eigen matrix map for \c tensor
+/// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+template <typename T>
+inline Eigen::Map<
+    const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
+    Eigen::AutoAlign>
+eigen_map(const T* t, const std::size_t m, const std::size_t n) {
+  TA_ASSERT(t);
+  TA_ASSERT(m > 0);
+  TA_ASSERT(n > 0);
+  return Eigen::Map<
+      const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
+      Eigen::AutoAlign>(t, m, n);
+}
 
-    /// \tparam T The element type
-    /// \param t The buffer pointer
-    /// \param m The number of rows in the result matrix
-    /// \param n The number of columns in the result matrix
-    /// \return An m x n Eigen matrix map for \c tensor
-    /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
-    template <typename T>
-    inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
-    eigen_map(const T* t, const std::size_t m, const std::size_t n) {
-      TA_ASSERT(t);
-      TA_ASSERT(m > 0);
-      TA_ASSERT(n > 0);
-      return Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic,
-          Eigen::RowMajor>, Eigen::AutoAlign>(t, m, n);
-    }
+/// Construct an Eigen::Map object for a given Tensor object
 
-    /// Construct an Eigen::Map object for a given Tensor object
+/// \tparam T The tensor element type
+/// \param t The tensor object
+/// \param m The number of rows in the result matrix
+/// \param n The number of columns in the result matrix
+/// \return An m x n Eigen matrix map for \c tensor
+/// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+template <typename T>
+inline Eigen::Map<
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
+    Eigen::AutoAlign>
+eigen_map(T* t, const std::size_t m, const std::size_t n) {
+  TA_ASSERT(t);
+  TA_ASSERT(m > 0);
+  TA_ASSERT(n > 0);
+  return Eigen::Map<
+      Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>,
+      Eigen::AutoAlign>(t, m, n);
+}
 
-    /// \tparam T The tensor element type
-    /// \param t The tensor object
-    /// \param m The number of rows in the result matrix
-    /// \param n The number of columns in the result matrix
-    /// \return An m x n Eigen matrix map for \c tensor
-    /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
-    template <typename T>
-    inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
-    eigen_map(T* t, const std::size_t m, const std::size_t n) {
-      TA_ASSERT(t);
-      TA_ASSERT(m > 0);
-      TA_ASSERT(n > 0);
-      return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic,
-          Eigen::RowMajor>, Eigen::AutoAlign>(t, m, n);
-    }
+/// Construct a const Eigen::Map object for a given Tensor object
 
-    /// Construct a const Eigen::Map object for a given Tensor object
+/// \tparam T The element type
+/// \param t The vector pointer
+/// \param n The number of elements in the result matrix
+/// \return An n element Eigen vector map for \c tensor
+/// \throw TiledArray::Exception When n is not equal to \c tensor size
+template <typename T>
+inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>
+eigen_map(const T* t, const std::size_t n) {
+  TA_ASSERT(t);
+  TA_ASSERT(n > 0);
+  return Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>,
+                    Eigen::AutoAlign>(t, n);
+}
 
-    /// \tparam T The element type
-    /// \param t The vector pointer
-    /// \param n The number of elements in the result matrix
-    /// \return An n element Eigen vector map for \c tensor
-    /// \throw TiledArray::Exception When n is not equal to \c tensor size
-    template <typename T>
-    inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>
-    eigen_map(const T* t, const std::size_t n) {
-      TA_ASSERT(t);
-      TA_ASSERT(n > 0);
-      return Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>(t, n);
-    }
+/// Construct an Eigen::Map object for a given Tensor object
 
-    /// Construct an Eigen::Map object for a given Tensor object
+/// \tparam T The element type
+/// \param t The vector pointer
+/// \param n The number of elements in the result matrix
+/// \return An n element Eigen vector map for \c tensor
+/// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+template <typename T>
+inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>
+eigen_map(T* t, const std::size_t n) {
+  TA_ASSERT(t);
+  TA_ASSERT(n > 0);
+  return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>(t,
+                                                                           n);
+}
 
-    /// \tparam T The element type
-    /// \param t The vector pointer
-    /// \param n The number of elements in the result matrix
-    /// \return An n element Eigen vector map for \c tensor
-    /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
-    template <typename T>
-    inline Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>
-    eigen_map(T* t, const std::size_t n) {
-      TA_ASSERT(t);
-      TA_ASSERT(n > 0);
-      return Eigen::Map<Eigen::Matrix<T, Eigen::Dynamic, 1>, Eigen::AutoAlign>(t, n);
-    }
+}  // namespace math
+}  // namespace TiledArray
 
-  }  // namespace math
-} // namespace TiledArray
-
-#endif // TILEDARRAY_MATH_EIGEN_H__INCLUDED
+#endif  // TILEDARRAY_MATH_EIGEN_H__INCLUDED

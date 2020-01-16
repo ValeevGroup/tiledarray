@@ -25,7 +25,7 @@
 
 #include "expressions_fixture.h"
 
-typedef ExpressionsFixture<TiledArray::Tensor<int>,TA::DensePolicy>
+typedef ExpressionsFixture<TiledArray::Tensor<int>, TA::DensePolicy>
     EF_TATensorI;
 
 typedef boost::mpl::vector<EF_TATensorI> Fixtures;

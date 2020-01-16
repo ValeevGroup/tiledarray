@@ -24,32 +24,30 @@
 #ifdef HAVE_ELEMENTAL_H
 
 #include "TiledArray/external/elemental.h"
-#include "unit_test_config.h"
 #include "range_fixture.h"
+#include "unit_test_config.h"
 
 struct ElemFixture : public TiledRangeFixture {
-  ElemFixture():
-    trange(dims.begin(), dims.begin() + 2),
-    array(*GlobalFixture::world, trange),
-    grid(elem::DefaultGrid().Comm())
-  {}
+  ElemFixture()
+      : trange(dims.begin(), dims.begin() + 2),
+        array(*GlobalFixture::world, trange),
+        grid(elem::DefaultGrid().Comm()) {}
 
   TiledRange trange;
   Array<int, 2> array;
   elem::Grid grid;
 };
 
-void check_equal(Array<int,2> &array, elem::DistMatrix<int> &matrix){
+void check_equal(Array<int, 2> &array, elem::DistMatrix<int> &matrix) {
   elem::DistMatrix<int, elem::STAR, elem::STAR> rep_matrix(matrix);
-  for(Array<int,2>::range_type::const_iterator it = array.range().begin();
-                                               it != array.range().end();
-    ++it){
-      Future<Array<int,2>::value_type> tile = array.find(*it);
-      for(Array<int,2>::value_type::range_type::const_iterator it = tile.get().range().begin();
-                                             it != tile.get().range().end();
-          ++it){
-            BOOST_CHECK_EQUAL(tile.get()[*it], rep_matrix.Get((*it)[0], (*it)[1]));
-      }
+  for (Array<int, 2>::range_type::const_iterator it = array.range().begin();
+       it != array.range().end(); ++it) {
+    Future<Array<int, 2>::value_type> tile = array.find(*it);
+    for (Array<int, 2>::value_type::range_type::const_iterator it =
+             tile.get().range().begin();
+         it != tile.get().range().end(); ++it) {
+      BOOST_CHECK_EQUAL(tile.get()[*it], rep_matrix.Get((*it)[0], (*it)[1]));
+    }
   }
 }
 
@@ -60,9 +58,9 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
 
   // Fill array with random data
   GlobalFixture::world->srand(27);
-  for(Array<int,2>::iterator it = array.begin(); it != array.end(); ++it) {
+  for (Array<int, 2>::iterator it = array.begin(); it != array.end(); ++it) {
     Array<int, 2>::value_type tile(it.make_range());
-    for(auto& v : tile) {
+    for (auto &v : tile) {
       v = GlobalFixture::world->rand();
     }
     *it = tile;
@@ -79,13 +77,13 @@ BOOST_AUTO_TEST_CASE(array_to_elem_test) {
   GlobalFixture::world->gop.fence();
 }
 
-
 BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   // Fill array with random data
   GlobalFixture::world->srand(27);
-  for(Array<int,2>::iterator it = array.begin(); it != array.end(); ++it) {
+  for (Array<int, 2>::iterator it = array.begin(); it != array.end(); ++it) {
     Array<int, 2>::value_type tile(it.make_range());
-    for(Array<int, 2>::value_type::iterator tile_it = tile.begin(); tile_it != tile.end(); ++tile_it) {
+    for (Array<int, 2>::value_type::iterator tile_it = tile.begin();
+         tile_it != tile.end(); ++tile_it) {
       *tile_it = GlobalFixture::world->rand();
     }
     *it = tile;
@@ -99,9 +97,9 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
   BOOST_CHECK_EQUAL(matrix.Height(), array.trange().elements_range().extent(1));
 
   // Re-fill elemental matrix with other random values
-  for(int i = 0; i < matrix.Width(); ++i){
-    for(int j = 0; j < matrix.Height(); ++j){
-      matrix.Set(i,j, GlobalFixture::world->rand() );
+  for (int i = 0; i < matrix.Width(); ++i) {
+    for (int j = 0; j < matrix.Height(); ++j) {
+      matrix.Set(i, j, GlobalFixture::world->rand());
     }
   }
 
@@ -114,10 +112,11 @@ BOOST_AUTO_TEST_CASE(elem_to_array_test) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-#else // HAVE_ELEMENTAL_H
+#else  // HAVE_ELEMENTAL_H
 
-# warning "TA<->Elemental conversions have not been reimplemented for recent Elemental API; check back soon"
+#warning \
+    "TA<->Elemental conversions have not been reimplemented for recent Elemental API; check back soon"
 
-#endif // HAVE_EL_H
+#endif  // HAVE_EL_H
 
-#endif // TILEDARRAY_HAS_ELEMENTAL
+#endif  // TILEDARRAY_HAS_ELEMENTAL

@@ -27,591 +27,587 @@
 #define TILEDARRAY_SYMM_PERMUTATION_H__INCLUDED
 
 #include <array>
-#include <vector>
 #include <map>
 #include <set>
+#include <vector>
 
 #include <algorithm>
 
-#include <TiledArray/type_traits.h>
 #include <TiledArray/error.h>
+#include <TiledArray/type_traits.h>
 
 namespace TiledArray {
 
-  /**
-   * \addtogroup symmetry
-   * @{
-   */
+/**
+ * \addtogroup symmetry
+ * @{
+ */
 
-  namespace symmetry {
+namespace symmetry {
 
-    namespace detail {
+namespace detail {
 
-      /// Create a permuted copy of an array
+/// Create a permuted copy of an array
 
-      /// \note a more efficient version of detail::permute_array specialized for TiledArray::symmetry::Permutation
-      /// \tparam Perm The permutation type
-      /// \tparam Arg The input array type
-      /// \tparam Result The output array type
-      /// \param[in] perm The permutation
-      /// \param[in] arg The input array to be permuted
-      /// \param[out] result The output array that will hold the permuted array
-      template <typename Perm, typename Arg, typename Result>
-      inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
-        TA_ASSERT(result.size() == arg.size());
-        if (perm.domain_size() < arg.size()) {
-          std::copy(arg.begin(), arg.end(), result.begin()); // if perm does not map every element of arg, copy arg to result first
-        }
-        for(const auto& p: perm.data()) {
-          TA_ASSERT(result.size() > p.second);
-          TA_ASSERT(arg.size() > p.second);
-          result[p.second] = arg[p.first];
-        }
+/// \note a more efficient version of detail::permute_array specialized for
+/// TiledArray::symmetry::Permutation \tparam Perm The permutation type \tparam
+/// Arg The input array type \tparam Result The output array type \param[in]
+/// perm The permutation \param[in] arg The input array to be permuted
+/// \param[out] result The output array that will hold the permuted array
+template <typename Perm, typename Arg, typename Result>
+inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
+  TA_ASSERT(result.size() == arg.size());
+  if (perm.domain_size() < arg.size()) {
+    std::copy(arg.begin(), arg.end(),
+              result.begin());  // if perm does not map every element of arg,
+                                // copy arg to result first
+  }
+  for (const auto& p : perm.data()) {
+    TA_ASSERT(result.size() > p.second);
+    TA_ASSERT(arg.size() > p.second);
+    result[p.second] = arg[p.first];
+  }
+}
+}  // namespace detail
+
+/// Permutation of a sequence of objects indexed by base-0 indices.
+
+/** \warning Unlike TiledArray::Permutation, this does not fix domain size.
+
+ Permutation class is used as an argument in all permutation operations on
+ other objects. Permutations can be applied to sequences of objects:
+ \code
+   b = p * a; // apply permutation p to sequence a and assign the result to
+ sequence b. a *= p;    // apply permutation p (in-place) to sequence a.
+ \endcode
+ Permutations can also be composed, e.g. multiplied and inverted:
+ \code
+   p3 = p1 * p2;      // computes product of permutations of p1 and p2
+   p1_inv = p1.inv(); // computes inverse of p1
+ \endcode
+
+ \note
+
+ \par
+ Unlike TiledArray::Permutation, which is internally represented in one-line
+ form, TiledArray::symmetry::Permutation is internally represented in compressed
+ two-line form. E.g. the following permutation in Cauchy's two-line form, \f$
+   \left(
+   \begin{tabular}{ccccc}
+     0 & 1 & 2 & 3 & 4 \\
+     0 & 2 & 3 & 1 & 4
+   \end{tabular}
+   \right)
+ \f$
+ , is represented in compressed form as \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$
+ . This means that 0th element of a sequence is mapped by this permutation into
+ the 0th element of the permuted sequence (hence 0 is referred to as a <em>fixed
+ point</em> of this permutation; so is 4); similarly, 1st element of a sequence
+ is mapped by this permutation into the 2nd element of the permuted sequence
+ (hence 2 is referred as the \em image of 1 under the action of this
+ Permutation; similarly, 1 is the image of 3, etc.). Set \f$ \{1, 2, 3\} \f$ is
+ referred to as \em domain  (or \em support) of this Permutation. Note that (by
+ definition) Permutation maps its domain into itself (i.e. it's a bijection).
+
+ \par
+ As a reminder, permutation
+ \f$
+   \left(
+   \begin{tabular}{ccccc}
+     0 & 1 & 2 & 3 & 4 \\
+     0 & 2 & 3 & 1 & 4
+   \end{tabular}
+   \right)
+ \f$
+ is represented in one-line form as \f$ \{0, 2, 3, 1, 4\} \f$. Note that the
+ one-line representation is redundant as multiple distinct one-line
+ representations correspond to the same compressed form, e.g. \f$ \{0, 2, 3, 1,
+ 4\} \f$ and \f$ \{0, 2, 3, 1\} \f$ correspond to the same \f$ \{ 1 \to 2, 2 \to
+ 3, 3 \to 1 \} \f$ compressed form.
+
+ \par
+ Another non-redundant representation of Permutation is as a set of cycles. For
+ example, permutation \f$ \{0 \to 3, 1 \to 2, 2 \to 1, 0 \to 3 \} \f$ is
+ represented uniquely as the following set of cycles: (0,3)(1,2). The canonical
+ format for the cycle decomposition used by Permutation class is defined as
+ follows: <ul> <li> Cycles of length 1 are skipped. <li> Each cycle is in order
+ of increasing elements. <li> Cycles are in the order of increasing first
+ elements.
+ </ul>
+ Cycle representation is convenient for some operations, but is less efficient
+ for others. Thus cycle representation can be computed on request, but
+ internally the compressed form is used.
+*/
+class Permutation {
+ public:
+  typedef Permutation Permutation_;
+  typedef unsigned int index_type;
+  typedef std::map<index_type, index_type> Map;
+  typedef Map::const_iterator const_iterator;
+
+ private:
+  /// Two-line representation of permutation
+  Map p_;
+
+  static std::ostream& print_map(std::ostream& output, const Map& p) {
+    for (auto i = p.cbegin(); i != p.cend();) {
+      output << i->first << "->" << i->second;
+      if (++i != p.cend()) output << ", ";
+    }
+    return output;
+  }
+  friend inline std::ostream& operator<<(std::ostream& output,
+                                         const Permutation& p);
+
+  /// Validate permutation specified in one-line form as an iterator range
+  /// \return \c true if each element of \c [first,last) is non-negative and
+  /// unique
+  template <typename InIter>
+  static bool valid_permutation(InIter first, InIter last) {
+    bool result = true;
+    for (; first != last; ++first) {
+      const auto value = *first;
+      result = result && value >= 0 && (std::count(first, last, *first) == 1ul);
+    }
+    return result;
+  }
+
+  /// Validate permutation specified in compressed two-line form as an
+  /// index->index associative container \note Map can be std::map<index,index>,
+  /// std::unordered_map<index,index>, or any similar container.
+  template <typename Map>
+  static bool valid_permutation(const Map& input) {
+    std::set<index_type> keys;
+    std::set<index_type> values;
+    for (const auto& e : input) {
+      const auto& key = e.first;
+      const auto& value = e.second;
+      if (keys.find(key) == keys.end())
+        keys.insert(key);
+      else {
+        // print_map(std::cout, input);
+        return false;  // key is found more than once
       }
-    } // namespace detail
-
-    /// Permutation of a sequence of objects indexed by base-0 indices.
-
-    /** \warning Unlike TiledArray::Permutation, this does not fix domain size.
-
-     Permutation class is used as an argument in all permutation operations on
-     other objects. Permutations can be applied to sequences of objects:
-     \code
-       b = p * a; // apply permutation p to sequence a and assign the result to sequence b.
-       a *= p;    // apply permutation p (in-place) to sequence a.
-     \endcode
-     Permutations can also be composed, e.g. multiplied and inverted:
-     \code
-       p3 = p1 * p2;      // computes product of permutations of p1 and p2
-       p1_inv = p1.inv(); // computes inverse of p1
-     \endcode
-
-     \note
-
-     \par
-     Unlike TiledArray::Permutation, which is internally represented in one-line form,
-     TiledArray::symmetry::Permutation is internally
-     represented in compressed two-line form.
-     E.g. the following permutation in Cauchy's two-line form,
-     \f$
-       \left(
-       \begin{tabular}{ccccc}
-         0 & 1 & 2 & 3 & 4 \\
-         0 & 2 & 3 & 1 & 4
-       \end{tabular}
-       \right)
-     \f$
-     , is represented in compressed form as \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ . This means
-     that 0th element of a sequence is mapped by this permutation into the 0th element of the permuted
-     sequence (hence 0 is referred to as a <em>fixed point</em> of this permutation; so is 4);
-     similarly, 1st element of a sequence is mapped by this permutation into the 2nd element of
-     the permuted sequence (hence 2 is referred as the \em image of 1 under the action of this Permutation;
-     similarly, 1 is the image of 3, etc.). Set \f$ \{1, 2, 3\} \f$ is referred to
-     as \em domain  (or \em support) of this Permutation. Note that (by definition) Permutation
-     maps its domain into itself (i.e. it's a bijection).
-
-     \par
-     As a reminder, permutation
-     \f$
-       \left(
-       \begin{tabular}{ccccc}
-         0 & 1 & 2 & 3 & 4 \\
-         0 & 2 & 3 & 1 & 4
-       \end{tabular}
-       \right)
-     \f$
-     is represented in one-line form as \f$ \{0, 2, 3, 1, 4\} \f$. Note that the one-line representation
-     is redundant as multiple distinct one-line representations correspond to the same
-     compressed form, e.g. \f$ \{0, 2, 3, 1, 4\} \f$ and \f$ \{0, 2, 3, 1\} \f$ correspond to the
-     same \f$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} \f$ compressed form.
-
-     \par
-     Another non-redundant representation of Permutation is as a set of cycles. For example,
-     permutation \f$ \{0 \to 3, 1 \to 2, 2 \to 1, 0 \to 3 \} \f$ is represented uniquely as the
-     following set of cycles: (0,3)(1,2).
-     The canonical format for the cycle decomposition used by Permutation class is defined as follows:
-     <ul>
-      <li> Cycles of length 1 are skipped.
-      <li> Each cycle is in order of increasing elements.
-      <li> Cycles are in the order of increasing first elements.
-     </ul>
-     Cycle representation is convenient for some operations, but is less efficient for others.
-     Thus cycle representation can be computed on request, but internally the compressed form is used.
-    */
-    class Permutation {
-    public:
-      typedef Permutation Permutation_;
-      typedef unsigned int index_type;
-      typedef std::map<index_type,index_type> Map;
-      typedef Map::const_iterator const_iterator;
-
-    private:
-
-      /// Two-line representation of permutation
-      Map p_;
-
-      static std::ostream& print_map(std::ostream& output, const Map& p) {
-        for (auto i=p.cbegin(); i!=p.cend();) {
-          output << i->first << "->" << i->second;
-          if (++i != p.cend())
-            output << ", ";
-        }
-        return output;
+      if (values.find(value) == values.end())
+        values.insert(value);
+      else {
+        // print_map(std::cout, input);
+        return false;  // value is found more than once
       }
-      friend inline std::ostream& operator<<(std::ostream& output, const Permutation& p);
+    }
+    return keys == values;  // must map domain into itself
+  }
 
-      /// Validate permutation specified in one-line form as an iterator range
-      /// \return \c true if each element of \c [first,last) is non-negative and unique
-      template <typename InIter>
-      static bool valid_permutation(InIter first, InIter last) {
-        bool result = true;
-        for(; first != last; ++first) {
-          const auto value = *first;
-          result = result && value >= 0 && (std::count(first, last, *first) == 1ul);
-        }
-        return result;
-      }
+  // Used to select the correct constructor based on input template types
+  struct Enabler {};
 
-      /// Validate permutation specified in compressed two-line form as an index->index associative container
-      /// \note Map can be std::map<index,index>, std::unordered_map<index,index>, or any similar container.
-      template <typename Map>
-      static bool valid_permutation(const Map& input) {
-        std::set<index_type> keys;
-        std::set<index_type> values;
-        for(const auto& e: input) {
-          const auto& key = e.first;
-          const auto& value = e.second;
-          if (keys.find(key) == keys.end())
-            keys.insert(key);
-          else {
-            //print_map(std::cout, input);
-            return false; // key is found more than once
-          }
-          if (values.find(value) == values.end())
-            values.insert(value);
-          else {
-            //print_map(std::cout, input);
-            return false; // value is found more than once
-          }
-        }
-        return keys == values; // must map domain into itself
-      }
+ public:
+  Permutation() = default;  // makes an identity permutation
+  Permutation(const Permutation&) = default;
+  Permutation(Permutation&&) = default;
+  ~Permutation() = default;
+  Permutation& operator=(const Permutation&) = default;
+  Permutation& operator=(Permutation&& other) = default;
 
-      // Used to select the correct constructor based on input template types
-      struct Enabler { };
+  /// Construct permutation using its 1-line form given by range [first,last)
 
-    public:
+  /// \tparam InIter An input iterator type
+  /// \param first The beginning of the iterator range
+  /// \param last The end of the iterator range
+  /// \throw TiledArray::Exception if invalid input is given. \sa
+  /// valid_permutation(first,last)
+  template <typename InIter,
+            typename std::enable_if<TiledArray::detail::is_input_iterator<
+                InIter>::value>::type* = nullptr>
+  Permutation(InIter first, InIter last) {
+    TA_ASSERT(valid_permutation(first, last));
+    size_t i = 0;
+    for (auto e = first; e != last; ++e, ++i) {
+      auto p_i = *e;
+      if (i != p_i) p_[i] = p_i;
+    }
+  }
 
-      Permutation() = default; // makes an identity permutation
-      Permutation(const Permutation&) = default;
-      Permutation(Permutation&&) = default;
-      ~Permutation() = default;
-      Permutation& operator=(const Permutation&) = default;
-      Permutation& operator=(Permutation&& other) = default;
+  /// std::vector constructor
 
-      /// Construct permutation using its 1-line form given by range [first,last)
+  /// Construct permutation using 1-line form input as a vector
+  /// \param a vector that specifies permutation in 1-line form
+  explicit Permutation(const std::vector<index_type>& a)
+      : Permutation(a.begin(), a.end()) {}
 
-      /// \tparam InIter An input iterator type
-      /// \param first The beginning of the iterator range
-      /// \param last The end of the iterator range
-      /// \throw TiledArray::Exception if invalid input is given. \sa valid_permutation(first,last)
-      template <typename InIter,
-          typename std::enable_if<TiledArray::detail::is_input_iterator<InIter>::value>::type* = nullptr>
-      Permutation(InIter first, InIter last)
-      {
-        TA_ASSERT( valid_permutation(first, last) );
-        size_t i=0;
-        for(auto e=first; e!=last; ++e, ++i) {
-          auto p_i = *e;
-          if (i != p_i) p_[i] = p_i;
-        }
-      }
+  /// Construct permutation with an initializer list
 
-      /// std::vector constructor
+  /// \param list An initializer list of integers
+  explicit Permutation(std::initializer_list<index_type> list)
+      : Permutation(list.begin(), list.end()) {}
 
-      /// Construct permutation using 1-line form input as a vector
-      /// \param a vector that specifies permutation in 1-line form
-      explicit Permutation(const std::vector<index_type>& a) :
-          Permutation(a.begin(), a.end())
-      {
-      }
+  /// Construct permutation using its compressed 2-line form given by std::map
 
-      /// Construct permutation with an initializer list
+  /// \param p the map
+  Permutation(Map p) : p_(std::move(p)) { TA_ASSERT(valid_permutation(p_)); }
 
-      /// \param list An initializer list of integers
-      explicit Permutation(std::initializer_list<index_type> list) :
-          Permutation(list.begin(), list.end())
-      {
-      }
+  /// Permutation domain size
 
-      /// Construct permutation using its compressed 2-line form given by std::map
+  /// \return The number of elements in the domain of permutation
+  unsigned int domain_size() const { return p_.size(); }
 
-      /// \param p the map
-      Permutation(Map p) : p_(std::move(p))
-      {
-        TA_ASSERT(valid_permutation(p_));
-      }
+  /// @name Iterator accessors
+  ///
+  /// Permutation iterators dereference into \c
+  /// std::pair<index_type,index_type>, where \c first is the domain index, \c
+  /// second is its image E.g. \c Permutation::begin() of \f$ \{1->3, 2->1,
+  /// 3->2\} \f$ dereferences to \c std::pair {1,3} .
+  ///
+  /// @{
 
-      /// Permutation domain size
+  /// Begin element iterator factory function
 
-      /// \return The number of elements in the domain of permutation
-      unsigned int domain_size() const { return p_.size(); }
+  /// \return An iterator that points to the beginning of the range
+  const_iterator begin() const { return p_.begin(); }
 
-      /// @name Iterator accessors
-      ///
-      /// Permutation iterators dereference into \c std::pair<index_type,index_type>, where \c first is the domain index, \c second is its image
-      /// E.g. \c Permutation::begin() of \f$ \{1->3, 2->1, 3->2\} \f$ dereferences to \c std::pair {1,3} .
-      ///
-      /// @{
+  /// Begin element iterator factory function
 
-      /// Begin element iterator factory function
+  /// \return An iterator that points to the beginning of the range
+  const_iterator cbegin() const { return p_.cbegin(); }
 
-      /// \return An iterator that points to the beginning of the range
-      const_iterator begin() const { return p_.begin(); }
+  /// End element iterator factory function
 
-      /// Begin element iterator factory function
+  /// \return An iterator that points to the end of the range
+  const_iterator end() const { return p_.end(); }
 
-      /// \return An iterator that points to the beginning of the range
-      const_iterator cbegin() const { return p_.cbegin(); }
+  /// End element iterator factory function
 
-      /// End element iterator factory function
+  /// \return An iterator that points to the end of the range
+  const_iterator cend() const { return p_.cend(); }
 
-      /// \return An iterator that points to the end of the range
-      const_iterator end() const { return p_.end(); }
+  /// @}
 
-      /// End element iterator factory function
+  /// Computes image of an element under this permutation
 
-      /// \return An iterator that points to the end of the range
-      const_iterator cend() const { return p_.cend(); }
+  /// \param e input index
+  /// \return the image of element \c e; if \c e is in the domain of this
+  /// permutation, returns its image, otherwise returns \c e
+  index_type operator[](index_type e) const {
+    auto e_image_iter = p_.find(e);
+    if (e_image_iter != p_.end())
+      return e_image_iter->second;
+    else
+      return e;
+  }
 
-      /// @}
+  /// Computes the domain of this permutation
 
-      /// Computes image of an element under this permutation
+  /// \tparam Set a container type in which the result will be returned
+  /// \return the domain of this permutation, as a Set
+  template <typename Set>
+  Set domain() const {
+    Set result;
+    for (const auto& e : this->p_) {
+      result.insert(result.begin(), e.first);
+    }
+    // std::sort(result.begin(), result.end());
+    return result;
+  }
 
-      /// \param e input index
-      /// \return the image of element \c e; if \c e is in the domain of this permutation, returns its image, otherwise returns \c e
-      index_type operator[](index_type e) const {
-        auto e_image_iter = p_.find(e);
-        if (e_image_iter != p_.end())
-          return e_image_iter->second;
-        else
-          return e;
-      }
+  /// Test if an index is in the domain of this permutation
 
-      /// Computes the domain of this permutation
+  /// \tparam Integer an integer type
+  /// \param i an index whose presence in domain is tested
+  /// \return \c true , if \c i is in the domain, \c false otherwise
+  template <typename Integer,
+            typename std::enable_if<std::is_integral<Integer>::value>::type* =
+                nullptr>
+  bool is_in_domain(Integer i) const {
+    return p_.find(i) != p_.end();
+  }
 
-      /// \tparam Set a container type in which the result will be returned
-      /// \return the domain of this permutation, as a Set
-      template <typename Set>
-      Set domain() const {
-        Set result;
-        for(const auto& e: this->p_) {
-          result.insert(result.begin(), e.first);
-        }
-        //std::sort(result.begin(), result.end());
-        return result;
-      }
+  /// Cycles decomposition
 
-      /// Test if an index is in the domain of this permutation
+  /// Certain algorithms are more efficient with permutations represented as a
+  /// set of cyclic transpositions. This function returns the set of cycles that
+  /// represent this permutation. For example, permutation \f$ \{3, 2, 1, 0 \}
+  /// \f$ is represented as the following set of cycles: (0,3)(1,2). The
+  /// canonical format for the cycles is: <ul>
+  ///  <li> Cycles of length 1 are skipped.
+  ///  <li> Each cycle is in order of increasing elements.
+  ///  <li> Cycles are in the order of increasing first elements.
+  /// </ul>
+  /// \return the set of cycles (in canonical format) that represent this
+  /// permutation
+  std::vector<std::vector<index_type>> cycles() const {
+    std::vector<std::vector<index_type>> result;
 
-      /// \tparam Integer an integer type
-      /// \param i an index whose presence in domain is tested
-      /// \return \c true , if \c i is in the domain, \c false otherwise
-      template <typename Integer,
-                typename std::enable_if<std::is_integral<Integer>::value>::type* = nullptr>
-      bool is_in_domain(Integer i) const {
-        return p_.find(i) != p_.end();
-      }
+    std::set<index_type> placed_in_cycle;
 
-      /// Cycles decomposition
+    // safe to use non-const operator[] due to properties of Permutation
+    // (domain==image)
+    auto& p_nonconst_ = const_cast<Map&>(p_);
 
-      /// Certain algorithms are more efficient with permutations represented as a set of cyclic transpositions.
-      /// This function returns the set of cycles that represent this permutation. For example,
-      /// permutation \f$ \{3, 2, 1, 0 \} \f$ is represented as the following set of cycles: (0,3)(1,2).
-      /// The canonical format for the cycles is:
-      /// <ul>
-      ///  <li> Cycles of length 1 are skipped.
-      ///  <li> Each cycle is in order of increasing elements.
-      ///  <li> Cycles are in the order of increasing first elements.
-      /// </ul>
-      /// \return the set of cycles (in canonical format) that represent this permutation
-      std::vector<std::vector<index_type> > cycles() const {
+    // 1. for each i compute its orbit
+    // 2. if the orbit is longer than 1, sort and add to the list of cycles
+    for (const auto& e : p_) {
+      auto i = e.first;
+      if (placed_in_cycle.find(i) ==
+          placed_in_cycle.end()) {  // not in a cycle yet?
+        std::vector<index_type> cycle(1, i);
+        placed_in_cycle.insert(i);
 
-        std::vector<std::vector<index_type>> result;
-
-        std::set<index_type> placed_in_cycle;
-
-        // safe to use non-const operator[] due to properties of Permutation (domain==image)
-        auto& p_nonconst_ = const_cast<Map&>(p_);
-
-        // 1. for each i compute its orbit
-        // 2. if the orbit is longer than 1, sort and add to the list of cycles
-        for(const auto& e: p_) {
-          auto i = e.first;
-          if (placed_in_cycle.find(i) == placed_in_cycle.end()) { // not in a cycle yet?
-            std::vector<index_type> cycle(1,i);
-            placed_in_cycle.insert(i);
-
-            index_type next_i = p_nonconst_[i];
-            while (next_i != i) {
-              cycle.push_back(next_i);
-              placed_in_cycle.insert(next_i);
-              next_i = p_nonconst_[next_i];
-            }
-
-            if (cycle.size() != 1) {
-              std::sort(cycle.begin(), cycle.end());
-              result.emplace_back(cycle);
-            }
-
-          } // this i already in a cycle
-        } // loop over i
-
-        return result;
-      }
-
-      /// Product of this permutation by \c other
-
-      /// \param other a Permutation
-      /// \return \c other * \c this, i.e. \c this applied first, then \c other
-      Permutation mult(const Permutation& other) const {
-        // 1. domain of product = domain of this U domain of other
-        using iset = std::set<index_type>;
-        auto product_domain = this->domain<iset>();
-        auto other_domain = other.domain<iset>();
-        product_domain.insert(other_domain.begin(), other_domain.end());
-
-        Map result;
-        for(const auto& d: product_domain) {
-          const auto d_image = other[(*this)[d]];
-          if (d_image != d)
-            result[d] = d_image;
+        index_type next_i = p_nonconst_[i];
+        while (next_i != i) {
+          cycle.push_back(next_i);
+          placed_in_cycle.insert(next_i);
+          next_i = p_nonconst_[next_i];
         }
 
-        return Permutation(result);
-      }
-
-      /// Construct the inverse of this permutation
-
-      /// The inverse of permutation \f$ P \f$ is defined as \f$ P \times P^{-1} = P^{-1} \times P = I \f$,
-      /// where \f$ I \f$ is the identity permutation.
-      /// \return The inverse of this permutation
-      Permutation inv() const {
-        Map result;
-        for(const auto& iter: p_) {
-          const auto i = iter.first;
-          const auto pi = iter.second;
-          result.insert(std::make_pair(pi,i));
-        }
-        return Permutation(std::move(result));
-      }
-
-      /// Raise this permutation to the n-th power
-
-      /// Constructs the permutation \f$ P^n \f$, where \f$ P \f$ is this
-      /// permutation.
-      /// \param n Exponent value
-      /// \return This permutation raised to the n-th power
-      Permutation pow(int n) const {
-        // Initialize the algorithm inputs
-        int power;
-        Permutation value;
-        if(n < 0) {
-          value = inv();
-          power = -n;
-        } else {
-          value = *this;
-          power = n;
+        if (cycle.size() != 1) {
+          std::sort(cycle.begin(), cycle.end());
+          result.emplace_back(cycle);
         }
 
-        Permutation result;
+      }  // this i already in a cycle
+    }    // loop over i
 
-        while(power) {
-            if(power & 1)
-              result = result.mult(value);
-            value = value.mult(value);
-            power >>= 1;
-        }
+    return result;
+  }
 
-        return result;
-      }
+  /// Product of this permutation by \c other
 
-      /// Data accessor
+  /// \param other a Permutation
+  /// \return \c other * \c this, i.e. \c this applied first, then \c other
+  Permutation mult(const Permutation& other) const {
+    // 1. domain of product = domain of this U domain of other
+    using iset = std::set<index_type>;
+    auto product_domain = this->domain<iset>();
+    auto other_domain = other.domain<iset>();
+    product_domain.insert(other_domain.begin(), other_domain.end());
 
-      /// gives direct access to \c std::map that encodes the Permutation
-      /// \return \c std::map<index_type,index_type> object encoding the permutation in compressed two-line form
-      const Map& data() const { return p_; }
-
-      /// Idenity permutation factory method
-
-      /// \return the identity permutation
-      Permutation identity() const {
-        return Permutation();
-      }
-
-      /// Serialize permutation
-
-      /// MADNESS compatible serialization function
-      /// \tparam Archive The serialization archive type
-      /// \param[in,out] ar The serialization archive
-      template <typename Archive>
-      void serialize(Archive& ar) {
-        ar & p_;
-      }
-
-    }; // class Permutation
-
-    /// Permutation equality operator
-
-    /// \param p1 The left-hand permutation to be compared
-    /// \param p2 The right-hand permutation to be compared
-    /// \return \c true if all elements of \c p1 and \c p2 are equal and in the
-    /// same order, otherwise \c false.
-    inline bool operator==(const Permutation& p1, const Permutation& p2) {
-      return (p1.domain_size() == p2.domain_size())
-             && p1.data() == p2.data();
+    Map result;
+    for (const auto& d : product_domain) {
+      const auto d_image = other[(*this)[d]];
+      if (d_image != d) result[d] = d_image;
     }
 
-    /// Permutation inequality operator
+    return Permutation(result);
+  }
 
-    /// \param p1 The left-hand permutation to be compared
-    /// \param p2 The right-hand permutation to be compared
-    /// \return \c true if any element of \c p1 is not equal to that of \c p2,
-    /// otherwise \c false.
-    inline bool operator!=(const Permutation& p1, const Permutation& p2) {
-      return ! operator==(p1, p2);
+  /// Construct the inverse of this permutation
+
+  /// The inverse of permutation \f$ P \f$ is defined as \f$ P \times P^{-1} =
+  /// P^{-1} \times P = I \f$, where \f$ I \f$ is the identity permutation.
+  /// \return The inverse of this permutation
+  Permutation inv() const {
+    Map result;
+    for (const auto& iter : p_) {
+      const auto i = iter.first;
+      const auto pi = iter.second;
+      result.insert(std::make_pair(pi, i));
+    }
+    return Permutation(std::move(result));
+  }
+
+  /// Raise this permutation to the n-th power
+
+  /// Constructs the permutation \f$ P^n \f$, where \f$ P \f$ is this
+  /// permutation.
+  /// \param n Exponent value
+  /// \return This permutation raised to the n-th power
+  Permutation pow(int n) const {
+    // Initialize the algorithm inputs
+    int power;
+    Permutation value;
+    if (n < 0) {
+      value = inv();
+      power = -n;
+    } else {
+      value = *this;
+      power = n;
     }
 
-    /// Permutation less-than operator
+    Permutation result;
 
-    /// \param p1 The left-hand permutation to be compared
-    /// \param p2 The right-hand permutation to be compared
-    /// \return \c true if the elements of \c p1 are lexicographically less than
-    /// that of \c p2, otherwise \c false.
-    inline bool operator<(const Permutation& p1, const Permutation& p2) {
-      if (&p1 == &p2) return false;
-      return std::lexicographical_compare(p1.data().begin(), p1.data().end(),
-          p2.data().begin(), p2.data().end());
+    while (power) {
+      if (power & 1) result = result.mult(value);
+      value = value.mult(value);
+      power >>= 1;
     }
 
-    /// Add permutation to an output stream
+    return result;
+  }
 
-    /// \param[out] output The output stream
-    /// \param[in] p The permutation to be added to the output stream
-    /// \return The output stream
-    inline std::ostream& operator<<(std::ostream& output, const Permutation& p) {
-      output << "{";
-      Permutation::print_map(output, p.data());
-      output << "}";
-      return output;
-    }
+  /// Data accessor
 
-    /// Inverse permutation operator
+  /// gives direct access to \c std::map that encodes the Permutation
+  /// \return \c std::map<index_type,index_type> object encoding the permutation
+  /// in compressed two-line form
+  const Map& data() const { return p_; }
 
-    /// \param perm The permutation to be inverted
-    /// \return \c perm.inverse()
-    inline Permutation operator -(const Permutation& perm) {
-      return perm.inv();
-    }
+  /// Idenity permutation factory method
 
-    /// Permutation multiplication operator
+  /// \return the identity permutation
+  Permutation identity() const { return Permutation(); }
 
-    /// \param p1 The left-hand permutation
-    /// \param p2 The right-hand permutation
-    /// \return The product of p1 and p2 (which is the permutation of \c p2
-    /// by \c p1).
-    inline Permutation operator*(const Permutation& p1, const Permutation& p2) {
-      return p1.mult(p2);
-    }
+  /// Serialize permutation
 
+  /// MADNESS compatible serialization function
+  /// \tparam Archive The serialization archive type
+  /// \param[in,out] ar The serialization archive
+  template <typename Archive>
+  void serialize(Archive& ar) {
+    ar& p_;
+  }
 
-    /// return *this ^ other
-    inline Permutation& operator*=(Permutation& p1, const Permutation& p2) {
-      return (p1 = p1 * p2);
-    }
+};  // class Permutation
 
-    /// Raise \c perm to the n-th power
+/// Permutation equality operator
 
-    /// Constructs the permutation \f$ P^n \f$, where \f$ P \f$ is the
-    /// permutation \c perm.
-    /// \param perm The base permutation
-    /// \param n Exponent value
-    /// \return This permutation raised to the n-th power
-    inline Permutation operator^(const Permutation& perm, int n) {
-      return perm.pow(n);
-    }
+/// \param p1 The left-hand permutation to be compared
+/// \param p2 The right-hand permutation to be compared
+/// \return \c true if all elements of \c p1 and \c p2 are equal and in the
+/// same order, otherwise \c false.
+inline bool operator==(const Permutation& p1, const Permutation& p2) {
+  return (p1.domain_size() == p2.domain_size()) && p1.data() == p2.data();
+}
 
-    /** @}*/
+/// Permutation inequality operator
 
+/// \param p1 The left-hand permutation to be compared
+/// \param p2 The right-hand permutation to be compared
+/// \return \c true if any element of \c p1 is not equal to that of \c p2,
+/// otherwise \c false.
+inline bool operator!=(const Permutation& p1, const Permutation& p2) {
+  return !operator==(p1, p2);
+}
 
-    /// Permute a \c std::array
+/// Permutation less-than operator
 
-    /// \tparam T The element type of the array
-    /// \tparam N The size of the array
-    /// \param perm The permutation
-    /// \param a The array to be permuted
-    /// \return A permuted copy of \c a
-    /// \throw TiledArray::Exception When the dimension of the permutation is not
-    /// equal to the size of \c a.
-    template <typename T, std::size_t N>
-    inline std::array<T,N> operator*(const Permutation& perm, const std::array<T, N>& a) {
-      std::array<T,N> result;
-      symmetry::detail::permute_array(perm, a, result);
-      return result;
-    }
+/// \param p1 The left-hand permutation to be compared
+/// \param p2 The right-hand permutation to be compared
+/// \return \c true if the elements of \c p1 are lexicographically less than
+/// that of \c p2, otherwise \c false.
+inline bool operator<(const Permutation& p1, const Permutation& p2) {
+  if (&p1 == &p2) return false;
+  return std::lexicographical_compare(p1.data().begin(), p1.data().end(),
+                                      p2.data().begin(), p2.data().end());
+}
 
-    /// In-place permute a \c std::array
+/// Add permutation to an output stream
 
-    /// \tparam T The element type of the array
-    /// \tparam N The size of the array
-    /// \param[out] a The array to be permuted
-    /// \param[in] perm The permutation
-    /// \return A reference to \c a
-    /// \throw TiledArray::Exception When the dimension of the permutation is not
-    /// equal to the size of \c a.
-    template <typename T, std::size_t N>
-    inline std::array<T,N>& operator*=(std::array<T,N>& a, const Permutation& perm) {
-      const std::array<T,N> temp = a;
-      symmetry::detail::permute_array(perm, temp, a);
-      return a;
-    }
+/// \param[out] output The output stream
+/// \param[in] p The permutation to be added to the output stream
+/// \return The output stream
+inline std::ostream& operator<<(std::ostream& output, const Permutation& p) {
+  output << "{";
+  Permutation::print_map(output, p.data());
+  output << "}";
+  return output;
+}
 
-    /// permute a \c std::vector<T>
+/// Inverse permutation operator
 
-    /// \tparam T The element type of the vector
-    /// \tparam A The allocator type of the vector
-    /// \param perm The permutation
-    /// \param v The vector to be permuted
-    /// \return A permuted copy of \c v
-    /// \throw TiledArray::Exception When the dimension of the permutation is not
-    /// equal to the size of \c v.
-    template <typename T, typename A>
-    inline std::vector<T> operator*(const Permutation& perm, const std::vector<T, A>& v) {
-      std::vector<T> result(v.size());
-      symmetry::detail::permute_array(perm, v, result);
-      return result;
-    }
+/// \param perm The permutation to be inverted
+/// \return \c perm.inverse()
+inline Permutation operator-(const Permutation& perm) { return perm.inv(); }
 
-    /// In-place permute a \c std::array
+/// Permutation multiplication operator
 
-    /// \tparam T The element type of the vector
-    /// \tparam A The allocator type of the vector
-    /// \param[out] v The vector to be permuted
-    /// \param[in] perm The permutation
-    /// \return A reference to \c v
-    /// \throw TiledArray::Exception When the dimension of the permutation is not
-    /// equal to the size of \c v.
-    template <typename T, typename A>
-    inline std::vector<T, A>& operator*=(std::vector<T, A>& v, const Permutation& perm) {
-      const std::vector<T, A> temp = v;
-      symmetry::detail::permute_array(perm, temp, v);
-      return v;
-    }
+/// \param p1 The left-hand permutation
+/// \param p2 The right-hand permutation
+/// \return The product of p1 and p2 (which is the permutation of \c p2
+/// by \c p1).
+inline Permutation operator*(const Permutation& p1, const Permutation& p2) {
+  return p1.mult(p2);
+}
 
-  } // namespace symmetry
+/// return *this ^ other
+inline Permutation& operator*=(Permutation& p1, const Permutation& p2) {
+  return (p1 = p1 * p2);
+}
 
-  /** @}*/
+/// Raise \c perm to the n-th power
 
-} // namespace TiledArray
+/// Constructs the permutation \f$ P^n \f$, where \f$ P \f$ is the
+/// permutation \c perm.
+/// \param perm The base permutation
+/// \param n Exponent value
+/// \return This permutation raised to the n-th power
+inline Permutation operator^(const Permutation& perm, int n) {
+  return perm.pow(n);
+}
 
-#endif // TILEDARRAY_SYMM_PERMUTATION_H__INCLUDED
+/** @}*/
+
+/// Permute a \c std::array
+
+/// \tparam T The element type of the array
+/// \tparam N The size of the array
+/// \param perm The permutation
+/// \param a The array to be permuted
+/// \return A permuted copy of \c a
+/// \throw TiledArray::Exception When the dimension of the permutation is not
+/// equal to the size of \c a.
+template <typename T, std::size_t N>
+inline std::array<T, N> operator*(const Permutation& perm,
+                                  const std::array<T, N>& a) {
+  std::array<T, N> result;
+  symmetry::detail::permute_array(perm, a, result);
+  return result;
+}
+
+/// In-place permute a \c std::array
+
+/// \tparam T The element type of the array
+/// \tparam N The size of the array
+/// \param[out] a The array to be permuted
+/// \param[in] perm The permutation
+/// \return A reference to \c a
+/// \throw TiledArray::Exception When the dimension of the permutation is not
+/// equal to the size of \c a.
+template <typename T, std::size_t N>
+inline std::array<T, N>& operator*=(std::array<T, N>& a,
+                                    const Permutation& perm) {
+  const std::array<T, N> temp = a;
+  symmetry::detail::permute_array(perm, temp, a);
+  return a;
+}
+
+/// permute a \c std::vector<T>
+
+/// \tparam T The element type of the vector
+/// \tparam A The allocator type of the vector
+/// \param perm The permutation
+/// \param v The vector to be permuted
+/// \return A permuted copy of \c v
+/// \throw TiledArray::Exception When the dimension of the permutation is not
+/// equal to the size of \c v.
+template <typename T, typename A>
+inline std::vector<T> operator*(const Permutation& perm,
+                                const std::vector<T, A>& v) {
+  std::vector<T> result(v.size());
+  symmetry::detail::permute_array(perm, v, result);
+  return result;
+}
+
+/// In-place permute a \c std::array
+
+/// \tparam T The element type of the vector
+/// \tparam A The allocator type of the vector
+/// \param[out] v The vector to be permuted
+/// \param[in] perm The permutation
+/// \return A reference to \c v
+/// \throw TiledArray::Exception When the dimension of the permutation is not
+/// equal to the size of \c v.
+template <typename T, typename A>
+inline std::vector<T, A>& operator*=(std::vector<T, A>& v,
+                                     const Permutation& perm) {
+  const std::vector<T, A> temp = v;
+  symmetry::detail::permute_array(perm, temp, v);
+  return v;
+}
+
+}  // namespace symmetry
+
+/** @}*/
+
+}  // namespace TiledArray
+
+#endif  // TILEDARRAY_SYMM_PERMUTATION_H__INCLUDED

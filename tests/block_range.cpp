@@ -24,47 +24,41 @@
  */
 
 #include "TiledArray/block_range.h"
-#include "unit_test_config.h"
 #include "range_fixture.h"
+#include "unit_test_config.h"
 
 struct BlockRangeFixture {
+  BlockRangeFixture() {}
 
-  BlockRangeFixture() { }
-
-  ~BlockRangeFixture() { }
-
+  ~BlockRangeFixture() {}
 
   static const Range r0;
   static const Range r;
-}; // BlockRangeFixture
+};  // BlockRangeFixture
 
+const Range BlockRangeFixture::r0{std::array<int, 3>{{5, 11, 8}}};
+const Range BlockRangeFixture::r{std::array<int, 3>{{0, 1, 2}},
+                                 std::array<int, 3>{{5, 11, 8}}};
 
-const Range BlockRangeFixture::r0{std::array<int, 3>{{5,11,8}}};
-const Range BlockRangeFixture::r{std::array<int, 3>{{0,1,2}}, std::array<int, 3>{{5,11,8}}};
+BOOST_FIXTURE_TEST_SUITE(block_range_suite, BlockRangeFixture)
 
-BOOST_FIXTURE_TEST_SUITE( block_range_suite, BlockRangeFixture )
-
-
-BOOST_AUTO_TEST_CASE( block_zero_lower_bound )
-{
+BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
   BlockRange block_range;
 
-  for(auto lower_it = r0.begin(); lower_it != r0.end(); ++lower_it) {
+  for (auto lower_it = r0.begin(); lower_it != r0.end(); ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = r0.begin(); upper_it != r0.end(); ++upper_it) {
+    for (auto upper_it = r0.begin(); upper_it != r0.end(); ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < upper.size(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r0) { return l < r0; })) {
-
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r0) { return l < r0; })) {
         // Check that the sub-block is constructed without exceptions
-        BOOST_CHECK_NO_THROW(block_range = BlockRange(r0, lower,upper));
+        BOOST_CHECK_NO_THROW(block_range = BlockRange(r0, lower, upper));
 
         // Check that the data of the block range is correct
         std::size_t volume = 1ul;
-        for(unsigned int i = 0u; i < r0.rank(); ++i) {
+        for (unsigned int i = 0u; i < r0.rank(); ++i) {
           // Check that the range data is correct
           BOOST_CHECK_EQUAL(block_range.lobound(i), lower[i]);
           BOOST_CHECK_EQUAL(block_range.upbound(i), upper[i]);
@@ -78,7 +72,8 @@ BOOST_AUTO_TEST_CASE( block_zero_lower_bound )
         // Check that the subrange ordinal calculation returns the same offset
         // as the original range.
         Range::size_type index = 0ul;
-        for(auto it = block_range.begin(); it != block_range.end(); ++it, ++index) {
+        for (auto it = block_range.begin(); it != block_range.end();
+             ++it, ++index) {
           // Check that the ordinal offset returned for an ordianl offset and a
           // coordinate index agree.
           BOOST_CHECK_EQUAL(block_range.ordinal(*it), r0.ordinal(*it));
@@ -94,35 +89,30 @@ BOOST_AUTO_TEST_CASE( block_zero_lower_bound )
 #ifdef TA_EXCEPTION_ERROR
       else {
         // Check for excpetion with invalid input
-        BOOST_CHECK_THROW(BlockRange(r0, lower,upper), TiledArray::Exception);
+        BOOST_CHECK_THROW(BlockRange(r0, lower, upper), TiledArray::Exception);
       }
-#endif // TA_EXCEPTION_ERROR
-
+#endif  // TA_EXCEPTION_ERROR
     }
   }
 }
 
-
-BOOST_AUTO_TEST_CASE( block )
-{
+BOOST_AUTO_TEST_CASE(block) {
   BlockRange block_range;
 
-  for(auto lower_it = r.begin(); lower_it != r.end(); ++lower_it) {
+  for (auto lower_it = r.begin(); lower_it != r.end(); ++lower_it) {
     const auto lower = *lower_it;
-    for(auto upper_it = r.begin(); upper_it != r.end(); ++upper_it) {
+    for (auto upper_it = r.begin(); upper_it != r.end(); ++upper_it) {
       std::vector<std::size_t> upper = *upper_it;
-      for(unsigned int i = 0u; i < r.rank(); ++i)
-        ++(upper[i]);
+      for (unsigned int i = 0u; i < r.rank(); ++i) ++(upper[i]);
 
-      if(std::equal(lower.begin(), lower.end(), upper.begin(),
-          [] (std::size_t l, std::size_t r) { return l < r; })) {
-
+      if (std::equal(lower.begin(), lower.end(), upper.begin(),
+                     [](std::size_t l, std::size_t r) { return l < r; })) {
         // Check that the sub-block is constructed without exceptions
-        BOOST_CHECK_NO_THROW(block_range = BlockRange(r, lower,upper));
+        BOOST_CHECK_NO_THROW(block_range = BlockRange(r, lower, upper));
 
         // Check that the data of the block range is correct
         std::size_t volume = 1ul;
-        for(unsigned int i = 0u; i < r.rank(); ++i) {
+        for (unsigned int i = 0u; i < r.rank(); ++i) {
           // Check that the range data is correct
           BOOST_CHECK_EQUAL(block_range.lobound(i), lower[i]);
           BOOST_CHECK_EQUAL(block_range.upbound(i), upper[i]);
@@ -136,7 +126,8 @@ BOOST_AUTO_TEST_CASE( block )
         // Check that the subrange ordinal calculation returns the same
         // offset as the original range.
         Range::size_type index = 0ul;
-        for(auto it = block_range.begin(); it != block_range.end(); ++it, ++index) {
+        for (auto it = block_range.begin(); it != block_range.end();
+             ++it, ++index) {
           // Check that the ordinal offset returned for an ordianl offset and a
           // coordinate index agree.
           BOOST_CHECK_EQUAL(block_range.ordinal(*it), r.ordinal(*it));
@@ -151,10 +142,9 @@ BOOST_AUTO_TEST_CASE( block )
 #ifdef TA_EXCEPTION_ERROR
       else {
         // Check for excpetion with invalid input
-        BOOST_CHECK_THROW(BlockRange(r, lower,upper), TiledArray::Exception);
+        BOOST_CHECK_THROW(BlockRange(r, lower, upper), TiledArray::Exception);
       }
-#endif // TA_EXCEPTION_ERROR
-
+#endif  // TA_EXCEPTION_ERROR
     }
   }
 }
