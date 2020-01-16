@@ -15,6 +15,29 @@ def to_base_version(full_version):
         base_version = base_version[0:minus_pos]
     return base_version
 
+def dots_to_undescores(str):
+    return str.replace('.', '_')
+
+def escape_special_chars(str):
+    #str = str.replace('(', '\(')
+    #str = str.replace(')', '\)')
+    str = str.replace('/', '\/')
+    str = str.replace('.', '\.')
+    return str
+
+def replace_dep_id(topsrc, file_ext, dep_name, old_id, new_id, search_prefix = '', search_postfix = ''):
+    any_files_changed = False
+    if old_id != new_id:
+        # always exclude the versions file
+        seek_retcode = os.system('grep -q -r --include="*.' + file_ext + '" --exclude="' + topsrc + '/external/versions.cmake" "' + search_prefix + old_id + search_postfix + '" ' + topsrc)
+        if os.WIFEXITED(seek_retcode) and os.WEXITSTATUS(seek_retcode) == 0:
+            any_files_changed = True
+            print('changing ' + dep_name + ' id from', old_id, 'to', new_id)
+            esc_search_prefix = escape_special_chars(search_prefix)
+            esc_search_postfix = escape_special_chars(search_postfix)
+            os.system('find ' + topsrc + ' -type f -name "*.' + file_ext + '" -print0 | xargs -0 sed -i \'\' -e \'s/' + esc_search_prefix + old_id + esc_search_postfix + '/' + esc_search_prefix + new_id + esc_search_postfix + '/g\'')
+    return any_files_changed
+
 argv = sys.argv
 topsrc = op.normpath(op.join(op.abspath(op.dirname(sys.argv[0])), '../..'))
 if len(argv) == 1:
@@ -34,7 +57,41 @@ with open(version_cmake_path) as inf:
         line = line.replace('(', ' ')
         line = line.replace(')', ' ')
         tokens = line.split()
-        if tokens[1].find('MADNESS') != -1 and tokens[1].find('_TAG') != -1:
+        if len(tokens) < 3:
+            continue
+        if tokens[1].find('TRACKED_BOOST') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                boost_old_version = tokens[2]
+            else:
+                boost_new_version = tokens[2]
+        elif tokens[1].find('INSTALL_BOOST') != -1:
+            if tokens[1].find('VERSION') != -1:
+                if tokens[1].find('PREVIOUS') != -1:
+                    boost_old_install_version = tokens[2]
+                else:
+                    boost_new_install_version = tokens[2]
+            else:  # URL_HASH
+                if tokens[1].find('PREVIOUS') != -1:
+                    boost_old_install_url_hash = tokens[2]
+                else:
+                    boost_new_install_url_hash = tokens[2]
+        elif tokens[1].find('TRACKED_EIGEN') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                eigen_old_version = tokens[2]
+            else:
+                eigen_new_version = tokens[2]
+        elif tokens[1].find('INSTALL_EIGEN') != -1:
+            if tokens[1].find('VERSION') != -1:
+                if tokens[1].find('PREVIOUS') != -1:
+                    eigen_old_install_version = tokens[2]
+                else:
+                    eigen_new_install_version = tokens[2]
+            else:  # URL_HASH
+                if tokens[1].find('PREVIOUS') != -1:
+                    eigen_old_install_url_hash = tokens[2]
+                else:
+                    eigen_new_install_url_hash = tokens[2]
+        elif tokens[1].find('MADNESS') != -1 and tokens[1].find('_TAG') != -1:
             if tokens[1].find('PREVIOUS') != -1:
                 madness_old_tag = tokens[2]
             else:
@@ -44,34 +101,58 @@ with open(version_cmake_path) as inf:
                 madness_old_version = tokens[2]
             else:
                 madness_new_version = tokens[2]
-        elif tokens[1].find('BOOST') != -1 and tokens[1].find('_VERSION') != -1:
+        elif tokens[1].find('ELEMENTAL') != -1:
             if tokens[1].find('PREVIOUS') != -1:
-                boost_old_version = tokens[2]
+                elemental_old_tag = tokens[2]
             else:
-                boost_new_version = tokens[2]
+                elemental_new_tag = tokens[2]
+        elif tokens[1].find('BTAS') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                btas_old_tag = tokens[2]
+            else:
+                btas_new_tag = tokens[2]
+        elif tokens[1].find('CUTT') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                cutt_old_tag = tokens[2]
+            else:
+                cutt_new_tag = tokens[2]
+        elif tokens[1].find('UMPIRE') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                umpire_old_tag = tokens[2]
+            else:
+                umpire_new_tag = tokens[2]
 
 any_files_changed = False
 
-# replace Libint full version in INSTALL.md and *.sh scripts
-# seek_retcode1 = os.system('grep -q -r --include="*.md" "' + libint_old_version + '" ' + topsrc)
-# seek_retcode2 = os.system('grep -q -r --include="*.sh" "' + libint_old_version + '" ' + topsrc)
-# if (os.WIFEXITED(seek_retcode1) and os.WEXITSTATUS(seek_retcode1) == 0) or (os.WIFEXITED(seek_retcode2) and os.WEXITSTATUS(seek_retcode2) == 0):
-#     any_files_changed = True
-#     print('changing Libint version from', libint_old_version, 'to', libint_new_version)
-#     os.system('find ' + topsrc + ' -type f -name "*.md" -o -name "*.sh" -print0 | xargs -0 sed -i \'\' -e \'s/' + libint_old_version + '/' + libint_new_version + '/g\'')
+# Boost version in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'Boost', boost_old_version, boost_new_version, 'boost.org/), version ', ' or higher')
+# Boost install version in boost.cmake
+any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Boost', boost_old_install_version, boost_new_install_version, 'boostorg/release/', '/source/boost')
+any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Boost', dots_to_undescores(boost_old_install_version), dots_to_undescores(boost_new_install_version), 'source/boost_', '.tar.gz')
+any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Boost', boost_old_install_url_hash, boost_new_install_url_hash, 'SHA256=', '')
 
-# may need to replace Libint base version (without prerelease and build tags)
-# libint_old_base_version = to_base_version(libint_old_version)
-# libint_new_base_version = to_base_version(libint_new_version)
-# if libint_old_base_version != libint_new_base_version:
-#     if libint_old_base_version[0] != '2' or libint_new_base_version[0] != '2':
-#         print('Major version change of Libint detected ... sorry, have to do this manually')
-#         sys.exit(1)
-#     seek_retcode = os.system('grep -q -r --include="*.cmake*" "Libint2 ' + libint_old_base_version + '" ' + topsrc)
-#     if os.WIFEXITED(seek_retcode) and os.WEXITSTATUS(seek_retcode) == 0:
-#         any_files_changed = True
-#         print('changing Libint base version from', libint_old_base_version, 'to', libint_new_base_version)
-#         os.system('find ' + topsrc + ' -type f -name "*.cmake*" -print0 | xargs -0 sed -i \'\' -e \'s/Libint2 ' + libint_old_base_version + '/Libint2 ' + libint_new_base_version + '/g\'')
+# Eigen version in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'Eigen', eigen_old_version, eigen_new_version, 'eigen.tuxfamily.org), version ', ' or higher')
+# Eigen install version in eigen.cmake
+any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Eigen', eigen_old_install_version, eigen_new_install_version, 'bitbucket.org/eigen/eigen/get/', '.tar.bz2')
+any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Eigen', eigen_old_install_url_hash, eigen_new_install_url_hash, 'MD5=', '')
+
+# MADNESS version in tiledarray-config.cmake.in
+any_files_changed |= replace_dep_id(topsrc, 'cmake.in', 'MADNESS', madness_old_version, madness_new_version, 'find_package(MADNESS ', ' ')
+# MADNESS tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'MADNESS', madness_old_tag, madness_new_tag, 'm-a-d-n-e-s-s/madness), tag ', ' ')
+
+# Elemental tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'Elemental', elemental_old_tag, elemental_new_tag, 'distributed-memory linear algebra library (tag ', '')
+
+# BTAS tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'BTAS', btas_old_tag, btas_new_tag, 'BTAS/BTAS), tag ', '')
+
+# cuTT tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'cuTT', cutt_old_tag, cutt_new_tag, '', '')
+
+# Umpire tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'Umpire', umpire_old_tag, umpire_new_tag, '', '')
 
 if any_files_changed:
     sys.exit(1)
