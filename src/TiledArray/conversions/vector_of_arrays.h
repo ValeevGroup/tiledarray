@@ -19,7 +19,7 @@ namespace detail {
 /// @param array_trange the base trange
 /// @param block_size blocking range for the new dimension, the dimension being fused
 /// @return TiledRange of fused Array object
-inline TA::TiledRange fuse_vector_of_tranges(
+inline TA::TiledRange prepend_dim_to_trange(
     std::size_t array_rank,
     const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
   /// make the new TiledRange1 for new dimension
@@ -46,14 +46,24 @@ inline TA::TiledRange fuse_vector_of_tranges(
   return new_trange;
 }
 
-//TODO Fix the dox for new functions
-    /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
-    ///
-    /// @param global_world the world object which the new fused array will live in.
-    /// @param[in] arrays a vector of DistArray objects; all members of @c arrays must have the same TiledRange
-    /// @param array_rank Number of tensors in the fused @c arrays (the size of @c arrays on each rank will depend on world.size)
-    /// @param[in] fused_trange the TiledRange of the fused @c arrays
-    /// @return Shape of fused Array object
+/// @brief fuses the SparseShape objects of a tilewise-round-robin distributed
+///        vector of Arrays into single SparseShape object,
+///        with the vector index forming the first dimension.
+///
+/// This is used to fuse shapes of a sequence of N-dimensional arrays
+/// into the shape of the fused (N+1)-dimensional array. The sequence is *tiled*,
+/// and the tiles are round-robin distributed. Hence for p ranks tile I will
+/// reside on processor I%p ; this tile includes shapes of arrays [I*b, (I+1)*b).
+///
+/// @param global_world the World object in which the new fused array will live
+/// @param[in] arrays a vector of DistArray objects; these are local components
+///            of a vector distributed tilewise in round-robin manner; each
+///            element of @c arrays must have the same TiledRange;
+/// @param array_rank Sum of the sizes of @c arrays on each rank
+///        (the size of @c arrays on each rank will depend on world.size)
+/// @param[in] fused_trange the TiledRange of the fused @c arrays
+/// @return SparseShape of fused Array object
+/// TODO rename to fuse_tilewise_vector_of_shapes
 template <typename Tile>
 TA::SparseShape<float> fuse_vector_of_shapes_tiles(
         madness::World& global_world,
@@ -122,10 +132,20 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
   return fused_shapes;
 }
 
-    /// @brief fuses the Shapes of a vector of Arrays into 1 Shape, with the vector index forming the first mode
-
-    /// @param fused_trange the TiledRange of the fused @c arrays
-    /// @return Shape of fused Array object
+/// @brief fuses the DenseShape objects of a tilewise-round-robin distributed
+///        vector of Arrays into single DenseShape object,
+///        with the vector index forming the first dimension.
+///
+/// This is the same as the sparse version above, but far simpler.
+///
+/// @param global_world the World object in which the new fused array will live
+/// @param[in] arrays a vector of DistArray objects; these are local components
+///            of a vector distributed tilewise in round-robin manner; each
+///            element of @c arrays must have the same TiledRange;
+/// @param array_rank Sum of the sizes of @c arrays on each rank
+///        (the size of @c arrays on each rank will depend on world.size)
+/// @param[in] fused_trange the TiledRange of the fused @c arrays
+/// @return DenseShape of fused Array object
 template <typename Tile>
 TA::DenseShape fuse_vector_of_shapes_tiles(madness::World&,
                                      const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
@@ -134,18 +154,15 @@ TA::DenseShape fuse_vector_of_shapes_tiles(madness::World&,
   return TA::DenseShape(1, fused_trange);
 }
 
+/// @brief extracts the shape of a slice of a fused array created with fuse_vector_of_arrays
 
-
-/// @brief extracts the shape of a subarray of a fused array created with fuse_vector_of_arrays
-
-/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
-/// @param[in] i the index of the subarray whose Shape will be extracted
-///            (i.e. the index of the corresponding *element* index of the
-///            leading dimension)
-/// @param[in] split_trange TiledRange of the target subarray object
+/// @param[in] split_trange the TiledRange object of each "slice" array that was fused via fuse_vector_of_arrays
+/// @param[in] shape the shape of a DistArray created with fuse_vector_of_arrays
+/// @param[in] tile_idx the tile index of the leading mode that will be sliced off
+/// @param[in] split_ntiles the number of tiles in each "slice" array that was fused via fuse_vector_of_arrays
+/// @param[in] tile_size the size of the tile of the leading dimension of the fused array
 /// @return the Shape of the @c i -th subarray
-
-// TODO add documentation to these new functions.
+// TODO rename to tilewise_slice_of_fused_shape
 inline TA::SparseShape<float> subshape_from_fused_tile(
         const TA::TiledRange& split_trange, const TA::SparsePolicy::shape_type & shape,
         const std::size_t tile_idx, const std::size_t split_ntiles,
@@ -187,7 +204,7 @@ inline TA::DenseShape subshape_from_fused_tile(
 }  // namespace detail
 
 namespace detail {
-/// @brief global view of a distributed vector of local arrays
+/// @brief global view of a tilewise-round-robin distributed std::vector of Arrays
 template <typename Array>
 class dist_subarray_vec
     : public madness::WorldObject<dist_subarray_vec<Array>> {
@@ -237,8 +254,10 @@ class dist_subarray_vec
 /// @param[in] fused_dim_extent the extent of the resulting (fused) mode; equals the total number of arrays in a fused @c arrays (sum of @c arrays.size() on each rank)
 /// @param[in] block_size the block size for the "vector" dimension of the tiled range of the result
 /// @return @c arrays fused into a DistArray
-/// @note This is a collective function. It assumes that it is invoked across @c global_world, but the subarrays are "local" to each rank and distributed in round-robin fashion.
+/// @note This is a collective function. It assumes that it is invoked across @c global_world, but the subarrays are "local" to each rank and distributed in tilewise-round-robin fashion.
 ///       The result will live in @c global_world.
+/// @sa detail::fuse_vector_of_shapes_tiles
+/// TODO rename to fuse_tilewise_vector_of_arrays
 template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
         madness::World& global_world,
@@ -253,7 +272,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
                                           fused_dim_extent);
 
   // make fused tiledrange
-  auto fused_trange = detail::fuse_vector_of_tranges(fused_dim_extent,
+  auto fused_trange = detail::prepend_dim_to_trange(fused_dim_extent,
                                                      array_trange, block_size);
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
@@ -343,6 +362,8 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
 /// @param[in] tile_of_i tile range information for tile i
 /// @param[in] split_trange TiledRange of the split Array object
 /// @return the @c i -th subarray
+/// @sa detail::subshape_from_fused_tile
+/// TODO rename to split_tilewise_fused_array
   template <typename Tile, typename Policy>
   void subarray_from_fused_array(
           madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
