@@ -93,7 +93,7 @@ namespace TiledArray {
 
   template<typename Tile>
   void elem_to_array(DistArray<Tile> &array, elem::DistMatrix<typename Tile::value_type> &mat){
-	using T = typename Tile::value_type;
+    using T = typename Tile::value_type;
     TA_USER_ASSERT(array.range().rank()==2u, "TiledArray::elem_to_array(): requires the array to have dimension 2");
     TA_USER_ASSERT((array.trange().elements_range().extent()[0]==mat.Height()) &&
                    (array.trange().elements_range().extent()[1] == mat.Width()),

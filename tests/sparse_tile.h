@@ -209,10 +209,10 @@ private:
   // returns a tile for which result[perm ^ i] = tile[i]
   template <typename T, typename TagType>
   EigenSparseTile<T, TagType> permute(const EigenSparseTile<T, TagType>& tile,
-				      const TiledArray::Permutation& perm) {
+                                      const TiledArray::Permutation& perm) {
     TA_ASSERT(perm[0] != 0);
     return EigenSparseTile<T, TagType>(tile.data().transpose(),
-				       perm * tile.range());
+                                       perm * tile.range());
   }
 
   // Addition operations
@@ -220,7 +220,7 @@ private:
   // sparse_result[i] = sparse_arg1[i] + sparse_arg2[i]
   template <typename T, typename TagType>
   EigenSparseTile<T, TagType> add(const EigenSparseTile<T, TagType>& arg1,
-				  const EigenSparseTile<T, TagType>& arg2) {
+                                  const EigenSparseTile<T, TagType>& arg2) {
     TA_ASSERT(arg1.range() == arg2.range());
 
     return EigenSparseTile<T, TagType>(arg1.data() + arg2.data(), arg1.range());
@@ -229,7 +229,7 @@ private:
   // dense_result[i] = dense_arg1[i] + sparse_arg2[i]
   template <typename T, typename TagType>
   TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
-			    const EigenSparseTile<T, TagType>& arg2) {
+                            const EigenSparseTile<T, TagType>& arg2) {
     TA_ASSERT(arg1.range() == arg2.range());
 
     // this could be done better ...
@@ -239,15 +239,15 @@ private:
   // dense_result[i] = sparse_arg1[i] + dense_arg2[i]
   template <typename T, typename TagType>
   TiledArray::Tensor<T> add(const EigenSparseTile<T, TagType>& arg1,
-			    const TiledArray::Tensor<T>& arg2) {
+                            const TiledArray::Tensor<T>& arg2) {
     return TiledArray::add(arg2,arg1);
   }
 
   // dense_result[perm ^ i] = dense_arg1[i] + sparse_arg2[i]
   template <typename T, typename TagType>
   TiledArray::Tensor<T> add(const TiledArray::Tensor<T>& arg1,
-			    const EigenSparseTile<T, TagType>& arg2,
-			    const TiledArray::Permutation& perm) {
+                            const EigenSparseTile<T, TagType>& arg2,
+                            const TiledArray::Permutation& perm) {
     TA_ASSERT(arg1.range() == arg2.range());
 
     // this could be done better ...
@@ -258,7 +258,7 @@ private:
   template <typename T, typename TagType>
   EigenSparseTile<T, TagType>&
   add_to(EigenSparseTile<T, TagType>& result,
-	 const EigenSparseTile<T, TagType>& arg) {
+         const EigenSparseTile<T, TagType>& arg) {
     TA_ASSERT(result.range() == arg.range());
 
     result.data() += arg.data();
@@ -268,7 +268,7 @@ private:
   // dense_result[i] += sparse_arg[i]
   template <typename T, typename TagType>
   TiledArray::Tensor<T>& add_to(TiledArray::Tensor<T>& result,
-				const EigenSparseTile<T, TagType>& arg) {
+                                const EigenSparseTile<T, TagType>& arg) {
     TA_ASSERT(result.range() == arg.range());
 
     auto nrows = result.range().extent()[0];
@@ -475,10 +475,10 @@ template<typename T, typename TagType>
 
         // make a slice of the result ...
         // TODO can this be done via outer product of TensorInterfaces?
-//	auto result_slice = result.block(
-//	  {arg1_lobound[0],arg1_lobound[1],drow,dcol},
-//	  {arg1_upbound[0],arg1_upbound[1],drow+1,dcol+1}
-//	);
+//        auto result_slice = result.block(
+//          {arg1_lobound[0],arg1_lobound[1],drow,dcol},
+//          {arg1_upbound[0],arg1_upbound[1],drow+1,dcol+1}
+//        );
 
         // and evaluate the result slice
         for (auto i0 = arg1_lobound[0]; i0 != arg1_upbound[0]; ++i0) {
