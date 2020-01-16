@@ -24,7 +24,7 @@
 
 #-- Add an Option to toggle the generation of the API documentation
 
-find_package(Doxygen)
+find_package(Doxygen 1.8.12)
 if(DOXYGEN_FOUND)
   configure_file(Doxyfile.in Doxyfile @ONLY IMMEDIATE)
   add_custom_target (doc USES_TERMINAL
