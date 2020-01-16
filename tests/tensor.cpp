@@ -535,4 +535,3 @@ BOOST_AUTO_TEST_CASE( inplace_conj_scal_op ) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-

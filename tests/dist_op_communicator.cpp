@@ -342,4 +342,3 @@ BOOST_AUTO_TEST_CASE( all_reduce_world_group )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-

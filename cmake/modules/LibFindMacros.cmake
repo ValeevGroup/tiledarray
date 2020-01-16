@@ -167,4 +167,3 @@ macro(libfind_library PREFIX _name)
   mark_as_advanced(${PREFIX}_${_name}_LIBRARY)
 
 endmacro()
-

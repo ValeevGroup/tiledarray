@@ -158,4 +158,3 @@ BOOST_AUTO_TEST_CASE( make_tiles_range )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-

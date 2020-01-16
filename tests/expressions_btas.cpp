@@ -41,5 +41,3 @@ BOOST_AUTO_TEST_SUITE(expressions_btas_suite)
 #include "expressions_impl.h"
 
 #endif
-
-

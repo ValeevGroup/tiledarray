@@ -47,5 +47,3 @@ cmake: $(CMAKE).tar.gz
 	cd ./$(CMAKE)
 	cd $(CMAKE) && ./configure --prefix=$(PREFIX) # --system-curl
 	cd $(CMAKE) && make install
-
-

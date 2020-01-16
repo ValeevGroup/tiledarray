@@ -45,5 +45,3 @@ include(external/umpire.cmake)
 ## cuTT
 ##
 include(external/cutt.cmake)
-
-
