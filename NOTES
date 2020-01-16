@@ -15,4 +15,3 @@ hierarchies (e.g. BLAS). We must rely on external libraries and should optimize 
 impact on interface (e.g. tile fusion, etc. to construct data representation most suitable for performance).
 4) item 2 also suggests that nonuniform(irregular) tiling must be allowed to provide the necessary flexibility for physics.
 5) repacking arrays (i.e. changing tile sizes, permuting dimensions, etc.) will be frequent, but OK.
-

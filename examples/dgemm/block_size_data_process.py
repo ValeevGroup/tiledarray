@@ -13,5 +13,3 @@ for fn in os.listdir('.'):
 outfile = open("mathout.txt", 'w')
 for n in range(len(row_blocks)):
     print("{", row_blocks[n], ",", col_blocks[n], ",", gflops[n], "},", file=outfile)
-
-

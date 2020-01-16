@@ -181,4 +181,3 @@ BOOST_AUTO_TEST_CASE( local_group )
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-

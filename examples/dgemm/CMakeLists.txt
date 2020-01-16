@@ -45,5 +45,3 @@ if(ENABLE_ELEMENTAL)
 #    add_dependencies(ta_dense_elem External)
 #    add_dependencies(examples ta_dense_elem)
 endif(ENABLE_ELEMENTAL)
-
-

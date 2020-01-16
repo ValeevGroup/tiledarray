@@ -41,7 +41,7 @@ if (TARGET TiledArray_Eigen)
   if (NOT MADNESS_INTERNAL_INCLUDE_DIRS)
     message(FATAL_ERROR "eigen.cmake must be loaded after calling detect_MADNESS_config()")
   endif()
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN3_INCLUDE_DIRS} ${CMAKE_SOURCE_DIR}/src
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN3_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src
        ${MADNESS_INTERNAL_INCLUDE_DIRS} ${LAPACK_INCLUDE_DIRS})
   list(APPEND CMAKE_REQUIRED_LIBRARIES ${LAPACK_LIBRARIES})
   foreach(_def ${LAPACK_COMPILE_DEFINITIONS})
@@ -82,6 +82,7 @@ else()
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
   set(EIGEN3_URL http://bitbucket.org/eigen/eigen/get/3.3.7.tar.bz2)
+  set(EIGEN3_URL_HASH MD5=05b1f7511c93980c385ebe11bd3c93fa)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
 
@@ -92,7 +93,7 @@ else()
    #--Download step--------------
     DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
     URL ${EIGEN3_URL}
-    URL_HASH MD5=05b1f7511c93980c385ebe11bd3c93fa
+    URL_HASH ${EIGEN3_URL_HASH}
    #--Configure step-------------
     SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
     CONFIGURE_COMMAND ""

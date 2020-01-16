@@ -451,4 +451,3 @@ if (TILEDARRAY_HAS_ELEMENTAL AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
   append_flags(CMAKE_CXX_FLAGS "-fext-numeric-literals")
 endif()
 append_flags(CMAKE_EXE_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")
-

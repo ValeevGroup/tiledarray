@@ -63,4 +63,3 @@ int main(int argc, char* argv[]) {
   TA::finalize();
   return 0;
 }
-

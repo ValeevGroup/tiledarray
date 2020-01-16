@@ -201,7 +201,8 @@ namespace TiledArray {
 /// this generates struct \c is_free_function_Function_anyreturn<Args...> whose
 /// public constexpr member variable \c value is true if \c Function is a
 /// free function that takes \c Args and returns any value.
-/// \note to ensure that \c Function can be looked up, it may be necessary
+/// \note to ensure that \c Function can be looked up if
+///       it can't be found via ADL, it may be necessary
 ///       to add \c "using namespace::Function" BEFORE using this macro.
 #define GENERATE_IS_FREE_FUNCTION_ANYRETURN(Function)                          \
   template <typename... Args>                                                  \
@@ -276,6 +277,8 @@ namespace TiledArray {
   GENERATE_HAS_MEMBER_TYPE(const_iterator)
   GENERATE_HAS_MEMBER_TYPE(reverse_iterator)
   GENERATE_HAS_MEMBER_TYPE(const_reverse_iterator)
+  GENERATE_HAS_MEMBER_TYPE(key_type)
+  GENERATE_HAS_MEMBER_TYPE(mapped_type)
 
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(size)
   GENERATE_HAS_MEMBER_FUNCTION(size)
@@ -285,6 +288,7 @@ namespace TiledArray {
   GENERATE_HAS_MEMBER_FUNCTION(empty)
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(clear)
   GENERATE_HAS_MEMBER_FUNCTION(clear)
+  GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(resize)
 
   GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(begin)
   GENERATE_HAS_MEMBER_FUNCTION(begin)
@@ -323,6 +327,11 @@ template <typename... Args> constexpr const bool is_free_function_std_data_anyre
 template <typename... Args> constexpr const bool is_free_function_std_empty_anyreturn_v = false;
 #endif
 
+  // these are useful to detect presence of overloads
+  GENERATE_IS_FREE_FUNCTION_ANYRETURN(size)
+  GENERATE_IS_FREE_FUNCTION_ANYRETURN(data)
+  GENERATE_IS_FREE_FUNCTION_ANYRETURN(empty)
+
   }  // namespace detail
 }  // namespace TiledArray
 
@@ -337,7 +346,7 @@ template<typename> struct is_type : public std::true_type { };
 template<typename T> constexpr const bool is_type_v = is_type<T>::value;
 
 /// @brief helper to implement other metafunctions
-/// @c is_type<T>::value is true if @c T is a valid type
+/// @c is_complete_type<T>::value is true if @c T is a complete type
 /// @tparam T a type
 /// @note see https://stackoverflow.com/questions/1625105/how-to-write-is-complete-template
 template <typename T, typename = void>
@@ -398,8 +407,8 @@ namespace TiledArray {
   /// some observable behavior does depend on this (e.g. given an explicit converting ctor
   /// A::A(C) and an B::operator C(), explicit conversion of B into A will be possible
   /// if B::operator C is implicit.
-template< typename From, typename To>
-struct has_conversion_operator {
+  template< typename From, typename To>
+  struct has_conversion_operator {
     /*
      * see https://stackoverflow.com/questions/87372/check-if-a-class-has-a-member-function-of-a-given-signature#answer-10707822
      * this works for icc and all other compilers tested:

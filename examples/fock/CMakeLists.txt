@@ -29,4 +29,3 @@ add_executable(ta_k_build EXCLUDE_FROM_ALL ta_k_build.cpp)
 target_link_libraries(ta_k_build PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
 add_dependencies(ta_k_build External)
 add_dependencies(examples ta_k_build)
-

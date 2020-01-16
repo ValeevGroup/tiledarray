@@ -24,4 +24,3 @@ foreach(example ${wikiexamples})
   target_link_libraries(${example} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
   add_dependencies(examples ${example})
 endforeach()
-

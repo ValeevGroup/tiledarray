@@ -1193,5 +1193,5 @@ int main(int argc, char** argv) {
   }
 
   TiledArray::finalize();
-	return 0;
+  return 0;
 }
