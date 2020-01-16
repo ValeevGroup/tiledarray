@@ -27,13 +27,13 @@ $ cmake --build build --target install
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), master branch (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), tag bfad8fb5293bd598792d6e2d1d18742fd039975d (will be downloaded automatically, if missing)
 - BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness)
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag a9e42b1b26583c289b55bca2962e37417a23e893 .
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
-  A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/INSTALL_CMake);
+  A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/master/INSTALL_CMake);
   it also also contains detailed
   MADNESS compilation instructions.
 
@@ -41,16 +41,16 @@ $ cmake --build build --target install
   - An implementation of Message Passing Interface version 2 or 3, with suppport
     for `MPI_THREAD_MULTIPLE`.
   - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
-  - (optional) [Elemental](http://libelemental.org/), a distributed-memory linear algebra library
+  - (optional) [Elemental](http://libelemental.org/), a distributed-memory linear algebra library (tag de7b5bea1abf5f626b91582f742cf99e2e551bff)
   - (optional, strongly recommended on x86 platforms)
     Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb‎) or
     an [open-source](https://www.threadingbuildingblocks.org/) form
 
 Optional prerequisites:
 - CUDA compiler and runtime -- for execution on CUDA-enabled accelerators. CUDA 9 and 10 have been tested. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
-  - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety.
-  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms.
-- Doxygen -- for building documentation
+  - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 02152734bc534b74e2d0160d12bb73111bb6ffb4).
+  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f04abd1dd038c84262915a493d8f78576bb80fd0).
+- Doxygen -- for building documentation (version 1.8.12 or later).
 
 Most of the dependencies (except for MADNESS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
