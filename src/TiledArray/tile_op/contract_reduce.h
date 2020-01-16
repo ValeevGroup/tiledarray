@@ -228,7 +228,7 @@ namespace TiledArray {
 
       /// Post processing step
       result_type operator()(const result_type& temp) const {
-        using TiledArray::detail::empty;
+        using TiledArray::empty;
         TA_ASSERT(! empty(temp));
 
         if(! ContractReduceBase_::perm())
@@ -259,7 +259,7 @@ namespace TiledArray {
       void operator()(result_type& result, first_argument_type left,
           second_argument_type right) const
       {
-        using TiledArray::detail::empty;
+        using TiledArray::empty;
         using TiledArray::gemm;
         if(empty(result))
           result = gemm(left, right, ContractReduceBase_::factor(),
@@ -338,7 +338,7 @@ namespace TiledArray {
 
       /// Post processing step
       result_type operator()(result_type& temp) const {
-        using TiledArray::detail::empty;
+        using TiledArray::empty;
         TA_ASSERT(! empty(temp));
 
         if(! ContractReduceBase_::perm()) {
@@ -371,7 +371,7 @@ namespace TiledArray {
       void operator()(result_type& result, first_argument_type left,
           second_argument_type right) const
       {
-        using TiledArray::detail::empty;
+        using TiledArray::empty;
         using TiledArray::gemm;
         if(empty(result))
           result = gemm(left, right, 1, ContractReduceBase_::gemm_helper());
@@ -449,7 +449,7 @@ namespace TiledArray {
 
       /// Post processing step
       result_type operator()(result_type& temp) const {
-        using TiledArray::detail::empty;
+        using TiledArray::empty;
         TA_ASSERT(! empty(temp));
 
         if(! ContractReduceBase_::perm()) {
@@ -483,7 +483,7 @@ namespace TiledArray {
       void operator()(result_type& result, first_argument_type left,
           second_argument_type right) const
       {
-        using TiledArray::detail::empty;
+        using TiledArray::empty;
         using TiledArray::gemm;
         if(empty(result))
           result = gemm(left, right, 1, ContractReduceBase_::gemm_helper());
