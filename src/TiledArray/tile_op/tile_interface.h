@@ -264,8 +264,9 @@ namespace TiledArray {
   /// \tparam Arg The tile argument type
   /// \param arg The tile argument to be checked
   /// \return `true` if `arg` is empty, otherwise `false`.
+  /// \todo replace with import of std::empty when stop supporting C++14
   template <typename Arg>
-  inline std::enable_if_t<!detail::is_free_function_std_empty_anyreturn_v<const Arg&> &&
+  inline std::enable_if_t<!detail::is_free_function_empty_anyreturn_v<const Arg&> &&
       detail::has_member_function_empty_v<Arg,bool>, bool>
       empty(const Arg& arg) {
     return arg.empty();

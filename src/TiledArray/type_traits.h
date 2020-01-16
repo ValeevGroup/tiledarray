@@ -326,6 +326,11 @@ template <typename... Args> constexpr const bool is_free_function_std_data_anyre
 template <typename... Args> constexpr const bool is_free_function_std_empty_anyreturn_v = false;
 #endif
 
+  // these are useful to detect presence of overloads
+  GENERATE_IS_FREE_FUNCTION_ANYRETURN(size)
+  GENERATE_IS_FREE_FUNCTION_ANYRETURN(data)
+  GENERATE_IS_FREE_FUNCTION_ANYRETURN(empty)
+
   }  // namespace detail
 }  // namespace TiledArray
 
