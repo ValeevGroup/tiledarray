@@ -201,7 +201,8 @@ namespace TiledArray {
 /// this generates struct \c is_free_function_Function_anyreturn<Args...> whose
 /// public constexpr member variable \c value is true if \c Function is a
 /// free function that takes \c Args and returns any value.
-/// \note to ensure that \c Function can be looked up, it may be necessary
+/// \note to ensure that \c Function can be looked up if
+///       it can't be found via ADL, it may be necessary
 ///       to add \c "using namespace::Function" BEFORE using this macro.
 #define GENERATE_IS_FREE_FUNCTION_ANYRETURN(Function)                          \
   template <typename... Args>                                                  \
@@ -345,7 +346,7 @@ template<typename> struct is_type : public std::true_type { };
 template<typename T> constexpr const bool is_type_v = is_type<T>::value;
 
 /// @brief helper to implement other metafunctions
-/// @c is_type<T>::value is true if @c T is a valid type
+/// @c is_complete_type<T>::value is true if @c T is a complete type
 /// @tparam T a type
 /// @note see https://stackoverflow.com/questions/1625105/how-to-write-is-complete-template
 template <typename T, typename = void>
