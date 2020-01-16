@@ -18,6 +18,7 @@ $ cmake --build build --target install
   - [GNU C++](https://gcc.gnu.org/), version 5.0 or higher
   - [Clang](https://clang.llvm.org/), version 3.4 or higher
   - Apple Clang, version 5.0 or higher
+  - [Intel C++ compiler](), version 17 or higher
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
