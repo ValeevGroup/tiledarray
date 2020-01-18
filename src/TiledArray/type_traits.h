@@ -407,6 +407,23 @@ namespace TiledArray {
   /// some observable behavior does depend on this (e.g. given an explicit converting ctor
   /// A::A(C) and an B::operator C(), explicit conversion of B into A will be possible
   /// if B::operator C is implicit.
+#if !defined(__INTEL_COMPILER_BUILD_DATE)
+  template <typename From, typename To, typename Enabler = void>
+  struct has_conversion_operator : std::false_type {};
+
+  template <typename From, typename To>
+  struct has_conversion_operator<
+      From, To, typename std::enable_if<is_type<decltype(
+                    std::declval<From>().operator To())>::value>::type>
+      : std::true_type {};
+
+  template <typename From, typename To>
+  struct has_conversion_operator<
+      From, To,
+      typename std::enable_if<
+          is_type<decltype(std::declval<From>().operator To&())>::value>::type>
+      : std::true_type {};
+#else
   template< typename From, typename To>
   struct has_conversion_operator {
     /*
@@ -441,6 +458,7 @@ namespace TiledArray {
 
     static const bool value = type::value; /* Which is it? */
   };
+#endif
 
   /// \c has_conversion_operator_v<From, To> is an alias for \c has_conversion_operator<From, To>::value
   template <class From, class To>
