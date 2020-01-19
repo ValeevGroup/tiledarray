@@ -20,8 +20,11 @@
 #ifndef TILEDARRAY_TYPE_TRAITS_H__INCLUDED
 #define TILEDARRAY_TYPE_TRAITS_H__INCLUDED
 
-#include <TiledArray/config.h>
-#include <madness/world/type_traits.h>
+/*
+ * N.B. this must be pure c++, usable without any context other than
+ *      the current compiler + library + C++ standard.
+ *      DO NOT include non-standard headers here!
+ */
 #include <complex>
 #include <functional>
 #include <iterator>
@@ -40,6 +43,13 @@ template <typename, int, typename>
 class Map;
 
 }  // namespace Eigen
+
+namespace madness {
+
+template <typename T>
+class Future;
+
+}  // namespace madness
 
 namespace TiledArray {
 template <typename>

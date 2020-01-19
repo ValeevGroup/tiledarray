@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_SRC_TILEDARRAY_TENSOR_COMPLEX_H__INCLUDED
 #define TILEDARRAY_SRC_TILEDARRAY_TENSOR_COMPLEX_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/type_traits.h>
 
 namespace TiledArray {
