@@ -26,15 +26,14 @@
 #ifndef TILEDARRAY_UTILITY_H__INCLUDED
 #define TILEDARRAY_UTILITY_H__INCLUDED
 
-#include <TiledArray/error.h>
-#include <TiledArray/external/madness.h>
-#include <TiledArray/type_traits.h>
 #include <array>
 #include <atomic>
 #include <initializer_list>
 #include <iosfwd>
 #include <iterator>
 #include <vector>
+
+#include <TiledArray/type_traits.h>
 
 namespace TiledArray {
 namespace detail {
