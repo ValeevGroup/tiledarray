@@ -237,6 +237,10 @@ constexpr inline bool operator!=(const DenseShape& a, const DenseShape& b) {
   return !(a == b);
 }
 
+constexpr inline bool is_replicated(World& world, const DenseShape& t) {
+  return true;
+}
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_DENSE_SHAPE_H__INCLUDED

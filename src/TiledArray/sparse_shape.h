@@ -249,6 +249,16 @@ class SparseShape {
     return result_size_vectors;
   }
 
+  decltype(zero_tile_count_) compute_zero_tile_count() {
+    decltype(zero_tile_count_) zero_tile_count = 0;
+    for (auto&& n : tile_norms_) {
+      if (n < threshold()) {
+        ++zero_tile_count;
+      }
+    }
+    return zero_tile_count;
+  }
+
   SparseShape(const Tensor<T>& tile_norms,
               const std::shared_ptr<vector_type>& size_vectors,
               const size_type zero_tile_count)
@@ -296,6 +306,8 @@ class SparseShape {
     if (!do_not_scale) {
       zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(
           tile_norms_, size_vectors_.get());
+    } else {
+      zero_tile_count_ = compute_zero_tile_count();
     }
   }
 
@@ -363,6 +375,8 @@ class SparseShape {
       zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(
           tile_norms_, size_vectors_.get());
       ;
+    } else {
+      zero_tile_count_ = compute_zero_tile_count();
     }
   }
 
@@ -386,6 +400,7 @@ class SparseShape {
               const TiledRange& trange)
       : SparseShape(tile_norms, trange) {
     world.gop.max(tile_norms_.data(), tile_norms_.size());
+    zero_tile_count_ = compute_zero_tile_count();
   }
 
   /// Copy constructor
@@ -1247,6 +1262,23 @@ inline std::ostream& operator<<(std::ostream& os, const SparseShape<T>& shape) {
   os << "SparseShape<" << typeid(T).name() << ">:" << std::endl
      << shape.data() << std::endl;
   return os;
+}
+
+/// collective bitwise-compare-reduce for SparseShape objects
+
+/// @param world the World object
+/// @param[in] shape the SparseShape object
+/// @return true if \c shape is bitwise identical across \c world
+/// @note must be invoked on every rank of World
+template <typename T>
+bool is_replicated(World& world, const SparseShape<T>& shape) {
+  const auto volume = shape.data().size();
+  std::vector<T> data(shape.data().data(), shape.data().data() + volume);
+  world.gop.max(data.data(), volume);
+  for (size_t i = 0; i != data.size(); ++i) {
+    if (data[i] != shape.data()[i]) return false;
+  }
+  return true;
 }
 
 #ifndef TILEDARRAY_HEADER_ONLY
