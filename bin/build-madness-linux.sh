@@ -31,6 +31,19 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   # where to install MADNESS+Elemental (need for testing installed code)
   export INSTALL_DIR=${INSTALL_PREFIX}/madness
 
+  # extract the tracked tag of MADNESS
+  export MADNESS_TAG=`grep 'set(TA_TRACKED_MADNESS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\"//g`
+  echo "required MADNESS revision = ${MADNESS_TAG}"
+
+  # make sure installed MADNESS tag matches the required tag, if not, remove INSTALL_DIR (will cause reinstall)
+  if [ -f "${INSTALL_DIR}/include/madness/config.h" ]; then
+    export INSTALLED_MADNESS_TAG=`grep 'define MADNESS_REVISION' ${INSTALL_DIR}/include/madness/config.h | awk '{print $3}' | sed s/\"//g`
+    echo "installed MADNESS revision = ${INSTALLED_MADNESS_TAG}"
+    if [ "${MADNESS_TAG}" != "${INSTALLED_MADNESS_TAG}" ]; then
+      rm -rf "${INSTALL_DIR}"
+    fi
+  fi
+
   if [ ! -d "${INSTALL_DIR}" ]; then
 
     # make build dir
@@ -39,7 +52,6 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     cd madness
 
     # check out the tracked tag of MADNESS
-    export MADNESS_TAG=`grep 'set(MADNESS_OLDEST_TAG' /Users/evaleev/code/tiledarray/external/madness.cmake | awk '{print $2}' | sed s/\"//g`
     git clone https://github.com/m-a-d-n-e-s-s/madness madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
 
     cmake madness_src \
