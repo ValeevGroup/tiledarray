@@ -115,8 +115,6 @@ inline int num_cuda_devices() {
 }
 
 inline int current_cuda_device_id(World& world) {
-  auto mpi_rank = world.rank();
-
   int mpi_local_size = -1;
   int mpi_local_rank = -1;
   std::tie(mpi_local_rank, mpi_local_size) = mpi_local_rank_size(world);
