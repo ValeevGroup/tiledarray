@@ -39,6 +39,10 @@
 ////////////////////////////////////////////////
 // this duplicates TiledArray_Eigen definitions
 #if HAVE_INTEL_MKL
+#ifndef EIGEN_USE_MKL  // strangely, defining EIGEN_USE_MKL_ALL does not imply
+                       // EIGEN_USE_MKL
+#define EIGEN_USE_MKL 1
+#endif
 #ifndef EIGEN_USE_MKL_ALL
 #define EIGEN_USE_MKL_ALL 1
 #endif
