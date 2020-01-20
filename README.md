@@ -3,7 +3,7 @@
 
 <img src=https://github.com/ValeevGroup/tiledarray/wiki/images/ta_logo_med.png width=125>
 
-# Synopsis {#mainpage}
+# Synopsis
 TiledArray is a scalable, block-sparse tensor framework for rapid composition of high-performance tensor arithmetic, appearing for example in many-body quantum mechanics. It allows users to compose tensor expressions of arbitrary complexity in native C++ code that closely resembles the standard mathematical notation. The framework is designed to scale from a single multicore computer to a massive distributed-memory multiprocessor.
 
 TiledArray is built on top of MADNESS parallel runtime (MADWorld), part of [MADNESS numerical calculus framework](https://github.com/m-a-d-n-e-s-s/madness).
