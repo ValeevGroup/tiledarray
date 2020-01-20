@@ -27,6 +27,26 @@ macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
   endforeach()
 endmacro()
 
+# if found, make sure the MADNESS tag matches exactly
+if (MADNESS_FOUND)
+  file(STRINGS ${MADNESS_DIR}/../../../include/madness/config.h MADNESS_REVISION_LINE REGEX "define MADNESS_REVISION")
+  if (MADNESS_REVISION_LINE) # MADNESS_REVISION found? make sure it matches the required tag exactly
+    string(REGEX REPLACE ".*define[ \t]+MADNESS_REVISION[ \t]+\"([a-zA-Z0-9]+)\"" "\\1" MADNESS_REVISION "${MADNESS_REVISION_LINE}")
+    if (MADNESS_TAG) # user-defined MADNESS_TAG overrides TA_TRACKED_MADNESS_TAG
+      set(MADNESS_REQUIRED_TAG "${MADNESS_TAG}")
+    else (MADNESS_TAG)
+      set(MADNESS_REQUIRED_TAG "${TA_TRACKED_MADNESS_TAG}")
+    endif (MADNESS_TAG)
+    if ("${MADNESS_REVISION}" STREQUAL "${MADNESS_REQUIRED_TAG}")
+      message(STATUS "Found MADNESS with required revision ${MADNESS_REQUIRED_TAG}")
+    else()
+      message(FATAL_ERROR "Found MADNESS with revision ${MADNESS_REVISION}, but ${MADNESS_REQUIRED_TAG} is required; if MADNESS was built by TiledArray, remove the TiledArray install directory, else build the required revision of MADNESS")
+    endif()
+  else (MADNESS_REVISION_LINE) # MADNESS_REVISION not found? MADNESS is not recent enough, reinstall
+    message(FATAL_ERROR "Found MADNESS, but it is not recent enough; either provide MADNESS with revision ${TA_TRACKED_MADNESS_TAG} or let TiledArray built it")
+  endif()
+endif(MADNESS_FOUND)
+
 if(MADNESS_FOUND)
 
   cmake_push_check_state()
