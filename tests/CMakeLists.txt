@@ -140,12 +140,11 @@ add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --
 
 # Add a test(s)
 if(ENABLE_MPI)
-  add_test(NAME ${executable}-np-1
-      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 1 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> --log_level=test_suite --show-progress ${MPIEXEC_POSTFLAGS})
-  add_test(NAME ${executable}-np-2
-      COMMAND ${MPIEXEC} ${MPIEXEC_NUMPROC_FLAG} 2 ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> --log_level=test_suite --show-progress ${MPIEXEC_POSTFLAGS})
-  set_tests_properties(${executable}-np-1 PROPERTIES DEPENDS build_${executable})
-  set_tests_properties(${executable}-np-2 PROPERTIES DEPENDS build_${executable})
+  foreach(p RANGE 1 2)
+    add_test(NAME ${executable}-np-${p}
+      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${p} ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> --log_level=test_suite --show-progress ${MPIEXEC_POSTFLAGS})
+    set_tests_properties(${executable}-np-${p} PROPERTIES DEPENDS build_${executable})
+  endforeach(p)
 else()
   add_test(NAME ${executable}
       COMMAND ${executable})
