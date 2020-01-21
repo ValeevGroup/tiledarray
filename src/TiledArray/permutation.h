@@ -20,11 +20,13 @@
 #ifndef TILEDARRAY_PERMUTATION_H__INCLUDED
 #define TILEDARRAY_PERMUTATION_H__INCLUDED
 
+#include <algorithm>
+#include <array>
+#include <numeric>
+
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/utility.h>
-#include <array>
-#include <numeric>
 
 namespace TiledArray {
 
