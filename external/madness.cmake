@@ -44,7 +44,7 @@ if (MADNESS_FOUND)
     endif()
   else (MADNESS_REVISION_LINE) # MADNESS_REVISION not found? MADNESS is not recent enough, reinstall
     message(FATAL_ERROR "Found MADNESS, but it is not recent enough; either provide MADNESS with revision ${TA_TRACKED_MADNESS_TAG} or let TiledArray built it")
-  endif()
+  endif(MADNESS_REVISION_LINE)
 endif(MADNESS_FOUND)
 
 if(MADNESS_FOUND)
