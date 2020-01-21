@@ -32,7 +32,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   export INSTALL_DIR=${INSTALL_PREFIX}/madness
 
   # extract the tracked tag of MADNESS
-  export MADNESS_TAG=`grep 'set(TA_TRACKED_MADNESS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\"//g`
+  export MADNESS_TAG=`grep 'set(TA_TRACKED_MADNESS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\)//g`
   echo "required MADNESS revision = ${MADNESS_TAG}"
 
   # make sure installed MADNESS tag matches the required tag, if not, remove INSTALL_DIR (will cause reinstall)
