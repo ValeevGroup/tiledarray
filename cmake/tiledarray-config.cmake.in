@@ -3,9 +3,12 @@
 #  TILEDARRAY_FOUND                - System has the TiledArray package
 #  TILEDARRAY_INCLUDE_DIRS         - The TiledArray include directory
 #  TILEDARRAY_LIBRARIES            - The TiledArray libraries and their dependencies
+#  TILEDARRAY_VERSION              - The TiledArray (core) version; see semver.org
+#  TILEDARRAY_EXT_VERSION          - The TiledArray version, includes prerelease id; see semver.org
 
 # Set package version
 set(TILEDARRAY_VERSION "@TILEDARRAY_VERSION@")
+set(TILEDARRAY_EXT_VERSION "@TILEDARRAY_EXT_VERSION@")
 
 @PACKAGE_INIT@
 

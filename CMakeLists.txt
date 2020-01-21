@@ -30,14 +30,18 @@ enable_language(CXX)
 
 # Set TiledArray version =======================================================
 
+# see https://semver.org/
 set(TILEDARRAY_MAJOR_VERSION 1)
 set(TILEDARRAY_MINOR_VERSION 0)
 set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_BUILDID alpha.2)
+set(TILEDARRAY_PRERELEASE_ID alpha.2)
+
 set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}")
-if (TILEDARRAY_BUILDID)
-  set(TILEDARRAY_VERSION "${TILEDARRAY_VERSION}-${TILEDARRAY_BUILDID}")
-endif(TILEDARRAY_BUILDID)
+if (TILEDARRAY_PRERELEASE_ID)
+  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}-${TILEDARRAY_PRERELEASE_ID}")
+else(TILEDARRAY_PRERELEASE_ID)
+  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}")
+endif(TILEDARRAY_PRERELEASE_ID)
 
 # Set install paths ============================================================
 
@@ -78,7 +82,7 @@ set(TILEDARRAY_INSTALL_INCLUDEDIR "include"
     CACHE PATH "TiledArray INCLUDE install directory")
 set(TILEDARRAY_INSTALL_LIBDIR "lib"
     CACHE PATH "TiledArray LIB install directory")
-set(TILEDARRAY_INSTALL_DOCDIR "share/tiledarray/${TILEDARRAY_VERSION}/doc"
+set(TILEDARRAY_INSTALL_DOCDIR "share/tiledarray/${TILEDARRAY_EXT_VERSION}/doc"
     CACHE PATH "TiledArray DOC install directory")
 set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
     CACHE PATH "TiledArray CMAKE install directory")
@@ -214,7 +218,7 @@ if(EXISTS ${PROJECT_SOURCE_DIR}/.git)
   string(REGEX MATCH "[0-9a-f]*"
       TILEDARRAY_REVISION "${TILEDARRAY_REVISION}")
 else()
-  set(TILEDARRAY_REVISION "${TILEDARRAY_VERSION}")
+  set(TILEDARRAY_REVISION "unknown")
 endif()
 
 ##########################

@@ -35,7 +35,7 @@
 /* TiledArray micro version */
 #define TILEDARRAY_MICRO_VERSION @TILEDARRAY_MICRO_VERSION@
 
-/* TiledArray buildid */
-#define TILEDARRAY_BUILDID "@TILEDARRAY_BUILDID@"
+/* TiledArray prerelease id */
+#define TILEDARRAY_PRERELEASE_ID "@TILEDARRAY_PRERELEASE_ID@"
 
 #endif // TILEDARRAY_VERSION_H__INCLUDED
