@@ -9,6 +9,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
+#include <TiledArray/external/cuda.h>
 #include <TiledArray/util/time.h>
 #include <cuda_runtime.h>
 #include <madness/world/taskfn.h>
