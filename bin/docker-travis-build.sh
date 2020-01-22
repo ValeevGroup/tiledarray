@@ -3,7 +3,7 @@
 # this script builds a 'Bionic' env docker image used by Travis-CI for TiledArray project
 #
 # to run bash in the image: docker run -it tiledarray-travis-debug bash -l
-# see https://github.com/ValeevGroup/tiledarray/wiki/Travis-CI-Administration-Notes for further instructions
+# see docker-travis.md for further instructions
 # N.B. relevant locations:
 #   - source dir: /home/travis/build/ValeevGroup/tiledarray (TRAVIS_BUILD_DIR env in Travis jobs)
 #   - build dir: /home/travis/_build
