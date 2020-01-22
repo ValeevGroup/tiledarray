@@ -29,7 +29,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall -m64 -fsignaling-nans -mcpu=pow
 # Set BLAS/LAPACK libraries
 set(XLF_LIBRARIES ${OLCF_XLF_ROOT}/lib/libxlf90_r.a;${OLCF_XLF_ROOT}/lib/libxlfmath.a;-ldl;-lm)
 set(BLAS_LIBRARIES ${OLCF_ESSL_ROOT}/lib64/libessl.so;${XLF_LIBRARIES})
-set(LAPACK_LIBRARIES $ENV{OLCF_NETLIB_LAPACK_ROOT}/lib64/liblapack.a;${BLAS_LIBRARIES})
+set(LAPACK_LIBRARIES $ENV{OLCF_NETLIB_LAPACK_ROOT}/lib64/liblapack.a;-lgfortran;${BLAS_LIBRARIES})
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 
 # Set build params
