@@ -30,7 +30,7 @@ $ cmake --build build --target install
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
 - [BTAS](http://github.com/BTAS/BTAS), tag bfad8fb5293bd598792d6e2d1d18742fd039975d (will be downloaded automatically, if missing)
 - BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag a6520a7f9e97c300a8943cc0b58e5705a5e8b477 .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 24afefa587927cdf4e487a2acbceb81388e673cd .
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
@@ -188,7 +188,7 @@ following CMake cache variables:
 You can build TiledArray without MPI support by setting ENABLE_MPI to OFF.
 Though we strongly recommend compiling with MPI even if you do not intend
 to use TiledArray in a distributed memory environment. Note, if you
-build MADNESS yourself, you must also configure MADNESS with --enable-stub-mpi
+build MADNESS yourself, you must also configure MADNESS with `ENABLE_MPI=OFF`
 to enable this option.
 
 ## BLAS and LAPACK
@@ -303,6 +303,7 @@ The following CMake options may be used to modify build behavior or find MADNESS
 * `MADNESS_URL` -- Path to the MADNESS repository [Default=MADNESS git repository]
 * `MADNESS_TAG` -- Revision hash or tag to use when building MADNESS (expert only)
 * `MADNESS_CMAKE_EXTRA_ARGS` -- Extra flags passed to MADNESS cmake command
+* `MADNESS_CMAKE_GENERATOR` -- the CMake generator to use for building MADNESS [Default=Generator used to build TiledArray]
 
 The following environment variables can be used to help discovery of MADNESS dependencies:
 * `TBBROOT` -- the install prefix of TBB

@@ -322,6 +322,13 @@ else()
   if (${ENABLE_ELEMENTAL} AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
     set(MADNESS_EXTRA_CXX_FLAGS "-fext-numeric-literals ${MADNESS_EXTRA_CXX_FLAGS}")
   endif()
+  # Elemental does not compile with Ninja, see e.g. https://travis-ci.com/ValeevGroup/mpqc4/builds/145697087
+  if (${ENABLE_ELEMENTAL} AND NOT DEFINED MADNESS_CMAKE_GENERATOR AND "${CMAKE_GENERATOR}" STREQUAL Ninja)
+    message(WARNING "Elemental fails to compile with Ninja generator, will compile MADNESS+Elemental using \"Unix Makefiles\"; set MADNESS_CMAKE_GENERATOR CACHE variable to specify an alternative generator")
+    set(MADNESS_CMAKE_GENERATOR "Unix Makefiles" CACHE STRING "CMake generator to use for compiling MADNESS+Elemental")
+  else()
+    set(MADNESS_CMAKE_GENERATOR "${CMAKE_GENERATOR}" CACHE STRING "CMake generator to use for compiling MADNESS+Elemental")
+  endif()
   
   # update all CMAKE_CXX_FLAGS to include extra preprocessor flags MADNESS needs
   set(CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} ${MADNESS_EXTRA_CXX_FLAGS}")
@@ -380,11 +387,12 @@ else()
 
   set(error_code 1)
   message (STATUS "** Configuring MADNESS")
-  message (STATUS "MADNESS CMake generator: ${CMAKE_GENERATOR}")
+  message (STATUS "MADNESS CMake generator: ${MADNESS_CMAKE_GENERATOR}")
   message (STATUS "MADNESS CMake Arguments: ${MADNESS_CMAKE_ARGS}")
   execute_process(
       COMMAND ${CMAKE_COMMAND}
       "${MADNESS_SOURCE_DIR}"
+      -G "${MADNESS_CMAKE_GENERATOR}"
       ${MADNESS_CMAKE_ARGS}
       WORKING_DIRECTORY "${MADNESS_BINARY_DIR}"
       RESULT_VARIABLE error_code)
