@@ -60,6 +60,18 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
 
 else
 
+  # if have old installed copy of TA, make sure that MADNESS tag matches the required tag, if not, remove INSTALL_DIR (will cause rebuild of MADNESS)
+  if [ -f "${INSTALL_DIR}/include/madness/config.h" ]; then
+    export INSTALLED_MADNESS_TAG=`grep 'define MADNESS_REVISION' ${INSTALL_DIR}/include/madness/config.h | awk '{print $3}' | sed s/\"//g`
+    echo "installed MADNESS revision = ${INSTALLED_MADNESS_TAG}"
+    # extract the tracked tag of MADNESS
+    export MADNESS_TAG=`grep 'set(TA_TRACKED_MADNESS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\)//g`
+    echo "required MADNESS revision = ${MADNESS_TAG}"
+    if [ "${MADNESS_TAG}" != "${INSTALLED_MADNESS_TAG}" ]; then
+      rm -rf "${INSTALL_DIR}"
+    fi
+  fi
+
   cmake ${TRAVIS_BUILD_DIR} \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
