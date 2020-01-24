@@ -2,10 +2,10 @@
 # this is consistent with cmake 3.13 and later (see policy CMP0077)
 macro(redefaultable_option _name _descr _default)
 
-  if (${_name})
+  if (DEFINED ${_name})
     set(${_name}_DEFAULT ${${_name}})
   else()
-    set(${_name}_DEFAULT ${${_default}})
+    set(${_name}_DEFAULT ${_default})
   endif()
   option(${_name} ${_descr} ${${_name}_DEFAULT})
 
