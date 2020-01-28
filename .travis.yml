@@ -19,6 +19,7 @@ addons:
     - libboost-all-dev
     - libblas-dev
     - liblapack-dev
+    - liblapacke-dev
     - libtbb-dev
     - cmake
     - cmake-data
