@@ -7,6 +7,6 @@ macro(redefaultable_option _name _descr _default)
   else()
     set(${_name}_DEFAULT ${_default})
   endif()
-  option(${_name} ${_descr} ${${_name}_DEFAULT})
+  option(${_name} "${_descr}" ${${_name}_DEFAULT})
 
 endmacro()
