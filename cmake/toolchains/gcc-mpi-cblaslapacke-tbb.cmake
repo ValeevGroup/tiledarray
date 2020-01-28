@@ -47,6 +47,6 @@ set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -march=native -DNDEBUG" CACHE STRING "In
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-Og -g -march=native -Wall -ftemplate-backtrace-limit=0" CACHE STRING "Initial C++ release with debug info compile flags")
 
 set(LAPACK_LIBRARIES "-llapacke" "-lcblas" "-llapack" "-lblas" CACHE STRING "BLAS linker flags")
-set(LAPACK_COMPILE_DEFINITIONS BTAS_HAS_CBLAS=1;MADNESS_LINALG_USE_LAPACKE CACHE STRING "LAPACK preprocessor definitions")
+set(LAPACK_COMPILE_DEFINITIONS BTAS_HAS_CBLAS=1;BTAS_HAS_LAPACKE=1;MADNESS_LINALG_USE_LAPACKE CACHE STRING "LAPACK preprocessor definitions")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
