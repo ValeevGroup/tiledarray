@@ -51,7 +51,7 @@ set(TILEDARRAY_INSTALL_INCLUDEDIR "include"
     CACHE PATH "TiledArray INCLUDE install directory")
 set(TILEDARRAY_INSTALL_LIBDIR "lib"
     CACHE PATH "TiledArray LIB install directory")
-set(TILEDARRAY_INSTALL_SHAREDIR "share/tiledarray/${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}"
+set(TILEDARRAY_INSTALL_SHAREDIR "share/tiledarray/${TILEDARRAY_EXT_VERSION}"
     CACHE PATH "TiledArray DATA install directory")
 set(TILEDARRAY_INSTALL_DATADIR "${TILEDARRAY_INSTALL_SHAREDIR}/data"
     CACHE PATH "TiledArray DATA install directory")
@@ -73,19 +73,6 @@ include(DetectMADNESSConfig)
 include(CMakeDependentOption)
 include(CMakePackageConfigHelpers)
 include(FeatureSummary)
-
-# Set install paths ============================================================
-
-set(TILEDARRAY_INSTALL_BINDIR "bin" 
-    CACHE PATH "TiledArray binary install directory")
-set(TILEDARRAY_INSTALL_INCLUDEDIR "include" 
-    CACHE PATH "TiledArray INCLUDE install directory")
-set(TILEDARRAY_INSTALL_LIBDIR "lib"
-    CACHE PATH "TiledArray LIB install directory")
-set(TILEDARRAY_INSTALL_DOCDIR "share/tiledarray/${TILEDARRAY_EXT_VERSION}/doc"
-    CACHE PATH "TiledArray DOC install directory")
-set(TILEDARRAY_INSTALL_CMAKEDIR "lib/cmake/tiledarray"
-    CACHE PATH "TiledArray CMAKE install directory")
 
 # Preload versions/tags of all dependencies ====================================
 include(external/versions.cmake)
@@ -181,8 +168,6 @@ endif()
 if(NOT CMAKE_EXE_LINKER_FLAGS OR NOT DEFINED CMAKE_EXE_LINKER_FLAGS)
   set(CMAKE_EXE_LINKER_FLAGS "$ENV{LDFLAGS}")
 endif()
-
-enable_language (CXX)
 if (NOT CMAKE_CXX_COMPILER)
   message(FATAL_ERROR "C++ compiler not found")
 endif()
@@ -200,10 +185,6 @@ set(TILEDARRAY_ALIGNMENT ${VECTOR_ALIGNMENT})
 set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
 mark_as_advanced(CACHE_LINE_SIZE)
 set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
-
-set(BUILD_TESTING FALSE CACHE STRING "BUILD_TESTING")
-set(BUILD_TESTING_STATIC FALSE CACHE STRING "BUILD_TESTING_STATIC")
-set(BUILD_TESTING_SHARED FALSE CACHE STRING "BUILD_TESTING_SHARED")
 
 ##########################
 # Get the git revision tag information
