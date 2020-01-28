@@ -149,7 +149,8 @@ inline void remap(TensorMap<T, Range_, OpResult>& map, T* const data,
 
 template <typename T, typename Range_, typename OpResult, typename Index>
 inline void remap(TensorConstMap<T, Range_, OpResult>& map, T* const data,
-                  const Index& lower_bound, const Index& upper_bound) {
+                  const Index& lower_bound, const Index& upper_bound,
+                  typename = std::enable_if_t<!std::is_const<T>::value>) {
   map.range_.resize(lower_bound, upper_bound);
   map.data_ = const_cast<const T*>(data);
 }
@@ -165,7 +166,8 @@ inline void remap(TensorMap<T, Range_, OpResult>& map, T* const data,
 template <typename T, typename Range_, typename OpResult>
 inline void remap(TensorConstMap<T, Range_, OpResult>& map, T* const data,
                   const std::initializer_list<std::size_t>& lower_bound,
-                  const std::initializer_list<std::size_t>& upper_bound) {
+                  const std::initializer_list<std::size_t>& upper_bound,
+                  typename = std::enable_if_t<!std::is_const<T>::value>) {
   map.range_.resize(lower_bound, upper_bound);
   map.data_ = const_cast<const T*>(data);
 }
