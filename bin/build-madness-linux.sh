@@ -55,6 +55,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     git clone https://github.com/m-a-d-n-e-s-s/madness madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
 
     cmake madness_src \
+      -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/bin/travis-lapacke.cmake" \
       -DCMAKE_CXX_COMPILER=$CXX \
       -DCMAKE_C_COMPILER=$CC \
       -DMPI_CXX_COMPILER=$MPICXX \
@@ -70,7 +71,6 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DENABLE_MKL=OFF \
       -DFORTRAN_INTEGER_SIZE=4 \
       -DENABLE_LIBXC=OFF \
-      -DLAPACK_LIBRARIES='-L/usr/lib/libblas -L/usr/lib/lapack -llapack -lblas' \
       -DENABLE_GPERFTOOLS=OFF \
       -DASSERTION_TYPE=throw \
       -DDISABLE_WORLD_GET_DEFAULT=ON \

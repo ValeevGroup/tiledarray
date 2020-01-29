@@ -204,9 +204,9 @@ after_failure:
 after_success:
   # create report
   - cd ${TRAVIS_BUILD_DIR}
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then lcov --gcov-tool gcov-${GCC_VERSION} --directory ${BUILD_PREFIX}/TA --capture --output-file coverage.info; fi; # capture coverage info
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then lcov --remove coverage.info '/usr/*' '*/madness/*' '*/btas/*' '*/tests/*' --output-file coverage.info; fi; # filter out non-project files
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then lcov --list coverage.info; fi; #debug info
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then lcov --gcov-tool gcov-${GCC_VERSION} --directory ${BUILD_PREFIX}/TA --capture --output-file coverage.info; fi; # capture coverage info
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then lcov --remove coverage.info '/usr/*' '*/madness/*' '*/btas/*' '*/tests/*' --output-file coverage.info; fi; # filter out non-project files
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then lcov --list coverage.info; fi; #debug info
   - echo ${TRAVIS_CMD}
   # upload report to CodeCov
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 5 ]; then bash <(curl -s https://codecov.io/bash) -t token; fi;
+  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then bash <(curl -s https://codecov.io/bash) -t token; fi;

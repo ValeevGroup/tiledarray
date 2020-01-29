@@ -39,11 +39,12 @@ cd TA
 # MADNESS+Elemental are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
 if [ "$BUILD_TYPE" = "Debug" ]; then
 
-  if [ "$GCC_VERSION" = 5 ]; then
+  if [ "$GCC_VERSION" = 6 ]; then
     export CODECOVCXXFLAGS="-O0 --coverage"
   fi
 
   cmake ${TRAVIS_BUILD_DIR} \
+    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/bin/travis-lapacke.cmake" \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
     -DMPI_CXX_COMPILER=$MPICXX \
@@ -73,6 +74,7 @@ else
   fi
 
   cmake ${TRAVIS_BUILD_DIR} \
+    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/bin/travis-lapacke.cmake" \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
     -DMPI_CXX_COMPILER=$MPICXX \
