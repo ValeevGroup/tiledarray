@@ -11,8 +11,6 @@ include(AppendFlags)
 find_package(Eigen3 ${TA_TRACKED_EIGEN_VERSION} NO_MODULE QUIET NO_CMAKE_PACKAGE_REGISTRY)
 if (TARGET Eigen3::Eigen)
   # import alias into TiledArray "namespace"
-  # TODO bump CMake requirement to 3.11 when available, uncomment this and remove the rest of this clause
-  # add_library(TiledArray_Eigen ALIAS Eigen3::Eigen)
   add_library(TiledArray_Eigen INTERFACE)
   foreach(prop INTERFACE_INCLUDE_DIRECTORIES INTERFACE_COMPILE_DEFINITIONS INTERFACE_COMPILE_OPTIONS INTERFACE_LINK_LIBRARIES INTERFACE_POSITION_INDEPENDENT_CODE)
     get_property(EIGEN3_${prop} TARGET Eigen3::Eigen PROPERTY ${prop})
@@ -21,12 +19,17 @@ if (TARGET Eigen3::Eigen)
   endforeach()
 else (TARGET Eigen3::Eigen)
   # otherwise use bundled FindEigen3.cmake module controlled by EIGEN3_INCLUDE_DIR
+  # but make sure EIGEN3_INCLUDE_DIR exists!
   find_package(Eigen3 ${TA_TRACKED_EIGEN_VERSION})
 
   if (EIGEN3_FOUND)
-    add_library(TiledArray_Eigen INTERFACE)
-    set_property(TARGET TiledArray_Eigen PROPERTY
-            INTERFACE_INCLUDE_DIRECTORIES ${EIGEN3_INCLUDE_DIR})
+    if (NOT EXISTS "${EIGEN3_INCLUDE_DIR}")
+      message(WARNING "Eigen3 is \"found\", but the reported EIGEN3_INCLUDE_DIR=${EIGEN3_INCLUDE_DIR} does not exist; likely corrupt Eigen3 build registered in user or system package registry; specify EIGEN3_INCLUDE_DIR manually or (better) configure (with CMake) and install Eigen3 package")
+    else(NOT EXISTS "${EIGEN3_INCLUDE_DIR}")
+      add_library(TiledArray_Eigen INTERFACE)
+      set_property(TARGET TiledArray_Eigen PROPERTY
+              INTERFACE_INCLUDE_DIRECTORIES ${EIGEN3_INCLUDE_DIR})
+    endif(NOT EXISTS "${EIGEN3_INCLUDE_DIR}")
   endif (EIGEN3_FOUND)
 endif (TARGET Eigen3::Eigen)
 
