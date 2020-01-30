@@ -29,6 +29,16 @@ endmacro()
 
 # if found, make sure the MADNESS tag matches exactly
 if (MADNESS_FOUND)
+  # make sure that MADNESS used same toolchain file
+  if (NOT "${MADNESS_CMAKE_TOOLCHAIN_FILE}" STREQUAL "${CMAKE_TOOLCHAIN_FILE}")
+    set(_msg "MADNESS used toolchain file \"${MADNESS_CMAKE_TOOLCHAIN_FILE}\" but TiledArray uses toolchain file "${CMAKE_TOOLCHAIN_FILE}"; make sure that the same toolchain file is used by both")
+    if (TA_EXPERT)
+      message(WARNING "${_msg}")
+    else(TA_EXPERT)
+      message(FATAL_ERROR "${_msg}")
+    endif(TA_EXPERT)
+  endif()
+
   file(STRINGS ${MADNESS_DIR}/../../../include/madness/config.h MADNESS_REVISION_LINE REGEX "define MADNESS_REVISION")
   if (MADNESS_REVISION_LINE) # MADNESS_REVISION found? make sure it matches the required tag exactly
     string(REGEX REPLACE ".*define[ \t]+MADNESS_REVISION[ \t]+\"([a-z0-9]+)\"" "\\1" MADNESS_REVISION "${MADNESS_REVISION_LINE}")
