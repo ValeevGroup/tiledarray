@@ -306,11 +306,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
     }
   }
 
-  // convert to the replicated DistArray back to a btas::Tensor
+  // convert the replicated DistArray back to a btas::Tensor
   btas::Tensor<T> src_copy;
   BOOST_REQUIRE_NO_THROW(src_copy = array_to_btas_tensor(dst));
   for (const auto& i : src.range()) {
     BOOST_CHECK_EQUAL(src(i), src_copy(i));
+  }
+
+  // convert the replicated DistArray to a btas::Tensor on rank 0 only
+  {
+    btas::Tensor<T> src_copy;
+    BOOST_REQUIRE_NO_THROW(src_copy = array_to_btas_tensor(dst, 0));
+    if (GlobalFixture::world->rank() == 0) {
+      for (const auto& i : src.range()) {
+        BOOST_CHECK_EQUAL(src(i), src_copy(i));
+      }
+    } else {
+      BOOST_CHECK(src_copy == btas::Tensor<T>{});
+    }
   }
 }
 

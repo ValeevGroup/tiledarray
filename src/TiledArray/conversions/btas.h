@@ -272,43 +272,56 @@ DistArray_ btas_tensor_to_array(World& world,
 /// will be copied to the result. \return A \c btas::Tensor object that is a
 /// copy of \c src \throw TiledArray::Exception When world size is greater than
 /// 1 and \c src is not replicated
+/// \param[in] target_rank the rank on which to create the BTAS tensor
+///            containing the data of \c src ; if \c target_rank=-1 then
+///            create the BTAS tensor on every rank (this requires
+///            that \c src.is_replicated()==true )
+/// \return BTAS tensor object containing the data of \c src , if my rank equals
+///         \c target_rank or \c target_rank==-1 ,
+///         default-initialized BTAS tensor otherwise.
 template <typename Tile, typename Policy,
           typename Storage = std::vector<typename Tile::value_type> >
 btas::Tensor<typename Tile::value_type, btas::DEFAULT::range, Storage>
-array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src) {
+array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src,
+                     int target_rank = -1) {
   // Test preconditions
-  if (!src.pmap()->is_replicated())
+  if (target_rank == -1 && !src.pmap()->is_replicated())
     TA_USER_ASSERT(
         src.world().size() == 1,
         "TiledArray::array_to_btas_tensor(): a non-replicated array can only "
-        "be converted to a btas::Tensor if the number of World ranks is 1.");
+        "be converted to a btas::Tensor on every rank if the number of World "
+        "ranks is 1.");
 
-  // Construct the result
   using result_type =
       btas::Tensor<typename TiledArray::DistArray<Tile, Policy>::element_type,
                    btas::DEFAULT::range, Storage>;
   using result_range_type = typename result_type::range_type;
-  // if array is sparse must initialize to zero
-  result_type result(result_range_type(src.trange().elements_range().extent()),
-                     0.0);
 
-  // Spawn tasks to copy array tiles to btas::Tensor
-  madness::AtomicInt counter;
-  counter = 0;
-  int n = 0;
-  for (std::size_t i = 0; i < src.size(); ++i) {
-    if (!src.is_zero(i)) {
-      src.world().taskq.add(
-          &detail::counted_tensor_to_btas_subtensor<Tile, result_type>,
-          src.find(i), &result, &counter);
-      ++n;
+  // Construct the result
+  if (target_rank == -1 || src.world().rank() == target_rank) {
+    // if array is sparse must initialize to zero
+    result_type result(
+        result_range_type(src.trange().elements_range().extent()), 0.0);
+
+    // Spawn tasks to copy array tiles to btas::Tensor
+    madness::AtomicInt counter;
+    counter = 0;
+    int n = 0;
+    for (std::size_t i = 0; i < src.size(); ++i) {
+      if (!src.is_zero(i)) {
+        src.world().taskq.add(
+            &detail::counted_tensor_to_btas_subtensor<Tile, result_type>,
+            src.find(i), &result, &counter);
+        ++n;
+      }
     }
-  }
 
-  // Wait until the write tasks are complete
-  src.world().await([&counter, n]() { return counter == n; });
+    // Wait until the write tasks are complete
+    src.world().await([&counter, n]() { return counter == n; });
 
-  return result;
+    return result;
+  } else  // else
+    return result_type{};
 }
 
 }  // namespace TiledArray
