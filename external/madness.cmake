@@ -31,7 +31,7 @@ endmacro()
 if (MADNESS_FOUND)
   # make sure that MADNESS used same toolchain file
   if (NOT "${MADNESS_CMAKE_TOOLCHAIN_FILE}" STREQUAL "${CMAKE_TOOLCHAIN_FILE}")
-    set(_msg "MADNESS used toolchain file \"${MADNESS_CMAKE_TOOLCHAIN_FILE}\" but TiledArray uses toolchain file "${CMAKE_TOOLCHAIN_FILE}"; make sure that the same toolchain file is used by both")
+    set(_msg "MADNESS used toolchain file \"${MADNESS_CMAKE_TOOLCHAIN_FILE}\" but TiledArray uses toolchain file \"${CMAKE_TOOLCHAIN_FILE}\"; make sure that the same toolchain file is used by both")
     if (TA_EXPERT)
       message(WARNING "${_msg}")
     else(TA_EXPERT)
@@ -394,7 +394,7 @@ else()
           ${MADNESS_CMAKE_EXTRA_ARGS})
 
   if (CMAKE_TOOLCHAIN_FILE)
-    set(MADNESS_CMAKE_ARGS  ${MADNESS_CMAKE_ARGS}
+    set(MADNESS_CMAKE_ARGS  "${MADNESS_CMAKE_ARGS}"
         "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
   endif(CMAKE_TOOLCHAIN_FILE)
 
