@@ -36,7 +36,7 @@ git clone --depth=1 https://github.com/ValeevGroup/tiledarray.git --branch gh-pa
 mkdir tiledarray-docs
 cp -rp tiledarray-docs-current/* tiledarray-docs
 rm -rf tiledarray-docs-current
-cp -p tiledarray-docs-template/* tiledarray-docs
+cp -rp tiledarray-docs-template/* tiledarray-docs
 rm -rf tiledarray-docs-template
 cd tiledarray-docs
 # copy TA's README.md into index.md
