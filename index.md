@@ -1,8 +1,6 @@
 [![Build Status](https://travis-ci.org/ValeevGroup/tiledarray.svg?branch=master)](https://travis-ci.org/ValeevGroup/tiledarray)
 [![codecov](https://codecov.io/gh/ValeevGroup/tiledarray/branch/master/graph/badge.svg)](https://codecov.io/gh/ValeevGroup/tiledarray)
 
-![TA logo](https://github.com/ValeevGroup/tiledarray/wiki/images/ta_logo_med.png)
-
 # Synopsis
 TiledArray is a scalable, block-sparse tensor framework for rapid composition of high-performance tensor arithmetic, appearing for example in many-body quantum mechanics. It allows users to compose tensor expressions of arbitrary complexity in native C++ code that closely resembles the standard mathematical notation. The framework is designed to scale from a single multicore computer to a massive distributed-memory multiprocessor.
 
