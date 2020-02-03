@@ -82,9 +82,6 @@ matrix:
             - *base_packages
             - g++-8
             - gfortran-8
-            - doxygen  # gcc8 Release build deploys dox
-            - graphviz # provides dot for doxygen graphs
-            - fonts-liberation # recommended by graphviz
     - compiler: gcc
       env: GCC_VERSION=9 BUILD_TYPE=Debug
       addons:
@@ -157,6 +154,9 @@ matrix:
             - clang-8
             - libc++-8-dev
             - libc++abi-8-dev
+            - doxygen  # gcc8 Release build deploys dox
+            - graphviz # provides dot for doxygen graphs
+            - fonts-liberation # recommended by graphviz
     - compiler: clang
       env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
@@ -215,4 +215,4 @@ after_success:
   # upload report to CodeCov
   - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then bash <(curl -s https://codecov.io/bash) -t token; fi;
   # generate docs
-  - if [ "$BUILD_TYPE" = "Release" ] && [ "$GCC_VERSION" = 8 ]; then bash ./bin/deploy-$TRAVIS_OS_NAME.sh; fi;
+  - if [ "$BUILD_TYPE" = "Release" ] && [ "$CLANG_VERSION" = 8 ]; then bash ./bin/deploy-$TRAVIS_OS_NAME.sh; fi;
