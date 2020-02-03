@@ -74,13 +74,13 @@ int main(int argc, char** argv) {
 
 Parallel performance of TiledArray for multiplication of dense square matrices on [Mira](https://www.alcf.anl.gov/mira), an IBM BlueGene/Q supercomputer at Argonne National Laboratory, compared with that of [Cyclops Tensor Framework](https://github.com/solomonik/ctf) and [ScaLAPACK](http://www.netlib.org/scalapack/):
 
-![MM:TA-vs-CTF-vs-SCALAPACK](https://github.com/ValeevGroup/tiledarray/wiki/images/BGQtime_TA_CTF_ScaLAPACK.png)
+![MM:TA-vs-CTF-vs-SCALAPACK](https://valeevgroup.github.io/tiledarray/images/BGQtime_TA_CTF_ScaLAPACK.png)
 
 This figure was obtained with the help of an award from [the Department of Energy INCITE program](http://www.doeleadershipcomputing.org/incite-program/).
 
 Excellent parallel scalability is also possible for much more complicated expressions than just a single GEMM, as demonstrated below for the coupled-cluster singles and doubles (CCSD) wave function solver. Parallel speed-up of 1 iteration of CCSD solver for uracil trimer in 6-31G* AO basis was measured on ["BlueRidge" cluster](https://secure.hosting.vt.edu/www.arc.vt.edu/computing/blueridge-sandy-bridge/) at Virginia Tech (wall time on one 16-core node = 1290 sec):
 
-![CCSD:UracilTrimer-speedup](https://github.com/ValeevGroup/tiledarray/wiki/images/uracil-trimer-ccsd-blueridge-speedup.png)
+![CCSD:UracilTrimer-speedup](https://valeevgroup.github.io/tiledarray/images/uracil-trimer-ccsd-blueridge-speedup.png)
 
 This figure was obtained with the help of an allocation from [Advanced Research Computing](https://secure.hosting.vt.edu/www.arc.vt.edu/) at Virginia Tech.
 
@@ -104,7 +104,8 @@ The detailed instructions can be found in [INSTALL.md](https://github.com/Valeev
 
 # Using TiledArray
 
-The  [TiledArray wiki](https://github.com/ValeevGroup/tiledarray/wiki) includes a [Developer Guide](https://github.com/ValeevGroup/tiledarray/wiki/Developer-Guide), an [Optimization Guide](https://github.com/ValeevGroup/tiledarray/wiki/Optimizaation-Guide), and additional tutorials on advanced topics.
+TiledArray documentation is available for the following versions:
+- [master branch](https://valeevgroup.github.io/tiledarray/dox-master) .
 
 # Developers
 TiledArray is developed by the [Valeev Group](http://valeevgroup.github.io/) at [Virginia Tech](http://www.vt.edu).
