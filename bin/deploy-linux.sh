@@ -25,7 +25,7 @@ cd ${BUILD_PREFIX}/tiledarray
 # build docs
 export VERBOSE=1
 cmake --build . --target html
-if [ ! -f "${BUILD_PREFIX}/mpqc/doc/dox/html/index.html" ]; then
+if [ ! -f "${BUILD_PREFIX}/tiledarray/doc/dox/html/index.html" ]; then
   echo "Target html built successfully but did not produce index.html"
   exit 1
 fi
