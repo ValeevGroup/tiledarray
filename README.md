@@ -22,25 +22,25 @@ The following example expressions are written in C++ with TiledArray. TiledArray
 
 * Matrix-matrix multiplication
 
-   ```{.cc}
+   ```
    C("m,n") = 2.0 * A("m,k") * B("k,n");
    ```
 
 * Matrix-vector multiplication
 
-   ```{.cc}
+   ```
    C("n") = A("k") * B("k,n");
    ```
 
 * A more complex tensor expression
  
-   ```{.cc}
+   ```
    E("m,n") = 2.0 * A("m,k") * B("k,n") + C("k,n") * D("k,m");
    ```
 
 The following application is a minimal example of a distributed-memory matrix multiplcation.
 
-```{.cc}
+```
 #include <tiledarray.h>
 
 int main(int argc, char** argv) {
@@ -89,7 +89,7 @@ This figure was obtained with the help of an allocation from [Advanced Research 
 # Installing TiledArray
 
 The short version: assuming that MPI compiler wrappers are in your path, and this is a platform with BLAS/LAPACK installed system-wide in a standard location:
-```{.sh}
+```
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ cmake -B build \
