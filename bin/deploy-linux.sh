@@ -3,8 +3,8 @@
 # Exit on error
 set -ev
 
-git config --global user.email "eduard@valeyev.net"
-git config --global user.name "Eduard Valeyev"
+git config --global user.email "travis@travis-ci.org"
+git config --global user.name "Travis CI"
 
 # only non-cron job deploys
 RUN=1
