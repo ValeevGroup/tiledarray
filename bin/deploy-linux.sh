@@ -17,7 +17,7 @@ if [ "$RUN" = "0" ]; then
 fi
 
 # deploy from the build area
-cd ${BUILD_PREFIX}/tiledarray
+cd ${BUILD_PREFIX}/TA
 
 ### deploy docs
 # see https://gist.github.com/willprice/e07efd73fb7f13f917ea
@@ -25,7 +25,7 @@ cd ${BUILD_PREFIX}/tiledarray
 # build docs
 export VERBOSE=1
 cmake --build . --target html
-if [ ! -f "${BUILD_PREFIX}/tiledarray/doc/dox/html/index.html" ]; then
+if [ ! -f "${BUILD_PREFIX}/TA/doc/dox/html/index.html" ]; then
   echo "Target html built successfully but did not produce index.html"
   exit 1
 fi
@@ -45,7 +45,7 @@ cp ${TRAVIS_BUILD_DIR}/README.md index.md
 if [ -d dox-master ]; then
   rm -rf dox-master
 fi
-mv ${BUILD_PREFIX}/tiledarray/doc/dox/html dox-master
+mv ${BUILD_PREFIX}/TA/doc/dox/html dox-master
 # make empty repo to ensure gh-pages contains no history
 git init
 git add *
