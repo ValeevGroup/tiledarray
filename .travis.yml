@@ -29,8 +29,6 @@ env:
   global:
     - BUILD_PREFIX=/home/travis/_build
     - INSTALL_PREFIX=/home/travis/_install
-    - DEPLOY_BUILD_TYPE=Release
-    - DEPLOY_CLANG_VERSION=8
     - secure: "gn5Ci/V8HnbIELZcM/LNppboJ/pw8fb6uat9x8iKTs4d7MPkKzvzuwWZq06AU7tezZpDg0O+ILKulPihwTh25HhYaE+jGIQzfLbao3cwHkEqDqBWL52jberpytphOaoie53iUHyiUV0c7dMx1NuHg97sq8aWeFT7dbI8ef32xD0="
 
 matrix:
@@ -69,7 +67,7 @@ matrix:
            - g++-7
            - gfortran-7
     - compiler: gcc
-      env: GCC_VERSION=8 BUILD_TYPE=Debug
+      env: GCC_VERSION=8 BUILD_TYPE=Debug COMPUTE_COVERAGE=1
       addons:
         apt:
           packages:
@@ -144,7 +142,7 @@ matrix:
             - libc++-8-dev
             - libc++abi-8-dev
     - compiler: clang
-      env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Release
+      env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
       addons:
         apt:
           sources:
@@ -199,7 +197,7 @@ before_install:
 # use timeout to stop long-running (i.e. cache-rebuilding) jobs right before they get killed by Travis-CI
 # in case of timeout report success to Travis to force cache upload
 script:
-  - travis_wait 50 timeout 2200 ./bin/build-$TRAVIS_OS_NAME.sh;  RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 124 ]; then true; else false; fi;
+  - travis_wait 50 timeout 2200 ${TRAVIS_BUILD_DIR}/bin/build-$TRAVIS_OS_NAME.sh;  RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 124 ]; then true; else false; fi;
 after_failure:
   - cat ${BUILD_PREFIX}/TA/external/build/madness/CMakeFiles/CMakeError.log
   - cat ${BUILD_PREFIX}/TA/external/build/madness/CMakeFiles/CMakeOutput.log
@@ -209,11 +207,11 @@ after_failure:
 after_success:
   # create report
   - cd ${TRAVIS_BUILD_DIR}
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then lcov --gcov-tool gcov-${GCC_VERSION} --directory ${BUILD_PREFIX}/TA --capture --output-file coverage.info; fi; # capture coverage info
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then lcov --remove coverage.info '/usr/*' '*/madness/*' '*/btas/*' '*/tests/*' --output-file coverage.info; fi; # filter out non-project files
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then lcov --list coverage.info; fi; #debug info
+  - if [ "$COMPUTE_COVERAGE" = "1" ]; then lcov --gcov-tool gcov-${GCC_VERSION} --directory ${BUILD_PREFIX}/TA --capture --output-file coverage.info; fi; # capture coverage info
+  - if [ "$COMPUTE_COVERAGE" = "1" ]; then lcov --remove coverage.info '/usr/*' '*/madness/*' '*/btas/*' '*/tests/*' --output-file coverage.info; fi; # filter out non-project files
+  - if [ "$COMPUTE_COVERAGE" = "1" ]; then lcov --list coverage.info; fi; #debug info
   - echo ${TRAVIS_CMD}
   # upload report to CodeCov
-  - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then bash <(curl -s https://codecov.io/bash) -t token; fi;
-  # generate docs
-  - if [ "$BUILD_TYPE" = "${DEPLOY_BUILD_TYPE}" ] && [ "$CLANG_VERSION" = "${DEPLOY_CLANG_VERSION}" ]; then bash ./bin/deploy-$TRAVIS_OS_NAME.sh; fi;
+  - if [ "$COMPUTE_COVERAGE" = "1" ]; then bash <(curl -s https://codecov.io/bash) -t token; fi;
+  # deploy artifacts: currently only dox
+  - if [ "$DEPLOY" = "1" ]; then bash ${TRAVIS_BUILD_DIR}/bin/deploy-$TRAVIS_OS_NAME.sh; fi;

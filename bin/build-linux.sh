@@ -8,7 +8,7 @@ ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
 set -ev
 
 # download latest Doxygen
-if [ "$BUILD_TYPE" = "${DEPLOY_BUILD_TYPE}" ] && [ "$CLANG_VERSION" = "${DEPLOY_CLANG_VERSION}" ]; then
+if [ "$DEPLOY" = "1" ]; then
   DOXYGEN_VERSION=1.8.17
   if [ ! -d ${INSTALL_PREFIX}/doxygen-${DOXYGEN_VERSION} ]; then
     cd ${BUILD_PREFIX} && wget http://doxygen.nl/files/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
@@ -51,7 +51,7 @@ cd TA
 # MADNESS+Elemental are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
 if [ "$BUILD_TYPE" = "Debug" ]; then
 
-  if [ "$GCC_VERSION" = 6 ]; then
+  if [ "$COMPUTE_COVERAGE" = "1" ]; then
     export CODECOVCXXFLAGS="-O0 --coverage"
   fi
 
