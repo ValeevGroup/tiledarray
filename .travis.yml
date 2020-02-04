@@ -154,7 +154,6 @@ matrix:
             - clang-8
             - libc++-8-dev
             - libc++abi-8-dev
-            - doxygen  # gcc8 Release build deploys dox
             - graphviz # provides dot for doxygen graphs
             - fonts-liberation # recommended by graphviz
     - compiler: clang
@@ -215,4 +214,4 @@ after_success:
   # upload report to CodeCov
   - if [ "$BUILD_TYPE" = "Debug" ] && [ "$GCC_VERSION" = 6 ]; then bash <(curl -s https://codecov.io/bash) -t token; fi;
   # generate docs
-  - if [ "$BUILD_TYPE" = "Release" ] && [ "$CLANG_VERSION" = 8 ]; then bash ./bin/deploy-$TRAVIS_OS_NAME.sh; fi;
+  - if [ "$BUILD_TYPE" = "${DEPLOY_BUILD_TYPE}" ] && [ "$CLANG_VERSION" = "${DEPLOY_CLANG_VERSION}" ]; then bash ./bin/deploy-$TRAVIS_OS_NAME.sh; fi;
