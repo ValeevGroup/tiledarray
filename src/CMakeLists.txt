@@ -70,6 +70,7 @@ TiledArray/conversions/vector_of_arrays.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/elemental.h
+TiledArray/conversions/scalapack.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/dist_eval/array_eval.h

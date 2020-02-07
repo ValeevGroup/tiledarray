@@ -54,7 +54,7 @@ endif()
 
 add_library( TiledArray_SCALAPACK INTERFACE)
 target_link_libraries( TiledArray_SCALAPACK INTERFACE scalapackpp::scalapackpp )
-target_compile_definitions( TiledArray_SCALAPACK INTERFACE "TA_ENABLE_SCALAPACK" )
+#target_compile_definitions( TiledArray_SCALAPACK INTERFACE "TA_ENABLE_SCALAPACK" )
 
 #get_property( _SCALAPACK_INCLUDE_DIRS
 #        TARGET   scalapackpp::scalapackpp
@@ -80,4 +80,4 @@ target_compile_definitions( TiledArray_SCALAPACK INTERFACE "TA_ENABLE_SCALAPACK"
 
 install( TARGETS TiledArray_SCALAPACK EXPORT tiledarray COMPONENT tiledarray )
 
-
+set( TILEDARRAY_HAS_SCALAPACK 1 )
