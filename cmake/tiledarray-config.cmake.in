@@ -27,6 +27,14 @@ if(TILEDARRAY_HAS_CUDA)
 #    sanitize_cuda_implicit_directories()
 endif()
 
+
+set(TILEDARRAY_HAS_SCALAPACK "@ENABLE_SCALAPACK@" )
+include( CMakeFindDependencyMacro )
+if(TILEDARRAY_HAS_SCALAPACK)
+  find_dependency( blacspp QUIET )
+  find_dependency( scalapackpp QUIET )
+endif()
+
 # Include library IMPORT targets
 if(NOT TARGET tiledarray)
   include("${CMAKE_CURRENT_LIST_DIR}/tiledarray-targets.cmake")
