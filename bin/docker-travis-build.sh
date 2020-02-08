@@ -37,7 +37,9 @@ cd /home/travis/_build
 export BUILD_PREFIX=/home/travis/_build
 export INSTALL_PREFIX=/home/travis/_install
 export TRAVIS_BUILD_DIR=${TRAVIS_BUILD_TOPDIR}/ValeevGroup/tiledarray
-${TRAVIS_BUILD_DIR}/bin/build-linux.sh
+export TRAVIS_EVENT_TYPE=cron
+export TRAVIS_OS_NAME=linux
+\${TRAVIS_BUILD_DIR}/bin/build-\$TRAVIS_OS_NAME.sh
 END
 chmod +x $build
 
