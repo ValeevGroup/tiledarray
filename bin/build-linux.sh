@@ -48,6 +48,18 @@ cd ${BUILD_PREFIX}
 mkdir -p TA
 cd TA
 
+# if have old installed copy of TA, make sure that BTAS tag matches the required tag, if not, remove INSTALL_DIR (will cause rebuild of TA)
+if [ -f "${INSTALL_DIR}/include/btas/btas/version.h" ]; then
+  export INSTALLED_BTAS_TAG=`grep 'define BTAS_REVISION' ${INSTALL_DIR}/include/btas/btas/version.h | awk '{print $3}' | sed s/\"//g`
+  echo "installed BTAS revision = ${INSTALLED_BTAS_TAG}"
+  # extract the tracked tag of BTAS
+  export BTAS_TAG=`grep 'set(TA_TRACKED_BTAS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\)//g`
+  echo "required BTAS revision = ${BTAS_TAG}"
+  if [ "${BTAS_TAG}" != "${INSTALLED_BTAS_TAG}" ]; then
+    rm -rf "${INSTALL_DIR}"
+  fi
+fi
+
 # MADNESS+Elemental are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
 if [ "$BUILD_TYPE" = "Debug" ]; then
 
