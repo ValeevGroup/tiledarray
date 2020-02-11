@@ -29,10 +29,10 @@ endif()
 
 
 set(TILEDARRAY_HAS_SCALAPACK "@ENABLE_SCALAPACK@" )
-include( CMakeFindDependencyMacro )
 if(TILEDARRAY_HAS_SCALAPACK)
-  find_dependency( blacspp QUIET )
-  find_dependency( scalapackpp QUIET )
+  include( CMakeFindDependencyMacro )
+  find_dependency( blacspp )
+  find_dependency( scalapackpp )
 endif()
 
 # Include library IMPORT targets
@@ -46,7 +46,8 @@ if(NOT TARGET MADworld)
   if (MADNESS_CONFIG_DIR STREQUAL "")
     set(MADNESS_CONFIG_DIR "${CMAKE_CURRENT_LIST_DIR}/../madness")
   endif()
-  find_package(MADNESS 0.10.1 CONFIG QUIET REQUIRED COMPONENTS world PATHS ${MADNESS_CONFIG_DIR} NO_DEFAULT_PATH)
+  include( CMakeFindDependencyMacro )
+  find_dependency(MADNESS 0.10.1 CONFIG REQUIRED COMPONENTS world PATHS ${MADNESS_CONFIG_DIR} NO_DEFAULT_PATH)
 endif()
 
 # Set the tiledarray compiled library target
