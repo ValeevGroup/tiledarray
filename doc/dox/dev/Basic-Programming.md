@@ -545,9 +545,9 @@ for(auto it = begin(array); it != end(array); ++it) {
 }
 ```
 
-Note that in the examples shown so far tile initialization is parallelized over MPI processes only; on each process on the main thread does the initialization work. To parallelize over threads on each process we can
+Note that in the examples shown so far tile initialization is parallelized over MPI processes only; on each process _only_ the main thread does the initialization work. To parallelize over threads on each process we can
 also initialize tiles by submitting within MADNESS tasks. To do this we need to define a task function that will generate tiles. For example:
-```c++
+```
 auto make_tile(const TA::Range& range) {
   // Construct a tile
   TA::TArrayD::value_type tile(range);
