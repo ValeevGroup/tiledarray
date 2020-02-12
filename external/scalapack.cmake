@@ -80,3 +80,6 @@ target_link_libraries( TiledArray_SCALAPACK INTERFACE scalapackpp::scalapackpp b
 install( TARGETS TiledArray_SCALAPACK blacspp scalapackpp EXPORT tiledarray COMPONENT tiledarray )
 
 set( TILEDARRAY_HAS_SCALAPACK 1 )
+
+# Add BTAS dependency to External
+add_dependencies(External scalapackpp blacspp)
