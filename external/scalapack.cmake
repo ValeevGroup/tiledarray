@@ -15,12 +15,6 @@ if( TARGET scalapackpp::scalapackpp )
 
 else()
 
-  set( BLACSPP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/src/blacspp"
-         CACHE PATH "Path to blacspp source directory" )
-  set( SCALAPACKPP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/src/scalapackpp"
-         CACHE PATH "Path to scalapackpp source directory" )
-  
-  
   message(STATUS "Could not find scalapackpp! Building..." )
 
   include( DownloadProject )
@@ -28,14 +22,14 @@ else()
     PROJ                blacspp
     GIT_REPOSITORY      https://github.com/wavefunction91/blacspp.git
     GIT_TAG             ${TA_TRACKED_BLACSPP_TAG}
-    SOURCE_DIR          ${BLACSPP_SOURCE_DIR}
+    PREFIX              ${PROJECT_BINARY_DIR}/external
     UPDATE_DISCONNECTED 1
   )
   download_project(
     PROJ                scalapackpp
     GIT_REPOSITORY      https://github.com/wavefunction91/scalapackpp.git
     GIT_TAG             ${TA_TRACKED_SCALAPACKPP_TAG}
-    SOURCE_DIR          ${SCALAPACKPP_SOURCE_DIR}
+    PREFIX              ${PROJECT_BINARY_DIR}/external
     UPDATE_DISCONNECTED 1
   )
 
