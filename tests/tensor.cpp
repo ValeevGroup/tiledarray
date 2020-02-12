@@ -23,7 +23,7 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
-const TensorFixture::range_type TensorFixture::r = make_range(81);
+const TensorFixture::range_type TensorFixture::r =make_range(81);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_suite, TensorFixture)
 

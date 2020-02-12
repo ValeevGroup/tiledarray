@@ -227,6 +227,59 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                 std::shared_ptr<pmap_interface>())
       : pimpl_(init(world, trange, shape, pmap)) {}
 
+  template<typename T>
+  DistArray(World& world, std::initializer_list<T> il) :
+    DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template<typename T>
+  DistArray(World& world,
+            std::initializer_list<std::initializer_list<T>> il) :
+    DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template<typename T>
+  DistArray(World& world,
+            std::initializer_list<
+                std::initializer_list<
+                    std::initializer_list<T>
+                >
+            > il) : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template<typename T>
+  DistArray(World& world,
+      std::initializer_list<
+          std::initializer_list<
+              std::initializer_list<
+                  std::initializer_list<T>
+              >
+          >
+      > il) : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template<typename T>
+  DistArray(World& world,
+            std::initializer_list<
+                std::initializer_list<
+                    std::initializer_list<
+                        std::initializer_list<
+                            std::initializer_list<T>
+                        >
+                    >
+                >
+            > il) : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template<typename T>
+  DistArray(World& world,
+            std::initializer_list<
+                std::initializer_list<
+                    std::initializer_list<
+                        std::initializer_list<
+                            std::initializer_list<
+                                std::initializer_list<T>
+                            >
+                        >
+                    >
+                >
+            > il) : DistArray(array_from_il<DistArray_>(world, il)) {}
+
   /// converting copy constructor
 
   /// This constructor uses the meta data of `other` to initialize the meta

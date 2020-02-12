@@ -19,9 +19,12 @@
 
 #ifndef TILEDARRAY_INITIALIZER_LIST_UTILS_H__INCLUDED
 #define TILEDARRAY_INITIALIZER_LIST_UTILS_H__INCLUDED
-
-#include <initializer_list>  // std::initializer_list
-#include <type_traits>       // false_type, true_type
+#include "TiledArray/tiled_range.h"
+#include "TiledArray/tiled_range1.h"
+#include <algorithm>         // copy
+#include <array>             // array
+#include <initializer_list>  // initializer_list
+#include <type_traits>       // decay, false_type, true_type
 
 /** @file initializer_list_utils.h
  *
@@ -120,6 +123,190 @@ constexpr auto initializer_list_rank_v = InitializerListRank<T, SizeType>::value
 template<typename T, typename SizeType>
 struct InitializerListRank<std::initializer_list<T>, SizeType> :
 std::integral_constant<SizeType, initializer_list_rank_v<T, SizeType> + 1> {};
+
+//------------------------------------------------------------------------------
+// tiled_range_from_il free function
+//------------------------------------------------------------------------------
+
+/** @brief Creates a TiledRange for the provided initializer list
+ *
+ *  Tensors which are constructed with initializer lists are assumed to be small
+ *  enough that the data should reside in a single tile. This function will
+ *  recurse through @p il and create a TiledRange instance such that each rank
+ *  is tiled from `[0, n_i)` where `n_i` is the length of the `i`-th nested
+ *  `std::initializer_list` in @p il.
+ *
+ * @tparam T Expected to be the type of a tensor element (*i.e.* float, double,
+ *           *etc.*) or a (possibly nested) `std::initializer_list` of tensor
+ *           elements.
+ * @tparam U The type of the container which will hold the TiledRange1 instances
+ *           for each level of nesting in @p T. @p U must satisfy the concept of
+ *           a random-access container. @p U defaults to
+ *           `std::array<TiledRange1, N>` where `N` is the degree of nesting of
+ *           @p il.
+ *
+ * @param[in] il The state we intend to initialize the tensor to.
+ * @param[in] shape A pre-allocated buffer that will be used to hold the
+ *                  TiledRange1 instances for each `std::initializer_list` as
+ *                  this function recurses. The default value is an `std::array`
+ *                  of default constructed  TiledRange1 instances, which should
+ *                  suffice for most purposes.
+ *
+ * @return A TiledRange instance consistent with treating @p il as a tensor with
+ *         a single tile.
+ *
+ * @throw TiledArray::Exception if @p il contains no elements. If an exception
+ *                              is raised this way @p il and @p shape are
+ *                              guaranteed to be in the same state (strong throw
+ *                              guarantee).
+ */
+template<
+    typename T,
+    typename U =
+        std::array<TiledRange1, initializer_list_rank_v<std::decay_t<T>>>
+>
+auto tiled_range_from_il(T&& il, U shape = {}){
+  using clean_type = std::decay_t<T>;
+  constexpr auto ranks_left = initializer_list_rank_v<clean_type>;
+
+  if constexpr(ranks_left == 0) { // Scalar or end of recursion
+    return TiledRange(shape.begin(), shape.end());
+  }
+  else {
+    // The length of this initializer_list
+    const auto length = il.size();
+    TA_ASSERT(length > 0);
+
+    // This nesting level = (total-nestings) - (nestings-left)
+    shape[shape.size() - ranks_left] = TiledRange1(0, length);
+    return tiled_range_from_il(*il.begin(), std::move(shape));
+  }
+}
+
+//------------------------------------------------------------------------------
+// flatten_il free function
+//------------------------------------------------------------------------------
+
+/** @brief Flattens the contents of a (possibly nested) initializer_list into
+ *         the provided buffer.
+ *
+ *  This function is used to flatten a (possibly nested) `std::initializer_list`
+ *  into a buffer provided by the user. The flattening occurs by iterating over
+ *  the layers of the `std::initializer_list` in a depth-first manner. As the
+ *  initializer_list is flattened the data is copied into the container
+ *  associated with @p out_itr. It is assumed that the container associated with
+ *  @p out_itr is already allocated or that @p out_itr will internally allocate
+ *  the memory on-the-fly (*e.g.* `std::back_insert_iterator`).
+ *
+ *  This function works with empty `std::initializer_list` instances (you will
+ *  get back @p out_itr unchanged and the corresponding container is unchanged)
+ *  as well as single tensor elements (*i.e.*, initializing a scalar); in the
+ *  latter case the buffer corresponding to @p out_itr must contain room for at
+ *  least one element as the element will be copied to the buffer.
+ *
+ *  @tparam T Expected to be the type of a tensor element (*i.e.* float, double,
+ *            *etc.*) or a (possibly nested) `std::initializer_list` of tensor
+ *            elements.
+ *  @tparam OutputItr The type of an iterator which can be used to fill a
+ *                    container. It must satisfy the concept of Output Iterator.
+ *
+ *  @param[in] il The `std::initializer_list` we are flattening.
+ *  @param[in] out_itr An iterator pointing to the first element where data
+ *                     should be copied to. Memory in the destination container
+ *                     is assumed to be pre-allocated otherwise @
+ *
+ *  @return @p out_itr pointing to just past the last element inserted by this
+ *          function.
+ *
+ *  @throw TiledArray::Exception If the provided `std::initializer_list` is not
+ *                               rectangular (*e.g.*, attempting to initialize
+ *                               a matrix with the value `{{1, 2}, {3, 4, 5}}`).
+ *                               If an exception is thrown @p il and @p out_itr
+ *                               are in their original state (strong throw
+ *                               guarantee).
+ */
+template<typename T, typename OutputItr>
+auto flatten_il(T&& il, OutputItr out_itr) {
+  constexpr auto ranks_left = initializer_list_rank_v<std::decay_t<T>>;
+
+  // We were given a scalar, just copy its value
+  // (input of std::initializer_list ends recursion on ranks_left == 1)
+  if constexpr(ranks_left == 0){
+    *out_itr = il;
+    ++out_itr;
+  }
+  // We were given a vector or we have recursed to the most nested
+  // initializer_list, either way copy the contents to the buffer
+  else if constexpr(ranks_left == 1){
+    out_itr = std::copy(il.begin(), il.end(), out_itr);
+  }
+  // The initializer list is at least a matrix, so recurse over sub-lists
+  else{
+    const auto length = il.begin()->size();
+    for(auto&& x : il){
+      TA_ASSERT(x.size() == length); // sub-lists must be the same size
+      out_itr = flatten_il(x, out_itr);
+    }
+  }
+  return out_itr;
+}
+
+//------------------------------------------------------------------------------
+// array_from_il free function
+//------------------------------------------------------------------------------
+
+/** @brief Converts an `std::initializer_list` into an array.
+ *
+ *  This function encapsulates the process of turning an `std::initializer_list`
+ *  into a TiledArray array. The resulting tensor will consistent of a single
+ *  tile which holds all of the values.
+ *
+ *  @note This function will raise a static assertion if you try to construct a
+ *        rank 0 tensor (*i.e.*, you pass in a single element and not an
+ *        `std::initializer_list`).
+ *
+ * @tparam ArrayType The type of the array we are creating. Expected to be
+ *                   have an API akin to that of DistArray
+ * @tparam T The type of the provided `std::initializer_list`.
+ *
+ * @param[in] world The context in which the resulting tensor will live.
+ * @param[in] il The initializer_list containing the initial state of the
+ *               tensor. @p il is assumed to be non-empty and in row-major form.
+ *               The nesting of @p il will be used to determine the rank of the
+ *               resulting tensor.
+ *
+ * @return A newly created instance of type @p ArrayType whose state is derived
+ *         from @p il and exists in the @p world context.
+ *
+ * @throw TiledArray::Exception if @p il contains no elements. If an exception
+ *                              is raised @p world and @p il are unchanged
+ *                              (strong throw guarantee).
+ * @throw TiledArray::Exception If the provided `std::initializer_list` is not
+ *                              rectangular (*e.g.*, attempting to initialize
+ *                              a matrix with the value `{{1, 2}, {3, 4, 5}}`).
+ *                              If an exception is raised @p world and @p il are
+ *                              unchanged.
+ */
+template<typename ArrayType, typename T>
+auto array_from_il(World& world, T&& il) {
+  using element_type = typename ArrayType::element_type;
+  using tile_type    = typename ArrayType::value_type;
+
+  static_assert(initializer_list_rank_v<std::decay_t<T>> > 0,
+      "value initializing rank 0 tensors is not supported");
+
+  auto trange = tiled_range_from_il(il);
+
+  // Use the fact that there's only one tile
+  auto range = trange.make_tile_range(0);
+  std::vector<element_type> buffer;
+  buffer.reserve(range.volume());
+  flatten_il(il, buffer.begin());
+
+  ArrayType rv(world, trange);
+  (*rv.begin()) = tile_type(range, buffer.data());
+  return rv;
+}
 
 }  // namespace TiledArray
 
