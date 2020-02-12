@@ -31,18 +31,10 @@ else()
   set(TBB_ROOT_DIR "/opt/intel/tbb" CACHE PATH "TBB root directory")
 endif()
 
-# configure BLAS+LAPACK for MADNESS
+
 set(BLAS_LINKER_FLAGS "${MKL_ROOT_DIR}/lib/libmkl_intel_lp64.a" "${MKL_ROOT_DIR}/lib/libmkl_sequential.a" "${MKL_ROOT_DIR}/lib/libmkl_core.a" "-lpthread" "-lm" "-ldl" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES ${BLAS_LINKER_FLAGS} CACHE STRING "LAPACK linker flags")
 set(LAPACK_INCLUDE_DIRS ${MKL_ROOT_DIR}/include CACHE STRING "LAPACK include directories")
 set(LAPACK_COMPILE_DEFINITIONS BTAS_HAS_CBLAS=1;BTAS_HAS_LAPACKE=1;BTAS_HAS_INTEL_MKL=1;MADNESS_LINALG_USE_LAPACKE CACHE STRING "LAPACK preprocessor definitions")
 set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
-
-# configure BLACS
-set(blacs_LIBRARIES "${MKL_ROOT_DIR}/lib/libmkl_blacs_mpich_lp64.a" ${BLAS_LINKER_FLAGS})
-
-# configure ScaLAPACK
-set(IntelMKL_LIBRARIES ${blacs_LIBRARIES})
-set(scalapack_LIBRARIES "${MKL_ROOT_DIR}/lib/libmkl_scalapack_lp64.a" ${blacs_LIBRARIES})
-
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
