@@ -30,6 +30,7 @@
 #include <TiledArray/array_impl.h>
 #include <TiledArray/conversions/clone.h>
 #include <TiledArray/conversions/truncate.h>
+#include <TiledArray/initializer_list_utils.h>
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/tile_interface/cast.h>
 
