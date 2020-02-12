@@ -29,11 +29,10 @@ if(ENABLE_SCALAPACK)
 foreach(_exec conversion)
 
   # Add executable
-  add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
-  target_link_libraries(${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-  target_compile_features( ${_exec} PRIVATE cxx_std_17 )
-  add_dependencies(${_exec} External)
-  add_dependencies(examples ${_exec})
+  add_executable(scalapack-${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
+  target_link_libraries(scalapack-${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
+  add_dependencies(scalapack-${_exec} External)
+  add_dependencies(examples scalapack-${_exec})
 
 endforeach()
 
