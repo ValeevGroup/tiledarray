@@ -19,12 +19,12 @@
 
 #ifndef TILEDARRAY_INITIALIZER_LIST_UTILS_H__INCLUDED
 #define TILEDARRAY_INITIALIZER_LIST_UTILS_H__INCLUDED
-#include "TiledArray/tiled_range.h"
-#include "TiledArray/tiled_range1.h"
 #include <algorithm>         // copy
 #include <array>             // array
 #include <initializer_list>  // initializer_list
 #include <type_traits>       // decay, false_type, true_type
+#include "TiledArray/tiled_range.h"
+#include "TiledArray/tiled_range1.h"
 
 /** @file initializer_list_utils.h
  *
@@ -47,7 +47,7 @@ namespace TiledArray {
  *
  *  @tparam T The type we are testing for its initializer_list-ness
  */
-template<typename T>
+template <typename T>
 struct IsInitializerList : std::false_type {};
 
 /** @brief Specialization of IsInitializerList for an std::initializer_list
@@ -58,8 +58,8 @@ struct IsInitializerList : std::false_type {};
  *
  *  @tparam T The type we are testing for its initializer_list-ness
  */
-template<typename T>
-struct IsInitializerList<std::initializer_list<T>> : std::true_type{};
+template <typename T>
+struct IsInitializerList<std::initializer_list<T>> : std::true_type {};
 
 /** @brief Helper variable template for the IsInitializerList struct.
  *
@@ -69,7 +69,7 @@ struct IsInitializerList<std::initializer_list<T>> : std::true_type{};
  *
  *  @tparam T The type we want to know the initializer_list-ness of.
  */
-template<typename T>
+template <typename T>
 static constexpr bool is_initializer_list_v = IsInitializerList<T>::value;
 
 //------------------------------------------------------------------------------
@@ -89,7 +89,7 @@ static constexpr bool is_initializer_list_v = IsInitializerList<T>::value;
  *  @tparam SizeType the type to use for the `value` member. Defaults to
  *          `std::size_t`.
  */
-template<typename T, typename SizeType = std::size_t>
+template <typename T, typename SizeType = std::size_t>
 struct InitializerListRank : std::integral_constant<SizeType, 0> {};
 
 /** @brief Helper variable for retrieving the degree of nesting for an
@@ -104,8 +104,9 @@ struct InitializerListRank : std::integral_constant<SizeType, 0> {};
  *  @tparam SizeType the type to use for the `value` member. Defaults to
  *          `std::size_t`.
  */
-template<typename T, typename SizeType = std::size_t>
-constexpr auto initializer_list_rank_v = InitializerListRank<T, SizeType>::value;
+template <typename T, typename SizeType = std::size_t>
+constexpr auto initializer_list_rank_v =
+    InitializerListRank<T, SizeType>::value;
 
 /** @brief Specialization of InitializerListRank used when the template type
  *         parameter is a std::initializer_list type
@@ -120,9 +121,10 @@ constexpr auto initializer_list_rank_v = InitializerListRank<T, SizeType>::value
  *  @tparam SizeType the type to use for the `value` member. Defaults to
  *          `std::size_t`.
  */
-template<typename T, typename SizeType>
-struct InitializerListRank<std::initializer_list<T>, SizeType> :
-std::integral_constant<SizeType, initializer_list_rank_v<T, SizeType> + 1> {};
+template <typename T, typename SizeType>
+struct InitializerListRank<std::initializer_list<T>, SizeType>
+    : std::integral_constant<SizeType,
+                             initializer_list_rank_v<T, SizeType> + 1> {};
 
 //------------------------------------------------------------------------------
 // tiled_range_from_il free function
@@ -160,19 +162,16 @@ std::integral_constant<SizeType, initializer_list_rank_v<T, SizeType> + 1> {};
  *                              guaranteed to be in the same state (strong throw
  *                              guarantee).
  */
-template<
-    typename T,
-    typename U =
-        std::array<TiledRange1, initializer_list_rank_v<std::decay_t<T>>>
->
-auto tiled_range_from_il(T&& il, U shape = {}){
+template <typename T,
+          typename U =
+              std::array<TiledRange1, initializer_list_rank_v<std::decay_t<T>>>>
+auto tiled_range_from_il(T&& il, U shape = {}) {
   using clean_type = std::decay_t<T>;
   constexpr auto ranks_left = initializer_list_rank_v<clean_type>;
 
-  if constexpr(ranks_left == 0) { // Scalar or end of recursion
+  if constexpr (ranks_left == 0) {  // Scalar or end of recursion
     return TiledRange(shape.begin(), shape.end());
-  }
-  else {
+  } else {
     // The length of this initializer_list
     const auto length = il.size();
     TA_ASSERT(length > 0);
@@ -225,26 +224,26 @@ auto tiled_range_from_il(T&& il, U shape = {}){
  *                               are in their original state (strong throw
  *                               guarantee).
  */
-template<typename T, typename OutputItr>
+template <typename T, typename OutputItr>
 auto flatten_il(T&& il, OutputItr out_itr) {
   constexpr auto ranks_left = initializer_list_rank_v<std::decay_t<T>>;
 
   // We were given a scalar, just copy its value
   // (input of std::initializer_list ends recursion on ranks_left == 1)
-  if constexpr(ranks_left == 0){
+  if constexpr (ranks_left == 0) {
     *out_itr = il;
     ++out_itr;
   }
   // We were given a vector or we have recursed to the most nested
   // initializer_list, either way copy the contents to the buffer
-  else if constexpr(ranks_left == 1){
+  else if constexpr (ranks_left == 1) {
     out_itr = std::copy(il.begin(), il.end(), out_itr);
   }
   // The initializer list is at least a matrix, so recurse over sub-lists
-  else{
+  else {
     const auto length = il.begin()->size();
-    for(auto&& x : il){
-      TA_ASSERT(x.size() == length); // sub-lists must be the same size
+    for (auto&& x : il) {
+      TA_ASSERT(x.size() == length);  // sub-lists must be the same size
       out_itr = flatten_il(x, out_itr);
     }
   }
@@ -287,27 +286,55 @@ auto flatten_il(T&& il, OutputItr out_itr) {
  *                              If an exception is raised @p world and @p il are
  *                              unchanged.
  */
-template<typename ArrayType, typename T>
+template <typename ArrayType, typename T>
 auto array_from_il(World& world, T&& il) {
   using element_type = typename ArrayType::element_type;
-  using tile_type    = typename ArrayType::value_type;
+  using tile_type = typename ArrayType::value_type;
 
-  static_assert(initializer_list_rank_v<std::decay_t<T>> > 0,
-      "value initializing rank 0 tensors is not supported");
+  static_assert(initializer_list_rank_v<std::decay_t<T>>> 0,
+                "value initializing rank 0 tensors is not supported");
 
   auto trange = tiled_range_from_il(il);
-
-  // Use the fact that there's only one tile
-  auto range = trange.make_tile_range(0);
-  std::vector<element_type> buffer;
-  buffer.reserve(range.volume());
-  flatten_il(il, buffer.begin());
-
   ArrayType rv(world, trange);
-  (*rv.begin()) = tile_type(range, buffer.data());
+
+  for(auto itr = rv.begin(); itr != rv.end(); ++itr) {
+    std::vector<element_type> buffer;
+    auto range = rv.trange().make_tile_range(itr.index());
+    buffer.reserve(range.volume());
+    flatten_il(il, buffer.begin());
+    *itr = tile_type(range, buffer.data());
+  }
   return rv;
+}
+
+namespace detail_ {
+
+// Typedef of an initializer list for a vector
+template <typename T>
+using vector_il = std::initializer_list<T>;
+
+// Typedef of an initializer list for a matrix
+template <typename T>
+using matrix_il = std::initializer_list<vector_il<T>>;
+
+// Typedef of an il for a rank 3 tensor
+template <typename T>
+using tensor3_il = std::initializer_list<matrix_il<T>>;
+
+// Typedef of an il for a rank 4 tensor
+template <typename T>
+using tensor4_il = std::initializer_list<tensor3_il<T>>;
+
+// Typedef of an il for a rank 5 tensor
+template <typename T>
+using tensor5_il = std::initializer_list<tensor4_il<T>>;
+
+// Typedef of an il for a rank 6 tensor
+template <typename T>
+using tensor6_il = std::initializer_list<tensor5_il<T>>;
+
 }
 
 }  // namespace TiledArray
 
-#endif // TILEDARRAY_INITIALIZER_LIST_UTILS_H__INCLUDED
+#endif  // TILEDARRAY_INITIALIZER_LIST_UTILS_H__INCLUDED
