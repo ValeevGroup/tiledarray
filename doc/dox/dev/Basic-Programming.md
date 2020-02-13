@@ -518,7 +518,7 @@ for(auto it = begin(array); it != end(array); ++it) {
 ```
 The new code is better in a few ways:
 * explicit use of `array`'s type is eliminated thanks to `auto` and `decltype` (caveat: type deduction can make it more difficult to diagnose compilation errors or introduce unwanted conversions), and
-* inner loop has been replaced by a more efficient and cleaner `std::fill`.
+* the inner loop has been replaced by a more efficient and cleaner `std::fill` (N.B. any modern compiler at the max optimization level will replace `std::fill` with call to `memset` when appropriate, so this is the fastest way to fill the tile).
 
 You can also initialize tile elements using a coordinate index instead of an ordinal index. The following example is equivalent to the previous example, except the tile elements are accessed via a coordinate index.
 ```c++
@@ -533,7 +533,7 @@ for(auto it = begin(array); it != end(array); ++it) {
 
   // Fill tile with data
   // this explicitly assumes order-4 tensors!
-  std::vector<std::size_t> i(4, 0ul);
+  std::size_t i[] = {0,0,0,0};  // instead of fundamental array could use std::array, std::vector, or any SequenceContainer
   for(i[0] = lobound[0]; i[0] != upbound[0]; ++i[0])
     for(i[1] = lobound[1]; i[1] != upbound[1]; ++i[1])
       for(i[2] = lobound[2]; i[2] != upbound[2]; ++i[2])
@@ -545,9 +545,9 @@ for(auto it = begin(array); it != end(array); ++it) {
 }
 ```
 
-Note that in the examples shown so far tile initialization is parallelized over MPI processes only; on each process on the main thread does the initialization work. To parallelize over threads on each process we can
+Note that in the examples shown so far tile initialization is parallelized over MPI processes only; on each process _only_ the main thread does the initialization work. To parallelize over threads on each process we can
 also initialize tiles by submitting within MADNESS tasks. To do this we need to define a task function that will generate tiles. For example:
-```c++
+```
 auto make_tile(const TA::Range& range) {
   // Construct a tile
   TA::TArrayD::value_type tile(range);

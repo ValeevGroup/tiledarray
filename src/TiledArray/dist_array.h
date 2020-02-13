@@ -277,6 +277,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       : DistArray(array_from_il<DistArray_>(world, il)) {}
   ///@}
 
+  /// @}
+
   /// converting copy constructor
 
   /// This constructor uses the meta data of `other` to initialize the meta
