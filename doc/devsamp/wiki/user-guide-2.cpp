@@ -3,9 +3,32 @@
 // Construct a Tensor<T> filled with v
 template <typename T>
 TA::Tensor<T> make_tile(const TA::Range& range, const double v) {
-  // Allocate a tile
+  // Allocate and fill a tile
   TA::Tensor<T> tile(range);
   std::fill(tile.begin(), tile.end(), v);
+
+  return tile;
+}
+
+// Construct a 2-dimensional Tensor<T> filled with v
+// tests explicit iteration over elements
+template <typename T>
+TA::Tensor<T> make_tile2(const TA::Range& range, const double v) {
+  assert(range.rank() == 2);
+
+  // Allocate a tile
+  TA::Tensor<T> tile(range);
+
+  // Store a reference to the start and finish array of the tile
+  const auto& lobound = tile.range().lobound();
+  const auto& upbound = tile.range().upbound();
+
+  // Fill the tile
+  std::size_t i[] = {0, 0};
+  //  or, std::vector<std::size_t> i = {0,0};
+  //  or, std::array<std::size_t, 2> i = {0,0};
+  for (i[0] = lobound[0]; i[0] != upbound[0]; ++i[0])
+    for (i[1] = lobound[1]; i[1] != upbound[1]; ++i[1]) tile[i] = v;
 
   return tile;
 }
