@@ -228,6 +228,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                 std::shared_ptr<pmap_interface>())
       : pimpl_(init(world, trange, shape, pmap)) {}
 
+  /// \name initializer list constructors
+  /// Construct a DistArray object with a single tile.
+  /// @{
   template<typename T>
   DistArray(World& world, std::initializer_list<T> il) :
     DistArray(array_from_il<DistArray_>(world, il)) {}
@@ -280,6 +283,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                     >
                 >
             > il) : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  /// @}
 
   /// converting copy constructor
 
