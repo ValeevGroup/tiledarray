@@ -75,6 +75,114 @@ BOOST_AUTO_TEST_CASE(constructors) {
   // Check that none of the tiles have been set.
   for (SpArrayN::const_iterator it = as.begin(); it != as.end(); ++it)
     BOOST_CHECK(!it->probe());
+
+  // Create a vector with an initializer list
+  {
+    vector_il<T> il{1, 2, 3};
+    TArray<double>(world, il);
+    for(typename TArray<double>::value_type tile : array) {
+    auto itr = tile.begin();
+      for (auto i : il) {
+        BOOST_CHECK_EQUAL(j, *itr);
+        ++itr;
+      }
+    }
+  }
+
+  // Create a matrix with an initializer list
+  {
+    matrix_il<T> il{{1, 2, 3}, {4, 5, 6}};
+    TArray<double>(world, il);
+    for (typename TArray<double>::value_type tile : array) {
+      auto itr = tile.begin();
+      for (auto i : il) {
+        for (auto j : i) {
+          BOOST_CHECK_EQUAL(j, *itr);
+          ++itr;
+        }
+      }
+    }
+  }
+
+  // Create a rank 3 tensor with an initializer list
+  {
+    tensor3_il<T> il{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}};
+    TArray<double>(world, il);
+    for (typename TArray<double>::value_type tile : array) {
+      auto itr = tile.begin();
+      for (auto i : il) {
+        for (auto j : i) {
+         for (auto k : j) {
+          BOOST_CHECK_EQUAL(k, *itr);
+          ++itr;
+          }
+        }
+      }
+    }
+  }
+
+  // Create a rank 4 tensor with an initializer list
+  {
+    tensor4_il<T> il{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}};
+    TArray<double>(world, il);
+    for (typename TArray<double>::value_type tile : array) {
+      auto itr = tile.begin();
+      for (auto i : il) {
+        for (auto j : i) {
+          for (auto k : j) {
+            for(auto l : k) {
+              BOOST_CHECK_EQUAL(l, *itr);
+              ++itr;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Create a rank 5 tensor with an initializer list
+  {
+    tensor5_il<T> il{{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}}};
+    TArray<double>(world, il);
+    for (typename TArray<double>::value_type tile : array) {
+      auto itr = tile.begin();
+      for (auto i : il) {
+        for (auto j : i) {
+          for (auto k : j) {
+            for(auto l : k) {
+              for(auto m : l) {
+                BOOST_CHECK_EQUAL(m, *itr);
+                ++itr;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Create a rank 6 tensor with an initializer list
+  {
+    tensor6_il<T> il{{{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}}}};
+    TArray<double>(world, il);
+    for (typename TArray<double>::value_type tile : array) {
+      auto itr = tile.begin();
+      for (auto i : il) {
+        for (auto j : i) {
+          for (auto k : j) {
+            for(auto l : k) {
+              for(auto m : l) {
+                for (auto n : m) {
+                  BOOST_CHECK_EQUAL(n, *itr);
+                  ++itr;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE(all_owned) {
