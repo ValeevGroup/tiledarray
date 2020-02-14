@@ -67,7 +67,7 @@ else()
     STEP_TARGETS download
     )
 
-  add_dependencies(External boost)
+  add_dependencies(External-tiledarrayboost)
   install(
     DIRECTORY ${BOOST_SOURCE_DIR}
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}

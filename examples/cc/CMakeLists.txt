@@ -34,16 +34,16 @@ target_include_directories(inputlib PRIVATE
    $<TARGET_PROPERTY:tiledarray,INTERFACE_INCLUDE_DIRECTORIES> $<TARGET_PROPERTY:TiledArray_Eigen,INTERFACE_INCLUDE_DIRECTORIES>)
 target_compile_options(inputlib PRIVATE 
    $<TARGET_PROPERTY:tiledarray,INTERFACE_COMPILE_OPTIONS>)
-add_dependencies(inputlib External)
+add_dependencies(inputlib External-tiledarray)
 
 # Add the ccd executable
 add_executable(ccd EXCLUDE_FROM_ALL ccd.cpp $<TARGET_OBJECTS:inputlib>)
 target_link_libraries(ccd PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-add_dependencies(ccd External)
-add_dependencies(examples ccd)
+add_dependencies(ccd External-tiledarray)
+add_dependencies(examples-tiledarray ccd)
 
 # Add the ccsd executable
 add_executable(ccsd EXCLUDE_FROM_ALL ccsd.cpp $<TARGET_OBJECTS:inputlib>)
 target_link_libraries(ccsd PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-add_dependencies(ccsd External)
-add_dependencies(examples ccsd)
+add_dependencies(ccsd External-tiledarray)
+add_dependencies(examples-tiledarray ccsd)

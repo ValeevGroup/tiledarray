@@ -21,5 +21,5 @@
 # Add the demo executable
 add_executable(demo EXCLUDE_FROM_ALL demo.cpp)
 target_link_libraries(demo PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-add_dependencies(demo External)
-add_dependencies(examples demo)
+add_dependencies(demo External-tiledarray)
+add_dependencies(examples-tiledarray demo)

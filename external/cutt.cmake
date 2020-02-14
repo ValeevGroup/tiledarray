@@ -96,7 +96,7 @@ else()
             )
 
     # Add cuTT dependency to External
-    add_dependencies(External cutt)
+    add_dependencies(External-tiledarraycutt)
 
     set(_CUTT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 

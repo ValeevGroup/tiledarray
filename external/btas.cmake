@@ -104,7 +104,7 @@ else()
     )
 
   # Add BTAS dependency to External
-  add_dependencies(External btas)
+  add_dependencies(External-tiledarraybtas)
 
   # create an exportable interface target for BTAS
   add_library(TiledArray_BTAS INTERFACE)

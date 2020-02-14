@@ -23,7 +23,7 @@
 #
  
 # Create target "examples" that builds all example programs
-add_custom_target(examples)
+add_custom_target_subproject(tiledarray examples)
 
 # Add Subdirectories
 add_subdirectory (cc)
