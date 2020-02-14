@@ -8,7 +8,7 @@ These notes assume that Docker is installed on your machine and that you start a
 4. Configure the job to use the appropriate compiler, compiler version, and debug/release build type:
   * `export BUILD_TYPE=B`, where `B` is `Debug` or `Release`.
   * If want to use GNU C++ compiler (gcc):
-    * `export GCC_VERSION=VVV` where `VVV` should be the GCC version to be used. The currently valid values are `6`, `7`, `8` and `9`.
+    * `export GCC_VERSION=VVV` where `VVV` should be the GCC version to be used. The currently valid values are `7`, `8` and `9`.
     * `export CXX=g++`
   * If want to use Clang C++ compiler (clang++):
     * `export GCC_VERSION=8`

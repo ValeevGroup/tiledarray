@@ -58,7 +58,7 @@ class Singleton {
   template <typename T, typename Enabler = void>
   struct is_default_constructible_helper : public std::false_type {};
   template <typename T>
-  struct is_default_constructible_helper<T, detail::void_t<decltype(T{})>>
+  struct is_default_constructible_helper<T, std::void_t<decltype(T{})>>
       : public std::true_type {};
   constexpr static bool derived_is_default_constructible =
       is_default_constructible_helper<Derived>::value;

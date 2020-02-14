@@ -85,8 +85,9 @@ class Range {
     size_type* MADNESS_RESTRICT const upper = lower + rank_;
     size_type* MADNESS_RESTRICT const extent = upper + rank_;
     size_type* MADNESS_RESTRICT const stride = extent + rank_;
-    const auto* MADNESS_RESTRICT const lower_data = detail::data(lower_bound);
-    const auto* MADNESS_RESTRICT const upper_data = detail::data(upper_bound);
+    using std::data;
+    const auto* MADNESS_RESTRICT const lower_data = data(lower_bound);
+    const auto* MADNESS_RESTRICT const upper_data = data(upper_bound);
 
     // Set the volume seed
     volume_ = 1ul;
@@ -129,7 +130,8 @@ class Range {
     size_type* MADNESS_RESTRICT const upper = lower + rank_;
     size_type* MADNESS_RESTRICT const extent = upper + rank_;
     size_type* MADNESS_RESTRICT const stride = extent + rank_;
-    const auto* MADNESS_RESTRICT const bound_data = detail::data(bound);
+    using std::data;
+    const auto* MADNESS_RESTRICT const bound_data = data(bound);
 
     // Set the volume seed
     volume_ = 1ul;
@@ -172,7 +174,8 @@ class Range {
     size_type* MADNESS_RESTRICT const upper = lower + rank_;
     size_type* MADNESS_RESTRICT const extent = upper + rank_;
     size_type* MADNESS_RESTRICT const stride = extent + rank_;
-    const auto* MADNESS_RESTRICT const extent_data = detail::data(extents);
+    using std::data;
+    const auto* MADNESS_RESTRICT const extent_data = data(extents);
 
     // Set the offset and volume initial values
     volume_ = 1ul;
@@ -312,8 +315,9 @@ class Range {
       typename std::enable_if_t<!std::is_integral<Index1>::value &&
                                 !std::is_integral<Index2>::value>* = nullptr>
   Range(const Index1& lower_bound, const Index2& upper_bound) {
-    const size_type n = detail::size(lower_bound);
-    TA_ASSERT(n == detail::size(upper_bound));
+    using std::size;
+    const size_type n = size(lower_bound);
+    TA_ASSERT(n == size(upper_bound));
     if (n) {
       // Initialize array memory
       data_ = new size_type[n << 2];
@@ -336,8 +340,9 @@ class Range {
       typename std::enable_if<std::is_integral<Index1>::value>::type* = nullptr>
   Range(const std::initializer_list<Index1>& lower_bound,
         const std::initializer_list<Index1>& upper_bound) {
-    const size_type n = detail::size(lower_bound);
-    TA_ASSERT(n == detail::size(upper_bound));
+    using std::size;
+    const size_type n = size(lower_bound);
+    TA_ASSERT(n == size(upper_bound));
     if (n) {
       // Initialize array memory
       data_ = new size_type[n << 2];
@@ -359,7 +364,8 @@ class Range {
           !std::is_integral<Index>::value &&
           std::is_integral<typename Index::value_type>::value>::type* = nullptr>
   explicit Range(const Index& extent) {
-    const size_type n = detail::size(extent);
+    using std::size;
+    const size_type n = size(extent);
     if (n) {
       // Initialize array memory
       data_ = new size_type[n << 2];
@@ -378,7 +384,8 @@ class Range {
       typename Index1,
       typename std::enable_if<std::is_integral<Index1>::value>::type* = nullptr>
   explicit Range(const std::initializer_list<Index1>& extent) {
-    const size_type n = detail::size(extent);
+    using std::size;
+    const size_type n = size(extent);
     if (n) {
       // Initialize array memory
       data_ = new size_type[n << 2];
@@ -402,7 +409,8 @@ class Range {
           !std::is_integral<Index>::value &&
           detail::is_pair<typename Index::value_type>::value>::type* = nullptr>
   Range(const Index& bounds) {
-    const size_type n = detail::size(bounds);
+    using std::size;
+    const size_type n = size(bounds);
     if (n) {
       // Initialize array memory
       data_ = new size_type[n << 2];
@@ -423,7 +431,8 @@ class Range {
   /// \throw std::bad_alloc When memory allocation fails.
   template <typename Index1, typename Index2>
   Range(const std::initializer_list<std::pair<Index1, Index2>>& bounds) {
-    const size_type n = detail::size(bounds);
+    using std::size;
+    const size_type n = size(bounds);
     if (n) {
       // Initialize array memory
       data_ = new size_type[n << 2];
@@ -702,7 +711,8 @@ class Range {
             typename std::enable_if<!std::is_integral<Index>::value,
                                     bool>::type* = nullptr>
   bool includes(const Index& index) const {
-    TA_ASSERT(detail::size(index) == rank_);
+    using std::size;
+    TA_ASSERT(size(index) == rank_);
     const size_type* MADNESS_RESTRICT const lower = data_;
     const size_type* MADNESS_RESTRICT const upper = lower + rank_;
 
@@ -772,8 +782,9 @@ class Range {
   /// upper_bound[i]</tt> \throw std::bad_alloc When memory allocation fails.
   template <typename Index>
   Range_& resize(const Index& lower_bound, const Index& upper_bound) {
-    const size_type n = detail::size(lower_bound);
-    TA_ASSERT(n == detail::size(upper_bound));
+    using std::size;
+    const size_type n = size(lower_bound);
+    TA_ASSERT(n == size(upper_bound));
 
     // Reallocate memory for range arrays
     if (rank_ != n) {
@@ -796,10 +807,11 @@ class Range {
   /// \return A reference to this range
   template <typename Index>
   Range_& inplace_shift(const Index& bound_shift) {
-    TA_ASSERT(detail::size(bound_shift) == rank_);
+    using std::size;
+    TA_ASSERT(size(bound_shift) == rank_);
 
-    const auto* MADNESS_RESTRICT const bound_shift_data =
-        detail::data(bound_shift);
+    using std::data;
+    const auto* MADNESS_RESTRICT const bound_shift_data = data(bound_shift);
     size_type* MADNESS_RESTRICT const lower = data_;
     size_type* MADNESS_RESTRICT const upper = data_ + rank_;
     const size_type* MADNESS_RESTRICT const stride = upper + rank_ + rank_;
@@ -870,7 +882,8 @@ class Range {
       typename Index,
       typename std::enable_if<!std::is_integral<Index>::value>::type* = nullptr>
   ordinal_type ordinal(const Index& index) const {
-    TA_ASSERT(detail::size(index) == rank_);
+    using std::size;
+    TA_ASSERT(size(index) == rank_);
     TA_ASSERT(includes(index));
 
     size_type* MADNESS_RESTRICT const stride = data_ + rank_ + rank_ + rank_;

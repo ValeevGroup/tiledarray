@@ -1207,7 +1207,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tile<T>& tile) {
 template <typename Allocator, typename T>
 struct Cast<
     TiledArray::Tensor<typename T::value_type, Allocator>, Tile<T>,
-    detail::void_t<decltype(
+    std::void_t<decltype(
         std::declval<TiledArray::Cast<
             TiledArray::Tensor<typename T::value_type, Allocator>, T>>()(
             std::declval<const T&>()))>> {

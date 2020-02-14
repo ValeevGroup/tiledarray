@@ -638,7 +638,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::elements_range()
-  DEPRECATED const typename trange_type::range_type& elements() const {
+  [[deprecated]] const typename trange_type::range_type& elements() const {
     return elements_range();
   }
 
@@ -713,7 +713,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::world()
-  DEPRECATED World& get_world() const {
+  [[deprecated]] World& get_world() const {
     check_pimpl();
     return pimpl_->world();
   }
@@ -727,7 +727,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::pmap()
-  DEPRECATED const std::shared_ptr<pmap_interface>& get_pmap() const {
+  [[deprecated]] const std::shared_ptr<pmap_interface>& get_pmap() const {
     check_pimpl();
     return pimpl_->pmap();
   }
@@ -749,7 +749,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::shape()
-  DEPRECATED const shape_type& get_shape() const { return pimpl_->shape(); }
+  [[deprecated]] const shape_type& get_shape() const { return pimpl_->shape(); }
 
   /// Shape accessor
 

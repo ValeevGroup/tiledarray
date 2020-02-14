@@ -14,11 +14,11 @@ $ cmake --build build --target install
 
 # Prerequisites
 
-- C++ compiler with support for the [C++14 standard](https://www.iso.org/standard/64029.html), or a more recent standard. This includes the following compilers:
-  - [GNU C++](https://gcc.gnu.org/), version 5.0 or higher
-  - [Clang](https://clang.llvm.org/), version 3.4 or higher
-  - Apple Clang, version 5.0 or higher
-  - [Intel C++ compiler](), version 17 or higher
+- C++ compiler with support for the [C++17 standard](http://www.iso.org/standard/68564.html), or a more recent standard. This includes the following compilers:
+  - [GNU C++](https://gcc.gnu.org/), version 7.0 or higher
+  - [Clang](https://clang.llvm.org/), version 5 or higher
+  - Apple Clang, version 9.3 or higher
+  - [Intel C++ compiler](), version 19 or higher
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
