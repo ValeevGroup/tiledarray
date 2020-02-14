@@ -78,12 +78,12 @@ BOOST_AUTO_TEST_CASE(constructors) {
 
   // Create a vector with an initializer list
   {
-    vector_il<T> il{1, 2, 3};
-    TArray<double>(world, il);
-    for(typename TArray<double>::value_type tile : array) {
+    detail_::vector_il<double> il{1, 2, 3};
+    TArray<double> a_vector(world, il);
+    for(typename TArray<double>::value_type tile : a_vector) {
     auto itr = tile.begin();
       for (auto i : il) {
-        BOOST_CHECK_EQUAL(j, *itr);
+        BOOST_CHECK_EQUAL(i, *itr);
         ++itr;
       }
     }
@@ -91,9 +91,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
 
   // Create a matrix with an initializer list
   {
-    matrix_il<T> il{{1, 2, 3}, {4, 5, 6}};
-    TArray<double>(world, il);
-    for (typename TArray<double>::value_type tile : array) {
+    detail_::matrix_il<double> il{{1, 2, 3}, {4, 5, 6}};
+    TArray<double> a_matrix(world, il);
+    for (typename TArray<double>::value_type tile : a_matrix) {
       auto itr = tile.begin();
       for (auto i : il) {
         for (auto j : i) {
@@ -106,9 +106,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
 
   // Create a rank 3 tensor with an initializer list
   {
-    tensor3_il<T> il{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}};
-    TArray<double>(world, il);
-    for (typename TArray<double>::value_type tile : array) {
+    detail_::tensor3_il<double> il{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}};
+    TArray<double> a_tensor3(world, il);
+    for (typename TArray<double>::value_type tile : a_tensor3) {
       auto itr = tile.begin();
       for (auto i : il) {
         for (auto j : i) {
@@ -123,9 +123,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
 
   // Create a rank 4 tensor with an initializer list
   {
-    tensor4_il<T> il{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}};
-    TArray<double>(world, il);
-    for (typename TArray<double>::value_type tile : array) {
+    detail_::tensor4_il<double> il{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}};
+    TArray<double> a_tensor4(world, il);
+    for (typename TArray<double>::value_type tile : a_tensor4) {
       auto itr = tile.begin();
       for (auto i : il) {
         for (auto j : i) {
@@ -142,9 +142,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
 
   // Create a rank 5 tensor with an initializer list
   {
-    tensor5_il<T> il{{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}}};
-    TArray<double>(world, il);
-    for (typename TArray<double>::value_type tile : array) {
+    detail_::tensor5_il<double> il{{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}}};
+    TArray<double> a_tensor5(world, il);
+    for (typename TArray<double>::value_type tile : a_tensor5) {
       auto itr = tile.begin();
       for (auto i : il) {
         for (auto j : i) {
@@ -163,9 +163,9 @@ BOOST_AUTO_TEST_CASE(constructors) {
 
   // Create a rank 6 tensor with an initializer list
   {
-    tensor6_il<T> il{{{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}}}};
-    TArray<double>(world, il);
-    for (typename TArray<double>::value_type tile : array) {
+    detail_::tensor6_il<double> il{{{{{{1, 2,}, {3, 4}}, {{5, 6}, {7, 8}}}}}};
+    TArray<double> a_tensor6(world, il);
+    for (typename TArray<double>::value_type tile : a_tensor6) {
       auto itr = tile.begin();
       for (auto i : il) {
         for (auto j : i) {
