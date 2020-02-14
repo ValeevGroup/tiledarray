@@ -228,52 +228,52 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                 std::shared_ptr<pmap_interface>())
       : pimpl_(init(world, trange, shape, pmap)) {}
 
-   /// \brief Creates a new tensor containing the elements in the provided
-   ///         `std::initializer_list`.
-   ///
-   ///  This ctor will create an array comprised of a single tile. The array
-   ///  will have a rank equal to the nesting of \p il and the elements will be
-   ///  those in the provided `std::initializer_list`. This ctor can not be used
-   ///  to create an empty tensor (attempts to do so will raise an error).
-   ///
-   /// \tparam T The types of the elements in the `std::initializer_list`. Must
-   ///           be implicitly convertible to element_type.
-   ///
-   /// \param[in] world The world where the resulting array will live.
-   /// \param[in] il The initial values for the elements in the array. The
-   ///               elements are assumed to be listed in row-major order.
-   ///
-   /// \throw TiledArray::Exception if \p il contains no elements. If an
-   ///                              exception is raised \p world and \p il are
-   ///                              unchanged (strong throw guarantee).
-   /// \throw TiledArray::Exception If the provided `std::initializer_list` is
-   ///                              not rectangular (*e.g.*, attempting to
-   ///                              initialize a matrix with the value
-   ///                              `{{1, 2}, {3, 4, 5}}`). If an exception is
-   ///                              raised \p world and \p il are unchanged.
-   ///@{
+  /// \brief Creates a new tensor containing the elements in the provided
+  ///         `std::initializer_list`.
+  ///
+  ///  This ctor will create an array comprised of a single tile. The array
+  ///  will have a rank equal to the nesting of \p il and the elements will be
+  ///  those in the provided `std::initializer_list`. This ctor can not be used
+  ///  to create an empty tensor (attempts to do so will raise an error).
+  ///
+  /// \tparam T The types of the elements in the `std::initializer_list`. Must
+  ///           be implicitly convertible to element_type.
+  ///
+  /// \param[in] world The world where the resulting array will live.
+  /// \param[in] il The initial values for the elements in the array. The
+  ///               elements are assumed to be listed in row-major order.
+  ///
+  /// \throw TiledArray::Exception if \p il contains no elements. If an
+  ///                              exception is raised \p world and \p il are
+  ///                              unchanged (strong throw guarantee).
+  /// \throw TiledArray::Exception If the provided `std::initializer_list` is
+  ///                              not rectangular (*e.g.*, attempting to
+  ///                              initialize a matrix with the value
+  ///                              `{{1, 2}, {3, 4, 5}}`). If an exception is
+  ///                              raised \p world and \p il are unchanged.
+  ///@{
   template <typename T>
-  DistArray(World& world, detail_::vector_il<T> il)
+  DistArray(World& world, detail::vector_il<T> il)
       : DistArray(array_from_il<DistArray_>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail_::matrix_il<T> il)
+  DistArray(World& world, detail::matrix_il<T> il)
       : DistArray(array_from_il<DistArray_>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail_::tensor3_il<T> il)
+  DistArray(World& world, detail::tensor3_il<T> il)
       : DistArray(array_from_il<DistArray_>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail_::tensor4_il<T> il)
+  DistArray(World& world, detail::tensor4_il<T> il)
       : DistArray(array_from_il<DistArray_>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail_::tensor5_il<T> il)
+  DistArray(World& world, detail::tensor5_il<T> il)
       : DistArray(array_from_il<DistArray_>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail_::tensor6_il<T> il)
+  DistArray(World& world, detail::tensor6_il<T> il)
       : DistArray(array_from_il<DistArray_>(world, il)) {}
   ///@}
 

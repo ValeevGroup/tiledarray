@@ -23,7 +23,7 @@
 #include "unit_test_config.h"
 
 using namespace TiledArray;
-using namespace TiledArray::detail_;
+using namespace TiledArray::detail;
 
 //------------------------------------------------------------------------------
 // Declare some typedefs which will make the unit tests more readable

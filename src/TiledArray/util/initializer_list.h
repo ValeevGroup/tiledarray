@@ -307,7 +307,7 @@ auto array_from_il(World& world, T&& il) {
   return rv;
 }
 
-namespace detail_ {
+namespace detail {
 
 // Typedef of an initializer list for a vector
 template <typename T>
@@ -333,7 +333,7 @@ using tensor5_il = std::initializer_list<tensor4_il<T>>;
 template <typename T>
 using tensor6_il = std::initializer_list<tensor5_il<T>>;
 
-}  // namespace detail_
+}  // namespace detail
 
 }  // namespace TiledArray
 
