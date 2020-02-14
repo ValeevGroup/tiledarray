@@ -276,9 +276,9 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_SUITE(flatten_il_fxn)
 
 BOOST_AUTO_TEST_CASE(scalar) {
-  std::array<double, 1> buffer{}, corr{};
+  std::array<double, 1> buffer{}, corr{3.14};
   double il = 3.14;
-  BOOST_CHECK(flatten_il(il, buffer.begin()) == buffer.begin());
+  BOOST_CHECK(flatten_il(il, buffer.begin()) == buffer.end());
   BOOST_CHECK(buffer == corr);
 }
 
@@ -416,7 +416,7 @@ BOOST_AUTO_TEST_CASE(scalar) {
   // array_from_il<TArray<T>>(world, il);
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(empty_vector, T, scalar_type_list){
+BOOST_AUTO_TEST_CASE_TEMPLATE(empty_vector, T, scalar_type_list) {
   vector_il<T> il{};
   BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 }
@@ -425,18 +425,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
   vector_il<T> il{1, 2, 3};
   auto array = array_from_il<TArray<T>>(world, il);
   using tile_type = typename TArray<T>::value_type;
-  for(tile_type tile : array){
+  for (tile_type tile : array) {
     BOOST_CHECK(std::equal(tile.begin(), tile.end(), il.begin()));
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(empty_matrix, T, scalar_type_list){
+BOOST_AUTO_TEST_CASE_TEMPLATE(empty_matrix, T, scalar_type_list) {
   matrix_il<T> il{{}};
   BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(bad_matrix, T, scalar_type_list){
-  matrix_il<T> il{{1,2}, {3, 4, 5}};
+BOOST_AUTO_TEST_CASE_TEMPLATE(bad_matrix, T, scalar_type_list) {
+  matrix_il<T> il{{1, 2}, {3, 4, 5}};
   BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 }
 
@@ -444,10 +444,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(square_matrix, T, scalar_type_list) {
   matrix_il<T> il{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
   auto array = array_from_il<TArray<T>>(world, il);
   using tile_type = typename TArray<T>::value_type;
-  for(tile_type tile : array) {
+  for (tile_type tile : array) {
     auto itr = tile.begin();
     for (auto i : il) {
-      for(auto j : i){
+      for (auto j : i) {
         BOOST_CHECK_EQUAL(j, *itr);
         ++itr;
       }
@@ -459,10 +459,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tall_matrix, T, scalar_type_list) {
   matrix_il<T> il{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}, {10, 11, 12}};
   auto array = array_from_il<TArray<T>>(world, il);
   using tile_type = typename TArray<T>::value_type;
-  for(tile_type tile : array) {
+  for (tile_type tile : array) {
     auto itr = tile.begin();
     for (auto i : il) {
-      for(auto j : i){
+      for (auto j : i) {
         BOOST_CHECK_EQUAL(j, *itr);
         ++itr;
       }
@@ -474,10 +474,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(short_matrix, T, scalar_type_list) {
   matrix_il<T> il{{1, 2, 3}, {4, 5, 6}};
   auto array = array_from_il<TArray<T>>(world, il);
   using tile_type = typename TArray<T>::value_type;
-  for(tile_type tile : array) {
+  for (tile_type tile : array) {
     auto itr = tile.begin();
     for (auto i : il) {
-      for(auto j : i){
+      for (auto j : i) {
         BOOST_CHECK_EQUAL(j, *itr);
         ++itr;
       }
@@ -485,13 +485,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(short_matrix, T, scalar_type_list) {
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(empty_rank3, T, scalar_type_list){
+BOOST_AUTO_TEST_CASE_TEMPLATE(empty_rank3, T, scalar_type_list) {
   tensor3_il<T> il{{{}}};
   BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(bad_rank3, T, scalar_type_list){
-  tensor3_il<T> il{{{1,2}, {3, 4, 5}}};
+BOOST_AUTO_TEST_CASE_TEMPLATE(bad_rank3, T, scalar_type_list) {
+  tensor3_il<T> il{{{1, 2}, {3, 4, 5}}};
   BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 }
 
@@ -499,11 +499,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(square_rank3, T, scalar_type_list) {
   tensor3_il<T> il{{{1, 2}, {3, 4}}, {{5, 6}, {7, 8}}};
   auto array = array_from_il<TArray<T>>(world, il);
   using tile_type = typename TArray<T>::value_type;
-  for(tile_type tile : array) {
+  for (tile_type tile : array) {
     auto itr = tile.begin();
     for (auto i : il) {
-      for(auto j : i){
-        for(auto k : j) {
+      for (auto j : i) {
+        for (auto k : j) {
           BOOST_CHECK_EQUAL(k, *itr);
           ++itr;
         }
@@ -516,11 +516,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(oblate_rank3, T, scalar_type_list) {
   tensor3_il<T> il{{{1, 2}, {3, 4}}};
   auto array = array_from_il<TArray<T>>(world, il);
   using tile_type = typename TArray<T>::value_type;
-  for(tile_type tile : array) {
+  for (tile_type tile : array) {
     auto itr = tile.begin();
     for (auto i : il) {
-      for(auto j : i){
-        for(auto k : j) {
+      for (auto j : i) {
+        for (auto k : j) {
           BOOST_CHECK_EQUAL(k, *itr);
           ++itr;
         }
@@ -533,11 +533,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(prolate_rank3, T, scalar_type_list) {
   tensor3_il<T> il{{{1}}, {{2}}};
   auto array = array_from_il<TArray<T>>(world, il);
   using tile_type = typename TArray<T>::value_type;
-  for(tile_type tile : array) {
+  for (tile_type tile : array) {
     auto itr = tile.begin();
     for (auto i : il) {
-      for(auto j : i){
-        for(auto k : j) {
+      for (auto j : i) {
+        for (auto k : j) {
           BOOST_CHECK_EQUAL(k, *itr);
           ++itr;
         }
@@ -550,11 +550,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(asymmetric_rank3, T, scalar_type_list) {
   tensor3_il<T> il{{{1, 2, 3}, {4, 5, 6}}};
   auto array = array_from_il<TArray<T>>(world, il);
   using tile_type = typename TArray<T>::value_type;
-  for(tile_type tile : array) {
+  for (tile_type tile : array) {
     auto itr = tile.begin();
     for (auto i : il) {
-      for(auto j : i){
-        for(auto k : j) {
+      for (auto j : i) {
+        for (auto k : j) {
           BOOST_CHECK_EQUAL(k, *itr);
           ++itr;
         }

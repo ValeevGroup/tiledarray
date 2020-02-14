@@ -297,7 +297,7 @@ auto array_from_il(World& world, T&& il) {
   auto trange = tiled_range_from_il(il);
   ArrayType rv(world, trange);
 
-  for(auto itr = rv.begin(); itr != rv.end(); ++itr) {
+  for (auto itr = rv.begin(); itr != rv.end(); ++itr) {
     std::vector<element_type> buffer;
     auto range = rv.trange().make_tile_range(itr.index());
     buffer.reserve(range.volume());
@@ -333,7 +333,7 @@ using tensor5_il = std::initializer_list<tensor4_il<T>>;
 template <typename T>
 using tensor6_il = std::initializer_list<tensor5_il<T>>;
 
-}
+}  // namespace detail_
 
 }  // namespace TiledArray
 
