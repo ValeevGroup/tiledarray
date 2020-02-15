@@ -476,7 +476,7 @@ else()
   endforeach()
 
   # Set build dependencies and compiler arguments
-  add_dependencies(External-tiledarraybuild-madness)
+  add_dependencies(External-tiledarray build-madness)
 
   # Set config variables
   replace_mad_targets_with_libnames(MADNESS_LIBRARIES MADNESS_CONFIG_LIBRARIES)
