@@ -64,10 +64,9 @@ class BlockRange : public Range {
 
     // Construct temp pointers
     const auto* MADNESS_RESTRICT const range_stride = range.stride_data();
-    const auto* MADNESS_RESTRICT const lower_bound_ptr =
-        detail::data(lower_bound);
-    const auto* MADNESS_RESTRICT const upper_bound_ptr =
-        detail::data(upper_bound);
+    using std::data;
+    const auto* MADNESS_RESTRICT const lower_bound_ptr = data(lower_bound);
+    const auto* MADNESS_RESTRICT const upper_bound_ptr = data(upper_bound);
     auto* MADNESS_RESTRICT const lower = data_;
     auto* MADNESS_RESTRICT const upper = lower + rank_;
     auto* MADNESS_RESTRICT const extent = upper + rank_;

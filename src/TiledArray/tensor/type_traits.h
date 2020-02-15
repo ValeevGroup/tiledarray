@@ -228,7 +228,7 @@ struct is_reduce_op_ : public std::false_type {};
 
 template <typename ReduceOp, typename Result, typename... Args>
 struct is_reduce_op_<
-    detail::void_t<decltype(std::declval<ReduceOp&>()(
+    std::void_t<decltype(std::declval<ReduceOp&>()(
         std::declval<Result&>(), std::declval<const Args*>()...))>,
     ReduceOp, Result, Args...> : public std::true_type {};
 

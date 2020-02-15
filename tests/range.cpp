@@ -25,12 +25,13 @@
 #include "unit_test_config.h"
 
 template <typename SizeArray>
-inline std::size_t calc_volume(const SizeArray& size) {
-  const std::size_t n = detail::size(size);
+inline std::size_t calc_volume(const SizeArray& sz) {
+  using std::size;
+  const std::size_t n = size(sz);
   std::size_t volume = 0ul;
   if (n) {
     volume = 1ul;
-    for (std::size_t i = 0ul; i < n; ++i) volume *= size[i];
+    for (std::size_t i = 0ul; i < n; ++i) volume *= sz[i];
   }
 
   return volume;
