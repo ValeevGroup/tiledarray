@@ -1102,7 +1102,7 @@ inline decltype(auto) squared_norm(const Tile<Arg>& arg) {
 /// Vector 2-norm of a tile
 
 /// \tparam Arg The tile argument type
-/// \param arg[in] The argument to be multiplied and summed
+/// \param[in] arg The argument to be multiplied and summed
 /// \return A scalar that is equal to <tt>sqrt(sum_i arg[i] * arg[i])</tt>
 template <typename Arg>
 inline decltype(auto) norm(const Tile<Arg>& arg) {
@@ -1113,9 +1113,9 @@ inline decltype(auto) norm(const Tile<Arg>& arg) {
 
 /// \tparam Arg The tile argument type
 /// \tparam ResultType The result type
-/// \param arg[in] The argument to be multiplied and summed
-/// \param arg[out] Will contain the vector 2-norm of \c arg , i.e.
-/// <tt>sqrt(sum_i arg[i] * arg[i])</tt>
+/// \param[in,out] arg The argument to be multiplied and summed; on output will
+/// contain the vector 2-norm of \c arg , i.e. <tt>sqrt(sum_i arg[i] *
+/// arg[i])</tt>
 template <typename Arg, typename ResultType>
 inline void norm(const Tile<Arg>& arg, ResultType& result) {
   norm(arg.tensor(), result);
@@ -1207,7 +1207,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tile<T>& tile) {
 template <typename Allocator, typename T>
 struct Cast<
     TiledArray::Tensor<typename T::value_type, Allocator>, Tile<T>,
-    detail::void_t<decltype(
+    std::void_t<decltype(
         std::declval<TiledArray::Cast<
             TiledArray::Tensor<typename T::value_type, Allocator>, T>>()(
             std::declval<const T&>()))>> {

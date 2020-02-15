@@ -19,7 +19,7 @@ if(TILEDARRAY_HAS_CUDA)
     set(CMAKE_CUDA_HOST_COMPILER "@CMAKE_CUDA_HOST_COMPILER@")
 # if TA is a CUDA-dependent library it needs CUDA to link properly ... unfortunately CMake is not able to do this correctly
 # see https://gitlab.kitware.com/cmake/cmake/issues/18614
-#    set(CMAKE_CUDA_STANDARD 14)
+#    set(CMAKE_CUDA_STANDARD 17)
 #    set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 #    set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 #    enable_language(CUDA)

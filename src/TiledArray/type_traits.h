@@ -332,21 +332,6 @@ GENERATE_HAS_MEMBER_FUNCTION(crend)
 // GENERATE_HAS_MEMBER_TYPE(pointer)
 GENERATE_HAS_MEMBER_TYPE(iterator_category)
 
-///////////////////////////////////////////
-// standard C++17 iterator range facilities
-#if __cplusplus >= 201703L
-GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(size)
-GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(data)
-GENERATE_IS_FREE_FUNCTION_STD_ANYRETURN(empty)
-#else
-template <typename... Args>
-constexpr const bool is_free_function_std_size_anyreturn_v = false;
-template <typename... Args>
-constexpr const bool is_free_function_std_data_anyreturn_v = false;
-template <typename... Args>
-constexpr const bool is_free_function_std_empty_anyreturn_v = false;
-#endif
-
 // these are useful to detect presence of overloads
 GENERATE_IS_FREE_FUNCTION_ANYRETURN(size)
 GENERATE_IS_FREE_FUNCTION_ANYRETURN(data)
@@ -385,30 +370,6 @@ struct is_complete_type<T, decltype(void(sizeof(T)))> : std::true_type {};
 /// @c is_complete_type_v<T> is an alias for @c is_complete_type<T>::value
 template <typename T>
 constexpr const bool is_complete_type_v = is_complete_type<T>::value;
-
-// import some existing C++17 features, or implement them
-#if __cplusplus <= 201402L
-
-// GNU stdlibc++ provides void_t if -gnu++11 or -gnu++14 are given
-#if __GNUC__ && defined(__GLIBCXX__) && !__STRICT_ANSI__ && \
-    __cplusplus >= 201103L
-#define HAVE_VOID_T
-#endif
-
-#ifndef HAVE_VOID_T  // implement void_t if needed
-template <typename... Ts>
-struct make_void {
-  using type = void;
-};
-template <typename... Ts>
-using void_t = typename make_void<Ts...>::type;
-#else
-using std::void_t;
-#endif
-
-#else   // C++17 features
-using std::void_t;
-#endif  // C++17 features
 
 }  // namespace detail
 }  // namespace TiledArray

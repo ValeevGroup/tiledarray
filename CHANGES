@@ -7,6 +7,7 @@ Following is a brief summary of changes made in each release of TiledArray.
   - added ability to fuse vector<DistArray> -> DistArray and extract subarray from the fused array (PR #160 and #162)
   - resolved boost check issue (PR #161)
   - revamped TA::foreach and improved conversions to be able to handle non-standard policies
+  - C++17 is now prerequisite
 
 - 07-June-2019: 1.0.0-alpha.2
   - modernized CMake handling of CUDA, CMake 3.10 is now required

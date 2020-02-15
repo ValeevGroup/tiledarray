@@ -93,6 +93,7 @@ set(ta_test_src_files  ta_test.cpp
     expressions_mixed.cpp
     foreach.cpp
     solvers.cpp
+        initializer_list.cpp
 )
 
 if(ENABLE_ELEMENTAL)
