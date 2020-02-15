@@ -35,22 +35,6 @@ matrix:
   fast_finish: true
   include:
     - compiler: gcc
-      env: GCC_VERSION=6 BUILD_TYPE=Debug
-      addons:
-        apt:
-          packages:
-           - *base_packages
-           - g++-6
-           - gfortran-6
-    - compiler: gcc
-      env: GCC_VERSION=6 BUILD_TYPE=Release
-      addons:
-        apt:
-          packages:
-           - *base_packages
-           - g++-6
-           - gfortran-6
-    - compiler: gcc
       env: GCC_VERSION=7 BUILD_TYPE=Debug
       addons:
         apt:

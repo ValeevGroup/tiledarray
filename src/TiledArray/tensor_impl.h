@@ -164,7 +164,7 @@ class TensorImpl : private NO_DEFAULTS {
   const trange_type& trange() const { return trange_; }
 
   /// \deprecated use TensorImpl::world()
-  DEPRECATED World& get_world() const { return world_; }
+  [[deprecated]] World& get_world() const { return world_; }
 
   /// World accessor
 

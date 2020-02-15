@@ -37,6 +37,7 @@ TiledArray/external/elemental.h
 TiledArray/error.h
 TiledArray/external/madness.h
 TiledArray/initialize.h
+        TiledArray/util/initializer_list.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/proc_grid.h
