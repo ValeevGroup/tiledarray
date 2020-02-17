@@ -19,6 +19,11 @@
 # List of all complete examples
 set(wikiexamples user-guide-1;user-guide-1a;user-guide-2)
 
+# if target examples-tiledarray does not exist yet, create it
+if (NOT TARGET examples-tiledarray)
+  add_custom_target_subproject(tiledarray examples EXCLUDE_FROM_ALL)
+endif()
+
 foreach(example ${wikiexamples})
   add_executable(${example} EXCLUDE_FROM_ALL ${example}.cpp)
   target_link_libraries(${example} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})

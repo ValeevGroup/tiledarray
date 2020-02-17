@@ -22,9 +22,6 @@
 #  Jul 19, 2013
 #
 
-# this will depend on all worker targets
-add_custom_target_subproject(tiledarray doc)
-
 #-- include doxygen code
 add_subdirectory(dox)
 #-- include devsamp code
