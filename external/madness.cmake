@@ -330,7 +330,11 @@ else()
   # N.B. Neither Elemental nor MADNESS will export these flags as part of INTERFACE_COMPILE_OPTIONS
   #      so will add this for TiledArray globally at the bottom of this file
   if (${ENABLE_ELEMENTAL} AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-    set(MADNESS_EXTRA_CXX_FLAGS "-fext-numeric-literals ${MADNESS_EXTRA_CXX_FLAGS}")
+    append_flags(MADNESS_EXTRA_CXX_FLAGS "-fext-numeric-literals")
+  endif()
+  # in C++17 mode there are excessive warnings about the use of deprecated features, disable them
+  if (${ENABLE_ELEMENTAL})
+    append_flags(MADNESS_EXTRA_CXX_FLAGS "-Wno-deprecated-declarations")
   endif()
   # Elemental does not compile with Ninja, see e.g. https://travis-ci.com/ValeevGroup/mpqc4/builds/145697087
   if (${ENABLE_ELEMENTAL} AND NOT DEFINED MADNESS_CMAKE_GENERATOR AND "${CMAKE_GENERATOR}" STREQUAL Ninja)
