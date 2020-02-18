@@ -76,6 +76,15 @@ BOOST_AUTO_TEST_CASE(constructors) {
   for (SpArrayN::const_iterator it = as.begin(); it != as.end(); ++it)
     BOOST_CHECK(!it->probe());
 
+  // now fill it
+  BOOST_REQUIRE_NO_THROW(as.fill(1));
+
+  // Construct a sparse array from another sparse array
+  {
+    auto op = [](auto& result, const auto& input) { result = input.clone(); };
+    BOOST_REQUIRE_NO_THROW(SpArrayN as1(as, op));
+  }
+
   // Create a vector with an initializer list
   {
     detail::vector_il<double> il{1, 2, 3};

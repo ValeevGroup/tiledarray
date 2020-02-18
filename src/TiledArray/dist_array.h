@@ -303,7 +303,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param other The array to be copied
   template <typename OtherTile, typename Op>
   DistArray(const DistArray<OtherTile, Policy>& other, Op&& op) : pimpl_() {
-    *this = foreach<Tile, OtherTile, Policy, Op>(other, std::forward<Op>(op));
+    *this = foreach<Tile>(other, std::forward<Op>(op));
   }
 
   /// Destructor
