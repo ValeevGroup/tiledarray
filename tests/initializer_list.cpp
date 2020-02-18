@@ -197,7 +197,8 @@ BOOST_AUTO_TEST_CASE(scalar) {
 BOOST_AUTO_TEST_CASE(empty_vector) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   vector_il<double> il{};
-  BOOST_CHECK_THROW(tiled_range_from_il(il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(tiled_range_from_il(il), Exception);
 #endif
 }
 
@@ -304,7 +305,8 @@ BOOST_AUTO_TEST_CASE(bad_matrix) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   std::array<double, 5> buffer{};
   matrix_il<double> il{{1, 2}, {3, 4, 5}};
-  BOOST_CHECK_THROW(flatten_il(il, buffer.begin()), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(flatten_il(il, buffer.begin()), Exception);
 #endif
 }
 
@@ -423,7 +425,8 @@ BOOST_AUTO_TEST_CASE(scalar) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_vector, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   vector_il<T> il{};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
@@ -439,14 +442,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_matrix, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   matrix_il<T> il{{}};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(bad_matrix, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   matrix_il<T> il{{1, 2}, {3, 4, 5}};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
@@ -498,14 +503,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(short_matrix, T, scalar_type_list) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_rank3, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   tensor3_il<T> il{{{}}};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(bad_rank3, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   tensor3_il<T> il{{{1, 2}, {3, 4, 5}}};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
