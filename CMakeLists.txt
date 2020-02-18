@@ -67,6 +67,7 @@ include(GNUInstallDirs)
 include(AppendFlags)
 include(RedefaultableOption)
 include(DetectMADNESSConfig)
+include(AddCustomTargetSubproject)
 
 # Load extra CMake features ====================================================
 
@@ -249,7 +250,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 ##########################
 # external dependencies
 ##########################
-add_custom_target(External)
+add_custom_target(External-tiledarray)
 
 # required deps:
 include(external/madness.cmake)
@@ -283,10 +284,10 @@ add_subdirectory(doc)
 ##########################
 enable_testing()
 if (TA_BUILD_UNITTEST)
-  add_custom_target(check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} -V)
+  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} -V)
   add_subdirectory(tests)
 else()
-  add_custom_target(check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
+  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
 endif()
 
 ##########################
