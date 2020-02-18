@@ -136,7 +136,7 @@ endif()
 target_link_libraries(${executable} PUBLIC ${MADNESS_DISABLEPIE_LINKER_FLAG})
 
 # Add targets
-add_dependencies(${executable} External)
+add_dependencies(${executable} External-tiledarray)
 add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
 
 # Add a test(s)

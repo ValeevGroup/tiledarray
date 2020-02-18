@@ -110,7 +110,7 @@ else()
     )
 
   # Add eigen3 dependency to External
-  add_dependencies(External eigen3)
+  add_dependencies(External-tiledarray eigen3)
 
   # create an exportable interface target for eigen3
   add_library(TiledArray_Eigen INTERFACE)
