@@ -17,8 +17,8 @@ $ cmake --build build --target install
 - C++ compiler with support for the [C++17 standard](http://www.iso.org/standard/68564.html), or a more recent standard. This includes the following compilers:
   - [GNU C++](https://gcc.gnu.org/), version 7.0 or higher
   - [Clang](https://clang.llvm.org/), version 5 or higher
-  - Apple Clang, version 9.3 or higher
-  - [Intel C++ compiler](), version 19 or higher
+  - [Apple Clang](https://en.wikipedia.org/wiki/Xcode), version 9.3 or higher
+  - [Intel C++ compiler](https://software.intel.com/en-us/c-compilers), version 19 or higher
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
