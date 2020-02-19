@@ -186,6 +186,8 @@ TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp)
 
+# the list of libraries on which TiledArray depends on, will be cached later
+set(_TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS)
 
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)
@@ -202,18 +204,16 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray depends on
-  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
-
-else(CUDA_FOUND)
-
-  # the list of libraries on which TiledArray depends on
-  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  list(APPEND _TILEDARRAY_DEPENDENCIES "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE)
 
 endif(CUDA_FOUND)
 
 if( TARGET TiledArray_SCALAPACK )
-  list(APPEND TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK )
+  list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)
 endif()
+
+# cache TILEDARRAY_DEPENDENCIES
+set(TILEDARRAY_DEPENDENCIES ${_TILEDARRAY_DEPENDENCIES} CACHE STRING "List of libraries on which TiledArray depends on")
 
 # Create the TiledArray library
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})

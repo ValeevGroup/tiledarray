@@ -151,9 +151,9 @@ else()
 
   # Create a cache entry for MADNESS build variables.
   # Note: This will not overwrite user specified values.
-  set(MADNESS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/src/madness" CACHE PATH 
+  set(MADNESS_SOURCE_DIR "${PROJECT_BINARY_DIR}/external/madness-src" CACHE PATH
         "Path to the MADNESS source directory")
-  set(MADNESS_BINARY_DIR "${PROJECT_BINARY_DIR}/external/build/madness" CACHE PATH 
+  set(MADNESS_BINARY_DIR "${PROJECT_BINARY_DIR}/external/madness-build" CACHE PATH
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
@@ -222,13 +222,13 @@ else()
   # If the MADNESS source directory is the default location and does not exist,
   # MADNESS will be downloaded from git.
   message(STATUS "Checking MADNESS source directory: ${MADNESS_SOURCE_DIR}")
-  if("${MADNESS_SOURCE_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}/external/src/madness")
+  if("${MADNESS_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}/external/madness-src")
 
     # Create the external source directory
-    if(NOT EXISTS ${PROJECT_SOURCE_DIR}/external/src)
+    if(NOT EXISTS ${PROJECT_BINARY_DIR}/external)
       set(error_code 1)
       execute_process(
-          COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/external/src"
+          COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_BINARY_DIR}/external"
           RESULT_VARIABLE error_code)
       if(error_code)
         message(FATAL_ERROR "Failed to create the MADNESS source directory.")
@@ -242,8 +242,8 @@ else()
       set(number_of_tries 0)
       while(error_code AND number_of_tries LESS 3)
         execute_process(
-            COMMAND ${GIT_EXECUTABLE} clone ${MADNESS_URL} madness
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/external/src
+            COMMAND ${GIT_EXECUTABLE} clone ${MADNESS_URL} madness-src
+            WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/external
             RESULT_VARIABLE error_code)
         math(EXPR number_of_tries "${number_of_tries} + 1")
       endwhile()

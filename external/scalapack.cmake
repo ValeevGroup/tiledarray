@@ -15,12 +15,6 @@ if( TARGET scalapackpp::scalapackpp )
 
 else()
 
-  set( BLACSPP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/src/blacspp"
-         CACHE PATH "Path to blacspp source directory" )
-  set( SCALAPACKPP_SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/src/scalapackpp"
-         CACHE PATH "Path to scalapackpp source directory" )
-  
-  
   message(STATUS "Could not find scalapackpp! Building..." )
 
   include( DownloadProject )
@@ -28,14 +22,14 @@ else()
     PROJ                blacspp
     GIT_REPOSITORY      https://github.com/wavefunction91/blacspp.git
     GIT_TAG             ${TA_TRACKED_BLACSPP_TAG}
-    SOURCE_DIR          ${BLACSPP_SOURCE_DIR}
+    PREFIX              ${PROJECT_BINARY_DIR}/external
     UPDATE_DISCONNECTED 1
   )
   download_project(
     PROJ                scalapackpp
     GIT_REPOSITORY      https://github.com/wavefunction91/scalapackpp.git
     GIT_TAG             ${TA_TRACKED_SCALAPACKPP_TAG}
-    SOURCE_DIR          ${SCALAPACKPP_SOURCE_DIR}
+    PREFIX              ${PROJECT_BINARY_DIR}/external
     UPDATE_DISCONNECTED 1
   )
 
@@ -51,9 +45,8 @@ else()
 
 endif()
 
-
-add_library( TiledArray_SCALAPACK INTERFACE)
-target_link_libraries( TiledArray_SCALAPACK INTERFACE scalapackpp::scalapackpp )
+add_library( TiledArray_SCALAPACK INTERFACE )
+target_link_libraries( TiledArray_SCALAPACK INTERFACE scalapackpp::scalapackpp blacspp::blacspp)
 #target_compile_definitions( TiledArray_SCALAPACK INTERFACE "TA_ENABLE_SCALAPACK" )
 
 #get_property( _SCALAPACK_INCLUDE_DIRS
@@ -72,12 +65,15 @@ target_link_libraries( TiledArray_SCALAPACK INTERFACE scalapackpp::scalapackpp )
 #        )
 #
 #set_target_properties( TiledArray_SCALAPACK PROPERTIES
-#        INTERFACE_INCLUDE_DIRECTORIES ${_SCALAPACK_INCLUDE_DIRS}
-#        INTERFACE_LINK_LIBRARIES      ${_SCALAPACK_LIBRARIES}
-#        INTERFACE_COMPILE_FEATURES    ${_SCALAPACK_COMPILE_FEATURES}
+#        INTERFACE_INCLUDE_DIRECTORIES "${_SCALAPACK_INCLUDE_DIRS}"
+#        INTERFACE_LINK_LIBRARIES      "${_SCALAPACK_LIBRARIES}"
+#        INTERFACE_COMPILE_FEATURES    "${_SCALAPACK_COMPILE_FEATURES}"
 #        INTERFACE_COMPILE_DEFINITIONS "TA_ENABLE_SCALAPACK"
 #        )
 
-install( TARGETS TiledArray_SCALAPACK EXPORT tiledarray COMPONENT tiledarray )
+install( TARGETS TiledArray_SCALAPACK blacspp scalapackpp EXPORT tiledarray COMPONENT tiledarray )
 
 set( TILEDARRAY_HAS_SCALAPACK 1 )
+
+# Add BTAS dependency to External
+add_dependencies(External scalapackpp blacspp)

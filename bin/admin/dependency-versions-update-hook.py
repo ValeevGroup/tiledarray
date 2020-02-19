@@ -121,6 +121,16 @@ with open(version_cmake_path) as inf:
                 umpire_old_tag = tokens[2]
             else:
                 umpire_new_tag = tokens[2]
+        elif tokens[1].find('BLACSPP') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                blacspp_old_tag = tokens[2]
+            else:
+                blacspp_new_tag = tokens[2]
+        elif tokens[1].find('SCALAPACKPP') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                scalapackpp_old_tag = tokens[2]
+            else:
+                scalapackpp_new_tag = tokens[2]
 
 any_files_changed = False
 
@@ -153,6 +163,12 @@ any_files_changed |= replace_dep_id(topsrc, 'md', 'cuTT', cutt_old_tag, cutt_new
 
 # Umpire tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'Umpire', umpire_old_tag, umpire_new_tag, '', '')
+
+# BLACSPP tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'BLACSPP', blacspp_old_tag, blacspp_new_tag, '', '')
+
+# SCALAPACKPP tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'SCALAPACKPP', scalapackpp_old_tag, scalapackpp_new_tag, '', '')
 
 if any_files_changed:
     sys.exit(1)
