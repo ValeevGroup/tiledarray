@@ -93,6 +93,7 @@ set(ta_test_src_files  ta_test.cpp
     expressions_mixed.cpp
     foreach.cpp
     solvers.cpp
+    initializer_list.cpp
 )
 
 if(ENABLE_ELEMENTAL)
@@ -135,7 +136,7 @@ endif()
 target_link_libraries(${executable} PUBLIC ${MADNESS_DISABLEPIE_LINKER_FLAG})
 
 # Add targets
-add_dependencies(${executable} External)
+add_dependencies(${executable} External-tiledarray)
 add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
 
 # Add a test(s)

@@ -40,13 +40,6 @@
         // !defined(TA_NO_ERROR) && !defined(TA_ABORT_ERROR)
 #endif  // TA_DEFAULT_ERROR
 
-#if __cplusplus > 199711L
-// C++11
-#define TILEDARRAY_NO_EXCEPTION noexcept
-#else
-#define TILEDARRAY_NO_EXCEPTION throw()
-#endif
-
 #include <exception>
 namespace TiledArray {
 
@@ -54,7 +47,7 @@ class Exception : public std::exception {
  public:
   Exception(const char* m) : message_(m) {}
 
-  virtual const char* what() const TILEDARRAY_NO_EXCEPTION { return message_; }
+  virtual const char* what() const noexcept { return message_; }
 
  private:
   const char* message_;
@@ -157,32 +150,5 @@ inline void exception_break() {}
 #define TA_USER_ASSERT_DISABLED 1
 
 #endif
-
-// mark functions as deprecated using this macro
-// will result in a warning
-#ifndef DEPRECATED  // avoid clashing with previous definitions
-#if __cplusplus >= 201402L
-#define DEPRECATED [[deprecated]]
-#elif defined(__GNUC__)
-#define DEPRECATED __attribute__((deprecated))
-#else
-#pragma message("WARNING: You need to implement DEPRECATED for this compiler")
-#define DEPRECATED
-#endif
-#endif  // not defined(DEPRECATED)
-
-// same as DEPRECATED, but annotated with a message
-// will result in a warning
-#ifndef DEPRECATEDMSG  // avoid clashing with previous definitions
-#if __cplusplus >= 201402L
-#define DEPRECATEDMSG(msg) [[deprecated(msg)]]
-#elif defined(__GNUC__)
-#define DEPRECATEDMSG(msg) __attribute__((deprecated(msg)))
-#else
-#pragma message( \
-    "WARNING: You need to implement DEPRECATEDMSG for this compiler")
-#define DEPRECATEDMSG(msg)
-#endif
-#endif  // not defined(DEPRECATEDMSG)
 
 #endif  // TILEDARRAY_ERROR_H__INCLUDED

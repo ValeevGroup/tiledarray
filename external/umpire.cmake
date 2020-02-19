@@ -99,7 +99,7 @@ else()
             )
 
     # Add Umpire dependency to External
-    add_dependencies(External Umpire)
+    add_dependencies(External-tiledarray Umpire)
 
     set(_UMPIRE_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 

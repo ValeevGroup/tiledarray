@@ -131,7 +131,7 @@ class TiledRange1 {
   }
 
   /// \deprecated use TiledRange1::tiles_range()
-  DEPRECATED const range_type& tiles() const { return range_; }
+  [[deprecated]] const range_type& tiles() const { return range_; }
 
   /// Tile range accessor
 
@@ -189,7 +189,7 @@ class TiledRange1 {
   }
 
   /// \deprecated use TiledRange1::element_to_tile()
-  DEPRECATED const size_type& element2tile(const size_type& i) const {
+  [[deprecated]] const size_type& element2tile(const size_type& i) const {
     return element_to_tile(i);
   }
 

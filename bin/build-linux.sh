@@ -7,6 +7,18 @@ ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
 # Exit on error
 set -ev
 
+# download latest Doxygen
+if [ "$DEPLOY" = "1" ]; then
+  DOXYGEN_VERSION=1.8.17
+  if [ ! -d ${INSTALL_PREFIX}/doxygen-${DOXYGEN_VERSION} ]; then
+    cd ${BUILD_PREFIX} && wget http://doxygen.nl/files/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
+    cd ${INSTALL_PREFIX} && tar xzf ${BUILD_PREFIX}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
+  fi
+  export PATH=${INSTALL_PREFIX}/doxygen-${DOXYGEN_VERSION}/bin:$PATH
+  which doxygen
+  doxygen --version
+fi
+
 # Environment variables
 if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
@@ -36,10 +48,22 @@ cd ${BUILD_PREFIX}
 mkdir -p TA
 cd TA
 
+# if have old installed copy of TA, make sure that BTAS tag matches the required tag, if not, remove INSTALL_DIR (will cause rebuild of TA)
+if [ -f "${INSTALL_DIR}/include/btas/btas/version.h" ]; then
+  export INSTALLED_BTAS_TAG=`grep 'define BTAS_REVISION' ${INSTALL_DIR}/include/btas/btas/version.h | awk '{print $3}' | sed s/\"//g`
+  echo "installed BTAS revision = ${INSTALLED_BTAS_TAG}"
+  # extract the tracked tag of BTAS
+  export BTAS_TAG=`grep 'set(TA_TRACKED_BTAS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\)//g`
+  echo "required BTAS revision = ${BTAS_TAG}"
+  if [ "${BTAS_TAG}" != "${INSTALLED_BTAS_TAG}" ]; then
+    rm -rf "${INSTALL_DIR}"
+  fi
+fi
+
 # MADNESS+Elemental are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
 if [ "$BUILD_TYPE" = "Debug" ]; then
 
-  if [ "$GCC_VERSION" = 6 ]; then
+  if [ "$COMPUTE_COVERAGE" = "1" ]; then
     export CODECOVCXXFLAGS="-O0 --coverage"
   fi
 
@@ -87,7 +111,7 @@ else
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON -Wno-dev \
-    -DMADNESS_CMAKE_EXTRA_ARGS="-Wno-dev;-DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE;-DELEMENTAL_MATH_LIBS='-L/usr/lib/libblas -L/usr/lib/lapack -llapack -lblas';-DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77"
+    -DMADNESS_CMAKE_EXTRA_ARGS="-Wno-dev;-DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE;-DELEMENTAL_CXXFLAGS=-Wno-deprecated-declarations;-DELEMENTAL_MATH_LIBS='-L/usr/lib/libblas -L/usr/lib/lapack -llapack -lblas';-DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77"
 
 fi
 

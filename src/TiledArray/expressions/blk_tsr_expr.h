@@ -124,7 +124,8 @@ class BlkTsrExprBase : public Expr<Derived> {
   void check_valid() const {
     const unsigned int rank = array_.trange().tiles_range().rank();
     // Check the dimension of the lower block bound
-    if (TiledArray::detail::size(lower_bound_) != rank) {
+    using std::size;
+    if (size(lower_bound_) != rank) {
       if (TiledArray::get_default_world().rank() == 0) {
         TA_USER_ERROR_MESSAGE(
             "The size lower bound of the block is not equal to rank of "
@@ -139,7 +140,7 @@ class BlkTsrExprBase : public Expr<Derived> {
     }
 
     // Check the dimension of the upper block bound
-    if (TiledArray::detail::size(upper_bound_) != rank) {
+    if (size(upper_bound_) != rank) {
       if (TiledArray::get_default_world().rank() == 0) {
         TA_USER_ERROR_MESSAGE(
             "The size upper bound of the block is not equal to rank of "

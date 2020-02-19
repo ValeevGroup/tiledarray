@@ -1,6 +1,6 @@
 # Synopsis
 
-```{.sh}
+```
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ cmake -B build \
@@ -14,11 +14,11 @@ $ cmake --build build --target install
 
 # Prerequisites
 
-- C++ compiler with support for the [C++14 standard](https://www.iso.org/standard/64029.html), or a more recent standard. This includes the following compilers:
-  - [GNU C++](https://gcc.gnu.org/), version 5.0 or higher
-  - [Clang](https://clang.llvm.org/), version 3.4 or higher
-  - Apple Clang, version 5.0 or higher
-  - [Intel C++ compiler](), version 17 or higher
+- C++ compiler with support for the [C++17 standard](http://www.iso.org/standard/68564.html), or a more recent standard. This includes the following compilers:
+  - [GNU C++](https://gcc.gnu.org/), version 7.0 or higher
+  - [Clang](https://clang.llvm.org/), version 5 or higher
+  - Apple Clang, version 9.3 or higher
+  - [Intel C++ compiler](), version 19 or higher
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
@@ -28,7 +28,7 @@ $ cmake --build build --target install
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), tag e3b31e521e4d93a4a8d3c31d0d216be84adf2d28 (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), tag 8a6d63a627541ec334cbdc76bceb93d573559f78 (will be downloaded automatically, if missing)
 - BLAS library
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag e8d13860ea853044cda0dc4208f29cf705000fed .
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.

@@ -632,13 +632,15 @@ class SparseShape {
   template <typename Index>
   std::shared_ptr<vector_type> block_range(const Index& lower_bound,
                                            const Index& upper_bound) const {
-    TA_ASSERT(detail::size(lower_bound) == tile_norms_.range().rank());
-    TA_ASSERT(detail::size(upper_bound) == tile_norms_.range().rank());
+    using std::size;
+    TA_ASSERT(size(lower_bound) == tile_norms_.range().rank());
+    TA_ASSERT(size(upper_bound) == tile_norms_.range().rank());
 
     // Get the number dimensions of the shape
-    const auto rank = detail::size(lower_bound);
-    const auto* MADNESS_RESTRICT const lower = detail::data(lower_bound);
-    const auto* MADNESS_RESTRICT const upper = detail::data(upper_bound);
+    const auto rank = size(lower_bound);
+    using std::data;
+    const auto* MADNESS_RESTRICT const lower = data(lower_bound);
+    const auto* MADNESS_RESTRICT const upper = data(upper_bound);
 
     std::shared_ptr<vector_type> size_vectors(
         new vector_type[rank], std::default_delete<vector_type[]>());

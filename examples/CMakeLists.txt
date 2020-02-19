@@ -22,8 +22,10 @@
 #  Sep 4, 2013
 #
  
-# Create target "examples" that builds all example programs
-add_custom_target(examples)
+# if target examples-tiledarray does not exist yet, create it
+if (NOT TARGET examples-tiledarray)
+  add_custom_target_subproject(tiledarray examples EXCLUDE_FROM_ALL)
+endif()
 
 # Add Subdirectories
 add_subdirectory (cc)

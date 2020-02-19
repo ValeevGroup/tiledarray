@@ -21,7 +21,7 @@ curl -sSL "http://apt.llvm.org/llvm-snapshot.gpg.key" | apt-key add -
 echo "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main" | tee -a /etc/apt/sources.list > /dev/null
 apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
 apt-get -yq update >> ~/apt-get-update.log
-apt-get -yq --no-install-suggests --no-install-recommends --force-yes install g++-6 g++-7 g++-8 gfortran-6 gfortran-7 gfortran-8 libboost-all-dev libblas-dev liblapack-dev liblapacke-dev libtbb-dev clang-7 clang-8 clang-9 cmake cmake-data
+apt-get -yq --no-install-suggests --no-install-recommends --force-yes install g++-7 g++-8 gfortran-7 gfortran-8 libboost-all-dev libblas-dev liblapack-dev liblapacke-dev libtbb-dev clang-7 clang-8 clang-9 cmake cmake-data doxygen graphviz fonts-liberation
 mkdir -p ${TRAVIS_BUILD_TOPDIR}
 cd ${TRAVIS_BUILD_TOPDIR}
 git clone https://github.com/ValeevGroup/tiledarray.git ${TRAVIS_BUILD_TOPDIR}/ValeevGroup/tiledarray
@@ -37,7 +37,9 @@ cd /home/travis/_build
 export BUILD_PREFIX=/home/travis/_build
 export INSTALL_PREFIX=/home/travis/_install
 export TRAVIS_BUILD_DIR=${TRAVIS_BUILD_TOPDIR}/ValeevGroup/tiledarray
-./build-linux.sh
+export TRAVIS_EVENT_TYPE=cron
+export TRAVIS_OS_NAME=linux
+\${TRAVIS_BUILD_DIR}/bin/build-\$TRAVIS_OS_NAME.sh
 END
 chmod +x $build
 
@@ -62,9 +64,6 @@ RUN /home/travis/_build/$setup
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # copy travis scripts
-ADD build-mpich-linux.sh /home/travis/_build/build-mpich-linux.sh
-ADD build-madness-linux.sh /home/travis/_build/build-madness-linux.sh
-ADD build-linux.sh /home/travis/_build/build-linux.sh
 ADD $build /home/travis/_build/$build
 END
 

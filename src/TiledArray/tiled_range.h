@@ -123,7 +123,7 @@ class TiledRange {
 
   /// \return A const reference to the tile range object
   /// \deprecated use TiledRange::tiles_range() instead
-  DEPRECATED const range_type& tiles() const { return tiles_range(); }
+  [[deprecated]] const range_type& tiles() const { return tiles_range(); }
 
   /// Access the element range
 
@@ -134,7 +134,7 @@ class TiledRange {
 
   /// \return A const reference to the element range object
   /// \deprecated use TiledRange::elements_range() instead
-  DEPRECATED const range_type& elements() const { return elements_range(); }
+  [[deprecated]] const range_type& elements() const { return elements_range(); }
 
   /// Constructs a range for the tile indexed by the given ordinal index.
 

@@ -67,6 +67,7 @@ include(GNUInstallDirs)
 include(AppendFlags)
 include(RedefaultableOption)
 include(DetectMADNESSConfig)
+include(AddCustomTargetSubproject)
 
 # Load extra CMake features ====================================================
 
@@ -208,11 +209,10 @@ endif()
 ##########################
 # Check compiler features
 ##########################
-# need for C++14 will be inherited from madness
-# but insist on strict standard
-set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ ISO Standard version")
-if (NOT(CMAKE_CXX_STANDARD EQUAL 14 OR CMAKE_CXX_STANDARD EQUAL 17 OR CMAKE_CXX_STANDARD EQUAL 20))
-  message(FATAL_ERROR "C++ 2014 ISO Standard or higher is required to compile TiledArray")
+# need C++17, insist on strict standard
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ ISO Standard version")
+if (NOT(CMAKE_CXX_STANDARD EQUAL 17 OR CMAKE_CXX_STANDARD EQUAL 20))
+  message(FATAL_ERROR "C++ 2017 ISO Standard or higher is required to compile TiledArray")
 endif()
 # C++20 is only configurable via compile features with cmake 3.12 and older
 if (CMAKE_CXX_STANDARD EQUAL 20 AND CMAKE_VERSION VERSION_LESS 3.12.0)
@@ -253,7 +253,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 ##########################
 # external dependencies
 ##########################
-add_custom_target(External)
+add_custom_target(External-tiledarray)
 
 # required deps:
 include(external/madness.cmake)
@@ -290,10 +290,10 @@ add_subdirectory(doc)
 ##########################
 enable_testing()
 if (TA_BUILD_UNITTEST)
-  add_custom_target(check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} -V)
+  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} -V)
   add_subdirectory(tests)
 else()
-  add_custom_target(check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
+  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
 endif()
 
 ##########################

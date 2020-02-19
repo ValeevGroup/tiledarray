@@ -32,6 +32,7 @@
 #include <TiledArray/conversions/truncate.h>
 #include <TiledArray/policies/dense_policy.h>
 #include <TiledArray/tile_interface/cast.h>
+#include <TiledArray/util/initializer_list.h>
 
 namespace TiledArray {
 
@@ -227,6 +228,57 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                 std::shared_ptr<pmap_interface>())
       : pimpl_(init(world, trange, shape, pmap)) {}
 
+  /// \brief Creates a new tensor containing the elements in the provided
+  ///         `std::initializer_list`.
+  ///
+  ///  This ctor will create an array comprised of a single tile. The array
+  ///  will have a rank equal to the nesting of \p il and the elements will be
+  ///  those in the provided `std::initializer_list`. This ctor can not be used
+  ///  to create an empty tensor (attempts to do so will raise an error).
+  ///
+  /// \tparam T The types of the elements in the `std::initializer_list`. Must
+  ///           be implicitly convertible to element_type.
+  ///
+  /// \param[in] world The world where the resulting array will live.
+  /// \param[in] il The initial values for the elements in the array. The
+  ///               elements are assumed to be listed in row-major order.
+  ///
+  /// \throw TiledArray::Exception if \p il contains no elements. If an
+  ///                              exception is raised \p world and \p il are
+  ///                              unchanged (strong throw guarantee).
+  /// \throw TiledArray::Exception If the provided `std::initializer_list` is
+  ///                              not rectangular (*e.g.*, attempting to
+  ///                              initialize a matrix with the value
+  ///                              `{{1, 2}, {3, 4, 5}}`). If an exception is
+  ///                              raised \p world and \p il are unchanged.
+  ///@{
+  template <typename T>
+  DistArray(World& world, detail::vector_il<T> il)
+      : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template <typename T>
+  DistArray(World& world, detail::matrix_il<T> il)
+      : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template <typename T>
+  DistArray(World& world, detail::tensor3_il<T> il)
+      : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template <typename T>
+  DistArray(World& world, detail::tensor4_il<T> il)
+      : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template <typename T>
+  DistArray(World& world, detail::tensor5_il<T> il)
+      : DistArray(array_from_il<DistArray_>(world, il)) {}
+
+  template <typename T>
+  DistArray(World& world, detail::tensor6_il<T> il)
+      : DistArray(array_from_il<DistArray_>(world, il)) {}
+  ///@}
+
+  /// @}
+
   /// converting copy constructor
 
   /// This constructor uses the meta data of `other` to initialize the meta
@@ -251,7 +303,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param other The array to be copied
   template <typename OtherTile, typename Op>
   DistArray(const DistArray<OtherTile, Policy>& other, Op&& op) : pimpl_() {
-    *this = foreach<Tile, OtherTile, Policy, Op>(other, std::forward<Op>(op));
+    *this = foreach<Tile>(other, std::forward<Op>(op));
   }
 
   /// Destructor
@@ -586,7 +638,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::elements_range()
-  DEPRECATED const typename trange_type::range_type& elements() const {
+  [[deprecated]] const typename trange_type::range_type& elements() const {
     return elements_range();
   }
 
@@ -661,7 +713,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::world()
-  DEPRECATED World& get_world() const {
+  [[deprecated]] World& get_world() const {
     check_pimpl();
     return pimpl_->world();
   }
@@ -675,7 +727,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::pmap()
-  DEPRECATED const std::shared_ptr<pmap_interface>& get_pmap() const {
+  [[deprecated]] const std::shared_ptr<pmap_interface>& get_pmap() const {
     check_pimpl();
     return pimpl_->pmap();
   }
@@ -697,7 +749,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::shape()
-  DEPRECATED const shape_type& get_shape() const { return pimpl_->shape(); }
+  [[deprecated]] const shape_type& get_shape() const { return pimpl_->shape(); }
 
   /// Shape accessor
 

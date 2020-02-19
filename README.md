@@ -1,8 +1,6 @@
 [![Build Status](https://travis-ci.org/ValeevGroup/tiledarray.svg?branch=master)](https://travis-ci.org/ValeevGroup/tiledarray)
 [![codecov](https://codecov.io/gh/ValeevGroup/tiledarray/branch/master/graph/badge.svg)](https://codecov.io/gh/ValeevGroup/tiledarray)
 
-<img src=https://github.com/ValeevGroup/tiledarray/wiki/images/ta_logo_med.png width=125>
-
 # Synopsis
 TiledArray is a scalable, block-sparse tensor framework for rapid composition of high-performance tensor arithmetic, appearing for example in many-body quantum mechanics. It allows users to compose tensor expressions of arbitrary complexity in native C++ code that closely resembles the standard mathematical notation. The framework is designed to scale from a single multicore computer to a massive distributed-memory multiprocessor.
 
@@ -22,25 +20,25 @@ The following example expressions are written in C++ with TiledArray. TiledArray
 
 * Matrix-matrix multiplication
 
-   ```{.cc}
+   ```
    C("m,n") = 2.0 * A("m,k") * B("k,n");
    ```
 
 * Matrix-vector multiplication
 
-   ```{.cc}
+   ```
    C("n") = A("k") * B("k,n");
    ```
 
 * A more complex tensor expression
  
-   ```{.cc}
+   ```
    E("m,n") = 2.0 * A("m,k") * B("k,n") + C("k,n") * D("k,m");
    ```
 
 The following application is a minimal example of a distributed-memory matrix multiplcation.
 
-```{.cc}
+```
 #include <tiledarray.h>
 
 int main(int argc, char** argv) {
@@ -76,20 +74,20 @@ int main(int argc, char** argv) {
 
 Parallel performance of TiledArray for multiplication of dense square matrices on [Mira](https://www.alcf.anl.gov/mira), an IBM BlueGene/Q supercomputer at Argonne National Laboratory, compared with that of [Cyclops Tensor Framework](https://github.com/solomonik/ctf) and [ScaLAPACK](http://www.netlib.org/scalapack/):
 
-![MM:TA-vs-CTF-vs-SCALAPACK](https://github.com/ValeevGroup/tiledarray/wiki/images/BGQtime_TA_CTF_ScaLAPACK.png)
+![MM:TA-vs-CTF-vs-SCALAPACK](https://valeevgroup.github.io/tiledarray/images/BGQtime_TA_CTF_ScaLAPACK.png)
 
 This figure was obtained with the help of an award from [the Department of Energy INCITE program](http://www.doeleadershipcomputing.org/incite-program/).
 
 Excellent parallel scalability is also possible for much more complicated expressions than just a single GEMM, as demonstrated below for the coupled-cluster singles and doubles (CCSD) wave function solver. Parallel speed-up of 1 iteration of CCSD solver for uracil trimer in 6-31G* AO basis was measured on ["BlueRidge" cluster](https://secure.hosting.vt.edu/www.arc.vt.edu/computing/blueridge-sandy-bridge/) at Virginia Tech (wall time on one 16-core node = 1290 sec):
 
-![CCSD:UracilTrimer-speedup](https://github.com/ValeevGroup/tiledarray/wiki/images/uracil-trimer-ccsd-blueridge-speedup.png)
+![CCSD:UracilTrimer-speedup](https://valeevgroup.github.io/tiledarray/images/uracil-trimer-ccsd-blueridge-speedup.png)
 
 This figure was obtained with the help of an allocation from [Advanced Research Computing](https://secure.hosting.vt.edu/www.arc.vt.edu/) at Virginia Tech.
 
 # Installing TiledArray
 
 The short version: assuming that MPI compiler wrappers are in your path, and this is a platform with BLAS/LAPACK installed system-wide in a standard location:
-```{.sh}
+```
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ cmake -B build \
@@ -106,7 +104,8 @@ The detailed instructions can be found in [INSTALL.md](https://github.com/Valeev
 
 # Using TiledArray
 
-The  [TiledArray wiki](https://github.com/ValeevGroup/tiledarray/wiki) includes a [Developer Guide](https://github.com/ValeevGroup/tiledarray/wiki/Developer-Guide), an [Optimization Guide](https://github.com/ValeevGroup/tiledarray/wiki/Optimizaation-Guide), and additional tutorials on advanced topics.
+TiledArray documentation is available for the following versions:
+- [master branch](https://valeevgroup.github.io/tiledarray/dox-master) .
 
 # Developers
 TiledArray is developed by the [Valeev Group](http://valeevgroup.github.io/) at [Virginia Tech](http://www.vt.edu).
