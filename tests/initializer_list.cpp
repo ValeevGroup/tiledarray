@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_SUITE_END()
  * - asymmetric rank3 tensor (dim[0] < dim[1] < dim[2])
  */
 
-BOOST_AUTO_TEST_SUITE(tiled_range_from_il_fxn)
+BOOST_FIXTURE_TEST_SUITE(tiled_range_from_il_fxn, ArrayFixture)
 
 BOOST_AUTO_TEST_CASE(scalar) {
   TiledRange corr{};
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_SUITE_END()
  * - asymmetric rank3 tensor (dim[0] < dim[1] < dim[2])
  */
 
-BOOST_AUTO_TEST_SUITE(flatten_il_fxn)
+BOOST_FIXTURE_TEST_SUITE(flatten_il_fxn, ArrayFixture)
 
 BOOST_AUTO_TEST_CASE(scalar) {
   std::array<double, 1> buffer{}, corr{3.14};
