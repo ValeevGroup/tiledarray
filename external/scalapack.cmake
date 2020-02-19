@@ -76,4 +76,4 @@ install( TARGETS TiledArray_SCALAPACK blacspp scalapackpp EXPORT tiledarray COMP
 set( TILEDARRAY_HAS_SCALAPACK 1 )
 
 # Add BTAS dependency to External
-add_dependencies(External scalapackpp blacspp)
+add_dependencies(External-tiledarray scalapackpp blacspp)
