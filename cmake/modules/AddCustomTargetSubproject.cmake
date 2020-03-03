@@ -1,3 +1,7 @@
+# Copyright 2020 Eduard F Valeyev
+# Distributed under the OSI-approved BSD 3-Clause License.
+# See https://opensource.org/licenses/BSD-3-Clause for details.
+
 # copy of https://github.com/BTAS/BTAS/blob/master/cmake/modules/AddCustomTargetSubproject.cmake
 #
 # add_custom_target_subproject(proj X ...) defines custom target X-proj and
