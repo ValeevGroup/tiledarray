@@ -11,10 +11,6 @@ os: linux
 
 addons:
   apt:
-    sources: &clang7_sources
-    - llvm-toolchain-bionic-7
-    sources: &clang8_sources
-    - llvm-toolchain-bionic-8
     packages: &base_packages
     - libboost-all-dev
     - libblas-dev
@@ -89,8 +85,6 @@ matrix:
       env: CLANG_VERSION=7 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
-          sources:
-           - *clang7_sources
           packages:
            - *base_packages
            - g++-8
@@ -102,8 +96,6 @@ matrix:
       env: CLANG_VERSION=7 GCC_VERSION=8 BUILD_TYPE=Release
       addons:
         apt:
-          sources:
-           - *clang7_sources
           packages:
            - *base_packages
            - g++-8
@@ -115,8 +107,6 @@ matrix:
       env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
-          sources:
-            - *clang8_sources
           packages:
             - *base_packages
             - g++-8
@@ -128,8 +118,6 @@ matrix:
       env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
       addons:
         apt:
-          sources:
-            - *clang8_sources
           packages:
             - *base_packages
             - g++-8
