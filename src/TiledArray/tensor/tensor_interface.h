@@ -293,7 +293,7 @@ class TensorInterface {
   result_tensor binary(const Right& right, Op&& op) const {
     //        return result_tensor(*this, right, op);
     result_tensor new_tensor(detail::clone_range(*this));
-    detail::tensor_init(op, new_tensor, *this, right);
+    detail::tensor_init(std::forward<Op>(op), new_tensor, *this, right);
     return new_tensor;
   }
 
@@ -312,7 +312,7 @@ class TensorInterface {
                        const Permutation& perm) const {
     //        return result_tensor(*this, right, op, perm);
     result_tensor new_tensor(perm * this->range());
-    detail::tensor_init(op, perm, new_tensor, *this, right);
+    detail::tensor_init(std::forward<Op>(op), perm, new_tensor, *this, right);
     return new_tensor;
   }
 
@@ -331,7 +331,7 @@ class TensorInterface {
   template <typename Right, typename Op,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   TensorInterface_& inplace_binary(const Right& right, Op&& op) {
-    detail::inplace_tensor_op(op, *this, right);
+    detail::inplace_tensor_op(std::forward<Op>(op), *this, right);
     return *this;
   }
 
@@ -346,7 +346,7 @@ class TensorInterface {
   result_tensor unary(Op&& op) const {
     //        return result_tensor(*this, op);
     result_tensor new_tensor(detail::clone_range(*this));
-    detail::tensor_init(op, new_tensor, *this);
+    detail::tensor_init(std::forward<Op>(op), new_tensor, *this);
     return new_tensor;
   }
 
@@ -363,7 +363,7 @@ class TensorInterface {
   result_tensor unary(Op&& op, const Permutation& perm) const {
     //        return result_tensor(*this, op, perm);
     result_tensor new_tensor(perm * this->range());
-    detail::tensor_init(op, perm, new_tensor, *this);
+    detail::tensor_init(std::forward<Op>(op), perm, new_tensor, *this);
     return new_tensor;
   }
 
@@ -375,7 +375,7 @@ class TensorInterface {
   /// \throw TiledArray::Exception When this tensor is empty.
   template <typename Op>
   TensorInterface_& inplace_unary(Op&& op) {
-    detail::inplace_tensor_op(op, *this);
+    detail::inplace_tensor_op(std::forward<Op>(op), *this);
     return *this;
   }
 
@@ -892,7 +892,9 @@ class TensorInterface {
   template <typename ReduceOp, typename JoinOp>
   numeric_type reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
                       const numeric_type identity) const {
-    return detail::tensor_reduce(reduce_op, join_op, identity, *this);
+    return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
+                                 std::forward<JoinOp>(join_op), identity,
+                                 *this);
   }
 
   /// Binary reduction operation
@@ -912,7 +914,9 @@ class TensorInterface {
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   numeric_type reduce(const Right& other, ReduceOp&& reduce_op,
                       JoinOp&& join_op, const numeric_type identity) const {
-    return detail::tensor_reduce(reduce_op, join_op, identity, *this, other);
+    return detail::tensor_reduce(std::forward<ReduceOp>(reduce_op),
+                                 std::forward<JoinOp>(join_op), identity, *this,
+                                 other);
   }
 
   /// Sum of elements
