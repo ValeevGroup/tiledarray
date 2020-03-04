@@ -8,7 +8,7 @@ git config --global user.name "Travis CI"
 
 # only non-cron job deploys
 RUN=1
-if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
+if [ "$TRAVIS_EVENT_TYPE" = "cron" ] || [ "$TRAVIS_BRANCH" != "master" ]; then
   RUN=0
 fi
 if [ "$RUN" = "0" ]; then
