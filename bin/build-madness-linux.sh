@@ -55,7 +55,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     git clone https://github.com/m-a-d-n-e-s-s/madness madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
 
     cmake madness_src \
-      -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/bin/travis-lapacke.cmake" \
+      -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
       -DCMAKE_CXX_COMPILER=$CXX \
       -DCMAKE_C_COMPILER=$CC \
       -DMPI_CXX_COMPILER=$MPICXX \
