@@ -250,9 +250,44 @@ auto flatten_il(T&& il, OutputItr out_itr) {
   return out_itr;
 }
 
+
+template<typename T, typename U>
+auto get_elem_from_il(T idx, U&&il, std::size_t depth = 0){
+  TA_ASSERT(il.size() > idx[depth]);
+
+  auto itr = std::advance(il.begin(), idx[depth]);
+  if constexpr(initializer_list_rank_v<std::decay_t<U>> == 1) {
+    return *itr;
+  }
+  else {
+    return get_elem_from_il(std::forward<T>(idx), *itr, depth + 1);
+  }
+}
+
 //------------------------------------------------------------------------------
 // array_from_il free function
 //------------------------------------------------------------------------------
+
+template<typename ArrayType, typename T>
+auto array_from_il(World& world, const TiledRange& trange, T&& il) {
+  using element_type = typename ArrayType::element_type;
+  using tile_type    = typename ArrayType::value_type;
+
+  static_assert(initializer_list_rank_v<std::decay_t<T>>> 0,
+                "value initializing rank 0 tensors is not supported");
+
+  ArrayType rv(world, trange);
+
+  for (auto itr = rv.begin(); itr != rv.end(); ++itr){
+    auto range = rv.trange().make_tile_range(itr.index());
+    tile_type tile(range);
+    for(auto idx : range){
+      tile(idx) = get_elem_from_il(idx, il);
+    }
+    *itr = tile;
+  }
+  return rv;
+}
 
 /** @brief Converts an `std::initializer_list` into an array.
  *
@@ -286,25 +321,10 @@ auto flatten_il(T&& il, OutputItr out_itr) {
  *                              If an exception is raised @p world and @p il are
  *                              unchanged.
  */
-template <typename ArrayType, typename T>
+template<typename ArrayType, typename T>
 auto array_from_il(World& world, T&& il) {
-  using element_type = typename ArrayType::element_type;
-  using tile_type = typename ArrayType::value_type;
-
-  static_assert(initializer_list_rank_v<std::decay_t<T>>> 0,
-                "value initializing rank 0 tensors is not supported");
-
   auto trange = tiled_range_from_il(il);
-  ArrayType rv(world, trange);
-
-  for (auto itr = rv.begin(); itr != rv.end(); ++itr) {
-    std::vector<element_type> buffer;
-    auto range = rv.trange().make_tile_range(itr.index());
-    buffer.reserve(range.volume());
-    flatten_il(il, buffer.begin());
-    *itr = tile_type(range, buffer.data());
-  }
-  return rv;
+  return array_from_il<ArrayType, T>(world, std::move(trange), std::forward<T>(il));
 }
 
 namespace detail {
