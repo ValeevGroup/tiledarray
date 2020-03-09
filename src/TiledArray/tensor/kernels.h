@@ -351,7 +351,7 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   const auto volume = result.range().volume();
 
   auto inplace_tensor_range =
-      [&op](typename TR::pointer MADNESS_RESTRICT const result_data,
+      [&op, stride](typename TR::pointer MADNESS_RESTRICT const result_data,
             typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
           inplace_tensor_op(op, result_data[i], tensors_data[i]...);
@@ -443,7 +443,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
   TA_ASSERT(perm);
   TA_ASSERT(perm.dim() == result.range().rank());
 
-  auto output_op = [=](typename TR::pointer MADNESS_RESTRICT result,
+  auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
                        typename TR::const_reference MADNESS_RESTRICT temp) {
     new (result) typename TR::value_type(temp);
   };
@@ -512,7 +512,7 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
-  auto wrapper_op = [=](typename TR::pointer MADNESS_RESTRICT result_ptr,
+  auto wrapper_op = [&op](typename TR::pointer MADNESS_RESTRICT result_ptr,
                         const typename T1::value_type value1,
                         const typename Ts::value_type... values) {
     new (result_ptr) typename T1::value_type(op(value1, values...));
@@ -547,7 +547,7 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   const auto volume = tensor1.range().volume();
 
   auto inplace_tensor_range =
-      [=](typename TR::pointer MADNESS_RESTRICT const result_data,
+      [&op, stride](typename TR::pointer MADNESS_RESTRICT const result_data,
           typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
           typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
@@ -745,7 +745,7 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   const auto volume = tensor1.range().volume();
 
   auto tensor_reduce_range =
-      [=](Scalar& MADNESS_RESTRICT result,
+      [&reduce_op, &join_op, &identity, stride](Scalar& MADNESS_RESTRICT result,
           typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
           typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
