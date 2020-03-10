@@ -9,6 +9,7 @@ if(ENABLE_CUDA_ERROR_CHECK)
 endif(ENABLE_CUDA_ERROR_CHECK)
 
 enable_language(CUDA)
+cmake_minimum_required(3.17.0) # decouples C++ and CUDA standards, see https://gitlab.kitware.com/cmake/cmake/issues/19123
 set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
