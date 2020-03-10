@@ -192,6 +192,9 @@ class Tensor {
     math::uninitialized_copy_vector(range.volume(), u, pimpl_->data_);
   }
 
+  Tensor(const Range& range, std::initializer_list<T> il)
+    : Tensor(range, il.begin()) {}
+
   /// Construct a copy of a tensor interface object
 
   /// \tparam T1 A tensor type
