@@ -62,6 +62,7 @@ void to_execution_space(Storage& vec, cudaStream_t stream = 0) {
   switch (Space) {
     case ExecutionSpace::CPU: {
       using std::data;
+      using std::size;
       using value_type = typename Storage::value_type;
       if (cudaEnv::instance()->concurrent_managed_access()) {
         CudaSafeCall(cudaMemPrefetchAsync(data(vec),
@@ -72,6 +73,7 @@ void to_execution_space(Storage& vec, cudaStream_t stream = 0) {
     }
     case ExecutionSpace::CUDA: {
       using std::data;
+      using std::size;
       using value_type = typename Storage::value_type;
       int device = -1;
       if (cudaEnv::instance()->concurrent_managed_access()) {
