@@ -228,9 +228,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
                 std::shared_ptr<pmap_interface>())
       : pimpl_(init(world, trange, shape, pmap)) {}
 
+  /// \name Initializer list constructors
   /// \brief Creates a new tensor containing the elements in the provided
   ///         `std::initializer_list`.
-  ///
+  ///@{
+
   ///  This ctor will create an array comprised of a single tile. The array
   ///  will have a rank equal to the nesting of \p il and the elements will be
   ///  those in the provided `std::initializer_list`. This ctor can not be used
@@ -251,7 +253,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              initialize a matrix with the value
   ///                              `{{1, 2}, {3, 4, 5}}`). If an exception is
   ///                              raised \p world and \p il are unchanged.
-  ///@{
   template <typename T>
   DistArray(World& world, detail::vector_il<T> il)
       : DistArray(array_from_il<DistArray_>(world, il)) {}
@@ -277,9 +278,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       : DistArray(array_from_il<DistArray_>(world, il)) {}
   ///@}
 
-  /// \brief Creates a new tensor containing the elements in the provided
+  /// \name Tiling initializer list constructors
+  /// \brief Constructs a new tensor containing the elements in the provided
   ///         `std::initializer_list`.
-  ///
+  /// @{
+
   ///  This ctor will create an array using the provided TiledRange instance
   ///  whose values will be initialized from the provided
   ///  `std::initializer_list` \p il. This ctor can not be used to create an
@@ -301,7 +304,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              initialize a matrix with the value
   ///                              `{{1, 2}, {3, 4, 5}}`). If an exception is
   ///                              raised \p world and \p il are unchanged.
-  ///@{
   template <typename T>
   DistArray(World& world, const trange_type& trange, detail::vector_il<T> il)
       : DistArray(array_from_il<DistArray_>(world, trange, il)) {}
