@@ -243,6 +243,7 @@ target_include_directories(tiledarray PUBLIC ${Boost_INCLUDE_DIRS})
 
 if (CUDA_FOUND)
   target_include_directories(tiledarray PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+  target_compile_features(tiledarray PUBLIC "cuda_std_${CMAKE_CUDA_STANDARD}")
 endif(CUDA_FOUND)
 
 if (LAPACK_INCLUDE_DIRS)
