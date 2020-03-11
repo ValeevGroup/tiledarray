@@ -32,6 +32,7 @@ endif()
 set(TILEDARRAY_HAS_CUDA "@CUDA_FOUND@")
 if(TILEDARRAY_HAS_CUDA)
   set(CMAKE_CUDA_HOST_COMPILER "@CMAKE_CUDA_HOST_COMPILER@")
+  # workaround from https://gitlab.kitware.com/cmake/cmake/issues/18614#note_485631
   set(CUDA_LIBRARIES "@CUDA_LIBRARIES@")
   get_target_property(_ta_interface_libs tiledarray INTERFACE_LINK_LIBRARIES)
   if(_ta_interface_libs)
