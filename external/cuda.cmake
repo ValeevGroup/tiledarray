@@ -22,10 +22,10 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 # despite enable_language(CUDA), this is still needed to find cuBLAS
 find_package(CUDA REQUIRED)
 
-message(STATUS "CUDA Host Compiler: " ${CMAKE_CUDA_HOST_COMPILER})
+message(STATUS "CUDA Host Compiler: ${CMAKE_CUDA_HOST_COMPILER}")
 message(STATUS "CUDA NVCC FLAGS: ${CUDA_NVCC_FLAGS}")
-message(STATUS "CUDA Include Dirs: " ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-message(STATUS "CUDA Libraries: " ${CUDA_LIBRARIES})
+message(STATUS "CUDA Include Dirs: ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+message(STATUS "CUDA Libraries: ${CUDA_LIBRARIES}")
 message(STATUS "cuBLAS Libraries: : ${CUDA_CUBLAS_LIBRARIES}")
 
 # CUDA_nvToolsExt_LIBRARY found by CMake 3.16 and later
