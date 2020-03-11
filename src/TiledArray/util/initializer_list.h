@@ -251,10 +251,111 @@ auto flatten_il(T&& il, OutputItr out_itr) {
 }
 
 //------------------------------------------------------------------------------
+// get_elem_from_il free function
+//------------------------------------------------------------------------------
+
+/** @brief Retrieves the specified element from an initializer_list
+ *
+ *  Given an initializer_list with @f$N@f$ nestings, @p il, and an @f$N@f$
+ *  element index, @p idx, this function will return the element which is offset
+ *  `idx[i]` along the @f$i@f$-th mode of @p il.
+ *
+ * @tparam T The type of the container holding the index. Assumed to be a random
+ *           access container whose elements are of an integral type.
+ * @tparam U Assumed to be a scalar type (*e.g.* float, double, *etc.*) or a
+ *           (possibly nested) `std::initializer_list` of scalar types.
+ *
+ * @param[in] idx The desired element's offsets along each mode.
+ * @param[in] il The initializer list we are retrieving the value from.
+ * @param[in] depth Used internally to keep track of how many levels of
+ *                  recursion have occurred. Defaults to 0 and should not be
+ *                  modified.
+ * @return The requested element.
+ *
+ * @throws TiledArray::Exception if the number of elements in @p idx does not
+ *                               equal the nesting of @p il. Strong throw
+ *                               guarantee.
+ * @throws TiledArray::Exception if the offset along a mode is greater than the
+ *                               length of the mode. Strong throw guarantee.
+ */
+template<typename T, typename U>
+auto get_elem_from_il(T idx, U&&il, std::size_t depth = 0){
+  constexpr auto nestings_left = initializer_list_rank_v<std::decay_t<U>>;
+  TA_ASSERT(idx.size() == nestings_left + depth);
+  if constexpr(nestings_left == 0){ // Handle scalars
+    return il;
+  }
+  else {
+    // Make sure the current nesting is long enough
+    TA_ASSERT(il.size() > idx[depth]);
+    auto itr = il.begin() + idx[depth];
+    if constexpr (nestings_left == 1) {
+      return *itr;
+    } else {
+      return get_elem_from_il(std::forward<T>(idx), *itr, depth + 1);
+    }
+  }
+}
+
+//------------------------------------------------------------------------------
 // array_from_il free function
 //------------------------------------------------------------------------------
 
-/** @brief Converts an `std::initializer_list` into an array.
+/** @brief Converts an `std::initializer_list` into a tiled array.
+ *
+ *  This function encapsulates the process of turning an `std::initializer_list`
+ *  into a TiledArray array. The resulting tensor will have a tiling consistent
+ *  with the provided TiledRange, @p trange.
+ *
+ *  @note This function will raise a static assertion if you try to construct a
+ *        rank 0 tensor (*i.e.*, you pass in a single element and not an
+ *        `std::initializer_list`).
+ *
+ * @tparam ArrayType The type of the array we are creating. Expected to be
+ *                   have an API akin to that of DistArray
+ * @tparam T The type of the provided `std::initializer_list`.
+ *
+ * @param[in] world The context in which the resulting tensor will live.
+ * @param[in] trange The tiling for the resulting tensor.
+ * @param[in] il The initializer_list containing the initial state of the
+ *               tensor. @p il is assumed to be non-empty and in row-major form.
+ *               The nesting of @p il will be used to determine the rank of the
+ *               resulting tensor.
+ *
+ * @return A newly created instance of type @p ArrayType whose state is derived
+ *         from @p il and exists in the @p world context.
+ *
+ * @throw TiledArray::Exception if @p il contains no elements. If an exception
+ *                              is raised @p world, @p trange, and @p il are
+ *                              unchanged (strong throw guarantee).
+ * @throw TiledArray::Exception If the provided `std::initializer_list` is not
+ *                              rectangular (*e.g.*, attempting to initialize
+ *                              a matrix with the value `{{1, 2}, {3, 4, 5}}`).
+ *                              If an exception is raised @p world, @p trange,
+ *                              and @p il are unchanged.
+ */
+template<typename ArrayType, typename T>
+auto array_from_il(World& world, const TiledRange& trange, T&& il) {
+  using element_type = typename ArrayType::element_type;
+  using tile_type    = typename ArrayType::value_type;
+
+  static_assert(initializer_list_rank_v<std::decay_t<T>>> 0,
+                "value initializing rank 0 tensors is not supported");
+
+  ArrayType rv(world, trange);
+
+  for (auto itr = rv.begin(); itr != rv.end(); ++itr){
+    auto range = rv.trange().make_tile_range(itr.index());
+    tile_type tile(range);
+    for(auto idx : range){
+      tile(idx) = get_elem_from_il(idx, il);
+    }
+    *itr = tile;
+  }
+  return rv;
+}
+
+/** @brief Converts an `std::initializer_list` into a single tile array.
  *
  *  This function encapsulates the process of turning an `std::initializer_list`
  *  into a TiledArray array. The resulting tensor will consistent of a single
@@ -286,25 +387,10 @@ auto flatten_il(T&& il, OutputItr out_itr) {
  *                              If an exception is raised @p world and @p il are
  *                              unchanged.
  */
-template <typename ArrayType, typename T>
+template<typename ArrayType, typename T>
 auto array_from_il(World& world, T&& il) {
-  using element_type = typename ArrayType::element_type;
-  using tile_type = typename ArrayType::value_type;
-
-  static_assert(initializer_list_rank_v<std::decay_t<T>>> 0,
-                "value initializing rank 0 tensors is not supported");
-
   auto trange = tiled_range_from_il(il);
-  ArrayType rv(world, trange);
-
-  for (auto itr = rv.begin(); itr != rv.end(); ++itr) {
-    std::vector<element_type> buffer;
-    auto range = rv.trange().make_tile_range(itr.index());
-    buffer.reserve(range.volume());
-    flatten_il(il, buffer.begin());
-    *itr = tile_type(range, buffer.data());
-  }
-  return rv;
+  return array_from_il<ArrayType, T>(world, std::move(trange), std::forward<T>(il));
 }
 
 namespace detail {

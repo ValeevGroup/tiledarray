@@ -17,18 +17,18 @@ $ cmake --build build --target install
 - C++ compiler with support for the [C++17 standard](http://www.iso.org/standard/68564.html), or a more recent standard. This includes the following compilers:
   - [GNU C++](https://gcc.gnu.org/), version 7.0 or higher
   - [Clang](https://clang.llvm.org/), version 5 or higher
-  - Apple Clang, version 9.3 or higher
-  - [Intel C++ compiler](), version 19 or higher
+  - [Apple Clang](https://en.wikipedia.org/wiki/Xcode), version 9.3 or higher
+  - [Intel C++ compiler](https://software.intel.com/en-us/c-compilers), version 19 or higher
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
-- [CMake](https://cmake.org/), version 3.10 or higher
-- [Git]() 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
-- [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher (will be downloaded automatically, if missing)
+- [CMake](https://cmake.org/), version 3.10 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
+- [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
+- [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), tag 8a6d63a627541ec334cbdc76bceb93d573559f78 (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), tag 608217edfa622c1b6bc71e119bd04bb928b25f81 (will be downloaded automatically, if missing)
 - BLAS library
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag e8d13860ea853044cda0dc4208f29cf705000fed .
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.

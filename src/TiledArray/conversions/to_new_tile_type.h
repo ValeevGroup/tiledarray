@@ -76,7 +76,7 @@ inline decltype(auto) to_new_tile_type(DistArray<Tile, Policy> const& old_array,
                 "Can't call new tile type if tile type does not change.");
 
   const detail::cast_then_op<ConvTile, Tile, std::remove_reference_t<Op>>
-      cast_op(op);
+      cast_op(std::forward<Op>(op));
 
   return foreach<OutTileType>(
       old_array, [cast_op](auto& out, const auto& in) { out = cast_op(in); });

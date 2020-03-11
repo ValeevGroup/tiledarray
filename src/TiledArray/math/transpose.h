@@ -50,7 +50,7 @@ class TransposeUnwind<0> {
       const Args* MADNESS_RESTRICT const... args) {
     // Load arg block
     Block<Result> result_block;
-    for_each_block(op, result_block, Block<Args>(args)...);
+    for_each_block(std::forward<Op>(op), result_block, Block<Args>(args)...);
 
     // Transpose arg_block
     result_block.scatter_to(result, TILEDARRAY_LOOP_UNWIND);
@@ -60,7 +60,7 @@ class TransposeUnwind<0> {
   static TILEDARRAY_FORCE_INLINE void block_scatter(
       Op&& op, Result* const result, const Result* const arg,
       const std::size_t /*result_stride*/) {
-    for_each_block_ptr(op, result, arg);
+    for_each_block_ptr(std::forward<Op>(op), result, arg);
   }
 
 };  // class TransposeUnwind<0>
@@ -86,8 +86,8 @@ class TransposeUnwind : public TransposeUnwind<N - 1> {
       result_block.scatter_to(result, TILEDARRAY_LOOP_UNWIND);
     }
 
-    TransposeUnwindN1::gather_trans(op, result + 1, arg_stride,
-                                    (args + arg_stride)...);
+    TransposeUnwindN1::gather_trans(std::forward<Op>(op), result + 1,
+                                    arg_stride, (args + arg_stride)...);
   }
 
   template <typename Op, typename Result>
@@ -95,9 +95,9 @@ class TransposeUnwind : public TransposeUnwind<N - 1> {
       Op&& op, Result* const result, const Result* const arg,
       const std::size_t result_stride) {
     for_each_block_ptr(op, result, arg);
-    TransposeUnwindN1::block_scatter(op, result + result_stride,
-                                     arg + TILEDARRAY_LOOP_UNWIND,
-                                     result_stride);
+    TransposeUnwindN1::block_scatter(
+        std::forward<Op>(op), result + result_stride,
+        arg + TILEDARRAY_LOOP_UNWIND, result_stride);
   }
 
 };  // class TransposeUnwind
@@ -118,9 +118,11 @@ TILEDARRAY_FORCE_INLINE void transpose_block(InputOp&& input_op,
   TILEDARRAY_ALIGNED_STORAGE Result temp[block_size];
 
   // Transpose block
-  TransposeUnwindN::gather_trans(input_op, temp, arg_stride, args...);
+  TransposeUnwindN::gather_trans(std::forward<InputOp>(input_op), temp,
+                                 arg_stride, args...);
 
-  TransposeUnwindN::block_scatter(output_op, result, temp, result_stride);
+  TransposeUnwindN::block_scatter(std::forward<OutputOp>(output_op), result,
+                                  temp, result_stride);
 }
 
 template <typename InputOp, typename OutputOp, typename Result,

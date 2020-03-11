@@ -68,7 +68,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   fi
 
   cmake ${TRAVIS_BUILD_DIR} \
-    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/bin/travis-lapacke.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
     -DMPI_CXX_COMPILER=$MPICXX \
@@ -98,7 +98,7 @@ else
   fi
 
   cmake ${TRAVIS_BUILD_DIR} \
-    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/bin/travis-lapacke.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
     -DMPI_CXX_COMPILER=$MPICXX \
