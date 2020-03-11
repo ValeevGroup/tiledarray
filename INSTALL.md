@@ -23,8 +23,8 @@ $ cmake --build build --target install
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
 - [CMake](https://cmake.org/), version 3.10 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
-- [Git]() 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
-- [Eigen](http://eigen.tuxfamily.org), version 3.3 or higher (will be downloaded automatically, if missing)
+- [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
+- [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
