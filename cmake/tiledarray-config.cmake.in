@@ -39,8 +39,9 @@ if(TILEDARRAY_HAS_CUDA)
   else()
     set(_ta_interface_libs ${CUDA_LIBRARIES})
   endif()
+    string(TOUPPER ${CMAKE_BUILD_TYPE} TA_BUILD_TYPE)
   set_target_properties(tiledarray PROPERTIES
-    IMPORTED_LINK_INTERFACE_LANGUAGES_@CMAKE_BUILD_TYPE@ CXX
+    IMPORTED_LINK_INTERFACE_LANGUAGES_${TA_BUILD_TYPE} CXX
     INTERFACE_LINK_LIBRARIES "${_ta_interface_libs}")
 endif()
 
