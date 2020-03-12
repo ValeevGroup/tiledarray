@@ -31,12 +31,12 @@
 
 #include <madness/config.h>
 
-TILEDARRRAY_PRAGMA_GCC(diagnostic push)
-TILEDARRRAY_PRAGMA_GCC(diagnostic ignored "-Wparentheses")
+TILEDARRAY_PRAGMA_GCC(diagnostic push)
+TILEDARRAY_PRAGMA_GCC(diagnostic ignored "-Wparentheses")
 
 #include <boost/iterator/iterator_facade.hpp>
 
-TILEDARRRAY_PRAGMA_GCC(diagnostic pop)
+TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
 namespace TiledArray {
 

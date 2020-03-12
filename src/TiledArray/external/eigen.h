@@ -33,8 +33,8 @@
 
 #include <madness/config.h>
 
-TILEDARRRAY_PRAGMA_GCC(diagnostic push)
-TILEDARRRAY_PRAGMA_GCC(system_header)
+TILEDARRAY_PRAGMA_GCC(diagnostic push)
+TILEDARRAY_PRAGMA_GCC(system_header)
 
 ////////////////////////////////////////////////
 // this duplicates TiledArray_Eigen definitions
@@ -65,6 +65,6 @@ TILEDARRRAY_PRAGMA_GCC(system_header)
 #include <madness/tensor/lapacke_types.h>
 #include <Eigen/Core>
 
-TILEDARRRAY_PRAGMA_GCC(diagnostic pop)
+TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
 #endif  // TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED

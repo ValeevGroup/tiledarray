@@ -29,14 +29,14 @@
 
 #include <TiledArray/config.h>
 
-TILEDARRRAY_PRAGMA_GCC(diagnostic push)
-TILEDARRRAY_PRAGMA_GCC(system_header)
+TILEDARRAY_PRAGMA_GCC(diagnostic push)
+TILEDARRAY_PRAGMA_GCC(system_header)
 
 #include <madness/tensor/cblas.h>
 #include <madness/world/MADworld.h>
 #include <madness/world/worldmem.h>
 
-TILEDARRRAY_PRAGMA_GCC(diagnostic pop)
+TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
 #include <TiledArray/error.h>
 
