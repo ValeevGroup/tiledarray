@@ -32,10 +32,10 @@
 //
 
 #include <madness/config.h>
-#if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC system_header
-#endif
+
+TILEDARRRAY_PRAGMA_GCC(diagnostic push)
+TILEDARRRAY_PRAGMA_GCC(system_header)
+
 ////////////////////////////////////////////////
 // this duplicates TiledArray_Eigen definitions
 #if HAVE_INTEL_MKL
@@ -64,8 +64,7 @@
 // Eigen/src/misc/lapacke.h
 #include <madness/tensor/lapacke_types.h>
 #include <Eigen/Core>
-#if defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
+
+TILEDARRRAY_PRAGMA_GCC(diagnostic pop)
 
 #endif  // TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED

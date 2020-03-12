@@ -1,6 +1,5 @@
-#pragma once
-#ifndef TILEDARRAY_DENSETOSPARSE_H__INCLUDED
-#define TILEDARRAY_DENSETOSPARSE_H__INCLUDED
+#ifndef TILEDARRAY_CONVERSIONS_DENSETOSPARSE_H__INCLUDED
+#define TILEDARRAY_CONVERSIONS_DENSETOSPARSE_H__INCLUDED
 
 #include "../dist_array.h"
 
@@ -59,4 +58,5 @@ std::enable_if_t<!is_dense_v<Policy>, DistArray<Tile, Policy>> to_sparse(
 
 }  // namespace TiledArray
 
-#endif /* end of include guard: TILEDARRAY_DENSETOSPARSE_H__INCLUDED */
+#endif /* end of include guard: \
+          TILEDARRAY_CONVERSIONS_DENSETOSPARSE_H__INCLUDED */
