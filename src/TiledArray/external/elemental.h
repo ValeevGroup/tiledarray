@@ -168,16 +168,12 @@ void elem_to_array(DistArray<Tile>& array,
 
 // pacify clang warnings about tautological comparisons in
 // El/macros/GuardAndPayload.h
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wtautological-compare"
-#endif  // __clang__
+TILEDARRAY_PRAGMA_CLANG(diagnostic push)
+TILEDARRAY_PRAGMA_CLANG(diagnostic ignored "-Wtautological-compare")
 
 #include <El.hpp>
 
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif  // __clang__
+TILEDARRAY_PRAGMA_CLANG(diagnostic pop)
 
 #include <TiledArray/conversions/elemental.h>
 
