@@ -38,3 +38,5 @@ set(BUILD_SHARED_LIBS OFF)
 # for some reason the NSF filesystem cannot handle RESTRICT checks , e.g.
 # CMake Error: Remove failed on file: /autofs/nccs-svm1_home1/.....: System Error: Device or resource busy
 set(MADNESS_CMAKE_EXTRA_ARGS "-DRESTRICT_KEYWORD=__restrict")
+# same for MADNESS_HAS_MKL ... seems like CHECK_CXX_SOURCE_COMPILES is the culprit
+set(MADNESS_HAS_MKL OFF)
