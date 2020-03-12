@@ -30,16 +30,13 @@
 #include <TiledArray/external/madness.h>
 
 #include <madness/config.h>
-#if defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC system_header
-#endif
+
+TILEDARRAY_PRAGMA_GCC(diagnostic push)
+TILEDARRAY_PRAGMA_GCC(diagnostic ignored "-Wparentheses")
 
 #include <boost/iterator/iterator_facade.hpp>
 
-#if defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
+TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
 namespace TiledArray {
 

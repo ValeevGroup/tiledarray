@@ -44,7 +44,7 @@ if (TARGET TiledArray_Eigen)
   if (NOT MADNESS_INTERNAL_INCLUDE_DIRS)
     message(FATAL_ERROR "eigen.cmake must be loaded after calling detect_MADNESS_config()")
   endif()
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN3_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/src
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN3_INCLUDE_DIRS} ${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src
        ${MADNESS_INTERNAL_INCLUDE_DIRS} ${LAPACK_INCLUDE_DIRS})
   list(APPEND CMAKE_REQUIRED_LIBRARIES ${LAPACK_LIBRARIES})
   foreach(_def ${LAPACK_COMPILE_DEFINITIONS})
@@ -53,7 +53,6 @@ if (TARGET TiledArray_Eigen)
   list(APPEND CMAKE_REQUIRED_FLAGS ${LAPACK_COMPILE_OPTIONS})
 
   CHECK_CXX_SOURCE_COMPILES("
-    #include <TiledArray/external/eigen.h>
     #include <Eigen/Dense>
     #include <Eigen/SparseCore>
     #include <iostream>
