@@ -121,7 +121,7 @@ make install
 # Validate
 make -j1 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
-setarch `uname -m` -R make check
+make check
 
 # Build examples
 make -j2 examples VERBOSE=1
@@ -130,5 +130,5 @@ make -j2 examples VERBOSE=1
 # with Debug can only use 1 thread , but since TBB is ON for Debug builds let's just skip it entirely
 if [ "$BUILD_TYPE" = "Release" ]; then
   ${MPI_HOME}/bin/mpirun -n 1 examples/elemental/evd 512 64 2
-  setarch `uname -m` -R ${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2
+  ${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2
 fi
