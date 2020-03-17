@@ -221,7 +221,7 @@ target_include_directories(tiledarray INTERFACE
 
 target_link_libraries(tiledarray PUBLIC ${TILEDARRAY_DEPENDENCIES})
 if (BUILD_SHARED_LIBS)
-  target_link_libraries(tiledarray PRIVATE -Wl,--whole-archive MADworld -Wl,--no-whole-archive)
+  target_link_libraries(tiledarray PUBLIC -Wl,--whole-archive MADworld -Wl,--no-whole-archive)
 else (BUILD_SHARED_LIBS)
   target_link_libraries(tiledarray PUBLIC MADworld)
 endif (BUILD_SHARED_LIBS)
