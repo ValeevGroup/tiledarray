@@ -39,7 +39,7 @@ $ cmake --build build --target install
   MADNESS compilation instructions.
 
   Compiling MADNESS requires the following prerequisites:
-  - An implementation of Message Passing Interface version 2 or 3, with suppport
+  - An implementation of Message Passing Interface version 2 or 3, with support
     for `MPI_THREAD_MULTIPLE`.
   - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
   - (optional) [Elemental](http://libelemental.org/), a distributed-memory linear algebra library (tag de7b5bea1abf5f626b91582f742cf99e2e551bff)
