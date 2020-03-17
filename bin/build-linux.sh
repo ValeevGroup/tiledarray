@@ -77,11 +77,10 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DBUILD_SHARED_LIBS=ON \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
-    -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
+    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
-    -DENABLE_ELEMENTAL=ON \
-    -DMADNESS_ROOT_DIR="${INSTALL_PREFIX}/madness"
+    -DENABLE_ELEMENTAL=ON
 
 else
 
@@ -107,7 +106,7 @@ else
     -DBUILD_SHARED_LIBS=ON \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
-    -DCMAKE_PREFIX_PATH=${INSTALL_PREFIX} \
+    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON -Wno-dev \
