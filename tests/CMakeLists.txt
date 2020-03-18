@@ -133,7 +133,6 @@ if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND)
 else()
   target_link_libraries(${executable} PRIVATE tiledarray)
 endif()
-target_link_libraries(${executable} PRIVATE ${MADNESS_DISABLEPIE_LINKER_FLAG})
 
 # Add targets
 add_dependencies(${executable} External-tiledarray)
