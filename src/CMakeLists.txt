@@ -200,13 +200,13 @@ if(CUDA_FOUND)
           PROPERTIES
           LANGUAGE CUDA)
 
-  # the list of libraries on which TiledArray depends on, minus MADworld
-  set(TILEDARRAY_DEPENDENCIES "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  # the list of libraries on which TiledArray build depends on
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 else(CUDA_FOUND)
 
-  # the list of libraries on which TiledArray depends on, minus MADworld
-  set(TILEDARRAY_DEPENDENCIES "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  # the list of libraries on which TiledArray build depends on
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 endif(CUDA_FOUND)
 
@@ -219,13 +219,28 @@ target_include_directories(tiledarray INTERFACE
   $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
 )
 
-target_link_libraries(tiledarray PUBLIC ${TILEDARRAY_DEPENDENCIES})
+# set up INTERFACE and PRIVATE link_libraries for TA separately
 if (BUILD_SHARED_LIBS)
-  target_link_libraries(tiledarray PRIVATE -Wl,--whole-archive MADworld -Wl,--no-whole-archive)
-  target_link_libraries(tiledarray INTERFACE MADworld)
+  # interface does not need to include MADworld
+  set(private_link_libraries "${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
+  list(REMOVE_ITEM private_link_libraries MADworld)
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES "${private_link_libraries}" CACHE STRING "List of libraries on which TiledArray depends on" FORCE)
+  if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    target_link_libraries(tiledarray PRIVATE -Wl,--whole-archive MADworld -Wl,--no-whole-archive )
+  elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    target_link_libraries(tiledarray PRIVATE -Wl,-all_load MADworld -Wl,-noall_load)
+  else ()
+    target_link_libraries(tiledarray PRIVATE MADworld)
+  endif()
+  target_link_libraries(tiledarray PUBLIC ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
+  # propagate dependencies of MADworld to the interface
+  include(CloneTarget)
+  clone_target(MADworld-interface MADworld)
+  target_link_libraries(tiledarray INTERFACE MADworld-interface)
 else (BUILD_SHARED_LIBS)
-  target_link_libraries(tiledarray PUBLIC MADworld)
+  target_link_libraries(tiledarray PUBLIC ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
 endif (BUILD_SHARED_LIBS)
+
 if(TARGET build-madness)
   add_dependencies(tiledarray build-madness)
 endif()
@@ -267,6 +282,11 @@ endif(LAPACK_COMPILE_DEFINITIONS)
 install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
     LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
+if (TARGET MADworld-interface)
+  install(TARGETS MADworld-interface EXPORT tiledarray COMPONENT tiledarray
+      LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
+      ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
+endif(TARGET MADworld-interface)
 # Install header files
 install(
   DIRECTORY

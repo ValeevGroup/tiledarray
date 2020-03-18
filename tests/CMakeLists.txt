@@ -119,21 +119,21 @@ target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAG
 # if tiledarray library was compiled without exceptions, use TA header-only
 if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND)
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
-  #
-  target_link_libraries(${executable} PUBLIC ${TILEDARRAY_DEPENDENCIES})
+  # TILEDARRAY_PRIVATE_LINK_LIBRARIES may not include MADworld dependence if libtiledarray.so includes it
+  target_link_libraries(${executable} PRIVATE MADworld ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
   if (LAPACK_INCLUDE_DIRS)
-    target_include_directories(${executable}  PUBLIC ${LAPACK_INCLUDE_DIRS})
+    target_include_directories(${executable} PRIVATE ${LAPACK_INCLUDE_DIRS})
   endif(LAPACK_INCLUDE_DIRS)
   if (LAPACK_COMPILE_OPTIONS)
-    target_compile_options(${executable}  PUBLIC ${LAPACK_COMPILE_OPTIONS})
+    target_compile_options(${executable} PRIVATE ${LAPACK_COMPILE_OPTIONS})
   endif(LAPACK_COMPILE_OPTIONS)
   if (LAPACK_COMPILE_DEFINITIONS)
-    target_compile_definitions(${executable}  PUBLIC ${LAPACK_COMPILE_DEFINITIONS})
+    target_compile_definitions(${executable} PRIVATE ${LAPACK_COMPILE_DEFINITIONS})
   endif(LAPACK_COMPILE_DEFINITIONS)
 else()
-  target_link_libraries(${executable} PUBLIC tiledarray)
+  target_link_libraries(${executable} PRIVATE tiledarray)
 endif()
-target_link_libraries(${executable} PUBLIC ${MADNESS_DISABLEPIE_LINKER_FLAG})
+target_link_libraries(${executable} PRIVATE ${MADNESS_DISABLEPIE_LINKER_FLAG})
 
 # Add targets
 add_dependencies(${executable} External-tiledarray)
