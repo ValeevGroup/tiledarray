@@ -11,6 +11,8 @@
 
 # this is where in the container file system Travis-CI "starts"
 export TRAVIS_BUILD_TOPDIR=/home/travis/build
+export DIRNAME=`dirname $0`
+export ABSDIRNAME=`pwd $DIRNAME`
 
 ##############################################################
 # make a script to download all prereqs and clone TiledArray repo
@@ -65,6 +67,10 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # copy travis scripts
 ADD $build /home/travis/_build/$build
+
+# for further info ...
+RUN echo "\e[92mDone! For info on how to use the image refer to $ABSDIRNAME/docker-travis.md\e[0m"
+
 END
 
 function clean_up {
