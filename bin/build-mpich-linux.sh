@@ -24,15 +24,17 @@ if [ ! -d "${INSTALL_DIR}" ]; then
     wget --no-check-certificate -q http://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
     tar -xzf mpich-${MPICH_VERSION}.tar.gz
     cd mpich-${MPICH_VERSION}
-    ./configure CC=$CC CXX=$CXX --disable-fortran --disable-romio --prefix=${INSTALL_DIR}
+    ./configure CC=$CC CXX=$CXX --disable-romio --prefix=${INSTALL_DIR}
     make -j2
     make install
     ${INSTALL_DIR}/bin/mpichversion
     ${INSTALL_DIR}/bin/mpicc -show
     ${INSTALL_DIR}/bin/mpicxx -show
+    ${INSTALL_DIR}/bin/mpifort -show
 else
     echo "MPICH installed..."
     find ${INSTALL_DIR} -name mpiexec
     find ${INSTALL_DIR} -name mpicc
     find ${INSTALL_DIR} -name mpicxx
+    find ${INSTALL_DIR} -name mpifort
 fi
