@@ -88,12 +88,13 @@ set(ta_test_src_files  ta_test.cpp
     dist_eval_contraction_eval.cpp
     expressions.cpp
     expressions_sparse.cpp
-    expressions_complex.cpp
-    expressions_btas.cpp
-    expressions_mixed.cpp
+    #expressions_complex.cpp
+    #expressions_btas.cpp
+    #expressions_mixed.cpp
     foreach.cpp
     solvers.cpp
     initializer_list.cpp
+    scalapack.cpp
 )
 
 if(ENABLE_ELEMENTAL)

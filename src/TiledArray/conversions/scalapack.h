@@ -167,6 +167,7 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
     TA_ASSERT(array.trange().rank() == 2);
 
     for (auto it = array.begin(); it != array.end(); ++it) put_tile(*it);
+    world_base_t::process_pending();
   }
 
   ScaLAPACKMatrix(const ScaLAPACKMatrix&) = default;
@@ -176,6 +177,7 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
   ScaLAPACKMatrix& operator=(ScaLAPACKMatrix&&) = default;
 
   const auto& dist() const { return bc_dist_; }
+  const auto& dims() const { return dims_; }
   const auto& local_mat() const { return local_mat_; }
   auto& local_mat() { return local_mat_; }
 
