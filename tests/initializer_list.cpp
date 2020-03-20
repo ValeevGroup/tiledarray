@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_SUITE_END()
  * - asymmetric rank3 tensor (dim[0] < dim[1] < dim[2])
  */
 
-BOOST_AUTO_TEST_SUITE(tiled_range_from_il_fxn)
+BOOST_FIXTURE_TEST_SUITE(tiled_range_from_il_fxn, ArrayFixture)
 
 BOOST_AUTO_TEST_CASE(scalar) {
   TiledRange corr{};
@@ -197,7 +197,8 @@ BOOST_AUTO_TEST_CASE(scalar) {
 BOOST_AUTO_TEST_CASE(empty_vector) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   vector_il<double> il{};
-  BOOST_CHECK_THROW(tiled_range_from_il(il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(tiled_range_from_il(il), Exception);
 #endif
 }
 
@@ -275,7 +276,7 @@ BOOST_AUTO_TEST_SUITE_END()
  * - asymmetric rank3 tensor (dim[0] < dim[1] < dim[2])
  */
 
-BOOST_AUTO_TEST_SUITE(flatten_il_fxn)
+BOOST_FIXTURE_TEST_SUITE(flatten_il_fxn, ArrayFixture)
 
 BOOST_AUTO_TEST_CASE(scalar) {
   std::array<double, 1> buffer{}, corr{3.14};
@@ -304,7 +305,8 @@ BOOST_AUTO_TEST_CASE(bad_matrix) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   std::array<double, 5> buffer{};
   matrix_il<double> il{{1, 2}, {3, 4, 5}};
-  BOOST_CHECK_THROW(flatten_il(il, buffer.begin()), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(flatten_il(il, buffer.begin()), Exception);
 #endif
 }
 
@@ -382,6 +384,65 @@ BOOST_AUTO_TEST_CASE(asymmetric_rank3) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_FIXTURE_TEST_SUITE(get_elem_from_il_fxn, ArrayFixture)
+
+BOOST_AUTO_TEST_CASE(scalar){
+  auto elem = get_elem_from_il(std::vector<std::size_t>{}, 1.23);
+  BOOST_CHECK(elem == 1.23);
+}
+
+BOOST_AUTO_TEST_CASE(vector){
+  vector_il<double> il{1, 2, 3};
+
+  for(auto i = 0; i < il.size(); ++i){
+    auto itri = il.begin() + i;
+    std::vector idx{i};
+    auto elem = get_elem_from_il(idx, il);
+    BOOST_CHECK(*itri == elem);
+  }
+
+}
+
+BOOST_AUTO_TEST_CASE(matrix){
+  matrix_il<double> il{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
+
+  for(auto i = 0; i < il.size(); ++i) {
+    auto itri = il.begin() + i;
+    for (auto j = 0; j < itri->size(); ++j) {
+      auto itrj = itri->begin() + j;
+      std::vector idx{i, j};
+      auto elem = get_elem_from_il(idx, il);
+      BOOST_CHECK(*itrj == elem);
+    }
+  }
+
+}
+
+BOOST_AUTO_TEST_CASE(tensor3){
+  tensor3_il<double> il{{{1, 2, 3},
+                         {4, 5, 6},
+                         {7, 8, 9}},
+                        {{10, 11, 12},
+                         {13, 14, 15},
+                         {16,17, 18}}};
+
+  for(auto i = 0; i < il.size(); ++i) {
+    auto itri = il.begin() + i;
+    for (auto j = 0; j < itri->size(); ++j) {
+      auto itrj = itri->begin() + j;
+      for(auto k = 0; k < itrj->size(); ++k) {
+        auto itrk = itrj->begin() + k;
+        std::vector idx{i, j, k};
+        auto elem = get_elem_from_il(idx, il);
+        BOOST_CHECK(*itrk == elem);
+      }
+    }
+  }
+
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 //------------------------------------------------------------------------------
 // array_from_il free function
 //------------------------------------------------------------------------------
@@ -412,6 +473,67 @@ BOOST_AUTO_TEST_SUITE_END()
  * - asymmetric rank 3 tensor (dim[0] < dim[1] < dim[2])
  */
 
+BOOST_FIXTURE_TEST_SUITE(tiled_array_from_il_fxn, ArrayFixture)
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
+  vector_il<T> il{1, 2, 3};
+  TiledRange tr{{0, 2, 3}};
+  auto array = array_from_il<TArray<T>>(world, tr, il);
+  using tile_type = typename TArray<T>::value_type;
+  std::vector corr{
+    tile_type(tr.make_tile_range(0), {1.0, 2.0}),
+    tile_type(tr.make_tile_range(1), {3.0})
+  };
+  for (auto i = 0; i < array.size(); ++i) {
+    if(!array.is_local(i))continue;
+    tile_type tile = array.find(i);
+    BOOST_CHECK(std::equal(tile.begin(), tile.end(), corr[i].begin()));
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(matrix, T, scalar_type_list) {
+  matrix_il<T> il{{1, 2, 3},{4,5,6},{7,8,9}};
+  TiledRange tr{{{0, 2, 3}, {0, 1, 3}}};
+  auto array = array_from_il<TArray<T>>(world, tr, il);
+  using tile_type = typename TArray<T>::value_type;
+  std::vector corr{
+      tile_type(tr.make_tile_range(0), {1.0, 4.0}),
+      tile_type(tr.make_tile_range(1), {2.0, 3.0, 5.0, 6.0}),
+      tile_type(tr.make_tile_range(2), {7.0}),
+      tile_type(tr.make_tile_range(3), {8.0, 9.0})
+  };
+  for (auto i = 0; i < array.size(); ++i) {
+    if(!array.is_local(i))continue;
+    tile_type tile = array.find(i);
+    BOOST_CHECK(std::equal(tile.begin(), tile.end(), corr[i].begin()));
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(tensor, T, scalar_type_list) {
+  tensor3_il<T> il{{{1, 2, 3},{4,5,6},{7,8,9}},
+                   {{10, 11, 12}, {13,14,15},{16,17,18}}};
+  TiledRange tr{{{0,1,2}, {0, 2, 3}, {0, 1, 3}}};
+  auto array = array_from_il<TArray<T>>(world, tr, il);
+  using tile_type = typename TArray<T>::value_type;
+  std::vector corr{
+      tile_type(tr.make_tile_range(0), {1.0, 4.0}),
+      tile_type(tr.make_tile_range(1), {2.0, 3.0, 5.0, 6.0}),
+      tile_type(tr.make_tile_range(2), {7.0}),
+      tile_type(tr.make_tile_range(3), {8.0, 9.0}),
+      tile_type(tr.make_tile_range(4), {10.0, 13.0}),
+      tile_type(tr.make_tile_range(5), {11.0, 12.0, 14.0, 15.0}),
+      tile_type(tr.make_tile_range(6), {16.0}),
+      tile_type(tr.make_tile_range(7), {17.0, 18.0})
+  };
+  for (auto i = 0; i < array.size(); ++i) {
+    if(!array.is_local(i))continue;
+    tile_type tile = array.find(i);
+    BOOST_CHECK(std::equal(tile.begin(), tile.end(), corr[i].begin()));
+  }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_FIXTURE_TEST_SUITE(array_from_il_fxn, ArrayFixture)
 
 BOOST_AUTO_TEST_CASE(scalar) {
@@ -423,7 +545,8 @@ BOOST_AUTO_TEST_CASE(scalar) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_vector, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   vector_il<T> il{};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
@@ -439,14 +562,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_matrix, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   matrix_il<T> il{{}};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(bad_matrix, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   matrix_il<T> il{{1, 2}, {3, 4, 5}};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
@@ -498,14 +623,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(short_matrix, T, scalar_type_list) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_rank3, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   tensor3_il<T> il{{{}}};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(bad_rank3, T, scalar_type_list) {
 #if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
   tensor3_il<T> il{{{1, 2}, {3, 4, 5}}};
-  BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
+  if (world.rank() == 0)  // only rank 0 does work
+    BOOST_CHECK_THROW(array_from_il<TArray<T>>(world, il), Exception);
 #endif
 }
 
@@ -575,6 +702,47 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(asymmetric_rank3, T, scalar_type_list) {
       }
     }
   }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(tensor_il_helper_class)
+
+template<std::size_t N, typename T>
+struct TensorILHelper {
+  using type = typename TensorILHelper<N - 1, std::initializer_list<T>>::type;
+};
+
+template<typename T>
+struct TensorILHelper<0, T> {
+  using type = T;
+};
+
+template<std::size_t N, typename T>
+using tensor_il = typename TensorILHelper<N, T>::type;
+
+BOOST_AUTO_TEST_CASE(scalar) {
+  constexpr bool good = std::is_same_v<tensor_il<0, double>, double>;
+  BOOST_CHECK(good);
+}
+
+BOOST_AUTO_TEST_CASE(vector) {
+  using corr = std::initializer_list<double>;
+  constexpr bool good = std::is_same_v<tensor_il<1, double>, corr>;
+  BOOST_CHECK(good);
+}
+
+BOOST_AUTO_TEST_CASE(matrix) {
+  using corr = std::initializer_list<std::initializer_list<double>>;
+  constexpr bool good = std::is_same_v<tensor_il<2, double>, corr>;
+  BOOST_CHECK(good);
+}
+
+BOOST_AUTO_TEST_CASE(tensor_3) {
+  using matrix = std::initializer_list<std::initializer_list<double>>;
+  using corr =   std::initializer_list<matrix>;
+  constexpr bool good = std::is_same_v<tensor_il<3, double>, corr>;
+  BOOST_CHECK(good);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

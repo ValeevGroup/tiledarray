@@ -76,6 +76,17 @@ BOOST_AUTO_TEST_CASE(constructors) {
   for (SpArrayN::const_iterator it = as.begin(); it != as.end(); ++it)
     BOOST_CHECK(!it->probe());
 
+  // now fill it
+  BOOST_REQUIRE_NO_THROW(as.fill(1));
+
+  // Construct a sparse array from another sparse array
+  {
+    auto op = [](auto& result, const auto& input) { result = input.clone(); };
+    BOOST_REQUIRE_NO_THROW(SpArrayN as1(as, op));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors){
   // Create a vector with an initializer list
   {
     detail::vector_il<double> il{1, 2, 3};
@@ -90,7 +101,7 @@ BOOST_AUTO_TEST_CASE(constructors) {
   }
 
   // Create a matrix with an initializer list
-  {
+ {
     detail::matrix_il<double> il{{1, 2, 3}, {4, 5, 6}};
     TArray<double> a_matrix(world, il);
     for (typename TArray<double>::value_type tile : a_matrix) {
@@ -202,6 +213,80 @@ BOOST_AUTO_TEST_CASE(constructors) {
         }
       }
     }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
+  // Create a vector with an initializer list
+  {
+    detail::vector_il<double> il{1, 2, 3};
+    TiledRange tr{{0, 1, 3}};
+    TArray<double> a_vector(world, tr, il);
+    BOOST_CHECK_EQUAL(a_vector.size(), 2);
+  }
+
+  {
+    detail::matrix_il<double> il{{1, 2, 3}, {4, 5, 6}};
+    TiledRange tr{{0, 1, 2}, {0, 1, 3}};
+    TArray<double> a_matrix(world, tr, il);
+    BOOST_CHECK_EQUAL(a_matrix.size(), 4);
+  }
+
+  {
+    detail::tensor3_il<double> il{{{1, 2, 3}, {4, 5, 6}},
+                                  {{7, 8, 9}, {10, 11, 12}}};
+    TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
+    TArray<double> a_tensor(world, tr, il);
+    BOOST_CHECK_EQUAL(a_tensor.size(), 8);
+  }
+
+  {
+    detail::tensor4_il<double> il{{{{1, 2, 3}, {4, 5, 6}},
+                                   {{7, 8, 9}, {10, 11, 12}}},
+
+                                  {{{13, 14, 15} ,{16, 17, 18}},
+                                   {{19, 20, 21}, {22, 23, 24}}}};
+    TiledRange tr{{0, 1, 2},{0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
+    TArray<double> a_tensor(world, tr, il);
+    BOOST_CHECK_EQUAL(a_tensor.size(), 16);
+  }
+
+  {
+    detail::tensor5_il<double> il{{{{{1, 2, 3}, {4, 5, 6}},
+                                    {{7, 8, 9}, {10, 11, 12}}},
+                                   {{{13, 14, 15} ,{16, 17, 18}},
+                                    {{19, 20, 21}, {22, 23, 24}}}},
+
+                                  {{{{1, 2, 3}, {4, 5, 6}},
+                                    {{7, 8, 9}, {10, 11, 12}}},
+                                   {{{13, 14, 15} ,{16, 17, 18}},
+                                    {{19, 20, 21}, {22, 23, 24}}}}};
+    TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
+    TArray<double> a_tensor(world, tr, il);
+    BOOST_CHECK_EQUAL(a_tensor.size(), 32);
+  }
+
+  {
+    detail::tensor6_il<double> il{{{{{{1, 2, 3}, {4, 5, 6}},
+                                     {{7, 8, 9}, {10, 11, 12}}},
+                                    {{{13, 14, 15} ,{16, 17, 18}},
+                                     {{19, 20, 21}, {22, 23, 24}}}},
+                                   {{{{1, 2, 3}, {4, 5, 6}},
+                                     {{7, 8, 9}, {10, 11, 12}}},
+                                    {{{13, 14, 15} ,{16, 17, 18}},
+                                     {{19, 20, 21}, {22, 23, 24}}}}},
+
+                                  {{{{{1, 2, 3}, {4, 5, 6}},
+                                     {{7, 8, 9}, {10, 11, 12}}},
+                                    {{{13, 14, 15} ,{16, 17, 18}},
+                                     {{19, 20, 21}, {22, 23, 24}}}},
+                                   {{{{1, 2, 3}, {4, 5, 6}},
+                                     {{7, 8, 9}, {10, 11, 12}}},
+                                    {{{13, 14, 15} ,{16, 17, 18}},
+                                     {{19, 20, 21}, {22, 23, 24}}}}}};
+    TiledRange tr{{0,1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
+    TArray<double> a_tensor(world, tr, il);
+    BOOST_CHECK_EQUAL(a_tensor.size(), 64);
   }
 }
 

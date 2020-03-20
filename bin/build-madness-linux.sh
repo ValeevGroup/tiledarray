@@ -55,7 +55,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     git clone https://github.com/m-a-d-n-e-s-s/madness madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
 
     cmake madness_src \
-      -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/bin/travis-lapacke.cmake" \
+      -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
       -DCMAKE_CXX_COMPILER=$CXX \
       -DCMAKE_C_COMPILER=$CC \
       -DMPI_CXX_COMPILER=$MPICXX \
@@ -76,6 +76,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DDISABLE_WORLD_GET_DEFAULT=ON \
       -DENABLE_ELEMENTAL=ON \
       -DELEMENTAL_TAG=de7b5bea1abf5f626b91582f742cf99e2e551bff \
+      -DELEMENTAL_CXXFLAGS=-Wno-deprecated-declarations \
       -DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77
 

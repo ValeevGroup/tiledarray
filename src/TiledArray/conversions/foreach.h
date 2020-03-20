@@ -311,7 +311,7 @@ inline std::
         tiles.emplace_back(index, std::move(result_tile));
         if (op_returns_void)  // if Op does not evaluate norms, use the (scaled)
                               // norms of the first arg need max reduction here,
-                              // hencr c++17, until then just assert false
+                              // hence c++17, until then just assert false
           TA_ASSERT(false &&
                     "ShapeReductionMethod::Union not supported with "
                     "void-returning Op");

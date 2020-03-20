@@ -178,7 +178,8 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
 
   const auto volume = result.range().volume();
 
-  math::inplace_vector_op(op, volume, result.data(), tensors.data()...);
+  math::inplace_vector_op(std::forward<Op>(op), volume, result.data(),
+                          tensors.data()...);
 }
 
 /// In-place tensor of tensors operations with contiguous data
@@ -245,7 +246,8 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
   TA_ASSERT(perm);
   TA_ASSERT(perm.dim() == tensor1.range().rank());
 
-  permute(input_op, output_op, result, perm, tensor1, tensors...);
+  permute(std::forward<InputOp>(input_op), std::forward<OutputOp>(output_op),
+          result, perm, tensor1, tensors...);
 }
 
 /// In-place tensor of tensors permutation operations with contiguous data
@@ -281,21 +283,23 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
   TA_ASSERT(perm);
   TA_ASSERT(perm.dim() == tensor1.range().rank());
 
-  auto wrapper_input_op = [=](
+  auto wrapper_input_op = [&input_op](
       typename T1::const_reference MADNESS_RESTRICT value1,
       typename Ts::const_reference MADNESS_RESTRICT... values) ->
       typename T1::value_type {
-    return tensor_op<TR::value_type>(input_op, value1, values...);
+    return tensor_op<TR::value_type>(std::forward<InputOp>(input_op), value1,
+                                     values...);
   };
 
   auto wrapper_output_op =
-      [=](typename T1::pointer MADNESS_RESTRICT const result_value,
-          const typename TR::value_type value) {
-        inplace_tensor_op(output_op, *result_value, value);
+      [&output_op](typename T1::pointer MADNESS_RESTRICT const result_value,
+                   const typename TR::value_type value) {
+        inplace_tensor_op(std::forward<OutputOp>(output_op), *result_value,
+                          value);
       };
 
-  permute(wrapper_input_op, wrapper_output_op, result, perm, tensor1,
-          tensors...);
+  permute(std::move(wrapper_input_op), std::move(wrapper_output_op), result,
+          perm, tensor1, tensors...);
 }
 
 /// In-place tensor operations with non-contiguous data
@@ -320,7 +324,7 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   const auto volume = result.range().volume();
 
   for (decltype(result.range().volume()) i = 0ul; i < volume; i += stride)
-    math::inplace_vector_op(op, stride,
+    math::inplace_vector_op(std::forward<Op>(op), stride,
                             result.data() + result.range().ordinal(i),
                             (tensors.data() + tensors.range().ordinal(i))...);
 }
@@ -347,8 +351,8 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   const auto volume = result.range().volume();
 
   auto inplace_tensor_range =
-      [=](typename TR::pointer MADNESS_RESTRICT const result_data,
-          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
+      [&op, stride](typename TR::pointer MADNESS_RESTRICT const result_data,
+            typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
           inplace_tensor_op(op, result_data[i], tensors_data[i]...);
       };
@@ -382,12 +386,13 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 
   const auto volume = result.range().volume();
 
-  auto wrapper_op = [=](typename TR::pointer MADNESS_RESTRICT result,
-                        typename Ts::const_reference MADNESS_RESTRICT... ts) {
-    new (result) typename TR::value_type(op(ts...));
+  auto wrapper_op = [&op](typename TR::pointer MADNESS_RESTRICT result,
+                          typename Ts::const_reference MADNESS_RESTRICT... ts) {
+    new (result) typename TR::value_type(std::forward<Op>(op)(ts...));
   };
 
-  math::vector_ptr_op(wrapper_op, volume, result.data(), tensors.data()...);
+  math::vector_ptr_op(std::move(wrapper_op), volume, result.data(),
+                      tensors.data()...);
 }
 
 /// Initialize tensor of tensors with contiguous tensor arguments
@@ -438,12 +443,13 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
   TA_ASSERT(perm);
   TA_ASSERT(perm.dim() == result.range().rank());
 
-  auto output_op = [=](typename TR::pointer MADNESS_RESTRICT result,
+  auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
                        typename TR::const_reference MADNESS_RESTRICT temp) {
     new (result) typename TR::value_type(temp);
   };
 
-  permute(op, output_op, result, perm, tensor1, tensors...);
+  permute(std::forward<Op>(op), std::move(output_op), result, perm, tensor1,
+          tensors...);
 }
 
 /// Initialize tensor of tensors with permuted tensor arguments
@@ -468,18 +474,20 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
   TA_ASSERT(perm);
   TA_ASSERT(perm.dim() == result.range().rank());
 
-  auto output_op = [=](typename TR::pointer MADNESS_RESTRICT result,
-                       typename TR::const_reference MADNESS_RESTRICT temp) {
+  auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
+                      typename TR::const_reference MADNESS_RESTRICT temp) {
     new (result) typename TR::value_type(temp);
   };
-  auto tensor_input_op = [=](
+  auto tensor_input_op = [&op](
       typename T1::const_reference MADNESS_RESTRICT value1,
       typename Ts::const_reference MADNESS_RESTRICT... values) ->
       typename TR::value_type {
-    return tensor_op<typename TR::value_type>(op, value1, values...);
+    return tensor_op<typename TR::value_type>(std::forward<Op>(op), value1,
+                                              values...);
   };
 
-  permute(tensor_input_op, output_op, result, perm, tensor1, tensors...);
+  permute(std::move(tensor_input_op), output_op, result, perm, tensor1,
+          tensors...);
 }
 
 /// Initialize tensor with one or more non-contiguous tensor arguments
@@ -504,7 +512,7 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   const auto stride = inner_size(tensor1, tensors...);
   const auto volume = tensor1.range().volume();
 
-  auto wrapper_op = [=](typename TR::pointer MADNESS_RESTRICT result_ptr,
+  auto wrapper_op = [&op](typename TR::pointer MADNESS_RESTRICT result_ptr,
                         const typename T1::value_type value1,
                         const typename Ts::value_type... values) {
     new (result_ptr) typename T1::value_type(op(value1, values...));
@@ -539,7 +547,7 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   const auto volume = tensor1.range().volume();
 
   auto inplace_tensor_range =
-      [=](typename TR::pointer MADNESS_RESTRICT const result_data,
+      [&op, stride](typename TR::pointer MADNESS_RESTRICT const result_data,
           typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
           typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
@@ -737,7 +745,7 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   const auto volume = tensor1.range().volume();
 
   auto tensor_reduce_range =
-      [=](Scalar& MADNESS_RESTRICT result,
+      [&reduce_op, &join_op, &identity, stride](Scalar& MADNESS_RESTRICT result,
           typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
           typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {

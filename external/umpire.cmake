@@ -55,7 +55,7 @@ else()
         -DCMAKE_CXX_FLAGS_MINSIZEREL=${CMAKE_CXX_FLAGS_MINSIZEREL}
         -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
         -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
-        -DBLT_CXX_STD=c++${CMAKE_CXX_STANDARD}
+        -DBLT_CXX_STD=c++${CMAKE_CUDA_STANDARD}
         -DENABLE_CUDA=ON
         -DENABLE_BENCHMARKS=OFF
         -DENABLE_OPENMP=OFF
@@ -99,7 +99,7 @@ else()
             )
 
     # Add Umpire dependency to External
-    add_dependencies(External Umpire)
+    add_dependencies(External-tiledarray Umpire)
 
     set(_UMPIRE_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 

@@ -32,8 +32,8 @@ foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform
   # Add executable
   add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
   target_link_libraries(${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-  add_dependencies(${_exec} External)
-  add_dependencies(examples ${_exec})
+  add_dependencies(${_exec} External-tiledarray)
+  add_dependencies(examples-tiledarray ${_exec})
 
 endforeach()
 
@@ -42,6 +42,6 @@ if(ENABLE_ELEMENTAL)
     # Add the ta_dense_elem executable
 #    add_executable(ta_dense_elem EXCLUDE_FROM_ALL ta_dense_elem.cpp)
 #    target_link_libraries(ta_dense_elem PRIVATE tiledarray)
-#    add_dependencies(ta_dense_elem External)
-#    add_dependencies(examples ta_dense_elem)
+#    add_dependencies(ta_dense_elem External-tiledarray)
+#    add_dependencies(examples-tiledarray ta_dense_elem)
 endif(ENABLE_ELEMENTAL)

@@ -8,7 +8,7 @@ git config --global user.name "Travis CI"
 
 # only non-cron job deploys
 RUN=1
-if [ "$TRAVIS_EVENT_TYPE" = "cron" ]; then
+if [ "$TRAVIS_EVENT_TYPE" = "cron" ] || [ "$TRAVIS_BRANCH" != "master" ]; then
   RUN=0
 fi
 if [ "$RUN" = "0" ]; then
@@ -46,6 +46,11 @@ if [ -d dox-master ]; then
   rm -rf dox-master
 fi
 mv ${BUILD_PREFIX}/TA/doc/dox/html dox-master
+# Jekyll does not allow files with "special" names, e.g. whose names start with underscore
+# must "include" such files explicitly
+# re: how file names must be formatted: see https://github.com/jekyll/jekyll/issues/1352
+echo "include:" >> _config.yml
+find dox-master -name "_*" | sed "s/dox-master\//  \- /g" >> _config.yml
 # make empty repo to ensure gh-pages contains no history
 git init
 git add *
