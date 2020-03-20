@@ -8,10 +8,12 @@ set -ev
 # always use gcc to compile MPICH, there are unexplained issues with clang (e.g. MPI_Barrier aborts)
 export CC=/usr/bin/gcc-$GCC_VERSION
 export CXX=/usr/bin/g++-$GCC_VERSION
+export FC=/usr/bin/gfortran-$GCC_VERSION
 
 # Print compiler information
 $CC --version
 $CXX --version
+$FC --version
 
 # log the CMake version (need 3+)
 cmake --version
@@ -24,7 +26,7 @@ if [ ! -d "${INSTALL_DIR}" ]; then
     wget --no-check-certificate -q http://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
     tar -xzf mpich-${MPICH_VERSION}.tar.gz
     cd mpich-${MPICH_VERSION}
-    ./configure CC=$CC CXX=$CXX --disable-romio --prefix=${INSTALL_DIR}
+    ./configure FC=$FC CC=$CC CXX=$CXX --disable-romio --prefix=${INSTALL_DIR}
     make -j2
     make install
     ${INSTALL_DIR}/bin/mpichversion
