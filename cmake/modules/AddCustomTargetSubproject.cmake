@@ -19,7 +19,7 @@ macro(add_custom_target_subproject _subproj _name)
   set(extra_args "${ARGN}")
   add_custom_target(${_name}-${_subproj} ${extra_args})
 
-  # does the newly-created target compiled by default?
+  # does the newly-created target get compiled by default?
   list(FIND extra_args "ALL" extra_args_has_all)
   if (NOT (extra_args_has_all EQUAL -1))
     set (target_built_by_default ON)

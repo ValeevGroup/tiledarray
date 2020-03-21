@@ -28,20 +28,17 @@ if(NOT DISABLE_MPI)
   enable_language(C)
     
   # Add the mpi_bandwidth executable
-  add_executable(mpi_bandwidth EXCLUDE_FROM_ALL mpi_bandwidth.c)
-  target_link_libraries(mpi_bandwidth ${MADNESS_LIBRARIES})
+  add_ta_executable(mpi_bandwidth "mpi_bandwidth.c" "${MADNESS_LIBRARIES}")
   add_dependencies(examples-tiledarray mpi_bandwidth)
 
   # Add the mpi_latency executable
-  add_executable(mpi_latency EXCLUDE_FROM_ALL mpi_latency.c)
-  target_link_libraries(mpi_latency ${MADNESS_LIBRARIES})
+  add_ta_executable(mpi_latency "mpi_latency.c" "${MADNESS_LIBRARIES}")
   add_dependencies(examples-tiledarray mpi_latency)
 
 
   if(CUDA_FOUND)
-
-    add_executable(mpi_cuda EXCLUDE_FROM_ALL mpi_cuda.cpp)
-    target_link_libraries(mpi_cuda PUBLIC ${MADNESS_LIBRARIES})
+    add_ta_executable(mpi_cuda "mpi_cuda.cpp" "${MADNESS_LIBRARIES}")
     add_dependencies(examples-tiledarray mpi_cuda)
-  endif()
+  endif(CUDA_FOUND)
+
 endif()

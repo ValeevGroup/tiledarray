@@ -351,16 +351,8 @@ else()
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${MADNESS_EXTRA_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL} ${MADNESS_EXTRA_CXX_FLAGS}")
 
-  # will always build MADNESS as static even if TA is building a shared library
-  # CMAKE_POSITION_INDEPENDENT_CODE is configured appropriately
-  if (BUILD_SHARED_LIBS)
-    list(APPEND MADNESS_CMAKE_EXTRA_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
-  elseif (DEFINED CMAKE_POSITION_INDEPENDENT_CODE)
-    list(APPEND MADNESS_CMAKE_EXTRA_ARGS -DCMAKE_POSITION_INDEPENDENT_CODE=${CMAKE_POSITION_INDEPENDENT_CODE})
-  endif ()
-
   set(MADNESS_CMAKE_ARGS       -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
-          -DBUILD_SHARED_LIBS=OFF # always build static lib, even if TA is shared
+          -DBUILD_SHARED_LIBS=ON # this will also build the static libs
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
           "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
@@ -437,7 +429,12 @@ else()
   # TiledArray only needs MADworld library compiled to be ...
   # as long as you mark dependence on it correcty its target properties
   # will be used correctly (header locations, etc.)
-  set(MADNESS_LIBRARIES ${MADNESS_world_LIBRARY})
+  if (BUILD_SHARED_LIBS)
+    set(MADNESS_WORLD_LIBRARY MADworld-static)
+  else(BUILD_SHARED_LIBS)
+    set(MADNESS_WORLD_LIBRARY MADworld)
+  endif(BUILD_SHARED_LIBS)
+  set(MADNESS_LIBRARIES ${MADNESS_WORLD_LIBRARY})
   # BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
   # these headers depend on LAPACK which is a dependency of MADlinalg, hence
   # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
@@ -452,7 +449,7 @@ else()
 
   # build MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
   add_custom_target(build-madness ALL
-      COMMAND ${CMAKE_COMMAND} --build . --target MADworld
+      COMMAND ${CMAKE_COMMAND} --build . --target ${MADNESS_WORLD_LIBRARY}
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 

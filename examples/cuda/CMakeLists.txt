@@ -28,8 +28,7 @@ if(CUDA_FOUND)
   foreach(_exec cuda_cutt cuda_task ta_dense_cuda ta_cc_abcd_cuda ta_vector_cuda ta_reduce_cuda)
 
     # Add executable
-    add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
-    target_link_libraries(${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
+    add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
     add_dependencies(${_exec} External-tiledarray)
     add_dependencies(examples-tiledarray ${_exec})
 

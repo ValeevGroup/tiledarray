@@ -25,7 +25,6 @@
 # Create the pmap executable
 
 # Add the pmap executable
-add_executable(pmap EXCLUDE_FROM_ALL pmap.cpp)
-target_link_libraries(pmap PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
+add_ta_executable(pmap "pmap.cpp" "tiledarray")
 add_dependencies(pmap External-tiledarray)
 add_dependencies(examples-tiledarray pmap)
