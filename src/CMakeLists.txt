@@ -152,6 +152,8 @@ TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h
+TiledArray/util/backtrace.h
+TiledArray/util/bug.h
 TiledArray/util/logger.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
@@ -183,7 +185,10 @@ TiledArray/tensor/tensor.cpp
 TiledArray/sparse_shape.cpp
 TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
-TiledArray/dist_array.cpp)
+TiledArray/dist_array.cpp
+TiledArray/util/backtrace.cpp
+TiledArray/util/bug.cpp
+)
 
 
 # TODO better ways to handle tiledarray cuda dependency
