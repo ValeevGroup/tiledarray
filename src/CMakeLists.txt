@@ -219,6 +219,7 @@ endif(CUDA_FOUND)
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
 if (BUILD_SHARED_LIBS)
   add_library(tiledarray-static STATIC ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+  set_property(TARGET tiledarray-static PROPERTY POSITION_INDEPENDENT_CODE ON)
   set(TILEDARRAY_LIBRARY_TARGET_SUFFIXES "none;-static")
   # shared library interface does not need to include MADworld
   set(private_link_libraries "${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
