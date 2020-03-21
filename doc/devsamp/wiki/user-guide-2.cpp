@@ -1,3 +1,4 @@
+#include <TiledArray/util/bug.h>
 #include <tiledarray.h>
 
 // Construct a Tensor<T> filled with v
@@ -49,6 +50,15 @@ void init_array(TA::TArrayD& x, const double v) {
 int main(int argc, char* argv[]) {
   // Initialize runtime
   auto& world = TA::initialize(argc, argv);
+
+  //  N.B. uncomment to launch via LLDB:
+  //  using TiledArray::Debugger;
+  //  auto debugger = std::make_shared<Debugger>("user-guide-2");
+  //  Debugger::set_default_debugger(debugger);
+  //  debugger->set_prefix(world.rank());
+  //  debugger->set_cmd("lldb_xterm");
+  //  //debugger->set_cmd("gdb_xterm");
+  //  debugger->debug("ready to run");
 
   // Construct tile boundary vector
   std::vector<std::size_t> tile_boundaries;
