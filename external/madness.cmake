@@ -59,6 +59,10 @@ endif(MADNESS_FOUND)
 
 if(MADNESS_FOUND)
 
+  if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
+    message(WARNING "To build shared libraries safely should build MADworld (and other prerequisites) as static; but MADworld-static target is not found")
+  endif(BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
+
   cmake_push_check_state()
 
   set(MADNESS_CONFIG_DIR ${MADNESS_DIR})
