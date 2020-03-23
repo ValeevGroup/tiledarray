@@ -1,5 +1,13 @@
 #! /bin/sh
 
+# control whether building shared or static libs by the parity of
+# GCC_VERSION + CLANG_VERSION + "$BUILD_TYPE" == "Debug" ? 1 : 0
+gccv=$GCC_VERSION
+clangv=$([ "X$CLANG_VERSION" = "X" ] && echo "0" || echo "$CLANG_VERSION")
+debugv=$([ "X$BUILD_TYPE" = "XDebug" ] && echo "1" || echo "0")
+sharedv=$(($gccv+$clangv+$debugv))
+export BUILD_SHARED=$(($sharedv % 2))
+
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
@@ -74,7 +82,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DMPI_CXX_COMPILER=$MPICXX \
     -DMPI_C_COMPILER=$MPICC \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
-    -DBUILD_SHARED_LIBS=ON \
+    -DBUILD_SHARED_LIBS=${BUILD_SHARED} \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
     -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3" \
@@ -103,7 +111,7 @@ else
     -DMPI_CXX_COMPILER=$MPICXX \
     -DMPI_C_COMPILER=$MPICC \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
-    -DBUILD_SHARED_LIBS=ON \
+    -DBUILD_SHARED_LIBS=${BUILD_SHARED} \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
     -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3" \
