@@ -24,6 +24,35 @@
 
 #define TILEDARRAY_PACKAGE_URL "https://github.com/ValeevGroup/tiledarray"
 
+/* detect C++ compiler id:
+- ids taken from CMake
+- macros are discussed at https://sourceforge.net/p/predef/wiki/Compilers/
+*/
+#define TILEDARRAY_CXX_COMPILER_ID_GNU 0
+#define TILEDARRAY_CXX_COMPILER_ID_Clang 1
+#define TILEDARRAY_CXX_COMPILER_ID_AppleClang 2
+#define TILEDARRAY_CXX_COMPILER_ID_XLClang 3
+#define TILEDARRAY_CXX_COMPILER_ID_Intel 4
+#if defined(__INTEL_COMPILER_BUILD_DATE)  /* macros like __ICC and even __INTEL_COMPILER can be affected by command options like -no-icc */
+# define TILEDARRAY_CXX_COMPILER_ID TILEDARRAY_CXX_COMPILER_ID_Intel
+# define TILEDARRAY_CXX_COMPILER_IS_ICC 1
+#endif
+#if defined(__clang__) && !defined(TILEDARRAY_CXX_COMPILER_IS_ICC)
+# define TILEDARRAY_CXX_COMPILER_IS_CLANG 1
+# if defined(__apple_build_version__)
+#  define TILEDARRAY_CXX_COMPILER_ID TILEDARRAY_CXX_COMPILER_ID_AppleClang
+# elif defined(__ibmxl__)
+#  define TILEDARRAY_CXX_COMPILER_ID TILEDARRAY_CXX_COMPILER_ID_XLClang
+# else
+#  define TILEDARRAY_CXX_COMPILER_ID TILEDARRAY_CXX_COMPILER_ID_Clang
+# endif
+#endif
+#if defined(__GNUG__) && !defined(TILEDARRAY_CXX_COMPILER_IS_ICC) && !defined(TILEDARRAY_CXX_COMPILER_IS_CLANG)
+# define TILEDARRAY_CXX_COMPILER_ID TILEDARRAY_CXX_COMPILER_ID_GNU
+# define TILEDARRAY_CXX_COMPILER_IS_GCC 1
+#endif
+
+
 /* Defines the default error checking behavior. none = 0, throw = 1, assert = 2, abort = 3 */
 #define TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@
 
@@ -80,15 +109,15 @@
 #endif
 
 /* Add macro TILEDARRAY_FORCE_INLINE which does as the name implies. */
-#if defined(_MSC_VER) || defined(__INTEL_COMPILER_BUILD_DATE)
+#if defined(_MSC_VER) || defined(TILEDARRAY_CXX_COMPILER_IS_ICC)
 
 #define TILEDARRAY_FORCE_INLINE __forceinline
 
-#elif defined(__clang__)
+#elif defined(TILEDARRAY_CXX_COMPILER_IS_CLANG)
 
 #define TILEDARRAY_FORCE_INLINE __attribute__((always_inline)) inline
 
-#elif defined(__GNUC__)
+#elif defined(TILEDARRAY_CXX_COMPILER_IS_GCC)
 
 #if (__GNUC__ >= 4)
 #define TILEDARRAY_FORCE_INLINE __attribute__((always_inline)) inline
@@ -124,5 +153,22 @@
 /* Enables logging of TiledArray tile ops */
 #cmakedefine TA_ENABLE_TILE_OPS_LOGGING 1
 #define TA_TILE_OPS_LOG_LEVEL 0@TA_TILE_OPS_LOG_LEVEL@
+
+/* ----------- pragma helpers ---------------*/
+#define TILEDARRAY_PRAGMA(x) _Pragma(#x)
+/* same as TILEDARRAY_PRAGMA(x), but expands x */
+#define TILEDARRAY_XPRAGMA(x) TILEDARRAY_PRAGMA(x)
+/* "concats" a and b with a space in between */
+#define TILEDARRAY_CONCAT(a,b) a b
+#if defined(TILEDARRAY_CXX_COMPILER_IS_CLANG)
+#define TILEDARRAY_PRAGMA_CLANG(x) TILEDARRAY_XPRAGMA( TILEDARRAY_CONCAT(clang,x) )
+#else
+#define TILEDARRAY_PRAGMA_CLANG(x)
+#endif
+#if defined(TILEDARRAY_CXX_COMPILER_IS_GCC)
+#define TILEDARRAY_PRAGMA_GCC(x) TILEDARRAY_XPRAGMA( TILEDARRAY_CONCAT(GCC,x) )
+#else
+#define TILEDARRAY_PRAGMA_GCC(x)
+#endif
 
 #endif // TILEDARRAY_CONFIG_H__INCLUDED
