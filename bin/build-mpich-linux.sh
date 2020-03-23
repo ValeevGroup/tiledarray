@@ -26,7 +26,7 @@ if [ ! -d "${INSTALL_DIR}" ]; then
     wget --no-check-certificate -q http://www.mpich.org/static/downloads/${MPICH_VERSION}/mpich-${MPICH_VERSION}.tar.gz
     tar -xzf mpich-${MPICH_VERSION}.tar.gz
     cd mpich-${MPICH_VERSION}
-    ./configure FC=$FC CC=$CC CXX=$CXX --disable-romio --prefix=${INSTALL_DIR}
+    ./configure FC=$FC CC=$CC CXX=$CXX --prefix=${INSTALL_DIR}
     make -j2
     make install
     ${INSTALL_DIR}/bin/mpichversion
