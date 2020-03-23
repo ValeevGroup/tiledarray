@@ -28,11 +28,11 @@
 #pragma GCC system_header
 #endif
 
-#if defined(BOOST_TEST_MAIN) && !defined(BOOST_TEST_DYN_LINK)
+#if (defined(BOOST_TEST_MAIN) || defined(BOOST_TEST_MODULE)) && !defined(BOOST_TEST_DYN_LINK)
 #include <boost/test/included/unit_test.hpp>
 #else
 #include <boost/test/unit_test.hpp>
-#endif // BOOST_TEST_MAIN
+#endif
 
 
 #if BOOST_VERSION >= 104000

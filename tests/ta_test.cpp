@@ -17,7 +17,7 @@
  *
  */
 
-#define BOOST_TEST_MAIN TiledArray Tests
+#define BOOST_TEST_MODULE TiledArray Tests
 #include <TiledArray/initialize.h>
 #include "TiledArray/external/madness.h"
 #include "unit_test_config.h"
