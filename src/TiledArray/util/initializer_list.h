@@ -177,8 +177,21 @@ auto tiled_range_from_il(T&& il, U shape = {}) {
     TA_ASSERT(length > 0);
 
     // This nesting level = (total-nestings) - (nestings-left)
-    shape[shape.size() - ranks_left] = TiledRange1(0, length);
-    return tiled_range_from_il(*il.begin(), std::move(shape));
+    const auto this_rank = shape.size() - ranks_left;
+    shape[this_rank] = TiledRange1(0, length);
+
+    // verify that each sub-IL (if a list) has same length
+    const auto first_sub_il_it = il.begin();
+    if constexpr (is_initializer_list_v<
+                      std::decay_t<decltype(*first_sub_il_it)>>) {
+      auto sub_il_it = il.begin();
+      const size_t sub_il_length = sub_il_it->size();
+      for (++sub_il_it; sub_il_it != il.end(); ++sub_il_it) {
+        TA_ASSERT(sub_il_it->size() == sub_il_length);
+      }
+    }
+
+    return tiled_range_from_il(*first_sub_il_it, std::move(shape));
   }
 }
 

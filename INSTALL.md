@@ -8,7 +8,7 @@ $ cmake -B build \
     -D CMAKE_TOOLCHAIN_FILE=../cmake/toolchains/toolchain-file-for-your-platform.cmake \
     .
 $ cmake --build build
-(optional) $ cmake --build build --target check
+(recommended, but optional): $ cmake --build build --target check
 $ cmake --build build --target install
 ```
 
@@ -30,7 +30,7 @@ $ cmake --build build --target install
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
 - [BTAS](http://github.com/BTAS/BTAS), tag 608217edfa622c1b6bc71e119bd04bb928b25f81 (will be downloaded automatically, if missing)
 - BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag e8d13860ea853044cda0dc4208f29cf705000fed .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag c6ec0e762374f9ae83636954c684dd33252ce993 .
   Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
@@ -39,7 +39,7 @@ $ cmake --build build --target install
   MADNESS compilation instructions.
 
   Compiling MADNESS requires the following prerequisites:
-  - An implementation of Message Passing Interface version 2 or 3, with suppport
+  - An implementation of Message Passing Interface version 2 or 3, with support
     for `MPI_THREAD_MULTIPLE`.
   - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
   - (optional) [Elemental](http://libelemental.org/), a distributed-memory linear algebra library (tag de7b5bea1abf5f626b91582f742cf99e2e551bff)
@@ -166,7 +166,7 @@ Additional CMake variables are given below.
 * `CMAKE_EXE_LINKER_FLAGS` -- The linker flags
 * `CMAKE_BUILD_TYPE` -- Optimization/debug build type options include
   `Debug` (optimization off, debugging symbols and assersions on), `Release` (optimization on, debugging symbols and assertions off), `RelWithDebInfo` (optimization on, debugging symbols and assertions on) and `MinSizeRel` (same as `Release` but optimized for executable size). The default is empty build type. It is recommended that you set the build type explicitly.
-* `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported by the platform]. With `BUILD_SHARED_LIBS=ON` only uniprocess runs will be possible due to the limitations of the MADWorld runtime.
+* `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported by the platform]. With `BUILD_SHARED_LIBS=ON` special precautions must be taken for TiledArray and libraries using it to work properly on platforms with address randomization enabled.
 * `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `14` (default), `17`, and `20`.
 
 -D CMAKE_BUILD_TYPE=(Release|Debug|RelWithDebInfo)

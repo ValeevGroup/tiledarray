@@ -59,10 +59,14 @@ endif(MADNESS_FOUND)
 
 if(MADNESS_FOUND)
 
+  if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
+    message(WARNING "To build shared libraries safely should build MADworld (and other prerequisites) as static; but MADworld-static target is not found")
+  endif(BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
+
   cmake_push_check_state()
 
   set(MADNESS_CONFIG_DIR ${MADNESS_DIR})
-  
+
   list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INCLUDE_DIRS} ${TiledArray_CONFIG_INCLUDE_DIRS})
   list(APPEND CMAKE_REQUIRED_LIBRARIES "${MADNESS_LINKER_FLAGS}" ${MADNESS_LIBRARIES}
       "${CMAKE_EXE_LINKER_FLAGS}" ${TiledArray_CONFIG_LIBRARIES})
@@ -429,7 +433,12 @@ else()
   # TiledArray only needs MADworld library compiled to be ...
   # as long as you mark dependence on it correcty its target properties
   # will be used correctly (header locations, etc.)
-  set(MADNESS_LIBRARIES ${MADNESS_world_LIBRARY})
+  if (BUILD_SHARED_LIBS)
+    set(MADNESS_WORLD_LIBRARY MADworld-static)
+  else(BUILD_SHARED_LIBS)
+    set(MADNESS_WORLD_LIBRARY MADworld)
+  endif(BUILD_SHARED_LIBS)
+  set(MADNESS_LIBRARIES ${MADNESS_WORLD_LIBRARY})
   # BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
   # these headers depend on LAPACK which is a dependency of MADlinalg, hence
   # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
@@ -444,7 +453,7 @@ else()
 
   # build MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
   add_custom_target(build-madness ALL
-      COMMAND ${CMAKE_COMMAND} --build . --target MADworld
+      COMMAND ${CMAKE_COMMAND} --build . --target ${MADNESS_WORLD_LIBRARY}
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
       COMMENT Building 'madness')
 

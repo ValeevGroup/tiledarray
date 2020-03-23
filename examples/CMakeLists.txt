@@ -24,7 +24,7 @@
  
 # if target examples-tiledarray does not exist yet, create it
 if (NOT TARGET examples-tiledarray)
-  add_custom_target_subproject(tiledarray examples EXCLUDE_FROM_ALL)
+  add_custom_target_subproject(tiledarray examples)
 endif()
 
 # Add Subdirectories

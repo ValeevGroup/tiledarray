@@ -152,6 +152,8 @@ TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h
+TiledArray/util/backtrace.h
+TiledArray/util/bug.h
 TiledArray/util/logger.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
@@ -183,7 +185,10 @@ TiledArray/tensor/tensor.cpp
 TiledArray/sparse_shape.cpp
 TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
-TiledArray/dist_array.cpp)
+TiledArray/dist_array.cpp
+TiledArray/util/backtrace.cpp
+TiledArray/util/bug.cpp
+)
 
 
 # TODO better ways to handle tiledarray cuda dependency
@@ -200,65 +205,103 @@ if(CUDA_FOUND)
           PROPERTIES
           LANGUAGE CUDA)
 
-  # the list of libraries on which TiledArray depends on
-  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  # the list of libraries on which TiledArray build depends on
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 else(CUDA_FOUND)
 
-  # the list of libraries on which TiledArray depends on
-  set(TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  # the list of libraries on which TiledArray build depends on
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 endif(CUDA_FOUND)
 
-# Create the TiledArray library
+# Create the TiledArray librar{y,ies}
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+if (BUILD_SHARED_LIBS)
+  add_library(tiledarray-static STATIC ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
+  set_property(TARGET tiledarray-static PROPERTY POSITION_INDEPENDENT_CODE ON)
+  set(TILEDARRAY_LIBRARY_TARGET_SUFFIXES "none;-static")
+  # shared library interface does not need to include MADworld
+  set(private_link_libraries "${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
+  list(REMOVE_ITEM private_link_libraries MADworld)
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES "${private_link_libraries}" CACHE STRING "List of libraries on which TiledArray depends on" FORCE)
+else()
+  set(TILEDARRAY_LIBRARY_TARGET_SUFFIXES "none")
+endif()
 
-target_include_directories(tiledarray INTERFACE
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-  $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
-)
+set(targetnames)
+foreach (suffix ${TILEDARRAY_LIBRARY_TARGET_SUFFIXES})
+  if (suffix STREQUAL none)
+    set(suffix)
+  endif ()
+  set(targetname tiledarray${suffix})
+  list(APPEND targetnames ${targetname})
 
-target_link_libraries(tiledarray PUBLIC ${TILEDARRAY_DEPENDENCIES})
-if(TARGET build-madness)
-  add_dependencies(tiledarray build-madness)
-endif()
-if(TARGET eigen3)
-  add_dependencies(tiledarray eigen3)
-endif()
-if(TARGET btas)
-  add_dependencies(tiledarray btas)
-endif()
-if (TARGET cutt)
-  add_dependencies(tiledarray cutt)
-endif()
-if (TARGET Umpire)
-  add_dependencies(tiledarray Umpire)
-endif()
-# append current CMAKE_CXX_FLAGS
-string (REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
-target_compile_options(tiledarray PUBLIC ${CMAKE_CXX_FLAG_LIST})
-target_compile_features(tiledarray PUBLIC "cxx_std_${CMAKE_CXX_STANDARD}")
-target_include_directories(tiledarray PUBLIC ${Boost_INCLUDE_DIRS})
+  target_include_directories(${targetname} INTERFACE
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+      $<INSTALL_INTERFACE:${TILEDARRAY_INSTALL_INCLUDEDIR}>
+      )
 
-if (CUDA_FOUND)
-  target_include_directories(tiledarray PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-  # this will eventually work, but does not as of 3.17.0-rc2
-  #target_compile_features(tiledarray PUBLIC "cuda_std_${CMAKE_CUDA_STANDARD}")
-endif(CUDA_FOUND)
+  target_link_libraries(${targetname} PUBLIC ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
 
-if (LAPACK_INCLUDE_DIRS)
-  target_include_directories(tiledarray PUBLIC ${LAPACK_INCLUDE_DIRS})
-endif(LAPACK_INCLUDE_DIRS)
-if (LAPACK_COMPILE_OPTIONS)
-  target_compile_options(tiledarray PUBLIC ${LAPACK_COMPILE_OPTIONS})
-endif(LAPACK_COMPILE_OPTIONS)
-if (LAPACK_COMPILE_DEFINITIONS)
-  target_compile_definitions(tiledarray PUBLIC ${LAPACK_COMPILE_DEFINITIONS})
-endif(LAPACK_COMPILE_DEFINITIONS)
+  if (targetname STREQUAL tiledarray AND BUILD_SHARED_LIBS)
+    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+      target_link_libraries(tiledarray PRIVATE -Wl,--whole-archive MADworld-static -Wl,--no-whole-archive)
+    elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
+      target_link_libraries(tiledarray PRIVATE -Wl,-all_load MADworld-static -Wl,-noall_load)
+    else ()
+      target_link_libraries(tiledarray PRIVATE MADworld-static)
+    endif ()
+    # propagate dependencies of MADworld-static to the interface
+    include(CloneTarget)
+    clone_imported_target(MADworld-interface MADworld-static)
+    target_link_libraries(tiledarray INTERFACE MADworld-interface)
+  elseif (targetname STREQUAL tiledarray-static)
+    target_link_libraries(${targetname} PUBLIC MADworld-static)
+  endif ()
+
+  if (TARGET build-madness)
+    add_dependencies(${targetname} build-madness)
+  endif ()
+  if (TARGET eigen3)
+    add_dependencies(${targetname} eigen3)
+  endif ()
+  if (TARGET btas)
+    add_dependencies(${targetname} btas)
+  endif ()
+  if (TARGET cutt)
+    add_dependencies(${targetname} cutt)
+  endif ()
+  if (TARGET Umpire)
+    add_dependencies(${targetname} Umpire)
+  endif ()
+  # append current CMAKE_CXX_FLAGS
+  string(REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
+  target_compile_options(${targetname} PUBLIC ${CMAKE_CXX_FLAG_LIST})
+  target_compile_features(${targetname} PUBLIC "cxx_std_${CMAKE_CXX_STANDARD}")
+  target_include_directories(${targetname} PUBLIC ${Boost_INCLUDE_DIRS})
+
+  if (CUDA_FOUND)
+    target_include_directories(${targetname} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+    # this will eventually work, but does not as of 3.17.0-rc2
+    #target_compile_features(tiledarray PUBLIC "cuda_std_${CMAKE_CUDA_STANDARD}")
+  endif (CUDA_FOUND)
+
+  if (LAPACK_INCLUDE_DIRS)
+    target_include_directories(${targetname} PUBLIC ${LAPACK_INCLUDE_DIRS})
+  endif (LAPACK_INCLUDE_DIRS)
+  if (LAPACK_COMPILE_OPTIONS)
+    target_compile_options(${targetname} PUBLIC ${LAPACK_COMPILE_OPTIONS})
+  endif (LAPACK_COMPILE_OPTIONS)
+  if (LAPACK_COMPILE_DEFINITIONS)
+    target_compile_definitions(${targetname} PUBLIC ${LAPACK_COMPILE_DEFINITIONS})
+  endif (LAPACK_COMPILE_DEFINITIONS)
+
+endforeach (suffix ${TILEDARRAY_LIBRARY_TARGET_SUFFIXES})
 
 # Add library to the list of installed components
-install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
+install(TARGETS ${targetnames} EXPORT tiledarray COMPONENT tiledarray
     LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
 # Install header files

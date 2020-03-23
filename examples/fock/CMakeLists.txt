@@ -25,7 +25,6 @@
 # Create the ta_fock_build executable
 
 # Add the ta_fock_build executable
-add_executable(ta_k_build EXCLUDE_FROM_ALL ta_k_build.cpp)
-target_link_libraries(ta_k_build PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
+add_ta_executable(ta_k_build "ta_k_build.cpp" "tiledarray")
 add_dependencies(ta_k_build External-tiledarray)
 add_dependencies(examples-tiledarray ta_k_build)
