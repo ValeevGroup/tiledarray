@@ -61,7 +61,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DMPI_CXX_COMPILER=$MPICXX \
       -DMPI_C_COMPILER=$MPICC \
       -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
-      -DBUILD_SHARED_LIBS=ON \
+      -DBUILD_SHARED_LIBS=${BUILD_SHARED} \
       -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
       -DENABLE_MPI=ON \
