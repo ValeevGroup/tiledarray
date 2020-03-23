@@ -104,37 +104,35 @@ endif()
 if(CUDA_FOUND)
     list(APPEND ta_test_src_files cutt.cpp expressions_cuda_um.cpp tensor_um.cpp)
 endif()
-add_executable(${executable} EXCLUDE_FROM_ALL ${ta_test_src_files})
 
+# if tiledarray library was compiled without exceptions, use TA header-only (see below)
+if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND)
+  add_ta_executable(${executable} "${ta_test_src_files}" "MADworld;${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
+  target_compile_definitions(${executable}-lib PRIVATE TILEDARRAY_HEADER_ONLY=1)
+  if (LAPACK_INCLUDE_DIRS)
+    target_include_directories(${executable}-lib PRIVATE ${LAPACK_INCLUDE_DIRS})
+  endif(LAPACK_INCLUDE_DIRS)
+  if (LAPACK_COMPILE_OPTIONS)
+    target_compile_options(${executable}-lib PRIVATE ${LAPACK_COMPILE_OPTIONS})
+  endif(LAPACK_COMPILE_OPTIONS)
+  if (LAPACK_COMPILE_DEFINITIONS)
+    target_compile_definitions(${executable}-lib PRIVATE ${LAPACK_COMPILE_DEFINITIONS})
+  endif(LAPACK_COMPILE_DEFINITIONS)
+else()
+  add_ta_executable(${executable} "${ta_test_src_files}" "tiledarray")
+endif()
 # Add include directories and compiler flags for ta_test
-target_include_directories(${executable} PRIVATE
+target_include_directories(${executable}-lib PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
+    ${PROJECT_BINARY_DIR}/tests
     ${Boost_INCLUDE_DIRS}
     )
 # unit tests
 # 1. should disable error messages
 # 2. must emit exceptions in asserts since some tests check for exceptions
-target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
+target_compile_definitions(${executable}-lib PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
     TA_EXCEPTION_ERROR=1 MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
-# if tiledarray library was compiled without exceptions, use TA header-only
-if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND)
-  target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
-  #
-  target_link_libraries(${executable} PUBLIC ${TILEDARRAY_DEPENDENCIES})
-  if (LAPACK_INCLUDE_DIRS)
-    target_include_directories(${executable}  PUBLIC ${LAPACK_INCLUDE_DIRS})
-  endif(LAPACK_INCLUDE_DIRS)
-  if (LAPACK_COMPILE_OPTIONS)
-    target_compile_options(${executable}  PUBLIC ${LAPACK_COMPILE_OPTIONS})
-  endif(LAPACK_COMPILE_OPTIONS)
-  if (LAPACK_COMPILE_DEFINITIONS)
-    target_compile_definitions(${executable}  PUBLIC ${LAPACK_COMPILE_DEFINITIONS})
-  endif(LAPACK_COMPILE_DEFINITIONS)
-else()
-  target_link_libraries(${executable} PUBLIC tiledarray)
-endif()
-target_link_libraries(${executable} PUBLIC ${MADNESS_DISABLEPIE_LINKER_FLAG})
 
 # Add targets
 add_dependencies(${executable} External-tiledarray)

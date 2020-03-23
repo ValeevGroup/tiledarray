@@ -23,20 +23,22 @@ macro (detect_MADNESS_configuration)
           CACHE STRING "Sanitized list of MADNESS include directories usable in build tree")
 
   list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INTERNAL_INCLUDE_DIRS})
-  CHECK_CXX_SOURCE_COMPILES(
-          "
-  #include <madness/config.h>
-  #ifndef HAVE_INTEL_MKL
-  # error \"MADNESS does not have MKL\"
-  #endif
-  int main(int argc, char** argv) {
-    return 0;
-  }
-  "  MADNESS_HAS_MKL)
+  if (NOT DEFINED MADNESS_HAS_MKL)
+    CHECK_CXX_SOURCE_COMPILES(
+            "
+    #include <madness/config.h>
+    #ifndef HAVE_INTEL_MKL
+    # error \"MADNESS does not have MKL\"
+    #endif
+    int main(int argc, char** argv) {
+      return 0;
+    }
+    "  MADNESS_HAS_MKL)
+  endif()
 
   if (MADNESS_HAS_MKL)
     unset(MADNESS_HAS_MKL)
-    set(MADNESS_HAS_MKL ON CACHE BOOL "MADNESS detected usable Intel MKL")
+    set(MADNESS_HAS_MKL ON CACHE BOOL "MADNESS detected usable Intel MKL" FORCE)
   endif()
 
   unset(CMAKE_REQUIRED_QUIET)

@@ -68,6 +68,7 @@ include(AppendFlags)
 include(RedefaultableOption)
 include(DetectMADNESSConfig)
 include(AddCustomTargetSubproject)
+include(AddTAExecutable)
 
 # Load extra CMake features ====================================================
 

@@ -177,8 +177,21 @@ auto tiled_range_from_il(T&& il, U shape = {}) {
     TA_ASSERT(length > 0);
 
     // This nesting level = (total-nestings) - (nestings-left)
-    shape[shape.size() - ranks_left] = TiledRange1(0, length);
-    return tiled_range_from_il(*il.begin(), std::move(shape));
+    const auto this_rank = shape.size() - ranks_left;
+    shape[this_rank] = TiledRange1(0, length);
+
+    // verify that each sub-IL (if a list) has same length
+    const auto first_sub_il_it = il.begin();
+    if constexpr (is_initializer_list_v<
+                      std::decay_t<decltype(*first_sub_il_it)>>) {
+      auto sub_il_it = il.begin();
+      const size_t sub_il_length = sub_il_it->size();
+      for (++sub_il_it; sub_il_it != il.end(); ++sub_il_it) {
+        TA_ASSERT(sub_il_it->size() == sub_il_length);
+      }
+    }
+
+    return tiled_range_from_il(*first_sub_il_it, std::move(shape));
   }
 }
 
@@ -278,14 +291,13 @@ auto flatten_il(T&& il, OutputItr out_itr) {
  * @throws TiledArray::Exception if the offset along a mode is greater than the
  *                               length of the mode. Strong throw guarantee.
  */
-template<typename T, typename U>
-auto get_elem_from_il(T idx, U&&il, std::size_t depth = 0){
+template <typename T, typename U>
+auto get_elem_from_il(T idx, U&& il, std::size_t depth = 0) {
   constexpr auto nestings_left = initializer_list_rank_v<std::decay_t<U>>;
   TA_ASSERT(idx.size() == nestings_left + depth);
-  if constexpr(nestings_left == 0){ // Handle scalars
+  if constexpr (nestings_left == 0) {  // Handle scalars
     return il;
-  }
-  else {
+  } else {
     // Make sure the current nesting is long enough
     TA_ASSERT(il.size() > idx[depth]);
     auto itr = il.begin() + idx[depth];
@@ -334,20 +346,19 @@ auto get_elem_from_il(T idx, U&&il, std::size_t depth = 0){
  *                              If an exception is raised @p world, @p trange,
  *                              and @p il are unchanged.
  */
-template<typename ArrayType, typename T>
+template <typename ArrayType, typename T>
 auto array_from_il(World& world, const TiledRange& trange, T&& il) {
-  using element_type = typename ArrayType::element_type;
-  using tile_type    = typename ArrayType::value_type;
+  using tile_type = typename ArrayType::value_type;
 
   static_assert(initializer_list_rank_v<std::decay_t<T>>> 0,
                 "value initializing rank 0 tensors is not supported");
 
   ArrayType rv(world, trange);
 
-  for (auto itr = rv.begin(); itr != rv.end(); ++itr){
+  for (auto itr = rv.begin(); itr != rv.end(); ++itr) {
     auto range = rv.trange().make_tile_range(itr.index());
     tile_type tile(range);
-    for(auto idx : range){
+    for (auto idx : range) {
       tile(idx) = get_elem_from_il(idx, il);
     }
     *itr = tile;
@@ -387,10 +398,11 @@ auto array_from_il(World& world, const TiledRange& trange, T&& il) {
  *                              If an exception is raised @p world and @p il are
  *                              unchanged.
  */
-template<typename ArrayType, typename T>
+template <typename ArrayType, typename T>
 auto array_from_il(World& world, T&& il) {
   auto trange = tiled_range_from_il(il);
-  return array_from_il<ArrayType, T>(world, std::move(trange), std::forward<T>(il));
+  return array_from_il<ArrayType, T>(world, std::move(trange),
+                                     std::forward<T>(il));
 }
 
 namespace detail {

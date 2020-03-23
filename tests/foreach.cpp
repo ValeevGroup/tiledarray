@@ -25,10 +25,18 @@ using namespace TiledArray;
 
 struct ForeachFixture : public TiledRangeFixture {
   ForeachFixture()
-      : a(*GlobalFixture::world, tr),
-        b(*GlobalFixture::world, tr),
-        c(*GlobalFixture::world, tr, make_shape(tr, 0.50, 42)),
-        d(*GlobalFixture::world, tr, make_shape(tr, 0.50, 16)) {
+      : a(*GlobalFixture::world, tr,
+          std::make_shared<detail::HashPmap>(*GlobalFixture::world,
+                                             tr.tiles_range().volume(), 1)),
+        b(*GlobalFixture::world, tr,
+          std::make_shared<detail::HashPmap>(*GlobalFixture::world,
+                                             tr.tiles_range().volume(), 2)),
+        c(*GlobalFixture::world, tr, make_shape(tr, 0.50, 42),
+          std::make_shared<detail::HashPmap>(*GlobalFixture::world,
+                                             tr.tiles_range().volume(), 3)),
+        d(*GlobalFixture::world, tr, make_shape(tr, 0.50, 16),
+          std::make_shared<detail::HashPmap>(*GlobalFixture::world,
+                                             tr.tiles_range().volume(), 4)) {
     random_fill(a);
     random_fill(b);
     random_fill(c);

@@ -27,4 +27,5 @@ These notes assume that Docker is installed on your machine and that you start a
   * Create a root password: `passwd` and follow prompts. No need to be fancy: security is not a concern here, but `passwd` will not accept an empty password. N.B. This is easier than setting up a pubkey login, so don't bother with that.
   * Edit `/etc/ssh/sshd_config` and allow root to log in by ensuring that `PermitRootLogin` and `PasswordAuthentication` are set to `yes`.
   * Start ssh server: `/etc/init.d/ssh start`
-  * You should be able to log in from an xterm on the host side: `ssh -X -p 2222 root@localhost`
+  * (optional) To launch gdb in xterm windows: `apt-get update && apt-get install install`
+  * You should be able to log in from an xterm on the host side: `ssh -Y -p 2222 root@localhost`
