@@ -130,7 +130,7 @@ make install
 make -j1 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
 # to find El dep shared libs (e.g. libpmrr)
-export LD_LIBRARY_PATH=${INSTALL_PREFIX}/madness/lib:${LD_LIBRARY_PATH}
+export LD_LIBRARY_PATH=${INSTALL_PREFIX}/TA/lib:${INSTALL_PREFIX}/madness/lib:${LD_LIBRARY_PATH}
 make check
 
 # Build examples
