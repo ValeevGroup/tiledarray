@@ -43,6 +43,10 @@ else()
   add_subdirectory( ${blacspp_SOURCE_DIR} ${blacspp_BINARY_DIR} )
   add_subdirectory( ${scalapackpp_SOURCE_DIR} ${scalapackpp_BINARY_DIR} )
 
+  install( TARGETS blacspp scalapackpp EXPORT tiledarray COMPONENT tiledarray )
+  # Add these dependencies to External
+  add_dependencies(External-tiledarray scalapackpp blacspp)
+
 endif()
 
 add_library( TiledArray_SCALAPACK INTERFACE )
@@ -71,9 +75,6 @@ target_link_libraries( TiledArray_SCALAPACK INTERFACE scalapackpp::scalapackpp b
 #        INTERFACE_COMPILE_DEFINITIONS "TA_ENABLE_SCALAPACK"
 #        )
 
-install( TARGETS TiledArray_SCALAPACK blacspp scalapackpp EXPORT tiledarray COMPONENT tiledarray )
+install( TARGETS TiledArray_SCALAPACK EXPORT tiledarray COMPONENT tiledarray )
 
 set( TILEDARRAY_HAS_SCALAPACK 1 )
-
-# Add BTAS dependency to External
-add_dependencies(External-tiledarray scalapackpp blacspp)
