@@ -30,8 +30,7 @@ foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform
               ta_cc_abcd)
 
   # Add executable
-  add_executable(${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
-  target_link_libraries(${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
+  add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
   add_dependencies(${_exec} External-tiledarray)
   add_dependencies(examples-tiledarray ${_exec})
 

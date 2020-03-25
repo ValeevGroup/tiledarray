@@ -28,7 +28,15 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/external/madness.h>
+
+#include <madness/config.h>
+
+TILEDARRAY_PRAGMA_GCC(diagnostic push)
+TILEDARRAY_PRAGMA_GCC(diagnostic ignored "-Wparentheses")
+
 #include <boost/iterator/iterator_facade.hpp>
+
+TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
 namespace TiledArray {
 

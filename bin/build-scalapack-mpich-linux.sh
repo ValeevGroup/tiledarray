@@ -3,7 +3,7 @@
 # Exit on error
 set -ev
 
-# always use gcc to compile MPICH, there are unexplained issues with clang (e.g. MPI_Barrier aborts)
+# always use gcc, just like mpich ... ?
 export CC=/usr/bin/gcc-$GCC_VERSION
 export CXX=/usr/bin/g++-$GCC_VERSION
 export FC=/usr/bin/gfortran-$GCC_VERSION
@@ -25,8 +25,6 @@ if [ ! -d "${INSTALL_DIR}" ]; then
     ${INSTALL_PREFIX}/mpich/bin/mpicc -show
     ${INSTALL_PREFIX}/mpich/bin/mpicxx -show
     ${INSTALL_PREFIX}/mpich/bin/mpif90 -show
-    
-
 
     cd ${BUILD_PREFIX}
     git clone https://github.com/Reference-ScaLAPACK/scalapack.git
@@ -39,11 +37,11 @@ if [ ! -d "${INSTALL_DIR}" ]; then
       -DMPI_Fortran_COMPILER=${INSTALL_PREFIX}/mpich/bin/mpif90 \
       -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
       -DCMAKE_PREFIX_PATH=${INSTALL_DIR} \
-      -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
+      -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
+      -DBUILD_SHARED_LIBS=${BUILD_SHARED}
 
-
-    make -j 2 -C build_scalapack
-    make -C build_scalapack install
+    cmake --build build_scalapack -j2
+    cmake --build build_scalapack --target install
     find ${INSTALL_DIR} -name libscalapack.so
 else
     echo "ScaLAPACK installed..."
