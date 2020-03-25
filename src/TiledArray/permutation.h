@@ -26,6 +26,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/util/vector.h>
 #include <TiledArray/utility.h>
 
 namespace TiledArray {

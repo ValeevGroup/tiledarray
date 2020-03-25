@@ -37,7 +37,6 @@ TiledArray/external/elemental.h
 TiledArray/error.h
 TiledArray/external/madness.h
 TiledArray/initialize.h
-        TiledArray/util/initializer_list.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/proc_grid.h
@@ -154,9 +153,11 @@ TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
+TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
+TiledArray/util/vector.h
 )
 
 if(CUDA_FOUND)

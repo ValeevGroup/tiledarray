@@ -23,7 +23,7 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/size_array.h>
-#include <TiledArray/util/container.h>
+#include <TiledArray/util/vector.h>
 
 namespace TiledArray {
 

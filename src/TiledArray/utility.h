@@ -34,7 +34,6 @@
 #include <vector>
 
 #include <TiledArray/type_traits.h>
-#include <TiledArray/util/container.h>
 
 namespace TiledArray {
 namespace detail {
@@ -93,31 +92,5 @@ inline bool ignore_tile_position() {
 }
 
 }  // namespace TiledArray
-
-namespace std {
-
-/// Vector output stream operator
-template <typename T, typename A>
-inline std::ostream& operator<<(std::ostream& os,
-                                const std::vector<T, A>& vec) {
-  TiledArray::detail::print_array(os, vec);
-  return os;
-}
-
-}  // namespace std
-
-namespace boost {
-namespace container {
-
-/// Vector output stream operator
-template <typename T, std::size_t N>
-inline std::ostream& operator<<(
-    std::ostream& os, const boost::container::small_vector<T, N>& vec) {
-  TiledArray::detail::print_array(os, vec);
-  return os;
-}
-
-}  // namespace container
-}  // namespace boost
 
 #endif  // TILEDARRAY_UTILITY_H__INCLUDED
