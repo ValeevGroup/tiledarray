@@ -74,7 +74,10 @@ BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
   std::cout << trange << std::endl;
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, ScaLAPACKFixture::make_ta_reference);
+      *GlobalFixture::world, trange, 
+      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return ScaLAPACKFixture::make_ta_reference(t, range);
+      });
 
   GlobalFixture::world->gop.fence();
   // auto test_ta = ref_matrix.tensor_from_matrix( trange );
