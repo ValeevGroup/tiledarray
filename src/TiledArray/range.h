@@ -23,6 +23,7 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/size_array.h>
+#include <TiledArray/util/container.h>
 
 namespace TiledArray {
 
@@ -39,9 +40,9 @@ namespace TiledArray {
 /// TODO add Range support for negative indices
 class Range {
  public:
-  typedef Range Range_;                  ///< This object type
-  typedef std::size_t size_type;         ///< Size type
-  typedef std::vector<size_type> index;  ///< Coordinate index type
+  typedef Range Range_;                         ///< This object type
+  typedef std::size_t size_type;                ///< Size type
+  typedef container::svector<size_type> index;  ///< Coordinate index type
   typedef index index_type;  ///< Coordinate index type, to conform Tensor
                              ///< Working Group spec
   typedef detail::SizeArray<const size_type> size_array;  ///< Size array type
