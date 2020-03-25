@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(non_const_view) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(const_view) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -171,7 +171,7 @@ BOOST_AUTO_TEST_CASE(assign_tensor_to_view) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE(copy_view_to_tensor) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE(assign_view_to_tensor) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -264,7 +264,7 @@ BOOST_AUTO_TEST_CASE(add_tensor_view) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -296,7 +296,7 @@ BOOST_AUTO_TEST_CASE(add_tensor_to_view) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -328,7 +328,7 @@ BOOST_AUTO_TEST_CASE(scale_view) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -357,7 +357,7 @@ BOOST_AUTO_TEST_CASE(scale_to_view) {
     const auto lower = *lower_it;
     for (auto upper_it = t.range().begin(); upper_it != t.range().end();
          ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),

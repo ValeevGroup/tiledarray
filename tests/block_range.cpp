@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
   for (auto lower_it = r0.begin(); lower_it != r0.end(); ++lower_it) {
     const auto lower = *lower_it;
     for (auto upper_it = r0.begin(); upper_it != r0.end(); ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(block) {
   for (auto lower_it = r.begin(); lower_it != r.end(); ++lower_it) {
     const auto lower = *lower_it;
     for (auto upper_it = r.begin(); upper_it != r.end(); ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (unsigned int i = 0u; i < r.rank(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),

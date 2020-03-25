@@ -34,6 +34,7 @@
 #include <vector>
 
 #include <TiledArray/type_traits.h>
+#include <TiledArray/util/container.h>
 
 namespace TiledArray {
 namespace detail {
@@ -61,6 +62,7 @@ inline void print_array(std::ostream& out, const A& a, const std::size_t n) {
 /// \param a The array-like container to be printed
 template <typename A>
 inline void print_array(std::ostream& out, const A& a) {
+  using std::size;
   print_array(out, a, size(a));
 }
 
@@ -103,5 +105,19 @@ inline std::ostream& operator<<(std::ostream& os,
 }
 
 }  // namespace std
+
+namespace boost {
+namespace container {
+
+/// Vector output stream operator
+template <typename T, std::size_t N>
+inline std::ostream& operator<<(
+    std::ostream& os, const boost::container::small_vector<T, N>& vec) {
+  TiledArray::detail::print_array(os, vec);
+  return os;
+}
+
+}  // namespace container
+}  // namespace boost
 
 #endif  // TILEDARRAY_UTILITY_H__INCLUDED
