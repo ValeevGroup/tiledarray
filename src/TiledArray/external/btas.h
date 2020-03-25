@@ -702,28 +702,6 @@ struct Cast<TiledArray::Tensor<T, Allocator>,
 namespace madness {
 namespace archive {
 
-#ifdef BTAS_HAS_BOOST_CONTAINER
-template <class Archive, typename T, std::size_t N, typename A>
-struct ArchiveLoadImpl<Archive, boost::container::small_vector<T, N, A>> {
-  static inline void load(const Archive& ar,
-                          boost::container::small_vector<T, N, A>& x) {
-    std::size_t n{};
-    ar& n;
-    x.resize(n);
-    for (auto& xi : x) ar& xi;
-  }
-};
-
-template <class Archive, typename T, std::size_t N, typename A>
-struct ArchiveStoreImpl<Archive, boost::container::small_vector<T, N, A>> {
-  static inline void store(const Archive& ar,
-                           const boost::container::small_vector<T, N, A>& x) {
-    ar& x.size();
-    for (const auto& xi : x) ar& xi;
-  }
-};
-#endif
-
 template <class Archive, typename T>
 struct ArchiveLoadImpl<Archive, btas::varray<T>> {
   static inline void load(const Archive& ar, btas::varray<T>& x) {

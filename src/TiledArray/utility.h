@@ -61,6 +61,7 @@ inline void print_array(std::ostream& out, const A& a, const std::size_t n) {
 /// \param a The array-like container to be printed
 template <typename A>
 inline void print_array(std::ostream& out, const A& a) {
+  using std::size;
   print_array(out, a, size(a));
 }
 
@@ -91,17 +92,5 @@ inline bool ignore_tile_position() {
 }
 
 }  // namespace TiledArray
-
-namespace std {
-
-/// Vector output stream operator
-template <typename T, typename A>
-inline std::ostream& operator<<(std::ostream& os,
-                                const std::vector<T, A>& vec) {
-  TiledArray::detail::print_array(os, vec);
-  return os;
-}
-
-}  // namespace std
 
 #endif  // TILEDARRAY_UTILITY_H__INCLUDED

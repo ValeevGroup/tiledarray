@@ -155,9 +155,11 @@ TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
+TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
+TiledArray/util/vector.h
 )
 
 if(CUDA_FOUND)

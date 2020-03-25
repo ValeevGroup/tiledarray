@@ -26,6 +26,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/util/vector.h>
 #include <TiledArray/utility.h>
 
 namespace TiledArray {
@@ -58,6 +59,7 @@ namespace detail {
 /// \param[out] result The output array that will hold the permuted array
 template <typename Perm, typename Arg, typename Result>
 inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
+  using std::size;
   TA_ASSERT(size(result) == size(arg));
   const unsigned int n = size(arg);
   for (unsigned int i = 0u; i < n; ++i) {
@@ -516,7 +518,7 @@ inline std::vector<T> operator*(const Permutation& perm,
   return result;
 }
 
-/// In-place permute a \c std::array
+/// In-place permute a \c std::vector
 
 /// \tparam T The element type of the vector
 /// \tparam A The allocator type of the vector
@@ -529,6 +531,41 @@ template <typename T, typename A>
 inline std::vector<T, A>& operator*=(std::vector<T, A>& v,
                                      const Permutation& perm) {
   const std::vector<T, A> temp = v;
+  detail::permute_array(perm, temp, v);
+  return v;
+}
+
+/// permute a \c boost::container::small_vector<T>
+
+/// \tparam T The element type of the vector
+/// \tparam N The max static size of the vector
+/// \param perm The permutation
+/// \param v The vector to be permuted
+/// \return A permuted copy of \c v
+/// \throw TiledArray::Exception When the dimension of the permutation is not
+/// equal to the size of \c v.
+template <typename T, std::size_t N>
+inline boost::container::small_vector<T, N> operator*(
+    const Permutation& perm, const boost::container::small_vector<T, N>& v) {
+  TA_ASSERT(perm.dim() == v.size());
+  boost::container::small_vector<T, N> result(perm.dim());
+  detail::permute_array(perm, v, result);
+  return result;
+}
+
+/// In-place permute a \c boost::container::small_vector
+
+/// \tparam T The element type of the vector
+/// \tparam N The max static size of the vector
+/// \param[out] v The vector to be permuted
+/// \param[in] perm The permutation
+/// \return A reference to \c v
+/// \throw TiledArray::Exception When the dimension of the permutation is not
+/// equal to the size of \c v.
+template <typename T, std::size_t N>
+inline boost::container::small_vector<T, N>& operator*=(
+    boost::container::small_vector<T, N>& v, const Permutation& perm) {
+  const boost::container::small_vector<T, N> temp = v;
   detail::permute_array(perm, temp, v);
   return v;
 }

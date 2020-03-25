@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE(non_comm_constructor) {
 
   // use the sparse ctor
   {
-    std::vector<std::pair<std::vector<std::size_t>, float>> sparse_tile_norms;
+    std::vector<std::pair<Range::index, float>> sparse_tile_norms;
 
     for (Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
       auto tiles_range = tr.tiles_range();
@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE(comm_constructor) {
 
   // use the sparse ctor
   {
-    std::vector<std::pair<std::vector<std::size_t>, float>> sparse_tile_norms;
+    std::vector<std::pair<Range::index, float>> sparse_tile_norms;
 
     for (Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
       auto tiles_range = tr.tiles_range();
@@ -252,7 +252,7 @@ BOOST_AUTO_TEST_CASE(block) {
 
     for (auto upper_it = tr.tiles_range().begin();
          upper_it != tr.tiles_range().end(); ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (auto it = upper.begin(); it != upper.end(); ++it) *it += 1;
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
@@ -275,8 +275,7 @@ BOOST_AUTO_TEST_CASE(block) {
         // Check that the data was copied and scaled correctly
         unsigned long i = 0ul;
         unsigned long zero_tile_count = 0ul;
-        std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(),
-                                           0ul);
+        Range::index arg_index(sparse_shape.data().range().rank(), 0ul);
         for (auto it = result.data().range().begin();
              it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
@@ -317,7 +316,7 @@ BOOST_AUTO_TEST_CASE(block_scale) {
 
     for (auto upper_it = tr.tiles_range().begin();
          upper_it != tr.tiles_range().end(); ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (auto it = upper.begin(); it != upper.end(); ++it) *it += 1;
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
@@ -340,8 +339,7 @@ BOOST_AUTO_TEST_CASE(block_scale) {
 
         unsigned long i = 0ul;
         unsigned long zero_tile_count = 0ul;
-        std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(),
-                                           0ul);
+        Range::index arg_index(sparse_shape.data().range().rank(), 0ul);
         for (auto it = result.data().range().begin();
              it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
@@ -383,7 +381,7 @@ BOOST_AUTO_TEST_CASE(block_perm) {
 
     for (auto upper_it = tr.tiles_range().begin();
          upper_it != tr.tiles_range().end(); ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (auto it = upper.begin(); it != upper.end(); ++it) *it += 1;
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
@@ -407,8 +405,7 @@ BOOST_AUTO_TEST_CASE(block_perm) {
         // Check that the data was copied and scaled correctly
         unsigned long i = 0ul;
         unsigned long zero_tile_count = 0ul;
-        std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(),
-                                           0ul);
+        Range::index arg_index(sparse_shape.data().range().rank(), 0ul);
         for (auto it = result.data().range().begin();
              it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element
@@ -453,7 +450,7 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
 
     for (auto upper_it = tr.tiles_range().begin();
          upper_it != tr.tiles_range().end(); ++upper_it) {
-      std::vector<std::size_t> upper = *upper_it;
+      auto upper = *upper_it;
       for (auto it = upper.begin(); it != upper.end(); ++it) *it += 1;
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(), less)) {
@@ -477,8 +474,7 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
 
         unsigned long i = 0ul;
         unsigned long zero_tile_count = 0ul;
-        std::vector<std::size_t> arg_index(sparse_shape.data().range().rank(),
-                                           0ul);
+        Range::index arg_index(sparse_shape.data().range().rank(), 0ul);
         for (auto it = result.data().range().begin();
              it != result.data().range().end(); ++it, ++i) {
           // Construct the coordinate index for the argument element

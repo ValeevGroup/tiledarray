@@ -64,9 +64,9 @@ class RangeIterator {
   typedef RangeIterator<T, Container> RangeIterator_;  ///< This class type
 
   // Standard iterator typedefs
-  typedef std::vector<T> value_type;    ///< Iterator value type
-  typedef const value_type& reference;  ///< Iterator reference type
-  typedef const value_type* pointer;    ///< Iterator pointer type
+  typedef typename Container::index value_type;  ///< Iterator value type
+  typedef const value_type& reference;           ///< Iterator reference type
+  typedef const value_type* pointer;             ///< Iterator pointer type
   typedef std::input_iterator_tag iterator_category;  /// Iterator category tag
   typedef std::ptrdiff_t difference_type;  ///< Iterator difference type
 
@@ -147,7 +147,7 @@ class RangeIterator {
 
  private:
   const Container* container_;  ///< The container that the iterator references
-  std::vector<T> current_;      ///< The current value of the iterator
+  typename Container::index current_;  ///< The current value of the iterator
 
   template <typename U, typename C>
   friend bool operator==(const RangeIterator<U, C>& left_it,
