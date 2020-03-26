@@ -42,6 +42,7 @@ set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(blacs_LIBRARIES "${MKL_ROOT_DIR}/lib/libmkl_blacs_mpich_lp64.a" ${BLAS_LINKER_FLAGS})
 
 # configure ScaLAPACK
+set(ENABLE_SCALAPACK ON)
 set(IntelMKL_LIBRARIES ${blacs_LIBRARIES})
 set(scalapack_LIBRARIES "${MKL_ROOT_DIR}/lib/libmkl_scalapack_lp64.a" ${blacs_LIBRARIES})
 
