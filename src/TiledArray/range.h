@@ -409,7 +409,7 @@ class Range {
       typename std::enable_if<
           !std::is_integral<Index>::value &&
           detail::is_pair<typename Index::value_type>::value>::type* = nullptr>
-  Range(const Index& bounds) {
+  explicit Range(const Index& bounds) {
     using std::size;
     const size_type n = size(bounds);
     if (n) {
@@ -431,7 +431,8 @@ class Range {
   /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
   /// \throw std::bad_alloc When memory allocation fails.
   template <typename Index1, typename Index2>
-  Range(const std::initializer_list<std::pair<Index1, Index2>>& bounds) {
+  explicit Range(
+      const std::initializer_list<std::pair<Index1, Index2>>& bounds) {
     using std::size;
     const size_type n = size(bounds);
     if (n) {
