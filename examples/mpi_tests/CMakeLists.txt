@@ -38,6 +38,9 @@ if(NOT DISABLE_MPI)
 
   if(CUDA_FOUND)
     add_ta_executable(mpi_cuda "mpi_cuda.cpp" "${MADNESS_LIBRARIES}")
+    set_source_files_properties(mpi_cuda.cpp
+            PROPERTIES
+            LANGUAGE CUDA)
     add_dependencies(examples-tiledarray mpi_cuda)
   endif(CUDA_FOUND)
 
