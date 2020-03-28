@@ -83,15 +83,15 @@ struct default_world {
 /// thread (usually, the main thread ) creates TiledArray expressions.
 ///
 /// \param world a World object which will become the new default
-static void set_default_world(World& world) {
+inline void set_default_world(World& world) {
   return detail::default_world::set(&world);
 }
 /// Accesses the default World.
 /// \return the current default World
-static World& get_default_world() { return detail::default_world::get(); }
+inline World& get_default_world() { return detail::default_world::get(); }
 /// Resets the default World to the world returned by
 /// madness::World::get_default(), i.e. the World that spans all processes
-static void reset_default_world() {
+inline void reset_default_world() {
   return detail::default_world::set(nullptr);
 }
 
@@ -115,7 +115,7 @@ auto world_resetter = [](World* w) { set_default_world(*w); };
 /// \return a smart pointer to the current default World (i.e. not \c world)
 ///         whose deleter will reset the default World back to the stored
 ///         value
-static std::unique_ptr<World, decltype(world_resetter)> push_default_world(
+inline std::unique_ptr<World, decltype(world_resetter)> push_default_world(
     World& world) {
   World* current_world = detail::default_world::query();
   set_default_world(world);
