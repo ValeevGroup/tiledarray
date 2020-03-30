@@ -428,6 +428,10 @@ else()
   set(MADNESS_DIR ${MADNESS_BINARY_DIR})
   find_package(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG REQUIRED
                COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
+  message(STATUS "HI, found madness???")
+  if (NOT TARGET MADworld)
+    message(FATAL_ERROR "ouch, did not find MADworld")
+  endif(NOT TARGET MADworld)
   set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
   
   # TiledArray only needs MADworld library compiled to be ...
