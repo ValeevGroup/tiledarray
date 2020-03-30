@@ -14,4 +14,8 @@ if (NOT TARGET BTAS::btas)
       BINARY_DIR BTAS_BINARY_DIR
       )
 
+  if (NOT TARGET BTAS::btas)
+    find_package(BTAS 1.0.0 CONFIG REQUIRED)
+  endif(NOT TARGET BTAS::btas)
+
 endif(NOT TARGET BTAS::btas)
