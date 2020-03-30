@@ -28,22 +28,11 @@ macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
 endmacro()
 
 # if found, make sure the MADNESS tag matches exactly
-if (MADNESS_FOUND)
-  # make sure that MADNESS used same toolchain file
-  if (NOT "${MADNESS_CMAKE_TOOLCHAIN_FILE}" STREQUAL "${CMAKE_TOOLCHAIN_FILE}")
-    set(_msg "MADNESS used toolchain file \"${MADNESS_CMAKE_TOOLCHAIN_FILE}\" but TiledArray uses toolchain file \"${CMAKE_TOOLCHAIN_FILE}\"; make sure that the same toolchain file is used by both")
-    if (TA_EXPERT)
-      message(WARNING "${_msg}")
-    else(TA_EXPERT)
-      message(FATAL_ERROR "${_msg}")
-    endif(TA_EXPERT)
-  endif()
+if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
+  set(TILEDARRAY_DOWNLOADED_MADNESS OFF CACHE BOOL "Whether TA downloaded MADNESS")
+  mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
 
-  if (EXISTS "${MADNESS_DIR}/../../../include/madness/config.h")
-    set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")
-  else ()
-    set(CONFIG_H_PATH "${MADNESS_DIR}/src/madness/config.h")
-  endif()
+  set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")
   if (NOT EXISTS "${CONFIG_H_PATH}")
     message(FATAL_ERROR "did not find MADNESS' config.h")
   endif()
@@ -63,9 +52,6 @@ if (MADNESS_FOUND)
   else (MADNESS_REVISION_LINE) # MADNESS_REVISION not found? MADNESS is not recent enough, reinstall
     message(FATAL_ERROR "Found MADNESS, but it is not recent enough; either provide MADNESS with revision ${TA_TRACKED_MADNESS_TAG} or let TiledArray built it")
   endif(MADNESS_REVISION_LINE)
-endif(MADNESS_FOUND)
-
-if(MADNESS_FOUND)
 
   if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
     message(WARNING "To build shared libraries safely should build MADworld (and other prerequisites) as static; but MADworld-static target is not found")
@@ -436,6 +422,8 @@ else()
   set(MADNESS_DIR ${MADNESS_BINARY_DIR})
   find_package_regimport(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG REQUIRED
                          COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
+  set(TILEDARRAY_DOWNLOADED_MADNESS ON CACHE BOOL "Whether TA downloaded MADNESS")
+  mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
   set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
   
   # TiledArray only needs MADworld library compiled to be ...
