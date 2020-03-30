@@ -39,7 +39,15 @@ if (MADNESS_FOUND)
     endif(TA_EXPERT)
   endif()
 
-  file(STRINGS ${MADNESS_DIR}/../../../include/madness/config.h MADNESS_REVISION_LINE REGEX "define MADNESS_REVISION")
+  if (EXISTS "${MADNESS_DIR}/../../../include/madness/config.h")
+    set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")
+  else ()
+    set(CONFIG_H_PATH "${MADNESS_DIR}/src/madness/config.h")
+  endif()
+  if (NOT EXISTS "${CONFIG_H_PATH}")
+    message(FATAL_ERROR "did not find MADNESS' config.h")
+  endif()
+  file(STRINGS "${CONFIG_H_PATH}" MADNESS_REVISION_LINE REGEX "define MADNESS_REVISION")
   if (MADNESS_REVISION_LINE) # MADNESS_REVISION found? make sure it matches the required tag exactly
     string(REGEX REPLACE ".*define[ \t]+MADNESS_REVISION[ \t]+\"([a-z0-9]+)\"" "\\1" MADNESS_REVISION "${MADNESS_REVISION_LINE}")
     if (MADNESS_TAG) # user-defined MADNESS_TAG overrides TA_TRACKED_MADNESS_TAG
