@@ -24,7 +24,7 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 3.10.0)
+cmake_minimum_required (VERSION 3.11.0) # need FetchContent
 project (TiledArray LANGUAGES)
 enable_language(CXX)
 
@@ -71,6 +71,8 @@ include(AddCustomTargetSubproject)
 include(AddTAExecutable)
 include(FindPackageRegimport)
 init_package_regimport()
+set(FETCHCONTENT_UPDATES_DISCONNECTED OFF CACHE BOOL "Enables UPDATE_DISCONNECTED behavior for all content population")
+include(FetchContent)
 
 # Load extra CMake features ====================================================
 
@@ -260,7 +262,7 @@ include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
 include(external/boost.cmake)
-include(external/btas.cmake)
+include(FindOrFetchBTAS)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
