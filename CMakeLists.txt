@@ -69,6 +69,8 @@ include(RedefaultableOption)
 include(DetectMADNESSConfig)
 include(AddCustomTargetSubproject)
 include(AddTAExecutable)
+include(FindPackageRegimport)
+init_package_regimport()
 
 # Load extra CMake features ====================================================
 

@@ -14,7 +14,7 @@ include(ConvertLibrariesListToCompilerArgs)
 set(MADNESS_OLDEST_TAG ${TA_TRACKED_MADNESS_TAG} CACHE STRING
         "The oldest revision hash or tag of MADNESS that can be used")
 
-find_package(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
+find_package_regimport(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
 
 macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
   set(${_mad_config_libs} )
@@ -426,12 +426,8 @@ else()
   endif(error_code)
 
   set(MADNESS_DIR ${MADNESS_BINARY_DIR})
-  find_package(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG REQUIRED
-               COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
-  message(STATUS "HI, found madness???")
-  if (NOT TARGET MADworld)
-    message(FATAL_ERROR "ouch, did not find MADworld")
-  endif(NOT TARGET MADworld)
+  find_package_regimport(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG REQUIRED
+                         COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
   set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
   
   # TiledArray only needs MADworld library compiled to be ...
