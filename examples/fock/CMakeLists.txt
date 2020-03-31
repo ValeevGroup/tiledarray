@@ -26,5 +26,4 @@
 
 # Add the ta_fock_build executable
 add_ta_executable(ta_k_build "ta_k_build.cpp" "tiledarray")
-add_dependencies(ta_k_build External-tiledarray)
 add_dependencies(examples-tiledarray ta_k_build)

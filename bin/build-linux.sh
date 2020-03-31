@@ -8,6 +8,15 @@ debugv=$([ "X$BUILD_TYPE" = "XDebug" ] && echo "1" || echo "0")
 sharedv=$(($gccv+$clangv+$debugv))
 export BUILD_SHARED=$(($sharedv % 2))
 
+# get the most recent cmake available
+if [ ! -d "${INSTALL_PREFIX}/cmake" ]; then
+  CMAKE_VERSION=3.17.0
+  CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
+  mkdir ${INSTALL_PREFIX}/cmake && wget --no-check-certificate -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C ${INSTALL_PREFIX}/cmake
+fi
+export PATH=${INSTALL_PREFIX}/cmake/bin:${PATH}
+cmake --version
+
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
