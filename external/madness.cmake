@@ -149,9 +149,9 @@ else()
 
   # Create a cache entry for MADNESS build variables.
   # Note: This will not overwrite user specified values.
-  set(MADNESS_SOURCE_DIR "${PROJECT_SOURCE_DIR}/external/src/madness" CACHE PATH 
+  set(MADNESS_SOURCE_DIR "${PROJECT_BINARY_DIR}/external/madness-src" CACHE PATH
         "Path to the MADNESS source directory")
-  set(MADNESS_BINARY_DIR "${PROJECT_BINARY_DIR}/external/build/madness" CACHE PATH 
+  set(MADNESS_BINARY_DIR "${PROJECT_BINARY_DIR}/external/madness-build" CACHE PATH
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
@@ -220,16 +220,16 @@ else()
   # If the MADNESS source directory is the default location and does not exist,
   # MADNESS will be downloaded from git.
   message(STATUS "Checking MADNESS source directory: ${MADNESS_SOURCE_DIR}")
-  if("${MADNESS_SOURCE_DIR}" STREQUAL "${PROJECT_SOURCE_DIR}/external/src/madness")
+  if("${MADNESS_SOURCE_DIR}" STREQUAL "${PROJECT_BINARY_DIR}/external/madness-src")
 
     # Create the external source directory
-    if(NOT EXISTS ${PROJECT_SOURCE_DIR}/external/src)
+    if(NOT EXISTS ${PROJECT_BINARY_DIR}/external)
       set(error_code 1)
       execute_process(
-          COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/external/src"
+          COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_BINARY_DIR}/external"
           RESULT_VARIABLE error_code)
       if(error_code)
-        message(FATAL_ERROR "Failed to create the MADNESS source directory.")
+        message(FATAL_ERROR "Failed to create directory \"${PROJECT_BINARY_DIR}/external\"")
       endif()
     endif()
 
@@ -240,8 +240,8 @@ else()
       set(number_of_tries 0)
       while(error_code AND number_of_tries LESS 3)
         execute_process(
-            COMMAND ${GIT_EXECUTABLE} clone ${MADNESS_URL} madness
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/external/src
+            COMMAND ${GIT_EXECUTABLE} clone ${MADNESS_URL} madness-src
+            WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/external
             RESULT_VARIABLE error_code)
         math(EXPR number_of_tries "${number_of_tries} + 1")
       endwhile()
@@ -422,6 +422,12 @@ else()
   set(MADNESS_DIR ${MADNESS_BINARY_DIR})
   find_package_regimport(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG REQUIRED
                          COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
+  if (NOT TARGET MADworld)
+    message(FATAL_ERROR "Did not receive target MADworld")
+  endif()
+  if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
+    message(FATAL_ERROR "Did not receive target MADworld-static")
+  endif()
   set(TILEDARRAY_DOWNLOADED_MADNESS ON CACHE BOOL "Whether TA downloaded MADNESS")
   mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
   set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
@@ -431,11 +437,16 @@ else()
   # will be used correctly (header locations, etc.)
   if (BUILD_SHARED_LIBS)
     set(MADNESS_WORLD_LIBRARY MADworld-static)
+    set(MADNESS_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX ".88-dev")
   else(BUILD_SHARED_LIBS)
     set(MADNESS_WORLD_LIBRARY MADworld)
+    set(MADNESS_DEFAULT_LIBRARY_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
+    set(MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX "")
   endif(BUILD_SHARED_LIBS)
   set(MADNESS_LIBRARIES ${MADNESS_WORLD_LIBRARY})
-  # BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
+
+# BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
   # these headers depend on LAPACK which is a dependency of MADlinalg, hence
   # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
   list(APPEND MADNESS_LIBRARIES "${LAPACK_LIBRARIES}")
@@ -447,10 +458,23 @@ else()
     list(APPEND MADNESS_INCLUDE_DIRS ${CMAKE_INSTALL_PREFIX}/include)
   endif (DEFINED ELEMENTAL_TAG)
 
-  # build MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
+  # custom target for building MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
+  # N.B. Ninja needs spelling out the byproducts of custom targets, see https://cmake.org/cmake/help/v3.3/policy/CMP0058.html
+  set(MADNESS_BUILD_BYPRODUCTS "${MADNESS_BINARY_DIR}/src/madness/world/lib${MADNESS_WORLD_LIBRARY}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  if (ENABLE_ELEMENTAL)
+    list(APPEND MADNESS_BUILD_BYPRODUCTS
+        "${MADNESS_BINARY_DIR}/external/build/elemental/libEl${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        "${MADNESS_BINARY_DIR}/external/build/elemental/external/pmrrr/libpmrrr${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        "${MADNESS_BINARY_DIR}/external/build/elemental/external/suite_sparse/libElSuiteSparse${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        "${CMAKE_INSTALL_PREFIX}/lib/libparmetis${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        "${CMAKE_INSTALL_PREFIX}/lib/libmetis${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        )
+  endif(ENABLE_ELEMENTAL)
+  message(STATUS "custom target build-madness is expected to build these byproducts: ${MADNESS_BUILD_BYPRODUCTS}")
   add_custom_target(build-madness ALL
       COMMAND ${CMAKE_COMMAND} --build . --target ${MADNESS_WORLD_LIBRARY}
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
+      BYPRODUCTS "${MADNESS_BUILD_BYPRODUCTS}"
       COMMENT Building 'madness')
 
   if (ENABLE_ELEMENTAL)

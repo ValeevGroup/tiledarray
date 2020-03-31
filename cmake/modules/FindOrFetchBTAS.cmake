@@ -2,7 +2,6 @@ find_package(BTAS 1.0.0 QUIET)
 
 if (NOT TARGET BTAS::BTAS)
 
-  include(FetchContent)
   FetchContent_Declare(
       BTAS
       GIT_REPOSITORY      https://github.com/BTAS/btas.git

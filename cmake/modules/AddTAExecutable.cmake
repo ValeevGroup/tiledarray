@@ -11,10 +11,11 @@ macro(add_ta_executable _name _source_files _libs)
 #      elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
 #        set(libtarget -Wl,-all_load ${_lib}-static)
 #      endif()
-     set(libtarget ${_lib}-static)
+      set(libtarget ${_lib}-static)
     endif((${_lib} MATCHES "^tiledarray" OR ${_lib} MATCHES "^MAD") AND BUILD_SHARED_LIBS AND TARGET ${_lib}-static)
     target_link_libraries(${_name}-lib PRIVATE ${libtarget})
   endforeach(_lib "${_libs}")
+  add_dependencies(${_name}-lib External-tiledarray)
 
   # now make the executable itself
   add_executable(${_name} EXCLUDE_FROM_ALL ${PROJECT_SOURCE_DIR}/src/TiledArray/util/exec_stub.cc)

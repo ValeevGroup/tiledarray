@@ -71,8 +71,7 @@ include(AddCustomTargetSubproject)
 include(AddTAExecutable)
 include(FindPackageRegimport)
 init_package_regimport()
-set(FETCHCONTENT_UPDATES_DISCONNECTED OFF CACHE BOOL "Enables UPDATE_DISCONNECTED behavior for all content population")
-include(FetchContent)
+include(LoadFetchContent)
 
 # Load extra CMake features ====================================================
 
