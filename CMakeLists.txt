@@ -24,7 +24,7 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 3.11.0) # need FetchContent
+cmake_minimum_required (VERSION 3.14.0) # need FetchContent_MakeAvailable
 project (TiledArray LANGUAGES)
 enable_language(CXX)
 
