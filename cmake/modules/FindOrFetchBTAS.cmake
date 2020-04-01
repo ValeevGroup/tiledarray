@@ -2,10 +2,12 @@ find_package(BTAS 1.0.0 QUIET)
 
 if (NOT TARGET BTAS::BTAS)
 
+  set(BTAS_ENABLE_MKL ${ENABLE_MKL})
+
   FetchContent_Declare(
       BTAS
       GIT_REPOSITORY      https://github.com/BTAS/btas.git
-      GIT_TAG             f75b770085c90588e6ed7c7f45b598a16663cf81
+      GIT_TAG             ${TA_TRACKED_BTAS_TAG}
   )
   FetchContent_MakeAvailable(BTAS)
   FetchContent_GetProperties(BTAS
@@ -14,13 +16,13 @@ if (NOT TARGET BTAS::BTAS)
       )
 
   # use subproject targets as if they were in exported namespace ...
-  if (TARGET BTAS)
+  if (TARGET BTAS AND NOT TARGET BTAS::BTAS)
     add_library(BTAS::BTAS ALIAS BTAS)
-  endif()
+  endif(TARGET BTAS AND NOT TARGET BTAS::BTAS)
 
 endif(NOT TARGET BTAS::BTAS)
 
 # postcond check
 if (NOT TARGET BTAS::BTAS)
-  message(FATAL_ERROR "FindOrFetchBTAS could not provide BTAS targets")
+  message(FATAL_ERROR "FindOrFetchBTAS could not make BTAS::BTAS target available")
 endif(NOT TARGET BTAS::BTAS)
