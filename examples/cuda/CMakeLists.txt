@@ -29,7 +29,6 @@ if(CUDA_FOUND)
 
     # Add executable
     add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
-    add_dependencies(${_exec} External-tiledarray)
     add_dependencies(examples-tiledarray ${_exec})
 
   endforeach()

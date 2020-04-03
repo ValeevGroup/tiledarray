@@ -134,7 +134,6 @@ target_compile_definitions(${executable}-lib PRIVATE TILEDARRAY_NO_USER_ERROR_ME
     TA_EXCEPTION_ERROR=1 MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
 
 # Add targets
-add_dependencies(${executable} External-tiledarray)
 add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
 
 # Add a test(s)

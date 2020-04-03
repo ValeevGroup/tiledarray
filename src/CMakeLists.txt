@@ -207,12 +207,12 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray build depends on
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen BTAS::BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 else(CUDA_FOUND)
 
   # the list of libraries on which TiledArray build depends on
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen TiledArray_BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen BTAS::BTAS CACHE STRING "List of libraries on which TiledArray depends on")
 
 endif(CUDA_FOUND)
 
@@ -226,6 +226,7 @@ if (BUILD_SHARED_LIBS)
   set(private_link_libraries "${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
   list(REMOVE_ITEM private_link_libraries MADworld)
   set(TILEDARRAY_PRIVATE_LINK_LIBRARIES "${private_link_libraries}" CACHE STRING "List of libraries on which TiledArray depends on" FORCE)
+  add_dependencies(tiledarray External-tiledarray)
 else()
   set(TILEDARRAY_LIBRARY_TARGET_SUFFIXES "none")
 endif()

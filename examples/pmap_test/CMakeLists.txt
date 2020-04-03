@@ -26,5 +26,4 @@
 
 # Add the pmap executable
 add_ta_executable(pmap "pmap.cpp" "tiledarray")
-add_dependencies(pmap External-tiledarray)
 add_dependencies(examples-tiledarray pmap)

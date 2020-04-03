@@ -8,6 +8,15 @@ debugv=$([ "X$BUILD_TYPE" = "XDebug" ] && echo "1" || echo "0")
 sharedv=$(($gccv+$clangv+$debugv))
 export BUILD_SHARED=$(($sharedv % 2))
 
+# get the most recent cmake available
+if [ ! -d "${INSTALL_PREFIX}/cmake" ]; then
+  CMAKE_VERSION=3.17.0
+  CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
+  mkdir ${INSTALL_PREFIX}/cmake && wget --no-check-certificate -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C ${INSTALL_PREFIX}/cmake
+fi
+export PATH=${INSTALL_PREFIX}/cmake/bin:${PATH}
+cmake --version
+
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
@@ -57,8 +66,8 @@ mkdir -p TA
 cd TA
 
 # if have old installed copy of TA, make sure that BTAS tag matches the required tag, if not, remove INSTALL_DIR (will cause rebuild of TA)
-if [ -f "${INSTALL_DIR}/include/btas/btas/version.h" ]; then
-  export INSTALLED_BTAS_TAG=`grep 'define BTAS_REVISION' ${INSTALL_DIR}/include/btas/btas/version.h | awk '{print $3}' | sed s/\"//g`
+if [ -f "${INSTALL_DIR}/include/btas/version.h" ]; then
+  export INSTALLED_BTAS_TAG=`grep 'define BTAS_REVISION' ${INSTALL_DIR}/include/btas/version.h | awk '{print $3}' | sed s/\"//g`
   echo "installed BTAS revision = ${INSTALLED_BTAS_TAG}"
   # extract the tracked tag of BTAS
   export BTAS_TAG=`grep 'set(TA_TRACKED_BTAS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\)//g`
