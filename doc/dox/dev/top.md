@@ -7,3 +7,8 @@
 * [Customizing Arrays](@ref Customizing-Arrays): How to implement custom tiles, shapes, etc.
 * [Customizing Expressions](@ref Customizing-Expressions): How to modify how expressions are evaluated and implement new expressions.
 * [Using TiledArray+Eigen](@ref Tutorial-TiledArray-and-Eigen): How to use TiledArray with Eigen.
+* Expressions
+  * [Overview](@ref Expressions-in-TiledArray)
+  * Implementation Examples
+    * [Expression Layer](@ref Expression-Layer-Example)
+    * [Expression Engine](@ref Expression-Engine-Example)
