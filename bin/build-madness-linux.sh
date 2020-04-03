@@ -81,7 +81,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77
 
     # Build MADworld + LAPACK/BLAS interface + Elemental
-    make -j2 install-elemental install-world install-clapack install-common install-config VERBOSE=1
+    make -j2 install-elemental install-madness-world install-madness-clapack install-madness-common install-madness-config VERBOSE=1
   fi
 
 fi

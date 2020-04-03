@@ -28,6 +28,13 @@
 
 #include <TiledArray/config.h>
 #include <TiledArray/external/madness.h>
+
+#if HAVE_INTEL_TBB
+#include <tbb/parallel_for.h>
+#include <tbb/partitioner.h>
+#include <tbb/tbb_stddef.h>
+#endif
+
 #include <TiledArray/type_traits.h>
 
 #define TILEDARRAY_LOOP_UNWIND ::TiledArray::math::LoopUnwind::value
