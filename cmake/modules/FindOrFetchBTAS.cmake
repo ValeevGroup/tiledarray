@@ -2,7 +2,7 @@ find_package(BTAS 1.0.0 QUIET)
 
 if (NOT TARGET BTAS::BTAS)
 
-  set(BTAS_ENABLE_MKL ${ENABLE_MKL})
+  set(BTAS_ENABLE_MKL ${ENABLE_MKL} CACHE BOOL "Whether BTAS should seek MKL")
 
   FetchContent_Declare(
       BTAS
