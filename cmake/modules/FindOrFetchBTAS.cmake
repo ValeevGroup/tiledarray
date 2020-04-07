@@ -1,4 +1,4 @@
-find_package(BTAS 1.0.0 QUIET)
+find_package(BTAS 1.0.0 QUIET CONFIG)
 
 if (NOT TARGET BTAS::BTAS)
 
@@ -28,6 +28,9 @@ if (NOT TARGET BTAS::BTAS)
   if (TARGET BTAS AND NOT TARGET BTAS::BTAS)
     add_library(BTAS::BTAS ALIAS BTAS)
   endif(TARGET BTAS AND NOT TARGET BTAS::BTAS)
+
+  # set BTAS_CONFIG to the install location so that we know where to find it
+  set(BTAS_CONFIG ${CMAKE_INSTALL_PREFIX}/${BTAS_INSTALL_CMAKEDIR})
 
 endif(NOT TARGET BTAS::BTAS)
 

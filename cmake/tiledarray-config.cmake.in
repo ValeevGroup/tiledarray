@@ -26,7 +26,7 @@ if(NOT TARGET MADworld)
   find_package(MADNESS 0.10.1 CONFIG QUIET REQUIRED COMPONENTS world PATHS ${MADNESS_CONFIG_DIR} NO_DEFAULT_PATH)
 endif()
 
-find_package(BTAS 1.0.0 QUIET REQUIRED)
+find_package(BTAS 1.0.0 QUIET CONFIG REQUIRED HINTS "@BTAS_CONFIG@")
 
 # if TA is a CUDA-dependent library it needs CUDA to link properly ... unfortunately CMake is not able to do this correctly
 # see https://gitlab.kitware.com/cmake/cmake/issues/18614
