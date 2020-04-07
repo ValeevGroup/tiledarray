@@ -1,0 +1,3 @@
+set(MPI_C_COMPILER mpicc)
+set(MPI_CXX_COMPILER mpicxx)
+set(MPI_CXX_SKIP_MPICXX ON)

@@ -1,9 +1,9 @@
 #
-# Generic Toolchain for Clang + Generic MPI + MKL + TBB
+# Generic Toolchain for Intel Parallel Studio
 #
 # REQUIREMENTS:
 # - in PATH:
-#   clang, clang++, mpicc, and mpicxx
+#   icc, icpc, mpiicc, and mpiicpc
 # - environment variables:
 #   * INTEL_DIR: the Intel compiler directory (includes MKL and TBB), e.g. /opt/intel
 #   * EIGEN3_DIR or (deprecated) EIGEN_DIR: the Eigen3 directory
@@ -11,8 +11,8 @@
 #
 
 ####### Compilers
-include(${CMAKE_CURRENT_LIST_DIR}/_llvm.cmake)
-include(${CMAKE_CURRENT_LIST_DIR}/_mpi.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/_icc.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/_impi.cmake)
 
 ####### Compile flags
 include(${CMAKE_CURRENT_LIST_DIR}/_std_c_flags.cmake)

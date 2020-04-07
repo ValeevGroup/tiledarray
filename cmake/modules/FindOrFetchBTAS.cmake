@@ -3,6 +3,15 @@ find_package(BTAS 1.0.0 QUIET)
 if (NOT TARGET BTAS::BTAS)
 
   set(BTAS_ENABLE_MKL ${ENABLE_MKL} CACHE BOOL "Whether BTAS should seek MKL")
+  if (MADNESS_FORTRAN_DEFAULT_INTEGER4)
+    set(mkl_pref_ilp64 OFF)
+  else(MADNESS_FORTRAN_DEFAULT_INTEGER4)
+    set(mkl_pref_ilp64 ON)
+  endif(MADNESS_FORTRAN_DEFAULT_INTEGER4)
+  set(MKL_PREFER_ILP64 ${mkl_pref_ilp64} CACHE BOOL "MKL preference: ILP64 (yes) or {LP64,LP32} (no)")
+  if (MADNESS_HAS_TBB)
+    set(MKL_THREADING "TBB" CACHE STRING "MKL flavor: SEQ, TBB or OMP (default)")
+  endif()
 
   FetchContent_Declare(
       BTAS
