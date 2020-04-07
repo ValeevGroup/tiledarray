@@ -1,8 +1,17 @@
-find_package(BTAS 1.0.0 QUIET)
+find_package(BTAS 1.0.0 QUIET CONFIG)
 
 if (NOT TARGET BTAS::BTAS)
 
-  set(BTAS_ENABLE_MKL ${ENABLE_MKL})
+  set(BTAS_ENABLE_MKL ${ENABLE_MKL} CACHE BOOL "Whether BTAS should seek MKL")
+  if (MADNESS_FORTRAN_DEFAULT_INTEGER4)
+    set(mkl_pref_ilp64 OFF)
+  else(MADNESS_FORTRAN_DEFAULT_INTEGER4)
+    set(mkl_pref_ilp64 ON)
+  endif(MADNESS_FORTRAN_DEFAULT_INTEGER4)
+  set(MKL_PREFER_ILP64 ${mkl_pref_ilp64} CACHE BOOL "MKL preference: ILP64 (yes) or {LP64,LP32} (no)")
+  if (MADNESS_HAS_TBB)
+    set(MKL_THREADING "TBB" CACHE STRING "MKL flavor: SEQ, TBB or OMP (default)")
+  endif()
 
   FetchContent_Declare(
       BTAS
@@ -19,6 +28,9 @@ if (NOT TARGET BTAS::BTAS)
   if (TARGET BTAS AND NOT TARGET BTAS::BTAS)
     add_library(BTAS::BTAS ALIAS BTAS)
   endif(TARGET BTAS AND NOT TARGET BTAS::BTAS)
+
+  # set BTAS_CONFIG to the install location so that we know where to find it
+  set(BTAS_CONFIG ${CMAKE_INSTALL_PREFIX}/${BTAS_INSTALL_CMAKEDIR})
 
 endif(NOT TARGET BTAS::BTAS)
 

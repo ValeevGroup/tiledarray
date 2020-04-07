@@ -1,0 +1,13 @@
+if (NOT DEFINED _cmake_c_compiler)
+  set(_cmake_c_compiler icc)
+endif(NOT DEFINED _cmake_c_compiler)
+if (NOT DEFINED _cmake_cxx_compiler)
+  set(_cmake_cxx_compiler icpc)
+endif(NOT DEFINED _cmake_cxx_compiler)
+if (NOT DEFINED _cmake_fortran_compiler)
+  set(_cmake_fortran_compiler ifort)
+endif(NOT DEFINED _cmake_fortran_compiler)
+
+set(CMAKE_C_COMPILER "${_cmake_c_compiler}" CACHE STRING "C compiler")
+set(CMAKE_CXX_COMPILER "${_cmake_cxx_compiler}" CACHE STRING "C++ compiler")
+set(CMAKE_Fortran_COMPILER "${_cmake_fortran_compiler}" CACHE STRING "Fortran compiler")
