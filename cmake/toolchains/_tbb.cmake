@@ -18,3 +18,28 @@ else(DEFINED ENV{TBBROOT})
   set(_tbb_root_dir "${INTEL_DIR}/tbb")
 endif(DEFINED ENV{TBBROOT})
 set(TBB_ROOT_DIR "${_tbb_root_dir}" CACHE PATH "Intel TBB root directory")
+
+if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+  set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib/libc++;${TBB_ROOT_DIR}/lib"
+      CACHE PATH "Intel TBB library directory list")
+elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+  if(EXISTS ${TBB_ROOT_DIR}/lib/intel64/gcc4.8) # Intel packaged TBB
+    set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib/intel64/gcc4.8"
+        CACHE PATH "Intel TBB library directory list")
+  elseif (EXISTS ${TBB_ROOT_DIR}/lib/intel64/gcc4.7)  # Intel packaged TBB
+    set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib/intel64/gcc4.7"
+        CACHE PATH "Intel TBB library directory list")
+  elseif(EXISTS ${TBB_ROOT_DIR}/lib/intel64/gcc4.4) # Intel packaged TBB
+    set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib/intel64/gcc4.4"
+        CACHE PATH "Intel TBB library directory list")
+  elseif(EXISTS ${TBB_ROOT_DIR}/lib/intel64/gcc4.1) # Intel packaged TBB
+    set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib/intel64/gcc4.1"
+        CACHE PATH "Intel TBB library directory list")
+  else() # Intel OSS TBB
+    set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib"
+        CACHE PATH "Intel TBB library directory list")
+  endif()
+else()
+  set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib"
+      CACHE PATH "Intel TBB library directory list")
+endif()
