@@ -40,3 +40,4 @@ c("i,j") = a("i,k,l") * b("k,j,l");
 
 - operator()(std::string) counts commas, which won't work
 - VariableList likely will need to understand semicolon
+- Permutation class will need to know how to convert inner and outer indices

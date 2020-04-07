@@ -86,10 +86,8 @@ For our `MultEngine` the type of the distributed evaluator is
 `DistEval<Tensor<float>, DensePolicy>`. Again this process is repeated
 recursively for the left and right expressions in `MultEngine` resulting in the
 distributed evaluators for the left and right expressions, which are then
-forwarded to the PIMPL for the DistEval returned by `MultEngine`.
+forwarded to the PIMPL for the DistEval returned by `MultEngine`. The
+distributed evaluator is what actually runs the operation.
 
-## Generalization
-
-Although the functions are not split up as such,
 
 
