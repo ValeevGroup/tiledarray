@@ -19,10 +19,10 @@ else(DEFINED ENV{TBBROOT})
 endif(DEFINED ENV{TBBROOT})
 set(TBB_ROOT_DIR "${_tbb_root_dir}" CACHE PATH "Intel TBB root directory")
 
-if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+if(APPLE)
   set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib/libc++;${TBB_ROOT_DIR}/lib"
       CACHE PATH "Intel TBB library directory list")
-elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+else(APPLE)
   if(EXISTS ${TBB_ROOT_DIR}/lib/intel64/gcc4.8) # Intel packaged TBB
     set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib/intel64/gcc4.8"
         CACHE PATH "Intel TBB library directory list")
@@ -39,7 +39,4 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
     set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib"
         CACHE PATH "Intel TBB library directory list")
   endif()
-else()
-  set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib"
-      CACHE PATH "Intel TBB library directory list")
 endif()
