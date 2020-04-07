@@ -25,7 +25,7 @@ else(APPLE)
   set(_mkl_lib_dir "${MKL_ROOT_DIR}/lib/intel64")
 endif(APPLE)
 
-set(MKL_THREADING "SEQ" CACHE STRING "MKL backend: SEQ (default), TBB or OMP")
+set(MKL_THREADING "TBB" CACHE STRING "MKL backend: SEQ, TBB(default), or OMP")
 if (MKL_THREADING STREQUAL "SEQ")
   set(_mkl_backend_id "sequential")
 elseif (MKL_THREADING STREQUAL "TBB")
