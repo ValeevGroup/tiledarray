@@ -48,3 +48,5 @@ else()
   set(TBB_LIBRARY_DIRS "${TBB_ROOT_DIR}/lib"
       CACHE PATH "Intel TBB library directory list")
 endif()
+
+set(ENABLE_TBB ON CACHE BOOL "Whether to enable the use of Intel TBB")
