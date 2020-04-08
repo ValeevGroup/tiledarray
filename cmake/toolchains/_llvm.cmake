@@ -1,6 +1,6 @@
 ############## Only usable on UNIX platforms
 if (NOT UNIX)
-  message(FATAL_ERROR "llvm.cmake is only usable on UNIX platforms")
+  message(FATAL_ERROR "_llvm.cmake is only usable on UNIX platforms")
 endif(NOT UNIX)
 
 # on MacOS assume Brew
