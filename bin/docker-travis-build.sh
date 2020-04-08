@@ -49,7 +49,7 @@ chmod +x $build
 # make Dockerfile
 cat > Dockerfile << END
 # Travis default 'Bionic' image
-FROM travisci/ci-ubuntu-1804:packer-1577347966-74db3f91
+FROM travisci/ci-ubuntu-1804:packer-1582574251-a9b1ae58
 
 # Use baseimage-docker's init system.
 CMD ["/sbin/my_init"]

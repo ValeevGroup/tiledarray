@@ -29,10 +29,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Add the ccd executable
 add_ta_executable(ccd "ccd.cpp;input_data.cpp" "tiledarray;TiledArray_Eigen")
-add_dependencies(ccd External-tiledarray)
 add_dependencies(examples-tiledarray ccd)
 
 # Add the ccsd executable
 add_ta_executable(ccsd "ccsd.cpp;input_data.cpp" "tiledarray;TiledArray_Eigen")
-add_dependencies(ccsd External-tiledarray)
 add_dependencies(examples-tiledarray ccsd)

@@ -1,29 +1,39 @@
 # Summary
 This directory contains toolchains for standard platforms and specific high-end instances.
 
+# Generic platforms
+
+The following toolchains are provided:
+- `clang-mpi-mkl-tbb`: generic clang + generic MPI + Intel MKL + Intel TBB
+- `gcc-mpi-mkl-tbb`: gcc + generic MPI + Intel MKL + Intel TBB
+- `intel-parallel-studio`: Intel Parallel Studio
+- `macos-clang-mpi-accelerate`: MacOS Clang + generic MPI + Accelerate
+- `macos-gcc-mpi-accelerate`: MacOS Clang + generic MPI + Accelerate
+
 # Specific Platforms
 
 ## OLCF Summit
 
-recommended configure script (tested 1/16/2020):
+recommended configure script (tested 03/11/2020):
 
 ```
+module purge
 module load DefApps
-module load cuda/10.1.168
+module load cuda/10.1.243
 module load essl/6.2.0-20190419
 module load gcc/9.1.0
-module load cmake/3.14.2
 module load lsf-tools/2.0
 module load netlib-lapack/3.8.0
-module load spectrum-mpi/10.3.0.1-20190611
+module load spectrum-mpi/10.3.1.2-20200121
 module load boost/1.66.0
 
 export CUDA_GCC_DIR=/sw/summit/gcc/7.4.0
+export CMAKE_PATH=/ccs/home/evaleev/code/install/cmake-3.17.0-rc2/bin
 
 # clean out previous build and install artifacts ... minimally should do this:
 # `rm -rf CMakeFiles/ CMakeCache.txt external`
 
-cmake ../../tiledarray \
+${CMAKE_PATH}/cmake ../../tiledarray \
 -DCMAKE_TOOLCHAIN_FILE=<path to TiledArray source dir>/cmake/toolchains/olcf-summit-gcc-essl.cmake \
 -DENABLE_CUDA=ON \
 -DCMAKE_CUDA_HOST_COMPILER=${CUDA_GCC_DIR}/bin/g++ \
@@ -33,3 +43,7 @@ cmake ../../tiledarray \
 <additional CMake cache variables, such as CMAKE_INSTALL_PREFIX, etc.>
 ```
 Note that this assumes that Eigen was CMake-configured and installed. Omit the `eigen` entry in `CMAKE_PREFIX_PATH` if don't have Eigen pre-installed.
+
+## ALCF Theta
+
+See instructions in the toolchain file `alcf-theta-mkl-tbb.cmake` (contributed by @victor-anisimov ). This should work for other generic x86-based platforms with Cray compiler wrappers.

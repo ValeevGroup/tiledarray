@@ -1,0 +1,15 @@
+# find_package and register for re-import and superproject
+macro(find_package_regimport _package)
+  find_package(${_package} ${ARGN})
+  if (${_package}_FOUND)
+    set(_str_ARGN)
+    foreach (_arg IN ITEMS ${ARGN})
+      set(_str_ARGN "${_str_ARGN} \"${_arg}\"")
+    endforeach ()
+    file(APPEND "${PROJECT_BINARY_DIR}/cmake/modules/ReimportTargets.cmake" "find_package(${_package} ${_str_ARGN})\n")
+  endif (${_package}_FOUND)
+endmacro()
+
+macro(init_package_regimport)
+  file(WRITE "${PROJECT_BINARY_DIR}/cmake/modules/ReimportTargets.cmake" "# load this in superproject of TiledArray to re-import the targets imported during its build\n")
+endmacro()

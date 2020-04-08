@@ -24,7 +24,7 @@
 #  Jul 19, 2013
 #
 
-cmake_minimum_required (VERSION 3.10.0)
+cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
 project (TiledArray LANGUAGES)
 enable_language(CXX)
 
@@ -69,6 +69,9 @@ include(RedefaultableOption)
 include(DetectMADNESSConfig)
 include(AddCustomTargetSubproject)
 include(AddTAExecutable)
+include(FindPackageRegimport)
+init_package_regimport()
+include(LoadFetchContent)
 
 # Load extra CMake features ====================================================
 
@@ -261,7 +264,7 @@ include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
 include(external/boost.cmake)
-include(external/btas.cmake)
+include(FindOrFetchBTAS)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
