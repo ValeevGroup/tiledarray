@@ -1,6 +1,15 @@
 # Summary
 This directory contains toolchains for standard platforms and specific high-end instances.
 
+# Generic platforms
+
+The following toolchains are provided:
+- `clang-mpi-mkl-tbb`: generic clang + generic MPI + Intel MKL + Intel TBB
+- `gcc-mpi-mkl-tbb`: gcc + generic MPI + Intel MKL + Intel TBB
+- `intel-parallel-studio`: Intel Parallel Studio
+- `macos-clang-mpi-accelerate`: MacOS Clang + generic MPI + Accelerate
+- `macos-gcc-mpi-accelerate`: MacOS Clang + generic MPI + Accelerate
+
 # Specific Platforms
 
 ## OLCF Summit
