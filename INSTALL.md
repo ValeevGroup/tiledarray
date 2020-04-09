@@ -199,7 +199,7 @@ serial version of the BLAS library or by setting the number of threads to one
 (1) with an environment variable. This is necessary because TiledArray evaluates tensor
 expressions in parallel by subdividing them into small tasks, each of which is assumed
 to be single-threaded; attempting to run a multi-threaded BLAS function inside
-tasks will over subscribe the hardware cores.
+tasks will oversubscribe the hardware cores.
 
 BLAS library dependency is provided by the MADNESS library, which checks for presence
 of BLAS and LAPACK (which also depends on BLAS) at the configure time. Therefore, if
@@ -214,8 +214,7 @@ CMake variables:
 * `LAPACK_INCLUDE_DIRS` -- (optional) a list of directories which contain BLAS/LAPACK-related header files
 * `LAPACK_COMPILE_DEFINITIONS` -- (optional) a list of preprocessor definitions required for any code that uses BLAS/LAPACK-related header files
 * `LAPACK_COMPILE_OPTIONS` -- (optional) a list of compiler options required for any code that uses BLAS/LAPACK-related header files
-* `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS
-*  libraries will be perferred.
+* `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS libraries will be preferred.
 
 The last three variables are only needed if your code will use non-Fortran BLAS/LAPACK library API (such as CBLAS or LAPACKE)
 and thus needs access to the header files. TiledArray only uses BLAS via the Fortran API, hence the last three
