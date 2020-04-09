@@ -29,7 +29,7 @@ $ cmake --build build --target install
   - Boost.Iterator: header-only
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), tag ec522b795ae405597f627e7185cb05174a03d863 (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), tag 49db91d0f3df5dbf3c2c3d00f7b50b4b27ab4cdc (will be downloaded automatically, if missing)
 - BLAS library
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag b8dc72197d5e9c4c5630b5208b18160b5d8f65f4 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.

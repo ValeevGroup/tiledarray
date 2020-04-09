@@ -135,10 +135,10 @@ option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
 cmake_dependent_option(BUILD_SHARED_LIBS "Enable shared libraries" ON
       "SUPPORTS_SHARED;ENABLE_SHARED_LIBRARIES" OFF)
 if(BUILD_SHARED_LIBS)
-  set(BLA_STATIC FALSE)
+  set(BLA_STATIC FALSE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH TRUE)
 else()
-  set(BLA_STATIC TRUE)
+  set(BLA_STATIC TRUE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH FALSE)
 endif()
 
