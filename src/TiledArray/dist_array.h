@@ -56,7 +56,8 @@ template <typename Tile = Tensor<double, Eigen::aligned_allocator<double>>,
 class DistArray : public madness::archive::ParallelSerializableObject {
  public:
   typedef DistArray<Tile, Policy> DistArray_;  ///< This object's type
-  typedef TiledArray::detail::ArrayImpl<Tile, Policy> impl_type;
+  typedef TiledArray::detail::ArrayImpl<Tile, Policy>
+      impl_type; ///< The type of the PIMPL
   typedef typename impl_type::policy_type policy_type;  ///< Policy type
   typedef typename detail::numeric_type<Tile>::type
       element_type;  ///< The tile element type
@@ -394,7 +395,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     DistArray::wait_for_lazy_cleanup(world());
   }
 
-  /// Copy constructor
+  /// Copy assignment
 
   /// This is a shallow copy, that is no data is copied.
   /// \param other The array to be copied
@@ -467,11 +468,20 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// Set a tile and fill it using a sequence
-
-  /// \tparam Index An index or integral type
-  /// \tparam InIter An input iterator
-  /// \param i The index or the ordinal of the tile to be set
-  /// \param first The iterator that points to the start of the input sequence
+  ///
+  /// This function will set an uninitialized tile to the provided value. The
+  /// tile may be specified either by ordinal or coordinate index.
+  ///
+  /// \tparam Index Either an integral type or a container type with integral
+  ///               objects.
+  /// \tparam InIter Type satisfying input iterator
+  /// \param[in] i The index or the ordinal of the tile to be set. i may be
+  ///              either an ordinal or coordinate index.
+  /// \param[in] first The iterator that points to the start of the input
+  ///                  sequence. It is assumed that the container pointed to by
+  ///                  first minimally contains the same number of elements as
+  ///                  the tile.
+  /// \throw TiledArray::Exception if the tile is already initialized.
   template <typename Index, typename InIter>
   typename std::enable_if<detail::is_input_iterator<InIter>::value>::type set(
       const Index& i, InIter first) {
@@ -480,11 +490,20 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// Set a tile and fill it using a sequence
-
+  ///
+  /// This function will set an uninitialized tile to the provided value. This
+  /// overload allows the user to specify the coordinate index with an
+  /// initializer list.
+  ///
   /// \tparam Integer An integral type
-  /// \tparam InIter An input iterator
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
-  /// \param first The iterator that points to the new tile data
+  /// \tparam InIter Type satisfying input iterator
+  /// \param[in] i The tile's coordinate index, as an
+  ///          \c std::initializer_list<Integer>
+  /// \param[in] first The iterator that points to the start of the input
+  ///                  sequence. It is assumed that the container pointed to by
+  ///                  first minimally contains the same number of elements as
+  ///                  the tile.
+  /// \throw TiledArray::Exception if the tile is already initialized.
   template <typename Integer, typename InIter>
   typename std::enable_if<detail::is_input_iterator<InIter>::value>::type set(
       const std::initializer_list<Integer>& i, InIter first) {
@@ -711,25 +730,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A const tensor expression object
   TiledArray::expressions::TsrExpr<const DistArray_, true> operator()(
       const std::string& vars) const {
-#ifndef NDEBUG
-    const unsigned int n =
-        1u + std::count_if(vars.begin(), vars.end(),
-                           [](const char c) { return c == ','; });
-    if (bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-      if (TiledArray::get_default_world().rank() == 0) {
-        TA_USER_ERROR_MESSAGE(
-            "The number of array annotation variables is not equal to the "
-            "array dimension:"
-            << "\n    number of variables  = " << n
-            << "\n    array dimension      = "
-            << pimpl_->trange().tiles_range().rank());
-      }
-
-      TA_EXCEPTION(
-          "The number of array annotation variables is not equal to the array "
-          "dimension.");
-    }
-#endif  // NDEBUG
+    check_str_index(vars);
     return TiledArray::expressions::TsrExpr<const DistArray_, true>(*this,
                                                                     vars);
   }
@@ -740,25 +741,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A non-const tensor expression object
   TiledArray::expressions::TsrExpr<DistArray_, true> operator()(
       const std::string& vars) {
-#ifndef NDEBUG
-    const unsigned int n =
-        1u + std::count_if(vars.begin(), vars.end(),
-                           [](const char c) { return c == ','; });
-    if (bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-      if (TiledArray::get_default_world().rank() == 0) {
-        TA_USER_ERROR_MESSAGE(
-            "The number of array annotation variables is not equal to the "
-            "array dimension:"
-            << "\n    number of variables  = " << n
-            << "\n    array dimension      = "
-            << pimpl_->trange().tiles_range().rank());
-      }
-
-      TA_EXCEPTION(
-          "The number of array annotation variables is not equal to the array "
-          "dimension.");
-    }
-#endif  // NDEBUG
+    check_str_index(vars);
     return TiledArray::expressions::TsrExpr<DistArray_, true>(*this, vars);
   }
 
@@ -1160,6 +1143,33 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   template <typename Index1>
   void check_index(const std::initializer_list<Index1>& i) const {
     check_index<std::initializer_list<Index1>>(i);
+  }
+
+  /// Ensures that the string indices are consistent with the tensor
+  ///
+  /// This function checks that PIMPL has been
+  /// @param[in] vars The string indices, such as `"i, j"`, the user provided to
+  ///                 label the modes.
+  void check_str_index(const std::string& vars) const {
+#ifndef NDEBUG
+    const unsigned int n =
+        1u + std::count_if(vars.begin(), vars.end(),
+                           [](const char c) { return c == ','; });
+    if (bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
+      if (TiledArray::get_default_world().rank() == 0) {
+        TA_USER_ERROR_MESSAGE(
+            "The number of array annotation variables is not equal to the "
+            "array dimension:"
+            << "\n    number of variables  = " << n
+            << "\n    array dimension      = "
+            << pimpl_->trange().tiles_range().rank());
+      }
+
+      TA_EXCEPTION(
+          "The number of array annotation variables is not equal to the array "
+          "dimension.");
+    }
+#endif  // NDEBUG
   }
 
   /// Makes sure pimpl has been initialized
