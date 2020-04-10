@@ -88,6 +88,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
+    -DCMAKE_Fortran_COMPILER=$F77 \ # if linking statically will need fortran libs to detect liblapacke.a in BTAS
     -DMPI_CXX_COMPILER=$MPICXX \
     -DMPI_C_COMPILER=$MPICC \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
@@ -117,6 +118,7 @@ else
     -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
+    -DCMAKE_Fortran_COMPILER=$F77 \ # if linking statically will need fortran libs to detect liblapacke.a in BTAS
     -DMPI_CXX_COMPILER=$MPICXX \
     -DMPI_C_COMPILER=$MPICC \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
