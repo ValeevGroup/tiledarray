@@ -13,6 +13,9 @@
 #include <TiledArray/math/cublas.h>
 #include <cutt.h>
 #endif
+#ifdef HAVE_INTEL_MKL
+#include <mkl.h>
+#endif
 
 namespace TiledArray {
 
@@ -51,6 +54,12 @@ static bool& finalized_accessor() {
   static bool flag = false;
   return flag;
 }
+#ifdef HAVE_INTEL_MKL
+static int& mklnumthreads_accessor() {
+  static int value = -1;
+  return value;
+}
+#endif
 }  // namespace detail
 
 /// @return true if TiledArray (and, necessarily, MADWorld runtime) is in an
@@ -95,6 +104,11 @@ inline World& initialize(int& argc, char**& argv,
 #ifdef TILEDARRAY_HAS_CUDA
     TiledArray::cuda_initialize();
 #endif
+#ifdef HAVE_INTEL_MKL
+    // record number of MKL threads and set to 1
+    detail::mklnumthreads_accessor() = mkl_get_max_threads();
+    mkl_set_num_threads(1);
+#endif
     madness::print_meminfo_disable();
     detail::initialized_accessor() = true;
     return default_world;
@@ -116,6 +130,10 @@ inline World& initialize(int& argc, char**& argv, const MPI_Comm& comm,
 /// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized
 /// when TiledArray::initialize was called).
 inline void finalize() {
+#ifdef HAVE_INTEL_MKL
+  // reset number of MKL threads
+  mkl_set_num_threads(detail::mklnumthreads_accessor());
+#endif
 #ifdef TILEDARRAY_HAS_CUDA
   TiledArray::cuda_finalize();
 #endif
