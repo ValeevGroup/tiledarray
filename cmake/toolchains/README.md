@@ -1,14 +1,7 @@
 # Summary
-This directory contains toolchains for standard platforms and specific high-end instances.
+TiledArray in general is recommended to use the toolchains distributed via [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains). To use toolchain `x` from the VG CMake kit repo provide `-DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/x.cmake` to CMake when configuring TiledArray.
 
-# Generic platforms
-
-The following toolchains are provided:
-- `clang-mpi-mkl-tbb`: generic clang + generic MPI + Intel MKL + Intel TBB
-- `gcc-mpi-mkl-tbb`: gcc + generic MPI + Intel MKL + Intel TBB
-- `intel-parallel-studio`: Intel Parallel Studio
-- `macos-clang-mpi-accelerate`: MacOS Clang + generic MPI + Accelerate
-- `macos-gcc-mpi-accelerate`: MacOS Clang + generic MPI + Accelerate
+This directory contains compilation notes for specific high-end platform instances.
 
 # Specific Platforms
 
@@ -34,7 +27,7 @@ export CMAKE_PATH=/ccs/home/evaleev/code/install/cmake-3.17.0-rc2/bin
 # `rm -rf CMakeFiles/ CMakeCache.txt external`
 
 ${CMAKE_PATH}/cmake ../../tiledarray \
--DCMAKE_TOOLCHAIN_FILE=<path to TiledArray source dir>/cmake/toolchains/olcf-summit-gcc-essl.cmake \
+-DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/olcf-summit-gcc-essl.cmake \
 -DENABLE_CUDA=ON \
 -DCMAKE_CUDA_HOST_COMPILER=${CUDA_GCC_DIR}/bin/g++ \
 -DENABLE_TBB=OFF \

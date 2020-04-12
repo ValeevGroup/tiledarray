@@ -25,6 +25,20 @@
 #
 
 cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
+
+###############################################################################
+# Bring ValeevGroup cmake toolkit
+###############################################################################
+include(FetchContent)
+FetchContent_Populate(
+    vg_cmake_kit
+    QUIET
+    GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-build
+    SUBBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-subbuild
+)
+
 project (TiledArray LANGUAGES)
 enable_language(CXX)
 
