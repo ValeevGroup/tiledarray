@@ -311,6 +311,65 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_tile_init_list, TestParam, test_params) {
   t2.set({0}, t1.find(0).get());
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(fill_local, TestParam, test_params){
+  trange_type<TestParam> tr{{0, 2}};
+  tensor_type<TestParam> t1(m_world, tr);
+  // Test w/o skipping filled
+  {t1.fill_local(inner_vector_tile<TestParam>(0));}
+  // Test skipping filled
+  {
+    t1.set(0, inner_vector_tile<TestParam>(1));
+    t1.fill_local(inner_vector_tile<TestParam>(0), true);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(fill, TestParam, test_params) {
+  trange_type<TestParam> tr{{0, 2}};
+  tensor_type<TestParam> t1(m_world, tr);
+  // Test w/o skipping filled
+  {t1.fill(inner_vector_tile<TestParam>(0));}
+  // Test skipping filled
+  {
+    t1.set(0, inner_vector_tile<TestParam>(1));
+    t1.fill(inner_vector_tile<TestParam>(0), true);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(fill_random, TestParam, test_params) {
+  trange_type<TestParam> tr{{0, 2}};
+  tensor_type<TestParam> t1(m_world, tr);
+  t1.fill_random();
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(init_tiles, TestParam, test_params) {
+  trange_type<TestParam> tr{{0, 2}};
+  tensor_type<TestParam> t1(m_world, tr);
+  // Test w/o skipping filled
+  { t1.init_tiles([](const Range& r){
+      tile_type<TestParam> t(r);
+      for(auto idx : r) t(idx) = inner_vector_tile<TestParam>(idx);
+      return t;
+    });
+  }
+  // Test skipping filled
+  {
+    t1.set(0, inner_vector_tile<TestParam>(1));
+    t1.init_tiles([](const Range& r){
+      tile_type<TestParam> t(r);
+      for(auto idx : r) t(idx) = inner_vector_tile<TestParam>(idx);
+      return t;
+    }, true);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(init_elements, TestParam, test_params) {
+  trange_type<TestParam> tr{{0, 2}};
+  tensor_type<TestParam> t1(m_world, tr);
+  using index_type = typename tensor_type<TestParam>::index_type;
+  t1.init_elements([](const index_type&){ return })
+}
+
+
 //BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TileType, tile_types){
 //  TArray<TileType> t;
 //}
