@@ -366,9 +366,22 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(init_elements, TestParam, test_params) {
   trange_type<TestParam> tr{{0, 2}};
   tensor_type<TestParam> t1(m_world, tr);
   using index_type = typename tensor_type<TestParam>::index_type;
-  t1.init_elements([](const index_type&){ return })
+  //t1.init_elements([](const index_type&){ return })
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(trange, TestParam, test_params) {
+  trange_type<TestParam> tr{{0, 2}};
+  tensor_type<TestParam> t1(m_world, tr);
+  BOOST_TEST(t1.trange() == tr);
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(range, TestParam, test_params) {
+  trange_type<TestParam> tr{{0, 2}};;
+  tensor_type<TestParam> t1(m_world, tr);
+  Range corr(1);
+  BOOST_TEST(t1.range() == corr);
+
+}
 
 //BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TileType, tile_types){
 //  TArray<TileType> t;
