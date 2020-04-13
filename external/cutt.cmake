@@ -88,9 +88,9 @@ else()
             	${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
-            BUILD_COMMAND make VERBOSE=1
+            BUILD_COMMAND ${CMAKE_COMMAND} --build . -v
             #--Install step---------------
-            INSTALL_COMMAND make install
+            INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
             #--Custom targets-------------
             STEP_TARGETS download
             )
