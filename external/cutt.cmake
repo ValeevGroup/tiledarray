@@ -98,7 +98,7 @@ else()
             	${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
-            BUILD_COMMAND ${CMAKE_COMMAND} --build . -v
+            BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cutt -v
             BUILD_BYPRODUCTS ${CUTT_BUILD_BYPRODUCTS}
             #--Install step---------------
             INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
