@@ -120,17 +120,13 @@ endif(_UMPIRE_INSTALL_DIR)
 
 add_library(TiledArray_UMPIRE INTERFACE)
 
-set_property(TARGET
+set_target_properties(
         TiledArray_UMPIRE
-        PROPERTY
+        PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES
-        ${_UMPIRE_INSTALL_DIR}/include
-        )
-
-set_property(TARGET TiledArray_UMPIRE
-        PROPERTY
+        "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/include>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/include>"
         INTERFACE_LINK_LIBRARIES
-        ${_UMPIRE_INSTALL_DIR}/lib/libumpire.${UMPIRE_DEFAULT_LIBRARY_SUFFIX}
+        "$<BUILD_INTERFACE:${UMPIRE_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/lib/libumpire.${UMPIRE_DEFAULT_LIBRARY_SUFFIX}>"
         )
 
 install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)

@@ -118,9 +118,9 @@ add_library(TiledArray_CUTT INTERFACE)
 set_target_properties(TiledArray_CUTT
         PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES
-        ${_CUTT_INSTALL_DIR}/include
+        "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:${_CUTT_INSTALL_DIR}/include>"
         INTERFACE_LINK_LIBRARIES
-        ${_CUTT_INSTALL_DIR}/lib/libcutt.${UMPIRE_DEFAULT_LIBRARY_SUFFIX}
+        "$<BUILD_INTERFACE:${CUTT_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_CUTT_INSTALL_DIR}/lib/libcutt.${CUTT_DEFAULT_LIBRARY_SUFFIX}>"
         )
 
 install(TARGETS TiledArray_CUTT EXPORT tiledarray COMPONENT tiledarray)
