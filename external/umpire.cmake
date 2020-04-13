@@ -72,6 +72,16 @@ else()
             )
     endif(CMAKE_TOOLCHAIN_FILE)
 
+    if (BUILD_SHARED_LIBS)
+        set(UMPIRE_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
+    else(BUILD_SHARED_LIBS)
+        set(UMPIRE_DEFAULT_LIBRARY_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
+    endif(BUILD_SHARED_LIBS)
+
+    # N.B. Ninja needs spelling out the byproducts of custom targets, see https://cmake.org/cmake/help/v3.3/policy/CMP0058.html
+    set(UMPIRE_BUILD_BYPRODUCTS "${EXTERNAL_BUILD_DIR}/lib/libumpire${UMPIRE_DEFAULT_LIBRARY_SUFFIX}")
+    message(STATUS "custom target Umpire is expected to build these byproducts: ${UMPIRE_BUILD_BYPRODUCTS}")
+
     ExternalProject_Add(Umpire
             PREFIX ${CMAKE_INSTALL_PREFIX}
             STAMP_DIR ${PROJECT_BINARY_DIR}/external/Umpire-stamp
@@ -92,6 +102,7 @@ else()
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
             BUILD_COMMAND ${CMAKE_COMMAND} --build . -v
+            BUILD_BYPRODUCTS ${UMPIRE_BUILD_BYPRODUCTS}
             #--Install step---------------
             INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
             #--Custom targets-------------
@@ -119,7 +130,7 @@ set_property(TARGET
 set_property(TARGET TiledArray_UMPIRE
         PROPERTY
         INTERFACE_LINK_LIBRARIES
-        ${_UMPIRE_INSTALL_DIR}/lib/libumpire.a 
+        ${_UMPIRE_INSTALL_DIR}/lib/libumpire.${UMPIRE_DEFAULT_LIBRARY_SUFFIX}
         )
 
 install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)
