@@ -5,7 +5,7 @@ $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ cmake -B build \
     -D CMAKE_INSTALL_PREFIX=/path/to/tiledarray/install \
-    -D CMAKE_TOOLCHAIN_FILE=../cmake/toolchains/toolchain-file-for-your-platform.cmake \
+    -D CMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/<toolchain-file-for-your-platform>.cmake \
     .
 $ cmake --build build
 (recommended, but optional): $ cmake --build build --target check
@@ -22,7 +22,7 @@ $ cmake --build build --target install
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
-- [CMake](https://cmake.org/), version 3.14 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
+- [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
@@ -95,7 +95,7 @@ Here's how to compile TiledArray on a macOS system:
 ```
 $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
         -D CMAKE_BUILD_TYPE=Release \
-        -D CMAKE_TOOLCHAIN_FILE=$TILEDARRAY_SOURCE_DIR/cmake/toolchains/osx-clang-mpi-accelerate.cmake \
+        -D CMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/macos-clang-mpi-accelerate.cmake \
         $TILEDARRAY_SOURCE_DIR
 ```
 
@@ -168,11 +168,13 @@ Additional CMake variables are given below.
 * `CMAKE_BUILD_TYPE` -- Optimization/debug build type options include
   `Debug` (optimization off, debugging symbols and assersions on), `Release` (optimization on, debugging symbols and assertions off), `RelWithDebInfo` (optimization on, debugging symbols and assertions on) and `MinSizeRel` (same as `Release` but optimized for executable size). The default is empty build type. It is recommended that you set the build type explicitly.
 * `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported by the platform]. With `BUILD_SHARED_LIBS=ON` special precautions must be taken for TiledArray and libraries using it to work properly on platforms with address randomization enabled.
-* `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `14` (default), `17`, and `20`.
+* `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `17` (default), and `20`.
+
+Most of these are best specified in a _toolchain file_. TiledArray is recommended to use the toolchains distributed via [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains). TiledArray by default downloads (via [the FetchContent CMake module](https://cmake.org/cmake/help/latest/module/FetchContent.html)) the VG CMake toolkit which makes the toolchains available without having to download the toolchain files manually. E.g., to use toolchain `x` from the VG CMake kit repository provide `-DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/x.cmake` to CMake when configuring TiledArray.
 
 -D CMAKE_BUILD_TYPE=(Release|Debug|RelWithDebInfo)
 -D BUILD_SHARED_LIBS=(TRUE|FALSE)
--D CMAKE_CXX_STANDARD=(14|17|20)
+-D CMAKE_CXX_STANDARD=(17|20)
 -D TA_ERROR=(none|throw|assert)
 It is typically not necessary to specify optimization or debug flags as the
 default values provided by CMake are usually correct.
@@ -199,7 +201,7 @@ serial version of the BLAS library or by setting the number of threads to one
 (1) with an environment variable. This is necessary because TiledArray evaluates tensor
 expressions in parallel by subdividing them into small tasks, each of which is assumed
 to be single-threaded; attempting to run a multi-threaded BLAS function inside
-tasks will over subscribe the hardware cores.
+tasks will oversubscribe the hardware cores.
 
 BLAS library dependency is provided by the MADNESS library, which checks for presence
 of BLAS and LAPACK (which also depends on BLAS) at the configure time. Therefore, if
@@ -214,8 +216,7 @@ CMake variables:
 * `LAPACK_INCLUDE_DIRS` -- (optional) a list of directories which contain BLAS/LAPACK-related header files
 * `LAPACK_COMPILE_DEFINITIONS` -- (optional) a list of preprocessor definitions required for any code that uses BLAS/LAPACK-related header files
 * `LAPACK_COMPILE_OPTIONS` -- (optional) a list of compiler options required for any code that uses BLAS/LAPACK-related header files
-* `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS
-*  libraries will be perferred.
+* `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS libraries will be preferred.
 
 The last three variables are only needed if your code will use non-Fortran BLAS/LAPACK library API (such as CBLAS or LAPACKE)
 and thus needs access to the header files. TiledArray only uses BLAS via the Fortran API, hence the last three

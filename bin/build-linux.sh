@@ -41,11 +41,15 @@ if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
     export EXTRACXXFLAGS="-mno-avx"
+    # if linking statically will need fortran libs to detect liblapacke.a in BTAS
+    # Elemental also needs fortran
     export F77=gfortran-$GCC_VERSION
 else
     export CC=/usr/bin/clang-$CLANG_VERSION
     export CXX=/usr/bin/clang++-$CLANG_VERSION
     export EXTRACXXFLAGS="-mno-avx -stdlib=libc++"
+    # if linking statically will need fortran libs to detect liblapacke.a in BTAS
+    # Elemental also needs fortran
     export F77=gfortran-$GCC_VERSION
 fi
 
@@ -85,9 +89,10 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   fi
 
   cmake ${TRAVIS_BUILD_DIR} \
-    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
+    -DCMAKE_Fortran_COMPILER=$F77 \
     -DMPI_CXX_COMPILER=$MPICXX \
     -DMPI_C_COMPILER=$MPICC \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
@@ -114,9 +119,10 @@ else
   fi
 
   cmake ${TRAVIS_BUILD_DIR} \
-    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
+    -DCMAKE_Fortran_COMPILER=$F77 \
     -DMPI_CXX_COMPILER=$MPICXX \
     -DMPI_C_COMPILER=$MPICC \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
