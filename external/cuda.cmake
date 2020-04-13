@@ -2,17 +2,14 @@ include(SanitizeCUDAImplicitDirectories)
 
 set(CUDA_FOUND TRUE)
 
-set(TILEDARRAY_HAS_CUDA 1)
+set(TILEDARRAY_HAS_CUDA 1 CACHE BOOL "Whether TiledArray has CUDA support")
 
 if(ENABLE_CUDA_ERROR_CHECK)
   set (TILEDARRAY_CHECK_CUDA_ERROR 1)
 endif(ENABLE_CUDA_ERROR_CHECK)
 
 # TODO uncomment, and remove workaround, when 3.17.0 is released
-#cmake_minimum_required(3.17.0) # decouples C++ and CUDA standards, see https://gitlab.kitware.com/cmake/cmake/issues/19123
-if (CMAKE_VERSION VERSION_LESS 3.17.0)
-  message(FATAL_ERROR "Need CMake 3.17 to support CUDA, but found version ${CMAKE_VERSION}")
-endif()
+cmake_minimum_required(VERSION 3.17.0) # decouples C++ and CUDA standards, see https://gitlab.kitware.com/cmake/cmake/issues/19123
 enable_language(CUDA)
 set(CMAKE_CUDA_STANDARD 14)
 set(CMAKE_CUDA_EXTENSIONS OFF)
