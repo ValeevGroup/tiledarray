@@ -19,6 +19,18 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+/* Notes:
+ *
+ * This test suite currently does not test:
+ * - wait_for_lazy_cleanup (either overload)
+ * - id() (documentation suggests it's not part of the public API)
+ * - elements (it's deprecated)
+ * - get_world (it's deprecated)
+ * - get_pmap (it's deprecated)
+ * - register_set_notifier
+ */
+
+
 using namespace TiledArray;
 
 // These are all of the template parameters we are going to test over
@@ -53,6 +65,12 @@ using trange_type = typename tensor_type<TupleElementType>::trange_type;
 template<typename TupleElementType>
 using inner_type = typename tile_type<TupleElementType>::value_type;
 
+// Type of an input archive
+using input_archive_type = madness::archive::BinaryFstreamInputArchive;
+
+// Type of an output archive
+using output_archive_type = madness::archive::BinaryFstreamOutputArchive;
+
 namespace {
 
 /*
@@ -67,8 +85,56 @@ struct ToTArrayFixture {
   ToTArrayFixture() : m_world(*GlobalFixture::world) {}
   ~ToTArrayFixture() { GlobalFixture::world->gop.fence(); }
 
+  /* This function returns an std::vector of tiled ranges. The ranges are for a
+   * tensor of rank 1 and cover the following scenarios:
+   *
+   * - A single element in a single tile
+   * - Multiple elements in a single tile
+   * - Multiple tiles with a single element each
+   * - Multiple tiles, one with a single element and one with multiple elements,
+   * - Multiple tiles, each with two elements
+   */
+  template<typename TupleElementType>
+  auto vector_tiled_ranges() {
+    using trange_type = trange_type<TupleElementType>;
+    return std::vector<trange_type>{
+      trange_type{{0, 1}},
+      trange_type{{0, 2}},
+      trange_type{{0, 1, 2}},
+      trange_type{{0, 1, 3}},
+      trange_type{{0, 2, 4}}
+    };
+  }
+
+  /* This function returns an std::vector of tiled ranges. The ranges are for a
+   * tensor of rank 2 and cover the following scenarios:
+   * - Single tile
+   *   - single element
+   *   - multiple elements on row/column but single element on column/row
+   *   - multiple elements on rows and columns
+   * - multiple tiles on rows/columns, but single tile on column/rows
+   *   - single element row/column and multiple element column/row
+   *   - Multiple elements in both rows and columns
+   * - multiple tiles on rows and columns
+   */
+  template<typename TupleElementType>
+  auto matrix_tiled_ranges() {
+    using trange_type = trange_type<TupleElementType>;
+    return std::vector<trange_type>{
+      trange_type{{0, 1}, {0, 1}},
+      trange_type{{0, 2}, {0, 1}},
+      trange_type{{0, 2}, {0, 2}},
+      trange_type{{0, 1}, {0, 2}},
+      trange_type{{0, 1}, {0, 1, 2}},
+      trange_type{{0, 1, 2}, {0, 1}},
+      trange_type{{0, 2}, {0, 1, 2}},
+      trange_type{{0, 1, 2}, {0, 2}},
+      trange_type{{0, 1, 2}, {0, 1, 2}}
+    };
+  }
+
   template<typename TupleElementType, typename Index>
-  static auto inner_vector_tile(Index&& idx) {
+  auto inner_vector_tile(Index&& idx) {
     auto sum = std::accumulate(idx.begin(), idx.end(), 0);
     inner_type<TupleElementType> elem(Range(sum + 1));
     std::iota(elem.begin(), elem.end(), 1);
@@ -83,7 +149,7 @@ struct ToTArrayFixture {
   template<typename TupleElementType>
   auto tensor_of_vector(const TiledRange& tr) {
     return make_array<tensor_type<TupleElementType>>(m_world, tr,
-        [](tile_type<TupleElementType>& tile, const Range& r){
+        [this](tile_type<TupleElementType>& tile, const Range& r){
           tile_type<TupleElementType> new_tile(r);
           for(auto idx : r){
             new_tile(idx) = inner_vector_tile<TupleElementType>(idx);
@@ -134,6 +200,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(typedefs, TestParam, test_params){
   static_assert(std::is_same_v<typename tensor_t::scalar_type, scalar_type>);
 }
 
+//------------------------------------------------------------------------------
+//                       Constructors
+//------------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE_TEMPLATE(default_ctor, TestParam, test_params){
   tensor_type<TestParam> t;
 }
@@ -206,6 +275,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(copy_assignment, TestParam, test_params){
   BOOST_CHECK_EQUAL(pt2, &t2);
 }
 
+//------------------------------------------------------------------------------
+//                       Iterators
+//------------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE_TEMPLATE(begin, TestParam, test_params){
   trange_type<TestParam> tr{{0, 2}};
   auto t1 = tensor_of_vector<TestParam>(tr);
@@ -230,6 +302,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(const_end, TestParam, test_params){
   auto itr = std::as_const(t1).end();
 }
 
+//------------------------------------------------------------------------------
+//                        Find and Set
+//------------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE_TEMPLATE(find, TestParam, test_params){
   trange_type<TestParam> tr{{0, 2}};
   auto t1 = tensor_of_vector<TestParam>(tr);
@@ -311,15 +386,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_tile_init_list, TestParam, test_params) {
   t2.set({0}, t1.find(0).get());
 }
 
+//------------------------------------------------------------------------------
+//                       Fill and Initialize
+//------------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE_TEMPLATE(fill_local, TestParam, test_params){
   trange_type<TestParam> tr{{0, 2}};
   tensor_type<TestParam> t1(m_world, tr);
   // Test w/o skipping filled
-  {t1.fill_local(inner_vector_tile<TestParam>(0));}
+  {t1.fill_local(inner_vector_tile<TestParam>(std::vector{0}));}
   // Test skipping filled
   {
-    t1.set(0, inner_vector_tile<TestParam>(1));
-    t1.fill_local(inner_vector_tile<TestParam>(0), true);
+    t1.set(0, inner_vector_tile<TestParam>(std::vector{1}));
+    t1.fill_local(inner_vector_tile<TestParam>(std::vector{0}), true);
   }
 }
 
@@ -327,25 +405,25 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(fill, TestParam, test_params) {
   trange_type<TestParam> tr{{0, 2}};
   tensor_type<TestParam> t1(m_world, tr);
   // Test w/o skipping filled
-  {t1.fill(inner_vector_tile<TestParam>(0));}
+  {t1.fill(inner_vector_tile<TestParam>(std::vector{0}));}
   // Test skipping filled
   {
-    t1.set(0, inner_vector_tile<TestParam>(1));
-    t1.fill(inner_vector_tile<TestParam>(0), true);
+    t1.set(0, inner_vector_tile<TestParam>(std::vector{1}));
+    t1.fill(inner_vector_tile<TestParam>(std::vector{0}), true);
   }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(fill_random, TestParam, test_params) {
   trange_type<TestParam> tr{{0, 2}};
   tensor_type<TestParam> t1(m_world, tr);
-  t1.fill_random();
+  //t1.fill_random();
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(init_tiles, TestParam, test_params) {
   trange_type<TestParam> tr{{0, 2}};
   tensor_type<TestParam> t1(m_world, tr);
   // Test w/o skipping filled
-  { t1.init_tiles([](const Range& r){
+  { t1.init_tiles([this](const Range& r){
       tile_type<TestParam> t(r);
       for(auto idx : r) t(idx) = inner_vector_tile<TestParam>(idx);
       return t;
@@ -353,8 +431,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(init_tiles, TestParam, test_params) {
   }
   // Test skipping filled
   {
-    t1.set(0, inner_vector_tile<TestParam>(1));
-    t1.init_tiles([](const Range& r){
+    t1.set(0, inner_vector_tile<TestParam>(std::vector{1}));
+    t1.init_tiles([this](const Range& r){
       tile_type<TestParam> t(r);
       for(auto idx : r) t(idx) = inner_vector_tile<TestParam>(idx);
       return t;
@@ -365,26 +443,200 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(init_tiles, TestParam, test_params) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(init_elements, TestParam, test_params) {
   trange_type<TestParam> tr{{0, 2}};
   tensor_type<TestParam> t1(m_world, tr);
-  using index_type = typename tensor_type<TestParam>::index_type;
+  using index_type = typename tensor_type<TestParam>::index;
   //t1.init_elements([](const index_type&){ return })
 }
 
+//------------------------------------------------------------------------------
+//                     Accessors
+//------------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE_TEMPLATE(trange, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-  BOOST_TEST(t1.trange() == tr);
+  for(auto tr : vector_tiled_ranges<TestParam>()) {
+    tensor_type<TestParam> t1(m_world, tr);
+    BOOST_TEST(t1.trange() == tr);
+  }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(range, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};;
-  tensor_type<TestParam> t1(m_world, tr);
-  Range corr(1);
-  BOOST_TEST(t1.range() == corr);
-
+  for(auto tr : vector_tiled_ranges<TestParam>()) {
+    tensor_type<TestParam> t1(m_world, tr);
+    BOOST_TEST(t1.range() == tr.tiles_range());
+  }
 }
 
-//BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TileType, tile_types){
-//  TArray<TileType> t;
-//}
+BOOST_AUTO_TEST_CASE_TEMPLATE(elements_range, TestParam, test_params) {
+  for(auto tr : vector_tiled_ranges<TestParam>()) {
+    tensor_type<TestParam> t1(m_world, tr);
+    BOOST_TEST(t1.elements_range() == tr.elements_range());
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(size, TestParam, test_params) {
+  for(auto tr : vector_tiled_ranges<TestParam>()) {
+   tensor_type<TestParam> t1(m_world, tr);
+   BOOST_TEST(t1.size() == tr.elements_range().volume());
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    //auto expr = t1("i;j");
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    //auto expr = std::as_const(t1)("i;j");
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(world, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    BOOST_TEST(&t1.world() == &m_world);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(pmap, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.pmap();
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_dense, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    BOOST_TEST(t1.is_dense() == false);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(shape, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.shape();
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(owner, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.owner(0);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(owner_init_list, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.owner({0});
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_local, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.is_local(0);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_local_init_list, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.owner({0});
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.is_zero(0);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero_init_list, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.owner({0});
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(swap, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    tensor_type<TestParam> t2;
+    t1.swap(t2);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(make_replicated, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.make_replicated();
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(truncate, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.truncate();
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_initialized, TestParam, test_params){
+  // Not initialized
+  {
+    tensor_type<TestParam> t1;
+    BOOST_TEST(t1.is_initialized() == false);
+  }
+
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    BOOST_TEST(t1.is_initialized());
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(serialization, TestParam, test_params) {
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    auto file_name = "a_file.temp";
+    {
+      output_archive_type ar_out(file_name);
+      t1.serialize(ar_out);
+    }
+
+    tensor_type<TestParam> t2;
+    {
+      input_archive_type ar_in(file_name);
+      t2.serialize(ar_in);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(load_store, TestParam, test_params) {
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    auto file_name = "a_file.temp";
+    {
+      madness::archive::ParallelOutputArchive ar_out(m_world, file_name, 1);
+      t1.store(ar_out);
+    }
+
+    tensor_type<TestParam> t2;
+    {
+      madness::archive::ParallelInputArchive ar_in(m_world, file_name, 1);
+      t2.load(m_world, ar_in);
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(printing, TestParam, test_params) {
+  for(auto tr : vector_tiled_ranges<TestParam>()) {
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    std::stringstream ss;
+    //ss << t1;
+  }
+}
 
 BOOST_AUTO_TEST_SUITE_END()

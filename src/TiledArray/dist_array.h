@@ -59,10 +59,19 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   typedef TiledArray::detail::ArrayImpl<Tile, Policy>
       impl_type; ///< The type of the PIMPL
   typedef typename impl_type::policy_type policy_type;  ///< Policy type
-  typedef typename detail::numeric_type<Tile>::type
-      element_type;  ///< The tile element type
-  typedef typename detail::scalar_type<Tile>::type
-      scalar_type;  ///< The tile scalar type
+
+  /// Type used to hold the components of the tensors in the array. For
+  /// DistArray<Tensor<double>> this will be double. Similarly for
+  /// DistArray<Tensor<Tensor<double>> this will also be double. Notably for
+  /// complex elements of type std::complex<T> element_type will be
+  /// std::complex<T> and scalar_type will be T.
+  typedef typename detail::numeric_type<Tile>::type element_type;
+
+  /// Type used to hold the scalar components of element_type. For real-valued
+  /// arrays scalar_type will be the same as element_type; however, for arrays
+  /// with elements of type std::complex<T> scalar_type will be T.
+  typedef typename detail::scalar_type<Tile>::type scalar_type;
+
   typedef typename impl_type::trange_type trange_type;  ///< Tile range type
   typedef
       typename impl_type::range_type range_type;  ///< Elements/tiles range type
@@ -83,6 +92,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       const_iterator;  ///< Local tile const iterator
   typedef typename impl_type::pmap_interface
       pmap_interface;  ///< Process map interface type
+
+  /// The type of the elements in the tile. For a tile of type Tensor<T> this is
+  /// T. Note that if the tile type is Tensor<Tensor<double>> this typedef will
+  /// be Tensor<double> and NOT double like element_type.
+  typedef typename value_type::value_type tile_element_type;
 
  private:
   std::shared_ptr<impl_type> pimpl_;  ///< Array implementation pointer
@@ -517,7 +531,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param i The index or the ordinal of the tile to be set
   /// \param value the value used to fill the tile
   template <typename Index>
-  void set(const Index& i, const element_type& value = element_type()) {
+  void set(const Index& i,
+           const tile_element_type& value = tile_element_type()) {
     check_index(i);
     pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
   }
@@ -530,7 +545,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param value the value used to fill the tile
   template <typename Integer>
   void set(const std::initializer_list<Integer>& i,
-           const element_type& value = element_type()) {
+           const tile_element_type& value = tile_element_type()) {
     set<std::initializer_list<Integer>>(i, value);
   }
 
@@ -581,7 +596,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \param value The fill value
   /// \param skip_set If false, will throw if any tiles are already set
-  void fill_local(const element_type& value = element_type(),
+  void fill_local(const tile_element_type& value = tile_element_type(),
                   bool skip_set = false) {
     init_tiles(
         [value](const range_type& range) { return value_type(range, value); },
@@ -592,7 +607,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \param value The fill value
   /// \param skip_set If false, will throw if any tiles are already set
-  void fill(const element_type& value = element_type(), bool skip_set = false) {
+  void fill(const tile_element_type& value = element_type(),
+            bool skip_set = false) {
     fill_local(value, skip_set);
   }
 
@@ -719,6 +735,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     return pimpl_->trange().elements_range();
   }
 
+  /// Returns the volume of the tensor
+
+  /// This function returns the number of elements in the array (the volume) as
+  /// computed by the tiled range. For tensors with tile types like
+  /// Tensor<double> this is the total number of elements in the tensor;
+  /// however, for tensor with tile types like Tensor<Tensor<double>> this is
+  /// the number of Tensor<double> instances in the array.
+  ///
+  /// \return The volume of the tensor as computed by the tiled range.
+  /// \throw TiledArray::Exception if the PIMPL has not been set.
   size_type size() const {
     check_pimpl();
     return pimpl_->size();
