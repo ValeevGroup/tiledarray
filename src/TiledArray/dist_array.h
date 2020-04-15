@@ -422,41 +422,30 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Global object id
 
   /// \return A globally unique identifier.
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized.
   /// \note This function is primarily used for debugging purposes. Users
   /// should not rely on this function.
-  madness::uniqueidT id() const { return pimpl_->id(); }
+  madness::uniqueidT id() const { return check_pimpl().id(); }
 
   /// Begin iterator factory function
 
   /// \return An iterator to the first local tile.
-  iterator begin() {
-    check_pimpl();
-    return pimpl_->begin();
-  }
+  iterator begin() { return check_pimpl().begin(); }
 
   /// Begin const iterator factory function
 
   /// \return A const iterator to the first local tile.
-  const_iterator begin() const {
-    check_pimpl();
-    return pimpl_->cbegin();
-  }
+  const_iterator begin() const { return check_pimpl().cbegin(); }
 
   /// End iterator factory function
 
   /// \return An iterator to one past the last local tile.
-  iterator end() {
-    check_pimpl();
-    return pimpl_->end();
-  }
+  iterator end() { return check_pimpl().end(); }
 
   /// End const iterator factory function
 
   /// \return A const iterator to one past the last local tile.
-  const_iterator end() const {
-    check_pimpl();
-    return pimpl_->cend();
-  }
+  const_iterator end() const { return check_pimpl().cend(); }
 
   /// Find local or remote tile
 
@@ -709,18 +698,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Tiled range accessor
 
   /// \return A const reference to the tiled range object for the array
-  const trange_type& trange() const {
-    check_pimpl();
-    return pimpl_->trange();
-  }
+  const trange_type& trange() const { return check_pimpl().trange(); }
 
   /// Tile range accessor
 
   /// \return A const reference to the range object for the array tiles
-  const range_type& range() const {
-    check_pimpl();
-    return pimpl_->tiles_range();
-  }
+  const range_type& range() const { return check_pimpl().tiles_range(); }
 
   /// \deprecated use DistArray::elements_range()
   [[deprecated]] const typename trange_type::range_type& elements() const {
@@ -731,8 +714,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \return A const reference to the range object for the array elements
   const typename trange_type::range_type& elements_range() const {
-    check_pimpl();
-    return pimpl_->trange().elements_range();
+    return check_pimpl().trange().elements_range();
   }
 
   /// Returns the volume of the tensor
@@ -745,10 +727,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///
   /// \return The volume of the tensor as computed by the tiled range.
   /// \throw TiledArray::Exception if the PIMPL has not been set.
-  size_type size() const {
-    check_pimpl();
-    return pimpl_->size();
-  }
+  size_type size() const { return check_pimpl().size(); }
 
   /// Create a tensor expression
 
@@ -772,50 +751,39 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// \deprecated use DistArray::world()
-  [[deprecated]] World& get_world() const {
-    check_pimpl();
-    return pimpl_->world();
-  }
+  [[deprecated]] World& get_world() const { return world(); }
 
   /// World accessor
 
   /// \return A reference to the world that owns this array.
-  World& world() const {
-    check_pimpl();
-    return pimpl_->world();
-  }
+  World& world() const { return check_pimpl().world(); }
 
   /// \deprecated use DistArray::pmap()
   [[deprecated]] const std::shared_ptr<pmap_interface>& get_pmap() const {
-    check_pimpl();
-    return pimpl_->pmap();
+    return pmap();
   }
 
   /// Process map accessor
 
   /// \return A reference to the process map that owns this array.
   const std::shared_ptr<pmap_interface>& pmap() const {
-    check_pimpl();
-    return pimpl_->pmap();
+    return check_pimpl().pmap();
   }
 
   /// Check dense/sparse
 
   /// \return \c true when \c Array is dense, \c false otherwise.
-  bool is_dense() const {
-    check_pimpl();
-    return pimpl_->is_dense();
-  }
+  bool is_dense() const { return check_pimpl().is_dense(); }
 
   /// \deprecated use DistArray::shape()
-  [[deprecated]] const shape_type& get_shape() const { return pimpl_->shape(); }
+  [[deprecated]] const shape_type& get_shape() const { return shape(); }
 
   /// Shape accessor
 
   /// Returns shape object. No communication is required.
   /// \return reference to the shape object.
   /// \throw TiledArray::Exception When the Array is dense.
-  inline const shape_type& shape() const { return pimpl_->shape(); }
+  inline const shape_type& shape() const { return check_pimpl().shape(); }
 
   /// Tile ownership
 
@@ -1148,16 +1116,15 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   template <typename Index>
   typename std::enable_if<std::is_integral<Index>::value>::type check_index(
       const Index i) const {
-    check_pimpl();
     TA_USER_ASSERT(
-        pimpl_->tiles_range().includes(i),
+        check_pimpl().tiles_range().includes(i),
         "The ordinal index used to access an array tile is out of range.");
   }
 
   template <typename Index>
   typename std::enable_if<!std::is_integral<Index>::value>::type check_index(
       const Index& i) const {
-    check_pimpl();
+    assert_pimpl(); // Use assert to avoid double checking
     TA_USER_ASSERT(
         pimpl_->tiles_range().includes(i),
         "The coordinate index used to access an array tile is out of range.");
@@ -1198,11 +1165,41 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 #endif  // NDEBUG
   }
 
-  /// Makes sure pimpl has been initialized
-  void check_pimpl() const {
+  /// Code factorization of the actual assert for the other overloads
+  void assert_pimpl() const{
     TA_USER_ASSERT(pimpl_,
-                   "The Array has not been initialized, likely reason: it was "
-                   "default constructed and used.");
+        "The Array has not been initialized, likely reason: it was "
+            "default constructed and used.");
+  }
+
+  /// Makes sure pimpl has been initialized
+  ///
+  /// This function asserts that the PIMPL has been initialized. If the PIMPL is
+  /// initialized this function then returns the PIMPL as a read-only reference.
+  /// This makes the common scenario of: check-pimpl then use pimpl, into a
+  /// one-liner.
+  ///
+  /// \return A read-only reference to the PIMPL.
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
+  auto& check_pimpl() const {
+    assert_pimpl();
+    return *pimpl_;
+  }
+
+  /// Makes sure pimpl has been initialized
+  ///
+  /// This function asserts that the PIMPL has been initialized. If the PIMPL is
+  /// initialized this function then returns the PIMPL as a read/write
+  /// reference. This makes the common scenario of: check-pimpl then use pimpl,
+  /// into a one-liner.
+  ///
+  /// \return A read/write reference to the PIMPL.
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
+  auto& check_pimpl() {
+    assert_pimpl();
+    return *pimpl_;
   }
 
 };  // class DistArray

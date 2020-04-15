@@ -141,11 +141,16 @@ struct ToTArrayFixture {
     return elem;
   }
 
-  /* This function creates a tensor of vectors given a tiled range. We do this
-   * by mapping the outer indices to the value of the inner vector. More
-   * specifically outer index i maps to a vector with i+1 elements in it (the
-   * values are 1 to i inclusive).
-   */
+  template<typename TupleElementType, typename Index>
+  auto inner_matrix_tile(Index&& idx) {
+    unsigned int row_max = idx[0] + 1;
+    unsigned int col_max = std::accumulate(idx.begin(), idx.end(), 0) + 1;
+    unsigned int zero = 0;
+    inner_type<TupleElementType> elem(Range({zero, zero}, {row_max, col_max}));
+    std::iota(elem.begin(), elem.end(), 1);
+    return elem;
+  }
+
   template<typename TupleElementType>
   auto tensor_of_vector(const TiledRange& tr) {
     return make_array<tensor_type<TupleElementType>>(m_world, tr,
@@ -158,10 +163,71 @@ struct ToTArrayFixture {
     });
   }
 
+  template<typename TupleElementType>
+  auto tensor_of_matrix(const TiledRange& tr) {
+    return make_array<tensor_type<TupleElementType>>(m_world, tr,
+        [this](tile_type<TupleElementType>& tile, const Range& r){
+          tile_type<TupleElementType> new_tile(r);
+          for(auto idx : r){
+            new_tile(idx) = inner_matrix_tile<TupleElementType>(idx);
+          }
+          tile = new_tile;
+    });
+  }
+
   // The world to use for the test suite
   madness::World& m_world;
 
 }; // TotArrayFixture
+
+/* This function tests for exact equality between DistArray instances. By exact
+ * equality we mean:
+ * - Same type
+ * - Either both are initialized or both are not initialized
+ * - Same MPI context
+ * - Same shape
+ * - Same distribution
+ * - Same tiling
+ * - Components are bit-wise equal (i.e., 3.1400000000 != 3.1400000001)
+ *
+ * TODO: pmap comparisons
+ */
+template<typename LHSTileType, typename LHSPolicy,
+         typename RHSTileType, typename RHSPolicy>
+bool are_equal(const DistArray<LHSTileType, LHSPolicy>& lhs,
+               const DistArray<RHSTileType, RHSPolicy>& rhs) {
+  // Same type
+  if(!std::is_same_v<decltype(lhs), decltype(rhs)>) return false;
+
+  // Are initialized?
+  if(lhs.is_initialized() != rhs.is_initialized()) return false;
+  if(!lhs.is_initialized()) return true; // both are default constructed
+
+  // Same world instance?
+  if(&lhs.world() != &rhs.world()) return false;
+
+  // Same shape?
+  if(lhs.shape() != rhs.shape()) return false;
+
+  // Same pmap?
+  //if(*lhs.pmap() != *rhs.pmap()) return false;
+
+  // Same tiling?
+  if(lhs.trange() != rhs.trange()) return false;
+
+  // Same components? Here we make all ranks check all tiles
+  bool are_same = true;
+  for(auto idx : lhs.range()){
+    const auto& lhs_tot = lhs.find(idx).get();
+    const auto& rhs_tot = rhs.find(idx).get();
+    if(lhs_tot != rhs_tot){
+      are_same = false;
+      break;
+    }
+  }
+  lhs.world().gop.fence();
+  return are_same;
+}
 
 } // namespace
 
@@ -178,6 +244,7 @@ BOOST_FIXTURE_TEST_SUITE(tot_array_suite, ToTArrayFixture)
  * - impl_type
  * - element_type
  * - scalar_type
+ * - tile_element_type
  */
 BOOST_AUTO_TEST_CASE_TEMPLATE(typedefs, TestParam, test_params){
 
@@ -190,89 +257,429 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(typedefs, TestParam, test_params){
   using tensor_t = tensor_type<TestParam>;
 
   //------------ Actual type checks start here -------------------------
-  static_assert(std::is_same_v<typename tensor_t::DistArray_, tensor_t>);
+  {
+    constexpr bool is_same =
+        std::is_same_v<typename tensor_t::DistArray_, tensor_t>;
+    BOOST_TEST(is_same);
+  }
 
-  using corr_impl_type = detail::ArrayImpl<tile_type, policy_type>;
-  static_assert(std::is_same_v<typename tensor_t::impl_type, corr_impl_type>);
+  {
+    using corr_impl_type = detail::ArrayImpl<tile_type, policy_type>;
+    constexpr bool is_same =
+        std::is_same_v<typename tensor_t::impl_type, corr_impl_type>;
+    BOOST_TEST(is_same);
+  }
 
-  static_assert(std::is_same_v<typename tensor_t::element_type, scalar_type>);
+  {
+    constexpr bool is_same =
+       std::is_same_v<typename tensor_t::element_type, scalar_type>;
+    BOOST_TEST(is_same);
+  }
 
-  static_assert(std::is_same_v<typename tensor_t::scalar_type, scalar_type>);
+  {
+    constexpr bool is_same =
+        std::is_same_v<typename tensor_t::scalar_type, scalar_type>;
+    BOOST_TEST(is_same);
+  }
+
+  {
+    using inner_t = typename tile_type::value_type;
+    constexpr bool is_same =
+        std::is_same_v<typename tensor_t::tile_element_type, inner_t>;
+    BOOST_TEST(is_same);
+  }
 }
 
 //------------------------------------------------------------------------------
 //                       Constructors
 //------------------------------------------------------------------------------
+
+/* The default ctor leaves the instance uninitialized therefore there's not a
+ * lot of state to check (we unit test checking for an uninitialized PIMPL when
+ * we test the various member functions).
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(default_ctor, TestParam, test_params){
   tensor_type<TestParam> t;
+  BOOST_TEST(t.is_initialized() == false);
 }
 
+/* To test the copy ctor we simply create a variety of tensors and use are_same
+ * to compare them to their copies. This specifically assumes that the tensor
+ * creation functions in the fixture work.
+ *
+ * TODO: Test that ctor is shallow
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(copy_ctor, TestParam, test_params){
-  tensor_type<TestParam> t;
-  tensor_type<TestParam> copy_of_t(t);
+  // Ensure we can copy a default constructed array
+  {
+    tensor_type<TestParam> t;
+    tensor_type<TestParam> copy_of_t(t);
+    BOOST_TEST(are_equal(t, copy_of_t));
+  }
+
+  // vector of vector
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()){
+      auto t = tensor_of_vector<TestParam>(tr);
+      tensor_type<TestParam> copy_of_t(t);
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // vector of matrices
+  {
+    for(auto tr: vector_tiled_ranges<TestParam>()) {
+      auto t = tensor_of_matrix<TestParam>(tr);
+      tensor_type<TestParam> copy_of_t(t);
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // matrix of vector
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()){
+      auto t = tensor_of_vector<TestParam>(tr);
+      tensor_type<TestParam> copy_of_t(t);
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // matrix of matrices
+  {
+    for(auto tr: matrix_tiled_ranges<TestParam>()) {
+      auto t = tensor_of_matrix<TestParam>(tr);
+      tensor_type<TestParam> copy_of_t(t);
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
 }
 
+/* The dense array ctor takes a world, a tiled range, and optionally a process
+ * map. It initializes the shape so that all tiles have a norm of 1.0. Since
+ * there's no actual inner tensors we only need to test over outer tensor types.
+ *
+ * TODO: Test pmap
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_ctor, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 1}};
-  tensor_type<TestParam> t(m_world, tr);
+  using shape_type = typename tensor_type<TestParam>::shape_type;
+  // vector of X
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()) {
+      tensor_type<TestParam> t(m_world, tr);
+      BOOST_TEST(&t.world() == &m_world);
+      BOOST_TEST(t.trange() == tr);
+      bool same_shape = t.shape() == shape_type(1, tr);
+      BOOST_TEST(same_shape);
+    }
+  }
+
+  // matrix of X
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()) {
+      tensor_type<TestParam> t(m_world, tr);
+      BOOST_TEST(&t.world() == &m_world);
+      BOOST_TEST(t.trange() == tr);
+      bool same_shape = t.shape() == shape_type(1, tr);
+      BOOST_TEST(same_shape);
+    }
+  }
 }
 
+/* Ths sparse array ctor is the same as the dense except that it additionally
+ * takes a shape instance.
+ *
+ * TODO: Test pmap
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(sparse_array_ctor, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 1}};
-  typename tensor_type<TestParam>::shape_type shape(1,tr);
-  tensor_type<TestParam> t(m_world, tr, shape);
+  using shape_type = typename tensor_type<TestParam>::shape_type;
+
+  // vector of X
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()) {
+      shape_type shape(1, tr);
+      tensor_type<TestParam> t(m_world, tr, shape);
+      BOOST_TEST(&t.world() == &m_world);
+      BOOST_TEST(t.trange() == tr);
+      bool same_shape = t.shape() == shape;
+      BOOST_TEST(same_shape);
+    }
+  }
+
+  // matrix of X
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()) {
+      shape_type shape(1,tr);
+      tensor_type<TestParam> t(m_world, tr, shape);
+      BOOST_TEST(&t.world() == &m_world);
+      BOOST_TEST(t.trange() == tr);
+      bool same_shape = t.shape() == shape;
+      BOOST_TEST(same_shape);
+    }
+  }
 }
 
+/* Creating an initializer list with dynamic content is a pain so we only test a
+ * few inputs:
+ *
+ * - A vector of vectors with two inner vectors
+ * - A vector of matrices with two inner matrices
+ * - A matrix of vectors with the outer matrix being 2 by 2
+ * - A matrix of matrices with the outer matrix being 2 by 2
+ *
+ * All of these tensors have a single tile because this ctor does not allow
+ * anything else.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(initializer_list_ctor, TestParam, test_params){
   using inner_type = inner_type<TestParam>;
-  inner_type e0(Range({1}), {1});
-  inner_type e1(Range({2}), {1, 2});
-  detail::vector_il<inner_type> il{e0, e1};
-  tensor_type<TestParam> t(m_world, il);
+
+  // vector of vector
+  {
+    auto e0 = inner_vector_tile<TestParam>(std::vector{0});
+    auto e1 = inner_vector_tile<TestParam>(std::vector{1});
+    detail::vector_il<inner_type> il{e0, e1};
+    tensor_type<TestParam> t(m_world, il);
+    auto corr = tensor_of_vector<TestParam>(TiledRange{{0, 2}});
+    BOOST_TEST(are_equal(t, corr));
+  }
+
+  // vector of matrices
+  {
+    auto e0 = inner_matrix_tile<TestParam>(std::vector{0});
+    auto e1 = inner_matrix_tile<TestParam>(std::vector{1});
+    detail::vector_il<inner_type> il{e0, e1};
+    tensor_type<TestParam> t(m_world, il);
+    auto corr = tensor_of_matrix<TestParam>(TiledRange{{0, 2}});
+    BOOST_TEST(are_equal(t, corr));
+  }
+
+  // matrix of vector
+  {
+    auto e00 = inner_vector_tile<TestParam>(std::vector{0, 0});
+    auto e01 = inner_vector_tile<TestParam>(std::vector{0, 1});
+    auto e10 = inner_vector_tile<TestParam>(std::vector{1, 0});
+    auto e11 = inner_vector_tile<TestParam>(std::vector{1, 1});
+    detail::matrix_il<inner_type> il{{e00, e01}, {e10, e11}};
+    tensor_type<TestParam> t(m_world, il);
+    auto corr = tensor_of_vector<TestParam>(TiledRange{{0, 2}, {0, 2}});
+    BOOST_TEST(are_equal(t, corr));
+  }
+
+  // matrix of matrices
+  {
+    auto e00 = inner_matrix_tile<TestParam>(std::vector{0, 0});
+    auto e01 = inner_matrix_tile<TestParam>(std::vector{0, 1});
+    auto e10 = inner_matrix_tile<TestParam>(std::vector{1, 0});
+    auto e11 = inner_matrix_tile<TestParam>(std::vector{1, 1});
+    detail::matrix_il<inner_type> il{{e00, e01}, {e10, e11}};
+    tensor_type<TestParam> t(m_world, il);
+    auto corr = tensor_of_matrix<TestParam>(TiledRange{{0, 2}, {0, 2}});
+    BOOST_TEST(are_equal(t, corr));
+  }
 }
 
+/* Similar to the non-tiled version we only test a few inputs. Specifically we
+ * test the same inputs, but now make it such that each inner tensor is in its
+ * own tile.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(tiled_initializer_list_ctor, TestParam,
     test_params){
   using inner_type = inner_type<TestParam>;
-  inner_type e0(Range({1}), {1});
-  inner_type e1(Range({2}), {1, 2});
-  detail::vector_il<inner_type> il{e0, e1};
-  trange_type<TestParam> tr{{0, 1, 2}};
-  tensor_type<TestParam> t(m_world, tr, il);
+  using trange_type = trange_type<TestParam>;
+
+  // vector of vector
+  {
+    auto e0 = inner_vector_tile<TestParam>(std::vector{0});
+    auto e1 = inner_vector_tile<TestParam>(std::vector{1});
+    detail::vector_il<inner_type> il{e0, e1};
+    trange_type tr{{0, 1, 2}};
+    tensor_type<TestParam> t(m_world, tr, il);
+    auto corr = tensor_of_vector<TestParam>(tr);
+    BOOST_TEST(are_equal(t, corr));
+  }
+
+  // vector of matrices
+  {
+    auto e0 = inner_matrix_tile<TestParam>(std::vector{0});
+    auto e1 = inner_matrix_tile<TestParam>(std::vector{1});
+    detail::vector_il<inner_type> il{e0, e1};
+    trange_type tr{{0, 1, 2}};
+    tensor_type<TestParam> t(m_world, tr, il);
+    auto corr = tensor_of_matrix<TestParam>(tr);
+    BOOST_TEST(are_equal(t, corr));
+  }
+
+  // matrix of vector
+  {
+    auto e00 = inner_vector_tile<TestParam>(std::vector{0, 0});
+    auto e01 = inner_vector_tile<TestParam>(std::vector{0, 1});
+    auto e10 = inner_vector_tile<TestParam>(std::vector{1, 0});
+    auto e11 = inner_vector_tile<TestParam>(std::vector{1, 1});
+    detail::matrix_il<inner_type> il{{e00, e01}, {e10, e11}};
+    trange_type tr{{0, 1, 2}, {0, 1 , 2}};
+    tensor_type<TestParam> t(m_world, tr, il);
+    auto corr = tensor_of_vector<TestParam>(tr);
+    BOOST_TEST(are_equal(t, corr));
+  }
+
+  // matrix of matrices
+  {
+    auto e00 = inner_matrix_tile<TestParam>(std::vector{0, 0});
+    auto e01 = inner_matrix_tile<TestParam>(std::vector{0, 1});
+    auto e10 = inner_matrix_tile<TestParam>(std::vector{1, 0});
+    auto e11 = inner_matrix_tile<TestParam>(std::vector{1, 1});
+    detail::matrix_il<inner_type> il{{e00, e01}, {e10, e11}};
+    trange_type tr{{0, 1, 2}, {0, 1 , 2}};
+    tensor_type<TestParam> t(m_world, tr, il);
+    auto corr = tensor_of_matrix<TestParam>(tr);
+    BOOST_TEST(are_equal(t, corr));
+  }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(unary_transform_ctor, TestParam,
-    test_params){
-
+/* An easy way to test the unary_transform_ctor is to just have it copy the
+ * original tensor. That's the approach we take here.
+ *
+ */
+BOOST_AUTO_TEST_CASE_TEMPLATE(unary_transform_ctor, TestParam, test_params){
+  using tensor_type = tensor_type<TestParam>;
   using tile_type = tile_type<TestParam>;
   using scalar_type = scalar_type<TestParam>;
-
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-
-  tensor_type<TestParam> t2(t1, [](tile_type& out, const tile_type& in){
+  auto l = [](tile_type& out, const tile_type& in){
     tile_type buffer(in.range());
     for(auto idx : in.range()) {
       buffer(idx) = in(idx);
     }
-  });
-  
+    out = buffer;
+  };
+
+  // vector of vector
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()){
+      auto t = tensor_of_vector<TestParam>(tr);
+      tensor_type copy_of_t(t, l);
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // vector of matrix
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()){
+      auto t = tensor_of_matrix<TestParam>(tr);
+      tensor_type copy_of_t(t, l);
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // matrix of vector
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()){
+      auto t = tensor_of_vector<TestParam>(tr);
+      tensor_type copy_of_t(t, l);
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // matrix of matrices
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()){
+      auto t = tensor_of_matrix<TestParam>(tr);
+      tensor_type copy_of_t(t, l);
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
 }
 
+/* The clone function is tested the same way as the copy ctor except we need to
+ * make sure that the resulting instance is a deep copy.
+ *
+ * TODO: Make sure it's a deep copy.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(clone, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  auto t2 = t1.clone();
+  // vector of vector
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()){
+      auto t = tensor_of_vector<TestParam>(tr);
+      auto copy_of_t = t.clone();
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // vector of matrices
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()){
+      auto t = tensor_of_matrix<TestParam>(tr);
+      auto copy_of_t = t.clone();
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // matrix of vector
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()){
+      auto t = tensor_of_vector<TestParam>(tr);
+      auto copy_of_t = t.clone();
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
+
+  // matrix of matrices
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()){
+      auto t = tensor_of_matrix<TestParam>(tr);
+      auto copy_of_t = t.clone();
+      BOOST_TEST(are_equal(t, copy_of_t));
+    }
+  }
 }
 
+/* Basically the same test as copy ctor and clone except we now also need to
+ * ensure that the assignment operator returns the left-side instance by
+ * reference.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(copy_assignment, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  tensor_type<TestParam> t2;
-  auto pt2 = &(t2 = t1);
+  using tensor_type = tensor_type<TestParam>;
+  // vector of vector
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()){
+      auto t1 = tensor_of_vector<TestParam>(tr);
+      tensor_type t2;
+      auto pt2 = &(t2 = t1);
+      BOOST_TEST(pt2 == &t2);
+      BOOST_TEST(are_equal(t1, t2));
+    }
+  }
 
-  // Make sure it returns *this
-  BOOST_CHECK_EQUAL(pt2, &t2);
+  // vector of matrices
+  {
+    for(auto tr : vector_tiled_ranges<TestParam>()){
+      auto t1 = tensor_of_matrix<TestParam>(tr);
+      tensor_type t2;
+      auto pt2 = &(t2 = t1);
+      BOOST_TEST(pt2 == &t2);
+      BOOST_TEST(are_equal(t1, t2));
+    }
+  }
+
+  // matrix of vector
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()){
+      auto t1 = tensor_of_vector<TestParam>(tr);
+      tensor_type t2;
+      auto pt2 = &(t2 = t1);
+      BOOST_TEST(pt2 == &t2);
+      BOOST_TEST(are_equal(t1, t2));
+    }
+  }
+
+  // matrix of matrices
+  {
+    for(auto tr : matrix_tiled_ranges<TestParam>()){
+      auto t1 = tensor_of_matrix<TestParam>(tr);
+      tensor_type t2;
+      auto pt2 = &(t2 = t1);
+      BOOST_TEST(pt2 == &t2);
+      BOOST_TEST(are_equal(t1, t2));
+    }
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -320,14 +727,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(find_init_list, TestParam, test_params){
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_sequence, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-  std::vector<inner_type<TestParam>> v{
-    inner_vector_tile<TestParam>(std::vector{0}),
-    inner_vector_tile<TestParam>(std::vector{1})
-  };
-  { t1.set(0, v.begin()); }
-  { t1.set(std::vector{0ul}, v.begin()); }
+//  trange_type<TestParam> tr{{0, 2}};
+//  tensor_type<TestParam> t1(m_world, tr);
+//  std::vector<inner_type<TestParam>> v{
+//    inner_vector_tile<TestParam>(std::vector{0}),
+//    inner_vector_tile<TestParam>(std::vector{1})
+//  };
+//  { t1.set(0, v.begin()); }
+//  { t1.set(std::vector{0ul}, v.begin()); }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_sequence_init_list, TestParam, test_params) {
