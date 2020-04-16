@@ -430,29 +430,45 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Begin iterator factory function
 
   /// \return An iterator to the first local tile.
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
   iterator begin() { return check_pimpl().begin(); }
 
   /// Begin const iterator factory function
 
   /// \return A const iterator to the first local tile.
+  /// \throw Tiledarray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
   const_iterator begin() const { return check_pimpl().cbegin(); }
 
   /// End iterator factory function
 
   /// \return An iterator to one past the last local tile.
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
   iterator end() { return check_pimpl().end(); }
 
   /// End const iterator factory function
 
   /// \return A const iterator to one past the last local tile.
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
   const_iterator end() const { return check_pimpl().cend(); }
 
-  /// Find local or remote tile
+  /// Find local or remote tile by index
 
-  /// \tparam Index The index type
-  /// \param i The tile index
+  /// \tparam Index The type of the index. Should be an integral type for an
+  ///               ordinal index or a type satisfying container of integral
+  ///               instances for a coordinate index.
+  /// \param[in] i Either the ordinal or coordinate index of the desired tile.
   /// \return A \c future to tile \c i
   /// \throw TiledArray::Exception When tile \c i is zero
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is a coordinate index with the
+  ///                              wrong rank. Strong throw guarantee.
   template <typename Index>
   Future<value_type> find(const Index& i) const {
     check_index(i);
@@ -462,9 +478,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Find local or remote tile
 
   /// \tparam Integer An integer type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \param i An \c std::initializer_list<Integer> indicating the coordinate
+  ///          index of the requested tile.
   /// \return A \c future to tile \c i
   /// \throw TiledArray::Exception When tile \c i is zero
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is a coordinate index with the
+  ///                              wrong rank. Strong throw guarantee.
   template <typename Integer>
   Future<value_type> find(const std::initializer_list<Integer>& i) const {
     return find<std::initializer_list<Integer>>(i);
@@ -538,22 +561,39 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     set<std::initializer_list<Integer>>(i, value);
   }
 
-  /// Set a tile directly using a future
+  /// Set a tile directly using a future to a tile
 
-  /// \tparam Index An index or integral type
-  /// \param i The index or the ordinal of the tile to be set
-  /// \param f A future to the tile
+  /// \tparam Index For an ordinal index should be an integral type and for a
+  ///               coordinate index should be a type satisfying container of
+  ///               integral types.
+  /// \param[in] i The ordinal or coordinate index of the tile to set
+  /// \param[in] f A future to the tile's new value
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is a coordinate index with the
+  ///                              wrong rank. Strong throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Index>
   void set(const Index& i, const Future<value_type>& f) {
     check_index(i);
     pimpl_->set(i, f);
   }
 
-  /// Set a tile directly using a future
+  /// Set a tile directly using a future to a tile
 
   /// \tparam Integer An integral type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
-  /// \param f A future to the tile
+  /// \param[in] i The coordinate index of the tile to set, as an
+  ///          \c std::initializer_list<Integer>
+  /// \param[in] f A future to the tile's new value
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i has the wrong rank. Strong
+  ///                              throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Integer>
   void set(const std::initializer_list<Integer>& i,
            const Future<value_type>& f) {
@@ -562,9 +602,17 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Set a tile using a Tile object
 
-  /// \tparam Index An index or integral type
-  /// \param i The tile index to be set
-  /// \param v The tile value
+  /// \tparam Index Either an integral type or a type satisfying the concept of
+  ///               container of integral types.
+  /// \param[in] i The ordinal or coordinate index of the tile to set
+  /// \param[in] v The tile to set index \c i to.
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is ordinal and has the wrong
+  ///                              rank. Strong throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Index>
   void set(const Index& i, const value_type& v) {
     check_index(i);
@@ -574,8 +622,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Set a tile using a Tile object
 
   /// \tparam Integer An integral type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
-  /// \param v The tile value
+  /// \param[in] i The coordinate index, as an \c std::initializer_list<Integer>
+  ///              for the tile to set.
+  /// \param[in] v The value to set tile \c i to.
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i has the wrong rank. Strong
+  ///                              throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Integer>
   void set(const std::initializer_list<Integer>& i, const value_type& v) {
     set<std::initializer_list<Integer>>(i, v);

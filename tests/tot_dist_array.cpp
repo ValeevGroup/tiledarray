@@ -141,6 +141,7 @@ struct ToTArrayFixture {
     return elem;
   }
 
+
   template<typename TupleElementType, typename Index>
   auto inner_matrix_tile(Index&& idx) {
     unsigned int row_max = idx[0] + 1;
@@ -173,6 +174,45 @@ struct ToTArrayFixture {
           }
           tile = new_tile;
     });
+  }
+
+  /* The majority of the unit tests can be written in such a way that all they
+   * need is the tiled range and the resulting tensor. The tiled range is more
+   * or less the correct answer, since the ToTArrayFixture maps it to the values
+   * of the array, and the tensor is the thing to test. This function creates a
+   * std::vector of tiled range,tensor pairs spanning:
+   *
+   * - vector of vectors
+   * - vector of matrices
+   * - matrix of vectors
+   * - matrix of matrices
+   *
+   * The unit tests simply loop over the vector testing for all these scenarios
+   * with a few lines of code.
+   */
+  template<typename TupleElementType>
+  auto run_all() {
+      using trange_type = trange_type<TupleElementType>;
+      using tensor_type = tensor_type<TupleElementType>;
+    std::vector<std::pair<trange_type, tensor_type>> rv;
+
+    // Make vector of vector
+    for(auto tr: vector_tiled_ranges<TupleElementType>())
+      rv.push_back(std::make_pair(tr, tensor_of_vector<TupleElementType>(tr)));
+
+    // Make vector of matrix
+    for(auto tr: vector_tiled_ranges<TupleElementType>())
+      rv.push_back(std::make_pair(tr, tensor_of_matrix<TupleElementType>(tr)));
+
+    // Make matrix of vector
+    for(auto tr: matrix_tiled_ranges<TupleElementType>())
+      rv.push_back(std::make_pair(tr, tensor_of_vector<TupleElementType>(tr)));
+
+    // Make matrix of matrix
+    for(auto tr: matrix_tiled_ranges<TupleElementType>())
+      rv.push_back(std::make_pair(tr, tensor_of_matrix<TupleElementType>(tr)));
+
+    return rv;
   }
 
   // The world to use for the test suite
@@ -317,40 +357,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(copy_ctor, TestParam, test_params){
     BOOST_TEST(are_equal(t, copy_of_t));
   }
 
-  // vector of vector
-  {
-    for(auto tr : vector_tiled_ranges<TestParam>()){
-      auto t = tensor_of_vector<TestParam>(tr);
-      tensor_type<TestParam> copy_of_t(t);
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
-
-  // vector of matrices
-  {
-    for(auto tr: vector_tiled_ranges<TestParam>()) {
-      auto t = tensor_of_matrix<TestParam>(tr);
-      tensor_type<TestParam> copy_of_t(t);
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
-
-  // matrix of vector
-  {
-    for(auto tr : matrix_tiled_ranges<TestParam>()){
-      auto t = tensor_of_vector<TestParam>(tr);
-      tensor_type<TestParam> copy_of_t(t);
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
-
-  // matrix of matrices
-  {
-    for(auto tr: matrix_tiled_ranges<TestParam>()) {
-      auto t = tensor_of_matrix<TestParam>(tr);
-      tensor_type<TestParam> copy_of_t(t);
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
+  for(auto tr_t : run_all<TestParam>()){
+    auto& t = tr_t.second;
+    tensor_type<TestParam> copy_of_t(t);
+    BOOST_TEST(are_equal(t, copy_of_t));
   }
 }
 
@@ -551,40 +561,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(unary_transform_ctor, TestParam, test_params){
     out = buffer;
   };
 
-  // vector of vector
-  {
-    for(auto tr : vector_tiled_ranges<TestParam>()){
-      auto t = tensor_of_vector<TestParam>(tr);
-      tensor_type copy_of_t(t, l);
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
-
-  // vector of matrix
-  {
-    for(auto tr : vector_tiled_ranges<TestParam>()){
-      auto t = tensor_of_matrix<TestParam>(tr);
-      tensor_type copy_of_t(t, l);
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
-
-  // matrix of vector
-  {
-    for(auto tr : matrix_tiled_ranges<TestParam>()){
-      auto t = tensor_of_vector<TestParam>(tr);
-      tensor_type copy_of_t(t, l);
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
-
-  // matrix of matrices
-  {
-    for(auto tr : matrix_tiled_ranges<TestParam>()){
-      auto t = tensor_of_matrix<TestParam>(tr);
-      tensor_type copy_of_t(t, l);
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
+  for(auto tr_t : run_all<TestParam>()){
+    auto& t = tr_t.second;
+    tensor_type copy_of_t(t, l);
+    BOOST_TEST(are_equal(t, copy_of_t));
   }
 }
 
@@ -594,40 +574,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(unary_transform_ctor, TestParam, test_params){
  * TODO: Make sure it's a deep copy.
  */
 BOOST_AUTO_TEST_CASE_TEMPLATE(clone, TestParam, test_params){
-  // vector of vector
-  {
-    for(auto tr : vector_tiled_ranges<TestParam>()){
-      auto t = tensor_of_vector<TestParam>(tr);
-      auto copy_of_t = t.clone();
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
 
-  // vector of matrices
-  {
-    for(auto tr : vector_tiled_ranges<TestParam>()){
-      auto t = tensor_of_matrix<TestParam>(tr);
-      auto copy_of_t = t.clone();
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
-
-  // matrix of vector
-  {
-    for(auto tr : matrix_tiled_ranges<TestParam>()){
-      auto t = tensor_of_vector<TestParam>(tr);
-      auto copy_of_t = t.clone();
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
-  }
-
-  // matrix of matrices
-  {
-    for(auto tr : matrix_tiled_ranges<TestParam>()){
-      auto t = tensor_of_matrix<TestParam>(tr);
-      auto copy_of_t = t.clone();
-      BOOST_TEST(are_equal(t, copy_of_t));
-    }
+  for(auto tr_t : run_all<TestParam>()){
+    auto& t = tr_t.second;
+    auto copy_of_t = t.clone();
+    BOOST_TEST(are_equal(t, copy_of_t));
   }
 }
 
@@ -636,188 +587,445 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(clone, TestParam, test_params){
  * reference.
  */
 BOOST_AUTO_TEST_CASE_TEMPLATE(copy_assignment, TestParam, test_params){
-  using tensor_type = tensor_type<TestParam>;
-  // vector of vector
-  {
-    for(auto tr : vector_tiled_ranges<TestParam>()){
-      auto t1 = tensor_of_vector<TestParam>(tr);
-      tensor_type t2;
-      auto pt2 = &(t2 = t1);
-      BOOST_TEST(pt2 == &t2);
-      BOOST_TEST(are_equal(t1, t2));
-    }
-  }
-
-  // vector of matrices
-  {
-    for(auto tr : vector_tiled_ranges<TestParam>()){
-      auto t1 = tensor_of_matrix<TestParam>(tr);
-      tensor_type t2;
-      auto pt2 = &(t2 = t1);
-      BOOST_TEST(pt2 == &t2);
-      BOOST_TEST(are_equal(t1, t2));
-    }
-  }
-
-  // matrix of vector
-  {
-    for(auto tr : matrix_tiled_ranges<TestParam>()){
-      auto t1 = tensor_of_vector<TestParam>(tr);
-      tensor_type t2;
-      auto pt2 = &(t2 = t1);
-      BOOST_TEST(pt2 == &t2);
-      BOOST_TEST(are_equal(t1, t2));
-    }
-  }
-
-  // matrix of matrices
-  {
-    for(auto tr : matrix_tiled_ranges<TestParam>()){
-      auto t1 = tensor_of_matrix<TestParam>(tr);
-      tensor_type t2;
-      auto pt2 = &(t2 = t1);
-      BOOST_TEST(pt2 == &t2);
-      BOOST_TEST(are_equal(t1, t2));
-    }
+  for(auto tr_t : run_all<TestParam>()){
+    auto& tr = tr_t.first;
+    auto& t = tr_t.second;
+    tensor_type<TestParam> t2;
+    auto pt2 = &(t2 = t);
+    BOOST_TEST(pt2 == &t2);
+    BOOST_TEST(are_equal(t, t2));
   }
 }
 
 //------------------------------------------------------------------------------
 //                       Iterators
 //------------------------------------------------------------------------------
+
+/* The iterators for the DistArray class are actually formed by the PIMPL. For
+ * unit testing the DistArray class we assume that the PIMPL forms them
+ * correctly. Under this assumption begin/end are just pass throughs except that
+ * they need to ensure that the PIMPL is non-null. The unit tests in this
+ * section test that begin/end throw when the PIMPL is null (on a single
+ * process) and that they don't throw otherwise.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(begin, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  auto itr = t1.begin();
+  {
+    tensor_type<TestParam> t;
+    if(m_world.nproc() == 1)
+      BOOST_CHECK_THROW(t.begin(), TiledArray::Exception);
+  }
+
+  for(auto tr_t : run_all<TestParam>()){
+    auto& t = tr_t.second;
+    BOOST_CHECK_NO_THROW(t.begin());
+  }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(const_begin, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  auto itr = std::as_const(t1).begin();
+  {
+    const tensor_type<TestParam> t;
+    if(m_world.nproc() == 1)
+      BOOST_CHECK_THROW(t.begin(), TiledArray::Exception);
+  }
+
+  for(auto tr_t : run_all<TestParam>()){
+    const auto& t = tr_t.second;
+    BOOST_CHECK_NO_THROW(t.begin());
+  }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(end, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  auto itr = t1.end();
+  {
+    tensor_type<TestParam> t;
+    if(m_world.nproc() == 1)
+      BOOST_CHECK_THROW(t.end(), TiledArray::Exception);
+  }
+
+  for(auto tr_t : run_all<TestParam>()){
+    auto& t = tr_t.second;
+    BOOST_CHECK_NO_THROW(t.end());
+  }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(const_end, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  auto itr = std::as_const(t1).end();
+  {
+    const tensor_type<TestParam> t;
+    if(m_world.nproc() == 1)
+      BOOST_CHECK_THROW(t.end(), TiledArray::Exception);
+  }
+
+  for(auto tr_t : run_all<TestParam>()){
+    const auto& t = tr_t.second;
+    BOOST_CHECK_NO_THROW(t.end());
+  }
 }
 
 //------------------------------------------------------------------------------
 //                        Find and Set
 //------------------------------------------------------------------------------
-BOOST_AUTO_TEST_CASE_TEMPLATE(find, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
 
-  { auto tile = t1.find(0); }
-  { auto tile = t1.find(std::vector{0ul}); }
+/* This overload performs some error checking and then dispatches to the PIMPL.
+ * We presently assume that the PIMPL's implementation has been tested, thus we
+ * don't have to test that find works for every element, just that it properly
+ * wraps the PIMPL and that the error-checking works.
+ */
+BOOST_AUTO_TEST_CASE_TEMPLATE(find, TestParam, test_params){
+  // Throws if uninitialized
+  {
+    tensor_type<TestParam> t;
+    if(m_world.nproc() == 1)
+      BOOST_CHECK_THROW(t.find(0), TiledArray::Exception);
+  }
+
+  for(auto tr_t : run_all<TestParam>()){
+    auto& tr = tr_t.first;
+    auto& t  = tr_t.second;
+    const auto& tile_range = tr.tiles_range();
+
+    // Check throws
+    if(m_world.nproc() == 1){
+      auto upbound = tile_range.upbound();
+
+      // Throw if coordinate index is out of bounds
+      BOOST_CHECK_THROW(t.find(upbound), TiledArray::Exception);
+
+      // Throw if ordinal index is out of bounds
+      BOOST_CHECK_THROW(t.find(tile_range.volume()), TiledArray::Exception);
+
+      std::vector<unsigned int> temp(upbound.begin(), upbound.end());
+      temp.push_back(1);
+      // Throw if coordinate index has a different rank
+      BOOST_CHECK_THROW(t.find(temp), TiledArray::Exception);
+    }
+
+    // Get the 0-th element by ordinate index
+    auto elem1 = t.find(0).get();
+
+    // Get the 0-th element by coordinate index
+    auto elem2 = t.find(tile_range.lobound()).get();
+
+    // They should be the same element
+    BOOST_CHECK(elem1 == elem2);
+  }
 }
 
+/* The initializer overload just dispatches to the index overload and using the
+ * fact that the  initializer list is a container of integers. Since initializer
+ * lists are hard to generate dynamically we only test a single scenario:
+ * grabbing the 0,1 tile of a matrix of vectors.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(find_init_list, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
+  trange_type<TestParam> tr{{0, 1, 2}, {0, 1, 2}};
   auto t1 = tensor_of_vector<TestParam>(tr);
-  auto tile = t1.find({0});
+  auto tile = t1.find({0, 1}).get();
+  tile_type<TestParam> corr(tr.tile({0, 1}));
+  corr[0] = inner_vector_tile<TestParam>(std::vector{0, 1});
+  BOOST_CHECK(corr == tile);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_sequence, TestParam, test_params) {
-//  trange_type<TestParam> tr{{0, 2}};
-//  tensor_type<TestParam> t1(m_world, tr);
-//  std::vector<inner_type<TestParam>> v{
-//    inner_vector_tile<TestParam>(std::vector{0}),
-//    inner_vector_tile<TestParam>(std::vector{1})
-//  };
-//  { t1.set(0, v.begin()); }
-//  { t1.set(std::vector{0ul}, v.begin()); }
+
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_sequence_init_list, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-  std::vector<inner_type<TestParam>> v{
-      inner_vector_tile<TestParam>(std::vector{0}),
-      inner_vector_tile<TestParam>(std::vector{1})
-  };
-  t1.set({0}, v.begin());
+
 }
 
+/* For a particular tile index we first create an inner tile of either vector or
+ * matrix type. We then create the correct result by filling in the outer tile
+ * with this inner tile value and then relying on the set(Index, Tile) overload
+ * to work. The tensor which tests this overload is then created using the
+ * set(Index, Tile::value_type) overload. We don't use run_all because the
+ * tensors created by run_all will have different inner tile elements.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_value, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-//  { t1.set(0, 42); }
-//  { t1.set(std::vector{0ul}, 42); }
+  using tensor_type = tensor_type<TestParam>;
+  using inner_type = inner_type<TestParam>;
+  // Ensure throws if PIMPL is uninitialized
+  {
+    if(m_world.nproc() == 1) {
+      tensor_type t;
+      BOOST_CHECK_THROW(t.set(0, inner_type{}), TiledArray::Exception);
+    }
+  }
+
+  for(auto tr : vector_tiled_ranges<TestParam>()) {
+    // Check throws
+    if(m_world.nproc() == 1 && false){
+      tensor_type t(m_world, tr);
+      auto lobound = tr.tiles_range().lobound();
+      auto upbound = tr.tiles_range().upbound();
+      auto volume  = tr.tiles_range().volume();
+
+      // Throw if tile is already initialized
+      auto t2 = tensor_of_vector<TestParam>(tr);
+      BOOST_CHECK_THROW(t2.set(lobound, inner_type{}), TiledArray::Exception);
+
+      // Throw if coordinate index is out of bounds
+      BOOST_CHECK_THROW(t.set(upbound, inner_type{}), TiledArray::Exception);
+
+      // Throw if ordinal index is out of bounds
+      BOOST_CHECK_THROW(t.set(volume, inner_type{}), TiledArray::Exception);
+
+      // Throw if coordinate index has a different rank
+      std::vector<unsigned int> temp(upbound.begin(), upbound.end());
+      temp.push_back(0);
+      BOOST_CHECK_THROW(t.set(temp, inner_type{}), TiledArray::Exception);
+    }
+
+    // Vector of vectors
+    {
+      tensor_type t(m_world, tr);
+      tensor_type corr(m_world, tr);
+      for (auto idx : tr.tiles_range()) {
+        if (!t.is_local(idx)) continue;
+        auto inner_tile = inner_vector_tile<TestParam>(idx);
+        tile_type<TestParam> outer_tile(tr.tile(idx), inner_tile);
+        corr.set(idx, outer_tile);
+        t.set(idx, inner_tile);
+      }
+      BOOST_CHECK(are_equal(t, corr));
+    }
+
+    // Vector of matrices
+    {
+      tensor_type t(m_world, tr);
+      tensor_type corr(m_world, tr);
+      for (auto idx : tr.tiles_range()) {
+        if (!t.is_local(idx)) continue;
+        auto inner_tile = inner_matrix_tile<TestParam>(idx);
+        tile_type<TestParam> outer_tile(tr.tile(idx), inner_tile);
+        corr.set(idx, outer_tile);
+        t.set(idx, inner_tile);
+      }
+      BOOST_CHECK(are_equal(t, corr));
+    }
+  }
+
+  for(auto tr : matrix_tiled_ranges<TestParam>()) {
+    // Check throws
+    if(m_world.nproc() == 1 && false){
+      tensor_type t(m_world, tr);
+      auto lobound = tr.tiles_range().lobound();
+      auto upbound = tr.tiles_range().upbound();
+      auto volume  = tr.tiles_range().volume();
+
+      // Throw if tile is already initialized
+      auto t2 = tensor_of_vector<TestParam>(tr);
+      BOOST_CHECK_THROW(t2.set(lobound, inner_type{}), TiledArray::Exception);
+
+      // Throw if coordinate index is out of bounds
+      BOOST_CHECK_THROW(t.set(upbound, inner_type{}), TiledArray::Exception);
+
+      // Throw if ordinal index is out of bounds
+      BOOST_CHECK_THROW(t.set(volume, inner_type{}), TiledArray::Exception);
+
+      // Throw if coordinate index has a different rank
+      std::vector<unsigned int> temp(upbound.begin(), upbound.end());
+      temp.push_back(0);
+      BOOST_CHECK_THROW(t.set(temp, inner_type{}), TiledArray::Exception);
+    }
+
+    // matrix of vectors
+    {
+      tensor_type t(m_world, tr);
+      tensor_type corr(m_world, tr);
+      for (auto idx : tr.tiles_range()) {
+        if (!t.is_local(idx)) continue;
+        auto inner_tile = inner_vector_tile<TestParam>(idx);
+        tile_type<TestParam> outer_tile(tr.tile(idx), inner_tile);
+        corr.set(idx, outer_tile);
+        t.set(idx, inner_tile);
+      }
+      BOOST_CHECK(are_equal(t, corr));
+    }
+
+    // matrix of matrices
+    {
+      tensor_type t(m_world, tr);
+      tensor_type corr(m_world, tr);
+      for (auto idx : tr.tiles_range()) {
+        if (!t.is_local(idx)) continue;
+        auto inner_tile = inner_matrix_tile<TestParam>(idx);
+        tile_type<TestParam> outer_tile(tr.tile(idx), inner_tile);
+        corr.set(idx, outer_tile);
+        t.set(idx, inner_tile);
+      }
+      BOOST_CHECK(are_equal(t, corr));
+    }
+  }
 }
 
+/* This overload just wraps the previous overload, forwarding the provided
+ * initializer list as a coordinate index. Hence as long as the previous
+ * overload works, this overload will also work (assuming that the wrapping is
+ * done correctly). Here we test this wrapping by looping over matrices of
+ * vectors. We use the same testing strategy as the previous overload, namely
+ * relying on set(initializer_list, Tile) to work.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_value_init_list, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-  auto elem = inner_vector_tile<TestParam>(std::vector{0});
-  //t1.set({0}, 42);
+  for(auto tr: matrix_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t(m_world, tr);
+    tensor_type<TestParam> corr(m_world, tr);
+    auto inner_tile = inner_matrix_tile<TestParam>(std::vector{0});
+    tile_type<TestParam> outer_tile(tr.tile(0), inner_tile);
+    corr.set(0, outer_tile);
+    t.set({0, 0}, inner_tile);
+    BOOST_CHECK(are_equal(t, corr));
+  }
 }
 
+/* This overload of set takes an index (either ordinal or coordinate) and a
+ * future to a tile. It performs some basic error checking before forwarding
+ * the result to the PIMPL. This unit test makes sure the error checking works
+ * and then copies the correct tensor via a series of find operations.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_future, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  tensor_type<TestParam> t2(m_world, tr);
-  auto elem = inner_vector_tile<TestParam>(std::vector{0});
-  { t2.set(0, t1.find(0)); }
-  { t2.set(std::vector{0ul}, t1.find(0)); }
+  using future_type = Future<tile_type<TestParam>>;
+
+  // Throws if PIMPL is not initialized
+  {
+    tensor_type<TestParam> t;
+    if(m_world.nproc() == 1)
+      BOOST_CHECK_THROW(t.set(0, future_type{}), TiledArray::Exception);
+  }
+
+  for(auto tr_t : run_all<TestParam>()){
+    auto& tr = tr_t.first;
+    auto& corr  = tr_t.second;
+    const auto& tile_range = tr.tiles_range();
+
+    tensor_type<TestParam> t_by_idx(m_world, tr); // Will fill by coordinate
+    tensor_type<TestParam> t_by_ord(m_world, tr); // Will fill by ordinate
+
+    // Check throws
+    if(m_world.nproc() == 1){
+      auto upbound = tile_range.upbound();
+      auto volume  = tile_range.volume();
+      future_type f; // Value doesn't matter for throwing
+
+      // Throw if tile is already initialized
+      BOOST_CHECK_THROW(corr.set(0, f), TiledArray::Exception);
+
+      // Throw if coordinate index is out of bounds
+      BOOST_CHECK_THROW(t_by_idx.set(upbound, f), TiledArray::Exception);
+
+      // Throw if ordinal index is out of bounds
+      BOOST_CHECK_THROW(t_by_idx.set(volume, f), TiledArray::Exception);
+
+      // Throw if coordinate index has a different rank
+      std::vector<unsigned int> temp(upbound.begin(), upbound.end());
+      temp.push_back(0);
+      BOOST_CHECK_THROW(t_by_idx.set(temp, f), TiledArray::Exception);
+    }
+
+    for(auto tidx : tile_range){
+      if(!t_by_idx.is_local(tidx)) continue;
+      t_by_idx.set(tidx, corr.find(tidx));
+      t_by_ord.set(tile_range.ordinal(tidx), corr.find(tidx));
+    }
+    BOOST_CHECK(are_equal(corr, t_by_idx));
+    BOOST_CHECK(are_equal(corr, t_by_ord));
+  }
 }
 
+/* This overload of set takes an initializer list and a future to a tile. It
+ * then forwards those arguments to the overload which takes an ordinal or
+ * coordinate index. Thus if the ordinal overload works the only thing we need
+ * to test is that the arguments are being forwarded correctly. We do this by
+ * copying the correct tensor one tile at a time and comparing the results. We
+ * only do this for a matrix of vectors because dynamically sized initializer
+ * lists are a pain.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_future_init_list, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  tensor_type<TestParam> t2(m_world, tr);
-  t2.set({0}, t1.find(0));
+  for(auto tr : matrix_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t(m_world, tr);
+    auto corr = tensor_of_vector<TestParam>(tr);
+    for(auto idx : tr.tiles_range())
+      if(t.is_local(idx))
+        t.set({idx[0], idx[1]}, corr.find(idx));
+    BOOST_TEST(are_equal(t, corr));
+  }
 }
 
+/* This overload works the same as the set overload which takes a future, except
+ * that instead of taking a future it takes the actual tile. We unit test the
+ * same way.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_tile, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  tensor_type<TestParam> t2(m_world, tr);
-  auto elem = inner_vector_tile<TestParam>(std::vector{0});
-  { t2.set(0, t1.find(0).get()); }
-  { t2.set(std::vector{0ul}, t1.find(0).get()); }
+  using tile_type = tile_type<TestParam>;
+  // Throws if PIMPL is not initialized
+  {
+    tensor_type<TestParam> t;
+    if(m_world.nproc() == 1)
+      BOOST_CHECK_THROW(t.set(0, tile_type{}), TiledArray::Exception);
+  }
+
+  for(auto tr_t : run_all<TestParam>()){
+    auto& tr = tr_t.first;
+    auto& corr  = tr_t.second;
+    const auto& tile_range = tr.tiles_range();
+
+    tensor_type<TestParam> t_by_idx(m_world, tr); // Will fill by coordinate
+    tensor_type<TestParam> t_by_ord(m_world, tr); // Will fill by ordinate
+
+    // Check throws
+    if(m_world.nproc() == 1){
+      auto upbound = tile_range.upbound();
+      auto volume  = tile_range.volume();
+      tile_type t; // Value doesn't matter for throwing
+
+      // Throw if tile is already initialized
+      BOOST_CHECK_THROW(corr.set(0, t), TiledArray::Exception);
+
+      // Throw if coordinate index is out of bounds
+      BOOST_CHECK_THROW(t_by_idx.set(upbound, t), TiledArray::Exception);
+
+      // Throw if ordinal index is out of bounds
+      BOOST_CHECK_THROW(t_by_idx.set(volume, t), TiledArray::Exception);
+
+      // Throw if coordinate index has a different rank
+      std::vector<unsigned int> temp(upbound.begin(), upbound.end());
+      temp.push_back(0);
+      BOOST_CHECK_THROW(t_by_idx.set(temp, t), TiledArray::Exception);
+    }
+
+    for(auto tidx : tile_range){
+      if(!t_by_idx.is_local(tidx)) continue;
+      t_by_idx.set(tidx, corr.find(tidx).get());
+      t_by_ord.set(tile_range.ordinal(tidx), corr.find(tidx).get());
+    }
+    BOOST_CHECK(are_equal(corr, t_by_idx));
+    BOOST_CHECK(are_equal(corr, t_by_ord));
+  }
 }
 
+/* This overload of set works by forwarding the initializer list as a coordinate
+ * index to the previous overload. Thus if the previous overload works this one
+ * should work too as long as the arguments are forwarded correctly. To unit
+ * test this function we limit ourselves to a matrix of vectors because
+ * initializer lists of dynamic size are a pain to work with.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(set_tile_init_list, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  auto t1 = tensor_of_vector<TestParam>(tr);
-  tensor_type<TestParam> t2(m_world, tr);
-  t2.set({0}, t1.find(0).get());
+  for(auto tr : matrix_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t(m_world, tr);
+    auto corr = tensor_of_vector<TestParam>(tr);
+    for(auto idx : tr.tiles_range())
+      if(t.is_local(idx))
+        t.set({idx[0], idx[1]}, corr.find(idx).get());
+    BOOST_TEST(are_equal(t, corr));
+  }
 }
 
 //------------------------------------------------------------------------------
 //                       Fill and Initialize
 //------------------------------------------------------------------------------
 BOOST_AUTO_TEST_CASE_TEMPLATE(fill_local, TestParam, test_params){
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-  // Test w/o skipping filled
-  {t1.fill_local(inner_vector_tile<TestParam>(std::vector{0}));}
-  // Test skipping filled
-  {
-    t1.set(0, inner_vector_tile<TestParam>(std::vector{1}));
-    t1.fill_local(inner_vector_tile<TestParam>(std::vector{0}), true);
-  }
+
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(fill, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-  // Test w/o skipping filled
-  {t1.fill(inner_vector_tile<TestParam>(std::vector{0}));}
-  // Test skipping filled
-  {
-    t1.set(0, inner_vector_tile<TestParam>(std::vector{1}));
-    t1.fill(inner_vector_tile<TestParam>(std::vector{0}), true);
-  }
+
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(fill_random, TestParam, test_params) {
@@ -827,31 +1035,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(fill_random, TestParam, test_params) {
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(init_tiles, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-  // Test w/o skipping filled
-  { t1.init_tiles([this](const Range& r){
-      tile_type<TestParam> t(r);
-      for(auto idx : r) t(idx) = inner_vector_tile<TestParam>(idx);
-      return t;
-    });
-  }
-  // Test skipping filled
-  {
-    t1.set(0, inner_vector_tile<TestParam>(std::vector{1}));
-    t1.init_tiles([this](const Range& r){
-      tile_type<TestParam> t(r);
-      for(auto idx : r) t(idx) = inner_vector_tile<TestParam>(idx);
-      return t;
-    }, true);
-  }
+
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(init_elements, TestParam, test_params) {
-  trange_type<TestParam> tr{{0, 2}};
-  tensor_type<TestParam> t1(m_world, tr);
-  using index_type = typename tensor_type<TestParam>::index;
-  //t1.init_elements([](const index_type&){ return })
+
 }
 
 //------------------------------------------------------------------------------
@@ -885,6 +1073,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(size, TestParam, test_params) {
   }
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(world, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    BOOST_TEST(&t1.world() == &m_world);
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(pmap, TestParam, test_params){
+  for(auto tr : vector_tiled_ranges<TestParam>()){
+    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+    t1.pmap();
+  }
+}
+
+//------------------------------------------------------------------------------
+//
+//------------------------------------------------------------------------------
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params){
   for(auto tr : vector_tiled_ranges<TestParam>()){
     tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
@@ -899,19 +1105,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params){
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(world, TestParam, test_params){
-  for(auto tr : vector_tiled_ranges<TestParam>()){
-    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
-    BOOST_TEST(&t1.world() == &m_world);
-  }
-}
-
-BOOST_AUTO_TEST_CASE_TEMPLATE(pmap, TestParam, test_params){
-  for(auto tr : vector_tiled_ranges<TestParam>()){
-    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
-    t1.pmap();
-  }
-}
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(is_dense, TestParam, test_params){
   for(auto tr : vector_tiled_ranges<TestParam>()){
