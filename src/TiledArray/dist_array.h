@@ -538,10 +538,23 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Set a tile and fill it using a value
 
-  /// \tparam Index An index or integral type
-  /// \tparam InIter An input iterator
-  /// \param i The index or the ordinal of the tile to be set
-  /// \param value the value used to fill the tile
+  /// This function sets each element of a tile to the specified value. For
+  /// normal, non-nested, tiles this amounts to setting each scalar component of
+  /// the tile to the provided value. For nested tile types this function sets
+  /// the elements of the outer most tile (so the input value would be of type
+  /// Tensor<T>, assuming a tile type of Tensor<Tensor<T>>).
+  ///
+  /// \tparam Index Either an integral type or a type satisfying the concept of
+  ///               a container of integral types.
+  /// \param[in] i Either the ordinal or coordinate index of the tile to be set.
+  /// \param[in] value What each element of the tile will be set to.
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is a coordinate index with the
+  ///                              wrong rank. Strong throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Index>
   void set(const Index& i,
            const tile_element_type& value = tile_element_type()) {
@@ -549,12 +562,25 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
   }
 
-  /// Set a tile and fill it using a value
+  /// Set every element of a tile to a specified value
 
+  /// This function sets each element of a tile to the specified value. For
+  /// normal, non-nested, tiles this amounts to setting each scalar component of
+  /// the tile to the provided value. For nested tile types this function sets
+  /// the elements of the outer most tile (so the input value would be of type
+  /// Tensor<T>, assuming a tile type of Tensor<Tensor<T>>).
+  ///
   /// \tparam Integer An integral type
-  /// \tparam InIter An input iterator
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
-  /// \param value the value used to fill the tile
+  /// \param[in] i The coordinate index, as an \c std::initializer_list<Integer>
+  ///              for the tile.
+  /// \param[in] value What the tile elements should be set to.
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i has the wrong rank. Strong
+  ///                              throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Integer>
   void set(const std::initializer_list<Integer>& i,
            const tile_element_type& value = tile_element_type()) {

@@ -183,7 +183,7 @@ class Tensor {
       : pimpl_(std::make_shared<Impl>(range)) {
     size_type n = range.volume();
     pointer MADNESS_RESTRICT const data = pimpl_->data_;
-    for (size_type i = 0ul; i < n; ++i) data[i] = *it++;
+    for (size_type i = 0ul; i < n; ++i, ++it) data[i] = *it;
   }
 
   template <typename U>

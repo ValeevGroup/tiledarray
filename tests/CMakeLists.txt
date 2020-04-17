@@ -95,6 +95,7 @@ set(ta_test_src_files  ta_test.cpp
     solvers.cpp
     initializer_list.cpp
     tot_dist_array.cpp
+    tot_dist_array_part1.cpp
 )
 
 if(ENABLE_ELEMENTAL)
