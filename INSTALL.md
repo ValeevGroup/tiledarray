@@ -31,7 +31,7 @@ $ cmake --build build --target install
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
 - [BTAS](http://github.com/BTAS/BTAS), tag fe77102b0d440da9dfab6ba4e404cded5dd23952 (will be downloaded automatically, if missing)
 - BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag b8dc72197d5e9c4c5630b5208b18160b5d8f65f4 .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag b0c23fe771f80fa326775ca36700c3dbc0256553 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
@@ -50,7 +50,7 @@ $ cmake --build build --target install
 
 Optional prerequisites:
 - CUDA compiler and runtime -- for execution on CUDA-enabled accelerators. CUDA 9 and 10 have been tested. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
-  - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 02152734bc534b74e2d0160d12bb73111bb6ffb4).
+  - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 0e8685bf82910bc7435835f846e88f1b39f47f09).
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f04abd1dd038c84262915a493d8f78576bb80fd0).
 - Doxygen -- for building documentation (version 1.8.12 or later).
 
