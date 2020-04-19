@@ -41,21 +41,21 @@ inline void cuda_finalize() {
 #endif
 
 namespace detail {
-static bool& initialized_madworld_accessor() {
+inline bool& initialized_madworld_accessor() {
   static bool flag = false;
   return flag;
 }
-static bool initialized_madworld() { return initialized_madworld_accessor(); }
-static bool& initialized_accessor() {
+inline bool initialized_madworld() { return initialized_madworld_accessor(); }
+inline bool& initialized_accessor() {
   static bool flag = false;
   return flag;
 }
-static bool& finalized_accessor() {
+inline bool& finalized_accessor() {
   static bool flag = false;
   return flag;
 }
 #ifdef HAVE_INTEL_MKL
-static int& mklnumthreads_accessor() {
+inline int& mklnumthreads_accessor() {
   static int value = -1;
   return value;
 }
@@ -64,10 +64,10 @@ static int& mklnumthreads_accessor() {
 
 /// @return true if TiledArray (and, necessarily, MADWorld runtime) is in an
 /// initialized state
-static bool initialized() { return detail::initialized_accessor(); }
+inline bool initialized() { return detail::initialized_accessor(); }
 
 /// @return true if TiledArray has been finalized at least once
-static bool finalized() { return detail::finalized_accessor(); }
+inline bool finalized() { return detail::finalized_accessor(); }
 
 /// @name TiledArray initialization.
 ///       These functions initialize TiledArray and (if needed) MADWorld
