@@ -103,11 +103,11 @@ else()
             #--Install step---------------
             INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
             #--Custom targets-------------
-            STEP_TARGETS download
+            STEP_TARGETS build
             )
 
     # Add cuTT dependency to External
-    add_dependencies(External-tiledarray cutt)
+    add_dependencies(External-tiledarray cutt-build)
 
     set(_CUTT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
