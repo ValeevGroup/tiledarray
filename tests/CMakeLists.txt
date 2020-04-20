@@ -96,6 +96,7 @@ set(ta_test_src_files  ta_test.cpp
     initializer_list.cpp
     tot_dist_array.cpp
     tot_dist_array_part1.cpp
+    random.cpp
 )
 
 if(ENABLE_ELEMENTAL)
