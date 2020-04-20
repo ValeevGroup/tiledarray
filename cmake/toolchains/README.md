@@ -24,7 +24,7 @@ export CUDA_GCC_DIR=/sw/summit/gcc/7.4.0
 export CMAKE_PATH=/ccs/home/evaleev/code/install/cmake-3.17.0-rc2/bin
 
 # clean out previous build and install artifacts ... minimally should do this:
-# `rm -rf CMakeFiles/ CMakeCache.txt external`
+# `rm -rf CMakeFiles/ CMakeCache.txt external cmake _deps`
 
 ${CMAKE_PATH}/cmake ../../tiledarray \
 -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/olcf-summit-gcc-essl.cmake \
