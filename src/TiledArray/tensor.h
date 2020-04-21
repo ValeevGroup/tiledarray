@@ -94,6 +94,17 @@ inline std::ostream& operator<<(std::ostream& os, const T& t) {
   return os;
 }
 
+template<typename T,
+         typename = std::enable_if_t<detail::is_tensor_of_tensor_v<T>>>
+inline std::ostream& operator<<(std::ostream& os, const T& t){
+  os << t.range() << " {" << std::endl; // Outer tensor's range
+  for(const auto& inner_t : t){ // Loop over inner tensors
+    os << "  " << inner_t << std::endl;
+  }
+  os << "}"; // End outer tensor
+  return os;
+}
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_SRC_TILEDARRAY_TENSOR_H__INCLUDED

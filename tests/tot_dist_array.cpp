@@ -262,7 +262,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(range, TestParam, test_params) {
   for(auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
-    BOOST_TEST(corr.range() == tr.tiles_range());
+    bool are_same = corr.range() == tr.tiles_range();
+    BOOST_TEST(are_same);
   }
 }
 
@@ -678,11 +679,26 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(load_store, TestParam, test_params) {
   }
 }
 
+/* To test printing we assume that the ToT tiles already print correctly. Then
+ * we create the correct string by looping over ordinal indices and prepending
+ * them to the string representation of the tile.
+ */
 BOOST_AUTO_TEST_CASE_TEMPLATE(printing, TestParam, test_params) {
-  for(auto tr : vector_tiled_ranges<TestParam>()) {
-    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
+  for(auto tr_t : run_all<TestParam>()) {
+    const auto& t = std::get<2>(tr_t);
+    std::stringstream corr;
+    if(m_world.rank() == 0) {
+      for (auto i = 0; i < t.size(); ++i) {
+        if(t.is_zero(i)) continue;
+        corr << i << ": " << t.find(i).get() << std::endl;
+      }
+    }
     std::stringstream ss;
-    //ss << t1;
+    ss << t;
+    std::cout <<"x" << ss.str() <<"x"<<std::endl;
+    std::cout <<"x" << corr.str() <<"x"<<std::endl;
+
+    BOOST_TEST(ss.str() == corr.str());
   }
 }
 
