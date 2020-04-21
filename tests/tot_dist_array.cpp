@@ -278,7 +278,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(elements_range, TestParam, test_params) {
   for(auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
-    BOOST_TEST(corr.elements_range() == tr.elements_range());
+    bool are_same = corr.elements_range() == tr.elements_range();
+    BOOST_TEST(are_same);
   }
 }
 
