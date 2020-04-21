@@ -17,6 +17,9 @@ set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
 # find CUDA toolkit
 find_package(CUDAToolkit REQUIRED COMPONENTS cublas nvToolsExt)
+if (NOT DEFINED CUDAToolkit_ROOT)
+  get_filename_component(CUDAToolkit_ROOT "${CUDAToolkit_INCLUDE_DIR}/../" ABSOLUTE CACHE)
+endif(NOT DEFINED CUDAToolkit_ROOT)
 
 # sanitize implicit dirs if CUDA host compiler != C++ compiler
 message(STATUS "CMAKE Implicit Include Directories: ${CMAKE_CUDA_IMPLICIT_INCLUDE_DIRECTORIES}")
