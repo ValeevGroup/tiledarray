@@ -25,8 +25,15 @@
 #include <TiledArray/tensor/complex.h>
 #include <TiledArray/tensor/kernels.h>
 #include <TiledArray/util/logger.h>
-
+#include <TiledArray/tile_interface/clone.h>
 namespace TiledArray {
+
+namespace detail {
+/// This is needed to call the clone free-function and not the clone member
+template<typename T>
+auto do_clone(T&& value) { return clone(std::forward<T>(value)); }
+
+} // namespace detail
 
 /// An N-dimensional tensor object
 
@@ -160,7 +167,7 @@ class Tensor {
     const size_type n = pimpl_->range_.volume();
     pointer MADNESS_RESTRICT const data = pimpl_->data_;
     for (size_type i = 0ul; i < n; ++i)
-      new (data + i) value_type(value.clone());
+      new (data + i) value_type(detail::do_clone(value));
   }
 
   /// Construct a tensor with a fill value

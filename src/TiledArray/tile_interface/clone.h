@@ -31,12 +31,15 @@
 
 namespace TiledArray {
 
+GENERATE_HAS_MEMBER(clone);
+
 /// Create a copy of \c arg
 
 /// \tparam Arg The tile argument type
 /// \param arg The tile argument to be permuted
 /// \return A (deep) copy of \c arg
-template <typename Arg>
+template <typename Arg,
+          typename = std::enable_if_t<has_member_clone<Arg>::value>>
 inline auto clone(const Arg& arg) {
   return arg.clone();
 }

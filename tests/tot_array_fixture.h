@@ -21,6 +21,9 @@
 #define TILEDARRAY_TEST_TOT_ARRAY_FIXTURE_H__INCLUDED
 #include "tiledarray.h"
 #include "unit_test_config.h"
+#ifdef TILEDARRAY_HAS_BTAS
+#include <TiledArray/external/btas.h>
+#endif
 
 /* Notes:
  *
@@ -41,6 +44,11 @@ using test_params = boost::mpl::list<
     std::tuple<int, Tensor<Tensor<int>>>,
     std::tuple<float, Tensor<Tensor<float>>>,
     std::tuple<double, Tensor<Tensor<double>>>
+#ifdef TILEDARRAY_HAS_BTAS
+    ,std::tuple<int, Tensor<btas::Tensor<int>>>,
+    std::tuple<float, Tensor<btas::Tensor<float>>>,
+    std::tuple<double, Tensor<btas::Tensor<double>>>
+#endif
 >;
 
 // These typedefs unpack the unit test template parameter
