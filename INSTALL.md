@@ -268,10 +268,12 @@ Link Advisor page.
 Support for execution on CUDA-enabled hardware is controlled by the following variables:
 
 * `ENABLE_CUDA`  -- Set to `ON` to turn on CUDA support. [Default=OFF].
+* `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers are notorious for only being able to use specific (older) C++ compilers. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
 * `ENABLE_CUDA_ERROR_CHECK` -- Set to `ON` to turn on assertions for successful completion of calls to CUDA runtime and libraries. [Default=OFF].
-* `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers are notorious for only being able to use older C++ compilers. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
-* `CUTT_INSTALL_DIR` -- the installation prefix of the pre-installed cuTT library.
-* `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library.
+* `CUTT_INSTALL_DIR` -- the installation prefix of the pre-installed cuTT library. This should not be normally needed; it is strongly recommended to let TiledArray build and install cuTT.
+* `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library. This should not be normally needed; it is strongly recommended to let TiledArray build and install Umpire.
+
+For the CUDA compiler and toolkit to be discoverable the CUDA compiler (`nvcc`) should be in the `PATH` environment variable. Refer to the [FindCUDAToolkit module](https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html) for more info.
 
 ## Eigen 3
 
