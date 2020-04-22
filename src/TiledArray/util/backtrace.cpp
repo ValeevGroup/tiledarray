@@ -25,14 +25,14 @@
 // The U.S. Government is granted a limited license as per AL 91-7.
 //
 
-#include "backtrace.h"
+#include <TiledArray/util/backtrace.h>
 
 #include <cstring>
 #include <iterator>
 #include <sstream>
 
-#if __has_include(<libunwind.h>)
-#define HAVE_LIBUNWIND
+#include <madness/madness_config.h>
+#ifdef MADNESS_HAS_LIBUNWIND
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 #else
@@ -50,7 +50,7 @@
 namespace TiledArray {
 namespace detail {
 Backtrace::Backtrace(const std::string &prefix) : prefix_(prefix) {
-#ifdef HAVE_LIBUNWIND
+#ifdef MADNESS_HAS_LIBUNWIND
   {
     unw_cursor_t cursor;
     unw_context_t uc;
@@ -72,7 +72,7 @@ Backtrace::Backtrace(const std::string &prefix) : prefix_(prefix) {
       ++frame;
     }
   }
-#elif defined(HAVE_BACKTRACE)  // !HAVE_LIBUNWIND
+#elif defined(HAVE_BACKTRACE)  // !MADNESS_HAS_LIBUNWIND
   void *stack_addrs[1024];
   const int naddrs = backtrace(stack_addrs, 1024);
   char **frame_symbols = backtrace_symbols(stack_addrs, naddrs);
@@ -116,7 +116,7 @@ Backtrace::Backtrace(const std::string &prefix) : prefix_(prefix) {
     frames_.push_back(oss.str());
   }
   free(frame_symbols);
-#else  // !HAVE_LIBUNWIND && !HAVE_BACKTRACE
+#else  // !MADNESS_HAS_LIBUNWIND && !HAVE_BACKTRACE
 #if defined(SIMPLE_STACK)
   int bottom = 0x1234;
   void **topstack = (void **)0xffffffffL;
