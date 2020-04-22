@@ -4,11 +4,19 @@ include(CMakePushCheckState)
 include(CheckCXXSourceCompiles)
 include(AppendFlags)
 
+# if CUDA is enabled (assuming CUDA version is 9 or 10) need Eigen 3.3.7
+# see https://gitlab.com/libeigen/eigen/issues/1491
+if (ENABLE_CUDA)
+  set(_tiledarray_required_eigen_version 3.3.7)
+else(ENABLE_CUDA)
+  set(_tiledarray_required_eigen_version ${TA_TRACKED_EIGEN_VERSION})
+endif(ENABLE_CUDA)
+
 # Check for existing Eigen
 # prefer CMake-configured-and-installed instance
 # re:NO_CMAKE_PACKAGE_REGISTRY: eigen3 registers its *build* tree with the user package registry ...
 #                               to avoid issues with wiped build directory look for installed eigen
-find_package(Eigen3 ${TA_TRACKED_EIGEN_VERSION} NO_MODULE QUIET NO_CMAKE_PACKAGE_REGISTRY)
+find_package(Eigen3 ${_tiledarray_required_eigen_version} NO_MODULE QUIET NO_CMAKE_PACKAGE_REGISTRY)
 if (TARGET Eigen3::Eigen)
   # import alias into TiledArray "namespace"
   add_library(TiledArray_Eigen INTERFACE)
@@ -20,7 +28,7 @@ if (TARGET Eigen3::Eigen)
 else (TARGET Eigen3::Eigen)
   # otherwise use bundled FindEigen3.cmake module controlled by EIGEN3_INCLUDE_DIR
   # but make sure EIGEN3_INCLUDE_DIR exists!
-  find_package(Eigen3 ${TA_TRACKED_EIGEN_VERSION})
+  find_package(Eigen3 ${_tiledarray_required_eigen_version})
 
   if (EIGEN3_FOUND)
     if (NOT EXISTS "${EIGEN3_INCLUDE_DIR}")
