@@ -130,6 +130,7 @@ TiledArray/tensor/shift_wrapper.h
 TiledArray/tensor/tensor.h
 TiledArray/tensor/tensor_interface.h
 TiledArray/tensor/tensor_map.h
+TiledArray/tensor/trace.h
 TiledArray/tensor/type_traits.h
 TiledArray/tensor/utility.h
 TiledArray/tile_interface/add.h
@@ -153,6 +154,7 @@ TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
+TiledArray/util/index_parsing.h
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/random.h

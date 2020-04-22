@@ -604,6 +604,10 @@ struct is_numeric<bool> : public std::false_type {};
 template <typename T>
 constexpr const bool is_numeric_v = is_numeric<T>::value;
 
+/// SFINAE type for enabling code when \c T is a numeric type
+template<typename T, typename U=void>
+using enable_if_numeric_t = std::enable_if_t<is_numeric_v<T>, U>;
+
 template <typename T>
 struct is_scalar : public is_numeric<T> {};
 

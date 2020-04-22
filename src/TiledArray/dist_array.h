@@ -31,6 +31,7 @@
 #include "TiledArray/conversions/truncate.h"
 #include "TiledArray/policies/dense_policy.h"
 #include "TiledArray/tile_interface/cast.h"
+#include "TiledArray/util/index_parsing.h"
 #include "TiledArray/util/initializer_list.h"
 #include "TiledArray/util/random.h"
 
@@ -1354,22 +1355,24 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                 label the modes.
   void check_str_index(const std::string& vars) const {
 #ifndef NDEBUG
-    const unsigned int n =
-        1u + std::count_if(vars.begin(), vars.end(),
-                           [](const char c) { return c == ','; });
-    if (bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-      if (TiledArray::get_default_world().rank() == 0) {
-        TA_USER_ERROR_MESSAGE(
-            "The number of array annotation variables is not equal to the "
-            "array dimension:"
-            << "\n    number of variables  = " << n
-            << "\n    array dimension      = "
-            << pimpl_->trange().tiles_range().rank());
-      }
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<value_type>;
+    // TODO: Make constexpr and use structured bindings when CUDA supports C++17
+    if(is_tot){
+      //Make sure the index is capable of being interpreted as a ToT index
+      TA_ASSERT(detail::is_tot_index(vars));
+      const auto idx = detail::split_tot_index(vars);
 
-      TA_EXCEPTION(
-          "The number of array annotation variables is not equal to the array "
-          "dimension.");
+      // Rank of outer tiles must match number of outer indices
+      TA_ASSERT(idx.first.size() == range().rank());
+
+      // Check inner index rank?
+    }
+    else{
+      // Better not be a ToT index
+      TA_ASSERT(!detail::is_tot_index(vars));
+
+      // Number of indices must match rank
+      TA_ASSERT(detail::split(vars, ',').size() == range().rank());
     }
 #endif  // NDEBUG
   }

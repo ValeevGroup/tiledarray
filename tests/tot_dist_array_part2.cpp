@@ -339,16 +339,48 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(shape, TestParam, test_params){
 //------------------------------------------------------------------------------
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params){
-  for(auto tr : vector_tiled_ranges<TestParam>()){
-    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
-    //auto expr = t1("i;j");
+  for(auto tr_t : run_all<TestParam>()) {
+    auto inner_rank = std::get<1>(tr_t);
+    auto& t         = std::get<2>(tr_t);
+    auto outer_rank = t.range().rank();
+    std::string outer_idx = (outer_rank == 1 ? "i" : "i,j");
+    std::string inner_idx = (inner_rank == 1 ? "k" : "k,l");
+
+    if(m_world.nproc() == 1){
+      using except_t = TiledArray::Exception;
+      // Throws if no semicolon
+      BOOST_CHECK_THROW(t(outer_idx), except_t);
+
+      // Throws if wrong outer rank
+      BOOST_CHECK_THROW(t("i,j,k,l,m;" + inner_idx), except_t);
+    }
+    auto vars = outer_idx + ";" + inner_idx;
+    auto expr = t(vars);
+    BOOST_CHECK(are_equal(expr.array(), t));
+    BOOST_CHECK(expr.vars() == vars);
   }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params){
-  for(auto tr : vector_tiled_ranges<TestParam>()){
-    tensor_type<TestParam> t1 = tensor_of_vector<TestParam>(tr);
-    //auto expr = std::as_const(t1)("i;j");
+  for(auto tr_t : run_all<TestParam>()) {
+    auto inner_rank = std::get<1>(tr_t);
+    const auto& t   = std::get<2>(tr_t);
+    auto outer_rank = t.range().rank();
+    std::string outer_idx = (outer_rank == 1 ? "i" : "i,j");
+    std::string inner_idx = (inner_rank == 1 ? "k" : "k,l");
+
+    if(m_world.nproc() == 1){
+      using except_t = TiledArray::Exception;
+      // Throws if no semicolon
+      BOOST_CHECK_THROW(t(outer_idx), except_t);
+
+      // Throws if wrong outer rank
+      BOOST_CHECK_THROW(t("i,j,k,l,m;" + inner_idx), except_t);
+    }
+    auto vars = outer_idx + ";" + inner_idx;
+    auto expr = t(vars);
+    BOOST_CHECK(are_equal(expr.array(), t));
+    BOOST_CHECK(expr.vars() == vars);
   }
 }
 

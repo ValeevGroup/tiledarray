@@ -26,7 +26,8 @@
 #ifndef TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 
-#include <TiledArray/config.h>
+#include "TiledArray/config.h"
+#include "TiledArray/tensor/trace.h"
 #include "../reduce_task.h"
 #include "../tile_interface/cast.h"
 #include "../tile_interface/scale.h"
@@ -684,15 +685,17 @@ class Expr {
     return reduce(right_expr, op, default_world());
   }
 
-  Future<typename TiledArray::TraceReduction<
-      typename EngineTrait<engine_type>::eval_type>::result_type>
+  template<typename TileType = typename EngineTrait<engine_type>::eval_type,
+           typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
+  Future<result_of_trace_t<TileType>>
   trace(World& world) const {
     typedef typename EngineTrait<engine_type>::eval_type value_type;
     return reduce(TiledArray::TraceReduction<value_type>(), world);
   }
 
-  Future<typename TiledArray::TraceReduction<
-      typename EngineTrait<engine_type>::eval_type>::result_type>
+  template<typename TileType = typename EngineTrait<engine_type>::eval_type,
+           typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
+  Future<result_of_trace_t<TileType>>
   trace() const {
     return trace(default_world());
   }

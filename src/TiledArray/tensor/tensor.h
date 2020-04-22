@@ -20,13 +20,26 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 
-#include <TiledArray/math/blas.h>
-#include <TiledArray/math/gemm_helper.h>
-#include <TiledArray/tensor/complex.h>
-#include <TiledArray/tensor/kernels.h>
-#include <TiledArray/util/logger.h>
-#include <TiledArray/tile_interface/clone.h>
+#include "TiledArray/math/blas.h"
+#include "TiledArray/math/gemm_helper.h"
+#include "TiledArray/tensor/complex.h"
+#include "TiledArray/tensor/kernels.h"
+#include "TiledArray/tensor/trace.h"
+#include "TiledArray/util/logger.h"
+#include "TiledArray/tile_interface/clone.h"
 namespace TiledArray {
+
+// Forward declare Tensor for type traits
+template<typename T, typename A> class Tensor;
+
+namespace detail {
+
+/// Signals that we can take the trace of a Tensor<T, A> (for numeric \c T)
+template <typename T, typename A>
+struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
+
+} // namespace detail
+
 
 /// An N-dimensional tensor object
 
@@ -1474,50 +1487,9 @@ class Tensor {
   /// tensor.
   /// \return The trace of this tensor
   /// \throw TiledArray::Exception When this tensor is empty.
-  value_type trace() const {
-    TA_ASSERT(pimpl_);
-
-    // Get pointers to the range data
-    const size_type n = pimpl_->range_.rank();
-    const size_type* MADNESS_RESTRICT const lower =
-        pimpl_->range_.lobound_data();
-    const size_type* MADNESS_RESTRICT const upper =
-        pimpl_->range_.upbound_data();
-    const size_type* MADNESS_RESTRICT const stride =
-        pimpl_->range_.stride_data();
-
-    // Search for the largest lower bound and the smallest upper bound
-    size_type lower_max = 0ul,
-              upper_min = std::numeric_limits<size_type>::max();
-    for (size_type i = 0ul; i < n; ++i) {
-      const size_type lower_i = lower[i];
-      const size_type upper_i = upper[i];
-
-      lower_max = std::max(lower_max, lower_i);
-      upper_min = std::min(upper_min, upper_i);
-    }
-
-    value_type result = 0;
-
-    if (lower_max < upper_min) {
-      // Compute the first and last ordinal index
-      size_type first = 0ul, last = 0ul, trace_stride = 0ul;
-      for (size_type i = 0ul; i < n; ++i) {
-        const size_type lower_i = lower[i];
-        const size_type stride_i = stride[i];
-
-        first += (lower_max - lower_i) * stride_i;
-        last += (upper_min - lower_i) * stride_i;
-        trace_stride += stride_i;
-      }
-
-      // Compute the trace
-      const value_type* MADNESS_RESTRICT const data = pimpl_->data_;
-      for (; first < last; first += trace_stride) result += data[first];
-    }
-
-    return result;
-  }
+  template<typename TileType = Tensor_,
+           typename = detail::enable_if_trace_is_defined_t<TileType>>
+  decltype(auto) trace() const { return TiledArray::trace(*this); }
 
   /// Unary reduction operation
 
@@ -1702,8 +1674,54 @@ bool operator!=(const Tensor<T, A>& a, const Tensor<T, A>& b) {
   return !(a == b);
 }
 
-// specialize TiledArray::detail::transform for Tensor
 namespace detail {
+
+/// Implements taking the trace of a Tensor<T> (\c T is a numeric type)
+///
+/// \tparam T The type of the elements in the tensor. For this specialization
+///           to be considered must satisfy the concept of numeric type.
+/// \tparam A The type of the allocator for the tensor
+template <typename T, typename A>
+struct Trace<Tensor<T, A>, detail::enable_if_numeric_t<T>> {
+  decltype(auto) operator()(const Tensor<T>& t) const {
+    using size_type  = typename Tensor<T>::size_type;
+    using value_type = typename Tensor<T>::value_type;
+    const auto range = t.range();
+
+    // Get pointers to the range data
+    const size_type n = range.rank();
+    const size_type* MADNESS_RESTRICT const lower = range.lobound_data();
+    const size_type* MADNESS_RESTRICT const upper = range.upbound_data();
+    const size_type* MADNESS_RESTRICT const stride = range.stride_data();
+
+    // Search for the largest lower bound and the smallest upper bound
+    const size_type lower_max = std::max_element(lower, lower + n);
+    const size_type upper_min = std::min_element(upper, upper + n);
+
+    value_type result = 0;
+
+    if (lower_max >= upper_min) return result;  // No diagonal element in tile
+
+    // Compute the first and last ordinal index
+    size_type first = 0ul, last = 0ul, trace_stride = 0ul;
+    for (size_type i = 0ul; i < n; ++i) {
+      const size_type lower_i = lower[i];
+      const size_type stride_i = stride[i];
+
+      first += (lower_max - lower_i) * stride_i;
+      last += (upper_min - lower_i) * stride_i;
+      trace_stride += stride_i;
+    }
+
+    // Compute the trace
+    const value_type* MADNESS_RESTRICT const data = &t[first];
+    for (; first < last; first += trace_stride) result += data[first];
+
+    return result;
+  }
+};
+
+// specialize TiledArray::detail::transform for Tensor
 template <typename T, typename A>
 struct transform<Tensor<T, A>> {
   template <typename Op, typename T1>
