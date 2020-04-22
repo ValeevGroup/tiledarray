@@ -222,6 +222,8 @@ struct ToTArrayFixture {
     for(auto tr: matrix_tiled_ranges<TupleElementType>())
       rv.push_back(std::make_tuple(tr, 2, tensor_of_matrix<TupleElementType>(tr)));
 
+    //Make sure all the tensors are actually made
+    m_world.gop.fence();
     return rv;
   }
 
