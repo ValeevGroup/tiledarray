@@ -44,12 +44,12 @@ function clean_up {
 trap clean_up SIGHUP SIGINT SIGTERM
 
 ##############################################################
-# build a dev image
-docker build -t tiledarray-dev .
+# build a cuda-dev image
+docker build -t tiledarray-cuda-dev .
 
 ##############################################################
 # extra admin tasks, uncomment as needed
-# docker save tiledarray-dev | bzip2 > tiledarray-dev.docker.tar.bz2
+# docker save tiledarray-cuda-dev | bzip2 > tiledarray-cuda-dev.docker.tar.bz2
 
 ##############################################################
 # done

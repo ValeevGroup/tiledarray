@@ -6,7 +6,7 @@ These notes assume that Docker 19.03 and NVIDIA Container Toolkit (https://githu
 
 ## Create/build Docker TA/CUDA image
 1. Create a Docker image: `bin/docker-cuda-build.sh`
-2. Run a container using the newly created image: `docker run --privileged -i -t --rm tiledarray-cuda-dev:latest /sbin/my_init -- bash -l`
+2. Run a container using the newly created image: `docker run --privileged -i -t --rm tiledarray-cuda-dev:latest bash -l`
 
 ## Notes
 - Important locations:
