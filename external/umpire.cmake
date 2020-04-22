@@ -63,8 +63,8 @@ else()
         -DENABLE_EXAMPLES=OFF
         -DENABLE_LOGGING=OFF
         -DENABLE_ASSERTS=${TA_DEFAULT_ERROR}
-        -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
         -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
+        -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
         )
     if (CMAKE_TOOLCHAIN_FILE)
         set(UMPIRE_CMAKE_ARGS "${UMPIRE_CMAKE_ARGS}"
@@ -106,11 +106,11 @@ else()
             #--Install step---------------
             INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
             #--Custom targets-------------
-            STEP_TARGETS download
+            STEP_TARGETS build
             )
 
     # Add Umpire dependency to External
-    add_dependencies(External-tiledarray Umpire)
+    add_dependencies(External-tiledarray Umpire-build)
 
     set(_UMPIRE_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 

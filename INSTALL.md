@@ -24,12 +24,12 @@ $ cmake --build build --target install
 
 - [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
-- [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher (will be downloaded automatically, if missing)
+- [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), tag 5890b730dc24cf308a755829e6473a7422e76c41 (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), tag 1257f0a6fb878e15b0a0ac3def8835d31746ab21 (will be downloaded automatically, if missing)
 - BLAS library
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 60ac5fba6e9609571d15f0f37de1b3ad635690fd .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
@@ -50,7 +50,7 @@ $ cmake --build build --target install
 
 Optional prerequisites:
 - CUDA compiler and runtime -- for execution on CUDA-enabled accelerators. CUDA 9 and 10 have been tested. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
-  - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 02152734bc534b74e2d0160d12bb73111bb6ffb4).
+  - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 0e8685bf82910bc7435835f846e88f1b39f47f09).
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f04abd1dd038c84262915a493d8f78576bb80fd0).
 - Doxygen -- for building documentation (version 1.8.12 or later).
 

@@ -63,8 +63,8 @@ else()
         -DCUTT_USES_THIS_UMPIRE_ALLOCATOR=ThreadSafeUMDynamicPool
         -DCMAKE_PREFIX_PATH=${_UMPIRE_INSTALL_DIR}
         -DENABLE_NO_ALIGNED_ALLOC=ON
-        -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
         -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
+        -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
         )
     if (CMAKE_TOOLCHAIN_FILE)
         set(CUTT_CMAKE_ARGS "${CUTT_CMAKE_ARGS}"
@@ -103,11 +103,11 @@ else()
             #--Install step---------------
             INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
             #--Custom targets-------------
-            STEP_TARGETS download
+            STEP_TARGETS build
             )
 
     # Add cuTT dependency to External
-    add_dependencies(External-tiledarray cutt)
+    add_dependencies(External-tiledarray cutt-build)
 
     set(_CUTT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
