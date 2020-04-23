@@ -57,8 +57,8 @@ template <typename T>
 constexpr auto trace_is_defined_v = TraceIsDefined<T>::value;
 
 /// SFINAE type for enabling code when the trace operation is defined.
-template <typename T>
-using enable_if_trace_is_defined_t = std::enable_if<trace_is_defined_v<T>>;
+template <typename T, typename U = void>
+using enable_if_trace_is_defined_t = std::enable_if_t<trace_is_defined_v<T>, U>;
 
 /// Specialization of this class registers the routine for taking the trace of a
 /// particular tile type.
@@ -72,6 +72,22 @@ struct Trace;
 } // namespace detail
 
 /// Helper function for taking the trace of a tensor
+///
+/// This function works by creating a detail::Trace instance for the given
+/// tile type, \c T. The implementation of the trace operation can be controlled
+/// by specializing Trace<T>. It simply returns the result of
+/// Trace<T>::operator()(const T&)const verbatim.
+///
+/// This function only participates in overload resolution if
+/// detail::trace_is_defined_v<T> is true.
+///
+/// \tparam T The type of tensor we are trying to take the trace of.
+/// \tparam <anonymous> Template type parameter used for SFINAE. Defaults to
+///                     void when we know how to take the trace of a tensor type
+/// \param[in] t The tensor instance we want the trace of.
+/// \return The results of calling Trace<T>::operator() on \c t.
+/// \throw ??? Any exceptions thrown by Trace<T>::operator() will also be thrown
+///            by this function with the same throw guarantee.
 template<typename T, typename = detail::enable_if_trace_is_defined_t<T>>
 decltype(auto) trace(const T& t){
   detail::Trace<T> tracer;
@@ -79,6 +95,9 @@ decltype(auto) trace(const T& t){
 }
 
 /// Helper type for determining the result of taking the trace of a tensor
+///
+/// \tparam T The type of tensor for which we want to know the type resulting
+///           from tracing it.
 template<typename T>
 using result_of_trace_t = decltype(trace(std::declval<T>()));
 

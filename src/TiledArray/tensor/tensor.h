@@ -1695,8 +1695,8 @@ struct Trace<Tensor<T, A>, detail::enable_if_numeric_t<T>> {
     const size_type* MADNESS_RESTRICT const stride = range.stride_data();
 
     // Search for the largest lower bound and the smallest upper bound
-    const size_type lower_max = std::max_element(lower, lower + n);
-    const size_type upper_min = std::min_element(upper, upper + n);
+    const size_type lower_max = *std::max_element(lower, lower + n);
+    const size_type upper_min = *std::min_element(upper, upper + n);
 
     value_type result = 0;
 
