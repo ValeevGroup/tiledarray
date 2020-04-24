@@ -98,6 +98,8 @@ set(ta_test_src_files  ta_test.cpp
     tot_dist_array_part2.cpp
     random.cpp
     trace.cpp
+    tot_expressions.cpp
+    index_parsing.cpp
 )
 
 if(ENABLE_ELEMENTAL)

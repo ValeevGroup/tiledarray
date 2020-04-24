@@ -1355,7 +1355,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                 label the modes.
   void check_str_index(const std::string& vars) const {
 #ifndef NDEBUG
+    // Only check indices if the PIMPL is initialized (okay to not initialize
+    // the RHS of an equation)
+    if(!is_initialized()) return;
+
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<value_type>;
+    const auto rank = range().rank();
     // TODO: Make constexpr and use structured bindings when CUDA supports C++17
     if(is_tot){
       //Make sure the index is capable of being interpreted as a ToT index
@@ -1363,7 +1368,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       const auto idx = detail::split_tot_index(vars);
 
       // Rank of outer tiles must match number of outer indices
-      TA_ASSERT(idx.first.size() == range().rank());
+      TA_ASSERT(idx.first.size() == rank);
 
       // Check inner index rank?
     }
@@ -1372,7 +1377,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       TA_ASSERT(!detail::is_tot_index(vars));
 
       // Number of indices must match rank
-      TA_ASSERT(detail::split(vars, ',').size() == range().rank());
+      TA_ASSERT(detail::tokenize_index(vars, ',').size() == rank);
     }
 #endif  // NDEBUG
   }

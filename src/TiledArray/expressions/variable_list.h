@@ -108,13 +108,16 @@ inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
 /// considered a single variable. All variables must be unique.
 class VariableList {
  public:
+  typedef std::string value_type;
+  typedef const std::string& const_reference;
   typedef std::vector<std::string>::const_iterator const_iterator;
+  typedef std::size_t size_type;
 
   /// Constructs an empty variable list.
   VariableList() : vars_() {}
 
   /// constructs a variable lists
-  explicit VariableList(const std::string& vars) {
+  explicit VariableList(const_reference vars) {
     if (vars.size() != 0) init_(vars);
   }
 
@@ -128,15 +131,11 @@ class VariableList {
       vars_.push_back(trim_spaces_(first->begin(), first->end()));
   }
 
-  VariableList(const VariableList& other) : vars_(other.vars_) {}
+  VariableList(const VariableList& other) = default;
 
-  VariableList& operator=(const VariableList& other) {
-    vars_ = other.vars_;
+  VariableList& operator=(const VariableList& other) = default;
 
-    return *this;
-  }
-
-  VariableList& operator=(const std::string& vars) {
+  VariableList& operator=(const_reference vars) {
     init_(vars);
     return *this;
   }
@@ -154,20 +153,20 @@ class VariableList {
   const_iterator end() const { return vars_.end(); }
 
   /// Returns the n-th string in the variable list.
-  const std::string& at(const std::size_t n) const { return vars_.at(n); }
+  const_reference at(const size_type n) const { return vars_.at(n); }
 
   /// Returns the n-th string in the variable list.
-  const std::string& operator[](const std::size_t n) const { return vars_[n]; }
+  const_reference operator[](const size_type n) const { return vars_[n]; }
 
   /// Returns the number of strings in the variable list.
-  unsigned int dim() const { return vars_.size(); }
+  size_type dim() const { return vars_.size(); }
 
   /// Returns the number of strings in the variable list.
-  unsigned int size() const { return vars_.size(); }
+  size_type size() const { return vars_.size(); }
 
   const std::vector<std::string>& data() const { return vars_; }
 
-  std::string string() const {
+  value_type string() const {
     std::string result;
     std::vector<std::string>::const_iterator it = vars_.begin();
     if (it == vars_.end()) return result;
@@ -198,22 +197,14 @@ class VariableList {
   /// \return \c true if all variable in this variable list are in \c other,
   /// otherwise \c false.
   bool is_permutation(const VariableList& other) const {
-    if (vars_.size() != other.vars_.size()) return false;
-
-    for (const_iterator it = begin(); it != end(); ++it) {
-      const_iterator other_it = other.begin();
-      for (; other_it != other.end(); ++other_it)
-        if (*it == *other_it) break;
-      if (other_it == other.end()) return false;
-    }
-
-    return true;
+    if(other.dim() != dim()) return false;
+    return std::is_permutation(begin(), end(), other.begin());
   }
 
  private:
   /// Copies a comma separated list into a vector of strings. All spaces are
   /// removed from the sub-strings.
-  void init_(const std::string& vars) {
+  void init_(const_reference vars) {
     std::string::const_iterator start = vars.begin();
     std::string::const_iterator finish = vars.begin();
     for (; finish != vars.end(); ++finish) {
