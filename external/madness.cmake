@@ -14,7 +14,7 @@ include(ConvertLibrariesListToCompilerArgs)
 set(MADNESS_OLDEST_TAG ${TA_TRACKED_MADNESS_TAG} CACHE STRING
         "The oldest revision hash or tag of MADNESS that can be used")
 
-find_package(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
+find_package_regimport(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
 
 macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
   set(${_mad_config_libs} )
@@ -28,18 +28,15 @@ macro(replace_mad_targets_with_libnames _mad_libraries _mad_config_libs)
 endmacro()
 
 # if found, make sure the MADNESS tag matches exactly
-if (MADNESS_FOUND)
-  # make sure that MADNESS used same toolchain file
-  if (NOT "${MADNESS_CMAKE_TOOLCHAIN_FILE}" STREQUAL "${CMAKE_TOOLCHAIN_FILE}")
-    set(_msg "MADNESS used toolchain file \"${MADNESS_CMAKE_TOOLCHAIN_FILE}\" but TiledArray uses toolchain file \"${CMAKE_TOOLCHAIN_FILE}\"; make sure that the same toolchain file is used by both")
-    if (TA_EXPERT)
-      message(WARNING "${_msg}")
-    else(TA_EXPERT)
-      message(FATAL_ERROR "${_msg}")
-    endif(TA_EXPERT)
-  endif()
+if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
+  set(TILEDARRAY_DOWNLOADED_MADNESS OFF CACHE BOOL "Whether TA downloaded MADNESS")
+  mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
 
-  file(STRINGS ${MADNESS_DIR}/../../../include/madness/config.h MADNESS_REVISION_LINE REGEX "define MADNESS_REVISION")
+  set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")
+  if (NOT EXISTS "${CONFIG_H_PATH}")
+    message(FATAL_ERROR "did not find MADNESS' config.h")
+  endif()
+  file(STRINGS "${CONFIG_H_PATH}" MADNESS_REVISION_LINE REGEX "define MADNESS_REVISION")
   if (MADNESS_REVISION_LINE) # MADNESS_REVISION found? make sure it matches the required tag exactly
     string(REGEX REPLACE ".*define[ \t]+MADNESS_REVISION[ \t]+\"([a-z0-9]+)\"" "\\1" MADNESS_REVISION "${MADNESS_REVISION_LINE}")
     if (MADNESS_TAG) # user-defined MADNESS_TAG overrides TA_TRACKED_MADNESS_TAG
@@ -55,9 +52,6 @@ if (MADNESS_FOUND)
   else (MADNESS_REVISION_LINE) # MADNESS_REVISION not found? MADNESS is not recent enough, reinstall
     message(FATAL_ERROR "Found MADNESS, but it is not recent enough; either provide MADNESS with revision ${TA_TRACKED_MADNESS_TAG} or let TiledArray built it")
   endif(MADNESS_REVISION_LINE)
-endif(MADNESS_FOUND)
-
-if(MADNESS_FOUND)
 
   if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
     message(WARNING "To build shared libraries safely should build MADworld (and other prerequisites) as static; but MADworld-static target is not found")
@@ -148,7 +142,7 @@ else()
 
   # look for C and MPI here to make troubleshooting easier and be able to override defaults for MADNESS
   enable_language(C)
-  find_package(MPI REQUIRED)
+  find_package(MPI REQUIRED COMPONENTS C CXX)
 
   find_package(Git REQUIRED)
   message(STATUS "git found: ${GIT_EXECUTABLE}")
@@ -235,7 +229,7 @@ else()
           COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_BINARY_DIR}/external"
           RESULT_VARIABLE error_code)
       if(error_code)
-        message(FATAL_ERROR "Failed to create the MADNESS source directory.")
+        message(FATAL_ERROR "Failed to create directory \"${PROJECT_BINARY_DIR}/external\"")
       endif()
     endif()
 
@@ -426,8 +420,16 @@ else()
   endif(error_code)
 
   set(MADNESS_DIR ${MADNESS_BINARY_DIR})
-  find_package(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG REQUIRED
-               COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
+  find_package_regimport(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG REQUIRED
+                         COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
+  if (NOT TARGET MADworld)
+    message(FATAL_ERROR "Did not receive target MADworld")
+  endif()
+  if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
+    message(FATAL_ERROR "Did not receive target MADworld-static")
+  endif()
+  set(TILEDARRAY_DOWNLOADED_MADNESS ON CACHE BOOL "Whether TA downloaded MADNESS")
+  mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
   set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
   
   # TiledArray only needs MADworld library compiled to be ...
@@ -435,11 +437,16 @@ else()
   # will be used correctly (header locations, etc.)
   if (BUILD_SHARED_LIBS)
     set(MADNESS_WORLD_LIBRARY MADworld-static)
+    set(MADNESS_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
+    set(MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX ".88-dev")
   else(BUILD_SHARED_LIBS)
     set(MADNESS_WORLD_LIBRARY MADworld)
+    set(MADNESS_DEFAULT_LIBRARY_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
+    set(MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX "")
   endif(BUILD_SHARED_LIBS)
   set(MADNESS_LIBRARIES ${MADNESS_WORLD_LIBRARY})
-  # BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
+
+# BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
   # these headers depend on LAPACK which is a dependency of MADlinalg, hence
   # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
   list(APPEND MADNESS_LIBRARIES "${LAPACK_LIBRARIES}")
@@ -451,10 +458,23 @@ else()
     list(APPEND MADNESS_INCLUDE_DIRS ${CMAKE_INSTALL_PREFIX}/include)
   endif (DEFINED ELEMENTAL_TAG)
 
-  # build MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
+  # custom target for building MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
+  # N.B. Ninja needs spelling out the byproducts of custom targets, see https://cmake.org/cmake/help/v3.3/policy/CMP0058.html
+  set(MADNESS_BUILD_BYPRODUCTS "${MADNESS_BINARY_DIR}/src/madness/world/lib${MADNESS_WORLD_LIBRARY}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  if (ENABLE_ELEMENTAL)
+    list(APPEND MADNESS_BUILD_BYPRODUCTS
+        "${MADNESS_BINARY_DIR}/external/build/elemental/libEl${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        "${MADNESS_BINARY_DIR}/external/build/elemental/external/pmrrr/libpmrrr${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        "${MADNESS_BINARY_DIR}/external/build/elemental/external/suite_sparse/libElSuiteSparse${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        "${CMAKE_INSTALL_PREFIX}/lib/libparmetis${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        "${CMAKE_INSTALL_PREFIX}/lib/libmetis${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
+        )
+  endif(ENABLE_ELEMENTAL)
+  message(STATUS "custom target build-madness is expected to build these byproducts: ${MADNESS_BUILD_BYPRODUCTS}")
   add_custom_target(build-madness ALL
       COMMAND ${CMAKE_COMMAND} --build . --target ${MADNESS_WORLD_LIBRARY}
       WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
+      BYPRODUCTS "${MADNESS_BUILD_BYPRODUCTS}"
       COMMENT Building 'madness')
 
   if (ENABLE_ELEMENTAL)
@@ -462,7 +482,7 @@ else()
     set(ELEMENTAL_INSTALL_TARGET install-elemental)
   else (ENABLE_ELEMENTAL)
     set(ELEMENTAL_CLEAN_TARGET clean)
-    set(ELEMENTAL_INSTALL_TARGET install-config)
+    set(ELEMENTAL_INSTALL_TARGET install-madness-config)
   endif (ENABLE_ELEMENTAL)
 
   # Add clean-madness target that will delete files generated by MADNESS build.
@@ -474,7 +494,7 @@ else()
   
   # Since 'install-madness' target cannot be linked to the 'install' target,
   # we will do it manually here.
-  set(INSTALL_MADNESS_SUBTARGETS install-world install-clapack install-config install-common ${ELEMENTAL_INSTALL_TARGET})
+  set(INSTALL_MADNESS_SUBTARGETS install-madness-world install-madness-clapack install-madness-config install-madness-common ${ELEMENTAL_INSTALL_TARGET})
   foreach(INSTALL_MADNESS_SUBTARGET IN LISTS INSTALL_MADNESS_SUBTARGETS)
     install(CODE
       "execute_process(

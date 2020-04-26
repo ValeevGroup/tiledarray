@@ -86,8 +86,8 @@ set(ta_test_src_files  ta_test.cpp
     reduce_task.cpp
     proc_grid.cpp
     dist_eval_contraction_eval.cpp
-    expressions.cpp
-    expressions_sparse.cpp
+    #expressions.cpp
+    #expressions_sparse.cpp
     #expressions_complex.cpp
     #expressions_btas.cpp
     #expressions_mixed.cpp
@@ -135,7 +135,6 @@ target_compile_definitions(${executable}-lib PRIVATE TILEDARRAY_NO_USER_ERROR_ME
     TA_EXCEPTION_ERROR=1 MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
 
 # Add targets
-add_dependencies(${executable} External-tiledarray)
 add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
 
 # Add a test(s)

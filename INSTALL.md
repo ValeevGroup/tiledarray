@@ -22,17 +22,17 @@ $ cmake --build build --target install
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
-- [CMake](https://cmake.org/), version 3.10 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
+- [CMake](https://cmake.org/), version 3.14 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), tag 608217edfa622c1b6bc71e119bd04bb928b25f81 (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), tag ec522b795ae405597f627e7185cb05174a03d863 (will be downloaded automatically, if missing)
 - BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag c6ec0e762374f9ae83636954c684dd33252ce993 .
-  Only the MADworld runtime and BLAS C API component of MADNESS is used by TiledArray.
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag b8dc72197d5e9c4c5630b5208b18160b5d8f65f4 .
+  Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
   A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/master/INSTALL_CMake);

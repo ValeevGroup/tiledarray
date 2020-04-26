@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  // auto test_ta = ref_matrix.tensor_from_matrix( trange );
+  auto test_ta = ref_matrix.tensor_from_matrix( trange );
   GlobalFixture::world->gop.fence();
 };
 

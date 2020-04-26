@@ -20,5 +20,4 @@
 
 # Add the demo executable
 add_ta_executable(demo "demo.cpp" "tiledarray")
-add_dependencies(demo External-tiledarray)
 add_dependencies(examples-tiledarray demo)

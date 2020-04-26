@@ -67,8 +67,8 @@ mkdir -p TA
 cd TA
 
 # if have old installed copy of TA, make sure that BTAS tag matches the required tag, if not, remove INSTALL_DIR (will cause rebuild of TA)
-if [ -f "${INSTALL_DIR}/include/btas/btas/version.h" ]; then
-  export INSTALLED_BTAS_TAG=`grep 'define BTAS_REVISION' ${INSTALL_DIR}/include/btas/btas/version.h | awk '{print $3}' | sed s/\"//g`
+if [ -f "${INSTALL_DIR}/include/btas/version.h" ]; then
+  export INSTALLED_BTAS_TAG=`grep 'define BTAS_REVISION' ${INSTALL_DIR}/include/btas/version.h | awk '{print $3}' | sed s/\"//g`
   echo "installed BTAS revision = ${INSTALLED_BTAS_TAG}"
   # extract the tracked tag of BTAS
   export BTAS_TAG=`grep 'set(TA_TRACKED_BTAS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\)//g`

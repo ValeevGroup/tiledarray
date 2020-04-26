@@ -17,8 +17,7 @@ set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -Wall" CACHE STRING "Inital C++ relea
 set(BLAS_LINKER_FLAGS "-L/usr/lib/libblas" "-lblas" "-L/usr/lib/lapack" "-llapack" "-L/usr/lib" "-llapacke" CACHE STRING "BLAS linker flags")
 set(LAPACK_LIBRARIES ${BLAS_LINKER_FLAGS} CACHE STRING "LAPACK linker flags")
 set(LAPACK_INCLUDE_DIRS "/usr/include" CACHE STRING "LAPACK include directories")
-set(LAPACK_COMPILE_DEFINITIONS BTAS_HAS_CBLAS=1;BTAS_HAS_LAPACKE=1;MADNESS_LINALG_USE_LAPACKE CACHE STRING "LAPACK preprocessor definitions")
-set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
+set(LAPACK_COMPILE_DEFINITIONS MADNESS_LINALG_USE_LAPACKE CACHE STRING "LAPACK preprocessor definitions")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
 
 set( lapack_LIBRARIES ${BLAS_LINKER_FLAGS} )
