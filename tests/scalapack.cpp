@@ -32,7 +32,6 @@ struct ScaLAPACKFixture {
           auto [i_local, j_local] = ref_matrix.dist().local_indx(i, j);
           ref_matrix.local_mat()(i_local, j_local) = i + j;
         }
-    std::cout << "HERE" << std::endl;
   }
 
   ScaLAPACKFixture() : ScaLAPACKFixture(1000, 128) {}
@@ -71,7 +70,6 @@ BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
   auto NB = ref_matrix.dist().nb();
 
   auto trange = gen_trange(N, {static_cast<size_t>(NB)});
-  std::cout << trange << std::endl;
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
       *GlobalFixture::world, trange, 
@@ -79,8 +77,126 @@ BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
         return ScaLAPACKFixture::make_ta_reference(t, range);
       });
 
+
   GlobalFixture::world->gop.fence();
   auto test_ta = ref_matrix.tensor_from_matrix( trange );
+  GlobalFixture::world->gop.fence();
+
+  auto norm_diff = 
+	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
+
+  BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+};
+
+
+
+BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_sca_test) {
+  GlobalFixture::world->gop.fence();
+
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto NB = ref_matrix.dist().nb();
+
+  auto trange = gen_trange(N, {static_cast<size_t>(NB)});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange, 
+      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return ScaLAPACKFixture::make_ta_reference(t, range);
+      });
+
+
+  GlobalFixture::world->gop.fence();
+  TA::ScaLAPACKMatrix<double> test_matrix( ref_ta, grid, NB, NB );
+  GlobalFixture::world->gop.fence();
+
+  double local_norm_diff =
+      (test_matrix.local_mat() - ref_matrix.local_mat()).norm();
+  local_norm_diff *= local_norm_diff;
+
+  double norm_diff;
+  MPI_Allreduce(&local_norm_diff, &norm_diff, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  norm_diff = std::sqrt(norm_diff);
+
+  BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+};
+
+
+
+
+
+
+BOOST_AUTO_TEST_CASE(sca_to_random_tiled_array_test) {
+  GlobalFixture::world->gop.fence();
+
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto NB = ref_matrix.dist().nb();
+
+  auto trange = gen_trange(N, {107ul, 113ul, 211ul, 151ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange, 
+      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return ScaLAPACKFixture::make_ta_reference(t, range);
+      });
+
+
+  GlobalFixture::world->gop.fence();
+  auto test_ta = ref_matrix.tensor_from_matrix( trange );
+  GlobalFixture::world->gop.fence();
+
+  auto norm_diff = 
+	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
+
+  BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+};
+
+
+
+BOOST_AUTO_TEST_CASE(random_tiled_array_to_sca_test) {
+  GlobalFixture::world->gop.fence();
+
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto NB = ref_matrix.dist().nb();
+
+  auto trange = gen_trange(N, {107ul, 113ul, 211ul, 151ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange, 
+      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return ScaLAPACKFixture::make_ta_reference(t, range);
+      });
+
+
+  GlobalFixture::world->gop.fence();
+  TA::ScaLAPACKMatrix<double> test_matrix( ref_ta, grid, NB, NB );
+  GlobalFixture::world->gop.fence();
+
+  double local_norm_diff =
+      (test_matrix.local_mat() - ref_matrix.local_mat()).norm();
+  local_norm_diff *= local_norm_diff;
+
+  double norm_diff;
+  MPI_Allreduce(&local_norm_diff, &norm_diff, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  norm_diff = std::sqrt(norm_diff);
+
+  BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
+
   GlobalFixture::world->gop.fence();
 };
 
