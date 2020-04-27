@@ -110,8 +110,8 @@ endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
 redefaultable_option(ENABLE_MKL "Enable use of MKL (info passed to MADNESS)" ON)
 add_feature_info(MKL ENABLE_MKL "Intel Math Kernel Library provides linear algebra and other math functionality")
 
-redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
-add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks supports programming shared-memory systems")
+redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" OFF)
+add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks (TBB) supports programming shared-memory systems")
 
 option(ENABLE_CUDA "Enable use of CUDA with TiledArray" OFF)
 add_feature_info(CUDA ENABLE_CUDA "NVIDIA CUDA support for GPU")
