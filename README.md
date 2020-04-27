@@ -92,13 +92,14 @@ $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ cmake -B build \
     -D CMAKE_INSTALL_PREFIX=/path/to/tiledarray/install \
-    -D CMAKE_TOOLCHAIN_FILE=../cmake/toolchains/toolchain-file-for-your-platform.cmake \
+    -D CMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/<toolchain-file-for-your-platform>.cmake \
     .
 $ cmake --build build
 (optional) $ cmake --build build --target check
 $ cmake --build build --target install
 ```
-On some standard platforms (e.g. MacOS) the toolchain file can be skipped.
+Here `<toolchain-file-for-your-platform>` is the appropriate toolchain file from [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains); an alternative is
+to provide your own toolchain file. On some standard platforms (e.g. MacOS) the toolchain file can be skipped.
 
 The detailed instructions can be found in [INSTALL.md](https://github.com/ValeevGroup/tiledarray/blob/master/INSTALL.md).
 

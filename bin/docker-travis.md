@@ -1,4 +1,6 @@
-# Docker Travis container notes
+# Intro
+These notes describe how to build TiledArray within the latest Travis-CI Docker image. This is useful for debugging Travis-CI jobs on your local machine.
+# Using
 These notes assume that Docker is installed on your machine and that you start at the top of the TiledArray source tree.
 
 ## Create/build Docker Travis image

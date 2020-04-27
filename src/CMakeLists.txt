@@ -37,7 +37,6 @@ TiledArray/external/elemental.h
 TiledArray/error.h
 TiledArray/external/madness.h
 TiledArray/initialize.h
-TiledArray/util/initializer_list.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/proc_grid.h
@@ -211,7 +210,7 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray depends on
-  list(APPEND _TILEDARRAY_DEPENDENCIES "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE)
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_CUTT TiledArray_UMPIRE)
 
 endif(CUDA_FOUND)
 
@@ -292,8 +291,7 @@ foreach (suffix ${TILEDARRAY_LIBRARY_TARGET_SUFFIXES})
 
   if (CUDA_FOUND)
     target_include_directories(${targetname} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-    # this will eventually work, but does not as of 3.17.0-rc2
-    #target_compile_features(tiledarray PUBLIC "cuda_std_${CMAKE_CUDA_STANDARD}")
+    target_compile_features(tiledarray PUBLIC "cuda_std_${CMAKE_CUDA_STANDARD}")
   endif (CUDA_FOUND)
 
   if (LAPACK_INCLUDE_DIRS)

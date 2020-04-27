@@ -1,6 +1,6 @@
 #set(CMAKE_SYSTEM_NAME Linux)
 # Set compile flags
-set(CMAKE_C_FLAGS_INIT             "-std=c99  -m64 -I$/usr/include" CACHE STRING "Inital C compile flags")
+set(CMAKE_C_FLAGS_INIT             "-std=c99  -m64 -I/usr/include" CACHE STRING "Inital C compile flags")
 set(CMAKE_C_FLAGS_DEBUG            "-g -Wall" CACHE STRING "Inital C debug compile flags")
 set(CMAKE_C_FLAGS_MINSIZEREL       "-Os -march=native -DNDEBUG" CACHE STRING "Inital C minimum size release compile flags")
 set(CMAKE_C_FLAGS_RELEASE          "-O3 -march=native -DNDEBUG" CACHE STRING "Inital C release compile flags")
@@ -18,6 +18,7 @@ set(BLAS_LINKER_FLAGS "-L/usr/lib/libblas" "-lblas" "-L/usr/lib/lapack" "-llapac
 set(LAPACK_LIBRARIES ${BLAS_LINKER_FLAGS} CACHE STRING "LAPACK linker flags")
 set(LAPACK_INCLUDE_DIRS "/usr/include" CACHE STRING "LAPACK include directories")
 set(LAPACK_COMPILE_DEFINITIONS MADNESS_LINALG_USE_LAPACKE CACHE STRING "LAPACK preprocessor definitions")
+set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
 
 set( lapack_LIBRARIES ${BLAS_LINKER_FLAGS} )

@@ -25,6 +25,20 @@
 #
 
 cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
+
+###############################################################################
+# Bring ValeevGroup cmake toolkit
+###############################################################################
+include(FetchContent)
+FetchContent_Populate(
+    vg_cmake_kit
+    QUIET
+    GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-build
+    SUBBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-subbuild
+)
+
 project (TiledArray LANGUAGES)
 enable_language(CXX)
 
@@ -138,10 +152,10 @@ option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
 cmake_dependent_option(BUILD_SHARED_LIBS "Enable shared libraries" ON
       "SUPPORTS_SHARED;ENABLE_SHARED_LIBRARIES" OFF)
 if(BUILD_SHARED_LIBS)
-  set(BLA_STATIC FALSE)
+  set(BLA_STATIC FALSE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH TRUE)
 else()
-  set(BLA_STATIC TRUE)
+  set(BLA_STATIC TRUE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH FALSE)
 endif()
 
@@ -263,8 +277,9 @@ add_custom_target(External-tiledarray)
 include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
-include(external/boost.cmake)
+# find BTAS first, so that it finds Boost more carefully and also has a chance to memorize where it found it
 include(FindOrFetchBTAS)
+include(external/boost.cmake)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
@@ -349,8 +364,10 @@ install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
     DESTINATION lib/pkgconfig)
 
 # include extra cmake files
-install(FILES "${PROJECT_SOURCE_DIR}/cmake/modules/SanitizeCUDAImplicitDirectories.cmake"
-        DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}")
+install(FILES
+    "${PROJECT_SOURCE_DIR}/cmake/modules/SanitizeCUDAImplicitDirectories.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/modules/CloneTarget.cmake"
+    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}")
 
 # Create the version file
 write_basic_package_version_file(tiledarray-config-version.cmake
