@@ -23,7 +23,7 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
-const TensorFixture::range_type TensorFixture::r =make_range(81);
+const TensorFixture::range_type TensorFixture::r = make_range(81);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_suite, TensorFixture)
 
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(permute_constructor) {
 
 BOOST_AUTO_TEST_CASE(permute_constructor_tensor) {
   const std::array<std::size_t, 4> start = {{0ul, 0ul, 0ul, 0ul}};
-  const std::array<std::size_t, 4> finish = {{24ul, 42ul, 16ul, 30ul}};
+  const std::array<std::size_t, 4> finish = {{2ul, 5ul, 7ul, 3ul}};
   TensorN x(range_type(start, finish));
   rand_fill(1693, x.size(), x.data());
 
