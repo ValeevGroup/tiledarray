@@ -21,10 +21,14 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
-// using namespace TiledArray;
 using namespace TiledArray;
 using TiledArray::expressions::VariableList;
 using TiledArray::expressions::detail::find_common;
+
+// Pull some typedefs from the class to make sure testing uses the right types
+using value_type      = typename VariableList::value_type;
+using const_reference = typename VariableList::const_reference;
+using size_type       = typename VariableList::size_type;
 
 struct VariableListFixture {
   VariableListFixture()
@@ -36,7 +40,18 @@ struct VariableListFixture {
         v_ia("i,a"),
         v_ix("i,x"),
         v_i("i"),
-        v_0("") {}
+        v_0(){}
+
+  World& world = get_default_world();
+  std::map<value_type, VariableList> idxs = {
+      {"i", VariableList("i")},
+      {"i,j", VariableList("i,j")},
+      {"i,j,k", VariableList("i,j,k")},
+      {"i;j", VariableList("i;j")},
+      {"i;j,k", VariableList("i;j,k")},
+      {"i,j;k", VariableList("i,j;k")},
+      {"i,j;k,l", VariableList("i,j;k,l")}
+  };
 
   VariableList v;
   const VariableList v_aib;
@@ -50,6 +65,257 @@ struct VariableListFixture {
 };
 
 BOOST_FIXTURE_TEST_SUITE(variable_list_suite, VariableListFixture)
+
+/* This unit test ensures that the typedefs are what we think they are. Since no
+ * template meta-programming occurs in the class these tests serve more as a
+ * consistency check of the API.
+ */
+BOOST_AUTO_TEST_CASE(typedefs){
+  {
+    constexpr bool is_same = std::is_same_v<value_type, std::string>;
+    BOOST_CHECK(is_same);
+  }
+
+  {
+    constexpr bool is_same =
+        std::is_same_v<const_reference, const std::string&>;
+    BOOST_CHECK(is_same);
+  }
+
+  {
+    constexpr bool is_same = std::is_same_v<
+        typename VariableList::const_iterator,
+        typename std::vector<value_type>::const_iterator>;
+    BOOST_CHECK(is_same);
+  }
+
+  {
+    constexpr bool is_same = std::is_same_v<size_type, std::size_t>;
+    BOOST_CHECK(is_same);
+  }
+}
+
+/* The default constructor creates and empty container. Here we simply make sure
+ * that the accessible state of a default instance is what it is supposed to be.
+ */
+BOOST_AUTO_TEST_CASE(default_ctor){
+  BOOST_REQUIRE_NO_THROW(VariableList v0);
+  VariableList v0;
+  {
+    bool are_same = v0.begin() == v0.end();
+    BOOST_CHECK(are_same);
+  }
+  BOOST_CHECK_EQUAL(v0.dim(), size_type{0});
+  BOOST_CHECK_EQUAL(v0.outer_dim(), size_type{0});
+  BOOST_CHECK_EQUAL(v0.inner_dim(), size_type{0});
+  BOOST_CHECK_EQUAL(v0.size(), size_type{0});
+}
+
+/* This unit test tests the constructor which takes a string and tokenizes it.
+ * The constructor ultimately calls detail::split_index, which is unit tested
+ * elsewhere (and thus assumed to work). We compare the state of the resulting
+ * VariableList to the correct value (as obtained by detail::split_index) for
+ * this unit test. There are a number of ways of accessing the individual
+ * indices (operator[], at, iterators); here we only test the at variant. The
+ * other access members are tested in their respective unit tests.
+ */
+BOOST_AUTO_TEST_CASE(string_ctor){
+  if(world.nproc() == 1){
+    BOOST_CHECK_THROW(VariableList("i,"), TiledArray::Exception);
+  }
+
+  for(auto&& [str, idx] : idxs){
+    auto&& [outer, inner] = TiledArray::detail::split_index(str);
+    BOOST_CHECK_EQUAL(idx.dim(), outer.size() + inner.size());
+    BOOST_CHECK_EQUAL(idx.outer_dim(), outer.size());
+    BOOST_CHECK_EQUAL(idx.inner_dim(), inner.size());
+    BOOST_CHECK_EQUAL(idx.size(), outer.size() + inner.size());
+
+    for(size_type i = 0; i < outer.size(); ++i){
+      BOOST_CHECK_EQUAL(idx.at(i), outer[i]);
+    }
+
+    for(size_type i = 0; i < inner.size(); ++i){
+      BOOST_CHECK_EQUAL(idx.at(outer.size() + i), inner[i]);
+    }
+  }
+}
+
+/* To test copy construction/assignment we compare the states of the original
+ * and the copy with operator== (which we assume has been tested elsewhere).
+ * Next we compare the addresses of the individual indices to ensure they are
+ * deep copies. Finally, for copy assignment we ensure that the operation
+ * supports chaining.
+ */
+BOOST_AUTO_TEST_CASE(copy_ctor){
+  // Default instance
+  {
+    VariableList v0;
+    VariableList v1(v0);
+    BOOST_CHECK_EQUAL(v0, v1);
+  }
+
+  for(auto&& [str, idx] : idxs){
+    VariableList v1(idx);
+    BOOST_CHECK_EQUAL(idx, v1);
+    //Ensure deep copy
+    for(size_type i = 0; i < idx.size(); ++i)
+      BOOST_CHECK(&idx[i] != &v1[i]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(copy_assignment){
+  // Default instance
+  {
+    VariableList v0, v1;
+    auto pv0 = &(v0 = v1);
+    BOOST_CHECK_EQUAL(pv0, &v0);
+    BOOST_CHECK_EQUAL(v0, v1);
+  }
+
+  for(auto&& [str, idx] : idxs){
+    VariableList v1;
+    auto pv1 = &(v1 = idx);
+    BOOST_CHECK_EQUAL(pv1, &v1);
+    BOOST_CHECK_EQUAL(idx, v1);
+    //Ensure deep copy
+    for(size_type i = 0; i < idx.size(); ++i)
+      BOOST_CHECK(&idx[i] != &v1[i]);
+  }
+}
+
+/* String assignment allows users to overwrite the state of a VariableList
+ * instance by assigning a C-string (or std::string) to it. We test this
+ * operator by creating a default constructed VariableList, assigning the
+ * indices to it, and then comparing that to the already created instance.
+ */
+BOOST_AUTO_TEST_CASE(string_assignment){
+
+  if(world.nproc() == 1){
+    VariableList v1;
+    BOOST_CHECK_THROW(v1.operator=("i,"), TiledArray::Exception);
+  }
+
+  for(auto&& [str, idx] : idxs){
+    VariableList v1;
+    auto pv1 = &(v1 = str);
+    BOOST_CHECK_EQUAL(pv1, &v1);
+    BOOST_CHECK_EQUAL(idx, v1);
+  }
+}
+
+/* To test equality/inequality we consider instances which are default created,
+ * as well as those holding vector, matrix, or vector-of-vector indices. Each
+ * instance is compared using == and != to each other type of instance
+ * (including permutations of indices)
+ */
+BOOST_AUTO_TEST_CASE(equality){
+  // Default instance comparisons
+  {
+    VariableList v0;
+    BOOST_CHECK_EQUAL(v0, VariableList());
+    BOOST_CHECK(!(v0 == VariableList("i")));
+    BOOST_CHECK(!(v0 == VariableList("i,j")));
+    BOOST_CHECK(!(v0 == VariableList("i;j")));
+  }
+
+  // Vector Comparisons
+  {
+    VariableList v0("i");
+    BOOST_CHECK_EQUAL(v0, VariableList("i"));
+    BOOST_CHECK(!(v0 == VariableList("j")));
+    BOOST_CHECK(!(v0 == VariableList("i,j")));
+    BOOST_CHECK(!(v0 == VariableList("i;j")));
+  }
+
+  // Matrix Comparisons
+  {
+    VariableList v0("i,j");
+    BOOST_CHECK_EQUAL(v0, VariableList("i,j"));
+    BOOST_CHECK(!(v0 == VariableList("j,i")));
+    BOOST_CHECK(!(v0 == VariableList("i;j")));
+  }
+
+  // ToT Comparisons
+  {
+    VariableList v0("i;j");
+    BOOST_CHECK_EQUAL(v0, VariableList("i;j"));
+    BOOST_CHECK(!(v0 == VariableList("j;i")));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(inequality){
+  // Default instance comparisons
+  {
+    VariableList v0;
+    BOOST_CHECK(!(v0 != VariableList()));
+    BOOST_CHECK(v0 != VariableList("i"));
+    BOOST_CHECK(v0 != VariableList("i,j"));
+    BOOST_CHECK(v0 != VariableList("i;j"));
+  }
+
+  // Vector Comparisons
+  {
+    VariableList v0("i");
+    BOOST_CHECK(!(v0 != VariableList("i")));
+    BOOST_CHECK(v0 != VariableList("j"));
+    BOOST_CHECK(v0 != VariableList("i,j"));
+    BOOST_CHECK(v0 != VariableList("i;j"));
+  }
+
+  // Matrix Comparisons
+  {
+    VariableList v0("i,j");
+    BOOST_CHECK(!(v0 != VariableList("i,j")));
+    BOOST_CHECK(v0 != VariableList("j,i"));
+    BOOST_CHECK(v0 != VariableList("i;j"));
+  }
+
+  // ToT Comparisons
+  {
+    VariableList v0("i;j");
+    BOOST_CHECK(!(v0 != VariableList("i;j")));
+    BOOST_CHECK(v0 != VariableList("j;i"));
+  }
+}
+
+// TODO: More permutation testing
+BOOST_AUTO_TEST_CASE(permute_in_place){
+  if(world.nproc() == 1){
+    VariableList v0;
+    Permutation p{0, 1};
+    BOOST_CHECK_THROW(v0 *= p, TiledArray::Exception);
+  }
+}
+
+/* To test the iterators we assume that begin/end simply return the iterators
+ * which run over the object returned by data() (we also assume that the object
+ * returned by data() has the correct state). Subject to these assumptions it
+ * suffices to test that data().begin() and data().end() equal begin() and end()
+ * respectively.
+ */
+BOOST_AUTO_TEST_CASE(begin_itr){
+  {
+    VariableList v0;
+    BOOST_CHECK_EQUAL(v0.begin(), v0.end());
+    BOOST_CHECK_EQUAL(v0.begin(), v0.data().begin());
+  }
+
+  for(auto&& [str, idx] : idxs){
+    BOOST_CHECK_EQUAL(idx.begin(), idx.data().begin());
+  }
+}
+
+BOOST_AUTO_TEST_CASE(end_itr){
+  {
+    VariableList v0;
+    BOOST_CHECK_EQUAL(v0.end(), v0.data().end());
+  }
+
+  for(auto&& [str, idx] : idxs){
+    BOOST_CHECK_EQUAL(idx.end(), idx.data().end());
+  }
+}
 
 BOOST_AUTO_TEST_CASE(valid_chars) {
   // Check for valid characters in string input
@@ -137,66 +403,6 @@ BOOST_AUTO_TEST_CASE(accessors) {
   BOOST_CHECK_EQUAL(v[3], "d");     // check last variable access
   BOOST_CHECK_THROW(v.at(4),
                     std::out_of_range);  // check for out of range throw.
-}
-
-BOOST_AUTO_TEST_CASE(constructor) {
-  BOOST_REQUIRE_NO_THROW(VariableList v0);  // Check default constructor
-  VariableList v0;
-  BOOST_CHECK_EQUAL(v0.dim(), 0u);
-
-  BOOST_REQUIRE_NO_THROW(
-      VariableList v1("a,b,c,d"));  // check string constructor
-  VariableList v1("a,b,c,d");
-  BOOST_CHECK_EQUAL(v1.dim(), 4u);
-  BOOST_CHECK_EQUAL(v1.at(0), "a");  // check for corret data
-  BOOST_CHECK_EQUAL(v1.at(1), "b");
-  BOOST_CHECK_EQUAL(v1.at(2), "c");
-  BOOST_CHECK_EQUAL(v1.at(3), "d");
-
-  BOOST_REQUIRE_NO_THROW(VariableList v2(v));  // check string constructor
-  VariableList v2(v);
-  BOOST_CHECK_EQUAL(v2.dim(), 4u);
-  BOOST_CHECK_EQUAL(v2.at(0), "a");  // check for corret data
-  BOOST_CHECK_EQUAL(v2.at(1), "b");
-  BOOST_CHECK_EQUAL(v2.at(2), "c");
-  BOOST_CHECK_EQUAL(v2.at(3), "d");
-
-  std::array<std::string, 4> a10 = {{"a", "b", "c", "d"}};
-  BOOST_REQUIRE_NO_THROW(
-      VariableList v10(a10.begin(), a10.end()));  // check iterator constructor
-  VariableList v10(a10.begin(), a10.end());
-  BOOST_CHECK_EQUAL(v10.dim(), 4u);
-  BOOST_CHECK_EQUAL(v10.at(0), "a");  // check for corret data
-  BOOST_CHECK_EQUAL(v10.at(1), "b");
-  BOOST_CHECK_EQUAL(v10.at(2), "c");
-  BOOST_CHECK_EQUAL(v10.at(3), "d");
-
-#ifdef TA_EXCEPTION_ERROR
-  BOOST_CHECK_THROW(VariableList v3(",a,b,c"),
-                    Exception);  // check invalid input
-  BOOST_CHECK_THROW(VariableList v4("a,,b,c"), Exception);
-  BOOST_CHECK_THROW(VariableList v5(" ,a,b"), Exception);
-  BOOST_CHECK_THROW(VariableList v6("a,  b,   , c"), Exception);
-  BOOST_CHECK_THROW(VariableList v8("a,b,a,c"), Exception);
-  BOOST_CHECK_THROW(VariableList v9("a,a,b,c"), Exception);
-#endif  // TA_EXCEPTION_ERROR
-
-  VariableList v7(" a , b, c, d , e e ,f f, g10,h, i ");  // check input with
-                                                          // various spacings.
-  BOOST_CHECK_EQUAL(v7.at(0), "a");
-  BOOST_CHECK_EQUAL(v7.at(1), "b");
-  BOOST_CHECK_EQUAL(v7.at(2), "c");
-  BOOST_CHECK_EQUAL(v7.at(3), "d");
-  BOOST_CHECK_EQUAL(v7.at(4), "ee");
-  BOOST_CHECK_EQUAL(v7.at(5), "ff");
-  BOOST_CHECK_EQUAL(v7.at(6), "g10");
-  BOOST_CHECK_EQUAL(v7.at(7), "h");
-  BOOST_CHECK_EQUAL(v7.at(8), "i");
-
-  BOOST_REQUIRE_NO_THROW(
-      VariableList v11(""));  // Check zero length constructor
-  VariableList v11("");
-  BOOST_CHECK_EQUAL(v11.dim(), 0u);
 }
 
 BOOST_AUTO_TEST_CASE(iterator) {

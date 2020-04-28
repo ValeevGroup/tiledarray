@@ -1,6 +1,6 @@
 #include "unit_test_config.h"
 #include <TiledArray/util/index_parsing.h>
-
+#include <tiledarray.h>
 using namespace TiledArray::detail;
 
 namespace {
@@ -97,13 +97,15 @@ BOOST_AUTO_TEST_SUITE(tokenize_index_fxn)
 
 BOOST_AUTO_TEST_CASE(split_on_comma){
   std::map<std::string, string_vector_t> input2corr{
+      {"", string_vector_t{""}},
       {"hello world", string_vector_t{"hello world"}},
       {"hello,world", string_vector_t{"hello", "world"}},
       {" hello,world", string_vector_t{" hello", "world"}},
       {"hello ,world", string_vector_t{"hello ", "world"}},
       {"hello, world", string_vector_t{"hello", " world"}},
       {"hello,world ", string_vector_t{"hello", "world "}},
-      {"hello world,", string_vector_t{"hello world"}},
+      {"hello world,", string_vector_t{"hello world", ""}},
+      {"hello world, ", string_vector_t{"hello world", " "}},
       {"1,2,3", string_vector_t{"1", "2", "3"}}
   };
   for(auto& [str, corr] : input2corr)
@@ -112,13 +114,15 @@ BOOST_AUTO_TEST_CASE(split_on_comma){
 
 BOOST_AUTO_TEST_CASE(split_on_semicolon){
   std::map<std::string, string_vector_t> input2corr{
+      {"", string_vector_t{""}},
       {"hello world", string_vector_t{"hello world"}},
       {"hello;world", string_vector_t{"hello", "world"}},
       {" hello;world", string_vector_t{" hello", "world"}},
       {"hello ;world", string_vector_t{"hello ", "world"}},
       {"hello; world", string_vector_t{"hello", " world"}},
       {"hello;world ", string_vector_t{"hello", "world "}},
-      {"hello world;", string_vector_t{"hello world"}},
+      {"hello world;", string_vector_t{"hello world", ""}},
+      {"hello world;", string_vector_t{"hello world", " "}},
       {"1;2;3", string_vector_t{"1", "2", "3"}}
   };
   for(auto& [str, corr] : input2corr)
@@ -137,8 +141,10 @@ BOOST_AUTO_TEST_SUITE(is_valid_index_fxn)
 
 BOOST_AUTO_TEST_CASE(valid_indices){
   for(auto idx_set : {i_idx, i_j_idx, vov_idx, vom_idx, mov_idx}){
-    for(auto& [idx, corr] : idx_set)
+    for(auto& [idx, corr] : idx_set) {
+      if(is_valid_index(idx)==false) std::cout << idx << std::endl;
       BOOST_CHECK(is_valid_index(idx));
+    }
   }
 }
 
@@ -175,6 +181,61 @@ BOOST_AUTO_TEST_SUITE_END()
  * invalid index, just that an invalid index with a semicolon is not a tot
  * index.
  */
-BOOST_AUTO_TEST_SUITE(is_tot_index)
+BOOST_AUTO_TEST_SUITE(is_tot_index_fxn)
+
+BOOST_AUTO_TEST_CASE(valid_but_not_tot){
+  for(auto x : {i_idx, i_j_idx})
+    for(auto idx : x)
+      BOOST_CHECK(is_tot_index(idx.first) == false);
+}
+
+BOOST_AUTO_TEST_CASE(valid_tot_idx){
+  for(auto x : {vov_idx, vom_idx, mov_idx})
+    for(auto idx : x)
+      BOOST_CHECK(is_tot_index(idx.first));
+}
+
+BOOST_AUTO_TEST_CASE(not_valid_idx){
+  BOOST_CHECK(is_tot_index("") == false);
+  BOOST_CHECK(is_tot_index(";") == false);
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+/* Split index: removes the whitespace, splits the index into inner and outer
+ * components, and then splits the modes of each component. We know that
+ * remove_whitespace, is_tot_index, and tokenize_index work by this point. So
+ * all we have to do is ensure they are hooked up correctly.
+ */
+BOOST_AUTO_TEST_SUITE(split_index_fxn)
+
+BOOST_AUTO_TEST_CASE(invalid_idx){
+  if(TiledArray::get_default_world().nproc() == 1)
+    BOOST_CHECK_THROW(split_index("i,"), TiledArray::Exception);
+}
+
+BOOST_AUTO_TEST_CASE(non_tot){
+  std::map<std::string, std::pair<string_vector_t, string_vector_t>> inputs{
+      {"i", {string_vector_t{"i"}, string_vector_t{}}},
+      {"i,j", {string_vector_t{"i","j"}, string_vector_t{}}},
+      {"i,j,k", {string_vector_t{"i", "j", "k"}, string_vector_t{}}}
+  };
+
+  for(auto& [idx, corr] : inputs) {
+    std::cout << idx << std::endl;
+    BOOST_CHECK(split_index(idx) == corr);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(tot){
+  std::map<std::string, std::pair<string_vector_t, string_vector_t>> inputs{
+      {"i;j", {string_vector_t{"i"}, string_vector_t{"j"}}},
+      {"i,j;k", {string_vector_t{"i","j"}, string_vector_t{"k"}}},
+      {"i;j,k", {string_vector_t{"i"}, string_vector_t{"j", "k"}}}
+  };
+
+  for(auto& [idx, corr] : inputs)
+    BOOST_CHECK(split_index(idx) == corr);
+}
 
 BOOST_AUTO_TEST_SUITE_END()

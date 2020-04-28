@@ -1365,7 +1365,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     if(is_tot){
       //Make sure the index is capable of being interpreted as a ToT index
       TA_ASSERT(detail::is_tot_index(vars));
-      const auto idx = detail::split_tot_index(vars);
+      const auto idx = detail::split_index(vars);
 
       // Rank of outer tiles must match number of outer indices
       TA_ASSERT(idx.first.size() == rank);
