@@ -297,25 +297,33 @@ BOOST_AUTO_TEST_CASE(permute_in_place){
 BOOST_AUTO_TEST_CASE(begin_itr){
   {
     VariableList v0;
-    BOOST_CHECK_EQUAL(v0.begin(), v0.end());
-    BOOST_CHECK_EQUAL(v0.begin(), v0.data().begin());
+    bool are_same = (v0.begin() == v0.data().begin());
+    BOOST_CHECK(are_same);
   }
 
   for(auto&& [str, idx] : idxs){
-    BOOST_CHECK_EQUAL(idx.begin(), idx.data().begin());
+    bool are_same = (idx.begin() == idx.data().begin());
+    BOOST_CHECK(are_same);
   }
 }
 
 BOOST_AUTO_TEST_CASE(end_itr){
   {
     VariableList v0;
-    BOOST_CHECK_EQUAL(v0.end(), v0.data().end());
+    bool are_same = (v0.end() == v0.data().end());
+    BOOST_CHECK(are_same);
   }
 
   for(auto&& [str, idx] : idxs){
-    BOOST_CHECK_EQUAL(idx.end(), idx.data().end());
+    bool are_same = (idx.end() == idx.data().end());
+    BOOST_CHECK(are_same);
   }
 }
+
+BOOST_AUTO_TEST_CASE(at_member){
+
+}
+
 
 BOOST_AUTO_TEST_CASE(valid_chars) {
   // Check for valid characters in string input
