@@ -8,19 +8,24 @@ debugv=$([ "X$BUILD_TYPE" = "XDebug" ] && echo "1" || echo "0")
 sharedv=$(($gccv+$clangv+$debugv))
 export BUILD_SHARED=$(($sharedv % 2))
 
+CMAKE=${INSTALL_PREFIX}/cmake/bin/cmake
 # get the most recent cmake available
-if [ ! -d "${INSTALL_PREFIX}/cmake" ]; then
+if [ ! -x "${CMAKE}" ]; then
   CMAKE_VERSION=3.17.0
   CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz"
+  rm -fr ${INSTALL_PREFIX}/cmake
   mkdir ${INSTALL_PREFIX}/cmake && wget --no-check-certificate -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C ${INSTALL_PREFIX}/cmake
 fi
 export PATH=${INSTALL_PREFIX}/cmake/bin:${PATH}
-cmake --version
+${CMAKE} --version
 
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-scalapack-mpich-linux.sh
-${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
+
+if [ "$BUILD_TYPE" = "Debug" ]; then
+  ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
+fi
 
 # Exit on error
 set -ev
@@ -87,7 +92,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     export CODECOVCXXFLAGS="-O0 --coverage"
   fi
 
-  cmake ${TRAVIS_BUILD_DIR} \
+  ${CMAKE} ${TRAVIS_BUILD_DIR} \
     -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
@@ -117,7 +122,7 @@ else
     fi
   fi
 
-  cmake ${TRAVIS_BUILD_DIR} \
+  ${CMAKE} ${TRAVIS_BUILD_DIR} \
     -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
