@@ -63,12 +63,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Type used to hold the components of the tensors in the array. For
   /// DistArray<Tensor<double>> this will be double. Similarly for
   /// DistArray<Tensor<Tensor<double>> this will also be double. Notably for
-  /// complex elements of type std::complex<T> element_type will be
+  /// complex elements of type std::complex<T> numeric_type will be
   /// std::complex<T> and scalar_type will be T.
-  typedef typename detail::numeric_type<Tile>::type element_type;
+  typedef typename detail::numeric_type<Tile>::type numeric_type;
 
-  /// Type used to hold the scalar components of element_type. For real-valued
-  /// arrays scalar_type will be the same as element_type; however, for arrays
+  /// Type used to hold the scalar components of numeric_type. For real-valued
+  /// arrays scalar_type will be the same as numeric_type; however, for arrays
   /// with elements of type std::complex<T> scalar_type will be T.
   typedef typename detail::scalar_type<Tile>::type scalar_type;
 
@@ -95,8 +95,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// The type of the elements in the tile. For a tile of type Tensor<T> this is
   /// T. Note that if the tile type is Tensor<Tensor<double>> this typedef will
-  /// be Tensor<double> and NOT double like element_type.
-  typedef typename value_type::value_type tile_element_type;
+  /// be Tensor<double> and NOT double like numeric_type.
+  typedef typename value_type::value_type element_type;
 
  private:
   std::shared_ptr<impl_type> pimpl_;  ///< Array implementation pointer
@@ -254,7 +254,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///  to create an empty tensor (attempts to do so will raise an error).
   ///
   /// \tparam T The types of the elements in the `std::initializer_list`. Must
-  ///           be implicitly convertible to element_type.
+  ///           be implicitly convertible to numeric_type.
   ///
   /// \param[in] world The world where the resulting array will live.
   /// \param[in] il The initial values for the elements in the array. The
@@ -304,7 +304,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///  empty tensor (attempts to do so will raise an error).
   ///
   /// \tparam T The types of the elements in the `std::initializer_list`. Must
-  ///           be implicitly convertible to element_type.
+  ///           be implicitly convertible to numeric_type.
   ///
   /// \param[in] world The world where the resulting array will live.
   /// \param[in] trange The tiling to use for the resulting array.
@@ -425,35 +425,35 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if the PIMPL has not been initialized.
   /// \note This function is primarily used for debugging purposes. Users
   /// should not rely on this function.
-  madness::uniqueidT id() const { return check_pimpl().id(); }
+  madness::uniqueidT id() const { return pimpl().id(); }
 
   /// Begin iterator factory function
 
   /// \return An iterator to the first local tile.
   /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
   ///                              throw guarantee.
-  iterator begin() { return check_pimpl().begin(); }
+  iterator begin() { return pimpl().begin(); }
 
   /// Begin const iterator factory function
 
   /// \return A const iterator to the first local tile.
   /// \throw Tiledarray::Exception if the PIMPL has not been initialized. Strong
   ///                              throw guarantee.
-  const_iterator begin() const { return check_pimpl().cbegin(); }
+  const_iterator begin() const { return pimpl().cbegin(); }
 
   /// End iterator factory function
 
   /// \return An iterator to one past the last local tile.
   /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
   ///                              throw guarantee.
-  iterator end() { return check_pimpl().end(); }
+  iterator end() { return pimpl().end(); }
 
   /// End const iterator factory function
 
   /// \return A const iterator to one past the last local tile.
   /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
   ///                              throw guarantee.
-  const_iterator end() const { return check_pimpl().cend(); }
+  const_iterator end() const { return pimpl().cend(); }
 
   /// Find local or remote tile by index
 
@@ -557,7 +557,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Index>
   void set(const Index& i,
-           const tile_element_type& value = tile_element_type()) {
+           const element_type& value = element_type()) {
     check_index(i);
     pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
   }
@@ -583,7 +583,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Integer>
   void set(const std::initializer_list<Integer>& i,
-           const tile_element_type& value = tile_element_type()) {
+           const element_type& value = element_type()) {
     set<std::initializer_list<Integer>>(i, value);
   }
 
@@ -671,7 +671,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already set. Weak throw guarantee.
-  void fill_local(const tile_element_type& value = tile_element_type(),
+  void fill_local(const element_type& value = element_type(),
                   bool skip_set = false) {
     init_tiles(
         [value](const range_type& range) { return value_type(range, value); },
@@ -686,7 +686,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already set. Weak throw guarantee.
-  void fill(const tile_element_type& value = element_type(),
+  void fill(const element_type& value = numeric_type(),
             bool skip_set = false) {
     fill_local(value, skip_set);
   }
@@ -701,7 +701,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// and attempting to use it will lead to a compile-time error.
   ///
   /// \tparam T The type of random value to generate. Defaults to
-  ///           tile_element_type.
+  ///           element_type.
   /// \tparam <anonymous> A template type parameter which will be deduced as
   ///                     void only if MakeRandom knows how to generate random
   ///                     values of type T. If MakeRandom does not know how to
@@ -712,7 +712,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              throw guarantee.
   /// \throw TiledArray::Exception if skip_set is false and a local tile is
   ///                              already initialized. Weak throw guarantee.
-  template<typename T = tile_element_type,
+  template<typename T = element_type,
            typename = detail::enable_if_can_make_random_t<T>>
   void fill_random(bool skip_set = false) {
     init_elements(
@@ -760,7 +760,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              false. Weak throw guarantee.
   template <typename Op>
   void init_tiles(Op&& op, bool skip_set = false) {
-    check_pimpl();
+    pimpl();
 
     auto it = pimpl_->pmap()->begin();
     const auto end = pimpl_->pmap()->end();
@@ -789,7 +789,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \c op must be a thread safe function/functor. The signature of the functor
   /// should be:
   /// \code
-  /// tile_element_type op(const index&)
+  /// element_type op(const index&)
   /// \endcode
   /// For example, in the following code, the array elements are initialized
   /// with random numbers from 0 to 1:
@@ -830,7 +830,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A const reference to the tiled range object for the array
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
-  const trange_type& trange() const { return check_pimpl().trange(); }
+  const trange_type& trange() const { return pimpl().trange(); }
 
   /// Tile range accessor
 
@@ -843,7 +843,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A const reference to the range object for the array's tiles
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
-  const range_type& range() const { return check_pimpl().tiles_range(); }
+  const range_type& range() const { return pimpl().tiles_range(); }
 
   /// \deprecated use DistArray::elements_range()
   [[deprecated]] const typename trange_type::range_type& elements() const {
@@ -863,7 +863,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
   const typename trange_type::range_type& elements_range() const {
-    return check_pimpl().trange().elements_range();
+    return pimpl().trange().elements_range();
   }
 
   /// Returns the number of tiles in the tensor
@@ -876,7 +876,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return The number of tiles in the tensor.
   /// \throw TiledArray::Exception if the PIMPL has not been set. Strong throw
   ///                              guarantee.
-  size_type size() const { return check_pimpl().size(); }
+  size_type size() const { return pimpl().size(); }
 
   /// Create a tensor expression
 
@@ -907,7 +907,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A reference to the world that owns this array.
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
-  World& world() const { return check_pimpl().world(); }
+  World& world() const { return pimpl().world(); }
 
   /// \deprecated use DistArray::pmap()
   [[deprecated]] const std::shared_ptr<pmap_interface>& get_pmap() const {
@@ -920,7 +920,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
   ///                              throw guarantee.
   const std::shared_ptr<pmap_interface>& pmap() const {
-    return check_pimpl().pmap();
+    return pimpl().pmap();
   }
 
   /// Check dense/sparse
@@ -928,7 +928,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return \c true when \c Array is dense, \c false otherwise.
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
-  bool is_dense() const { return check_pimpl().is_dense(); }
+  bool is_dense() const { return pimpl().is_dense(); }
 
   /// \deprecated use DistArray::shape()
   [[deprecated]] const shape_type& get_shape() const { return shape(); }
@@ -939,7 +939,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return reference to the shape object.
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
-  inline const shape_type& shape() const { return check_pimpl().shape(); }
+  inline const shape_type& shape() const { return pimpl().shape(); }
 
   /// Tile ownership
 
@@ -1067,7 +1067,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
   void make_replicated() {
-    check_pimpl();
+    pimpl();
     if ((!pimpl_->pmap()->is_replicated()) && (world().size() > 1)) {
       // Construct a replicated array
       auto pmap = std::make_shared<detail::ReplicatedPmap>(world(), size());
@@ -1326,7 +1326,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   typename std::enable_if<std::is_integral<Index>::value>::type check_index(
       const Index i) const {
     TA_USER_ASSERT(
-        check_pimpl().tiles_range().includes(i),
+        pimpl().tiles_range().includes(i),
         "The ordinal index used to access an array tile is out of range.");
   }
 
@@ -1391,7 +1391,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A read-only reference to the PIMPL.
   /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
   ///                              throw guarantee.
-  auto& check_pimpl() const {
+  auto& pimpl() const {
     assert_pimpl();
     return *pimpl_;
   }
@@ -1406,7 +1406,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A read/write reference to the PIMPL.
   /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
   ///                              throw guarantee.
-  auto& check_pimpl() {
+  auto& pimpl() {
     assert_pimpl();
     return *pimpl_;
   }

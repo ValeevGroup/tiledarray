@@ -17,7 +17,19 @@ This document is intended for users who
 
 # Implementation
 
-TiledArray DSL is built using the [expression template](https://en.wikipedia.org/wiki/Expression_templates) idiom. Lazy evaluation of DSL expressions allows to (heuristically) optimize their evaluation by minimizing the number of permutations, minimizing memory accesses, minimizing temporary storage, and combining arithmetic operations; DSL does NOT more extensive term rewriting, such as operation reordering, factorization (strength reduction), or common subexpression elimination. Such task can be performed by the user (with help of an optimizing compiler), provided sufficient understanding of how the TiledArray DSL expressions are evaluated.
+TiledArray DSL is built using the
+[expression template](https://en.wikipedia.org/wiki/Expression_templates) idiom.
+Lazy evaluation of DSL expressions allows to (heuristically) optimize their
+evaluation by minimizing the number of permutations, minimizing memory accesses,
+minimizing temporary storage, and combining arithmetic operations; DSL does NOT
+more extensive term rewriting, such as operation reordering, factorization
+(strength reduction), or common subexpression elimination. Such task can be
+performed by the user (with help of an optimizing compiler), provided sufficient
+understanding of how the TiledArray DSL expressions are evaluated. For a more
+detailed overview of the DSL implementation see
+[here](@ref Expressions-in-TiledArray). For detailed examples of the expression
+layer see [here](@ref Expression-Layer-Example) and for detailed examples of the
+expression engine see [here](@ref Expression-Engine-Example).
 
 ## DSL Overview
 DSL expressions are evaluated in a multi-stage process, each step of which can be overridden to suit your needs.
