@@ -320,10 +320,31 @@ BOOST_AUTO_TEST_CASE(end_itr){
   }
 }
 
+/* To test the "at" member we split the input string manually using split_index
+ * and loop over the resulting outer and inner indices.
+ */
 BOOST_AUTO_TEST_CASE(at_member){
-
+for(auto&& [str, idx] : idxs) {
+    if (world.nproc() == 1) {
+      BOOST_CHECK_THROW(idx.at(idx.size()), std::out_of_range);
+    }
+    auto [outer, inner] = detail::split_index(str);
+    for(size_type i = 0; i < outer.size(); ++i)
+      BOOST_CHECK_EQUAL(idx.at(i), outer.at(i));
+  for(size_type i = 0; i < inner.size(); ++i)
+    BOOST_CHECK_EQUAL(idx.at(i + outer.size()), inner.at(i));
+  }
 }
 
+BOOST_AUTO_TEST_CASE(subscript_operator){
+  for(auto&& [str, idx] : idxs) {
+    auto [outer, inner] = detail::split_index(str);
+    for(size_type i = 0; i < outer.size(); ++i)
+      BOOST_CHECK_EQUAL(idx[i], outer.at(i));
+    for(size_type i = 0; i < inner.size(); ++i)
+      BOOST_CHECK_EQUAL(idx[i + outer.size()], inner.at(i));
+  }
+}
 
 BOOST_AUTO_TEST_CASE(valid_chars) {
   // Check for valid characters in string input
