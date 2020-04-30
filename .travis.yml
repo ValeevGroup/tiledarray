@@ -17,8 +17,6 @@ addons:
     - liblapack-dev
     - liblapacke-dev
     - libtbb-dev
-    - cmake
-    - cmake-data
     - lcov
 
 env:
