@@ -207,12 +207,14 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray build depends on
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" CUDA::cublas CUDA::nvToolsExt TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen BTAS::BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  # N.B. de-duping of LAPACK_LIBRARIES and BTAS::BTAS can be order-dependent if --{start,end}-group linker flags are present
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld CUDA::cublas CUDA::nvToolsExt TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen BTAS::BTAS "${LAPACK_LIBRARIES}" CACHE STRING "List of libraries on which TiledArray depends on")
 
 else(CUDA_FOUND)
 
   # the list of libraries on which TiledArray build depends on
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen BTAS::BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  # N.B. de-duping of LAPACK_LIBRARIES and BTAS::BTAS can be order-dependent if --{start,end}-group linker flags are present
+  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld TiledArray_Eigen BTAS::BTAS "${LAPACK_LIBRARIES}" CACHE STRING "List of libraries on which TiledArray depends on")
 
 endif(CUDA_FOUND)
 
