@@ -153,7 +153,6 @@ inline bool is_tot_index(const std::string& idx) {
   return idx.find(";") != std::string::npos;
 }
 
-
 /// Splits and sanitizes a string labeling a tensor's modes.
 ///
 /// This function encapsulates TiledArray's string index parsing. It is a free
@@ -182,10 +181,10 @@ inline bool is_tot_index(const std::string& idx) {
 inline auto split_index(const std::string& idx) {
   TA_ASSERT(is_valid_index(idx));
   auto no_ws = remove_whitespace(idx);
-  if(!is_tot_index(idx)) {
-    return std::make_pair(tokenize_index(idx, ','), std::vector<std::string>{});
+  if(!is_tot_index(no_ws)) {
+    return std::make_pair(tokenize_index(no_ws, ','), std::vector<std::string>{});
   }
-  auto tot_idx = tokenize_index(idx, ';');
+  auto tot_idx = tokenize_index(no_ws, ';');
   return std::make_pair(tokenize_index(tot_idx[0], ','),
                         tokenize_index(tot_idx[1], ','));
 

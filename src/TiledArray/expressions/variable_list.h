@@ -220,6 +220,16 @@ class VariableList {
     return *this;
   }
 
+  /// Applies a permutation, in-place, to the current VariableList instance
+  ///
+  /// This function applies the Permutation instance, \c p, to the current
+  /// VariableList instance overwriting the already existing state with the
+  /// permuted state.
+  ///
+  /// \param[in] p The Permutation to apply. \c p should be of rank `dim()`.
+  /// \return The current instance after applying the permutation.
+  /// \throw TiledArray::Exception if \c p is not of rank `dim()`. Strong throw
+  ///                              guarantee.
   VariableList& operator*=(const Permutation& p) {
     TA_ASSERT(p.dim() == dim());
     vars_ *= p;
@@ -291,19 +301,81 @@ class VariableList {
   const_iterator end() const { return vars_.end(); }
 
   /// Returns the n-th string in the variable list.
+  ///
+  /// This member function returns the requested string index, \c n, throwing if
+  /// \c n is not in the range [0, dim()). Use operator[](size_type) to avoid
+  /// the in-range check.
+  /// \param[in] n The index of the requested mode label. \c n should be in the
+  ///              range [0, dim()).
+  /// \return A read-only reference to the requested string index.
+  /// \throw std::out_of_range if \c n is not in the range [0, dim()). Strong
+  ///                          throw guarantee.
   const_reference at(const size_type n) const { return vars_.at(n); }
 
   /// Returns the n-th string in the variable list.
+  ///
+  /// This member function returns the string used to label mode \c n of the
+  /// tensor.  Unlike at, no range check is performed and undefined behavior
+  /// will occur if \c n is not in the range [0, dims()).
+  /// \param[in] n The index of the requested mode label. \c n should be in the
+  ///              range [0, dims()) otherwise undefined behavior will occur.
+  /// \return A read-only reference to the requested string index.
+  /// \throw None No throw guarantee.
   const_reference operator[](const size_type n) const { return vars_[n]; }
 
   /// Returns the total number of indices in the variable list
-  size_type dim() const { return vars_.size(); }
+  ///
+  /// This function is just an alias for the `size()` member. It returns the
+  /// the total number of indices in the variable list. For a tensor-of-tensors
+  /// the total number of indices is the number of outer indices plus the number
+  /// of inner indices.
+  ///
+  /// \return The total number of indices in the variable list. For a tensor-of-
+  ///         tensors the total number is the sum of the number of outer indices
+  ///         plus the number of inner indices.
+  /// \throw None No throw guarantee.
+  size_type dim() const { return size(); }
 
+  /// Returns the number of outer indices in the variable list
+  ///
+  /// VariableList is capable of holding a string labeling a tensor-of-tensors
+  /// or a normal (non-nested) tensor. For a ToT the indices are partitioned
+  /// into outer (those for the outer tensor whose elements are tensors) and
+  /// inner (those for the tensors which are elements of the outer tensor). This
+  /// function returns the number of outer indices in the provided index. By
+  /// convention all indices for a normal tensor are outer indices; however, for
+  /// normal tensors users are encouraged to use `dim()` (or `size()`) instead
+  /// of `outer_dim()` to make it clear that all indices are being considered.
+  ///
+  /// \return The total number of outer indices in the managed list of labels.
+  /// \throw None No throw guarantee.
   size_type outer_dim() const { return dim() - inner_dim(); }
 
+  /// Returns the number of inner indices in the variable list
+  ///
+  /// VariableList is capable of holding a string labeling a tensor-of-tensors
+  /// or a normal (non-nested) tensor. For a ToT the indices are partitioned
+  /// into outer (those for the outer tensor whose elements are tensors) and
+  /// inner (those for the tensors which are elements of the outer tensor). This
+  /// function returns the number of inner indices in the provided index. By
+  /// convention all indices for a normal tensor are outer indices and this
+  /// function will always return zero.
+  ///
+  /// \return The total number of inner indices in the managed list of labels.
+  /// \throw None No throw guarantee.
   size_type inner_dim() const { return n_inner_; }
 
-  /// Returns the number of strings in the variable list.
+  /// Returns the total number of indices in the variable list
+  ///
+  /// This function returns the total number of indices in the VariableList. For
+  /// a normal, non-nested, tensor this is simply the number of indices. For a
+  /// tensor-of-tensors the total number of indices is the number of outer
+  /// indices plus the number of inner indices.
+  ///
+  /// \return The total number of indices in the variable list. For a tensor-of-
+  ///         tensors the total number is the sum of the number of outer indices
+  ///         plus the number of inner indices.
+  /// \throw None No throw guarantee.
   size_type size() const { return vars_.size(); }
 
   //// Is this instance managing an index for a Tensor-of-Tensors?
@@ -318,31 +390,39 @@ class VariableList {
 
   const std::vector<std::string>& data() const { return vars_; }
 
-  operator value_type() const {
-    value_type result;
+  /// Enables conversion from a VariableList to a string
+  ///
+  /// This function will cast the VariableList instance to a string, such that
+  /// mode labels are separated by commas
+  ///
+  /// \return A string representation of the
+  /// \throw std::bad_alloc if there is insufficient memory to create the
+  ///                       resulting string. Strong throw guarantee.
+  explicit operator value_type() const;
 
-    size_type counter = 0;
-    for(size_type i = 0; i < dim(); ++i){
-      if(i == outer_dim()) result += ";";
-      else if(i > 0) result += ",";
-      result += at(i);
-    }
-
-    return result;
-  }
-
+  /// Swaps the current instance's state with that of \c other
+  ///
+  /// \param[in] other The instance to swap state with. After this operation,
+  ///           \c other will contain this instance's state and this instance
+  ///           will contain other's state.
+  /// \throw None No throw guarantee.
   void swap(VariableList& other) {
     std::swap(n_inner_, other.n_inner_);
     std::swap(vars_, other.vars_);
   }
 
-  /// Generate permutation relationship for variable lists
+  /// Computes the permutation to go from \c other to this instance
 
   /// The result of this function is a permutation that defines
   /// \c this=p^other .
-  /// \tparam V An array type
-  /// \param other An array that defines a variable list
-  /// \return \c p as defined by the above relationship
+  /// \tparam V A container of strings. \c V must minimally be forward iterable.
+  /// \param[in] other An array that defines a variable list
+  /// \return The permutation which can be applied to other to generate this
+  ///         instance.
+  /// \throw TiledArray::Exception if the \c other does not contain the same
+  ///                              number of indices. Strong throw guarantee.
+  /// \throw TiledArray::Exception if \c other does not contain the same indices
+  ///                              as this instance. Strong throw guarantee.
   template <typename V>
   Permutation permutation(const V& other) const {
     return detail::var_perm(*this, other);
@@ -366,58 +446,11 @@ class VariableList {
   VariableList(const container_type<value_type>& outer,
                const container_type<value_type>& inner);
 
-
-  /// Copies a comma separated list into a vector of strings. All spaces are
-  /// removed from the sub-strings.
-  void init_(const_reference vars) {
-    std::string::const_iterator start = vars.begin();
-    std::string::const_iterator finish = vars.begin();
-    for (; finish != vars.end(); ++finish) {
-      if (*finish == ',') {
-        vars_.push_back(trim_spaces_(start, finish));
-        start = finish + 1;
-      }
-    }
-    vars_.push_back(trim_spaces_(start, finish));
-
-    TA_ASSERT((unique_(vars_.begin(), vars_.end())));
-  }
-
-  /// Returns a string with all the spaces ( ' ' ) removed from the string
-  /// defined by the start and finish iterators.
-  static std::string trim_spaces_(std::string::const_iterator first,
-                                  std::string::const_iterator last) {
-    TA_ASSERT(first != last);
-    std::string result = "";
-    for (; first != last; ++first) {
-      TA_ASSERT(valid_char_(*first));
-      if (*first != ' ' && *first != '\0') result.append(1, *first);
-    }
-
-    TA_ASSERT(result.length() != 0);
-
-    return result;
-  }
-
-  /// Returns true if all vars contained by the list are unique.
-  template <typename InIter>
-  bool unique_(InIter first, InIter last) const {
-    for (; first != last; ++first) {
-      InIter it2 = first;
-      for (++it2; it2 != last; ++it2)
-        if (first->compare(*it2) == 0) return false;
-    }
-
-    return true;
-  }
-
-  static bool valid_char_(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-           (c >= '0' && c <= '9') || (c == ' ') || (c == ',') || (c == '\0') ||
-           (c == '\'') || (c == '_');
-  }
-
+  /// The number of inner indices
   size_type n_inner_ = 0;
+
+  /// The tokenized indices. The last n_inner_ are the inner indices, all others
+  /// are outer indices.
   std::vector<value_type> vars_;
 
   friend VariableList operator*(const ::TiledArray::Permutation&,
@@ -428,6 +461,18 @@ class VariableList {
 /// Exchange the content of the two variable lists.
 inline void swap(VariableList& v0, VariableList& v1) { v0.swap(v1); }
 
+/// Determines if two VariableLists are different.
+///
+/// Two variableList instances are equivalent if they contain the same number
+/// of indices, the indices are partitioned into inner and outer indices
+/// identically, and if the \f$i\f$-th index of each instance are equivalent
+/// for all \f$i\f$. In particular this means VariableList instances will
+/// compare different if they use different capitalization and/or are
+/// permutations of each other.
+///
+/// \param[in] other The VariableList instance we are comparing to.
+/// \return True if the two instances are different and false otherwise.
+/// \throw None No throw guarantee.
 inline bool operator!=(const VariableList& v0, const VariableList& v1) {
   return !(v0 == v1);
 }
@@ -441,9 +486,19 @@ inline VariableList operator*(const ::TiledArray::Permutation& p,
   return result;
 }
 
-/// ostream VariableList output operator.
+/// Prints a VariableList instance to a stream
+///
+/// This function simply casts the VariableList to a string, adds parenthesis to
+/// it, and then inserts the resulting string into the stream.
+///
+/// \param[in,out] out the stream that \c v will be written to.
+/// \param[in] v The VariableList instance to insert into the stream.
+/// \return \c out will be returned after adding \c v to it.
+/// \throw std::bad_alloc if there is insufficient memory to create the
+///                       resulting string. Strong throw guarantee.
 inline std::ostream& operator<<(std::ostream& out, const VariableList& v) {
-  return out << "(" << static_cast<std::string>(v)  << ")";
+  const std::string str = "(" + static_cast<std::string>(v) + ")";
+  return out << str;
 }
 
 
@@ -451,7 +506,16 @@ inline std::ostream& operator<<(std::ostream& out, const VariableList& v) {
 //                             Implementations
 //------------------------------------------------------------------------------
 
+inline VariableList::operator value_type() const {
+  value_type result;
+  for(size_type i = 0; i < dim(); ++i){
+    if(i == outer_dim()) result += ";";
+    else if(i > 0) result += ",";
+    result += at(i);
+  }
 
+  return result;
+}
 inline VariableList::VariableList(const container_type<value_type>& outer,
                           const container_type<value_type>& inner):
     n_inner_(inner.size()), vars_(outer.size() + inner.size()) {

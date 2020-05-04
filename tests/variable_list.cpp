@@ -20,6 +20,19 @@
 #include "TiledArray/expressions/variable_list.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
+#include <numeric>
+/* General notes on testing the VariableList class.
+ *
+ * - The old test suite included tests for ensuring valid characters. That
+ *   functionality has been moved to the free function `is_valid_index` and is
+ *   tested there.
+ * - I put the VariableLists to test into an std::map, which makes it easier to
+ *   loop over them and write more compact unit-tests.
+ * - I split the constructor and accessor tests into individual unit tests, one
+ *   per function. In the event that a bug is found/functionality changes this
+ *   should make it easier to find the bug/test the functionality.
+ *
+ */
 
 using namespace TiledArray;
 using TiledArray::expressions::VariableList;
@@ -31,19 +44,16 @@ using const_reference = typename VariableList::const_reference;
 using size_type       = typename VariableList::size_type;
 
 struct VariableListFixture {
-  VariableListFixture()
-      : v("a,b,c,d"),
-        v_aib("a,i,b"),
-        v_xiy("x,i,y"),
-        v_ai("a,i"),
-        v_xi("x,i"),
-        v_ia("i,a"),
-        v_ix("i,x"),
-        v_i("i"),
-        v_0(){}
 
   World& world = get_default_world();
   std::map<value_type, VariableList> idxs = {
+      {"a,b,c,d", VariableList("a,b,c,d")},
+      {"a,i,b", VariableList("a,i,b")},
+      {"x,i,y", VariableList("x,i,y")},
+      {"a,i", VariableList("a,i")},
+      {"x,i", VariableList("x,i")},
+      {"i,a", VariableList("i,a")},
+      {"i,x", VariableList("i,x")},
       {"i", VariableList("i")},
       {"i,j", VariableList("i,j")},
       {"i,j,k", VariableList("i,j,k")},
@@ -52,16 +62,6 @@ struct VariableListFixture {
       {"i,j;k", VariableList("i,j;k")},
       {"i,j;k,l", VariableList("i,j;k,l")}
   };
-
-  VariableList v;
-  const VariableList v_aib;
-  const VariableList v_xiy;
-  const VariableList v_ai;
-  const VariableList v_xi;
-  const VariableList v_ia;
-  const VariableList v_ix;
-  const VariableList v_i;
-  const VariableList v_0;
 };
 
 BOOST_FIXTURE_TEST_SUITE(variable_list_suite, VariableListFixture)
@@ -279,13 +279,21 @@ BOOST_AUTO_TEST_CASE(inequality){
   }
 }
 
-// TODO: More permutation testing
 BOOST_AUTO_TEST_CASE(permute_in_place){
   if(world.nproc() == 1){
     VariableList v0;
     Permutation p{0, 1};
     BOOST_CHECK_THROW(v0 *= p, TiledArray::Exception);
   }
+
+  Permutation p({1, 2, 3, 0});
+  VariableList v1("a, b, c, d");
+  auto* pv1 = &(v1 *= p);
+  BOOST_CHECK_EQUAL(pv1, &v1);
+  BOOST_CHECK_EQUAL(v1[0], "d");
+  BOOST_CHECK_EQUAL(v1[1], "a");
+  BOOST_CHECK_EQUAL(v1[2], "b");
+  BOOST_CHECK_EQUAL(v1[3], "c");
 }
 
 /* To test the iterators we assume that begin/end simply return the iterators
@@ -321,7 +329,9 @@ BOOST_AUTO_TEST_CASE(end_itr){
 }
 
 /* To test the "at" member we split the input string manually using split_index
- * and loop over the resulting outer and inner indices.
+ * and loop over the resulting outer and inner indices. This test is basically
+ * identical to the one we use for subscript operator, except we also test for
+ * out-of-range on the "at" member.
  */
 BOOST_AUTO_TEST_CASE(at_member){
 for(auto&& [str, idx] : idxs) {
@@ -346,158 +356,187 @@ BOOST_AUTO_TEST_CASE(subscript_operator){
   }
 }
 
-BOOST_AUTO_TEST_CASE(valid_chars) {
-  // Check for valid characters in string input
+/* To test the dim, outer_dim, inner_dim, and size function we simply loop over
+ * the VariableList instances and compare the results of the member function to
+ * the sizes resulting from calling `split_index`, which defines how a
+ * TiledArray index should be split.
+ */
+BOOST_AUTO_TEST_CASE(dim_fxn){
+  BOOST_CHECK_EQUAL(VariableList{}.dim(), 0);
 
-  // Check letters 'a' - 'z'
-  BOOST_CHECK_NO_THROW(VariableList v1("a"));
-  BOOST_CHECK_NO_THROW(VariableList v1("b"));
-  BOOST_CHECK_NO_THROW(VariableList v1("c"));
-  BOOST_CHECK_NO_THROW(VariableList v1("d"));
-  BOOST_CHECK_NO_THROW(VariableList v1("e"));
-  BOOST_CHECK_NO_THROW(VariableList v1("f"));
-  BOOST_CHECK_NO_THROW(VariableList v1("g"));
-  BOOST_CHECK_NO_THROW(VariableList v1("h"));
-  BOOST_CHECK_NO_THROW(VariableList v1("i"));
-  BOOST_CHECK_NO_THROW(VariableList v1("j"));
-  BOOST_CHECK_NO_THROW(VariableList v1("k"));
-  BOOST_CHECK_NO_THROW(VariableList v1("l"));
-  BOOST_CHECK_NO_THROW(VariableList v1("m"));
-  BOOST_CHECK_NO_THROW(VariableList v1("n"));
-  BOOST_CHECK_NO_THROW(VariableList v1("o"));
-  BOOST_CHECK_NO_THROW(VariableList v1("p"));
-  BOOST_CHECK_NO_THROW(VariableList v1("q"));
-  BOOST_CHECK_NO_THROW(VariableList v1("r"));
-  BOOST_CHECK_NO_THROW(VariableList v1("s"));
-  BOOST_CHECK_NO_THROW(VariableList v1("t"));
-  BOOST_CHECK_NO_THROW(VariableList v1("u"));
-  BOOST_CHECK_NO_THROW(VariableList v1("v"));
-  BOOST_CHECK_NO_THROW(VariableList v1("w"));
-  BOOST_CHECK_NO_THROW(VariableList v1("x"));
-  BOOST_CHECK_NO_THROW(VariableList v1("y"));
-  BOOST_CHECK_NO_THROW(VariableList v1("z"));
-
-  // Check letters 'A' - 'Z'
-  BOOST_CHECK_NO_THROW(VariableList v1("A"));
-  BOOST_CHECK_NO_THROW(VariableList v1("B"));
-  BOOST_CHECK_NO_THROW(VariableList v1("C"));
-  BOOST_CHECK_NO_THROW(VariableList v1("D"));
-  BOOST_CHECK_NO_THROW(VariableList v1("E"));
-  BOOST_CHECK_NO_THROW(VariableList v1("F"));
-  BOOST_CHECK_NO_THROW(VariableList v1("G"));
-  BOOST_CHECK_NO_THROW(VariableList v1("H"));
-  BOOST_CHECK_NO_THROW(VariableList v1("I"));
-  BOOST_CHECK_NO_THROW(VariableList v1("J"));
-  BOOST_CHECK_NO_THROW(VariableList v1("K"));
-  BOOST_CHECK_NO_THROW(VariableList v1("L"));
-  BOOST_CHECK_NO_THROW(VariableList v1("M"));
-  BOOST_CHECK_NO_THROW(VariableList v1("N"));
-  BOOST_CHECK_NO_THROW(VariableList v1("O"));
-  BOOST_CHECK_NO_THROW(VariableList v1("P"));
-  BOOST_CHECK_NO_THROW(VariableList v1("Q"));
-  BOOST_CHECK_NO_THROW(VariableList v1("R"));
-  BOOST_CHECK_NO_THROW(VariableList v1("S"));
-  BOOST_CHECK_NO_THROW(VariableList v1("T"));
-  BOOST_CHECK_NO_THROW(VariableList v1("U"));
-  BOOST_CHECK_NO_THROW(VariableList v1("V"));
-  BOOST_CHECK_NO_THROW(VariableList v1("W"));
-  BOOST_CHECK_NO_THROW(VariableList v1("X"));
-  BOOST_CHECK_NO_THROW(VariableList v1("Y"));
-  BOOST_CHECK_NO_THROW(VariableList v1("Z"));
-
-  // Check characters '0' - '9'
-  BOOST_CHECK_NO_THROW(VariableList v1("0"));
-  BOOST_CHECK_NO_THROW(VariableList v1("1"));
-  BOOST_CHECK_NO_THROW(VariableList v1("2"));
-  BOOST_CHECK_NO_THROW(VariableList v1("3"));
-  BOOST_CHECK_NO_THROW(VariableList v1("4"));
-  BOOST_CHECK_NO_THROW(VariableList v1("5"));
-  BOOST_CHECK_NO_THROW(VariableList v1("5"));
-  BOOST_CHECK_NO_THROW(VariableList v1("6"));
-  BOOST_CHECK_NO_THROW(VariableList v1("7"));
-  BOOST_CHECK_NO_THROW(VariableList v1("8"));
-  BOOST_CHECK_NO_THROW(VariableList v1("9"));
-
-  // Check characters ',', ' ', and '\0'
-  BOOST_CHECK_NO_THROW(VariableList v1("a,b"));
-  BOOST_CHECK_NO_THROW(VariableList v1("a ,b"));
-  BOOST_CHECK_NO_THROW(VariableList v1(""));
+  for(auto&& [str, idx] : idxs) {
+    auto [outer, inner] = detail::split_index(str);
+    BOOST_CHECK_EQUAL(idx.dim(), outer.size() + inner.size());
+  }
 }
 
-BOOST_AUTO_TEST_CASE(accessors) {
-  BOOST_CHECK_EQUAL(v.dim(), 4u);   // check for variable count
-  BOOST_CHECK_EQUAL(v.at(0), "a");  // check 1st variable access
-  BOOST_CHECK_EQUAL(v.at(3), "d");  // check last variable access
-  BOOST_CHECK_EQUAL(v[0], "a");     // check 1st variable access
-  BOOST_CHECK_EQUAL(v[3], "d");     // check last variable access
-  BOOST_CHECK_THROW(v.at(4),
-                    std::out_of_range);  // check for out of range throw.
+BOOST_AUTO_TEST_CASE(outer_dim_fxn){
+  BOOST_CHECK_EQUAL(VariableList{}.outer_dim(), 0);
+
+  for(auto&& [str, idx] : idxs) {
+    auto [outer, inner] = detail::split_index(str);
+    BOOST_CHECK_EQUAL(idx.outer_dim(), outer.size());
+  }
 }
 
-BOOST_AUTO_TEST_CASE(iterator) {
-  std::array<std::string, 4> a1 = {{"a", "b", "c", "d"}};
+BOOST_AUTO_TEST_CASE(inner_dim_fxn){
+  BOOST_CHECK_EQUAL(VariableList{}.inner_dim(), 0);
 
-  BOOST_CHECK_EQUAL_COLLECTIONS(v.begin(), v.end(), a1.begin(),
-                                a1.end());  // check that all values are equal
-  std::array<std::string, 4>::const_iterator it_a = a1.begin();
-  for (VariableList::const_iterator it = v.begin(); it != v.end();
-       ++it, ++it_a)  // check basic iterator functionality.
-    BOOST_CHECK_EQUAL(*it, *it_a);
+  for(auto&& [str, idx] : idxs) {
+    auto [outer, inner] = detail::split_index(str);
+    BOOST_CHECK_EQUAL(idx.inner_dim(), inner.size());
+  }
 }
 
-BOOST_AUTO_TEST_CASE(comparison) {
-  VariableList v1("a,b,c,d");
-  VariableList v2("d,b,c,a");
+BOOST_AUTO_TEST_CASE(size_fxn){
+  BOOST_CHECK_EQUAL(VariableList{}.size(), 0);
 
-  BOOST_CHECK(v1 == v);  // check variable list comparison operators
-  BOOST_CHECK(!(v2 == v));
-  BOOST_CHECK(v2 != v);
-  BOOST_CHECK(!(v1 != v));
+  for(auto&& [str, idx] : idxs) {
+    auto [outer, inner] = detail::split_index(str);
+    BOOST_CHECK_EQUAL(idx.size(), outer.size() + inner.size());
+  }
 }
 
-BOOST_AUTO_TEST_CASE(assignment) {
-  VariableList v1;
-  v1 = v;
-  BOOST_CHECK_EQUAL_COLLECTIONS(v1.begin(), v1.end(), v.begin(), v.end());
+BOOST_AUTO_TEST_CASE(is_tot_fxn) {
+  BOOST_CHECK(VariableList{}.is_tot() == false);
 
-  VariableList v2;
-  v2 = "a,b,c,d";
-  BOOST_CHECK_EQUAL_COLLECTIONS(v2.begin(), v2.end(), v.begin(), v.end());
+  for (auto&& [str, idx] : idxs) {
+    auto [outer, inner] = detail::split_index(str);
+    BOOST_CHECK(idx.is_tot() == detail::is_tot_index(str));
+  }
 }
 
-BOOST_AUTO_TEST_CASE(permutation) {
-  Permutation p({1, 2, 3, 0});
-  VariableList v1(v);
-  VariableList v2 = (p * v1);
-  BOOST_CHECK_EQUAL(v2[0], "d");
-  BOOST_CHECK_EQUAL(v2[1], "a");
-  BOOST_CHECK_EQUAL(v2[2], "b");
-  BOOST_CHECK_EQUAL(v2[3], "c");
+/* The string cast operator simply concatenates the indices together using a
+ * comma as glue between modes and a semicolon as glue between tensor nestings.
+ * This test loops over the VariableList instances in the test fixture, converts
+ * them to std::string instances and compares the resulting string
+ *
+ * Note: This test exploits the fact that there's no spaces in any of the
+ * indices. If an index with spaces is added, str should be run through
+ * detail::remove_whitespace to compensate.
+ */
+BOOST_AUTO_TEST_CASE(string_cast){
+  VariableList v;
+  BOOST_CHECK_EQUAL("", static_cast<value_type>(v));
 
-  VariableList v3(v);
-  v3 *= p;
-  BOOST_CHECK_EQUAL_COLLECTIONS(v3.begin(), v3.end(), v2.begin(), v2.end());
+  for(auto [str, idx] : idxs){
+    BOOST_CHECK_EQUAL(str, static_cast<value_type>(idx));
+  }
 }
+
+BOOST_AUTO_TEST_CASE(stream_insert){
+  {
+    VariableList v;
+    std::stringstream ss;
+    ss << v;
+    BOOST_CHECK_EQUAL("()", ss.str());
+  }
+
+  for(auto [str, idx] : idxs){
+    std::stringstream ss;
+    ss << idx;
+    std::string corr = "(" + str + ")";
+    BOOST_CHECK_EQUAL(corr, ss.str());
+  }
+}
+
+
+/* To test swap we swap the contents of an already made VariableList with the
+ * contents of a defaulted VariableList. The instance that was defaulted is then
+ * compared to a copy of the originally non-defaulted instance and the instance
+ * that was non-defaulted is compared to a fresh default instance. Strictly
+ * speaking this only shows that we can swap defaulted and non-defaulted
+ * instances.
+ */
+BOOST_AUTO_TEST_CASE(swap_fxn){
+  for(auto&& [str, idx] : idxs){
+    VariableList v0, v1(idx);
+    idx.swap(v0);
+    BOOST_CHECK(idx == VariableList{});
+    BOOST_CHECK(v0 == v1);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(swap_free_fxn){
+  for(auto&& [str, idx] : idxs){
+    VariableList v0, v1(idx);
+    swap(idx, v0);
+    BOOST_CHECK(idx == VariableList{});
+    BOOST_CHECK(v0 == v1);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(permutation_fxn){
+  if(world.nproc() == 1){
+    VariableList v0("i, j");
+
+    {
+      VariableList v1("i");
+      BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
+    }
+
+    {
+      VariableList v1("i, a");
+      BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
+    }
+  }
+
+  for(auto [str, idx] : idxs){
+    std::vector<size_type> perm(idx.size());
+    std::iota(perm.begin(), perm.end(), 0);
+    do{
+      Permutation p(perm.begin(), perm.end());
+      auto v = p * idx;
+      BOOST_CHECK(v.permutation(idx) == p);
+    } while(std::next_permutation(perm.begin(), perm.end()));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(is_permutation_fxn){
+  VariableList v0("i, j");
+  { // Different number of variables
+    VariableList v1("i");
+    BOOST_CHECK(v0.is_permutation(v1) == false);
+  }
+
+  { // Different indices
+    VariableList v1("i, a");
+    BOOST_CHECK(v1.is_permutation(v0) == false);
+  }
+
+  for(auto [str, idx] : idxs){
+    std::vector<size_type> perm(idx.size());
+    std::iota(perm.begin(), perm.end(), 0);
+    do{
+      Permutation p(perm.begin(), perm.end());
+      auto v = p * idx;
+      BOOST_CHECK(v.is_permutation(idx));
+    } while(std::next_permutation(perm.begin(), perm.end()));
+  }
+}
+
 
 BOOST_AUTO_TEST_CASE(implicit_permutation) {
   Permutation p1({1, 2, 3, 0});
+  VariableList v("a,b,c,d");
   VariableList v1 = (p1 * v);
   Permutation p = TiledArray::expressions::detail::var_perm(v1, v);
 
   BOOST_CHECK_EQUAL_COLLECTIONS(p.begin(), p.end(), p1.begin(), p1.end());
 }
 
-BOOST_AUTO_TEST_CASE(ostream) {
-  boost::test_tools::output_test_stream output;
-  output << v;
-  BOOST_CHECK(!output.is_empty(false));  // check for correct output.
-  BOOST_CHECK(output.check_length(12, false));
-  BOOST_CHECK(output.is_equal("(a, b, c, d)"));
-}
-
 BOOST_AUTO_TEST_CASE(common) {
   std::pair<VariableList::const_iterator, VariableList::const_iterator> p1;
   std::pair<VariableList::const_iterator, VariableList::const_iterator> p2;
+  VariableList v("a,b,c,d");
+  VariableList v_aib("a,i,b");
+  VariableList v_xiy("x,i,y");
+  VariableList v_ai("a,i");
+  VariableList v_xi("x,i");
+  VariableList v_ia("i,a");
+  VariableList v_ix("i,x");
+  VariableList v_i("i");
+
 
   find_common(v_aib.begin(), v_aib.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
   BOOST_CHECK(p1.first == v_aib.begin() + 1);
@@ -579,11 +618,11 @@ BOOST_AUTO_TEST_CASE(common) {
   BOOST_CHECK(p1.second == v_i.begin() + 1);
   BOOST_CHECK(p2.first == v_i.begin());
   BOOST_CHECK(p2.second == v_i.begin() + 1);
-  find_common(v_0.begin(), v_0.end(), v_i.begin(), v_i.end(), p1, p2);
-  BOOST_CHECK(p1.first == v_0.end());
-  BOOST_CHECK(p1.second == v_0.end());
-  BOOST_CHECK(p2.first == v_i.end());
-  BOOST_CHECK(p2.second == v_i.end());
+//  find_common(v_0.begin(), v_0.end(), v_i.begin(), v_i.end(), p1, p2);
+//  BOOST_CHECK(p1.first == v_0.end());
+//  BOOST_CHECK(p1.second == v_0.end());
+//  BOOST_CHECK(p2.first == v_i.end());
+//  BOOST_CHECK(p2.second == v_i.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
