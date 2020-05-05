@@ -18,7 +18,7 @@ macro(add_ta_executable _name _source_files _libs)
   add_dependencies(${_name}-lib External-tiledarray)
 
   # now make the executable itself
-  file(GENERATE OUTPUT ${_name}-stub.cpp CONTENT "")
+  file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${_name}-stub.cpp CONTENT "")
   add_executable(${_name} EXCLUDE_FROM_ALL ${CMAKE_CURRENT_BINARY_DIR}/${_name}-stub.cpp)
   # MUST load whole archive since the stub lacks direct refs to any code
   if (NOT BUILD_SHARED_LIBS)
