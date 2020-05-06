@@ -147,6 +147,11 @@ class ExprEngine : private NO_DEFAULTS {
   void init_struct(const VariableList& target_vars) {
     if (target_vars != vars_) {
       perm_ = derived().make_perm(target_vars);
+      if(target_vars.inner_dim() > 0){
+        // The expression layer only ever works on the outer tensor
+        const auto outer_dim = target_vars.outer_dim();
+        perm_ = Permutation(perm_.begin(), perm_.begin() + outer_dim);
+      }
       trange_ = derived().make_trange(perm_);
       shape_ = derived().make_shape(perm_);
     } else {
