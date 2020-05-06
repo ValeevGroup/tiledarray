@@ -37,15 +37,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(permute_outer, TestParam, test_params){
     for(auto tile_idx : t.range()){
       auto rtile = t.find(tile_idx).get();
       auto ltile = result.find({tile_idx[1], tile_idx[0]}).get();
-      bool same_range = ltile.range() == rtile.range();
-      BOOST_CHECK(same_range);
       for(auto outer_idx : ltile.range()){
         auto inner_range = ltile(outer_idx).range();
-        bool same_inner_range = inner_range == rtile(outer_idx).range();
+        auto outer_idx_t = {outer_idx[1], outer_idx[0]};
+        bool same_inner_range = inner_range == rtile(outer_idx_t).range();
         BOOST_CHECK(same_inner_range);
         for(auto inner_idx : inner_range){
           const auto lelem = ltile(outer_idx)(inner_idx);
-          const auto relem = rtile(outer_idx)(inner_idx);
+          const auto relem = rtile(outer_idx_t)(inner_idx);
           BOOST_CHECK_EQUAL(lelem, relem);
         }
       }
