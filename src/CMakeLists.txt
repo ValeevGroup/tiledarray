@@ -70,6 +70,7 @@ TiledArray/conversions/vector_of_arrays.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/elemental.h
+TiledArray/conversions/scalapack.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/dist_eval/array_eval.h
@@ -191,6 +192,8 @@ TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
 )
 
+# the list of libraries on which TiledArray depends on, will be cached later
+set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS)
 
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)
@@ -206,17 +209,18 @@ if(CUDA_FOUND)
           PROPERTIES
           LANGUAGE CUDA)
 
-  # the list of libraries on which TiledArray build depends on
-  # N.B. de-duping of LAPACK_LIBRARIES and BTAS::BTAS can be order-dependent if --{start,end}-group linker flags are present
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld CUDA::cublas CUDA::nvToolsExt TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen BTAS::BTAS "${LAPACK_LIBRARIES}" CACHE STRING "List of libraries on which TiledArray depends on")
-
-else(CUDA_FOUND)
-
-  # the list of libraries on which TiledArray build depends on
-  # N.B. de-duping of LAPACK_LIBRARIES and BTAS::BTAS can be order-dependent if --{start,end}-group linker flags are present
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld TiledArray_Eigen BTAS::BTAS "${LAPACK_LIBRARIES}" CACHE STRING "List of libraries on which TiledArray depends on")
+  # the list of libraries on which TiledArray depends on
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_UMPIRE TiledArray_CUTT)
 
 endif(CUDA_FOUND)
+
+if( TARGET TiledArray_SCALAPACK )
+  list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)
+endif()
+list(APPEND _TILEDARRAY_DEPENDENCIES "${LAPACK_LIBRARIES}")
+
+# cache deps as TILEDARRAY_PRIVATE_LINK_LIBRARIES
+set(TILEDARRAY_PRIVATE_LINK_LIBRARIES ${_TILEDARRAY_DEPENDENCIES} CACHE STRING "List of libraries on which TiledArray depends on")
 
 # Create the TiledArray librar{y,ies}
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})

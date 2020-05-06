@@ -107,6 +107,9 @@ if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
     set(ELEMENTAL_TAG ${TA_TRACKED_ELEMENTAL_TAG})
 endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
 
+option(ENABLE_SCALAPACK "Enable ScaLAPACK Bindings in TiledArray" OFF)
+add_feature_info(ScaLAPACK ENABLE_SCALAPACK "ScaLAPACK provides distributed linear algebra")
+
 redefaultable_option(ENABLE_MKL "Enable use of MKL (info passed to MADNESS)" ON)
 add_feature_info(MKL ENABLE_MKL "Intel Math Kernel Library provides linear algebra and other math functionality")
 
@@ -279,6 +282,9 @@ include(FindOrFetchBTAS)
 include(external/boost.cmake)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
+endif()
+if(ENABLE_SCALAPACK)
+  include(external/scalapack.cmake)
 endif()
 
 # optional deps:

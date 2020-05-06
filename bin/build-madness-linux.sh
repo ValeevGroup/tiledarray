@@ -66,7 +66,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
       -DENABLE_MPI=ON \
       -DMPI_THREAD=multiple \
-      -DENABLE_TBB=ON \
+      -DENABLE_TBB=OFF \
       -DTBB_ROOT_DIR=/usr \
       -DENABLE_MKL=OFF \
       -DFORTRAN_INTEGER_SIZE=4 \

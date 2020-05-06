@@ -94,6 +94,7 @@ set(ta_test_src_files  ta_test.cpp
     foreach.cpp
     solvers.cpp
     initializer_list.cpp
+    scalapack.cpp
 )
 
 if(ENABLE_ELEMENTAL)

@@ -18,6 +18,7 @@ export PATH=${INSTALL_PREFIX}/cmake/bin:${PATH}
 cmake --version
 
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
+${TRAVIS_BUILD_DIR}/bin/build-scalapack-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
 
@@ -56,7 +57,7 @@ fi
 export MPI_HOME=${INSTALL_PREFIX}/mpich
 export MPICC=$MPI_HOME/bin/mpicc
 export MPICXX=$MPI_HOME/bin/mpicxx
-export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:${INSTALL_PREFIX}/scalapack/lib:$LD_LIBRARY_PATH
 
 # list the prebuilt prereqs
 ls -l ${INSTALL_PREFIX}
@@ -102,7 +103,8 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
-    -DENABLE_ELEMENTAL=ON
+    -DENABLE_ELEMENTAL=ON \
+    -DENABLE_SCALAPACK=ON
 
 else
 
@@ -133,6 +135,7 @@ else
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_ELEMENTAL=ON -Wno-dev \
+    -DENABLE_SCALAPACK=ON \
     -DMADNESS_CMAKE_EXTRA_ARGS="-Wno-dev;-DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE;-DELEMENTAL_CXXFLAGS=-Wno-deprecated-declarations;-DELEMENTAL_MATH_LIBS='-L/usr/lib/libblas -L/usr/lib/lapack -llapack -lblas';-DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77"
 
 fi

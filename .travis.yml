@@ -168,8 +168,8 @@ before_install:
 script:
   - travis_wait 50 timeout 2200 ${TRAVIS_BUILD_DIR}/bin/build-$TRAVIS_OS_NAME.sh;  RESULT=$?; if [ $RESULT -eq 0 ] || [ $RESULT -eq 124 ]; then true; else false; fi;
 after_failure:
-  - cat ${BUILD_PREFIX}/TA/external/build/madness/CMakeFiles/CMakeError.log
-  - cat ${BUILD_PREFIX}/TA/external/build/madness/CMakeFiles/CMakeOutput.log
+  - cat ${BUILD_PREFIX}/TA/external/madness-build/CMakeFiles/CMakeError.log
+  - cat ${BUILD_PREFIX}/TA/external/madness-build/CMakeFiles/CMakeOutput.log
   - cat ${BUILD_PREFIX}/TA/CMakeFiles/CMakeError.log
   - cat ${BUILD_PREFIX}/TA/CMakeFiles/CMakeOutput.log
 # codecov
