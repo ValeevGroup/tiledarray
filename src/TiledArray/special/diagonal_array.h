@@ -36,14 +36,21 @@
 namespace TiledArray {
 namespace detail {
 
-// Function that returns a range containing the diagonal elements in the tile
+/// \brief Computes a range of the diagonal elements (if any) in a rank-d Range
+
+/// computes [min,max) describing the diagonal elements that rank-d Range
+/// contains; if the input Range contains no diagonal elements this return an
+/// empty Range \param[in] rng an input (rank-d) Range \return the range of
+/// diagonal elements, as a rank-1 Range
 inline Range diagonal_range(Range const &rng) {
-  auto lo = rng.lobound();
-  auto up = rng.upbound();
+  const auto rank = rng.rank();
+  TA_ASSERT(rng.rank() > 0);
+  auto lo = rng.lobound_data();
+  auto up = rng.upbound_data();
 
   // Determine the largest lower index and the smallest upper index
-  auto max_low = *std::max_element(std::begin(lo), std::end(lo));
-  auto min_up = *std::min_element(std::begin(up), std::end(up));
+  auto max_low = *std::max_element(lo, lo + rank);
+  auto min_up = *std::min_element(up, up + rank);
 
   // If the max small elem is less than the min large elem then a diagonal
   // elem is in this tile;
@@ -54,18 +61,23 @@ inline Range diagonal_range(Range const &rng) {
   }
 }
 
+/// \brief computes shape data (i.e. Frobenius norms of the tiles) for a
+/// constant diagonal tensor \tparam T a numeric type \param trange a TiledRange
+/// of the result \param val value of the diagonal elements \return a
+/// Tensor<float> containing the Frobenius norms of the tiles of a DistArray
+/// with \p val on the diagonal and zeroes elsewhere
 template <typename T>
 Tensor<float> diagonal_shape(TiledRange const &trange, T val) {
   Tensor<float> shape(trange.tiles_range(), 0.0);
 
   auto ext = trange.elements_range().extent();
-  auto min_dim_len = *std::min_element(std::begin(ext), std::end(ext));
+  auto diag_extent = *std::min_element(std::begin(ext), std::end(ext));
 
   auto ndim = trange.rank();
   auto diag_elem = 0ul;
   // the diagonal elements will never be larger than the length of the
   // shortest dimension
-  while (diag_elem < min_dim_len) {
+  while (diag_elem < diag_extent) {
     // Get the tile index corresponding to the current diagonal_elem
     auto tile_idx = trange.element_to_tile(std::vector<int>(ndim, diag_elem));
     auto tile_range = trange.make_tile_range(tile_idx);
@@ -85,20 +97,79 @@ Tensor<float> diagonal_shape(TiledRange const &trange, T val) {
   return shape;
 }
 
-// Actually do all the work of writing the diagonal tiles
+/// \brief computes shape data (i.e. Frobenius norms of the tiles) for a
+/// non-constant diagonal tensor \tparam RandomAccessIterator an iterator over
+/// the range of diagonal elements \param[in] trange a TiledRange of the result
+/// \param[in] diagonals_begin the begin iterator of the range of the diagonals
+/// \param[in] diagonals_end the end iterator of the range of the diagonals; if
+/// not given, default initialized and thus will not be checked \return a
+/// Tensor<float> containing the Frobenius norms of the tiles of a DistArray
+/// with \p val on the diagonal and zeroes elsewhere
+template <typename RandomAccessIterator,
+          typename = std::void_t<
+              decltype(std::declval<RandomAccessIterator &>().operator*())>>
+Tensor<float> diagonal_shape(TiledRange const &trange,
+                             RandomAccessIterator diagonals_begin,
+                             RandomAccessIterator diagonals_end = {}) {
+  const bool have_end = diagonals_end == RandomAccessIterator{};
+
+  Tensor<float> shape(trange.tiles_range(), 0.0);
+
+  const auto rank = trange.rank();
+  auto ext = trange.elements_range().extent_data();
+  auto diag_extent = *std::min_element(ext, ext + rank);
+
+  auto ndim = trange.rank();
+  auto diag_elem = 0ul;
+  // the diagonal elements will never be larger than the length of the
+  // shortest dimension
+  while (diag_elem < diag_extent) {
+    // Get the tile index corresponding to the current diagonal_elem
+    auto tile_idx = trange.element_to_tile(std::vector<int>(ndim, diag_elem));
+    auto tile_range = trange.make_tile_range(tile_idx);
+
+    // Compute the range of diagonal elements in the tile
+    auto d_range = diagonal_range(tile_range);
+    TA_ASSERT(d_range != Range{});
+    TA_ASSERT(diag_elem == d_range.lobound_data()[0]);
+    const auto beg = diag_elem;
+    const auto end = d_range.upbound_data()[0];
+    if (have_end) {
+      TA_ASSERT(diagonals_begin + beg < diagonals_end);
+      TA_ASSERT(diagonals_begin + end <= diagonals_end);
+    }
+
+    auto t_norm = std::accumulate(diagonals_begin + beg, diagonals_begin + end,
+                                  0.0, [](const auto &sum, const auto &val) {
+                                    const auto abs_val = std::abs(val);
+                                    return sum + abs_val * abs_val;
+                                  });
+    shape(tile_idx) = static_cast<float>(t_norm);
+
+    // Update diag_elem to the next elem not in this tile
+    diag_elem = end;
+  }
+
+  return shape;
+}
+
+/// \brief Writes tiles of a constant diagonal array
+
+/// \tparam Array a DistArray type
+/// \tparam T a numeric type
+/// \param[in] A an Array object
+/// \param[in] val the value of the diagonal elements of A
 template <typename Array, typename T>
-void write_tiles_to_array(Array &A, T val) {
-  auto const &trange = A.trange();
-  const auto ndims = trange.rank();
+void write_diag_tiles_to_array_val(Array &A, T val) {
+  using Tile = typename Array::value_type;
 
   // Task to create each tile
-  auto tile_task = [val, &trange, ndims](unsigned long ord) {
-    auto rng = trange.make_tile_range(ord);
-
+  A.init_tiles([val](const Range &rng) {
     // Compute range of diagonal elements in the tile
     auto diags = detail::diagonal_range(rng);
+    const auto rank = rng.rank();
 
-    Tensor<T> tile(rng, 0.0);
+    Tile tile(rng, 0.0);
 
     if (diags.volume() > 0) {  // If the tile has diagonal elems
 
@@ -106,77 +177,119 @@ void write_tiles_to_array(Array &A, T val) {
       auto diag_lo = diags.lobound_data()[0];
       auto diag_hi = diags.upbound_data()[0];
       for (auto elem = diag_lo; elem < diag_hi; ++elem) {
-        tile(std::vector<int>(ndims, elem)) = val;
+        tile(std::vector<int>(rank, elem)) = val;
       }
     }
 
     return tile;
-  };
+  });
+}
 
-  // SparsePolicy arrays incur a small overhead by looping over all ordinals,
-  // Until proven to be a problem we will just keep it.
-  const auto vol = trange.tiles_range().volume();
-  for (auto ord = 0ul; ord < vol; ++ord) {
-    if (A.is_local(ord) && !A.is_zero(ord)) {
-      auto tile_future = A.world().taskq.add(tile_task, ord);
-      A.set(ord, tile_future);
-    }
-  }
+/// \brief Writes tiles of a nonconstant diagonal array
+
+/// \tparam Array a DistArray type
+/// \tparam RandomAccessIterator an iterator over the range of diagonal elements
+/// \param[in] A an Array object
+/// \param[in] diagonals_begin the begin iterator of the range of the diagonals
+template <typename Array, typename RandomAccessIterator,
+          typename = std::void_t<
+              decltype(std::declval<RandomAccessIterator &>().operator*())>>
+void write_diag_tiles_to_array_rng(Array &A,
+                                   RandomAccessIterator diagonals_begin) {
+  using Tile = typename Array::value_type;
+
+  A.init_tiles(
+      // Task to create each tile
+      [diagonals_begin](const Range &rng) {
+        // Compute range of diagonal elements in the tile
+        auto diags = detail::diagonal_range(rng);
+        const auto rank = rng.rank();
+
+        Tile tile(rng, 0.0);
+
+        if (diags.volume() > 0) {  // If the tile has diagonal elems
+          // Loop over the elements and write val into them
+          auto diag_lo = diags.lobound_data()[0];
+          auto diag_hi = diags.upbound_data()[0];
+          for (auto elem = diag_lo; elem < diag_hi; ++elem) {
+            tile(std::vector<int>(rank, elem)) = *(diagonals_begin + elem);
+          }
+        }
+
+        return tile;
+      });
 }
 
 }  // namespace detail
 
-/// Create a dense DistArray with only diagonal elements,
-/// the expected behavior is that every element (n,n,n, ..., n) will be nonzero.
+/// \brief Creates a constant diagonal DistArray
 
-/// \param world The world for the array
-/// \param trange The trange for the array
-/// \param val The value to be written along the diagonal elements
-
-template <typename T, typename Policy = DensePolicy>
-std::enable_if_t<is_dense_v<Policy>, DistArray<Tensor<T>, Policy>>
-dense_diagonal_array(World &world, TiledRange const &trange, T val = 1) {
+/// Creates an array whose only nonzero values are the (hyper)diagonal elements
+/// (i.e. (n,n,n, ..., n) ), and they are all have the same value \tparam Policy
+/// the policy type of the resulting DistArray \tparam T a numeric type \param
+/// world The world for the array \param[in] trange The trange for the array
+/// \param[in] val The value of the diagonal elements
+/// \return a constant diagonal DistArray
+template <typename Array, typename T = double>
+Array diagonal_array(World &world, TiledRange const &trange, T val = 1) {
+  using Policy = typename Array::policy_type;
   // Init the array
-  DistArray<Tensor<T>, Policy> A(world, trange);
-
-  detail::write_tiles_to_array(A, val);
-
-  world.gop.fence();
-  return A;
+  if constexpr (is_dense_v<Policy>) {
+    Array A(world, trange);
+    detail::write_diag_tiles_to_array_val(A, val);
+    return A;
+  } else {
+    // Compute shape and init the Array
+    auto shape_norm = detail::diagonal_shape(trange, val);
+    using ShapeType = typename Policy::shape_type;
+    ShapeType shape(shape_norm, trange);
+    Array A(world, trange, shape);
+    detail::write_diag_tiles_to_array_val(A, val);
+    return A;
+  }
 }
 
-/// Create a sparse DistArray with only diagonal elements,
-/// the expected behavior is that every element (n,n,n, ..., n) will be nonzero.
+/// \brief Creates a non-constant diagonal DistArray
 
-/// \param world The world for the array
-/// \param trange The trange for the array
-/// \param val The value to be written along the diagonal elements
+/// Creates an array whose only nonzero values are the (hyper)diagonal elements
+/// (i.e. (n,n,n, ..., n) ); the values of the diagonal elements are given by an
+/// input range \tparam Array a DistArray type \tparam RandomAccessIterator an
+/// iterator over the range of diagonal elements \param world The world for the
+/// array \param[in] trange The trange for the array \param[in] diagonals_begin
+/// the begin iterator of the range of the diagonals \param[in] diagonals_end
+/// the end iterator of the range of the diagonals; if not given, default
+/// initialized and thus will not be checked \return a constant diagonal
+/// DistArray
+template <typename Array, typename RandomAccessIterator,
+          typename = std::void_t<
+              decltype(std::declval<RandomAccessIterator &>().operator*())>>
+Array diagonal_array(World &world, TiledRange const &trange,
+                     RandomAccessIterator diagonals_begin,
+                     RandomAccessIterator diagonals_end = {}) {
+  using Policy = typename Array::policy_type;
 
-template <typename T, typename Policy = SparsePolicy>
-std::enable_if_t<!is_dense_v<Policy>, DistArray<Tensor<T>, Policy>>
-sparse_diagonal_array(World &world, TiledRange const &trange, T val = 1) {
-  // Compute shape and init the Array
-  auto shape_norm = detail::diagonal_shape(trange, val);
-  using ShapeType = typename Policy::shape_type;
-  ShapeType shape(shape_norm, trange);
-  DistArray<Tensor<T>, Policy> A(world, trange, shape);
+  if (diagonals_end != RandomAccessIterator{}) {
+    const auto rank = trange.rank();
+    auto ext = trange.elements_range().extent_data();
+    auto diag_extent = *std::min_element(ext, ext + rank);
+    TA_ASSERT(diagonals_begin + diag_extent <= diagonals_end);
+  }
 
-  detail::write_tiles_to_array(A, val);
-
-  world.gop.fence();
-  return A;
-}
-
-template <typename T, typename Policy>
-std::enable_if_t<is_dense_v<Policy>, DistArray<Tensor<T>, Policy>>
-diagonal_array(World &world, TiledRange const &trange, T val = 1) {
-  return dense_diagonal_array<T>(world, trange, val);
-}
-
-template <typename T, typename Policy>
-std::enable_if_t<!is_dense_v<Policy>, DistArray<Tensor<T>, Policy>>
-diagonal_array(World &world, TiledRange const &trange, T val = 1) {
-  return sparse_diagonal_array<T>(world, trange, val);
+  // Init the array
+  if constexpr (is_dense_v<Policy>) {
+    Array A(world, trange);
+    detail::write_diag_tiles_to_array_rng(A, diagonals_begin);
+    return A;
+  } else {
+    // Compute shape and init the Array
+    auto shape_norm =
+        detail::diagonal_shape(trange, diagonals_begin, diagonals_end);
+    using ShapeType = typename Policy::shape_type;
+    ShapeType shape(shape_norm, trange);
+    Array A(world, trange, shape);
+    detail::write_diag_tiles_to_array_rng(A, diagonals_begin);
+    return A;
+  }
 }
 
 }  // namespace TiledArray

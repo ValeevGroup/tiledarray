@@ -95,6 +95,7 @@ set(ta_test_src_files  ta_test.cpp
     solvers.cpp
     initializer_list.cpp
     scalapack.cpp
+    diagonal_array.cpp
 )
 
 if(CUDA_FOUND)
