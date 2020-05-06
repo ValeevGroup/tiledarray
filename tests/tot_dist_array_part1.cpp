@@ -279,7 +279,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(tiled_initializer_list_ctor, TestParam,
 BOOST_AUTO_TEST_CASE_TEMPLATE(unary_transform_ctor, TestParam, test_params) {
   using tensor_type = tensor_type<TestParam>;
   using tile_type = tile_type<TestParam>;
-  using scalar_type = scalar_type<TestParam>;
   auto l = [](tile_type& out, const tile_type& in) {
     tile_type buffer(in.range());
     for (auto idx : in.range()) {
