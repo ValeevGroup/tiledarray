@@ -25,6 +25,20 @@
 #
 
 cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
+
+###############################################################################
+# Bring ValeevGroup cmake toolkit
+###############################################################################
+include(FetchContent)
+FetchContent_Populate(
+    vg_cmake_kit
+    QUIET
+    GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-build
+    SUBBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-subbuild
+)
+
 project (TiledArray LANGUAGES)
 enable_language(CXX)
 
@@ -93,11 +107,14 @@ if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
     set(ELEMENTAL_TAG ${TA_TRACKED_ELEMENTAL_TAG})
 endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
 
+option(ENABLE_SCALAPACK "Enable ScaLAPACK Bindings in TiledArray" OFF)
+add_feature_info(ScaLAPACK ENABLE_SCALAPACK "ScaLAPACK provides distributed linear algebra")
+
 redefaultable_option(ENABLE_MKL "Enable use of MKL (info passed to MADNESS)" ON)
 add_feature_info(MKL ENABLE_MKL "Intel Math Kernel Library provides linear algebra and other math functionality")
 
-redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" ON)
-add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks supports programming shared-memory systems")
+redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" OFF)
+add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks (TBB) supports programming shared-memory systems")
 
 option(ENABLE_CUDA "Enable use of CUDA with TiledArray" OFF)
 add_feature_info(CUDA ENABLE_CUDA "NVIDIA CUDA support for GPU")
@@ -135,10 +152,10 @@ option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
 cmake_dependent_option(BUILD_SHARED_LIBS "Enable shared libraries" ON
       "SUPPORTS_SHARED;ENABLE_SHARED_LIBRARIES" OFF)
 if(BUILD_SHARED_LIBS)
-  set(BLA_STATIC FALSE)
+  set(BLA_STATIC FALSE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH TRUE)
 else()
-  set(BLA_STATIC TRUE)
+  set(BLA_STATIC TRUE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH FALSE)
 endif()
 
@@ -260,10 +277,14 @@ add_custom_target(External-tiledarray)
 include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
-include(external/boost.cmake)
+# find BTAS first, so that it finds Boost more carefully and also has a chance to memorize where it found it
 include(FindOrFetchBTAS)
+include(external/boost.cmake)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
+endif()
+if(ENABLE_SCALAPACK)
+  include(external/scalapack.cmake)
 endif()
 
 # optional deps:
@@ -343,8 +364,10 @@ install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
     DESTINATION lib/pkgconfig)
 
 # include extra cmake files
-install(FILES "${PROJECT_SOURCE_DIR}/cmake/modules/SanitizeCUDAImplicitDirectories.cmake"
-        DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}")
+install(FILES
+    "${PROJECT_SOURCE_DIR}/cmake/modules/SanitizeCUDAImplicitDirectories.cmake"
+    "${PROJECT_SOURCE_DIR}/cmake/modules/CloneTarget.cmake"
+    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}")
 
 # Create the version file
 write_basic_package_version_file(tiledarray-config-version.cmake

@@ -63,13 +63,23 @@ else()
         -DCUTT_USES_THIS_UMPIRE_ALLOCATOR=ThreadSafeUMDynamicPool
         -DCMAKE_PREFIX_PATH=${_UMPIRE_INSTALL_DIR}
         -DENABLE_NO_ALIGNED_ALLOC=ON
-        -DCUDA_TOOLKIT_ROOT_DIR=${CUDA_TOOLKIT_ROOT_DIR}
         -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
+        -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
         )
     if (CMAKE_TOOLCHAIN_FILE)
         set(CUTT_CMAKE_ARGS "${CUTT_CMAKE_ARGS}"
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
     endif(CMAKE_TOOLCHAIN_FILE)
+
+    if (BUILD_SHARED_LIBS)
+        set(CUTT_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
+    else(BUILD_SHARED_LIBS)
+        set(CUTT_DEFAULT_LIBRARY_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
+    endif(BUILD_SHARED_LIBS)
+
+    # N.B. Ninja needs spelling out the byproducts of custom targets, see https://cmake.org/cmake/help/v3.3/policy/CMP0058.html
+    set(CUTT_BUILD_BYPRODUCTS "${EXTERNAL_BUILD_DIR}/src/libcutt${CUTT_DEFAULT_LIBRARY_SUFFIX}")
+    message(STATUS "custom target cutt is expected to build these byproducts: ${CUTT_BUILD_BYPRODUCTS}")
 
     ExternalProject_Add(cutt
             PREFIX ${CMAKE_INSTALL_PREFIX}
@@ -88,15 +98,16 @@ else()
             	${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
-            BUILD_COMMAND make VERBOSE=1
+            BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cutt -v
+            BUILD_BYPRODUCTS ${CUTT_BUILD_BYPRODUCTS}
             #--Install step---------------
-            INSTALL_COMMAND make install
+            INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
             #--Custom targets-------------
-            STEP_TARGETS download
+            STEP_TARGETS build
             )
 
     # Add cuTT dependency to External
-    add_dependencies(External-tiledarray cutt)
+    add_dependencies(External-tiledarray cutt-build)
 
     set(_CUTT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
@@ -107,9 +118,9 @@ add_library(TiledArray_CUTT INTERFACE)
 set_target_properties(TiledArray_CUTT
         PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES
-        ${_CUTT_INSTALL_DIR}/include
+        "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:${_CUTT_INSTALL_DIR}/include>"
         INTERFACE_LINK_LIBRARIES
-        ${_CUTT_INSTALL_DIR}/lib/libcutt.a
+        "$<BUILD_INTERFACE:${CUTT_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_CUTT_INSTALL_DIR}/lib/libcutt.${CUTT_DEFAULT_LIBRARY_SUFFIX}>"
         )
 
 install(TARGETS TiledArray_CUTT EXPORT tiledarray COMPONENT tiledarray)

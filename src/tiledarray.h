@@ -61,4 +61,8 @@
 #include <TiledArray/external/elemental.h>
 #endif
 
+#ifdef TILEDARRAY_HAS_SCALAPACK
+#include <TiledArray/conversions/scalapack.h>
+#endif
+
 #endif  // TILEDARRAY_H__INCLUDED

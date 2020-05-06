@@ -1,4 +1,4 @@
-# find_package and register for re-import and superproject
+# find_package and register for re-import in a superproject
 macro(find_package_regimport _package)
   find_package(${_package} ${ARGN})
   if (${_package}_FOUND)
