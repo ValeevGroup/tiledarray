@@ -105,12 +105,10 @@ Tensor<float> diagonal_shape(TiledRange const &trange, T val) {
 /// not given, default initialized and thus will not be checked \return a
 /// Tensor<float> containing the Frobenius norms of the tiles of a DistArray
 /// with \p val on the diagonal and zeroes elsewhere
-template <typename RandomAccessIterator,
-          typename = std::void_t<
-              decltype(std::declval<RandomAccessIterator &>().operator*())>>
-Tensor<float> diagonal_shape(TiledRange const &trange,
-                             RandomAccessIterator diagonals_begin,
-                             RandomAccessIterator diagonals_end = {}) {
+template <typename RandomAccessIterator>
+std::enable_if_t<is_iterator<RandomAccessIterator>::value, Tensor<float>>
+diagonal_shape(TiledRange const &trange, RandomAccessIterator diagonals_begin,
+               RandomAccessIterator diagonals_end = {}) {
   const bool have_end = diagonals_end == RandomAccessIterator{};
 
   Tensor<float> shape(trange.tiles_range(), 0.0);
@@ -191,11 +189,9 @@ void write_diag_tiles_to_array_val(Array &A, T val) {
 /// \tparam RandomAccessIterator an iterator over the range of diagonal elements
 /// \param[in] A an Array object
 /// \param[in] diagonals_begin the begin iterator of the range of the diagonals
-template <typename Array, typename RandomAccessIterator,
-          typename = std::void_t<
-              decltype(std::declval<RandomAccessIterator &>().operator*())>>
-void write_diag_tiles_to_array_rng(Array &A,
-                                   RandomAccessIterator diagonals_begin) {
+template <typename Array, typename RandomAccessIterator>
+std::enable_if_t<is_iterator<RandomAccessIterator>::value, void>
+write_diag_tiles_to_array_rng(Array &A, RandomAccessIterator diagonals_begin) {
   using Tile = typename Array::value_type;
 
   A.init_tiles(
@@ -260,12 +256,11 @@ Array diagonal_array(World &world, TiledRange const &trange, T val = 1) {
 /// the end iterator of the range of the diagonals; if not given, default
 /// initialized and thus will not be checked \return a constant diagonal
 /// DistArray
-template <typename Array, typename RandomAccessIterator,
-          typename = std::void_t<
-              decltype(std::declval<RandomAccessIterator &>().operator*())>>
-Array diagonal_array(World &world, TiledRange const &trange,
-                     RandomAccessIterator diagonals_begin,
-                     RandomAccessIterator diagonals_end = {}) {
+template <typename Array, typename RandomAccessIterator>
+std::enable_if_t<detail::is_iterator<RandomAccessIterator>::value, Array>
+diagonal_array(World &world, TiledRange const &trange,
+               RandomAccessIterator diagonals_begin,
+               RandomAccessIterator diagonals_end = {}) {
   using Policy = typename Array::policy_type;
 
   if (diagonals_end != RandomAccessIterator{}) {
