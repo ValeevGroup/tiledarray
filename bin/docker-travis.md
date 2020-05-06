@@ -17,7 +17,7 @@ These notes assume that Docker is installed on your machine and that you start a
     * `export CLANG_VERSION=VVV` where `VVV` should be the Clang version to be used. The currently valid values are `7`, `8`, and `9`.
     * `export CXX=clang++`
     * `apt-get update && apt-get install libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev`
-5. Build prerequisites (MPICH, MADNESS+Elemental), TiledArray, and run tests: `./build.sh`
+5. Build prerequisites (MPICH, MADNESS, ScaLAPACK), TiledArray, and run tests: `./build.sh`
 
 ## Notes
 * According to [Travis-CI docs](https://docs.travis-ci.com/user/reference/overview/) you want to configure your Docker to run containers with 2 cores and 7.5 GB of RAM to best match the production environment.

@@ -68,9 +68,6 @@
 /* Define the size of the CPU L1 cache lines. */
 #cmakedefine TILEDARRAY_CACHELINE_SIZE @TILEDARRAY_CACHELINE_SIZE@
 
-/* Define if MADNESS configured with Elemental support */
-#cmakedefine TILEDARRAY_HAS_ELEMENTAL 1
-
 /* Define if TA has enabled ScaLAPACK Bindings */
 #cmakedefine TILEDARRAY_HAS_SCALAPACK 1 
 

@@ -100,10 +100,6 @@ set(ta_test_src_files  ta_test.cpp
     random.cpp
 )
 
-if(ENABLE_ELEMENTAL)
-    list(APPEND ta_test_src_files elemental.cpp)
-endif()
-
 if(CUDA_FOUND)
     list(APPEND ta_test_src_files cutt.cpp expressions_cuda_um.cpp tensor_um.cpp)
 endif()

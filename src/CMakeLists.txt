@@ -33,7 +33,6 @@ TiledArray/block_range.h
 TiledArray/dense_shape.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
-TiledArray/external/elemental.h
 TiledArray/error.h
 TiledArray/external/madness.h
 TiledArray/initialize.h
@@ -69,7 +68,6 @@ TiledArray/conversions/foreach.h
 TiledArray/conversions/vector_of_arrays.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
-TiledArray/conversions/elemental.h
 TiledArray/conversions/scalapack.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
