@@ -101,11 +101,6 @@ with open(version_cmake_path) as inf:
                 madness_old_version = tokens[2]
             else:
                 madness_new_version = tokens[2]
-        elif tokens[1].find('ELEMENTAL') != -1:
-            if tokens[1].find('PREVIOUS') != -1:
-                elemental_old_tag = tokens[2]
-            else:
-                elemental_new_tag = tokens[2]
         elif tokens[1].find('BTAS') != -1:
             if tokens[1].find('PREVIOUS') != -1:
                 btas_old_tag = tokens[2]
@@ -151,9 +146,6 @@ any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Eigen', eigen_old_install_
 any_files_changed |= replace_dep_id(topsrc, 'cmake.in', 'MADNESS', madness_old_version, madness_new_version, 'find_package(MADNESS ', ' ')
 # MADNESS tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'MADNESS', madness_old_tag, madness_new_tag, 'm-a-d-n-e-s-s/madness), tag ', ' ')
-
-# Elemental tag in INSTALL.md
-any_files_changed |= replace_dep_id(topsrc, 'md', 'Elemental', elemental_old_tag, elemental_new_tag, 'distributed-memory linear algebra library (tag ', '')
 
 # BTAS tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'BTAS', btas_old_tag, btas_new_tag, 'BTAS/BTAS), tag ', '')

@@ -57,10 +57,6 @@
 #include <TiledArray/algebra/conjgrad.h>
 #include <TiledArray/dist_array.h>
 
-#ifdef TILEDARRAY_HAS_ELEMENTAL
-#include <TiledArray/external/elemental.h>
-#endif
-
 #ifdef TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/conversions/scalapack.h>
 #endif

@@ -34,10 +34,3 @@ foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform
   add_dependencies(examples-tiledarray ${_exec})
 
 endforeach()
-
-# NB ta_dense_elem has not been revised for El
-if(ENABLE_ELEMENTAL)
-    # Add the ta_dense_elem executable
-#    add_ta_executable(ta_dense_elem "ta_dense_elem.cpp" "tiledarray")
-#    add_dependencies(examples-tiledarray ta_dense_elem)
-endif(ENABLE_ELEMENTAL)
