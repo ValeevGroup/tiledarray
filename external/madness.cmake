@@ -81,27 +81,6 @@ if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
     message(FATAL_ERROR "MADNESS found, but does not compile correctly.")
   endif()
     
-  if(ENABLE_ELEMENTAL)
-    
-    # Check to that MADNESS was compiled with Elemental support.
-    CHECK_CXX_SOURCE_COMPILES(
-        "
-        #include <madness/config.h>
-        #ifndef MADNESS_HAS_ELEMENTAL
-        # error MADNESS does not have Elemental
-        #endif
-        int main(int, char**) { return 0; }
-        "
-        MADNESS_HAS_ELEMENTAL_SUPPORT
-     )
-        
-    if(NOT MADNESS_HAS_ELEMENTAL_SUPPORT)
-      message(FATAL_ERROR "MADNESS does not include Elemental support.")
-    endif() 
-    
-    set(TILEDARRAY_HAS_ELEMENTAL ${MADNESS_HAS_ELEMENTAL_SUPPORT})
-  endif()
-
   # ensure fresh MADNESS
   if (DEFINED LAPACK_INCLUDE_DIRS)  # introduced in 093f60398d0b552871ca635b06d0144008c3e183
     CHECK_CXX_SOURCE_COMPILES(
@@ -316,32 +295,8 @@ else()
     endif()
   endif()
 
-  # if ELEMENTAL_TAG provided, package pass it on to MADNESS
-  set(MAD_ELEMENTAL_OPTIONS -DENABLE_ELEMENTAL=${ENABLE_ELEMENTAL})
-  if (DEFINED ELEMENTAL_TAG)
-    set(MAD_ELEMENTAL_OPTIONS -DELEMENTAL_TAG=${ELEMENTAL_TAG} ${MAD_ELEMENTAL_OPTIONS})
-  endif (DEFINED ELEMENTAL_TAG)
-  if (DEFINED ELEMENTAL_URL)
-    set(MAD_ELEMENTAL_OPTIONS -DELEMENTAL_URL=${ELEMENTAL_URL} ${MAD_ELEMENTAL_OPTIONS})
-  endif (DEFINED ELEMENTAL_URL)
-  # gcc needs -fext-numeric-literals to compile recent Elemental
-  # N.B. Neither Elemental nor MADNESS will export these flags as part of INTERFACE_COMPILE_OPTIONS
-  #      so will add this for TiledArray globally at the bottom of this file
-  if (${ENABLE_ELEMENTAL} AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-    append_flags(MADNESS_EXTRA_CXX_FLAGS "-fext-numeric-literals")
-  endif()
-  # in C++17 mode there are excessive warnings about the use of deprecated features, disable them
-  if (${ENABLE_ELEMENTAL})
-    append_flags(MADNESS_EXTRA_CXX_FLAGS "-Wno-deprecated-declarations")
-  endif()
-  # Elemental does not compile with Ninja, see e.g. https://travis-ci.com/ValeevGroup/mpqc4/builds/145697087
-  if (${ENABLE_ELEMENTAL} AND NOT DEFINED MADNESS_CMAKE_GENERATOR AND "${CMAKE_GENERATOR}" STREQUAL Ninja)
-    message(WARNING "Elemental fails to compile with Ninja generator, will compile MADNESS+Elemental using \"Unix Makefiles\"; set MADNESS_CMAKE_GENERATOR CACHE variable to specify an alternative generator")
-    set(MADNESS_CMAKE_GENERATOR "Unix Makefiles" CACHE STRING "CMake generator to use for compiling MADNESS+Elemental")
-  else()
-    set(MADNESS_CMAKE_GENERATOR "${CMAKE_GENERATOR}" CACHE STRING "CMake generator to use for compiling MADNESS+Elemental")
-  endif()
-  
+  set(MADNESS_CMAKE_GENERATOR "${CMAKE_GENERATOR}" CACHE STRING "CMake generator to use for compiling MADNESS")
+
   # update all CMAKE_CXX_FLAGS to include extra preprocessor flags MADNESS needs
   set(CMAKE_CXX_FLAGS                "${CMAKE_CXX_FLAGS} ${MADNESS_EXTRA_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS_DEBUG          "${CMAKE_CXX_FLAGS_DEBUG} ${MADNESS_EXTRA_CXX_FLAGS}")
@@ -367,7 +322,6 @@ else()
           -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
           -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
           # F Fortran, assume we can link without its runtime
-          # if you need Fortran checks enable Elemental
           #      -DCMAKE_Fortran_COMPILER=${CMAKE_Fortran_COMPILER}
           #      "-DCMAKE_Fortran_FLAGS=${CMAKE_Fortran_FLAGS}"
           #      "-DCMAKE_Fortran_FLAGS_DEBUG=${CMAKE_Fortran_FLAGS_DEBUG}"
@@ -382,7 +336,6 @@ else()
           -DENABLE_MKL=${ENABLE_MKL}
           -DENABLE_TBB=${ENABLE_TBB}
           "-DTBB_ROOT_DIR=${TBB_ROOT_DIR}"
-          ${MAD_ELEMENTAL_OPTIONS}
           -DENABLE_LIBXC=FALSE
           "${MAD_LAPACK_OPTIONS}"
           -DENABLE_GPERFTOOLS=${ENABLE_GPERFTOOLS}
@@ -430,8 +383,7 @@ else()
   endif()
   set(TILEDARRAY_DOWNLOADED_MADNESS ON CACHE BOOL "Whether TA downloaded MADNESS")
   mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
-  set(TILEDARRAY_HAS_ELEMENTAL ${ENABLE_ELEMENTAL})
-  
+
   # TiledArray only needs MADworld library compiled to be ...
   # as long as you mark dependence on it correcty its target properties
   # will be used correctly (header locations, etc.)
@@ -450,26 +402,10 @@ else()
   # these headers depend on LAPACK which is a dependency of MADlinalg, hence
   # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
   list(APPEND MADNESS_LIBRARIES "${LAPACK_LIBRARIES}")
-  # this is not necessary since we use nested #include paths in build and install trees,
-  # hence dependence on MADworld should provide proper include paths for ALL madness libs ...
-  #list(APPEND MADNESS_INCLUDE_DIRS $<TARGET_PROPERTY:MADlinalg,INTERFACE_INCLUDE_DIRECTORIES>)
-  # external Elemental is *installed* to be usable, hence need to add the path to the install tree
-  if (DEFINED ELEMENTAL_TAG)
-    list(APPEND MADNESS_INCLUDE_DIRS ${CMAKE_INSTALL_PREFIX}/include)
-  endif (DEFINED ELEMENTAL_TAG)
 
   # custom target for building MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
   # N.B. Ninja needs spelling out the byproducts of custom targets, see https://cmake.org/cmake/help/v3.3/policy/CMP0058.html
   set(MADNESS_BUILD_BYPRODUCTS "${MADNESS_BINARY_DIR}/src/madness/world/lib${MADNESS_WORLD_LIBRARY}${CMAKE_STATIC_LIBRARY_SUFFIX}")
-  if (ENABLE_ELEMENTAL)
-    list(APPEND MADNESS_BUILD_BYPRODUCTS
-        "${MADNESS_BINARY_DIR}/external/build/elemental/libEl${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
-        "${MADNESS_BINARY_DIR}/external/build/elemental/external/pmrrr/libpmrrr${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
-        "${MADNESS_BINARY_DIR}/external/build/elemental/external/suite_sparse/libElSuiteSparse${MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX}${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
-        "${CMAKE_INSTALL_PREFIX}/lib/libparmetis${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
-        "${CMAKE_INSTALL_PREFIX}/lib/libmetis${MADNESS_DEFAULT_LIBRARY_SUFFIX}"
-        )
-  endif(ENABLE_ELEMENTAL)
   message(STATUS "custom target build-madness is expected to build these byproducts: ${MADNESS_BUILD_BYPRODUCTS}")
   add_custom_target(build-madness ALL
       COMMAND ${CMAKE_COMMAND} --build . --target ${MADNESS_WORLD_LIBRARY}
@@ -477,24 +413,15 @@ else()
       BYPRODUCTS "${MADNESS_BUILD_BYPRODUCTS}"
       COMMENT Building 'madness')
 
-  if (ENABLE_ELEMENTAL)
-    set(ELEMENTAL_CLEAN_TARGET clean-elemental)
-    set(ELEMENTAL_INSTALL_TARGET install-elemental)
-  else (ENABLE_ELEMENTAL)
-    set(ELEMENTAL_CLEAN_TARGET clean)
-    set(ELEMENTAL_INSTALL_TARGET install-madness-config)
-  endif (ENABLE_ELEMENTAL)
-
   # Add clean-madness target that will delete files generated by MADNESS build.
   add_custom_target(clean-madness
     COMMAND ${CMAKE_COMMAND} --build . --target clean
-    COMMAND ${CMAKE_COMMAND} --build . --target ${ELEMENTAL_CLEAN_TARGET}
     WORKING_DIRECTORY ${MADNESS_BINARY_DIR}
     COMMENT Cleaning build directory for 'madness')
   
   # Since 'install-madness' target cannot be linked to the 'install' target,
   # we will do it manually here.
-  set(INSTALL_MADNESS_SUBTARGETS install-madness-world install-madness-clapack install-madness-config install-madness-common ${ELEMENTAL_INSTALL_TARGET})
+  set(INSTALL_MADNESS_SUBTARGETS install-madness-world install-madness-clapack install-madness-config install-madness-common)
   foreach(INSTALL_MADNESS_SUBTARGET IN LISTS INSTALL_MADNESS_SUBTARGETS)
     install(CODE
       "execute_process(
@@ -521,9 +448,4 @@ endif()
 include_directories(${MADNESS_INCLUDE_DIRS})
 list (APPEND TiledArray_LIBRARIES ${MADNESS_LIBRARIES})
 append_flags(CMAKE_CXX_FLAGS "${MADNESS_COMPILE_FLAGS}")
-# gcc needs -fext-numeric-literals to compile/use Elemental
-# neither MADNESS nor Elemental export this compile option
-if (TILEDARRAY_HAS_ELEMENTAL AND ${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-  append_flags(CMAKE_CXX_FLAGS "-fext-numeric-literals")
-endif()
 append_flags(CMAKE_EXE_LINKER_FLAGS "${MADNESS_LINKER_FLAGS}")

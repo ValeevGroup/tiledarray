@@ -100,13 +100,6 @@ include(external/versions.cmake)
 option(ENABLE_MPI "Enable MPI" ON)
 add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-memory parallel programs")
 
-option(ENABLE_ELEMENTAL "Enable use of MADNESS-provided Elemental" OFF)
-add_feature_info(Elemental ENABLE_ELEMENTAL "Elemental provides parallel linear algebra")
-
-if(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
-    set(ELEMENTAL_TAG ${TA_TRACKED_ELEMENTAL_TAG})
-endif(ENABLE_ELEMENTAL AND NOT ELEMENTAL_TAG)
-
 option(ENABLE_SCALAPACK "Enable ScaLAPACK Bindings in TiledArray" OFF)
 add_feature_info(ScaLAPACK ENABLE_SCALAPACK "ScaLAPACK provides distributed linear algebra")
 

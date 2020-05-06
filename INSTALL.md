@@ -43,8 +43,7 @@ $ cmake --build build --target install
   - An implementation of Message Passing Interface version 2 or 3, with support
     for `MPI_THREAD_MULTIPLE`.
   - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
-  - (optional) [Elemental](http://libelemental.org/), a distributed-memory linear algebra library (tag de7b5bea1abf5f626b91582f742cf99e2e551bff)
-  - (optional, strongly recommended on x86 platforms)
+  - (optional)
     Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb‎) or
     an [open-source](https://www.threadingbuildingblocks.org/) form
 
@@ -107,7 +106,7 @@ we specify CMake variables "manually" (on the command line).
 
 * Basic configuration. This will search for dependencies on your system. If the 
   required dependencies are not found on your system, they will be downloaded 
-  and installed during the build process (this includes Eigen, Boost, Elemental,
+  and installed during the build process (this includes Eigen, Boost,
   and MADNESS, but not MPI or TBB). The CMAKE_PREFIX_PATH cache variables
   is a semicolon separated list of search paths. 
 
@@ -299,7 +298,7 @@ the correct revision of MADNESS.
 The following CMake options may be used to modify build behavior or find MADNESS:
 
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
-* `ENABLE_ELEMENTAL` -- Enable use of MADNESS provided Elemental [Default=OFF]
+* `ENABLE_SCALAPACK` -- Enable use of ScaLAPACK bindings [Default=OFF]
 * `ENABLE_TBB` -- Enable the use of TBB when building MADNESS [Default=ON]
 * `ENABLE_MKL` -- Enable the use of MKL when building MADNESS [Default=ON]
 * `ENABLE_GPERFTOOLS` -- Enable the use of gperftools when building MADNESS [Default=OFF]

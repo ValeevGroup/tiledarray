@@ -33,10 +33,4 @@ macro(add_ta_executable _name _source_files _libs)
     target_link_libraries(${_name} ${_name}-lib)
   endif (NOT BUILD_SHARED_LIBS)
 
-  # ugly workaround for broken El dependency expression
-  # TODO remove when El iface is kaput
-  if (BUILD_SHARED_LIBS)
-    set_property(TARGET ${_name} PROPERTY APPEND PROPERTY BUILD_RPATH ${MADNESS_INSTALL_LIBRARY_DIR})
-  endif(BUILD_SHARED_LIBS)
-
 endmacro()
