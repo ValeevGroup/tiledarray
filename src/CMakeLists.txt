@@ -193,7 +193,7 @@ TiledArray/util/bug.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
-set(_TILEDARRAY_DEPENDENCIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen BTAS::BTAS)
+set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS)
 
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)
@@ -210,13 +210,14 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray depends on
-  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_CUTT TiledArray_UMPIRE)
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_UMPIRE TiledArray_CUTT)
 
 endif(CUDA_FOUND)
 
 if( TARGET TiledArray_SCALAPACK )
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)
 endif()
+list(APPEND _TILEDARRAY_DEPENDENCIES "${LAPACK_LIBRARIES}")
 
 # cache deps as TILEDARRAY_PRIVATE_LINK_LIBRARIES
 set(TILEDARRAY_PRIVATE_LINK_LIBRARIES ${_TILEDARRAY_DEPENDENCIES} CACHE STRING "List of libraries on which TiledArray depends on")
