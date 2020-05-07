@@ -47,6 +47,10 @@ else()
   # Add these dependencies to External
   add_dependencies(External-tiledarray scalapackpp blacspp)
 
+  # set {blacspp,scalapackpp}_CONFIG to the install location so that we know where to find it
+  set(blacspp_CONFIG ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/blacspp)
+  set(scalapackpp_CONFIG ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/cmake/scalapackpp)
+
 endif()
 
 add_library( TiledArray_SCALAPACK INTERFACE )
