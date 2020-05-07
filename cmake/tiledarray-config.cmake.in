@@ -61,8 +61,8 @@ endif()
 set(TILEDARRAY_HAS_SCALAPACK "@ENABLE_SCALAPACK@" )
 if(TILEDARRAY_HAS_SCALAPACK)
   include( CMakeFindDependencyMacro )
-  find_dependency( blacspp )
-  find_dependency( scalapackpp )
+  find_dependency( blacspp CONFIG REQUIRED HINTS "@blacspp_CONFIG@" )
+  find_dependency( scalapackpp CONFIG REQUIRED HINTS "@scalapackpp_CONFIG@" )
 endif()
 
 # Set the tiledarray compiled library target

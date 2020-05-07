@@ -53,8 +53,8 @@ Optional prerequisites:
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f04abd1dd038c84262915a493d8f78576bb80fd0).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
-  - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS (tag b4e30292556e303bb40cafc0b041e9274c3d7658)
-  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 254ddb939f9762b391e636326498b1a63b1fe325)
+  - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS (tag 88076f1706be083ead882f6ce0bfc6884a72fc03)
+  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 5d9045dd17ab23a2f4220dd0fc3d95b2559242cb)
 
 Most of the dependencies (except for MADNESS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
