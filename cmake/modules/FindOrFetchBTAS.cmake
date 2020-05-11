@@ -30,7 +30,7 @@ if (NOT TARGET BTAS::BTAS)
   endif(TARGET BTAS AND NOT TARGET BTAS::BTAS)
 
   # set BTAS_CONFIG to the install location so that we know where to find it
-  set(BTAS_CONFIG ${CMAKE_INSTALL_PREFIX}/${BTAS_INSTALL_CMAKEDIR})
+  set(BTAS_CONFIG ${CMAKE_INSTALL_PREFIX}/${BTAS_INSTALL_CMAKEDIR}/btas-config.cmake)
 
 endif(NOT TARGET BTAS::BTAS)
 
