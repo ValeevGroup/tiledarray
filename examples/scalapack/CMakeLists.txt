@@ -26,7 +26,7 @@
 
 if(ENABLE_SCALAPACK)
 
-foreach(_exec conversion)
+foreach(_exec conversion evp)
 
   # Add executable
   add_executable(scalapack-${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)

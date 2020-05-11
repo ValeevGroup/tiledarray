@@ -20,14 +20,14 @@ else()
   include( DownloadProject )
   download_project(
     PROJ                blacspp
-    GIT_REPOSITORY      https://github.com/ValeevGroup/blacspp.git
+    GIT_REPOSITORY      https://github.com/wavefunction91/blacspp.git
     GIT_TAG             ${TA_TRACKED_BLACSPP_TAG}
     PREFIX              ${PROJECT_BINARY_DIR}/external
     UPDATE_DISCONNECTED 1
   )
   download_project(
     PROJ                scalapackpp
-    GIT_REPOSITORY      https://github.com/ValeevGroup/scalapackpp.git
+    GIT_REPOSITORY      https://github.com/wavefunction91/scalapackpp.git
     GIT_TAG             ${TA_TRACKED_SCALAPACKPP_TAG}
     PREFIX              ${PROJECT_BINARY_DIR}/external
     UPDATE_DISCONNECTED 1
