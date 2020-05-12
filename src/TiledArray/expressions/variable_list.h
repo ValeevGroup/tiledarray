@@ -90,6 +90,7 @@ void find_common(InIter1 first1, const InIter1 last1, InIter2 first2,
 template <typename VarLeft, typename VarRight>
 inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
   TA_ASSERT(l.size() == r.size());
+  TA_ASSERT(l.outer_dim() == r.outer_dim());
   std::vector<size_t> a(l.size());
   typename VarRight::const_iterator rit = r.begin();
   for (auto it = a.begin(); it != a.end(); ++it) {
@@ -97,6 +98,14 @@ inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
         std::find(l.begin(), l.end(), *rit++);
     TA_ASSERT(lit != l.end());
     *it = std::distance(l.begin(), lit);
+  }
+  // Make sure this permutation doesn't mix outer and inner tensors
+  if(l.is_tot()){
+    auto outer_dim = l.outer_dim();
+    for(auto i = 0; i < outer_dim; ++i)
+      TA_ASSERT(a[i] < outer_dim);
+    for(auto i = outer_dim; i < a.size(); ++i)
+      TA_ASSERT(a[i] >= outer_dim);
   }
   return Permutation(std::move(a));
 }
@@ -423,6 +432,12 @@ class VariableList {
   ///                              number of indices. Strong throw guarantee.
   /// \throw TiledArray::Exception if \c other does not contain the same indices
   ///                              as this instance. Strong throw guarantee.
+  /// \throw TiledArray::Exception if \c other does not have the same ToT
+  ///                              structure as this tensor. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if \c other is a ToT permutation such that it
+  ///                              mixes outer and inner modes. Strong throw
+  ///                              guarantee.
   template <typename V>
   Permutation permutation(const V& other) const {
     return detail::var_perm(*this, other);
@@ -480,10 +495,8 @@ inline bool operator!=(const VariableList& v0, const VariableList& v1) {
 inline VariableList operator*(const ::TiledArray::Permutation& p,
                               const VariableList& v) {
   TA_ASSERT(p.dim() == v.dim());
-  VariableList result;
-  result.vars_ = p * v.vars_;
-
-  return result;
+  VariableList result(v);
+  return result *= p;
 }
 
 /// Prints a VariableList instance to a stream

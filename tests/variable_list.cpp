@@ -470,25 +470,48 @@ BOOST_AUTO_TEST_CASE(permutation_fxn){
   if(world.nproc() == 1){
     VariableList v0("i, j");
 
-    {
+    { // not both ToT
+        VariableList v1("i;j");
+        BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
+    }
+
+    { // wrong size
       VariableList v1("i");
       BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
     }
 
-    {
+    { // not a permutation
       VariableList v1("i, a");
       BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
+    }
+
+    { // ToTs mix outer and inner
+      VariableList v1("i,j;k,l");
+      VariableList v2("i,k;j,l");
+      BOOST_CHECK_THROW(v1.permutation(v2), TiledArray::Exception);
     }
   }
 
   for(auto [str, idx] : idxs){
     std::vector<size_type> perm(idx.size());
     std::iota(perm.begin(), perm.end(), 0);
-    do{
-      Permutation p(perm.begin(), perm.end());
-      auto v = p * idx;
-      BOOST_CHECK(v.permutation(idx) == p);
-    } while(std::next_permutation(perm.begin(), perm.end()));
+    if(idx.is_tot()){
+     auto outer_dim = idx.outer_dim();
+      do{
+       do{
+         Permutation p(perm.begin(), perm.end());
+         auto v = p * idx;
+         BOOST_CHECK(v.permutation(idx) == p);
+       } while(std::next_permutation(perm.begin() + outer_dim, perm.end()));
+     } while(std::next_permutation(perm.begin(), perm.begin() + outer_dim));
+    }
+    else {
+      do {
+        Permutation p(perm.begin(), perm.end());
+        auto v = p * idx;
+        BOOST_CHECK(v.permutation(idx) == p);
+      } while (std::next_permutation(perm.begin(), perm.end()));
+    }
   }
 }
 

@@ -45,9 +45,9 @@ using test_params = boost::mpl::list<
     std::tuple<float, Tensor<Tensor<float>>>,
     std::tuple<double, Tensor<Tensor<double>>>
 #ifdef TILEDARRAY_HAS_BTAS
-    ,std::tuple<int, Tensor<btas::Tensor<int>>>,
-    std::tuple<float, Tensor<btas::Tensor<float>>>,
-    std::tuple<double, Tensor<btas::Tensor<double>>>
+    //,std::tuple<int, Tensor<btas::Tensor<int>>>,
+    //std::tuple<float, Tensor<btas::Tensor<float>>>,
+    //std::tuple<double, Tensor<btas::Tensor<double>>>
 #endif
 >;
 

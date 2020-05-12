@@ -403,6 +403,16 @@ class Expr {
     engine_type engine(derived());
     engine.init(world, pmap, target_vars);
 
+    // Make the permutation for the inner tensor of tensors, note from the
+    // perspective of the inner tensor the modes start at 0 and not outer_dim
+    constexpr auto is_tot =
+        TiledArray::detail::is_tensor_of_tensor_v<typename A::value_type>;
+    auto full_perm = engine.derived().make_perm(target_vars);
+    auto outer_dim = target_vars.outer_dim();
+    std::vector<size_t> temp(full_perm.begin() + outer_dim, full_perm.end());
+    for(auto& x : temp) x -= outer_dim;
+    Permutation inner_perm(temp.begin(), temp.end());
+
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
     dist_eval.eval();
@@ -414,8 +424,23 @@ class Expr {
     // Move the data from dist_eval into the result array. There is no
     // communication in this step.
     for (const auto index : *dist_eval.pmap()) {
-      if (!dist_eval.is_zero(index))
-        set_tile(result, index, dist_eval.get(index));
+      if (dist_eval.is_zero(index)) continue;
+      auto tile_contents = dist_eval.get(index);
+      if constexpr(!is_tot) {
+        set_tile(result, index, tile_contents);
+      }
+      else {
+        auto new_tile = world.taskq.add([=]() {
+          auto temp = tile_contents.get();
+          using tile_type = typename decltype(temp)::conversion_result_type;
+          tile_type tile = static_cast<tile_type>(temp);
+          using inner_type = typename tile_type::value_type;
+          Permute<inner_type, inner_type> p;
+          for (auto& inner_t : tile) inner_t = p(inner_t, inner_perm);
+          return tile;
+        });
+        result.set(index, new_tile);
+      }
     }
 
     // Wait for child expressions of dist_eval

@@ -74,7 +74,8 @@ class ExprEngine : private NO_DEFAULTS {
   VariableList vars_;   ///< The variable list of this expression
   bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
                         ///< tile)
-  Permutation perm_;    ///< The permutation that will be applied to the result
+  /// The permutation that will be applied to the outer tensor of tensors
+  Permutation perm_;
   trange_type trange_;  ///< The tiled range of the result tensor
   shape_type shape_;    ///< The shape of the result tensor
   std::shared_ptr<pmap_interface>
