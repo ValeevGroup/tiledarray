@@ -3,15 +3,14 @@
 # Exit on error
 set -ev
 
-# Will build MADNESS+Elemental stand-alone for Debug builds only
+# Will build MADNESS stand-alone for Debug builds only
 if [ "$BUILD_TYPE" = "Debug" ]; then
 
   # Environment variables
   if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
-    # Elemental needs -fext-numeric-literals when ENABLE_ELEMENTAL=ON
-    export EXTRACXXFLAGS="-mno-avx -fext-numeric-literals"
+    export EXTRACXXFLAGS="-mno-avx"
     export F77=gfortran-$GCC_VERSION
   else
     export CC=/usr/bin/clang-$CLANG_VERSION
@@ -28,7 +27,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   # list the prebuilt prereqs
   ls -l ${INSTALL_PREFIX}
 
-  # where to install MADNESS+Elemental (need for testing installed code)
+  # where to install MADNESS (need for testing installed code)
   export INSTALL_DIR=${INSTALL_PREFIX}/madness
 
   # extract the tracked tag of MADNESS
@@ -66,22 +65,17 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
       -DENABLE_MPI=ON \
       -DMPI_THREAD=multiple \
-      -DENABLE_TBB=ON \
+      -DENABLE_TBB=OFF \
       -DTBB_ROOT_DIR=/usr \
       -DENABLE_MKL=OFF \
       -DFORTRAN_INTEGER_SIZE=4 \
       -DENABLE_LIBXC=OFF \
       -DENABLE_GPERFTOOLS=OFF \
       -DASSERTION_TYPE=throw \
-      -DDISABLE_WORLD_GET_DEFAULT=ON \
-      -DENABLE_ELEMENTAL=ON \
-      -DELEMENTAL_TAG=de7b5bea1abf5f626b91582f742cf99e2e551bff \
-      -DELEMENTAL_CXXFLAGS=-Wno-deprecated-declarations \
-      -DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE \
-      -DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77
+      -DDISABLE_WORLD_GET_DEFAULT=ON
 
-    # Build MADworld + LAPACK/BLAS interface + Elemental
-    make -j2 install-elemental install-madness-world install-madness-clapack install-madness-common install-madness-config VERBOSE=1
+    # Build MADworld + LAPACK/BLAS interface
+    make -j2 install-madness-world install-madness-clapack install-madness-common install-madness-config VERBOSE=1
   fi
 
 fi

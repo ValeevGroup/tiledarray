@@ -100,11 +100,9 @@ set(ta_test_src_files  ta_test.cpp
     trace.cpp
     tot_expressions.cpp
     index_parsing.cpp
+    scalapack.cpp
+    diagonal_array.cpp
 )
-
-if(ENABLE_ELEMENTAL)
-    list(APPEND ta_test_src_files elemental.cpp)
-endif()
 
 if(CUDA_FOUND)
     list(APPEND ta_test_src_files cutt.cpp expressions_cuda_um.cpp tensor_um.cpp)

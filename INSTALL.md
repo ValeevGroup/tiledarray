@@ -5,7 +5,7 @@ $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ cmake -B build \
     -D CMAKE_INSTALL_PREFIX=/path/to/tiledarray/install \
-    -D CMAKE_TOOLCHAIN_FILE=../cmake/toolchains/toolchain-file-for-your-platform.cmake \
+    -D CMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/<toolchain-file-for-your-platform>.cmake \
     .
 $ cmake --build build
 (recommended, but optional): $ cmake --build build --target check
@@ -22,16 +22,16 @@ $ cmake --build build --target install
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
-- [CMake](https://cmake.org/), version 3.14 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
+- [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
-- [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher (will be downloaded automatically, if missing)
+- [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), tag 8d718bdc8075803b63eea96827291ce9381a1faf (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), tag 357d3fc92d6a8b3d0914db337de0739e8df73004 (will be downloaded automatically, if missing)
 - BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag b8dc72197d5e9c4c5630b5208b18160b5d8f65f4 .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag a2ad8f5a7ff861a32d08495d3f3429972ebd3bd2 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
@@ -43,16 +43,18 @@ $ cmake --build build --target install
   - An implementation of Message Passing Interface version 2 or 3, with support
     for `MPI_THREAD_MULTIPLE`.
   - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
-  - (optional) [Elemental](http://libelemental.org/), a distributed-memory linear algebra library (tag de7b5bea1abf5f626b91582f742cf99e2e551bff)
-  - (optional, strongly recommended on x86 platforms)
+  - (optional)
     Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb‎) or
     an [open-source](https://www.threadingbuildingblocks.org/) form
 
 Optional prerequisites:
-- CUDA compiler and runtime -- for execution on CUDA-enabled accelerators. CUDA 9 and 10 have been tested. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
-  - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 02152734bc534b74e2d0160d12bb73111bb6ffb4).
+- [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 9 and 10 have been tested. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
+  - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 0e8685bf82910bc7435835f846e88f1b39f47f09).
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f04abd1dd038c84262915a493d8f78576bb80fd0).
-- Doxygen -- for building documentation (version 1.8.12 or later).
+- [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
+- [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
+  - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS (tag 88076f1706be083ead882f6ce0bfc6884a72fc03)
+  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 28433942197aee141cd9e96ed1d00f6ec7b902cb)
 
 Most of the dependencies (except for MADNESS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
@@ -95,7 +97,7 @@ Here's how to compile TiledArray on a macOS system:
 ```
 $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
         -D CMAKE_BUILD_TYPE=Release \
-        -D CMAKE_TOOLCHAIN_FILE=$TILEDARRAY_SOURCE_DIR/cmake/toolchains/osx-clang-mpi-accelerate.cmake \
+        -D CMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/macos-clang-mpi-accelerate.cmake \
         $TILEDARRAY_SOURCE_DIR
 ```
 
@@ -104,7 +106,7 @@ we specify CMake variables "manually" (on the command line).
 
 * Basic configuration. This will search for dependencies on your system. If the 
   required dependencies are not found on your system, they will be downloaded 
-  and installed during the build process (this includes Eigen, Boost, Elemental,
+  and installed during the build process (this includes Eigen, Boost,
   and MADNESS, but not MPI or TBB). The CMAKE_PREFIX_PATH cache variables
   is a semicolon separated list of search paths. 
 
@@ -168,11 +170,13 @@ Additional CMake variables are given below.
 * `CMAKE_BUILD_TYPE` -- Optimization/debug build type options include
   `Debug` (optimization off, debugging symbols and assersions on), `Release` (optimization on, debugging symbols and assertions off), `RelWithDebInfo` (optimization on, debugging symbols and assertions on) and `MinSizeRel` (same as `Release` but optimized for executable size). The default is empty build type. It is recommended that you set the build type explicitly.
 * `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported by the platform]. With `BUILD_SHARED_LIBS=ON` special precautions must be taken for TiledArray and libraries using it to work properly on platforms with address randomization enabled.
-* `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `14` (default), `17`, and `20`.
+* `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `17` (default), and `20`.
+
+Most of these are best specified in a _toolchain file_. TiledArray is recommended to use the toolchains distributed via [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains). TiledArray by default downloads (via [the FetchContent CMake module](https://cmake.org/cmake/help/latest/module/FetchContent.html)) the VG CMake toolkit which makes the toolchains available without having to download the toolchain files manually. E.g., to use toolchain `x` from the VG CMake kit repository provide `-DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/x.cmake` to CMake when configuring TiledArray.
 
 -D CMAKE_BUILD_TYPE=(Release|Debug|RelWithDebInfo)
 -D BUILD_SHARED_LIBS=(TRUE|FALSE)
--D CMAKE_CXX_STANDARD=(14|17|20)
+-D CMAKE_CXX_STANDARD=(17|20)
 -D TA_ERROR=(none|throw|assert)
 It is typically not necessary to specify optimization or debug flags as the
 default values provided by CMake are usually correct.
@@ -199,7 +203,7 @@ serial version of the BLAS library or by setting the number of threads to one
 (1) with an environment variable. This is necessary because TiledArray evaluates tensor
 expressions in parallel by subdividing them into small tasks, each of which is assumed
 to be single-threaded; attempting to run a multi-threaded BLAS function inside
-tasks will over subscribe the hardware cores.
+tasks will oversubscribe the hardware cores.
 
 BLAS library dependency is provided by the MADNESS library, which checks for presence
 of BLAS and LAPACK (which also depends on BLAS) at the configure time. Therefore, if
@@ -214,8 +218,7 @@ CMake variables:
 * `LAPACK_INCLUDE_DIRS` -- (optional) a list of directories which contain BLAS/LAPACK-related header files
 * `LAPACK_COMPILE_DEFINITIONS` -- (optional) a list of preprocessor definitions required for any code that uses BLAS/LAPACK-related header files
 * `LAPACK_COMPILE_OPTIONS` -- (optional) a list of compiler options required for any code that uses BLAS/LAPACK-related header files
-* `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS
-*  libraries will be perferred.
+* `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS libraries will be preferred.
 
 The last three variables are only needed if your code will use non-Fortran BLAS/LAPACK library API (such as CBLAS or LAPACKE)
 and thus needs access to the header files. TiledArray only uses BLAS via the Fortran API, hence the last three
@@ -267,10 +270,12 @@ Link Advisor page.
 Support for execution on CUDA-enabled hardware is controlled by the following variables:
 
 * `ENABLE_CUDA`  -- Set to `ON` to turn on CUDA support. [Default=OFF].
+* `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers are notorious for only being able to use specific (older) C++ compilers. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
 * `ENABLE_CUDA_ERROR_CHECK` -- Set to `ON` to turn on assertions for successful completion of calls to CUDA runtime and libraries. [Default=OFF].
-* `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers are notorious for only being able to use older C++ compilers. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
-* `CUTT_INSTALL_DIR` -- the installation prefix of the pre-installed cuTT library.
-* `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library.
+* `CUTT_INSTALL_DIR` -- the installation prefix of the pre-installed cuTT library. This should not be normally needed; it is strongly recommended to let TiledArray build and install cuTT.
+* `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library. This should not be normally needed; it is strongly recommended to let TiledArray build and install Umpire.
+
+For the CUDA compiler and toolkit to be discoverable the CUDA compiler (`nvcc`) should be in the `PATH` environment variable. Refer to the [FindCUDAToolkit module](https://cmake.org/cmake/help/latest/module/FindCUDAToolkit.html) for more info.
 
 ## Eigen 3
 
@@ -293,7 +298,7 @@ the correct revision of MADNESS.
 The following CMake options may be used to modify build behavior or find MADNESS:
 
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
-* `ENABLE_ELEMENTAL` -- Enable use of MADNESS provided Elemental [Default=OFF]
+* `ENABLE_SCALAPACK` -- Enable use of ScaLAPACK bindings [Default=OFF]
 * `ENABLE_TBB` -- Enable the use of TBB when building MADNESS [Default=ON]
 * `ENABLE_MKL` -- Enable the use of MKL when building MADNESS [Default=ON]
 * `ENABLE_GPERFTOOLS` -- Enable the use of gperftools when building MADNESS [Default=OFF]

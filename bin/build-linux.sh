@@ -18,6 +18,7 @@ export PATH=${INSTALL_PREFIX}/cmake/bin:${PATH}
 cmake --version
 
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
+${TRAVIS_BUILD_DIR}/bin/build-scalapack-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
 
@@ -41,18 +42,20 @@ if [ "$CXX" = "g++" ]; then
     export CC=/usr/bin/gcc-$GCC_VERSION
     export CXX=/usr/bin/g++-$GCC_VERSION
     export EXTRACXXFLAGS="-mno-avx"
+    # if linking statically will need fortran libs to detect liblapacke.a in BTAS
     export F77=gfortran-$GCC_VERSION
 else
     export CC=/usr/bin/clang-$CLANG_VERSION
     export CXX=/usr/bin/clang++-$CLANG_VERSION
     export EXTRACXXFLAGS="-mno-avx -stdlib=libc++"
+    # if linking statically will need fortran libs to detect liblapacke.a in BTAS
     export F77=gfortran-$GCC_VERSION
 fi
 
 export MPI_HOME=${INSTALL_PREFIX}/mpich
 export MPICC=$MPI_HOME/bin/mpicc
 export MPICXX=$MPI_HOME/bin/mpicxx
-export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/lib/lapack:/usr/lib/libblas:${INSTALL_PREFIX}/scalapack/lib:$LD_LIBRARY_PATH
 
 # list the prebuilt prereqs
 ls -l ${INSTALL_PREFIX}
@@ -77,7 +80,7 @@ if [ -f "${INSTALL_DIR}/include/btas/version.h" ]; then
   fi
 fi
 
-# MADNESS+Elemental are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
+# MADNESS are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
 if [ "$BUILD_TYPE" = "Debug" ]; then
 
   if [ "$COMPUTE_COVERAGE" = "1" ]; then
@@ -85,9 +88,10 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
   fi
 
   cmake ${TRAVIS_BUILD_DIR} \
-    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
+    -DCMAKE_Fortran_COMPILER=$F77 \
     -DMPI_CXX_COMPILER=$MPICXX \
     -DMPI_C_COMPILER=$MPICC \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
@@ -97,7 +101,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
-    -DENABLE_ELEMENTAL=ON
+    -DENABLE_SCALAPACK=ON
 
 else
 
@@ -114,9 +118,10 @@ else
   fi
 
   cmake ${TRAVIS_BUILD_DIR} \
-    -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
+    -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
     -DCMAKE_CXX_COMPILER=$CXX \
     -DCMAKE_C_COMPILER=$CC \
+    -DCMAKE_Fortran_COMPILER=$F77 \
     -DMPI_CXX_COMPILER=$MPICXX \
     -DMPI_C_COMPILER=$MPICC \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
@@ -126,8 +131,7 @@ else
     -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
-    -DENABLE_ELEMENTAL=ON -Wno-dev \
-    -DMADNESS_CMAKE_EXTRA_ARGS="-Wno-dev;-DELEMENTAL_CMAKE_BUILD_TYPE=$BUILD_TYPE;-DELEMENTAL_CXXFLAGS=-Wno-deprecated-declarations;-DELEMENTAL_MATH_LIBS='-L/usr/lib/libblas -L/usr/lib/lapack -llapack -lblas';-DELEMENTAL_CMAKE_EXTRA_ARGS=-DCMAKE_Fortran_COMPILER=$F77"
+    -DENABLE_SCALAPACK=ON
 
 fi
 
@@ -138,16 +142,9 @@ make install
 # Validate
 make -j1 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
-# to find El dep shared libs (e.g. libpmrr)
+# to find dep shared libs (do we need this since El is gone?)
 export LD_LIBRARY_PATH=${INSTALL_PREFIX}/TA/lib:${INSTALL_PREFIX}/madness/lib:${LD_LIBRARY_PATH}
 make check
 
 # Build examples
 make -j2 examples VERBOSE=1
-
-# run evd example manually TODO add run_examples target
-# with Debug can only use 1 thread , but since TBB is ON for Debug builds let's just skip it entirely
-if [ "$BUILD_TYPE" = "Release" ]; then
-  ${MPI_HOME}/bin/mpirun -n 1 examples/elemental/evd 512 64 2
-  ${MPI_HOME}/bin/mpirun -n 2 examples/elemental/evd 512 64 2
-fi
