@@ -153,15 +153,16 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
   };
 
   /**
-   *  \brief Construct a ScaLAPACK metrix from a TArray
+   *  \brief Construct a ScaLAPACK matrix from a DistArray
    *
    *  @param[in] array Array to redistribute
    *  @param[in] grid  BLACS grid context
    *  @param[in] MB    Block-cyclic row distribution factor
    *  @param[in] NB    Block-cyclic column distribution factor
    */
-  ScaLAPACKMatrix(const TArray<T>& array, const blacspp::Grid& grid, size_t MB,
-                  size_t NB)
+  template <typename Tile, typename Policy>
+  ScaLAPACKMatrix(const DistArray<Tile, Policy>& array,
+                  const blacspp::Grid& grid, size_t MB, size_t NB)
       : ScaLAPACKMatrix(array.world(), grid, array.trange().dim(0).extent(),
                         array.trange().dim(1).extent(), MB, NB) {
     TA_ASSERT(array.trange().rank() == 2);
@@ -186,7 +187,8 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
                                     bc_dist_.owner_coordinate(I, J));
   }
 
-  TArray<T> tensor_from_matrix(const TiledRange& trange) {
+  template <typename Array = TArray<T>>
+  Array tensor_from_matrix(const TiledRange& trange) {
     auto construct_tile = [&](Tensor<T>& tile, const Range& range) {
       tile = Tensor<T>(range);
 
@@ -244,8 +246,7 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
       return tile.norm();
     };
 
-    return make_array<TArray<T>>(world_base_t::get_world(), trange,
-                                 construct_tile);
+    return make_array<Array>(world_base_t::get_world(), trange, construct_tile);
   }
 
 };  // class ScaLAPACKMatrix
