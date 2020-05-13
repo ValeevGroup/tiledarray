@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = TA::block_cyclic_to_array( ref_matrix, trange );
+  auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
   auto norm_diff = 
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(sca_to_random_tiled_array_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = TA::block_cyclic_to_array( ref_matrix, trange );
+  auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
   auto norm_diff = 

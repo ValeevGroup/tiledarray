@@ -81,59 +81,59 @@ if [ -f "${INSTALL_DIR}/include/btas/version.h" ]; then
 fi
 
 # MADNESS are build separately if $BUILD_TYPE=Debug, otherwise built as part of TA
-if [ "$BUILD_TYPE" = "Debug" ]; then
-
-  if [ "$COMPUTE_COVERAGE" = "1" ]; then
-    export CODECOVCXXFLAGS="-O0 --coverage"
-  fi
-
-  cmake ${TRAVIS_BUILD_DIR} \
-    -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
-    -DCMAKE_CXX_COMPILER=$CXX \
-    -DCMAKE_C_COMPILER=$CC \
-    -DCMAKE_Fortran_COMPILER=$F77 \
-    -DMPI_CXX_COMPILER=$MPICXX \
-    -DMPI_C_COMPILER=$MPICC \
-    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
-    -DBUILD_SHARED_LIBS=${BUILD_SHARED} \
-    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
-    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3" \
-    -DTA_BUILD_UNITTEST=ON \
-    -DTA_ERROR="throw" \
-    -DENABLE_SCALAPACK=ON
-
-else
-
-  # if have old installed copy of TA, make sure that MADNESS tag matches the required tag, if not, remove INSTALL_DIR (will cause rebuild of MADNESS)
-  if [ -f "${INSTALL_DIR}/include/madness/config.h" ]; then
-    export INSTALLED_MADNESS_TAG=`grep 'define MADNESS_REVISION' ${INSTALL_DIR}/include/madness/config.h | awk '{print $3}' | sed s/\"//g`
-    echo "installed MADNESS revision = ${INSTALLED_MADNESS_TAG}"
-    # extract the tracked tag of MADNESS
-    export MADNESS_TAG=`grep 'set(TA_TRACKED_MADNESS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\)//g`
-    echo "required MADNESS revision = ${MADNESS_TAG}"
-    if [ "${MADNESS_TAG}" != "${INSTALLED_MADNESS_TAG}" ]; then
-      rm -rf "${INSTALL_DIR}"
-    fi
-  fi
-
-  cmake ${TRAVIS_BUILD_DIR} \
-    -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
-    -DCMAKE_CXX_COMPILER=$CXX \
-    -DCMAKE_C_COMPILER=$CC \
-    -DCMAKE_Fortran_COMPILER=$F77 \
-    -DMPI_CXX_COMPILER=$MPICXX \
-    -DMPI_C_COMPILER=$MPICC \
-    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
-    -DBUILD_SHARED_LIBS=${BUILD_SHARED} \
-    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
-    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3" \
-    -DTA_BUILD_UNITTEST=ON \
-    -DTA_ERROR="throw" \
-    -DENABLE_SCALAPACK=ON
-
-fi
+#if [ "$BUILD_TYPE" = "Debug" ]; then
+#
+#  if [ "$COMPUTE_COVERAGE" = "1" ]; then
+#    export CODECOVCXXFLAGS="-O0 --coverage"
+#  fi
+#
+#  cmake ${TRAVIS_BUILD_DIR} \
+#    -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
+#    -DCMAKE_CXX_COMPILER=$CXX \
+#    -DCMAKE_C_COMPILER=$CC \
+#    -DCMAKE_Fortran_COMPILER=$F77 \
+#    -DMPI_CXX_COMPILER=$MPICXX \
+#    -DMPI_C_COMPILER=$MPICC \
+#    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
+#    -DBUILD_SHARED_LIBS=${BUILD_SHARED} \
+#    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+#    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
+#    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3" \
+#    -DTA_BUILD_UNITTEST=ON \
+#    -DTA_ERROR="throw" \
+#    -DENABLE_SCALAPACK=ON
+#
+#else
+#
+#  # if have old installed copy of TA, make sure that MADNESS tag matches the required tag, if not, remove INSTALL_DIR (will cause rebuild of MADNESS)
+#  if [ -f "${INSTALL_DIR}/include/madness/config.h" ]; then
+#    export INSTALLED_MADNESS_TAG=`grep 'define MADNESS_REVISION' ${INSTALL_DIR}/include/madness/config.h | awk '{print $3}' | sed s/\"//g`
+#    echo "installed MADNESS revision = ${INSTALLED_MADNESS_TAG}"
+#    # extract the tracked tag of MADNESS
+#    export MADNESS_TAG=`grep 'set(TA_TRACKED_MADNESS_TAG ' ${TRAVIS_BUILD_DIR}/external/versions.cmake | awk '{print $2}' | sed s/\)//g`
+#    echo "required MADNESS revision = ${MADNESS_TAG}"
+#    if [ "${MADNESS_TAG}" != "${INSTALLED_MADNESS_TAG}" ]; then
+#      rm -rf "${INSTALL_DIR}"
+#    fi
+#  fi
+#
+#  cmake ${TRAVIS_BUILD_DIR} \
+#    -DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/travis.cmake \
+#    -DCMAKE_CXX_COMPILER=$CXX \
+#    -DCMAKE_C_COMPILER=$CC \
+#    -DCMAKE_Fortran_COMPILER=$F77 \
+#    -DMPI_CXX_COMPILER=$MPICXX \
+#    -DMPI_C_COMPILER=$MPICC \
+#    -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
+#    -DBUILD_SHARED_LIBS=${BUILD_SHARED} \
+#    -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+#    -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
+#    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3" \
+#    -DTA_BUILD_UNITTEST=ON \
+#    -DTA_ERROR="throw" \
+#    -DENABLE_SCALAPACK=ON
+#
+#fi
 
 # Build all libraries, examples, and applications
 make -j2 all VERBOSE=1
@@ -148,3 +148,4 @@ make check
 
 # Build examples
 make -j2 examples VERBOSE=1
+
