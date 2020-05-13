@@ -72,7 +72,7 @@ BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
   auto trange = gen_trange(N, {static_cast<size_t>(NB)});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
+      *GlobalFixture::world, trange,
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return ScaLAPACKFixture::make_ta_reference(t, range);
       });
@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
   auto test_ta = ref_matrix.tensor_from_matrix( trange );
   GlobalFixture::world->gop.fence();
 
-  auto norm_diff = 
+  auto norm_diff =
 	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
 
   BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_sca_test) {
   auto trange = gen_trange(N, {static_cast<size_t>(NB)});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
+      *GlobalFixture::world, trange,
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return ScaLAPACKFixture::make_ta_reference(t, range);
       });
@@ -139,12 +139,12 @@ BOOST_AUTO_TEST_CASE(sca_to_random_tiled_array_test) {
   auto [M, N] = ref_matrix.dims();
   BOOST_REQUIRE_EQUAL(M, N);
 
-  auto NB = ref_matrix.dist().nb();
+  [[maybe_unused]] auto NB = ref_matrix.dist().nb();
 
   auto trange = gen_trange(N, {107ul, 113ul, 211ul, 151ul});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
+      *GlobalFixture::world, trange,
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return ScaLAPACKFixture::make_ta_reference(t, range);
       });
@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(sca_to_random_tiled_array_test) {
   auto test_ta = ref_matrix.tensor_from_matrix( trange );
   GlobalFixture::world->gop.fence();
 
-  auto norm_diff = 
+  auto norm_diff =
 	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
 
   BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE(random_tiled_array_to_sca_test) {
   auto trange = gen_trange(N, {107ul, 113ul, 211ul, 151ul});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
+      *GlobalFixture::world, trange,
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return ScaLAPACKFixture::make_ta_reference(t, range);
       });
