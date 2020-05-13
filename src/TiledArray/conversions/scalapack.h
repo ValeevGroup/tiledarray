@@ -179,6 +179,11 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
   const auto& dist() const { return bc_dist_; }
   const auto& dims() const { return dims_; }
   const auto& local_mat() const { return local_mat_; }
+
+
+
+  auto& dist() { return bc_dist_; }
+  auto& dims() { return dims_; }
   auto& local_mat() { return local_mat_; }
 
   inline size_t owner(size_t I, size_t J) const noexcept {
@@ -186,7 +191,7 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
                                     bc_dist_.owner_coordinate(I, J));
   }
 
-  TArray<T> tensor_from_matrix(const TiledRange& trange) {
+  TArray<T> tensor_from_matrix(const TiledRange& trange) const {
     auto construct_tile = [&](Tensor<T>& tile, const Range& range) {
       tile = Tensor<T>(range);
 
@@ -249,6 +254,61 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
   }
 
 };  // class ScaLAPACKMatrix
+
+
+
+
+
+
+
+
+
+
+
+/**
+ *  \brief Convert a dense DistArray to block-cyclic storage format
+ *
+ *  @tparam T Datatype of underlying tile
+ *
+ *  @param[in]  array   DistArray to be converted to block-cyclic format
+ *  @param[in]  grid    BLACS grid context for block-cyclic matrix
+ *  @param[in]  MB      Row blocking factor of resulting block-cyclic matrix
+ *  @param[in]  NB      Column blocking factor of resulting block-cyclic matrix
+ *
+ *  @returns    Block-cyclic conversion of input DistArray
+ */
+template <typename T>
+ScaLAPACKMatrix<T> array_to_block_cyclic( 
+  const TArray<T>&     array, 
+  const blacspp::Grid& grid,
+  size_t               MB,
+  size_t               NB
+) {
+
+  return ScaLAPACKMatrix<T>( array, grid, MB, NB );
+
+}
+
+
+/**
+ *  \brief Convert a block-cyclic matrix to DistArray
+ *
+ *  @tparam Datatype of underlying tile
+ *
+ *  @param[in]  matrix  Block-cyclic matrix to convert to DistArray
+ *  @param[in]  trange  Tiled ranges for the resulting DistArray
+ *
+ *  @returns DistArray conversion of input block-cyclic matrix
+ */
+template <typename T>
+TArray<T> block_cyclic_to_array(
+  const ScaLAPACKMatrix<T>& matrix,
+  const TiledRange&         trange
+) {
+
+  return matrix.tensor_from_matrix( trange );
+
+}
 
 }  // namespace TiledArray
 
