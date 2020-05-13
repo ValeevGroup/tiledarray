@@ -99,8 +99,7 @@ set(ta_test_src_files  ta_test.cpp
     random.cpp
     trace.cpp
     tot_expressions.cpp
-    index_parsing.cpp
-    scalapack.cpp
+    annotation.cpp
     diagonal_array.cpp
 )
 

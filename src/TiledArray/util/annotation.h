@@ -32,6 +32,13 @@
 
 namespace TiledArray::detail {
 
+inline std::string dummy_annotation(unsigned int ndim) {
+  std::ostringstream oss;
+  if (ndim > 0) oss << "i0";
+  for (unsigned int d = 1; d < ndim; ++d) oss << ",i" << d;
+  return oss.str();
+}
+
 /// This function removes all whitespace characters from a string.
 ///
 /// \param[in] s The string we are removing whitespace from.
