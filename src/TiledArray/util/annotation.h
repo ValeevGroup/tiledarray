@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_INDEX_PARSING_H__INCLUDED
-#define TILEDARRAY_INDEX_PARSING_H__INCLUDED
+#ifndef TILEDARRAY_ANNOTATION_H__INCLUDED
+#define TILEDARRAY_ANNOTATION_H__INCLUDED
 #include "TiledArray/error.h"
 #include <algorithm>
 #include <string>
@@ -192,4 +192,4 @@ inline auto split_index(const std::string& idx) {
 
 } // namespace TiledArray::detail
 
-#endif // TILEDARRAY_INDEX_PARSING_H__INCLUDED
+#endif // TILEDARRAY_ANNOTATION_H__INCLUDED
