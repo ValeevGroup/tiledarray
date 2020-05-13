@@ -94,7 +94,6 @@ set(ta_test_src_files  ta_test.cpp
     foreach.cpp
     solvers.cpp
     initializer_list.cpp
-    scalapack.cpp
     tot_dist_array_part1.cpp
     tot_dist_array_part2.cpp
     random.cpp
