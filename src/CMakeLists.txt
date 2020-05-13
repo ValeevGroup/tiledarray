@@ -151,9 +151,10 @@ TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h
+TiledArray/util/annotation.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
-TiledArray/util/index_parsing.h
+TiledArray/util/annotation.h
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/random.h

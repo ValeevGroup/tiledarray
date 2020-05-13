@@ -23,14 +23,21 @@
  *
  */
 
-#ifndef TILEDARRAY_INDEX_PARSING_H__INCLUDED
-#define TILEDARRAY_INDEX_PARSING_H__INCLUDED
+#ifndef TILEDARRAY_ANNOTATION_H__INCLUDED
+#define TILEDARRAY_ANNOTATION_H__INCLUDED
 #include "TiledArray/error.h"
 #include <algorithm>
 #include <string>
 #include <cstring>
 
 namespace TiledArray::detail {
+
+inline std::string dummy_annotation(unsigned int ndim) {
+  std::ostringstream oss;
+  if (ndim > 0) oss << "i0";
+  for (unsigned int d = 1; d < ndim; ++d) oss << ",i" << d;
+  return oss.str();
+}
 
 /// This function removes all whitespace characters from a string.
 ///
@@ -192,4 +199,4 @@ inline auto split_index(const std::string& idx) {
 
 } // namespace TiledArray::detail
 
-#endif // TILEDARRAY_INDEX_PARSING_H__INCLUDED
+#endif // TILEDARRAY_ANNOTATION_H__INCLUDED
