@@ -1,6 +1,6 @@
 # Customizing TiledArray Expressions {#Customizing-Expressions}
 End-user interface of TiledArray is a Domain-Specific Language (DSL), embedded in C++, for performing basic arithmetic and user-defined operations on `DistArray` objects. For example, contraction of order-3 tensors to produce an order-2 tensor can be expressed as
-```c++
+```
 TArray<float> a, b, c;
 // initialization of order-3 tensors a, b is not shown
 
@@ -61,7 +61,7 @@ There are three basic types of expression objects:
 **Note:** When you implement your own expression, you should copy and paste the appropriate the expression interface below and fill in the implementation details.
 
 ### Leaf Expression Interface
-```c++
+```
 #include <tiledarray.h>
 
 // Forward declarations
@@ -122,7 +122,7 @@ public:
 ```
 
 ### Unary Expression Interface
-```c++
+```
 #include <tiledarray.h>
 
 // Forward declarations
@@ -183,7 +183,7 @@ public:
 # Example Expression
 This example demonstrated how to construct a scaling expression. The TiledArray tile operation `Scal` is used for demonstration purposes, but you are free to substitute your own tile operation. See Customizing Tile Operations for details.
 
-```c++
+```
 #include <tiledarray.h>
 
 // Forward declarations

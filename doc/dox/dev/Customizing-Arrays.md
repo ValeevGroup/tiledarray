@@ -18,7 +18,7 @@ and types that generate a data tile as needed (“lazy evaluation tiles”).
 
 Any user-defined tensor type can play a role of a data tile provided it matches the same concept as `TiledArray::Tensor`. For brevity, instead of an actual concept spec here is an example of a custom tile type that meets the concept spec.
 
-```c++
+```
 class MyTensor {
 public:
   // Typedefs
@@ -177,7 +177,7 @@ public:
 
 It is also possible to implement most of the concept requirements non-intrusively, by providing free functions. This can be helpful if you want to use an existing tensor class as a tile. Here’s an example of how to implement MyTensor without member functions:
 
-```c++
+```
 class MyTensor {
 public:
   // Typedefs
@@ -404,7 +404,7 @@ The main requirements of lazy tiles are:
 
 Lazy tiles should have the following interface.
 
-```c++
+```
 class MyLazyTile {
 public:
   typedef ... eval_type; // The data tile to which this tile will be converted to; typically TiledArray::Tensor
@@ -433,7 +433,7 @@ public:
 
 You can define a shape object for your `Array` object, which defines the sparsity of an array. A shape object is a replicated object, so you should design your shape object accordingly. You may implement an initialization algorithm for your shape that communicates with other processes. However, communication is not allowed after the object has been initialized, shape arithmetic operations must be completely local (non-communicating) operations. 
 
-```c++
+```
 class MyShape {
 public:
 
@@ -532,7 +532,7 @@ public:
 
 You can also create process maps for your `Array` object, which is used by TiledArray to determine the process that owns a tile for a given `Array` object. For a process map to be valid, all tiles are owned by exactly one process and all processes must agree on this tile ownership. The exception to these rules is a replicated process map. In addition, a process map must maintain a list of local tiles.
 
-```c++
+```
 class MyPmap : public TiledArray::Pmap {
 protected:
 

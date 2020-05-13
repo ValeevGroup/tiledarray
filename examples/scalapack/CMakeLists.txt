@@ -24,14 +24,16 @@
 
 # Create example executable
 
-if(ENABLE_ELEMENTAL)
+if(ENABLE_SCALAPACK)
 
-foreach(_exec evd)
+foreach(_exec conversion)
 
   # Add executable
-  add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")
-  add_dependencies(examples-tiledarray ${_exec})
+  add_executable(scalapack-${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
+  target_link_libraries(scalapack-${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
+  add_dependencies(scalapack-${_exec} External-tiledarray)
+  add_dependencies(examples-tiledarray scalapack-${_exec})
 
 endforeach()
 
-endif(ENABLE_ELEMENTAL)
+endif(ENABLE_SCALAPACK)

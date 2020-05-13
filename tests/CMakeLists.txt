@@ -97,15 +97,16 @@ set(ta_test_src_files  ta_test.cpp
     tot_dist_array_part1.cpp
     tot_dist_array_part2.cpp
     random.cpp
+    diagonal_array.cpp
 )
-
-if(ENABLE_ELEMENTAL)
-    list(APPEND ta_test_src_files elemental.cpp)
-endif()
 
 if(CUDA_FOUND)
     list(APPEND ta_test_src_files cutt.cpp expressions_cuda_um.cpp tensor_um.cpp)
 endif()
+
+if (TARGET TiledArray_SCALAPACK)
+  list(APPEND ta_test_src_files scalapack.cpp)
+endif(TARGET TiledArray_SCALAPACK)
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
 if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND)

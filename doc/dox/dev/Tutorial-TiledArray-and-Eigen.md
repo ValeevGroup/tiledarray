@@ -7,11 +7,11 @@ Because Eigen is a non-distributed library, these functions are not appropriate 
 # Conversion Functions
 
 ## `eigen_to_array()`
-Convert an Eigen matrix into an Array object.
+Convert an Eigen matrix into a DistArray object.
 
 ### Signature
 
-```c++
+```
     template<typename A , typename Derived >
     A
     TiledArray::eigen_to_array(madness::World & world,
@@ -20,10 +20,10 @@ Convert an Eigen matrix into an Array object.
 ```
 
 ### Description
-This function will copy the content of `matrix` into an Array object that is tiled according to the `trange` object. The copy operation is done in parallel, and this function will block until all elements of `matrix` have been copied into the result array tiles.
+This function will copy the content of `matrix` into a DistArray object that is tiled according to the `trange` object. The copy operation is done in parallel, and this function will block until all elements of `matrix` have been copied into the result array tiles.
 
 #### Template Parameters
-* `A` The array type
+* `A` A DistArray type
 * `Derived` The Eigen matrix derived type
 
 #### Parameters
@@ -32,14 +32,14 @@ This function will copy the content of `matrix` into an Array object that is til
 * `matrix` The Eigen matrix to be copied
 
 #### Returns
-An `Array`, of type `A`, object that is a copy of matrix
+A DistArray object (of type `A`) that contains a copy of `matrix`
 
 #### Exceptions
 `TiledArray::Exception` When world size is greater than 1
 
 ### Usage
 
-```c++
+```
     Eigen::MatrixXd matrix(100, 100);
     // Fill matrix with data ...
     
@@ -52,20 +52,20 @@ An `Array`, of type `A`, object that is a copy of matrix
            TiledArray::TiledRange1(blocks.begin(), blocks.end()) }};
     TiledArray::TiledRange trange(blocks2.begin(), blocks2.end());
     
-    // Create an Array from an Eigen matrix.
-    TiledArray::Array<double, 2> array = eigen_to_array<TiledArray::Array<double, 2> >(world, trange, matrix);
+    // Create a DistArray from an Eigen matrix.
+    TiledArray::TArray<double> array = eigen_to_array<TiledArray::TArray<double> >(world, trange, matrix);
 ```
 
 ### Notes
 
-This function will only work in non-distributed environments. If you need to convert an Eigen matrix to an Array object, you must implement it yourself. However, you may use eigen_submatrix_to_tensor to make writing such an algorithm easier.
+This function will only work in non-distributed environments. If you need to convert an Eigen matrix to a DistArray object, you must implement it yourself. However, you may use eigen_submatrix_to_tensor to make writing such an algorithm easier.
 
 ## `array_to_eigen()`
-Convert an Array object into an Eigen matrix object.
+Convert a DistArray object into an Eigen matrix object.
 
 ### Signature
 
-```c++
+```
     template<typename T , unsigned int DIM, typename Tile >
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
     TiledArray::array_to_eigen(const Array< T, DIM, Tile > & array)
@@ -75,9 +75,8 @@ Convert an Array object into an Eigen matrix object.
 This function will block until all tiles of array have been set and copied into the new Eigen matrix. Usage:
 
 ### Template Parameters
-* `T` The element type of the array
-* `DIM` The array dimension
 * `Tile` The tile type of the array
+* `Policy` The policy type of the array
 
 #### Parameters
 * `array` The array to be converted
@@ -87,8 +86,8 @@ This function will block until all tiles of array have been set and copied into 
 
 #### Usage
 
-```c++
-    TiledArray::Array<double, 2> array(world, trange);
+```
+    TiledArray::TArray<double> array(world, trange);
     // Set tiles of array ...
     Eigen::MatrixXd m = array_to_eigen(array);
 ```
@@ -106,7 +105,7 @@ Construct an `m x n` `Eigen::Map` object for a given `Tensor` object.
 
 ### Signature
 
-```c++
+```
     template <typename T, typename A>
     inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
     eigen_map(const Tensor<T, A>& tensor, const std::size_t m, const std::size_t n)
@@ -136,7 +135,7 @@ An m x n Eigen matrix map for `tensor`
 
 ### Usage
 
-```c++
+```
     // Construct a tensor object
     std::array<std::size_t, 2> size = {{ 10, 10 }};
     TiledArray::Tensor<int> tensor(TiledArray::Range(size), 1);
@@ -158,7 +157,7 @@ Construct a `Eigen::Map` object for a given `Tensor` object.
 
 ### Signature
 
-```c++
+```
     template <typename T, typename A>
     inline Eigen::Map<const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>, Eigen::AutoAlign>
     eigen_map(const Tensor<T, A>& tensor)
@@ -186,7 +185,7 @@ An  Eigen matrix map for `tensor` where the number of rows and columns of the ma
 
 #### Usage
 
-```c++
+```
     // Construct a tensor object
     std::array<std::size_t, 2> size = {{ 10, 10 }};
     TiledArray::Tensor<int> tensor(TiledArray::Range(size), 1);

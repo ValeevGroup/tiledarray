@@ -101,11 +101,6 @@ with open(version_cmake_path) as inf:
                 madness_old_version = tokens[2]
             else:
                 madness_new_version = tokens[2]
-        elif tokens[1].find('ELEMENTAL') != -1:
-            if tokens[1].find('PREVIOUS') != -1:
-                elemental_old_tag = tokens[2]
-            else:
-                elemental_new_tag = tokens[2]
         elif tokens[1].find('BTAS') != -1:
             if tokens[1].find('PREVIOUS') != -1:
                 btas_old_tag = tokens[2]
@@ -121,6 +116,16 @@ with open(version_cmake_path) as inf:
                 umpire_old_tag = tokens[2]
             else:
                 umpire_new_tag = tokens[2]
+        elif tokens[1].find('BLACSPP') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                blacspp_old_tag = tokens[2]
+            else:
+                blacspp_new_tag = tokens[2]
+        elif tokens[1].find('SCALAPACKPP') != -1:
+            if tokens[1].find('PREVIOUS') != -1:
+                scalapackpp_old_tag = tokens[2]
+            else:
+                scalapackpp_new_tag = tokens[2]
 
 any_files_changed = False
 
@@ -142,9 +147,6 @@ any_files_changed |= replace_dep_id(topsrc, 'cmake.in', 'MADNESS', madness_old_v
 # MADNESS tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'MADNESS', madness_old_tag, madness_new_tag, 'm-a-d-n-e-s-s/madness), tag ', ' ')
 
-# Elemental tag in INSTALL.md
-any_files_changed |= replace_dep_id(topsrc, 'md', 'Elemental', elemental_old_tag, elemental_new_tag, 'distributed-memory linear algebra library (tag ', '')
-
 # BTAS tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'BTAS', btas_old_tag, btas_new_tag, 'BTAS/BTAS), tag ', '')
 
@@ -153,6 +155,12 @@ any_files_changed |= replace_dep_id(topsrc, 'md', 'cuTT', cutt_old_tag, cutt_new
 
 # Umpire tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'Umpire', umpire_old_tag, umpire_new_tag, '', '')
+
+# BLACSPP tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'BLACSPP', blacspp_old_tag, blacspp_new_tag, '', '')
+
+# SCALAPACKPP tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'SCALAPACKPP', scalapackpp_old_tag, scalapackpp_new_tag, '', '')
 
 if any_files_changed:
     sys.exit(1)

@@ -33,7 +33,6 @@ TiledArray/block_range.h
 TiledArray/dense_shape.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
-TiledArray/external/elemental.h
 TiledArray/error.h
 TiledArray/external/madness.h
 TiledArray/initialize.h
@@ -69,7 +68,7 @@ TiledArray/conversions/foreach.h
 TiledArray/conversions/vector_of_arrays.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
-TiledArray/conversions/elemental.h
+TiledArray/conversions/scalapack.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/dist_eval/array_eval.h
@@ -192,6 +191,8 @@ TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
 )
 
+# the list of libraries on which TiledArray depends on, will be cached later
+set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS)
 
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)
@@ -207,15 +208,18 @@ if(CUDA_FOUND)
           PROPERTIES
           LANGUAGE CUDA)
 
-  # the list of libraries on which TiledArray build depends on
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" "${CUDA_CUBLAS_LIBRARIES}" "${CUDA_nvToolsExt_LIBRARY}" TiledArray_CUTT TiledArray_UMPIRE TiledArray_Eigen BTAS::BTAS CACHE STRING "List of libraries on which TiledArray depends on")
-
-else(CUDA_FOUND)
-
-  # the list of libraries on which TiledArray build depends on
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES MADworld "${LAPACK_LIBRARIES}" TiledArray_Eigen BTAS::BTAS CACHE STRING "List of libraries on which TiledArray depends on")
+  # the list of libraries on which TiledArray depends on
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_UMPIRE TiledArray_CUTT)
 
 endif(CUDA_FOUND)
+
+if( TARGET TiledArray_SCALAPACK )
+  list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)
+endif()
+list(APPEND _TILEDARRAY_DEPENDENCIES "${LAPACK_LIBRARIES}")
+
+# cache deps as TILEDARRAY_PRIVATE_LINK_LIBRARIES
+set(TILEDARRAY_PRIVATE_LINK_LIBRARIES ${_TILEDARRAY_DEPENDENCIES} CACHE STRING "List of libraries on which TiledArray depends on")
 
 # Create the TiledArray librar{y,ies}
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
@@ -287,8 +291,7 @@ foreach (suffix ${TILEDARRAY_LIBRARY_TARGET_SUFFIXES})
 
   if (CUDA_FOUND)
     target_include_directories(${targetname} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
-    # this will eventually work, but does not as of 3.17.0-rc2
-    #target_compile_features(tiledarray PUBLIC "cuda_std_${CMAKE_CUDA_STANDARD}")
+    target_compile_features(tiledarray PUBLIC "cuda_std_${CMAKE_CUDA_STANDARD}")
   endif (CUDA_FOUND)
 
   if (LAPACK_INCLUDE_DIRS)
