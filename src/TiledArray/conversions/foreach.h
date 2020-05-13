@@ -28,6 +28,7 @@
 
 #include <TiledArray/shape.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/util/function.h>
 
 /// Forward declarations
 namespace Eigen {
@@ -59,7 +60,8 @@ struct void_op_helper<false, Result> {
   template <typename Op, typename Arg, typename... Args>
   Result operator()(Op&& op, Arg&& arg, Args&&... args) {
     Result result;
-    op(result, std::forward<Arg>(arg), std::forward<Args>(args)...);
+    std::forward<Op>(op)(result, std::forward<Arg>(arg),
+                         std::forward<Args>(args)...);
     return result;
   }
 };
@@ -67,7 +69,7 @@ template <typename Result>
 struct void_op_helper<true, Result> {
   template <typename Op, typename Arg, typename... Args>
   decltype(auto) operator()(Op&& op, Arg&& arg, Args&&... args) {
-    op(std::forward<Arg>(arg), std::forward<Args>(args)...);
+    std::forward<Op>(op)(std::forward<Arg>(arg), std::forward<Args>(args)...);
     return arg;
   }
 };
@@ -80,7 +82,8 @@ struct nonvoid_op_helper<false, Result> {
   template <typename Op, typename OpResult, typename Arg, typename... Args>
   Result operator()(Op&& op, OpResult& op_result, Arg&& arg, Args&&... args) {
     Result result;
-    op_result = op(result, std::forward<Arg>(arg), std::forward<Args>(args)...);
+    op_result = std::forward<Op>(op)(result, std::forward<Arg>(arg),
+                                     std::forward<Args>(args)...);
     return result;
   }
 };
@@ -89,7 +92,8 @@ struct nonvoid_op_helper<true, Result> {
   template <typename Op, typename OpResult, typename Arg, typename... Args>
   std::decay_t<Arg> operator()(Op&& op, OpResult& op_result, Arg&& arg,
                                Args&&... args) {
-    op_result = op(std::forward<Arg>(arg), std::forward<Args>(args)...);
+    op_result = std::forward<Op>(op)(std::forward<Arg>(arg),
+                                     std::forward<Args>(args)...);
     return arg;
   }
 };
@@ -193,19 +197,31 @@ inline std::
   // Make an empty result array
   result_array_type result(world, arg.trange(), arg.pmap());
 
-  // Construct the task function for making result tiles.
-  auto task = [&op](const_if_t<not inplace,
-                               typename arg_array_type::value_type>& arg_tile,
-                    const ArgTiles&... arg_tiles) {
-    void_op_helper<inplace, typename result_array_type::value_type> op_caller;
-    return op_caller(std::forward<Op>(op), arg_tile, arg_tiles...);
-  };
+  // lifetime management of op depends on whether it is a lvalue ref (i.e. has
+  // an external owner) or an rvalue ref it also depends on whether we want to
+  // fire_same op for each tile (fire_op) or fire clones of op (fire_op_clone)
+  // - if op is an lvalue ref
+  //   - if fire_op: pass op to tasks
+  //   - if fire_op_clone: pass Op_(op) to tasks
+  // - if op is an rvalue ref
+  //   - if fire_op: pass make_shared_function(op) to tasks
+  //   - if fire_op_clone: pass copy of std::make_function(op) to tasks
+  // currently only fire_op is implemented
+  auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
 
   // Iterate over local tiles of arg
   for (auto index : *(arg.pmap())) {
     // Spawn a task to evaluate the tile
-    Future<typename result_array_type::value_type> tile =
-        world.taskq.add(task, arg.find(index), args.find(index)...);
+    Future<typename result_array_type::value_type> tile = world.taskq.add(
+        [op_shared_handle](
+            const_if_t<not inplace, typename arg_array_type::value_type>&
+                arg_tile,
+            const ArgTiles&... arg_tiles) {
+          void_op_helper<inplace, typename result_array_type::value_type>
+              op_caller;
+          return op_caller(std::move(op_shared_handle), arg_tile, arg_tiles...);
+        },
+        arg.find(index), args.find(index)...);
 
     // Store result tile
     result.set(index, tile);
@@ -270,12 +286,13 @@ inline std::
   madness::AtomicInt counter;
   counter = 0;
   int task_count = 0;
-  auto task = [&op, &counter, &tile_norms](
-                  const size_type index,
-                  const_if_t<not inplace, arg_value_type>& arg_tile,
-                  const ArgTiles&... arg_tiles) -> result_value_type {
+  auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
+  const auto task = [op_shared_handle, &counter, &tile_norms](
+                        const size_type index,
+                        const_if_t<not inplace, arg_value_type>& arg_tile,
+                        const ArgTiles&... arg_tiles) -> result_value_type {
     op_helper<inplace, result_value_type> op_caller;
-    auto result_tile = op_caller(std::forward<Op>(op), tile_norms[index],
+    auto result_tile = op_caller(std::move(op_shared_handle), tile_norms[index],
                                  arg_tile, arg_tiles...);
     ++counter;
     return result_tile;
