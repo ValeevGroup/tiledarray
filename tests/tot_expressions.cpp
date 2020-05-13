@@ -81,4 +81,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(permute_inner, TestParam, test_params){
     }
   }
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_FIXTURE_TEST_SUITE(tot_addition, ToTArrayFixture)
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(vov, TestParam, test_params){
+  using inner_type = inner_type<TestParam>;
+  using range_type = Range;
+  using il_type    = detail::vector_il<inner_type>;
+  il_type lhs_il{inner_type{range_type{2}, {0, 1}},
+                 inner_type{range_type{3}, {1, 2, 3}}};
+  il_type rhs_il{inner_type{range_type{2}, {1, 2}},
+                 inner_type{range_type{3}, {2, 3, 4}}};
+  il_type corr_il{inner_type{range_type{2}, {1,3}},
+                  inner_type{range_type{3}, {3, 5, 7}}};
+  tensor_type<TestParam> lhs(m_world, lhs_il);
+  tensor_type<TestParam> rhs(m_world, rhs_il);
+  tensor_type<TestParam> corr(m_world, corr_il);
+  tensor_type<TestParam> result;
+  result ("i;j") = lhs("i;j") + rhs("i;j");
+  std::cout << result << std::endl;
+}
+
 BOOST_AUTO_TEST_SUITE_END()

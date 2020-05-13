@@ -432,7 +432,7 @@ class Expr {
       else {
         auto new_tile = world.taskq.add([=]() {
           auto temp = tile_contents.get();
-          using tile_type = typename decltype(temp)::conversion_result_type;
+          using tile_type = typename A::value_type;
           tile_type tile = static_cast<tile_type>(temp);
           using inner_type = typename tile_type::value_type;
           Permute<inner_type, inner_type> p;
