@@ -65,6 +65,7 @@ struct ConjugateGradientSolver {
   /// elements in the residual.
   value_type operator()(F& a, const D& b, D& x, const D& preconditioner,
                         value_type convergence_target = -1.0) {
+    using TiledArray::size;
     std::size_t n = size(preconditioner);
 
     const bool use_diis = false;
