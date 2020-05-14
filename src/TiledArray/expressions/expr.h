@@ -437,8 +437,7 @@ class Expr {
           auto tile = static_cast<tile_type>(temp);
 
           for (auto& inner_t : tile) {
-            Tile<typename tile_type::value_type> t(inner_t);
-            inner_t = permute(t, inner_perm).tensor();
+            inner_t = permute(inner_t, inner_perm);
           }
           return tile;
         });
