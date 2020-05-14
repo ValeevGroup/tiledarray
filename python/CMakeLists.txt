@@ -51,6 +51,6 @@ enable_testing()
 add_test(
   NAME test_tiledarray
   # need to use pytest to find tiledarray module properly
-  COMMAND ${PYTHON_EXECUTABLE} -m pytest ${PROJECT_SOURCE_DIR}/test_tiledarray.py
+  COMMAND ${Python3_EXECUTABLE} -m pytest ${PROJECT_SOURCE_DIR}/test_tiledarray.py
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
   )
