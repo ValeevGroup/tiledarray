@@ -28,6 +28,7 @@
 
 #include "TiledArray/config.h"
 #include "TiledArray/tensor/trace.h"
+#include "TiledArray/tile.h"
 #include "../reduce_task.h"
 #include "../tile_interface/cast.h"
 #include "../tile_interface/scale.h"
@@ -432,11 +433,13 @@ class Expr {
       else {
         auto new_tile = world.taskq.add([=]() {
           auto temp = tile_contents.get();
-          using tile_type = typename decltype(temp)::conversion_result_type;
-          tile_type tile = static_cast<tile_type>(temp);
-          using inner_type = typename tile_type::value_type;
-          Permute<inner_type, inner_type> p;
-          for (auto& inner_t : tile) inner_t = p(inner_t, inner_perm);
+          using tile_type = typename A::value_type;
+          auto tile = static_cast<tile_type>(temp);
+
+          for (auto& inner_t : tile) {
+            Tile<typename tile_type::value_type> t(inner_t);
+            inner_t = permute(t, inner_perm).tensor();
+          }
           return tile;
         });
         result.set(index, new_tile);
