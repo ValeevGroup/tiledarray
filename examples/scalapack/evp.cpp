@@ -28,6 +28,8 @@
 #include <scalapackpp/eigenvalue_problem/sevp.hpp>
 #include <scalapackpp/pblas/gemm.hpp>
 
+#include <TiledArray/math/scalapack.h>
+
 using Array = TA::TArray<double>;
 // using Array = TA::TSpArray<double>;
 
@@ -86,12 +88,12 @@ int main(int argc, char** argv) {
     auto trange = gen_trange(N, {NB});
     auto tensor = TA::make_array<Array>(world, trange, make_random_ta);
 
-#if 1
     // Symmetrize
     Array tensor_symm(world, trange);
     tensor_symm("i,j") = 0.5 * (tensor("i,j") + tensor("j,i"));
     tensor("i,j") = tensor_symm("i,j");
 
+#if 0
     // Convert to BlockCyclic
     world.gop.fence();
     TA::BlockCyclicMatrix<double> matrix(tensor, grid, NB, NB);
@@ -159,6 +161,12 @@ int main(int argc, char** argv) {
                 << std::endl;
     }
 
+#else
+
+    auto [ evals, evecs_ta ] = TA::heig( tensor );
+
+#endif
+
     //// Check EVP with TA
     Array tmp = TA::foreach (evecs_ta, [&](TA::Tensor<double>& result,
                                            const TA::Tensor<double>& arg) {
@@ -181,7 +189,6 @@ int main(int argc, char** argv) {
     if (~world.rank())
       std::cout << "EVP (Tensor) |A - XEX**T| = " << err_norm << std::endl;
 
-#endif
     world.gop.fence();
   }
   TA::finalize();
