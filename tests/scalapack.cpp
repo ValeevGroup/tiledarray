@@ -6,7 +6,7 @@
 
 struct ScaLAPACKFixture {
   blacspp::Grid grid;
-  ScaLAPACKMatrix<double> ref_matrix;  // XXX: Just double is fine?
+  BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
   static double make_ta_reference(TA::Tensor<double>& t,
                                   TA::Range const& range) {
@@ -61,7 +61,7 @@ TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
 
 BOOST_FIXTURE_TEST_SUITE(scalapack_suite, ScaLAPACKFixture)
 
-BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
+BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();
@@ -92,7 +92,7 @@ BOOST_AUTO_TEST_CASE(sca_to_uniform_tiled_array_test) {
 
 
 
-BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_sca_test) {
+BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_bc_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();
@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_sca_test) {
 
 
 
-BOOST_AUTO_TEST_CASE(sca_to_random_tiled_array_test) {
+BOOST_AUTO_TEST_CASE(bc_to_random_tiled_array_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();
@@ -164,7 +164,7 @@ BOOST_AUTO_TEST_CASE(sca_to_random_tiled_array_test) {
 
 
 
-BOOST_AUTO_TEST_CASE(random_tiled_array_to_sca_test) {
+BOOST_AUTO_TEST_CASE(random_tiled_array_to_bc_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();

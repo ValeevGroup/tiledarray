@@ -58,7 +58,7 @@
 #include <TiledArray/dist_array.h>
 
 #ifdef TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/conversions/scalapack.h>
+#include <TiledArray/conversions/block_cyclic.h>
 #endif
 
 #endif  // TILEDARRAY_H__INCLUDED
