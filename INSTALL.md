@@ -287,6 +287,14 @@ variable:
 
 If Eigen is not found at the configure time, it will be downloaded from the Bitbucket repository.
 
+## Pythom
+
+To build Python bindings use the following variable:
+
+* `TA_PYTHON` -- Set to `ON` to build Python bindings.
+
+This also requires setting `BUILD_SHARED_LIBS` to `ON`.
+
 ## MADNESS
 
 TiledArray uses a non-release version of MADNESS. Therefore, you should NOT
