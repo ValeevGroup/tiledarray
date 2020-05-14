@@ -68,7 +68,7 @@ auto retile(const DistArray<TileType, PolicyType>& tensor,
 
   // Check the different dimensions and contract when needed
   using tensor_type = DistArray<TileType, PolicyType>;
-  auto output_tensor = tensor;
+  auto output_tensor = tensor.clone();
   for (auto i = 0; i < rank; ++i) {
     if (new_trange.dim(i) != tensor.trange().dim(i)) {
       // Make identity for contraction
