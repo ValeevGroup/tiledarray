@@ -78,11 +78,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(default_ctor, TestParam, test_params) {
  */
 BOOST_AUTO_TEST_CASE_TEMPLATE(copy_ctor, TestParam, test_params) {
   // Ensure we can copy a default constructed array
-  {
+  /*{
     tensor_type<TestParam> t;
     tensor_type<TestParam> copy_of_t(t);
     BOOST_TEST(are_equal(t, copy_of_t));
-  }
+  }*/
 
   for (auto tr_t : run_all<TestParam>()) {
     auto& t = std::get<2>(tr_t);
