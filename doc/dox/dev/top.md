@@ -8,3 +8,4 @@
 * [Customizing Expressions](@ref Customizing-Expressions): How to modify how expressions are evaluated and implement new expressions.
 * [Using TiledArray+ScaLAPACK](@ref Tutorial-TiledArray-and-ScaLAPACK): How to use TiledArray with ScaLAPACK.
 * [Using TiledArray+Eigen](@ref Tutorial-TiledArray-and-Eigen): How to use TiledArray with Eigen.
+* [Using TiledArray+Python](@ref Tutorial-TiledArray-and-Python): How to use TiledArray in Python.

@@ -17,6 +17,9 @@ fi
 export PATH=${INSTALL_PREFIX}/cmake/bin:${PATH}
 cmake --version
 
+export Python3_EXECUTABLE=$(which python3)
+export TA_PYTHON=${BUILD_SHARED}
+
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-scalapack-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
@@ -99,6 +102,8 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
     -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3" \
+    -DPython3_EXECUTABLE="${Python3_EXECUTABLE}" \
+    -DTA_PYTHON="${TA_PYTHON}" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_SCALAPACK=ON
@@ -129,6 +134,8 @@ else
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
     -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3" \
+    -DPython3_EXECUTABLE="${Python3_EXECUTABLE}" \
+    -DTA_PYTHON="${TA_PYTHON}" \
     -DTA_BUILD_UNITTEST=ON \
     -DTA_ERROR="throw" \
     -DENABLE_SCALAPACK=ON

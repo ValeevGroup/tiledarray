@@ -406,3 +406,11 @@ ADD_CUSTOM_TARGET(release
 
 feature_summary(WHAT ALL
                 DESCRIPTION "=== TiledArray Package/Feature Info ===")
+
+option(TA_PYTHON "Build TA python module" OFF)
+if (TA_PYTHON)
+  if (NOT BUILD_SHARED_LIBS)
+    message(FATAL_ERROR "Python module requires BUILD_SHARED_LIBS=ON")
+  endif()
+  add_subdirectory(python)
+endif()
