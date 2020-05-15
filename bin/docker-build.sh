@@ -29,11 +29,12 @@ CMD ["/sbin/my_init"]
 RUN apt-get update && apt-get upgrade -y -o Dpkg::Options::="--force-confold"
 
 # build TiledArray
-# 1. basic prereqs
-RUN apt-get update && apt-get install -y python3 ninja-build liblapacke-dev liblapack-dev mpich libboost-dev libeigen3-dev git wget libboost-serialization-dev libunwind-dev clang-8 libc++-8-dev libc++abi-8-dev && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-# 2. recent cmake
-RUN CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz" && wget --no-check-certificate -O - \$CMAKE_URL | tar --strip-components=1 -xz -C /usr/local
-ENV CMAKE=/usr/local/bin/cmake
+ # 1. basic prereqs
+-RUN apt-get update && apt-get install -y python3 ninja-build liblapacke-dev liblapack-dev mpich libboost-dev libeigen3-dev git wget libboost-serialization-dev libunwind-dev clang-8 libc++-8-dev libc++abi-8-dev && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
++RUN apt-get update && apt-get install -y ninja-build liblapacke-dev liblapack-dev mpich libboost-dev libeigen3-dev git wget libboost-serialization-dev libunwind-dev clang-8 libc++-8-dev libc++abi-8-dev python3 python3-pip python3-test python3-numpy && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ # 2. recent cmake
+ RUN CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz" && wget --no-check-certificate -O - \$CMAKE_URL | tar --strip-components=1 -xz -C /usr/local
+ ENV CMAKE=/usr/local/bin/cmake
 # 3. download and build TiledArray
 RUN cd /usr/local/src && git clone --depth=1 https://github.com/ValeevGroup/tiledarray.git && cd /usr/local/src/tiledarray && mkdir build && cd build && \$CMAKE .. -G Ninja -DCMAKE_CXX_COMPILER=clang++-8 -DCMAKE_C_COMPILER=clang-8 -DTA_BUILD_UNITTEST=ON -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=RelWithDebInfo && \$CMAKE --build . --target tiledarray && \$CMAKE --build . --target check && $CMAKE --build . --target examples && \$CMAKE --build . --target install
 
