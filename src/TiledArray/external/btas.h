@@ -124,13 +124,13 @@ template <typename T, typename Range, typename Storage>
 inline btas::Tensor<T, Range, Storage> permute(
     const btas::Tensor<T, Range, Storage>& arg,
     const TiledArray::Permutation& perm) {
-  //  btas::Tensor<T, Range, Storage> result;
-  //  std::vector<size_t> p(perm.dim());
-  //  std::copy(perm.begin(), perm.end(), p.begin());
-  //  btas::permute(arg, p, result);
-  //  return result;
-  auto arg_view = make_ti(arg);
-  return arg_view.permute(perm);
+    btas::Tensor<T, Range, Storage> result;
+    std::vector<size_t> p(perm.dim());
+    std::copy(perm.begin(), perm.end(), p.begin());
+    btas::permute(arg, p, result);
+    return result;
+  //auto arg_view = make_ti(arg);
+  //return arg_view.permute(perm);
 }
 
 // Shift operations ----------------------------------------------------------
