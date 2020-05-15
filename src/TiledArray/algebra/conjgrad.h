@@ -52,6 +52,10 @@ namespace TiledArray {
 ///   </tt> \li <tt> void scale(D&, value_type) </tt> \li <tt> void axpy(D& y,
 ///   value_type a, const D& x) </tt> \li <tt> void assign(D&, const D&) </tt>
 ///   \li <tt> double norm2(const D&) </tt>
+///
+/// These functions should be defined in the TiledArray namespace to be safe,
+/// although most compilers can safely find these functions in another namespace
+/// via ADL.
 template <typename D, typename F>
 struct ConjugateGradientSolver {
   typedef typename D::element_type value_type;
@@ -65,8 +69,12 @@ struct ConjugateGradientSolver {
   /// elements in the residual.
   value_type operator()(F& a, const D& b, D& x, const D& preconditioner,
                         value_type convergence_target = -1.0) {
+#ifdef TILEDARRAY_CXX_COMPILER_IS_ICC
+    std::size_t n = TiledArray::size(preconditioner);
+#else
     using TiledArray::size;
     std::size_t n = size(preconditioner);
+#endif
 
     const bool use_diis = false;
     DIIS<D> diis;
@@ -81,7 +89,7 @@ struct ConjugateGradientSolver {
     D PP_i;
     D APP_i = clone(b);
 
-    // approximate the condition number as the ratio of the min and max elements
+    // approximate the conditio number as the ratio of the min and max elements
     // of the preconditioner assuming that preconditioner is the approximate
     // inverse of A in Ax - b =0
     const value_type precond_min = minabs_value(preconditioner);
@@ -90,7 +98,7 @@ struct ConjugateGradientSolver {
     // std::cout << "condition number = " << precond_max << " / " << precond_min
     // << " = " << cond_number << std::endl;
     // if convergence target is given, estimate of how tightly the system can be
-    // converged
+    // converge
     if (convergence_target < 0.0) {
       convergence_target = 1e-15 * cond_number;
     } else {  // else warn if the given system is not sufficiently well
