@@ -355,12 +355,12 @@ else()
       # try relative to (TA) project source dir first, then to binary dir
       get_filename_component(absolute_toolchain_file_path "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE
           BASE_DIR "${PROJECT_SOURCE_DIR}")
-      if (NOT absolute_toolchain_file_path)
+      if (NOT absolute_toolchain_file_path OR NOT EXISTS "${absolute_toolchain_file_path}")
         get_filename_component(absolute_toolchain_file_path "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE
             BASE_DIR "${PROJECT_BINARY_DIR}")
       endif()
       # better give up, if cannot resolve, then end up with MADNESS built with a different toolchain
-      if (NOT absolute_toolchain_file_path)
+      if (NOT absolute_toolchain_file_path OR NOT EXISTS "${absolute_toolchain_file_path}")
         message(FATAL_ERROR "could not resolve the absolute path to the toolchain file: CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}; specify the CMAKE_TOOLCHAIN_FILE as the absolute path to work around")
       endif()
     endif(IS_ABSOLUTE CMAKE_TOOLCHAIN_FILE)
