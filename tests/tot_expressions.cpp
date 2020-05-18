@@ -156,18 +156,22 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vom_result_transpose, TestParam, test_params){
   using range_type = Range;
   using il_type    = detail::vector_il<inner_type>;
   range_type r23{2, 3}, r33{3, 3};
-  inner_type lhs_0{r23}; lhs_0(0, 0) = 0; lhs_0(0, 1) = 1; lhs_0(0, 2) = 2;
-  lhs_0(1, 0) = 1; lhs_0(1, 1) = 2; lhs_0(1, 2) = 3;
-  inner_type lhs_1{r33}; lhs_1(0, 0) = 1; lhs_1(0, 1) = 2; lhs_1(0, 2) = 3;
-  lhs_1(1, 0) = 2; lhs_1(1, 1) = 3; lhs_1(1, 2) = 4;
-  lhs_1(2, 0) = 3; lhs_1(2, 1) = 4; lhs_1(2, 2) = 5;
+  inner_type lhs_0{r23};
+    lhs_0(0, 0) = 0; lhs_0(0, 1) = 1; lhs_0(0, 2) = 2;
+    lhs_0(1, 0) = 1; lhs_0(1, 1) = 2; lhs_0(1, 2) = 3;
+  inner_type lhs_1{r33};
+    lhs_1(0, 0) = 1; lhs_1(0, 1) = 2; lhs_1(0, 2) = 3;
+    lhs_1(1, 0) = 2; lhs_1(1, 1) = 3; lhs_1(1, 2) = 4;
+    lhs_1(2, 0) = 3; lhs_1(2, 1) = 4; lhs_1(2, 2) = 5;
   il_type lhs_il{lhs_0, lhs_1};
 
-  inner_type rhs_0{r23}; rhs_0(0, 0) = 1; rhs_0(0, 1) = 2; rhs_0(0, 2) = 3;
-  rhs_0(1, 0) = 2; rhs_0(1, 1) = 3; rhs_0(1, 2) = 4;
-  inner_type rhs_1{r33}; rhs_1(0, 0) = 2; rhs_1(0, 1) = 3; rhs_1(0, 2) = 4;
-  rhs_1(1, 0) = 3; rhs_1(1, 1) = 4; rhs_1(1, 2) = 5;
-  rhs_1(2, 0) = 4; rhs_1(2, 1) = 5; rhs_1(2, 2) = 6;
+  inner_type rhs_0{r23};
+    rhs_0(0, 0) = 1; rhs_0(0, 1) = 2; rhs_0(0, 2) = 3;
+    rhs_0(1, 0) = 2; rhs_0(1, 1) = 3; rhs_0(1, 2) = 4;
+  inner_type rhs_1{r33};
+    rhs_1(0, 0) = 2; rhs_1(0, 1) = 3; rhs_1(0, 2) = 4;
+    rhs_1(1, 0) = 3; rhs_1(1, 1) = 4; rhs_1(1, 2) = 5;
+    rhs_1(2, 0) = 4; rhs_1(2, 1) = 5; rhs_1(2, 2) = 6;
   il_type rhs_il{rhs_0, rhs_1};
 
   inner_type c_0{range_type{3, 2}}; c_0(0, 0) = 1; c_0(0, 1) = 3;
@@ -186,24 +190,44 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vom_result_transpose, TestParam, test_params){
   are_equal(result, corr);
 }
 
-////BOOST_AUTO_TEST_CASE_TEMPLATE(vom_lhs_transpose, TestParam, test_params){
-////  using inner_type = inner_type<TestParam>;
-////  using range_type = Range;
-////  using il_type    = detail::vector_il<inner_type>;
-////  il_type lhs_il{inner_type{range_type{{3, 2}},
-////                            {0, 1, 1, 2, 2, 3}},
-////                 inner_type{range_type{{3, 3}}, {1, 2, 3, 2, 3, 4, 3, 4, 5}}};
-////  il_type rhs_il{inner_type{range_type{{2, 3}}, {1, 2, 3, 2, 3, 4}},
-////                 inner_type{range_type{{3, 3}}, {2, 3, 4, 3, 4, 5, 4, 5, 6}}};
-////  il_type corr_il{inner_type{range_type{{2, 3}}, {1, 3, 5, 3, 5, 7}},
-////                  inner_type{range_type{{3, 3}}, {3, 5, 7, 5, 7, 9, 7, 9, 11}}};
-////  tensor_type<TestParam> lhs(m_world, lhs_il);
-////  tensor_type<TestParam> rhs(m_world, rhs_il);
-////  tensor_type<TestParam> corr(m_world, corr_il);
-////  tensor_type<TestParam> result;
-////  result ("i;j,k") = lhs("i;k,j") + rhs("i;j,k");
-////  are_equal(result, corr);
-////}
+BOOST_AUTO_TEST_CASE_TEMPLATE(vom_lhs_transpose, TestParam, test_params){
+  using inner_type = inner_type<TestParam>;
+  using range_type = Range;
+  using il_type    = detail::vector_il<inner_type>;
+  range_type r23{2, 3}, r33{3, 3};
+  inner_type lhs_0(range_type{3, 2});
+    lhs_0(0, 0) = 0; lhs_0(0, 1) = 1;
+    lhs_0(1, 0) = 1; lhs_0(1, 1) = 2;
+    lhs_0(2, 0) = 2; lhs_0(2, 1) = 3;
+  inner_type lhs_1{r33};
+    lhs_1(0, 0) = 1; lhs_1(0, 1) = 2; lhs_1(0, 2) = 3;
+    lhs_1(1, 0) = 2; lhs_1(1, 1) = 3; lhs_1(1, 2) = 4;
+    lhs_1(2, 0) = 3; lhs_1(2, 1) = 4; lhs_1(2, 2) = 5;
+  il_type lhs_il{lhs_0, lhs_1};
+
+  inner_type rhs_0{r23};
+    rhs_0(0, 0) = 1; rhs_0(0, 1) = 2; rhs_0(0, 2) = 3;
+    rhs_0(1, 0) = 2; rhs_0(1, 1) = 3; rhs_0(1, 2) = 4;
+  inner_type rhs_1{r33};
+    rhs_1(0, 0) = 2; rhs_1(0, 1) = 3; rhs_1(0, 2) = 4;
+    rhs_1(1, 0) = 3; rhs_1(1, 1) = 4; rhs_1(1, 2) = 5;
+    rhs_1(2, 0) = 4; rhs_1(2, 1) = 5; rhs_1(2, 2) = 6;
+  il_type rhs_il{rhs_0, rhs_1};
+
+  inner_type c_0{range_type{3, 2}}; c_0(0, 0) = 1; c_0(0, 1) = 3;
+  c_0(1, 0) = 3; c_0(1, 1) = 5;
+  c_0(2, 0) = 5; c_0(2, 1) = 7;
+  inner_type c_1{r33}; c_1(0, 0) = 3; c_1(0, 1) = 5; c_1(0, 2) = 7;
+  c_1(1, 0) = 5; c_1(1, 1) = 7; c_1(1, 2) = 9;
+  c_1(2, 0) = 7; c_1(2, 1) = 9; c_1(2, 2) = 11;
+  il_type corr_il{c_0, c_1};
+  tensor_type<TestParam> lhs(m_world, lhs_il);
+  tensor_type<TestParam> rhs(m_world, rhs_il);
+  tensor_type<TestParam> corr(m_world, corr_il);
+  tensor_type<TestParam> result;
+  result ("i;j,k") = lhs("i;k,j") + rhs("i;j,k");
+  are_equal(result, corr);
+}
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(mov, TestParam, test_params){
   using inner_type = inner_type<TestParam>;
