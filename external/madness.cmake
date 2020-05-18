@@ -349,11 +349,24 @@ else()
           ${MADNESS_CMAKE_EXTRA_ARGS})
 
   if (CMAKE_TOOLCHAIN_FILE)
+    if (IS_ABSOLUTE CMAKE_TOOLCHAIN_FILE)
+      set(absolute_toolchain_file_path "${CMAKE_TOOLCHAIN_FILE}")
+    else(IS_ABSOLUTE CMAKE_TOOLCHAIN_FILE)
+      # try relative to (TA) project source dir first, then to binary dir
+      get_filename_component(absolute_toolchain_file_path "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE
+          BASE_DIR "${PROJECT_SOURCE_DIR}")
+      if (NOT absolute_toolchain_file_path OR NOT EXISTS "${absolute_toolchain_file_path}")
+        get_filename_component(absolute_toolchain_file_path "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE
+            BASE_DIR "${PROJECT_BINARY_DIR}")
+      endif()
+      # better give up, if cannot resolve, then end up with MADNESS built with a different toolchain
+      if (NOT absolute_toolchain_file_path OR NOT EXISTS "${absolute_toolchain_file_path}")
+        message(FATAL_ERROR "could not resolve the absolute path to the toolchain file: CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}; specify the CMAKE_TOOLCHAIN_FILE as the absolute path to work around")
+      endif()
+    endif(IS_ABSOLUTE CMAKE_TOOLCHAIN_FILE)
     set(MADNESS_CMAKE_ARGS  "${MADNESS_CMAKE_ARGS}"
-        "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+        "-DCMAKE_TOOLCHAIN_FILE=${absolute_toolchain_file_path}")
   endif(CMAKE_TOOLCHAIN_FILE)
-
-        #  string(REPLACE "\"" "\\\"" MADNESS_CMAKE_ARGS "${__MADNESS_CMAKE_ARGS}")
 
   set(error_code 1)
   message (STATUS "** Configuring MADNESS")

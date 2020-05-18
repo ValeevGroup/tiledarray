@@ -18,6 +18,10 @@ addons:
     - liblapacke-dev
     - libtbb-dev
     - lcov
+    - python3
+    - python3-pip
+    - python3-pytest
+    - python3-numpy
 
 env:
   global:
