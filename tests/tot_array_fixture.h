@@ -267,6 +267,7 @@ struct ToTArrayFixture {
     for(auto idx : lhs.range()){
       const auto& lhs_tot = lhs.find(idx).get();
       const auto& rhs_tot = rhs.find(idx).get();
+      lhs.world().gop.fence();
       if(lhs_tot != rhs_tot){
         are_same = false;
         break;
