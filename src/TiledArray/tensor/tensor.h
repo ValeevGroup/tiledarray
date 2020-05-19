@@ -1479,6 +1479,23 @@ class Tensor {
     return *this;
   }
 
+  template <typename U, typename AU, typename V,
+      typename std::enable_if<detail::is_tensor_of_tensor<
+          Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
+  Tensor_ gemm(const Tensor<U, AU>& other, const V factor,
+               const math::GemmHelper& gemm_helper) const {
+    TA_ASSERT("ToT contraction is NYI");
+    return Tensor_{};
+  }
+
+  template <typename U, typename AU, typename V, typename AV, typename W,
+      typename std::enable_if<detail::is_tensor_of_tensor<
+          Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
+  Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
+                const W factor, const math::GemmHelper& gemm_helper){
+    TA_ASSERT("ToT contraction is NYI");
+    return *this;
+  }
   // Reduction operations
 
   /// Generalized tensor trace
