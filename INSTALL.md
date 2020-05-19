@@ -29,7 +29,7 @@ $ cmake --build build --target install
   - Boost.Iterator: header-only
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), tag e52db3ffe7591138f2f0eeadccfa09f3f214dda1 (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/BTAS/BTAS), tag 357d3fc92d6a8b3d0914db337de0739e8df73004 (will be downloaded automatically, if missing)
 - BLAS library
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag a2ad8f5a7ff861a32d08495d3f3429972ebd3bd2 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
@@ -53,8 +53,9 @@ Optional prerequisites:
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f04abd1dd038c84262915a493d8f78576bb80fd0).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
-  - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS (tag b4e30292556e303bb40cafc0b041e9274c3d7658)
-  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 254ddb939f9762b391e636326498b1a63b1fe325)
+  - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS (tag 88076f1706be083ead882f6ce0bfc6884a72fc03)
+  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 28433942197aee141cd9e96ed1d00f6ec7b902cb)
+- Python3 interpreter -- to test (optionally-built) Python bindings
 
 Most of the dependencies (except for MADNESS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
@@ -285,6 +286,14 @@ variable:
 * `EIGEN3_INCLUDE_DIR` -- The path to the Eigen 3 include directory
 
 If Eigen is not found at the configure time, it will be downloaded from the Bitbucket repository.
+
+## Pythom
+
+To build Python bindings use the following variable:
+
+* `TA_PYTHON` -- Set to `ON` to build Python bindings.
+
+This also requires setting `BUILD_SHARED_LIBS` to `ON`.
 
 ## MADNESS
 
