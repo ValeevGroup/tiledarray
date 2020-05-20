@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2013  Virginia Tech
+ *  Copyright (C) 2020  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -68,8 +68,10 @@ auto retile(const DistArray<TileType, PolicyType>& tensor,
 
   // Check the different dimensions and contract when needed
   using tensor_type = DistArray<TileType, PolicyType>;
-  auto output_tensor = tensor.clone();
+  auto start = TA::detail::dummy_annotation(rank);
+  tensor_type output_tensor;
   for (auto i = 0; i < rank; ++i) {
+    if (i == 0) { output_tensor(start) = tensor(start); }
     if (new_trange.dim(i) != tensor.trange().dim(i)) {
       // Make identity for contraction
       TiledRange retiler{tensor.trange().dim(i), new_trange.dim(i)};
@@ -77,7 +79,6 @@ auto retile(const DistArray<TileType, PolicyType>& tensor,
       tensor.world().gop.fence();
 
       // Make indices for contraction
-      auto start = TA::detail::dummy_annotation(rank);
       auto [finish, change] = annotations(i);
 
       // Retile
