@@ -68,7 +68,7 @@ auto retile(const DistArray<TileType, PolicyType>& tensor,
 
   // Check the different dimensions and contract when needed
   using tensor_type = DistArray<TileType, PolicyType>;
-  auto start = TA::detail::dummy_annotation(rank);
+  auto start = detail::dummy_annotation(rank);
   tensor_type output_tensor;
   for (auto i = 0; i < rank; ++i) {
     if (i == 0) { output_tensor(start) = tensor(start); }
@@ -76,14 +76,12 @@ auto retile(const DistArray<TileType, PolicyType>& tensor,
       // Make identity for contraction
       TiledRange retiler{tensor.trange().dim(i), new_trange.dim(i)};
       auto identity = diagonal_array<tensor_type>(tensor.world(), retiler);
-      tensor.world().gop.fence();
 
       // Make indices for contraction
       auto [finish, change] = annotations(i);
 
       // Retile
       output_tensor(finish) = output_tensor(start) * identity(change);
-      tensor.world().gop.fence();
     }
   }
 

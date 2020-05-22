@@ -233,6 +233,7 @@ Array diagonal_array(World &world, TiledRange const &trange, T val = 1) {
   if constexpr (is_dense_v<Policy>) {
     Array A(world, trange);
     detail::write_diag_tiles_to_array_val(A, val);
+    world.gop.fence();
     return A;
   } else {
     // Compute shape and init the Array
@@ -241,6 +242,7 @@ Array diagonal_array(World &world, TiledRange const &trange, T val = 1) {
     ShapeType shape(shape_norm, trange);
     Array A(world, trange, shape);
     detail::write_diag_tiles_to_array_val(A, val);
+    world.gop.fence();
     return A;
   }
 }
@@ -274,6 +276,7 @@ diagonal_array(World &world, TiledRange const &trange,
   if constexpr (is_dense_v<Policy>) {
     Array A(world, trange);
     detail::write_diag_tiles_to_array_rng(A, diagonals_begin);
+    world.gop.fence();
     return A;
   } else {
     // Compute shape and init the Array
@@ -283,6 +286,7 @@ diagonal_array(World &world, TiledRange const &trange,
     ShapeType shape(shape_norm, trange);
     Array A(world, trange, shape);
     detail::write_diag_tiles_to_array_rng(A, diagonals_begin);
+    world.gop.fence();
     return A;
   }
 }
