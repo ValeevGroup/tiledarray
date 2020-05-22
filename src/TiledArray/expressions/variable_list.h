@@ -107,7 +107,7 @@ inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
     for(auto i = outer_dim; i < a.size(); ++i)
       TA_ASSERT(a[i] >= outer_dim);
   }
-  return Permutation(std::move(a));
+  return Permutation(std::move(a), l.inner_dim());
 }
 }  // namespace detail
 
