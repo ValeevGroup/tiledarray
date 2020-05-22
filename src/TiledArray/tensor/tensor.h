@@ -20,13 +20,14 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 
+#include "TiledArray/tile_interface/permute.h"
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/complex.h"
 #include "TiledArray/tensor/kernels.h"
 #include "TiledArray/tensor/trace.h"
-#include "TiledArray/util/logger.h"
 #include "TiledArray/tile_interface/clone.h"
+#include "TiledArray/util/logger.h"
 namespace TiledArray {
 
 // Forward declare Tensor for type traits
@@ -595,7 +596,19 @@ class Tensor {
   /// \param perm The permutation to be applied to this tensor
   /// \return A permuted copy of this tensor
   Tensor_ permute(const Permutation& perm) const {
-    return Tensor_(*this, perm);
+    static constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
+    if constexpr (!is_tot){
+      return Tensor_(*this, perm);
+    }
+    else {
+      auto inner_perm = perm.inner_permutation();
+      Tensor_ rv(*this, perm.outer_permutation());
+      if(inner_perm == Permutation::identity(inner_perm.dim()))
+        return rv;
+      Permute<value_type, value_type> p;
+      for(auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
+      return rv;
+    }
   }
 
   /// Shift the lower and upper bound of this tensor
