@@ -147,14 +147,11 @@ class ExprEngine : private NO_DEFAULTS {
   /// \param target_vars The target variable list for the result tensor
   void init_struct(const VariableList& target_vars) {
     if (target_vars != vars_) {
-      perm_ = derived().make_perm(target_vars);
-      if(target_vars.inner_dim() > 0){
-        // The expression layer only ever works on the outer tensor
-        const auto outer_dim = target_vars.outer_dim();
-        perm_ = Permutation(perm_.begin(), perm_.begin() + outer_dim);
-      }
-      trange_ = derived().make_trange(perm_);
-      shape_ = derived().make_shape(perm_);
+      auto temp_perm = derived().make_perm(target_vars);
+      const auto inner_dim = target_vars.inner_dim();
+      perm_ = Permutation(temp_perm.begin(), temp_perm.end(), inner_dim);
+      trange_ = derived().make_trange(perm_.outer_permutation());
+      shape_ = derived().make_shape(perm_.outer_permutation());
     } else {
       trange_ = derived().make_trange();
       shape_ = derived().make_shape();
@@ -200,7 +197,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// may customize this function by providing their own implementation it.
   op_type make_op() const {
     if (perm_ && permute_tiles_)
-      return derived().make_tile_op(perm_);
+      return derived().make_tile_op(perm_.outer_permutation());
     else
       return derived().make_tile_op();
   }

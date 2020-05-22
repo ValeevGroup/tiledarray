@@ -408,11 +408,8 @@ class Expr {
     // perspective of the inner tensor the modes start at 0 and not outer_dim
     constexpr auto is_tot =
         TiledArray::detail::is_tensor_of_tensor_v<typename A::value_type>;
-    auto full_perm = engine.derived().make_perm(target_vars);
-    auto outer_dim = target_vars.outer_dim();
-    std::vector<size_t> temp(full_perm.begin() + outer_dim, full_perm.end());
-    for(auto& x : temp) x -= outer_dim;
-    Permutation inner_perm(temp.begin(), temp.end());
+    auto total_perm = engine.derived().make_perm(target_vars);
+    auto inner_perm = total_perm.inner_permutation();
 
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
