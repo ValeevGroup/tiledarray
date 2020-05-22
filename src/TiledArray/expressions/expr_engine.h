@@ -197,7 +197,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// may customize this function by providing their own implementation it.
   op_type make_op() const {
     if (perm_ && permute_tiles_)
-      return derived().make_tile_op(perm_.outer_permutation());
+      return derived().make_tile_op(perm_);
     else
       return derived().make_tile_op();
   }
