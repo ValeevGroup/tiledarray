@@ -4,34 +4,81 @@
 #include "range_fixture.h"
 #include "unit_test_config.h"
 
+#include "TiledArray/math/scalapack.h"
+
 struct ScaLAPACKFixture {
   blacspp::Grid grid;
   BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
-  static double make_ta_reference(TA::Tensor<double>& t,
+  std::vector<double> htoeplitz_vector;
+  std::vector<double> exact_evals;
+
+  inline
+  double matrix_element_generator( int64_t i, int64_t j ) {
+    #if 0
+    // Generates a Hankel matrix: absurd condition number
+    return i+j;
+    #else
+    // Generates a Circulant matrix: good condition number
+    return htoeplitz_vector[std::abs(i-j)];
+    #endif
+  }
+
+  inline 
+  double make_ta_reference(TA::Tensor<double>& t,
                                   TA::Range const& range) {
     t = TA::Tensor<double>(range, 0.0);
     auto lo = range.lobound_data();
     auto up = range.upbound_data();
     for (auto m = lo[0]; m < up[0]; ++m) {
       for (auto n = lo[1]; n < up[1]; ++n) {
-        t(m, n) = m + n;
+        t(m, n) = matrix_element_generator(m,n);
       }
     }
 
     return t.norm();
   };
 
+  inline void construct_scalapack( BlockCyclicMatrix<double>& A ) {
+    auto [M,N] = A.dims();
+    for (size_t i = 0; i < M; ++i)
+    for (size_t j = 0; j < N; ++j)
+    if (A.dist().i_own(i, j)) {
+      auto [i_local, j_local] = A.dist().local_indx(i, j);
+      A.local_mat()(i_local, j_local) = matrix_element_generator(i,j);
+    }
+
+  }
+
   ScaLAPACKFixture(int64_t N, int64_t NB)
       : grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
-        ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB) {
-    // Fill reference matrix (Needs to be deterministic for later checks)
-    for (size_t i = 0; i < N; ++i)
-      for (size_t j = 0; j < N; ++j)
-        if (ref_matrix.dist().i_own(i, j)) {
-          auto [i_local, j_local] = ref_matrix.dist().local_indx(i, j);
-          ref_matrix.local_mat()(i_local, j_local) = i + j;
-        }
+        ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB),
+        htoeplitz_vector( N ), exact_evals( N )	{
+
+    // Generate an hermitian Circulant vector 
+    std::fill( htoeplitz_vector.begin(), htoeplitz_vector.begin(), 0 );
+    htoeplitz_vector[0] = 100;
+    std::default_random_engine gen(0);
+    std::uniform_real_distribution<> dist(0., 1.);
+    for( int64_t i = 1; i <= (N/2); ++i ) {
+      double val = dist(gen);
+      htoeplitz_vector[i]   = val;
+      htoeplitz_vector[N-i] = val;
+    }
+    
+    // Compute exact eigenvalues
+    const double ff = 2. * M_PI / N;
+    for( int64_t j = 0; j < N; ++j ) {
+      double val = htoeplitz_vector[0];;
+      for( int64_t k = 1; k < N; ++k )
+        val += htoeplitz_vector[N-k] * std::cos( ff * j * k );
+      exact_evals[j] = val;
+    }
+    
+    std::sort( exact_evals.begin(), exact_evals.end() );
+
+    // Fill reference matrix
+    construct_scalapack( ref_matrix );
   }
 
   ScaLAPACKFixture() : ScaLAPACKFixture(1000, 128) {}
@@ -74,7 +121,8 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_test) {
   auto ref_ta = TA::make_array<TA::TArray<double> >(
       *GlobalFixture::world, trange, 
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return ScaLAPACKFixture::make_ta_reference(t, range);
+        ScaLAPACKFixture fix;
+        return fix.make_ta_reference(t, range);
       });
 
 
@@ -105,7 +153,8 @@ BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_bc_test) {
   auto ref_ta = TA::make_array<TA::TArray<double> >(
       *GlobalFixture::world, trange, 
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return ScaLAPACKFixture::make_ta_reference(t, range);
+        ScaLAPACKFixture fix;
+        return fix.make_ta_reference(t, range);
       });
 
 
@@ -146,7 +195,8 @@ BOOST_AUTO_TEST_CASE(bc_to_random_tiled_array_test) {
   auto ref_ta = TA::make_array<TA::TArray<double> >(
       *GlobalFixture::world, trange, 
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return ScaLAPACKFixture::make_ta_reference(t, range);
+        ScaLAPACKFixture fix;
+        return fix.make_ta_reference(t, range);
       });
 
 
@@ -177,7 +227,8 @@ BOOST_AUTO_TEST_CASE(random_tiled_array_to_bc_test) {
   auto ref_ta = TA::make_array<TA::TArray<double> >(
       *GlobalFixture::world, trange, 
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return ScaLAPACKFixture::make_ta_reference(t, range);
+        ScaLAPACKFixture fix;
+        return fix.make_ta_reference(t, range);
       });
 
 
@@ -199,5 +250,34 @@ BOOST_AUTO_TEST_CASE(random_tiled_array_to_bc_test) {
 
   GlobalFixture::world->gop.fence();
 };
+
+
+BOOST_AUTO_TEST_CASE( sca_heig_same_tiling ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange, 
+      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        ScaLAPACKFixture fix;
+        return fix.make_ta_reference(t, range);
+      });
+
+  auto [evals, evecs] = heig( ref_ta );
+
+  BOOST_CHECK( evecs.trange() == ref_ta.trange() );
+
+  // TODO: Check validity of eigenvectors, not crutial for the time being
+
+  // Check eigenvalue correctness
+  double tol = N*N*std::numeric_limits<double>::epsilon();
+  for( int64_t i = 0; i < N; ++i )
+    BOOST_CHECK_SMALL( std::abs(evals[i] - exact_evals[i]), tol );
+
+  GlobalFixture::world->gop.fence();
+}
 
 BOOST_AUTO_TEST_SUITE_END()
