@@ -53,9 +53,9 @@ if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
     message(FATAL_ERROR "Found MADNESS, but it is not recent enough; either provide MADNESS with revision ${TA_TRACKED_MADNESS_TAG} or let TiledArray built it")
   endif(MADNESS_REVISION_LINE)
 
-  if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
-    message(WARNING "To build shared libraries safely should build MADworld (and other prerequisites) as static; but MADworld-static target is not found")
-  endif(BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
+  if (NOT (TA_ASSUMES_ASLR_DISABLED EQUAL MADNESS_ASSUMES_ASLR_DISABLED))
+    message(FATAL_ERROR "Found MADNESS configured with MADNESS_ASSUMES_ASLR_DISABLED=${MADNESS_ASSUMES_ASLR_DISABLED} but TA is configured with TA_ASSUMES_ASLR_DISABLED=${TA_ASSUMES_ASLR_DISABLED}; MADNESS_ASSUMES_ASLR_DISABLED and TA_ASSUMES_ASLR_DISABLED should be the same")
+  endif()
 
   cmake_push_check_state()
 
@@ -305,7 +305,9 @@ else()
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL} ${MADNESS_EXTRA_CXX_FLAGS}")
 
   set(MADNESS_CMAKE_ARGS       -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+          -DMADNESS_ASSUMES_ASLR_DISABLED=${TA_ASSUMES_ASLR_DISABLED}
           -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+          -DCMAKE_POSITION_INDEPENDENT_CODE=${CMAKE_POSITION_INDEPENDENT_CODE}
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
           "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
@@ -391,21 +393,17 @@ else()
   if (NOT TARGET MADworld)
     message(FATAL_ERROR "Did not receive target MADworld")
   endif()
-  if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
-    message(FATAL_ERROR "Did not receive target MADworld-static")
-  endif()
   set(TILEDARRAY_DOWNLOADED_MADNESS ON CACHE BOOL "Whether TA downloaded MADNESS")
   mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
 
   # TiledArray only needs MADworld library compiled to be ...
   # as long as you mark dependence on it correcty its target properties
   # will be used correctly (header locations, etc.)
+  set(MADNESS_WORLD_LIBRARY MADworld)
   if (BUILD_SHARED_LIBS)
-    set(MADNESS_WORLD_LIBRARY MADworld-static)
     set(MADNESS_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
     set(MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX ".88-dev")
   else(BUILD_SHARED_LIBS)
-    set(MADNESS_WORLD_LIBRARY MADworld)
     set(MADNESS_DEFAULT_LIBRARY_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
     set(MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX "")
   endif(BUILD_SHARED_LIBS)
