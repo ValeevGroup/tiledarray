@@ -420,8 +420,8 @@ feature_summary(WHAT ALL
 
 option(TA_PYTHON "Build TA python module" OFF)
 if (TA_PYTHON)
-  if (NOT BUILD_SHARED_LIBS)
-    message(FATAL_ERROR "Python module requires BUILD_SHARED_LIBS=ON")
+  if (NOT CMAKE_POSITION_INDEPENDENT_CODE)
+    message(FATAL_ERROR "Python module requires CMAKE_POSITION_INDEPENDENT_CODE=ON")
   endif()
   add_subdirectory(python)
 endif()
