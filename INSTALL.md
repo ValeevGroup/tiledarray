@@ -170,7 +170,7 @@ Additional CMake variables are given below.
 * `CMAKE_EXE_LINKER_FLAGS` -- The linker flags
 * `CMAKE_BUILD_TYPE` -- Optimization/debug build type options include
   `Debug` (optimization off, debugging symbols and assersions on), `Release` (optimization on, debugging symbols and assertions off), `RelWithDebInfo` (optimization on, debugging symbols and assertions on) and `MinSizeRel` (same as `Release` but optimized for executable size). The default is empty build type. It is recommended that you set the build type explicitly.
-* `BUILD_SHARED_LIBS` -- Enable shared libraries. This option is only available if the platform supports shared libraries; if that's true and `MADNESS_ASSUMES_ASLR_DISABLED` is `ON` (see below) the default is `ON`, otherwise the default is `OFF`.
+* `BUILD_SHARED_LIBS` -- Enable shared libraries. This option is only available if the platform supports shared libraries; if that's true and `TA_ASSUMES_ASLR_DISABLED` is `ON` (see below) the default is `ON`, otherwise the default is `OFF`.
 * `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `17` (default), and `20`.
 
 Most of these are best specified in a _toolchain file_. TiledArray is recommended to use the toolchains distributed via [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains). TiledArray by default downloads (via [the FetchContent CMake module](https://cmake.org/cmake/help/latest/module/FetchContent.html)) the VG CMake toolkit which makes the toolchains available without having to download the toolchain files manually. E.g., to use toolchain `x` from the VG CMake kit repository provide `-DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/x.cmake` to CMake when configuring TiledArray.
