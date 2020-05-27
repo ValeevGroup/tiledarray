@@ -223,26 +223,8 @@ set(TILEDARRAY_PRIVATE_LINK_LIBRARIES ${_TILEDARRAY_DEPENDENCIES} CACHE STRING "
 
 # Create the TiledArray librar{y,ies}
 add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
-if (BUILD_SHARED_LIBS)
-  add_library(tiledarray-static STATIC ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
-  set_property(TARGET tiledarray-static PROPERTY POSITION_INDEPENDENT_CODE ON)
-  set(TILEDARRAY_LIBRARY_TARGET_SUFFIXES "none;-static")
-  # shared library interface does not need to include MADworld
-  set(private_link_libraries "${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
-  list(REMOVE_ITEM private_link_libraries MADworld)
-  set(TILEDARRAY_PRIVATE_LINK_LIBRARIES "${private_link_libraries}" CACHE STRING "List of libraries on which TiledArray depends on" FORCE)
-  add_dependencies(tiledarray External-tiledarray)
-else()
-  set(TILEDARRAY_LIBRARY_TARGET_SUFFIXES "none")
-endif()
 
-set(targetnames)
-foreach (suffix ${TILEDARRAY_LIBRARY_TARGET_SUFFIXES})
-  if (suffix STREQUAL none)
-    set(suffix)
-  endif ()
-  set(targetname tiledarray${suffix})
-  list(APPEND targetnames ${targetname})
+  set(targetname tiledarray)
 
   target_include_directories(${targetname} INTERFACE
       $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
@@ -251,22 +233,7 @@ foreach (suffix ${TILEDARRAY_LIBRARY_TARGET_SUFFIXES})
       )
 
   target_link_libraries(${targetname} PUBLIC ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
-
-  if (targetname STREQUAL tiledarray AND BUILD_SHARED_LIBS)
-    if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-      target_link_libraries(tiledarray PRIVATE -Wl,--whole-archive MADworld-static -Wl,--no-whole-archive)
-    elseif (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-      target_link_libraries(tiledarray PRIVATE -Wl,-all_load MADworld-static -Wl,-noall_load)
-    else ()
-      target_link_libraries(tiledarray PRIVATE MADworld-static)
-    endif ()
-    # propagate dependencies of MADworld-static to the interface
-    include(CloneTarget)
-    clone_imported_target(MADworld-interface MADworld-static)
-    target_link_libraries(tiledarray INTERFACE MADworld-interface)
-  elseif (targetname STREQUAL tiledarray-static)
-    target_link_libraries(${targetname} PUBLIC MADworld-static)
-  endif ()
+  target_link_libraries(${targetname} PUBLIC MADworld)
 
   if (TARGET build-madness)
     add_dependencies(${targetname} build-madness)
@@ -304,10 +271,8 @@ foreach (suffix ${TILEDARRAY_LIBRARY_TARGET_SUFFIXES})
     target_compile_definitions(${targetname} PUBLIC ${LAPACK_COMPILE_DEFINITIONS})
   endif (LAPACK_COMPILE_DEFINITIONS)
 
-endforeach (suffix ${TILEDARRAY_LIBRARY_TARGET_SUFFIXES})
-
 # Add library to the list of installed components
-install(TARGETS ${targetnames} EXPORT tiledarray COMPONENT tiledarray
+install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray
     LIBRARY DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${TILEDARRAY_INSTALL_LIBDIR}")
 # Install header files
