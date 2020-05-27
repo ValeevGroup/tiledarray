@@ -295,8 +295,18 @@ class Tensor {
   template <typename T1, typename T2, typename Op,
             typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
   Tensor(const T1& left, const T2& right, Op&& op, const Permutation& perm)
-      : pimpl_(std::make_shared<Impl>(perm * left.range())) {
+      : pimpl_(std::make_shared<Impl>(perm.outer_permutation() * left.range())) {
     detail::tensor_init(op, perm, *this, left, right);
+    // If we actually have a ToT the inner permutation was not applied above so
+    // we do that now
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
+    if constexpr(is_tot){
+      if( perm.inner_dim() == 0) return;
+      auto inner_perm = perm.inner_permutation();
+      Permute<value_type, value_type> p;
+      for(auto& x : *this)
+        x = p(x, inner_perm);
+    }
   }
 
   Tensor_ clone() const {
@@ -601,6 +611,9 @@ class Tensor {
       return Tensor_(*this, perm);
     }
     else {
+      // If we have a ToT we need to apply the permutation in two steps. The
+      // first step is identical to the non-ToT case (permute the outer modes)
+      // the second step does the inner modes
       auto inner_perm = perm.inner_permutation();
       Tensor_ rv(*this, perm.outer_permutation());
       if(inner_perm == Permutation::identity(inner_perm.dim()))
@@ -664,7 +677,17 @@ class Tensor {
   template <typename Right, typename Op,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor_ binary(const Right& right, Op&& op, const Permutation& perm) const {
-    return Tensor_(*this, right, op, perm);
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
+    if(!is_tot) {
+      return Tensor_(*this, right, op, perm);
+    }
+    else{
+      // AFAIK the other branch fundamentally relies on raw pointer arithmetic,
+      // which won't work for ToTs.
+      auto temp = binary(right, std::forward<Op>(op));
+      Permute<Tensor_, Tensor_> p;
+      return p(temp, perm);
+    }
   }
 
   /// Use a binary, element wise operation to modify this tensor
