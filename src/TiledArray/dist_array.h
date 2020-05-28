@@ -649,8 +649,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param op The operation used to generate tiles
   /// \param skip_set If false, will throw if any tiles are already set
   template <typename Op>
-  void init_tiles(const Op& op, bool skip_set = false) {
+  void init_tiles(Op&& op, bool skip_set = false) {
     check_pimpl();
+
+    // lifetime management of op depends on whether it is a lvalue ref (i.e. has
+    // an external owner) or an rvalue ref
+    // - if op is an lvalue ref: pass op to tasks
+    // - if op is an rvalue ref pass make_shared_function(op) to tasks
+    auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
 
     auto it = pimpl_->pmap()->begin();
     const auto end = pimpl_->pmap()->end();
@@ -663,10 +669,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         }
         Future<value_type> tile = pimpl_->world().taskq.add(
             [pimpl = this->weak_pimpl(), index = size_type(index),
-             &op]() -> value_type {
+             op_shared_handle]() -> value_type {
               auto pimpl_ptr = pimpl.lock();
               if (pimpl_ptr)
-                return op(pimpl_ptr->trange().make_tile_range(index));
+                return op_shared_handle(
+                    pimpl_ptr->trange().make_tile_range(index));
               else
                 return {};
             });
@@ -695,7 +702,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param skip_set If false, will throw if any tiles are already set
   template <typename Op>
   void init_elements(Op&& op, bool skip_set = false) {
-    init_tiles([op](const TiledArray::Range& range) -> value_type {
+    auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
+    init_tiles([op = std::move(op_shared_handle)](
+                   const TiledArray::Range& range) -> value_type {
       // Initialize the tile with the given range object
       Tile tile(range);
 
