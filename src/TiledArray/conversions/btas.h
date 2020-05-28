@@ -107,6 +107,8 @@ namespace detail {
 /// \param dst The array that will hold the result
 /// \param i The index of the tile to be copied
 /// \param counter The task counter
+/// \internal OK to use bare ptrs as args as long as the user blocks on the
+/// counter.
 template <typename DistArray_, typename BTAS_Tensor_>
 void counted_btas_subtensor_to_tensor(const BTAS_Tensor_* src, DistArray_* dst,
                                       const typename DistArray_::size_type i,
@@ -239,9 +241,16 @@ DistArray_ btas_tensor_to_array(World& world,
   counter = 0;
   std::int64_t n = 0;
   for (std::size_t i = 0; i < array.size(); ++i) {
+    using fnT = decltype(
+        &detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>);
+    static_assert(madness::detail::function_traits<fnT>::value ||
+                  madness::detail::is_functor<fnT>::value);
+    static_assert(
+        std::is_same_v<typename madness::detail::task_result_type<fnT>::type,
+                       madness::Future<void>>);
     world.taskq.add(
-        &detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>, &src,
-        &array, i, &counter);
+        &detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>, src,
+        array.weak_pimpl(), i, &counter);
     ++n;
   }
 
@@ -280,7 +289,7 @@ DistArray_ btas_tensor_to_array(World& world,
 ///         \c target_rank or \c target_rank==-1 ,
 ///         default-initialized BTAS tensor otherwise.
 template <typename Tile, typename Policy,
-          typename Storage = std::vector<typename Tile::value_type> >
+          typename Storage = std::vector<typename Tile::value_type>>
 btas::Tensor<typename Tile::value_type, btas::DEFAULT::range, Storage>
 array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src,
                      int target_rank = -1) {
