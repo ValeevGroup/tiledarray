@@ -107,6 +107,8 @@ namespace detail {
 /// \param dst The array that will hold the result
 /// \param i The index of the tile to be copied
 /// \param counter The task counter
+/// \internal OK to use bare ptrs as args as long as the user blocks on the
+/// counter.
 template <typename DistArray_, typename BTAS_Tensor_>
 void counted_btas_subtensor_to_tensor(const BTAS_Tensor_* src, DistArray_* dst,
                                       const typename DistArray_::size_type i,
@@ -280,7 +282,7 @@ DistArray_ btas_tensor_to_array(World& world,
 ///         \c target_rank or \c target_rank==-1 ,
 ///         default-initialized BTAS tensor otherwise.
 template <typename Tile, typename Policy,
-          typename Storage = std::vector<typename Tile::value_type> >
+          typename Storage = std::vector<typename Tile::value_type>>
 btas::Tensor<typename Tile::value_type, btas::DEFAULT::range, Storage>
 array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src,
                      int target_rank = -1) {
