@@ -280,4 +280,33 @@ BOOST_AUTO_TEST_CASE( sca_heig_same_tiling ) {
   GlobalFixture::world->gop.fence();
 }
 
+BOOST_AUTO_TEST_CASE( sca_heig_diff_tiling ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange, 
+      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        ScaLAPACKFixture fix;
+        return fix.make_ta_reference(t, range);
+      });
+
+  auto new_trange = gen_trange(N, {64ul});
+  auto [evals, evecs] = heig( ref_ta, 128, new_trange );
+
+  BOOST_CHECK( evecs.trange() == new_trange );
+
+  // TODO: Check validity of eigenvectors, not crutial for the time being
+
+  // Check eigenvalue correctness
+  double tol = N*N*std::numeric_limits<double>::epsilon();
+  for( int64_t i = 0; i < N; ++i )
+    BOOST_CHECK_SMALL( std::abs(evals[i] - exact_evals[i]), tol );
+
+  GlobalFixture::world->gop.fence();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
