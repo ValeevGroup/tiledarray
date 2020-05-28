@@ -37,6 +37,7 @@
 #include <TiledArray/conversions/dense_to_sparse.h>
 #include <TiledArray/conversions/foreach.h>
 #include <TiledArray/conversions/make_array.h>
+#include <TiledArray/conversions/retile.h>
 #include <TiledArray/conversions/sparse_to_dense.h>
 #include <TiledArray/conversions/to_new_tile_type.h>
 #include <TiledArray/conversions/truncate.h>

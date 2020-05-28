@@ -7,8 +7,7 @@ automatically supported for most operations. This tutorial discusses how to buil
 ## Building TA-Python bindings
 
 To build the bindings set the `TA_PYTHON` CMake cache
-variable by providing `-DTA_PYTHON=ON` to CMake as a command-line argument. Note that `BUILD_SHARED_LIBS` CMake
-variable must be also set to `ON`.
+variable by providing `-DTA_PYTHON=ON` to CMake as a command-line argument. Note that all TiledArray and MADNESS runtime libraries must be compiled as position independent (this is true by default; set `CMAKE_POSITION_INDEPENDENT_CODE` CMake variable to `ON` to guarantee this).
 
 ## Using TA Python bindings
 
