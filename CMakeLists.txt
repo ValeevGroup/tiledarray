@@ -140,10 +140,23 @@ endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 
 
 # Enable shared library support options
+redefaultable_option(TA_ASSUMES_ASLR_DISABLED "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled" OFF)
+add_feature_info(ASSUMES_ASLR_DISABLED TA_ASSUMES_ASLR_DISABLED
+    "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled")
 get_property(SUPPORTS_SHARED GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS)
-option(ENABLE_SHARED_LIBRARIES "Enable shared libraries" ON)
-cmake_dependent_option(BUILD_SHARED_LIBS "Enable shared libraries" ON
-      "SUPPORTS_SHARED;ENABLE_SHARED_LIBRARIES" OFF)
+if (SUPPORTS_SHARED AND TA_ASSUMES_ASLR_DISABLED)
+  set(default_BUILD_SHARED_LIBS ON)
+else ()
+  set(default_BUILD_SHARED_LIBS OFF)
+endif()
+redefaultable_option(BUILD_SHARED_LIBS "Enable shared libraries" ${default_BUILD_SHARED_LIBS})
+if (BUILD_SHARED_LIBS OR (NOT ${TA_ASSUMES_ASLR_DISABLED}))
+  set(default_CMAKE_POSITION_INDEPENDENT_CODE ON)
+else ()
+  set(default_CMAKE_POSITION_INDEPENDENT_CODE OFF)
+endif()
+redefaultable_option(CMAKE_POSITION_INDEPENDENT_CODE "Default value for POSITION_INDEPENDENT_CODE of targets" ${default_CMAKE_POSITION_INDEPENDENT_CODE})
+
 if(BUILD_SHARED_LIBS)
   set(BLA_STATIC FALSE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH TRUE)
@@ -359,7 +372,6 @@ install(FILES ${PROJECT_BINARY_DIR}/tiledarray.pc
 # include extra cmake files
 install(FILES
     "${PROJECT_SOURCE_DIR}/cmake/modules/SanitizeCUDAImplicitDirectories.cmake"
-    "${PROJECT_SOURCE_DIR}/cmake/modules/CloneTarget.cmake"
     DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}")
 
 # Create the version file
@@ -409,8 +421,8 @@ feature_summary(WHAT ALL
 
 option(TA_PYTHON "Build TA python module" OFF)
 if (TA_PYTHON)
-  if (NOT BUILD_SHARED_LIBS)
-    message(FATAL_ERROR "Python module requires BUILD_SHARED_LIBS=ON")
+  if (NOT CMAKE_POSITION_INDEPENDENT_CODE)
+    message(FATAL_ERROR "Python module requires CMAKE_POSITION_INDEPENDENT_CODE=ON")
   endif()
   add_subdirectory(python)
 endif()

@@ -383,6 +383,38 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return An array that is equal to this array
   DistArray_ clone() const { return TiledArray::clone(*this); }
 
+  /// Accessor for the (shared_ptr to) implementation object
+
+  /// \return std::shared_ptr to the const implementation object
+  std::shared_ptr<const impl_type> pimpl() const {
+    check_pimpl();
+    return pimpl_;
+  }
+
+  /// Accessor for the (shared_ptr to) implementation object
+
+  /// \return std::shared_ptr to the nonconst implementation object
+  std::shared_ptr<impl_type> pimpl() {
+    check_pimpl();
+    return pimpl_;
+  }
+
+  /// Accessor for the (weak_ptr to) implementation object
+
+  /// \return std::weak_ptr to the const implementation object
+  std::weak_ptr<const impl_type> weak_pimpl() const {
+    check_pimpl();
+    return pimpl_;
+  }
+
+  /// Accessor for the (shared_ptr to) implementation object
+
+  /// \return std::weak_ptr to the nonconst implementation object
+  std::weak_ptr<impl_type> weak_pimpl() {
+    check_pimpl();
+    return pimpl_;
+  }
+
   /// Wait for lazy tile cleanup
 
   /// This function will wait for cleanup of tile data that has been
@@ -762,21 +794,31 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   void init_tiles(Op&& op, bool skip_set = false) {
     pimpl();
 
+    // lifetime management of op depends on whether it is a lvalue ref (i.e. has
+    // an external owner) or an rvalue ref
+    // - if op is an lvalue ref: pass op to tasks
+    // - if op is an rvalue ref pass make_shared_function(op) to tasks
+    auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
+
     auto it = pimpl_->pmap()->begin();
     const auto end = pimpl_->pmap()->end();
     for (; it != end; ++it) {
-      const auto index = *it;
+      const auto& index = *it;
       if (!pimpl_->is_zero(index)) {
         if (skip_set) {
           auto fut = find(index);
           if (fut.probe()) continue;
         }
         Future<value_type> tile = pimpl_->world().taskq.add(
-            [](DistArray_* array, const size_type index,
-               const Op& op) -> value_type {
-              return op(array->trange().make_tile_range(index));
-            },
-            this, index, op);
+            [pimpl = this->weak_pimpl(), index = size_type(index),
+             op_shared_handle]() -> value_type {
+              auto pimpl_ptr = pimpl.lock();
+              if (pimpl_ptr)
+                return op_shared_handle(
+                    pimpl_ptr->trange().make_tile_range(index));
+              else
+                return {};
+            });
         set(index, tile);
       }
     }
@@ -808,7 +850,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   template <typename Op>
   void init_elements(Op&& op, bool skip_set = false) {
-    init_tiles([op](const TiledArray::Range& range) -> value_type {
+    auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
+    init_tiles([op = std::move(op_shared_handle)](
+                   const TiledArray::Range& range) -> value_type {
       // Initialize the tile with the given range object
       Tile tile(range);
 

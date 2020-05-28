@@ -14,7 +14,7 @@ These notes assume that Docker is installed on your machine and that you start a
     * `export CXX=g++`
   * If want to use Clang C++ compiler (clang++):
     * `export GCC_VERSION=8`
-    * `export CLANG_VERSION=VVV` where `VVV` should be the Clang version to be used. The currently valid values are `7`, `8`, and `9`.
+    * `export CLANG_VERSION=VVV` where `VVV` should be the Clang version to be used. The currently valid values are `8` and `9`.
     * `export CXX=clang++`
     * `apt-get update && apt-get install libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev`
 5. Build prerequisites (MPICH, MADNESS, ScaLAPACK), TiledArray, and run tests: `./build.sh`
@@ -29,5 +29,5 @@ These notes assume that Docker is installed on your machine and that you start a
   * Create a root password: `passwd` and follow prompts. No need to be fancy: security is not a concern here, but `passwd` will not accept an empty password. N.B. This is easier than setting up a pubkey login, so don't bother with that.
   * Edit `/etc/ssh/sshd_config` and allow root to log in by ensuring that `PermitRootLogin` and `PasswordAuthentication` are set to `yes`.
   * Start ssh server: `/etc/init.d/ssh start`
-  * (optional) To launch gdb in xterm windows: `apt-get update && apt-get install install`
+  * (optional) To launch gdb in xterm windows: `apt-get update && apt-get install xterm`
   * You should be able to log in from an xterm on the host side: `ssh -Y -p 2222 root@localhost`

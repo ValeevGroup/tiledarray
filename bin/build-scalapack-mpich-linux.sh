@@ -37,8 +37,7 @@ if [ ! -d "${INSTALL_DIR}" ]; then
       -DMPI_Fortran_COMPILER=${INSTALL_PREFIX}/mpich/bin/mpif90 \
       -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
       -DCMAKE_PREFIX_PATH=${INSTALL_DIR} \
-      -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR} \
-      -DBUILD_SHARED_LIBS=${BUILD_SHARED}
+      -DCMAKE_INSTALL_PREFIX=${INSTALL_DIR}
 
     cmake --build build_scalapack -j2
     cmake --build build_scalapack --target install
