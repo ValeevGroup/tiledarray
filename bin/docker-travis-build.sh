@@ -23,7 +23,7 @@ curl -sSL "http://apt.llvm.org/llvm-snapshot.gpg.key" | apt-key add -
 echo "deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main" | tee -a /etc/apt/sources.list > /dev/null
 apt-add-repository -y "ppa:ubuntu-toolchain-r/test"
 apt-get -yq update >> ~/apt-get-update.log
-apt-get -yq --no-install-suggests --no-install-recommends --force-yes install g++-7 g++-8 gfortran-7 gfortran-8 libboost-all-dev libblas-dev liblapack-dev liblapacke-dev libtbb-dev clang-7 clang-8 clang-9 cmake cmake-data doxygen graphviz fonts-liberation \
+apt-get -yq --no-install-suggests --no-install-recommends --force-yes install g++-7 g++-8 gfortran-7 gfortran-8 libboost-all-dev libblas-dev liblapack-dev liblapacke-dev libtbb-dev clang-8 clang-9 cmake cmake-data doxygen graphviz fonts-liberation \
 python3 python3-pip python3-pytest python3-numpy
 mkdir -p ${TRAVIS_BUILD_TOPDIR}
 cd ${TRAVIS_BUILD_TOPDIR}

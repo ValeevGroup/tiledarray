@@ -71,6 +71,7 @@ TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/scalapack.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
+TiledArray/conversions/retile.h
 TiledArray/dist_eval/array_eval.h
 TiledArray/dist_eval/binary_eval.h
 TiledArray/dist_eval/contraction_eval.h
@@ -152,6 +153,7 @@ TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
+TiledArray/util/function.h
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/singleton.h

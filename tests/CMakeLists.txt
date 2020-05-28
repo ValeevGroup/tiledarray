@@ -95,6 +95,7 @@ set(ta_test_src_files  ta_test.cpp
     solvers.cpp
     initializer_list.cpp
     diagonal_array.cpp
+    retile.cpp
 )
 
 if(CUDA_FOUND)
