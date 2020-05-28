@@ -84,28 +84,6 @@ matrix:
             - g++-9
             - gfortran-9
     - compiler: clang
-      env: CLANG_VERSION=7 GCC_VERSION=8 BUILD_TYPE=Debug
-      addons:
-        apt:
-          packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
-           - clang-7
-           - libc++-7-dev
-           - libc++abi-7-dev
-    - compiler: clang
-      env: CLANG_VERSION=7 GCC_VERSION=8 BUILD_TYPE=Release
-      addons:
-        apt:
-          packages:
-           - *base_packages
-           - g++-8
-           - gfortran-8
-           - clang-7
-           - libc++-7-dev
-           - libc++abi-7-dev
-    - compiler: clang
       env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
