@@ -241,16 +241,9 @@ DistArray_ btas_tensor_to_array(World& world,
   counter = 0;
   std::int64_t n = 0;
   for (std::size_t i = 0; i < array.size(); ++i) {
-    using fnT = decltype(
-        &detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>);
-    static_assert(madness::detail::function_traits<fnT>::value ||
-                  madness::detail::is_functor<fnT>::value);
-    static_assert(
-        std::is_same_v<typename madness::detail::task_result_type<fnT>::type,
-                       madness::Future<void>>);
     world.taskq.add(
-        &detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>, src,
-        array.weak_pimpl(), i, &counter);
+        &detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>, &src,
+        &array, i, &counter);
     ++n;
   }
 
