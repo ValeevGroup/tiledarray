@@ -77,7 +77,6 @@ class TiledArrayTest(unittest.TestCase):
     a = ta.TArray([4,8],  block=2, world=world)
     a.init(op)
     print (a[0,0])
-    # world.fence
     # self.assertTrue((a[0,0] == np.ones([2,2])).all())
     world.fence()
 

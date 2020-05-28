@@ -57,7 +57,7 @@ namespace array {
   // std::function<py::buffer(const Range&)>
   void init_tiles(TArray<double> &a, py::object f) {
     py::gil_scoped_release gil;
-    auto op = [f](const Range& range) {
+    a.init_tiles([f](const Range& range) {
       Tensor<double> tile;
       {
         py::gil_scoped_acquire acquire;
@@ -66,9 +66,7 @@ namespace array {
         tile = make_tile<double>(buffer);
       }
       return tile;
-    };
-    a.init_tiles(op);
-    a.world().gop.fence();
+    });
   }
 
   template<class ... Trange>
@@ -149,12 +147,7 @@ namespace array {
 
   template<class Idx>
   inline py::array getitem(const TArray<double> &array, Idx idx) {
-    auto tile = array.find(idx);
-    if (!tile.probe()) {
-      auto str = py::str(py::cast(idx));
-      throw std::runtime_error("TArray[" + py::cast<std::string>(str) + "] tile is not set");
-    }
-    return py::array(make_buffer_info(tile.get()));
+    return py::array(make_buffer_info(array.find(idx).get()));
   }
 
   template<typename T>
