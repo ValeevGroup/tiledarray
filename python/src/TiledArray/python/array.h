@@ -55,7 +55,8 @@ namespace array {
   }
 
   // std::function<py::buffer(const Range&)>
-  void init_tiles(TArray<double> &a, py::object f) {
+  template<class Array>
+  void init_tiles(Array &a, py::object f) {
     py::gil_scoped_release gil;
     auto op = [f](const Range& range) {
       Tensor<double> tile;
@@ -71,20 +72,20 @@ namespace array {
     a.world().gop.fence();
   }
 
-  template<class ... Trange>
-  std::shared_ptr< TArray<double> > make_array(const Trange& ... args, World *world, py::object op) {
+  template<class Array, class ... Trange>
+  std::shared_ptr<Array> make_array(const Trange& ... args, World *world, py::object op) {
     if (!world) {
       world = &get_default_world();
     }
-    auto array = std::make_shared< TArray<double> >(*world, trange::make_trange(args...));
+    auto array = std::make_shared<Array>(*world, trange::make_trange(args...));
     if (!op.is_none()) {
       init_tiles(*array, op);
     }
     return array;
   }
 
-  template<class S = std::vector<size_t> >
-  inline S shape(const TArray<double> &a) {
+  template<class Array, class S = std::vector<size_t> >
+  inline S shape(const Array &a) {
     auto e = a.elements_range().extent();
     S shape(e.size());
     for (size_t i = 0; i < e.size(); ++i) {
@@ -94,11 +95,8 @@ namespace array {
     return shape;
   }
 
-  inline auto world(const TArray<double> &a) {
-    return &a.world();
-  }
-
-  inline auto trange(const TArray<double> &a) {
+  template<class Array>
+  inline std::vector< std::vector<size_t> > trange(const Array &a) {
     return trange::list(a.trange());
   }
 
@@ -138,17 +136,19 @@ namespace array {
   //   }
   // };
 
-  inline auto make_iterator(TArray<double> &array) {
+  template<class Array>
+  inline py::iterator make_iterator(Array &array) {
     return py::make_iterator(array.begin(), array.end());
   }
 
-  inline void setitem(TArray<double> &array, std::vector<int64_t> idx, py::buffer data) {
+  template<class Array>
+  inline void setitem(Array &array, std::vector<int64_t> idx, py::buffer data) {
     auto tile = make_tile<double>(data);
     array.set(idx, tile);
   }
 
-  template<class Idx>
-  inline py::array getitem(const TArray<double> &array, Idx idx) {
+  template<class Array, class Idx>
+  inline py::array getitem(const Array &array, Idx idx) {
     auto tile = array.find(idx);
     if (!tile.probe()) {
       auto str = py::str(py::cast(idx));
@@ -157,8 +157,9 @@ namespace array {
     return py::array(make_buffer_info(tile.get()));
   }
 
-  template<typename T>
-  py::buffer_info make_buffer(TArray<T> &a) {
+  template<class Array>
+  py::buffer_info make_buffer(Array &a) {
+    typedef typename Array::scalar_type T;
     auto buffer = py::array_t<T>(shape(a));
     for (size_t i = 0; i < a.size(); ++i) {
       //if (a.is_zero(i)) continue;
@@ -169,55 +170,77 @@ namespace array {
     return buffer.request();
   }
 
+  template<class Array>
+  using TileReference = typename Array::reference;
 
-  typedef TArray<double>::reference TileReference;
-
-  py::array get_reference_data(TileReference &r) {
+  template<class Array>
+  py::array get_reference_data(TileReference<Array> &r) {
     auto tile = r.get();
     auto shape = tile.range().extent();
     auto base = py::cast(r);
     return py::array_t<double>(shape, tile.data(), base);
   }
 
-  void set_reference_data(TileReference &r, py::buffer data) {
+  template<class Array>
+  void set_reference_data(TileReference<Array> &r, py::buffer data) {
     r = make_tile<double>(data);
   }
 
-  void __init__(py::module m) {
 
-    py::class_< TArray<double>::reference >(m, "TileReference", py::module_local())
-      .def_property_readonly("index", &TileReference::index)
-      .def_property_readonly("range", &TileReference::make_range)
-      .def_property("data", &get_reference_data, &set_reference_data)
-      ;
+  template<class Array>
+  void make_array_class(py::object m, const char *name) {
 
-    py::class_< TArray<double>, std::shared_ptr<TArray<double> > >(m, "TArray", py::buffer_protocol())
+    auto PyArray = py::class_< Array, std::shared_ptr<Array > >
+      (
+        m,
+        name,
+        py::buffer_protocol()
+      )
       .def(py::init())
       .def(
-        py::init(&make_array< std::vector<int64_t>, size_t >),
+        py::init(&make_array< Array, std::vector<int64_t>, size_t >),
         py::arg("shape"),
         py::arg("block"),
         py::arg("world") = nullptr,
         py::arg("op") = py::none()
       )
       .def(
-        py::init(&array::make_array< std::vector< std::vector<int64_t> > >),
+        py::init(&array::make_array< Array, std::vector< std::vector<int64_t> > >),
         py::arg("trange"),
         py::arg("world") = nullptr,
         py::arg("op") = py::none()
       )
-      .def_buffer(&array::make_buffer<double>)
-      .def_property_readonly("world", &array::world, py::return_value_policy::reference)
-      .def_property_readonly("trange", &array::trange)
-      .def_property_readonly("shape", &array::shape<py::tuple>)
-      .def("fill", &TArray<double>::fill, py::arg("value"), py::arg("skip_set") = false)
-      .def("init", &array::init_tiles)
-      .def("__iter__", &array::make_iterator, py::keep_alive<0, 1>()) // Keep object alive while iterator is used */
-      .def("__getitem__", &expression::getitem)
-      .def("__setitem__", &expression::setitem)
-      .def("__getitem__", &array::getitem< std::vector<int64_t> >)
-      .def("__setitem__", &array::setitem)
+      .def_buffer(&array::make_buffer<Array>)
+      .def_property_readonly("world", &Array::world, py::return_value_policy::reference)
+      .def_property_readonly("trange", &array::trange<Array>)
+      .def_property_readonly("shape", &array::shape<Array,py::tuple>)
+      .def("fill", &Array::fill, py::arg("value"), py::arg("skip_set") = false)
+      .def("init", &array::init_tiles<Array>)
+      // Array object needs be alive while iterator is used */
+      .def("__iter__", &array::make_iterator<Array>, py::keep_alive<0, 1>())
+      .def("__getitem__", &expression::getitem<Array>)
+      .def("__setitem__", &expression::setitem<Array>)
+      .def("__getitem__", &array::getitem<Array, std::vector<int64_t> >)
+      .def("__setitem__", &array::setitem<Array>)
+      // ;
       ;
+
+    py::class_<typename Array::reference>(PyArray, "Reference", py::module_local())
+      .def_property_readonly("index", &TileReference<Array>::index)
+      .def_property_readonly("range", &TileReference<Array>::make_range)
+      .def_property(
+        "data",
+        &get_reference_data<Array>,
+        &set_reference_data<Array>
+      )
+      ;
+
+  }
+
+  void __init__(py::module m) {
+
+    make_array_class< TArray<double> >(m, "TArray");
+    make_array_class< TSpArray<double> >(m, "TSpArray");
 
     // py::class_< Tensor<double>, std::shared_ptr<Tensor<double> > >(m, "Tensor",  py::buffer_protocol())
     //   .def_buffer(&array::make_buffer_info<double>)
