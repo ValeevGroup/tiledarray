@@ -30,10 +30,11 @@ namespace TiledArray {
 namespace python {
 namespace expression {
 
+  template<class Array>
   struct Expression {
 
     struct Term {
-      std::shared_ptr< TArray<double> > array;
+      std::shared_ptr<Array> array;
       std::string index;
       double factor = 1;
       auto evaluate() const {
@@ -89,8 +90,8 @@ namespace expression {
 
   };
 
-  template<size_t N, size_t ... Idx>
-  auto index(const Expression &e, std::integer_sequence<size_t,Idx...> idx) {
+  template<size_t N, class Array, size_t ... Idx>
+  auto index(const Expression<Array> &e, std::integer_sequence<size_t,Idx...> idx) {
     using Index = std::variant< std::make_integer_sequence<size_t,1+Idx>... >;
     if (N == e.terms.size()) {
       return Index(std::make_integer_sequence<size_t,N>());
@@ -103,63 +104,71 @@ namespace expression {
     );
   }
 
-  auto index(const Expression &e) {
+  template<class Array>
+  auto index(const Expression<Array> &e) {
     return index<1>(e, std::make_integer_sequence<size_t,TA_PYTHON_MAX_EXPRESSION>());
   }
 
-  template<class F>
-  auto evaluate(F &&f, const Expression &a) {
+  template<class F, class Array>
+  auto evaluate(F &&f, const Expression<Array> &a) {
     auto visitor = [&](auto &&A) {
       return f(a[A]);
     };
     return std::visit(visitor, index(a));
   }
 
-  template<class F>
-  auto evaluate(F &&f, const Expression &a, const Expression &b) {
+  template<class F, class Array>
+  auto evaluate(F &&f, const Expression<Array> &a, const Expression<Array> &b) {
     auto visitor = [&](auto &&A, auto &&B) {
       return f(a[A], b[B]);
     };
     return std::visit(visitor, index(a), index(b));
   }
 
-#define TA_PYTHON_EXPRESSION_REDUCE(OP)                                 \
-  [](const Expression &e) {                                             \
+#define TA_PYTHON_EXPRESSION_REDUCE(EXPRESSION, OP)                     \
+  [](const EXPRESSION &e) {                                             \
     auto op = [](auto &&e) { return e.OP(); };                          \
     return evaluate(op, e).get();                                       \
   }
 
-#define TA_PYTHON_EXPRESSION_REDUCE2(OP)                                \
-  [](const Expression &a, const Expression &b) {                        \
+#define TA_PYTHON_EXPRESSION_REDUCE2(EXPRESSION, OP)                    \
+  [](const EXPRESSION &a, const EXPRESSION &b) {                        \
     auto op = [](auto &&a, auto &&b) { return a.OP(b); };               \
     return evaluate(op, a, b).get();                                    \
   }
 
-  inline Expression getitem(std::shared_ptr< TArray<double> > array, std::string idx) {
-    return Expression({{array, idx}});
+  template<class Array>
+  inline Expression<Array> getitem(std::shared_ptr<Array> array, std::string idx) {
+    return Expression<Array>({{array, idx}});
   }
 
-  inline void setitem(TArray<double> &array, std::string idx, const Expression &e) {
+  template<class Array>
+  inline void setitem(Array &array, std::string idx, const Expression<Array> &e) {
     auto op = [&](auto &&e) {
       array(idx) = e;
     };
     evaluate(op, e);
   }
 
-  inline void __init__(py::module m) {
-
-    py::class_<Expression>(m, "Expression")
+  template<class Array>
+  void make_array_expression_class(py::module m, const char *name) {
+    using Expression = Expression<Array>;
+    py::class_<Expression>(m, name)
       .def("__add__", &Expression::add)
       .def("__sub__", &Expression::sub)
       .def("__mul__", &Expression::mul)
       .def("__rmul__", &Expression::mul)
       .def("__truediv__", &Expression::div)
-      .def("min", TA_PYTHON_EXPRESSION_REDUCE(min))
-      .def("max", TA_PYTHON_EXPRESSION_REDUCE(max))
-      .def("norm", TA_PYTHON_EXPRESSION_REDUCE(norm))
-      .def("dot", TA_PYTHON_EXPRESSION_REDUCE2(dot))
+      .def("min", TA_PYTHON_EXPRESSION_REDUCE(Expression ,min))
+      .def("max", TA_PYTHON_EXPRESSION_REDUCE(Expression, max))
+      .def("norm", TA_PYTHON_EXPRESSION_REDUCE(Expression, norm))
+      .def("dot", TA_PYTHON_EXPRESSION_REDUCE2(Expression, dot))
       ;
+  }
 
+  inline void __init__(py::module m) {
+    make_array_expression_class< TArray<double> >(m, "Expression");
+    make_array_expression_class< TSpArray<double> >(m, "SparseExpression");
   }
 
 }
