@@ -60,11 +60,19 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 #endif
 #endif
 #endif
+
 /////////////////////////////////////////////////
 // define lapacke types to prevent inclusion of complex.h by
 // Eigen/src/misc/lapacke.h
 #include <madness/tensor/lapacke_types.h>
 #include <Eigen/Core>
+
+#if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)
+#if !EIGEN_VERSION_AT_LEAST(3,3,7)
+#error "Eigen3 < 3.3.7 with LAPACKE enabled may give wrong eigenvalue results"
+#error "Either turn off MADNESS_LINALG_USE_LAPACKE or use Eigen3 3.3.7"
+#endif
+#endif
 
 TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
