@@ -12,6 +12,19 @@ else(ENABLE_CUDA)
   set(_tiledarray_required_eigen_version ${TA_TRACKED_EIGEN_VERSION})
 endif(ENABLE_CUDA)
 
+set(_tiledarray_eigen_use_lapacke FALSE)
+if ("${LAPACK_COMPILE_DEFINITIONS}" MATCHES "MADNESS_LINALG_USE_LAPACKE")
+  set(_tiledarray_eigen_use_lapacke TRUE)
+  if (_tiledarray_required_eigen_version VERSION_LESS 3.3.7)
+    message(
+      WARNING
+      "Eigen3 version => 3.3.7 is required if MADNESS_LINALG_USE_LAPACKE is set.  "
+      "Prior Eigen3 with LAPACKE enabled may give incorrect eigenvalue results"
+      )
+    set(_tiledarray_required_eigen_version 3.3.7)
+  endif()
+endif ()
+
 # Check for existing Eigen
 # prefer CMake-configured-and-installed instance
 # re:NO_CMAKE_PACKAGE_REGISTRY: eigen3 registers its *build* tree with the user package registry ...
@@ -154,7 +167,7 @@ if (TARGET TiledArray_Eigen)
     # Eigen's prototypes for non-MKL (i.e. F77) BLAS interface libraries do not match those in MADNESS (and are not const correct)
     # thus can't use non-MKL BLAS, only LAPACK
     # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_BLAS)
-    if ("${LAPACK_COMPILE_DEFINITIONS}" MATCHES "MADNESS_LINALG_USE_LAPACKE")
+    if (_tiledarray_eigen_use_lapacke)
       target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_LAPACKE EIGEN_USE_LAPACKE_STRICT)
     endif ()
   endif(MADNESS_HAS_MKL)
