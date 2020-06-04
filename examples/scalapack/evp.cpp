@@ -168,7 +168,7 @@ int main(int argc, char** argv) {
 #endif
 
     //// Check EVP with TA
-    Array tmp = TA::foreach (evecs_ta, [&](TA::Tensor<double>& result,
+    Array tmp = TA::foreach (evecs_ta, [evals = evals](TA::Tensor<double>& result,
                                            const TA::Tensor<double>& arg) {
       result = TA::clone(arg);
 

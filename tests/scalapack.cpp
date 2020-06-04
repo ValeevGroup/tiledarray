@@ -140,6 +140,38 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_test) {
 
 
 
+BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_all_small_test) {
+  GlobalFixture::world->gop.fence();
+
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto NB = ref_matrix.dist().nb();
+
+  auto trange = gen_trange(N, {static_cast<size_t>(NB/2)});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange, 
+      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        ScaLAPACKFixture fix;
+        return fix.make_ta_reference(t, range);
+      });
+
+
+  GlobalFixture::world->gop.fence();
+  auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
+  GlobalFixture::world->gop.fence();
+
+  auto norm_diff = 
+	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
+
+  BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+};
+
+
+
 BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_bc_test) {
   GlobalFixture::world->gop.fence();
 

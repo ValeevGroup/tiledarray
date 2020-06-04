@@ -84,6 +84,7 @@ auto heig( Array& array, size_t NB = 128, TiledRange evec_trange = TiledRange() 
 
   if( evec_trange.rank() == 0 ) evec_trange = array.trange();
 
+  world.gop.fence();
   auto evecs_ta = block_cyclic_to_array<Array>( evecs, evec_trange );
   world.gop.fence();
 
