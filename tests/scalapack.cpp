@@ -24,7 +24,7 @@ struct ScaLAPACKFixture {
     #endif
   }
 
-  inline 
+  inline
   double make_ta_reference(TA::Tensor<double>& t,
                                   TA::Range const& range) {
     t = TA::Tensor<double>(range, 0.0);
@@ -55,7 +55,7 @@ struct ScaLAPACKFixture {
         ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB),
         htoeplitz_vector( N ), exact_evals( N )	{
 
-    // Generate an hermitian Circulant vector 
+    // Generate an hermitian Circulant vector
     std::fill( htoeplitz_vector.begin(), htoeplitz_vector.begin(), 0 );
     htoeplitz_vector[0] = 100;
     std::default_random_engine gen(0);
@@ -65,7 +65,7 @@ struct ScaLAPACKFixture {
       htoeplitz_vector[i]   = val;
       htoeplitz_vector[N-i] = val;
     }
-    
+
     // Compute exact eigenvalues
     const double ff = 2. * M_PI / N;
     for( int64_t j = 0; j < N; ++j ) {
@@ -74,7 +74,7 @@ struct ScaLAPACKFixture {
         val += htoeplitz_vector[N-k] * std::cos( ff * j * k );
       exact_evals[j] = val;
     }
-    
+
     std::sort( exact_evals.begin(), exact_evals.end() );
 
     // Fill reference matrix
@@ -119,10 +119,9 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_test) {
   auto trange = gen_trange(N, {static_cast<size_t>(NB)});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        ScaLAPACKFixture fix;
-        return fix.make_ta_reference(t, range);
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
       });
 
 
@@ -130,7 +129,7 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_test) {
   auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
-  auto norm_diff = 
+  auto norm_diff =
 	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
 
   BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
@@ -151,10 +150,9 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_all_small_test) {
   auto trange = gen_trange(N, {static_cast<size_t>(NB/2)});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        ScaLAPACKFixture fix;
-        return fix.make_ta_reference(t, range);
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
       });
 
 
@@ -162,7 +160,7 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_all_small_test) {
   auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
-  auto norm_diff = 
+  auto norm_diff =
 	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
 
   BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
@@ -183,10 +181,9 @@ BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_bc_test) {
   auto trange = gen_trange(N, {static_cast<size_t>(NB)});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        ScaLAPACKFixture fix;
-        return fix.make_ta_reference(t, range);
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
       });
 
 
@@ -225,10 +222,9 @@ BOOST_AUTO_TEST_CASE(bc_to_random_tiled_array_test) {
   auto trange = gen_trange(N, {107ul, 113ul, 211ul, 151ul});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        ScaLAPACKFixture fix;
-        return fix.make_ta_reference(t, range);
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
       });
 
 
@@ -236,7 +232,7 @@ BOOST_AUTO_TEST_CASE(bc_to_random_tiled_array_test) {
   auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
-  auto norm_diff = 
+  auto norm_diff =
 	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
 
   BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
@@ -257,10 +253,9 @@ BOOST_AUTO_TEST_CASE(random_tiled_array_to_bc_test) {
   auto trange = gen_trange(N, {107ul, 113ul, 211ul, 151ul});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        ScaLAPACKFixture fix;
-        return fix.make_ta_reference(t, range);
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
       });
 
 
@@ -288,15 +283,14 @@ BOOST_AUTO_TEST_CASE( sca_heig_same_tiling ) {
 
   GlobalFixture::world->gop.fence();
   auto [M, N] = ref_matrix.dims();
-#if 0
+#if 1
   BOOST_REQUIRE_EQUAL(M, N);
   auto trange = gen_trange(N, {128ul});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        ScaLAPACKFixture fix;
-        return fix.make_ta_reference(t, range);
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
       });
 
   //auto [evals, evecs] = heig( ref_ta );
@@ -321,10 +315,9 @@ BOOST_AUTO_TEST_CASE( sca_heig_same_tiling ) {
   auto trange = gen_trange(N, {static_cast<size_t>(NB)});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
-      *GlobalFixture::world, trange, 
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        ScaLAPACKFixture fix;
-        return fix.make_ta_reference(t, range);
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
       });
 
   GlobalFixture::world->gop.fence();
@@ -369,9 +362,8 @@ BOOST_AUTO_TEST_CASE( sca_heig_diff_tiling ) {
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
       *GlobalFixture::world, trange, 
-      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        ScaLAPACKFixture fix;
-        return fix.make_ta_reference(t, range);
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
       });
 
   auto new_trange = gen_trange(N, {64ul});
