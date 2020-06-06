@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
-        // Check for excpetion with invalid input
+        // Check for exception with invalid input
         BOOST_CHECK_THROW(BlockRange(r0, lower, upper), TiledArray::Exception);
       }
 #endif  // TA_EXCEPTION_ERROR
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(block) {
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
-        // Check for excpetion with invalid input
+        // Check for exception with invalid input
         BOOST_CHECK_THROW(BlockRange(r, lower, upper), TiledArray::Exception);
       }
 #endif  // TA_EXCEPTION_ERROR

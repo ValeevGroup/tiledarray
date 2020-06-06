@@ -31,7 +31,7 @@ $ cmake --build build --target install
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
 - [BTAS](http://github.com/BTAS/BTAS), tag 357d3fc92d6a8b3d0914db337de0739e8df73004 (will be downloaded automatically, if missing)
 - BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag a2ad8f5a7ff861a32d08495d3f3429972ebd3bd2 .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag fe5fff9f61fd0780af64608a8f87f14afa72228d .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is now found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
@@ -55,6 +55,7 @@ Optional prerequisites:
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
   - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS (tag 88076f1706be083ead882f6ce0bfc6884a72fc03)
   - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 28433942197aee141cd9e96ed1d00f6ec7b902cb)
+- Python3 interpreter -- to test (optionally-built) Python bindings
 
 Most of the dependencies (except for MADNESS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
@@ -169,7 +170,7 @@ Additional CMake variables are given below.
 * `CMAKE_EXE_LINKER_FLAGS` -- The linker flags
 * `CMAKE_BUILD_TYPE` -- Optimization/debug build type options include
   `Debug` (optimization off, debugging symbols and assersions on), `Release` (optimization on, debugging symbols and assertions off), `RelWithDebInfo` (optimization on, debugging symbols and assertions on) and `MinSizeRel` (same as `Release` but optimized for executable size). The default is empty build type. It is recommended that you set the build type explicitly.
-* `BUILD_SHARED_LIBS` -- Enable shared libraries [Default=ON if supported by the platform]. With `BUILD_SHARED_LIBS=ON` special precautions must be taken for TiledArray and libraries using it to work properly on platforms with address randomization enabled.
+* `BUILD_SHARED_LIBS` -- Enable shared libraries. This option is only available if the platform supports shared libraries; if that's true and `TA_ASSUMES_ASLR_DISABLED` is `ON` (see below) the default is `ON`, otherwise the default is `OFF`.
 * `CMAKE_CXX_STANDARD` -- Specify the C++ ISO Standard to use. Valid values are `17` (default), and `20`.
 
 Most of these are best specified in a _toolchain file_. TiledArray is recommended to use the toolchains distributed via [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains). TiledArray by default downloads (via [the FetchContent CMake module](https://cmake.org/cmake/help/latest/module/FetchContent.html)) the VG CMake toolkit which makes the toolchains available without having to download the toolchain files manually. E.g., to use toolchain `x` from the VG CMake kit repository provide `-DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/x.cmake` to CMake when configuring TiledArray.
@@ -180,6 +181,17 @@ Most of these are best specified in a _toolchain file_. TiledArray is recommende
 -D TA_ERROR=(none|throw|assert)
 It is typically not necessary to specify optimization or debug flags as the
 default values provided by CMake are usually correct.
+
+## TiledArray, MADNESS runtime, and the Address Space Layout Randomization (ASLR)
+
+ASLR is a standard technique for increasing platform security implemented by the OS kernel and/or the dynamic linker by randomizing both where the shared libraries are loaded as well as (when enabled) the absolute position of the executable in memory (such executables are known as position-independent executables). Until recently TiledArray and other MADNESS-based applications could not be used on platforms with ASLR if ran with more than 1 MPI rank; if properly configured and built TA can now be safely used on ASLR platforms. Use the following variables to control the ASLR-related aspects of TiledArray and the underlying MADNESS runtime.
+
+* `TA_ASSUMES_ASLR_DISABLED` -- TiledArray and MADNESS runtime will assume that the Address Space Layout Randomization (ASLR) is off. By default `TA_ASSUMES_ASLR_DISABLED` is set to `OFF` (i.e. ASLR is assumed to be enabled); this will cause all TiledArray libraries by default to be static (`BUILD_SHARED_LIBS=OFF`) and compiled as position-independent code (`CMAKE_POSITION_INDEPENDENT_CODE=ON`). This will also enable a runtime check in MADworld for ASLR.
+* `CMAKE_POSITION_INDEPENDENT_CODE` -- This standard CMake variable controls whether targets are compiled by default as position-independent code or not. If `BUILD_SHARED_LIBS=OFF` need to set this to `ON` if want to use the TiledArray libraries to build shared libraries or position-independent executables.
+
+To make things more concrete, consider the following 2 scenarios:
+* Platform with ASLR disabled -- set `TA_ASSUMES_ASLR_DISABLED=ON` to set the defaults correctly and enable the ASLR check. `BUILD_SHARED_LIBS` can be set to `ON` (to produce shared TA/MADworld libraries, e.g., to minimize the executable size) or to `OFF` to produce static libraries. If the TA+MADworld static libraries will be linked into shared libraries set `CMAKE_POSITION_INDEPENDENT_CODE=ON`, otherwise `CMAKE_POSITION_INDEPENDENT_CODE` will be set to OFF for maximum efficiency of function calls.
+* Platform with ASLR enabled -- this is the default. Setting `BUILD_SHARED_LIBS=ON` in this scenario will produce executables that can only be safely used with 1 MPI rank, thus `BUILD_SHARED_LIBS` will be defaulted to OFF (i.e. TA+MADworld libraries will be built as static libraries). `CMAKE_POSITION_INDEPENDENT_CODE` is by default set to `ON`, thus TA+MADworld libraries can be linked into position-independent executables safely. TA+MADworld libraries can also be linked into a shared library, provided that *ALL* code using TA+MADworld is part of the *SAME* shared library. E.g. to link TA+MADworld into a Python module compile TA+MADworld libraries and their dependents as static libraries (with `CMAKE_POSITION_INDEPENDENT_CODE=ON`) and link them all together into a single module (same logic applies to shared libraries using TA+MADworld).
 
 ## MPI
 
@@ -285,6 +297,14 @@ variable:
 * `EIGEN3_INCLUDE_DIR` -- The path to the Eigen 3 include directory
 
 If Eigen is not found at the configure time, it will be downloaded from the Bitbucket repository.
+
+## Pythom
+
+To build Python bindings use the following variable:
+
+* `TA_PYTHON` -- Set to `ON` to build Python bindings.
+
+This also requires setting `BUILD_SHARED_LIBS` to `ON`.
 
 ## MADNESS
 

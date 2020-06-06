@@ -19,7 +19,8 @@
  *  Computational Research Division, Lawrence Berkeley National Laboratory
  *
  *  conversion.cpp
- *  Created: 7 Feb, 2020
+ *  Created: 7  Feb, 2020
+ *  Edited:  13 May, 2020
  *
  */
 
@@ -65,7 +66,7 @@ int main(int argc, char** argv) {
 
     // Create Test Matrix
     blacspp::Grid grid = blacspp::Grid::square_grid(MPI_COMM_WORLD);
-    TA::ScaLAPACKMatrix<double> ref_matrix(world, grid, N, N, NB, NB);
+    TA::BlockCyclicMatrix<double> ref_matrix(world, grid, N, N, NB, NB);
 
     for (size_t i = 0; i < N; ++i)
       for (size_t j = 0; j < N; ++j)
@@ -124,7 +125,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      TA::ScaLAPACKMatrix<double> test_matrix(ref_ta, grid, NB, NB);
+      TA::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
       world.gop.fence();
 
       double local_norm_diff =
@@ -171,7 +172,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      TA::ScaLAPACKMatrix<double> test_matrix(ref_ta, grid, NB, NB);
+      TA::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
       world.gop.fence();
 
       double local_norm_diff =

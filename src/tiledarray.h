@@ -37,6 +37,7 @@
 #include <TiledArray/conversions/dense_to_sparse.h>
 #include <TiledArray/conversions/foreach.h>
 #include <TiledArray/conversions/make_array.h>
+#include <TiledArray/conversions/retile.h>
 #include <TiledArray/conversions/sparse_to_dense.h>
 #include <TiledArray/conversions/to_new_tile_type.h>
 #include <TiledArray/conversions/truncate.h>
@@ -57,8 +58,10 @@
 #include <TiledArray/algebra/conjgrad.h>
 #include <TiledArray/dist_array.h>
 
+// ScaLAPACK functions
 #ifdef TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/conversions/scalapack.h>
+#include <TiledArray/conversions/block_cyclic.h>
+#include <TiledArray/math/scalapack.h>
 #endif
 
 #endif  // TILEDARRAY_H__INCLUDED
