@@ -24,6 +24,7 @@
 #include "TiledArray/util/annotation.h"
 #include <algorithm>
 #include <iosfwd>
+#include <set>
 #include <string>
 
 namespace TiledArray {
@@ -332,6 +333,39 @@ class VariableList {
   /// \throw None No throw guarantee.
   const_reference operator[](const size_type n) const { return vars_[n]; }
 
+  /// Returns the indices of the modes annotated with \p x
+  ///
+  /// This function can be thought of as the inverse mapping of `at` and
+  /// `operator[]` namely given an annotation, \p x, return the modes labeled
+  /// with \p x. For example assume that this instance stores `"i,j,k,l"`
+  /// calling this function with input `"i"` would return a container whose
+  /// only element is `0`, calling this function with `"j"` would return a
+  /// container whose only element is `1`, etc. This function returns a
+  /// container, and not a single index, in case the annotation labels more
+  /// than one mode (e.g., in a trace).
+  ///
+  /// \param[in] x The annotation we are looking for.
+  /// \return A random-access container whose length is the number of times
+  ///         that \p x appears in the annotation and whose elements are the
+  ///         modes labeled with \p x.
+  /// \throw std::bad_alloc if there is insufficient memory to allocate the
+  ///                       returned value. Strong throw guarantee.
+  auto modes(const std::string& x) const;
+
+  /// Returns the number of times annotation \p x appears in this instance
+  ///
+  /// This function is used to count the number of times an annotation appears
+  /// in the set of annotations managed by this instance. A particular
+  /// annotation can appear more than once, for example in a trace.
+  ///
+  /// \param[in] x The annotation we are searching for.
+  /// \return An unsigned integer in the range [0, dim()) indicating the number
+  ///         of times \p x appears in this instance.
+  /// \throw None No throw guarantee.
+  size_type count(const std::string& x) const {
+    return std::count(begin(), end(), x);
+  }
+
   /// Returns the total number of indices in the variable list
   ///
   /// This function is just an alias for the `size()` member. It returns the
@@ -373,6 +407,17 @@ class VariableList {
   /// \return The total number of inner indices in the managed list of labels.
   /// \throw None No throw guarantee.
   size_type inner_dim() const { return n_inner_; }
+
+
+  VariableList outer_vars() const {
+    return VariableList(std::vector<std::string>(begin(), begin() + outer_dim()),
+                 std::vector<std::string>{});
+  }
+
+  VariableList inner_vars() const {
+    return VariableList(std::vector<std::string>(begin() + outer_dim(), end()),
+                        std::vector<std::string>{});
+  }
 
   /// Returns the total number of indices in the variable list
   ///
@@ -452,14 +497,16 @@ class VariableList {
     return std::is_permutation(begin(), end(), other.begin());
   }
 
+  /// Constructor implementing VariableList(const value_type&)
+  VariableList(const container_type<value_type>& outer,
+               const container_type<value_type>& inner);
+
  private:
   /// Used to unpack the std::pair resulting from split_index
   explicit VariableList(const container_pair<value_type>& tot_idx):
       VariableList(tot_idx.first, tot_idx.second){}
 
-  /// Constructor implementing VariableList(const value_type&)
-  VariableList(const container_type<value_type>& outer,
-               const container_type<value_type>& inner);
+
 
   /// The number of inner indices
   size_type n_inner_ = 0;
@@ -472,6 +519,46 @@ class VariableList {
                                 const VariableList&);
 
 };  // class VariableList
+
+/// Returns a set of each annotation found in at least one of the variable lists
+template<typename T, typename...Args>
+auto all_annotations(T&& v, Args&&...args) {
+  std::set<std::string> rv;
+  if constexpr(sizeof...(Args)){
+    rv = all_annotations(std::forward<Args>(args)...);
+  }
+  rv.insert(v.begin(), v.end());
+  return rv;
+}
+
+/// Returns the set of annotations found in all of the variable lists
+template<typename T, typename...Args>
+auto common_annotations(T&& v, Args&&...args) {
+  std::set<std::string> rv;
+  if constexpr(sizeof...(Args)) {
+    rv = common_annotations(std::forward<Args>(args)...);
+    // Remove all annotations not found in v
+    for (const auto& x : rv)
+      if (!v.count(x)) rv.erase(x);
+  }
+  else{
+    // Initialize rv to all annotations in v
+    rv.insert(v.begin(), v.end());
+  }
+  return rv;
+}
+
+template<typename...Args>
+auto bound_annotations(const VariableList& out, Args&&...args){
+  // Get all indices in the input tensors
+  auto rv = all_annotations(std::forward<Args>(args)...);
+
+  // Remove those found in the output tensor
+  for(const auto& x : rv)
+    if(out.count(x)) rv.erase(x);
+  return rv;
+}
+
 
 /// Exchange the content of the two variable lists.
 inline void swap(VariableList& v0, VariableList& v1) { v0.swap(v1); }
@@ -514,10 +601,16 @@ inline std::ostream& operator<<(std::ostream& out, const VariableList& v) {
   return out << str;
 }
 
-
 //------------------------------------------------------------------------------
 //                             Implementations
 //------------------------------------------------------------------------------
+
+inline auto VariableList::modes(const std::string& x) const {
+  std::vector<size_type> rv;
+  for(size_type i = 0; i < dim(); ++i)
+    if((*this)[i] == x) rv.push_back(i);
+  return rv;
+}
 
 inline VariableList::operator value_type() const {
   value_type result;

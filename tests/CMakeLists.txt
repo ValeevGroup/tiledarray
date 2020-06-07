@@ -101,6 +101,7 @@ set(ta_test_src_files  ta_test.cpp
     tot_expressions.cpp
     annotation.cpp
     diagonal_array.cpp
+    contraction_helpers.cpp
 )
 
 if(CUDA_FOUND)

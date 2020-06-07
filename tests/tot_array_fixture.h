@@ -244,36 +244,39 @@ struct ToTArrayFixture {
   bool are_equal(const DistArray<LHSTileType, LHSPolicy>& lhs,
                  const DistArray<RHSTileType, RHSPolicy>& rhs) {
     // Same type
-    if(!std::is_same_v<decltype(lhs), decltype(rhs)>) return false;
-
-    // Are initialized?
-    if(lhs.is_initialized() != rhs.is_initialized()) return false;
-    if(!lhs.is_initialized()) return true; // both are default constructed
-
-    // Same world instance?
-    if(&lhs.world() != &rhs.world()) return false;
-
-    // Same shape?
-    if(lhs.shape() != rhs.shape()) return false;
-
-    // Same pmap?
-    //if(*lhs.pmap() != *rhs.pmap()) return false;
-
-    // Same tiling?
-    if(lhs.trange() != rhs.trange()) return false;
-
-    // Same components? Here we make all ranks check all tiles
-    bool are_same = true;
-    for(auto idx : lhs.range()){
-      const auto& lhs_tot = lhs.find(idx).get();
-      const auto& rhs_tot = rhs.find(idx).get();
-      if(lhs_tot != rhs_tot){
-        are_same = false;
-        break;
-      }
+    if constexpr(!std::is_same_v<decltype(lhs), decltype(rhs)>){
+      return false;
     }
-    lhs.world().gop.fence();
-    return are_same;
+    else {
+      // Are initialized?
+      if (lhs.is_initialized() != rhs.is_initialized()) return false;
+      if (!lhs.is_initialized()) return true;  // both are default constructed
+
+      // Same world instance?
+      if (&lhs.world() != &rhs.world()) return false;
+
+      // Same shape?
+      if (lhs.shape() != rhs.shape()) return false;
+
+      // Same pmap?
+      // if(*lhs.pmap() != *rhs.pmap()) return false;
+
+      // Same tiling?
+      if (lhs.trange() != rhs.trange()) return false;
+
+      // Same components? Here we make all ranks check all tiles
+      bool are_same = true;
+      for (auto idx : lhs.range()) {
+        const auto& lhs_tot = lhs.find(idx).get();
+        const auto& rhs_tot = rhs.find(idx).get();
+        if (lhs_tot != rhs_tot) {
+          are_same = false;
+          break;
+        }
+      }
+      lhs.world().gop.fence();
+      return are_same;
+    }
   }
   // The world to use for the test suite
   madness::World& m_world;

@@ -356,6 +356,28 @@ BOOST_AUTO_TEST_CASE(subscript_operator){
   }
 }
 
+// TODO: Test repeated index
+BOOST_AUTO_TEST_CASE(modes){
+  for(auto&& [str, idx] : idxs){
+    using r_type = decltype(idx.modes(""));
+    using size_type = typename VariableList::size_type;
+    auto [outer, inner] = detail::split_index(str);
+    for(size_type i = 0; i < outer.size(); ++i)
+      BOOST_CHECK_EQUAL(idx.modes(outer[i]), r_type{i});
+    for(size_type i = 0; i < inner.size(); ++i)
+      BOOST_CHECK_EQUAL(idx.modes(inner[i]), r_type{outer.size() + i});
+  }
+}
+
+BOOST_AUTO_TEST_CASE(count){
+  for(auto&& [str, idx] : idxs) {
+    auto [outer, inner] = detail::split_index(str);
+    for(const auto& x : outer) BOOST_CHECK_EQUAL(idx.count(x), 1);
+    for(const auto& x : inner) BOOST_CHECK_EQUAL(idx.count(x), 1);
+    BOOST_CHECK_EQUAL(idx.count("not_an_index"), 0);
+  }
+}
+
 /* To test the dim, outer_dim, inner_dim, and size function we simply loop over
  * the VariableList instances and compare the results of the member function to
  * the sizes resulting from calling `split_index`, which defines how a
@@ -537,7 +559,6 @@ BOOST_AUTO_TEST_CASE(is_permutation_fxn){
     } while(std::next_permutation(perm.begin(), perm.end()));
   }
 }
-
 
 BOOST_AUTO_TEST_CASE(implicit_permutation) {
   Permutation p1({1, 2, 3, 0});

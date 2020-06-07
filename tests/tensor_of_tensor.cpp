@@ -1001,7 +1001,8 @@ class Contract {
   /// Contract \c left and \c right and return the result
   /// \param[in] left The left-hand tile to be contracted
   /// \param[in] right The right-hand tile to be contracted
-  void operator()(result_type& result, const first_argument_type* left,
+  void operator()(result_type& result, const
+                  first_argument_type* left,
                   const second_argument_type* right) {
     btas::contract(alpha(), *left, left_annotation(), *right,
                    right_annotation(), 1.0, result, result_annotation());

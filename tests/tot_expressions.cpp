@@ -534,6 +534,90 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_result_transpose, TestParam, test_params){
   BOOST_CHECK(are_equal(result, corr));
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(mom_lhs_transpose, TestParam, test_params){
+  using inner_type = inner_type<TestParam>;
+  using range_type = Range;
+  using il_type    = detail::matrix_il<inner_type>;
+  inner_type lhs_00(range_type{{2, 2}});
+  lhs_00(0, 0) = 0; lhs_00(0, 1) = 1;
+  lhs_00(1, 0) = 1; lhs_00(1, 1) = 2;
+  inner_type lhs_01(range_type{{3, 2}});
+  lhs_01(0, 0) = 1; lhs_01(0, 1) = 2;
+  lhs_01(1, 0) = 2; lhs_01(1, 1) = 3;
+  lhs_01(2, 0) = 3; lhs_01(2, 1) = 4;
+  inner_type lhs_02(range_type{{4, 2}});
+  lhs_02(0, 0) = 2; lhs_02(0, 1) = 3;
+  lhs_02(1, 0) = 3; lhs_02(1, 1) = 4;
+  lhs_02(2, 0) = 4; lhs_02(2, 1) = 5;
+  lhs_02(3, 0) = 5; lhs_02(3, 1) = 6;
+  inner_type lhs_10(range_type{{2, 3}});
+  lhs_10(0, 0) = 1; lhs_10(0, 1) = 2; lhs_10(0, 2) = 3;
+  lhs_10(1, 0) = 2; lhs_10(1, 1) = 3; lhs_10(1, 2) = 4;
+  inner_type lhs_11(range_type{{3, 3}});
+  lhs_11(0, 0) = 2; lhs_11(0, 1) = 3; lhs_11(0, 2) = 4;
+  lhs_11(1, 0) = 3; lhs_11(1, 1) = 4; lhs_11(1, 2) = 5;
+  lhs_11(2, 0) = 4; lhs_11(2, 1) = 5; lhs_11(2, 2) = 6;
+  inner_type lhs_12(range_type{{4, 3}});
+  lhs_12(0, 0) = 3; lhs_12(0, 1) = 4; lhs_12(0, 2) = 5;
+  lhs_12(1, 0) = 4; lhs_12(1, 1) = 5; lhs_12(1, 2) = 6;
+  lhs_12(2, 0) = 5; lhs_12(2, 1) = 6; lhs_12(2, 2) = 7;
+  lhs_12(3, 0) = 6; lhs_12(3, 1) = 7; lhs_12(3, 2) = 8;
+
+  inner_type rhs_00(range_type{{2, 2}});
+  rhs_00(0, 0) = 1; rhs_00(0, 1) = 2;
+  rhs_00(1, 0) = 2; rhs_00(1, 1) = 3;
+  inner_type rhs_01(range_type{{2, 3}});
+  rhs_01(0, 0) = 2; rhs_01(0, 1) = 3; rhs_01(0, 2) = 4;
+  rhs_01(1, 0) = 3; rhs_01(1, 1) = 4; rhs_01(1, 2) = 5;
+  inner_type rhs_02(range_type{{2, 4}});
+  rhs_02(0, 0) = 3; rhs_02(0, 1) = 4; rhs_02(0, 2) = 5; rhs_02(0, 3) = 6;
+  rhs_02(1, 0) = 4; rhs_02(1, 1) = 5; rhs_02(1, 2) = 6; rhs_02(1, 3) = 7;
+  inner_type rhs_10(range_type{{3, 2}});
+  rhs_10(0, 0) = 2; rhs_10(0, 1) = 3;
+  rhs_10(1, 0) = 3; rhs_10(1, 1) = 4;
+  rhs_10(2, 0) = 4; rhs_10(2, 1) = 5;
+  inner_type rhs_11(range_type{{3, 3}});
+  rhs_11(0, 0) = 3; rhs_11(0, 1) = 4; rhs_11(0, 2) = 5;
+  rhs_11(1, 0) = 4; rhs_11(1, 1) = 5; rhs_11(1, 2) = 6;
+  rhs_11(2, 0) = 5; rhs_11(2, 1) = 6; rhs_11(2, 2) = 7;
+  inner_type rhs_12(range_type{{3, 4}});
+  rhs_12(0, 0) = 4; rhs_12(0, 1) = 5; rhs_12(0, 2) = 6; rhs_12(0, 3) = 7;
+  rhs_12(1, 0) = 5; rhs_12(1, 1) = 6; rhs_12(1, 2) = 7; rhs_12(1, 3) = 8;
+  rhs_12(2, 0) = 6; rhs_12(2, 1) = 7; rhs_12(2, 2) = 8; rhs_12(2, 3) = 9;
+
+  inner_type c_00(range_type{{2, 2}});
+  c_00(0, 0) = 1; c_00(0, 1) = 3;
+  c_00(1, 0) = 3; c_00(1, 1) = 5;
+  inner_type c_01(range_type{{2, 3}});
+  c_01(0, 0) = 3; c_01(0, 1) = 5; c_01(0, 2) = 7;
+  c_01(1, 0) = 5; c_01(1, 1) = 7; c_01(1, 2) = 9;
+  inner_type c_02(range_type{{2, 4}});
+  c_02(0, 0) = 5; c_02(0, 1) = 7; c_02(0, 2) = 9; c_02(0, 3) = 11;
+  c_02(1, 0) = 7; c_02(1, 1) = 9; c_02(1, 2) = 11; c_02(1, 3) = 13;
+  inner_type c_10(range_type{{3, 2}});
+  c_10(0, 0) = 3; c_10(0, 1) = 5;
+  c_10(1, 0) = 5; c_10(1, 1) = 7;
+  c_10(2, 0) = 7; c_10(2, 1) = 9;
+  inner_type c_11(range_type{{3, 3}});
+  c_11(0, 0) = 5; c_11(0, 1) = 7; c_11(0, 2) = 9;
+  c_11(1, 0) = 7; c_11(1, 1) = 9; c_11(1, 2) = 11;
+  c_11(2, 0) = 9; c_11(2, 1) = 11; c_11(2, 2) = 13;
+  inner_type c_12(range_type{{3, 4}});
+  c_12(0, 0) = 7; c_12(0, 1) = 9; c_12(0, 2) = 11; c_12(0, 3) = 13;
+  c_12(1, 0) = 9; c_12(1, 1) = 11; c_12(1, 2) = 13; c_12(1, 3) = 15;
+  c_12(2, 0) = 11; c_12(2, 1) = 13; c_12(2, 2) = 15; c_12(2, 3)= 17;
+
+  il_type lhs_il{{lhs_00, lhs_01, lhs_02}, {lhs_10, lhs_11, lhs_12}};
+  il_type rhs_il{{rhs_00, rhs_01, rhs_02}, {rhs_10, rhs_11, rhs_12}};
+  il_type corr_il{{c_00, c_01, c_02}, {c_10, c_11, c_12}};
+  tensor_type<TestParam> lhs(m_world, lhs_il);
+  tensor_type<TestParam> rhs(m_world, rhs_il);
+  tensor_type<TestParam> corr(m_world, corr_il);
+  tensor_type<TestParam> result;
+  result ("i,j;k,l") = lhs("i,j;l,k") + rhs("i,j;k,l");
+  BOOST_CHECK(are_equal(result, corr));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 //------------------------------------------------------------------------------
@@ -977,6 +1061,90 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_result_transpose, TestParam, test_params){
   tensor_type<TestParam> corr(m_world, corr_il);
   tensor_type<TestParam> result;
   result ("j,i;k,l") = lhs("i,j;k,l") - rhs("i,j;k,l");
+  BOOST_CHECK(are_equal(result, corr));
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(mom_lhs_transpose, TestParam, test_params){
+  using inner_type = inner_type<TestParam>;
+  using range_type = Range;
+  using il_type    = detail::matrix_il<inner_type>;
+  inner_type lhs_00(range_type{{2, 2}});
+  lhs_00(0, 0) = 0; lhs_00(0, 1) = 1;
+  lhs_00(1, 0) = 1; lhs_00(1, 1) = 2;
+  inner_type lhs_01(range_type{{3, 2}});
+  lhs_01(0, 0) = 1; lhs_01(0, 1) = 2;
+  lhs_01(1, 0) = 2; lhs_01(1, 1) = 3;
+  lhs_01(2, 0) = 3; lhs_01(2, 1) = 4;
+  inner_type lhs_02(range_type{{4, 2}});
+  lhs_02(0, 0) = 2; lhs_02(0, 1) = 3;
+  lhs_02(1, 0) = 3; lhs_02(1, 1) = 4;
+  lhs_02(2, 0) = 4; lhs_02(2, 1) = 5;
+  lhs_02(3, 0) = 5; lhs_02(3, 1) = 6;
+  inner_type lhs_10(range_type{{2, 3}});
+  lhs_10(0, 0) = 1; lhs_10(0, 1) = 2; lhs_10(0, 2) = 3;
+  lhs_10(1, 0) = 2; lhs_10(1, 1) = 3; lhs_10(1, 2) = 4;
+  inner_type lhs_11(range_type{{3, 3}});
+  lhs_11(0, 0) = 2; lhs_11(0, 1) = 3; lhs_11(0, 2) = 4;
+  lhs_11(1, 0) = 3; lhs_11(1, 1) = 4; lhs_11(1, 2) = 5;
+  lhs_11(2, 0) = 4; lhs_11(2, 1) = 5; lhs_11(2, 2) = 6;
+  inner_type lhs_12(range_type{{4, 3}});
+  lhs_12(0, 0) = 3; lhs_12(0, 1) = 4; lhs_12(0, 2) = 5;
+  lhs_12(1, 0) = 4; lhs_12(1, 1) = 5; lhs_12(1, 2) = 6;
+  lhs_12(2, 0) = 5; lhs_12(2, 1) = 6; lhs_12(2, 2) = 7;
+  lhs_12(3, 0) = 6; lhs_12(3, 1) = 7; lhs_12(3, 2) = 8;
+
+  inner_type rhs_00(range_type{{2, 2}});
+  rhs_00(0, 0) = 1; rhs_00(0, 1) = 2;
+  rhs_00(1, 0) = 2; rhs_00(1, 1) = 3;
+  inner_type rhs_01(range_type{{2, 3}});
+  rhs_01(0, 0) = 2; rhs_01(0, 1) = 3; rhs_01(0, 2) = 4;
+  rhs_01(1, 0) = 3; rhs_01(1, 1) = 4; rhs_01(1, 2) = 5;
+  inner_type rhs_02(range_type{{2, 4}});
+  rhs_02(0, 0) = 3; rhs_02(0, 1) = 4; rhs_02(0, 2) = 5; rhs_02(0, 3) = 6;
+  rhs_02(1, 0) = 4; rhs_02(1, 1) = 5; rhs_02(1, 2) = 6; rhs_02(1, 3) = 7;
+  inner_type rhs_10(range_type{{3, 2}});
+  rhs_10(0, 0) = 2; rhs_10(0, 1) = 3;
+  rhs_10(1, 0) = 3; rhs_10(1, 1) = 4;
+  rhs_10(2, 0) = 4; rhs_10(2, 1) = 5;
+  inner_type rhs_11(range_type{{3, 3}});
+  rhs_11(0, 0) = 3; rhs_11(0, 1) = 4; rhs_11(0, 2) = 5;
+  rhs_11(1, 0) = 4; rhs_11(1, 1) = 5; rhs_11(1, 2) = 6;
+  rhs_11(2, 0) = 5; rhs_11(2, 1) = 6; rhs_11(2, 2) = 7;
+  inner_type rhs_12(range_type{{3, 4}});
+  rhs_12(0, 0) = 4; rhs_12(0, 1) = 5; rhs_12(0, 2) = 6; rhs_12(0, 3) = 7;
+  rhs_12(1, 0) = 5; rhs_12(1, 1) = 6; rhs_12(1, 2) = 7; rhs_12(1, 3) = 8;
+  rhs_12(2, 0) = 6; rhs_12(2, 1) = 7; rhs_12(2, 2) = 8; rhs_12(2, 3) = 9;
+
+  inner_type c_00(range_type{{2, 2}});
+  c_00(0, 0) = -1; c_00(0, 1) = -1;
+  c_00(1, 0) = -1; c_00(1, 1) = -1;
+  inner_type c_01(range_type{{2, 3}});
+  c_01(0, 0) = -1; c_01(0, 1) = -1; c_01(0, 2) = -1;
+  c_01(1, 0) = -1; c_01(1, 1) = -1; c_01(1, 2) = -1;
+  inner_type c_02(range_type{{2, 4}});
+  c_02(0, 0) = -1; c_02(0, 1) = -1; c_02(0, 2) = -1; c_02(0, 3) = -1;
+  c_02(1, 0) = -1; c_02(1, 1) = -1; c_02(1, 2) = -1; c_02(1, 3) = -1;
+  inner_type c_10(range_type{{3, 2}});
+  c_10(0, 0) = -1; c_10(0, 1) = -1;
+  c_10(1, 0) = -1; c_10(1, 1) = -1;
+  c_10(2, 0) = -1; c_10(2, 1) = -1;
+  inner_type c_11(range_type{{3, 3}});
+  c_11(0, 0) = -1; c_11(0, 1) = -1; c_11(0, 2) = -1;
+  c_11(1, 0) = -1; c_11(1, 1) = -1; c_11(1, 2) = -1;
+  c_11(2, 0) = -1; c_11(2, 1) = -1; c_11(2, 2) = -1;
+  inner_type c_12(range_type{{3, 4}});
+  c_12(0, 0) = -1; c_12(0, 1) = -1; c_12(0, 2) = -1; c_12(0, 3) = -1;
+  c_12(1, 0) = -1; c_12(1, 1) = -1; c_12(1, 2) = -1; c_12(1, 3) = -1;
+  c_12(2, 0) = -1; c_12(2, 1) = -1; c_12(2, 2) = -1; c_12(2, 3) = -1;
+
+  il_type lhs_il{{lhs_00, lhs_01, lhs_02}, {lhs_10, lhs_11, lhs_12}};
+  il_type rhs_il{{rhs_00, rhs_01, rhs_02}, {rhs_10, rhs_11, rhs_12}};
+  il_type corr_il{{c_00, c_01, c_02}, {c_10, c_11, c_12}};
+  tensor_type<TestParam> lhs(m_world, lhs_il);
+  tensor_type<TestParam> rhs(m_world, rhs_il);
+  tensor_type<TestParam> corr(m_world, corr_il);
+  tensor_type<TestParam> result;
+  result ("i,j;k,l") = lhs("i,j;l,k") - rhs("i,j;k,l");
   BOOST_CHECK(are_equal(result, corr));
 }
 
@@ -1801,6 +1969,121 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_result_transpose, TestParam, test_params){
   tensor_type<TestParam> corr(m_world, corr_il);
   tensor_type<TestParam> result;
   result ("j,i;k,l") = lhs("i,j;k,l") * rhs("i,j;k,l");
+  BOOST_CHECK(are_equal(result, corr));
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(mom_lhs_transpose, TestParam, test_params){
+  using inner_type = inner_type<TestParam>;
+  using range_type = Range;
+  using il_type    = detail::matrix_il<inner_type>;
+  inner_type lhs_00(range_type{{2, 2}});
+  lhs_00(0, 0) = 0; lhs_00(0, 1) = 1;
+  lhs_00(1, 0) = 1; lhs_00(1, 1) = 2;
+  inner_type lhs_01(range_type{{3, 2}});
+  lhs_01(0, 0) = 1; lhs_01(0, 1) = 2;
+  lhs_01(1, 0) = 2; lhs_01(1, 1) = 3;
+  lhs_01(2, 0) = 3; lhs_01(2, 1) = 4;
+  inner_type lhs_02(range_type{{4, 2}});
+  lhs_02(0, 0) = 2; lhs_02(0, 1) = 3;
+  lhs_02(1, 0) = 3; lhs_02(1, 1) = 4;
+  lhs_02(2, 0) = 4; lhs_02(2, 1) = 5;
+  lhs_02(3, 0) = 5; lhs_02(3, 1) = 6;
+  inner_type lhs_10(range_type{{2, 3}});
+  lhs_10(0, 0) = 1; lhs_10(0, 1) = 2; lhs_10(0, 2) = 3;
+  lhs_10(1, 0) = 2; lhs_10(1, 1) = 3; lhs_10(1, 2) = 4;
+  inner_type lhs_11(range_type{{3, 3}});
+  lhs_11(0, 0) = 2; lhs_11(0, 1) = 3; lhs_11(0, 2) = 4;
+  lhs_11(1, 0) = 3; lhs_11(1, 1) = 4; lhs_11(1, 2) = 5;
+  lhs_11(2, 0) = 4; lhs_11(2, 1) = 5; lhs_11(2, 2) = 6;
+  inner_type lhs_12(range_type{{4, 3}});
+  lhs_12(0, 0) = 3; lhs_12(0, 1) = 4; lhs_12(0, 2) = 5;
+  lhs_12(1, 0) = 4; lhs_12(1, 1) = 5; lhs_12(1, 2) = 6;
+  lhs_12(2, 0) = 5; lhs_12(2, 1) = 6; lhs_12(2, 2) = 7;
+  lhs_12(3, 0) = 6; lhs_12(3, 1) = 7; lhs_12(3, 2) = 8;
+
+  inner_type rhs_00(range_type{{2, 2}});
+  rhs_00(0, 0) = 1; rhs_00(0, 1) = 2;
+  rhs_00(1, 0) = 2; rhs_00(1, 1) = 3;
+  inner_type rhs_01(range_type{{2, 3}});
+  rhs_01(0, 0) = 2; rhs_01(0, 1) = 3; rhs_01(0, 2) = 4;
+  rhs_01(1, 0) = 3; rhs_01(1, 1) = 4; rhs_01(1, 2) = 5;
+  inner_type rhs_02(range_type{{2, 4}});
+  rhs_02(0, 0) = 3; rhs_02(0, 1) = 4; rhs_02(0, 2) = 5; rhs_02(0, 3) = 6;
+  rhs_02(1, 0) = 4; rhs_02(1, 1) = 5; rhs_02(1, 2) = 6; rhs_02(1, 3) = 7;
+  inner_type rhs_10(range_type{{3, 2}});
+  rhs_10(0, 0) = 2; rhs_10(0, 1) = 3;
+  rhs_10(1, 0) = 3; rhs_10(1, 1) = 4;
+  rhs_10(2, 0) = 4; rhs_10(2, 1) = 5;
+  inner_type rhs_11(range_type{{3, 3}});
+  rhs_11(0, 0) = 3; rhs_11(0, 1) = 4; rhs_11(0, 2) = 5;
+  rhs_11(1, 0) = 4; rhs_11(1, 1) = 5; rhs_11(1, 2) = 6;
+  rhs_11(2, 0) = 5; rhs_11(2, 1) = 6; rhs_11(2, 2) = 7;
+  inner_type rhs_12(range_type{{3, 4}});
+  rhs_12(0, 0) = 4; rhs_12(0, 1) = 5; rhs_12(0, 2) = 6; rhs_12(0, 3) = 7;
+  rhs_12(1, 0) = 5; rhs_12(1, 1) = 6; rhs_12(1, 2) = 7; rhs_12(1, 3) = 8;
+  rhs_12(2, 0) = 6; rhs_12(2, 1) = 7; rhs_12(2, 2) = 8; rhs_12(2, 3) = 9;
+
+  inner_type c_00(range_type{{2, 2}});
+  c_00(0, 0) = 0; c_00(0, 1) = 2;
+  c_00(1, 0) = 2; c_00(1, 1) = 6;
+  inner_type c_01(range_type{{2, 3}});
+  c_01(0, 0) = 2; c_01(0, 1) = 6; c_01(0, 2) = 12;
+  c_01(1, 0) = 6; c_01(1, 1) = 12; c_01(1, 2) = 20;
+  inner_type c_02(range_type{{2, 4}});
+  c_02(0, 0) = 6; c_02(0, 1) = 12; c_02(0, 2) = 20; c_02(0, 3) = 30;
+  c_02(1, 0) = 12; c_02(1, 1) = 20; c_02(1, 2) = 30; c_02(1, 3) = 42;
+  inner_type c_10(range_type{{3, 2}});
+  c_10(0, 0) = 2; c_10(0, 1) = 6;
+  c_10(1, 0) = 6; c_10(1, 1) = 12;
+  c_10(2, 0) = 12; c_10(2, 1) = 20;
+  inner_type c_11(range_type{{3, 3}});
+  c_11(0, 0) = 6; c_11(0, 1) = 12; c_11(0, 2) = 20;
+  c_11(1, 0) = 12; c_11(1, 1) = 20; c_11(1, 2) = 30;
+  c_11(2, 0) = 20; c_11(2, 1) = 30; c_11(2, 2) = 42;
+  inner_type c_12(range_type{{3, 4}});
+  c_12(0, 0) = 12; c_12(0, 1) = 20; c_12(0, 2) = 30; c_12(0, 3) = 42;
+  c_12(1, 0) = 20; c_12(1, 1) = 30; c_12(1, 2) = 42; c_12(1, 3) = 56;
+  c_12(2, 0) = 30; c_12(2, 1) = 42; c_12(2, 2) = 56; c_12(2, 3) = 72;
+
+  il_type lhs_il{{lhs_00, lhs_01, lhs_02}, {lhs_10, lhs_11, lhs_12}};
+  il_type rhs_il{{rhs_00, rhs_01, rhs_02}, {rhs_10, rhs_11, rhs_12}};
+  il_type corr_il{{c_00, c_01, c_02}, {c_10, c_11, c_12}};
+  tensor_type<TestParam> lhs(m_world, lhs_il);
+  tensor_type<TestParam> rhs(m_world, rhs_il);
+  tensor_type<TestParam> corr(m_world, corr_il);
+  tensor_type<TestParam> result;
+  result ("i,j;k,l") = lhs("i,j;l,k") * rhs("i,j;k,l");
+  BOOST_CHECK(are_equal(result, corr));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+//------------------------------------------------------------------------------
+//                           Contraction
+//------------------------------------------------------------------------------
+
+BOOST_FIXTURE_TEST_SUITE(tot_contraction, ToTArrayFixture)
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(vov_inner_contraction, TestParam, test_params){
+  using inner_type = inner_type<TestParam>;
+  using range_type = Range;
+  using il_type    = detail::vector_il<inner_type>;
+  using policy_type = policy_type<TestParam>;
+  range_type r2{2}, r3{3};
+  inner_type lhs_0{r2}; lhs_0[0] = 0; lhs_0[1] = 1;
+  inner_type lhs_1{r3}; lhs_1[0] = 1; lhs_1[1] = 2; lhs_1[2] = 3;
+  il_type lhs_il{lhs_0, lhs_1};
+
+  inner_type rhs_0{r2}; rhs_0[0] = 1; rhs_0[1] = 2;
+  inner_type rhs_1{r3}; rhs_1[0] = 2; rhs_1[1] = 3; rhs_1[2] = 4;
+  il_type rhs_il{rhs_0, rhs_1};
+
+  using result_type = DistArray<Tensor<scalar_type<TestParam>>, policy_type>;
+  result_type corr(m_world, {2.0, 20.0});
+  tensor_type<TestParam> lhs(m_world, lhs_il);
+  tensor_type<TestParam> rhs(m_world, rhs_il);
+  tensor_type<TestParam> result;
+  //einsum(result("i"), lhs("i;j"), rhs("i;j"));
   BOOST_CHECK(are_equal(result, corr));
 }
 
