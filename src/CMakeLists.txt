@@ -110,6 +110,9 @@ TiledArray/math/parallel_gemm.h
 TiledArray/math/partial_reduce.h
 TiledArray/math/transpose.h
 TiledArray/math/vector_op.h
+TiledArray/math/scalapack.h
+TiledArray/math/scalapack/heig.h
+TiledArray/math/scalapack/chol.h
 TiledArray/pmap/blocked_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h
