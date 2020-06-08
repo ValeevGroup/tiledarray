@@ -365,4 +365,161 @@ BOOST_AUTO_TEST_CASE( sca_chol ) {
   GlobalFixture::world->gop.fence();
 }
 
+
+
+BOOST_AUTO_TEST_CASE( sca_chol_linv ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+     
+  auto Linv = cholesky_linv( ref_ta );
+
+  BOOST_CHECK( Linv.trange() == ref_ta.trange() );
+
+  TA::TArray<double> tmp( *GlobalFixture::world, trange );
+  tmp("i,j")    = Linv("i,k") * ref_ta("k,j");
+  ref_ta("i,j") = tmp ("i,k") * Linv  ("j,k");
+
+  TA::foreach_inplace( ref_ta, []( TA::Tensor<double>& tile ) {
+    auto range = tile.range();
+    auto lo = range.lobound_data();
+    auto up = range.upbound_data();
+    for (auto m = lo[0]; m < up[0]; ++m)
+    for (auto n = lo[1]; n < up[1]; ++n) 
+    if( m == n ) {
+      tile(m,n) -= 1.;
+    }
+  });
+
+  double norm = ref_ta("i,j").norm(*GlobalFixture::world).get();
+  BOOST_CHECK_SMALL( norm, N*N*std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+}
+
+
+
+
+BOOST_AUTO_TEST_CASE( sca_chol_linv_retl ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+     
+  auto [L, Linv] = cholesky_linv<decltype(ref_ta),true>( ref_ta );
+
+  BOOST_CHECK( Linv.trange() == ref_ta.trange() );
+  BOOST_CHECK( L.trange()    == ref_ta.trange() );
+
+  TA::TArray<double> tmp( *GlobalFixture::world, trange );
+  tmp("i,j") = Linv("i,k") * L("k,j");
+
+  TA::foreach_inplace( tmp, []( TA::Tensor<double>& tile ) {
+    auto range = tile.range();
+    auto lo = range.lobound_data();
+    auto up = range.upbound_data();
+    for (auto m = lo[0]; m < up[0]; ++m)
+    for (auto n = lo[1]; n < up[1]; ++n) 
+    if( m == n ) {
+      tile(m,n) -= 1.;
+    }
+  });
+
+  double norm = tmp("i,j").norm(*GlobalFixture::world).get();
+  BOOST_CHECK_SMALL( norm, N*N*std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+}
+
+
+
+BOOST_AUTO_TEST_CASE( sca_chol_solve ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+     
+  auto iden = cholesky_solve( ref_ta, ref_ta );
+
+  BOOST_CHECK( iden.trange() == ref_ta.trange() );
+
+  TA::foreach_inplace( iden, []( TA::Tensor<double>& tile ) {
+    auto range = tile.range();
+    auto lo = range.lobound_data();
+    auto up = range.upbound_data();
+    for (auto m = lo[0]; m < up[0]; ++m)
+    for (auto n = lo[1]; n < up[1]; ++n) 
+    if( m == n ) {
+      tile(m,n) -= 1.;
+    }
+  });
+
+  double norm = iden("i,j").norm(*GlobalFixture::world).get();
+  BOOST_CHECK_SMALL( norm, N*N*std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+}
+
+
+
+
+
+BOOST_AUTO_TEST_CASE( sca_chol_lsolve ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+     
+  // Should produce X = L**H
+  auto [L, X] = cholesky_lsolve( scalapackpp::TransposeFlag::NoTranspose,
+    ref_ta, ref_ta );
+
+  BOOST_CHECK( X.trange() == ref_ta.trange() );
+  BOOST_CHECK( L.trange() == ref_ta.trange() );
+
+  X("i,j") -= L("j,i");
+
+  double norm = X("i,j").norm(*GlobalFixture::world).get();
+  BOOST_CHECK_SMALL( norm, N*N*std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
