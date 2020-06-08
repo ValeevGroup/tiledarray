@@ -60,6 +60,7 @@ auto heig( Array& array, size_t NB = 128, TiledRange evec_trange = TiledRange() 
 
   auto& world = array.world();
   auto world_comm = world.mpi.comm().Get_mpi_comm();
+  //auto world_comm = MPI_COMM_WORLD;
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
@@ -76,28 +77,20 @@ auto heig( Array& array, size_t NB = 128, TiledRange evec_trange = TiledRange() 
   std::vector<real_type>        evals( N );
   BlockCyclicMatrix<value_type> evecs( world, grid, N, N, NB, NB );
 
-#if 1
   auto info = scalapackpp::hereig(
     scalapackpp::VectorFlag::Vectors, blacspp::Triangle::Lower, N,
     matrix.local_mat().data(), 1, 1, desc, evals.data(),
     evecs.local_mat().data(), 1, 1, desc );
   if (info) throw std::runtime_error("EVP Failed");
-#endif
 
-  //if( evec_trange.rank() == 0 ) evec_trange = array.trange();
+  if( evec_trange.rank() == 0 ) evec_trange = array.trange();
 
-#if 0
   world.gop.fence();
-  auto evecs_ta = block_cyclic_to_array<Array>( evecs, array.trange() );
+  auto evecs_ta = block_cyclic_to_array<Array>( evecs, evec_trange );
   world.gop.fence();
-#endif
 
 
-#if 0
   return std::tuple( evals, evecs_ta );
-#else
-  return evals;
-#endif
 
 }
 
