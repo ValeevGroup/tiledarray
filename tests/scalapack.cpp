@@ -336,4 +336,33 @@ BOOST_AUTO_TEST_CASE( sca_heig_diff_tiling ) {
   GlobalFixture::world->gop.fence();
 }
 
+
+
+
+BOOST_AUTO_TEST_CASE( sca_chol ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto L = cholesky( ref_ta );
+
+  BOOST_CHECK( L.trange() == ref_ta.trange() );
+
+  ref_ta("i,j") -= L("i,k") * L("j,k").conj();
+
+  double diff_norm = ref_ta("i,j").norm(*GlobalFixture::world).get();
+  BOOST_CHECK_SMALL( diff_norm, N*N*std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+}
+
 BOOST_AUTO_TEST_SUITE_END()

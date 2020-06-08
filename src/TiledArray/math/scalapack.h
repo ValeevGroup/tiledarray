@@ -28,6 +28,7 @@
 #if TILEDARRAY_HAS_SCALAPACK
 
 #include <TiledArray/math/scalapack/heig.h>
+#include <TiledArray/math/scalapack/chol.h>
 
 #endif
 

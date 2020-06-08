@@ -18,50 +18,92 @@
  *  David Williams-Young
  *  Computational Research Division, Lawrence Berkeley National Laboratory
  *
- *  heig.h
- *  Created:  13 May,  2020
- *  Edited:    8 June, 2020
+ *  chol.h
+ *  Created:    8 June, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_HEIG_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_HEIG_H__INCLUDED
+#ifndef TILEDARRAY_MATH_SCALAPACK_CHOL_H__INCLUDED
+#define TILEDARRAY_MATH_SCALAPACK_CHOL_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
 #include <TiledArray/conversions/block_cyclic.h>
-#include <scalapackpp/eigenvalue_problem/sevp.hpp>
+#include <scalapackpp/factorizations/potrf.hpp>
 
 namespace TiledArray {
 
+namespace detail {
+
+template <typename T>
+void scalapack_zero_triangle( 
+  blacspp::Triangle tri, BlockCyclicMatrix<T>& A, bool zero_diag = false 
+) {
+
+  auto zero_el = [&]( size_t I, size_t J ) {
+    if( A.dist().i_own(I,J) ) {
+      auto [i,j] = A.dist().local_indx(I,J);
+      A.local_mat()(i,j) = 0.;
+    }
+  };
+
+  auto [M,N] = A.dims();
+
+  // Zero the lower triangle
+  if( tri == blacspp::Triangle::Lower ) {
+
+    if( zero_diag )
+      for( size_t j = 0; j < N; ++j )
+      for( size_t i = j; i < M; ++i )
+        zero_el( i,j );
+    else
+      for( size_t j = 0;   j < N; ++j )
+      for( size_t i = j+1; i < M; ++i )
+        zero_el( i,j );
+
+  // Zero the upper triangle
+  } else {
+
+    if( zero_diag )
+      for( size_t j = 0; j < N;  ++j )
+      for( size_t i = 0; i <= std::min(j,M); ++i )
+        zero_el( i,j );
+    else
+      for( size_t j = 0; j < N; ++j )
+      for( size_t i = 0; i < std::min(j,M); ++i )
+        zero_el( i,j );
+
+  }
+}
+
+}
+
 /**
- *  @brief Solve the standard eigenvalue problem with ScaLAPACK
+ *  @brief Compute the Cholesky factorization of a HPD rank-2 tensor
  *
- *  A(i,k) X(k,j) = X(i,j) E(j)
+ *  A(i,j) = L(i,k) * conj(L(j,k))
  *
  *  Example Usage:
  *
- *  auto [E, X] = heig(A, ...)
+ *  auto L = cholesky(A, ...)
  *
  *  @tparam Array Input array type, must be convertable to BlockCyclicMatrix
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
  *  @param[in] NB          ScaLAPACK blocking factor. Defaults to 128
- *  @param[in] evec_trange TiledRange for resulting eigenvectors. If left empty,
+ *  @param[in] l_trange    TiledRange for resulting Cholesky factor. If left empty,
  *                         will default to array.trange()
  *
- *  @returns A tuple containing the eigenvalues and eigenvectors of input array
- *  as std::vector and in TA format, respectively.
+ *  @returns The lower triangular Cholesky factor L in TA format
  */
 template <typename Array>
-auto heig( Array& A, size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
+auto cholesky( Array& A, size_t NB = 128, TiledRange l_trange = TiledRange() ) {
 
   using value_type = typename Array::element_type;
   using real_type  = scalapackpp::detail::real_t<value_type>;
 
   auto& world = A.world();
   auto world_comm = world.mpi.comm().Get_mpi_comm();
-  //auto world_comm = MPI_COMM_WORLD;
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
@@ -75,23 +117,21 @@ auto heig( Array& A, size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
   auto [Mloc, Nloc] = matrix.dist().get_local_dims(N, N);
   auto desc = matrix.dist().descinit_noerror(N, N, Mloc);
 
-  std::vector<real_type>        evals( N );
-  BlockCyclicMatrix<value_type> evecs( world, grid, N, N, NB, NB );
+  auto info = scalapackpp::ppotrf( blacspp::Triangle::Lower, N,
+    matrix.local_mat().data(), 1, 1, desc );
+  if (info) throw std::runtime_error("Cholesky Failed");
 
-  auto info = scalapackpp::hereig(
-    scalapackpp::VectorFlag::Vectors, blacspp::Triangle::Lower, N,
-    matrix.local_mat().data(), 1, 1, desc, evals.data(),
-    evecs.local_mat().data(), 1, 1, desc );
-  if (info) throw std::runtime_error("EVP Failed");
+  // Zero out the upper triangle
+  detail::scalapack_zero_triangle( blacspp::Triangle::Upper, matrix );
 
-  if( evec_trange.rank() == 0 ) evec_trange = A.trange();
+  if( l_trange.rank() == 0 ) l_trange = A.trange();
 
   world.gop.fence();
-  auto evecs_ta = block_cyclic_to_array<Array>( evecs, evec_trange );
+  auto L = block_cyclic_to_array<Array>( matrix, l_trange );
   world.gop.fence();
 
 
-  return std::tuple( evals, evecs_ta );
+  return L;
 
 }
 
@@ -99,3 +139,4 @@ auto heig( Array& A, size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
 
 #endif // TILEDARRAY_HAS_SCALAPACK
 #endif // TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
+
