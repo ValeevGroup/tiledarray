@@ -336,6 +336,48 @@ BOOST_AUTO_TEST_CASE( sca_heig_diff_tiling ) {
   GlobalFixture::world->gop.fence();
 }
 
+BOOST_AUTO_TEST_CASE( sca_heig_generalized ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto dense_iden = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        t = TA::Tensor<double>(range, 0.0);
+        auto lo = range.lobound_data();
+        auto up = range.upbound_data();
+        for (auto m = lo[0]; m < up[0]; ++m) 
+        for (auto n = lo[1]; n < up[1]; ++n) 
+	if( m == n )
+          t(m, n) = 1.;
+	
+	return t.norm();
+      });
+
+  auto [evals, evecs] = heig( ref_ta, dense_iden );
+  //auto evals = heig( ref_ta );
+
+  BOOST_CHECK( evecs.trange() == ref_ta.trange() );
+
+  // TODO: Check validity of eigenvectors, not crutial for the time being
+
+  // Check eigenvalue correctness
+  double tol = N*N*std::numeric_limits<double>::epsilon();
+  for( int64_t i = 0; i < N; ++i )
+    BOOST_CHECK_SMALL( std::abs(evals[i] - exact_evals[i]), tol );
+
+  GlobalFixture::world->gop.fence();
+}
 
 
 
