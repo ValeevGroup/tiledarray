@@ -538,7 +538,8 @@ auto common_annotations(T&& v, Args&&...args) {
   if constexpr(sizeof...(Args)) {
     rv = common_annotations(std::forward<Args>(args)...);
     // Remove all annotations not found in v
-    for (const auto& x : rv)
+    decltype(rv) buffer(rv);
+    for (const auto& x : buffer)
       if (!v.count(x)) rv.erase(x);
   }
   else{
@@ -554,7 +555,8 @@ auto bound_annotations(const VariableList& out, Args&&...args){
   auto rv = all_annotations(std::forward<Args>(args)...);
 
   // Remove those found in the output tensor
-  for(const auto& x : rv)
+  decltype(rv) buffer(rv);
+  for(const auto& x : buffer)
     if(out.count(x)) rv.erase(x);
   return rv;
 }

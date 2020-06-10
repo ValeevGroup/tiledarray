@@ -20,6 +20,9 @@
 #ifndef TILEDARRAY_EXPRESSIONS_CONTRACTION_HELPERS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_CONTRACTION_HELPERS_H__INCLUDED
 
+#include "TiledArray/expressions/variable_list.h"
+#include "TiledArray/tensor/tensor.h"
+
 namespace TiledArray::expressions {
 
 /// Assembles the range for the target annotation
@@ -117,6 +120,18 @@ auto make_index(const VariableList& free_vars,
   return rv;
 }
 
+/// Wraps process of getting a VariableList with the bound variables
+inline auto make_bound_annotation(const VariableList& free_vars,
+                                  const VariableList& lhs_vars,
+                                  const VariableList& rhs_vars) {
+  const auto bound_temp = bound_annotations(free_vars, lhs_vars, rhs_vars);
+  VariableList bound_vars(
+      std::vector<std::string>(bound_temp.begin(), bound_temp.end()),
+      std::vector<std::string>{});
+  return bound_vars;
+}
+
+
 namespace kernels {
 
 // Contract two tensors to a scalar
@@ -128,15 +143,14 @@ auto s_t_t_contract_(const VariableList& free_vars,
   using value_type = typename std::decay_t<LHSType>::value_type;
 
   TA_ASSERT(free_vars.size() == 0);
+  TA_ASSERT(lhs_vars.size() > 0);
+  TA_ASSERT(rhs_vars.size() > 0);
   TA_ASSERT(!lhs_vars.is_tot());
   TA_ASSERT(!rhs_vars.is_tot());
   TA_ASSERT(lhs_vars.is_permutation(rhs_vars));
 
   // Get the indices being contracted over
-  const auto bound_temp = bound_annotations(free_vars, lhs_vars, rhs_vars);
-  VariableList bound_vars(
-      std::vector<std::string>(bound_temp.begin(), bound_temp.end()),
-      std::vector<std::string>{});
+  const auto bound_vars = make_bound_annotation(free_vars, lhs_vars, rhs_vars);
 
   // Lambdas to bind the annotations, making it easier to get coordinate indices
   auto lhs_idx = [=](const auto& bound_idx) {
@@ -161,173 +175,195 @@ auto s_t_t_contract_(const VariableList& free_vars,
   return rv;
 }
 
-//
-//// Contract two tensors to a tensor
-//template <typename OutType, typename LHSType, typename RHSType>
-//void t_t_t_contract_(const VariableList& free_vars,
-//                     const VariableList& lhs_vars,
-//                     const VariableList& rhs_vars,
-//                     OutType&& out, LHSType&& lhs, RHSType&& rhs) {
-//  // Get the indices being contracted over
-//  const auto bound_temp = bound_annotations(free_vars, lhs_vars, rhs_vars);
-//  VariableList bound_vars(bound_temp.begin(), bound_temp.end(), 0);
-//
-//  // Lambdas to bind the annotations, making it easier to get coordinate indices
-//  auto lhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-//    return make_index(free_vars, bound_vars, lhs_vars, free_idx, bound_idx);
-//  };
-//
-//  auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-//    return make_index(free_vars, bound_vars, rhs_vars, free_idx, bound_idx);
-//  };
-//
-//  if (bound_vars.size() == 0) {
-//    decltype(*out.range().begin()) empty;
-//    for (const auto& free_idx : out.range()) {
-//      const auto& out_elem = out(free_idx);
-//      const auto& lhs_elem = lhs(lhs_idx(free_idx, empty));
-//      const auto& rhs_elem = rhs(rhs_idx(free_idx, empty));
-//      out_elem += lhs_elem * rhs_elem;
-//    }
-//  } else {
-//    auto bound_range =
-//        bound_range_from_annotation(bound_vars, lhs_vars, rhs_vars, lhs, rhs);
-//
-//    for (const auto& free_idx : out.range()) {
-//      const auto& out_elem = out(free_idx);
-//      for (const auto& bound_idx : bound_range) {
-//        const auto& lhs_elem = lhs(lhs_idx(free_idx, bound_idx));
-//        const auto& rhs_elem = rhs(rhs_idx(free_idx, bound_idx));
-//        out_elem += lhs_elem * rhs_elem;
-//      }
-//    }
-//  }
-//}
-//
-//// Contract two ToTs to a ToT
-//template <typename OutType, typename LHSType, typename RHSType>
-//void t_tot_tot_contract_(const VariableList& out_vars,
-//                         const VariableList& lhs_vars,
-//                         const VariableList& rhs_vars,
-//                         OutType&& out, LHSType&& lhs, RHSType&& rhs) {
-//
-//  // Break the annotations up into their inner and outer parts
-//  const auto out_ovars = out_vars.outer_vars();
-//
-//  const auto lhs_ovars = lhs_vars.outer_vars();
-//  const auto lhs_ivars = lhs_vars.inner_vars();
-//  const auto rhs_ovars = rhs_vars.outer_vars();
-//  const auto rhs_ivars = rhs_vars.inner_vars();
-//
-//  // We assume there's no operation going across the outer and inner tensors
-//  // (i.e., the set of outer annotations must be disjoint from the inner)
-//  {
-//    auto all_outer = all_annotations(out_ovars, lhs_ovars, rhs_ovars);
-//    auto all_inner = all_annotations(lhs_ivars, rhs_ivars);
-//    TA_ASSERT(common_annotations(all_outer, all_inner).size() == 0);
-//  }
-//
-//  // Get the outer indices being contracted over
-//  const auto bound_temp = bound_annotations(out_ovars, lhs_ovars, rhs_ovars);
-//  VariableList bound_vars(bound_temp.begin(), bound_temp.end(), 0);
-//
-//  // lambdas to bind annotations, making it easier to get coordinate indices
-//  auto lhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-//    return make_index(out_ovars, bound_vars, lhs_ovars, free_idx, bound_idx);
-//  };
-//
-//  auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-//    return make_index(out_ovars, bound_vars, rhs_ovars, free_idx, bound_idx);
-//  };
-//
-//  // If bound_vars is empty we're doing Hadamard on the outside
-//  if(bound_vars.size() == 0) { // Hadamard on the outside
-//    const std::vector<std::size_t> empty;
-//    for (const auto& free_idx : out.range()) {
-//      const auto& inner_out = out(free_idx);
-//      const auto& inner_lhs = lhs(lhs_idx(free_idx, empty));
-//      const auto& inner_rhs = rhs(rhs_idx(free_idx, empty));
-//      s_t_t_contract_(VariableList{}, lhs_ivars, rhs_ivars,
-//                      inner_out, inner_lhs, inner_rhs);
-//    }
-//  } else {
-//    auto bound_range =
-//        bound_range_from_annotation(bound_vars, lhs_ovars, rhs_ovars, lhs, rhs);
-//
-//    for (const auto& free_idx : out.range()) {
-//      const auto& inner_out = out(free_idx);
-//      for (const auto& bound_idx : bound_range) {
-//        const auto& inner_lhs = lhs(lhs_idx(free_idx, bound_idx));
-//        const auto& inner_rhs = rhs(rhs_idx(free_idx, bound_idx));
-//        s_t_t_contract_(VariableList{}, lhs_ivars, rhs_ivars, inner_out, inner_lhs,
-//                        inner_rhs);
-//      }
-//    }
-//  }
-//}
-//
-//// Contract two ToTs to a ToT
-//template <typename OutType, typename LHSType, typename RHSType>
-//void tot_tot_tot_contract_(const VariableList& out_vars,
-//                           const VariableList& lhs_vars,
-//                           const VariableList& rhs_vars,
-//                           OutType&& out, LHSType&& lhs, RHSType&& rhs) {
-//
-//  // Break the annotations up into their inner and outer parts
-//  const auto out_ovars = out_vars.outer_vars();
-//  const auto out_ivars = out_vars.inner_vars();
-//  const auto lhs_ovars = lhs_vars.outer_vars();
-//  const auto lhs_ivars = lhs_vars.inner_vars();
-//  const auto rhs_ovars = rhs_vars.outer_vars();
-//  const auto rhs_ivars = rhs_vars.inner_vars();
-//
-//  // We assume there's no operation going across the outer and inner tensors
-//  // (i.e., the set of outer annotations must be disjoint from the inner)
-//  {
-//    auto all_outer = all_annotations(out_ovars, lhs_ovars, rhs_ovars);
-//    auto all_inner = all_annotations(out_ivars, lhs_ivars, rhs_ivars);
-//    TA_ASSERT(common_annotations(all_outer, all_inner).size() == 0);
-//  }
-//
-//  // Get the outer indices being contracted over
-//  const auto bound_temp = bound_annotations(out_ovars, lhs_ovars, rhs_ovars);
-//  VariableList bound_vars(bound_temp.begin(), bound_temp.end(), 0);
-//
-//  // lambdas to bind annotations, making it easier to get coordinate indices
-//  auto lhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-//    return make_index(free_vars, bound_vars, lhs_ovars, free_idx, bound_idx);
-//  };
-//
-//  auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-//    return make_index(free_vars, bound_vars, rhs_ovars, free_idx, bound_idx);
-//  };
-//
-//  // If bound_vars is empty we're doing Hadamard on the outside
-//  if(bound_vars.size() == 0) { // Hadamard on the outside
-//    const std::vector<std::size_t> empty;
-//    for (const auto& free_idx : out.range()) {
-//      const auto& inner_out = out(free_idx);
-//      const auto& inner_lhs = lhs(lhs_idx(free_idx, empty));
-//      const auto& inner_rhs = rhs(rhs_idx(free_idx, empty));
-//      t_t_t_contract_(out_ivars, lhs_ivars, rhs_ivars,
-//                      inner_out, inner_lhs, inner_rhs);
-//    }
-//  } else {
-//    auto bound_range =
-//        bound_range_from_annotation(bound_vars, lhs_ovars, rhs_ovars, lhs, rhs);
-//
-//    for (const auto& free_idx : out.range()) {
-//      const auto& inner_out = out(free_idx);
-//      for (const auto& bound_idx : bound_range) {
-//        const auto& inner_lhs = lhs(lhs_idx(free_idx, bound_idx));
-//        const auto& inner_rhs = rhs(rhs_idx(free_idx, bound_idx));
-//        t_t_t_contract_(out_ivars, lhs_ivars, rhs_ivars, inner_out, inner_lhs,
-//                        inner_rhs);
-//      }
-//    }
-//  }
-//}
-//
+
+// Contract two tensors to a tensor
+template<typename LHSType, typename RHSType>
+auto t_t_t_contract_(const VariableList& free_vars,
+                     const VariableList& lhs_vars,
+                     const VariableList& rhs_vars,
+                     LHSType&& lhs, RHSType&& rhs) {
+  // Get the indices being contracted over
+  const auto bound_vars = make_bound_annotation(free_vars, lhs_vars, rhs_vars);
+
+  // Lambdas to bind the annotations, making it easier to get coordinate indices
+  auto lhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
+    return make_index(free_vars, bound_vars, lhs_vars, free_idx, bound_idx);
+  };
+
+  auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
+    return make_index(free_vars, bound_vars, rhs_vars, free_idx, bound_idx);
+  };
+
+  auto orange = range_from_annotation(free_vars, lhs_vars, rhs_vars, lhs, rhs);
+  std::decay_t<LHSType> rv(orange, 0.0);
+
+  if (bound_vars.size() == 0) {
+    std::decay_t<decltype(*lhs.range().begin())> empty;
+    for (const auto& free_idx : orange) {
+      auto& out_elem = rv(free_idx);
+      const auto& lhs_elem = lhs(lhs_idx(free_idx, empty));
+      const auto& rhs_elem = rhs(rhs_idx(free_idx, empty));
+      out_elem += lhs_elem * rhs_elem;
+    }
+  } else {
+    auto brange =
+        range_from_annotation(bound_vars, lhs_vars, rhs_vars, lhs, rhs);
+
+    for (const auto& free_idx : orange) {
+      auto& out_elem = rv(free_idx);
+      for (const auto& bound_idx : brange) {
+        const auto& lhs_elem = lhs(lhs_idx(free_idx, bound_idx));
+        const auto& rhs_elem = rhs(rhs_idx(free_idx, bound_idx));
+        out_elem += lhs_elem * rhs_elem;
+      }
+    }
+  }
+  return rv;
+}
+
+
+// Contract two ToTs to a ToT
+template <typename LHSType, typename RHSType>
+auto t_tot_tot_contract_(const VariableList& free_vars,
+                         const VariableList& lhs_vars,
+                         const VariableList& rhs_vars,
+                         LHSType&& lhs, RHSType&& rhs) {
+
+  // Break the annotations up into their inner and outer parts
+  const auto lhs_ovars = lhs_vars.outer_vars();
+  const auto lhs_ivars = lhs_vars.inner_vars();
+  const auto rhs_ovars = rhs_vars.outer_vars();
+  const auto rhs_ivars = rhs_vars.inner_vars();
+
+  // We assume there's no operation going across the outer and inner tensors
+  // (i.e., the set of outer annotations must be disjoint from the inner)
+  {
+    auto all_outer = all_annotations(free_vars, lhs_ovars, rhs_ovars);
+    auto all_inner = all_annotations(lhs_ivars, rhs_ivars);
+    TA_ASSERT(common_annotations(all_outer, all_inner).size() == 0);
+  }
+
+  // Get the outer indices being contracted over
+  const auto bound_vars =
+      make_bound_annotation(free_vars, lhs_ovars, rhs_ovars);
+
+  // lambdas to bind annotations, making it easier to get coordinate indices
+  auto lhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
+    return make_index(free_vars, bound_vars, lhs_ovars, free_idx, bound_idx);
+  };
+
+  auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
+    return make_index(free_vars, bound_vars, rhs_ovars, free_idx, bound_idx);
+  };
+
+  auto orange =
+      range_from_annotation(free_vars, lhs_ovars, rhs_ovars, lhs, rhs);
+  Tensor<typename std::decay_t<LHSType>::numeric_type> rv(orange, 0.0);
+
+  // If bound_vars is empty we're doing Hadamard on the outside
+  if(bound_vars.size() == 0) { // Hadamard on the outside
+    std::decay_t<decltype(*lhs.range().begin())> empty;
+    for (const auto& free_idx : orange) {
+      const auto& inner_lhs = lhs(lhs_idx(free_idx, empty));
+      const auto& inner_rhs = rhs(rhs_idx(free_idx, empty));
+      rv(free_idx) +=
+          s_t_t_contract_(VariableList{}, lhs_ivars, rhs_ivars, inner_lhs, inner_rhs);
+    }
+  } else {
+    auto bound_range =
+        range_from_annotation(bound_vars, lhs_ovars, rhs_ovars, lhs, rhs);
+
+    for (const auto& free_idx : orange) {
+      auto& inner_out = rv(free_idx);
+      for (const auto& bound_idx : bound_range) {
+        const auto& inner_lhs = lhs(lhs_idx(free_idx, bound_idx));
+        const auto& inner_rhs = rhs(rhs_idx(free_idx, bound_idx));
+        inner_out += s_t_t_contract_(VariableList{}, lhs_ivars, rhs_ivars, inner_lhs, inner_rhs);
+      }
+    }
+  }
+  return rv;
+}
+
+
+// Contract two ToTs to a ToT
+template <typename LHSType, typename RHSType>
+auto tot_tot_tot_contract_(const VariableList& out_vars,
+                           const VariableList& lhs_vars,
+                           const VariableList& rhs_vars,
+                           LHSType&& lhs, RHSType&& rhs) {
+
+  // Break the annotations up into their inner and outer parts
+  const auto out_ovars = out_vars.outer_vars();
+  const auto out_ivars = out_vars.inner_vars();
+  const auto lhs_ovars = lhs_vars.outer_vars();
+  const auto lhs_ivars = lhs_vars.inner_vars();
+  const auto rhs_ovars = rhs_vars.outer_vars();
+  const auto rhs_ivars = rhs_vars.inner_vars();
+
+  // We assume there's no operation going across the outer and inner tensors
+  // (i.e., the set of outer annotations must be disjoint from the inner)
+  {
+    auto all_outer = all_annotations(out_ovars, lhs_ovars, rhs_ovars);
+    auto all_inner = all_annotations(out_ivars, lhs_ivars, rhs_ivars);
+    TA_ASSERT(common_annotations(all_outer, all_inner).size() == 0);
+  }
+
+  // Get the outer indices being contracted over
+  const auto bound_vars =
+      make_bound_annotation(out_ovars, lhs_ovars, rhs_ovars);
+
+  // lambdas to bind annotations, making it easier to get coordinate indices
+  auto lhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
+    return make_index(out_ovars, bound_vars, lhs_ovars, free_idx, bound_idx);
+  };
+
+  auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
+    return make_index(out_ovars, bound_vars, rhs_ovars, free_idx, bound_idx);
+  };
+
+  auto orange =
+      range_from_annotation(out_ovars, lhs_ovars, rhs_ovars, lhs, rhs);
+  using tot_type = std::decay_t<LHSType>;
+  typename tot_type::value_type default_tile;
+  tot_type rv(orange, default_tile);
+
+  // If bound_vars is empty we're doing Hadamard on the outside
+  if(bound_vars.size() == 0) { // Hadamard on the outside
+    std::decay_t<decltype(*lhs.range().begin())> empty;
+    for (const auto& free_idx : orange) {
+      auto& inner_out = rv(free_idx);
+      const auto& inner_lhs = lhs(lhs_idx(free_idx, empty));
+      const auto& inner_rhs = rhs(rhs_idx(free_idx, empty));
+      const auto elem =
+          t_t_t_contract_(out_ivars, lhs_ivars, rhs_ivars, inner_lhs, inner_rhs);
+      if (inner_out != default_tile) {
+        inner_out += elem;
+      } else {
+        rv(free_idx) = elem;
+      }
+    }
+  } else {
+    auto bound_range =
+        range_from_annotation(bound_vars, lhs_ovars, rhs_ovars, lhs, rhs);
+    for (const auto& free_idx : orange) {
+      auto& inner_out = rv(free_idx);
+      for (const auto& bound_idx : bound_range) {
+        const auto& inner_lhs = lhs(lhs_idx(free_idx, bound_idx));
+        const auto& inner_rhs = rhs(rhs_idx(free_idx, bound_idx));
+        const auto elem =
+            t_t_t_contract_(out_ivars, lhs_ivars, rhs_ivars, inner_lhs, inner_rhs);
+        if (inner_out != default_tile) {
+          inner_out += elem;
+        } else {
+          rv(free_idx) = elem;
+        }
+      }
+    }
+  }
+  return rv;
+}
+
 } // namespace kernels
 
 //template <typename ResultType, typename LHSType, typename RHSType>

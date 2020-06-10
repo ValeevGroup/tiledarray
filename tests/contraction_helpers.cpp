@@ -140,35 +140,4 @@ BOOST_AUTO_TEST_CASE(both_bound){
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_SUITE(s_t_t_contract)
-
-BOOST_AUTO_TEST_CASE(vv){
-  Tensor<double> lhs(Range{3}, {60, 96, 86});
-  Tensor<double> rhs(Range{3}, {97, 80, 68});
-  double corr = 19348;
-  VariableList empty, lidx("i"), ridx("i");
-  auto rv = kernels::s_t_t_contract_(empty, lidx, ridx, lhs, rhs);
-  BOOST_CHECK_EQUAL(rv, corr);
-}
-
-BOOST_AUTO_TEST_CASE(mm){
-  Tensor<double> lhs(Range{3, 10}, {97, 61, 8, 33, 29, 35, 69, 16, 96, 94, 39, 40, 49, 19, 89, 25, 35, 40, 93, 44, 74, 39, 31, 24, 17, 84, 80, 97, 39, 36});
-  Tensor<double> rhs(Range{3, 10}, {67, 63, 98, 52, 40, 78, 52, 16, 95, 87, 84, 8, 20, 82, 24, 40, 79, 9, 50, 62, 46, 24, 63, 36, 93, 16, 52, 48, 4, 83});
-  double corr = 79689;
-  VariableList empty, lidx("i,j"), ridx("i,j");
-  auto rv = kernels::s_t_t_contract_(empty, lidx, ridx, lhs, rhs);
-  BOOST_CHECK_EQUAL(rv, corr);
-}
-
-BOOST_AUTO_TEST_CASE(tt){
-  Tensor<double> lhs(Range{3, 10, 2}, {72, 37, 15, 44, 35, 64, 40, 64, 38, 60, 94, 24, 93, 25, 68, 27, 17, 49, 53, 53, 58, 42, 14, 32, 39, 9, 58, 1, 18, 63, 80, 96, 64, 67, 66, 26, 18, 92, 33, 99, 10, 5, 54, 54, 32, 35, 20, 27, 33, 11, 93, 85, 37, 30, 28, 47, 12, 52, 21, 12});
-  Tensor<double> rhs(Range{3, 10, 2}, {70, 1, 70, 63, 7, 96, 56, 2, 66, 99, 61, 21, 37, 89, 90, 65, 85, 37, 94, 53, 66, 6, 15, 68, 34, 54, 21, 63, 80, 9, 82, 56, 33, 49, 81, 76, 67, 94, 93, 10, 79, 34, 86, 37, 3, 9, 10, 25, 65, 68, 74, 36, 95, 73, 59, 54, 72, 75, 69, 3});
-  double corr = 144931;
-  VariableList empty, lidx("i,j,k"), ridx("i,j,k");
-  auto rv = kernels::s_t_t_contract_(empty, lidx, ridx, lhs, rhs);
-  BOOST_CHECK_EQUAL(rv, corr);
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-
 #endif // TILEDARRAY_TEST_CONTRACTION_HELPERS_H__INCLUDED

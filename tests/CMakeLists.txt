@@ -102,6 +102,10 @@ set(ta_test_src_files  ta_test.cpp
     annotation.cpp
     diagonal_array.cpp
     contraction_helpers.cpp
+    s_t_t_contract_.cpp
+    t_t_t_contract_.cpp
+    t_tot_tot_contract_.cpp
+    tot_tot_tot_contract_.cpp
 )
 
 if(CUDA_FOUND)
