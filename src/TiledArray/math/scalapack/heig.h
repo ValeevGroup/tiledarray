@@ -101,7 +101,7 @@ auto heig( Array& A, size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
 
 
 /**
- *  @brief Solve the standard eigenvalue problem with ScaLAPACK
+ *  @brief Solve the generalized eigenvalue problem with ScaLAPACK
  *
  *  A(i,k) X(k,j) = B(i,k) X(k,j) E(j)
  *
