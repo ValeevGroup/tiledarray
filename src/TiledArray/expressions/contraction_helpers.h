@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_EXPRESSIONS_CONTRACTION_HELPERS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_CONTRACTION_HELPERS_H__INCLUDED
 
+#include "TiledArray/expressions/tsr_expr.h"
 #include "TiledArray/expressions/variable_list.h"
 #include "TiledArray/tensor/tensor.h"
 
@@ -78,6 +79,33 @@ auto range_from_annotation(const VariableList& target_idxs,
     ranges.emplace_back(std::move(corr_extent));
   }
   return range_type(ranges);
+}
+
+template<typename LHSType, typename RHSType>
+auto trange_from_annotation(const VariableList& target_idxs,
+                            const VariableList& lhs_idxs,
+                            const VariableList& rhs_idxs,
+                            LHSType&& lhs,
+                            RHSType&& rhs) {
+  std::vector<TiledRange1> ranges; // Will be the ranges for each extent
+  const auto& lrange = lhs.trange();
+  const auto& rrange = rhs.trange();
+
+  for(const auto& idx : target_idxs){
+
+    const auto lmodes = lhs_idxs.modes(idx);
+    const auto rmodes = rhs_idxs.modes(idx);
+    TA_ASSERT(lmodes.size() || rmodes.size()); // One of them better have it
+
+    auto corr_extent =
+        lmodes.size() ? lrange.dim(lmodes[0]) : rrange.dim(rmodes[0]);
+    for(auto lmode : lmodes)
+      TA_ASSERT(lrange.dim(lmode) == corr_extent);
+    for(auto rmode :rmodes)
+      TA_ASSERT(rrange.dim(rmode) == corr_extent);
+    ranges.emplace_back(std::move(corr_extent));
+  }
+  return TiledRange(ranges.begin(), ranges.end());
 }
 
 /// Maps a tensor's annotation to an actual index.
@@ -366,30 +394,71 @@ auto tot_tot_tot_contract_(const VariableList& out_vars,
 
 } // namespace kernels
 
-//template <typename ResultType, typename LHSType, typename RHSType>
-//void einsum(TsrExpr<ResultType, true> out,
-//            const TsrExpr<LHSType, true>& lhs,
-//            const TsrExpr<RHSType, true>& rhs) {
-//
-//  const VariableList ovars(rv.vars());
-//  const VariableList lvars(lhs.vars());
-//  const VariableList rvars(rhs.vars());
-//
-//  using out_tile_type = typename ResultType::value_type;
-//  using lhs_tile_type = typename LHSType::value_type;
-//  using rhs_tile_type = typename RHSType::value_type;
-//
-//  constexpr bool out_is_tot = is_tensor_of_tensor<out_tile_type>;
-//  constexpr bool out_is_t   = is_tensor<out_tile_type>;
-//  constexpr bool lhs_is_tot = is_tensor_of_tensor<lhs_tile_type>;
-//  constexpr bool lhs_is_t   = is_tensor<lhs_tile_type>;
-//  constexpr bool rhs_is_tot = is_tensor_of_tensor<rhs_tile_type>;
-//  constexpr bool rhs_is_t   = is_tensor<rhs_tile_type>;
-//
-//  if constexpr(out_is_tot && lhs_is_tot && rhs_is_tot){
-//    kernels::tot_tot_tot_contract_(ovars, lvars, rvars, )
-//  }
-//}
+template <typename ResultType, typename LHSType, typename RHSType>
+void einsum(TsrExpr<ResultType, true> out,
+            const TsrExpr<LHSType, true>& lhs,
+            const TsrExpr<RHSType, true>& rhs) {
+
+  const VariableList ovars(out.vars());
+  const VariableList lvars(lhs.vars());
+  const VariableList rvars(rhs.vars());
+
+  using out_tile_type = typename ResultType::value_type;
+  using lhs_tile_type = typename LHSType::value_type;
+  using rhs_tile_type = typename RHSType::value_type;
+
+  constexpr bool out_is_tot = TiledArray::detail::is_tensor_of_tensor_v<out_tile_type>;
+  constexpr bool out_is_t   = TiledArray::detail::is_tensor_v<out_tile_type>;
+  constexpr bool lhs_is_tot = TiledArray::detail::is_tensor_of_tensor_v<lhs_tile_type>;
+  constexpr bool lhs_is_t   = TiledArray::detail::is_tensor_v<lhs_tile_type>;
+  constexpr bool rhs_is_tot = TiledArray::detail::is_tensor_of_tensor_v<rhs_tile_type>;
+  constexpr bool rhs_is_t   = TiledArray::detail::is_tensor_v<rhs_tile_type>;
+
+  const auto out_ovars = ovars.outer_vars();
+  const auto lhs_ovars = lvars.outer_vars();
+  const auto rhs_ovars = rvars.outer_vars();
+
+  const auto bound_vars =
+      make_bound_annotation(out_ovars, lhs_ovars, rhs_ovars);
+
+  const auto& ltensor = lhs.array();
+  const auto& rtensor = rhs.array();
+
+  const auto orange =
+      trange_from_annotation(out_ovars, lhs_ovars, rhs_ovars, ltensor, rtensor);
+  const auto brange =
+      trange_from_annotation(bound_vars, lhs_ovars, rhs_ovars, ltensor, rtensor);
+
+  ResultType rv(ltensor.world(), orange);
+  for(auto itr = rv.begin(); itr != rv.end(); ++itr){
+    const auto oidx = itr.index();
+    auto bitr = brange.tiles_range().begin();
+    const auto eitr = brange.tiles_range().end();
+    do{
+      const bool have_bound = bitr != eitr;
+      decltype(oidx) bidx = have_bound ? *bitr : oidx;
+      auto lidx = make_index(out_ovars, bound_vars, lhs_ovars, oidx, bidx);
+      auto ridx = make_index(out_ovars, bound_vars, rhs_ovars, oidx, bidx);
+      const auto& ltile = ltensor.find(lidx).get();
+      const auto& rtile = rtensor.find(ridx).get();
+      if constexpr (out_is_tot && lhs_is_tot && rhs_is_tot) {
+        *itr =
+            kernels::tot_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+      }
+      else if constexpr (!out_is_tot && lhs_is_tot && rhs_is_tot){
+        *itr =
+            kernels::t_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+      }
+      else{
+        TA_ASSERT(false); // Your kernel isn't supported
+      }
+
+      if(have_bound) ++bitr;
+    }while(bitr != brange.tiles_range().end());
+
+  }
+  out.array() = rv;
+}
 
 } // namespace TiledArray::expressions
 

@@ -241,7 +241,7 @@ struct ToTArrayFixture {
  */
   template<typename LHSTileType, typename LHSPolicy,
            typename RHSTileType, typename RHSPolicy>
-  bool are_equal(const DistArray<LHSTileType, LHSPolicy>& lhs,
+  static bool are_equal(const DistArray<LHSTileType, LHSPolicy>& lhs,
                  const DistArray<RHSTileType, RHSPolicy>& rhs) {
     // Same type
     if constexpr(!std::is_same_v<decltype(lhs), decltype(rhs)>){
