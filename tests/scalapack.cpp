@@ -564,4 +564,123 @@ BOOST_AUTO_TEST_CASE( sca_chol_lsolve ) {
   GlobalFixture::world->gop.fence();
 }
 
+
+
+
+BOOST_AUTO_TEST_CASE( sca_svd_values_only ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto S = svd<SVDValuesOnly>( ref_ta, trange, trange );
+
+  std::vector exact_singular_values = exact_evals;
+  for( int64_t i = 0; i < N; ++i )
+    exact_singular_values[i] = std::sqrt(std::abs(exact_singular_values[i]));
+  std::sort( exact_singular_values.begin(), exact_singular_values.end(),
+    std::greater<double>() );
+
+  // Check singular value correctness
+  double tol = N*N*std::numeric_limits<double>::epsilon();
+  for( int64_t i = 0; i < N; ++i )
+    BOOST_CHECK_SMALL( std::abs(S[i] - exact_singular_values[i]), tol );
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE( sca_svd_leftvectors ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto [S,U] = svd<SVDLeftVectors>( ref_ta, trange, trange );
+
+  std::vector exact_singular_values = exact_evals;
+  for( int64_t i = 0; i < N; ++i )
+    exact_singular_values[i] = std::sqrt(std::abs(exact_singular_values[i]));
+  std::sort( exact_singular_values.begin(), exact_singular_values.end(),
+    std::greater<double>() );
+
+  // Check singular value correctness
+  double tol = N*N*std::numeric_limits<double>::epsilon();
+  for( int64_t i = 0; i < N; ++i )
+    BOOST_CHECK_SMALL( std::abs(S[i] - exact_singular_values[i]), tol );
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE( sca_svd_rightvectors ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto [S,VT] = svd<SVDRightVectors>( ref_ta, trange, trange );
+
+  std::vector exact_singular_values = exact_evals;
+  for( int64_t i = 0; i < N; ++i )
+    exact_singular_values[i] = std::sqrt(std::abs(exact_singular_values[i]));
+  std::sort( exact_singular_values.begin(), exact_singular_values.end(),
+    std::greater<double>() );
+
+  // Check singular value correctness
+  double tol = N*N*std::numeric_limits<double>::epsilon();
+  for( int64_t i = 0; i < N; ++i )
+    BOOST_CHECK_SMALL( std::abs(S[i] - exact_singular_values[i]), tol );
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE( sca_svd_allvectors ) {
+
+  GlobalFixture::world->gop.fence();
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto [S,U,VT] = svd<SVDAllVectors>( ref_ta, trange, trange );
+
+  std::vector exact_singular_values = exact_evals;
+  for( int64_t i = 0; i < N; ++i )
+    exact_singular_values[i] = std::sqrt(std::abs(exact_singular_values[i]));
+  std::sort( exact_singular_values.begin(), exact_singular_values.end(),
+    std::greater<double>() );
+
+  // Check singular value correctness
+  double tol = N*N*std::numeric_limits<double>::epsilon();
+  for( int64_t i = 0; i < N; ++i )
+    BOOST_CHECK_SMALL( std::abs(S[i] - exact_singular_values[i]), tol );
+  GlobalFixture::world->gop.fence();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
