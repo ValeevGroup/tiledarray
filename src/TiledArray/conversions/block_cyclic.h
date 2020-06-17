@@ -193,7 +193,7 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
                                     bc_dist_.owner_coordinate(I, J));
   }
 
-  template <typename Array = TArray<T>>
+  template <typename Array>
   Array tensor_from_matrix(const TiledRange& trange) const {
     auto construct_tile = [&](Tensor<T>& tile, const Range& range) {
       tile = Tensor<T>(range);
@@ -308,7 +308,7 @@ Array block_cyclic_to_array(
   const TiledRange&                                  trange
 ) {
 
-  return matrix.tensor_from_matrix( trange );
+  return matrix.template tensor_from_matrix<Array>( trange );
 
 }
 

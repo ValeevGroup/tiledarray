@@ -108,7 +108,7 @@ TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
 
 BOOST_FIXTURE_TEST_SUITE(scalapack_suite, ScaLAPACKFixture)
 
-BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_test) {
+BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();
@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_test) {
 
 
 
-BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_all_small_test) {
+BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_all_small_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_tiled_array_all_small_test) {
 
 
 
-BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_bc_test) {
+BOOST_AUTO_TEST_CASE(uniform_dense_tiled_array_to_bc_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();
@@ -211,7 +211,7 @@ BOOST_AUTO_TEST_CASE(uniform_tiled_array_to_bc_test) {
 
 
 
-BOOST_AUTO_TEST_CASE(bc_to_random_tiled_array_test) {
+BOOST_AUTO_TEST_CASE(bc_to_random_dense_tiled_array_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();
@@ -242,7 +242,7 @@ BOOST_AUTO_TEST_CASE(bc_to_random_tiled_array_test) {
 
 
 
-BOOST_AUTO_TEST_CASE(random_tiled_array_to_bc_test) {
+BOOST_AUTO_TEST_CASE(random_dense_tiled_array_to_bc_test) {
   GlobalFixture::world->gop.fence();
 
   auto [M, N] = ref_matrix.dims();
@@ -253,6 +253,74 @@ BOOST_AUTO_TEST_CASE(random_tiled_array_to_bc_test) {
   auto trange = gen_trange(N, {107ul, 113ul, 211ul, 151ul});
 
   auto ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+
+  GlobalFixture::world->gop.fence();
+  auto test_matrix = TA::array_to_block_cyclic( ref_ta, grid, NB, NB );
+  GlobalFixture::world->gop.fence();
+
+  double local_norm_diff =
+      (test_matrix.local_mat() - ref_matrix.local_mat()).norm();
+  local_norm_diff *= local_norm_diff;
+
+  double norm_diff;
+  MPI_Allreduce(&local_norm_diff, &norm_diff, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  norm_diff = std::sqrt(norm_diff);
+
+  BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+};
+
+
+
+
+BOOST_AUTO_TEST_CASE(bc_to_sparse_tiled_array_test) {
+  GlobalFixture::world->gop.fence();
+
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto NB = ref_matrix.dist().nb();
+
+  auto trange = gen_trange(N, {static_cast<size_t>(NB)});
+
+  auto ref_ta = TA::make_array<TA::TSpArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+
+  GlobalFixture::world->gop.fence();
+  auto test_ta = TA::block_cyclic_to_array<TA::TSpArray<double>>( ref_matrix, trange );
+  GlobalFixture::world->gop.fence();
+
+  auto norm_diff =
+	  (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
+
+  BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+};
+
+BOOST_AUTO_TEST_CASE(sparse_tiled_array_to_bc_test) {
+  GlobalFixture::world->gop.fence();
+
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto NB = ref_matrix.dist().nb();
+
+  auto trange = gen_trange(N, {static_cast<size_t>(NB)});
+
+  auto ref_ta = TA::make_array<TA::TSpArray<double> >(
       *GlobalFixture::world, trange,
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
@@ -584,8 +652,6 @@ BOOST_AUTO_TEST_CASE( sca_svd_values_only ) {
   auto S = svd<SVDValuesOnly>( ref_ta, trange, trange );
 
   std::vector exact_singular_values = exact_evals;
-  for( int64_t i = 0; i < N; ++i )
-    exact_singular_values[i] = std::sqrt(std::abs(exact_singular_values[i]));
   std::sort( exact_singular_values.begin(), exact_singular_values.end(),
     std::greater<double>() );
 
@@ -613,8 +679,6 @@ BOOST_AUTO_TEST_CASE( sca_svd_leftvectors ) {
   auto [S,U] = svd<SVDLeftVectors>( ref_ta, trange, trange );
 
   std::vector exact_singular_values = exact_evals;
-  for( int64_t i = 0; i < N; ++i )
-    exact_singular_values[i] = std::sqrt(std::abs(exact_singular_values[i]));
   std::sort( exact_singular_values.begin(), exact_singular_values.end(),
     std::greater<double>() );
 
@@ -642,8 +706,6 @@ BOOST_AUTO_TEST_CASE( sca_svd_rightvectors ) {
   auto [S,VT] = svd<SVDRightVectors>( ref_ta, trange, trange );
 
   std::vector exact_singular_values = exact_evals;
-  for( int64_t i = 0; i < N; ++i )
-    exact_singular_values[i] = std::sqrt(std::abs(exact_singular_values[i]));
   std::sort( exact_singular_values.begin(), exact_singular_values.end(),
     std::greater<double>() );
 
@@ -671,8 +733,6 @@ BOOST_AUTO_TEST_CASE( sca_svd_allvectors ) {
   auto [S,U,VT] = svd<SVDAllVectors>( ref_ta, trange, trange );
 
   std::vector exact_singular_values = exact_evals;
-  for( int64_t i = 0; i < N; ++i )
-    exact_singular_values[i] = std::sqrt(std::abs(exact_singular_values[i]));
   std::sort( exact_singular_values.begin(), exact_singular_values.end(),
     std::greater<double>() );
 
