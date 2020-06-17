@@ -235,7 +235,7 @@ class Range {
 
   /// Initialize range data from a tuple of extents
 
-  /// \tparam Index An array type
+  /// \tparam Indices A pack of integral types
   /// \param extents A tuple of extents for each dimension
   /// \pre Assume \c rank_ is initialized to the rank of the range and
   /// \c data_ has been allocated to hold 4*rank_ elements
@@ -348,16 +348,17 @@ class Range {
   ///   Range r2(std::vector<size_t>{0, 1, 2}, std::vector<size_t>{4, 6, 8});
   ///   assert(r == r2);
   /// \endcode
-  /// \tparam Index An integral range type
+  /// \tparam Index1 An integral sized range type
+  /// \tparam Index2 An integral sized range type
   /// \param lower_bound A sequence of lower bounds for each dimension
   /// \param upper_bound A sequence of upper bounds for each dimension
   /// \throw TiledArray::Exception When the size of \c lower_bound is not
   /// equal to that of \c upper_bound.
   /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
-  template <
-      typename Index1, typename Index2,
-      typename std::enable_if_t<detail::is_integral_range_v<Index1> &&
-                                detail::is_integral_range_v<Index2>>* = nullptr>
+  template <typename Index1, typename Index2,
+            typename std::enable_if_t<
+                detail::is_integral_sized_range_v<Index1> &&
+                detail::is_integral_sized_range_v<Index2>>* = nullptr>
   Range(const Index1& lower_bound, const Index2& upper_bound) {
     using std::size;
     const size_type n = size(lower_bound);
@@ -412,8 +413,9 @@ class Range {
   /// \endcode
   /// \tparam Index A vector type
   /// \param extent A vector that defines the size of each dimension
-  template <typename Index, typename std::enable_if_t<
-                                detail::is_integral_range_v<Index>>* = nullptr>
+  template <typename Index,
+            typename std::enable_if_t<
+                detail::is_integral_sized_range_v<Index>>* = nullptr>
   explicit Range(const Index& extent) {
     using std::size;
     const size_type n = size(extent);
@@ -472,7 +474,7 @@ class Range {
   ///   Range r3(ranges::views::zip(lobounds, upbounds));
   ///   assert(r0 == r3);
   /// \endcode
-  /// \tparam PairRange Type representing a forward range of "pairs"
+  /// \tparam PairRange Type representing a range of "pairs"
   ///         represented by type \c T for which \c get<0>(T) and
   ///         \c get<1>(T) are valid expressions
   /// \param bound A range of {lower,upper} bounds for each dimension
@@ -480,7 +482,7 @@ class Range {
   // clang-format on
   template <typename PairRange,
             typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
+                detail::is_sized_range_v<PairRange> &&
                 (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
   explicit Range(const PairRange& bounds) {
     const size_type n = std::size(bounds);
@@ -842,7 +844,7 @@ class Range {
 
   /// Check the coordinate to make sure it is within the range.
 
-  /// \tparam Index The coordinate index array type
+  /// \tparam Index An integral range type
   /// \param index The coordinate index to check for inclusion in the range
   /// \return \c true when `i >= lobound` and `i < upbound`,
   /// otherwise \c false
@@ -852,34 +854,39 @@ class Range {
             typename std::enable_if<detail::is_integral_range_v<Index>,
                                     bool>::type* = nullptr>
   bool includes(const Index& index) const {
-    using std::size;
-    TA_ASSERT(size(index) == rank_);
     const size_type* MADNESS_RESTRICT const lower = data_;
     const size_type* MADNESS_RESTRICT const upper = lower + rank_;
 
     bool result = (rank_ > 0u);
-    using std::cbegin;
-    auto it = cbegin(index);
-    for (unsigned int i = 0u; result && (i < rank_); ++i, ++it) {
-      const size_type index_i = *it;
-      const size_type lower_i = lower[i];
-      const size_type upper_i = upper[i];
-      result = result && (index_i >= lower_i) && (index_i < upper_i);
+    int d = 0;
+    for (auto&& index_d : index) {
+      TA_ASSERT(d < rank_);
+      const size_type lower_d = lower[d];
+      const size_type upper_d = upper[d];
+      result = result && (index_d >= lower_d) && (index_d < upper_d);
+#ifdef NDEBUG
+      if (!result) {
+        d = rank_;
+        break;
+      }
+#endif
+      ++d;
     }
+    TA_ASSERT(d == rank_);
 
     return result;
   }
 
   /// Check the coordinate to make sure it is within the range.
 
-  /// \tparam Integer An integer type
-  /// \param index The element index to check for inclusion in the range,
-  ///              as an \c std::initializer_list<Integer>
+  /// \tparam Integer An integral type
+  /// \param index The element index whose presence in the range is queried
   /// \return \c true when `i >= lobound` and `i < upbound`,
   /// otherwise \c false
   /// \throw TiledArray::Exception When the rank of this range is not
   /// equal to the size of the index.
-  template <typename Integer>
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
   bool includes(const std::initializer_list<Integer>& index) const {
     return includes<std::initializer_list<Integer>>(index);
   }
@@ -896,8 +903,9 @@ class Range {
   }
 
   template <typename... Index>
-  typename std::enable_if<(sizeof...(Index) > 1ul), size_type>::type includes(
-      const Index&... index) const {
+  std::enable_if_t<
+      (sizeof...(Index) > 1ul) && (std::is_integral_v<Index> && ...), size_type>
+  includes(const Index&... index) const {
     const size_type i[sizeof...(Index)] = {static_cast<size_type>(index)...};
     return includes(i);
   }
@@ -912,16 +920,19 @@ class Range {
 
   /// Resize range to a new upper and lower bound
 
-  /// \tparam Index An integral range type
+  /// \tparam Index1 An integral sized range type
+  /// \tparam Index2 An integral sized range type
   /// \param lower_bound The lower bounds of the N-dimensional range
   /// \param upper_bound The upper bound of the N-dimensional range
   /// \return A reference to this range
   /// \throw TiledArray::Exception When the size of \c lower_bound is not
   /// equal to that of \c upper_bound.
   /// \throw TiledArray::Exception When `lower_bound[i] >= upper_bound[i]`
-  template <typename Index,
-            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-  Range_& resize(const Index& lower_bound, const Index& upper_bound) {
+  template <
+      typename Index1, typename Index2,
+      typename = std::enable_if_t<detail::is_integral_sized_range_v<Index1> &&
+                                  detail::is_integral_sized_range_v<Index2>>>
+  Range_& resize(const Index1& lower_bound, const Index2& upper_bound) {
     using std::size;
     const size_type n = size(lower_bound);
     TA_ASSERT(n == size(upper_bound));
@@ -942,58 +953,72 @@ class Range {
 
   /// Shift the lower and upper bound of this range
 
-  /// \tparam Index The shift array type
+  /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the range
   /// \return A reference to this range
-  template <typename Index>
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
   Range_& inplace_shift(const Index& bound_shift) {
-    using std::size;
-    TA_ASSERT(size(bound_shift) == rank_);
-
-    using std::data;
-    const auto* MADNESS_RESTRICT const bound_shift_data = data(bound_shift);
     size_type* MADNESS_RESTRICT const lower = data_;
     size_type* MADNESS_RESTRICT const upper = data_ + rank_;
     const size_type* MADNESS_RESTRICT const stride = upper + rank_ + rank_;
 
+    // update the data
     offset_ = 0ul;
-    for (unsigned i = 0u; i < rank_; ++i) {
+    int d = 0;
+    for (auto&& bound_shift_d : bound_shift) {
+      TA_ASSERT(d < rank_);
       // Load range data
-      const auto bound_shift_i = bound_shift_data[i];
-      auto lower_i = lower[i];
-      auto upper_i = upper[i];
-      const auto stride_i = stride[i];
+      auto lower_d = lower[d];
+      auto upper_d = upper[d];
+      const auto stride_d = stride[d];
 
       // Compute new range bounds
-      lower_i += bound_shift_i;
-      upper_i += bound_shift_i;
+      lower_d += bound_shift_d;
+      upper_d += bound_shift_d;
 
       // Update range data
-      offset_ += lower_i * stride_i;
-      lower[i] = lower_i;
-      upper[i] = upper_i;
+      offset_ += lower_d * stride_d;
+      lower[d] = lower_d;
+      upper[d] = upper_d;
+
+      ++d;
     }
+    TA_ASSERT(d == rank_);
 
     return *this;
   }
 
   /// Shift the lower and upper bound of this range
 
-  /// \tparam Index The shift array type
+  /// \tparam I An integral type
   /// \param bound_shift The shift to be applied to the range
   /// \return A reference to this range
-  template <typename I>
+  template <typename I, typename = std::enable_if_t<std::is_integral_v<I>>>
   Range_& inplace_shift(const std::initializer_list<I>& bound_shift) {
     return inplace_shift<std::initializer_list<I>>(bound_shift);
   }
 
-  /// Shift the lower and upper bound of this range
+  /// Create a Range with shiften lower and upper bounds
 
-  /// \tparam Index The shift array type
+  /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the range
   /// \return A shifted copy of this range
-  template <typename Index>
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
   Range_ shift(const Index& bound_shift) {
+    Range_ result(*this);
+    result.inplace_shift(bound_shift);
+    return result;
+  }
+
+  /// Create a Range with shiften lower and upper bounds
+
+  /// \tparam Index An integral range type
+  /// \param bound_shift The shift to be applied to the range
+  /// \return A shifted copy of this range
+  template <typename I, typename = std::enable_if_t<std::is_integral_v<I>>>
+  Range_ shift(const std::initializer_list<I>& bound_shift) {
     Range_ result(*this);
     result.inplace_shift(bound_shift);
     return result;
@@ -1011,29 +1036,29 @@ class Range {
     return index;
   }
 
-  /// calculate the ordinal index of \c index
+  /// calculate the ordinal index of \p index
 
   /// Convert a coordinate index to an ordinal index.
-  /// \tparam Index A coordinate index type (array type)
+  /// \tparam Index An integral range type
   /// \param index The index to be converted to an ordinal index
   /// \return The ordinal index of \c index
   /// \throw When \c index is not included in this range.
-  template <typename Index,
-            typename std::enable_if_t<!std::is_integral_v<Index>>* = nullptr>
+  template <typename Index, typename std::enable_if_t<
+                                detail::is_integral_range_v<Index>>* = nullptr>
   ordinal_type ordinal(const Index& index) const {
-    using std::size;
-    TA_ASSERT(size(index) == rank_);
     TA_ASSERT(includes(index));
 
     size_type* MADNESS_RESTRICT const stride = data_ + rank_ + rank_ + rank_;
 
     size_type result = 0ul;
-    using std::cbegin;
-    auto index_it = cbegin(index);
-    for (unsigned int i = 0u; i < rank_; ++i, ++index_it) {
-      const size_type stride_i = stride[i];
-      result += *(index_it)*stride_i;
+    int d = 0;
+    for (auto&& index_d : index) {
+      TA_ASSERT(d < rank_);
+      const size_type stride_d = stride[d];
+      result += index_d * stride_d;
+      ++d;
     }
+    TA_ASSERT(d == rank_);
 
     return result - offset_;
   }
@@ -1041,12 +1066,14 @@ class Range {
   /// calculate the ordinal index of \c index
 
   /// Convert a coordinate index to an ordinal index.
-  /// \tparam Index A coordinate index type (array type)
+  /// \tparam Index A pack of integral types
   /// \param index The index to be converted to an ordinal index
   /// \return The ordinal index of \c index
   /// \throw When \c index is not included in this range.
-  template <typename... Index,
-            typename std::enable_if<(sizeof...(Index) > 1ul)>::type* = nullptr>
+  template <
+      typename... Index,
+      typename std::enable_if_t<(sizeof...(Index) > 1ul) &&
+                                (std::is_integral_v<Index> && ...)>* = nullptr>
   size_type ordinal(const Index&... index) const {
     const size_type temp_index[sizeof...(Index)] = {
         static_cast<size_type>(index)...};
@@ -1092,6 +1119,7 @@ class Range {
 
   /// This function is just a pass-through so the user can call \c idx() on
   /// a template parameter that can be an index or an ordinal_type.
+  /// \tparam Index An integral range type
   /// \param i The index
   /// \return \c i (unchanged)
   template <typename Index, typename std::enable_if_t<
@@ -1137,14 +1165,15 @@ class Range {
   }
 
  private:
-  /// Check that a signed integral value is include in this range
+  /// Check that a signed integral value is included in this range
 
   /// \tparam Index A signed integral type
   /// \param i The ordinal index to check
   /// \return \c true when `i >= 0` and `i < volume_`, otherwise
   /// \c false.
   template <typename Index>
-  typename std::enable_if<std::is_signed<Index>::value, bool>::type
+  typename std::enable_if<std::is_integral_v<Index> && std::is_signed_v<Index>,
+                          bool>::type
   include_ordinal_(Index i) const {
     return (i >= Index(0)) && (i < Index(volume_));
   }
@@ -1155,7 +1184,8 @@ class Range {
   /// \param i The ordinal index to check
   /// \return \c true when  `i < volume_`, otherwise \c false.
   template <typename Index>
-  typename std::enable_if<!std::is_signed<Index>::value, bool>::type
+  typename std::enable_if<
+      std::is_integral_v<Index> && !std::is_signed<Index>::value, bool>::type
   include_ordinal_(Index i) const {
     return i < volume_;
   }

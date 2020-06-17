@@ -193,10 +193,11 @@ class BlockRange : public Range {
   /// equal to that of \p upper_bound.
   /// \throw TiledArray::Exception When `lower_bound[i] >= upper_bound[i]`
   // clang-format on
-  template <typename Index,
-            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-  BlockRange(const Range& range, const Index& lower_bound,
-             const Index& upper_bound)
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
+  BlockRange(const Range& range, const Index1& lower_bound,
+             const Index2& upper_bound)
       : Range() {
     init(range, lower_bound, upper_bound);
   }
@@ -253,7 +254,7 @@ class BlockRange : public Range {
   ///   BlockRange br3(r, ranges::views::zip(lobounds, upbounds));
   ///   assert(br0 == br3);
   /// \endcode
-  /// \tparam PairRange Type representing a forward range of "pairs"
+  /// \tparam PairRange Type representing a range of "pairs"
   ///         represented by type \c T for which \c get<0>(T) and
   ///         \c get<1>(T) are valid expressions
   /// \param bounds A sequence of {lower,upper} bounds for each dimension
@@ -295,13 +296,12 @@ class BlockRange : public Range {
   /// calculate the ordinal index of \c i
 
   /// Convert a coordinate index to an ordinal index.
-  /// \tparam Index A coordinate index type (array type)
+  /// \tparam Index An integral range type
   /// \param index The index to be converted to an ordinal index
   /// \return The ordinal index of \c index
   /// \throw When \c index is not included in this range.
-  template <
-      typename Index,
-      typename std::enable_if<!std::is_integral<Index>::value>::type* = nullptr>
+  template <typename Index, typename std::enable_if_t<
+                                detail::is_integral_range_v<Index>>* = nullptr>
   ordinal_type ordinal(const Index& index) const {
     return Range::ordinal(index);
   }

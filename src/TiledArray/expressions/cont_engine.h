@@ -239,14 +239,14 @@ class ContEngine : public BinaryEngine<Derived> {
     const unsigned int right_rank = right_.vars().dim();
 
     // Get non-const references to the argument variable lists.
-    std::vector<std::string>& left_vars =
-        const_cast<std::vector<std::string>&>(left_vars_.data());
+    auto& left_vars =
+        const_cast<container::svector<std::string>&>(left_vars_.data());
     left_vars.reserve(left_rank);
-    std::vector<std::string>& right_vars =
-        const_cast<std::vector<std::string>&>(right_vars_.data());
+    auto& right_vars =
+        const_cast<container::svector<std::string>&>(right_vars_.data());
     right_vars.reserve(right_rank);
-    std::vector<std::string>& result_vars =
-        const_cast<std::vector<std::string>&>(vars_.data());
+    auto& result_vars =
+        const_cast<container::svector<std::string>&>(vars_.data());
     result_vars.reserve(std::max(left_rank, right_rank));
 
     // Extract left-most result and inner variables from the left-hand argument.

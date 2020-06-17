@@ -1040,6 +1040,21 @@ struct is_range<T, std::void_t<decltype(std::begin(std::declval<T&>()),
 template <typename T>
 static constexpr bool is_range_v = is_range<T>::value;
 
+/// @tparam T a type
+/// @c is_sized_range<T>::value is true if @c is_range_v<T> is true and @c
+/// std::size(T&) are defined
+/// @warning will be replaced by C++20 concepts
+template <typename T, typename Enabler = void>
+struct is_sized_range : std::false_type {};
+
+template <typename T>
+struct is_sized_range<T, std::void_t<decltype(std::size(std::declval<T&>()))>>
+    : is_range<T> {};
+
+/// \c is_sized_range_v<T> is an alias for \c is_sized_range<T>::value
+template <typename T>
+static constexpr bool is_sized_range_v = is_sized_range<T>::value;
+
 /// @tparam T a range type
 /// @c iterator_t<T> is the iterator type, i.e. the type returned by @c
 /// std::begin(T&)
@@ -1068,6 +1083,23 @@ struct is_integral_range<
 /// \c is_integral_range_v<T> is an alias for \c is_integral_range<T>::value
 template <typename T>
 static constexpr bool is_integral_range_v = is_integral_range<T>::value;
+
+/// @tparam T a type
+/// @c is_integral_sized_range<T>::value is true if @p T is a sized range type
+/// that dereferences to values for which std::is_integral is true
+template <typename T, typename Enabler = void>
+struct is_integral_sized_range : std::false_type {};
+
+template <typename T>
+struct is_integral_sized_range<
+    T, std::enable_if_t<std::is_integral_v<value_t<T>> && is_sized_range_v<T>>>
+    : std::true_type {};
+
+/// \c is_integral_sized_range_v<T> is an alias for \c
+/// is_integral_sized_range<T>::value
+template <typename T>
+static constexpr bool is_integral_sized_range_v =
+    is_integral_sized_range<T>::value;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 

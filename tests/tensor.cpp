@@ -322,6 +322,7 @@ BOOST_AUTO_TEST_CASE(element_access) {
   }
 #if TEST_DIM == 3u
   BOOST_CHECK_EQUAL(t(r.lobound(0), r.lobound(1), r.lobound(2)), t[0]);
+  BOOST_CHECK_EQUAL(t({r.lobound(0), r.lobound(1), r.lobound(2)}), t[0]);
 #endif
 
   // check out of range error
@@ -572,6 +573,8 @@ BOOST_AUTO_TEST_CASE(block) {
   BOOST_REQUIRE_NO_THROW(s.block({{lobound[0], upbound[0]},
                                   {lobound[1], upbound[1]},
                                   {lobound[2], upbound[2]}}));
+  BOOST_REQUIRE_NO_THROW(s.block({lobound[0], lobound[1], lobound[2]},
+                                 {upbound[0], upbound[1], upbound[2]}));
 
   // using zipped ranges of bounds (using Boost.Range)
   // need to #include <boost/range/combine.hpp>
@@ -580,6 +583,14 @@ BOOST_AUTO_TEST_CASE(block) {
 #ifdef TILEDARRAY_HAS_RANGEV3
   BOOST_CHECK_NO_THROW(s.block(ranges::views::zip(lobound, upbound)));
 #endif
+
+  auto sview0 = s.block(lobound, upbound);
+  BOOST_CHECK(sview0.range().includes(lobound));
+  BOOST_CHECK(sview0(lobound) == s(lobound));
+  auto sview1 = s.block({lobound[0], lobound[1], lobound[2]},
+                        {upbound[0], upbound[1], upbound[2]});
+  BOOST_CHECK(sview1.range().includes(lobound));
+  BOOST_CHECK(sview1(lobound) == s(lobound));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

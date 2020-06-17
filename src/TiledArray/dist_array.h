@@ -854,7 +854,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Tile ownership
 
-  /// \tparam Index An index type
+  /// \tparam Index An index or integral type
   /// \param i The index of a tile
   /// \return The process ID of the owner of a tile.
   /// \note This does not indicate whether a tile exists or not. Only, the
@@ -867,7 +867,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Tile ownership
 
-  /// \tparam Index An index type
+  /// \tparam Index1 An integral type
   /// \param i The index of a tile
   /// \return The process ID of the owner of a tile.
   /// \note This does not indicate whether a tile exists or not. Only, the
@@ -1181,7 +1181,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
  private:
   template <typename Index>
-  typename std::enable_if<std::is_integral<Index>::value>::type check_index(
+  std::enable_if_t<std::is_integral_v<Index>, void> check_index(
       const Index i) const {
     check_pimpl();
     TA_USER_ASSERT(
@@ -1190,15 +1190,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   template <typename Index>
-  typename std::enable_if<!std::is_integral<Index>::value>::type check_index(
+  std::enable_if_t<detail::is_integral_range_v<Index>, void> check_index(
       const Index& i) const {
     check_pimpl();
     TA_USER_ASSERT(
         pimpl_->tiles_range().includes(i),
         "The coordinate index used to access an array tile is out of range.");
-    TA_USER_ASSERT(i.size() == pimpl_->trange().tiles_range().rank(),
-                   "The number of elements in the coordinate index does not "
-                   "match the dimension of the array.");
   }
 
   template <typename Index1>

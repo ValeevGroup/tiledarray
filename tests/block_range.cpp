@@ -23,6 +23,7 @@
  *
  */
 
+#include <TiledArray/util/eigen.h>
 #include <boost/range/combine.hpp>
 #ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
@@ -195,6 +196,21 @@ BOOST_AUTO_TEST_CASE(block) {
           BOOST_CHECK_NO_THROW(BlockRange br4(r, {{0, 4}, {1, 6}, {2, 8}}));
           BlockRange br4(r, {{0, 4}, {1, 6}, {2, 8}});
           BOOST_CHECK_EQUAL(br4, bref);
+
+          // using Eigen
+          {
+            using TiledArray::ivec;
+
+            BOOST_CHECK_NO_THROW(
+                BlockRange br5(r, ivec(0, 1, 2), ivec(4, 6, 8)));
+            BlockRange br5(r, ivec(0, 1, 2), ivec(4, 6, 8));
+            BOOST_CHECK_EQUAL(br5, bref);
+
+            BOOST_CHECK_NO_THROW(BlockRange br6(
+                r, boost::combine(ivec(0, 1, 2), ivec(4, 6, 8))));
+            BlockRange br6(r, boost::combine(ivec(0, 1, 2), ivec(4, 6, 8)));
+            BOOST_CHECK_EQUAL(br6, bref);
+          }
         }
       }
 #ifdef TA_EXCEPTION_ERROR

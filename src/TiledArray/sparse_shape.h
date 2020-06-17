@@ -666,11 +666,15 @@ class SparseShape {
  public:
   /// Create a copy of a sub-block of the shape
 
-  /// \tparam Index The upper and lower bound array type
+  /// \tparam Index1 An integral range type
+  /// \tparam Index2 An integral range type
   /// \param lower_bound The lower bound of the sub-block
   /// \param upper_bound The upper bound of the sub-block
-  template <typename Index>
-  SparseShape block(const Index& lower_bound, const Index& upper_bound) const {
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
+  SparseShape block(const Index1& lower_bound,
+                    const Index2& upper_bound) const {
     std::shared_ptr<vector_type> size_vectors =
         block_range(lower_bound, upper_bound);
 

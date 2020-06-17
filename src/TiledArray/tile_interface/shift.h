@@ -34,24 +34,54 @@ namespace TiledArray {
 /// Shift the range of \c arg
 
 /// \tparam Arg The tile argument type
-/// \tparam Index An array type
+/// \tparam Index An integral range type
 /// \param arg The tile argument to be shifted
 /// \param range_shift The offset to be applied to the argument range
 /// \return A copy of the tile with a new range
-template <typename Arg, typename Index>
+template <typename Arg, typename Index,
+          typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
 inline auto shift(const Arg& arg, const Index& range_shift) {
+  return arg.shift(range_shift);
+}
+
+/// Shift the range of \c arg
+
+/// \tparam Arg The tile argument type
+/// \tparam Index An integral type
+/// \param arg The tile argument to be shifted
+/// \param range_shift The offset to be applied to the argument range
+/// \return A copy of the tile with a new range
+template <typename Arg, typename Index,
+          typename = std::enable_if_t<std::is_integral_v<Index>>>
+inline auto shift(const Arg& arg,
+                  const std::initializer_list<Index>& range_shift) {
   return arg.shift(range_shift);
 }
 
 /// Shift the range of \c arg in place
 
 /// \tparam Arg The tile argument type
-/// \tparam Index An array type
+/// \tparam Index An integral range type
 /// \param arg The tile argument to be shifted
 /// \param range_shift The offset to be applied to the argument range
 /// \return A copy of the tile with a new range
-template <typename Arg, typename Index>
+template <typename Arg, typename Index,
+          typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
 inline auto shift_to(Arg& arg, const Index& range_shift) {
+  return arg.shift_to(range_shift);
+}
+
+/// Shift the range of \c arg in place
+
+/// \tparam Arg The tile argument type
+/// \tparam Index An integral type
+/// \param arg The tile argument to be shifted
+/// \param range_shift The offset to be applied to the argument range
+/// \return A copy of the tile with a new range
+template <typename Arg, typename Index,
+          typename = std::enable_if_t<std::is_integral_v<Index>>>
+inline auto shift_to(Arg& arg,
+                     const std::initializer_list<Index>& range_shift) {
   return arg.shift_to(range_shift);
 }
 
@@ -62,11 +92,11 @@ using TiledArray::shift_to;
 
 template <typename T>
 using result_of_shift_t = typename std::decay<decltype(
-    shift(std::declval<T>(), std::declval<std::vector<long> >()))>::type;
+    shift(std::declval<T>(), std::declval<std::vector<long>>()))>::type;
 
 template <typename T>
 using result_of_shift_to_t = typename std::decay<decltype(
-    shift_to(std::declval<T>(), std::declval<std::vector<long> >()))>::type;
+    shift_to(std::declval<T>(), std::declval<std::vector<long>>()))>::type;
 
 template <typename Result, typename Arg, typename Enabler = void>
 class Shift {
@@ -84,10 +114,10 @@ class Shift {
 template <typename Result, typename Arg>
 class Shift<Result, Arg,
             typename std::enable_if<
-                !std::is_same<Result, result_of_shift_t<Arg> >::value>::type>
-    : public TiledArray::Cast<Result, result_of_shift_t<Arg> > {
+                !std::is_same<Result, result_of_shift_t<Arg>>::value>::type>
+    : public TiledArray::Cast<Result, result_of_shift_t<Arg>> {
  private:
-  typedef TiledArray::Cast<Result, result_of_shift_t<Arg> > Cast_;
+  typedef TiledArray::Cast<Result, result_of_shift_t<Arg>> Cast_;
 
  public:
   typedef Result result_type;  ///< Result tile type
@@ -115,10 +145,10 @@ class ShiftTo {
 template <typename Result, typename Arg>
 class ShiftTo<Result, Arg,
               typename std::enable_if<!std::is_same<
-                  Result, result_of_shift_to_t<Arg> >::value>::type>
-    : public TiledArray::Cast<Result, result_of_shift_to_t<Arg> > {
+                  Result, result_of_shift_to_t<Arg>>::value>::type>
+    : public TiledArray::Cast<Result, result_of_shift_to_t<Arg>> {
  private:
-  typedef TiledArray::Cast<Result, result_of_shift_to_t<Arg> > Cast_;
+  typedef TiledArray::Cast<Result, result_of_shift_to_t<Arg>> Cast_;
 
  public:
   typedef Result result_type;  ///< Result tile type
@@ -137,7 +167,7 @@ struct shift_trait {
 
 template <typename Arg>
 struct shift_trait<Arg, typename std::enable_if<TiledArray::detail::is_type<
-                            result_of_shift_t<Arg> >::value>::type> {
+                            result_of_shift_t<Arg>>::value>::type> {
   typedef result_of_shift_t<Arg> type;
 };
 

@@ -17,6 +17,7 @@
  *
  */
 
+#include <TiledArray/util/eigen.h>
 #include <boost/range/combine.hpp>
 #ifdef TILEDARRAY_HAS_RANGEV3
 #include <range/v3/view/zip.hpp>
@@ -208,6 +209,28 @@ BOOST_AUTO_TEST_CASE(constructors) {
 //    Range r8(ranges::views::zip(std::array{0, 1, 2}, std::vector{4, 6, 8}));
 //    BOOST_CHECK_EQUAL(ref, r8);
 #endif
+
+    // zipped bounds with Eigen vectors
+    {
+      Range r9(
+          boost::combine(Eigen::Vector3i(0, 1, 2), Eigen::Vector3i(4, 6, 8)));
+      BOOST_CHECK_EQUAL(ref, r9);
+
+      using TiledArray::ivec;
+      Range r10(boost::combine(ivec({0, 1, 2}), ivec(4, 6, 8)));
+      BOOST_CHECK_EQUAL(ref, r10);
+
+      using TiledArray::ivec;
+      Range r11(boost::combine(ivec(std::vector{0, 1, 2}),
+                               ivec(std::array{4, 6, 8})));
+      BOOST_CHECK_EQUAL(ref, r11);
+
+#ifdef TILEDARRAY_HAS_RANGEV3
+// this requires Eigen ~3.4 (3.3.90 docs suggest it should be sufficient)
+//    Range r12(ranges::views::zip(Eigen::Vector3i(0, 1, 2), Eigen::Vector3i(4,
+//    6, 8))); BOOST_CHECK_EQUAL(ref, r12);
+#endif
+    }
   }
 
   // make sure zero extents are OK also with start/finish indices
