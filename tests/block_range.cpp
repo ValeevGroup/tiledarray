@@ -23,6 +23,11 @@
  *
  */
 
+#include <boost/range/combine.hpp>
+#ifdef TILEDARRAY_HAS_RANGEV3
+#include <range/v3/view/zip.hpp>
+#endif
+
 #include "TiledArray/block_range.h"
 #include "range_fixture.h"
 #include "unit_test_config.h"
@@ -137,6 +142,59 @@ BOOST_AUTO_TEST_CASE(block) {
           BOOST_CHECK_EQUAL(block_range.ordinal(index), r.ordinal(*it));
           // Check that the index returned by idx is correct
           BOOST_CHECK_EQUAL(block_range.idx(index), *it);
+        }
+
+        // check that can also construct using sequence of bound pairs
+        std::vector<std::pair<std::size_t, std::size_t>> bounds;
+        bounds.reserve(r.rank());
+        for (unsigned int i = 0u; i < r.rank(); ++i) {
+          bounds.emplace_back(lower[i], upper[i]);
+        }
+        BlockRange br2;
+        BOOST_CHECK_NO_THROW(br2 = BlockRange(r, bounds));
+        BOOST_CHECK_EQUAL(br2, block_range);
+
+        // test the rest of ctors
+        {
+          Range r(10, 10, 10);
+          std::vector<size_t> lobounds = {0, 1, 2};
+          std::vector<size_t> upbounds = {4, 6, 8};
+          BlockRange bref(r, lobounds, upbounds);
+
+          // using vector of pairs
+          std::vector<std::pair<size_t, size_t>> vpbounds{
+              {0, 4}, {1, 6}, {2, 8}};
+          BOOST_CHECK_NO_THROW(BlockRange br0(r, vpbounds));
+          BlockRange br0(r, vpbounds);
+          BOOST_CHECK_EQUAL(br0, bref);
+
+          // using vector of tuples
+          std::vector<std::tuple<size_t, size_t>> vtbounds{
+              {0, 4}, {1, 6}, {2, 8}};
+          BOOST_CHECK_NO_THROW(BlockRange br1(r, vtbounds));
+          BlockRange br1(r, vpbounds);
+          BOOST_CHECK_EQUAL(br1, bref);
+
+          // using zipped ranges of bounds (using Boost.Range)
+          // need to #include <boost/range/combine.hpp>
+          BOOST_CHECK_NO_THROW(
+              BlockRange br2(r, boost::combine(lobounds, upbounds)));
+          BlockRange br2(r, boost::combine(lobounds, upbounds));
+          BOOST_CHECK_EQUAL(br2, bref);
+
+#ifdef TILEDARRAY_HAS_RANGEV3
+          // using zipped ranges of bounds (using Ranges-V3)
+          // need to #include <range/v3/view/zip.hpp>
+          BOOST_CHECK_NO_THROW(
+              BlockRange br3(r, ranges::views::zip(lobounds, upbounds)));
+          BlockRange br3(r, ranges::views::zip(lobounds, upbounds));
+          BOOST_CHECK_EQUAL(br3, bref);
+#endif
+
+          // using nested initializer_list
+          BOOST_CHECK_NO_THROW(BlockRange br4(r, {{0, 4}, {1, 6}, {2, 8}}));
+          BlockRange br4(r, {{0, 4}, {1, 6}, {2, 8}});
+          BOOST_CHECK_EQUAL(br4, bref);
         }
       }
 #ifdef TA_EXCEPTION_ERROR

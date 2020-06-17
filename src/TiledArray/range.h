@@ -54,6 +54,8 @@ class Range {
       const_iterator;  ///< Coordinate iterator
   friend class detail::RangeIterator<size_type, Range_>;
 
+  static_assert(detail::is_range_v<index>);
+
  protected:
   size_type* data_ = nullptr;
   ///< An array that holds the dimension information of the
@@ -71,130 +73,163 @@ class Range {
  private:
   /// Initialize range data from sequences of lower and upper bounds
 
-  /// \tparam Index1 An array type
-  /// \tparam Index2 An array type
+  /// \tparam Index1 An integral range type
+  /// \tparam Index2 An integral range type
   /// \param lower_bound The lower bound of the range
   /// \param upper_bound The upper bound of the range
   /// \pre Assume \c rank_ is initialized to the rank of the range and
   /// \c data_ has been allocated to hold 4*rank_ elements
   /// \post \c data_ and \c volume_ are initialized with range dimension
   /// information.
-  template <typename Index1, typename Index2>
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
   void init_range_data(const Index1& lower_bound, const Index2& upper_bound) {
     // Construct temp pointers
     size_type* MADNESS_RESTRICT const lower = data_;
     size_type* MADNESS_RESTRICT const upper = lower + rank_;
     size_type* MADNESS_RESTRICT const extent = upper + rank_;
     size_type* MADNESS_RESTRICT const stride = extent + rank_;
-    using std::data;
-    const auto* MADNESS_RESTRICT const lower_data = data(lower_bound);
-    const auto* MADNESS_RESTRICT const upper_data = data(upper_bound);
 
     // Set the volume seed
     volume_ = 1ul;
     offset_ = 0ul;
 
-    // Compute range data
-    for (int i = int(rank_) - 1; i >= 0; --i) {
+    // initialize bounds and extents
+    auto lower_it = std::begin(lower_bound);
+    auto upper_it = std::begin(upper_bound);
+    auto lower_end = std::end(lower_bound);
+    auto upper_end = std::end(upper_bound);
+    for (int d = 0; lower_it != lower_end && upper_it != upper_end;
+         ++lower_it, ++upper_it, ++d) {
       // Check input dimensions
-      TA_ASSERT(lower_data[i] <= upper_data[i]);
+      TA_ASSERT(*lower_it <= *upper_it);
 
-      // Compute data for element i of lower, upper, and extent
-      const size_type lower_bound_i = lower_data[i];
-      const size_type upper_bound_i = upper_data[i];
-      const size_type extent_i = upper_bound_i - lower_bound_i;
+      // Compute data for element d of lower, upper, and extent
+      const size_type lower_bound_d = *lower_it;
+      const size_type upper_bound_d = *upper_it;
+      const size_type extent_d = upper_bound_d - lower_bound_d;
 
-      lower[i] = lower_bound_i;
-      upper[i] = upper_bound_i;
-      extent[i] = extent_i;
-      stride[i] = volume_;
-      offset_ += lower_bound_i * volume_;
-      volume_ *= extent_i;
+      lower[d] = lower_bound_d;
+      upper[d] = upper_bound_d;
+      extent[d] = extent_d;
+    }
+
+    // Set the volume seed
+    volume_ = 1ul;
+    offset_ = 0ul;
+
+    // Compute strides, volume, and offset, starting with last (least
+    // significant) dimension
+    for (int d = int(rank_) - 1; d >= 0; --d) {
+      stride[d] = volume_;
+      offset_ += lower[d] * stride[d];
+      volume_ *= extent[d];
     }
   }
 
+  // clang-format off
   /// Initialize range data from a sequence of {lower,upper} bound pairs
 
-  /// \tparam Index An array type
-  /// \param lower_bound The lower bound of the range
-  /// \param upper_bound The upper bound of the range
+  /// \tparam Index A range type for whose values detail::is_gettable_pair_v or detail is_initializer_list_v is true
+  /// \param bounds The {lower,upper} bound of the range for each dimension
   /// \pre Assume \c rank_ is initialized to the rank of the range and
   /// \c data_ has been allocated to hold 4*rank_ elements
   /// \post \c data_ and \c volume_ are initialized with range dimension
   /// information.
+  // clang-format on
   template <typename Index,
-            typename std::enable_if<detail::is_pair<
-                typename Index::value_type>::value>::type* = nullptr>
-  void init_range_data(const Index& bound) {
+            typename = std::enable_if_t<
+                detail::is_range_v<Index> &&
+                (detail::is_gettable_pair_v<detail::value_t<Index>> ||
+                 detail::is_initializer_list_v<detail::value_t<Index>>)>>
+  void init_range_data(const Index& bounds) {
     // Construct temp pointers
     size_type* MADNESS_RESTRICT const lower = data_;
     size_type* MADNESS_RESTRICT const upper = lower + rank_;
     size_type* MADNESS_RESTRICT const extent = upper + rank_;
     size_type* MADNESS_RESTRICT const stride = extent + rank_;
-    using std::data;
-    const auto* MADNESS_RESTRICT const bound_data = data(bound);
 
-    // Set the volume seed
-    volume_ = 1ul;
-    offset_ = 0ul;
+    auto _get = [](auto&& v, std::size_t idx) {
+      TA_ASSERT(idx == 0 || idx == 1);
+      if constexpr (detail::is_gettable_pair_v<std::decay_t<decltype(v)>>) {
+#if __cplusplus <= 201703L
+        return idx == 0 ? detail::get<0>(v) : detail::get<1>(v);
+#else
+        return idx == 0 ? get<0>(v) : get<1>(v);
+#endif
+      } else if constexpr (detail::is_initializer_list_v<
+                               std::decay_t<decltype(v)>>) {
+        return std::data(v)[idx];
+      }
+      abort();  // unreachable
+    };
 
     // Compute range data
-    for (int i = int(rank_) - 1; i >= 0; --i) {
+    int d = 0;
+    for (auto&& bound_d : bounds) {
       // Compute data for element i of lower, upper, and extent
-      const size_type lower_bound_i = bound_data[i].first;
-      const size_type upper_bound_i = bound_data[i].second;
-      const size_type extent_i = upper_bound_i - lower_bound_i;
+      const size_type lower_bound_d = _get(bound_d, 0);
+      const size_type upper_bound_d = _get(bound_d, 1);
+      const size_type extent_d = upper_bound_d - lower_bound_d;
 
       // Check input dimensions
-      TA_ASSERT(lower_bound_i >= 0ul);
-      TA_ASSERT(lower_bound_i <= upper_bound_i);
+      TA_ASSERT(lower_bound_d >= 0ul);
+      TA_ASSERT(lower_bound_d <= upper_bound_d);
 
-      lower[i] = lower_bound_i;
-      upper[i] = upper_bound_i;
-      extent[i] = extent_i;
-      stride[i] = volume_;
-      offset_ += lower_bound_i * volume_;
-      volume_ *= extent_i;
+      lower[d] = lower_bound_d;
+      upper[d] = upper_bound_d;
+      extent[d] = extent_d;
+      ++d;
+    }
+    // Compute strides, volume, and offset, starting with last (least
+    // significant) dimension
+    volume_ = 1ul;
+    offset_ = 0ul;
+    for (int d = int(rank_) - 1; d >= 0; --d) {
+      stride[d] = volume_;
+      offset_ += lower[d] * stride[d];
+      volume_ *= extent[d];
     }
   }
 
   /// Initialize range data from a sequence of extents
 
-  /// \tparam Index An array type
+  /// \tparam Index An integral range type
   /// \param extents A sequence of extents for each dimension
   /// \pre Assume \c rank_ is initialized to the rank of the range and
   /// \c data_ has been allocated to hold 4*rank_ elements
   /// \post \c data_ and \c volume_ are initialized with range dimension
   /// information.
-  template <typename Index,
-            typename std::enable_if<detail::is_integral_list<
-                typename Index::value_type>::value>::type* = nullptr>
+  template <typename Index, typename std::enable_if_t<
+                                detail::is_integral_range_v<Index>>* = nullptr>
   void init_range_data(const Index& extents) {
     // Construct temp pointers
     size_type* MADNESS_RESTRICT const lower = data_;
     size_type* MADNESS_RESTRICT const upper = lower + rank_;
     size_type* MADNESS_RESTRICT const extent = upper + rank_;
     size_type* MADNESS_RESTRICT const stride = extent + rank_;
-    using std::data;
-    const auto* MADNESS_RESTRICT const extent_data = data(extents);
 
-    // Set the offset and volume initial values
+    // Initialize extents and bounds
+    auto it = std::begin(extents);
+    auto end = std::end(extents);
+    for (int d = 0; it != end; ++it, ++d) {
+      const size_type extent_d = *it;
+      // Check bounds of the input extent
+      TA_ASSERT(extent_d >= 0);
+
+      lower[d] = 0ul;
+      upper[d] = extent_d;
+      extent[d] = extent_d;
+    }
+
+    // Compute strides and volume, starting with last (least significant)
+    // dimension
     volume_ = 1ul;
     offset_ = 0ul;
-
-    // Compute range data
-    for (int i = int(rank_) - 1; i >= 0; --i) {
-      // Check bounds of the input extent
-      TA_ASSERT(extent_data[i] >= 0);
-
-      // Get extent i
-      const size_type extent_i = extent_data[i];
-
-      lower[i] = 0ul;
-      upper[i] = extent_i;
-      extent[i] = extent_i;
-      stride[i] = volume_;
-      volume_ *= extent_i;
+    for (int d = int(rank_) - 1; d >= 0; --d) {
+      stride[d] = volume_;
+      volume_ *= extent[d];
     }
   }
 
@@ -301,20 +336,28 @@ class Range {
   /// Construct a range that has zero rank, volume, and size.
   Range() {}
 
-  /// Construct range defined by upper and lower bound sequences
+  /// Construct range defined by upper and lower bound ranges
 
   /// Construct a range defined by \c lower_bound and \c upper_bound.
-  /// \tparam Index An array type
+  /// Examples of using this constructor:
+  /// \code
+  ///   std::vector<size_t> lobounds = {0, 1, 2};
+  ///   std::vector<size_t> upbounds = {4, 6, 8};
+  ///   Range r(lobounds, upbounds);
+  ///   // or using in-place ctors
+  ///   Range r2(std::vector<size_t>{0, 1, 2}, std::vector<size_t>{4, 6, 8});
+  ///   assert(r == r2);
+  /// \endcode
+  /// \tparam Index An integral range type
   /// \param lower_bound A sequence of lower bounds for each dimension
   /// \param upper_bound A sequence of upper bounds for each dimension
   /// \throw TiledArray::Exception When the size of \c lower_bound is not
   /// equal to that of \c upper_bound.
   /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
-  /// \throw std::bad_alloc When memory allocation fails.
   template <
       typename Index1, typename Index2,
-      typename std::enable_if_t<!std::is_integral<Index1>::value &&
-                                !std::is_integral<Index2>::value>* = nullptr>
+      typename std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                detail::is_integral_range_v<Index2>>* = nullptr>
   Range(const Index1& lower_bound, const Index2& upper_bound) {
     using std::size;
     const size_type n = size(lower_bound);
@@ -327,18 +370,25 @@ class Range {
     }
   }
 
-  /// Construct range defined by the upper and lower bound sequences
+  // clang-format off
+  /// Construct range defined by the upper and lower bound ranges
 
   /// Construct a range defined by \c lower_bound and \c upper_bound.
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r({0, 1, 2}, {4, 6, 8});
+  ///   // WARNING: mind the parens! With braces another ctor is called
+  ///   Range r2{{0, 1, 2}, {4, 6, 8}};
+  /// \endcode
   /// \param lower_bound An initializer list of lower bounds for each dimension
   /// \param upper_bound An initializer list of upper bounds for each dimension
+  /// \warning do not use uniform initialization syntax ("curly braces") to invoke this
   /// \throw TiledArray::Exception When the size of \c lower_bound is not
   /// equal to that of \c upper_bound.
   /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
-  /// \throw std::bad_alloc When memory allocation fails.
-  template <
-      typename Index1,
-      typename std::enable_if<std::is_integral<Index1>::value>::type* = nullptr>
+  // clang-format on
+  template <typename Index1,
+            typename std::enable_if_t<std::is_integral_v<Index1>>* = nullptr>
   Range(const std::initializer_list<Index1>& lower_bound,
         const std::initializer_list<Index1>& upper_bound) {
     using std::size;
@@ -352,18 +402,18 @@ class Range {
     }
   }
 
-  /// Range constructor from a sequence of extents
+  /// Range constructor from a range of extents
 
   /// Construct a range with a lower bound of zero and an upper bound equal to
   /// \c extents.
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r(std::vector<size_t>{4, 5, 6});
+  /// \endcode
   /// \tparam Index A vector type
   /// \param extent A vector that defines the size of each dimension
-  /// \throw std::bad_alloc When memory allocation fails.
-  template <
-      typename Index,
-      typename std::enable_if<
-          !std::is_integral<Index>::value &&
-          std::is_integral<typename Index::value_type>::value>::type* = nullptr>
+  template <typename Index, typename std::enable_if_t<
+                                detail::is_integral_range_v<Index>>* = nullptr>
   explicit Range(const Index& extent) {
     using std::size;
     const size_type n = size(extent);
@@ -379,11 +429,13 @@ class Range {
 
   /// Construct a range with a lower bound of zero and an upper bound equal to
   /// \c extent.
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r{4, 5, 6};
+  /// \endcode
   /// \param extent An initializer list that defines the size of each dimension
-  /// \throw std::bad_alloc When memory allocation fails.
-  template <
-      typename Index1,
-      typename std::enable_if<std::is_integral<Index1>::value>::type* = nullptr>
+  template <typename Index1,
+            typename std::enable_if_t<std::is_integral_v<Index1>>* = nullptr>
   explicit Range(const std::initializer_list<Index1>& extent) {
     using std::size;
     const size_type n = size(extent);
@@ -395,23 +447,43 @@ class Range {
     }
   }
 
-  /// Construct range defined by a sequence of {lower,upper} bound pairs
+  // clang-format off
+  /// Construct Range defined by a range of {lower,upper} bound pairs
 
-  /// \tparam Index An array (contiguous sequence) type
-  /// \param lower_bound A sequence of lower bounds for each dimension
-  /// \param upper_bound A sequence of upper bounds for each dimension
-  /// \throw TiledArray::Exception When the size of \c lower_bound is not
-  /// equal to that of \c upper_bound.
-  /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
-  /// \throw std::bad_alloc When memory allocation fails.
-  template <
-      typename Index,
-      typename std::enable_if<
-          !std::is_integral<Index>::value &&
-          detail::is_pair<typename Index::value_type>::value>::type* = nullptr>
-  explicit Range(const Index& bounds) {
-    using std::size;
-    const size_type n = size(bounds);
+  /// Examples of using this constructor:
+  /// \code
+  ///   // using vector of pairs
+  ///   std::vector<std::pair<size_t,size_t>> vpbounds{{0,4}, {1,6}, {2,8}};
+  ///   Range r0(vpbounds);
+  ///   // using vector of tuples
+  ///   std::vector<std::tuple<size_t,size_t>> vtbounds{{0,4}, {1,6}, {2,8}};
+  ///   Range r1(vtbounds);
+  ///   assert(r0 == r1);
+  ///
+  ///   // using zipped ranges of bounds (using Boost.Range)
+  ///   // need to #include <boost/range/combine.hpp>
+  ///   std::vector<size_t> lobounds = {0, 1, 2};
+  ///   std::vector<size_t> upbounds = {4, 6, 8};
+  ///   Range r2(boost::combine(lobounds, upbounds));
+  ///   assert(r0 == r2);
+  ///
+  ///   // using zipped ranges of bounds (using Range-V3)
+  ///   // need to #include <range/v3/view/zip.hpp>
+  ///   Range r3(ranges::views::zip(lobounds, upbounds));
+  ///   assert(r0 == r3);
+  /// \endcode
+  /// \tparam PairRange Type representing a forward range of "pairs"
+  ///         represented by type \c T for which \c get<0>(T) and
+  ///         \c get<1>(T) are valid expressions
+  /// \param bound A range of {lower,upper} bounds for each dimension
+  /// \throw TiledArray::Exception When `bound[i].lower>=bound[i].upper` for any \c i .
+  // clang-format on
+  template <typename PairRange,
+            typename = std::enable_if_t<
+                detail::is_range_v<PairRange> &&
+                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+  explicit Range(const PairRange& bounds) {
+    const size_type n = std::size(bounds);
     if (n) {
       // Initialize array memory
       data_ = new size_type[n << 2];
@@ -420,17 +492,21 @@ class Range {
     }
   }
 
-  /// Construct range defined by an initializer_list of {lower,upper} bound
-  /// pairs
+  // clang-format off
+  /// Construct range defined by an initializer_list of std::pair{lower,upper} bounds
 
-  /// \tparam Index An initializer list type
-  /// \param lower_bound A sequence of lower bounds for each dimension
-  /// \param upper_bound A sequence of upper bounds for each dimension
-  /// \throw TiledArray::Exception When the size of \c lower_bound is not
-  /// equal to that of \c upper_bound.
-  /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
-  /// \throw std::bad_alloc When memory allocation fails.
-  template <typename Index1, typename Index2>
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r{std::pair{0,4}, std::pair{1,6}, std::pair{2,8}};
+  /// \endcode
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
+  /// \param bound A sequence of {lower,upper} bounds for each dimension
+  /// \throw TiledArray::Exception When \c bound[i].lower>=bound[i].upper for any \c i .
+  // clang-format on
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   explicit Range(
       const std::initializer_list<std::pair<Index1, Index2>>& bounds) {
     using std::size;
@@ -443,23 +519,90 @@ class Range {
     }
   }
 
+  // clang-format off
+  /// Construct range defined by an initializer_list of std::tuple{lower,upper} bounds
+
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r{std::tuple{0,4}, std::tuple{1,6}, std::tuple{2,8}};
+  /// \endcode
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
+  /// \param bound A sequence of {lower,upper} bounds for each dimension
+  /// \throw TiledArray::Exception When \c bound[i].lower>=bound[i].upper for any \c i .
+  // clang-format on
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  explicit Range(
+      const std::initializer_list<std::tuple<Index1, Index2>>& bounds) {
+    using std::size;
+    const size_type n = size(bounds);
+    if (n) {
+      // Initialize array memory
+      data_ = new size_type[n << 2];
+      rank_ = n;
+      init_range_data(bounds);
+    }
+  }
+
+  // clang-format off
+  /// Construct range defined by an initializer_list of std::initializer_list{lower,upper} bounds
+
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r{{0,4}, {1,6}, {2,8}};
+  ///   // or can add extra parens
+  ///   Range r2({{0,4}, {1,6}, {2,8}});
+  ///   assert(r == r2);
+  /// \endcode
+  /// \tparam Index An integral type
+  /// \param bound A sequence of {lower,upper} bounds for each dimension
+  /// \throw TiledArray::Exception When `bound[i].lower>=bound[i].upper` for any \c i .
+  // clang-format on
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  explicit Range(
+      const std::initializer_list<std::initializer_list<Index>>& bounds) {
+    using std::size;
+    const size_type n = size(bounds);
+    if (n) {
+#ifndef NDEBUG
+      for (auto&& bound_d : bounds) {
+        TA_ASSERT(size(bound_d) == 2);
+      }
+#endif
+      // Initialize array memory
+      data_ = new size_type[n << 2];
+      rank_ = n;
+      init_range_data(bounds);
+    }
+  }
+
   /// Range constructor from a pack of extents for each dimension
 
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r(4, 5, 6);
+  /// \endcode
   /// \tparam Index Pack of integer types
   /// \param extents A pack of extents for each dimension
   /// \post Range has a lower bound of 0, and an upper bound of \c (extents...).
-  /// \throw std::bad_alloc When memory allocation fails.
   template <typename... Index, typename std::enable_if<detail::is_integral_list<
                                    Index...>::value>::type* = nullptr>
   explicit Range(const Index... extents)
       : Range(std::array<size_t, sizeof...(Index)>{
             {static_cast<std::size_t>(extents)...}}) {}
 
-  /// Range constructor from a pack of {lo,up} bounds for each dimension
+  /// Range constructor from a pack of std::pair{lo,up} bounds for each
+  /// dimension
 
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r(std::pair{0,4}, std::pair{1,6}, std::pair{2,8});
+  /// \endcode
   /// \tparam IndexPairs Pack of std::pair's of integer types
   /// \param extents A pack of pairs of lobound and upbound for each dimension
-  /// \throw std::bad_alloc When memory allocation fails.
   template <typename... IndexPairs,
             std::enable_if_t<detail::is_integral_pair_list_v<IndexPairs...>>* =
                 nullptr>
@@ -471,7 +614,6 @@ class Range {
   /// Copy Constructor
 
   /// \param other The range to be copied
-  /// \throw std::bad_alloc When memory allocation fails.
   Range(const Range_& other) {
     if (other.rank_ > 0ul) {
       data_ = new size_type[other.rank_ << 2];
@@ -485,7 +627,6 @@ class Range {
   /// Copy Constructor
 
   /// \param other The range to be copied
-  /// \throw std::bad_alloc When memory allocation fails.
   Range(Range_&& other)
       : data_(other.data_),
         offset_(other.offset_),
@@ -501,7 +642,6 @@ class Range {
 
   /// \param perm The permutation applied to other
   /// \param other The range to be permuted and copied
-  /// \throw std::bad_alloc When memory allocation fails.
   Range(const Permutation& perm, const Range_& other) {
     TA_ASSERT(perm.dim() == other.rank_);
 
@@ -510,7 +650,7 @@ class Range {
       rank_ = other.rank_;
 
       if (perm) {
-        init_range_data(perm, other.data_, other.data_ + rank_);
+        init_range_data(perm, other.lobound_data(), other.upbound_data());
       } else {
         // Simple copy will do
         memcpy(data_, other.data_, (sizeof(size_type) << 2) * rank_);
@@ -527,7 +667,6 @@ class Range {
 
   /// \param other The range to be copied
   /// \return A reference to this object
-  /// \throw std::bad_alloc When memory allocation fails.
   Range_& operator=(const Range_& other) {
     if (rank_ != other.rank_) {
       delete[] data_;
@@ -577,7 +716,7 @@ class Range {
 
   /// Range lower bound data accessor
 
-  /// \return A pointer to the lower bound data (see <tt>lobound()</tt>)
+  /// \return A pointer to the lower bound data (see Range::lobound() )
   /// \throw nothing
   const size_type* lobound_data() const { return data_; }
 
@@ -599,7 +738,7 @@ class Range {
 
   /// Range upper bound data accessor
 
-  /// \return A pointer to the upper bound data (see <tt>upbound()</tt>)
+  /// \return A pointer to the upper bound data (see Range::upbound() )
   /// \throw nothing
   const size_type* upbound_data() const { return data_ + rank_; }
 
@@ -621,7 +760,7 @@ class Range {
 
   /// Range extent data accessor
 
-  /// \return A pointer to the extent data (see <tt>extent()</tt>)
+  /// \return A pointer to the extent data (see Range::extent() )
   /// \throw nothing
   const size_type* extent_data() const { return data_ + (rank_ + rank_); }
 
@@ -643,7 +782,7 @@ class Range {
 
   /// Range stride data accessor
 
-  /// \return A pointer to the stride data (see <tt>stride()</tt>)
+  /// \return A pointer to the stride data (see Range::stride() )
   /// \throw nothing
   const size_type* stride_data() const {
     return data_ + (rank_ + rank_ + rank_);
@@ -705,12 +844,12 @@ class Range {
 
   /// \tparam Index The coordinate index array type
   /// \param index The coordinate index to check for inclusion in the range
-  /// \return \c true when <tt>i >= lobound</tt> and <tt>i < upbound</tt>,
+  /// \return \c true when `i >= lobound` and `i < upbound`,
   /// otherwise \c false
   /// \throw TiledArray::Exception When the rank of this range is not
   /// equal to the size of the index.
   template <typename Index,
-            typename std::enable_if<!std::is_integral<Index>::value,
+            typename std::enable_if<detail::is_integral_range_v<Index>,
                                     bool>::type* = nullptr>
   bool includes(const Index& index) const {
     using std::size;
@@ -736,7 +875,7 @@ class Range {
   /// \tparam Integer An integer type
   /// \param index The element index to check for inclusion in the range,
   ///              as an \c std::initializer_list<Integer>
-  /// \return \c true when <tt>i >= lobound</tt> and <tt>i < upbound</tt>,
+  /// \return \c true when `i >= lobound` and `i < upbound`,
   /// otherwise \c false
   /// \throw TiledArray::Exception When the rank of this range is not
   /// equal to the size of the index.
@@ -751,8 +890,8 @@ class Range {
   /// \return \c true when \c i \c >= \c 0 and \c i \c < \c volume
   /// \throw nothing
   template <typename Ordinal>
-  typename std::enable_if<std::is_integral<Ordinal>::value, bool>::type
-  includes(Ordinal i) const {
+  typename std::enable_if<std::is_integral_v<Ordinal>, bool>::type includes(
+      Ordinal i) const {
     return include_ordinal_(i);
   }
 
@@ -769,20 +908,19 @@ class Range {
   /// \return A reference to this range
   /// \throw TiledArray::Exception When the rank of this range is not
   /// equal to the rank of the permutation.
-  /// \throw std::bad_alloc When memory allocation fails.
   Range_& operator*=(const Permutation& perm);
 
   /// Resize range to a new upper and lower bound
 
-  /// \tparam Index An array type
+  /// \tparam Index An integral range type
   /// \param lower_bound The lower bounds of the N-dimensional range
   /// \param upper_bound The upper bound of the N-dimensional range
   /// \return A reference to this range
   /// \throw TiledArray::Exception When the size of \c lower_bound is not
   /// equal to that of \c upper_bound.
-  /// \throw TiledArray::Exception When <tt>lower_bound[i] >=
-  /// upper_bound[i]</tt> \throw std::bad_alloc When memory allocation fails.
-  template <typename Index>
+  /// \throw TiledArray::Exception When `lower_bound[i] >= upper_bound[i]`
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
   Range_& resize(const Index& lower_bound, const Index& upper_bound) {
     using std::size;
     const size_type n = size(lower_bound);
@@ -880,9 +1018,8 @@ class Range {
   /// \param index The index to be converted to an ordinal index
   /// \return The ordinal index of \c index
   /// \throw When \c index is not included in this range.
-  template <
-      typename Index,
-      typename std::enable_if<!std::is_integral<Index>::value>::type* = nullptr>
+  template <typename Index,
+            typename std::enable_if_t<!std::is_integral_v<Index>>* = nullptr>
   ordinal_type ordinal(const Index& index) const {
     using std::size;
     TA_ASSERT(size(index) == rank_);
@@ -922,7 +1059,6 @@ class Range {
   /// \param index Ordinal index
   /// \return The index of the ordinal index
   /// \throw TiledArray::Exception When \c index is not included in this range
-  /// \throw std::bad_alloc When memory allocation fails
   index idx(size_type index) const {
     // Check that index is contained by range.
     // N.B. this will fail if any extent is zero
@@ -958,9 +1094,8 @@ class Range {
   /// a template parameter that can be an index or an ordinal_type.
   /// \param i The index
   /// \return \c i (unchanged)
-  template <
-      typename Index,
-      typename std::enable_if<!std::is_integral<Index>::value>::type* = nullptr>
+  template <typename Index, typename std::enable_if_t<
+                                detail::is_integral_range_v<Index>>* = nullptr>
   const Index& idx(const Index& i) const {
     TA_ASSERT(includes(i));
     return i;
@@ -1006,7 +1141,7 @@ class Range {
 
   /// \tparam Index A signed integral type
   /// \param i The ordinal index to check
-  /// \return \c true when <tt>i >= 0</tt> and <tt>i < volume_</tt>, otherwise
+  /// \return \c true when `i >= 0` and `i < volume_`, otherwise
   /// \c false.
   template <typename Index>
   typename std::enable_if<std::is_signed<Index>::value, bool>::type
@@ -1018,7 +1153,7 @@ class Range {
 
   /// \tparam Index An unsigned integral type
   /// \param i The ordinal index to check
-  /// \return \c true when  <tt>i < volume_</tt>, otherwise \c false.
+  /// \return \c true when  `i < volume_`, otherwise \c false.
   template <typename Index>
   typename std::enable_if<!std::is_signed<Index>::value, bool>::type
   include_ordinal_(Index i) const {
@@ -1118,13 +1253,14 @@ inline Range operator*(const Permutation& perm, const Range& r) {
 
 /// \param r1 The first range to be compared
 /// \param r2 The second range to be compared
-/// \return \c true when \c r1 represents the same range as \c r2, otherwise
+/// \return \c true when \p r1 represents the same range as \p r2, otherwise
 /// \c false.
 inline bool operator==(const Range& r1, const Range& r2) {
   return (r1.rank() == r2.rank()) &&
          !std::memcmp(r1.lobound_data(), r2.lobound_data(),
                       r1.rank() * (2u * sizeof(Range::size_type)));
 }
+
 /// Range inequality comparison
 
 /// \param r1 The first range to be compared

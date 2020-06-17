@@ -17,9 +17,14 @@
  *
  */
 
-#include "TiledArray/range.h"
+#include <boost/range/combine.hpp>
+#ifdef TILEDARRAY_HAS_RANGEV3
+#include <range/v3/view/zip.hpp>
+#endif
+
 #include <numeric>
 #include <sstream>
+#include "TiledArray/range.h"
 #include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
@@ -114,14 +119,17 @@ BOOST_AUTO_TEST_CASE(constructors) {
                                 p5.begin(), p5.end());
   BOOST_CHECK_EQUAL(r5.volume(), volume);
 
-  // Constructor that takes start/finish indices
+  ///////////////////////////////////////////////
+  // Constructors that takes start/finish indices
+  ///////////////////////////////////////////////
   BOOST_REQUIRE_NO_THROW(Range r2(p2, f2));  // uses index containers
   BOOST_REQUIRE_NO_THROW(
-      Range r2({std::make_pair(1, 2), std::make_pair(3, 4),
-                std::make_pair(5, 6)}));  // uses initializer_list of pairs
+      Range r(boost::combine(p2, f2)));  // uses zipped range of p2 and f2
+#ifdef TILEDARRAY_HAS_RANGEV3
   BOOST_REQUIRE_NO_THROW(
-      Range r2(std::make_pair(1, 2), std::make_pair(3, 4),
-               std::make_pair(5, 6)));  // uses param pack of pairs
+      Range r(ranges::views::zip(p2, f2)));  // uses zipped range of p2 and f2
+#endif
+
 #ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(Range r2(f2, p2), Exception);  // lobound > upbound
 #endif                                             // TA_EXCEPTION_ERROR
@@ -135,6 +143,72 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_CHECK_EQUAL_COLLECTIONS(r2.stride_data(), r2.stride_data() + r2.rank(),
                                 weight.begin(), weight.end());
   BOOST_CHECK_EQUAL(r2.volume(), volume);
+
+  // check that zipped bounds ctors work correctly
+  Range should_be_copy_of_r2(
+      boost::combine(p2, f2));  // uses zipped range of p2 and f2
+  BOOST_CHECK_EQUAL(r2, should_be_copy_of_r2);
+#ifdef TILEDARRAY_HAS_RANGEV3
+  Range should_be_another_copy_of_r2(
+      ranges::views::zip(p2, f2));  // uses zipped range of p2 and f2
+  BOOST_CHECK_EQUAL(r2, should_be_another_copy_of_r2);
+#endif
+
+  // test the rest of bound-based ctors
+  {
+    Range ref({0, 1, 2}, {4, 6, 8});
+#ifdef TA_EXCEPTION_ERROR
+    // BOOST_CHECK_THROW(Range ref{{0, 1, 2}, {4, 6, 8}}, Exception);  // mind
+    // the parens!
+#endif  // TA_EXCEPTION_ERROR
+
+    // uses initializer_list of pairs
+    BOOST_REQUIRE_NO_THROW(
+        Range r0({std::make_pair(0, 4), std::pair(1, 6), std::pair{2, 8}}));
+    Range r0({std::make_pair(0, 4), std::pair(1, 6), std::pair{2, 8}});
+    BOOST_CHECK_EQUAL(ref, r0);
+
+    // uses initializer_list of tuples
+    BOOST_REQUIRE_NO_THROW(Range r1(
+        {std::make_tuple(0, 4), std::make_tuple(1, 6), std::make_tuple(2, 8)}));
+    Range r1(
+        {std::make_tuple(0, 4), std::make_tuple(1, 6), std::make_tuple(2, 8)});
+    BOOST_CHECK_EQUAL(ref, r1);
+
+    std::vector<std::pair<size_t, size_t>> vpbounds{{0, 4}, {1, 6}, {2, 8}};
+    std::vector<std::tuple<size_t, size_t>> vtbounds{{0, 4}, {1, 6}, {2, 8}};
+
+    // uses vector of pairs
+    BOOST_REQUIRE_NO_THROW(Range r2(vpbounds));
+    Range r2(vpbounds);
+    BOOST_CHECK_EQUAL(ref, r2);
+
+    // uses vector of tuples
+    BOOST_REQUIRE_NO_THROW(Range r3(vtbounds));
+    Range r3(vtbounds);
+    BOOST_CHECK_EQUAL(ref, r3);
+
+    // uses param pack of pairs
+    BOOST_REQUIRE_NO_THROW(
+        Range r4(std::make_pair(0, 4), std::pair(1, 6), std::pair{2, 8}));
+    Range r4(std::make_pair(0, 4), std::pair(1, 6), std::pair{2, 8});
+    BOOST_CHECK_EQUAL(ref, r4);
+
+    // uses initializer_list of 2-element initializer_list's
+    BOOST_REQUIRE_NO_THROW(Range r5({{0, 4}, {1, 6}, {2, 8}}));
+    Range r5({{0, 4}, {1, 6}, {2, 8}});
+    BOOST_CHECK_EQUAL(ref, r5);
+    Range r6{{0, 4}, {1, 6}, {2, 8}};  // same but without extra parens
+    BOOST_CHECK_EQUAL(ref, r6);
+
+    // uses zipped bounds
+    Range r7(boost::combine(std::vector{0, 1, 2}, std::array{4, 6, 8}));
+    BOOST_CHECK_EQUAL(ref, r7);
+#ifdef TILEDARRAY_HAS_RANGEV3
+//    Range r8(ranges::views::zip(std::array{0, 1, 2}, std::vector{4, 6, 8}));
+//    BOOST_CHECK_EQUAL(ref, r8);
+#endif
+  }
 
   // make sure zero extents are OK also with start/finish indices
   {
