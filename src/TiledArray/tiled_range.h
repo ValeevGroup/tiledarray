@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef RANGE_H__INCLUDED
-#define RANGE_H__INCLUDED
+#ifndef TILEDARRAY_TILED_RANGE_H__INCLUDED
+#define TILEDARRAY_TILED_RANGE_H__INCLUDED
 
 #include <TiledArray/range.h>
 #include <TiledArray/tiled_range1.h>
@@ -317,4 +317,4 @@ inline std::ostream& operator<<(std::ostream& out, const TiledRange& rng) {
 
 }  // namespace TiledArray
 
-#endif  // RANGE_H__INCLUDED
+#endif  // TILEDARRAY_TILED_RANGE_H__INCLUDED
