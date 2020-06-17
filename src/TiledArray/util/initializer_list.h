@@ -19,58 +19,21 @@
 
 #ifndef TILEDARRAY_INITIALIZER_LIST_UTILS_H__INCLUDED
 #define TILEDARRAY_INITIALIZER_LIST_UTILS_H__INCLUDED
+#include <TiledArray/tiled_range.h>
+#include <TiledArray/tiled_range1.h>
+#include <TiledArray/type_traits.h>
 #include <algorithm>         // copy
 #include <array>             // array
 #include <initializer_list>  // initializer_list
 #include <type_traits>       // decay, false_type, true_type
-#include "TiledArray/tiled_range.h"
-#include "TiledArray/tiled_range1.h"
 
-/** @file initializer_list_utils.h
+/** @file util/initializer_list.h
  *
- *  initializer_list_utils.h contains routines and template meta-programming
+ *  util/initializer_list.h contains routines and template meta-programming
  *  utilities for manipulating std::initializer_list instances.
  */
 
 namespace TiledArray {
-
-//------------------------------------------------------------------------------
-// IsInitializerList Struct
-//------------------------------------------------------------------------------
-
-/** @brief Primary template for detecting if @p T is an std::initializer_list
- *
- *  This is the primary template for detecting if a type @p T is an
- *  std::initializer_list it will be selected when @p T is **NOT** an
- *  std::initializer_list and will contain a constexpr static member `value`,
- *  which is always false.
- *
- *  @tparam T The type we are testing for its initializer_list-ness
- */
-template <typename T>
-struct IsInitializerList : std::false_type {};
-
-/** @brief Specialization of IsInitializerList for an std::initializer_list
- *
- *  This specialization is selected if the template type parameter to
- *  IsInitializerList is of the form `std::initializer_list<T>` and will contain
- *  a constexpr static member `value` which is always true.
- *
- *  @tparam T The type we are testing for its initializer_list-ness
- */
-template <typename T>
-struct IsInitializerList<std::initializer_list<T>> : std::true_type {};
-
-/** @brief Helper variable template for the IsInitializerList struct.
- *
- *  This helper variable conforms to the STL's practice of declaring a helper
- *  variable to retrieve the static member `value` of a struct. The value of
- *  `is_initializer_list_v<T>` will be the same as `IsInitializerList<T>::value`
- *
- *  @tparam T The type we want to know the initializer_list-ness of.
- */
-template <typename T>
-static constexpr bool is_initializer_list_v = IsInitializerList<T>::value;
 
 //------------------------------------------------------------------------------
 // InitializerListRank Struct
@@ -182,7 +145,7 @@ auto tiled_range_from_il(T&& il, U shape = {}) {
 
     // verify that each sub-IL (if a list) has same length
     const auto first_sub_il_it = il.begin();
-    if constexpr (is_initializer_list_v<
+    if constexpr (detail::is_initializer_list_v<
                       std::decay_t<decltype(*first_sub_il_it)>>) {
       auto sub_il_it = il.begin();
       const size_t sub_il_length = sub_il_it->size();
@@ -350,7 +313,7 @@ template <typename ArrayType, typename T>
 auto array_from_il(World& world, const TiledRange& trange, T&& il) {
   using tile_type = typename ArrayType::value_type;
 
-  static_assert(initializer_list_rank_v<std::decay_t<T>>> 0,
+  static_assert(initializer_list_rank_v<std::decay_t<T>> > 0,
                 "value initializing rank 0 tensors is not supported");
 
   ArrayType rv(world, trange);

@@ -54,32 +54,33 @@ using tensor3_type_list =
                      tensor3_il<complexf>, tensor3_il<complexd>>;
 
 //------------------------------------------------------------------------------
-// Unit tests for struct: IsInitializerList
+// Unit tests for struct: is_initializer_list
 //------------------------------------------------------------------------------
 
 BOOST_AUTO_TEST_SUITE(is_initializer_list_class)
 
-// This test makes sure TA::IsInitializerList correctly recognizes that common
-// tensor element types, such as float and double, are not initializer lists
+// This test makes sure TA::detail::is_initializer_list correctly recognizes
+// that common tensor element types, such as float and double, are not
+// initializer lists
 BOOST_AUTO_TEST_CASE_TEMPLATE(scalar, T, scalar_type_list) {
-  BOOST_CHECK(!IsInitializerList<T>::value);
+  BOOST_CHECK(!detail::is_initializer_list<T>::value);
 }
 
-// Test is_initializer_list makes sure TA::IsInitializerList correctly
+// Test is_initializer_list makes sure TA::detail::is_initializer_list correctly
 // recognizes that initializer lists of common tensor element types, such as
 // float and double, are indeed initializer lists. Nestings of up to 3
 // initializer lists are tested.
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, vector_type_list) {
-  BOOST_CHECK(IsInitializerList<T>::value);
+  BOOST_CHECK(detail::is_initializer_list<T>::value);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(matrix, T, matrix_type_list) {
-  BOOST_CHECK(IsInitializerList<T>::value);
+  BOOST_CHECK(detail::is_initializer_list<T>::value);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(tensor3, T, tensor3_type_list) {
-  BOOST_CHECK(IsInitializerList<T>::value);
+  BOOST_CHECK(detail::is_initializer_list<T>::value);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -89,26 +90,26 @@ BOOST_AUTO_TEST_SUITE_END()
 //------------------------------------------------------------------------------
 
 // Test is_initializer_list_helper_variable tests that the helper variable
-// is_initializer_list_v<T> correctly aliases IsInitializerList<T>::value for
-// std::initializer_list types consistent with a scalar, vector, matrix, and a
-// rank 3 tensor.
+// is_initializer_list_v<T> correctly aliases
+// detail::is_initializer_list<T>::value for std::initializer_list types
+// consistent with a scalar, vector, matrix, and a rank 3 tensor.
 
 BOOST_AUTO_TEST_SUITE(is_initializer_list_helper)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(scalar, T, scalar_type_list) {
-  BOOST_CHECK(!is_initializer_list_v<T>);
+  BOOST_CHECK(!detail::is_initializer_list_v<T>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, vector_type_list) {
-  BOOST_CHECK(is_initializer_list_v<T>);
+  BOOST_CHECK(detail::is_initializer_list_v<T>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(matrix, T, matrix_type_list) {
-  BOOST_CHECK(is_initializer_list_v<T>);
+  BOOST_CHECK(detail::is_initializer_list_v<T>);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(tensor3, T, tensor3_type_list) {
-  BOOST_CHECK(is_initializer_list_v<T>);
+  BOOST_CHECK(detail::is_initializer_list_v<T>);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

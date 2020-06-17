@@ -30,6 +30,10 @@
 #include <iterator>
 #include <utility>
 
+#if __cplusplus <= 201703L
+#include <boost/tuple/tuple.hpp>
+#endif
+
 //////////////////////////////////////////////////////////////////////////////////////////////
 // forward declarations
 
@@ -780,22 +784,83 @@ struct is_integral_list
 template <typename... Ts>
 constexpr const bool is_integral_list_v = is_integral_list<Ts...>::value;
 
-///////////
+//////////////////////////////////////////////////////////////////////////////////////////////
 
-template <class T, class = void>
-struct is_tuple_ : std::false_type {};
-template <class T>
-struct is_tuple_<
-    T, typename std::enable_if<(std::tuple_size<T>::value >= 0)>::type>
-    : std::true_type {};
 /// @tparam T a type
 /// @c is_tuple<T>::value is true if @c T is an @c std::tuple<...>
 template <class T>
-struct is_tuple : is_tuple_<T> {};
+struct is_tuple : std::false_type {};
+
+template <typename... Ts>
+struct is_tuple<std::tuple<Ts...>> : std::true_type {};
 
 /// \c is_tuple_v<T> is an alias for \c is_tuple<T>::value
 template <typename T>
 constexpr const bool is_tuple_v = is_tuple<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+#if __cplusplus <= 201703L
+template <std::size_t I, typename T, typename = void>
+struct is_std_gettable : std::false_type {};
+
+template <std::size_t I, typename T>
+struct is_std_gettable<I, T,
+                       std::void_t<decltype(::std::get<I>(std::declval<T>()))>>
+    : std::true_type {};
+
+template <std::size_t I, typename T>
+constexpr const bool is_std_gettable_v = is_std_gettable<I, T>::value;
+
+template <std::size_t I, typename T, typename = void>
+struct is_boost_gettable : std::false_type {};
+
+template <std::size_t I, typename T>
+struct is_boost_gettable<
+    I, T, std::void_t<decltype(::boost::get<I>(std::declval<T>()))>>
+    : std::true_type {};
+
+template <std::size_t I, typename T>
+constexpr const bool is_boost_gettable_v = is_boost_gettable<I, T>::value;
+
+template <std::size_t I, typename T>
+constexpr const bool is_gettable_v =
+    is_std_gettable_v<I, T> || is_boost_gettable_v<I, T>;
+
+template <std::size_t I, typename T>
+auto get(T&& t) {
+  using boost::get;
+  using std::get;
+  return get<I>(std::forward<T>(t));
+}
+#else  // C++20
+template <std::size_t I, typename T, typename = void>
+struct is_gettable : std::false_type {};
+
+template <std::size_t I, typename T>
+struct is_gettable<I, T, std::void_t<decltype(get<I>(std::declval<T>()))>>
+    : std::true_type {};
+
+template <std::size_t I, typename T>
+constexpr const bool is_gettable_v = is_gettable<I, T>::value;
+#endif
+
+/// @tparam T a type
+/// @c is_gettable_pair<T>::value is true if @c TiledArray::detail::get<0>(T)
+/// and @c TiledArray::detail::get<1>(T) are valid expressions
+template <class T, typename Enabler = void>
+struct is_gettable_pair : std::false_type {};
+
+template <typename T>
+struct is_gettable_pair<
+    T, std::enable_if_t<is_gettable_v<0, T> && is_gettable_v<1, T>>>
+    : std::true_type {};
+
+/// \c is_gettable_pair_v<T> is an alias for \c is_gettable_pair<T>::value
+template <typename T>
+constexpr const bool is_gettable_pair_v = is_gettable_pair<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 template <class T, class = void>
 struct is_integral_pair_ : std::false_type {};
@@ -865,6 +930,9 @@ struct remove_cvr {
   typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type
       type;
 };
+
+template <typename T>
+using remove_cvr_t = typename remove_cvr<T>::type;
 
 /// prepends \c const to \c T if \c B is \c true
 template <bool B, typename T>
@@ -954,6 +1022,55 @@ struct is_random_iterator
     : public std::is_base_of<std::random_access_iterator_tag,
                              typename is_iterator<T>::iterator_category> {};
 
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+/// @tparam T a type
+/// @c is_range<T>::value is true if @c std::begin(T&) and @c std::end(T&) are
+/// defined
+/// @warning will be replaced by C++20 concepts
+template <typename T, typename Enabler = void>
+struct is_range : std::false_type {};
+
+template <typename T>
+struct is_range<T, std::void_t<decltype(std::begin(std::declval<T&>()),
+                                        std::end(std::declval<T&>()))>>
+    : std::true_type {};
+
+/// \c is_range_v<T> is an alias for \c is_range<T>::value
+template <typename T>
+static constexpr bool is_range_v = is_range<T>::value;
+
+/// @tparam T a range type
+/// @c iterator_t<T> is the iterator type, i.e. the type returned by @c
+/// std::begin(T&)
+/// @warning will be replaced by C++20 ranges::iterator_t
+template <class T>
+using iterator_t = decltype(std::begin(std::declval<T&>()));
+
+/// @tparam T a range type
+/// @c value_t<T> is the value type, i.e. the type to which @c std::begin(T&)
+/// dereferences to
+/// @warning will be replaced by C++20 ranges::value_t
+template <class T>
+using value_t = remove_cvr_t<decltype(*std::begin(std::declval<T&>()))>;
+
+/// @tparam T a type
+/// @c is_integral_range<T>::value is true if @p T is a range type that
+/// dereferences to values for which std::is_integral is true
+template <typename T, typename Enabler = void>
+struct is_integral_range : std::false_type {};
+
+template <typename T>
+struct is_integral_range<
+    T, std::enable_if_t<std::is_integral_v<value_t<T>> && is_range_v<T>>>
+    : std::true_type {};
+
+/// \c is_integral_range_v<T> is an alias for \c is_integral_range<T>::value
+template <typename T>
+static constexpr bool is_integral_range_v = is_integral_range<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
 // Type traits used to determine the result of arithmetic operations between
 // two types.
 
@@ -995,11 +1112,54 @@ struct is_same_or_derived
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+/// @tparam T a type
+/// @c is_pair<T>::value is true if @c T is an @c std::pair<...>
 template <typename T>
 struct is_pair : public std::false_type {};
 
 template <typename T1, typename T2>
 struct is_pair<std::pair<T1, T2>> : public std::true_type {};
+
+/// \c is_pair_v<T> is an alias for \c is_pair<T>::value
+template <typename T>
+constexpr const bool is_pair_v = is_pair<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+/** @brief Primary template for detecting if @p T is an std::initializer_list
+ *
+ *  This is the primary template for detecting if a type @p T is an
+ *  std::initializer_list it will be selected when @p T is **NOT** an
+ *  std::initializer_list and will contain a constexpr static member `value`,
+ *  which is always false.
+ *
+ *  @tparam T The type we are testing for its initializer_list-ness
+ */
+template <typename T>
+struct is_initializer_list : std::false_type {};
+
+/** @brief Specialization of is_initializer_list for an std::initializer_list
+ *
+ *  This specialization is selected if the template type parameter to
+ *  is_initializer_list is of the form `std::initializer_list<T>` and will
+ * contain a constexpr static member `value` which is always true.
+ *
+ *  @tparam T The type we are testing for its initializer_list-ness
+ */
+template <typename T>
+struct is_initializer_list<std::initializer_list<T>> : std::true_type {};
+
+/** @brief Helper variable template for the is_initializer_list struct.
+ *
+ *  This helper variable conforms to the STL's practice of declaring a helper
+ *  variable to retrieve the static member `value` of a struct. The value of
+ *  `is_initializer_list_v<T>` will be the same as
+ * `is_initializer_list<T>::value`
+ *
+ *  @tparam T The type we want to know the initializer_list-ness of.
+ */
+template <typename T>
+static constexpr bool is_initializer_list_v = is_initializer_list<T>::value;
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // https://stackoverflow.com/questions/51187974/can-stdis-invocable-be-emulated-within-c11
