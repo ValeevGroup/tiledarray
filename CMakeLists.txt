@@ -138,6 +138,8 @@ if(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
   set(TA_TILE_OPS_LOG_LEVEL 1)
 endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 
+option(TA_ENABLE_RANGEV3 "Enable Range-V3 library" OFF)
+add_feature_info(ENABLE_RANGEV3 TA_ENABLE_RANGEV3 "Range-V3 ranges library")
 
 # Enable shared library support options
 redefaultable_option(TA_ASSUMES_ASLR_DISABLED "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled" OFF)
@@ -292,6 +294,9 @@ endif()
 if(ENABLE_SCALAPACK)
   include(external/scalapack.cmake)
 endif()
+if (TA_ENABLE_RANGEV3)
+  include(FindOrFetchRangeV3)
+endif(TA_ENABLE_RANGEV3)
 
 # optional deps:
 # 1. ccache
