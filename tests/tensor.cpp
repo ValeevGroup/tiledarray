@@ -17,8 +17,13 @@
  *
  */
 
-#include "TiledArray/tensor.h"
+#include <boost/range/combine.hpp>
+#ifdef TILEDARRAY_HAS_RANGEV3
+#include <range/v3/view/zip.hpp>
+#endif
+
 #include <iterator>
+#include "TiledArray/tensor.h"
 #include "tensor_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
@@ -557,6 +562,24 @@ BOOST_AUTO_TEST_CASE(inplace_conj_scal_op) {
     BOOST_CHECK_EQUAL(t[i].real(), 3.0 * s[i].real());
     BOOST_CHECK_EQUAL(t[i].imag(), -3.0 * s[i].imag());
   }
+}
+
+BOOST_AUTO_TEST_CASE(block) {
+  TensorZ s(r);
+  auto lobound = r.lobound();
+  auto upbound = r.upbound();
+  BOOST_REQUIRE_NO_THROW(s.block(lobound, upbound));
+  BOOST_REQUIRE_NO_THROW(s.block({{lobound[0], upbound[0]},
+                                  {lobound[1], upbound[1]},
+                                  {lobound[2], upbound[2]}}));
+
+  // using zipped ranges of bounds (using Boost.Range)
+  // need to #include <boost/range/combine.hpp>
+  BOOST_CHECK_NO_THROW(s.block(boost::combine(lobound, upbound)));
+
+#ifdef TILEDARRAY_HAS_RANGEV3
+  BOOST_CHECK_NO_THROW(s.block(ranges::views::zip(lobound, upbound)));
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

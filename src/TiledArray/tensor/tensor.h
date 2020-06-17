@@ -193,7 +193,7 @@ class Tensor {
   }
 
   Tensor(const Range& range, std::initializer_list<T> il)
-    : Tensor(range, il.begin()) {}
+      : Tensor(range, il.begin()) {}
 
   /// Construct a copy of a tensor interface object
 
@@ -544,7 +544,8 @@ class Tensor {
   /// \param other The tensor to swap with this
   void swap(Tensor_& other) { std::swap(pimpl_, other.pimpl_); }
 
-  template <typename Index>
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
   detail::TensorInterface<T, BlockRange> block(const Index& lower_bound,
                                                const Index& upper_bound) {
     TA_ASSERT(pimpl_);
@@ -560,7 +561,8 @@ class Tensor {
         BlockRange(pimpl_->range_, lower_bound, upper_bound), pimpl_->data_);
   }
 
-  template <typename Index>
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
   detail::TensorInterface<const T, BlockRange> block(
       const Index& lower_bound, const Index& upper_bound) const {
     TA_ASSERT(pimpl_);
@@ -568,12 +570,54 @@ class Tensor {
         BlockRange(pimpl_->range_, lower_bound, upper_bound), pimpl_->data_);
   }
 
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  detail::TensorInterface<T, BlockRange> block(
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) {
+    TA_ASSERT(pimpl_);
+    return detail::TensorInterface<T, BlockRange>(
+        BlockRange(pimpl_->range_, lower_bound, upper_bound), pimpl_->data_);
+  }
+
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   detail::TensorInterface<const T, BlockRange> block(
-      const std::initializer_list<size_type>& lower_bound,
-      const std::initializer_list<size_type>& upper_bound) const {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) const {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<const T, BlockRange>(
         BlockRange(pimpl_->range_, lower_bound, upper_bound), pimpl_->data_);
+  }
+
+  template <typename PairRange,
+            typename = std::enable_if_t<
+                detail::is_range_v<PairRange> &&
+                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+  detail::TensorInterface<const T, BlockRange> block(const PairRange& bounds) {
+    return detail::TensorInterface<const T, BlockRange>(
+        BlockRange(pimpl_->range_, bounds), pimpl_->data_);
+  }
+
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  detail::TensorInterface<const T, BlockRange> block(
+      const std::initializer_list<std::initializer_list<Index>>& bounds) {
+    return detail::TensorInterface<const T, BlockRange>(
+        BlockRange(pimpl_->range_, bounds), pimpl_->data_);
+  }
+
+  template <typename... IndexPairs,
+            typename = std::enable_if_t<
+                detail::is_integral_pair_list_v<IndexPairs...>>>
+  detail::TensorInterface<const T, BlockRange> block(
+      const IndexPairs... bounds) {
+    using array_type =
+        std::array<std::pair<std::size_t, std::size_t>, sizeof...(IndexPairs)>;
+    return this->block<array_type>(array_type{
+        {static_cast<std::pair<std::size_t, std::size_t>>(bounds)...}});
   }
 
   /// Create a permuted copy of this tensor
