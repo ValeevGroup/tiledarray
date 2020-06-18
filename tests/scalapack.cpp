@@ -347,6 +347,45 @@ BOOST_AUTO_TEST_CASE(sparse_tiled_array_to_bc_test) {
 };
 
 
+
+
+BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {
+  GlobalFixture::world->gop.fence();
+
+  auto [M, N] = ref_matrix.dims();
+  BOOST_REQUIRE_EQUAL(M, N);
+
+  auto NB = ref_matrix.dist().nb();
+
+  auto trange = gen_trange(N, {static_cast<size_t>(NB)});
+
+  const TA::TArray<double> ref_ta = TA::make_array<TA::TArray<double> >(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+
+  GlobalFixture::world->gop.fence();
+  auto test_matrix = TA::array_to_block_cyclic( ref_ta, grid, NB, NB );
+  GlobalFixture::world->gop.fence();
+
+  double local_norm_diff =
+      (test_matrix.local_mat() - ref_matrix.local_mat()).norm();
+  local_norm_diff *= local_norm_diff;
+
+  double norm_diff;
+  MPI_Allreduce(&local_norm_diff, &norm_diff, 1, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD);
+
+  norm_diff = std::sqrt(norm_diff);
+
+  BOOST_CHECK_SMALL( norm_diff, std::numeric_limits<double>::epsilon() );
+
+  GlobalFixture::world->gop.fence();
+};
+
+
 BOOST_AUTO_TEST_CASE( sca_heig_same_tiling ) {
 
   GlobalFixture::world->gop.fence();
@@ -412,13 +451,13 @@ BOOST_AUTO_TEST_CASE( sca_heig_generalized ) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto ref_ta = TA::make_array<TA::TArray<double> >(
+  auto ref_ta = TA::make_array<TA::TSpArray<double> >(
       *GlobalFixture::world, trange,
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
 
-  auto dense_iden = TA::make_array<TA::TArray<double> >(
+  auto dense_iden = TA::make_array<TA::TSpArray<double> >(
       *GlobalFixture::world, trange,
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
         t = TA::Tensor<double>(range, 0.0);
@@ -634,7 +673,7 @@ BOOST_AUTO_TEST_CASE( sca_chol_lsolve ) {
 
 
 
-
+#if 0
 BOOST_AUTO_TEST_CASE( sca_svd_values_only ) {
 
   GlobalFixture::world->gop.fence();
@@ -742,5 +781,6 @@ BOOST_AUTO_TEST_CASE( sca_svd_allvectors ) {
     BOOST_CHECK_SMALL( std::abs(S[i] - exact_singular_values[i]), tol );
   GlobalFixture::world->gop.fence();
 }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

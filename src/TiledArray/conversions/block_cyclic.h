@@ -148,7 +148,7 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
     // Determine size of local BC buffer
     auto [Mloc, Nloc] = bc_dist_.get_local_dims(M, N);
     local_mat_.resize(Mloc, Nloc);
-    // local_mat_.fill(0);
+    local_mat_.fill(0);
 
     world_base_t::process_pending();
   };
@@ -280,14 +280,15 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
  *  @returns    Block-cyclic conversion of input DistArray
  */
 template <typename Array>
-BlockCyclicMatrix<typename Array::element_type> array_to_block_cyclic( 
+BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type> 
+array_to_block_cyclic( 
   const Array&         array, 
   const blacspp::Grid& grid,
   size_t               MB,
   size_t               NB
 ) {
 
-  return BlockCyclicMatrix<typename Array::element_type>( array, grid, MB, NB );
+  return BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>( array, grid, MB, NB );
 
 }
 
@@ -303,12 +304,12 @@ BlockCyclicMatrix<typename Array::element_type> array_to_block_cyclic(
  *  @returns DistArray conversion of input block-cyclic matrix
  */
 template <typename Array>
-Array block_cyclic_to_array(
-  const BlockCyclicMatrix<typename Array::element_type>& matrix,
+std::remove_cv_t<Array> block_cyclic_to_array(
+  const BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>& matrix,
   const TiledRange&                                  trange
 ) {
 
-  return matrix.template tensor_from_matrix<Array>( trange );
+  return matrix.template tensor_from_matrix<std::remove_cv_t<Array>>( trange );
 
 }
 
