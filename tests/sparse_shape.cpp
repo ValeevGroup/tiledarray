@@ -23,6 +23,11 @@
  *
  */
 
+#include <boost/range/combine.hpp>
+#ifdef TILEDARRAY_HAS_RANGEV3
+#include <range/v3/view/zip.hpp>
+#endif
+
 #include "TiledArray/sparse_shape.h"
 #include "sparse_shape_fixture.h"
 #include "tiledarray.h"
@@ -294,6 +299,31 @@ BOOST_AUTO_TEST_CASE(block) {
             result.sparsity(),
             float(zero_tile_count) / float(result.data().range().volume()),
             tolerance);
+
+        // validate other block functions
+#if TEST_DIM == 3u
+        BOOST_REQUIRE_NO_THROW(sparse_shape.block(
+            {lower[0], lower[1], lower[2]}, {upper[0], upper[1], upper[2]}));
+        auto result1 = sparse_shape.block({lower[0], lower[1], lower[2]},
+                                          {upper[0], upper[1], upper[2]});
+        BOOST_CHECK_EQUAL(result, result1);
+        BOOST_REQUIRE_NO_THROW(sparse_shape.block({{lower[0], upper[0]},
+                                                   {lower[1], upper[1]},
+                                                   {lower[2], upper[2]}}));
+        auto result2 = sparse_shape.block(
+            {{lower[0], upper[0]}, {lower[1], upper[1]}, {lower[2], upper[2]}});
+        BOOST_CHECK_EQUAL(result, result2);
+#endif
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block(boost::combine(lower, upper)));
+        auto result3 = sparse_shape.block(boost::combine(lower, upper));
+        BOOST_CHECK_EQUAL(result, result3);
+#ifdef TILEDARRAY_HAS_RANGEV3
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block(ranges::views::zip(lower, upper)));
+        auto result4 = sparse_shape.block(ranges::views::zip(lower, upper));
+        BOOST_CHECK_EQUAL(result, result4);
+#endif
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
@@ -359,6 +389,36 @@ BOOST_AUTO_TEST_CASE(block_scale) {
             result.sparsity(),
             float(zero_tile_count) / float(result.data().range().volume()),
             tolerance);
+
+        // validate other block functions
+#if TEST_DIM == 3u
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block({lower[0], lower[1], lower[2]},
+                               {upper[0], upper[1], upper[2]}, factor));
+        auto result1 =
+            sparse_shape.block({lower[0], lower[1], lower[2]},
+                               {upper[0], upper[1], upper[2]}, factor);
+        BOOST_CHECK_EQUAL(result, result1);
+        BOOST_REQUIRE_NO_THROW(sparse_shape.block(
+            {{lower[0], upper[0]}, {lower[1], upper[1]}, {lower[2], upper[2]}},
+            factor));
+        auto result2 = sparse_shape.block(
+            {{lower[0], upper[0]}, {lower[1], upper[1]}, {lower[2], upper[2]}},
+            factor);
+        BOOST_CHECK_EQUAL(result, result2);
+#endif
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block(boost::combine(lower, upper), factor));
+        auto result3 = sparse_shape.block(boost::combine(lower, upper), factor);
+        BOOST_CHECK_EQUAL(result, result3);
+#ifdef TILEDARRAY_HAS_RANGEV3
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block(ranges::views::zip(lower, upper), factor));
+        auto result4 =
+            sparse_shape.block(ranges::views::zip(lower, upper), factor);
+        BOOST_CHECK_EQUAL(result, result4);
+#endif
+
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
@@ -427,6 +487,35 @@ BOOST_AUTO_TEST_CASE(block_perm) {
             result.sparsity(),
             float(zero_tile_count) / float(result.data().range().volume()),
             tolerance);
+
+        // validate other block functions
+#if TEST_DIM == 3u
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block({lower[0], lower[1], lower[2]},
+                               {upper[0], upper[1], upper[2]}, perm));
+        auto result1 = sparse_shape.block({lower[0], lower[1], lower[2]},
+                                          {upper[0], upper[1], upper[2]}, perm);
+        BOOST_CHECK_EQUAL(result, result1);
+        BOOST_REQUIRE_NO_THROW(sparse_shape.block(
+            {{lower[0], upper[0]}, {lower[1], upper[1]}, {lower[2], upper[2]}},
+            perm));
+        auto result2 = sparse_shape.block(
+            {{lower[0], upper[0]}, {lower[1], upper[1]}, {lower[2], upper[2]}},
+            perm);
+        BOOST_CHECK_EQUAL(result, result2);
+#endif
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block(boost::combine(lower, upper), perm));
+        auto result3 = sparse_shape.block(boost::combine(lower, upper), perm);
+        BOOST_CHECK_EQUAL(result, result3);
+#ifdef TILEDARRAY_HAS_RANGEV3
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block(ranges::views::zip(lower, upper), perm));
+        auto result4 =
+            sparse_shape.block(ranges::views::zip(lower, upper), perm);
+        BOOST_CHECK_EQUAL(result, result4);
+#endif
+
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
@@ -497,6 +586,37 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
             result.sparsity(),
             float(zero_tile_count) / float(result.data().range().volume()),
             tolerance);
+
+        // validate other block functions
+#if TEST_DIM == 3u
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block({lower[0], lower[1], lower[2]},
+                               {upper[0], upper[1], upper[2]}, factor, perm));
+        auto result1 =
+            sparse_shape.block({lower[0], lower[1], lower[2]},
+                               {upper[0], upper[1], upper[2]}, factor, perm);
+        BOOST_CHECK_EQUAL(result, result1);
+        BOOST_REQUIRE_NO_THROW(sparse_shape.block(
+            {{lower[0], upper[0]}, {lower[1], upper[1]}, {lower[2], upper[2]}},
+            factor, perm));
+        auto result2 = sparse_shape.block(
+            {{lower[0], upper[0]}, {lower[1], upper[1]}, {lower[2], upper[2]}},
+            factor, perm);
+        BOOST_CHECK_EQUAL(result, result2);
+#endif
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block(boost::combine(lower, upper), factor, perm));
+        auto result3 =
+            sparse_shape.block(boost::combine(lower, upper), factor, perm);
+        BOOST_CHECK_EQUAL(result, result3);
+#ifdef TILEDARRAY_HAS_RANGEV3
+        BOOST_REQUIRE_NO_THROW(
+            sparse_shape.block(ranges::views::zip(lower, upper), factor, perm));
+        auto result4 =
+            sparse_shape.block(ranges::views::zip(lower, upper), factor, perm);
+        BOOST_CHECK_EQUAL(result, result4);
+#endif
+
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
