@@ -1041,8 +1041,8 @@ template <typename T>
 static constexpr bool is_range_v = is_range<T>::value;
 
 /// @tparam T a type
-/// @c is_sized_range<T>::value is true if @c is_range_v<T> is true and @c
-/// std::size(T&) are defined
+/// @c is_sized_range<T>::value is true if `is_range_v<T>` is true and
+/// `std::size(T&)` is valid
 /// @warning will be replaced by C++20 concepts
 template <typename T, typename Enabler = void>
 struct is_sized_range : std::false_type {};
@@ -1051,9 +1051,25 @@ template <typename T>
 struct is_sized_range<T, std::void_t<decltype(std::size(std::declval<T&>()))>>
     : is_range<T> {};
 
-/// \c is_sized_range_v<T> is an alias for \c is_sized_range<T>::value
+/// `is_sized_range_v<T>` is an alias for `is_sized_range<T>::value`
 template <typename T>
 static constexpr bool is_sized_range_v = is_sized_range<T>::value;
+
+/// @tparam T a type
+/// @c is_contiguous_range<T>::value is true if `is_range_v<T>` is true and
+/// `std::data(T&)` is valid
+/// @warning will be replaced by C++20 concepts
+template <typename T, typename Enabler = void>
+struct is_contiguous_range : std::false_type {};
+
+template <typename T>
+struct is_contiguous_range<T,
+                           std::void_t<decltype(std::data(std::declval<T&>()))>>
+    : is_range<T> {};
+
+/// `is_contiguous_range_v<T>` is an alias for `is_contiguous_range<T>::value`
+template <typename T>
+static constexpr bool is_contiguous_range_v = is_contiguous_range<T>::value;
 
 /// @tparam T a range type
 /// @c iterator_t<T> is the iterator type, i.e. the type returned by @c
@@ -1070,8 +1086,8 @@ template <class T>
 using value_t = remove_cvr_t<decltype(*std::begin(std::declval<T&>()))>;
 
 /// @tparam T a type
-/// @c is_integral_range<T>::value is true if @p T is a range type that
-/// dereferences to values for which std::is_integral is true
+/// `is_integral_range<T>::value` is true if @p T is a range type that
+/// dereferences to values for which `std::is_integral_v` is true
 template <typename T, typename Enabler = void>
 struct is_integral_range : std::false_type {};
 
@@ -1080,7 +1096,7 @@ struct is_integral_range<
     T, std::enable_if_t<std::is_integral_v<value_t<T>> && is_range_v<T>>>
     : std::true_type {};
 
-/// \c is_integral_range_v<T> is an alias for \c is_integral_range<T>::value
+/// `is_integral_range_v<T>` is an alias for `is_integral_range<T>::value`
 template <typename T>
 static constexpr bool is_integral_range_v = is_integral_range<T>::value;
 
@@ -1192,6 +1208,47 @@ struct is_initializer_list<std::initializer_list<T>> : std::true_type {};
  */
 template <typename T>
 static constexpr bool is_initializer_list_v = is_initializer_list<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+/// This evaluates to true if \c T is a generalized pair, namely if expressions
+/// `get<0>(T&)` and `get<1>(T&)` are valid, or \c T is a contiguous range
+template <typename T>
+static constexpr bool is_gpair_v =
+    is_contiguous_range_v<T> || is_gettable_pair_v<T>;
+
+/// @tparam T a type
+/// `is_gpair_range<T>::value` is true if @p T is a range type that
+/// dereferences to values for which is_gpair_v is true
+template <typename T, typename Enabler = void>
+struct is_gpair_range : std::false_type {};
+
+template <typename T>
+struct is_gpair_range<T,
+                      std::enable_if_t<is_gpair_v<value_t<T>> && is_range_v<T>>>
+    : std::true_type {};
+
+/// `is_gpair_range_v<T>` is an alias for `is_gpair_range<T>::value`
+template <typename T>
+static constexpr bool is_gpair_range_v = is_gpair_range<T>::value;
+
+/// \c at(pair, i) extracts i-th element from gpair
+template <typename GeneralizedPair,
+          typename = std::enable_if_t<is_gpair_v<GeneralizedPair>>>
+decltype(auto) at(GeneralizedPair&& v, std::size_t idx) {
+  assert(idx == 0 || idx == 1);
+  if constexpr (is_gettable_pair_v<std::decay_t<decltype(v)>>) {
+#if __cplusplus <= 201703L
+    return idx == 0 ? detail::get<0>(v) : detail::get<1>(v);
+#else
+    return idx == 0 ? get<0>(v) : get<1>(v);
+#endif
+  } else if constexpr (is_contiguous_range_v<std::decay_t<decltype(v)>>) {
+    assert(std::size(v) == 2);
+    return std::data(v)[idx];
+  }
+  abort();  // unreachable
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // https://stackoverflow.com/questions/51187974/can-stdis-invocable-be-emulated-within-c11

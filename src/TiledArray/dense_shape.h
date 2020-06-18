@@ -122,10 +122,7 @@ class DenseShape {
   }
 
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
-                 detail::is_initializer_list_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   DenseShape update_block(const PairRange& bounds,
                           const DenseShape& other) const {
     return DenseShape();
@@ -155,10 +152,7 @@ class DenseShape {
   }
 
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
-                 detail::is_initializer_list_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   DenseShape block(const PairRange& bounds) const {
     return DenseShape();
   }
@@ -188,11 +182,8 @@ class DenseShape {
   }
 
   template <typename PairRange, typename Scalar,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
-                 detail::is_initializer_list_v<detail::value_t<
-                     PairRange>>)&&detail::is_numeric_v<Scalar>>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange> &&
+                                        detail::is_numeric_v<Scalar>>>
   DenseShape block(const PairRange& bounds, const Scalar) const {
     return DenseShape();
   }
@@ -223,10 +214,7 @@ class DenseShape {
   }
 
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
-                 detail::is_initializer_list_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   DenseShape block(const PairRange& bounds, const Permutation&) const {
     return DenseShape();
   }
@@ -259,11 +247,8 @@ class DenseShape {
   }
 
   template <typename PairRange, typename Scalar,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
-                 detail::is_initializer_list_v<detail::value_t<
-                     PairRange>>)&&detail::is_numeric_v<Scalar>>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange> &&
+                                        detail::is_numeric_v<Scalar>>>
   DenseShape block(const PairRange& bounds, const Scalar,
                    const Permutation&) const {
     return DenseShape();

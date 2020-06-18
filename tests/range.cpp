@@ -216,19 +216,34 @@ BOOST_AUTO_TEST_CASE(constructors) {
           boost::combine(Eigen::Vector3i(0, 1, 2), Eigen::Vector3i(4, 6, 8)));
       BOOST_CHECK_EQUAL(ref, r9);
 
-      using TiledArray::ivec;
-      Range r10(boost::combine(ivec({0, 1, 2}), ivec(4, 6, 8)));
+      // iv = shorthand for Eigen::Vector of ints
+      using TiledArray::eigen::iv;
+      Range r10(iv({0, 1, 2}),  // from initializer_list -> VectorXi
+                iv(4, 6, 8));  // from param pack -> VectorNi (N=3 in this case)
       BOOST_CHECK_EQUAL(ref, r10);
 
-      using TiledArray::ivec;
-      Range r11(boost::combine(ivec(std::vector{0, 1, 2}),
-                               ivec(std::array{4, 6, 8})));
+      // can compose indices easier with Eigen vectors, but need to force
+      // evaluation (note iv around the sum)
+      Range r11(iv({0, 1, 2}), iv(iv(0, 1, 2) + iv(4, 5, 6)));
       BOOST_CHECK_EQUAL(ref, r11);
+
+      // can zip Eigen vectors
+      Range r12(boost::combine(iv({0, 1, 2}), iv(4, 6, 8)));
+      BOOST_CHECK_EQUAL(ref, r12);
+
+      // can make Eigen vectors out of other ranges
+      Range r13(
+          boost::combine(iv(std::vector{0, 1, 2}), iv(std::array{4, 6, 8})));
+      BOOST_CHECK_EQUAL(ref, r13);
+
+      // etc
+      Range r14(boost::combine(iv({0, 1, 2}), iv(iv({0, 1, 2}) + iv(4, 5, 6))));
+      BOOST_CHECK_EQUAL(ref, r14);
 
 #ifdef TILEDARRAY_HAS_RANGEV3
 // this requires Eigen ~3.4 (3.3.90 docs suggest it should be sufficient)
-//    Range r12(ranges::views::zip(Eigen::Vector3i(0, 1, 2), Eigen::Vector3i(4,
-//    6, 8))); BOOST_CHECK_EQUAL(ref, r12);
+//    Range r15(ranges::views::zip(iv(0, 1, 2), iv(4, 6, 8)));
+//    BOOST_CHECK_EQUAL(ref, r15);
 #endif
     }
   }

@@ -633,17 +633,14 @@ class SparseShape {
   // clang-format off
   /// Creates a copy of this with a sub-block updated with contents of another shape
 
-  /// \tparam PairRange A range type
+  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
   /// \param bounds The {lower,upper} bounds of the sub-block
   /// \param other The shape that will be used to update the sub-block
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
   /// the data result_tile_norms of \c other.
   // clang-format on
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
-                 detail::is_initializer_list_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   SparseShape update_block(const PairRange& bounds,
                            const SparseShape& other) const {
     Tensor<value_type> result_tile_norms = tile_norms_.clone();
@@ -752,39 +749,22 @@ class SparseShape {
 
   /// Create a copy of a sub-block of the shape
 
-  /// \tparam PairRange A range type
-  /// \param bounds The {lower,upper} bounds of the sub-block
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v ) \param bounds The {lower,upper} bounds of
+  /// the sub-block
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
-                 detail::is_initializer_list_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   std::shared_ptr<vector_type> block_range(const PairRange& bounds) const {
     // Get the number dimensions of the shape
     const auto rank = tile_norms_.range().rank();
     std::shared_ptr<vector_type> size_vectors(
         new vector_type[rank], std::default_delete<vector_type[]>());
 
-    auto _get = [](auto&& v, std::size_t idx) {
-      TA_ASSERT(idx == 0 || idx == 1);
-      if constexpr (detail::is_gettable_pair_v<std::decay_t<decltype(v)>>) {
-#if __cplusplus <= 201703L
-        return idx == 0 ? detail::get<0>(v) : detail::get<1>(v);
-#else
-        return idx == 0 ? get<0>(v) : get<1>(v);
-#endif
-      } else if constexpr (detail::is_initializer_list_v<
-                               std::decay_t<decltype(v)>>) {
-        return std::data(v)[idx];
-      }
-      abort();  // unreachable
-    };
-
     int d = 0;
     for (auto&& bound_d : bounds) {
       // Get the new range size
-      const size_type lower_d = _get(bound_d, 0);
-      const size_type upper_d = _get(bound_d, 1);
+      const size_type lower_d = detail::at(bound_d, 0);
+      const size_type upper_d = detail::at(bound_d, 1);
       const size_type extent_d = upper_d - lower_d;
 
       // Check that the input indices are in range
@@ -864,14 +844,11 @@ class SparseShape {
 
   /// Create a copy of a sub-block of the shape
 
-  /// \tparam PairRange Type representing a range of "pairs"
-  ///         represented by type \c T for which \c get<0>(T) and
-  ///         \c get<1>(T) are valid expressions
-  /// \param bounds A range of {lower,upper} bounds for each dimension
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v ) \param bounds The {lower,upper} bounds of
+  /// the sub-block
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   SparseShape block(const PairRange& bounds) const {
     return make_block(block_range(bounds), tile_norms_.block(bounds),
                       [](auto&& arg) { return arg; });
@@ -934,18 +911,14 @@ class SparseShape {
 
   /// Create a scaled sub-block of the shape
 
-  /// \tparam PairRange Type representing a range of "pairs"
-  ///         represented by type \c T for which \c get<0>(T) and
-  ///         \c get<1>(T) are valid expressions
-  /// \tparam Scalar A numeric type
-  /// \note expression abs(Scalar) must be well defined (by default, std::abs
-  /// will be used)
-  /// \param bounds A range of {lower,upper} bounds for each dimension
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v ) \tparam Scalar A numeric type \note
+  /// expression abs(Scalar) must be well defined (by default, std::abs will be
+  /// used) \param bounds A range of {lower,upper} bounds for each dimension
   /// \param factor the scaling factor
   template <typename PairRange, typename Scalar,
-            typename = std::enable_if_t<
-                detail::is_numeric_v<Scalar> && detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar> &&
+                                        detail::is_gpair_range_v<PairRange>>>
   SparseShape block(const PairRange& bounds, const Scalar factor) const {
     const value_type abs_factor = to_abs_factor(factor);
     return make_block(block_range(bounds), tile_norms_.block(bounds),
@@ -1006,16 +979,12 @@ class SparseShape {
 
   /// Create a permuted sub-block of the shape
 
-  /// \tparam PairRange Type representing a range of "pairs"
-  ///         represented by type \c T for which \c get<0>(T) and
-  ///         \c get<1>(T) are valid expressions
-  /// \param bounds A range of {lower,upper} bounds for each dimension
-  /// \param perm permutation to apply
-  /// \note permutation is not fused into construction
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v ) \param bounds A range of {lower,upper}
+  /// bounds for each dimension \param perm permutation to apply \note
+  /// permutation is not fused into construction
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   SparseShape block(const PairRange& bounds, const Permutation& perm) const {
     return block(bounds).perm(perm);
   }
@@ -1079,20 +1048,16 @@ class SparseShape {
 
   /// Create a permuted scaled sub-block of the shape
 
-  /// \tparam PairRange Type representing a range of "pairs"
-  ///         represented by type \c T for which \c get<0>(T) and
-  ///         \c get<1>(T) are valid expressions
-  /// \tparam Scalar A numeric type
-  /// \note expression abs(Scalar) must be well defined (by default, std::abs
-  /// will be used)
-  /// \param bounds A range of {lower,upper} bounds for each dimension
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v ) \tparam Scalar A numeric type \note
+  /// expression abs(Scalar) must be well defined (by default, std::abs will be
+  /// used) \param bounds A range of {lower,upper} bounds for each dimension
   /// \param factor the scaling factor
   /// \param perm permutation to apply
   /// \note permutation is not fused into construction
   template <typename PairRange, typename Scalar,
-            typename = std::enable_if_t<
-                detail::is_numeric_v<Scalar> && detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar> &&
+                                        detail::is_gpair_range_v<PairRange>>>
   SparseShape block(const PairRange& bounds, const Scalar factor,
                     const Permutation& perm) const {
     const value_type abs_factor = to_abs_factor(factor);

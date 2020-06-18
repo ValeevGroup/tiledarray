@@ -170,7 +170,7 @@ template <typename Array, typename Op, typename Policy>
 class ArrayEvalImpl
     : public DistEvalImpl<LazyArrayTile<typename Array::value_type, Op>,
                           Policy>,
-      public std::enable_shared_from_this<ArrayEvalImpl<Array, Op, Policy> > {
+      public std::enable_shared_from_this<ArrayEvalImpl<Array, Op, Policy>> {
  public:
   typedef ArrayEvalImpl<Array, Op, Policy>
       ArrayEvalImpl_;  ///< This object type
@@ -191,7 +191,7 @@ class ArrayEvalImpl
   typedef Op op_type;  ///< Tile evaluation operator type
 
   using std::enable_shared_from_this<
-      ArrayEvalImpl<Array, Op, Policy> >::shared_from_this;
+      ArrayEvalImpl<Array, Op, Policy>>::shared_from_this;
 
  private:
   array_type array_;             ///< The array that will be evaluated
@@ -219,6 +219,8 @@ class ArrayEvalImpl
 
   /// Constructor with sub-block range
 
+  /// \tparam Index1 An integral range type
+  /// \tparam Index2 An integral range type
   /// \param array The array that will be evaluated
   /// \param world The world where array will be evaluated
   /// \param trange The tiled range of the result tensor
@@ -228,12 +230,15 @@ class ArrayEvalImpl
   /// \param op The operation that will be used to evaluate the tiles of array
   /// \param lower_bound The sub-block lower bound
   /// \param upper_bound The sub-block upper bound
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<Index1> &&
+                TiledArray::detail::is_integral_range_v<Index2>>>
   ArrayEvalImpl(const array_type& array, World& world,
                 const trange_type& trange, const shape_type& shape,
                 const std::shared_ptr<pmap_interface>& pmap,
                 const Permutation& perm, const op_type& op,
-                const std::vector<std::size_t>& lower_bound,
-                const std::vector<std::size_t>& upper_bound)
+                const Index1& lower_bound, const Index2& upper_bound)
       : DistEvalImpl_(world, trange, shape, pmap, perm),
         array_(array),
         op_(std::make_shared<op_type>(op)),

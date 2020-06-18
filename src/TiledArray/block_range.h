@@ -97,10 +97,7 @@ class BlockRange : public Range {
   }
 
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
-                 detail::is_initializer_list_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   void init(const Range& range, const PairRange& bounds) {
     TA_ASSERT(range.rank());
 
@@ -118,27 +115,12 @@ class BlockRange : public Range {
     auto* MADNESS_RESTRICT const extent = upper + rank_;
     auto* MADNESS_RESTRICT const stride = extent + rank_;
 
-    auto _get = [](auto&& v, std::size_t idx) {
-      TA_ASSERT(idx == 0 || idx == 1);
-      if constexpr (detail::is_gettable_pair_v<std::decay_t<decltype(v)>>) {
-#if __cplusplus <= 201703L
-        return idx == 0 ? detail::get<0>(v) : detail::get<1>(v);
-#else
-        return idx == 0 ? get<0>(v) : get<1>(v);
-#endif
-      } else if constexpr (detail::is_initializer_list_v<
-                               std::decay_t<decltype(v)>>) {
-        return std::data(v)[idx];
-      }
-      abort();  // unreachable
-    };
-
     // Compute range data
     int d = 0;
     for (auto&& bound_d : bounds) {
       // Compute data for element i of lower, upper, and extent
-      const size_type lower_bound_d = _get(bound_d, 0);
-      const size_type upper_bound_d = _get(bound_d, 1);
+      const size_type lower_bound_d = detail::at(bound_d, 0);
+      const size_type upper_bound_d = detail::at(bound_d, 1);
       const size_type extent_d = upper_bound_d - lower_bound_d;
 
       // Check input dimensions
@@ -254,16 +236,12 @@ class BlockRange : public Range {
   ///   BlockRange br3(r, ranges::views::zip(lobounds, upbounds));
   ///   assert(br0 == br3);
   /// \endcode
-  /// \tparam PairRange Type representing a range of "pairs"
-  ///         represented by type \c T for which \c get<0>(T) and
-  ///         \c get<1>(T) are valid expressions
+  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
   /// \param bounds A range of {lower,upper} bounds for each dimension
   /// \throw TiledArray::Exception When `bounds[i].lower>=bounds[i].upper` for any \c i .
   // clang-format on
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   BlockRange(const Range& range, const PairRange& bounds) : Range() {
     init(range, bounds);
   }

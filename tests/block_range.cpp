@@ -199,16 +199,15 @@ BOOST_AUTO_TEST_CASE(block) {
 
           // using Eigen
           {
-            using TiledArray::ivec;
+            using TiledArray::eigen::iv;
 
-            BOOST_CHECK_NO_THROW(
-                BlockRange br5(r, ivec(0, 1, 2), ivec(4, 6, 8)));
-            BlockRange br5(r, ivec(0, 1, 2), ivec(4, 6, 8));
+            BOOST_CHECK_NO_THROW(BlockRange br5(r, iv(0, 1, 2), iv(4, 6, 8)));
+            BlockRange br5(r, iv(0, 1, 2), iv(4, 6, 8));
             BOOST_CHECK_EQUAL(br5, bref);
 
-            BOOST_CHECK_NO_THROW(BlockRange br6(
-                r, boost::combine(ivec(0, 1, 2), ivec(4, 6, 8))));
-            BlockRange br6(r, boost::combine(ivec(0, 1, 2), ivec(4, 6, 8)));
+            BOOST_CHECK_NO_THROW(
+                BlockRange br6(r, boost::combine(iv(0, 1, 2), iv(4, 6, 8))));
+            BlockRange br6(r, boost::combine(iv(0, 1, 2), iv(4, 6, 8)));
             BOOST_CHECK_EQUAL(br6, bref);
           }
         }

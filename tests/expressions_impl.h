@@ -34,6 +34,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(tensor_factories, F, Fixtures, F) {
   const std::array<int, 3> lobound{{3, 3, 3}};
   const std::array<int, 3> upbound{{5, 5, 5}};
 
+  using TiledArray::eigen::iv;
+
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") += a("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") = c("a,c,b") + a("c,b,a"));
@@ -44,10 +46,22 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(tensor_factories, F, Fixtures, F) {
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("c,b,a").conj());
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block({{3, 5}, {3, 5}, {3, 5}}));
+  BOOST_CHECK_NO_THROW(c("a,b,c") =
+                           a("a,b,c").block(boost::combine(lobound, upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(iv(3, 3, 3), iv(5, 5, 5)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") = a("a,b,c").block(
+                           iv(3, 3, 3), iv(iv(3, 3, 3) + iv(2, 2, 2))));
   BOOST_CHECK_NO_THROW(c("a,b,c") = ca("c,b,a"));
   BOOST_CHECK_NO_THROW(c("a,b,c") = ca("c,b,a").conj());
   BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block(lobound, upbound));
   BOOST_CHECK_NO_THROW(c("a,b,c") = ca("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_CHECK_NO_THROW(c("a,b,c") =
+                           ca("a,b,c").block({{3, 5}, {3, 5}, {3, 5}}));
+  BOOST_CHECK_NO_THROW(c("a,b,c") =
+                           ca("a,b,c").block(boost::combine(lobound, upbound)));
+  BOOST_CHECK_NO_THROW(c("a,b,c") =
+                           ca("a,b,c").block(iv(3, 3, 3), iv(5, 5, 5)));
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_tensor_factories, F, Fixtures, F) {

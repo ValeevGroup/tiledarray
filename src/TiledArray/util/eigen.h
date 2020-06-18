@@ -64,9 +64,11 @@ constexpr auto end(
 
 namespace TiledArray {
 
+namespace eigen {
+
 template <typename Range,
           typename = std::enable_if_t<detail::is_integral_range_v<Range>>>
-Eigen::Matrix<detail::value_t<Range>, Eigen::Dynamic, 1> ivec(Range&& rng) {
+Eigen::Matrix<detail::value_t<Range>, Eigen::Dynamic, 1> iv(Range&& rng) {
   Eigen::Matrix<detail::value_t<Range>, Eigen::Dynamic, 1> result(
       std::size(rng));
   long count = 0;
@@ -80,7 +82,7 @@ Eigen::Matrix<detail::value_t<Range>, Eigen::Dynamic, 1> ivec(Range&& rng) {
 // TODO constrain this to run only at compile time
 // template <typename Range, typename =
 // std::enable_if_t<detail::is_integral_range_v<Range>>> constexpr auto
-// ivecn(Range&& rng) {
+// ivn(Range&& rng) {
 //  Eigen::Matrix<detail::value_t<Range>, std::size(rng), 1> result;
 //  long count = 0;
 //  for(auto && i : rng) {
@@ -91,7 +93,7 @@ Eigen::Matrix<detail::value_t<Range>, Eigen::Dynamic, 1> ivec(Range&& rng) {
 //}
 
 template <typename Int, typename = std::enable_if_t<std::is_integral_v<Int>>>
-Eigen::Matrix<Int, Eigen::Dynamic, 1> ivec(std::initializer_list<Int> list) {
+Eigen::Matrix<Int, Eigen::Dynamic, 1> iv(std::initializer_list<Int> list) {
   Eigen::Map<const Eigen::Matrix<Int, Eigen::Dynamic, 1>> result(data(list),
                                                                  size(list));
   return result;
@@ -99,10 +101,10 @@ Eigen::Matrix<Int, Eigen::Dynamic, 1> ivec(std::initializer_list<Int> list) {
 
 namespace detail {
 template <typename Mat, typename T, typename... Ts>
-void ivec_assign(Mat& m, int i, T v, Ts... vrest) {
+void iv_assign(Mat& m, int i, T v, Ts... vrest) {
   m(i) = v;
   if constexpr (sizeof...(Ts) > 0) {
-    ivec_assign(m, i + 1, vrest...);
+    iv_assign(m, i + 1, vrest...);
   }
 }
 }  // namespace detail
@@ -110,11 +112,23 @@ void ivec_assign(Mat& m, int i, T v, Ts... vrest) {
 template <typename Int, typename... Ints,
           typename = std::enable_if_t<std::is_integral_v<Int> &&
                                       (std::is_integral_v<Ints> && ...)>>
-constexpr auto ivec(Int i0, Ints... rest) {
+constexpr auto iv(Int i0, Ints... rest) {
   Eigen::Matrix<Int, sizeof...(Ints) + 1, 1> result;
-  detail::ivec_assign(result, 0, i0, rest...);
+  detail::iv_assign(result, 0, i0, rest...);
   return result;
 }
+
+/// evaluates an Eigen expression
+template <typename Derived>
+auto iv(const Eigen::MatrixBase<Derived>& mat) {
+  Eigen::Matrix<typename Eigen::internal::traits<Derived>::Scalar,
+                Eigen::internal::traits<Derived>::RowsAtCompileTime,
+                Eigen::internal::traits<Derived>::ColsAtCompileTime>
+      result = mat;
+  return result;
+}
+
+}  // namespace eigen
 
 }  // namespace TiledArray
 

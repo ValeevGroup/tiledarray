@@ -503,9 +503,7 @@ class Tile {
   ///   auto tview3 = t.block(ranges::views::zip(lobounds, upbounds));
   ///   assert(tview0 == tview3);
   /// \endcode
-  /// \tparam PairRange Type representing a range of "pairs"
-  ///         represented by type \c T for which \c get<0>(T) and
-  ///         \c get<1>(T) are valid expressions
+  /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
   /// \param bounds The block bounds
   /// \return a {const,mutable} view of the block defined by its \p bounds
   /// \throw TiledArray::Exception When the size of \p lower_bound is not
@@ -514,9 +512,7 @@ class Tile {
   // clang-format on
   /// @{
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   decltype(auto) block(const PairRange& bounds) {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<value_type, BlockRange, tensor_type>(
@@ -524,9 +520,7 @@ class Tile {
   }
 
   template <typename PairRange,
-            typename = std::enable_if_t<
-                detail::is_range_v<PairRange> &&
-                (detail::is_gettable_pair_v<detail::value_t<PairRange>>)>>
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   decltype(auto) block(const PairRange& bounds) const {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<const value_type, BlockRange, tensor_type>(
