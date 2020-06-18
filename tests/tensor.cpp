@@ -570,11 +570,13 @@ BOOST_AUTO_TEST_CASE(block) {
   auto lobound = r.lobound();
   auto upbound = r.upbound();
   BOOST_REQUIRE_NO_THROW(s.block(lobound, upbound));
+#if TEST_DIM == 3u
   BOOST_REQUIRE_NO_THROW(s.block({{lobound[0], upbound[0]},
                                   {lobound[1], upbound[1]},
                                   {lobound[2], upbound[2]}}));
   BOOST_REQUIRE_NO_THROW(s.block({lobound[0], lobound[1], lobound[2]},
                                  {upbound[0], upbound[1], upbound[2]}));
+#endif
 
   // using zipped ranges of bounds (using Boost.Range)
   // need to #include <boost/range/combine.hpp>
@@ -587,10 +589,12 @@ BOOST_AUTO_TEST_CASE(block) {
   auto sview0 = s.block(lobound, upbound);
   BOOST_CHECK(sview0.range().includes(lobound));
   BOOST_CHECK(sview0(lobound) == s(lobound));
+#if TEST_DIM == 3u
   auto sview1 = s.block({lobound[0], lobound[1], lobound[2]},
                         {upbound[0], upbound[1], upbound[2]});
   BOOST_CHECK(sview1.range().includes(lobound));
   BOOST_CHECK(sview1(lobound) == s(lobound));
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()

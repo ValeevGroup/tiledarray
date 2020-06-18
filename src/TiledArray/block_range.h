@@ -96,12 +96,12 @@ class BlockRange : public Range {
     }
   }
 
-  template <typename Index,
+  template <typename PairRange,
             typename = std::enable_if_t<
-                detail::is_range_v<Index> &&
-                (detail::is_gettable_pair_v<detail::value_t<Index>> ||
-                 detail::is_initializer_list_v<detail::value_t<Index>>)>>
-  void init(const Range& range, const Index& bounds) {
+                detail::is_range_v<PairRange> &&
+                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
+                 detail::is_initializer_list_v<detail::value_t<PairRange>>)>>
+  void init(const Range& range, const PairRange& bounds) {
     TA_ASSERT(range.rank());
 
     // Initialize the block range data members
@@ -257,7 +257,7 @@ class BlockRange : public Range {
   /// \tparam PairRange Type representing a range of "pairs"
   ///         represented by type \c T for which \c get<0>(T) and
   ///         \c get<1>(T) are valid expressions
-  /// \param bounds A sequence of {lower,upper} bounds for each dimension
+  /// \param bounds A range of {lower,upper} bounds for each dimension
   /// \throw TiledArray::Exception When `bounds[i].lower>=bounds[i].upper` for any \c i .
   // clang-format on
   template <typename PairRange,
