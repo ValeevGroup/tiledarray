@@ -90,7 +90,7 @@ using enable_if_svd_return_type_t =
 template <typename SVDType, typename Array,
   typename = detail::enable_if_svd_return_type<SVDType>
 >
-auto svd( Array& A, TiledRange u_trange, TiledRange vt_trange,
+auto svd( const Array& A, TiledRange u_trange, TiledRange vt_trange,
   size_t MB = 128, size_t NB = 128 
 ) {
 

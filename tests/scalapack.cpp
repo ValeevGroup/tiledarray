@@ -394,7 +394,7 @@ BOOST_AUTO_TEST_CASE( sca_heig_same_tiling ) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto ref_ta = TA::make_array<TA::TArray<double> >(
+  const auto ref_ta = TA::make_array<TA::TArray<double> >(
       *GlobalFixture::world, trange,
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);

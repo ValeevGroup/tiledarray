@@ -100,7 +100,7 @@ void scalapack_zero_triangle(
  *  @returns The lower triangular Cholesky factor L in TA format
  */
 template <typename Array>
-auto cholesky( Array& A, size_t NB = 128, TiledRange l_trange = TiledRange() ) {
+auto cholesky( const Array& A, size_t NB = 128, TiledRange l_trange = TiledRange() ) {
 
   using value_type = typename Array::element_type;
 
@@ -165,7 +165,7 @@ auto cholesky( Array& A, size_t NB = 128, TiledRange l_trange = TiledRange() ) {
  *  @returns The inverse lower triangular Cholesky factor in TA format
  */
 template <typename Array, bool RetL = false>
-auto cholesky_linv( Array& A, size_t NB = 128, TiledRange l_trange = TiledRange() ) {
+auto cholesky_linv( const Array& A, size_t NB = 128, TiledRange l_trange = TiledRange() ) {
 
   using value_type = typename Array::element_type;
 
@@ -225,7 +225,7 @@ auto cholesky_linv( Array& A, size_t NB = 128, TiledRange l_trange = TiledRange(
 
 
 template <typename Array>
-auto cholesky_solve( Array& A, Array& B, size_t NB = 128, 
+auto cholesky_solve( const Array& A, const Array& B, size_t NB = 128, 
   TiledRange x_trange = TiledRange() ) {
 
   auto& world = A.world();
@@ -281,7 +281,7 @@ auto cholesky_solve( Array& A, Array& B, size_t NB = 128,
 
 template <typename Array>
 auto cholesky_lsolve( scalapackpp::TransposeFlag trans, 
-  Array& A, Array& B, size_t NB = 128, 
+  const Array& A, const Array& B, size_t NB = 128, 
   TiledRange l_trange = TiledRange(),
   TiledRange x_trange = TiledRange() ) {
 

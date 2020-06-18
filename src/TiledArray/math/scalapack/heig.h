@@ -55,7 +55,7 @@ namespace TiledArray {
  *  as std::vector and in TA format, respectively.
  */
 template <typename Array>
-auto heig( Array& A, size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
+auto heig( const Array& A, size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
 
   using value_type = typename Array::element_type;
   using real_type  = scalapackpp::detail::real_t<value_type>;
@@ -125,7 +125,7 @@ auto heig( Array& A, size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
  *  as std::vector and in TA format, respectively.
  */
 template <typename Array>
-auto heig( Array& A, Array& B, 
+auto heig( const Array& A, const Array& B, 
   size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
 
   using value_type = typename Array::element_type;
