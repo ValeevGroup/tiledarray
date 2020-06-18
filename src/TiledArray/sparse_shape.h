@@ -569,16 +569,17 @@ class SparseShape {
     return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
   }
 
-  /// Update sub-block of shape
+  // clang-format off
+  /// Creates a copy of this with a sub-block updated with contents of another shape
 
-  /// Update a sub-block shape information with another shape object.
   /// \tparam Index1 An integral range type
   /// \tparam Index2 An integral range type
   /// \param lower_bound The lower bound of the sub-block to be updated
   /// \param upper_bound The upper bound of the sub-block to be updated
   /// \param other The shape that will be used to update the sub-block
-  /// \return A new sparse shape object where the specified sub-block contains
+  /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
   /// the data result_tile_norms of \c other.
+  // clang-format on
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
                                         detail::is_integral_range_v<Index2>>>
@@ -605,6 +606,84 @@ class SparseShape {
         });
 
     return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
+  }
+
+  // clang-format off
+  /// Creates a copy of this with a sub-block updated with contents of another shape
+
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
+  /// \param lower_bound The lower bound of the sub-block to be updated
+  /// \param upper_bound The upper bound of the sub-block to be updated
+  /// \param other The shape that will be used to update the sub-block
+  /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
+  /// the data result_tile_norms of \c other.
+  // clang-format on
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  SparseShape update_block(const std::initializer_list<Index1>& lower_bound,
+                           const std::initializer_list<Index2>& upper_bound,
+                           const SparseShape& other) const {
+    return update_block<std::initializer_list<Index1>,
+                        std::initializer_list<Index2>>(lower_bound, upper_bound,
+                                                       other);
+  }
+
+  // clang-format off
+  /// Creates a copy of this with a sub-block updated with contents of another shape
+
+  /// \tparam PairRange A range type
+  /// \param bounds The {lower,upper} bounds of the sub-block
+  /// \param other The shape that will be used to update the sub-block
+  /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
+  /// the data result_tile_norms of \c other.
+  // clang-format on
+  template <typename PairRange,
+            typename = std::enable_if_t<
+                detail::is_range_v<PairRange> &&
+                (detail::is_gettable_pair_v<detail::value_t<PairRange>> ||
+                 detail::is_initializer_list_v<detail::value_t<PairRange>>)>>
+  SparseShape update_block(const PairRange& bounds,
+                           const SparseShape& other) const {
+    Tensor<value_type> result_tile_norms = tile_norms_.clone();
+
+    auto result_tile_norms_blk = result_tile_norms.block(bounds);
+    const value_type threshold = threshold_;
+    madness::AtomicInt zero_tile_count;
+    zero_tile_count = zero_tile_count_;
+    result_tile_norms_blk.inplace_binary(
+        other.tile_norms_,
+        [threshold, &zero_tile_count](value_type& l, const value_type r) {
+          // Update the zero tile count for the result
+          if ((l < threshold) && (r >= threshold))
+            ++zero_tile_count;
+          else if ((l >= threshold) && (r < threshold))
+            --zero_tile_count;
+
+          // Update the tile norm value
+          l = r;
+        });
+
+    return SparseShape_(result_tile_norms, size_vectors_, zero_tile_count);
+  }
+
+  // clang-format off
+  /// Creates a copy of this with a sub-block updated with contents of another shape
+
+  /// \tparam Index An integral type
+  /// \param bounds The {lower,upper} bounds of the sub-block
+  /// \param other The shape that will be used to update the sub-block
+  /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
+  /// the data result_tile_norms of \c other.
+  // clang-format on
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  SparseShape update_block(
+      const std::initializer_list<std::initializer_list<Index>>& bounds,
+      const SparseShape& other) const {
+    return update_block<std::initializer_list<std::initializer_list<Index>>>(
+        bounds, other);
   }
 
   /// Bitwise comparison
