@@ -246,6 +246,15 @@ BOOST_AUTO_TEST_CASE(constructors) {
 //    BOOST_CHECK_EQUAL(ref, r15);
 #endif
     }
+
+    // container::svector as bounds
+    {
+      // iv = shorthand for container::svector of ints
+      using TiledArray::container::iv;
+      Range r10(iv({0, 1, 2}),  // from initializer_list -> svector<int>
+                iv(4, 6, 8));   // from param pack -> svector<int,3>
+      BOOST_CHECK_EQUAL(ref, r10);
+    }
   }
 
   // make sure zero extents are OK also with start/finish indices
