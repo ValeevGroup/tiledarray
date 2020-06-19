@@ -67,7 +67,8 @@ namespace TiledArray {
 namespace eigen {
 
 template <typename Range,
-          typename = std::enable_if_t<detail::is_integral_range_v<Range>>>
+          typename = std::enable_if_t<detail::is_integral_range_v<Range> &&
+                                      detail::is_sized_range_v<Range>>>
 Eigen::Matrix<detail::value_t<Range>, Eigen::Dynamic, 1> iv(Range&& rng) {
   Eigen::Matrix<detail::value_t<Range>, Eigen::Dynamic, 1> result(
       std::size(rng));
