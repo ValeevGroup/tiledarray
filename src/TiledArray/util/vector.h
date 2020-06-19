@@ -74,7 +74,8 @@ template <typename Int, typename... Ints,
           typename = std::enable_if_t<std::is_integral_v<Int> &&
                                       (std::is_integral_v<Ints> && ...)>>
 constexpr auto iv(Int i0, Ints... rest) {
-  svector<std::common_type_t<Int, Ints...>, sizeof...(Ints) + 1> result;
+  constexpr const auto sz = sizeof...(Ints) + 1;
+  svector<std::common_type_t<Int, Ints...>, sz> result(sz);
   detail::iv_assign(result, 0, i0, rest...);
   return result;
 }
