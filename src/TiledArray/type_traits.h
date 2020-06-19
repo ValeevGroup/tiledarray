@@ -25,6 +25,7 @@
  *      the current compiler + library + C++ standard.
  *      DO NOT include non-standard headers here!
  */
+#include <cassert>
 #include <complex>
 #include <functional>
 #include <iterator>
