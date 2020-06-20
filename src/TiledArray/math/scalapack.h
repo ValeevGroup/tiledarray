@@ -30,6 +30,7 @@
 #include <TiledArray/math/scalapack/heig.h>
 #include <TiledArray/math/scalapack/chol.h>
 #include <TiledArray/math/scalapack/svd.h>
+#include <TiledArray/math/scalapack/lu.h>
 
 #endif
 

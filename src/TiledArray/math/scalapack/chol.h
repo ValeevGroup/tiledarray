@@ -29,57 +29,14 @@
 #if TILEDARRAY_HAS_SCALAPACK
 
 #include <TiledArray/conversions/block_cyclic.h>
+#include <TiledArray/math/scalapack/util.h>
+
 #include <scalapackpp/factorizations/potrf.hpp>
 #include <scalapackpp/matrix_inverse/trtri.hpp>
 #include <scalapackpp/linear_systems/posv.hpp>
 #include <scalapackpp/linear_systems/trtrs.hpp>
 
 namespace TiledArray {
-
-namespace detail {
-
-template <typename T>
-void scalapack_zero_triangle( 
-  blacspp::Triangle tri, BlockCyclicMatrix<T>& A, bool zero_diag = false 
-) {
-
-  auto zero_el = [&]( size_t I, size_t J ) {
-    if( A.dist().i_own(I,J) ) {
-      auto [i,j] = A.dist().local_indx(I,J);
-      A.local_mat()(i,j) = 0.;
-    }
-  };
-
-  auto [M,N] = A.dims();
-
-  // Zero the lower triangle
-  if( tri == blacspp::Triangle::Lower ) {
-
-    if( zero_diag )
-      for( size_t j = 0; j < N; ++j )
-      for( size_t i = j; i < M; ++i )
-        zero_el( i,j );
-    else
-      for( size_t j = 0;   j < N; ++j )
-      for( size_t i = j+1; i < M; ++i )
-        zero_el( i,j );
-
-  // Zero the upper triangle
-  } else {
-
-    if( zero_diag )
-      for( size_t j = 0; j < N;  ++j )
-      for( size_t i = 0; i <= std::min(j,M); ++i )
-        zero_el( i,j );
-    else
-      for( size_t j = 0; j < N; ++j )
-      for( size_t i = 0; i < std::min(j,M); ++i )
-        zero_el( i,j );
-
-  }
-}
-
-}
 
 /**
  *  @brief Compute the Cholesky factorization of a HPD rank-2 tensor
