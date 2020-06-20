@@ -175,7 +175,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 
  private:
   bool contract_;  ///< Expression type flag (true == contraction, false ==
-                   ///< coefficent-wise multiplication)
+                   ///< coefficient-wise multiplication)
 
  public:
   /// Constructor
@@ -395,7 +395,7 @@ class ScalMultEngine
 
  private:
   bool contract_;  ///< Expression type flag (true == contraction, false ==
-                   ///< coefficent-wise multiplication)
+                   ///< coefficient-wise multiplication)
 
  public:
   /// Constructor
