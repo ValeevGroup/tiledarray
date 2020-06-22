@@ -47,9 +47,9 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
       TensorImpl_;           ///< The base, base class type
   typedef Left left_type;    ///< The left-hand argument type
   typedef Right right_type;  ///< The right-hand argument type
-  typedef typename DistEvalImpl_::size_type size_type;    ///< Size type
-  typedef typename DistEvalImpl_::range_type range_type;  ///< Range type
-  typedef typename DistEvalImpl_::shape_type shape_type;  ///< Shape type
+  typedef typename DistEvalImpl_::ordinal_type ordinal_type;  ///< Ordinal type
+  typedef typename DistEvalImpl_::range_type range_type;      ///< Range type
+  typedef typename DistEvalImpl_::shape_type shape_type;      ///< Shape type
   typedef typename DistEvalImpl_::pmap_interface
       pmap_interface;  ///< Process map interface type
   typedef
@@ -96,11 +96,11 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \return A \c Future to the tile at index i
   /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
   /// \throw TiledArray::Exception When tile \c i a zero tile.
-  virtual Future<value_type> get_tile(size_type i) const {
+  virtual Future<value_type> get_tile(ordinal_type i) const {
     TA_ASSERT(TensorImpl_::is_local(i));
     TA_ASSERT(!TensorImpl_::is_zero(i));
 
-    const size_type source_index = DistEvalImpl_::perm_index_to_source(i);
+    const auto source_index = DistEvalImpl_::perm_index_to_source(i);
     const ProcessID source =
         left_.owner(source_index);  // Left and right
                                     // should have the same owner
@@ -114,7 +114,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(size_type i) const { get_tile(i); }
+  virtual void discard_tile(ordinal_type i) const { get_tile(i); }
 
  private:
   /// Task function for evaluating tiles
@@ -125,7 +125,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \param right The right-hand tile
   template <typename L, typename R, typename U = value_type>
   std::enable_if_t<!detail::is_cuda_tile<U>::value, void> eval_tile(
-      const size_type i, L left, R right) {
+      const ordinal_type i, L left, R right) {
     DistEvalImpl_::set_tile(i, op_(left, right));
   }
 
@@ -134,7 +134,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \param right The right-hand tile
   template <typename L, typename R, typename U = value_type>
   std::enable_if_t<detail::is_cuda_tile<U>::value, void> eval_tile(
-      const size_type i, L left, R right) {
+      const ordinal_type i, L left, R right) {
     // TODO avoid copy the Op object
     auto result_tile =
         madness::add_cuda_task(DistEvalImpl_::world(), op_, left, right);
@@ -145,7 +145,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \param left The left-hand tile
   /// \param right The right-hand tile
   template <typename L, typename R>
-  void eval_tile(const size_type i, L left, R right) {
+  void eval_tile(const ordinal_type i, L left, R right) {
     DistEvalImpl_::set_tile(i, op_(left, right));
   }
 #endif
@@ -169,7 +169,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
         op_type::right_is_consumable, typename right_type::value_type,
         const typename right_type::value_type>::type& right_argument_type;
 
-    size_type task_count = 0ul;
+    ordinal_type task_count = 0ul;
 
     // Construct local iterator
     TA_ASSERT(left_.pmap() == right_.pmap());
@@ -181,8 +181,8 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
       // Evaluate tiles where both arguments and the result are dense
       for (; it != end; ++it) {
         // Get tile indices
-        const size_type source_index = *it;
-        const size_type target_index =
+        const auto source_index = *it;
+        const auto target_index =
             DistEvalImpl_::perm_index_to_target(source_index);
 
         // Schedule tile evaluation task
@@ -198,9 +198,8 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
       // Evaluate tiles where the result or one of the arguments is sparse
       for (; it != end; ++it) {
         // Get tile indices
-        const size_type index = *it;
-        const size_type target_index =
-            DistEvalImpl_::perm_index_to_target(index);
+        const auto index = *it;
+        const auto target_index = DistEvalImpl_::perm_index_to_target(index);
 
         if (!TensorImpl_::is_zero(target_index)) {
           // Schedule tile evaluation task

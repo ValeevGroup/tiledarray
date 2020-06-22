@@ -50,7 +50,7 @@ class BlockRange : public Range {
     TA_ASSERT(range.rank());
 
     // Initialize the block range data members
-    data_ = new size_type[range.rank() << 2];
+    data_ = new index1_type[range.rank() << 2];
     offset_ = range.offset();
     volume_ = 1ul;
     rank_ = range.rank();
@@ -102,7 +102,7 @@ class BlockRange : public Range {
     TA_ASSERT(range.rank());
 
     // Initialize the block range data members
-    data_ = new size_type[range.rank() << 2];
+    data_ = new index1_type[range.rank() << 2];
     offset_ = range.offset();
     volume_ = 1ul;
     rank_ = range.rank();
@@ -119,9 +119,9 @@ class BlockRange : public Range {
     int d = 0;
     for (auto&& bound_d : bounds) {
       // Compute data for element i of lower, upper, and extent
-      const size_type lower_bound_d = detail::at(bound_d, 0);
-      const size_type upper_bound_d = detail::at(bound_d, 1);
-      const size_type extent_d = upper_bound_d - lower_bound_d;
+      const auto lower_bound_d = detail::at(bound_d, 0);
+      const auto upper_bound_d = detail::at(bound_d, 1);
+      const auto extent_d = upper_bound_d - lower_bound_d;
 
       // Check input dimensions
       TA_ASSERT(lower_bound_d >= range.lobound(d));
@@ -200,11 +200,9 @@ class BlockRange : public Range {
   /// equal to that of \p upper_bound.
   /// \throw TiledArray::Exception When `lower_bound[i] >= upper_bound[i]`
   // clang-format on
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
   BlockRange(const Range& range,
-             const std::initializer_list<Index>& lower_bound,
-             const std::initializer_list<Index>& upper_bound)
+             const std::initializer_list<index1_type>& lower_bound,
+             const std::initializer_list<index1_type>& upper_bound)
       : Range() {
     init(range, lower_bound, upper_bound);
   }
@@ -254,21 +252,20 @@ class BlockRange : public Range {
   ///   Range r(10, 10, 10);
   ///   BlockRange br0(r, {{0,4}, {1,6}, {2,8}});
   /// \endcode
-  /// \tparam Index An integral type
   /// \param bound A range of {lower,upper} bounds for each dimension
   /// \throw TiledArray::Exception When `bound[i].lower>=bound[i].upper` for any \c i .
   // clang-format on
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
-  BlockRange(const Range& range,
-             const std::initializer_list<std::initializer_list<Index>>& bounds)
+  BlockRange(
+      const Range& range,
+      const std::initializer_list<std::initializer_list<index1_type>>& bounds)
       : Range() {
 #ifndef NDEBUG
     for (auto&& bound_d : bounds) {
       TA_ASSERT(size(bound_d) == 2);
     }
 #endif
-    init<std::initializer_list<std::initializer_list<Index>>>(range, bounds);
+    init<std::initializer_list<std::initializer_list<index1_type>>>(range,
+                                                                    bounds);
   }
 
   /// calculate the ordinal index of \c i

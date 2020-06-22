@@ -67,10 +67,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       typename impl_type::range_type range_type;  ///< Elements/tiles range type
   typedef typename impl_type::shape_type
       shape_type;  ///< Shape type for array tiling
+  typedef typename impl_type::range_type::index1_type
+      index1_type;  ///< 1-index type
   typedef typename impl_type::range_type::index
       index;  ///< Array coordinate index type
-  typedef typename impl_type::size_type size_type;    ///< Size type
-  typedef typename impl_type::value_type value_type;  ///< Tile type
+  typedef typename impl_type::ordinal_type ordinal_type;  ///< Size type
+  typedef typename impl_type::value_type value_type;      ///< Tile type
   typedef
       typename impl_type::eval_type eval_type;   ///< The tile evaluation type
   typedef typename impl_type::reference future;  ///< Future of \c value_type
@@ -489,13 +491,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Find local or remote tile
 
-  /// \tparam Integer An integer type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \param i The tile index, as an \c std::initializer_list<index1_type>
   /// \return A \c future to tile \c i
   /// \throw TiledArray::Exception When tile \c i is zero
-  template <typename Integer>
-  Future<value_type> find(const std::initializer_list<Integer>& i) const {
-    return find<std::initializer_list<Integer>>(i);
+  Future<value_type> find(const std::initializer_list<index1_type>& i) const {
+    return find<std::initializer_list<index1_type>>(i);
   }
 
   /// Set a tile and fill it using a sequence
@@ -668,7 +668,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
           if (fut.probe()) continue;
         }
         Future<value_type> tile = pimpl_->world().taskq.add(
-            [pimpl = this->weak_pimpl(), index = size_type(index),
+            [pimpl = this->weak_pimpl(), index = ordinal_type(index),
              op_shared_handle]() -> value_type {
               auto pimpl_ptr = pimpl.lock();
               if (pimpl_ptr)
@@ -744,7 +744,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     return pimpl_->trange().elements_range();
   }
 
-  size_type size() const {
+  ordinal_type size() const {
     check_pimpl();
     return pimpl_->size();
   }

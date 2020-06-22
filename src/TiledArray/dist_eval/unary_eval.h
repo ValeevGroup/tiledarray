@@ -43,9 +43,9 @@ class UnaryEvalImpl
   typedef typename DistEvalImpl_::TensorImpl_
       TensorImpl_;       ///< The base, base class type
   typedef Arg arg_type;  ///< The argument tensor type
-  typedef typename DistEvalImpl_::size_type size_type;    ///< Size type
-  typedef typename DistEvalImpl_::range_type range_type;  ///< Range type
-  typedef typename DistEvalImpl_::shape_type shape_type;  ///< Shape type
+  typedef typename DistEvalImpl_::ordinal_type ordinal_type;  ///< Ordinal type
+  typedef typename DistEvalImpl_::range_type range_type;      ///< Range type
+  typedef typename DistEvalImpl_::shape_type shape_type;      ///< Shape type
   typedef typename DistEvalImpl_::pmap_interface
       pmap_interface;  ///< Process map interface type
   typedef
@@ -79,10 +79,10 @@ class UnaryEvalImpl
   /// \return A \c Future to the tile at index i
   /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
   /// \throw TiledArray::Exception When tile \c i a zero tile.
-  virtual Future<value_type> get_tile(size_type i) const {
+  virtual Future<value_type> get_tile(ordinal_type i) const {
     TA_ASSERT(TensorImpl_::is_local(i));
     TA_ASSERT(!TensorImpl_::is_zero(i));
-    const size_type source = arg_.owner(DistEvalImpl_::perm_index_to_source(i));
+    const auto source = arg_.owner(DistEvalImpl_::perm_index_to_source(i));
     const madness::DistributedID key(DistEvalImpl_::id(), i);
     return TensorImpl_::world().gop.template recv<value_type>(source, key);
   }
@@ -92,7 +92,7 @@ class UnaryEvalImpl
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(size_type i) const { get_tile(i); }
+  virtual void discard_tile(ordinal_type i) const { get_tile(i); }
 
  private:
   /// Input tile argument type
@@ -110,7 +110,7 @@ class UnaryEvalImpl
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
   std::enable_if_t<detail::is_cuda_tile<U>::value, void> eval_tile(
-      const size_type i, tile_argument_type tile) {
+      const ordinal_type i, tile_argument_type tile) {
     // TODO avoid copy Op object
     auto result_tile =
         madness::add_cuda_task(DistEvalImpl_::world(), op_, tile);
@@ -121,13 +121,13 @@ class UnaryEvalImpl
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
   std::enable_if_t<!detail::is_cuda_tile<U>::value, void> eval_tile(
-      const size_type i, tile_argument_type tile) {
+      const ordinal_type i, tile_argument_type tile) {
     DistEvalImpl_::set_tile(i, op_(tile));
   }
 #else
   /// \param i The tile index
   /// \param tile The tile to be evaluated
-  void eval_tile(const size_type i, tile_argument_type tile) {
+  void eval_tile(const ordinal_type i, tile_argument_type tile) {
     DistEvalImpl_::set_tile(i, op_(tile));
   }
 #endif
@@ -147,19 +147,18 @@ class UnaryEvalImpl
     arg_.eval();
 
     // Counter for the number of tasks submitted by this object
-    size_type task_count = 0ul;
+    ordinal_type task_count = 0ul;
 
     // Make sure all local tiles are present.
     const typename pmap_interface::const_iterator end = arg_.pmap()->end();
     typename pmap_interface::const_iterator it = arg_.pmap()->begin();
     for (; it != end; ++it) {
       // Get argument tile index
-      const size_type index = *it;
+      const auto index = *it;
 
       if (!arg_.is_zero(index)) {
         // Get target tile index
-        const size_type target_index =
-            DistEvalImpl_::perm_index_to_target(index);
+        const auto target_index = DistEvalImpl_::perm_index_to_target(index);
 
         // Schedule tile evaluation task
 #ifdef TILEDARRAY_HAS_CUDA

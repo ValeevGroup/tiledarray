@@ -112,6 +112,15 @@ BOOST_AUTO_TEST_CASE(constructor) {
     }
   }
 
+  // check construction with negative index values
+  {
+    TiledRange1 r{-1, 0, 2, 5, 10, 17, 28};
+    BOOST_CHECK_EQUAL(r.tiles_range().first, 0);
+    BOOST_CHECK_EQUAL(r.tiles_range().second, 6);
+    BOOST_CHECK_EQUAL(r.elements_range().first, -1);
+    BOOST_CHECK_EQUAL(r.elements_range().second, 28);
+  }
+
   // check copy constructor
   {
     BOOST_REQUIRE_NO_THROW(TiledRange1 r(tr1));

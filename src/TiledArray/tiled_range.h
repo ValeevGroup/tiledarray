@@ -36,10 +36,11 @@ class TiledRange {
     const std::size_t rank = this->rank();
 
     // Indices used to store range start and finish.
-    std::vector<size_type> start;
-    std::vector<size_type> finish;
-    std::vector<size_type> start_element;
-    std::vector<size_type> finish_element;
+    using index_type = Range::index_type;
+    index_type start;
+    index_type finish;
+    index_type start_element;
+    index_type finish_element;
 
     start.reserve(rank);
     finish.reserve(rank);
@@ -62,9 +63,10 @@ class TiledRange {
   // typedefs
   typedef TiledRange TiledRange_;
   typedef Range range_type;  // represents elements/tiles range
-  typedef std::size_t size_type;
-  typedef range_type::index index;
-  typedef range_type::size_array size_array;
+  typedef range_type::index_type index_type;
+  typedef range_type::ordinal_type ordinal_type;
+  typedef range_type::index1_type index1_type;
+  static_assert(std::is_same_v<TiledRange1::index1_type, index1_type>);
   typedef std::vector<TiledRange1> Ranges;
 
   /// Default constructor
@@ -79,7 +81,7 @@ class TiledRange {
 
   /// Constructed with a set of ranges pointed to by [ first, last ).
   TiledRange(
-      const std::initializer_list<std::initializer_list<size_type>>& list)
+      const std::initializer_list<std::initializer_list<index1_type>>& list)
       : range_(), elements_range_(), ranges_(list.begin(), list.end()) {
     init();
   }
@@ -143,14 +145,14 @@ class TiledRange {
   /// \return The constructed range object
   /// \note alias to TiledRange::make_tile_range() , introduced for consitency
   ///       with TiledRange1::tile()
-  range_type tile(const size_type& i) const { return make_tile_range(i); }
+  range_type tile(const index1_type& i) const { return make_tile_range(i); }
 
   /// Construct a range for the tile indexed by the given ordinal index.
 
   /// \param i The ordinal index of the tile range to be constructed
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
-  range_type make_tile_range(const size_type& i) const {
+  range_type make_tile_range(const index1_type& i) const {
     TA_ASSERT(tiles_range().includes(i));
     return make_tile_range(tiles_range().idx(i));
   }
@@ -180,8 +182,8 @@ class TiledRange {
   make_tile_range(const Index& index) const {
     const auto rank = range_.rank();
     TA_ASSERT(range_.includes(index));
-    typename range_type::index lower;
-    typename range_type::index upper;
+    typename range_type::index_type lower;
+    typename range_type::index_type upper;
     lower.reserve(rank);
     upper.reserve(rank);
     unsigned d = 0;

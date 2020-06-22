@@ -56,7 +56,7 @@ class TileReference {
 
   typedef typename Impl::range_type range_type;
   typedef typename Impl::range_type::index index_type;
-  typedef typename Impl::size_type ordinal_type;
+  typedef typename Impl::ordinal_type ordinal_type;
 
   Impl* tensor_;        ///< The tensor that owns the referenced tile
   ordinal_type index_;  ///< The ordinal index of the tile
@@ -65,7 +65,7 @@ class TileReference {
   TileReference<Impl>& operator=(const TileReference<Impl>&);
 
  public:
-  TileReference(Impl* tensor, const typename Impl::size_type index)
+  TileReference(Impl* tensor, const typename Impl::ordinal_type index)
       : tensor_(tensor), index_(index) {}
 
   TileReference(const TileReference<Impl>& other)
@@ -144,13 +144,14 @@ class TileConstReference {
   friend class ArrayIterator;
 
   const Impl* tensor_;  ///< The tensor that owns the referenced tile
-  typename Impl::size_type index_;  ///< The index of the tensor
+  typename Impl::ordinal_type index_;  ///< The ordinal index of the tile
 
   // Not allowed
   TileConstReference<Impl>& operator=(const TileConstReference<Impl>&);
 
  public:
-  TileConstReference(const Impl* tensor, const typename Impl::size_type index)
+  TileConstReference(const Impl* tensor,
+                     const typename Impl::ordinal_type index)
       : tensor_(tensor), index_(index) {}
 
   TileConstReference(const TileConstReference<Impl>& other)
@@ -251,7 +252,7 @@ class ArrayIterator {
       iterator_category;  ///< Iterator category type
   typedef ArrayIterator<Impl, Reference> ArrayIterator_;  ///< This object type
   typedef typename Impl::range_type::index index_type;
-  typedef typename Impl::size_type ordinal_type;
+  typedef typename Impl::ordinal_type ordinal_type;
   typedef typename Impl::range_type range_type;
   typedef typename Impl::value_type tile_type;
 
@@ -410,7 +411,8 @@ class ArrayImpl : public TensorImpl<Policy> {
  public:
   typedef ArrayImpl<Tile, Policy> ArrayImpl_;  ///< This object type
   typedef TensorImpl<Policy> TensorImpl_;  ///< The base class of this object
-  typedef typename TensorImpl_::size_type size_type;  ///< Size type
+  typedef typename TensorImpl_::index1_type index1_type;    ///< 1-index type
+  typedef typename TensorImpl_::ordinal_type ordinal_type;  ///< Ordinal type
   typedef typename TensorImpl_::policy_type
       policy_type;  ///< Policy type for this object
   typedef typename TensorImpl_::trange_type
@@ -470,13 +472,11 @@ class ArrayImpl : public TensorImpl<Policy> {
 
   /// Tile future accessor
 
-  /// \tparam Integer An integer type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \param i The tile index, as an \c std::initializer_list<index1_type>
   /// \return A \c future to tile \c i
   /// \throw TiledArray::Exception When tile \c i is zero
-  template <typename Integer>
-  future get(const std::initializer_list<Integer>& i) const {
-    return get<std::initializer_list<Integer>>(i);
+  future get(const std::initializer_list<index1_type>& i) const {
+    return get<std::initializer_list<index1_type>>(i);
   }
 
   /// Set tile

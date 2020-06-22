@@ -42,8 +42,9 @@ class Replicator : public madness::WorldObject<Replicator<A> >,
                      std::vector<madness::CallbackInterface*> >
       callback_type;  ///< Callback interface
 
-  A destination_;                               ///< The replicated array
-  std::vector<typename A::size_type> indices_;  ///< List of local tile indices
+  A destination_;  ///< The replicated array
+  std::vector<typename A::ordinal_type>
+      indices_;  ///< List of local tile indices
   std::vector<Future<typename A::value_type> > data_;  ///< List of local tiles
   madness::AtomicInt sent_;  ///< The number of nodes the data has been sent to
   World& world_;
@@ -134,9 +135,9 @@ class Replicator : public madness::WorldObject<Replicator<A> >,
       do_callbacks();  // Replication is done
   }
 
-  void send_handler(const std::vector<typename A::size_type>& indices,
+  void send_handler(const std::vector<typename A::ordinal_type>& indices,
                     const std::vector<Future<typename A::value_type> >& data) {
-    typename std::vector<typename A::size_type>::const_iterator index_it =
+    typename std::vector<typename A::ordinal_type>::const_iterator index_it =
         indices.begin();
     typename std::vector<Future<typename A::value_type> >::const_iterator
         data_it = data.begin();

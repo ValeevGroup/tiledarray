@@ -30,7 +30,8 @@ struct ArrayFixture : public TiledRangeFixture {
   typedef TArrayI ArrayN;
   typedef TSpArrayI SpArrayN;
   typedef ArrayN::index index;
-  typedef ArrayN::size_type size_type;
+  typedef ArrayN::ordinal_type size_type;
+  typedef ArrayN::ordinal_type ordinal_type;
   typedef ArrayN::value_type tile_type;
 
   ArrayFixture();

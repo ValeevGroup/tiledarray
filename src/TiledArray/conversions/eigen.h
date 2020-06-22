@@ -195,7 +195,7 @@ template <typename T, typename Derived,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
                                       T& tensor) {
-  typedef typename T::size_type size_type;
+  typedef typename T::index1_type size_type;
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
   // Get pointers to the tensor range data
@@ -262,7 +262,7 @@ template <typename T, typename Derived,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline void tensor_to_eigen_submatrix(const T& tensor,
                                       Eigen::MatrixBase<Derived>& matrix) {
-  typedef typename T::size_type size_type;
+  typedef typename T::index1_type size_type;
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
   // Get pointers to the tensor range data
@@ -325,7 +325,8 @@ namespace detail {
 /// \param counter The task counter
 template <typename A, typename Derived>
 void counted_eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>* matrix,
-                                       A* array, const typename A::size_type i,
+                                       A* array,
+                                       const typename A::ordinal_type i,
                                        madness::AtomicInt* counter) {
   typename A::value_type tensor(array->trange().make_tile_range(i));
   eigen_submatrix_to_tensor(*matrix, tensor);
@@ -392,7 +393,7 @@ template <typename A, typename Derived>
 A eigen_to_array(World& world, const typename A::trange_type& trange,
                  const Eigen::MatrixBase<Derived>& matrix,
                  bool replicated = false) {
-  typedef typename A::size_type size_type;
+  typedef typename A::index1_type size_type;
   // Check that trange matches the dimensions of other
   if ((matrix.cols() > 1) && (matrix.rows() > 1)) {
     TA_USER_ASSERT(trange.tiles_range().rank() == 2,

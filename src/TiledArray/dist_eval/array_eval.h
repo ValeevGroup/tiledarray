@@ -179,9 +179,9 @@ class ArrayEvalImpl
   typedef typename DistEvalImpl_::TensorImpl_
       TensorImpl_;           ///< The base, base class type
   typedef Array array_type;  ///< The array type
-  typedef typename DistEvalImpl_::size_type size_type;    ///< Size type
-  typedef typename DistEvalImpl_::range_type range_type;  ///< Range type
-  typedef typename DistEvalImpl_::shape_type shape_type;  ///< Shape type
+  typedef typename DistEvalImpl_::ordinal_type ordinal_type;  ///< Ordinal type
+  typedef typename DistEvalImpl_::range_type range_type;      ///< Range type
+  typedef typename DistEvalImpl_::shape_type shape_type;      ///< Shape type
   typedef typename DistEvalImpl_::pmap_interface
       pmap_interface;  ///< Process map interface type
   typedef
@@ -247,9 +247,9 @@ class ArrayEvalImpl
   /// Virtual destructor
   virtual ~ArrayEvalImpl() {}
 
-  virtual Future<value_type> get_tile(size_type i) const {
+  virtual Future<value_type> get_tile(ordinal_type i) const {
     // Get the array index that corresponds to the target index
-    size_type array_index = DistEvalImpl_::perm_index_to_source(i);
+    auto array_index = DistEvalImpl_::perm_index_to_source(i);
 
     // If this object only uses a sub-block of the array, shift the tile
     // index to the correct location.
@@ -267,7 +267,7 @@ class ArrayEvalImpl
 
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
-  virtual void discard_tile(size_type) const {
+  virtual void discard_tile(ordinal_type) const {
     const_cast<ArrayEvalImpl_*>(this)->notify();
   }
 

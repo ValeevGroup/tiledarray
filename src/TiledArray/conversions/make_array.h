@@ -137,8 +137,8 @@ inline Array make_array(World& world, const detail::trange_t<Array>& trange,
                         const std::shared_ptr<detail::pmap_t<Array> >& pmap,
                         Op&& op) {
   typedef typename Array::value_type value_type;
-  typedef typename Array::size_type size_type;
-  typedef std::pair<size_type, Future<value_type> > datum_type;
+  typedef typename Array::ordinal_type ordinal_type;
+  typedef std::pair<ordinal_type, Future<value_type> > datum_type;
 
   // Create a vector to hold local tiles
   std::vector<datum_type> tiles;
@@ -154,7 +154,7 @@ inline Array make_array(World& world, const detail::trange_t<Array>& trange,
   madness::AtomicInt counter;
   counter = 0;
   int task_count = 0;
-  auto task = [&](const size_type index) -> value_type {
+  auto task = [&](const ordinal_type index) -> value_type {
     value_type tile;
     tile_norms[index] = op(tile, trange.make_tile_range(index));
     ++counter;
@@ -176,7 +176,7 @@ inline Array make_array(World& world, const detail::trange_t<Array>& trange,
   Array result(world, trange,
                typename Array::shape_type(world, tile_norms, trange), pmap);
   for (auto& it : tiles) {
-    const size_type index = it.first;
+    const auto index = it.first;
     if (!result.is_zero(index)) result.set(it.first, it.second);
   }
 

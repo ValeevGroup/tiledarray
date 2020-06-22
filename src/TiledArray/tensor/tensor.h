@@ -41,10 +41,13 @@ class Tensor {
       "Tensor<T>: T must be an assignable type (e.g. cannot be const)");
 
  public:
-  typedef Tensor<T, A> Tensor_;                      ///< This class type
-  typedef Range range_type;                          ///< Tensor range type
-  typedef typename range_type::size_type size_type;  ///< size type
-  typedef A allocator_type;                          ///< Allocator type
+  typedef Tensor<T, A> Tensor_;                          ///< This class type
+  typedef Range range_type;                              ///< Tensor range type
+  typedef typename range_type::index1_type index1_type;  ///< 1-index type
+  typedef typename range_type::ordinal_type ordinal_type;  ///< Ordinal type
+  typedef typename range_type::ordinal_type
+      size_type;             ///< Size type (to meet the container concept)
+  typedef A allocator_type;  ///< Allocator type
   typedef
       typename allocator_type::value_type value_type;  ///< Array element type
   typedef
@@ -111,11 +114,11 @@ class Tensor {
 
   template <typename U,
             typename std::enable_if<detail::is_scalar_v<U>>::type* = nullptr>
-  static void default_init(size_type, U*) {}
+  static void default_init(index1_type, U*) {}
 
   template <typename U,
             typename std::enable_if<!detail::is_scalar_v<U>>::type* = nullptr>
-  static void default_init(size_type n, U* u) {
+  static void default_init(index1_type n, U* u) {
     math::uninitialized_fill_vector(n, U(), u);
   }
 
@@ -157,10 +160,9 @@ class Tensor {
                               detail::is_tensor<Value>::value>::type* = nullptr>
   Tensor(const range_type& range, const Value& value)
       : pimpl_(std::make_shared<Impl>(range)) {
-    const size_type n = pimpl_->range_.volume();
+    const auto n = pimpl_->range_.volume();
     pointer MADNESS_RESTRICT const data = pimpl_->data_;
-    for (size_type i = 0ul; i < n; ++i)
-      new (data + i) value_type(value.clone());
+    for (int i = 0ul; i < n; ++i) new (data + i) value_type(value.clone());
   }
 
   /// Construct a tensor with a fill value
@@ -181,9 +183,9 @@ class Tensor {
                 !std::is_pointer<InIter>::value>::type* = nullptr>
   Tensor(const range_type& range, InIter it)
       : pimpl_(std::make_shared<Impl>(range)) {
-    size_type n = range.volume();
+    auto n = range.volume();
     pointer MADNESS_RESTRICT const data = pimpl_->data_;
-    for (size_type i = 0ul; i < n; ++i) data[i] = *it++;
+    for (int i = 0ul; i < n; ++i) data[i] = *it++;
   }
 
   template <typename U>
@@ -324,7 +326,7 @@ class Tensor {
   /// Tensor dimension size accessor
 
   /// \return The number of elements in the tensor
-  size_type size() const { return (pimpl_ ? pimpl_->range_.volume() : 0ul); }
+  ordinal_type size() const { return (pimpl_ ? pimpl_->range_.volume() : 0ul); }
 
   /// Const element accessor
 
@@ -560,7 +562,7 @@ class Tensor {
       ar& madness::archive::wrap(pimpl_->data_, pimpl_->range_.volume());
       ar & pimpl_->range_;
     } else {
-      ar& size_type(0ul);
+      ar& ordinal_type(0ul);
     }
   }
 
@@ -573,7 +575,7 @@ class Tensor {
             typename std::enable_if<madness::archive::is_input_archive<
                 Archive>::value>::type* = nullptr>
   void serialize(Archive& ar) {
-    size_type n = 0ul;
+    ordinal_type n = 0ul;
     ar& n;
     if (n) {
       std::shared_ptr<Impl> temp = std::make_shared<Impl>();
@@ -583,7 +585,7 @@ class Tensor {
         // default ctor is not trivial N.B. for fundamental types and standard
         // alloc this incurs no overhead (Eigen::aligned_alloc OK also)
         auto* data_ptr = temp->data_;
-        for (size_type i = 0; i != n; ++i, ++data_ptr)
+        for (ordinal_type i = 0; i != n; ++i, ++data_ptr)
           new (static_cast<void*>(data_ptr)) value_type;
 
         ar& madness::archive::wrap(temp->data_, n);
@@ -1671,20 +1673,17 @@ class Tensor {
     TA_ASSERT(pimpl_);
 
     // Get pointers to the range data
-    const size_type n = pimpl_->range_.rank();
-    const size_type* MADNESS_RESTRICT const lower =
-        pimpl_->range_.lobound_data();
-    const size_type* MADNESS_RESTRICT const upper =
-        pimpl_->range_.upbound_data();
-    const size_type* MADNESS_RESTRICT const stride =
-        pimpl_->range_.stride_data();
+    const auto n = pimpl_->range_.rank();
+    const auto* MADNESS_RESTRICT const lower = pimpl_->range_.lobound_data();
+    const auto* MADNESS_RESTRICT const upper = pimpl_->range_.upbound_data();
+    const auto* MADNESS_RESTRICT const stride = pimpl_->range_.stride_data();
 
     // Search for the largest lower bound and the smallest upper bound
-    size_type lower_max = 0ul,
-              upper_min = std::numeric_limits<size_type>::max();
-    for (size_type i = 0ul; i < n; ++i) {
-      const size_type lower_i = lower[i];
-      const size_type upper_i = upper[i];
+    index1_type lower_max = 0ul,
+                upper_min = std::numeric_limits<index1_type>::max();
+    for (int i = 0ul; i < n; ++i) {
+      const auto lower_i = lower[i];
+      const auto upper_i = upper[i];
 
       lower_max = std::max(lower_max, lower_i);
       upper_min = std::min(upper_min, upper_i);
@@ -1694,10 +1693,10 @@ class Tensor {
 
     if (lower_max < upper_min) {
       // Compute the first and last ordinal index
-      size_type first = 0ul, last = 0ul, trace_stride = 0ul;
-      for (size_type i = 0ul; i < n; ++i) {
-        const size_type lower_i = lower[i];
-        const size_type stride_i = stride[i];
+      index1_type first = 0ul, last = 0ul, trace_stride = 0ul;
+      for (int i = 0ul; i < n; ++i) {
+        const auto lower_i = lower[i];
+        const auto stride_i = stride[i];
 
         first += (lower_max - lower_i) * stride_i;
         last += (upper_min - lower_i) * stride_i;

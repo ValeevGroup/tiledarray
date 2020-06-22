@@ -282,6 +282,29 @@ BOOST_AUTO_TEST_CASE(constructors) {
     BOOST_CHECK_EQUAL(r2.volume(), 0);
   }
 
+  // make sure negative bounds are OK
+  {
+    BOOST_REQUIRE_NO_THROW(Range r2({{-1, 1}, {-2, 2}, {0, 6}}));
+    Range r2{{-1, 1}, {-2, 2}, {0, 6}};
+    auto lobound_ref = {-1, -2, 0};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r2.lobound_data(),
+                                  r2.lobound_data() + r2.rank(),
+                                  lobound_ref.begin(), lobound_ref.end());
+    auto upbound_ref = {1, 2, 6};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r2.upbound_data(),
+                                  r2.upbound_data() + r2.rank(),
+                                  upbound_ref.begin(), upbound_ref.end());
+    auto extent_ref = {2, 4, 6};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r2.extent_data(),
+                                  r2.extent_data() + r2.rank(),
+                                  extent_ref.begin(), extent_ref.end());
+    auto stride_ref = {24, 6, 1};
+    BOOST_CHECK_EQUAL_COLLECTIONS(r2.stride_data(),
+                                  r2.stride_data() + r2.rank(),
+                                  stride_ref.begin(), stride_ref.end());
+    BOOST_CHECK_EQUAL(r2.volume(), 48);
+  }
+
   // Copy Constructor
   BOOST_REQUIRE_NO_THROW(Range r4(r));
   Range r4(r);
@@ -381,7 +404,7 @@ BOOST_AUTO_TEST_CASE(permutation) {
   Range r3 = r1;
 
   // check start, finish, size, volume, and weight of permuted range
-  typedef std::reverse_iterator<const Range::size_type*> riter_type;
+  typedef std::reverse_iterator<const Range::index1_type*> riter_type;
   BOOST_CHECK_EQUAL_COLLECTIONS(
       riter_type(r1.lobound_data() + r1.rank()), riter_type(r1.lobound_data()),
       r2.lobound_data(), r2.lobound_data() + r2.rank());

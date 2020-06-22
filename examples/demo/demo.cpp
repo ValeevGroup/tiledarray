@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
     TA::TArrayD array(world, TR, replicated_pmap);
 
     // Construct *all* tiles in each process
-    for (TArrayD::size_type i = 0; i < array.size(); ++i) {
+    for (TArrayD::index1_type i = 0; i < array.size(); ++i) {
       // Construct a tile using a MADNESS task.
       array.set(i,
                 world.taskq.add(&make_tile, array.trange().make_tile_range(i)));

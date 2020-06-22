@@ -65,6 +65,15 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r1.elements_range(), elements_range);
   }
 
+  // check negative index range
+  {
+    TiledRange r1{{-1, 0, 2, 5, 10, 17, 28},
+                  {-1, 0, 2, 5, 10, 17, 28},
+                  {-5, 0, 2, 5, 10, 17, 28}};
+    BOOST_CHECK_EQUAL(r1.tiles_range(), Range({6, 6, 6}));
+    BOOST_CHECK_EQUAL(r1.elements_range(), Range({-1, -1, -5}, {28, 28, 28}));
+  }
+
   // check copy constructor
   {
     BOOST_REQUIRE_NO_THROW(TiledRange r4(tr));
@@ -131,7 +140,7 @@ BOOST_AUTO_TEST_CASE(make_tiles_range) {
   tile_index finish(GlobalFixture::dim);
 
   // iterate over all the tile indexes in the tiled range.
-  TiledRange::size_type i = 0;
+  TiledRange::ordinal_type i = 0;
   for (Range::const_iterator it = tr.tiles_range().begin();
        it != tr.tiles_range().end(); ++it, ++i) {
     // get the start and finish indexes of the current range.
