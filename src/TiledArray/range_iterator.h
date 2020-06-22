@@ -64,9 +64,9 @@ class RangeIterator {
   typedef RangeIterator<T, Container> RangeIterator_;  ///< This class type
 
   // Standard iterator typedefs
-  typedef typename Container::index value_type;  ///< Iterator value type
-  typedef const value_type& reference;           ///< Iterator reference type
-  typedef const value_type* pointer;             ///< Iterator pointer type
+  typedef typename Container::index_type value_type;  ///< Iterator value type
+  typedef const value_type& reference;  ///< Iterator reference type
+  typedef const value_type* pointer;    ///< Iterator pointer type
   typedef std::input_iterator_tag iterator_category;  /// Iterator category tag
   typedef std::ptrdiff_t difference_type;  ///< Iterator difference type
 

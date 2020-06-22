@@ -280,10 +280,12 @@ class TensorInterface {
 
   /// Shift the lower and upper bound of this tensor view
 
+  /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the tensor range
   /// \return Reference to \c this
-  TensorInterface_& shift_to(
-      const std::initializer_list<index1_type>& bound_shift) {
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  TensorInterface_& shift_to(const std::initializer_list<Index>& bound_shift) {
     range_.inplace_shift(bound_shift);
     return *this;
   }
@@ -301,10 +303,12 @@ class TensorInterface {
 
   /// Make a copy of this view shited by \p bound_shift
 
+  /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the tensor range
   /// \return A copy of the shifted view
-  result_tensor shift(
-      const std::initializer_list<index1_type>& bound_shift) const {
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  result_tensor shift(const std::initializer_list<Index>& bound_shift) const {
     return result_tensor(range_.shift(bound_shift), data_);
   }
 

@@ -390,12 +390,14 @@ class Tensor {
 
   /// Const element accessor
 
+  /// \tparam Integer An integral type
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
   /// included in the range
-  const_reference operator[](
-      const std::initializer_list<index1_type>& i) const {
+  template <typename Integer,
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  const_reference operator[](const std::initializer_list<Integer>& i) const {
     TA_ASSERT(pimpl_);
     TA_ASSERT(pimpl_->range_.includes(i));
     return pimpl_->data_[pimpl_->range_.ordinal(i)];
@@ -403,11 +405,14 @@ class Tensor {
 
   /// Element accessor
 
+  /// \tparam Integer An integral type
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
   /// included in the range
-  reference operator[](const std::initializer_list<index1_type>& i) {
+  template <typename Integer,
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  reference operator[](const std::initializer_list<Integer>& i) {
     TA_ASSERT(pimpl_);
     TA_ASSERT(pimpl_->range_.includes(i));
     return pimpl_->data_[pimpl_->range_.ordinal(i)];
@@ -445,12 +450,14 @@ class Tensor {
 
   /// Const element accessor
 
+  /// \tparam Integer An integral type
   /// \param[in] i an index
   /// \return Const reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
   /// included in the range
-  const_reference operator()(
-      const std::initializer_list<index1_type>& i) const {
+  template <typename Integer,
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  const_reference operator()(const std::initializer_list<Integer>& i) const {
     TA_ASSERT(pimpl_);
     TA_ASSERT(pimpl_->range_.includes(i));
     return pimpl_->data_[pimpl_->range_.ordinal(i)];
@@ -458,11 +465,14 @@ class Tensor {
 
   /// Element accessor
 
+  /// \tparam Integer An integral type
   /// \param[in] i an index
   /// \return Reference to the element at position \c i .
   /// \note This asserts (using TA_ASSERT) that this is not empty and ord is
   /// included in the range
-  reference operator()(const std::initializer_list<index1_type>& i) {
+  template <typename Integer,
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  reference operator()(const std::initializer_list<Integer>& i) {
     TA_ASSERT(pimpl_);
     TA_ASSERT(pimpl_->range_.includes(i));
     return pimpl_->data_[pimpl_->range_.ordinal(i)];
@@ -647,6 +657,8 @@ class Tensor {
   ///   assert(tview.range().includes(lobounds));
   ///   assert(tview(lobounds) == t(lobounds));
   /// \endcode
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound The lower bound
   /// \param upper_bound The upper bound
   /// \return a {const,mutable} view of the block defined by \p lower_bound and \p upper_bound
@@ -655,17 +667,23 @@ class Tensor {
   /// \throw TiledArray::Exception When `lower_bound[i] >= upper_bound[i]`
   // clang-format on
   /// @{
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   detail::TensorInterface<T, BlockRange> block(
-      const std::initializer_list<index1_type>& lower_bound,
-      const std::initializer_list<index1_type>& upper_bound) {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<T, BlockRange>(
         BlockRange(pimpl_->range_, lower_bound, upper_bound), pimpl_->data_);
   }
 
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   detail::TensorInterface<const T, BlockRange> block(
-      const std::initializer_list<index1_type>& lower_bound,
-      const std::initializer_list<index1_type>& upper_bound) const {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) const {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<const T, BlockRange>(
         BlockRange(pimpl_->range_, lower_bound, upper_bound), pimpl_->data_);
@@ -729,6 +747,7 @@ class Tensor {
   /// \code
   ///   auto tview0 = t.block({{0,4}, {1,6}, {2,8}});
   /// \endcode
+  /// \tparam Index An integral type
   /// \param bounds The block bounds
   /// \return a {const,mutable} view of the block defined by its \p bounds
   /// \throw TiledArray::Exception When the size of \p lower_bound is not
@@ -736,15 +755,18 @@ class Tensor {
   /// \throw TiledArray::Exception When `get<0>(bounds[i]) >= get<1>(bounds[i])`
   // clang-format on
   /// @{
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   detail::TensorInterface<const T, BlockRange> block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds)
-      const {
+      const std::initializer_list<std::initializer_list<Index>>& bounds) const {
     return detail::TensorInterface<const T, BlockRange>(
         BlockRange(pimpl_->range_, bounds), pimpl_->data_);
   }
 
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   detail::TensorInterface<T, BlockRange> block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds) {
+      const std::initializer_list<std::initializer_list<Index>>& bounds) {
     return detail::TensorInterface<T, BlockRange>(
         BlockRange(pimpl_->range_, bounds), pimpl_->data_);
   }

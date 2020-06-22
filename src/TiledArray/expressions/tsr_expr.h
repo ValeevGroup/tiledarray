@@ -199,11 +199,16 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
   /// immutable Block expression factory
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   BlkTsrExpr<const Array, Alias> block(
-      const std::initializer_list<index1_type>& lower_bound,
-      const std::initializer_list<index1_type>& upper_bound) const {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) const {
     return BlkTsrExpr<const Array, Alias>(array_, vars_, lower_bound,
                                           upper_bound);
   }
@@ -222,10 +227,12 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
   /// immutable Block expression factory
 
+  /// \tparam Index An integral type
   /// \param bounds The {lower,upper} bounds of the block
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   BlkTsrExpr<const Array, Alias> block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds)
-      const {
+      const std::initializer_list<std::initializer_list<Index>>& bounds) const {
     return BlkTsrExpr<const Array, Alias>(array_, vars_, bounds);
   }
 
@@ -246,11 +253,16 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
   /// mutable Block expression factory
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   BlkTsrExpr<Array, Alias> block(
-      const std::initializer_list<index1_type>& lower_bound,
-      const std::initializer_list<index1_type>& upper_bound) {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) {
     return BlkTsrExpr<Array, Alias>(array_, vars_, lower_bound, upper_bound);
   }
 
@@ -268,9 +280,12 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
   /// mutable Block expression factory
 
+  /// \tparam Index An integral type
   /// \param bounds The {lower,upper} bounds of the block
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   BlkTsrExpr<Array, Alias> block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds) {
+      const std::initializer_list<std::initializer_list<Index>>& bounds) {
     return BlkTsrExpr<Array, Alias>(array_, vars_, bounds);
   }
 
@@ -347,12 +362,17 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
 
   /// Block expression
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \tparam Index The bound index types
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   BlkTsrExpr<const Array, true> block(
-      const std::initializer_list<index1_type>& lower_bound,
-      const std::initializer_list<index1_type>& upper_bound) const {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) const {
     return BlkTsrExpr<const Array, true>(array_, vars_, lower_bound,
                                          upper_bound);
   }
@@ -371,10 +391,12 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
 
   /// Block expression
 
+  /// \tparam Index An integral type
   /// \param bounds The {lower,upper} bounds of the block
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   BlkTsrExpr<const Array, true> block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds)
-      const {
+      const std::initializer_list<std::initializer_list<Index>>& bounds) const {
     return BlkTsrExpr<const Array, true>(array_, vars_, bounds);
   }
 

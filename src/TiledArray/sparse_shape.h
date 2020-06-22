@@ -612,19 +612,23 @@ class SparseShape {
   // clang-format off
   /// Creates a copy of this with a sub-block updated with contents of another shape
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound The lower bound of the sub-block to be updated
   /// \param upper_bound The upper bound of the sub-block to be updated
   /// \param other The shape that will be used to update the sub-block
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
   /// the data result_tile_norms of \c other.
   // clang-format on
-  SparseShape update_block(
-      const std::initializer_list<index1_type>& lower_bound,
-      const std::initializer_list<index1_type>& upper_bound,
-      const SparseShape& other) const {
-    return update_block<std::initializer_list<index1_type>,
-                        std::initializer_list<index1_type>>(lower_bound,
-                                                            upper_bound, other);
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  SparseShape update_block(const std::initializer_list<Index1>& lower_bound,
+                           const std::initializer_list<Index2>& upper_bound,
+                           const SparseShape& other) const {
+    return update_block<std::initializer_list<Index1>,
+                        std::initializer_list<Index2>>(lower_bound, upper_bound,
+                                                       other);
   }
 
   // clang-format off
@@ -671,12 +675,13 @@ class SparseShape {
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
   /// the data result_tile_norms of \c other.
   // clang-format on
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   SparseShape update_block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds,
+      const std::initializer_list<std::initializer_list<Index>>& bounds,
       const SparseShape& other) const {
-    return update_block<
-        std::initializer_list<std::initializer_list<index1_type>>>(bounds,
-                                                                   other);
+    return update_block<std::initializer_list<std::initializer_list<Index>>>(
+        bounds, other);
   }
 
   /// Bitwise comparison
@@ -824,14 +829,18 @@ class SparseShape {
 
   /// Create a copy of a sub-block of the shape
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound The lower bound of the sub-block
   /// \param upper_bound The upper bound of the sub-block
-  SparseShape block(
-      const std::initializer_list<index1_type>& lower_bound,
-      const std::initializer_list<index1_type>& upper_bound) const {
-    return this->block<std::initializer_list<index1_type>,
-                       std::initializer_list<index1_type>>(lower_bound,
-                                                           upper_bound);
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  SparseShape block(const std::initializer_list<Index1>& lower_bound,
+                    const std::initializer_list<Index2>& upper_bound) const {
+    return this
+        ->block<std::initializer_list<Index1>, std::initializer_list<Index2>>(
+            lower_bound, upper_bound);
   }
 
   /// Create a copy of a sub-block of the shape
@@ -848,10 +857,12 @@ class SparseShape {
 
   /// Create a copy of a sub-block of the shape
 
+  /// \tparam Index An integral type
   /// \param bounds A range of {lower,upper} bounds for each dimension
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   SparseShape block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds)
-      const {
+      const std::initializer_list<std::initializer_list<Index>>& bounds) const {
     return make_block(block_range(bounds), tile_norms_.block(bounds),
                       [](auto&& arg) { return arg; });
   }
@@ -880,18 +891,22 @@ class SparseShape {
 
   /// Create a scaled sub-block of the shape
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \tparam Scalar A numeric type
   /// \note expression abs(Scalar) must be well defined (by default, std::abs
   /// will be used)
   /// \param lower_bound The lower bound of the sub-block
   /// \param upper_bound The upper bound of the sub-block
-  template <typename Scalar,
-            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
-  SparseShape block(const std::initializer_list<index1_type>& lower_bound,
-                    const std::initializer_list<index1_type>& upper_bound,
+  template <typename Index1, typename Index2, typename Scalar,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2> &&
+                                        detail::is_numeric_v<Scalar>>>
+  SparseShape block(const std::initializer_list<Index1>& lower_bound,
+                    const std::initializer_list<Index2>& upper_bound,
                     const Scalar factor) const {
-    return this->block<std::initializer_list<index1_type>,
-                       std::initializer_list<index1_type>, Scalar>(
+    return this->block<std::initializer_list<Index1>,
+                       std::initializer_list<Index2>, Scalar>(
         lower_bound, upper_bound, factor);
   }
 
@@ -919,10 +934,11 @@ class SparseShape {
   /// will be used)
   /// \param bounds A range of {lower,upper} bounds for each dimension
   /// \param factor the scaling factor
-  template <typename Scalar,
-            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
+  template <typename Index, typename Scalar,
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar> &&
+                                        std::is_integral_v<Index>>>
   SparseShape block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds,
+      const std::initializer_list<std::initializer_list<Index>>& bounds,
       const Scalar factor) const {
     const value_type abs_factor = to_abs_factor(factor);
     return make_block(block_range(bounds), tile_norms_.block(bounds),
@@ -947,12 +963,17 @@ class SparseShape {
 
   /// Create a permuted sub-block of the shape
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound The lower bound of the sub-block
   /// \param upper_bound The upper bound of the sub-block
   /// \param perm permutation to apply
   /// \note permutation is not fused into construction
-  SparseShape block(const std::initializer_list<index1_type>& lower_bound,
-                    const std::initializer_list<index1_type>& upper_bound,
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  SparseShape block(const std::initializer_list<Index1>& lower_bound,
+                    const std::initializer_list<Index2>& upper_bound,
                     const Permutation& perm) const {
     return block(lower_bound, upper_bound).perm(perm);
   }
@@ -975,8 +996,10 @@ class SparseShape {
   /// \param bounds A range of {lower,upper} bounds for each dimension
   /// \param perm permutation to apply
   /// \note permutation is not fused into construction
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   SparseShape block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds,
+      const std::initializer_list<std::initializer_list<Index>>& bounds,
       const Permutation& perm) const {
     return block(bounds).perm(perm);
   }
@@ -1004,6 +1027,8 @@ class SparseShape {
 
   /// Create a permuted scaled sub-block of the shape
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \tparam Scalar A numeric type
   /// \note expression abs(Scalar) must be well defined (by default, std::abs
   /// will be used)
@@ -1012,10 +1037,12 @@ class SparseShape {
   /// \param factor the scaling factor
   /// \param perm permutation to apply
   /// \note permutation is not fused into construction
-  template <typename Scalar,
-            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
-  SparseShape block(const std::initializer_list<index1_type>& lower_bound,
-                    const std::initializer_list<index1_type>& upper_bound,
+  template <typename Index1, typename Index2, typename Scalar,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2> &&
+                                        detail::is_numeric_v<Scalar>>>
+  SparseShape block(const std::initializer_list<Index1>& lower_bound,
+                    const std::initializer_list<Index2>& upper_bound,
                     const Scalar factor, const Permutation& perm) const {
     return block(lower_bound, upper_bound, factor).perm(perm);
   }
@@ -1050,10 +1077,11 @@ class SparseShape {
   /// \param factor the scaling factor
   /// \param perm permutation to apply
   /// \note permutation is not fused into construction
-  template <typename Scalar,
-            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
+  template <typename Index, typename Scalar,
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar> &&
+                                        std::is_integral_v<Index>>>
   SparseShape block(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds,
+      const std::initializer_list<std::initializer_list<Index>>& bounds,
       const Scalar factor, const Permutation& perm) const {
     const value_type abs_factor = to_abs_factor(factor);
     return make_block(block_range(bounds), tile_norms_.block(bounds),

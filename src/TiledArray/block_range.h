@@ -193,6 +193,8 @@ class BlockRange : public Range {
   ///   Range r(10, 10, 10);
   ///   BlockRange br(r, {0, 1, 2}, {4, 6, 8});
   /// \endcode
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param range the host Range
   /// \param lower_bound An initializer list of lower bounds for each dimension
   /// \param upper_bound An initializer list of upper bounds for each dimension
@@ -200,9 +202,12 @@ class BlockRange : public Range {
   /// equal to that of \p upper_bound.
   /// \throw TiledArray::Exception When `lower_bound[i] >= upper_bound[i]`
   // clang-format on
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   BlockRange(const Range& range,
-             const std::initializer_list<index1_type>& lower_bound,
-             const std::initializer_list<index1_type>& upper_bound)
+             const std::initializer_list<Index1>& lower_bound,
+             const std::initializer_list<Index2>& upper_bound)
       : Range() {
     init(range, lower_bound, upper_bound);
   }
@@ -252,20 +257,21 @@ class BlockRange : public Range {
   ///   Range r(10, 10, 10);
   ///   BlockRange br0(r, {{0,4}, {1,6}, {2,8}});
   /// \endcode
+  /// \tparam Index An integral type
   /// \param bound A range of {lower,upper} bounds for each dimension
   /// \throw TiledArray::Exception When `bound[i].lower>=bound[i].upper` for any \c i .
   // clang-format on
-  BlockRange(
-      const Range& range,
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds)
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  BlockRange(const Range& range,
+             const std::initializer_list<std::initializer_list<Index>>& bounds)
       : Range() {
 #ifndef NDEBUG
     for (auto&& bound_d : bounds) {
       TA_ASSERT(size(bound_d) == 2);
     }
 #endif
-    init<std::initializer_list<std::initializer_list<index1_type>>>(range,
-                                                                    bounds);
+    init<std::initializer_list<std::initializer_list<Index>>>(range, bounds);
   }
 
   /// calculate the ordinal index of \c i

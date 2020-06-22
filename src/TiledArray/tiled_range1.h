@@ -102,8 +102,11 @@ class TiledRange1 {
   /// The number of tile boundaries is n + 1, where n is the number of tiles.
   /// Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
   /// Tiles are indexed starting with 0.
+  /// \tparam Integer An integral type
   /// \param list The list of tile boundaries in order from smallest to largest
-  explicit TiledRange1(const std::initializer_list<index1_type>& list) {
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  explicit TiledRange1(const std::initializer_list<Integer>& list) {
     init_tiles_(list.begin(), list.end(), 0);
   }
 

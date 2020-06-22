@@ -331,9 +331,11 @@ class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array, Alias>> {
   /// \param array The array object
   /// \param vars The array annotation variables
   /// \param bounds The {lower,upper} bounds of the sub-block
-  //  BlkTsrExpr(reference array, const std::string& vars, const
-  //  std::initializer_list<std::initializer_list<index1_type>>& bounds)
-  //      : BlkTsrExprBase_(array, vars, bounds) {}
+  //  template <typename Index, typename =
+  //  std::enable_if_t<std::is_integral_v<Index>>> BlkTsrExpr(reference array,
+  //  const std::string& vars, const
+  //    std::initializer_list<std::initializer_list<Index>>& bounds)
+  //        : BlkTsrExprBase_(array, vars, bounds) {}
 
   /// Expression assignment operator
 

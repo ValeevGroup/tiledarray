@@ -367,6 +367,8 @@ class Range {
   ///   // WARNING: mind the parens! With braces another ctor is called
   ///   Range r2{{0, 1, 2}, {4, 6, 8}};
   /// \endcode
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound An initializer list of lower bounds for each dimension
   /// \param upper_bound An initializer list of upper bounds for each dimension
   /// \warning do not use uniform initialization syntax ("curly braces") to invoke this
@@ -374,8 +376,11 @@ class Range {
   /// equal to that of \c upper_bound.
   /// \throw TiledArray::Exception When lower_bound[i] >= upper_bound[i]
   // clang-format on
-  Range(const std::initializer_list<index1_type>& lower_bound,
-        const std::initializer_list<index1_type>& upper_bound) {
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  Range(const std::initializer_list<Index1>& lower_bound,
+        const std::initializer_list<Index2>& upper_bound) {
     using std::size;
     const auto n = size(lower_bound);
     TA_ASSERT(n == size(upper_bound));
@@ -419,8 +424,11 @@ class Range {
   /// \code
   ///   Range r{4, 5, 6};
   /// \endcode
+  /// \tparam Index An integral type
   /// \param extent An initializer list that defines the size of each dimension
-  explicit Range(const std::initializer_list<index1_type>& extent) {
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  explicit Range(const std::initializer_list<Index>& extent) {
     using std::size;
     const auto n = size(extent);
     if (n) {
@@ -474,29 +482,6 @@ class Range {
   }
 
   // clang-format off
-  /// Construct range defined by an initializer_list of std::pair{lower,upper} bounds
-
-  /// Examples of using this constructor:
-  /// \code
-  ///   Range r{std::pair{0,4}, std::pair{1,6}, std::pair{2,8}};
-  /// \endcode
-  /// \param bound A sequence of {lower,upper} bounds for each dimension
-  /// \throw TiledArray::Exception When \c bound[i].lower>=bound[i].upper for any \c i .
-  // clang-format on
-  explicit Range(
-      const std::initializer_list<std::pair<index1_type, index1_type>>&
-          bounds) {
-    using std::size;
-    const auto n = size(bounds);
-    if (n) {
-      // Initialize array memory
-      data_ = new index1_type[n << 2];
-      rank_ = n;
-      init_range_data(bounds);
-    }
-  }
-
-  // clang-format off
   /// Construct range defined by an initializer_list of std::initializer_list{lower,upper} bounds
 
   /// Examples of using this constructor:
@@ -506,11 +491,14 @@ class Range {
   ///   Range r2({{0,4}, {1,6}, {2,8}});
   ///   assert(r == r2);
   /// \endcode
+  /// \tparam Index An integral type
   /// \param bound A sequence of {lower,upper} bounds for each dimension
   /// \throw TiledArray::Exception When `bound[i].lower>=bound[i].upper` for any \c i .
   // clang-format on
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
   explicit Range(
-      const std::initializer_list<std::initializer_list<index1_type>>& bounds) {
+      const std::initializer_list<std::initializer_list<Index>>& bounds) {
     using std::size;
     const auto n = size(bounds);
     if (n) {
@@ -832,13 +820,16 @@ class Range {
 
   /// Check the coordinate to make sure it is within the range.
 
+  /// \tparam Index An integral type
   /// \param index The element index whose presence in the range is queried
   /// \return \c true when `i >= lobound` and `i < upbound`,
   /// otherwise \c false
   /// \throw TiledArray::Exception When the rank of this range is not
   /// equal to the size of the index.
-  bool includes(const std::initializer_list<index1_type>& index) const {
-    return includes<std::initializer_list<index1_type>>(index);
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  bool includes(const std::initializer_list<Index>& index) const {
+    return includes<std::initializer_list<Index>>(index);
   }
 
   /// Check the ordinal index to make sure it is within the range.
@@ -942,10 +933,13 @@ class Range {
 
   /// Shift the lower and upper bound of this range
 
+  /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the range
   /// \return A reference to this range
-  Range_& inplace_shift(const std::initializer_list<index1_type>& bound_shift) {
-    return inplace_shift<std::initializer_list<index1_type>>(bound_shift);
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  Range_& inplace_shift(const std::initializer_list<Index>& bound_shift) {
+    return inplace_shift<std::initializer_list<Index>>(bound_shift);
   }
 
   /// Create a Range with shiften lower and upper bounds
@@ -963,9 +957,12 @@ class Range {
 
   /// Create a Range with shiften lower and upper bounds
 
+  /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the range
   /// \return A shifted copy of this range
-  Range_ shift(const std::initializer_list<index1_type>& bound_shift) {
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  Range_ shift(const std::initializer_list<Index>& bound_shift) {
     Range_ result(*this);
     result.inplace_shift(bound_shift);
     return result;
@@ -1008,6 +1005,19 @@ class Range {
     TA_ASSERT(d == rank_);
 
     return result - offset_;
+  }
+
+  /// calculate the ordinal index of \p index
+
+  /// Convert a coordinate index to an ordinal index.
+  /// \tparam Index An integral type
+  /// \param index The index to be converted to an ordinal index
+  /// \return The ordinal index of \c index
+  /// \throw When \c index is not included in this range.
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  ordinal_type ordinal(const std::initializer_list<Index>& index) const {
+    return this->ordinal<std::initializer_list<Index>>(index);
   }
 
   /// calculate the ordinal index of \c index
