@@ -65,6 +65,15 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r1.elements_range(), elements_range);
   }
 
+  // check range of trange1s constructor
+  {
+    std::vector trange1s(3, TiledRange1{0, 2, 5, 10, 17, 28});
+    BOOST_REQUIRE_NO_THROW(TiledRange r1(trange1s));
+    TiledRange r1(trange1s);
+    BOOST_CHECK_EQUAL(r1.tiles_range(), tiles_range);
+    BOOST_CHECK_EQUAL(r1.elements_range(), elements_range);
+  }
+
   // check negative index range
   {
     TiledRange r1{{-1, 0, 2, 5, 10, 17, 28},

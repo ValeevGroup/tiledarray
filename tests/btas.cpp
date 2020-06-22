@@ -149,14 +149,14 @@ struct BTASFixture : public TiledRangeFixture {
 };  // BTASFixture
 
 // Instantiate static variables for fixture
-const TiledRange BTASFixture::trange1 = {{0, 2, 5, 10, 17, 28, 41}};
-const TiledRange BTASFixture::trange2 = {{0, 2, 5, 10, 17, 28, 41},
-                                         {0, 3, 6, 11, 18, 29, 42}};
-const TiledRange BTASFixture::trange3 = {{0, 2, 5, 10, 17, 28, 41},
-                                         {0, 3, 6, 11, 18, 29, 42},
-                                         {0, 4, 5, 12, 17, 30, 41}};
-const TiledRange BTASFixture::trange4 = {trange2.data()[0], trange2.data()[1],
-                                         trange2.data()[0], trange2.data()[1]};
+const TiledRange BTASFixture::trange1{{0, 2, 5, 10, 17, 28, 41}};
+const TiledRange BTASFixture::trange2{{0, 2, 5, 10, 17, 28, 41},
+                                      {0, 3, 6, 11, 18, 29, 42}};
+const TiledRange BTASFixture::trange3{{0, 2, 5, 10, 17, 28, 41},
+                                      {0, 3, 6, 11, 18, 29, 42},
+                                      {0, 4, 5, 12, 17, 30, 41}};
+const TiledRange BTASFixture::trange4{trange2.data()[0], trange2.data()[1],
+                                      trange2.data()[0], trange2.data()[1]};
 
 template <>
 BTASFixture::TArrayDSB& BTASFixture::array<BTASFixture::TArrayDSB>(size_t idx) {

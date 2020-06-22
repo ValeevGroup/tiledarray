@@ -174,14 +174,14 @@ struct MixedExpressionsFixture : public TiledRangeFixture {
 };  // MixedExpressionsFixture
 
 // Instantiate static variables for fixture
-const TiledRange MixedExpressionsFixture::trange1 = {{0, 2, 5, 10, 17, 28, 41}};
-const TiledRange MixedExpressionsFixture::trange2 = {{0, 2, 5, 10, 17, 28, 41},
-                                                     {0, 3, 6, 11, 18, 29, 42}};
-const TiledRange MixedExpressionsFixture::trange4 = {
+const TiledRange MixedExpressionsFixture::trange1{{0, 2, 5, 10, 17, 28, 41}};
+const TiledRange MixedExpressionsFixture::trange2{{0, 2, 5, 10, 17, 28, 41},
+                                                  {0, 3, 6, 11, 18, 29, 42}};
+const TiledRange MixedExpressionsFixture::trange4{
     trange2.data()[0], trange2.data()[1], trange2.data()[0], trange2.data()[1]};
-const TiledRange MixedExpressionsFixture::trange2e = {trange1.data()[0],
-                                                      trange1.data()[0]};
-const TiledRange MixedExpressionsFixture::trange4e = {
+const TiledRange MixedExpressionsFixture::trange2e{trange1.data()[0],
+                                                   trange1.data()[0]};
+const TiledRange MixedExpressionsFixture::trange4e{
     trange2e.data()[0], trange2e.data()[1], trange2e.data()[0],
     trange2e.data()[1]};
 

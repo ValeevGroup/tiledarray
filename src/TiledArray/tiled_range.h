@@ -67,27 +67,48 @@ class TiledRange {
   typedef range_type::ordinal_type ordinal_type;
   typedef range_type::index1_type index1_type;
   static_assert(std::is_same_v<TiledRange1::index1_type, index1_type>);
-  typedef std::vector<TiledRange1> Ranges;
+  typedef container::svector<TiledRange1> Ranges;
 
   /// Default constructor
   TiledRange() : range_(), elements_range_(), ranges_() {}
 
-  /// Constructed with a set of ranges pointed to by [ first, last ).
+  /// Constructs using a range of TiledRange1 objects
+  /// \param first the iterator pointing to the front of the range
+  /// \param last the iterator pointing past the back of the range
   template <typename InIter>
   TiledRange(InIter first, InIter last)
       : range_(), elements_range_(), ranges_(first, last) {
     init();
   }
 
-  /// Constructed with a set of ranges pointed to by [ first, last ).
-  TiledRange(
+  /// Constructs using a range of TiledRange1 objects
+  /// \param range_of_trange1s a range of TiledRange1 objects
+  template <typename TRange1Range,
+            typename = std::enable_if_t<
+                detail::is_range_v<TRange1Range> &&
+                std::is_same_v<detail::value_t<TRange1Range>, TiledRange1>>>
+  explicit TiledRange(const TRange1Range& range_of_trange1s)
+      : range_(),
+        elements_range_(),
+        ranges_(begin(range_of_trange1s), end(range_of_trange1s)) {
+    init();
+  }
+
+  /// Constructs using a list of lists convertible to TiledRange1
+  /// \param list a list of lists of integers that can be converted to
+  /// TiledRange1
+  explicit TiledRange(
       const std::initializer_list<std::initializer_list<index1_type>>& list)
-      : range_(), elements_range_(), ranges_(list.begin(), list.end()) {
+      : range_(), elements_range_() {
+    ranges_.reserve(size(list));
+    for (auto&& l : list) {
+      ranges_.emplace_back(l);
+    }
     init();
   }
 
   /// Constructed with an initializer_list of TiledRange1's
-  TiledRange(const std::initializer_list<TiledRange1>& list)
+  explicit TiledRange(const std::initializer_list<TiledRange1>& list)
       : range_(), elements_range_(), ranges_(list.begin(), list.end()) {
     init();
   }

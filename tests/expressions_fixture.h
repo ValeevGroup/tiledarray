@@ -209,9 +209,9 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
   ~ExpressionsFixture() { GlobalFixture::world->gop.fence(); }
 
-  const TiledRange trange1 = {{0, 2, 5, 10, 17, 28, 41}};
-  const TiledRange trange2 = {{0, 2, 5, 10, 17, 28, 41},
-                              {0, 3, 6, 11, 18, 29, 42}};
+  const TiledRange trange1{{0, 2, 5, 10, 17, 28, 41}};
+  const TiledRange trange2{{0, 2, 5, 10, 17, 28, 41},
+                           {0, 3, 6, 11, 18, 29, 42}};
   SparseShape<float> s_tr_1;
   SparseShape<float> s_tr_2;
   SparseShape<float> s_tr1_1;
