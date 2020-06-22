@@ -70,21 +70,23 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
     const auto n = dims_.second;
 
     // Loop over 2D BC compatible blocks
-    size_t i_extent, j_extent;
-    for (size_t i = lo[0], i_t = 0ul; i < up[0]; i += i_extent, i_t += i_extent)
-      for (size_t j = lo[1], j_t = 0ul; j < up[1];
+    long i_extent, j_extent;
+    for (auto i = lo[0], i_t = 0l; i < up[0]; i += i_extent, i_t += i_extent)
+      for (auto j = lo[1], j_t = 0l; j < up[1];
            j += j_extent, j_t += j_extent) {
         // Determine indices of start of BC owning block
         const auto i_block_begin = (i / mb) * mb;
         const auto j_block_begin = (j / nb) * nb;
 
         // Determine indices of end of BC owning block
-        const auto i_block_end = std::min(m, i_block_begin + mb);
-        const auto j_block_end = std::min(n, j_block_begin + nb);
+        const auto i_block_end =
+            std::min(static_cast<decltype(i)>(m), i_block_begin + mb);
+        const auto j_block_end =
+            std::min(static_cast<decltype(j)>(n), j_block_begin + nb);
 
         // Cut block if necessacary to adhere to tile dimensions
-        const auto i_last = std::min(i_block_end, static_cast<size_t>(up[0]));
-        const auto j_last = std::min(j_block_end, static_cast<size_t>(up[1]));
+        const auto i_last = std::min(i_block_end, up[0]);
+        const auto j_last = std::min(j_block_end, up[1]);
 
         // Calculate extents of the block to be copied
         i_extent = i_last - i;

@@ -532,10 +532,9 @@ class Tile {
         BlockRange(tensor().range(), bounds), tensor().data());
   }
 
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
   decltype(auto) block(
-      const std::initializer_list<std::initializer_list<Index>>& bounds) const {
+      const std::initializer_list<std::initializer_list<index1_type>>& bounds)
+      const {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<const value_type, BlockRange, tensor_type>(
         BlockRange(tensor().range(), bounds), tensor().data());

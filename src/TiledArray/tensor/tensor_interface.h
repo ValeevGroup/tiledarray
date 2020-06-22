@@ -82,9 +82,11 @@ template <typename T, typename R, typename OpResult>
 class TensorInterface {
  public:
   typedef TensorInterface<T, R, OpResult>
-      TensorInterface_;                              ///< This class type
-  typedef R range_type;                              ///< Tensor range type
-  typedef typename range_type::size_type size_type;  ///< size type
+      TensorInterface_;                                  ///< This class type
+  typedef R range_type;                                  ///< Tensor range type
+  typedef typename range_type::index1_type index1_type;  ///< 1-index type
+  typedef typename range_type::ordinal_type ordinal_type;  ///< Ordinal type
+  using size_type = ordinal_type;
   typedef
       typename std::remove_const<T>::type value_type;  ///< Array element type
   typedef typename std::add_lvalue_reference<T>::type
@@ -206,7 +208,7 @@ class TensorInterface {
   /// Tensor dimension size accessor
 
   /// \return The number of elements in the tensor
-  size_type size() const { return range_.volume(); }
+  ordinal_type size() const { return range_.volume(); }
 
   /// Data pointer accessor
 
@@ -217,7 +219,7 @@ class TensorInterface {
 
   /// \param index The ordinal element index
   /// \return A const reference to the element at \c index.
-  const_reference operator[](const size_type index) const {
+  const_reference operator[](const ordinal_type index) const {
     TA_ASSERT(range_.includes(index));
     return data_[range_.ordinal(index)];
   }
@@ -226,7 +228,7 @@ class TensorInterface {
 
   /// \param index The ordinal element index
   /// \return A const reference to the element at \c index.
-  reference operator[](const size_type index) {
+  reference operator[](const ordinal_type index) {
     TA_ASSERT(range_.includes(index));
     return data_[range_.ordinal(index)];
   }
@@ -278,12 +280,10 @@ class TensorInterface {
 
   /// Shift the lower and upper bound of this tensor view
 
-  /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the tensor range
   /// \return Reference to \c this
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
-  TensorInterface_& shift_to(const std::initializer_list<Index>& bound_shift) {
+  TensorInterface_& shift_to(
+      const std::initializer_list<index1_type>& bound_shift) {
     range_.inplace_shift(bound_shift);
     return *this;
   }
@@ -301,12 +301,10 @@ class TensorInterface {
 
   /// Make a copy of this view shited by \p bound_shift
 
-  /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the tensor range
   /// \return A copy of the shifted view
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
-  result_tensor shift(const std::initializer_list<Index>& bound_shift) const {
+  result_tensor shift(
+      const std::initializer_list<index1_type>& bound_shift) const {
     return result_tensor(range_.shift(bound_shift), data_);
   }
 

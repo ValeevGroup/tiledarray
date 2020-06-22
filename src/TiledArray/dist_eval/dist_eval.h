@@ -49,7 +49,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
   typedef TiledArray::detail::TensorImpl<Policy> TensorImpl_;
   ///< Tensor implementation base class
 
-  typedef typename TensorImpl_::ordinal_type ordinal_type;  ///< Size type
+  typedef typename TensorImpl_::ordinal_type ordinal_type;  ///< Ordinal type
   typedef typename TensorImpl_::trange_type
       trange_type;  ///< Tiled range type for this object
   typedef

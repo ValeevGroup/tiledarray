@@ -71,7 +71,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       index1_type;  ///< 1-index type
   typedef typename impl_type::range_type::index
       index;  ///< Array coordinate index type
-  typedef typename impl_type::ordinal_type ordinal_type;  ///< Size type
+  typedef typename impl_type::ordinal_type ordinal_type;  ///< Ordinal type
   typedef typename impl_type::value_type value_type;      ///< Tile type
   typedef
       typename impl_type::eval_type eval_type;   ///< The tile evaluation type
@@ -513,14 +513,13 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Set a tile and fill it using a sequence
 
-  /// \tparam Integer An integral type
   /// \tparam InIter An input iterator
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \param i The tile index, as an \c std::initializer_list<index1_type>
   /// \param first The iterator that points to the new tile data
-  template <typename Integer, typename InIter>
+  template <typename InIter>
   typename std::enable_if<detail::is_input_iterator<InIter>::value>::type set(
-      const std::initializer_list<Integer>& i, InIter first) {
-    set<std::initializer_list<Integer>>(i, first);
+      const std::initializer_list<index1_type>& i, InIter first) {
+    set<std::initializer_list<index1_type>>(i, first);
   }
 
   /// Set a tile and fill it using a value
@@ -537,14 +536,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Set a tile and fill it using a value
 
-  /// \tparam Integer An integral type
   /// \tparam InIter An input iterator
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \param i The tile index, as an \c std::initializer_list<index1_type>
   /// \param value the value used to fill the tile
-  template <typename Integer>
-  void set(const std::initializer_list<Integer>& i,
+  void set(const std::initializer_list<index1_type>& i,
            const element_type& value = element_type()) {
-    set<std::initializer_list<Integer>>(i, value);
+    set<std::initializer_list<index1_type>>(i, value);
   }
 
   /// Set a tile directly using a future
@@ -560,13 +557,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Set a tile directly using a future
 
-  /// \tparam Integer An integral type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \param i The tile index, as an \c std::initializer_list
   /// \param f A future to the tile
-  template <typename Integer>
-  void set(const std::initializer_list<Integer>& i,
+  void set(const std::initializer_list<index1_type>& i,
            const Future<value_type>& f) {
-    set<std::initializer_list<Integer>>(i, f);
+    set<std::initializer_list<index1_type>>(i, f);
   }
 
   /// Set a tile using a Tile object
@@ -582,12 +577,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Set a tile using a Tile object
 
-  /// \tparam Integer An integral type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \param i The tile index, as an \c std::initializer_list
   /// \param v The tile value
-  template <typename Integer>
-  void set(const std::initializer_list<Integer>& i, const value_type& v) {
-    set<std::initializer_list<Integer>>(i, v);
+  void set(const std::initializer_list<index1_type>& i, const value_type& v) {
+    set<std::initializer_list<index1_type>>(i, v);
   }
 
   /// Fill all local tiles
@@ -867,14 +860,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Tile ownership
 
-  /// \tparam Index1 An integral type
   /// \param i The index of a tile
   /// \return The process ID of the owner of a tile.
   /// \note This does not indicate whether a tile exists or not. Only, the
   /// rank of the process that would own it if it does exist.
-  template <typename Index1>
-  ProcessID owner(const std::initializer_list<Index1>& i) const {
-    return owner<std::initializer_list<Index1>>(i);
+  ProcessID owner(const std::initializer_list<index1_type>& i) const {
+    return owner<std::initializer_list<index1_type>>(i);
   }
 
   /// Check if the tile at index \c i is stored locally
@@ -891,13 +882,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Check if the tile at index \c i is stored locally
 
-  /// \tparam Index A coordinate or ordinal index type
   /// \param i The coordinate or ordinal index of the tile to be checked
   /// \return \c true if \c owner(i) is equal to the MPI process rank,
   /// otherwise \c false.
-  template <typename Index1>
-  bool is_local(const std::initializer_list<Index1>& i) const {
-    return is_local<std::initializer_list<Index1>>(i);
+  bool is_local(const std::initializer_list<index1_type>& i) const {
+    return is_local<std::initializer_list<index1_type>>(i);
   }
 
   /// Check for zero tiles
@@ -914,9 +903,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \return \c true if tile at index \c i is zero, false if the tile is
   /// non-zero or remote existence data is not available.
-  template <typename Index1>
-  bool is_zero(const std::initializer_list<Index1>& i) const {
-    return is_zero<std::initializer_list<Index1>>(i);
+  bool is_zero(const std::initializer_list<index1_type>& i) const {
+    return is_zero<std::initializer_list<index1_type>>(i);
   }
 
   /// Swap this array with \c other
@@ -1198,9 +1186,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         "The coordinate index used to access an array tile is out of range.");
   }
 
-  template <typename Index1>
-  void check_index(const std::initializer_list<Index1>& i) const {
-    check_index<std::initializer_list<Index1>>(i);
+  void check_index(const std::initializer_list<index1_type>& i) const {
+    check_index<std::initializer_list<index1_type>>(i);
   }
 
   /// Makes sure pimpl has been initialized

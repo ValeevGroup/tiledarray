@@ -198,29 +198,23 @@ class TiledRange {
 
   /// Construct a range for the tile indexed by the given index.
 
-  /// \tparam Integer An integral type
   /// \param index The tile index, given as a \c std::initializer_list
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
   /// \note alias to TiledRange::make_tile_range() , introduced for consitency
   ///       with TiledRange1::tile()
-  template <typename Integer,
-            typename = std::enable_if_t<std::is_integral_v<Integer>>>
-  range_type tile(const std::initializer_list<Integer>& index) const {
+  range_type tile(const std::initializer_list<index1_type>& index) const {
     return make_tile_range(index);
   }
 
   /// Construct a range for the tile indexed by the given index.
 
-  /// \tparam Integer An integral type
   /// \param index The tile index, given as a \c std::initializer_list
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
-  template <typename Integer,
-            typename = std::enable_if_t<std::is_integral_v<Integer>>>
   range_type make_tile_range(
-      const std::initializer_list<Integer>& index) const {
-    return make_tile_range<std::initializer_list<Integer>>(index);
+      const std::initializer_list<index1_type>& index) const {
+    return make_tile_range<std::initializer_list<index1_type>>(index);
   }
 
   /// Convert an element index to a tile index

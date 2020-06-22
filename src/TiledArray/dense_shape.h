@@ -53,6 +53,8 @@ using madness::World;
 /// will optimize branches that use these checks.
 class DenseShape {
  public:
+  using index1_type = std::intmax_t;
+
   // There is no data in DenseShape so the compiler generated constructors,
   // assignment operator, and destructor are OK.
 
@@ -112,11 +114,8 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
-  static DenseShape update_block(const std::initializer_list<Index1>&,
-                                 const std::initializer_list<Index2>&,
+  static DenseShape update_block(const std::initializer_list<index1_type>&,
+                                 const std::initializer_list<index1_type>&,
                                  const DenseShape&) {
     return DenseShape();
   }
@@ -128,10 +127,8 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
   static DenseShape update_block(
-      const std::initializer_list<std::initializer_list<Index>>&,
+      const std::initializer_list<std::initializer_list<index1_type>>&,
       const DenseShape&) {
     return DenseShape();
   }
@@ -143,11 +140,8 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
-  static DenseShape block(const std::initializer_list<Index1>&,
-                          const std::initializer_list<Index2>&) {
+  static DenseShape block(const std::initializer_list<index1_type>&,
+                          const std::initializer_list<index1_type>&) {
     return DenseShape();
   }
 
@@ -157,10 +151,8 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
   static DenseShape block(
-      const std::initializer_list<std::initializer_list<Index>>&) {
+      const std::initializer_list<std::initializer_list<index1_type>>&) {
     return DenseShape();
   }
 
@@ -172,12 +164,11 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index1, typename Index2, typename Scalar,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2> &&
-                                        detail::is_numeric_v<Scalar>>>
-  static DenseShape block(const std::initializer_list<Index1>&,
-                          const std::initializer_list<Index2>&, const Scalar) {
+  template <typename Scalar,
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
+  static DenseShape block(const std::initializer_list<index1_type>&,
+                          const std::initializer_list<index1_type>&,
+                          const Scalar) {
     return DenseShape();
   }
 
@@ -188,11 +179,10 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index, typename Scalar,
-            typename = std::enable_if_t<std::is_integral_v<Index> &&
-                                        detail::is_numeric_v<Scalar>>>
+  template <typename Scalar,
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
   static DenseShape block(
-      const std::initializer_list<std::initializer_list<Index>>&,
+      const std::initializer_list<std::initializer_list<index1_type>>&,
       const Scalar) {
     return DenseShape();
   }
@@ -204,11 +194,8 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
-  static DenseShape block(const std::initializer_list<Index1>&,
-                          const std::initializer_list<Index2>&,
+  static DenseShape block(const std::initializer_list<index1_type>&,
+                          const std::initializer_list<index1_type>&,
                           const Permutation&) {
     return DenseShape();
   }
@@ -219,10 +206,8 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
   static DenseShape block(
-      const std::initializer_list<std::initializer_list<Index>>&,
+      const std::initializer_list<std::initializer_list<index1_type>>&,
       const Permutation&) {
     return DenseShape();
   }
@@ -236,13 +221,11 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index1, typename Index2, typename Scalar,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2> &&
-                                        detail::is_numeric_v<Scalar>>>
-  static DenseShape block(const std::initializer_list<Index1>&,
-                          const std::initializer_list<Index2>&, const Scalar,
-                          const Permutation&) {
+  template <typename Scalar,
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
+  static DenseShape block(const std::initializer_list<index1_type>&,
+                          const std::initializer_list<index1_type>&,
+                          const Scalar, const Permutation&) {
     return DenseShape();
   }
 
@@ -254,12 +237,11 @@ class DenseShape {
     return DenseShape();
   }
 
-  template <typename Index, typename Scalar,
-            typename = std::enable_if_t<std::is_integral_v<Index> &&
-                                        detail::is_numeric_v<Scalar>>>
+  template <typename Scalar,
+            typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
   static DenseShape block(
-      const std::initializer_list<std::initializer_list<Index>>&, const Scalar,
-      const Permutation&) {
+      const std::initializer_list<std::initializer_list<index1_type>>&,
+      const Scalar, const Permutation&) {
     return DenseShape();
   }
 
