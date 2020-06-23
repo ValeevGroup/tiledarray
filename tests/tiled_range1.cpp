@@ -113,6 +113,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
   }
 
   // check construction with negative index values
+#ifdef TA_SIGNED_1INDEX_TYPE
   {
     TiledRange1 r{-1, 0, 2, 5, 10, 17, 28};
     BOOST_CHECK_EQUAL(r.tiles_range().first, 0);
@@ -120,6 +121,12 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r.elements_range().first, -1);
     BOOST_CHECK_EQUAL(r.elements_range().second, 28);
   }
+#else  // TA_SIGNED_1INDEX_TYPE
+#if !defined(TA_USER_ASSERT_DISABLED)
+  BOOST_CHECK_THROW(TiledRange1 r({-1, 0, 2, 5, 10, 17, 28}),
+                    TiledArray::Exception);
+#endif
+#endif  // TA_SIGNED_1INDEX_TYPE
 
   // check copy constructor
   {

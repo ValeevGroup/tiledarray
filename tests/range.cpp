@@ -269,7 +269,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
     BOOST_CHECK_EQUAL(r2.volume(), 0);
   }
 
-  // make sure negative bounds are OK
+  // make sure negative bounds are OK, if TA_SIGNED_1INDEX_TYPE is define
+#ifdef TA_SIGNED_1INDEX_TYPE
   {
     BOOST_REQUIRE_NO_THROW(Range r2({{-1, 1}, {-2, 2}, {0, 6}}));
     Range r2{{-1, 1}, {-2, 2}, {0, 6}};
@@ -291,6 +292,12 @@ BOOST_AUTO_TEST_CASE(constructors) {
                                   stride_ref.begin(), stride_ref.end());
     BOOST_CHECK_EQUAL(r2.volume(), 48);
   }
+#else  // TA_SIGNED_1INDEX_TYPE
+#ifdef TA_EXCEPTION_ERROR
+  BOOST_REQUIRE_THROW(Range r2({{-1, 1}, {-2, 2}, {0, 6}}),
+                      TiledArray::Exception);
+#endif
+#endif  // TA_SIGNED_1INDEX_TYPE
 
   // Copy Constructor
   BOOST_REQUIRE_NO_THROW(Range r4(r));

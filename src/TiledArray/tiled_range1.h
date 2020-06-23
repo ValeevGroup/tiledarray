@@ -234,11 +234,17 @@ class TiledRange1 {
                    "TiledRange1 construction failed: You need at least 2 "
                    "elements in the tile boundary list.");
     // Verify the requirement that a0 < a1 < a2 < ...
-    for (; first != (last - 1); ++first)
+    for (; first != (last - 1); ++first) {
       TA_USER_ASSERT(
           *first < *(first + 1),
           "TiledRange1 construction failed: Invalid tile boundary, tile "
           "boundary i must be greater than tile boundary i+1 for all i. ");
+      TA_USER_ASSERT(
+          static_cast<index1_type>(*first) <
+              static_cast<index1_type>(*(first + 1)),
+          "TiledRange1 construction failed: Invalid tile boundary, tile "
+          "boundary i must be greater than tile boundary i+1 for all i. ");
+    }
   }
 
   /// Initialize tiles use a set of tile offsets

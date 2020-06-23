@@ -75,6 +75,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
   }
 
   // check negative index range
+#ifdef TA_SIGNED_1INDEX_TYPE
   {
     TiledRange r1{{-1, 0, 2, 5, 10, 17, 28},
                   {-1, 0, 2, 5, 10, 17, 28},
@@ -82,6 +83,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r1.tiles_range(), Range({6, 6, 6}));
     BOOST_CHECK_EQUAL(r1.elements_range(), Range({-1, -1, -5}, {28, 28, 28}));
   }
+#endif  // TA_SIGNED_1INDEX_TYPE
 
   // check copy constructor
   {

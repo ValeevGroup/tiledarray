@@ -37,7 +37,6 @@ namespace TiledArray {
 /// test if an element is included in the range with a coordinate index or
 /// ordinal offset. Finally, it can be used to convert coordinate indices to
 /// ordinal offsets and vice versa.
-/// TODO add Range support for negative indices
 class Range {
  public:
   typedef Range Range_;                ///< This object type
@@ -106,17 +105,15 @@ class Range {
     auto upper_end = std::end(upper_bound);
     for (int d = 0; lower_it != lower_end && upper_it != upper_end;
          ++lower_it, ++upper_it, ++d) {
-      // Check input dimensions
-      TA_ASSERT(*lower_it <= *upper_it);
-
       // Compute data for element d of lower, upper, and extent
       const auto lower_bound_d = *lower_it;
       const auto upper_bound_d = *upper_it;
-      const auto extent_d = upper_bound_d - lower_bound_d;
-
       lower[d] = lower_bound_d;
       upper[d] = upper_bound_d;
-      extent[d] = extent_d;
+      // Check input dimensions
+      TA_ASSERT(lower[d] <= upper[d]);
+      extent[d] = upper[d] - lower[d];
+      TA_ASSERT(extent[d] == (upper_bound_d - lower_bound_d));
     }
 
     // Set the volume seed
@@ -157,14 +154,11 @@ class Range {
       // Compute data for element i of lower, upper, and extent
       const auto lower_bound_d = detail::at(bound_d, 0);
       const auto upper_bound_d = detail::at(bound_d, 1);
-      const auto extent_d = upper_bound_d - lower_bound_d;
-
-      // Check input dimensions
-      TA_ASSERT(lower_bound_d <= upper_bound_d);
-
       lower[d] = lower_bound_d;
       upper[d] = upper_bound_d;
-      extent[d] = extent_d;
+      // Check input dimensions
+      TA_ASSERT(lower[d] <= upper[d]);
+      extent[d] = upper[d] - lower[d];
       ++d;
     }
     // Compute strides, volume, and offset, starting with last (least
@@ -200,12 +194,11 @@ class Range {
     auto end = std::end(extents);
     for (int d = 0; it != end; ++it, ++d) {
       const auto extent_d = *it;
-      // Check bounds of the input extent
-      TA_ASSERT(extent_d >= 0);
-
       lower[d] = 0ul;
       upper[d] = extent_d;
       extent[d] = extent_d;
+      // Check bounds of the input extent
+      TA_ASSERT(extent[d] >= 0);
     }
 
     // Compute strides and volume, starting with last (least significant)
@@ -251,9 +244,6 @@ class Range {
 
   template <std::size_t I, typename... Indices>
   void init_range_data_helper_iter(const std::tuple<Indices...>& extents) {
-    // Check bounds of the input extent
-    TA_ASSERT(std::get<I>(extents) >= 0ul);
-
     // Get extent i
     const auto extent_i = std::get<I>(extents);
 
@@ -265,8 +255,10 @@ class Range {
     lower[I] = 0ul;
     upper[I] = extent_i;
     extent[I] = extent_i;
+    // Check bounds of the input extent
+    TA_ASSERT(extent[I] >= 0ul);
     stride[I] = volume_;
-    volume_ *= extent_i;
+    volume_ *= extent[I];
   }
 
   /// Initialize permuted range data from lower and upper bounds

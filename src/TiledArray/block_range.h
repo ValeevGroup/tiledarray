@@ -73,17 +73,16 @@ class BlockRange : public Range {
       // Compute data for element i of lower, upper, and extent
       const auto lower_bound_d = *lower_it;
       const auto upper_bound_d = *upper_it;
-      const auto extent_d = upper_bound_d - lower_bound_d;
-
-      // Check input dimensions
-      TA_ASSERT(lower_bound_d >= range.lobound(d));
-      TA_ASSERT(lower_bound_d < upper_bound_d);
-      TA_ASSERT(upper_bound_d <= range.upbound(d));
 
       // Set the block range data
       lower[d] = lower_bound_d;
       upper[d] = upper_bound_d;
-      extent[d] = extent_d;
+      // Check input dimensions
+      TA_ASSERT(lower[d] >= range.lobound(d));
+      TA_ASSERT(lower[d] < upper[d]);
+      TA_ASSERT(upper[d] <= range.upbound(d));
+      extent[d] = upper[d] - lower[d];
+      TA_ASSERT(extent[d] == (upper_bound_d - lower_bound_d));
     }
 
     // Compute strides, volume, and offset, starting with last (least
@@ -121,16 +120,15 @@ class BlockRange : public Range {
       // Compute data for element i of lower, upper, and extent
       const auto lower_bound_d = detail::at(bound_d, 0);
       const auto upper_bound_d = detail::at(bound_d, 1);
-      const auto extent_d = upper_bound_d - lower_bound_d;
-
-      // Check input dimensions
-      TA_ASSERT(lower_bound_d >= range.lobound(d));
-      TA_ASSERT(lower_bound_d < upper_bound_d);
-      TA_ASSERT(upper_bound_d <= range.upbound(d));
 
       lower[d] = lower_bound_d;
       upper[d] = upper_bound_d;
-      extent[d] = extent_d;
+      // Check input dimensions
+      TA_ASSERT(lower[d] >= range.lobound(d));
+      TA_ASSERT(lower[d] < upper[d]);
+      TA_ASSERT(upper[d] <= range.upbound(d));
+      extent[d] = upper[d] - lower[d];
+      TA_ASSERT(extent[d] == (upper_bound_d - lower_bound_d));
       ++d;
     }
 
