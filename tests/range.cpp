@@ -163,6 +163,18 @@ BOOST_AUTO_TEST_CASE(constructors) {
     // the parens!
 #endif  // TA_EXCEPTION_ERROR
 
+    // uses initializer_list of pairs
+    BOOST_REQUIRE_NO_THROW(
+        Range r1({std::make_pair(0, 4), std::pair(1, 6), std::pair{2, 8}}));
+    Range r1({std::make_pair(0, 4), std::pair(1, 6), std::pair{2, 8}});
+    BOOST_CHECK_EQUAL(ref, r1);
+
+    // uses initializer_list of tuples
+    BOOST_REQUIRE_NO_THROW(
+        Range r1a({std::make_tuple(0, 4), std::tuple(1, 6), std::tuple{2, 8}}));
+    Range r1a({std::make_tuple(0, 4), std::tuple(1, 6), std::tuple{2, 8}});
+    BOOST_CHECK_EQUAL(ref, r1a);
+
     std::vector<std::pair<size_t, size_t>> vpbounds{{0, 4}, {1, 6}, {2, 8}};
     std::vector<std::tuple<size_t, size_t>> vtbounds{{0, 4}, {1, 6}, {2, 8}};
 

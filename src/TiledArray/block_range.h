@@ -253,6 +253,30 @@ class BlockRange : public Range {
   /// Examples of using this constructor:
   /// \code
   ///   Range r(10, 10, 10);
+  ///   BlockRange br0(r, {std::make_pair(0,4), std::pair{1,6}, std::pair(2,8)});
+  /// \endcode
+  /// \tparam GPair a generalized pair of integral types
+  /// \param bound A range of {lower,upper} bounds for each dimension
+  /// \throw TiledArray::Exception When `bound[i].lower>=bound[i].upper` for any \c i .
+  // clang-format on
+  template <typename GPair>
+  BlockRange(const Range& range, const std::initializer_list<GPair>& bounds,
+             std::enable_if_t<detail::is_gpair_v<GPair>>* = nullptr)
+      : Range() {
+#ifndef NDEBUG
+    for (auto&& bound_d : bounds) {
+      TA_ASSERT(size(bound_d) == 2);
+    }
+#endif
+    init<std::initializer_list<GPair>>(range, bounds);
+  }
+
+  // clang-format off
+  /// Construct range defined by an initializer_list of std::initializer_list{lower,upper} bounds
+
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r(10, 10, 10);
   ///   BlockRange br0(r, {{0,4}, {1,6}, {2,8}});
   /// \endcode
   /// \tparam Index An integral type

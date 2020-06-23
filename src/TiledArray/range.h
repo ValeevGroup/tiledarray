@@ -474,6 +474,30 @@ class Range {
   }
 
   // clang-format off
+  /// Construct range defined by an initializer_list of {lower,upper} bounds for each dimension given as a generalized pair
+
+  /// Examples of using this constructor:
+  /// \code
+  ///   Range r{std::pair{0,4}, std::pair{1,6}, std::pair{2,8}};
+  /// \endcode
+  /// \tparam GPair a generalized pair of integral types
+  /// \param bound A sequence of {lower,upper} bounds for each dimension
+  /// \throw TiledArray::Exception When \c bound[i].lower>=bound[i].upper for any \c i .
+  // clang-format on
+  template <typename GPair>
+  explicit Range(const std::initializer_list<GPair>& bounds,
+                 std::enable_if_t<detail::is_gpair_v<GPair>>* = nullptr) {
+    using std::size;
+    const auto n = size(bounds);
+    if (n) {
+      // Initialize array memory
+      data_ = new index1_type[n << 2];
+      rank_ = n;
+      init_range_data(bounds);
+    }
+  }
+
+  // clang-format off
   /// Construct range defined by an initializer_list of std::initializer_list{lower,upper} bounds
 
   /// Examples of using this constructor:

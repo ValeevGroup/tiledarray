@@ -169,12 +169,26 @@ BOOST_AUTO_TEST_CASE(block) {
           BlockRange br0(r, vpbounds);
           BOOST_CHECK_EQUAL(br0, bref);
 
+          // using initializer_list of pairs
+          BOOST_CHECK_NO_THROW(BlockRange br0a(
+              r, {std::make_pair(0, 4), std::pair{1, 6}, std::pair(2, 8)}));
+          BlockRange br0a(
+              r, {std::make_pair(0, 4), std::pair{1, 6}, std::pair(2, 8)});
+          BOOST_CHECK_EQUAL(br0a, bref);
+
           // using vector of tuples
           std::vector<std::tuple<size_t, size_t>> vtbounds{
               {0, 4}, {1, 6}, {2, 8}};
           BOOST_CHECK_NO_THROW(BlockRange br1(r, vtbounds));
           BlockRange br1(r, vpbounds);
           BOOST_CHECK_EQUAL(br1, bref);
+
+          // using initializer_list of tuples
+          BOOST_CHECK_NO_THROW(BlockRange br1a(
+              r, {std::make_tuple(0, 4), std::tuple{1, 6}, std::tuple(2, 8)}));
+          BlockRange br1a(
+              r, {std::make_tuple(0, 4), std::tuple{1, 6}, std::tuple(2, 8)});
+          BOOST_CHECK_EQUAL(br1a, bref);
 
           // using zipped ranges of bounds (using Boost.Range)
           // need to #include <boost/range/combine.hpp>
