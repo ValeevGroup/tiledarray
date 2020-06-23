@@ -42,9 +42,10 @@ class Range {
   typedef Range Range_;                ///< This object type
   typedef TA_1INDEX_TYPE index1_type;  ///< 1-index type, to conform Tensor
                                        ///< Working Group spec
-  typedef container::svector<index1_type> index;  ///< Coordinate index type
-  typedef index index_type;  ///< Coordinate index type, to conform Tensor
+  typedef container::svector<index1_type>
+      index_type;            ///< Coordinate index type, to conform Tensor
                              ///< Working Group spec
+  typedef index_type index;  ///< Coordinate index type (decprecated)
   typedef detail::SizeArray<const index1_type>
       index_view_type;  ///< Non-owning variant of index_type
   typedef index_view_type
@@ -1144,7 +1145,7 @@ class Range {
   /// \throw TiledArray::Exception When the rank of i is not equal to
   /// the rank of this range
   /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
-  void increment(index& i) const {
+  void increment(index_type& i) const {
     TA_ASSERT(includes(i));
 
     const auto* MADNESS_RESTRICT const lower = data_;
@@ -1173,7 +1174,7 @@ class Range {
   /// \throw TiledArray::Exception When the rank of i is not equal to
   /// the rank of this range
   /// \throw TiledArray::Exception When \c i or \c i+n is outside this range
-  void advance(index& i, std::ptrdiff_t n) const {
+  void advance(index_type& i, std::ptrdiff_t n) const {
     TA_ASSERT(includes(i));
     const auto o = ordinal(i) + n;
     TA_ASSERT(includes(o));
@@ -1189,7 +1190,8 @@ class Range {
   /// is not equal to the rank of this range
   /// \throw TiledArray::Exception When \c first or \c last is outside this
   /// range
-  std::ptrdiff_t distance_to(const index& first, const index& last) const {
+  std::ptrdiff_t distance_to(const index_type& first,
+                             const index_type& last) const {
     TA_ASSERT(includes(first));
     TA_ASSERT(includes(last));
     return ordinal(last) - ordinal(first);

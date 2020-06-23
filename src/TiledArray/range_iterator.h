@@ -147,7 +147,8 @@ class RangeIterator {
 
  private:
   const Container* container_;  ///< The container that the iterator references
-  typename Container::index current_;  ///< The current value of the iterator
+  typename Container::index_type
+      current_;  ///< The current value of the iterator
 
   template <typename U, typename C>
   friend bool operator==(const RangeIterator<U, C>& left_it,
