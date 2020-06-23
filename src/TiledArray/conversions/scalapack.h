@@ -70,10 +70,10 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
     const auto n = dims_.second;
 
     // Loop over 2D BC compatible blocks
-    long i_extent, j_extent;
-    for (auto i = lo[0], i_t = 0l; i < up[0]; i += i_extent, i_t += i_extent)
-      for (auto j = lo[1], j_t = 0l; j < up[1];
-           j += j_extent, j_t += j_extent) {
+    long i_extent, j_extent, i_t = 0;
+    for (auto i = lo[0]; i < up[0]; i += i_extent, i_t += i_extent) {
+      long j_t = 0;
+      for (auto j = lo[1]; j < up[1]; j += j_extent, j_t += j_extent) {
         // Determine indices of start of BC owning block
         const auto i_block_begin = (i / mb) * mb;
         const auto j_block_begin = (j / nb) * nb;
@@ -107,7 +107,8 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
                              subblock);
         }
 
-      }  // for (ij)
+      }  // for (j)
+    }    // for (i)
 
   }  // put_tile
 

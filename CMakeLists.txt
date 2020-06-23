@@ -48,7 +48,7 @@ enable_language(CXX)
 set(TILEDARRAY_MAJOR_VERSION 1)
 set(TILEDARRAY_MINOR_VERSION 0)
 set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_PRERELEASE_ID alpha.2)
+set(TILEDARRAY_PRERELEASE_ID alpha.3)
 
 set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}")
 if (TILEDARRAY_PRERELEASE_ID)
@@ -127,6 +127,9 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
 endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
+
+option(TA_SIGNED_1INDEX_TYPE "Enables the use of signed 1-index coordinate type (OFF in 1.0.0-alpha.2 and older)" ON)
+add_feature_info(SIGNED_1INDEX_TYPE TA_SIGNED_1INDEX_TYPE "Use of signed 1-index coordinate type in TiledArray")
 
 option(TA_TRACE_TASKS "Enable debug tracing of MADNESS tasks in (some components of) TiledArray" OFF)
 add_feature_info(TASK_TRACE_DEBUG TA_TRACE_TASKS "Debug tracing of MADNESS tasks in (some components of) TiledArray")

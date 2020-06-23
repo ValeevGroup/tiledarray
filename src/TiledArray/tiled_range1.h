@@ -52,7 +52,7 @@ class TiledRange1 {
   struct Enabler {};
 
  public:
-  typedef std::intmax_t index1_type;
+  typedef TA_1INDEX_TYPE index1_type;
   typedef std::pair<index1_type, index1_type> range_type;
   typedef std::vector<range_type>::const_iterator const_iterator;
 

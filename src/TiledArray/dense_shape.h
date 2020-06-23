@@ -26,7 +26,9 @@
 #ifndef TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 #define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/type_traits.h>
+#include <cstdint>
 
 namespace madness {
 class World;
@@ -53,7 +55,7 @@ using madness::World;
 /// will optimize branches that use these checks.
 class DenseShape {
  public:
-  using index1_type = std::intmax_t;
+  using index1_type = TA_1INDEX_TYPE;
 
   // There is no data in DenseShape so the compiler generated constructors,
   // assignment operator, and destructor are OK.

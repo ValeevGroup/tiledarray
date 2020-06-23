@@ -144,6 +144,14 @@
 
 #endif
 
+/* Defines the 1-index type used by TiledArray */
+#cmakedefine TA_SIGNED_1INDEX_TYPE 1
+#if defined(TA_SIGNED_1INDEX_TYPE)
+# define TA_1INDEX_TYPE std::int_fast64_t
+#else
+# define TA_1INDEX_TYPE std::size_t
+#endif
+
 /* Enables tracing MADNESS tasks in TiledArray */
 #cmakedefine TILEDARRAY_ENABLE_TASK_DEBUG_TRACE 1
 

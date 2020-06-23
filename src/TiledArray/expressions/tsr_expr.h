@@ -88,7 +88,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
       typename ExprTrait<TsrExpr_>::array_type array_type;  ///< The array type
   typedef typename ExprTrait<TsrExpr_>::engine_type
       engine_type;  ///< Expression engine type
-  using index1_type = std::intmax_t;
+  using index1_type = TA_1INDEX_TYPE;
 
  private:
   array_type& array_;  ///< The array that this expression
@@ -315,7 +315,7 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
       typename ExprTrait<TsrExpr_>::array_type array_type;  ///< The array type
   typedef typename ExprTrait<TsrExpr_>::engine_type
       engine_type;  ///< Expression engine type
-  using index1_type = std::intmax_t;
+  using index1_type = TA_1INDEX_TYPE;
 
  private:
   const array_type& array_;  ///< The array that this expression

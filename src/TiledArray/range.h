@@ -40,9 +40,9 @@ namespace TiledArray {
 /// TODO add Range support for negative indices
 class Range {
  public:
-  typedef Range Range_;               ///< This object type
-  typedef std::intmax_t index1_type;  ///< 1-index type, to conform Tensor
-                                      ///< Working Group spec
+  typedef Range Range_;                ///< This object type
+  typedef TA_1INDEX_TYPE index1_type;  ///< 1-index type, to conform Tensor
+                                       ///< Working Group spec
   typedef container::svector<index1_type> index;  ///< Coordinate index type
   typedef index index_type;  ///< Coordinate index type, to conform Tensor
                              ///< Working Group spec
@@ -59,7 +59,6 @@ class Range {
   friend class detail::RangeIterator<index1_type, Range_>;
 
   static_assert(detail::is_range_v<index_type>);  // index is a Range
-  static_assert(std::is_signed_v<index1_type>);   // 1-indices are signed
 
  protected:
   index1_type* data_ = nullptr;

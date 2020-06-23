@@ -75,7 +75,7 @@ class SparseShape {
  public:
   typedef SparseShape<T> SparseShape_;  ///< This object type
   typedef T value_type;                 ///< The norm value type
-  using index1_type = std::intmax_t;
+  using index1_type = TA_1INDEX_TYPE;
   static_assert(TiledArray::detail::is_scalar_v<T>,
                 "SparseShape<T> only supports scalar numeric types for T");
   typedef typename Tensor<value_type>::size_type size_type;  ///< Size type
