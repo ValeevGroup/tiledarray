@@ -32,10 +32,14 @@
 
 namespace TiledArray::detail {
 
-inline std::string dummy_annotation(unsigned int ndim) {
+inline std::string dummy_annotation(unsigned int n_outer_dim,
+                                    unsigned int n_inner_dim = 0) {
   std::ostringstream oss;
-  if (ndim > 0) oss << "i0";
-  for (unsigned int d = 1; d < ndim; ++d) oss << ",i" << d;
+  if (n_outer_dim > 0) oss << "i0";
+  for (unsigned int d = 1; d < n_outer_dim; ++d) oss << ",i" << d;
+  if(n_inner_dim == 0) return oss.str();
+  oss << ";i" << n_outer_dim;
+  for (unsigned int d = 1; d < n_inner_dim; ++d) oss << ",i" << d+ n_outer_dim;
   return oss.str();
 }
 
