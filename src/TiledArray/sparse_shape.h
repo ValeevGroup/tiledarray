@@ -322,13 +322,16 @@ class SparseShape {
   ///         where \c index is a directly-addressable sequence indices.
   /// \param tile_norms The Frobenius norm of tiles
   /// \param trange The tiled range of the tensor
+  /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
+  /// are already scaled
   template <typename SparseNormSequence,
             typename = std::enable_if_t<
                 TiledArray::detail::has_member_function_begin_anyreturn<
                     std::decay_t<SparseNormSequence>>::value &&
                 TiledArray::detail::has_member_function_end_anyreturn<
                     std::decay_t<SparseNormSequence>>::value>>
-  SparseShape(const SparseNormSequence& tile_norms, const TiledRange& trange)
+  SparseShape(const SparseNormSequence& tile_norms, const TiledRange& trange,
+              bool do_not_scale = false)
       : tile_norms_(trange.tiles_range(), value_type(0)),
         size_vectors_(initialize_size_vectors(trange)),
         zero_tile_count_(trange.tiles_range().volume()) {
@@ -340,7 +343,9 @@ class SparseShape {
           tile_volume *= size_vectors_.get()[d].at(pair_idx_norm.first[d]);
         return tile_volume;
       };
-      auto norm_per_element = pair_idx_norm.second / compute_tile_volume();
+      auto norm_per_element =
+          do_not_scale ? pair_idx_norm.second
+                       : (pair_idx_norm.second / compute_tile_volume());
       if (norm_per_element >= threshold()) {
         tile_norms_[pair_idx_norm.first] = norm_per_element;
         --zero_tile_count_;
