@@ -726,13 +726,25 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Tile range accessor
 
   /// \return A const reference to the range object for the array tiles
+  /// \deprecated use DistArray::tiles_range()
+  // TODO: uncomment [[deprecated("use DistArray::tiles_range()")]]
   const range_type& range() const {
     check_pimpl();
     return pimpl_->tiles_range();
   }
 
+  /// Tile range accessor
+
+  /// \return A const reference to the range object for the array tiles
+  const range_type& tiles_range() const {
+    check_pimpl();
+    return pimpl_->tiles_range();
+  }
+
   /// \deprecated use DistArray::elements_range()
-  [[deprecated]] const typename trange_type::range_type& elements() const {
+  [[deprecated("use DistArray::elements_range()")]] const typename trange_type::
+      range_type&
+      elements() const {
     return elements_range();
   }
 
