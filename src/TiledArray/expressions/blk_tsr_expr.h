@@ -127,6 +127,7 @@ class BlkTsrExprBase : public Expr<Derived> {
     using std::size;
     if (size(lower_bound_) != rank) {
       if (TiledArray::get_default_world().rank() == 0) {
+        using TiledArray::operator<<;
         TA_USER_ERROR_MESSAGE(
             "The size lower bound of the block is not equal to rank of "
             "the array: "
@@ -165,6 +166,7 @@ class BlkTsrExprBase : public Expr<Derived> {
                    [](std::size_t l, std::size_t r) { return l <= r; });
     if (!(lower_bound_check && upper_bound_check)) {
       if (TiledArray::get_default_world().rank() == 0) {
+        using TiledArray::operator<<;
         TA_USER_ERROR_MESSAGE(
             "The block range is not a sub-block of the array range: "
             << "\n    array range = " << array_.trange().tiles_range()

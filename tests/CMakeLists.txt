@@ -104,6 +104,7 @@ set(ta_test_src_files  ta_test.cpp
     contraction_helpers.cpp
     s_t_t_contract_.cpp
     t_t_t_contract_.cpp
+    t_s_t_contract_.cpp
     t_tot_tot_contract_.cpp
     tot_tot_tot_contract_.cpp
     einsum.cpp
