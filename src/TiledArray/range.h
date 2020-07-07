@@ -40,18 +40,17 @@ namespace TiledArray {
 class Range {
  public:
   typedef Range Range_;                ///< This object type
-  typedef TA_1INDEX_TYPE index1_type;  ///< 1-index type, to conform Tensor
-                                       ///< Working Group spec
+  typedef TA_1INDEX_TYPE index1_type;  ///< 1-index type, to conform to
+                                       ///< Tensor Working Group (TWG) spec
   typedef container::svector<index1_type>
-      index_type;            ///< Coordinate index type, to conform Tensor
-                             ///< Working Group spec
+      index_type;            ///< Coordinate index type, to conform to
+                             ///< TWG spec
   typedef index_type index;  ///< Coordinate index type (decprecated)
   typedef detail::SizeArray<const index1_type>
       index_view_type;  ///< Non-owning variant of index_type
   typedef index_view_type
-      extent_type;  ///< Range extent type, to conform Tensor Working Group spec
-  typedef std::size_t
-      ordinal_type;  ///< Ordinal type, to conform Tensor Working Group spec
+      extent_type;  ///< Range extent type, to conform to TWG spec
+  typedef std::size_t ordinal_type;  ///< Ordinal type, to conform to TWG spec
   typedef std::make_signed_t<ordinal_type> distance_type;  ///< Distance type
   typedef ordinal_type size_type;  ///< Size type (deprecated)
   typedef detail::RangeIterator<index1_type, Range_>
@@ -769,7 +768,7 @@ class Range {
   /// \throw nothing
   ordinal_type volume() const { return volume_; }
 
-  /// alias to volume() to conform to the Tensor Working Group specification
+  /// alias to volume() to conform to the TWG specification
   /// \return The total number of elements in the range.
   /// \throw nothing
   ordinal_type area() const { return volume_; }
