@@ -42,9 +42,9 @@ struct BlockRangeFixture {
   static const Range r;
 };  // BlockRangeFixture
 
-const Range BlockRangeFixture::r0{std::array<int, 3>{{5, 11, 8}}};
-const Range BlockRangeFixture::r{std::array<int, 3>{{0, 1, 2}},
-                                 std::array<int, 3>{{5, 11, 8}}};
+const Range BlockRangeFixture::r0(std::array<int, 3>{{5, 11, 8}});
+const Range BlockRangeFixture::r(std::array<int, 3>{{0, 1, 2}},
+                                 std::array<int, 3>{{5, 11, 8}});
 
 BOOST_FIXTURE_TEST_SUITE(block_range_suite, BlockRangeFixture)
 
