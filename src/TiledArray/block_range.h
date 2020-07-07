@@ -264,8 +264,10 @@ class BlockRange : public Range {
              std::enable_if_t<detail::is_gpair_v<GPair>>* = nullptr)
       : Range() {
 #ifndef NDEBUG
-    for (auto&& bound_d : bounds) {
-      TA_ASSERT(size(bound_d) == 2);
+    if constexpr (detail::is_contiguous_range_v<GPair>) {
+      for (auto&& bound_d : bounds) {
+        TA_ASSERT(size(bound_d) == 2);
+      }
     }
 #endif
     init<std::initializer_list<GPair>>(range, bounds);

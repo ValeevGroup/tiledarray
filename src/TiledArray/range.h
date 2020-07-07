@@ -487,6 +487,13 @@ class Range {
   explicit Range(const std::initializer_list<GPair>& bounds,
                  std::enable_if_t<detail::is_gpair_v<GPair>>* = nullptr) {
     using std::size;
+#ifndef NDEBUG
+    if constexpr (detail::is_contiguous_range_v<GPair>) {
+      for (auto&& bound_d : bounds) {
+        TA_ASSERT(size(bound_d) == 2);
+      }
+    }
+#endif
     const auto n = size(bounds);
     if (n) {
       // Initialize array memory
