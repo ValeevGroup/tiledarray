@@ -102,11 +102,11 @@ namespace einsum {
     return (*std::get<0>(term))(index);
   }
 
-  template<size_t ... Idx>
+  template<class Array, size_t ... Idx>
   auto evaluate(
-    std::tuple< TArray<double>*, index_tuple > result,
-    std::vector< std::tuple< const TArray<double>*, index_tuple> > terms,
-    std::integer_sequence<size_t,Idx...> = {})
+    std::tuple< Array*, index_tuple > result,
+    std::vector< std::tuple< const Array*, index_tuple> > terms,
+    std::integer_sequence<size_t,Idx...>)
   {
     constexpr size_t N = sizeof...(Idx);
     if (N == terms.size()) {
@@ -120,14 +120,16 @@ namespace einsum {
     );
   }
 
+  template<class Array>
   void evaluate(
-    std::tuple< TArray<double>*, index_tuple > result,
-    std::vector< std::tuple< const TArray<double>*, index_tuple> > terms)
+    std::tuple< Array*, index_tuple > result,
+    std::vector< std::tuple< const Array*, index_tuple> > terms)
   {
-    evaluate(result, terms, std::integer_sequence<size_t,0>{});
+    evaluate<Array>(result, terms, std::integer_sequence<size_t,0>{});
   }
 
-  void evaluate(std::string expr, std::vector<TArray<double>*> args) {
+  template<class Array>
+  void evaluate(std::string expr, std::vector<Array*> args) {
 
     auto expression = parse(expr);
 
@@ -137,27 +139,33 @@ namespace einsum {
       throw std::domain_error("einsum: number of args does not match expression");
     }
 
-    std::vector< std::tuple<const TArray<double>*, index_tuple> > terms;
+    std::vector< std::tuple<const Array*, index_tuple> > terms;
     for (size_t i = 0; i < n-1; ++i) {
       terms.emplace_back(args[i], expression.terms.at(i));
     }
 
-    std::tuple<TArray<double>*, index_tuple> result = { args[n-1], expression.result };
+    std::tuple<Array*, index_tuple> result = { args[n-1], expression.result };
 
-    evaluate(result, terms);
+    evaluate<Array>(result, terms);
 
   }
 
-  void einsum(std::string expr, py::args args) {
-    std::vector<TArray<double>*> argv;
+  template<class Array>
+  void einsum(std::string expr, Array* a0, py::args args) {
+    std::vector<Array*> argv{a0};
     for (auto o : args) {
-      argv.push_back(py::cast<TArray<double>*>(o));
+      auto *ptr = py::cast<Array*>(o);
+      if (!ptr) {
+        throw std::runtime_error("einsum: tensor arguments must of same type");
+      }
+      argv.push_back(ptr);
     }
-    evaluate(expr, argv);
+    evaluate<Array>(expr, argv);
   }
 
   void __init__(py::module m) {
-    m.def("einsum", &einsum::einsum);
+    m.def("einsum", &einsum::einsum< TArray<double> >);
+    m.def("einsum", &einsum::einsum< TSpArray<double> >);
   }
 
 }
