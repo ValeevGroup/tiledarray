@@ -43,13 +43,13 @@ class Range {
   typedef Range Range_;                         ///< This object type
   typedef std::size_t size_type;                ///< Size type
   typedef container::svector<size_type> index;  ///< Coordinate index type
-  typedef index index_type;  ///< Coordinate index type, to conform Tensor
-                             ///< Working Group spec
+  typedef index index_type;  ///< Coordinate index type, to conform to
+                             ///< Tensor Working Group (TWG) spec
   typedef detail::SizeArray<const size_type> size_array;  ///< Size array type
   typedef size_array
-      extent_type;  ///< Range extent type, to conform Tensor Working Group spec
-  typedef std::size_t
-      ordinal_type;  ///< Ordinal type, to conform Tensor Working Group spec
+      extent_type;                ///< Range extent type, to conform to TWG spec
+  typedef size_type index1_type;  ///< 1-index type, to conform TWG  spec
+  typedef std::size_t ordinal_type;  ///< Ordinal type, to conform TWG spec
   typedef detail::RangeIterator<size_type, Range_>
       const_iterator;  ///< Coordinate iterator
   friend class detail::RangeIterator<size_type, Range_>;
@@ -671,7 +671,7 @@ class Range {
   /// \throw nothing
   ordinal_type volume() const { return volume_; }
 
-  /// alias to volume() to conform to the Tensor Working Group specification
+  /// alias to volume() to conform to the TWG specification
   /// \return The total number of elements in the range.
   /// \throw nothing
   ordinal_type area() const { return volume_; }

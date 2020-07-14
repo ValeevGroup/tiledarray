@@ -53,9 +53,9 @@ if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
     message(FATAL_ERROR "Found MADNESS, but it is not recent enough; either provide MADNESS with revision ${TA_TRACKED_MADNESS_TAG} or let TiledArray built it")
   endif(MADNESS_REVISION_LINE)
 
-  if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
-    message(WARNING "To build shared libraries safely should build MADworld (and other prerequisites) as static; but MADworld-static target is not found")
-  endif(BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
+  if ((NOT TA_ASSUMES_ASLR_DISABLED AND MADNESS_ASSUMES_ASLR_DISABLED) OR (TA_ASSUMES_ASLR_DISABLED AND NOT MADNESS_ASSUMES_ASLR_DISABLED))
+    message(FATAL_ERROR "Found MADNESS configured with MADNESS_ASSUMES_ASLR_DISABLED=${MADNESS_ASSUMES_ASLR_DISABLED} but TA is configured with TA_ASSUMES_ASLR_DISABLED=${TA_ASSUMES_ASLR_DISABLED}; MADNESS_ASSUMES_ASLR_DISABLED and TA_ASSUMES_ASLR_DISABLED should be the same")
+  endif()
 
   cmake_push_check_state()
 
@@ -305,7 +305,9 @@ else()
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL} ${MADNESS_EXTRA_CXX_FLAGS}")
 
   set(MADNESS_CMAKE_ARGS       -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+          -DMADNESS_ASSUMES_ASLR_DISABLED=${TA_ASSUMES_ASLR_DISABLED}
           -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+          -DCMAKE_POSITION_INDEPENDENT_CODE=${CMAKE_POSITION_INDEPENDENT_CODE}
           -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
           -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
           "-DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}"
@@ -349,11 +351,24 @@ else()
           ${MADNESS_CMAKE_EXTRA_ARGS})
 
   if (CMAKE_TOOLCHAIN_FILE)
+    if (IS_ABSOLUTE CMAKE_TOOLCHAIN_FILE)
+      set(absolute_toolchain_file_path "${CMAKE_TOOLCHAIN_FILE}")
+    else(IS_ABSOLUTE CMAKE_TOOLCHAIN_FILE)
+      # try relative to (TA) project source dir first, then to binary dir
+      get_filename_component(absolute_toolchain_file_path "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE
+          BASE_DIR "${PROJECT_SOURCE_DIR}")
+      if (NOT absolute_toolchain_file_path OR NOT EXISTS "${absolute_toolchain_file_path}")
+        get_filename_component(absolute_toolchain_file_path "${CMAKE_TOOLCHAIN_FILE}" ABSOLUTE
+            BASE_DIR "${PROJECT_BINARY_DIR}")
+      endif()
+      # better give up, if cannot resolve, then end up with MADNESS built with a different toolchain
+      if (NOT absolute_toolchain_file_path OR NOT EXISTS "${absolute_toolchain_file_path}")
+        message(FATAL_ERROR "could not resolve the absolute path to the toolchain file: CMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}; specify the CMAKE_TOOLCHAIN_FILE as the absolute path to work around")
+      endif()
+    endif(IS_ABSOLUTE CMAKE_TOOLCHAIN_FILE)
     set(MADNESS_CMAKE_ARGS  "${MADNESS_CMAKE_ARGS}"
-        "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
+        "-DCMAKE_TOOLCHAIN_FILE=${absolute_toolchain_file_path}")
   endif(CMAKE_TOOLCHAIN_FILE)
-
-        #  string(REPLACE "\"" "\\\"" MADNESS_CMAKE_ARGS "${__MADNESS_CMAKE_ARGS}")
 
   set(error_code 1)
   message (STATUS "** Configuring MADNESS")
@@ -378,21 +393,17 @@ else()
   if (NOT TARGET MADworld)
     message(FATAL_ERROR "Did not receive target MADworld")
   endif()
-  if (BUILD_SHARED_LIBS AND NOT TARGET MADworld-static)
-    message(FATAL_ERROR "Did not receive target MADworld-static")
-  endif()
   set(TILEDARRAY_DOWNLOADED_MADNESS ON CACHE BOOL "Whether TA downloaded MADNESS")
   mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
 
   # TiledArray only needs MADworld library compiled to be ...
   # as long as you mark dependence on it correcty its target properties
   # will be used correctly (header locations, etc.)
+  set(MADNESS_WORLD_LIBRARY MADworld)
   if (BUILD_SHARED_LIBS)
-    set(MADNESS_WORLD_LIBRARY MADworld-static)
     set(MADNESS_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
     set(MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX ".88-dev")
   else(BUILD_SHARED_LIBS)
-    set(MADNESS_WORLD_LIBRARY MADworld)
     set(MADNESS_DEFAULT_LIBRARY_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
     set(MADNESS_EL_DEFAULT_LIBRARY_ABI_SUFFIX "")
   endif(BUILD_SHARED_LIBS)
