@@ -352,8 +352,8 @@ auto tot_t_tot_contract_(const VariableList& out_vars,
   const auto rhs_ovars = rhs_vars.outer_vars();
   const auto rhs_ivars = rhs_vars.inner_vars();
 
-  //We assume lhs is either being contracted with outer or the inner, but not
-  //both
+  //We assume lhs is either being contracted with the outer indices (in general
+  //it won't work with the inner indices since the size needs to change)
 
   // We assume there's no operation going across the outer and inner tensors
   // (i.e., the set of outer annotations must be disjoint from the inner)
@@ -378,7 +378,7 @@ auto tot_t_tot_contract_(const VariableList& out_vars,
 
   auto orange =
       range_from_annotation(out_ovars, lhs_ovars, rhs_ovars, lhs, rhs);
-  using tot_type = std::decay_t<LHSType>;
+  using tot_type = std::decay_t<RHSType>;
   typename tot_type::value_type default_tile;
   tot_type rv(orange, default_tile);
 
@@ -390,7 +390,7 @@ auto tot_t_tot_contract_(const VariableList& out_vars,
       const auto& inner_lhs = lhs(lhs_idx(free_idx, empty));
       const auto& inner_rhs = rhs(rhs_idx(free_idx, empty));
       const auto elem =
-          t_t_t_contract_(out_ivars, lhs_ivars, rhs_ivars, inner_lhs, inner_rhs);
+          t_s_t_contract_(out_ivars, lhs_ivars, rhs_ivars, inner_lhs, inner_rhs);
       if (inner_out != default_tile) {
         inner_out += elem;
       } else {
@@ -406,7 +406,7 @@ auto tot_t_tot_contract_(const VariableList& out_vars,
         const auto& inner_lhs = lhs(lhs_idx(free_idx, bound_idx));
         const auto& inner_rhs = rhs(rhs_idx(free_idx, bound_idx));
         const auto elem =
-            t_t_t_contract_(out_ivars, lhs_ivars, rhs_ivars, inner_lhs, inner_rhs);
+            t_s_t_contract_(out_ivars, lhs_ivars, rhs_ivars, inner_lhs, inner_rhs);
         if (inner_out != default_tile) {
           inner_out += elem;
         } else {
@@ -534,9 +534,11 @@ void einsum(TsrExpr<ResultType, true> out,
   const auto brange =
       trange_from_annotation(bound_vars, lhs_ovars, rhs_ovars, ltensor, rtensor);
 
-  ResultType rv(ltensor.world(), orange);
-  for(auto itr = rv.begin(); itr != rv.end(); ++itr){
-    const auto oidx = itr.index();
+
+  auto l = [=](auto& tile, const TA::Range& r){
+
+    const auto oidx =
+        orange.tiles_range().idx(orange.element_to_tile(r.lobound()));
     auto bitr = brange.tiles_range().begin();
     const auto eitr = brange.tiles_range().end();
     do{
@@ -544,25 +546,38 @@ void einsum(TsrExpr<ResultType, true> out,
       decltype(oidx) bidx = have_bound ? *bitr : oidx;
       auto lidx = make_index(out_ovars, bound_vars, lhs_ovars, oidx, bidx);
       auto ridx = make_index(out_ovars, bound_vars, rhs_ovars, oidx, bidx);
-      const auto& ltile = ltensor.find(lidx).get();
-      const auto& rtile = rtensor.find(ridx).get();
-      if constexpr (out_is_tot && lhs_is_tot && rhs_is_tot) {
-        *itr =
-            kernels::tot_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+      if(!ltensor.shape().is_zero(lidx) && !rtensor.shape().is_zero(ridx)) {
+        const auto& ltile = ltensor.find(lidx).get();
+        const auto& rtile = rtensor.find(ridx).get();
+        if constexpr (out_is_tot && lhs_is_tot && rhs_is_tot) {
+          if(tile.empty())
+            tile = kernels::tot_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+          else
+            tile +=
+              kernels::tot_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+        } else if constexpr (!out_is_tot && lhs_is_tot && rhs_is_tot) {
+          if(tile.empty())
+            tile = kernels::t_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+          else
+            tile +=
+              kernels::t_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+        } else if constexpr(out_is_tot && !lhs_is_tot && rhs_is_tot){
+          if(tile.empty())
+            tile = kernels::tot_t_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+          else
+            tile += kernels::tot_t_tot_contract_(ovars, lvars, rvars, ltile, rtile);
+        } else {
+          TA_ASSERT(false);  // Your kernel isn't supported
+        }
       }
-      else if constexpr (!out_is_tot && lhs_is_tot && rhs_is_tot){
-        *itr =
-            kernels::t_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
-      }
-      else{
-        TA_ASSERT(false); // Your kernel isn't supported
-      }
-
       if(have_bound) ++bitr;
-    }while(bitr != brange.tiles_range().end());
+    } while(bitr != brange.tiles_range().end());
+    return !tile.empty() ? tile.norm() : 0.0;
+  };
 
-  }
+  auto rv = make_array<ResultType>(ltensor.world(), orange, l);
   out.array() = rv;
+  ltensor.world().gop.fence();
 }
 
 } // namespace TiledArray::expressions
