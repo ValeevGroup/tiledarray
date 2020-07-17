@@ -337,7 +337,7 @@ auto t_tot_tot_contract_(const VariableList& free_vars,
   return rv;
 }
 
-// Contract two ToTs to a ToT
+// Contract a tensor and a ToTs to a ToT
 template <typename LHSType, typename RHSType>
 auto tot_t_tot_contract_(const VariableList& out_vars,
                          const VariableList& lhs_vars,
@@ -352,8 +352,36 @@ auto tot_t_tot_contract_(const VariableList& out_vars,
   const auto rhs_ovars = rhs_vars.outer_vars();
   const auto rhs_ivars = rhs_vars.inner_vars();
 
-  //We assume lhs is either being contracted with the outer indices (in general
-  //it won't work with the inner indices since the size needs to change)
+  //We assume lhs is either being contracted with the outer indices or the inner
+  //indices
+  bool with_outer = common_annotations(lhs_ovars, rhs_ovars).size() != 0;
+  bool with_inner = common_annotations(lhs_ovars, rhs_ivars).size() != 0;
+  TA_ASSERT(!(with_outer && with_inner));
+
+  if(with_inner){
+    auto orange = range_from_annotation(out_ovars, lhs_ivars, rhs_ovars, lhs, rhs);
+    using tot_type = std::decay_t<RHSType>;
+    typename tot_type::value_type default_tile;
+    tot_type rv(orange, default_tile);
+    const auto bound_vars =
+        make_bound_annotation(out_ovars, lhs_ivars, rhs_ovars);
+    auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
+      return make_index(out_ovars, bound_vars, rhs_ovars, free_idx, bound_idx);
+    };
+    for (const auto& free_idx : orange) {
+      auto& inner_out = rv(free_idx);
+      std::decay_t<decltype(free_idx)> empty;
+      const auto& inner_rhs = rhs(rhs_idx(free_idx, empty));
+      const auto elem =
+          t_t_t_contract_(out_ivars, lhs_ovars, rhs_ivars, lhs, inner_rhs);
+      if (inner_out != default_tile) {
+        inner_out += elem;
+      } else {
+        rv(free_idx) = elem;
+      }
+    }
+    return rv;
+  }
 
   // We assume there's no operation going across the outer and inner tensors
   // (i.e., the set of outer annotations must be disjoint from the inner)
