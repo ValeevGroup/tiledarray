@@ -58,8 +58,10 @@
 #include <TiledArray/algebra/conjgrad.h>
 #include <TiledArray/dist_array.h>
 
+// ScaLAPACK functions
 #ifdef TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/conversions/scalapack.h>
+#include <TiledArray/conversions/block_cyclic.h>
+#include <TiledArray/math/scalapack.h>
 #endif
 
 #endif  // TILEDARRAY_H__INCLUDED

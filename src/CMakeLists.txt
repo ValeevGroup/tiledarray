@@ -68,7 +68,7 @@ TiledArray/conversions/foreach.h
 TiledArray/conversions/vector_of_arrays.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
-TiledArray/conversions/scalapack.h
+TiledArray/conversions/block_cyclic.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/conversions/retile.h
@@ -110,6 +110,9 @@ TiledArray/math/parallel_gemm.h
 TiledArray/math/partial_reduce.h
 TiledArray/math/transpose.h
 TiledArray/math/vector_op.h
+TiledArray/math/scalapack.h
+TiledArray/math/scalapack/heig.h
+TiledArray/math/scalapack/chol.h
 TiledArray/pmap/blocked_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h
