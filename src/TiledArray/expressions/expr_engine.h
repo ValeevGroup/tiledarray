@@ -74,7 +74,8 @@ class ExprEngine : private NO_DEFAULTS {
   VariableList vars_;   ///< The variable list of this expression
   bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
                         ///< tile)
-  Permutation perm_;    ///< The permutation that will be applied to the result
+  /// The permutation that will be applied to the outer tensor of tensors
+  Permutation perm_;
   trange_type trange_;  ///< The tiled range of the result tensor
   shape_type shape_;    ///< The shape of the result tensor
   std::shared_ptr<pmap_interface>
@@ -146,9 +147,11 @@ class ExprEngine : private NO_DEFAULTS {
   /// \param target_vars The target variable list for the result tensor
   void init_struct(const VariableList& target_vars) {
     if (target_vars != vars_) {
-      perm_ = derived().make_perm(target_vars);
-      trange_ = derived().make_trange(perm_);
-      shape_ = derived().make_shape(perm_);
+      auto temp_perm = derived().make_perm(target_vars);
+      const auto inner_dim = target_vars.inner_dim();
+      perm_ = Permutation(temp_perm.begin(), temp_perm.end(), inner_dim);
+      trange_ = derived().make_trange(perm_.outer_permutation());
+      shape_ = derived().make_shape(perm_.outer_permutation());
     } else {
       trange_ = derived().make_trange();
       shape_ = derived().make_shape();

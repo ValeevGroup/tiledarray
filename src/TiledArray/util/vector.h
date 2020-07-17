@@ -70,7 +70,7 @@ struct ArchiveStoreImpl<Archive, boost::container::small_vector<T, N, A>> {
 }  // namespace archive
 }  // namespace madness
 
-namespace std {
+namespace TiledArray {
 
 /// Vector output stream operator
 template <typename T, typename A>
@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
-}  // namespace std
+}  // namespace TiledArray
 
 namespace boost {
 namespace container {

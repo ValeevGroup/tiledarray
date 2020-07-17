@@ -20,13 +20,27 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 
-#include <TiledArray/math/blas.h>
-#include <TiledArray/math/gemm_helper.h>
-#include <TiledArray/tensor/complex.h>
-#include <TiledArray/tensor/kernels.h>
-#include <TiledArray/util/logger.h>
-
+#include "TiledArray/tile_interface/permute.h"
+#include "TiledArray/math/blas.h"
+#include "TiledArray/math/gemm_helper.h"
+#include "TiledArray/tensor/complex.h"
+#include "TiledArray/tensor/kernels.h"
+#include "TiledArray/tensor/trace.h"
+#include "TiledArray/tile_interface/clone.h"
+#include "TiledArray/util/logger.h"
 namespace TiledArray {
+
+// Forward declare Tensor for type traits
+template<typename T, typename A> class Tensor;
+
+namespace detail {
+
+/// Signals that we can take the trace of a Tensor<T, A> (for numeric \c T)
+template <typename T, typename A>
+struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
+
+} // namespace detail
+
 
 /// An N-dimensional tensor object
 
@@ -159,8 +173,9 @@ class Tensor {
       : pimpl_(std::make_shared<Impl>(range)) {
     const size_type n = pimpl_->range_.volume();
     pointer MADNESS_RESTRICT const data = pimpl_->data_;
+    Clone<Value, Value> cloner;
     for (size_type i = 0ul; i < n; ++i)
-      new (data + i) value_type(value.clone());
+      new (data + i) value_type(cloner(value));
   }
 
   /// Construct a tensor with a fill value
@@ -183,7 +198,7 @@ class Tensor {
       : pimpl_(std::make_shared<Impl>(range)) {
     size_type n = range.volume();
     pointer MADNESS_RESTRICT const data = pimpl_->data_;
-    for (size_type i = 0ul; i < n; ++i) data[i] = *it++;
+    for (size_type i = 0ul; i < n; ++i, ++it) data[i] = *it;
   }
 
   template <typename U>
@@ -280,8 +295,18 @@ class Tensor {
   template <typename T1, typename T2, typename Op,
             typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
   Tensor(const T1& left, const T2& right, Op&& op, const Permutation& perm)
-      : pimpl_(std::make_shared<Impl>(perm * left.range())) {
+      : pimpl_(std::make_shared<Impl>(perm.outer_permutation() * left.range())) {
     detail::tensor_init(op, perm, *this, left, right);
+    // If we actually have a ToT the inner permutation was not applied above so
+    // we do that now
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
+    if constexpr(is_tot){
+      if( perm.inner_dim() == 0) return;
+      auto inner_perm = perm.inner_permutation();
+      Permute<value_type, value_type> p;
+      for(auto& x : *this)
+        x = p(x, inner_perm);
+    }
   }
 
   Tensor_ clone() const {
@@ -581,7 +606,22 @@ class Tensor {
   /// \param perm The permutation to be applied to this tensor
   /// \return A permuted copy of this tensor
   Tensor_ permute(const Permutation& perm) const {
-    return Tensor_(*this, perm);
+    static constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
+    if constexpr (!is_tot){
+      return Tensor_(*this, perm);
+    }
+    else {
+      // If we have a ToT we need to apply the permutation in two steps. The
+      // first step is identical to the non-ToT case (permute the outer modes)
+      // the second step does the inner modes
+      auto inner_perm = perm.inner_permutation();
+      Tensor_ rv(*this, perm.outer_permutation());
+      if(inner_perm == Permutation::identity(inner_perm.dim()))
+        return rv;
+      Permute<value_type, value_type> p;
+      for(auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
+      return rv;
+    }
   }
 
   /// Shift the lower and upper bound of this tensor
@@ -637,7 +677,17 @@ class Tensor {
   template <typename Right, typename Op,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor_ binary(const Right& right, Op&& op, const Permutation& perm) const {
-    return Tensor_(*this, right, op, perm);
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
+    if(!is_tot) {
+      return Tensor_(*this, right, op, perm);
+    }
+    else{
+      // AFAIK the other branch fundamentally relies on raw pointer arithmetic,
+      // which won't work for ToTs.
+      auto temp = binary(right, std::forward<Op>(op));
+      Permute<Tensor_, Tensor_> p;
+      return p(temp, perm);
+    }
   }
 
   /// Use a binary, element wise operation to modify this tensor
@@ -1465,6 +1515,23 @@ class Tensor {
     return *this;
   }
 
+  template <typename U, typename AU, typename V,
+      typename std::enable_if<detail::is_tensor_of_tensor<
+          Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
+  Tensor_ gemm(const Tensor<U, AU>& other, const V factor,
+               const math::GemmHelper& gemm_helper) const {
+    TA_ASSERT("ToT contraction is NYI");
+    return Tensor_{};
+  }
+
+  template <typename U, typename AU, typename V, typename AV, typename W,
+      typename std::enable_if<detail::is_tensor_of_tensor<
+          Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
+  Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
+                const W factor, const math::GemmHelper& gemm_helper){
+    TA_ASSERT("ToT contraction is NYI");
+    return *this;
+  }
   // Reduction operations
 
   /// Generalized tensor trace
@@ -1473,50 +1540,9 @@ class Tensor {
   /// tensor.
   /// \return The trace of this tensor
   /// \throw TiledArray::Exception When this tensor is empty.
-  value_type trace() const {
-    TA_ASSERT(pimpl_);
-
-    // Get pointers to the range data
-    const size_type n = pimpl_->range_.rank();
-    const size_type* MADNESS_RESTRICT const lower =
-        pimpl_->range_.lobound_data();
-    const size_type* MADNESS_RESTRICT const upper =
-        pimpl_->range_.upbound_data();
-    const size_type* MADNESS_RESTRICT const stride =
-        pimpl_->range_.stride_data();
-
-    // Search for the largest lower bound and the smallest upper bound
-    size_type lower_max = 0ul,
-              upper_min = std::numeric_limits<size_type>::max();
-    for (size_type i = 0ul; i < n; ++i) {
-      const size_type lower_i = lower[i];
-      const size_type upper_i = upper[i];
-
-      lower_max = std::max(lower_max, lower_i);
-      upper_min = std::min(upper_min, upper_i);
-    }
-
-    value_type result = 0;
-
-    if (lower_max < upper_min) {
-      // Compute the first and last ordinal index
-      size_type first = 0ul, last = 0ul, trace_stride = 0ul;
-      for (size_type i = 0ul; i < n; ++i) {
-        const size_type lower_i = lower[i];
-        const size_type stride_i = stride[i];
-
-        first += (lower_max - lower_i) * stride_i;
-        last += (upper_min - lower_i) * stride_i;
-        trace_stride += stride_i;
-      }
-
-      // Compute the trace
-      const value_type* MADNESS_RESTRICT const data = pimpl_->data_;
-      for (; first < last; first += trace_stride) result += data[first];
-    }
-
-    return result;
-  }
+  template<typename TileType = Tensor_,
+           typename = detail::enable_if_trace_is_defined_t<TileType>>
+  decltype(auto) trace() const { return TiledArray::trace(*this); }
 
   /// Unary reduction operation
 
@@ -1701,8 +1727,54 @@ bool operator!=(const Tensor<T, A>& a, const Tensor<T, A>& b) {
   return !(a == b);
 }
 
-// specialize TiledArray::detail::transform for Tensor
 namespace detail {
+
+/// Implements taking the trace of a Tensor<T> (\c T is a numeric type)
+///
+/// \tparam T The type of the elements in the tensor. For this specialization
+///           to be considered must satisfy the concept of numeric type.
+/// \tparam A The type of the allocator for the tensor
+template <typename T, typename A>
+struct Trace<Tensor<T, A>, detail::enable_if_numeric_t<T>> {
+  decltype(auto) operator()(const Tensor<T>& t) const {
+    using size_type  = typename Tensor<T>::size_type;
+    using value_type = typename Tensor<T>::value_type;
+    const auto range = t.range();
+
+    // Get pointers to the range data
+    const size_type n = range.rank();
+    const size_type* MADNESS_RESTRICT const lower = range.lobound_data();
+    const size_type* MADNESS_RESTRICT const upper = range.upbound_data();
+    const size_type* MADNESS_RESTRICT const stride = range.stride_data();
+
+    // Search for the largest lower bound and the smallest upper bound
+    const size_type lower_max = *std::max_element(lower, lower + n);
+    const size_type upper_min = *std::min_element(upper, upper + n);
+
+    value_type result = 0;
+
+    if (lower_max >= upper_min) return result;  // No diagonal element in tile
+
+    // Compute the first and last ordinal index
+    size_type first = 0ul, last = 0ul, trace_stride = 0ul;
+    for (size_type i = 0ul; i < n; ++i) {
+      const size_type lower_i = lower[i];
+      const size_type stride_i = stride[i];
+
+      first += (lower_max - lower_i) * stride_i;
+      last += (upper_min - lower_i) * stride_i;
+      trace_stride += stride_i;
+    }
+
+    // Compute the trace
+    const value_type* MADNESS_RESTRICT const data = &t[first];
+    for (; first < last; first += trace_stride) result += data[first];
+
+    return result;
+  }
+};
+
+// specialize TiledArray::detail::transform for Tensor
 template <typename T, typename A>
 struct transform<Tensor<T, A>> {
   template <typename Op, typename T1>

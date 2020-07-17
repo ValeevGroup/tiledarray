@@ -45,7 +45,6 @@ class LazyArrayTile {
   typedef Op op_type;  ///< The operation that will modify this tile
   typedef typename op_type::result_type eval_type;
   typedef Tile tile_type;  ///< The input tile type
-
  private:
   mutable tile_type tile_;  ///< The input tile
   std::shared_ptr<op_type>
@@ -54,10 +53,11 @@ class LazyArrayTile {
 
   template <typename T>
   using eval_t = typename eval_trait<typename std::decay<T>::type>::type;
-
+ public:
   using conversion_result_type = decltype(
-      ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
-                                        : (*op_)(tile_)));  ///< conversion_type
+  ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
+                                    : (*op_)(tile_)));  ///< conversion_type
+
 
 #ifdef TILEDARRAY_HAS_CUDA
   // TODO need a better design on how to manage the lifetime of converted Tile
