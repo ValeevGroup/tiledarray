@@ -43,4 +43,6 @@ struct GlobalFixture {
   static const std::array<std::size_t, 20> primes;
 };
 
+#include <TiledArray/util/bug.h>
+
 #endif  // TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
