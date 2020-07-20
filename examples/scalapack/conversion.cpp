@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      auto test_ta = ref_matrix.tensor_from_matrix(trange);
+      auto test_ta = ref_matrix.tensor_from_matrix<TA::TArray<double>>(trange);
       world.gop.fence();
 
       double norm_diff = (ref_ta("i,j") - test_ta("i,j")).norm(world).get();
@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      auto test_ta = ref_matrix.tensor_from_matrix(trange);
+      auto test_ta = ref_matrix.tensor_from_matrix<TA::TArray<double>>(trange);
       world.gop.fence();
 
       double norm_diff = (ref_ta("i,j") - test_ta("i,j")).norm(world).get();
