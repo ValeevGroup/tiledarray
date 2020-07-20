@@ -457,7 +457,7 @@ BOOST_AUTO_TEST_CASE( sca_heig_generalized ) {
         return this->make_ta_reference(t, range);
       });
 
-  auto dense_iden = TA::make_array<TA::TSpArray<double> >(
+  auto dense_iden = TA::make_array<TA::TArray<double> >(
       *GlobalFixture::world, trange,
       [](TA::Tensor<double>& t, TA::Range const& range) -> double {
         t = TA::Tensor<double>(range, 0.0);
@@ -471,6 +471,7 @@ BOOST_AUTO_TEST_CASE( sca_heig_generalized ) {
 	return t.norm();
       });
 
+  GlobalFixture::world->gop.fence();
   auto [evals, evecs] = heig( ref_ta, dense_iden );
   //auto evals = heig( ref_ta );
 

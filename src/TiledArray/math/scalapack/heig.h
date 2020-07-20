@@ -124,11 +124,12 @@ auto heig( const Array& A, size_t NB = 128, TiledRange evec_trange = TiledRange(
  *  @returns A tuple containing the eigenvalues and eigenvectors of input array
  *  as std::vector and in TA format, respectively.
  */
-template <typename Array>
-auto heig( const Array& A, const Array& B, 
+template <typename ArrayA, typename ArrayB, typename EVecType = ArrayA>
+auto heig( const ArrayA& A, const ArrayB& B, 
   size_t NB = 128, TiledRange evec_trange = TiledRange() ) {
 
-  using value_type = typename Array::element_type;
+  using value_type = typename ArrayA::element_type;
+  static_assert( std::is_same_v<typename ArrayB::element_type, value_type> );
   using real_type  = scalapackpp::detail::real_t<value_type>;
 
   auto& world = A.world();
@@ -166,7 +167,7 @@ auto heig( const Array& A, const Array& B,
   if( evec_trange.rank() == 0 ) evec_trange = A.trange();
 
   world.gop.fence();
-  auto evecs_ta = block_cyclic_to_array<Array>( evecs, evec_trange );
+  auto evecs_ta = block_cyclic_to_array<EVecType>( evecs, evec_trange );
   world.gop.fence();
 
 
