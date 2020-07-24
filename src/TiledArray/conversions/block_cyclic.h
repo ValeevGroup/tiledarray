@@ -42,6 +42,7 @@
 #include <scalapackpp/util/sfinae.hpp>
 
 namespace TiledArray {
+namespace scalapack {
 
 template <typename T,
           typename = scalapackpp::detail::enable_if_scalapack_supported_t<T>>
@@ -313,6 +314,7 @@ std::remove_cv_t<Array> block_cyclic_to_array(
 
 }
 
+}  // namespace scalapack
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK

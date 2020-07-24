@@ -52,16 +52,16 @@ auto lu_solve( const ArrayA& A, const ArrayB& B, size_t NB = 128, size_t MB = 12
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
-  auto A_sca = array_to_block_cyclic( A, grid, MB, NB );
-  auto B_sca = array_to_block_cyclic( B, grid, MB, NB );
+  auto A_sca = scalapack::array_to_block_cyclic( A, grid, MB, NB );
+  auto B_sca = scalapack::array_to_block_cyclic( B, grid, MB, NB );
   world.gop.fence(); // stage ScaLAPACK execution
 
   auto [M, N]      = A_sca.dims();
   if( M != N )
-    throw std::runtime_error("A must be square for LU Solve");
+    TA_EXCEPTION("A must be square for LU Solve");
   auto [B_N, NRHS] = B_sca.dims();
   if( B_N != N )
-    throw std::runtime_error("A and B dims must agree");
+    TA_EXCEPTION("A and B dims must agree");
 
   auto [A_Mloc, A_Nloc] = A_sca.dist().get_local_dims(N, N);
   auto desc_a = A_sca.dist().descinit_noerror(N, N, A_Mloc);
@@ -74,12 +74,12 @@ auto lu_solve( const ArrayA& A, const ArrayB& B, size_t NB = 128, size_t MB = 12
   auto info = scalapackpp::pgesv( N, NRHS,
     A_sca.local_mat().data(), 1, 1, desc_a, IPIV.data(),
     B_sca.local_mat().data(), 1, 1, desc_b );
-  if (info) throw std::runtime_error("LU Solve Failed");
+  if (info) TA_EXCEPTION("LU Solve Failed");
 
   if( x_trange.rank() == 0 ) x_trange = B.trange();
 
   world.gop.fence();
-  auto X = block_cyclic_to_array<ArrayB>( B_sca, x_trange );
+  auto X = scalapack::block_cyclic_to_array<ArrayB>( B_sca, x_trange );
   world.gop.fence();
 
   return X;
@@ -100,12 +100,12 @@ auto lu_inv( const Array& A, size_t NB = 128, size_t MB = 128,
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
-  auto A_sca = array_to_block_cyclic( A, grid, MB, NB );
+  auto A_sca = scalapack::array_to_block_cyclic( A, grid, MB, NB );
   world.gop.fence(); // stage ScaLAPACK execution
 
   auto [M, N]      = A_sca.dims();
   if( M != N )
-    throw std::runtime_error("A must be square for LU Inverse");
+    TA_EXCEPTION("A must be square for LU Inverse");
 
   auto [A_Mloc, A_Nloc] = A_sca.dist().get_local_dims(N, N);
   auto desc_a = A_sca.dist().descinit_noerror(N, N, A_Mloc);
@@ -116,19 +116,19 @@ auto lu_inv( const Array& A, size_t NB = 128, size_t MB = 128,
   {
   auto info = scalapackpp::pgetrf( N, N,
     A_sca.local_mat().data(), 1, 1, desc_a, IPIV.data() );
-  if (info) throw std::runtime_error("LU Failed");
+  if (info) TA_EXCEPTION("LU Failed");
   }
 
   {
   auto info = scalapackpp::pgetri( N, 
     A_sca.local_mat().data(), 1, 1, desc_a, IPIV.data() );
-  if (info) throw std::runtime_error("LU Inverse Failed");
+  if (info) TA_EXCEPTION("LU Inverse Failed");
   }
 
   if( ainv_trange.rank() == 0 ) ainv_trange = A.trange();
 
   world.gop.fence();
-  auto Ainv = block_cyclic_to_array<Array>( A_sca, ainv_trange );
+  auto Ainv = scalapack::block_cyclic_to_array<Array>( A_sca, ainv_trange );
   world.gop.fence();
 
   return Ainv;

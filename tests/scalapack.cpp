@@ -8,7 +8,7 @@
 
 struct ScaLAPACKFixture {
   blacspp::Grid grid;
-  BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
+  scalapack::BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
   std::vector<double> htoeplitz_vector;
   std::vector<double> exact_evals;
@@ -39,7 +39,7 @@ struct ScaLAPACKFixture {
     return t.norm();
   };
 
-  inline void construct_scalapack( BlockCyclicMatrix<double>& A ) {
+  inline void construct_scalapack( scalapack::BlockCyclicMatrix<double>& A ) {
     auto [M,N] = A.dims();
     for (size_t i = 0; i < M; ++i)
     for (size_t j = 0; j < N; ++j)
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
+  auto test_ta = TA::scalapack::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -157,7 +157,7 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_all_small_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
+  auto test_ta = TA::scalapack::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE(uniform_dense_tiled_array_to_bc_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_matrix = TA::array_to_block_cyclic( ref_ta, grid, NB, NB );
+  auto test_matrix = TA::scalapack::array_to_block_cyclic( ref_ta, grid, NB, NB );
   GlobalFixture::world->gop.fence();
 
   double local_norm_diff =
@@ -229,7 +229,7 @@ BOOST_AUTO_TEST_CASE(bc_to_random_dense_tiled_array_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = TA::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
+  auto test_ta = TA::scalapack::block_cyclic_to_array<TA::TArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -260,7 +260,7 @@ BOOST_AUTO_TEST_CASE(random_dense_tiled_array_to_bc_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_matrix = TA::array_to_block_cyclic( ref_ta, grid, NB, NB );
+  auto test_matrix = TA::scalapack::array_to_block_cyclic( ref_ta, grid, NB, NB );
   GlobalFixture::world->gop.fence();
 
   double local_norm_diff =
@@ -299,7 +299,7 @@ BOOST_AUTO_TEST_CASE(bc_to_sparse_tiled_array_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = TA::block_cyclic_to_array<TA::TSpArray<double>>( ref_matrix, trange );
+  auto test_ta = TA::scalapack::block_cyclic_to_array<TA::TSpArray<double>>( ref_matrix, trange );
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -328,7 +328,7 @@ BOOST_AUTO_TEST_CASE(sparse_tiled_array_to_bc_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_matrix = TA::array_to_block_cyclic( ref_ta, grid, NB, NB );
+  auto test_matrix = TA::scalapack::array_to_block_cyclic( ref_ta, grid, NB, NB );
   GlobalFixture::world->gop.fence();
 
   double local_norm_diff =
@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {
 
 
   GlobalFixture::world->gop.fence();
-  auto test_matrix = TA::array_to_block_cyclic( ref_ta, grid, NB, NB );
+  auto test_matrix = TA::scalapack::array_to_block_cyclic( ref_ta, grid, NB, NB );
   GlobalFixture::world->gop.fence();
 
   double local_norm_diff =
