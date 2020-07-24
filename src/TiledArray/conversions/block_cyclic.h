@@ -18,13 +18,14 @@
  *  David Williams-Young
  *  Computational Research Division, Lawrence Berkeley National Laboratory
  *
- *  scalapack.h
- *  Created: 7 Feb, 2020
+ *  block_cyclic.h
+ *  Created: 7  Feb, 2020
+ *  Edited:  13 May, 2020 (DBWY)
  *
  */
 
-#ifndef TILEDARRAY_CONVERSIONS_TO_SCALAPACK_H__INCLUDED
-#define TILEDARRAY_CONVERSIONS_TO_SCALAPACK_H__INCLUDED
+#ifndef TILEDARRAY_CONVERSIONS_TO_BLOCKCYCLIC_H__INCLUDED
+#define TILEDARRAY_CONVERSIONS_TO_BLOCKCYCLIC_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
@@ -41,11 +42,12 @@
 #include <scalapackpp/util/sfinae.hpp>
 
 namespace TiledArray {
+namespace scalapack {
 
 template <typename T,
           typename = scalapackpp::detail::enable_if_scalapack_supported_t<T>>
-class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
-  using world_base_t = madness::WorldObject<ScaLAPACKMatrix<T>>;
+class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
+  using world_base_t = madness::WorldObject<BlockCyclicMatrix<T>>;
   using col_major_mat_t =
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor>;
 
@@ -101,7 +103,7 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
         } else {
           // Send the subblock to a remote rank for processing
           Tensor<T> subblock(tile.block({i, j}, {i_last, j_last}));
-          world_base_t::send(owner(i, j), &ScaLAPACKMatrix<T>::put_tile,
+          world_base_t::send(owner(i, j), &BlockCyclicMatrix<T>::put_tile,
                              subblock);
         }
 
@@ -130,7 +132,7 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
 
  public:
   /**
-   *  \brief Construct and allocate memory for a ScaLAPACK matrix.
+   *  \brief Construct and allocate memory for a BlockCyclic matrix.
    *
    *  @param[in] world MADNESS World context
    *  @param[in] grid  BLACS grid context
@@ -139,7 +141,7 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
    *  @param[in] MB    Block-cyclic row distribution factor
    *  @param[in] NB    Block-cyclic column distribution factor
    */
-  ScaLAPACKMatrix(madness::World& world, const blacspp::Grid& grid, size_t M,
+  BlockCyclicMatrix(madness::World& world, const blacspp::Grid& grid, size_t M,
                   size_t N, size_t MB, size_t NB)
       : world_base_t(world), bc_dist_(grid, MB, NB), dims_{M, N} {
     // TODO: Check if world / grid are compatible
@@ -147,22 +149,23 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
     // Determine size of local BC buffer
     auto [Mloc, Nloc] = bc_dist_.get_local_dims(M, N);
     local_mat_.resize(Mloc, Nloc);
-    // local_mat_.fill(0);
+    local_mat_.fill(0);
 
     world_base_t::process_pending();
   };
 
   /**
-   *  \brief Construct a ScaLAPACK metrix from a TArray
+   *  \brief Construct a BlockCyclic matrix from a DistArray
    *
    *  @param[in] array Array to redistribute
    *  @param[in] grid  BLACS grid context
    *  @param[in] MB    Block-cyclic row distribution factor
    *  @param[in] NB    Block-cyclic column distribution factor
    */
-  ScaLAPACKMatrix(const TArray<T>& array, const blacspp::Grid& grid, size_t MB,
-                  size_t NB)
-      : ScaLAPACKMatrix(array.world(), grid, array.trange().dim(0).extent(),
+  template <typename Tile, typename Policy>
+  BlockCyclicMatrix(const DistArray<Tile, Policy>& array,
+                  const blacspp::Grid& grid, size_t MB, size_t NB)
+      : BlockCyclicMatrix(array.world(), grid, array.trange().dim(0).extent(),
                         array.trange().dim(1).extent(), MB, NB) {
     TA_ASSERT(array.trange().rank() == 2);
 
@@ -170,15 +173,20 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
     world_base_t::process_pending();
   }
 
-  ScaLAPACKMatrix(const ScaLAPACKMatrix&) = default;
-  ScaLAPACKMatrix(ScaLAPACKMatrix&&) = default;
+  BlockCyclicMatrix(const BlockCyclicMatrix&) = default;
+  BlockCyclicMatrix(BlockCyclicMatrix&&) = default;
 
-  ScaLAPACKMatrix& operator=(const ScaLAPACKMatrix&) = default;
-  ScaLAPACKMatrix& operator=(ScaLAPACKMatrix&&) = default;
+  BlockCyclicMatrix& operator=(const BlockCyclicMatrix&) = default;
+  BlockCyclicMatrix& operator=(BlockCyclicMatrix&&) = default;
 
   const auto& dist() const { return bc_dist_; }
   const auto& dims() const { return dims_; }
   const auto& local_mat() const { return local_mat_; }
+
+
+
+  auto& dist() { return bc_dist_; }
+  auto& dims() { return dims_; }
   auto& local_mat() { return local_mat_; }
 
   inline size_t owner(size_t I, size_t J) const noexcept {
@@ -186,7 +194,8 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
                                     bc_dist_.owner_coordinate(I, J));
   }
 
-  TArray<T> tensor_from_matrix(const TiledRange& trange) {
+  template <typename Array>
+  Array tensor_from_matrix(const TiledRange& trange) const {
     auto construct_tile = [&](Tensor<T>& tile, const Range& range) {
       tile = Tensor<T>(range);
 
@@ -235,7 +244,7 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
             std::vector<size_t> lo = {i, j};
             std::vector<size_t> up = {i_last, j_last};
             madness::Future<Tensor<T>> remtile_fut = world_base_t::send(
-                owner(i, j), &ScaLAPACKMatrix<T>::extract_submatrix, lo, up);
+                owner(i, j), &BlockCyclicMatrix<T>::extract_submatrix, lo, up);
 
             tile.block(lo, up) = remtile_fut.get();
           }
@@ -244,13 +253,69 @@ class ScaLAPACKMatrix : public madness::WorldObject<ScaLAPACKMatrix<T>> {
       return tile.norm();
     };
 
-    return make_array<TArray<T>>(world_base_t::get_world(), trange,
-                                 construct_tile);
+    return make_array<Array>(world_base_t::get_world(), trange, construct_tile);
   }
 
-};  // class ScaLAPACKMatrix
+};  // class BlockCyclicMatrix
 
+
+
+
+
+
+
+
+
+
+
+/**
+ *  \brief Convert a dense DistArray to block-cyclic storage format
+ *
+ *  @tparam T Datatype of underlying tile
+ *
+ *  @param[in]  array   DistArray to be converted to block-cyclic format
+ *  @param[in]  grid    BLACS grid context for block-cyclic matrix
+ *  @param[in]  MB      Row blocking factor of resulting block-cyclic matrix
+ *  @param[in]  NB      Column blocking factor of resulting block-cyclic matrix
+ *
+ *  @returns    Block-cyclic conversion of input DistArray
+ */
+template <typename Array>
+BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type> 
+array_to_block_cyclic( 
+  const Array&         array, 
+  const blacspp::Grid& grid,
+  size_t               MB,
+  size_t               NB
+) {
+
+  return BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>( array, grid, MB, NB );
+
+}
+
+
+/**
+ *  \brief Convert a block-cyclic matrix to DistArray
+ *
+ *  @tparam Datatype of underlying tile
+ *
+ *  @param[in]  matrix  Block-cyclic matrix to convert to DistArray
+ *  @param[in]  trange  Tiled ranges for the resulting DistArray
+ *
+ *  @returns DistArray conversion of input block-cyclic matrix
+ */
+template <typename Array>
+std::remove_cv_t<Array> block_cyclic_to_array(
+  const BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>& matrix,
+  const TiledRange&                                  trange
+) {
+
+  return matrix.template tensor_from_matrix<std::remove_cv_t<Array>>( trange );
+
+}
+
+}  // namespace scalapack
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_CONVERSIONS_TO_SCALAPACK_H__INCLUDED
+#endif  // TILEDARRAY_CONVERSIONS_TO_BLOCKCYCLIC_H__INCLUDED
