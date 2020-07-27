@@ -47,6 +47,8 @@
 #endif
 #include <boost/mpl/list.hpp>
 
+#include "boost_test_print.h"
+
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
