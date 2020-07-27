@@ -46,7 +46,7 @@ namespace TiledArray {
       /// \return Processor that logically owns \c tile
       virtual size_type owner(const size_type tile) const {
         TA_ASSERT(tile < size_);
-        return (tile % size_);
+        return (tile % procs_);
       }
 
       /// Check that the tile is owned by this process
@@ -54,7 +54,7 @@ namespace TiledArray {
       /// \param tile The tile to be checked
       /// \return \c true if \c tile is owned by this process, otherwise \c false .
       virtual bool is_local(const size_type tile) const {
-        return (tile % size_ == rank_);
+        return (tile % procs_ == rank_);
       }
 
     };  // class BlockedPmap
