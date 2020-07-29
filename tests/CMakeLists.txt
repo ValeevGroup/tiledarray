@@ -56,6 +56,7 @@ set(ta_test_src_files  ta_test.cpp
     tiled_range1.cpp
     tiled_range.cpp
     blocked_pmap.cpp
+    round_robin_pmap.cpp
     hash_pmap.cpp
     cyclic_pmap.cpp
     replicated_pmap.cpp
