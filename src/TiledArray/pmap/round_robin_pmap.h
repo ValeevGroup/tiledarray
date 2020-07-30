@@ -33,9 +33,14 @@ namespace TiledArray {
       /// \param size The number of tiles to be mapped
       RoundRobinPmap(World& world, size_type size)
               : Pmap(world, size),
-                remainder_(size_ % procs_){
-        bool plus_one = ( rank_ - remainder_ >= 0);
-        this->local_size_ = (plus_one ?  size / procs_ + 1 : size_/procs_);
+                remainder_(size_ % procs_) {
+        auto num_tiles_per_proc = size / procs_;
+        if (remainder_ == 0)
+          this->local_size_ = num_tiles_per_proc;
+        else if (rank_ - remainder_ > 0)
+          this->local_size_ = (size < procs_ ? 0 : num_tiles_per_proc - 1);
+        else
+          this->local_size_ = num_tiles_per_proc + 1;
       }
 
       virtual ~RoundRobinPmap() {}
