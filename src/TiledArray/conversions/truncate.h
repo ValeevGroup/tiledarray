@@ -44,7 +44,8 @@ class SparsePolicy;
 /// \param[in,out] array The array object to be truncated
 template <typename Tile, typename Policy>
 inline std::enable_if_t<is_dense_v<Policy>, void> truncate(
-    DistArray<Tile, Policy>& array) {}
+    DistArray<Tile, Policy>& array,
+    typename Policy::shape_type::value_type = 0) {}
 
 /// Truncate a sparse Array
 
@@ -53,18 +54,30 @@ inline std::enable_if_t<is_dense_v<Policy>, void> truncate(
 /// \param[in,out] array The array object to be truncated
 template <typename Tile, typename Policy>
 inline std::enable_if_t<!is_dense_v<Policy>, void> truncate(
-    DistArray<Tile, Policy>& array) {
+    DistArray<Tile, Policy>& array,
+    typename Policy::shape_type::value_type thresh =
+        Policy::shape_type::threshold()) {
+  TA_ASSERT(thresh >= 0);
+  const typename Policy::shape_type::value_type previous_thresh =
+      Policy::shape_type::threshold();
+  const auto need_to_change_thresh = (thresh != previous_thresh);
+  if (need_to_change_thresh)
+    array.world().gop.fence(
+        [thresh] { Policy::shape_type::threshold(thresh); });
   typedef typename DistArray<Tile, Policy>::value_type value_type;
-  array = foreach (
-      array,
-      [](value_type & result_tile, const value_type& arg_tile) ->
-      typename Policy::shape_type::value_type {
-        using result_type = typename Policy::shape_type::value_type;
-        result_type arg_tile_norm;
-        norm(arg_tile, arg_tile_norm);
-        result_tile = arg_tile;  // Assume this is shallow copy
-        return arg_tile_norm;
-      });
+  array = foreach (array,
+                   [](value_type& result_tile, const value_type& arg_tile) ->
+                   typename Policy::shape_type::value_type {
+                     using result_type =
+                         typename Policy::shape_type::value_type;
+                     result_type arg_tile_norm;
+                     norm(arg_tile, arg_tile_norm);
+                     result_tile = arg_tile;  // Assume this is shallow copy
+                     return arg_tile_norm;
+                   });
+  if (need_to_change_thresh)
+    array.world().gop.fence(
+        [previous_thresh] { Policy::shape_type::threshold(previous_thresh); });
 }
 
 }  // namespace TiledArray
