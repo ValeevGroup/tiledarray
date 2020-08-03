@@ -239,14 +239,14 @@ class ContEngine : public BinaryEngine<Derived> {
     const unsigned int right_rank = right_.vars().dim();
 
     // Get non-const references to the argument variable lists.
-    std::vector<std::string>& left_vars =
-        const_cast<std::vector<std::string>&>(left_vars_.data());
+    auto& left_vars =
+        const_cast<container::svector<std::string>&>(left_vars_.data());
     left_vars.reserve(left_rank);
-    std::vector<std::string>& right_vars =
-        const_cast<std::vector<std::string>&>(right_vars_.data());
+    auto& right_vars =
+        const_cast<container::svector<std::string>&>(right_vars_.data());
     right_vars.reserve(right_rank);
-    std::vector<std::string>& result_vars =
-        const_cast<std::vector<std::string>&>(vars_.data());
+    auto& result_vars =
+        const_cast<container::svector<std::string>&>(vars_.data());
     result_vars.reserve(std::max(left_rank, right_rank));
 
     // Extract left-most result and inner variables from the left-hand argument.
@@ -412,13 +412,13 @@ class ContEngine : public BinaryEngine<Derived> {
     const unsigned int left_outer_rank = left_rank - inner_rank;
 
     // Get pointers to the argument sizes
-    const size_type* MADNESS_RESTRICT const left_tiles_size =
+    const auto* MADNESS_RESTRICT const left_tiles_size =
         left_.trange().tiles_range().extent_data();
-    const size_type* MADNESS_RESTRICT const left_element_size =
+    const auto* MADNESS_RESTRICT const left_element_size =
         left_.trange().elements_range().extent_data();
-    const size_type* MADNESS_RESTRICT const right_tiles_size =
+    const auto* MADNESS_RESTRICT const right_tiles_size =
         right_.trange().tiles_range().extent_data();
-    const size_type* MADNESS_RESTRICT const right_element_size =
+    const auto* MADNESS_RESTRICT const right_element_size =
         right_.trange().elements_range().extent_data();
 
     // Compute the fused sizes of the contraction

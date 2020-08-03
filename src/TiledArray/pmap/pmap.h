@@ -47,7 +47,7 @@ namespace TiledArray {
 /// Derived classes are responsible for distribution of tiles. The general
 /// idea of process map objects is to compute process owners with an O(1)
 /// algorithm to provide fast access to tile owner information and avoid
-/// storage of process map. A cache a list of local tiles is stored so that
+/// storage of process map. A cached list of local tiles can be stored so that
 /// algorithms that need to iterate over local tiles can do so without
 /// computing the owner of all tiles. The algorithm to generate the cached
 /// list of local tiles and the memory requirement should scale as
@@ -60,7 +60,8 @@ class Pmap {
   const size_type rank_;   ///< The rank of this process
   const size_type procs_;  ///< The number of processes
   const size_type size_;   ///< The number of tiles mapped among all processes
-  std::vector<size_type> local_;  ///< A list of local tiles
+  std::vector<size_type>
+      local_;  ///< A list of local tiles (may be empty, if not needed)
   size_type local_size_;  ///< The number of tiles mapped to this process (if
                           ///< local_ is not empty, this equals local_.size());
                           ///< if local_size_known()==false this is not used

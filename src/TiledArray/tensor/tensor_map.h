@@ -140,34 +140,38 @@ inline TensorConstMap<T, std::decay_t<Range_>, OpResult> make_const_map(
 }
 
 /// For reusing map without allocating new ranges . . . maybe.
-template <typename T, typename Range_, typename OpResult, typename Index>
+template <typename T, typename Range_, typename OpResult, typename Index1,
+          typename Index2>
 inline void remap(TensorMap<T, Range_, OpResult>& map, T* const data,
-                  const Index& lower_bound, const Index& upper_bound) {
+                  const Index1& lower_bound, const Index2& upper_bound) {
   map.range_.resize(lower_bound, upper_bound);
   map.data_ = data;
 }
 
-template <typename T, typename Range_, typename OpResult, typename Index,
+template <typename T, typename Range_, typename OpResult, typename Index1,
+          typename Index2,
           typename = std::enable_if_t<!std::is_const<T>::value>>
 inline void remap(TensorConstMap<T, Range_, OpResult>& map, T* const data,
-                  const Index& lower_bound, const Index& upper_bound) {
+                  const Index1& lower_bound, const Index2& upper_bound) {
   map.range_.resize(lower_bound, upper_bound);
   map.data_ = const_cast<const T*>(data);
 }
 
-template <typename T, typename Range_, typename OpResult>
+template <typename T, typename Range_, typename OpResult, typename Index1,
+          typename Index2>
 inline void remap(TensorMap<T, Range_, OpResult>& map, T* const data,
-                  const std::initializer_list<std::size_t>& lower_bound,
-                  const std::initializer_list<std::size_t>& upper_bound) {
+                  const std::initializer_list<Index1>& lower_bound,
+                  const std::initializer_list<Index2>& upper_bound) {
   map.range_.resize(lower_bound, upper_bound);
   map.data_ = data;
 }
 
-template <typename T, typename Range_, typename OpResult,
+template <typename T, typename Range_, typename OpResult, typename Index1,
+          typename Index2,
           typename = std::enable_if_t<!std::is_const<T>::value>>
 inline void remap(TensorConstMap<T, Range_, OpResult>& map, T* const data,
-                  const std::initializer_list<std::size_t>& lower_bound,
-                  const std::initializer_list<std::size_t>& upper_bound) {
+                  const std::initializer_list<Index1>& lower_bound,
+                  const std::initializer_list<Index2>& upper_bound) {
   map.range_.resize(lower_bound, upper_bound);
   map.data_ = const_cast<const T*>(data);
 }

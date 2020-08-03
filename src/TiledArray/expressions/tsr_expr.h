@@ -43,11 +43,11 @@ template <typename E>
 struct is_aliased : public std::true_type {};
 
 template <typename Array, bool Alias>
-struct is_aliased<TsrExpr<Array, Alias> >
+struct is_aliased<TsrExpr<Array, Alias>>
     : public std::integral_constant<bool, Alias> {};
 
 template <typename Array, bool Alias>
-struct ExprTrait<TsrExpr<Array, Alias> > {
+struct ExprTrait<TsrExpr<Array, Alias>> {
   typedef Array array_type;  ///< The \c Array type
   typedef TiledArray::detail::numeric_t<Array>
       numeric_type;  ///< Array base numeric type
@@ -58,7 +58,7 @@ struct ExprTrait<TsrExpr<Array, Alias> > {
 };
 
 template <typename Array>
-struct ExprTrait<TsrExpr<const Array, true> > {
+struct ExprTrait<TsrExpr<const Array, true>> {
   typedef Array array_type;  ///< The \c Array type
   typedef TiledArray::detail::numeric_t<Array>
       numeric_type;  ///< Array base numeric type
@@ -71,8 +71,8 @@ struct ExprTrait<TsrExpr<const Array, true> > {
 // This is here to catch errors in expression types. It should not be
 // possible to construct this type.
 template <typename Array>
-struct ExprTrait<TsrExpr<const Array, false> >;  // <----- This should never
-                                                 // happen!
+struct ExprTrait<TsrExpr<const Array, false>>;  // <----- This should never
+                                                // happen!
 
 /// Expression wrapper for array objects
 
@@ -80,7 +80,7 @@ struct ExprTrait<TsrExpr<const Array, false> >;  // <----- This should never
 /// \tparam Alias If true, the array tiles should be evaluated as
 /// temporaries before assignment; if false, can reuse the result tiles
 template <typename Array, bool Alias>
-class TsrExpr : public Expr<TsrExpr<Array, Alias> > {
+class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
  public:
   typedef TsrExpr<Array, Alias> TsrExpr_;  ///< This class type
   typedef Expr<TsrExpr_> Expr_;            ///< Base class type
@@ -88,6 +88,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias> > {
       typename ExprTrait<TsrExpr_>::array_type array_type;  ///< The array type
   typedef typename ExprTrait<TsrExpr_>::engine_type
       engine_type;  ///< Expression engine type
+  using index1_type = TA_1INDEX_TYPE;
 
  private:
   array_type& array_;  ///< The array that this expression
@@ -180,48 +181,112 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias> > {
     return TsrExpr<Array, false>(array_, vars_);
   }
 
-  /// Block expression
+  /// immutable Block expression factory
 
-  /// \tparam Index The bound index types
+  /// \tparam Index1 An integral range type
+  /// \tparam Index2 An integral range type
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
-  template <typename Index>
-  BlkTsrExpr<const Array, Alias> block(const Index& lower_bound,
-                                       const Index& upper_bound) const {
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<Index1> &&
+                TiledArray::detail::is_integral_range_v<Index2>>>
+  BlkTsrExpr<const Array, Alias> block(const Index1& lower_bound,
+                                       const Index2& upper_bound) const {
     return BlkTsrExpr<const Array, Alias>(array_, vars_, lower_bound,
                                           upper_bound);
   }
 
-  /// Block expression
+  /// immutable Block expression factory
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   BlkTsrExpr<const Array, Alias> block(
-      const std::initializer_list<std::size_t>& lower_bound,
-      const std::initializer_list<std::size_t>& upper_bound) const {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) const {
     return BlkTsrExpr<const Array, Alias>(array_, vars_, lower_bound,
                                           upper_bound);
   }
 
-  /// Block expression
+  /// immutable Block expression factory
 
-  /// \tparam Index The bound index types
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v ) \param bounds The {lower,upper} bounds of
+  /// the block
+  template <typename PairRange,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_gpair_range_v<PairRange>>>
+  BlkTsrExpr<const Array, Alias> block(const PairRange& bounds) const {
+    return BlkTsrExpr<const Array, Alias>(array_, vars_, bounds);
+  }
+
+  /// immutable Block expression factory
+
+  /// \tparam Index An integral type
+  /// \param bounds The {lower,upper} bounds of the block
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  BlkTsrExpr<const Array, Alias> block(
+      const std::initializer_list<std::initializer_list<Index>>& bounds) const {
+    return BlkTsrExpr<const Array, Alias>(array_, vars_, bounds);
+  }
+
+  /// mutable Block expression factory
+
+  /// \tparam Index1 An integral range type
+  /// \tparam Index2 An integral range type
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
-  template <typename Index>
-  BlkTsrExpr<Array, Alias> block(const Index& lower_bound,
-                                 const Index& upper_bound) {
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<Index1> &&
+                TiledArray::detail::is_integral_range_v<Index2>>>
+  BlkTsrExpr<Array, Alias> block(const Index1& lower_bound,
+                                 const Index2& upper_bound) {
     return BlkTsrExpr<Array, Alias>(array_, vars_, lower_bound, upper_bound);
   }
 
-  /// Block expression
+  /// mutable Block expression factory
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   BlkTsrExpr<Array, Alias> block(
-      const std::initializer_list<std::size_t>& lower_bound,
-      const std::initializer_list<std::size_t>& upper_bound) {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) {
     return BlkTsrExpr<Array, Alias>(array_, vars_, lower_bound, upper_bound);
+  }
+
+  /// mutable Block expression factory
+
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v ) \param bounds The {lower,upper} bounds of
+  /// the block
+  template <typename PairRange,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_gpair_range_v<PairRange>>>
+  BlkTsrExpr<Array, Alias> block(const PairRange& bounds) {
+    return BlkTsrExpr<Array, Alias>(array_, vars_, bounds);
+  }
+
+  /// mutable Block expression factory
+
+  /// \tparam Index An integral type
+  /// \param bounds The {lower,upper} bounds of the block
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  BlkTsrExpr<Array, Alias> block(
+      const std::initializer_list<std::initializer_list<Index>>& bounds) {
+    return BlkTsrExpr<Array, Alias>(array_, vars_, bounds);
   }
 
   /// Conjugated-tensor expression factor
@@ -242,7 +307,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias> > {
 
 /// \tparam A The \c TiledArray::Array type
 template <typename Array>
-class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true> > {
+class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
  public:
   typedef TsrExpr<const Array, true> TsrExpr_;  ///< This class type
   typedef Expr<TsrExpr_> Expr_;                 ///< Expression base type
@@ -250,6 +315,7 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true> > {
       typename ExprTrait<TsrExpr_>::array_type array_type;  ///< The array type
   typedef typename ExprTrait<TsrExpr_>::engine_type
       engine_type;  ///< Expression engine type
+  using index1_type = TA_1INDEX_TYPE;
 
  private:
   const array_type& array_;  ///< The array that this expression
@@ -280,27 +346,58 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true> > {
 
   /// Block expression
 
-  /// \tparam Index The bound index types
+  /// \tparam Index1 An integral range type
+  /// \tparam Index2 An integral range type
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
-  template <typename Index>
-  BlkTsrExpr<const Array, true> block(const Index& lower_bound,
-                                      const Index& upper_bound) const {
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<Index1> &&
+                TiledArray::detail::is_integral_range_v<Index2>>>
+  BlkTsrExpr<const Array, true> block(const Index1& lower_bound,
+                                      const Index2& upper_bound) const {
     return BlkTsrExpr<const Array, true>(array_, vars_, lower_bound,
                                          upper_bound);
   }
 
   /// Block expression
 
+  /// \tparam Index1 An integral type
+  /// \tparam Index2 An integral type
   /// \tparam Index The bound index types
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
-  template <typename Index>
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
   BlkTsrExpr<const Array, true> block(
-      const std::initializer_list<Index>& lower_bound,
-      const std::initializer_list<Index>& upper_bound) const {
+      const std::initializer_list<Index1>& lower_bound,
+      const std::initializer_list<Index2>& upper_bound) const {
     return BlkTsrExpr<const Array, true>(array_, vars_, lower_bound,
                                          upper_bound);
+  }
+
+  /// Block expression
+
+  /// \tparam PairRange Type representing a range of generalized pairs (see
+  /// TiledArray::detail::is_gpair_v ) \param bounds The {lower,upper} bounds of
+  /// the block
+  template <typename PairRange,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_gpair_range_v<PairRange>>>
+  BlkTsrExpr<const Array, true> block(const PairRange& bounds) const {
+    return BlkTsrExpr<const Array, true>(array_, vars_, bounds);
+  }
+
+  /// Block expression
+
+  /// \tparam Index An integral type
+  /// \param bounds The {lower,upper} bounds of the block
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  BlkTsrExpr<const Array, true> block(
+      const std::initializer_list<std::initializer_list<Index>>& bounds) const {
+    return BlkTsrExpr<const Array, true>(array_, vars_, bounds);
   }
 
   /// Conjugated-tensor expression factor

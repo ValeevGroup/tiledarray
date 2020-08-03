@@ -658,7 +658,7 @@ class Expr {
     const typename engine_type::dist_eval_type::pmap_interface::const_iterator
         end = left_dist_eval.pmap()->end();
     for (; it != end; ++it) {
-      const typename engine_type::size_type index = *it;
+      const auto index = *it;
       const bool left_not_zero = !left_dist_eval.is_zero(index);
       const bool right_not_zero = !right_dist_eval.is_zero(index);
 

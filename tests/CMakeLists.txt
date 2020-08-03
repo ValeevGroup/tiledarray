@@ -134,6 +134,11 @@ target_include_directories(${executable} PRIVATE
 # 2. must emit exceptions in asserts since some tests check for exceptions
 target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
     TA_EXCEPTION_ERROR=1 MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
+# optional dependencies
+if (TARGET range-v3::range-v3)
+  target_link_libraries(${executable} PRIVATE range-v3::range-v3)
+  target_compile_definitions(${executable} PRIVATE TILEDARRAY_HAS_RANGEV3=1)
+endif (TARGET range-v3::range-v3)
 
 # Add targets
 add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})

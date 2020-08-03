@@ -29,7 +29,7 @@
 using namespace TiledArray;
 
 struct RangeFixture {
-  typedef Range::size_array size_array;
+  typedef Range::index_view_type index_view_type;
   typedef Range::index index;
   typedef Range::size_type size_type;
 

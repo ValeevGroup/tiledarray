@@ -178,9 +178,10 @@ class Permutation {
 
   /// Construct permutation from an Array
   /// \param a The permutation array to be moved
-  template <typename Integer>
-  explicit Permutation(const std::vector<Integer>& a)
-      : Permutation(a.begin(), a.end()) {}
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
+  explicit Permutation(const Index& a)
+      : Permutation(std::cbegin(a), std::cend(a)) {}
 
   /// std::vector move constructor
 
@@ -195,8 +196,7 @@ class Permutation {
   /// \tparam Integer an integral type
   /// \param list An initializer list of integers
   template <typename Integer,
-            typename std::enable_if<std::is_integral<Integer>::value>::type* =
-                nullptr>
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   explicit Permutation(std::initializer_list<Integer> list)
       : Permutation(list.begin(), list.end()) {}
 

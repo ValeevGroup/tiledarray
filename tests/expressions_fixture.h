@@ -26,6 +26,12 @@
 #ifndef TILEDARRAY_TEST_EXPRESSIONS_FIXTURE_H
 #define TILEDARRAY_TEST_EXPRESSIONS_FIXTURE_H
 
+#include <TiledArray/util/eigen.h>
+#include <boost/range/combine.hpp>
+#ifdef TILEDARRAY_HAS_RANGEV3
+#include <range/v3/view/zip.hpp>
+#endif
+
 #include <TiledArray/config.h>
 
 #ifdef TILEDARRAY_HAS_BTAS
@@ -203,9 +209,9 @@ struct ExpressionsFixture : public TiledRangeFixture {
 
   ~ExpressionsFixture() { GlobalFixture::world->gop.fence(); }
 
-  const TiledRange trange1 = {{0, 2, 5, 10, 17, 28, 41}};
-  const TiledRange trange2 = {{0, 2, 5, 10, 17, 28, 41},
-                              {0, 3, 6, 11, 18, 29, 42}};
+  const TiledRange trange1{{0, 2, 5, 10, 17, 28, 41}};
+  const TiledRange trange2{{0, 2, 5, 10, 17, 28, 41},
+                           {0, 3, 6, 11, 18, 29, 42}};
   SparseShape<float> s_tr_1;
   SparseShape<float> s_tr_2;
   SparseShape<float> s_tr1_1;

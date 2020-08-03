@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(constructors) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors){
+BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors) {
   // Create a vector with an initializer list
   {
     detail::vector_il<double> il{1, 2, 3};
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(single_tile_initializer_list_ctors){
   }
 
   // Create a matrix with an initializer list
- {
+  {
     detail::matrix_il<double> il{{1, 2, 3}, {4, 5, 6}};
     TArray<double> a_matrix(world, il);
     for (typename TArray<double>::value_type tile : a_matrix) {
@@ -241,50 +241,40 @@ BOOST_AUTO_TEST_CASE(multi_tile_initializer_list_ctors) {
   }
 
   {
-    detail::tensor4_il<double> il{{{{1, 2, 3}, {4, 5, 6}},
-                                   {{7, 8, 9}, {10, 11, 12}}},
+    detail::tensor4_il<double> il{
+        {{{1, 2, 3}, {4, 5, 6}}, {{7, 8, 9}, {10, 11, 12}}},
 
-                                  {{{13, 14, 15} ,{16, 17, 18}},
-                                   {{19, 20, 21}, {22, 23, 24}}}};
-    TiledRange tr{{0, 1, 2},{0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
+        {{{13, 14, 15}, {16, 17, 18}}, {{19, 20, 21}, {22, 23, 24}}}};
+    TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 16);
   }
 
   {
-    detail::tensor5_il<double> il{{{{{1, 2, 3}, {4, 5, 6}},
-                                    {{7, 8, 9}, {10, 11, 12}}},
-                                   {{{13, 14, 15} ,{16, 17, 18}},
-                                    {{19, 20, 21}, {22, 23, 24}}}},
+    detail::tensor5_il<double> il{
+        {{{{1, 2, 3}, {4, 5, 6}}, {{7, 8, 9}, {10, 11, 12}}},
+         {{{13, 14, 15}, {16, 17, 18}}, {{19, 20, 21}, {22, 23, 24}}}},
 
-                                  {{{{1, 2, 3}, {4, 5, 6}},
-                                    {{7, 8, 9}, {10, 11, 12}}},
-                                   {{{13, 14, 15} ,{16, 17, 18}},
-                                    {{19, 20, 21}, {22, 23, 24}}}}};
+        {{{{1, 2, 3}, {4, 5, 6}}, {{7, 8, 9}, {10, 11, 12}}},
+         {{{13, 14, 15}, {16, 17, 18}}, {{19, 20, 21}, {22, 23, 24}}}}};
     TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 32);
   }
 
   {
-    detail::tensor6_il<double> il{{{{{{1, 2, 3}, {4, 5, 6}},
-                                     {{7, 8, 9}, {10, 11, 12}}},
-                                    {{{13, 14, 15} ,{16, 17, 18}},
-                                     {{19, 20, 21}, {22, 23, 24}}}},
-                                   {{{{1, 2, 3}, {4, 5, 6}},
-                                     {{7, 8, 9}, {10, 11, 12}}},
-                                    {{{13, 14, 15} ,{16, 17, 18}},
-                                     {{19, 20, 21}, {22, 23, 24}}}}},
+    detail::tensor6_il<double> il{
+        {{{{{1, 2, 3}, {4, 5, 6}}, {{7, 8, 9}, {10, 11, 12}}},
+          {{{13, 14, 15}, {16, 17, 18}}, {{19, 20, 21}, {22, 23, 24}}}},
+         {{{{1, 2, 3}, {4, 5, 6}}, {{7, 8, 9}, {10, 11, 12}}},
+          {{{13, 14, 15}, {16, 17, 18}}, {{19, 20, 21}, {22, 23, 24}}}}},
 
-                                  {{{{{1, 2, 3}, {4, 5, 6}},
-                                     {{7, 8, 9}, {10, 11, 12}}},
-                                    {{{13, 14, 15} ,{16, 17, 18}},
-                                     {{19, 20, 21}, {22, 23, 24}}}},
-                                   {{{{1, 2, 3}, {4, 5, 6}},
-                                     {{7, 8, 9}, {10, 11, 12}}},
-                                    {{{13, 14, 15} ,{16, 17, 18}},
-                                     {{19, 20, 21}, {22, 23, 24}}}}}};
-    TiledRange tr{{0,1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
+        {{{{{1, 2, 3}, {4, 5, 6}}, {{7, 8, 9}, {10, 11, 12}}},
+          {{{13, 14, 15}, {16, 17, 18}}, {{19, 20, 21}, {22, 23, 24}}}},
+         {{{{1, 2, 3}, {4, 5, 6}}, {{7, 8, 9}, {10, 11, 12}}},
+          {{{13, 14, 15}, {16, 17, 18}}, {{19, 20, 21}, {22, 23, 24}}}}}};
+    TiledRange tr{{0, 1, 2}, {0, 1, 2}, {0, 1, 2},
+                  {0, 1, 2}, {0, 1, 2}, {0, 1, 3}};
     TArray<double> a_tensor(world, tr, il);
     BOOST_CHECK_EQUAL(a_tensor.size(), 64);
   }
@@ -305,7 +295,7 @@ BOOST_AUTO_TEST_CASE(owner) {
   std::shared_ptr<ProcessID> group_owner(new ProcessID[world.size()],
                                          std::default_delete<ProcessID[]>());
 
-  size_type o = 0;
+  ordinal_type o = 0;
   for (ArrayN::range_type::const_iterator it = a.range().begin();
        it != a.range().end(); ++it, ++o) {
     // Check that local ownership agrees
@@ -334,7 +324,7 @@ BOOST_AUTO_TEST_CASE(owner) {
 BOOST_AUTO_TEST_CASE(is_local) {
   // Test to make sure everyone agrees who owns which tiles.
 
-  size_type o = 0;
+  ordinal_type o = 0;
   for (ArrayN::range_type::const_iterator it = a.range().begin();
        it != a.range().end(); ++it, ++o) {
     // Check that local ownership agrees
@@ -452,7 +442,7 @@ BOOST_AUTO_TEST_CASE(clone) {
                                 a.pmap()->begin(), a.pmap()->end());
 
   // Check that array tiles are equal
-  for (typename ArrayN::size_type index = 0ul; index < a.size(); ++index) {
+  for (typename ArrayN::ordinal_type index = 0ul; index < a.size(); ++index) {
     // Check that per-tile information is the same
     BOOST_CHECK_EQUAL(ca.owner(index), a.owner(index));
     BOOST_CHECK_EQUAL(ca.is_local(index), a.is_local(index));

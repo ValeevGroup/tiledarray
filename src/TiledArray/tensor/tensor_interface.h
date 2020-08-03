@@ -42,20 +42,24 @@ template <typename T, typename Range, typename OpResult>
 class TensorInterface;
 }
 
-template <typename T, typename Range_, typename OpResult, typename Index>
+template <typename T, typename Range_, typename OpResult, typename Index1,
+          typename Index2>
 void remap(detail::TensorInterface<T, Range_, OpResult>&, T* const,
-           const Index&, const Index&);
-template <typename T, typename Range_, typename OpResult, typename Index>
+           const Index1&, const Index2&);
+template <typename T, typename Range_, typename OpResult, typename Index1,
+          typename Index2>
 void remap(detail::TensorInterface<const T, Range_, OpResult>&, T* const,
-           const Index&, const Index&);
-template <typename T, typename Range_, typename OpResult>
+           const Index1&, const Index2&);
+template <typename T, typename Range_, typename OpResult, typename Index1,
+          typename Index2>
 void remap(detail::TensorInterface<T, Range_, OpResult>&, T* const,
-           const std::initializer_list<std::size_t>&,
-           const std::initializer_list<std::size_t>&);
-template <typename T, typename Range_, typename OpResult>
+           const std::initializer_list<Index1>&,
+           const std::initializer_list<Index2>&);
+template <typename T, typename Range_, typename OpResult, typename Index1,
+          typename Index2>
 void remap(detail::TensorInterface<const T, Range_, OpResult>&, T* const,
-           const std::initializer_list<std::size_t>&,
-           const std::initializer_list<std::size_t>&);
+           const std::initializer_list<Index1>&,
+           const std::initializer_list<Index2>&);
 
 namespace detail {
 
@@ -78,9 +82,11 @@ template <typename T, typename R, typename OpResult>
 class TensorInterface {
  public:
   typedef TensorInterface<T, R, OpResult>
-      TensorInterface_;                              ///< This class type
-  typedef R range_type;                              ///< Tensor range type
-  typedef typename range_type::size_type size_type;  ///< size type
+      TensorInterface_;                                  ///< This class type
+  typedef R range_type;                                  ///< Tensor range type
+  typedef typename range_type::index1_type index1_type;  ///< 1-index type
+  typedef typename range_type::ordinal_type ordinal_type;  ///< Ordinal type
+  using size_type = ordinal_type;
   typedef
       typename std::remove_const<T>::type value_type;  ///< Array element type
   typedef typename std::add_lvalue_reference<T>::type
@@ -107,23 +113,26 @@ class TensorInterface {
   template <typename, typename, typename>
   friend class TensorInterface;
 
-  template <typename U, typename Range_, typename OpResult_, typename Index>
+  template <typename U, typename Range_, typename OpResult_, typename Index1,
+            typename Index2>
   friend void TiledArray::remap(detail::TensorInterface<U, Range_, OpResult_>&,
-                                U* const, const Index&, const Index&);
-  template <typename U, typename Range_, typename OpResult_, typename Index>
+                                U* const, const Index1&, const Index2&);
+  template <typename U, typename Range_, typename OpResult_, typename Index1,
+            typename Index2>
   friend void TiledArray::remap(
       detail::TensorInterface<const U, Range_, OpResult_>&, U* const,
-      const Index&, const Index&);
-  template <typename U, typename Range_, typename OpResult_>
+      const Index1&, const Index2&);
+  template <typename U, typename Range_, typename OpResult_, typename Index1,
+            typename Index2>
   friend void TiledArray::remap(detail::TensorInterface<U, Range_, OpResult_>&,
-                                U* const,
-                                const std::initializer_list<std::size_t>&,
-                                const std::initializer_list<std::size_t>&);
-  template <typename U, typename Range_, typename OpResult_>
+                                U* const, const std::initializer_list<Index1>&,
+                                const std::initializer_list<Index2>&);
+  template <typename U, typename Range_, typename OpResult_, typename Index1,
+            typename Index2>
   friend void TiledArray::remap(
       detail::TensorInterface<const U, Range_, OpResult_>&, U* const,
-      const std::initializer_list<std::size_t>&,
-      const std::initializer_list<std::size_t>&);
+      const std::initializer_list<Index1>&,
+      const std::initializer_list<Index2>&);
 
   range_type range_;  ///< View sub-block range
   pointer data_;      ///< Pointer to the original tensor data
@@ -199,7 +208,7 @@ class TensorInterface {
   /// Tensor dimension size accessor
 
   /// \return The number of elements in the tensor
-  size_type size() const { return range_.volume(); }
+  ordinal_type size() const { return range_.volume(); }
 
   /// Data pointer accessor
 
@@ -210,7 +219,7 @@ class TensorInterface {
 
   /// \param index The ordinal element index
   /// \return A const reference to the element at \c index.
-  const_reference operator[](const size_type index) const {
+  const_reference operator[](const ordinal_type index) const {
     TA_ASSERT(range_.includes(index));
     return data_[range_.ordinal(index)];
   }
@@ -219,7 +228,7 @@ class TensorInterface {
 
   /// \param index The ordinal element index
   /// \return A const reference to the element at \c index.
-  reference operator[](const size_type index) {
+  reference operator[](const ordinal_type index) {
     TA_ASSERT(range_.includes(index));
     return data_[range_.ordinal(index)];
   }
@@ -257,24 +266,49 @@ class TensorInterface {
     std::swap(data_, other.data_);
   }
 
-  /// Shift the lower and upper bound of this tensor
+  /// Shift the lower and upper bound of this tensor view
 
-  /// \tparam Index The shift array type
+  /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the tensor range
-  /// \return A reference to this tensor
-  template <typename Index>
+  /// \return Reference to \c this
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
   TensorInterface_& shift_to(const Index& bound_shift) {
     range_.inplace_shift(bound_shift);
     return *this;
   }
 
-  /// Shift the lower and upper bound of this range
+  /// Shift the lower and upper bound of this tensor view
 
-  /// \tparam Index The shift array type
+  /// \tparam Index An integral type
   /// \param bound_shift The shift to be applied to the tensor range
-  /// \return A shifted copy of this tensor
-  template <typename Index>
+  /// \return Reference to \c this
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  TensorInterface_& shift_to(const std::initializer_list<Index>& bound_shift) {
+    range_.inplace_shift(bound_shift);
+    return *this;
+  }
+
+  /// Make a copy of this view shited by \p bound_shift
+
+  /// \tparam Index An integral range type
+  /// \param bound_shift The shift to be applied to the tensor range
+  /// \return A copy of the shifted view
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
   result_tensor shift(const Index& bound_shift) const {
+    return result_tensor(range_.shift(bound_shift), data_);
+  }
+
+  /// Make a copy of this view shited by \p bound_shift
+
+  /// \tparam Index An integral range type
+  /// \param bound_shift The shift to be applied to the tensor range
+  /// \return A copy of the shifted view
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  result_tensor shift(const std::initializer_list<Index>& bound_shift) const {
     return result_tensor(range_.shift(bound_shift), data_);
   }
 
@@ -1039,6 +1073,12 @@ class TensorInterface {
   }
 
 };  // class TensorInterface
+
+template <typename T, typename Range, typename OpResult>
+bool operator==(const TensorInterface<T, Range, OpResult>& first,
+                const TensorInterface<T, Range, OpResult>& second) {
+  return first.data() == second.data() && first.range() == second.range();
+}
 
 }  // namespace detail
 }  // namespace TiledArray

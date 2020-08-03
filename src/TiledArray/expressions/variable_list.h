@@ -88,14 +88,16 @@ void find_common(InIter1 first1, const InIter1 last1, InIter2 first2,
 
 template <typename VarLeft, typename VarRight>
 inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
-  TA_ASSERT(l.size() == r.size());
-  std::vector<size_t> a(l.size());
-  typename VarRight::const_iterator rit = r.begin();
-  for (auto it = a.begin(); it != a.end(); ++it) {
-    typename VarLeft::const_iterator lit =
-        std::find(l.begin(), l.end(), *rit++);
-    TA_ASSERT(lit != l.end());
-    *it = std::distance(l.begin(), lit);
+  using std::size;
+  TA_ASSERT(size(l) == size(r));
+  container::svector<size_t> a(size(l));
+  using std::begin;
+  using std::end;
+  typename VarRight::const_iterator rit = begin(r);
+  for (auto it = begin(a); it != end(a); ++it) {
+    typename VarLeft::const_iterator lit = std::find(begin(l), end(l), *rit++);
+    TA_ASSERT(lit != end(l));
+    *it = std::distance(begin(l), lit);
   }
   return Permutation(std::move(a));
 }
@@ -108,7 +110,7 @@ inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
 /// considered a single variable. All variables must be unique.
 class VariableList {
  public:
-  typedef std::vector<std::string>::const_iterator const_iterator;
+  typedef container::svector<std::string>::const_iterator const_iterator;
 
   /// Constructs an empty variable list.
   VariableList() : vars_() {}
@@ -165,11 +167,12 @@ class VariableList {
   /// Returns the number of strings in the variable list.
   unsigned int size() const { return vars_.size(); }
 
-  const std::vector<std::string>& data() const { return vars_; }
+  const auto& data() const { return vars_; }
 
   std::string string() const {
     std::string result;
-    std::vector<std::string>::const_iterator it = vars_.begin();
+    using std::cbegin;
+    auto it = cbegin(vars_);
     if (it == vars_.end()) return result;
 
     for (result = *it++; it != vars_.end(); ++it) {
@@ -185,10 +188,11 @@ class VariableList {
 
   /// The result of this function is a permutation that defines
   /// \c this=p^other .
-  /// \tparam V An array type
+  /// \tparam V A range type
   /// \param other An array that defines a variable list
   /// \return \c p as defined by the above relationship
-  template <typename V>
+  template <typename V,
+            typename = std::enable_if_t<TiledArray::detail::is_range_v<V>>>
   Permutation permutation(const V& other) const {
     return detail::var_perm(*this, other);
   }
@@ -263,7 +267,7 @@ class VariableList {
 
   friend void swap(VariableList&, VariableList&);
 
-  std::vector<std::string> vars_;
+  container::svector<std::string> vars_;
 
   friend VariableList operator*(const ::TiledArray::Permutation&,
                                 const VariableList&);

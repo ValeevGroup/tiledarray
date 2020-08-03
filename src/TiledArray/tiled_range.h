@@ -17,8 +17,8 @@
  *
  */
 
-#ifndef RANGE_H__INCLUDED
-#define RANGE_H__INCLUDED
+#ifndef TILEDARRAY_TILED_RANGE_H__INCLUDED
+#define TILEDARRAY_TILED_RANGE_H__INCLUDED
 
 #include <TiledArray/range.h>
 #include <TiledArray/tiled_range1.h>
@@ -36,10 +36,11 @@ class TiledRange {
     const std::size_t rank = this->rank();
 
     // Indices used to store range start and finish.
-    std::vector<size_type> start;
-    std::vector<size_type> finish;
-    std::vector<size_type> start_element;
-    std::vector<size_type> finish_element;
+    using index_type = Range::index_type;
+    index_type start;
+    index_type finish;
+    index_type start_element;
+    index_type finish_element;
 
     start.reserve(rank);
     finish.reserve(rank);
@@ -62,30 +63,56 @@ class TiledRange {
   // typedefs
   typedef TiledRange TiledRange_;
   typedef Range range_type;  // represents elements/tiles range
-  typedef std::size_t size_type;
-  typedef range_type::index index;
-  typedef range_type::size_array size_array;
-  typedef std::vector<TiledRange1> Ranges;
+  typedef range_type::index_type index_type;
+  typedef range_type::ordinal_type ordinal_type;
+  typedef range_type::index1_type index1_type;
+  static_assert(std::is_same_v<TiledRange1::index1_type, index1_type>);
+  typedef container::svector<TiledRange1> Ranges;
 
   /// Default constructor
   TiledRange() : range_(), elements_range_(), ranges_() {}
 
-  /// Constructed with a set of ranges pointed to by [ first, last ).
+  /// Constructs using a range of TiledRange1 objects
+  /// \param first the iterator pointing to the front of the range
+  /// \param last the iterator pointing past the back of the range
   template <typename InIter>
   TiledRange(InIter first, InIter last)
       : range_(), elements_range_(), ranges_(first, last) {
     init();
   }
 
-  /// Constructed with a set of ranges pointed to by [ first, last ).
-  TiledRange(
-      const std::initializer_list<std::initializer_list<size_type>>& list)
-      : range_(), elements_range_(), ranges_(list.begin(), list.end()) {
+  /// Constructs using a range of TiledRange1 objects
+  /// \param range_of_trange1s a range of TiledRange1 objects
+  template <typename TRange1Range,
+            typename = std::enable_if_t<
+                detail::is_range_v<TRange1Range> &&
+                std::is_same_v<detail::value_t<TRange1Range>, TiledRange1>>>
+  explicit TiledRange(const TRange1Range& range_of_trange1s)
+      : range_(),
+        elements_range_(),
+        ranges_(begin(range_of_trange1s), end(range_of_trange1s)) {
+    init();
+  }
+
+  /// Constructs using a list of lists convertible to TiledRange1
+
+  /// \tparam Integer An integral type
+  /// \param list a list of lists of integers that can be converted to
+  /// TiledRange1
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  explicit TiledRange(
+      const std::initializer_list<std::initializer_list<Integer>>& list)
+      : range_(), elements_range_() {
+    ranges_.reserve(size(list));
+    for (auto&& l : list) {
+      ranges_.emplace_back(l);
+    }
     init();
   }
 
   /// Constructed with an initializer_list of TiledRange1's
-  TiledRange(const std::initializer_list<TiledRange1>& list)
+  explicit TiledRange(const std::initializer_list<TiledRange1>& list)
       : range_(), elements_range_(), ranges_(list.begin(), list.end()) {
     init();
   }
@@ -143,48 +170,49 @@ class TiledRange {
   /// \return The constructed range object
   /// \note alias to TiledRange::make_tile_range() , introduced for consitency
   ///       with TiledRange1::tile()
-  range_type tile(const size_type& i) const { return make_tile_range(i); }
+  range_type tile(const index1_type& i) const { return make_tile_range(i); }
 
   /// Construct a range for the tile indexed by the given ordinal index.
 
   /// \param i The ordinal index of the tile range to be constructed
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
-  range_type make_tile_range(const size_type& i) const {
+  range_type make_tile_range(const index1_type& i) const {
     TA_ASSERT(tiles_range().includes(i));
     return make_tile_range(tiles_range().idx(i));
   }
 
   /// Construct a range for the tile indexed by the given index.
 
+  /// \tparam Index An integral range type
   /// \param index The index of the tile range to be constructed
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
   /// \note alias to TiledRange::make_tile_range() , introduced for consitency
   ///       with TiledRange1::tile()
   template <typename Index>
-  typename std::enable_if<!std::is_integral<Index>::value, range_type>::type
+  typename std::enable_if_t<detail::is_integral_range_v<Index>, range_type>
   tile(const Index& index) const {
     return make_tile_range(index);
   }
 
   /// Construct a range for the tile indexed by the given index.
 
+  /// \tparam Index An integral range type
   /// \param index The index of the tile range to be constructed
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
   template <typename Index>
-  typename std::enable_if<!std::is_integral<Index>::value, range_type>::type
+  std::enable_if_t<detail::is_integral_range_v<Index>, range_type>
   make_tile_range(const Index& index) const {
     const auto rank = range_.rank();
-    TA_ASSERT(index.size() == rank);
     TA_ASSERT(range_.includes(index));
-    typename range_type::index lower;
-    typename range_type::index upper;
+    typename range_type::index_type lower;
+    typename range_type::index_type upper;
     lower.reserve(rank);
     upper.reserve(rank);
     unsigned d = 0;
-    for (const auto& index_d : index) {
+    for (auto&& index_d : index) {
       lower.push_back(data()[d].tile(index_d).first);
       upper.push_back(data()[d].tile(index_d).second);
       ++d;
@@ -195,22 +223,26 @@ class TiledRange {
 
   /// Construct a range for the tile indexed by the given index.
 
+  /// \tparam Integer An integral type
   /// \param index The tile index, given as a \c std::initializer_list
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
   /// \note alias to TiledRange::make_tile_range() , introduced for consitency
   ///       with TiledRange1::tile()
-  template <typename Integer>
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
   range_type tile(const std::initializer_list<Integer>& index) const {
     return make_tile_range(index);
   }
 
   /// Construct a range for the tile indexed by the given index.
 
+  /// \tparam Integer An integral type
   /// \param index The tile index, given as a \c std::initializer_list
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
-  template <typename Integer>
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
   range_type make_tile_range(
       const std::initializer_list<Integer>& index) const {
     return make_tile_range<std::initializer_list<Integer>>(index);
@@ -218,18 +250,23 @@ class TiledRange {
 
   /// Convert an element index to a tile index
 
-  /// \tparam Index the index type
+  /// \tparam Index An integral range type
   /// \param index The element index to convert
   /// \return The tile index that corresponds to the given element index
   template <typename Index>
-  typename std::enable_if<!std::is_integral<Index>::value,
-                          typename range_type::index>::type
+  std::enable_if_t<detail::is_integral_range_v<Index>,
+                   typename range_type::index>
   element_to_tile(const Index& index) const {
     const unsigned int rank = range_.rank();
     typename range_type::index result;
     result.reserve(rank);
-    for (size_type i = 0; i < rank; ++i)
-      result.push_back(ranges_[i].element_to_tile(index[i]));
+    int d = 0;
+    for (auto&& index_d : index) {
+      TA_ASSERT(d < rank);
+      result.push_back(ranges_[d].element_to_tile(index_d));
+      ++d;
+    }
+    TA_ASSERT(d == rank);
 
     return result;
   }
@@ -317,4 +354,4 @@ inline std::ostream& operator<<(std::ostream& out, const TiledRange& rng) {
 
 }  // namespace TiledArray
 
-#endif  // RANGE_H__INCLUDED
+#endif  // TILEDARRAY_TILED_RANGE_H__INCLUDED

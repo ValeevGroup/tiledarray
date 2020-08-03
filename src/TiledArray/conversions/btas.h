@@ -111,7 +111,7 @@ namespace detail {
 /// counter.
 template <typename DistArray_, typename BTAS_Tensor_>
 void counted_btas_subtensor_to_tensor(const BTAS_Tensor_* src, DistArray_* dst,
-                                      const typename DistArray_::size_type i,
+                                      const typename DistArray_::ordinal_type i,
                                       madness::AtomicInt* counter) {
   typename DistArray_::value_type tensor(dst->trange().make_tile_range(i));
   btas_subtensor_to_tensor(*src, tensor);
@@ -240,7 +240,7 @@ DistArray_ btas_tensor_to_array(World& world,
   madness::AtomicInt counter;
   counter = 0;
   std::int64_t n = 0;
-  for (std::size_t i = 0; i < array.size(); ++i) {
+  for (typename DistArray_::ordinal_type i = 0; i < array.size(); ++i) {
     world.taskq.add(
         &detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>, &src,
         &array, i, &counter);
