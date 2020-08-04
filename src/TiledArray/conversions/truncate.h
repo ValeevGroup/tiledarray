@@ -62,7 +62,7 @@ inline std::enable_if_t<!is_dense_v<Policy>, void> truncate(
       Policy::shape_type::threshold();
   const auto need_to_change_thresh = (thresh != previous_thresh);
   if (need_to_change_thresh)
-    array.world().gop.fence(
+    array.world().gop.serial_invoke(
         [thresh] { Policy::shape_type::threshold(thresh); });
   typedef typename DistArray<Tile, Policy>::value_type value_type;
   array = foreach (array,
@@ -76,7 +76,7 @@ inline std::enable_if_t<!is_dense_v<Policy>, void> truncate(
                      return arg_tile_norm;
                    });
   if (need_to_change_thresh)
-    array.world().gop.fence(
+    array.world().gop.serial_invoke(
         [previous_thresh] { Policy::shape_type::threshold(previous_thresh); });
 }
 
