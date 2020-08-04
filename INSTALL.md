@@ -22,7 +22,7 @@ $ cmake --build build --target install
 
   See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
 
-- [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.17 or higher is required.
+- [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.18 or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.33 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
@@ -49,7 +49,7 @@ $ cmake --build build --target install
     an [open-source](https://www.threadingbuildingblocks.org/) form
 
 Optional prerequisites:
-- [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 9 and 10 have been tested. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
+- [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 11 or later is required. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
   - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 0e8685bf82910bc7435835f846e88f1b39f47f09).
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f04abd1dd038c84262915a493d8f78576bb80fd0).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
@@ -284,7 +284,7 @@ Link Advisor page.
 Support for execution on CUDA-enabled hardware is controlled by the following variables:
 
 * `ENABLE_CUDA`  -- Set to `ON` to turn on CUDA support. [Default=OFF].
-* `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers are notorious for only being able to use specific (older) C++ compilers. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
+* `CMAKE_CUDA_HOST_COMPILER`  -- Set to the path to the host C++ compiler to be used by CUDA compiler. CUDA compilers used to be notorious for only being able to use specific C++ host compilers, but support for more recent C++ host compilers has improved. The default is determined by the CUDA compiler and the user environment variables (`PATH` etc.).
 * `ENABLE_CUDA_ERROR_CHECK` -- Set to `ON` to turn on assertions for successful completion of calls to CUDA runtime and libraries. [Default=OFF].
 * `CUTT_INSTALL_DIR` -- the installation prefix of the pre-installed cuTT library. This should not be normally needed; it is strongly recommended to let TiledArray build and install cuTT.
 * `UMPIRE_INSTALL_DIR` -- the installation prefix of the pre-installed Umpire library. This should not be normally needed; it is strongly recommended to let TiledArray build and install Umpire.

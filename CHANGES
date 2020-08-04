@@ -13,6 +13,7 @@ Following is a brief summary of changes made in each release of TiledArray.
   - resolved boost check issue (PR #161)
   - revamped TA::foreach and improved conversions to be able to handle non-standard policies
   - C++17 is now prerequisite
+  - CUDA 11 is now prerequisite for execution on NVIDIA GPUs; CMake 3.18 is required if CUDA is enabled
 
 - 07-June-2019: 1.0.0-alpha.2
   - modernized CMake handling of CUDA, CMake 3.10 is now required

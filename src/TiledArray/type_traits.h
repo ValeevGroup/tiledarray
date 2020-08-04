@@ -36,33 +36,6 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////////////////////
-// implement C++17's type traits features if using CUDA with older C++ compiler
-#if __cplusplus <= 201402L
-
-// GNU stdlibc++ provides void_t if -gnu++11 or -gnu++14 are given
-#if __GNUC__ && defined(__GLIBCXX__) && !__STRICT_ANSI__ && \
-    __cplusplus >= 201103L
-#define HAVE_VOID_T
-#endif
-
-#ifndef HAVE_VOID_T  // implement void_t if needed
-namespace std {
-template <typename... Ts>
-struct make_void {
-  using type = void;
-};
-template <typename... Ts>
-using void_t = typename make_void<Ts...>::type;
-}  // namespace std
-#endif
-
-namespace std {
-template <class T>
-inline constexpr bool is_integral_v = is_integral<T>::value;
-}
-#endif  // C++14 only
-
-//////////////////////////////////////////////////////////////////////////////////////////////
 // forward declarations
 
 namespace Eigen {
