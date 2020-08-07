@@ -66,19 +66,19 @@ auto cholesky( const Array& A, size_t NB = 128, TiledRange l_trange = TiledRange
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
-  auto matrix = array_to_block_cyclic( A, grid, NB, NB );
+  auto matrix = scalapack::array_to_block_cyclic( A, grid, NB, NB );
   world.gop.fence(); // stage ScaLAPACK execution
 
   auto [M, N] = matrix.dims();
   if( M != N )
-    throw std::runtime_error("Matrix must be square for Cholesky");
+    TA_EXCEPTION("Matrix must be square for Cholesky");
 
   auto [Mloc, Nloc] = matrix.dist().get_local_dims(N, N);
   auto desc = matrix.dist().descinit_noerror(N, N, Mloc);
 
   auto info = scalapackpp::ppotrf( blacspp::Triangle::Lower, N,
     matrix.local_mat().data(), 1, 1, desc );
-  if (info) throw std::runtime_error("Cholesky Failed");
+  if (info) TA_EXCEPTION("Cholesky Failed");
 
   // Zero out the upper triangle
   detail::scalapack_zero_triangle( blacspp::Triangle::Upper, matrix );
@@ -86,7 +86,7 @@ auto cholesky( const Array& A, size_t NB = 128, TiledRange l_trange = TiledRange
   if( l_trange.rank() == 0 ) l_trange = A.trange();
 
   world.gop.fence();
-  auto L = block_cyclic_to_array<Array>( matrix, l_trange );
+  auto L = scalapack::block_cyclic_to_array<Array>( matrix, l_trange );
   world.gop.fence();
 
 
@@ -131,27 +131,27 @@ auto cholesky_linv( const Array& A, size_t NB = 128, TiledRange l_trange = Tiled
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
-  auto matrix = array_to_block_cyclic( A, grid, NB, NB );
+  auto matrix = scalapack::array_to_block_cyclic( A, grid, NB, NB );
   world.gop.fence(); // stage ScaLAPACK execution
 
   auto [M, N] = matrix.dims();
   if( M != N )
-    throw std::runtime_error("Matrix must be square for Cholesky");
+    TA_EXCEPTION("Matrix must be square for Cholesky");
 
   auto [Mloc, Nloc] = matrix.dist().get_local_dims(N, N);
   auto desc = matrix.dist().descinit_noerror(N, N, Mloc);
 
   auto info = scalapackpp::ppotrf( blacspp::Triangle::Lower, N,
     matrix.local_mat().data(), 1, 1, desc );
-  if (info) throw std::runtime_error("Cholesky Failed");
+  if (info) TA_EXCEPTION("Cholesky Failed");
 
   // Zero out the upper triangle
   detail::scalapack_zero_triangle( blacspp::Triangle::Upper, matrix );
 
   // Copy L if needed
-  std::shared_ptr<BlockCyclicMatrix<value_type>> L_sca = nullptr;
+  std::shared_ptr<scalapack::BlockCyclicMatrix<value_type>> L_sca = nullptr;
   if constexpr (RetL) {
-    L_sca = std::make_shared<BlockCyclicMatrix<value_type>>(
+    L_sca = std::make_shared<scalapack::BlockCyclicMatrix<value_type>>(
       world, grid, N, N, NB, NB
     );
     L_sca->local_mat() = matrix.local_mat();
@@ -160,18 +160,18 @@ auto cholesky_linv( const Array& A, size_t NB = 128, TiledRange l_trange = Tiled
   // Compute inverse
   info = scalapackpp::ptrtri( blacspp::Triangle::Lower, 
     blacspp::Diagonal::NonUnit, N, matrix.local_mat().data(), 1, 1, desc );
-  if (info) throw std::runtime_error("TRTRI Failed");
+  if (info) TA_EXCEPTION("TRTRI Failed");
 
 
   if( l_trange.rank() == 0 ) l_trange = A.trange();
 
   world.gop.fence();
-  auto Linv = block_cyclic_to_array<Array>( matrix, l_trange );
+  auto Linv = scalapack::block_cyclic_to_array<Array>( matrix, l_trange );
   world.gop.fence();
 
 
   if constexpr (RetL) {
-    auto L = block_cyclic_to_array<Array>( *L_sca, l_trange);
+    auto L = scalapack::block_cyclic_to_array<Array>( *L_sca, l_trange);
     world.gop.fence();
     return std::tuple( L, Linv );
   } else {
@@ -188,24 +188,24 @@ auto cholesky_solve( const Array& A, const Array& B, size_t NB = 128,
   auto& world = A.world();
   /*
   if( world != B.world() ) {
-    throw std::runtime_error("A and B must be distributed on same MADWorld context");
+    TA_EXCEPTION("A and B must be distributed on same MADWorld context");
   }
   */
   auto world_comm = world.mpi.comm().Get_mpi_comm();
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
-  auto A_sca = array_to_block_cyclic( A, grid, NB, NB );
-  auto B_sca = array_to_block_cyclic( B, grid, NB, NB );
+  auto A_sca = scalapack::array_to_block_cyclic( A, grid, NB, NB );
+  auto B_sca = scalapack::array_to_block_cyclic( B, grid, NB, NB );
   world.gop.fence(); // stage ScaLAPACK execution
 
   auto [M, N] = A_sca.dims();
   if( M != N )
-    throw std::runtime_error("A must be square for Cholesky Solve");
+    TA_EXCEPTION("A must be square for Cholesky Solve");
 
   auto [B_N, NRHS] = B_sca.dims();
   if( B_N != N )
-    throw std::runtime_error("A and B dims must agree");
+    TA_EXCEPTION("A and B dims must agree");
 
 
   scalapackpp::scalapack_desc desc_a, desc_b;
@@ -222,12 +222,12 @@ auto cholesky_solve( const Array& A, const Array& B, size_t NB = 128,
   auto info = scalapackpp::pposv( blacspp::Triangle::Lower, N, NRHS,
     A_sca.local_mat().data(), 1, 1, desc_a, B_sca.local_mat().data(),
     1, 1, desc_b );
-  if (info) throw std::runtime_error("Cholesky Solve Failed");
+  if (info) TA_EXCEPTION("Cholesky Solve Failed");
 
   if( x_trange.rank() == 0 ) x_trange = B.trange();
 
   world.gop.fence();
-  auto X = block_cyclic_to_array<Array>( B_sca, x_trange );
+  auto X = scalapack::block_cyclic_to_array<Array>( B_sca, x_trange );
   world.gop.fence();
 
   return X;
@@ -245,24 +245,24 @@ auto cholesky_lsolve( scalapackpp::TransposeFlag trans,
   auto& world = A.world();
   /*
   if( world != B.world() ) {
-    throw std::runtime_error("A and B must be distributed on same MADWorld context");
+    TA_EXCEPTION("A and B must be distributed on same MADWorld context");
   }
   */
   auto world_comm = world.mpi.comm().Get_mpi_comm();
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
-  auto A_sca = array_to_block_cyclic( A, grid, NB, NB );
-  auto B_sca = array_to_block_cyclic( B, grid, NB, NB );
+  auto A_sca = scalapack::array_to_block_cyclic( A, grid, NB, NB );
+  auto B_sca = scalapack::array_to_block_cyclic( B, grid, NB, NB );
   world.gop.fence(); // stage ScaLAPACK execution
 
   auto [M, N] = A_sca.dims();
   if( M != N )
-    throw std::runtime_error("A must be square for Cholesky Solve");
+    TA_EXCEPTION("A must be square for Cholesky Solve");
 
   auto [B_N, NRHS] = B_sca.dims();
   if( B_N != N )
-    throw std::runtime_error("A and B dims must agree");
+    TA_EXCEPTION("A and B dims must agree");
 
 
   scalapackpp::scalapack_desc desc_a, desc_b;
@@ -278,12 +278,12 @@ auto cholesky_lsolve( scalapackpp::TransposeFlag trans,
 
   auto info = scalapackpp::ppotrf( blacspp::Triangle::Lower, N,
     A_sca.local_mat().data(), 1, 1, desc_a );
-  if (info) throw std::runtime_error("Cholesky Failed");
+  if (info) TA_EXCEPTION("Cholesky Failed");
 
   info = scalapackpp::ptrtrs( blacspp::Triangle::Lower, trans, 
     blacspp::Diagonal::NonUnit, N, NRHS, A_sca.local_mat().data(), 1, 1, desc_a,
     B_sca.local_mat().data(), 1, 1, desc_b );
-  if (info) throw std::runtime_error("TRTRS Failed");
+  if (info) TA_EXCEPTION("TRTRS Failed");
 
   // Zero out the upper triangle
   detail::scalapack_zero_triangle( blacspp::Triangle::Upper, A_sca );
@@ -292,8 +292,8 @@ auto cholesky_lsolve( scalapackpp::TransposeFlag trans,
   if( x_trange.rank() == 0 ) x_trange = B.trange();
 
   world.gop.fence();
-  auto L = block_cyclic_to_array<Array>( A_sca, l_trange );
-  auto X = block_cyclic_to_array<Array>( B_sca, x_trange );
+  auto L = scalapack::block_cyclic_to_array<Array>( A_sca, l_trange );
+  auto X = scalapack::block_cyclic_to_array<Array>( B_sca, x_trange );
   world.gop.fence();
 
   return std::tuple(L, X);

@@ -93,79 +93,9 @@ int main(int argc, char** argv) {
     tensor_symm("i,j") = 0.5 * (tensor("i,j") + tensor("j,i"));
     tensor("i,j") = tensor_symm("i,j");
 
-#if 0
-    // Convert to BlockCyclic
-    world.gop.fence();
-    TA::BlockCyclicMatrix<double> matrix(tensor, grid, NB, NB);
-    world.gop.fence();
-
-    // Make sure inputs are identical
-    if (world.size() == 1) {
-      Eigen::MatrixXd tensor_eigen = TA::array_to_eigen(tensor);
-      Eigen::MatrixXd matrix_eigen = matrix.local_mat();
-      std::cout << "|Matrix - Tensor| = "
-                << (tensor_eigen - matrix_eigen).norm() << std::endl;
-    }
-
-    // Copy BlockCyclic Matrix for EVP check
-    TA::BlockCyclicMatrix<double> tmp_matrix(world, grid, N, N, NB, NB);
-    tmp_matrix.local_mat() = matrix.local_mat();
-
-    // Allocate space for eigenvectors/values
-    std::vector<double> evals(N);
-    TA::BlockCyclicMatrix<double> evecs(world, grid, N, N, NB, NB);
-
-    // Get matrix descriptor
-    auto [Mloc, Nloc] = matrix.dist().get_local_dims(N, N);
-    auto desc = matrix.dist().descinit_noerror(N, N, Mloc);
-
-    // Solve EVP
-    auto info = scalapackpp::hereig(
-        scalapackpp::VectorFlag::Vectors, blacspp::Triangle::Lower, N,
-        matrix.local_mat().data(), 1, 1, desc, evals.data(),
-        evecs.local_mat().data(), 1, 1, desc);
-    if (info) throw std::runtime_error("EVP Failed");
-
-    // Check EVP with BlockCyclic
-    for (int i = 0; i < N; ++i)
-      scalapackpp::pgemm(scalapackpp::TransposeFlag::NoTranspose,
-                         scalapackpp::TransposeFlag::Transpose, N, N, 1,
-                         -evals[i], evecs.local_mat().data(), 1, i + 1, desc,
-                         evecs.local_mat().data(), 1, i + 1, desc, 1.,
-                         tmp_matrix.local_mat().data(), 1, 1, desc);
-
-    double scalapack_evp_check;
-    {
-      double local_norm = tmp_matrix.local_mat().norm();
-      local_norm *= local_norm;
-      MPI_Allreduce(&local_norm, &scalapack_evp_check, 1, MPI_DOUBLE, MPI_SUM,
-                    world_comm);
-      scalapack_evp_check = std::sqrt(scalapack_evp_check);
-    }
-
-    if (!world.rank())
-      std::cout << "EVP (Matrix) |A - XEX**T| = " << scalapack_evp_check
-                << std::endl;
-
-    world.gop.fence();
-    // Convert evecs to TA
-    auto evecs_ta = evecs.tensor_from_matrix<Array>(trange);
-    world.gop.fence();
-
-    // Make sure that BlockCyclic -> TA worked properly
-    if (world.size() == 1) {
-      Eigen::MatrixXd evecs_tensor_eigen = TA::array_to_eigen(evecs_ta);
-      Eigen::MatrixXd evecs_matrix_eigen = evecs.local_mat();
-      std::cout << "|EVecs (matrix) - EVecs(tensor)| = "
-                << (evecs_matrix_eigen - evecs_tensor_eigen).norm()
-                << std::endl;
-    }
-
-#else
 
     auto [ evals, evecs_ta ] = TA::heig( tensor );
 
-#endif
 
     //// Check EVP with TA
     Array tmp = TA::foreach (evecs_ta, [evals = evals](TA::Tensor<double>& result,

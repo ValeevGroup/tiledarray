@@ -52,8 +52,8 @@ class TiledRange1 {
   struct Enabler {};
 
  public:
-  typedef std::size_t size_type;
-  typedef std::pair<size_type, size_type> range_type;
+  typedef TA_1INDEX_TYPE index1_type;
+  typedef std::pair<index1_type, index1_type> range_type;
   typedef std::vector<range_type>::const_iterator const_iterator;
 
   /// Default constructor creates an empty range (tile and element ranges are
@@ -90,9 +90,9 @@ class TiledRange1 {
   /// \param t0 The starting index of the first tile
   /// \param t_rest The rest of tile boundaries
   template <typename... _sizes>
-  explicit TiledRange1(const size_type& t0, const _sizes&... t_rest) {
-    const size_type n = sizeof...(_sizes) + 1;
-    size_type tile_boundaries[n] = {t0, static_cast<size_type>(t_rest)...};
+  explicit TiledRange1(const index1_type& t0, const _sizes&... t_rest) {
+    const auto n = sizeof...(_sizes) + 1;
+    index1_type tile_boundaries[n] = {t0, static_cast<index1_type>(t_rest)...};
     init_tiles_(tile_boundaries, tile_boundaries + n, 0);
   }
 
@@ -102,8 +102,11 @@ class TiledRange1 {
   /// The number of tile boundaries is n + 1, where n is the number of tiles.
   /// Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
   /// Tiles are indexed starting with 0.
+  /// \tparam Integer An integral type
   /// \param list The list of tile boundaries in order from smallest to largest
-  explicit TiledRange1(const std::initializer_list<size_type>& list) {
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  explicit TiledRange1(const std::initializer_list<Integer>& list) {
     init_tiles_(list.begin(), list.end(), 0);
   }
 
@@ -123,7 +126,7 @@ class TiledRange1 {
   bool empty() const { return tiles_ranges_.empty(); }
 
   /// Return tile iterator associated with ordinal_index
-  const_iterator find(const size_type& e) const {
+  const_iterator find(const index1_type& e) const {
     if (!includes(elements_range_, e)) return tiles_ranges_.end();
     const_iterator result = tiles_ranges_.begin();
     result += element_to_tile(e);
@@ -147,10 +150,10 @@ class TiledRange1 {
   const range_type& elements_range() const { return elements_range_; }
 
   /// Tile range extent accessor
-  size_type tile_extent() const { return range_.second - range_.first; }
+  index1_type tile_extent() const { return range_.second - range_.first; }
 
   /// Elements range extent accessor
-  size_type extent() const {
+  index1_type extent() const {
     return elements_range_.second - elements_range_.first;
   }
 
@@ -162,7 +165,7 @@ class TiledRange1 {
   /// \code
   /// assert(i >= tiles_range().first && i < tiles_range().second);
   /// \endcode
-  const range_type& tile(const size_type i) const {
+  const range_type& tile(const index1_type i) const {
     TA_ASSERT(includes(range_, i));
     return tiles_ranges_[i - range_.first];
   }
@@ -180,7 +183,7 @@ class TiledRange1 {
   ///       complexity of subsequent calls is constant. Note that the
   ///       memoization assumes infrequent (or serial) use as it is serialized
   ///       across ALL TiledRange1 instances.
-  const size_type& element_to_tile(const size_type& i) const {
+  const index1_type& element_to_tile(const index1_type& i) const {
     TA_ASSERT(includes(elements_range_, i));
     if (elem2tile_.empty()) {
       init_elem2tile_();
@@ -189,7 +192,7 @@ class TiledRange1 {
   }
 
   /// \deprecated use TiledRange1::element_to_tile()
-  [[deprecated]] const size_type& element2tile(const size_type& i) const {
+  [[deprecated]] const index1_type& element2tile(const index1_type& i) const {
     return element_to_tile(i);
   }
 
@@ -219,7 +222,7 @@ class TiledRange1 {
   }
 
  private:
-  static bool includes(const range_type& r, size_type i) {
+  static bool includes(const range_type& r, index1_type i) {
     return (i >= r.first) && (i < r.second);
   }
 
@@ -231,19 +234,24 @@ class TiledRange1 {
                    "TiledRange1 construction failed: You need at least 2 "
                    "elements in the tile boundary list.");
     // Verify the requirement that a0 < a1 < a2 < ...
-    for (; first != (last - 1); ++first)
+    for (; first != (last - 1); ++first) {
       TA_USER_ASSERT(
           *first < *(first + 1),
           "TiledRange1 construction failed: Invalid tile boundary, tile "
           "boundary i must be greater than tile boundary i+1 for all i. ");
+      TA_USER_ASSERT(
+          static_cast<index1_type>(*first) <
+              static_cast<index1_type>(*(first + 1)),
+          "TiledRange1 construction failed: Invalid tile boundary, tile "
+          "boundary i must be greater than tile boundary i+1 for all i. ");
+    }
   }
 
   /// Initialize tiles use a set of tile offsets
   template <typename RandIter>
-  void init_tiles_(RandIter first, RandIter last, size_type start_tile_index) {
+  void init_tiles_(RandIter first, RandIter last,
+                   index1_type start_tile_index) {
 #ifndef NDEBUG
-    assert(start_tile_index ==
-           0);  // non-zero-based tile indices are not (yet?) supported
     valid_(first, last);
 #endif  // NDEBUG
     range_.first = start_tile_index;
@@ -265,9 +273,9 @@ class TiledRange1 {
       if (elem2tile_.empty()) {
         // initialize elem2tile map
         elem2tile_.resize(elements_range_.second - elements_range_.first);
-        const size_type end = range_.second - range_.first;
-        for (size_type t = 0; t < end; ++t)
-          for (size_type e = tiles_ranges_[t].first;
+        const auto end = range_.second - range_.first;
+        for (index1_type t = 0; t < end; ++t)
+          for (index1_type e = tiles_ranges_[t].first;
                e < tiles_ranges_[t].second; ++e)
             elem2tile_[e - elements_range_.first] = t + range_.first;
       }
@@ -281,7 +289,7 @@ class TiledRange1 {
   range_type elements_range_;  ///< the range of element indices
   std::vector<range_type>
       tiles_ranges_;  ///< ranges of each tile (NO GAPS between tiles)
-  mutable std::vector<size_type>
+  mutable std::vector<index1_type>
       elem2tile_;  ///< maps element index to tile index (memoized data).
 
 };  // class TiledRange1
@@ -321,7 +329,7 @@ inline std::ostream& operator<<(std::ostream& out, const TiledRange1& rng) {
 /// (TiledRange1{0, 3, 4, 5, 7, 11, 13})); \endcode \param r1 first range \param
 /// r2 second range \return concatenated range
 inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
-  std::vector<TiledRange1::size_type> hashmarks;
+  std::vector<TiledRange1::index1_type> hashmarks;
   hashmarks.reserve(r1.tile_extent() + r2.tile_extent() + 1);
   if (!r1.empty()) {
     hashmarks.push_back(r1.tile(0).first);

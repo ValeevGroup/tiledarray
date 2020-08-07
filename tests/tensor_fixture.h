@@ -37,7 +37,7 @@ struct TensorFixture {
   typedef TensorN::value_type value_type;
   typedef TensorN::range_type::index index;
   typedef TensorN::size_type size_type;
-  typedef TensorN::range_type::size_array size_array;
+  typedef TensorN::range_type::index_view_type index_view_type;
   typedef TensorN::range_type range_type;
 
   static const range_type r;

@@ -90,15 +90,16 @@ void find_common(InIter1 first1, const InIter1 last1, InIter2 first2,
 
 template <typename VarLeft, typename VarRight>
 inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
-  TA_ASSERT(l.size() == r.size());
-  TA_ASSERT(l.outer_dim() == r.outer_dim());
-  std::vector<size_t> a(l.size());
-  typename VarRight::const_iterator rit = r.begin();
-  for (auto it = a.begin(); it != a.end(); ++it) {
-    typename VarLeft::const_iterator lit =
-        std::find(l.begin(), l.end(), *rit++);
-    TA_ASSERT(lit != l.end());
-    *it = std::distance(l.begin(), lit);
+  using std::size;
+  TA_ASSERT(size(l) == size(r));
+  container::svector<size_t> a(size(l));
+  using std::begin;
+  using std::end;
+  typename VarRight::const_iterator rit = begin(r);
+  for (auto it = begin(a); it != end(a); ++it) {
+    typename VarLeft::const_iterator lit = std::find(begin(l), end(l), *rit++);
+    TA_ASSERT(lit != end(l));
+    *it = std::distance(begin(l), lit);
   }
   // Make sure this permutation doesn't mix outer and inner tensors
   if(l.is_tot()){
@@ -135,12 +136,10 @@ inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
 class VariableList {
  private:
   /// Type of container used to hold individual indices
-  template<typename T>
-  using container_type = std::vector<T>;
+  using container_type = container::svector<std::string>;
 
-  /// Type of an std::pair of container_type<T> instances
-  template<typename T>
-  using container_pair = std::pair<container_type<T>, container_type<T>>;
+  /// Type of an std::pair of container_type instances
+  using container_pair = std::pair<container_type, container_type>;
 
  public:
   /// Type used to store the individual string indices
@@ -150,7 +149,7 @@ class VariableList {
   typedef const value_type& const_reference;
 
   /// A read-only random-access iterator
-  typedef container_type<std::string>::const_iterator const_iterator;
+  typedef container_type::const_iterator const_iterator;
 
   /// Type used for indexing and offsets
   typedef std::size_t size_type;
@@ -442,7 +441,7 @@ class VariableList {
   /// \throw None No throw guarantee.
   bool is_tot() const { return n_inner_ != 0; }
 
-  const std::vector<std::string>& data() const { return vars_; }
+  const auto& data() const { return vars_; }
 
   /// Enables conversion from a VariableList to a string
   ///
@@ -453,6 +452,7 @@ class VariableList {
   /// \throw std::bad_alloc if there is insufficient memory to create the
   ///                       resulting string. Strong throw guarantee.
   explicit operator value_type() const;
+
 
   /// Swaps the current instance's state with that of \c other
   ///
@@ -483,7 +483,8 @@ class VariableList {
   /// \throw TiledArray::Exception if \c other is a ToT permutation such that it
   ///                              mixes outer and inner modes. Strong throw
   ///                              guarantee.
-  template <typename V>
+  template <typename V,
+            typename = std::enable_if_t<TiledArray::detail::is_range_v<V>>>
   Permutation permutation(const V& other) const {
     return detail::var_perm(*this, other);
   }
@@ -513,7 +514,7 @@ class VariableList {
 
   /// The tokenized indices. The last n_inner_ are the inner indices, all others
   /// are outer indices.
-  std::vector<value_type> vars_;
+  container_type vars_;
 
   friend VariableList operator*(const ::TiledArray::Permutation&,
                                 const VariableList&);

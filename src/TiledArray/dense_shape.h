@@ -26,7 +26,9 @@
 #ifndef TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 #define TILEDARRAY_DENSE_SHAPE_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/type_traits.h>
+#include <cstdint>
 
 namespace madness {
 class World;
@@ -53,6 +55,8 @@ using madness::World;
 /// will optimize branches that use these checks.
 class DenseShape {
  public:
+  using index1_type = TA_1INDEX_TYPE;
+
   // There is no data in DenseShape so the compiler generated constructors,
   // assignment operator, and destructor are OK.
 
@@ -104,32 +108,162 @@ class DenseShape {
 
   DenseShape mask(const DenseShape&) const { return DenseShape{}; };
 
-  template <typename Index>
-  static DenseShape update_block(const Index&, const Index&,
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
+  static DenseShape update_block(const Index1&, const Index2&,
                                  const DenseShape&) {
     return DenseShape();
   }
 
-  template <typename Index>
-  static DenseShape block(const Index&, const Index&) {
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  static DenseShape update_block(const std::initializer_list<Index1>&,
+                                 const std::initializer_list<Index2>&,
+                                 const DenseShape&) {
     return DenseShape();
   }
 
-  template <
-      typename Index, typename Scalar,
-      typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-  static DenseShape block(const Index&, const Index&, const Scalar) {
+  template <typename PairRange,
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
+  DenseShape update_block(const PairRange& bounds,
+                          const DenseShape& other) const {
     return DenseShape();
   }
 
-  template <typename Index>
-  static DenseShape block(const Index&, const Index&, const Permutation&) {
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  static DenseShape update_block(
+      const std::initializer_list<std::initializer_list<Index>>&,
+      const DenseShape&) {
     return DenseShape();
   }
 
-  template <typename Index, typename Scalar>
-  static DenseShape block(const Index&, const Index&, const Scalar,
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
+  static DenseShape block(const Index1&, const Index2&) {
+    return DenseShape();
+  }
+
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  static DenseShape block(const std::initializer_list<Index1>&,
+                          const std::initializer_list<Index2>&) {
+    return DenseShape();
+  }
+
+  template <typename PairRange,
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
+  DenseShape block(const PairRange& bounds) const {
+    return DenseShape();
+  }
+
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  static DenseShape block(
+      const std::initializer_list<std::initializer_list<Index>>&) {
+    return DenseShape();
+  }
+
+  template <typename Index1, typename Index2, typename Scalar,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2> &&
+                                        detail::is_numeric_v<Scalar>>>
+  static DenseShape block(const Index1&, const Index2&, const Scalar) {
+    return DenseShape();
+  }
+
+  template <typename Index1, typename Index2, typename Scalar,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2> &&
+                                        detail::is_numeric_v<Scalar>>>
+  static DenseShape block(const std::initializer_list<Index1>&,
+                          const std::initializer_list<Index2>&, const Scalar) {
+    return DenseShape();
+  }
+
+  template <typename PairRange, typename Scalar,
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange> &&
+                                        detail::is_numeric_v<Scalar>>>
+  DenseShape block(const PairRange& bounds, const Scalar) const {
+    return DenseShape();
+  }
+
+  template <typename Index, typename Scalar,
+            typename = std::enable_if_t<std::is_integral_v<Index> &&
+                                        detail::is_numeric_v<Scalar>>>
+  static DenseShape block(
+      const std::initializer_list<std::initializer_list<Index>>&,
+      const Scalar) {
+    return DenseShape();
+  }
+
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
+  static DenseShape block(const Index1&, const Index2&, const Permutation&) {
+    return DenseShape();
+  }
+
+  template <typename Index1, typename Index2,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2>>>
+  static DenseShape block(const std::initializer_list<Index1>&,
+                          const std::initializer_list<Index2>&,
                           const Permutation&) {
+    return DenseShape();
+  }
+
+  template <typename PairRange,
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
+  DenseShape block(const PairRange& bounds, const Permutation&) const {
+    return DenseShape();
+  }
+
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  static DenseShape block(
+      const std::initializer_list<std::initializer_list<Index>>&,
+      const Permutation&) {
+    return DenseShape();
+  }
+
+  template <typename Index1, typename Index2, typename Scalar,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2> &&
+                                        detail::is_numeric_v<Scalar>>>
+  static DenseShape block(const Index1&, const Index2&, const Scalar,
+                          const Permutation&) {
+    return DenseShape();
+  }
+
+  template <typename Index1, typename Index2, typename Scalar,
+            typename = std::enable_if_t<std::is_integral_v<Index1> &&
+                                        std::is_integral_v<Index2> &&
+                                        detail::is_numeric_v<Scalar>>>
+  static DenseShape block(const std::initializer_list<Index1>&,
+                          const std::initializer_list<Index2>&, const Scalar,
+                          const Permutation&) {
+    return DenseShape();
+  }
+
+  template <typename PairRange, typename Scalar,
+            typename = std::enable_if_t<detail::is_gpair_range_v<PairRange> &&
+                                        detail::is_numeric_v<Scalar>>>
+  DenseShape block(const PairRange& bounds, const Scalar,
+                   const Permutation&) const {
+    return DenseShape();
+  }
+
+  template <typename Index, typename Scalar,
+            typename = std::enable_if_t<std::is_integral_v<Index> &&
+                                        detail::is_numeric_v<Scalar>>>
+  static DenseShape block(
+      const std::initializer_list<std::initializer_list<Index>>&, const Scalar,
+      const Permutation&) {
     return DenseShape();
   }
 

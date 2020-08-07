@@ -394,8 +394,8 @@ class UnaryTransformIterator {
 
   /// \return A transformed copy of the current value of the base iterator.
   template <typename It>
-  typename std::enable_if<!std::is_integral<It>::value, reference>::type
-  dereference(It it) const {
+  std::enable_if_t<!std::is_integral_v<It>, reference> dereference(
+      It it) const {
     return op_(*it);
   }
 
@@ -403,8 +403,7 @@ class UnaryTransformIterator {
 
   /// \return A transformed copy of the current value of the base iterator.
   template <typename It>
-  typename std::enable_if<std::is_integral<It>::value, reference>::type
-  dereference(It it) const {
+  std::enable_if_t<std::is_integral_v<It>, reference> dereference(It it) const {
     return op_(it);
   }
 

@@ -56,7 +56,7 @@ class TileReference {
 
   typedef typename Impl::range_type range_type;
   typedef typename Impl::range_type::index index_type;
-  typedef typename Impl::size_type ordinal_type;
+  typedef typename Impl::ordinal_type ordinal_type;
 
   Impl* tensor_;        ///< The tensor that owns the referenced tile
   ordinal_type index_;  ///< The ordinal index of the tile
@@ -65,7 +65,7 @@ class TileReference {
   TileReference<Impl>& operator=(const TileReference<Impl>&);
 
  public:
-  TileReference(Impl* tensor, const typename Impl::size_type index)
+  TileReference(Impl* tensor, const typename Impl::ordinal_type index)
       : tensor_(tensor), index_(index) {}
 
   TileReference(const TileReference<Impl>& other)
@@ -144,13 +144,14 @@ class TileConstReference {
   friend class ArrayIterator;
 
   const Impl* tensor_;  ///< The tensor that owns the referenced tile
-  typename Impl::size_type index_;  ///< The index of the tensor
+  typename Impl::ordinal_type index_;  ///< The ordinal index of the tile
 
   // Not allowed
   TileConstReference<Impl>& operator=(const TileConstReference<Impl>&);
 
  public:
-  TileConstReference(const Impl* tensor, const typename Impl::size_type index)
+  TileConstReference(const Impl* tensor,
+                     const typename Impl::ordinal_type index)
       : tensor_(tensor), index_(index) {}
 
   TileConstReference(const TileConstReference<Impl>& other)
@@ -251,7 +252,7 @@ class ArrayIterator {
       iterator_category;  ///< Iterator category type
   typedef ArrayIterator<Impl, Reference> ArrayIterator_;  ///< This object type
   typedef typename Impl::range_type::index index_type;
-  typedef typename Impl::size_type ordinal_type;
+  typedef typename Impl::ordinal_type ordinal_type;
   typedef typename Impl::range_type range_type;
   typedef typename Impl::value_type tile_type;
 
@@ -410,7 +411,8 @@ class ArrayImpl : public TensorImpl<Policy> {
  public:
   typedef ArrayImpl<Tile, Policy> ArrayImpl_;  ///< This object type
   typedef TensorImpl<Policy> TensorImpl_;  ///< The base class of this object
-  typedef typename TensorImpl_::size_type size_type;  ///< Size type
+  typedef typename TensorImpl_::index1_type index1_type;    ///< 1-index type
+  typedef typename TensorImpl_::ordinal_type ordinal_type;  ///< Ordinal type
   typedef typename TensorImpl_::policy_type
       policy_type;  ///< Policy type for this object
   typedef typename TensorImpl_::trange_type
@@ -458,11 +460,13 @@ class ArrayImpl : public TensorImpl<Policy> {
 
   /// Tile future accessor
 
-  /// \tparam Index The index type
-  /// \param i The tile index
+  /// \tparam Index An integral or integral range type
+  /// \param i The tile index or ordinal
   /// \return A \c future to tile \c i
   /// \throw TiledArray::Exception When tile \c i is zero
-  template <typename Index>
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index> ||
+                                        detail::is_integral_range_v<Index>>>
   future get(const Index& i) const {
     TA_ASSERT(!TensorImpl_::is_zero(i));
     return data_.get(TensorImpl_::trange().tiles_range().ordinal(i));
@@ -470,11 +474,12 @@ class ArrayImpl : public TensorImpl<Policy> {
 
   /// Tile future accessor
 
-  /// \tparam Integer An integer type
+  /// \tparam Integer An integral type
   /// \param i The tile index, as an \c std::initializer_list<Integer>
   /// \return A \c future to tile \c i
   /// \throw TiledArray::Exception When tile \c i is zero
-  template <typename Integer>
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
   future get(const std::initializer_list<Integer>& i) const {
     return get<std::initializer_list<Integer>>(i);
   }
@@ -484,15 +489,37 @@ class ArrayImpl : public TensorImpl<Policy> {
   /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,
   /// \c Future<value_type> , or
   /// \c madness::detail::MoveWrapper<value_type> .
-  /// \tparam Index The index type
+  /// \tparam Index An integral or integral range type
   /// \tparam Value The value type
   /// \param i The index of the tile to be set
   /// \param value The object tat contains the tile value
-  template <typename Index, typename Value>
-  void set(const Index& i, const Value& value) {
+  template <typename Index, typename Value,
+            typename = std::enable_if_t<std::is_integral_v<Index> ||
+                                        detail::is_integral_range_v<Index>>>
+  void set(const Index& i, Value&& value) {
     TA_ASSERT(!TensorImpl_::is_zero(i));
     const auto ord = TensorImpl_::trange().tiles_range().ordinal(i);
-    data_.set(ord, value);
+    data_.set(ord, std::forward<Value>(value));
+    if (set_notifier_accessor()) {
+      set_notifier_accessor()(*this, ord);
+    }
+  }
+
+  /// Set tile
+
+  /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,
+  /// \c Future<value_type> , or
+  /// \c madness::detail::MoveWrapper<value_type> .
+  /// \tparam Index An integral type
+  /// \tparam Value The value type
+  /// \param i The index of the tile to be set
+  /// \param value The object tat contains the tile value
+  template <typename Index, typename Value,
+            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  void set(const std::initializer_list<Index>& i, Value&& value) {
+    TA_ASSERT(!TensorImpl_::is_zero(i));
+    const auto ord = TensorImpl_::trange().tiles_range().ordinal(i);
+    data_.set(ord, std::forward<Value>(value));
     if (set_notifier_accessor()) {
       set_notifier_accessor()(*this, ord);
     }

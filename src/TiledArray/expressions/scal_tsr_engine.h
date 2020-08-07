@@ -62,7 +62,7 @@ struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result> > {
       dist_eval_type;  ///< The distributed evaluator type
 
   // Meta data typedefs
-  typedef typename policy::size_type size_type;      ///< Size type
+  typedef typename policy::ordinal_type size_type;   ///< Size type
   typedef typename policy::trange_type trange_type;  ///< Tiled range type
   typedef typename policy::shape_type shape_type;    ///< Shape type
   typedef typename policy::pmap_interface

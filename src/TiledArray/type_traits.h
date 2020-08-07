@@ -25,10 +25,42 @@
  *      the current compiler + library + C++ standard.
  *      DO NOT include non-standard headers here!
  */
+#include <cassert>
 #include <complex>
 #include <functional>
 #include <iterator>
 #include <utility>
+
+#if __cplusplus <= 201703L
+#include <boost/tuple/tuple.hpp>
+#endif
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+// implement C++17's type traits features if using CUDA with older C++ compiler
+#if __cplusplus <= 201402L
+
+// GNU stdlibc++ provides void_t if -gnu++11 or -gnu++14 are given
+#if __GNUC__ && defined(__GLIBCXX__) && !__STRICT_ANSI__ && \
+    __cplusplus >= 201103L
+#define HAVE_VOID_T
+#endif
+
+#ifndef HAVE_VOID_T  // implement void_t if needed
+namespace std {
+template <typename... Ts>
+struct make_void {
+  using type = void;
+};
+template <typename... Ts>
+using void_t = typename make_void<Ts...>::type;
+}  // namespace std
+#endif
+
+namespace std {
+template <class T>
+inline constexpr bool is_integral_v = is_integral<T>::value;
+}
+#endif  // C++14 only
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // forward declarations
@@ -784,22 +816,83 @@ struct is_integral_list
 template <typename... Ts>
 constexpr const bool is_integral_list_v = is_integral_list<Ts...>::value;
 
-///////////
+//////////////////////////////////////////////////////////////////////////////////////////////
 
-template <class T, class = void>
-struct is_tuple_ : std::false_type {};
-template <class T>
-struct is_tuple_<
-    T, typename std::enable_if<(std::tuple_size<T>::value >= 0)>::type>
-    : std::true_type {};
 /// @tparam T a type
 /// @c is_tuple<T>::value is true if @c T is an @c std::tuple<...>
 template <class T>
-struct is_tuple : is_tuple_<T> {};
+struct is_tuple : std::false_type {};
+
+template <typename... Ts>
+struct is_tuple<std::tuple<Ts...>> : std::true_type {};
 
 /// \c is_tuple_v<T> is an alias for \c is_tuple<T>::value
 template <typename T>
 constexpr const bool is_tuple_v = is_tuple<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+#if __cplusplus <= 201703L
+template <std::size_t I, typename T, typename = void>
+struct is_std_gettable : std::false_type {};
+
+template <std::size_t I, typename T>
+struct is_std_gettable<I, T,
+                       std::void_t<decltype(::std::get<I>(std::declval<T>()))>>
+    : std::true_type {};
+
+template <std::size_t I, typename T>
+constexpr const bool is_std_gettable_v = is_std_gettable<I, T>::value;
+
+template <std::size_t I, typename T, typename = void>
+struct is_boost_gettable : std::false_type {};
+
+template <std::size_t I, typename T>
+struct is_boost_gettable<
+    I, T, std::void_t<decltype(::boost::get<I>(std::declval<T>()))>>
+    : std::true_type {};
+
+template <std::size_t I, typename T>
+constexpr const bool is_boost_gettable_v = is_boost_gettable<I, T>::value;
+
+template <std::size_t I, typename T>
+constexpr const bool is_gettable_v =
+    is_std_gettable_v<I, T> || is_boost_gettable_v<I, T>;
+
+template <std::size_t I, typename T>
+auto get(T&& t) {
+  using boost::get;
+  using std::get;
+  return get<I>(std::forward<T>(t));
+}
+#else  // C++20
+template <std::size_t I, typename T, typename = void>
+struct is_gettable : std::false_type {};
+
+template <std::size_t I, typename T>
+struct is_gettable<I, T, std::void_t<decltype(get<I>(std::declval<T>()))>>
+    : std::true_type {};
+
+template <std::size_t I, typename T>
+constexpr const bool is_gettable_v = is_gettable<I, T>::value;
+#endif
+
+/// @tparam T a type
+/// @c is_gettable_pair<T>::value is true if @c TiledArray::detail::get<0>(T)
+/// and @c TiledArray::detail::get<1>(T) are valid expressions
+template <class T, typename Enabler = void>
+struct is_gettable_pair : std::false_type {};
+
+template <typename T>
+struct is_gettable_pair<
+    T, std::enable_if_t<is_gettable_v<0, T> && is_gettable_v<1, T>>>
+    : std::true_type {};
+
+/// \c is_gettable_pair_v<T> is an alias for \c is_gettable_pair<T>::value
+template <typename T>
+constexpr const bool is_gettable_pair_v = is_gettable_pair<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
 
 template <class T, class = void>
 struct is_integral_pair_ : std::false_type {};
@@ -869,6 +962,9 @@ struct remove_cvr {
   typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type
       type;
 };
+
+template <typename T>
+using remove_cvr_t = typename remove_cvr<T>::type;
 
 /// prepends \c const to \c T if \c B is \c true
 template <bool B, typename T>
@@ -958,6 +1054,103 @@ struct is_random_iterator
     : public std::is_base_of<std::random_access_iterator_tag,
                              typename is_iterator<T>::iterator_category> {};
 
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+/// @tparam T a type
+/// @c is_range<T>::value is true if @c std::begin(T&) and @c std::end(T&) are
+/// defined
+/// @warning will be replaced by C++20 concepts
+template <typename T, typename Enabler = void>
+struct is_range : std::false_type {};
+
+template <typename T>
+struct is_range<T, std::void_t<decltype(std::begin(std::declval<T&>()),
+                                        std::end(std::declval<T&>()))>>
+    : std::true_type {};
+
+/// \c is_range_v<T> is an alias for \c is_range<T>::value
+template <typename T>
+static constexpr bool is_range_v = is_range<T>::value;
+
+/// @tparam T a type
+/// @c is_sized_range<T>::value is true if `is_range_v<T>` is true and
+/// `std::size(T&)` is valid
+/// @warning will be replaced by C++20 concepts
+template <typename T, typename Enabler = void>
+struct is_sized_range : std::false_type {};
+
+template <typename T>
+struct is_sized_range<T, std::void_t<decltype(std::size(std::declval<T&>()))>>
+    : is_range<T> {};
+
+/// `is_sized_range_v<T>` is an alias for `is_sized_range<T>::value`
+template <typename T>
+static constexpr bool is_sized_range_v = is_sized_range<T>::value;
+
+/// @tparam T a type
+/// @c is_contiguous_range<T>::value is true if `is_range_v<T>` is true and
+/// `std::data(T&)` is valid
+/// @warning will be replaced by C++20 concepts
+template <typename T, typename Enabler = void>
+struct is_contiguous_range : std::false_type {};
+
+template <typename T>
+struct is_contiguous_range<T,
+                           std::void_t<decltype(std::data(std::declval<T&>()))>>
+    : is_range<T> {};
+
+/// `is_contiguous_range_v<T>` is an alias for `is_contiguous_range<T>::value`
+template <typename T>
+static constexpr bool is_contiguous_range_v = is_contiguous_range<T>::value;
+
+/// @tparam T a range type
+/// @c iterator_t<T> is the iterator type, i.e. the type returned by @c
+/// std::begin(T&)
+/// @warning will be replaced by C++20 ranges::iterator_t
+template <class T>
+using iterator_t = decltype(std::begin(std::declval<T&>()));
+
+/// @tparam T a range type
+/// @c value_t<T> is the value type, i.e. the type to which @c std::begin(T&)
+/// dereferences to
+/// @warning will be replaced by C++20 ranges::value_t
+template <class T>
+using value_t = remove_cvr_t<decltype(*std::begin(std::declval<T&>()))>;
+
+/// @tparam T a type
+/// `is_integral_range<T>::value` is true if @p T is a range type that
+/// dereferences to values for which `std::is_integral_v` is true
+template <typename T, typename Enabler = void>
+struct is_integral_range : std::false_type {};
+
+template <typename T>
+struct is_integral_range<
+    T, std::enable_if_t<std::is_integral_v<value_t<T>> && is_range_v<T>>>
+    : std::true_type {};
+
+/// `is_integral_range_v<T>` is an alias for `is_integral_range<T>::value`
+template <typename T>
+static constexpr bool is_integral_range_v = is_integral_range<T>::value;
+
+/// @tparam T a type
+/// @c is_integral_sized_range<T>::value is true if @p T is a sized range type
+/// that dereferences to values for which std::is_integral is true
+template <typename T, typename Enabler = void>
+struct is_integral_sized_range : std::false_type {};
+
+template <typename T>
+struct is_integral_sized_range<
+    T, std::enable_if_t<std::is_integral_v<value_t<T>> && is_sized_range_v<T>>>
+    : std::true_type {};
+
+/// \c is_integral_sized_range_v<T> is an alias for \c
+/// is_integral_sized_range<T>::value
+template <typename T>
+static constexpr bool is_integral_sized_range_v =
+    is_integral_sized_range<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
 // Type traits used to determine the result of arithmetic operations between
 // two types.
 
@@ -999,11 +1192,95 @@ struct is_same_or_derived
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+/// @tparam T a type
+/// @c is_pair<T>::value is true if @c T is an @c std::pair<...>
 template <typename T>
 struct is_pair : public std::false_type {};
 
 template <typename T1, typename T2>
 struct is_pair<std::pair<T1, T2>> : public std::true_type {};
+
+/// \c is_pair_v<T> is an alias for \c is_pair<T>::value
+template <typename T>
+constexpr const bool is_pair_v = is_pair<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+/** @brief Primary template for detecting if @p T is an std::initializer_list
+ *
+ *  This is the primary template for detecting if a type @p T is an
+ *  std::initializer_list it will be selected when @p T is **NOT** an
+ *  std::initializer_list and will contain a constexpr static member `value`,
+ *  which is always false.
+ *
+ *  @tparam T The type we are testing for its initializer_list-ness
+ */
+template <typename T>
+struct is_initializer_list : std::false_type {};
+
+/** @brief Specialization of is_initializer_list for an std::initializer_list
+ *
+ *  This specialization is selected if the template type parameter to
+ *  is_initializer_list is of the form `std::initializer_list<T>` and will
+ * contain a constexpr static member `value` which is always true.
+ *
+ *  @tparam T The type we are testing for its initializer_list-ness
+ */
+template <typename T>
+struct is_initializer_list<std::initializer_list<T>> : std::true_type {};
+
+/** @brief Helper variable template for the is_initializer_list struct.
+ *
+ *  This helper variable conforms to the STL's practice of declaring a helper
+ *  variable to retrieve the static member `value` of a struct. The value of
+ *  `is_initializer_list_v<T>` will be the same as
+ * `is_initializer_list<T>::value`
+ *
+ *  @tparam T The type we want to know the initializer_list-ness of.
+ */
+template <typename T>
+static constexpr bool is_initializer_list_v = is_initializer_list<T>::value;
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+/// This evaluates to true if \c T is a generalized pair, namely if expressions
+/// `get<0>(T&)` and `get<1>(T&)` are valid, or \c T is a contiguous range
+template <typename T>
+static constexpr bool is_gpair_v =
+    is_contiguous_range_v<T> || is_gettable_pair_v<T>;
+
+/// @tparam T a type
+/// `is_gpair_range<T>::value` is true if @p T is a range type that
+/// dereferences to values for which is_gpair_v is true
+template <typename T, typename Enabler = void>
+struct is_gpair_range : std::false_type {};
+
+template <typename T>
+struct is_gpair_range<T,
+                      std::enable_if_t<is_gpair_v<value_t<T>> && is_range_v<T>>>
+    : std::true_type {};
+
+/// `is_gpair_range_v<T>` is an alias for `is_gpair_range<T>::value`
+template <typename T>
+static constexpr bool is_gpair_range_v = is_gpair_range<T>::value;
+
+/// \c at(pair, i) extracts i-th element from gpair
+template <typename GeneralizedPair,
+          typename = std::enable_if_t<is_gpair_v<GeneralizedPair>>>
+decltype(auto) at(GeneralizedPair&& v, std::size_t idx) {
+  assert(idx == 0 || idx == 1);
+  if constexpr (is_gettable_pair_v<std::decay_t<decltype(v)>>) {
+#if __cplusplus <= 201703L
+    return idx == 0 ? detail::get<0>(v) : detail::get<1>(v);
+#else
+    return idx == 0 ? get<0>(v) : get<1>(v);
+#endif
+  } else if constexpr (is_contiguous_range_v<std::decay_t<decltype(v)>>) {
+    assert(std::size(v) == 2);
+    return std::data(v)[idx];
+  }
+  abort();  // unreachable
+};
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 // https://stackoverflow.com/questions/51187974/can-stdis-invocable-be-emulated-within-c11
@@ -1034,26 +1311,5 @@ struct type_printer;
 }  // namespace detail
 
 }  // namespace TiledArray
-
-// implement C++17's std::void_t for CUDA
-#if __cplusplus <= 201402L
-
-// GNU stdlibc++ provides void_t if -gnu++11 or -gnu++14 are given
-#if __GNUC__ && defined(__GLIBCXX__) && !__STRICT_ANSI__ && \
-    __cplusplus >= 201103L
-#define HAVE_VOID_T
-#endif
-
-#ifndef HAVE_VOID_T  // implement void_t if needed
-namespace std {
-template <typename... Ts>
-struct make_void {
-  using type = void;
-};
-template <typename... Ts>
-using void_t = typename make_void<Ts...>::type;
-}  // namespace std
-#endif
-#endif
 
 #endif  // TILEDARRAY_TYPE_TRAITS_H__INCLUDED

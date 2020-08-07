@@ -48,7 +48,7 @@ enable_language(CXX)
 set(TILEDARRAY_MAJOR_VERSION 1)
 set(TILEDARRAY_MINOR_VERSION 0)
 set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_PRERELEASE_ID alpha.2)
+set(TILEDARRAY_PRERELEASE_ID alpha.3)
 
 set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}")
 if (TILEDARRAY_PRERELEASE_ID)
@@ -128,6 +128,9 @@ endif()
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
+option(TA_SIGNED_1INDEX_TYPE "Enables the use of signed 1-index coordinate type (OFF in 1.0.0-alpha.2 and older)" ON)
+add_feature_info(SIGNED_1INDEX_TYPE TA_SIGNED_1INDEX_TYPE "Use of signed 1-index coordinate type in TiledArray")
+
 option(TA_TRACE_TASKS "Enable debug tracing of MADNESS tasks in (some components of) TiledArray" OFF)
 add_feature_info(TASK_TRACE_DEBUG TA_TRACE_TASKS "Debug tracing of MADNESS tasks in (some components of) TiledArray")
 set(TILEDARRAY_ENABLE_TASK_DEBUG_TRACE ${TA_TRACE_TASKS})
@@ -138,6 +141,8 @@ if(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
   set(TA_TILE_OPS_LOG_LEVEL 1)
 endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 
+option(TA_ENABLE_RANGEV3 "Enable Range-V3 library" OFF)
+add_feature_info(ENABLE_RANGEV3 TA_ENABLE_RANGEV3 "Range-V3 ranges library")
 
 # Enable shared library support options
 redefaultable_option(TA_ASSUMES_ASLR_DISABLED "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled" OFF)
@@ -292,6 +297,9 @@ endif()
 if(ENABLE_SCALAPACK)
   include(external/scalapack.cmake)
 endif()
+if (TA_ENABLE_RANGEV3)
+  include(FindOrFetchRangeV3)
+endif(TA_ENABLE_RANGEV3)
 
 # optional deps:
 # 1. ccache

@@ -49,7 +49,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
   typedef TiledArray::detail::TensorImpl<Policy> TensorImpl_;
   ///< Tensor implementation base class
 
-  typedef typename TensorImpl_::size_type size_type;  ///< Size type
+  typedef typename TensorImpl_::ordinal_type ordinal_type;  ///< Ordinal type
   typedef typename TensorImpl_::trange_type
       trange_type;  ///< Tiled range type for this object
   typedef
@@ -82,7 +82,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
 
   /// \param index An ordinal index in the source index space
   /// \return The ordinal index in the target index space
-  size_type perm_index_to_target(size_type index) const {
+  ordinal_type perm_index_to_target(ordinal_type index) const {
     TA_ASSERT(index < TensorImpl_::trange().tiles_range().volume());
     return (source_to_target_ ? source_to_target_(index) : index);
   }
@@ -91,7 +91,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
 
   /// \param index An ordinal index in the target index space
   /// \return The ordinal index in the source index space
-  size_type perm_index_to_source(size_type index) const {
+  ordinal_type perm_index_to_source(ordinal_type index) const {
     TA_ASSERT(index < TensorImpl_::trange().tiles_range().volume());
     return (target_to_source_ ? target_to_source_(index) : index);
   }
@@ -137,14 +137,14 @@ class DistEvalImpl : public TensorImpl<Policy>,
 
   /// \param i The index of the tile
   /// \return Tile at index i
-  virtual Future<value_type> get_tile(size_type i) const = 0;
+  virtual Future<value_type> get_tile(ordinal_type i) const = 0;
 
   /// Discard a tile that is not needed
 
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(size_type i) const = 0;
+  virtual void discard_tile(ordinal_type i) const = 0;
 
   /// Set tensor value
 
@@ -152,7 +152,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
   /// function should be called by a task function.
   /// \param i The index in the result space where value will be stored
   /// \param value The value to be stored at index \c i
-  void set_tile(size_type i, const value_type& value) {
+  void set_tile(ordinal_type i, const value_type& value) {
     // Store value
     madness::DistributedID id(id_, i);
     TensorImpl_::world().gop.send(TensorImpl_::owner(i), id, value);
@@ -167,7 +167,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
   /// function should be called by a task function.
   /// \param i The index in the result space where value will be stored
   /// \param f The future value to be stored at index \c i
-  void set_tile(size_type i, Future<value_type> f) {
+  void set_tile(ordinal_type i, Future<value_type> f) {
     // Store value
     madness::DistributedID id(id_, i);
     TensorImpl_::world().gop.send(TensorImpl_::owner(i), id, f);
@@ -250,7 +250,7 @@ class DistEval {
   typedef DistEval<Tile, Policy> DistEval_;  ///< This class type
   typedef DistEvalImpl<Tile, Policy>
       impl_type;  ///< Implementation base class type
-  typedef typename impl_type::size_type size_type;  ///< Size type
+  typedef typename impl_type::ordinal_type ordinal_type;  ///< Ordinal type
   typedef typename impl_type::trange_type
       trange_type;  ///< Tiled range type for this object
   typedef
@@ -307,25 +307,25 @@ class DistEval {
   /// Tensor tile volume accessor
 
   /// \return The number of tiles in the tensor
-  size_type size() const { return pimpl_->size(); }
+  ordinal_type size() const { return pimpl_->size(); }
 
   /// Query a tile owner
 
   /// \param i The tile index to query
   /// \return The process ID of the node that owns tile \c i
-  ProcessID owner(size_type i) const { return pimpl_->owner(i); }
+  ProcessID owner(ordinal_type i) const { return pimpl_->owner(i); }
 
   /// Query for a locally owned tile
 
   /// \param i The tile index to query
   /// \return \c true if the tile is owned by this node, otherwise \c false
-  bool is_local(size_type i) const { return pimpl_->is_local(i); }
+  bool is_local(ordinal_type i) const { return pimpl_->is_local(i); }
 
   /// Query for a zero tile
 
   /// \param i The tile index to query
   /// \return \c true if the tile is zero, otherwise \c false
-  bool is_zero(size_type i) const { return pimpl_->is_zero(i); }
+  bool is_zero(ordinal_type i) const { return pimpl_->is_zero(i); }
 
   /// Tensor process map accessor
 
@@ -352,14 +352,14 @@ class DistEval {
   /// Tile is removed after it is set.
   /// \param i The tile index
   /// \return Tile \c i
-  future get(size_type i) const { return pimpl_->get_tile(i); }
+  future get(ordinal_type i) const { return pimpl_->get_tile(i); }
 
   /// Discard a tile that is not needed
 
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard(size_type i) const { pimpl_->discard_tile(i); }
+  virtual void discard(ordinal_type i) const { pimpl_->discard_tile(i); }
 
   /// World object accessor
 

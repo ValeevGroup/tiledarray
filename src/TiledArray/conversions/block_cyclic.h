@@ -42,6 +42,7 @@
 #include <scalapackpp/util/sfinae.hpp>
 
 namespace TiledArray {
+namespace scalapack {
 
 template <typename T,
           typename = scalapackpp::detail::enable_if_scalapack_supported_t<T>>
@@ -71,17 +72,19 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
     const auto n = dims_.second;
 
     // Loop over 2D BC compatible blocks
-    size_t i_extent, j_extent;
-    for (auto i = lo[0], i_t = 0ul; i < up[0]; i += i_extent, i_t += i_extent)
-      for (auto j = lo[1], j_t = 0ul; j < up[1];
-           j += j_extent, j_t += j_extent) {
+    long i_extent, j_extent, i_t = 0;
+    for (auto i = lo[0]; i < up[0]; i += i_extent, i_t += i_extent) {
+      long j_t = 0;
+      for (auto j = lo[1]; j < up[1]; j += j_extent, j_t += j_extent) {
         // Determine indices of start of BC owning block
         const auto i_block_begin = (i / mb) * mb;
         const auto j_block_begin = (j / nb) * nb;
 
         // Determine indices of end of BC owning block
-        const auto i_block_end = std::min(m, i_block_begin + mb);
-        const auto j_block_end = std::min(n, j_block_begin + nb);
+        const auto i_block_end =
+            std::min(static_cast<decltype(i)>(m), i_block_begin + mb);
+        const auto j_block_end =
+            std::min(static_cast<decltype(j)>(n), j_block_begin + nb);
 
         // Cut block if necessacary to adhere to tile dimensions
         const auto i_last = std::min(i_block_end, up[0]);
@@ -106,7 +109,8 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
                              subblock);
         }
 
-      }  // for (ij)
+      }  // for (j)
+    }    // for (i)
 
   }  // put_tile
 
@@ -141,7 +145,7 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
    *  @param[in] NB    Block-cyclic column distribution factor
    */
   BlockCyclicMatrix(madness::World& world, const blacspp::Grid& grid, size_t M,
-                  size_t N, size_t MB, size_t NB)
+                    size_t N, size_t MB, size_t NB)
       : world_base_t(world), bc_dist_(grid, MB, NB), dims_{M, N} {
     // TODO: Check if world / grid are compatible
 
@@ -163,9 +167,9 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
    */
   template <typename Tile, typename Policy>
   BlockCyclicMatrix(const DistArray<Tile, Policy>& array,
-                  const blacspp::Grid& grid, size_t MB, size_t NB)
+                    const blacspp::Grid& grid, size_t MB, size_t NB)
       : BlockCyclicMatrix(array.world(), grid, array.trange().dim(0).extent(),
-                        array.trange().dim(1).extent(), MB, NB) {
+                          array.trange().dim(1).extent(), MB, NB) {
     TA_ASSERT(array.trange().rank() == 2);
 
     for (auto it = array.begin(); it != array.end(); ++it) put_tile(*it);
@@ -181,8 +185,6 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
   const auto& dist() const { return bc_dist_; }
   const auto& dims() const { return dims_; }
   const auto& local_mat() const { return local_mat_; }
-
-
 
   auto& dist() { return bc_dist_; }
   auto& dims() { return dims_; }
@@ -212,20 +214,21 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
 
       // Loop over 2D BC compatible blocks
       size_t i_extent, j_extent;
-      for (auto i = lo[0], i_t = 0ul; i < up[0]; i += i_extent, i_t += i_extent)
-        for (auto j = lo[1], j_t = 0ul; j < up[1];
+      for (size_t i = lo[0], i_t = 0ul; i < up[0];
+           i += i_extent, i_t += i_extent)
+        for (size_t j = lo[1], j_t = 0ul; j < up[1];
              j += j_extent, j_t += j_extent) {
           // Determine indices of start of BC owning block
-          const auto i_block_begin = (i / mb) * mb;
-          const auto j_block_begin = (j / nb) * nb;
+          const decltype(m) i_block_begin = (i / mb) * mb;
+          const decltype(n) j_block_begin = (j / nb) * nb;
 
           // Determine indices of end of BC owning block
           const auto i_block_end = std::min(m, i_block_begin + mb);
           const auto j_block_end = std::min(n, j_block_begin + nb);
 
           // Cut block if necessacary to adhere to tile dimensions
-          const auto i_last = std::min(i_block_end, up[0]);
-          const auto j_last = std::min(j_block_end, up[1]);
+          const auto i_last = std::min(i_block_end, static_cast<size_t>(up[0]));
+          const auto j_last = std::min(j_block_end, static_cast<size_t>(up[1]));
 
           // Calculate extents of the block to be copied
           i_extent = i_last - i;
@@ -240,8 +243,8 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
                 local_mat_.block(i_local, j_local, i_extent, j_extent);
 
           } else {
-            std::vector<size_t> lo = {i, j};
-            std::vector<size_t> up = {i_last, j_last};
+            std::vector<size_t> lo{i, j};
+            std::vector<size_t> up{i_last, j_last};
             madness::Future<Tensor<T>> remtile_fut = world_base_t::send(
                 owner(i, j), &BlockCyclicMatrix<T>::extract_submatrix, lo, up);
 
@@ -257,16 +260,6 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
 
 };  // class BlockCyclicMatrix
 
-
-
-
-
-
-
-
-
-
-
 /**
  *  \brief Convert a dense DistArray to block-cyclic storage format
  *
@@ -280,18 +273,12 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
  *  @returns    Block-cyclic conversion of input DistArray
  */
 template <typename Array>
-BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type> 
-array_to_block_cyclic( 
-  const Array&         array, 
-  const blacspp::Grid& grid,
-  size_t               MB,
-  size_t               NB
-) {
-
-  return BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>( array, grid, MB, NB );
-
+BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>
+array_to_block_cyclic(const Array& array, const blacspp::Grid& grid, size_t MB,
+                      size_t NB) {
+  return BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>(
+      array, grid, MB, NB);
 }
-
 
 /**
  *  \brief Convert a block-cyclic matrix to DistArray
@@ -305,14 +292,13 @@ array_to_block_cyclic(
  */
 template <typename Array>
 std::remove_cv_t<Array> block_cyclic_to_array(
-  const BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>& matrix,
-  const TiledRange&                                  trange
-) {
-
-  return matrix.template tensor_from_matrix<std::remove_cv_t<Array>>( trange );
-
+    const BlockCyclicMatrix<typename std::remove_cv_t<Array>::element_type>&
+        matrix,
+    const TiledRange& trange) {
+  return matrix.template tensor_from_matrix<std::remove_cv_t<Array>>(trange);
 }
 
+}  // namespace scalapack
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK

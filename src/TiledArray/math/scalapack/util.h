@@ -36,7 +36,7 @@ namespace detail {
 
 template <typename T>
 void scalapack_zero_triangle( 
-  blacspp::Triangle tri, BlockCyclicMatrix<T>& A, bool zero_diag = false 
+  blacspp::Triangle tri, scalapack::BlockCyclicMatrix<T>& A, bool zero_diag = false 
 ) {
 
   auto zero_el = [&]( size_t I, size_t J ) {

@@ -61,9 +61,9 @@ class Summa
       TensorImpl_;           ///< The base, base class type
   typedef Left left_type;    ///< The left-hand argument type
   typedef Right right_type;  ///< The right-hand argument type
-  typedef typename DistEvalImpl_::size_type size_type;    ///< Size type
-  typedef typename DistEvalImpl_::range_type range_type;  ///< Range type
-  typedef typename DistEvalImpl_::shape_type shape_type;  ///< Shape type
+  typedef typename DistEvalImpl_::ordinal_type ordinal_type;  ///< Ordinal type
+  typedef typename DistEvalImpl_::range_type range_type;      ///< Range type
+  typedef typename DistEvalImpl_::shape_type shape_type;      ///< Shape type
   typedef typename DistEvalImpl_::pmap_interface
       pmap_interface;  ///< Process map interface type
   typedef
@@ -74,8 +74,8 @@ class Summa
   typedef Op op_type;  ///< Tile evaluation operator type
 
  private:
-  static size_type max_memory_;  ///< Maximum memory used per node
-  static size_type
+  static ordinal_type max_memory_;  ///< Maximum memory used per node
+  static ordinal_type
       max_depth_;  ///< Maximum number of concurrent SUMMA iterations
 
   // Arguments and operation
@@ -88,7 +88,7 @@ class Summa
   madness::Group col_group_;  ///< The column process group for this rank
 
   // Dimension information
-  const size_type k_;         ///< Number of tiles in the inner dimension
+  const ordinal_type k_;      ///< Number of tiles in the inner dimension
   const ProcGrid proc_grid_;  ///< Process grid for this contraction
 
   // Contraction results
@@ -96,24 +96,24 @@ class Summa
 
   // Constants used to iterate over columns and rows of left_ and right_,
   // respectively.
-  const size_type
+  const ordinal_type
       left_start_local_;  ///< The starting point of left column iterator ranges
                           ///< (just add k for specific columns)
-  const size_type left_end_;     ///< The end of the left column iterator ranges
-  const size_type left_stride_;  ///< Stride for left column iterators
-  const size_type
-      left_stride_local_;         ///< Stride for local left column iterators
-  const size_type right_stride_;  ///< Stride for right row iterators
-  const size_type
+  const ordinal_type left_end_;  ///< The end of the left column iterator ranges
+  const ordinal_type left_stride_;  ///< Stride for left column iterators
+  const ordinal_type
+      left_stride_local_;            ///< Stride for local left column iterators
+  const ordinal_type right_stride_;  ///< Stride for right row iterators
+  const ordinal_type
       right_stride_local_;  ///< stride for local right row iterators
 
   typedef Future<typename right_type::eval_type>
       right_future;  ///< Future to a right-hand argument tile
   typedef Future<typename left_type::eval_type>
       left_future;  ///< Future to a left-hand argument tile
-  typedef std::pair<size_type, right_future>
+  typedef std::pair<ordinal_type, right_future>
       row_datum;  ///< Datum element type for a right-hand argument row
-  typedef std::pair<size_type, left_future>
+  typedef std::pair<ordinal_type, left_future>
       col_datum;  ///< Datum element type for a left-hand argument column
 
   static constexpr const bool trace_tasks =
@@ -132,7 +132,7 @@ class Summa
   // Static variable initialization ----------------------------------------
 
   /// Initialize max_memory_ limit for SUMMA
-  static size_type init_max_memory() {
+  static ordinal_type init_max_memory() {
     const char* max_memory = getenv("TA_SUMMA_MAX_MEMORY");
     if (max_memory) {
       // Convert the string into bytes
@@ -166,7 +166,7 @@ class Summa
     return 0ul;
   }
 
-  static size_type init_max_depth() {
+  static ordinal_type init_max_depth() {
     const char* max_depth = getenv("TA_SUMMA_MAX_DEPTH");
     if (max_depth) return std::stoul(max_depth);
     return 0ul;
@@ -200,19 +200,19 @@ class Summa
   template <typename Shape, typename ProcMap>
   madness::Group make_group(const Shape& shape,
                             const std::vector<bool>& process_mask,
-                            size_type index, const size_type end,
-                            const size_type stride,
-                            const size_type max_group_size, const size_type k,
-                            const size_type key_offset,
+                            ordinal_type index, const ordinal_type end,
+                            const ordinal_type stride,
+                            const ordinal_type max_group_size,
+                            const ordinal_type k, const ordinal_type key_offset,
                             const ProcMap& proc_map) const {
     // Generate the list of processes in rank_row
     std::vector<ProcessID> proc_list(max_group_size, -1);
 
     // Flag the root processes of the broadcast, which may not be included
     // by shape.
-    size_type p = k % max_group_size;
+    ordinal_type p = k % max_group_size;
     proc_list[p] = proc_map(p);
-    size_type count = 1ul;
+    ordinal_type count = 1ul;
 
     // Flag all processes that have non-zero tiles
     for (p = 0ul; (index < end) && (count < max_group_size);
@@ -225,7 +225,7 @@ class Summa
     }
 
     // Remove processes from the list that will not be in the group
-    for (size_type x = 0ul, p = 0ul; x < count; ++p) {
+    for (ordinal_type x = 0ul, p = 0ul; x < count; ++p) {
       if (proc_list[p] == -1) continue;
       proc_list[x++] = proc_list[p];
     }
@@ -242,10 +242,10 @@ class Summa
 
   /// \param k The broadcast group index
   /// \return A row process group
-  madness::Group make_row_group(const size_type k) const {
+  madness::Group make_row_group(const ordinal_type k) const {
     // Construct the sparse broadcast group
-    const size_type right_begin_k = k * proc_grid_.cols();
-    const size_type right_end_k = right_begin_k + proc_grid_.cols();
+    const ordinal_type right_begin_k = k * proc_grid_.cols();
+    const ordinal_type right_end_k = right_begin_k + proc_grid_.cols();
     // make the row mask; using the same mask for all tiles avoids having to
     // compute mask for every tile and use of masked broadcasts
     auto result_row_mask_k = make_row_mask(k);
@@ -265,18 +265,17 @@ class Summa
 
   /// \param k The broadcast group index
   /// \return A column process group
-  madness::Group make_col_group(const size_type k) const {
+  madness::Group make_col_group(const ordinal_type k) const {
     // make the column mask; using the same mask for all tiles avoids having to
     // compute mask for every tile and use of masked broadcasts
     auto result_col_mask_k = make_col_mask(k);
 
     // return empty group if I am not in this group, otherwise make a group
     if (result_col_mask_k[proc_grid_.rank_row()])
-      return make_group(left_.shape(), result_col_mask_k, k, left_end_,
-                        left_stride_, proc_grid_.proc_rows(), k, 0ul,
-                        [&](const ProcGrid::size_type row) {
-                          return proc_grid_.map_row(row);
-                        });
+      return make_group(
+          left_.shape(), result_col_mask_k, k, left_end_, left_stride_,
+          proc_grid_.proc_rows(), k, 0ul,
+          [&](const ordinal_type row) { return proc_grid_.map_row(row); });
     else
       return madness::Group();
   }
@@ -287,7 +286,7 @@ class Summa
   /// \return a set object, if \code result[p] == true \endcode the process
   ///         in column \c p of this row has at least 1 result tile for this \c
   ///         k
-  std::vector<bool> make_row_mask(const size_type k) const {
+  std::vector<bool> make_row_mask(const ordinal_type k) const {
     // "local" A[i][k] (i.e. for all i assigned to my row of processes) will
     // produce C[i][*] for each process in my row of the process grid determine
     // whether there are any nonzero C[i][*] located on that node
@@ -310,10 +309,10 @@ class Summa
     const auto nk = k_;
 
     // for each i assigned to my row of processes ...
-    size_type i_start, i_fence, i_stride;
+    ordinal_type i_start, i_fence, i_stride;
     std::tie(i_start, i_fence, i_stride) = result_row_range(my_proc_row);
     const auto ik_stride = i_stride * nk;
-    for (size_type i = i_start, ik = i_start * nk + k; i < i_fence;
+    for (ordinal_type i = i_start, ik = i_start * nk + k; i < i_fence;
          i += i_stride, ik += ik_stride) {
       // ... such that A[i][k] exists ...
       if (!left_.shape().is_zero(ik)) {
@@ -321,14 +320,14 @@ class Summa
         const auto k_proc_col = k % nproc_cols;
         mask[k_proc_col] = true;
         // ... loop over processes in my row ...
-        for (size_type proc_col = 0; proc_col != nproc_cols; ++proc_col) {
+        for (ordinal_type proc_col = 0; proc_col != nproc_cols; ++proc_col) {
           // ... that are not the owner of A[i][k] ...
           if (proc_col != k_proc_col) {
             // ... loop over all C[i][j] tiles that belong to this process ...
-            size_type j_start, j_fence, j_stride;
+            ordinal_type j_start, j_fence, j_stride;
             std::tie(j_start, j_fence, j_stride) = result_col_range(proc_col);
             const auto ij_stride = j_stride;
-            for (size_type j = j_start, ij = i * nj + j_start; j < j_fence;
+            for (ordinal_type j = j_start, ij = i * nj + j_start; j < j_fence;
                  j += j_stride, ij += ij_stride) {
               // ... if any such C[i][j] exists, update the mask, and move
               // on to next process
@@ -352,7 +351,7 @@ class Summa
   /// \return a set object, if \code result[p] == true \endcode the process
   ///         in row \c p of this column has at least 1 result tile for this
   ///         \c k
-  std::vector<bool> make_col_mask(const size_type k) const {
+  std::vector<bool> make_col_mask(const ordinal_type k) const {
     // "local" B[k][j] (i.e. for all j assigned to my column of processes)
     // will produce C[*][j]
     // for each process in my column of the process grid determine whether
@@ -375,10 +374,10 @@ class Summa
     const auto nj = proc_grid_.cols();
 
     // for each j assigned to my column of processes ...
-    size_type j_start, j_fence, j_stride;
+    ordinal_type j_start, j_fence, j_stride;
     std::tie(j_start, j_fence, j_stride) = result_col_range(my_proc_col);
     const auto kj_stride = j_stride;
-    for (size_type j = j_start, kj = k * nj + j_start; j < j_fence;
+    for (ordinal_type j = j_start, kj = k * nj + j_start; j < j_fence;
          j += j_stride, kj += kj_stride) {
       // ... such that B[k][j] exists ...
       if (!right_.shape().is_zero(kj)) {
@@ -386,14 +385,14 @@ class Summa
         auto k_proc_row = k % nproc_rows;
         mask[k_proc_row] = true;
         // ... loop over processes in my col ...
-        for (size_type proc_row = 0; proc_row != nproc_rows; ++proc_row) {
+        for (ordinal_type proc_row = 0; proc_row != nproc_rows; ++proc_row) {
           // ... that are not the owner of B[k][j] ...
           if (proc_row != k_proc_row) {
             // ... loop over all C[i][j] tiles that belong to this process
-            size_type i_start, i_fence, i_stride;
+            ordinal_type i_start, i_fence, i_stride;
             std::tie(i_start, i_fence, i_stride) = result_row_range(proc_row);
             const auto ij_stride = i_stride * nj;
-            for (size_type i = i_start, ij = i_start * nj + j; i < i_fence;
+            for (ordinal_type i = i_start, ij = i_start * nj + j; i < i_fence;
                  i += i_stride, ij += ij_stride) {
               // ... if any such C[i][j] exists, update the mask, and move
               // on to next process
@@ -417,11 +416,11 @@ class Summa
   /// \return the {start,fence,stride} tuple which defines the iteration
   ///         range for the row indices of the result tiles residing on
   ///         process in row \c proc_row
-  inline std::tuple<size_type, size_type, size_type> result_row_range(
-      size_type proc_row) const {
-    const size_type start = proc_row;
-    const size_type fence = proc_grid_.rows();
-    const size_type stride = proc_grid_.proc_rows();
+  inline std::tuple<ordinal_type, ordinal_type, ordinal_type> result_row_range(
+      ordinal_type proc_row) const {
+    const ordinal_type start = proc_row;
+    const ordinal_type fence = proc_grid_.rows();
+    const ordinal_type stride = proc_grid_.proc_rows();
     return std::make_tuple(start, fence, stride);
   }
 
@@ -431,11 +430,11 @@ class Summa
   /// \return the {start,fence,stride} tuple which defines the iteration
   ///         range for the column indices of the result tiles residing on
   ///         process in column \c proc_col
-  std::tuple<size_type, size_type, size_type> result_col_range(
-      size_type proc_col) const {
-    const size_type start = proc_col;
-    const size_type fence = proc_grid_.cols();
-    const size_type stride = proc_grid_.proc_cols();
+  std::tuple<ordinal_type, ordinal_type, ordinal_type> result_col_range(
+      ordinal_type proc_col) const {
+    const ordinal_type start = proc_col;
+    const ordinal_type fence = proc_grid_.cols();
+    const ordinal_type stride = proc_grid_.proc_cols();
     return std::make_tuple(start, fence, stride);
   }
 
@@ -462,7 +461,7 @@ class Summa
   template <typename Arg>
   static typename std::enable_if<!is_lazy_tile<typename Arg::value_type>::value,
                                  Future<typename Arg::eval_type> >::type
-  get_tile(Arg& arg, const typename Arg::size_type index) {
+  get_tile(Arg& arg, const typename Arg::ordinal_type index) {
     return arg.get(index);
   }
 
@@ -482,7 +481,7 @@ class Summa
 #endif
       ,
       Future<typename Arg::eval_type> >::type
-  get_tile(Arg& arg, const typename Arg::size_type index) {
+  get_tile(Arg& arg, const typename Arg::ordinal_type index) {
     auto convert_tile_fn =
         &Summa_::template convert_tile<typename Arg::value_type>;
     return arg.world().taskq.add(convert_tile_fn, arg.get(index),
@@ -503,7 +502,7 @@ class Summa
       is_lazy_tile<typename Arg::value_type>::value &&
           detail::is_cuda_tile<typename Arg::value_type>::value,
       Future<typename Arg::eval_type> >::type
-  get_tile(Arg& arg, const typename Arg::size_type index) {
+  get_tile(Arg& arg, const typename Arg::ordinal_type index) {
     auto convert_tile_fn =
         &Summa_::template convert_tile<typename Arg::value_type>;
     return madness::add_cuda_task(arg.world(), convert_tile_fn, arg.get(index),
@@ -521,18 +520,18 @@ class Summa
   /// \param[in] stride The stride between tile indices to be broadcast
   /// \param[out] vec The vector that will hold broadcast tiles
   template <typename Arg, typename Datum>
-  void get_vector(Arg& arg, size_type index, const size_type end,
-                  const size_type stride, std::vector<Datum>& vec) const {
+  void get_vector(Arg& arg, ordinal_type index, const ordinal_type end,
+                  const ordinal_type stride, std::vector<Datum>& vec) const {
     TA_ASSERT(vec.size() == 0ul);
 
     // Iterate over vector of tiles
     if (arg.is_local(index)) {
-      for (size_type i = 0ul; index < end; ++i, index += stride) {
+      for (ordinal_type i = 0ul; index < end; ++i, index += stride) {
         if (arg.shape().is_zero(index)) continue;
         vec.emplace_back(i, get_tile(arg, index));
       }
     } else {
-      for (size_type i = 0ul; index < end; ++i, index += stride) {
+      for (ordinal_type i = 0ul; index < end; ++i, index += stride) {
         if (arg.shape().is_zero(index)) continue;
         vec.emplace_back(i, Future<typename Arg::eval_type>());
       }
@@ -545,7 +544,7 @@ class Summa
 
   /// \param[in] k The column to be retrieved
   /// \param[out] col The column vector that will hold the tiles
-  void get_col(const size_type k, std::vector<col_datum>& col) const {
+  void get_col(const ordinal_type k, std::vector<col_datum>& col) const {
     col.reserve(proc_grid_.local_rows());
     get_vector(left_, left_start_local_ + k, left_end_, left_stride_local_,
                col);
@@ -555,12 +554,12 @@ class Summa
 
   /// \param[in] k The row to be retrieved
   /// \param[out] row The row vector that will hold the tiles
-  void get_row(const size_type k, std::vector<row_datum>& row) const {
+  void get_row(const ordinal_type k, std::vector<row_datum>& row) const {
     row.reserve(proc_grid_.local_cols());
 
     // Compute local iteration limits for row k of right_.
-    size_type begin = k * proc_grid_.cols();
-    const size_type end = begin + proc_grid_.cols();
+    ordinal_type begin = k * proc_grid_.cols();
+    const ordinal_type end = begin + proc_grid_.cols();
     begin += proc_grid_.rank_col();
 
     get_vector(right_, begin, end, right_stride_local_, row);
@@ -575,9 +574,9 @@ class Summa
   /// \param[in] key_offset The broadcast key offset value
   /// \param[out] vec The vector that will hold broadcast tiles
   template <typename Datum>
-  void bcast(const size_type start, const size_type stride,
+  void bcast(const ordinal_type start, const ordinal_type stride,
              const madness::Group& group, const ProcessID group_root,
-             const size_type key_offset, std::vector<Datum>& vec) const {
+             const ordinal_type key_offset, std::vector<Datum>& vec) const {
     TA_ASSERT(vec.size() != 0ul);
     TA_ASSERT(group.size() > 0);
     TA_ASSERT(group_root < group.size());
@@ -596,7 +595,7 @@ class Summa
     // Iterate over tiles to be broadcast
     for (typename std::vector<Datum>::iterator it = vec.begin();
          it != vec.end(); ++it) {
-      const size_type index = it->first * stride + start;
+      const ordinal_type index = it->first * stride + start;
 
       // Broadcast the tile
       const madness::DistributedID key(DistEvalImpl_::id(), index + key_offset);
@@ -617,7 +616,7 @@ class Summa
 
   // Broadcast specialization for left and right arguments -----------------
 
-  ProcessID get_row_group_root(const size_type k,
+  ProcessID get_row_group_root(const ordinal_type k,
                                const madness::Group& row_group) const {
     ProcessID group_root = k % proc_grid_.proc_cols();
     if (!right_.shape().is_dense() &&
@@ -629,7 +628,7 @@ class Summa
     return group_root;
   }
 
-  ProcessID get_col_group_root(const size_type k,
+  ProcessID get_col_group_root(const ordinal_type k,
                                const madness::Group& col_group) const {
     ProcessID group_root = k % proc_grid_.proc_rows();
     if (!left_.shape().is_dense() &&
@@ -645,7 +644,7 @@ class Summa
 
   /// \param[in] k The column of \c left_ to be broadcast
   /// \param[out] col The vector that will hold the results of the broadcast
-  void bcast_col(const size_type k, std::vector<col_datum>& col,
+  void bcast_col(const ordinal_type k, std::vector<col_datum>& col,
                  const madness::Group& row_group) const {
     // broadcast if I'm part of the broadcast group
     if (!row_group.empty()) {
@@ -660,7 +659,7 @@ class Summa
 
   /// \param[in] k The row of \c right to be broadcast
   /// \param[out] row The vector that will hold the results of the broadcast
-  void bcast_row(const size_type k, std::vector<row_datum>& row,
+  void bcast_row(const ordinal_type k, std::vector<row_datum>& row,
                  const madness::Group& col_group) const {
     // broadcast if I'm part of the broadcast group
     if (!col_group.empty()) {
@@ -673,14 +672,14 @@ class Summa
     }
   }
 
-  void bcast_col_range_task(size_type k, const size_type end) const {
+  void bcast_col_range_task(ordinal_type k, const ordinal_type end) const {
     // Compute the first local row of right
-    const size_type Pcols = proc_grid_.proc_cols();
+    const ordinal_type Pcols = proc_grid_.proc_cols();
     k += (Pcols - ((k + Pcols - proc_grid_.rank_col()) % Pcols)) % Pcols;
 
     for (; k < end; k += Pcols) {
       // Compute local iteration limits for column k of left_.
-      size_type index = left_start_local_ + k;
+      ordinal_type index = left_start_local_ + k;
 
       // will create broadcast group only if needed
       bool have_group = false;
@@ -714,15 +713,15 @@ class Summa
     }
   }
 
-  void bcast_row_range_task(size_type k, const size_type end) const {
+  void bcast_row_range_task(ordinal_type k, const ordinal_type end) const {
     // Compute the first local row of right
-    const size_type Prows = proc_grid_.proc_rows();
+    const ordinal_type Prows = proc_grid_.proc_rows();
     k += (Prows - ((k + Prows - proc_grid_.rank_row()) % Prows)) % Prows;
 
     for (; k < end; k += Prows) {
       // Compute local iteration limits for row k of right_.
-      size_type index = k * proc_grid_.cols();
-      const size_type row_end = index + proc_grid_.cols();
+      ordinal_type index = k * proc_grid_.cols();
+      const ordinal_type row_end = index + proc_grid_.cols();
       index += proc_grid_.rank_col();
 
       // will create broadcast group only if needed
@@ -768,13 +767,13 @@ class Summa
   /// \param k The first row to search
   /// \return The first row, greater than or equal to \c k with non-zero
   /// tiles, or \c k_ if none is found.
-  size_type iterate_row(size_type k) const {
+  ordinal_type iterate_row(ordinal_type k) const {
     // Iterate over k's until a non-zero tile is found or the end of the
     // matrix is reached.
-    size_type end = k * proc_grid_.cols();
+    ordinal_type end = k * proc_grid_.cols();
     for (; k < k_; ++k) {
       // Search for non-zero tiles in row k of right
-      size_type i = end + proc_grid_.rank_col();
+      ordinal_type i = end + proc_grid_.rank_col();
       end += proc_grid_.cols();
       for (; i < end; i += right_stride_local_)
         if (!right_.shape().is_zero(i)) return k;
@@ -791,12 +790,12 @@ class Summa
   /// \param k The first column to test for non-zero tiles
   /// \return The first column, greater than or equal to \c k, that contains
   /// a non-zero tile. If no non-zero tile is not found, return \c k_.
-  size_type iterate_col(size_type k) const {
+  ordinal_type iterate_col(ordinal_type k) const {
     // Iterate over k's until a non-zero tile is found or the end of the
     // matrix is reached.
     for (; k < k_; ++k)
       // Search row k for non-zero tiles
-      for (size_type i = left_start_local_ + k; i < left_end_;
+      for (ordinal_type i = left_start_local_ + k; i < left_end_;
            i += left_stride_local_)
         if (!left_.shape().is_zero(i)) return k;
 
@@ -814,10 +813,10 @@ class Summa
   /// \param k The first row/column to check
   /// \return The next k-th column and row of the left- and right-hand
   /// arguments, respectively, that both have non-zero tiles
-  size_type iterate_sparse(const size_type k) const {
+  ordinal_type iterate_sparse(const ordinal_type k) const {
     // Initial step for k_col and k_row.
-    size_type k_col = iterate_col(k);
-    size_type k_row = iterate_row(k_col);
+    ordinal_type k_col = iterate_col(k);
+    ordinal_type k_row = iterate_row(k_col);
 
     // Search for a row and column that both have non-zero tiles
     while (k_col != k_row) {
@@ -854,7 +853,7 @@ class Summa
   /// \param k The first row/column to check
   /// \return The next k-th column and row of the left- and right-hand
   /// arguments, respectively, that both have non-zero tiles
-  size_type iterate(const size_type k) const {
+  ordinal_type iterate(const ordinal_type k) const {
     return (left_.shape().is_dense() && right_.shape().is_dense()
                 ? k
                 : iterate_sparse(k));
@@ -863,7 +862,7 @@ class Summa
   // Initialization functions ----------------------------------------------
 
   /// Initialize reduce tasks and construct broadcast groups
-  size_type initialize(const DenseShape&) {
+  ordinal_type initialize(const DenseShape&) {
     // Construct static broadcast groups for dense arguments
     const madness::DistributedID col_did(DistEvalImpl_::id(), 0ul);
     col_group_ = proc_grid_.make_col_group(col_did);
@@ -889,8 +888,8 @@ class Summa
     reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
     // Iterate over all local tiles
-    const size_type n = proc_grid_.local_size();
-    for (size_type t = 0ul; t < n; ++t) {
+    const ordinal_type n = proc_grid_.local_size();
+    for (ordinal_type t = 0ul; t < n; ++t) {
       // Initialize the reduction task
       ReducePairTask<op_type>* MADNESS_RESTRICT const reduce_task =
           reduce_tasks_ + t;
@@ -902,7 +901,7 @@ class Summa
 
   /// Initialize reduce tasks
   template <typename Shape>
-  size_type initialize(const Shape& shape) {
+  ordinal_type initialize(const Shape& shape) {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
     std::stringstream ss;
     ss << "    initialize rank=" << TensorImpl_::world().rank() << " tiles={ ";
@@ -913,22 +912,22 @@ class Summa
     reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
     // Initialize iteration variables
-    size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
-    size_type row_end = row_start + proc_grid_.cols();
+    ordinal_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
+    ordinal_type row_end = row_start + proc_grid_.cols();
     row_start += proc_grid_.rank_col();
-    const size_type col_stride =  // The stride to iterate down a column
+    const ordinal_type col_stride =  // The stride to iterate down a column
         proc_grid_.proc_rows() * proc_grid_.cols();
-    const size_type row_stride =  // The stride to iterate across a row
+    const ordinal_type row_stride =  // The stride to iterate across a row
         proc_grid_.proc_cols();
-    const size_type end = TensorImpl_::size();
+    const ordinal_type end = TensorImpl_::size();
 
     // Iterate over all local tiles
-    size_type tile_count = 0ul;
+    ordinal_type tile_count = 0ul;
     ReducePairTask<op_type>* MADNESS_RESTRICT reduce_task = reduce_tasks_;
     // this loops over result tiles arranged in block-cyclic order
     // index = tile index (row major)
     for (; row_start < end; row_start += col_stride, row_end += col_stride) {
-      for (size_type index = row_start; index < row_end;
+      for (ordinal_type index = row_start; index < row_end;
            index += row_stride, ++reduce_task) {
         // Initialize the reduction task
 
@@ -955,12 +954,12 @@ class Summa
     return tile_count;
   }
 
-  size_type initialize() {
+  ordinal_type initialize() {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
     printf("init: start rank=%i\n", TensorImpl_::world().rank());
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
-    const size_type result = initialize(TensorImpl_::shape());
+    const ordinal_type result = initialize(TensorImpl_::shape());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
     printf("init: finish rank=%i\n", TensorImpl_::world().rank());
@@ -974,19 +973,19 @@ class Summa
   /// Set the result tiles, destroy reduce tasks, and destroy broadcast groups
   void finalize(const DenseShape&) {
     // Initialize iteration variables
-    size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
-    size_type row_end = row_start + proc_grid_.cols();
+    ordinal_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
+    ordinal_type row_end = row_start + proc_grid_.cols();
     row_start += proc_grid_.rank_col();
-    const size_type col_stride =  // The stride to iterate down a column
+    const ordinal_type col_stride =  // The stride to iterate down a column
         proc_grid_.proc_rows() * proc_grid_.cols();
-    const size_type row_stride =  // The stride to iterate across a row
+    const ordinal_type row_stride =  // The stride to iterate across a row
         proc_grid_.proc_cols();
-    const size_type end = TensorImpl_::size();
+    const ordinal_type end = TensorImpl_::size();
 
     // Iterate over all local tiles
     for (ReducePairTask<op_type>* reduce_task = reduce_tasks_; row_start < end;
          row_start += col_stride, row_end += col_stride) {
-      for (size_type index = row_start; index < row_end;
+      for (ordinal_type index = row_start; index < row_end;
            index += row_stride, ++reduce_task) {
         // Set the result tile
         DistEvalImpl_::set_tile(DistEvalImpl_::perm_index_to_target(index),
@@ -1011,22 +1010,23 @@ class Summa
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
 
     // Initialize iteration variables
-    size_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
-    size_type row_end = row_start + proc_grid_.cols();
+    ordinal_type row_start = proc_grid_.rank_row() * proc_grid_.cols();
+    ordinal_type row_end = row_start + proc_grid_.cols();
     row_start += proc_grid_.rank_col();
-    const size_type col_stride =  // The stride to iterate down a column
+    const ordinal_type col_stride =  // The stride to iterate down a column
         proc_grid_.proc_rows() * proc_grid_.cols();
-    const size_type row_stride =  // The stride to iterate across a row
+    const ordinal_type row_stride =  // The stride to iterate across a row
         proc_grid_.proc_cols();
-    const size_type end = TensorImpl_::size();
+    const ordinal_type end = TensorImpl_::size();
 
     // Iterate over all local tiles
     for (ReducePairTask<op_type>* reduce_task = reduce_tasks_; row_start < end;
          row_start += col_stride, row_end += col_stride) {
-      for (size_type index = row_start; index < row_end;
+      for (ordinal_type index = row_start; index < row_end;
            index += row_stride, ++reduce_task) {
         // Compute the permuted index
-        const size_type perm_index = DistEvalImpl_::perm_index_to_target(index);
+        const ordinal_type perm_index =
+            DistEvalImpl_::perm_index_to_target(index);
 
         // Skip zero tiles
         if (!shape.is_zero(perm_index)) {
@@ -1092,19 +1092,20 @@ class Summa
   /// \param col A column of tiles from the left-hand argument
   /// \param row A row of tiles from the right-hand argument
   /// \param task The task that depends on tile contraction tasks
-  void contract(const DenseShape&, const size_type,
+  void contract(const DenseShape&, const ordinal_type,
                 const std::vector<col_datum>& col,
                 const std::vector<row_datum>& row,
                 madness::TaskInterface* const task) {
     // Iterate over the row
-    for (size_type i = 0ul; i < col.size(); ++i) {
+    for (ordinal_type i = 0ul; i < col.size(); ++i) {
       // Compute the local, result-tile offset
-      const size_type reduce_task_offset =
+      const ordinal_type reduce_task_offset =
           col[i].first * proc_grid_.local_cols();
 
       // Iterate over columns
-      for (size_type j = 0ul; j < row.size(); ++j) {
-        const size_type reduce_task_index = reduce_task_offset + row[j].first;
+      for (ordinal_type j = 0ul; j < row.size(); ++j) {
+        const ordinal_type reduce_task_index =
+            reduce_task_offset + row[j].first;
 
         // Schedule task for contraction pairs
         if (task) task->inc();
@@ -1124,19 +1125,20 @@ class Summa
   /// \param row A row of tiles from the right-hand argument
   /// \param task The task that depends on tile contraction tasks
   template <typename Shape>
-  void contract(const Shape&, const size_type,
+  void contract(const Shape&, const ordinal_type,
                 const std::vector<col_datum>& col,
                 const std::vector<row_datum>& row,
                 madness::TaskInterface* const task) {
     // Iterate over the row
-    for (size_type i = 0ul; i < col.size(); ++i) {
+    for (ordinal_type i = 0ul; i < col.size(); ++i) {
       // Compute the local, result-tile offset
-      const size_type reduce_task_offset =
+      const ordinal_type reduce_task_offset =
           col[i].first * proc_grid_.local_cols();
 
       // Iterate over columns
-      for (size_type j = 0ul; j < row.size(); ++j) {
-        const size_type reduce_task_index = reduce_task_offset + row[j].first;
+      for (ordinal_type j = 0ul; j < row.size(); ++j) {
+        const ordinal_type reduce_task_index =
+            reduce_task_offset + row[j].first;
 
         // Skip zero tiles
         if (!reduce_tasks_[reduce_task_index]) continue;
@@ -1171,34 +1173,35 @@ class Summa
   /// \param task The task that depends on the tile contraction tasks
   template <typename T>
   typename std::enable_if<std::is_floating_point<T>::value>::type contract(
-      const SparseShape<T>&, const size_type k,
+      const SparseShape<T>&, const ordinal_type k,
       const std::vector<col_datum>& col, const std::vector<row_datum>& row,
       madness::TaskInterface* const task) {
     // Cache row shape data.
     std::vector<typename SparseShape<T>::value_type> row_shape_values;
     row_shape_values.reserve(row.size());
-    const size_type row_start = k * proc_grid_.cols() + proc_grid_.rank_col();
-    for (size_type j = 0ul; j < row.size(); ++j)
+    const ordinal_type row_start =
+        k * proc_grid_.cols() + proc_grid_.rank_col();
+    for (ordinal_type j = 0ul; j < row.size(); ++j)
       row_shape_values.push_back(
           right_.shape()[row_start + (row[j].first * right_stride_local_)]);
 
-    const size_type col_start = left_start_local_ + k;
+    const ordinal_type col_start = left_start_local_ + k;
     const float threshold_k = TensorImpl_::shape().threshold() /
                               typename SparseShape<T>::value_type(k_);
     // Iterate over the row
-    for (size_type i = 0ul; i != col.size(); ++i) {
+    for (ordinal_type i = 0ul; i != col.size(); ++i) {
       // Compute the local, result-tile offset
-      const size_type offset = col[i].first * proc_grid_.local_cols();
+      const ordinal_type offset = col[i].first * proc_grid_.local_cols();
 
       // Get the shape data for col_it tile
       const typename SparseShape<T>::value_type col_shape_value =
           left_.shape()[col_start + (col[i].first * left_stride_local_)];
 
       // Iterate over columns
-      for (size_type j = 0ul; j < row.size(); ++j) {
+      for (ordinal_type j = 0ul; j < row.size(); ++j) {
         if ((col_shape_value * row_shape_values[j]) < threshold_k) continue;
 
-        const size_type reduce_task_index = offset + row[j].first;
+        const ordinal_type reduce_task_index = offset + row[j].first;
 
         // Skip zero tiles
         if (!reduce_tasks_[reduce_task_index]) continue;
@@ -1211,7 +1214,7 @@ class Summa
   }
 #endif  // TILEDARRAY_DISABLE_TILE_CONTRACTION_FILTER
 
-  void contract(const size_type k, const std::vector<col_datum>& col,
+  void contract(const ordinal_type k, const std::vector<col_datum>& col,
                 const std::vector<row_datum>& row,
                 madness::TaskInterface* const task) {
     contract(TensorImpl_::shape(), k, col, row, task);
@@ -1235,7 +1238,7 @@ class Summa
     StepTask* tail_step_task_ =
         nullptr;  ///< The last SUMMA step task that currently exists
 
-    void get_col(const size_type k) {
+    void get_col(const ordinal_type k) {
       owner_->get_col(k, col_);
       if (trace_tasks)
         this->notify_debug("StepTask::spawn_col");
@@ -1243,7 +1246,7 @@ class Summa
         this->notify();
     }
 
-    void get_row(const size_type k) {
+    void get_row(const ordinal_type k) {
       owner_->get_row(k, row_);
       if (trace_tasks)
         this->notify_debug("StepTask::spawn_row");
@@ -1288,7 +1291,7 @@ class Summa
 
     virtual ~StepTask() {}
 
-    void spawn_get_row_col_tasks(const size_type k) {
+    void spawn_get_row_col_tasks(const ordinal_type k) {
       // Submit the task to collect column tiles of left for iteration k
       if (trace_tasks)
         madness::DependencyInterface::inc_debug("StepTask::spawn_col");
@@ -1307,7 +1310,7 @@ class Summa
     }
 
     template <typename Derived>
-    void make_next_step_tasks(Derived* task, size_type depth) {
+    void make_next_step_tasks(Derived* task, ordinal_type depth) {
       TA_ASSERT(depth > 0);
       // Set the depth to be no greater than the maximum number steps
       if (depth > owner_->k_) depth = owner_->k_;
@@ -1325,7 +1328,7 @@ class Summa
     }
 
     template <typename Derived, typename GroupType>
-    void run(const size_type k, const GroupType& row_group,
+    void run(const ordinal_type k, const GroupType& row_group,
              const GroupType& col_group) {
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_STEP
       printf("step:  start rank=%i k=%lu\n", owner_->world().rank(), k);
@@ -1391,11 +1394,12 @@ class Summa
 
   class DenseStepTask : public StepTask {
    protected:
-    const size_type k_;
+    const ordinal_type k_;
     using StepTask::owner_;
 
    public:
-    DenseStepTask(const std::shared_ptr<Summa_>& owner, const size_type depth)
+    DenseStepTask(const std::shared_ptr<Summa_>& owner,
+                  const ordinal_type depth)
         : StepTask(owner, owner->k_ + 1ul), k_(0) {
       StepTask::make_next_step_tasks(this, depth);
       StepTask::spawn_get_row_col_tasks(k_);
@@ -1417,7 +1421,7 @@ class Summa
 
   class SparseStepTask : public StepTask {
    protected:
-    Future<size_type> k_{};
+    Future<ordinal_type> k_{};
     Future<madness::Group> row_group_{};
     Future<madness::Group> col_group_{};
     using StepTask::finalize_task_;
@@ -1427,7 +1431,7 @@ class Summa
 
    private:
     /// Spawn task to construct process groups and get tiles.
-    void iterate_task(size_type k, const size_type offset) {
+    void iterate_task(ordinal_type k, const ordinal_type offset) {
       // Search for the next non-zero row and column
       k = owner_->iterate_sparse(k + offset);
       k_.set(k);
@@ -1458,7 +1462,7 @@ class Summa
     }
 
    public:
-    SparseStepTask(const std::shared_ptr<Summa_>& owner, size_type depth)
+    SparseStepTask(const std::shared_ptr<Summa_>& owner, ordinal_type depth)
         : StepTask(owner, 1ul) {
       StepTask::make_next_step_tasks(this, depth);
 
@@ -1516,7 +1520,7 @@ class Summa
   Summa(const left_type& left, const right_type& right, World& world,
         const trange_type trange, const shape_type& shape,
         const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
-        const op_type& op, const size_type k, const ProcGrid& proc_grid)
+        const op_type& op, const ordinal_type k, const ProcGrid& proc_grid)
       : DistEvalImpl_(world, trange, shape, pmap, perm),
         left_(left),
         right_(right),
@@ -1541,18 +1545,18 @@ class Summa
   /// \return A \c Future to the tile at index i
   /// \throw TiledArray::Exception When tile \c i is owned by a remote node.
   /// \throw TiledArray::Exception When tile \c i a zero tile.
-  virtual Future<value_type> get_tile(size_type i) const {
+  virtual Future<value_type> get_tile(ordinal_type i) const {
     TA_ASSERT(TensorImpl_::is_local(i));
     TA_ASSERT(!TensorImpl_::is_zero(i));
 
-    const size_type source_index = DistEvalImpl_::perm_index_to_source(i);
+    const ordinal_type source_index = DistEvalImpl_::perm_index_to_source(i);
 
     // Compute tile coordinate in tile grid
-    const size_type tile_row = source_index / proc_grid_.cols();
-    const size_type tile_col = source_index % proc_grid_.cols();
+    const ordinal_type tile_row = source_index / proc_grid_.cols();
+    const ordinal_type tile_col = source_index % proc_grid_.cols();
     // Compute process coordinate of tile in the process grid
-    const size_type proc_row = tile_row % proc_grid_.proc_rows();
-    const size_type proc_col = tile_col % proc_grid_.proc_cols();
+    const ordinal_type proc_row = tile_row % proc_grid_.proc_rows();
+    const ordinal_type proc_col = tile_col % proc_grid_.proc_cols();
     // Compute the process that owns tile
     const ProcessID source = proc_row * proc_grid_.proc_cols() + proc_col;
 
@@ -1565,7 +1569,7 @@ class Summa
   /// This function handles the cleanup for tiles that are not needed in
   /// subsequent computation.
   /// \param i The index of the tile
-  virtual void discard_tile(size_type i) const { get_tile(i); }
+  virtual void discard_tile(ordinal_type i) const { get_tile(i); }
 
  private:
   /// Adjust iteration depth based on memory constraints
@@ -1576,10 +1580,10 @@ class Summa
   /// \return The memory bounded iteration depth
   /// \thorw TiledArray::Exception When the memory bounded iteration depth
   /// is less than 1.
-  size_type mem_bound_depth(size_type depth, const float left_sparsity,
-                            const float right_sparsity) {
+  ordinal_type mem_bound_depth(ordinal_type depth, const float left_sparsity,
+                               const float right_sparsity) {
     // Check if a memory bound has been set
-    const size_type available_memory = max_memory_;
+    const ordinal_type available_memory = max_memory_;
     if (available_memory) {
       // Compute the average memory requirement per iteration of this process
       const std::size_t local_memory_per_iter_left =
@@ -1594,7 +1598,7 @@ class Summa
           proc_grid_.local_cols() * (1.0f - right_sparsity);
 
       // Compute the maximum number of iterations based on available memory
-      const size_type mem_bound_depth =
+      const ordinal_type mem_bound_depth =
           ((local_memory_per_iter_left + local_memory_per_iter_right) /
            available_memory);
 
@@ -1642,7 +1646,7 @@ class Summa
            TensorImpl_::world().rank());
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL
 
-    size_type tile_count = 0ul;
+    ordinal_type tile_count = 0ul;
     if (proc_grid_.local_size() > 0ul) {
       tile_count = initialize();
 
@@ -1651,7 +1655,7 @@ class Summa
 
       // The optimal depth is equal to the smallest dimension of the process
       // grid, but no less than 2
-      size_type depth =
+      ordinal_type depth =
           std::max(ProcGrid::size_type(2),
                    std::min(proc_grid_.proc_rows(), proc_grid_.proc_cols()));
 
@@ -1723,12 +1727,12 @@ class Summa
 // Initialize static member variables for Summa
 
 template <typename Left, typename Right, typename Op, typename Policy>
-typename Summa<Left, Right, Op, Policy>::size_type
+typename Summa<Left, Right, Op, Policy>::ordinal_type
     Summa<Left, Right, Op, Policy>::max_depth_ =
         Summa<Left, Right, Op, Policy>::init_max_depth();
 
 template <typename Left, typename Right, typename Op, typename Policy>
-typename Summa<Left, Right, Op, Policy>::size_type
+typename Summa<Left, Right, Op, Policy>::ordinal_type
     Summa<Left, Right, Op, Policy>::max_memory_ =
         Summa<Left, Right, Op, Policy>::init_max_memory();
 }  // namespace detail

@@ -46,10 +46,10 @@ namespace detail {
 /// argument tensor
 /// \param[in] perm The permutation that will be applied to the argument
 /// tensor(s).
-template <typename SizeType>
+template <typename SizeType, typename ExtentType>
 inline void fuse_dimensions(SizeType* MADNESS_RESTRICT const fused_size,
                             SizeType* MADNESS_RESTRICT const fused_weight,
-                            const SizeType* MADNESS_RESTRICT const size,
+                            const ExtentType* MADNESS_RESTRICT const size,
                             const Permutation& perm) {
   const unsigned int ndim1 = perm.dim() - 1u;
 
@@ -120,7 +120,7 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
   // Cache constants
   const unsigned int ndim = arg0.range().rank();
   const unsigned int ndim1 = ndim - 1;
-  const typename Result::size_type volume = arg0.range().volume();
+  const auto volume = arg0.range().volume();
 
   // Get pointer to arg extent
   const auto* MADNESS_RESTRICT const arg0_extent = arg0.range().extent_data();
@@ -131,7 +131,7 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
 
     // Determine which dimensions can be permuted with the least significant
     // dimension.
-    typename Result::size_type block_size = arg0_extent[ndim1];
+    typename Result::ordinal_type block_size = arg0_extent[ndim1];
     for (int i = int(ndim1) - 1; i >= 0; --i) {
       if (int(perm[i]) != i) break;
       block_size *= arg0_extent[i];
@@ -145,9 +145,9 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
     };
 
     // Permute the data
-    for (typename Result::size_type index = 0ul; index < volume;
+    for (typename Result::ordinal_type index = 0ul; index < volume;
          index += block_size) {
-      const typename Result::size_type perm_index = perm_index_op(index);
+      const typename Result::ordinal_type perm_index = perm_index_op(index);
 
       // Copy the block
       math::vector_ptr_op(op, block_size, result.data() + perm_index,
@@ -170,26 +170,26 @@ inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
     // The remaining (fused) index ranges {I_1, ..., I_i} and
     // {I_j+1, ..., I_k} are used to form the outer loop around the matrix
     // transpose operations. These outer ranges may or may not be zero size.
-    typename Result::size_type other_fused_size[4];
-    typename Result::size_type other_fused_weight[4];
+    typename Result::ordinal_type other_fused_size[4];
+    typename Result::ordinal_type other_fused_weight[4];
     fuse_dimensions(other_fused_size, other_fused_weight,
                     arg0.range().extent_data(), perm);
 
     // Compute the fused stride for the result matrix transpose.
     const auto* MADNESS_RESTRICT const result_extent =
         result.range().extent_data();
-    typename Result::size_type result_outer_stride = 1ul;
+    typename Result::ordinal_type result_outer_stride = 1ul;
     for (unsigned int i = perm[ndim1] + 1u; i < ndim; ++i)
       result_outer_stride *= result_extent[i];
 
     // Copy data from the input to the output matrix via a series of matrix
     // transposes.
-    for (typename Result::size_type i = 0ul; i < other_fused_size[0]; ++i) {
-      typename Result::size_type index = i * other_fused_weight[0];
-      for (typename Result::size_type j = 0ul; j < other_fused_size[2];
+    for (typename Result::ordinal_type i = 0ul; i < other_fused_size[0]; ++i) {
+      typename Result::ordinal_type index = i * other_fused_weight[0];
+      for (typename Result::ordinal_type j = 0ul; j < other_fused_size[2];
            ++j, index += other_fused_weight[2]) {
         // Compute the ordinal index of the input and output matrices.
-        typename Result::size_type perm_index = perm_index_op(index);
+        typename Result::ordinal_type perm_index = perm_index_op(index);
 
         math::transpose(input_op, output_op, other_fused_size[1],
                         other_fused_size[3], result_outer_stride,

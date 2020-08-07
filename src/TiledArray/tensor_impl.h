@@ -42,8 +42,9 @@ class TensorImpl : private NO_DEFAULTS {
   typedef Policy policy_type;                        ///< Policy type
   typedef typename Policy::trange_type trange_type;  ///< Tiled range type
   typedef typename Policy::range_type range_type;  ///< Element/tile range type
-  typedef typename Policy::size_type size_type;    ///< Size type
-  typedef typename Policy::shape_type shape_type;  ///< Tensor shape type
+  typedef typename Policy::index1_type index1_type;    ///< 1-index type
+  typedef typename Policy::ordinal_type ordinal_type;  ///< Ordinal type
+  typedef typename Policy::shape_type shape_type;      ///< Tensor shape type
   typedef typename Policy::pmap_interface
       pmap_interface;  ///< Process map interface type
 
@@ -97,7 +98,7 @@ class TensorImpl : private NO_DEFAULTS {
 
   /// \return The number of tiles in the tensor
   /// \throw nothing
-  size_type size() const { return trange_.tiles_range().volume(); }
+  ordinal_type size() const { return trange_.tiles_range().volume(); }
 
   /// Local element count
 
@@ -105,7 +106,9 @@ class TensorImpl : private NO_DEFAULTS {
   /// returned value is volatile and may change at any time; you should not
   /// rely on it in your algorithms.
   /// \return The current number of local tiles stored in the tensor.
-  size_type local_size() const { return pmap_->local_size(); }
+  ordinal_type local_size() const {
+    return static_cast<ordinal_type>(pmap_->local_size());
+  }
 
   /// Query a tile owner
 

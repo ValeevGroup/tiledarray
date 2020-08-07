@@ -269,9 +269,9 @@ inline std::
 
   typedef typename arg_array_type::value_type arg_value_type;
   typedef typename result_array_type::value_type result_value_type;
-  typedef typename arg_array_type::size_type size_type;
+  typedef typename arg_array_type::ordinal_type ordinal_type;
   typedef typename arg_array_type::shape_type shape_type;
-  typedef std::pair<size_type, Future<result_value_type>> datum_type;
+  typedef std::pair<ordinal_type, Future<result_value_type>> datum_type;
 
   // Create a vector to hold local tiles
   std::vector<datum_type> tiles;
@@ -288,7 +288,7 @@ inline std::
   int task_count = 0;
   auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
   const auto task = [op_shared_handle, &counter, &tile_norms](
-                        const size_type index,
+                        const ordinal_type index,
                         const_if_t<not inplace, arg_value_type>& arg_tile,
                         const ArgTiles&... arg_tiles) -> result_value_type {
     op_helper<inplace, result_value_type> op_caller;
@@ -352,7 +352,7 @@ inline std::
                     // do not scale again
   for (typename std::vector<datum_type>::const_iterator it = tiles.begin();
        it != tiles.end(); ++it) {
-    const size_type index = it->first;
+    const auto index = it->first;
     if (!result.is_zero(index)) result.set(it->first, it->second);
   }
 

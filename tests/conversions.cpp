@@ -129,13 +129,14 @@ struct ConversionsFixture : public TiledRangeFixture {
 
 template <typename Array>
 void check_equal(Array& orig, Array& fused) {
+  using index1_type = typename Array::index1_type;
   auto text = orig.trange().tiles_range().extent_data();
   auto num_mode0_tiles = text[0];
   auto num_mode1_tiles = text[1];
 
   // Check to see if the fused and original arrays are the same
-  for (std::size_t i = 0; i < num_mode0_tiles; ++i) {
-    for (std::size_t j = 0; j < num_mode1_tiles; ++j) {
+  for (index1_type i = 0; i < num_mode0_tiles; ++i) {
+    for (index1_type j = 0; j < num_mode1_tiles; ++j) {
       if (orig.is_zero({i, j}) && fused.is_zero({i, j})) continue;
       auto tile_orig = orig.find({i, j}).get();
       auto tile_fused = fused.find({i, j}).get();

@@ -66,7 +66,7 @@ int main(int argc, char** argv) {
 
     // Create Test Matrix
     blacspp::Grid grid = blacspp::Grid::square_grid(MPI_COMM_WORLD);
-    TA::BlockCyclicMatrix<double> ref_matrix(world, grid, N, N, NB, NB);
+    TA::scalapack::BlockCyclicMatrix<double> ref_matrix(world, grid, N, N, NB, NB);
 
     for (size_t i = 0; i < N; ++i)
       for (size_t j = 0; j < N; ++j)
@@ -99,7 +99,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      auto test_ta = ref_matrix.tensor_from_matrix(trange);
+      auto test_ta = ref_matrix.tensor_from_matrix<TA::TArray<double>>(trange);
       world.gop.fence();
 
       double norm_diff = (ref_ta("i,j") - test_ta("i,j")).norm(world).get();
@@ -125,7 +125,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      TA::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
+      TA::scalapack::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
       world.gop.fence();
 
       double local_norm_diff =
@@ -150,7 +150,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      auto test_ta = ref_matrix.tensor_from_matrix(trange);
+      auto test_ta = ref_matrix.tensor_from_matrix<TA::TArray<double>>(trange);
       world.gop.fence();
 
       double norm_diff = (ref_ta("i,j") - test_ta("i,j")).norm(world).get();
@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      TA::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
+      TA::scalapack::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
       world.gop.fence();
 
       double local_norm_diff =

@@ -103,7 +103,7 @@ auto svd( const Array& A, TiledRange u_trange, TiledRange vt_trange,
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
   world.gop.fence(); // stage ScaLAPACK execution
-  auto matrix = array_to_block_cyclic( A, grid, MB, NB );
+  auto matrix = scalapack::array_to_block_cyclic( A, grid, MB, NB );
   world.gop.fence(); // stage ScaLAPACK execution
 
   auto [M, N] = matrix.dims();
@@ -124,7 +124,7 @@ auto svd( const Array& A, TiledRange u_trange, TiledRange vt_trange,
   constexpr bool need_u  = std::is_same_v< SVDType, SVDLeftVectors  > or need_uv;
   constexpr bool need_vt = std::is_same_v< SVDType, SVDRightVectors > or need_uv;
 
-  std::shared_ptr<BlockCyclicMatrix<value_type>> U = nullptr, VT = nullptr;
+  std::shared_ptr<scalapack::BlockCyclicMatrix<value_type>> U = nullptr, VT = nullptr;
 
   scalapackpp::VectorFlag JOBU  = scalapackpp::VectorFlag::NoVectors;
   scalapackpp::VectorFlag JOBVT = scalapackpp::VectorFlag::NoVectors;
@@ -134,7 +134,7 @@ auto svd( const Array& A, TiledRange u_trange, TiledRange vt_trange,
 
   if constexpr (need_u) {
     JOBU = scalapackpp::VectorFlag::Vectors;
-    U = std::make_shared<BlockCyclicMatrix<value_type>>( 
+    U = std::make_shared<scalapack::BlockCyclicMatrix<value_type>>( 
       world, grid, M, SVD_SIZE, MB, NB 
     );
 
@@ -143,7 +143,7 @@ auto svd( const Array& A, TiledRange u_trange, TiledRange vt_trange,
 
   if constexpr (need_vt) {
     JOBVT = scalapackpp::VectorFlag::Vectors;
-    VT = std::make_shared<BlockCyclicMatrix<value_type>>( 
+    VT = std::make_shared<scalapack::BlockCyclicMatrix<value_type>>( 
       world, grid, SVD_SIZE, N, MB, NB
     );
 
@@ -154,29 +154,29 @@ auto svd( const Array& A, TiledRange u_trange, TiledRange vt_trange,
   auto info = scalapackpp::pgesvd( JOBU, JOBVT, M, N,
     matrix.local_mat().data(), 1, 1, desc_a, S.data(),
     U_ptr, 1, 1, desc_u, VT_ptr, 1, 1, desc_vt );
-  if (info) throw std::runtime_error("SVD Failed");
+  if (info) TA_EXCEPTION("SVD Failed");
 
   world.gop.fence();
 
 
   if constexpr (need_uv) {
 
-    auto U_ta  = block_cyclic_to_array<Array>( *U,  u_trange  );
-    auto VT_ta = block_cyclic_to_array<Array>( *VT, vt_trange );
+    auto U_ta  = scalapack::block_cyclic_to_array<Array>( *U,  u_trange  );
+    auto VT_ta = scalapack::block_cyclic_to_array<Array>( *VT, vt_trange );
     world.gop.fence();
 
     return std::tuple( S, U_ta, VT_ta );
 
   } else if constexpr (need_u) {
 
-    auto U_ta  = block_cyclic_to_array<Array>( *U,  u_trange  );
+    auto U_ta  = scalapack::block_cyclic_to_array<Array>( *U,  u_trange  );
     world.gop.fence();
 
     return std::tuple( S, U_ta );
 
   } else if constexpr (need_vt) {
 
-    auto VT_ta  = block_cyclic_to_array<Array>( *VT,  vt_trange  );
+    auto VT_ta  = scalapack::block_cyclic_to_array<Array>( *VT,  vt_trange  );
     world.gop.fence();
 
     return std::tuple( S, VT_ta );

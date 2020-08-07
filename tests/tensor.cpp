@@ -17,8 +17,13 @@
  *
  */
 
-#include "TiledArray/tensor.h"
+#include <boost/range/combine.hpp>
+#ifdef TILEDARRAY_HAS_RANGEV3
+#include <range/v3/view/zip.hpp>
+#endif
+
 #include <iterator>
+#include "TiledArray/tensor.h"
 #include "tensor_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
@@ -317,6 +322,7 @@ BOOST_AUTO_TEST_CASE(element_access) {
   }
 #if TEST_DIM == 3u
   BOOST_CHECK_EQUAL(t(r.lobound(0), r.lobound(1), r.lobound(2)), t[0]);
+  BOOST_CHECK_EQUAL(t({r.lobound(0), r.lobound(1), r.lobound(2)}), t[0]);
 #endif
 
   // check out of range error
@@ -557,6 +563,38 @@ BOOST_AUTO_TEST_CASE(inplace_conj_scal_op) {
     BOOST_CHECK_EQUAL(t[i].real(), 3.0 * s[i].real());
     BOOST_CHECK_EQUAL(t[i].imag(), -3.0 * s[i].imag());
   }
+}
+
+BOOST_AUTO_TEST_CASE(block) {
+  TensorZ s(r);
+  auto lobound = r.lobound();
+  auto upbound = r.upbound();
+  BOOST_REQUIRE_NO_THROW(s.block(lobound, upbound));
+#if TEST_DIM == 3u
+  BOOST_REQUIRE_NO_THROW(s.block({{lobound[0], upbound[0]},
+                                  {lobound[1], upbound[1]},
+                                  {lobound[2], upbound[2]}}));
+  BOOST_REQUIRE_NO_THROW(s.block({lobound[0], lobound[1], lobound[2]},
+                                 {upbound[0], upbound[1], upbound[2]}));
+#endif
+
+  // using zipped ranges of bounds (using Boost.Range)
+  // need to #include <boost/range/combine.hpp>
+  BOOST_CHECK_NO_THROW(s.block(boost::combine(lobound, upbound)));
+
+#ifdef TILEDARRAY_HAS_RANGEV3
+  BOOST_CHECK_NO_THROW(s.block(ranges::views::zip(lobound, upbound)));
+#endif
+
+  auto sview0 = s.block(lobound, upbound);
+  BOOST_CHECK(sview0.range().includes(lobound));
+  BOOST_CHECK(sview0(lobound) == s(lobound));
+#if TEST_DIM == 3u
+  auto sview1 = s.block({lobound[0], lobound[1], lobound[2]},
+                        {upbound[0], upbound[1], upbound[2]});
+  BOOST_CHECK(sview1.range().includes(lobound));
+  BOOST_CHECK(sview1(lobound) == s(lobound));
+#endif
 }
 
 BOOST_AUTO_TEST_SUITE_END()
