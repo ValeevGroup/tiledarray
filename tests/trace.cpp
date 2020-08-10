@@ -70,7 +70,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_defined, TileType, trace_is_defined){
   using value_type = typename TileType::value_type;
   TileType t(Range{{0, 0}, {10, 10}}, value_type{2});
   value_type corr = 20;
-  BOOST_CHECK(trace(t) == corr);
+  auto tr = trace(t);
+  BOOST_CHECK(tr == corr);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

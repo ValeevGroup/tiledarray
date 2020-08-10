@@ -142,7 +142,6 @@ BOOST_AUTO_TEST_SUITE(is_valid_index_fxn)
 BOOST_AUTO_TEST_CASE(valid_indices){
   for(auto idx_set : {i_idx, i_j_idx, vov_idx, vom_idx, mov_idx}){
     for(auto& [idx, corr] : idx_set) {
-      if(is_valid_index(idx)==false) std::cout << idx << std::endl;
       BOOST_CHECK(is_valid_index(idx));
     }
   }
@@ -222,7 +221,6 @@ BOOST_AUTO_TEST_CASE(non_tot){
   };
 
   for(auto& [idx, corr] : inputs) {
-    std::cout << idx << std::endl;
     BOOST_CHECK(split_index(idx) == corr);
   }
 }

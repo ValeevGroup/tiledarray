@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(typedefs){
   {
     constexpr bool is_same = std::is_same_v<
         typename VariableList::const_iterator,
-        typename std::vector<value_type>::const_iterator>;
+        typename container::svector<std::string>::const_iterator>;
     BOOST_CHECK(is_same);
   }
 

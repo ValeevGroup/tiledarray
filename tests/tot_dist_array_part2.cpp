@@ -729,9 +729,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(printing, TestParam, test_params) {
     }
     std::stringstream ss;
     ss << t;
-    std::cout <<"x" << ss.str() <<"x"<<std::endl;
-    std::cout <<"x" << corr.str() <<"x"<<std::endl;
-
     BOOST_TEST(ss.str() == corr.str());
   }
 }

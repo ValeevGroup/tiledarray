@@ -92,6 +92,7 @@ template <typename VarLeft, typename VarRight>
 inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
   using std::size;
   TA_ASSERT(size(l) == size(r));
+  TA_ASSERT(l.outer_dim() == r.outer_dim());
   container::svector<size_t> a(size(l));
   using std::begin;
   using std::end;
@@ -409,13 +410,13 @@ class VariableList {
 
 
   VariableList outer_vars() const {
-    return VariableList(std::vector<std::string>(begin(), begin() + outer_dim()),
-                 std::vector<std::string>{});
+    return VariableList(container_type(begin(), begin() + outer_dim()),
+                        container_type{});
   }
 
   VariableList inner_vars() const {
-    return VariableList(std::vector<std::string>(begin() + outer_dim(), end()),
-                        std::vector<std::string>{});
+    return VariableList(container_type(begin() + outer_dim(), end()),
+                        container_type{});
   }
 
   /// Returns the total number of indices in the variable list
@@ -499,12 +500,13 @@ class VariableList {
   }
 
   /// Constructor implementing VariableList(const value_type&)
-  VariableList(const container_type<value_type>& outer,
-               const container_type<value_type>& inner);
+  template<typename OuterType, typename InnerType>
+  VariableList(OuterType&& outer, InnerType&& inner);
 
  private:
   /// Used to unpack the std::pair resulting from split_index
-  explicit VariableList(const container_pair<value_type>& tot_idx):
+  template<typename First, typename Second>
+  explicit VariableList(const std::pair<First, Second>& tot_idx):
       VariableList(tot_idx.first, tot_idx.second){}
 
 
@@ -625,8 +627,10 @@ inline VariableList::operator value_type() const {
 
   return result;
 }
-inline VariableList::VariableList(const container_type<value_type>& outer,
-                          const container_type<value_type>& inner):
+
+template<typename OuterType, typename InnerType>
+inline VariableList::VariableList(OuterType&& outer,
+                          InnerType&& inner):
     n_inner_(inner.size()), vars_(outer.size() + inner.size()) {
   for(size_type i = 0; i < outer.size(); ++i)
     vars_[i] = outer[i];

@@ -20,6 +20,7 @@
 #ifndef TILEDARRAY_EXPRESSIONS_CONTRACTION_HELPERS_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_CONTRACTION_HELPERS_H__INCLUDED
 
+#include "TiledArray/conversions/make_array.h"
 #include "TiledArray/expressions/tsr_expr.h"
 #include "TiledArray/expressions/variable_list.h"
 #include "TiledArray/tensor/tensor.h"
@@ -563,7 +564,7 @@ void einsum(TsrExpr<ResultType, true> out,
       trange_from_annotation(bound_vars, lhs_ovars, rhs_ovars, ltensor, rtensor);
 
 
-  auto l = [=](auto& tile, const TA::Range& r){
+  auto l = [=](auto& tile, const Range& r){
 
     const auto oidx =
         orange.tiles_range().idx(orange.element_to_tile(r.lobound()));

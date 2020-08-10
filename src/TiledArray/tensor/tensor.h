@@ -1940,9 +1940,9 @@ struct Trace<Tensor<T, A>, detail::enable_if_numeric_t<T>> {
 
     // Get pointers to the range data
     const size_type n = range.rank();
-    const size_type* MADNESS_RESTRICT const lower = range.lobound_data();
-    const size_type* MADNESS_RESTRICT const upper = range.upbound_data();
-    const size_type* MADNESS_RESTRICT const stride = range.stride_data();
+    const auto* MADNESS_RESTRICT const lower = range.lobound_data();
+    const auto* MADNESS_RESTRICT const upper = range.upbound_data();
+    const auto* MADNESS_RESTRICT const stride = range.stride_data();
 
     // Search for the largest lower bound and the smallest upper bound
     const size_type lower_max = *std::max_element(lower, lower + n);
