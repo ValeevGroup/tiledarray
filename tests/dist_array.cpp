@@ -461,6 +461,16 @@ BOOST_AUTO_TEST_CASE(clone) {
   }
 }
 
+BOOST_AUTO_TEST_CASE(truncate) {
+  auto b_trunc0 = b.clone();
+  BOOST_CHECK_NO_THROW(b_trunc0.truncate());
+  auto b_trunc1 = b.clone();
+  BOOST_CHECK_NO_THROW(
+      b_trunc1.truncate(std::numeric_limits<typename decltype(
+                            b)::shape_type::value_type>::max()));
+  BOOST_CHECK(std::distance(b_trunc1.begin(), b_trunc1.end()) == 0);
+}
+
 BOOST_AUTO_TEST_CASE(make_replicated) {
   // Get a copy of the original process map
   std::shared_ptr<ArrayN::pmap_interface> distributed_pmap = a.pmap();
