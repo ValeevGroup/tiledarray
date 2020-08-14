@@ -37,6 +37,9 @@ else()
 
     message("** Will clone Umpire from ${UMPIRE_URL}")
 
+    ## use patched BLT
+    include(FetchBLT)
+
     set(UMPIRE_CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
         -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
@@ -55,6 +58,7 @@ else()
         -DCMAKE_CXX_FLAGS_MINSIZEREL=${CMAKE_CXX_FLAGS_MINSIZEREL}
         -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
         -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
+        -DBLT_SOURCE_DIR=${BLT_SOURCE_DIR}
         -DBLT_CXX_STD=c++${CMAKE_CUDA_STANDARD}
         -DENABLE_CUDA=ON
         -DENABLE_BENCHMARKS=OFF
@@ -90,8 +94,7 @@ else()
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${UMPIRE_URL}
             GIT_TAG ${UMPIRE_TAG}
-            #--Update step----------------
-            UPDATE_COMMAND git submodule init && git submodule update
+            GIT_SUBMODULES ""  # N.B. do not initialize modules!
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
             LIST_SEPARATOR ::
