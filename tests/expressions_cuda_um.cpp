@@ -127,9 +127,10 @@ struct UMExpressionsFixture : public TiledRangeFixture {
 };  // UMExpressionsFixture
 
 // Instantiate static variables for fixture
-const TiledRange UMExpressionsFixture::trange1 = {{0, 2, 5, 10, 17, 28, 41}};
-const TiledRange UMExpressionsFixture::trange2 = {{0, 2, 5, 10, 17, 28, 41},
-                                                  {0, 3, 6, 11, 18, 29, 42}};
+const TiledRange UMExpressionsFixture::trange1 =
+    TiledRange{{0, 2, 5, 10, 17, 28, 41}};
+const TiledRange UMExpressionsFixture::trange2 =
+    TiledRange{{0, 2, 5, 10, 17, 28, 41}, {0, 3, 6, 11, 18, 29, 42}};
 // const TiledRange UMExpressionsFixture::trange3 = {{0,11,20}, {0,10,20},
 // {0,15,20,30}};
 
