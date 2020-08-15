@@ -1129,9 +1129,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// Update shape data and remove tiles that are below the zero threshold
+  /// \param[in] thresh the threshold below which the tiles are considered
+  ///        to be zero (only for sparse arrays will such tiles be discarded)
+  /// \sa SparseShape::is_zero
 
+  /// \note This is a collective operation
   /// \note This function is a no-op for dense arrays.
-  void truncate() { TiledArray::truncate(*this); }
+  void truncate(
+      typename shape_type::value_type thresh = shape_type::threshold()) {
+    TiledArray::truncate(*this, thresh);
+  }
 
   /// Check if the array is initialized
 
