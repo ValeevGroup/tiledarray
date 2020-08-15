@@ -56,6 +56,7 @@ using madness::World;
 class DenseShape {
  public:
   using index1_type = TA_1INDEX_TYPE;
+  using value_type = float;
 
   // There is no data in DenseShape so the compiler generated constructors,
   // assignment operator, and destructor are OK.

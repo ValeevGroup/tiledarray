@@ -8,9 +8,11 @@ if(ENABLE_CUDA_ERROR_CHECK)
   set (TILEDARRAY_CHECK_CUDA_ERROR 1)
 endif(ENABLE_CUDA_ERROR_CHECK)
 
-cmake_minimum_required(VERSION 3.17.0) # decouples C++ and CUDA standards, see https://gitlab.kitware.com/cmake/cmake/issues/19123
+# cmake 3.17 decouples C++ and CUDA standards, see https://gitlab.kitware.com/cmake/cmake/issues/19123
+# cmake 3.18 knows that CUDA 11 provides cuda_std_17
+cmake_minimum_required(VERSION 3.18.0)
 enable_language(CUDA)
-set(CMAKE_CUDA_STANDARD 14)
+set(CMAKE_CUDA_STANDARD 17)
 set(CMAKE_CUDA_EXTENSIONS OFF)
 set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
