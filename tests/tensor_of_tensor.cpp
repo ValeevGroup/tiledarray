@@ -70,9 +70,9 @@ struct TensorOfTensorFixture {
     Tensor<Tensor<int>> tensor(r);
     for (decltype(r.extent(0)) i = 0; i < r.extent(0); ++i) {
       for (decltype(r.extent(1)) j = 0; j < r.extent(1); ++j) {
-        const std::array<std::size_t, 2> lower_bound = {{i * 10, j * 10}};
+        const std::array<std::size_t, 2> lower_bound = {{i * 10ul, j * 10ul}};
         const std::array<std::size_t, 2> upper_bound = {
-            {(i + 1) * 10, (j + 1) * 10}};
+            {(i + 1ul) * 10ul, (j + 1ul) * 10ul}};
         tensor(i, j) = make_rand_tensor(Range(lower_bound, upper_bound));
       }
     }
