@@ -93,8 +93,6 @@ template <typename Array>
 auto lu_inv( const Array& A, size_t NB = 128, size_t MB = 128,
   TiledRange ainv_trange = TiledRange() ) {
 
-  using value_type = typename Array::element_type;
-
   auto& world = A.world();
   auto world_comm = world.mpi.comm().Get_mpi_comm();
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
@@ -120,7 +118,7 @@ auto lu_inv( const Array& A, size_t NB = 128, size_t MB = 128,
   }
 
   {
-  auto info = scalapackpp::pgetri( N, 
+  auto info = scalapackpp::pgetri( N,
     A_sca.local_mat().data(), 1, 1, desc_a, IPIV.data() );
   if (info) TA_EXCEPTION("LU Inverse Failed");
   }
