@@ -114,7 +114,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       std::enable_if_t<not is_my_type<OtherTile>::value>;
 
   template<typename Index>
-  static constexpr auto is_integral_or_integral_range_v =
+  static constexpr bool is_integral_or_integral_range_v =
       std::is_integral_v<Index> || detail::is_integral_range_v<Index>;
 
   template<typename Index>
@@ -125,7 +125,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   using enable_if_is_integral = std::enable_if_t<std::is_integral_v<Index>>;
 
   template<typename Value>
-  static constexpr auto is_value_or_future_to_value_v =
+  static constexpr bool is_value_or_future_to_value_v =
     std::is_same_v<std::decay_t<Value>, Future<value_type>> ||
     std::is_same_v<std::decay_t<Value>, value_type>;
 
