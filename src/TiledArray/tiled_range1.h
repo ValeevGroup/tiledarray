@@ -71,7 +71,7 @@ class TiledRange1 {
   template <typename RandIter,
             typename std::enable_if<
                 detail::is_random_iterator<RandIter>::value>::type* = nullptr>
-  TiledRange1(RandIter first, RandIter last)
+  explicit TiledRange1(RandIter first, RandIter last)
       : range_(), elements_range_(), tiles_ranges_(), elem2tile_() {
     init_tiles_(first, last, 0);
   }

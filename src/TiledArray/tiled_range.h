@@ -76,7 +76,7 @@ class TiledRange {
   /// \param first the iterator pointing to the front of the range
   /// \param last the iterator pointing past the back of the range
   template <typename InIter>
-  TiledRange(InIter first, InIter last)
+  explicit TiledRange(InIter first, InIter last)
       : range_(), elements_range_(), ranges_(first, last) {
     init();
   }
