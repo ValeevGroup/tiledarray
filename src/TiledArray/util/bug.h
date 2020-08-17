@@ -37,6 +37,7 @@
 #include <pthread.h>
 #if __APPLE__
 #include <mach/mach.h>
+#include <stdexcept>
 #endif
 
 namespace TiledArray {
