@@ -526,6 +526,46 @@ auto tot_tot_tot_contract_(const VariableList& out_vars,
   return rv;
 }
 
+
+template<bool out_is_tot, bool lhs_is_tot, bool rhs_is_tot>
+struct KernelSelector;
+
+template<>
+struct KernelSelector<true, true, true> {
+  template<typename LTileType, typename RTileType>
+  auto operator()(const VariableList& ovars, const VariableList& lvars,
+                  const VariableList& rvars, LTileType&& ltile,
+                  RTileType&& rtile) const {
+    return tot_tot_tot_contract_(ovars, lvars, rvars,
+                                 std::forward<LTileType>(ltile),
+                                     std::forward<RTileType>(rtile));
+  }
+};
+
+template<>
+struct KernelSelector<false, true, true> {
+  template<typename LTileType, typename RTileType>
+  auto operator()(const VariableList& ovars, const VariableList& lvars,
+                  const VariableList& rvars, LTileType&& ltile,
+                  RTileType&& rtile) const {
+    return t_tot_tot_contract_(ovars, lvars, rvars,
+                                 std::forward<LTileType>(ltile),
+                                 std::forward<RTileType>(rtile));
+  }
+};
+
+template<>
+struct KernelSelector<true, false, true> {
+  template<typename LTileType, typename RTileType>
+  auto operator()(const VariableList& ovars, const VariableList& lvars,
+                  const VariableList& rvars, LTileType&& ltile,
+                  RTileType&& rtile) const {
+    return tot_t_tot_contract_(ovars, lvars, rvars,
+                               std::forward<LTileType>(ltile),
+                               std::forward<RTileType>(rtile));
+  }
+};
+
 } // namespace kernels
 
 template <typename ResultType, typename LHSType, typename RHSType>
@@ -560,6 +600,7 @@ void einsum(TsrExpr<ResultType, true> out,
   const auto brange =
       trange_from_annotation(bound_vars, lhs_ovars, rhs_ovars, ltensor, rtensor);
 
+  kernels::KernelSelector<out_is_tot, lhs_is_tot, rhs_is_tot> selector;
 
   auto l = [=](auto& tile, const Range& r){
 
@@ -575,26 +616,10 @@ void einsum(TsrExpr<ResultType, true> out,
       if(!ltensor.shape().is_zero(lidx) && !rtensor.shape().is_zero(ridx)) {
         const auto& ltile = ltensor.find(lidx).get();
         const auto& rtile = rtensor.find(ridx).get();
-        if constexpr (out_is_tot && lhs_is_tot && rhs_is_tot) {
-          if(tile.empty())
-            tile = kernels::tot_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
-          else
-            tile +=
-              kernels::tot_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
-        } else if constexpr (!out_is_tot && lhs_is_tot && rhs_is_tot) {
-          if(tile.empty())
-            tile = kernels::t_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
-          else
-            tile +=
-              kernels::t_tot_tot_contract_(ovars, lvars, rvars, ltile, rtile);
-        } else if constexpr(out_is_tot && !lhs_is_tot && rhs_is_tot){
-          if(tile.empty())
-            tile = kernels::tot_t_tot_contract_(ovars, lvars, rvars, ltile, rtile);
-          else
-            tile += kernels::tot_t_tot_contract_(ovars, lvars, rvars, ltile, rtile);
-        } else {
-          TA_ASSERT(false);  // Your kernel isn't supported
-        }
+        if(tile.empty())
+          tile = selector(ovars, lvars, rvars, ltile, rtile);
+        else
+          tile += selector(ovars, lvars, rvars, ltile, rtile);
       }
       if(have_bound) ++bitr;
     } while(bitr != brange.tiles_range().end());
