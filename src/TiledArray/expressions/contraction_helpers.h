@@ -542,11 +542,8 @@ void einsum(TsrExpr<ResultType, true> out,
   using rhs_tile_type = typename RHSType::value_type;
 
   constexpr bool out_is_tot = TiledArray::detail::is_tensor_of_tensor_v<out_tile_type>;
-  constexpr bool out_is_t   = TiledArray::detail::is_tensor_v<out_tile_type>;
   constexpr bool lhs_is_tot = TiledArray::detail::is_tensor_of_tensor_v<lhs_tile_type>;
-  constexpr bool lhs_is_t   = TiledArray::detail::is_tensor_v<lhs_tile_type>;
   constexpr bool rhs_is_tot = TiledArray::detail::is_tensor_of_tensor_v<rhs_tile_type>;
-  constexpr bool rhs_is_t   = TiledArray::detail::is_tensor_v<rhs_tile_type>;
 
   const auto out_ovars = ovars.outer_vars();
   const auto lhs_ovars = lvars.outer_vars();
