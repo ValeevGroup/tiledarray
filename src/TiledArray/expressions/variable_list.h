@@ -105,7 +105,7 @@ inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
   // Make sure this permutation doesn't mix outer and inner tensors
   if(l.is_tot()){
     auto outer_dim = l.outer_dim();
-    for(auto i = 0; i < outer_dim; ++i)
+    for(decltype(outer_dim) i = 0; i < outer_dim; ++i)
       TA_ASSERT(a[i] < outer_dim);
     for(auto i = outer_dim; i < a.size(); ++i)
       TA_ASSERT(a[i] >= outer_dim);

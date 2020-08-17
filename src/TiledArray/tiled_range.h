@@ -260,7 +260,7 @@ class TiledRange {
     const unsigned int rank = range_.rank();
     typename range_type::index result;
     result.reserve(rank);
-    int d = 0;
+    unsigned int d = 0;
     for (auto&& index_d : index) {
       TA_ASSERT(d < rank);
       result.push_back(ranges_[d].element_to_tile(index_d));

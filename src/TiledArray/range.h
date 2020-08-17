@@ -113,7 +113,8 @@ class Range {
       // Check input dimensions
       TA_ASSERT(lower[d] <= upper[d]);
       extent[d] = upper[d] - lower[d];
-      TA_ASSERT(extent[d] == (upper_bound_d - lower_bound_d));
+      TA_ASSERT(extent[d] ==
+                static_cast<index1_type>(upper_bound_d - lower_bound_d));
     }
 
     // Set the volume seed
@@ -821,7 +822,7 @@ class Range {
     const auto* MADNESS_RESTRICT const upper = lower + rank_;
 
     bool result = (rank_ > 0u);
-    int d = 0;
+    unsigned int d = 0;
     for (auto&& index_d : index) {
       TA_ASSERT(d < rank_);
       const auto lower_d = lower[d];
@@ -929,7 +930,7 @@ class Range {
 
     // update the data
     offset_ = 0ul;
-    int d = 0;
+    unsigned int d = 0;
     for (auto&& bound_shift_d : bound_shift) {
       TA_ASSERT(d < rank_);
       // Load range data
@@ -1017,7 +1018,7 @@ class Range {
     auto* MADNESS_RESTRICT const stride = data_ + rank_ + rank_ + rank_;
 
     ordinal_type result = 0ul;
-    int d = 0;
+    unsigned int d = 0;
     for (auto&& index_d : index) {
       TA_ASSERT(d < rank_);
       const auto stride_d = stride[d];

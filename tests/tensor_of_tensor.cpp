@@ -68,8 +68,8 @@ struct TensorOfTensorFixture {
   // Fill a tensor with random data
   static Tensor<Tensor<int>> make_rand_tensor_of_tensor(const Range& r) {
     Tensor<Tensor<int>> tensor(r);
-    for (std::size_t i = 0ul; i < r.extent(0); ++i) {
-      for (std::size_t j = 0ul; j < r.extent(1); ++j) {
+    for (decltype(r.extent(0)) i = 0; i < r.extent(0); ++i) {
+      for (decltype(r.extent(1)) j = 0; j < r.extent(1); ++j) {
         const std::array<std::size_t, 2> lower_bound = {{i * 10, j * 10}};
         const std::array<std::size_t, 2> upper_bound = {
             {(i + 1) * 10, (j + 1) * 10}};
@@ -1001,8 +1001,7 @@ class Contract {
   /// Contract \c left and \c right and return the result
   /// \param[in] left The left-hand tile to be contracted
   /// \param[in] right The right-hand tile to be contracted
-  void operator()(result_type& result, const
-                  first_argument_type* left,
+  void operator()(result_type& result, const first_argument_type* left,
                   const second_argument_type* right) {
     btas::contract(alpha(), *left, left_annotation(), *right,
                    right_annotation(), 1.0, result, result_annotation());
