@@ -527,7 +527,7 @@ class VariableList {
 template<typename T, typename...Args>
 auto all_annotations(T&& v, Args&&...args) {
   std::set<std::string> rv;
-  if constexpr(sizeof...(Args)){
+  if constexpr(sizeof...(Args) > 0) {
     rv = all_annotations(std::forward<Args>(args)...);
   }
   rv.insert(v.begin(), v.end());
