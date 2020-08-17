@@ -2079,7 +2079,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vov_inner_contraction, TestParam, test_params){
   il_type rhs_il{rhs_0, rhs_1};
 
   using result_type = DistArray<Tensor<scalar_type<TestParam>>, policy_type>;
-  result_type corr(m_world, {2.0, 20.0});
+  // N.B. explicitly declare il type here due to https://bugs.llvm.org//show_bug.cgi?id=23689
+  result_type corr(m_world, TiledArray::detail::vector_il<double>{2.0, 20.0});
   tensor_type<TestParam> lhs(m_world, lhs_il);
   tensor_type<TestParam> rhs(m_world, rhs_il);
   tensor_type<TestParam> result;
