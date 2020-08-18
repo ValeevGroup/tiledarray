@@ -568,6 +568,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(set_value_init_list, TestParam, test_params) {
     tensor_type<TestParam> corr(m_world, tr);
     auto inner_tile = inner_matrix_tile<TestParam>(std::vector{0});
     for (auto idx : tr.tiles_range()) {
+      if (!t.is_local(idx)) continue;
       tile_type<TestParam> outer_tile(tr.tile(idx), inner_tile);
       corr.set(idx, outer_tile);
       t.set({idx[0], idx[1]}, inner_tile);
