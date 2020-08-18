@@ -680,7 +680,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_initialized, TestParam, test_params){
 BOOST_AUTO_TEST_CASE_TEMPLATE(serialization, TestParam, test_params) {
   for(auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
-    auto file_name = "a_file.temp";
+    char file_name[] = "tmp.XXXXXX";
+    mktemp(file_name);
     {
       output_archive_type ar_out(file_name);
       corr.serialize(ar_out);
@@ -695,18 +696,20 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(serialization, TestParam, test_params) {
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(load_store, TestParam, test_params) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(parallel_serialization, TestParam, test_params) {
   for(auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
-    auto file_name = "a_file.temp";
+    const int nio = 1;  // use 1 rank for I/O
+    char file_name[] = "tmp.XXXXXX";
+    mktemp(file_name);
     {
-      madness::archive::ParallelOutputArchive ar_out(m_world, file_name, 1);
+      madness::archive::ParallelOutputArchive ar_out(m_world, file_name, nio);
       corr.store(ar_out);
     }
 
     tensor_type<TestParam> t2;
     {
-      madness::archive::ParallelInputArchive ar_in(m_world, file_name, 1);
+      madness::archive::ParallelInputArchive ar_in(m_world, file_name, nio);
       t2.load(m_world, ar_in);
       BOOST_TEST(are_equal(corr, t2));
     }
