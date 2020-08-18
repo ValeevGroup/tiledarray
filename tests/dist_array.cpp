@@ -583,7 +583,7 @@ BOOST_AUTO_TEST_CASE(sparse_serialization) {
 }
 
 BOOST_AUTO_TEST_CASE(parallel_serialization) {
-  const int nio = 1;  // use 1 rank for 1
+  const int nio = 1;  // use 1 rank for I/O
   char archive_file_name[] = "tmp.XXXXXX";
   mktemp(archive_file_name);
   madness::archive::ParallelOutputArchive oar(world, archive_file_name, nio);
