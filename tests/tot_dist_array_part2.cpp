@@ -584,7 +584,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params){
     for(auto idx : corr.range()) {
       const auto ordinal = corr.range().ordinal(idx);
       BOOST_TEST(corr.is_zero(idx) == corr.shape().is_zero(ordinal));
-      BOOST_TEST(corr.owner(ordinal) == corr.shape().is_zero(ordinal));
+      BOOST_TEST(corr.owner(ordinal) == corr.pmap()->owner(ordinal));
     }
   }
 }
