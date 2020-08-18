@@ -82,7 +82,8 @@ class BlockRange : public Range {
       TA_ASSERT(lower[d] < upper[d]);
       TA_ASSERT(upper[d] <= range.upbound(d));
       extent[d] = upper[d] - lower[d];
-      TA_ASSERT(extent[d] == (upper_bound_d - lower_bound_d));
+      TA_ASSERT(extent[d] ==
+                static_cast<index1_type>(upper_bound_d - lower_bound_d));
     }
 
     // Compute strides, volume, and offset, starting with last (least
@@ -128,7 +129,8 @@ class BlockRange : public Range {
       TA_ASSERT(lower[d] < upper[d]);
       TA_ASSERT(upper[d] <= range.upbound(d));
       extent[d] = upper[d] - lower[d];
-      TA_ASSERT(extent[d] == (upper_bound_d - lower_bound_d));
+      TA_ASSERT(extent[d] ==
+                static_cast<index1_type>(upper_bound_d - lower_bound_d));
       ++d;
     }
 
