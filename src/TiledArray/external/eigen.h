@@ -65,6 +65,13 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 // define lapacke types to prevent inclusion of complex.h by
 // Eigen/src/misc/lapacke.h
 #include <madness/tensor/lapacke_types.h>
+
+// If EIGEN_USE_LAPACKE_STRICT is defined, Eigen doesn't check if
+// EIGEN_USE_LAPACKE is defined before setting it, leading to a warning when it
+// is already set, so we unset here to avoid that warning
+#ifdef EIGEN_USE_LAPACKE_STRICT && EIGEN_USE_LAPACKE
+#undef EIGEN_USE_LAPACKE
+#endif
 #include <Eigen/Core>
 
 #if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)

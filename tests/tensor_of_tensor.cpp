@@ -83,8 +83,8 @@ struct TensorOfTensorFixture {
   // Fill a tensor with random data
   static Tensor<btas::Tensor<int>> make_rand_TobT(const Range& r) {
     Tensor<btas::Tensor<int>> tensor(r);
-    for (std::size_t i = 0ul; i < r.extent(0); ++i) {
-      for (std::size_t j = 0ul; j < r.extent(1); ++j) {
+    for (decltype(r.extent(0)) i = 0ul; i < r.extent(0); ++i) {
+      for (decltype(r.extent(1)) j = 0ul; j < r.extent(1); ++j) {
         auto make_rand_tensor = [](size_t dim0,
                                    size_t dim1) -> btas::Tensor<int> {
           btas::Tensor<int> tensor(dim0, dim1);
@@ -100,8 +100,8 @@ struct TensorOfTensorFixture {
   // same as make_rand_TobT but with identically-sized tiles
   static Tensor<btas::Tensor<int>> make_rand_TobT_uniform(const Range& r) {
     Tensor<btas::Tensor<int>> tensor(r);
-    for (std::size_t i = 0ul; i < r.extent(0); ++i) {
-      for (std::size_t j = 0ul; j < r.extent(1); ++j) {
+    for (decltype(r.extent(0)) i = 0ul; i < r.extent(0); ++i) {
+      for (decltype(r.extent(1)) j = 0ul; j < r.extent(1); ++j) {
         auto make_rand_tensor = [](size_t dim0,
                                    size_t dim1) -> btas::Tensor<int> {
           btas::Tensor<int> tensor(dim0, dim1);
@@ -1039,8 +1039,8 @@ BOOST_AUTO_TEST_CASE(reduce) {
 
   const auto& range = g.range();
   Tile x_ref;
-  for (std::size_t i = 0ul; i < range.extent(0); ++i) {
-    for (std::size_t j = 0ul; j < range.extent(1); ++j) {
+  for (decltype(range.extent(0)) i = 0ul; i < range.extent(0); ++i) {
+    for (decltype(range.extent(1)) j = 0ul; j < range.extent(1); ++j) {
       contract_12_32(x_ref, &g(i, j), &h(i, j));
     }
   }
