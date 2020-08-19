@@ -484,6 +484,58 @@ class ArrayImpl : public TensorImpl<Policy> {
     return get<std::initializer_list<Integer>>(i);
   }
 
+  /// Local tile future accessor
+
+  /// \tparam Index An integral or integral range type
+  /// \param i The tile index or ordinal
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index> ||
+                                        detail::is_integral_range_v<Index>>>
+  const future& get_local(const Index& i) const {
+    TA_ASSERT(!TensorImpl_::is_zero(i) && TensorImpl_::is_local(i));
+    return data_.get_local(TensorImpl_::trange().tiles_range().ordinal(i));
+  }
+
+  /// Local tile future accessor
+
+  /// \tparam Integer An integral type
+  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  const future& get_local(const std::initializer_list<Integer>& i) const {
+    return get_local<std::initializer_list<Integer>>(i);
+  }
+
+  /// Local tile future accessor
+
+  /// \tparam Index An integral or integral range type
+  /// \param i The tile index or ordinal
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index> ||
+                                        detail::is_integral_range_v<Index>>>
+  future& get_local(const Index& i) {
+    TA_ASSERT(!TensorImpl_::is_zero(i) && TensorImpl_::is_local(i));
+    return data_.get_local(TensorImpl_::trange().tiles_range().ordinal(i));
+  }
+
+  /// Local tile future accessor
+
+  /// \tparam Integer An integral type
+  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Integer,
+            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  future& get_local(const std::initializer_list<Integer>& i) {
+    return get_local<std::initializer_list<Integer>>(i);
+  }
+
   /// Set tile
 
   /// Set the tile at \c i with \c value . \c Value type may be \c value_type ,

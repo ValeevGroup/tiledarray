@@ -71,17 +71,8 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   DistributedStorage(const DistributedStorage_&);
   DistributedStorage_& operator=(const DistributedStorage_&);
 
-  future get_local(const size_type i) const {
-    TA_ASSERT(pmap_->is_local(i));
-
-    // Return the local element.
-    const_accessor acc;
-    data_.insert(acc, i);
-    return acc->second;
-  }
-
   void set_handler(const size_type i, const value_type& value) {
-    future f = get_local(i);
+    future& f = get_local(i);
 
 #ifndef NDEBUG
     // Check that the future has not been set already.
@@ -91,8 +82,9 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     f.set(value);
   }
 
-  void get_handler(const size_type i, const typename future::remote_refT& ref) {
-    future f = get_local(i);
+  void get_handler(const size_type i,
+                   const typename future::remote_refT& ref) const {
+    const future& f = get_local(i);
     future remote_f(ref);
     remote_f.set(f);
   }
@@ -222,6 +214,36 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
 
       return result;
     }
+  }
+
+  /// Get local element
+
+  /// \param i The element to get
+  /// \return A const reference to element \p i
+  /// \throw TiledArray::Exception If \p i is greater than or equal to
+  /// max_size() or \p i is not local.
+  const future& get_local(const size_type i) const {
+    TA_ASSERT(pmap_->is_local(i));
+
+    // Return the local element.
+    const_accessor acc;
+    [[maybe_unused]] const bool inserted = data_.insert(acc, i);
+    return acc->second;
+  }
+
+  /// Get local element
+
+  /// \param i The element to get
+  /// \return A reference to element \p i
+  /// \throw TiledArray::Exception If \p i is greater than or equal to
+  /// max_size() or \p i is not local.
+  future& get_local(const size_type i) {
+    TA_ASSERT(pmap_->is_local(i));
+
+    // Return the local element.
+    accessor acc;
+    [[maybe_unused]] const bool inserted = data_.insert(acc, i);
+    return acc->second;
   }
 
   /// Set element \c i with \c value
