@@ -115,7 +115,7 @@ template <typename InputOp, typename OutputOp, typename Result, typename Arg0,
 inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
                     const Permutation& perm, const Arg0& arg0,
                     const Args&... args) {
-  detail::PermIndex perm_index_op(arg0.range(), perm);
+  detail::PermIndex perm_index_op(arg0.range(), perm.outer_permutation());
 
   // Cache constants
   const unsigned int ndim = arg0.range().rank();

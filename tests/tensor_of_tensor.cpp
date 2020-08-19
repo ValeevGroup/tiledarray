@@ -68,11 +68,11 @@ struct TensorOfTensorFixture {
   // Fill a tensor with random data
   static Tensor<Tensor<int>> make_rand_tensor_of_tensor(const Range& r) {
     Tensor<Tensor<int>> tensor(r);
-    for (std::size_t i = 0ul; i < r.extent(0); ++i) {
-      for (std::size_t j = 0ul; j < r.extent(1); ++j) {
-        const std::array<std::size_t, 2> lower_bound = {{i * 10, j * 10}};
+    for (decltype(r.extent(0)) i = 0; i < r.extent(0); ++i) {
+      for (decltype(r.extent(1)) j = 0; j < r.extent(1); ++j) {
+        const std::array<std::size_t, 2> lower_bound = {{i * 10ul, j * 10ul}};
         const std::array<std::size_t, 2> upper_bound = {
-            {(i + 1) * 10, (j + 1) * 10}};
+            {(i + 1ul) * 10ul, (j + 1ul) * 10ul}};
         tensor(i, j) = make_rand_tensor(Range(lower_bound, upper_bound));
       }
     }

@@ -102,6 +102,16 @@ class DenseShape {
   /// \return The fraction of tiles that are zero tiles.
   static constexpr float sparsity() { return 0.0f; }
 
+  /// Threshold accessor
+
+  /// \return The current threshold
+  static value_type threshold() { return threshold_; }
+
+  /// Set threshold to \c thresh
+
+  /// \param thresh The new threshold
+  static void threshold(const value_type thresh) { threshold_ = thresh; }
+
   /// Check if the shape is empty (uninitialized)
 
   /// \return Always \c false
@@ -362,12 +372,16 @@ class DenseShape {
 
   template <typename Archive>
   void serialize(const Archive& ar) const {}
-
+ private:
+  inline static value_type threshold_ = std::numeric_limits<value_type>::epsilon();
 };  // class DenseShape
+
+
 
 constexpr inline bool operator==(const DenseShape& a, const DenseShape& b) {
   return true;
 }
+
 constexpr inline bool operator!=(const DenseShape& a, const DenseShape& b) {
   return !(a == b);
 }

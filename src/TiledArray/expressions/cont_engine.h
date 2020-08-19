@@ -235,8 +235,8 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \c BinaryEngine. Instead they are initialized in \c MultContEngine and
   /// \c ScalMultContEngine.
   void init_vars() {
-    const unsigned int left_rank = left_.vars().dim();
-    const unsigned int right_rank = right_.vars().dim();
+    const auto left_rank = left_.vars().dim();
+    const auto right_rank = right_.vars().dim();
 
     // Get non-const references to the argument variable lists.
     auto& left_vars =

@@ -30,19 +30,9 @@
 
 #include "../dist_array.h"
 #include "../expressions/expr.h"
+#include "TiledArray/util/annotation.h"
 
 namespace TiledArray {
-
-namespace detail {
-
-inline std::string dummy_annotation(unsigned int DIM) {
-  std::ostringstream oss;
-  if (DIM > 0) oss << "i0";
-  for (unsigned int d = 1; d < DIM; ++d) oss << ",i" << d;
-  return oss.str();
-}
-
-}  // namespace detail
 
 template <typename Tile, typename Policy>
 inline size_t size(const DistArray<Tile, Policy>& a) {

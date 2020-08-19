@@ -132,6 +132,9 @@ class Permutation {
   /// One-line representation of permutation
   std::vector<index_type> p_;
 
+  /// The rank of the tensor's elements
+  index_type n_inner_ = 0;
+
   /// Validate input permutation
   /// \return \c false if each element of [first, last) is non-negative, unique
   /// and less than the size of the domain.
@@ -170,7 +173,8 @@ class Permutation {
   /// duplicate elements.
   template <typename InIter, typename std::enable_if<detail::is_input_iterator<
                                  InIter>::value>::type* = nullptr>
-  Permutation(InIter first, InIter last) : p_(first, last) {
+  Permutation(InIter first, InIter last, index_type n_inner = 0) :
+    p_(first, last), n_inner_(n_inner) {
     TA_ASSERT(valid_permutation(first, last));
   }
 
@@ -180,14 +184,15 @@ class Permutation {
   /// \param a The permutation array to be moved
   template <typename Index,
             typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-  explicit Permutation(const Index& a)
-      : Permutation(std::cbegin(a), std::cend(a)) {}
+  explicit Permutation(const Index& a, index_type n_inner = 0)
+      : Permutation(std::cbegin(a), std::cend(a), n_inner) {}
 
   /// std::vector move constructor
 
   /// Move the content of the std::vector into this permutation
   /// \param a The permutation array to be moved
-  explicit Permutation(std::vector<index_type>&& a) : p_(std::move(a)) {
+  explicit Permutation(std::vector<index_type>&& a, index_type n_inner = 0) :
+    p_(std::move(a)), n_inner_(n_inner) {
     TA_ASSERT(valid_permutation(p_.begin(), p_.end()));
   }
 
@@ -204,6 +209,10 @@ class Permutation {
 
   /// \return The domain size
   index_type dim() const { return p_.size(); }
+
+  index_type inner_dim() const { return n_inner_; }
+
+  index_type outer_dim() const { return dim() - inner_dim(); }
 
   /// Begin element iterator factory function
 
@@ -224,6 +233,18 @@ class Permutation {
 
   /// \return An iterator that points to the end of the element range
   const_iterator cend() const { return p_.cend(); }
+
+  Permutation outer_permutation() const {
+    return Permutation{p_.begin(), p_.begin() + outer_dim()};
+  }
+
+  Permutation inner_permutation() const {
+    const auto n_outer = outer_dim();
+    std::vector<index_type> temp(inner_dim());
+    for(auto i = n_outer; i < dim(); ++i)
+      temp[i - n_outer] = p_[i] - n_outer;
+    return Permutation(temp.begin(), temp.end());
+  }
 
   /// Element accessor
 

@@ -59,8 +59,6 @@ namespace TiledArray {
 template <typename Array>
 auto cholesky( const Array& A, size_t NB = 128, TiledRange l_trange = TiledRange() ) {
 
-  using value_type = typename Array::element_type;
-
   auto& world = A.world();
   auto world_comm = world.mpi.comm().Get_mpi_comm();
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
@@ -116,7 +114,7 @@ auto cholesky( const Array& A, size_t NB = 128, TiledRange l_trange = TiledRange
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
  *  @param[in] NB          ScaLAPACK blocking factor. Defaults to 128
- *  @param[in] l_trange    TiledRange for resulting inverse Cholesky factor. 
+ *  @param[in] l_trange    TiledRange for resulting inverse Cholesky factor.
  *                         If left empty, will default to array.trange()
  *
  *  @returns The inverse lower triangular Cholesky factor in TA format
@@ -158,7 +156,7 @@ auto cholesky_linv( const Array& A, size_t NB = 128, TiledRange l_trange = Tiled
   }
 
   // Compute inverse
-  info = scalapackpp::ptrtri( blacspp::Triangle::Lower, 
+  info = scalapackpp::ptrtri( blacspp::Triangle::Lower,
     blacspp::Diagonal::NonUnit, N, matrix.local_mat().data(), 1, 1, desc );
   if (info) TA_EXCEPTION("TRTRI Failed");
 
@@ -182,7 +180,7 @@ auto cholesky_linv( const Array& A, size_t NB = 128, TiledRange l_trange = Tiled
 
 
 template <typename Array>
-auto cholesky_solve( const Array& A, const Array& B, size_t NB = 128, 
+auto cholesky_solve( const Array& A, const Array& B, size_t NB = 128,
   TiledRange x_trange = TiledRange() ) {
 
   auto& world = A.world();
@@ -237,8 +235,8 @@ auto cholesky_solve( const Array& A, const Array& B, size_t NB = 128,
 
 
 template <typename Array>
-auto cholesky_lsolve( scalapackpp::TransposeFlag trans, 
-  const Array& A, const Array& B, size_t NB = 128, 
+auto cholesky_lsolve( scalapackpp::TransposeFlag trans,
+  const Array& A, const Array& B, size_t NB = 128,
   TiledRange l_trange = TiledRange(),
   TiledRange x_trange = TiledRange() ) {
 
@@ -280,7 +278,7 @@ auto cholesky_lsolve( scalapackpp::TransposeFlag trans,
     A_sca.local_mat().data(), 1, 1, desc_a );
   if (info) TA_EXCEPTION("Cholesky Failed");
 
-  info = scalapackpp::ptrtrs( blacspp::Triangle::Lower, trans, 
+  info = scalapackpp::ptrtrs( blacspp::Triangle::Lower, trans,
     blacspp::Diagonal::NonUnit, N, NRHS, A_sca.local_mat().data(), 1, 1, desc_a,
     B_sca.local_mat().data(), 1, 1, desc_b );
   if (info) TA_EXCEPTION("TRTRS Failed");
