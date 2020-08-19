@@ -262,7 +262,7 @@ auto get_elem_from_il(T idx, U&& il, std::size_t depth = 0) {
     return il;
   } else {
     // Make sure the current nesting is long enough
-    TA_ASSERT(il.size() > idx[depth]);
+    TA_ASSERT(il.size() > static_cast<std::size_t>(idx[depth]));
     auto itr = il.begin() + idx[depth];
     if constexpr (nestings_left == 1) {
       return *itr;
