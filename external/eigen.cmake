@@ -104,7 +104,7 @@ else()
   # Set source and build path for Eigen3 in the TiledArray Project
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
-  set(EIGEN3_URL http://bitbucket.org/eigen/eigen/get/3.3.7.tar.bz2)
+  set(EIGEN3_URL https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.bz2)
   set(EIGEN3_URL_HASH MD5=05b1f7511c93980c385ebe11bd3c93fa)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
