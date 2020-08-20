@@ -13,12 +13,12 @@ else(ENABLE_CUDA)
 endif(ENABLE_CUDA)
 
 set(_tiledarray_eigen_use_lapacke FALSE)
-if ("${LAPACK_COMPILE_DEFINITIONS}" MATCHES "MADNESS_LINALG_USE_LAPACKE")
+if ("${LAPACK_COMPILE_DEFINITIONS}" MATCHES "TILEDARRAY_EIGEN_USE_LAPACKE")
   set(_tiledarray_eigen_use_lapacke TRUE)
   if (_tiledarray_required_eigen_version VERSION_LESS 3.3.7)
     message(
       WARNING
-      "Eigen3 version => 3.3.7 is required if MADNESS_LINALG_USE_LAPACKE is set.  "
+      "Eigen3 version => 3.3.7 is required if TILEDARRAY_EIGEN_USE_LAPACKE is set.  "
       "Prior Eigen3 with LAPACKE enabled may give incorrect eigenvalue results"
       )
     set(_tiledarray_required_eigen_version 3.3.7)
@@ -85,7 +85,7 @@ if (TARGET TiledArray_Eigen)
       std::cout << m_invsqrt << std::endl;
     }"
     EIGEN3_COMPILES)
-    
+
   cmake_pop_check_state()
 
   if (NOT EIGEN3_COMPILES)
