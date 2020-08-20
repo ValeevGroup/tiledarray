@@ -735,9 +735,9 @@ class SparseShape {
     for (; lower_it != lower_end && upper_it != upper_end;
          ++d, ++lower_it, ++upper_it) {
       // Get the new range size
-      const size_type lower_d = *lower_it;
-      const size_type upper_d = *upper_it;
-      const size_type extent_d = upper_d - lower_d;
+      const auto lower_d = *lower_it;
+      const auto upper_d = *upper_it;
+      const auto extent_d = upper_d - lower_d;
 
       // Check that the input indices are in range
       TA_ASSERT(lower_d >= tile_norms_.range().lobound(d));
@@ -769,9 +769,9 @@ class SparseShape {
     int d = 0;
     for (auto&& bound_d : bounds) {
       // Get the new range size
-      const size_type lower_d = detail::at(bound_d, 0);
-      const size_type upper_d = detail::at(bound_d, 1);
-      const size_type extent_d = upper_d - lower_d;
+      const auto lower_d = detail::at(bound_d, 0);
+      const auto upper_d = detail::at(bound_d, 1);
+      const auto extent_d = upper_d - lower_d;
 
       // Check that the input indices are in range
       TA_ASSERT(lower_d >= tile_norms_.range().lobound(d));
