@@ -85,9 +85,12 @@ class Tile {
   /// Tensor type used to represent tile data
   typedef T tensor_type;
   // import types from T
-  using value_type = typename tensor_type::value_type;   ///< value type
-  using range_type = typename tensor_type::range_type;   ///< Tensor range type
-  using index1_type = typename range_type::index1_type;  ///< 1-index type
+  using value_type = typename tensor_type::value_type;    ///< value type
+  using range_type = typename tensor_type::range_type;    ///< Tensor range type
+  using index1_type = typename tensor_type::index1_type;  ///< 1-index type
+  using size_type =
+      typename tensor_type::ordinal_type;  ///< Size type (to meet the container
+                                           ///< concept)
   using reference =
       typename tensor_type::reference;  ///< Element reference type
   using const_reference =
