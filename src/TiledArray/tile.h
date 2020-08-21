@@ -414,8 +414,8 @@ class Tile {
   // clang-format on
   /// @{
   template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
   decltype(auto) block(const Index1& lower_bound, const Index2& upper_bound) {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<value_type, BlockRange, tensor_type>(
@@ -424,8 +424,8 @@ class Tile {
   }
 
   template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
   decltype(auto) block(const Index1& lower_bound,
                        const Index2& upper_bound) const {
     TA_ASSERT(pimpl_);
