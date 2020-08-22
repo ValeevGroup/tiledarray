@@ -1304,7 +1304,8 @@ namespace detail {
 
 /// Signals that we can take the trace of a \c Tile<Arg> if can trace \c Arg
 template <typename Arg>
-struct TraceIsDefined<Tile<Arg>, std::enable_if_t<TraceIsDefined<Arg>::value_type>> : std::true_type {};
+struct TraceIsDefined<Tile<Arg>,
+                      enable_if_trace_is_defined_t<Arg>> : std::true_type {};
 
 } // namespace detail
 
