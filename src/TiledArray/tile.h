@@ -22,6 +22,7 @@
 
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tile_interface/cast.h>
+#include <TiledArray/tile_interface/trace.h>
 #include <memory>
 
 // Forward declaration of MADNESS archive type traits
@@ -1298,6 +1299,14 @@ template <typename Arg>
 inline decltype(auto) trace(const Tile<Arg>& arg) {
   return trace(arg.tensor());
 }
+
+namespace detail {
+
+/// Signals that we can take the trace of a \c Tile<Arg> if can trace \c Arg
+template <typename Arg>
+struct TraceIsDefined<Tile<Arg>, std::enable_if_t<TraceIsDefined<Arg>::value_type>> : std::true_type {};
+
+} // namespace detail
 
 /// Sum the elements of a tile
 

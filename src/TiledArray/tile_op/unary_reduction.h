@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TILE_OP_UNARY_REDUCTION_H__INCLUDED
 #define TILEDARRAY_TILE_OP_UNARY_REDUCTION_H__INCLUDED
 
-#include "TiledArray/tensor/trace.h"
+#include "TiledArray/tile_interface/trace.h"
 #include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {

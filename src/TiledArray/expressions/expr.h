@@ -27,7 +27,7 @@
 #define TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 
 #include "TiledArray/config.h"
-#include "TiledArray/tensor/trace.h"
+#include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/tile.h"
 #include "../reduce_task.h"
 #include "../tile_interface/cast.h"

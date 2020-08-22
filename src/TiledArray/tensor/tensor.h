@@ -25,7 +25,7 @@
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/complex.h"
 #include "TiledArray/tensor/kernels.h"
-#include "TiledArray/tensor/trace.h"
+#include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/tile_interface/clone.h"
 #include "TiledArray/util/logger.h"
 namespace TiledArray {
