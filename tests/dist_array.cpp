@@ -356,6 +356,33 @@ BOOST_AUTO_TEST_CASE(find_local) {
         BOOST_CHECK_EQUAL(*it, value);
     }
   }
+
+  for (auto&& tile_idx : a.range()) {
+    if (a.is_local(tile_idx)) {
+      const Future<ArrayN::value_type>& const_tile_fut = a.find_local(tile_idx);
+      Future<ArrayN::value_type>& nonconst_tile_fut = a.find_local(tile_idx);
+
+      const int value = world.rank() + 1;
+      BOOST_CHECK(const_tile_fut.probe());
+      const auto& const_tile_ref = const_tile_fut.get();
+      for (auto&& val : const_tile_ref) {
+        BOOST_CHECK_EQUAL(val, value);
+      }
+
+      BOOST_CHECK(nonconst_tile_fut.probe());
+      const auto& nonconst_tile_ref = nonconst_tile_fut.get();
+      for (auto&& val : nonconst_tile_ref) {
+        BOOST_CHECK_EQUAL(val, value);
+      }
+
+    } else {
+#ifdef TA_EXCEPTION_ERROR
+      // Check that an exception is thrown when using a default constructed
+      // object
+      BOOST_CHECK_THROW(a.find_local(tile_idx), TiledArray::Exception);
+#endif  // TA_EXCEPTION_ERROR
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE(find_remote) {

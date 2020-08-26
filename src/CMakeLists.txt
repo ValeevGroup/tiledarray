@@ -134,7 +134,6 @@ TiledArray/tensor/shift_wrapper.h
 TiledArray/tensor/tensor.h
 TiledArray/tensor/tensor_interface.h
 TiledArray/tensor/tensor_map.h
-TiledArray/tensor/trace.h
 TiledArray/tensor/type_traits.h
 TiledArray/tensor/utility.h
 TiledArray/tile_interface/add.h
@@ -143,6 +142,7 @@ TiledArray/tile_interface/clone.h
 TiledArray/tile_interface/permute.h
 TiledArray/tile_interface/scale.h
 TiledArray/tile_interface/shift.h
+TiledArray/tile_interface/trace.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_reduction.h
 TiledArray/tile_op/binary_wrapper.h

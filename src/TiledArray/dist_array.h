@@ -106,28 +106,28 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// They probably should be factored out into a header file so they can be
   /// used elsewhere too.
   ///
-  template<typename OtherTile>
+  template <typename OtherTile>
   using is_my_type = std::is_same<DistArray_, DistArray<OtherTile, Policy>>;
 
-  template<typename OtherTile>
+  template <typename OtherTile>
   using enable_if_not_my_type =
       std::enable_if_t<not is_my_type<OtherTile>::value>;
 
-  template<typename Index>
+  template <typename Index>
   static constexpr bool is_integral_or_integral_range_v =
       std::is_integral_v<Index> || detail::is_integral_range_v<Index>;
 
-  template<typename Index>
+  template <typename Index>
   using enable_if_is_integral_or_integral_range =
       std::enable_if_t<is_integral_or_integral_range_v<Index>>;
 
-  template<typename Index>
+  template <typename Index>
   using enable_if_is_integral = std::enable_if_t<std::is_integral_v<Index>>;
 
-  template<typename Value>
+  template <typename Value>
   static constexpr bool is_value_or_future_to_value_v =
-    std::is_same_v<std::decay_t<Value>, Future<value_type>> ||
-    std::is_same_v<std::decay_t<Value>, value_type>;
+      std::is_same_v<std::decay_t<Value>, Future<value_type>> ||
+      std::is_same_v<std::decay_t<Value>, value_type>;
 
  private:
   std::shared_ptr<impl_type> pimpl_;  ///< Array implementation pointer
@@ -544,6 +544,59 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     return find<std::initializer_list<Integer>>(i);
   }
 
+  /// Find local tile
+
+  /// \tparam Index An integral or integral range type
+  /// \param i The tile index
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index> ||
+                                        detail::is_integral_range_v<Index>>>
+  const Future<value_type>& find_local(const Index& i) const {
+    check_local_index(i);
+    return pimpl_->get_local(i);
+  }
+
+  /// Find local tile
+
+  /// \tparam Integer An integral type
+  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Integer,
+            typename = std::enable_if_t<(std::is_integral_v<Integer>)>>
+  const Future<value_type>& find_local(
+      const std::initializer_list<Integer>& i) const {
+    return find_local<std::initializer_list<Integer>>(i);
+  }
+
+  /// Find local tile
+
+  /// \tparam Index An integral or integral range type
+  /// \param i The tile index
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index> ||
+                                        detail::is_integral_range_v<Index>>>
+  Future<value_type>& find_local(const Index& i) {
+    check_local_index(i);
+    return pimpl_->get_local(i);
+  }
+
+  /// Find local tile
+
+  /// \tparam Integer An integral type
+  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Integer,
+            typename = std::enable_if_t<(std::is_integral_v<Integer>)>>
+  Future<value_type>& find_local(const std::initializer_list<Integer>& i) {
+    return find_local<std::initializer_list<Integer>>(i);
+  }
+
   /// Set a tile and fill it using a sequence
   ///
   /// This function will set an uninitialized tile to the provided value. The
@@ -559,9 +612,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                  first minimally contains the same number of elements as
   ///                  the tile.
   /// \throw TiledArray::Exception if the tile is already initialized.
-  template <typename Index, typename InIter,
+  template <
+      typename Index, typename InIter,
       typename = std::enable_if_t<is_integral_or_integral_range_v<Index> &&
-          detail::is_input_iterator<InIter>::value>>
+                                  detail::is_input_iterator<InIter>::value>>
   void set(const Index& i, InIter first) {
     check_index(i);
     pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
@@ -583,8 +637,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                  the tile.
   /// \throw TiledArray::Exception if the tile is already initialized.
   template <typename Integer, typename InIter,
-              typename = std::enable_if_t<(std::is_integral_v<Integer>)&&detail::
-              is_input_iterator<InIter>::value>>
+            typename = std::enable_if_t<(std::is_integral_v<Integer>)&&detail::
+                                            is_input_iterator<InIter>::value>>
   typename std::enable_if<detail::is_input_iterator<InIter>::value>::type set(
       const std::initializer_list<Integer>& i, InIter first) {
     set<std::initializer_list<Integer>>(i, first);
@@ -655,10 +709,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if index \c i is a coordinate index with the
   ///                              wrong rank. Strong throw guarantee.
   /// \throw TiledArray::Exception if tile \c i is already set.
-    template <
-        typename Index, typename Value,
-        typename = std::enable_if_t<(is_integral_or_integral_range_v<Index> &&
-                                     is_value_or_future_to_value_v<Value>)>>
+  template <
+      typename Index, typename Value,
+      typename = std::enable_if_t<(is_integral_or_integral_range_v<Index> &&
+                                   is_value_or_future_to_value_v<Value>)>>
   void set(const Index& i, Value&& v) {
     check_index(i);
     pimpl_->set(i, std::forward<Value>(v));
@@ -677,9 +731,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if index \c i has the wrong rank. Strong
   ///                              throw guarantee.
   /// \throw TiledArray::Exception if tile \c i is already set.
-    template <typename Index, typename Value,
-              typename = std::enable_if_t<(std::is_integral_v<Index>) &&
-                                          is_value_or_future_to_value_v<Value>>>
+  template <
+      typename Index, typename Value,
+      typename = std::enable_if_t<
+          (std::is_integral_v<Index>)&&is_value_or_future_to_value_v<Value>>>
   void set(const std::initializer_list<Index>& i, Value&& v) {
     set<std::initializer_list<Index>>(i, std::forward<Value>(v));
   }
@@ -777,7 +832,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              false. Weak throw guarantee.
   template <typename Op>
   void init_tiles(Op&& op, bool skip_set = false) {
-
     // lifetime management of op depends on whether it is a lvalue ref (i.e. has
     // an external owner) or an rvalue ref
     // - if op is an lvalue ref: pass op to tasks
@@ -995,8 +1049,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              guarantee.
   /// \throw TiledArray::Exception if \c i is a coordinate index with the wrong
   ///                              rank. Strong throw guarantee.
-    template <typename Index,
-              typename = enable_if_is_integral_or_integral_range<Index>>
+  template <typename Index,
+            typename = enable_if_is_integral_or_integral_range<Index>>
   ProcessID owner(const Index& i) const {
     check_index(i);
     return pimpl_->owner(i);
@@ -1381,15 +1435,37 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   template <typename Index>
   std::enable_if_t<detail::is_integral_range_v<Index>, void> check_index(
       const Index& i) const {
-    assert_pimpl();  // Use assert to avoid double checking
     TA_USER_ASSERT(
-        pimpl_->tiles_range().includes(i),
+        impl_ref().tiles_range().includes(i),
         "The coordinate index used to access an array tile is out of range.");
   }
 
   template <typename Index1>
   void check_index(const std::initializer_list<Index1>& i) const {
     check_index<std::initializer_list<Index1>>(i);
+  }
+
+  template <typename Index>
+  std::enable_if_t<std::is_integral_v<Index>, void> check_local_index(
+      const Index i) const {
+    check_index(i);
+    TA_USER_ASSERT(
+        pimpl_->is_local(i),  // pimpl_ already checked
+        "The ordinal index used to access an array tile is not local.");
+  }
+
+  template <typename Index>
+  std::enable_if_t<detail::is_integral_range_v<Index>, void> check_local_index(
+      const Index& i) const {
+    check_index(i);
+    TA_USER_ASSERT(
+        pimpl_->is_local(i),  // pimpl_ already checked
+        "The coordinate index used to access an array tile is not local.");
+  }
+
+  template <typename Index1>
+  void check_local_index(const std::initializer_list<Index1>& i) const {
+    check_local_index<std::initializer_list<Index1>>(i);
   }
 
   /// Ensures that the string indices are consistent with the tensor
@@ -1401,13 +1477,13 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 #ifndef NDEBUG
     // Only check indices if the PIMPL is initialized (okay to not initialize
     // the RHS of an equation)
-    if(!is_initialized()) return;
+    if (!is_initialized()) return;
 
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<value_type>;
     const auto rank = range().rank();
     // TODO: Make constexpr and use structured bindings when CUDA supports C++17
-    if(is_tot){
-      //Make sure the index is capable of being interpreted as a ToT index
+    if (is_tot) {
+      // Make sure the index is capable of being interpreted as a ToT index
       TA_ASSERT(detail::is_tot_index(vars));
       const auto idx = detail::split_index(vars);
 
@@ -1415,8 +1491,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       TA_ASSERT(idx.first.size() == rank);
 
       // Check inner index rank?
-    }
-    else{
+    } else {
       // Better not be a ToT index
       TA_ASSERT(!detail::is_tot_index(vars));
 

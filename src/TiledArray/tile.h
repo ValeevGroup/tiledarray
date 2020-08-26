@@ -22,6 +22,7 @@
 
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tile_interface/cast.h>
+#include <TiledArray/tile_interface/trace.h>
 #include <memory>
 
 // Forward declaration of MADNESS archive type traits
@@ -85,9 +86,12 @@ class Tile {
   /// Tensor type used to represent tile data
   typedef T tensor_type;
   // import types from T
-  using value_type = typename tensor_type::value_type;   ///< value type
-  using range_type = typename tensor_type::range_type;   ///< Tensor range type
-  using index1_type = typename range_type::index1_type;  ///< 1-index type
+  using value_type = typename tensor_type::value_type;    ///< value type
+  using range_type = typename tensor_type::range_type;    ///< Tensor range type
+  using index1_type = typename tensor_type::index1_type;  ///< 1-index type
+  using size_type =
+      typename tensor_type::ordinal_type;  ///< Size type (to meet the container
+                                           ///< concept)
   using reference =
       typename tensor_type::reference;  ///< Element reference type
   using const_reference =
@@ -414,8 +418,8 @@ class Tile {
   // clang-format on
   /// @{
   template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
   decltype(auto) block(const Index1& lower_bound, const Index2& upper_bound) {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<value_type, BlockRange, tensor_type>(
@@ -424,8 +428,8 @@ class Tile {
   }
 
   template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
   decltype(auto) block(const Index1& lower_bound,
                        const Index2& upper_bound) const {
     TA_ASSERT(pimpl_);
@@ -1295,6 +1299,15 @@ template <typename Arg>
 inline decltype(auto) trace(const Tile<Arg>& arg) {
   return trace(arg.tensor());
 }
+
+namespace detail {
+
+/// Signals that we can take the trace of a \c Tile<Arg> if can trace \c Arg
+template <typename Arg>
+struct TraceIsDefined<Tile<Arg>,
+                      enable_if_trace_is_defined_t<Arg>> : std::true_type {};
+
+} // namespace detail
 
 /// Sum the elements of a tile
 

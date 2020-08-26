@@ -48,19 +48,22 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 #define EIGEN_USE_MKL_ALL 1
 #endif
 #else
+
 //# ifndef EIGEN_USE_BLAS
 //#  define EIGEN_USE_BLAS 1
 //# endif
-#ifdef MADNESS_LINALG_USE_LAPACKE
+
+#ifdef TILEDARRAY_EIGEN_USE_LAPACKE
 #ifndef EIGEN_USE_LAPACKE
 #define EIGEN_USE_LAPACKE 1
 #endif
 #ifndef EIGEN_USE_LAPACKE_STRICT
 #define EIGEN_USE_LAPACKE_STRICT 1
 #endif
-#endif
-#endif
 
+#endif
+#endif
+  
 /////////////////////////////////////////////////
 // define lapacke types to prevent inclusion of complex.h by
 // Eigen/src/misc/lapacke.h
@@ -77,7 +80,7 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 #if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)
 #if !EIGEN_VERSION_AT_LEAST(3,3,7)
 #error "Eigen3 < 3.3.7 with LAPACKE enabled may give wrong eigenvalue results"
-#error "Either turn off MADNESS_LINALG_USE_LAPACKE or use Eigen3 3.3.7"
+#error "Either turn off TILEDARRAY_EIGEN_USE_LAPACKE or use Eigen3 3.3.7"
 #endif
 #endif
 

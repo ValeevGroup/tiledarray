@@ -1,5 +1,5 @@
 #include "unit_test_config.h"
-#include <TiledArray/tensor/trace.h>
+#include <TiledArray/tile_interface/trace.h>
 #include <TiledArray/tensor/tensor.h> // Defines trace of Tensor<T> (T numeric)
 using namespace TiledArray;
 

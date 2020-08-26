@@ -31,6 +31,7 @@
 #include "TiledArray/range.h"
 #include "TiledArray/tensor/type_traits.h"
 #include "TiledArray/tile_interface/cast.h"
+#include <TiledArray/tile_interface/trace.h>
 
 #include <btas/features.h>
 #include <btas/generic/axpy_impl.h>
@@ -658,6 +659,15 @@ inline typename btas::Tensor<T, Range, Storage>::value_type abs_min(
 }  // namespace btas
 
 namespace TiledArray {
+
+namespace detail {
+
+/// Signals that we can take the trace of a btas::Tensor<T, Range, Storage> (for numeric \c T)
+template <typename T, typename Range, typename Storage>
+struct TraceIsDefined<btas::Tensor<T, Range, Storage>, enable_if_numeric_t<T>> : std::true_type {};
+
+} // namespace detail
+
 /**
  *  permute function for TiledArray::Range class with non-TiledArray Permutation
  * object
