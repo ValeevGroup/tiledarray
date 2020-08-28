@@ -93,7 +93,7 @@ inline auto tokenize_index(const std::string& s, char delim) {
 
 /// Checks that the provided index is a valid TiledArray index
 ///
-/// Tiled Array defines a string as being a valid index if each character is one
+/// TiledArray defines a string as being a valid index if each character is one
 /// of the following:
 ///
 /// - Roman letters A through Z (uppercase and lowercase are allowed)
@@ -150,7 +150,7 @@ inline bool is_valid_index(const std::string& idx) {
 
 /// Defines what it means for a string index to be for a Tensor-of-Tensors
 ///
-/// Tiled Array defines an index as being for a tensor-of-tensors if:
+/// TiledArray defines an index as being for a tensor-of-tensors if:
 /// - the index is valid
 /// - the index contains a semicolon
 ///

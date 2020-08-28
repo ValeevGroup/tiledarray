@@ -116,7 +116,7 @@ inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
 
 /// Variable list manages the strings used to label an array's modes
 
-/// In Tiled Array's DSL the user provides string labels for each mode of the
+/// In TiledArray's DSL the user provides string labels for each mode of the
 /// array. The operators between arrays and the appearance/absence of a label
 /// defines the semantics of the exact operation subject to the generalized
 /// Einstein summation convention. For the user's convenience the string labels
