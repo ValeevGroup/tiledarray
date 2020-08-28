@@ -99,7 +99,7 @@ inline auto tokenize_index(const std::string& s, char delim) {
 /// - Roman letters A through Z (uppercase and lowercase are allowed)
 /// - Base 10 numbers 0 through 9
 /// - Whitespace
-/// - underscore (_), comma (,), or semicolon (;)
+/// - underscore (`_`), prime (<code>'</code>), comma (`,`), or semicolon (`;`)
 ///
 /// Additionally the string can not:
 ///
@@ -124,7 +124,7 @@ inline bool is_valid_index(const std::string& idx) {
       "abcdefghijklmnopqrstuvwxyz"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       "1234567890"
-      " _,;";
+      " _',;";
   // Are valid characters
   for(const auto& c : idx)
     if(valid_chars.find(c) == std::string::npos) return false;
