@@ -330,6 +330,7 @@ else()
           #      "-DCMAKE_Fortran_FLAGS_RELEASE=${CMAKE_Fortran_FLAGS_RELEASE}"
           #      "-DCMAKE_Fortran_FLAGS_RELWITHDEBINFO=${CMAKE_Fortran_FLAGS_RELWITHDEBINFO}"
           #      "-DCMAKE_Fortran_FLAGS_MINSIZEREL=${CMAKE_Fortran_FLAGS_MINSIZEREL}"
+          -DCMAKE_AR=${CMAKE_AR}
           -DENABLE_MPI=${ENABLE_MPI}
           -DMPI_THREAD=multiple
           -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER}
