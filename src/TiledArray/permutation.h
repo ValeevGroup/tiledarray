@@ -126,11 +126,13 @@ class Permutation {
  public:
   typedef Permutation Permutation_;
   typedef unsigned int index_type;
-  typedef std::vector<index_type>::const_iterator const_iterator;
+  template <typename T>
+  using vector = container::svector<T>;
+  typedef vector<index_type>::const_iterator const_iterator;
 
  private:
   /// One-line representation of permutation
-  std::vector<index_type> p_;
+  vector<index_type> p_;
 
   /// The rank of the tensor's elements
   index_type n_inner_ = 0;
@@ -173,8 +175,8 @@ class Permutation {
   /// duplicate elements.
   template <typename InIter, typename std::enable_if<detail::is_input_iterator<
                                  InIter>::value>::type* = nullptr>
-  Permutation(InIter first, InIter last, index_type n_inner = 0) :
-    p_(first, last), n_inner_(n_inner) {
+  Permutation(InIter first, InIter last, index_type n_inner = 0)
+      : p_(first, last), n_inner_(n_inner) {
     TA_ASSERT(valid_permutation(first, last));
   }
 
@@ -189,10 +191,10 @@ class Permutation {
 
   /// std::vector move constructor
 
-  /// Move the content of the std::vector into this permutation
+  /// Move the content of the vector into this permutation
   /// \param a The permutation array to be moved
-  explicit Permutation(std::vector<index_type>&& a, index_type n_inner = 0) :
-    p_(std::move(a)), n_inner_(n_inner) {
+  explicit Permutation(vector<index_type>&& a, index_type n_inner = 0)
+      : p_(std::move(a)), n_inner_(n_inner) {
     TA_ASSERT(valid_permutation(p_.begin(), p_.end()));
   }
 
@@ -240,9 +242,8 @@ class Permutation {
 
   Permutation inner_permutation() const {
     const auto n_outer = outer_dim();
-    std::vector<index_type> temp(inner_dim());
-    for(auto i = n_outer; i < dim(); ++i)
-      temp[i - n_outer] = p_[i] - n_outer;
+    vector<index_type> temp(inner_dim());
+    for (auto i = n_outer; i < dim(); ++i) temp[i - n_outer] = p_[i] - n_outer;
     return Permutation(temp.begin(), temp.end());
   }
 
@@ -267,16 +268,16 @@ class Permutation {
   /// </ul>
   /// \return the set of cycles (in canonical format) that represent this
   /// permutation
-  std::vector<std::vector<index_type>> cycles() const {
-    std::vector<std::vector<index_type>> result;
+  vector<vector<index_type>> cycles() const {
+    vector<vector<index_type>> result;
 
-    std::vector<bool> placed_in_cycle(p_.size(), false);
+    vector<bool> placed_in_cycle(p_.size(), false);
 
     // 1. for each i compute its orbit
     // 2. if the orbit is longer than 1, sort and add to the list of cycles
     for (index_type i = 0; i != p_.size(); ++i) {
       if (not placed_in_cycle[i]) {
-        std::vector<index_type> cycle(1, i);
+        vector<index_type> cycle(1, i);
         placed_in_cycle[i] = true;
 
         index_type next_i = p_[i];
@@ -391,7 +392,7 @@ class Permutation {
   /// Permutation data accessor
 
   /// \return A reference to the array of permutation elements
-  const std::vector<index_type>& data() const { return p_; }
+  const auto& data() const { return p_; }
 
   /// Serialize permutation
 
