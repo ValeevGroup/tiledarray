@@ -63,7 +63,7 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 
 #endif
 #endif
-  
+
 /////////////////////////////////////////////////
 // define lapacke types to prevent inclusion of complex.h by
 // Eigen/src/misc/lapacke.h
@@ -72,13 +72,13 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 // If EIGEN_USE_LAPACKE_STRICT is defined, Eigen doesn't check if
 // EIGEN_USE_LAPACKE is defined before setting it, leading to a warning when it
 // is already set, so we unset here to avoid that warning
-#ifdef EIGEN_USE_LAPACKE_STRICT && EIGEN_USE_LAPACKE
+#if defined(EIGEN_USE_LAPACKE_STRICT) && defined(EIGEN_USE_LAPACKE)
 #undef EIGEN_USE_LAPACKE
 #endif
 #include <Eigen/Core>
 
 #if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)
-#if !EIGEN_VERSION_AT_LEAST(3,3,7)
+#if !EIGEN_VERSION_AT_LEAST(3, 3, 7)
 #error "Eigen3 < 3.3.7 with LAPACKE enabled may give wrong eigenvalue results"
 #error "Either turn off TILEDARRAY_EIGEN_USE_LAPACKE or use Eigen3 3.3.7"
 #endif
