@@ -99,12 +99,13 @@ elseif(TA_EXPERT)
 
 else()
 
+  set(Eigen3_VERSION 3.3.7)
   include(ExternalProject)
 
   # Set source and build path for Eigen3 in the TiledArray Project
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
-  set(EIGEN3_URL https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.bz2)
+  set(EIGEN3_URL https://gitlab.com/libeigen/eigen/-/archive/${Eigen3_VERSION}/eigen-${Eigen3_VERSION}.tar.bz2)
   set(EIGEN3_URL_HASH MD5=b9e98a200d2455f06db9c661c5610496)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
@@ -137,6 +138,8 @@ else()
   set_property(TARGET TiledArray_Eigen PROPERTY
           INTERFACE_INCLUDE_DIRECTORIES $<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}>
           $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/eigen3>)
+  set_property(TARGET TiledArray_Eigen PROPERTY
+      VERSION ${Eigen3_VERSION})
 
   # Install Eigen 3
   install(
@@ -161,6 +164,7 @@ if (TARGET TiledArray_Eigen)
   target_include_directories(TiledArray_Eigen INTERFACE ${LAPACK_INCLUDE_DIRS})
   target_compile_definitions(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_DEFINITIONS})
   target_compile_options(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_OPTIONS})
+  set_property(TARGET TiledArray_Eigen PROPERTY VERSION ${Eigen3_VERSION})
   if (MADNESS_HAS_MKL)
     target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL_ALL)
   else(MADNESS_HAS_MKL)
