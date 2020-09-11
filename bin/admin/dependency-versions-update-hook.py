@@ -139,7 +139,7 @@ any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Boost', boost_old_install_
 # Eigen version in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'Eigen', eigen_old_version, eigen_new_version, 'eigen.tuxfamily.org), version ', ' or higher')
 # Eigen install version in eigen.cmake
-any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Eigen', eigen_old_install_version, eigen_new_install_version, 'bitbucket.org/eigen/eigen/get/', '.tar.bz2')
+any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Eigen', eigen_old_install_version, eigen_new_install_version, 'libeigen/eigen/-/archive', '.tar.bz2')
 any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Eigen', eigen_old_install_url_hash, eigen_new_install_url_hash, 'MD5=', '')
 
 # MADNESS version in tiledarray-config.cmake.in
