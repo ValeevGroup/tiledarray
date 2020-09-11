@@ -138,8 +138,6 @@ else()
   set_property(TARGET TiledArray_Eigen PROPERTY
           INTERFACE_INCLUDE_DIRECTORIES $<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}>
           $<INSTALL_INTERFACE:${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}/eigen3>)
-  set_property(TARGET TiledArray_Eigen PROPERTY
-      VERSION ${Eigen3_VERSION})
 
   # Install Eigen 3
   install(
