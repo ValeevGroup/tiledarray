@@ -9,6 +9,7 @@
 #  EIGEN3_FOUND - system has eigen lib with correct version
 #  EIGEN3_INCLUDE_DIR - the eigen include directory
 #  EIGEN3_VERSION - eigen version
+#  Eigen3_VERSION - eigen version
 
 # Copyright (c) 2006, 2007 Montel Laurent, <montel@kde.org>
 # Copyright (c) 2008, 2009 Gael Guennebaud, <g.gael@free.fr>
@@ -51,6 +52,10 @@ macro(_eigen3_check_version)
     message(STATUS "Eigen3 version ${EIGEN3_VERSION} found in ${EIGEN3_INCLUDE_DIR}, "
                    "but at least version ${Eigen3_FIND_VERSION} is required")
   endif(NOT EIGEN3_VERSION_OK)
+
+  # Eigen3 config defines version in Eigen3_VERSION, so define that as well here
+  set(Eigen3_VERSION ${EIGEN3_VERSION})
+
 endmacro(_eigen3_check_version)
 
 if (EIGEN3_INCLUDE_DIR)

@@ -135,22 +135,23 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(cycles_decomposition, Permutation, ptypes) {
   const auto& p201 = fixture<Permutation>().p201;
   const auto& p021 = fixture<Permutation>().p021;
 
+  using vec = TiledArray::Permutation::template vector<unsigned int>;
   {  // {0,2,1} = (1,2)
     auto cycles = p021.cycles();
     BOOST_CHECK_EQUAL(cycles.size(), 1u);
-    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({1u, 2u}));
+    BOOST_CHECK_EQUAL(cycles[0], vec({1u, 2u}));
   }
   {  // {2,0,1} = (0,1,2)
     auto cycles = p201.cycles();
     BOOST_CHECK_EQUAL(cycles.size(), 1u);
-    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({0u, 1u, 2u}));
+    BOOST_CHECK_EQUAL(cycles[0], vec({0u, 1u, 2u}));
   }
   {  // {0,2,1,5,3,4} = (1,2)(3,4,5)
     auto p = Permutation{0, 2, 1, 5, 3, 4};
     auto cycles = p.cycles();
     BOOST_CHECK_EQUAL(cycles.size(), 2u);
-    BOOST_CHECK_EQUAL(cycles[0], std::vector<unsigned int>({1u, 2u}));
-    BOOST_CHECK_EQUAL(cycles[1], std::vector<unsigned int>({3u, 4u, 5u}));
+    BOOST_CHECK_EQUAL(cycles[0], vec({1u, 2u}));
+    BOOST_CHECK_EQUAL(cycles[1], vec({3u, 4u, 5u}));
   }
 }
 
@@ -531,6 +532,17 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vector_permutation, Permutation, ptypes) {
   std::vector<int> ar{2, 3, 1};
   std::vector<int> a2 = p * a1;
   std::vector<int> a3 = a1;
+  a3 *= p;
+  BOOST_CHECK(a2 == ar);  // check assignment permutation
+  BOOST_CHECK(a3 == ar);  // check in-place permutation
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(boost_vector_permutation, Permutation, ptypes) {
+  const auto& p = fixture<Permutation>().p;
+  boost::container::small_vector<int, 5> a1{1, 2, 3};
+  boost::container::small_vector<int, 5> ar{2, 3, 1};
+  boost::container::small_vector<int, 5> a2 = p * a1;
+  boost::container::small_vector<int, 5> a3 = a1;
   a3 *= p;
   BOOST_CHECK(a2 == ar);  // check assignment permutation
   BOOST_CHECK(a3 == ar);  // check in-place permutation
