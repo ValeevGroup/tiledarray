@@ -34,7 +34,7 @@ $ cmake --build build --target install
 - BLAS library
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag a1d2cfe7f2fbd4a8cbf863b71651a21ea342f241 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
-  If usable MADNESS installation is now found, TiledArray will download and compile
+  If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
   A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/master/INSTALL_CMake);
   it also also contains detailed
