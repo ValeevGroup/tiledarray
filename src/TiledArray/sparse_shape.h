@@ -535,9 +535,10 @@ class SparseShape {
     if (tile_norms_unscaled_ == nullptr) {
       tile_norms_unscaled_ =
           std::make_unique<decltype(tile_norms_)>(tile_norms_.clone());
-      auto should_be_zero = scale_tile_norms<ScaleBy::Volume, false>(
-          *tile_norms_unscaled_, size_vectors_.get());
-      assert(should_be_zero == 0);
+      [[maybe_unused]] auto should_be_zero =
+          scale_tile_norms<ScaleBy::Volume, false>(*tile_norms_unscaled_,
+                                                   size_vectors_.get());
+      TA_ASSERT(should_be_zero == 0);
     }
     return *(tile_norms_unscaled_.get());
   }

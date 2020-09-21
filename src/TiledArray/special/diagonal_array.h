@@ -266,7 +266,7 @@ diagonal_array(World &world, TiledRange const &trange,
   if (diagonals_end != RandomAccessIterator{}) {
     const auto rank = trange.rank();
     auto ext = trange.elements_range().extent_data();
-    auto diag_extent = *std::min_element(ext, ext + rank);
+    [[maybe_unused]] auto diag_extent = *std::min_element(ext, ext + rank);
     TA_ASSERT(diagonals_begin + diag_extent <= diagonals_end);
   }
 

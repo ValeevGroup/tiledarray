@@ -195,7 +195,7 @@ template <typename T, typename Derived,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
                                       T& tensor) {
-  typedef typename T::index1_type size_type;
+  [[maybe_unused]] typedef typename T::index1_type size_type;
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
   // Get pointers to the tensor range data
@@ -210,8 +210,8 @@ inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
     // Get tensor range data
     const std::size_t tensor_lower_0 = tensor_lower[0];
     const std::size_t tensor_lower_1 = tensor_lower[1];
-    const std::size_t tensor_upper_0 = tensor_upper[0];
-    const std::size_t tensor_upper_1 = tensor_upper[1];
+    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const std::size_t tensor_upper_1 = tensor_upper[1];
     const std::size_t tensor_extent_0 = tensor_extent[0];
     const std::size_t tensor_extent_1 = tensor_extent[1];
 
@@ -224,7 +224,7 @@ inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
   } else {
     // Get tensor range data
     const std::size_t tensor_lower_0 = tensor_lower[0];
-    const std::size_t tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
     const std::size_t tensor_extent_0 = tensor_extent[0];
 
     // Check that matrix is a vector.
@@ -262,7 +262,7 @@ template <typename T, typename Derived,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline void tensor_to_eigen_submatrix(const T& tensor,
                                       Eigen::MatrixBase<Derived>& matrix) {
-  typedef typename T::index1_type size_type;
+  [[maybe_unused]] typedef typename T::index1_type size_type;
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
   // Get pointers to the tensor range data
@@ -277,8 +277,8 @@ inline void tensor_to_eigen_submatrix(const T& tensor,
     // Get tensor range data
     const std::size_t tensor_lower_0 = tensor_lower[0];
     const std::size_t tensor_lower_1 = tensor_lower[1];
-    const std::size_t tensor_upper_0 = tensor_upper[0];
-    const std::size_t tensor_upper_1 = tensor_upper[1];
+    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const std::size_t tensor_upper_1 = tensor_upper[1];
     const std::size_t tensor_extent_0 = tensor_extent[0];
     const std::size_t tensor_extent_1 = tensor_extent[1];
 
@@ -292,7 +292,7 @@ inline void tensor_to_eigen_submatrix(const T& tensor,
   } else {
     // Get tensor range data
     const std::size_t tensor_lower_0 = tensor_lower[0];
-    const std::size_t tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
     const std::size_t tensor_extent_0 = tensor_extent[0];
 
     TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
