@@ -1,6 +1,8 @@
 find_package(BTAS 1.0.0 QUIET CONFIG)
 
-if (NOT TARGET BTAS::BTAS)
+if (TARGET BTAS::BTAS)
+  message(STATUS "Found BTAS CONFIG at ${BTAS_CONFIG}")
+else (TARGET BTAS::BTAS)
 
   set(BTAS_ENABLE_MKL ${ENABLE_MKL} CACHE BOOL "Whether BTAS should seek MKL")
   if (MADNESS_FORTRAN_DEFAULT_INTEGER4)
@@ -32,7 +34,7 @@ if (NOT TARGET BTAS::BTAS)
   # set BTAS_CONFIG to the install location so that we know where to find it
   set(BTAS_CONFIG ${CMAKE_INSTALL_PREFIX}/${BTAS_INSTALL_CMAKEDIR}/btas-config.cmake)
 
-endif(NOT TARGET BTAS::BTAS)
+endif(TARGET BTAS::BTAS)
 
 # postcond check
 if (NOT TARGET BTAS::BTAS)
