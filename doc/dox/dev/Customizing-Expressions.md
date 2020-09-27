@@ -21,10 +21,10 @@ TiledArray DSL is built using the
 [expression template](https://en.wikipedia.org/wiki/Expression_templates) idiom.
 Lazy evaluation of DSL expressions allows to (heuristically) optimize their
 evaluation by minimizing the number of permutations, minimizing memory accesses,
-minimizing temporary storage, and combining arithmetic operations; DSL does NOT
+minimizing temporary storage, and combining arithmetic operations; DSL does NOT perform
 more extensive term rewriting, such as operation reordering, factorization
 (strength reduction), or common subexpression elimination. Such task can be
-performed by the user (with help of an optimizing compiler), provided sufficient
+performed by the user (or, by an optimizing compiler), provided sufficient
 understanding of how the TiledArray DSL expressions are evaluated. For a more
 detailed overview of the DSL implementation see
 [here](@ref Expressions-in-TiledArray). For detailed examples of the expression
