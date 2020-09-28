@@ -160,7 +160,6 @@ TiledArray/util/annotation.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
 TiledArray/util/function.h
-TiledArray/util/annotation.h
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/random.h
