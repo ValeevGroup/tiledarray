@@ -1,6 +1,6 @@
 # Synopsis
 
-```
+```.cpp
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ cmake -B build \

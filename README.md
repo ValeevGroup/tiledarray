@@ -20,25 +20,25 @@ The following example expressions are written in C++ with TiledArray. TiledArray
 
 * Matrix-matrix multiplication
 
-   ```
+   ```.cpp
    C("m,n") = 2.0 * A("m,k") * B("k,n");
    ```
 
 * Matrix-vector multiplication
 
-   ```
+   ```.cpp
    C("n") = A("k") * B("k,n");
    ```
 
 * A more complex tensor expression
  
-   ```
+   ```.cpp
    E("m,n") = 2.0 * A("m,k") * B("k,n") + C("k,n") * D("k,m");
    ```
 
 The following application is a minimal example of a distributed-memory matrix multiplcation.
 
-```
+```.cpp
 #include <tiledarray.h>
 
 int main(int argc, char** argv) {

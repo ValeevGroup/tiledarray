@@ -832,7 +832,6 @@ WARN_LOGFILE           =
 INPUT                  = @PROJECT_SOURCE_DIR@/src \
                          @PROJECT_SOURCE_DIR@/doc/dox/user \
                          @PROJECT_SOURCE_DIR@/doc/dox/dev \
-                         @PROJECT_SOURCE_DIR@/doc/dox/dev/expressions \
                          @PROJECT_SOURCE_DIR@/doc/dox/contrib \
                          @PROJECT_SOURCE_DIR@/README.md
 

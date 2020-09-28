@@ -11,7 +11,7 @@ Convert an Eigen matrix into a DistArray object.
 
 ### Signature
 
-```
+```.cpp
     template<typename A , typename Derived >
     A
     TiledArray::eigen_to_array(madness::World & world,
@@ -39,7 +39,7 @@ A DistArray object (of type `A`) that contains a copy of `matrix`
 
 ### Usage
 
-```
+```.cpp
     Eigen::MatrixXd matrix(100, 100);
     // Fill matrix with data ...
     
@@ -65,7 +65,7 @@ Convert a DistArray object into an Eigen matrix object.
 
 ### Signature
 
-```
+```.cpp
     template<typename T , unsigned int DIM, typename Tile >
     Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>
     TiledArray::array_to_eigen(const Array< T, DIM, Tile > & array)
