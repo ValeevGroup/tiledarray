@@ -45,7 +45,7 @@ class Range {
   typedef container::svector<index1_type>
       index_type;            ///< Coordinate index type, to conform to
                              ///< TWG spec
-  typedef index_type index;  ///< Coordinate index type (decprecated)
+  typedef index_type index;  ///< Coordinate index type (deprecated)
   typedef detail::SizeArray<const index1_type>
       index_view_type;  ///< Non-owning variant of index_type
   typedef index_view_type
