@@ -60,7 +60,7 @@ template <
     typename = typename std::enable_if<or_reduce<
         false, madness::is_future<std::decay_t<Args>>::value...>::value>::type>
 auto invoke(Function&& fn, Args&&... args) {
-  return TiledArray::get_default_world().taskq.add(fn,
+  return TiledArray::get_default_world().taskq.add(std::forward<Function>(fn),
                                                    std::forward<Args>(args)...);
 }
 
