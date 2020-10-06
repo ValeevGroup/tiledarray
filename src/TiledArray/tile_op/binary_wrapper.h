@@ -216,8 +216,9 @@ class BinaryWrapper {
   auto operator()(L&& left, R&& right) const {
     auto eval_left = invoke_cast(std::forward<L>(left));
     auto eval_right = invoke_cast(std::forward<R>(right));
-    auto continuation = [this](decltype(eval_left)& l,
-                               decltype(eval_right)& r) {
+    auto continuation = [this](
+                            madness::future_to_ref_t<decltype(eval_left)> l,
+                            madness::future_to_ref_t<decltype(eval_right)> r) {
       return BinaryWrapper_::operator()(l, r);
     };
     return meta::invoke(continuation, eval_left, eval_right);
@@ -241,10 +242,11 @@ class BinaryWrapper {
                                               right_is_consumable)>* = nullptr>
   auto operator()(L&& left, R&& right) const {
     auto eval_left = invoke_cast(std::forward<L>(left));
-    auto continuation = [this](decltype(eval_left)& l, R&& r) {
+    auto continuation = [this](madness::future_to_ref_t<decltype(eval_left)> l,
+                               R&& r) {
       return BinaryWrapper_::operator()(l, std::forward<R>(r));
     };
-    return meta::invoke(continuation, eval_left, right);
+    return meta::invoke(continuation, eval_left, std::forward<R>(right));
   }
 
   /// Evaluate non-lazy and lazy tiles
@@ -264,7 +266,11 @@ class BinaryWrapper {
                        (left_is_consumable || right_is_consumable)>* = nullptr>
   auto operator()(L&& left, R&& right) const {
     auto eval_right = invoke_cast(std::forward<R>(right));
-    return BinaryWrapper_::operator()(std::forward<L>(left), eval_right);
+    auto continuation =
+        [this](L&& l, madness::future_to_ref_t<decltype(eval_right)> r) {
+          return BinaryWrapper_::operator()(std::forward<L>(l), r);
+        };
+    return meta::invoke(continuation, std::forward<L>(left), eval_right);
   }
 
   /// Evaluate two lazy-array tiles
