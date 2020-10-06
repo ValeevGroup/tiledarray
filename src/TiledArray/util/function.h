@@ -47,7 +47,7 @@ class function_ref;
 template <class R, class... Args>
 class function_ref<R(Args...)> {
  public:
-  constexpr function_ref() noexcept = delete;
+  constexpr function_ref() noexcept = default;
 
   /// Creates a `function_ref` which refers to the same callable as `rhs`.
   constexpr function_ref(const function_ref<R(Args...)> &rhs) noexcept =
@@ -102,6 +102,9 @@ class function_ref<R(Args...)> {
   R operator()(Args... args) const {
     return callback_(obj_, std::forward<Args>(args)...);
   }
+
+  /// Converts to true if non-default initialized
+  operator bool() const { return obj_; }
 
  private:
   void *obj_ = nullptr;
