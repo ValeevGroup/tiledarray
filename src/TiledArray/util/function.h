@@ -79,8 +79,9 @@ class function_ref<R(Args...)> {
   /// \synopsis template <typename F> constexpr function_ref &operator=(F &&f)
   /// noexcept;
   template <typename F,
-            std::enable_if_t<std::is_invocable_r<R, F &&, Args...>::value> * =
-                nullptr>
+            std::enable_if_t<
+                !std::is_same<std::decay_t<F>, function_ref>::value &&
+                std::is_invocable_r<R, F &&, Args...>::value> * = nullptr>
   constexpr function_ref<R(Args...)> &operator=(F &&f) noexcept {
     obj_ = reinterpret_cast<void *>(std::addressof(f));
     callback_ = [](void *obj, Args... args) {
