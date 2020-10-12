@@ -91,7 +91,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   using index1_type = TA_1INDEX_TYPE;
 
  private:
-  array_type& array_;  ///< The array that this expression
+  array_type& array_;  ///< The array that this expression is bound to
   std::string vars_;   ///< The tensor variable list
 
  public:
