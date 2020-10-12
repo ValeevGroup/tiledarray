@@ -1201,6 +1201,13 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw None No throw guarantee.
   bool is_initialized() const { return static_cast<bool>(pimpl_); }
 
+  /// Conversion to bool is equivalent to DistArray::is_initialized()
+
+  /// \return \c false if the array has been default initialized, otherwise
+  /// \c true.
+  /// \throw None No throw guarantee.
+  explicit operator bool() const { return is_initialized(); }
+
   /// serialize local contents of a DistArray to an Archive object
 
   /// @note use Parallel{Input,Output}Archive for parallel serialization
