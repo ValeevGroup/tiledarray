@@ -34,13 +34,13 @@ namespace TiledArray {
 
 /// Scalar the tile argument
 
-/// \tparam Arg The tile argument type
-/// \tparam Scalar A scalar type
-/// \param arg The left-hand argument to be scaled
-/// \param factor The scaling factor
-/// \return A tile that is equal to <tt>arg * factor</tt>
+/// \tparam Arg A tile type
+/// \tparam Scalar A numeric type (i.e. TiledArray::detail::is_numeric_v<Scalar>
+/// is true) \param arg The left-hand argument to be scaled \param factor The
+/// scaling factor \return A tile that is equal to <tt>arg * factor</tt>
 template <typename Arg, typename Scalar,
-          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                           !TiledArray::detail::is_array_v<Arg>>* = nullptr>
 inline auto scale(const Arg& arg, const Scalar factor) {
   return arg.scale(factor);
 }

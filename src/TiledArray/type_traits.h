@@ -637,7 +637,7 @@ template <typename T>
 constexpr const bool is_numeric_v = is_numeric<T>::value;
 
 /// SFINAE type for enabling code when \c T is a numeric type
-template<typename T, typename U=void>
+template <typename T, typename U = void>
 using enable_if_numeric_t = std::enable_if_t<is_numeric_v<T>, U>;
 
 template <typename T>
@@ -1168,6 +1168,9 @@ struct is_array : public std::false_type {};
 
 template <typename T, typename P>
 struct is_array<DistArray<T, P>> : public std::true_type {};
+
+template <typename T>
+static constexpr bool is_array_v = is_array<T>::value;
 
 template <typename T>
 using trange_t = typename T::trange_type;
