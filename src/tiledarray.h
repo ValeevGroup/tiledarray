@@ -60,7 +60,7 @@
 
 // ScaLAPACK functions
 #ifdef TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack.h>
+#include <TiledArray/algebra/scalapack/all.h>
 #include <TiledArray/conversions/block_cyclic.h>
 #endif
 
