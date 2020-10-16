@@ -607,8 +607,7 @@ BOOST_AUTO_TEST_CASE(sca_chol_lsolve) {
       });
 
   // Should produce X = L**H
-  auto [L, X] =
-      cholesky_lsolve(scalapackpp::TransposeFlag::NoTranspose, ref_ta, ref_ta);
+  auto [L, X] = cholesky_lsolve(TransposeFlag::NoTranspose, ref_ta, ref_ta);
 
   BOOST_CHECK(X.trange() == ref_ta.trange());
   BOOST_CHECK(L.trange() == ref_ta.trange());

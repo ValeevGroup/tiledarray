@@ -22,8 +22,8 @@
  *  Created:    19 June, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_UTIL_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_UTIL_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_UTIL_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_SCALAPACK_UTIL_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
@@ -71,4 +71,4 @@ void scalapack_zero_triangle(blacspp::Triangle tri,
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
+#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_UTIL_H__INCLUDED

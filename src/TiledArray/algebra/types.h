@@ -30,6 +30,8 @@
 
 namespace TiledArray {
 
+enum TransposeFlag { NoTranspose, Transpose, ConjTranspose };
+
 struct SVDReturnType {};
 struct SVDValuesOnly : public SVDReturnType {};
 struct SVDLeftVectors : public SVDReturnType {};

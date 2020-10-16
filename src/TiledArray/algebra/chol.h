@@ -28,7 +28,7 @@
 #if TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/algebra/scalapack/chol.h>
 #else
-// eigen
+#include <TiledArray/algebra/lapack/chol.h>
 #endif
 
 namespace TiledArray {
@@ -37,6 +37,10 @@ using scalapack::cholesky;
 using scalapack::cholesky_linv;
 using scalapack::cholesky_lsolve;
 using scalapack::cholesky_solve;
+else using lapack::cholesky;
+using lapack::cholesky_linv;
+using lapack::cholesky_lsolve;
+using lapack::cholesky_solve;
 #endif
 
 }  // namespace TiledArray

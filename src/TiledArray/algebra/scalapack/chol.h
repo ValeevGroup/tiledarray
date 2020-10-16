@@ -22,13 +22,14 @@
  *  Created:    8 June, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_CHOL_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_CHOL_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_CHOL_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_SCALAPACK_CHOL_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
 #include <TiledArray/algebra/scalapack/util.h>
+#include <TiledArray/algebra/types.h>
 #include <TiledArray/conversions/block_cyclic.h>
 
 #include <scalapackpp/factorizations/potrf.hpp>
@@ -215,9 +216,8 @@ auto cholesky_solve(const Array& A, const Array& B, size_t NB = 128,
 }
 
 template <typename Array>
-auto cholesky_lsolve(scalapackpp::TransposeFlag trans, const Array& A,
-                     const Array& B, size_t NB = 128,
-                     TiledRange l_trange = TiledRange(),
+auto cholesky_lsolve(TransposeFlag trans, const Array& A, const Array& B,
+                     size_t NB = 128, TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange()) {
   auto& world = A.world();
   /*
@@ -278,4 +278,4 @@ auto cholesky_lsolve(scalapackpp::TransposeFlag trans, const Array& A,
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
+#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_CHOL_H__INCLUDED

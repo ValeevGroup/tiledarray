@@ -22,13 +22,13 @@
  *  Created:    12 June, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_SVD_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_SVD_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_SVD_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_SCALAPACK_SVD_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
-#include <TiledArray/algebra/svd_types.h>
+#include <TiledArray/algebra/types.h>
 #include <TiledArray/conversions/block_cyclic.h>
 #include <scalapackpp/svd.hpp>
 
@@ -152,4 +152,4 @@ auto svd(const Array& A, TiledRange u_trange, TiledRange vt_trange,
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
+#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_SVD_H__INCLUDED
