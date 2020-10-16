@@ -41,7 +41,6 @@ namespace lapack {
  *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
- *  @param[in] NB          ScaLAPACK blocking factor. Defaults to 128
  *  @param[in] l_trange    TiledRange for resulting Cholesky factor. If left
  * empty, will default to array.trange()
  *
