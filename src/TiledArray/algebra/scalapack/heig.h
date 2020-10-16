@@ -48,16 +48,16 @@ namespace scalapack {
  *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
- *  @param[in] NB          ScaLAPACK blocking factor. Defaults to 128
  *  @param[in] evec_trange TiledRange for resulting eigenvectors. If left empty,
  *                         will default to array.trange()
+ *  @param[in] NB          ScaLAPACK block size. Defaults to 128
  *
  *  @returns A tuple containing the eigenvalues and eigenvectors of input array
  *  as std::vector and in TA format, respectively.
  */
 template <typename Array>
-auto heig(const Array& A, size_t NB = 128,
-          TiledRange evec_trange = TiledRange()) {
+auto heig(const Array& A, TiledRange evec_trange = TiledRange(),
+          size_t NB = default_block_size()) {
   using value_type = typename Array::element_type;
   using real_type = scalapackpp::detail::real_t<value_type>;
 
@@ -111,16 +111,17 @@ auto heig(const Array& A, size_t NB = 128,
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
  *  @param[in] B           Metric
- *  @param[in] NB          ScaLAPACK blocking factor. Defaults to 128
  *  @param[in] evec_trange TiledRange for resulting eigenvectors. If left empty,
  *                         will default to array.trange()
+ *  @param[in] NB          ScaLAPACK block size. Defaults to 128
  *
  *  @returns A tuple containing the eigenvalues and eigenvectors of input array
  *  as std::vector and in TA format, respectively.
  */
 template <typename ArrayA, typename ArrayB, typename EVecType = ArrayA>
-auto heig(const ArrayA& A, const ArrayB& B, size_t NB = 128,
-          TiledRange evec_trange = TiledRange()) {
+auto heig(const ArrayA& A, const ArrayB& B,
+          TiledRange evec_trange = TiledRange(),
+          size_t NB = default_block_size()) {
   using value_type = typename ArrayA::element_type;
   static_assert(std::is_same_v<typename ArrayB::element_type, value_type>);
   using real_type = scalapackpp::detail::real_t<value_type>;

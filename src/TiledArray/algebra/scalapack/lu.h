@@ -42,8 +42,10 @@ namespace scalapack {
  *  @brief Solve a linear system via LU factorization
  */
 template <typename ArrayA, typename ArrayB>
-auto lu_solve(const ArrayA& A, const ArrayB& B, size_t NB = 128,
-              size_t MB = 128, TiledRange x_trange = TiledRange()) {
+auto lu_solve(const ArrayA& A, const ArrayB& B,
+              TiledRange x_trange = TiledRange(),
+              size_t NB = default_block_size(),
+              size_t MB = default_block_size()) {
   using value_type = typename ArrayA::element_type;
   static_assert(std::is_same_v<value_type, typename ArrayB::element_type>);
 
@@ -87,8 +89,9 @@ auto lu_solve(const ArrayA& A, const ArrayB& B, size_t NB = 128,
  *  @brief Invert a matrix via LU
  */
 template <typename Array>
-auto lu_inv(const Array& A, size_t NB = 128, size_t MB = 128,
-            TiledRange ainv_trange = TiledRange()) {
+auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange(),
+            size_t NB = default_block_size(),
+            size_t MB = default_block_size()) {
   auto& world = A.world();
   auto world_comm = world.mpi.comm().Get_mpi_comm();
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);

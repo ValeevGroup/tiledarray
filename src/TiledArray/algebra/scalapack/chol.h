@@ -52,15 +52,15 @@ namespace scalapack {
  *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
- *  @param[in] NB          ScaLAPACK blocking factor. Defaults to 128
  *  @param[in] l_trange    TiledRange for resulting Cholesky factor. If left
  * empty, will default to array.trange()
+ *  @param[in] NB          ScaLAPACK block size. Defaults to 128
  *
  *  @returns The lower triangular Cholesky factor L in TA format
  */
 template <typename Array>
-auto cholesky(const Array& A, size_t NB = 128,
-              TiledRange l_trange = TiledRange()) {
+auto cholesky(const Array& A, TiledRange l_trange = TiledRange(),
+              size_t NB = default_block_size()) {
   auto& world = A.world();
   auto world_comm = world.mpi.comm().Get_mpi_comm();
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
@@ -80,7 +80,7 @@ auto cholesky(const Array& A, size_t NB = 128,
   if (info) TA_EXCEPTION("Cholesky Failed");
 
   // Zero out the upper triangle
-  detail::scalapack_zero_triangle(blacspp::Triangle::Upper, matrix);
+  zero_triangle(blacspp::Triangle::Upper, matrix);
 
   if (l_trange.rank() == 0) l_trange = A.trange();
 
@@ -106,15 +106,15 @@ auto cholesky(const Array& A, size_t NB = 128,
  *  @tparam RetL  Whether or not to return the cholesky factor
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
- *  @param[in] NB          ScaLAPACK blocking factor. Defaults to 128
  *  @param[in] l_trange    TiledRange for resulting inverse Cholesky factor.
  *                         If left empty, will default to array.trange()
+ *  @param[in] NB          ScaLAPACK block size. Defaults to 128
  *
  *  @returns The inverse lower triangular Cholesky factor in TA format
  */
 template <typename Array, bool RetL = false>
-auto cholesky_linv(const Array& A, size_t NB = 128,
-                   TiledRange l_trange = TiledRange()) {
+auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange(),
+                   size_t NB = default_block_size()) {
   using value_type = typename Array::element_type;
 
   auto& world = A.world();
@@ -136,7 +136,7 @@ auto cholesky_linv(const Array& A, size_t NB = 128,
   if (info) TA_EXCEPTION("Cholesky Failed");
 
   // Zero out the upper triangle
-  detail::scalapack_zero_triangle(blacspp::Triangle::Upper, matrix);
+  zero_triangle(blacspp::Triangle::Upper, matrix);
 
   // Copy L if needed
   std::shared_ptr<scalapack::BlockCyclicMatrix<value_type>> L_sca = nullptr;
@@ -168,8 +168,9 @@ auto cholesky_linv(const Array& A, size_t NB = 128,
 }
 
 template <typename Array>
-auto cholesky_solve(const Array& A, const Array& B, size_t NB = 128,
-                    TiledRange x_trange = TiledRange()) {
+auto cholesky_solve(const Array& A, const Array& B,
+                    TiledRange x_trange = TiledRange(),
+                    size_t NB = default_block_size()) {
   auto& world = A.world();
   /*
   if( world != B.world() ) {
@@ -217,8 +218,9 @@ auto cholesky_solve(const Array& A, const Array& B, size_t NB = 128,
 
 template <typename Array>
 auto cholesky_lsolve(TransposeFlag trans, const Array& A, const Array& B,
-                     size_t NB = 128, TiledRange l_trange = TiledRange(),
-                     TiledRange x_trange = TiledRange()) {
+                     TiledRange l_trange = TiledRange(),
+                     TiledRange x_trange = TiledRange(),
+                     size_t NB = default_block_size()) {
   auto& world = A.world();
   /*
   if( world != B.world() ) {
@@ -261,7 +263,7 @@ auto cholesky_lsolve(TransposeFlag trans, const Array& A, const Array& B,
   if (info) TA_EXCEPTION("TRTRS Failed");
 
   // Zero out the upper triangle
-  detail::scalapack_zero_triangle(blacspp::Triangle::Upper, A_sca);
+  zero_triangle(blacspp::Triangle::Upper, A_sca);
 
   if (l_trange.rank() == 0) l_trange = A.trange();
   if (x_trange.rank() == 0) x_trange = B.trange();

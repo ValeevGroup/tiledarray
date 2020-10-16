@@ -53,8 +53,8 @@ namespace scalapack {
  *  @param[in] u_trange    TiledRange for resulting left singular vectors.
  *  @param[in] vt_trange   TiledRange for resulting right singular vectors
  * (transposed).
- *  @param[in] MB          ScaLAPACK row blocking factor. Defaults to 128
- *  @param[in] NB          ScaLAPACK column blocking factor. Defaults to 128
+ *  @param[in] MB          ScaLAPACK row block size. Defaults to 128
+ *  @param[in] NB          ScaLAPACK column block size. Defaults to 128
  *
  *  @returns A tuple containing the eigenvalues and eigenvectors of input array
  *  as std::vector and in TA format, respectively.
@@ -62,7 +62,7 @@ namespace scalapack {
 template <typename SVDType, typename Array,
           typename = detail::enable_if_svd_return_type<SVDType>>
 auto svd(const Array& A, TiledRange u_trange, TiledRange vt_trange,
-         size_t MB = 128, size_t NB = 128) {
+         size_t MB = default_block_size(), size_t NB = default_block_size()) {
   using value_type = typename Array::element_type;
   using real_type = scalapackpp::detail::real_t<value_type>;
 

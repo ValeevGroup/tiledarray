@@ -32,12 +32,11 @@
 
 namespace TiledArray {
 
-namespace detail {
+namespace scalapack {
 
 template <typename T>
-void scalapack_zero_triangle(blacspp::Triangle tri,
-                             scalapack::BlockCyclicMatrix<T>& A,
-                             bool zero_diag = false) {
+void zero_triangle(blacspp::Triangle tri, scalapack::BlockCyclicMatrix<T>& A,
+                   bool zero_diag = false) {
   auto zero_el = [&](size_t I, size_t J) {
     if (A.dist().i_own(I, J)) {
       auto [i, j] = A.dist().local_indx(I, J);
@@ -67,7 +66,24 @@ void scalapack_zero_triangle(blacspp::Triangle tri,
   }
 }
 
+}  // namespace scalapack
+
+namespace detail {
+inline std::size_t& default_block_size_accessor() {
+  static std::size_t block_size = 128;
+  return block_size;
+}
 }  // namespace detail
+
+inline std::size_t default_block_size() {
+  return detail::default_block_size_accessor();
+}
+
+inline void set_default_block_size(std::size_t NB) {
+  TA_ASSERT(NB > 0);
+  detail::default_block_size_accessor() = NB;
+}
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
