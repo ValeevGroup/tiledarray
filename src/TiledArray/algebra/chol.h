@@ -27,22 +27,54 @@
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/algebra/scalapack/chol.h>
-#else
-#include <TiledArray/algebra/lapack/chol.h>
 #endif
+#include <TiledArray/algebra/lapack/chol.h>
 
 namespace TiledArray {
+
+template <typename Array>
+auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
 #if TILEDARRAY_HAS_SCALAPACK
-using scalapack::cholesky;
-using scalapack::cholesky_linv;
-using scalapack::cholesky_lsolve;
-using scalapack::cholesky_solve;
-#else
-using lapack::cholesky;
-using lapack::cholesky_linv;
-using lapack::cholesky_lsolve;
-using lapack::cholesky_solve;
+  if (A.world().size() > 1 && A.range().volume() > 10000000)
+    return scalapack::cholesky<Array>(A, l_trange);
+  else
 #endif
+    return lapack::cholesky<Array>(A, l_trange);
+}
+
+template <typename Array, bool RetL = false>
+auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
+#if TILEDARRAY_HAS_SCALAPACK
+  if (A.world().size() > 1 && A.range().volume() > 10000000)
+    return scalapack::cholesky_linv<Array, RetL>(A, l_trange);
+  else
+#endif
+    return lapack::cholesky_linv<Array, RetL>(A, l_trange);
+}
+
+template <typename Array>
+auto cholesky_solve(const Array& A, const Array& B,
+                    TiledRange x_trange = TiledRange()) {
+#if TILEDARRAY_HAS_SCALAPACK
+  if (A.world().size() > 1 && A.range().volume() > 10000000)
+    return scalapack::cholesky_solve<Array>(A, B, x_trange);
+  else
+#endif
+    return lapack::cholesky_solve<Array>(A, B, x_trange);
+}
+
+template <typename Array>
+auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
+                     TiledRange l_trange = TiledRange(),
+                     TiledRange x_trange = TiledRange()) {
+#if TILEDARRAY_HAS_SCALAPACK
+  if (A.world().size() > 1 && A.range().volume() > 10000000)
+    return scalapack::cholesky_lsolve<Array>(transpose, A, B, l_trange,
+                                             x_trange);
+  else
+#endif
+    return lapack::cholesky_solve<Array>(transpose, A, B, l_trange, x_trange);
+}
 
 }  // namespace TiledArray
 
