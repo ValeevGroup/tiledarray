@@ -60,7 +60,7 @@ namespace scalapack {
  *  as std::vector and in TA format, respectively.
  */
 template <typename SVDType, typename Array,
-          typename = detail::enable_if_svd_return_type<SVDType>>
+          typename = TiledArray::detail::enable_if_svd_return_type<SVDType>>
 auto svd(const Array& A, TiledRange u_trange, TiledRange vt_trange,
          size_t MB = default_block_size(), size_t NB = default_block_size()) {
   using value_type = typename Array::element_type;

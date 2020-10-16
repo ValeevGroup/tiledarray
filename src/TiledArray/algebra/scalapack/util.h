@@ -28,11 +28,26 @@
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
+#include <TiledArray/algebra/types.h>
 #include <TiledArray/conversions/block_cyclic.h>
 
 namespace TiledArray {
 
 namespace scalapack {
+
+inline scalapackpp::TransposeFlag to_scalapackpp_transposeflag(
+    TransposeFlag t) {
+  switch (t) {
+    case TransposeFlag::NoTranspose:
+      return scalapackpp::TransposeFlag::NoTranspose;
+    case TransposeFlag::Transpose:
+      return scalapackpp::TransposeFlag::Transpose;
+    case TransposeFlag::ConjTranspose:
+      return scalapackpp::TransposeFlag::ConjTranspose;
+    default:
+      abort();
+  }
+}
 
 template <typename T>
 void zero_triangle(blacspp::Triangle tri, scalapack::BlockCyclicMatrix<T>& A,
@@ -66,8 +81,6 @@ void zero_triangle(blacspp::Triangle tri, scalapack::BlockCyclicMatrix<T>& A,
   }
 }
 
-}  // namespace scalapack
-
 namespace detail {
 inline std::size_t& default_block_size_accessor() {
   static std::size_t block_size = 128;
@@ -84,6 +97,7 @@ inline void set_default_block_size(std::size_t NB) {
   detail::default_block_size_accessor() = NB;
 }
 
+}  // namespace scalapack
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK

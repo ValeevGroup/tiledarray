@@ -256,10 +256,10 @@ auto cholesky_lsolve(TransposeFlag trans, const Array& A, const Array& B,
                                   A_sca.local_mat().data(), 1, 1, desc_a);
   if (info) TA_EXCEPTION("Cholesky Failed");
 
-  info = scalapackpp::ptrtrs(blacspp::Triangle::Lower, trans,
-                             blacspp::Diagonal::NonUnit, N, NRHS,
-                             A_sca.local_mat().data(), 1, 1, desc_a,
-                             B_sca.local_mat().data(), 1, 1, desc_b);
+  info = scalapackpp::ptrtrs(
+      blacspp::Triangle::Lower, to_scalapackpp_transposeflag(trans),
+      blacspp::Diagonal::NonUnit, N, NRHS, A_sca.local_mat().data(), 1, 1,
+      desc_a, B_sca.local_mat().data(), 1, 1, desc_b);
   if (info) TA_EXCEPTION("TRTRS Failed");
 
   // Zero out the upper triangle
