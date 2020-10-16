@@ -37,7 +37,8 @@ using scalapack::cholesky;
 using scalapack::cholesky_linv;
 using scalapack::cholesky_lsolve;
 using scalapack::cholesky_solve;
-else using lapack::cholesky;
+#else
+using lapack::cholesky;
 using lapack::cholesky_linv;
 using lapack::cholesky_lsolve;
 using lapack::cholesky_solve;
