@@ -28,7 +28,7 @@
 #include <scalapackpp/eigenvalue_problem/sevp.hpp>
 #include <scalapackpp/pblas/gemm.hpp>
 
-#include <TiledArray/math/scalapack.h>
+#include <TiledArray/algebra/scalapack.h>
 
 using Array = TA::TArray<double>;
 // using Array = TA::TSpArray<double>;
@@ -93,23 +93,22 @@ int main(int argc, char** argv) {
     tensor_symm("i,j") = 0.5 * (tensor("i,j") + tensor("j,i"));
     tensor("i,j") = tensor_symm("i,j");
 
-
-    auto [ evals, evecs_ta ] = TA::heig( tensor );
-
+    auto [evals, evecs_ta] = TA::heig(tensor);
 
     //// Check EVP with TA
-    Array tmp = TA::foreach (evecs_ta, [evals = evals](TA::Tensor<double>& result,
-                                           const TA::Tensor<double>& arg) {
-      result = TA::clone(arg);
+    Array tmp =
+        TA::foreach (evecs_ta, [evals = evals](TA::Tensor<double>& result,
+                                               const TA::Tensor<double>& arg) {
+          result = TA::clone(arg);
 
-      auto range = arg.range();
-      auto lo = range.lobound_data();
-      auto up = range.upbound_data();
-      for (auto m = lo[0]; m < up[0]; ++m)
-        for (auto n = lo[1]; n < up[1]; ++n) {
-          result(m, n) = arg(m, n) * evals[n];
-        }
-    });
+          auto range = arg.range();
+          auto lo = range.lobound_data();
+          auto up = range.upbound_data();
+          for (auto m = lo[0]; m < up[0]; ++m)
+            for (auto n = lo[1]; n < up[1]; ++n) {
+              result(m, n) = arg(m, n) * evals[n];
+            }
+        });
 
     world.gop.fence();
     tensor("i,j") = tensor("i,j") - tmp("i,k") * evecs_ta("j,k");

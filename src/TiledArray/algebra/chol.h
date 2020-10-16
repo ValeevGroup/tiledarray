@@ -15,19 +15,30 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  David Williams-Young
- *  Computational Research Division, Lawrence Berkeley National Laboratory
+ *  Eduard Valeyev
  *
- *  scalapack.h
- *  Created:  25 May, 2020
+ *  chol.h
+ *  Created:    16 October, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_CHOL_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_CHOL_H__INCLUDED
 
-#warning \
-    "TiledArray/math/scalapack.h header is deprecated, please include TiledArray/algebra/scalapack/all.h"
-
-#include <TiledArray/algebra/scalapack/all.h>
-
+#include <TiledArray/config.h>
+#if TILEDARRAY_HAS_SCALAPACK
+#include <TiledArray/algebra/scalapack/chol.h>
+#else
+// eigen
 #endif
+
+namespace TiledArray {
+#if TILEDARRAY_HAS_SCALAPACK
+using scalapack::cholesky;
+using scalapack::cholesky_linv;
+using scalapack::cholesky_lsolve;
+using scalapack::cholesky_solve;
+#endif
+
+}  // namespace TiledArray
+
+#endif  // TILEDARRAY_ALGEBRA_CHOL_H__INCLUDED

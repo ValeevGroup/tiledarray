@@ -60,6 +60,15 @@ TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h
 TiledArray/algebra/utils.h
+TiledArray/algebra/chol.h
+TiledArray/algebra/heig.h
+TiledArray/algebra/lu.h
+TiledArray/algebra/svd.h
+TiledArray/algebra/svd_types.h
+TiledArray/algebra/scalapack/chol.h
+TiledArray/algebra/scalapack/heig.h
+TiledArray/algebra/scalapack/lu.h
+TiledArray/algebra/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
@@ -112,8 +121,6 @@ TiledArray/math/partial_reduce.h
 TiledArray/math/transpose.h
 TiledArray/math/vector_op.h
 TiledArray/math/scalapack.h
-TiledArray/math/scalapack/heig.h
-TiledArray/math/scalapack/chol.h
 TiledArray/pmap/blocked_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h

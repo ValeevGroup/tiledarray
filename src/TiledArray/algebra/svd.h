@@ -15,19 +15,29 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  David Williams-Young
- *  Computational Research Division, Lawrence Berkeley National Laboratory
+ *  Eduard Valeyev
  *
- *  scalapack.h
- *  Created:  25 May, 2020
+ *  svd.h
+ *  Created:    16 October, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_SVD_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_SVD_H__INCLUDED
 
-#warning \
-    "TiledArray/math/scalapack.h header is deprecated, please include TiledArray/algebra/scalapack/all.h"
+#include <TiledArray/config.h>
+#ifdef TILEDARRAY_HAS_SCALAPACK
+#include <TiledArray/algebra/scalapack/svd.h>
+#else
+// include eigen
+#endif  // TILEDARRAY_HAS_SCALAPACK
 
-#include <TiledArray/algebra/scalapack/all.h>
+namespace TiledArray {
 
+#ifdef TILEDARRAY_HAS_SCALAPACK
+using scalapack::svd;
+#else
 #endif
+
+}  // namespace TiledArray
+
+#endif  // TILEDARRAY_ALGEBRA_SVD_H__INCLUDED

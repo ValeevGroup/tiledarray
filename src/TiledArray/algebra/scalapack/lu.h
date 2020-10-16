@@ -28,40 +28,38 @@
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
+#include <TiledArray/algebra/scalapack/util.h>
 #include <TiledArray/conversions/block_cyclic.h>
-#include <TiledArray/math/scalapack/util.h>
 
 #include <scalapackpp/factorizations/getrf.hpp>
 #include <scalapackpp/linear_systems/gesv.hpp>
 #include <scalapackpp/matrix_inverse/getri.hpp>
 
 namespace TiledArray {
+namespace scalapack {
 
 /**
  *  @brief Solve a linear system via LU factorization
  */
 template <typename ArrayA, typename ArrayB>
-auto lu_solve( const ArrayA& A, const ArrayB& B, size_t NB = 128, size_t MB = 128,
-  TiledRange x_trange = TiledRange() ) {
-
+auto lu_solve(const ArrayA& A, const ArrayB& B, size_t NB = 128,
+              size_t MB = 128, TiledRange x_trange = TiledRange()) {
   using value_type = typename ArrayA::element_type;
-  static_assert(std::is_same_v<value_type,typename ArrayB::element_type>);
+  static_assert(std::is_same_v<value_type, typename ArrayB::element_type>);
 
   auto& world = A.world();
   auto world_comm = world.mpi.comm().Get_mpi_comm();
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
-  world.gop.fence(); // stage ScaLAPACK execution
-  auto A_sca = scalapack::array_to_block_cyclic( A, grid, MB, NB );
-  auto B_sca = scalapack::array_to_block_cyclic( B, grid, MB, NB );
-  world.gop.fence(); // stage ScaLAPACK execution
+  world.gop.fence();  // stage ScaLAPACK execution
+  auto A_sca = scalapack::array_to_block_cyclic(A, grid, MB, NB);
+  auto B_sca = scalapack::array_to_block_cyclic(B, grid, MB, NB);
+  world.gop.fence();  // stage ScaLAPACK execution
 
-  auto [M, N]      = A_sca.dims();
-  if( M != N )
-    TA_EXCEPTION("A must be square for LU Solve");
+  auto [M, N] = A_sca.dims();
+  if (M != N) TA_EXCEPTION("A must be square for LU Solve");
   auto [B_N, NRHS] = B_sca.dims();
-  if( B_N != N )
-    TA_EXCEPTION("A and B dims must agree");
+  if (B_N != N) TA_EXCEPTION("A and B dims must agree");
 
   auto [A_Mloc, A_Nloc] = A_sca.dist().get_local_dims(N, N);
   auto desc_a = A_sca.dist().descinit_noerror(N, N, A_Mloc);
@@ -69,77 +67,67 @@ auto lu_solve( const ArrayA& A, const ArrayB& B, size_t NB = 128, size_t MB = 12
   auto [B_Mloc, B_Nloc] = B_sca.dist().get_local_dims(N, NRHS);
   auto desc_b = B_sca.dist().descinit_noerror(N, NRHS, B_Mloc);
 
-  std::vector<scalapackpp::scalapack_int> IPIV( A_Mloc + MB );
+  std::vector<scalapackpp::scalapack_int> IPIV(A_Mloc + MB);
 
-  auto info = scalapackpp::pgesv( N, NRHS,
-    A_sca.local_mat().data(), 1, 1, desc_a, IPIV.data(),
-    B_sca.local_mat().data(), 1, 1, desc_b );
+  auto info =
+      scalapackpp::pgesv(N, NRHS, A_sca.local_mat().data(), 1, 1, desc_a,
+                         IPIV.data(), B_sca.local_mat().data(), 1, 1, desc_b);
   if (info) TA_EXCEPTION("LU Solve Failed");
 
-  if( x_trange.rank() == 0 ) x_trange = B.trange();
+  if (x_trange.rank() == 0) x_trange = B.trange();
 
   world.gop.fence();
-  auto X = scalapack::block_cyclic_to_array<ArrayB>( B_sca, x_trange );
+  auto X = scalapack::block_cyclic_to_array<ArrayB>(B_sca, x_trange);
   world.gop.fence();
 
   return X;
-
 }
 
 /**
  *  @brief Invert a matrix via LU
  */
 template <typename Array>
-auto lu_inv( const Array& A, size_t NB = 128, size_t MB = 128,
-  TiledRange ainv_trange = TiledRange() ) {
-
+auto lu_inv(const Array& A, size_t NB = 128, size_t MB = 128,
+            TiledRange ainv_trange = TiledRange()) {
   auto& world = A.world();
   auto world_comm = world.mpi.comm().Get_mpi_comm();
   blacspp::Grid grid = blacspp::Grid::square_grid(world_comm);
 
-  world.gop.fence(); // stage ScaLAPACK execution
-  auto A_sca = scalapack::array_to_block_cyclic( A, grid, MB, NB );
-  world.gop.fence(); // stage ScaLAPACK execution
+  world.gop.fence();  // stage ScaLAPACK execution
+  auto A_sca = scalapack::array_to_block_cyclic(A, grid, MB, NB);
+  world.gop.fence();  // stage ScaLAPACK execution
 
-  auto [M, N]      = A_sca.dims();
-  if( M != N )
-    TA_EXCEPTION("A must be square for LU Inverse");
+  auto [M, N] = A_sca.dims();
+  if (M != N) TA_EXCEPTION("A must be square for LU Inverse");
 
   auto [A_Mloc, A_Nloc] = A_sca.dist().get_local_dims(N, N);
   auto desc_a = A_sca.dist().descinit_noerror(N, N, A_Mloc);
 
-
-  std::vector<scalapackpp::scalapack_int> IPIV( A_Mloc + MB );
+  std::vector<scalapackpp::scalapack_int> IPIV(A_Mloc + MB);
 
   {
-  auto info = scalapackpp::pgetrf( N, N,
-    A_sca.local_mat().data(), 1, 1, desc_a, IPIV.data() );
-  if (info) TA_EXCEPTION("LU Failed");
+    auto info = scalapackpp::pgetrf(N, N, A_sca.local_mat().data(), 1, 1,
+                                    desc_a, IPIV.data());
+    if (info) TA_EXCEPTION("LU Failed");
   }
 
   {
-  auto info = scalapackpp::pgetri( N,
-    A_sca.local_mat().data(), 1, 1, desc_a, IPIV.data() );
-  if (info) TA_EXCEPTION("LU Inverse Failed");
+    auto info = scalapackpp::pgetri(N, A_sca.local_mat().data(), 1, 1, desc_a,
+                                    IPIV.data());
+    if (info) TA_EXCEPTION("LU Inverse Failed");
   }
 
-  if( ainv_trange.rank() == 0 ) ainv_trange = A.trange();
+  if (ainv_trange.rank() == 0) ainv_trange = A.trange();
 
   world.gop.fence();
-  auto Ainv = scalapack::block_cyclic_to_array<Array>( A_sca, ainv_trange );
+  auto Ainv = scalapack::block_cyclic_to_array<Array>(A_sca, ainv_trange);
   world.gop.fence();
 
   return Ainv;
-
 }
 
+}  // namespace scalapack
+}  // namespace TiledArray
 
-
-
-
-} // namespace TiledArray
-
-#endif // TILEDARRAY_HAS_SCALAPACK
-#endif // TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
-
-
+#endif  // TILEDARRAY_HAS_SCALAPACK
+#endif  // TILEDARRAY_MATH_SCALAPACK_H__INCLUDED

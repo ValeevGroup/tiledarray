@@ -22,12 +22,16 @@
  *  Created:  25 May, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
 
-#warning \
-    "TiledArray/math/scalapack.h header is deprecated, please include TiledArray/algebra/scalapack/all.h"
+#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_ALL_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_SCALAPACK_ALL_H__INCLUDED
 
-#include <TiledArray/algebra/scalapack/all.h>
-
+#include <TiledArray/config.h>
+#if TILEDARRAY_HAS_SCALAPACK
+#include <TiledArray/algebra/scalapack/chol.h>
+#include <TiledArray/algebra/scalapack/heig.h>
+#include <TiledArray/algebra/scalapack/lu.h>
+#include <TiledArray/algebra/scalapack/svd.h>
 #endif
+
+#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_ALL_H__INCLUDED
