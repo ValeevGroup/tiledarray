@@ -4,7 +4,7 @@
 #include "range_fixture.h"
 #include "unit_test_config.h"
 
-#include "TiledArray/algebra/scalapack.h"
+#include "TiledArray/algebra/scalapack/all.h"
 
 using namespace TiledArray::scalapack;
 
