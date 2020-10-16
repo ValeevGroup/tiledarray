@@ -293,7 +293,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
                              *GlobalFixture::world, trange, src, replicated));
 
   // check the array contents
-  for (const auto& t : dst) {
+  for (auto&& t : dst) {
     const auto& tile = t.get();
     const auto& tile_range = tile.range();
     auto src_blk_range = TiledArray::BlockRange(
