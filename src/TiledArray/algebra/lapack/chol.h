@@ -69,6 +69,7 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
   //
   //  return L;
   abort();
+  return Array{};
 }
 
 /**
@@ -94,12 +95,17 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
 template <typename Array, bool RetL = false>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
   abort();
+  if constexpr (RetL)
+    return std::make_tuple(Array{}, Array{});
+  else
+    return Array{};
 }
 
 template <typename Array>
 auto cholesky_solve(const Array& A, const Array& B,
                     TiledRange x_trange = TiledRange()) {
   abort();
+  return Array{};
 }
 
 template <typename Array>
@@ -107,6 +113,7 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                      TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange()) {
   abort();
+  return Array{};
 }
 
 }  // namespace lapack
