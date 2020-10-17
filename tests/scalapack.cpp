@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE(bc_to_random_dense_tiled_array_test) {
   auto [M, N] = ref_matrix.dims();
   BOOST_REQUIRE_EQUAL(M, N);
 
-  auto NB = ref_matrix.dist().nb();
+  [[maybe_unused]] auto NB = ref_matrix.dist().nb();
 
   auto trange = gen_trange(N, {107ul, 113ul, 211ul, 151ul});
 
@@ -402,7 +402,7 @@ BOOST_AUTO_TEST_CASE(sca_heig_diff_tiling) {
       });
 
   auto new_trange = gen_trange(N, {64ul});
-  auto [evals, evecs] = heig(ref_ta, 128, new_trange);
+  auto [evals, evecs] = heig(ref_ta, new_trange, 128);
 
   BOOST_CHECK(evecs.trange() == new_trange);
 
