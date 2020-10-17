@@ -117,7 +117,7 @@ if(CUDA_FOUND)
 endif()
 
 if (TARGET TiledArray_SCALAPACK)
-  list(APPEND ta_test_src_files all.cpp)
+  list(APPEND ta_test_src_files scalapack.cpp)
 endif(TARGET TiledArray_SCALAPACK)
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
