@@ -27,22 +27,22 @@ BOOST_FIXTURE_TEST_SUITE(tot_array_suite2, ToTArrayFixture)
  * works and fill_local forwards its arguments correctly, fill_local should
  * work too.
  */
-BOOST_AUTO_TEST_CASE_TEMPLATE(fill_local, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(fill_local, TestParam, test_params) {
   using tensor_type = tensor_type<TestParam>;
   using inner_type = inner_type<TestParam>;
   using except_t = TiledArray::Exception;
   // Throws if PIMPL is empty
   {
     tensor_type t;
-    if(m_world.nproc() == 1) {
+    if (m_world.nproc() == 1) {
       BOOST_CHECK_THROW(t.fill_local(inner_type{}), except_t);
     }
   }
 
-  for(auto tr_t : run_all<TestParam>()){
+  for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto inner_rank = std::get<1>(tr_t);
-    auto& already_set = std::get<2>(tr_t);
+    [[maybe_unused]] auto& already_set = std::get<2>(tr_t);
 
     // Test that it skips filled tiles
     /*{
@@ -83,15 +83,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(fill, TestParam, test_params) {
   // Throws if PIMPL is empty
   {
     tensor_type t;
-    if(m_world.nproc() == 1) {
+    if (m_world.nproc() == 1) {
       BOOST_CHECK_THROW(t.fill(inner_type{}), except_t);
     }
   }
 
-  for(auto tr_t : run_all<TestParam>()){
+  for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto inner_rank = std::get<1>(tr_t);
-    auto& already_set = std::get<2>(tr_t);
+    [[maybe_unused]] auto& already_set = std::get<2>(tr_t);
 
     // Test that it skips filled tiles
     /*{
@@ -136,19 +136,18 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(fill, TestParam, test_params) {
  */
 BOOST_AUTO_TEST_CASE_TEMPLATE(init_tiles, TestParam, test_params) {
   using tensor_type = tensor_type<TestParam>;
-  using inner_type = inner_type<TestParam>;
   using except_t = TiledArray::Exception;
 
   // Throws if PIMPL is empty
   {
     tensor_type t;
-    if(m_world.nproc() == 1) {
-      auto l = [](const Range&){return tile_type<TestParam>{}; };
+    if (m_world.nproc() == 1) {
+      auto l = [](const Range&) { return tile_type<TestParam>{}; };
       BOOST_CHECK_THROW(t.init_tiles(l), except_t);
     }
   }
 
-  for(auto tr_t : run_all<TestParam>()){
+  for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto inner_rank = std::get<1>(tr_t);
     auto& corr = std::get<2>(tr_t);
@@ -194,24 +193,25 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(init_elements, TestParam, test_params) {
   using except_t = TiledArray::Exception;
   using index_type = typename tensor_type::index;
 
-
   // Throws if PIMPL is empty
   {
     tensor_type t;
-    auto l = [](const index_type&){ return inner_type{}; };
-    if(m_world.nproc() == 1) {
+    auto l = [](const index_type&) { return inner_type{}; };
+    if (m_world.nproc() == 1) {
       BOOST_CHECK_THROW(t.init_elements(l), except_t);
     }
   }
 
-  for(auto tr_t : run_all<TestParam>()){
+  for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto inner_rank = std::get<1>(tr_t);
     auto& corr = std::get<2>(tr_t);
 
-    auto l = [this, inner_rank](const index_type& idx)->inner_type{
-      if(inner_rank == 1) return inner_vector_tile<TestParam>(idx);
-      else return inner_matrix_tile<TestParam>(idx);
+    auto l = [this, inner_rank](const index_type& idx) -> inner_type {
+      if (inner_rank == 1)
+        return inner_vector_tile<TestParam>(idx);
+      else
+        return inner_matrix_tile<TestParam>(idx);
     };
 
     // Test that it skips filled tiles
@@ -242,11 +242,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(init_elements, TestParam, test_params) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(trange, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.trange(), TiledArray::Exception);
   }
 
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
     BOOST_TEST(corr.trange() == tr);
@@ -256,11 +256,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(trange, TestParam, test_params) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(range, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.range(), TiledArray::Exception);
   }
 
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
     bool are_same = corr.range() == tr.tiles_range();
@@ -271,11 +271,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(range, TestParam, test_params) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(elements_range, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.elements_range(), TiledArray::Exception);
   }
 
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
     bool are_same = corr.elements_range() == tr.elements_range();
@@ -286,48 +286,48 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(elements_range, TestParam, test_params) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(size, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.size(), TiledArray::Exception);
   }
 
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
     BOOST_TEST(corr.size() == tr.tiles_range().volume());
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(world, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(world, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.world(), TiledArray::Exception);
   }
 
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
     BOOST_TEST(&corr.world() == &m_world);
   }
 }
 
 /// TODO: Check pmap value
-BOOST_AUTO_TEST_CASE_TEMPLATE(pmap, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(pmap, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.pmap(), TiledArray::Exception);
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(shape, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(shape, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.shape(), TiledArray::Exception);
   }
   using shape_type = typename tensor_type<TestParam>::shape_type;
-  for(auto tr_t : run_all<TestParam>()) {
-    auto& tr   = std::get<0>(tr_t);
+  for (auto tr_t : run_all<TestParam>()) {
+    auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
     bool are_same = corr.shape() == shape_type(1, tr);
     BOOST_TEST(are_same);
@@ -338,15 +338,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(shape, TestParam, test_params){
 //                            Call Operators
 //------------------------------------------------------------------------------
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params){
-  for(auto tr_t : run_all<TestParam>()) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto inner_rank = std::get<1>(tr_t);
-    auto& t         = std::get<2>(tr_t);
+    auto& t = std::get<2>(tr_t);
     auto outer_rank = t.range().rank();
     std::string outer_idx = (outer_rank == 1 ? "i" : "i,j");
     std::string inner_idx = (inner_rank == 1 ? "k" : "k,l");
 
-    if(m_world.nproc() == 1){
+    if (m_world.nproc() == 1) {
       using except_t = TiledArray::Exception;
       // Throws if no semicolon
       BOOST_CHECK_THROW(t(outer_idx), except_t);
@@ -361,15 +361,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params){
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params){
-  for(auto tr_t : run_all<TestParam>()) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto inner_rank = std::get<1>(tr_t);
-    const auto& t   = std::get<2>(tr_t);
+    const auto& t = std::get<2>(tr_t);
     auto outer_rank = t.range().rank();
     std::string outer_idx = (outer_rank == 1 ? "i" : "i,j");
     std::string inner_idx = (inner_rank == 1 ? "k" : "k,l");
 
-    if(m_world.nproc() == 1){
+    if (m_world.nproc() == 1) {
       using except_t = TiledArray::Exception;
       // Throws if no semicolon
       BOOST_CHECK_THROW(t(outer_idx), except_t);
@@ -393,36 +393,34 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params){
  * of code to test is ensuring an exception is raised when the PIMPL is not
  * initialized.
  */
-BOOST_AUTO_TEST_CASE_TEMPLATE(is_dense, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_dense, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.is_dense(), TiledArray::Exception);
   }
 
   using shape_type = typename tensor_type<TestParam>::shape_type;
 
-  for(auto tr_t : run_all<TestParam>()) {
-    auto& tr   = std::get<0>(tr_t);
+  for (auto tr_t : run_all<TestParam>()) {
+    auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
     BOOST_TEST(corr.is_dense() == shape_type(1, tr).is_dense());
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(owner, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(owner, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.owner(0), TiledArray::Exception);
   }
 
-  using shape_type = typename tensor_type<TestParam>::shape_type;
-
-  for(auto tr_t : run_all<TestParam>()) {
-    auto& tr   = std::get<0>(tr_t);
+  for (auto tr_t : run_all<TestParam>()) {
+    auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
 
-    if(m_world.nproc() == 1){
+    if (m_world.nproc() == 1) {
       const auto& upbound = tr.tiles_range().upbound();
 
       // Test throws if index is out of bounds
@@ -433,7 +431,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(owner, TestParam, test_params){
       BOOST_CHECK_THROW(corr.owner(bad_idx), TiledArray::Exception);
     }
 
-    for(auto idx : corr.range()) {
+    for (auto idx : corr.range()) {
       const auto ordinal = corr.range().ordinal(idx);
       BOOST_TEST(corr.owner(idx) == corr.pmap()->owner(ordinal));
       BOOST_TEST(corr.owner(ordinal) == corr.pmap()->owner(ordinal));
@@ -441,62 +439,57 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(owner, TestParam, test_params){
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(owner_init_list, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(owner_init_list, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.owner({0}), TiledArray::Exception);
   }
 
-  using shape_type = typename tensor_type<TestParam>::shape_type;
-
-  for(auto tr_t : run_all<TestParam>()) {
-    auto& tr   = std::get<0>(tr_t);
-    auto rank  = tr.rank();
+  for (auto tr_t : run_all<TestParam>()) {
+    auto& tr = std::get<0>(tr_t);
+    auto rank = tr.rank();
     auto& corr = std::get<2>(tr_t);
 
-    if(m_world.nproc() == 1){
+    if (m_world.nproc() == 1) {
       const auto& upbound = tr.tiles_range().upbound();
       using except_t = TiledArray::Exception;
 
       // Test throws if index is out of bounds
-      if(rank == 1)
+      if (rank == 1)
         BOOST_CHECK_THROW(corr.owner({upbound[0]}), except_t);
-      else if(rank == 2)
+      else if (rank == 2)
         BOOST_CHECK_THROW(corr.owner({upbound[0], upbound[1]}), except_t);
 
       // Throws if index has wrong rank
-      std::initializer_list<unsigned int> il2{0,0,0,0,0,0};
+      std::initializer_list<unsigned int> il2{0, 0, 0, 0, 0, 0};
       BOOST_CHECK_THROW(corr.owner(il2), except_t);
     }
 
-    for(auto idx : corr.range()) {
+    for (auto idx : corr.range()) {
       const auto ordinal = corr.range().ordinal(idx);
-      const auto owner =  corr.pmap()->owner(ordinal);
-      if(rank == 1){
+      const auto owner = corr.pmap()->owner(ordinal);
+      if (rank == 1) {
         BOOST_TEST(corr.owner({idx[0]}) == owner);
-      }
-      else if(rank == 2){
+      } else if (rank == 2) {
         BOOST_TEST(corr.owner({idx[0], idx[1]}) == owner);
       }
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(is_local, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_local, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.is_local(0), TiledArray::Exception);
   }
 
-  using shape_type = typename tensor_type<TestParam>::shape_type;
-
-  for(auto tr_t : run_all<TestParam>()) {
-    auto& tr   = std::get<0>(tr_t);
+  for (auto tr_t : run_all<TestParam>()) {
+    auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
 
-    if(m_world.nproc() == 1){
+    if (m_world.nproc() == 1) {
       const auto& upbound = tr.tiles_range().upbound();
 
       // Test throws if index is out of bounds
@@ -507,7 +500,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_local, TestParam, test_params){
       BOOST_CHECK_THROW(corr.is_local(bad_idx), TiledArray::Exception);
     }
 
-    for(auto idx : corr.range()) {
+    for (auto idx : corr.range()) {
       const auto ordinal = corr.range().ordinal(idx);
       BOOST_TEST(corr.is_local(idx) == corr.pmap()->is_local(ordinal));
       BOOST_TEST(corr.is_local(ordinal) == corr.pmap()->is_local(ordinal));
@@ -515,62 +508,57 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_local, TestParam, test_params){
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(is_local_init_list, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_local_init_list, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.is_local({0}), TiledArray::Exception);
   }
 
-  using shape_type = typename tensor_type<TestParam>::shape_type;
-
-  for(auto tr_t : run_all<TestParam>()) {
-    auto& tr   = std::get<0>(tr_t);
-    auto rank  = tr.rank();
+  for (auto tr_t : run_all<TestParam>()) {
+    auto& tr = std::get<0>(tr_t);
+    auto rank = tr.rank();
     auto& corr = std::get<2>(tr_t);
 
-    if(m_world.nproc() == 1){
+    if (m_world.nproc() == 1) {
       const auto& upbound = tr.tiles_range().upbound();
       using except_t = TiledArray::Exception;
 
       // Test throws if index is out of bounds
-      if(rank == 1)
+      if (rank == 1)
         BOOST_CHECK_THROW(corr.is_local({upbound[0]}), except_t);
-      else if(rank == 2)
+      else if (rank == 2)
         BOOST_CHECK_THROW(corr.is_local({upbound[0], upbound[1]}), except_t);
 
       // Throws if index has wrong rank
-      std::initializer_list<unsigned int> il2{0,0,0,0,0,0};
+      std::initializer_list<unsigned int> il2{0, 0, 0, 0, 0, 0};
       BOOST_CHECK_THROW(corr.is_local(il2), except_t);
     }
 
-    for(auto idx : corr.range()) {
+    for (auto idx : corr.range()) {
       const auto ordinal = corr.range().ordinal(idx);
-      const auto is_local =  corr.pmap()->is_local(ordinal);
-      if(rank == 1){
+      const auto is_local = corr.pmap()->is_local(ordinal);
+      if (rank == 1) {
         BOOST_TEST(corr.is_local({idx[0]}) == is_local);
-      }
-      else if(rank == 2){
+      } else if (rank == 2) {
         BOOST_TEST(corr.is_local({idx[0], idx[1]}) == is_local);
       }
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.is_zero(0), TiledArray::Exception);
   }
 
-  using shape_type = typename tensor_type<TestParam>::shape_type;
-
-  for(auto tr_t : run_all<TestParam>()) {
-    auto& tr   = std::get<0>(tr_t);
+  for (auto tr_t : run_all<TestParam>()) {
+    auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
 
-    if(m_world.nproc() == 1){
+    if (m_world.nproc() == 1) {
       const auto& upbound = tr.tiles_range().upbound();
 
       // Test throws if index is out of bounds
@@ -581,7 +569,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params){
       BOOST_CHECK_THROW(corr.is_zero(bad_idx), TiledArray::Exception);
     }
 
-    for(auto idx : corr.range()) {
+    for (auto idx : corr.range()) {
       const auto ordinal = corr.range().ordinal(idx);
       BOOST_TEST(corr.is_zero(idx) == corr.shape().is_zero(ordinal));
       BOOST_TEST(corr.owner(ordinal) == corr.pmap()->owner(ordinal));
@@ -589,50 +577,47 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params){
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero_init_list, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero_init_list, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.is_zero({0}), TiledArray::Exception);
   }
 
-  using shape_type = typename tensor_type<TestParam>::shape_type;
-
-  for(auto tr_t : run_all<TestParam>()) {
-    auto& tr   = std::get<0>(tr_t);
-    auto rank  = tr.rank();
+  for (auto tr_t : run_all<TestParam>()) {
+    auto& tr = std::get<0>(tr_t);
+    auto rank = tr.rank();
     auto& corr = std::get<2>(tr_t);
 
-    if(m_world.nproc() == 1){
+    if (m_world.nproc() == 1) {
       const auto& upbound = tr.tiles_range().upbound();
       using except_t = TiledArray::Exception;
 
       // Test throws if index is out of bounds
-      if(rank == 1)
+      if (rank == 1)
         BOOST_CHECK_THROW(corr.is_zero({upbound[0]}), except_t);
-      else if(rank == 2)
+      else if (rank == 2)
         BOOST_CHECK_THROW(corr.is_zero({upbound[0], upbound[1]}), except_t);
 
       // Throws if index has wrong rank
-      std::initializer_list<unsigned int> il2{0,0,0,0,0,0};
+      std::initializer_list<unsigned int> il2{0, 0, 0, 0, 0, 0};
       BOOST_CHECK_THROW(corr.is_zero(il2), except_t);
     }
 
-    for(auto idx : corr.range()) {
+    for (auto idx : corr.range()) {
       const auto ordinal = corr.range().ordinal(idx);
-      const auto is_zero =  corr.shape().is_zero(ordinal);
-      if(rank == 1){
+      const auto is_zero = corr.shape().is_zero(ordinal);
+      if (rank == 1) {
         BOOST_TEST(corr.is_zero({idx[0]}) == is_zero);
-      }
-      else if(rank == 2){
+      } else if (rank == 2) {
         BOOST_TEST(corr.is_zero({idx[0], idx[1]}) == is_zero);
       }
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(swap, TestParam, test_params){
-  for(auto tr_t : run_all<TestParam>()) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(swap, TestParam, test_params) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
     auto copy_corr = corr.clone();
     tensor_type<TestParam> t, t2;
@@ -642,43 +627,43 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(swap, TestParam, test_params){
   }
 }
 
-//TODO: Actually check that it makes the array replicated.
-BOOST_AUTO_TEST_CASE_TEMPLATE(make_replicated, TestParam, test_params){
+// TODO: Actually check that it makes the array replicated.
+BOOST_AUTO_TEST_CASE_TEMPLATE(make_replicated, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
-    if(m_world.nproc() == 1)
+    if (m_world.nproc() == 1)
       BOOST_CHECK_THROW(t.make_replicated(), TiledArray::Exception);
   }
 
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
     BOOST_CHECK_NO_THROW(corr.make_replicated());
   }
 }
 
 // TODO: Actually check that it truncates
-BOOST_AUTO_TEST_CASE_TEMPLATE(truncate, TestParam, test_params){
-  for(auto tr_t : run_all<TestParam>()) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(truncate, TestParam, test_params) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
     BOOST_CHECK_NO_THROW(corr.truncate());
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(is_initialized, TestParam, test_params){
+BOOST_AUTO_TEST_CASE_TEMPLATE(is_initialized, TestParam, test_params) {
   // Not initialized
   {
     tensor_type<TestParam> t1;
     BOOST_TEST(t1.is_initialized() == false);
   }
 
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
     BOOST_TEST(corr.is_initialized());
   }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(serialization, TestParam, test_params) {
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
     char file_name[] = "tmp.XXXXXX";
     mktemp(file_name);
@@ -697,7 +682,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(serialization, TestParam, test_params) {
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(parallel_serialization, TestParam, test_params) {
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     auto& corr = std::get<2>(tr_t);
     const int nio = 1;  // use 1 rank for I/O
     char file_name[] = "tmp.XXXXXX";
@@ -721,12 +706,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parallel_serialization, TestParam, test_params) {
  * them to the string representation of the tile.
  */
 BOOST_AUTO_TEST_CASE_TEMPLATE(printing, TestParam, test_params) {
-  for(auto tr_t : run_all<TestParam>()) {
+  for (auto tr_t : run_all<TestParam>()) {
     const auto& t = std::get<2>(tr_t);
     std::stringstream corr;
-    if(m_world.rank() == 0) {
+    if (m_world.rank() == 0) {
       for (auto i = 0; i < t.size(); ++i) {
-        if(t.is_zero(i)) continue;
+        if (t.is_zero(i)) continue;
         corr << i << ": " << t.find(i).get() << std::endl;
       }
     }
