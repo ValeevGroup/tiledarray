@@ -25,9 +25,67 @@
 #define TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
 
 #include <TiledArray/config.h>
+#include <TiledArray/conversions/eigen.h>
 
 namespace TiledArray {
 namespace lapack {
+
+namespace detail {
+
+#define MADNESS_DISPATCH_LAPACK_FN(name, args...)                        \
+  if constexpr (std::is_same_v<numeric_type, double>)                    \
+    d##name##_(args);                                                    \
+  else if constexpr (std::is_same_v<numeric_type, float>)                \
+    s##name##_(args);                                                    \
+  else if constexpr (std::is_same_v<numeric_type, std::complex<double>>) \
+    z##name##_(args);                                                    \
+  else if constexpr (std::is_same_v<numeric_type, std::complex<float>>)  \
+    c##name##_(args);                                                    \
+  else                                                                   \
+    std::abort();
+
+template <typename Tile, typename Policy>
+auto to_eigen(const DistArray<Tile, Policy>& A) {
+  auto A_repl = A;
+  A_repl.make_replicated();
+  return array_to_eigen<Tile, Policy, Eigen::ColMajor>(A_repl);
+}
+
+template <typename Tile, typename Policy>
+auto make_L_eig(const DistArray<Tile, Policy>& A) {
+  using Array = DistArray<Tile, Policy>;
+  using numeric_type = typename Array::numeric_type;
+  static_assert(std::is_same_v<numeric_type, typename Array::element_type>,
+                "TA::lapack::{cholesky*} are only usable with a DistArray of "
+                "scalar types");
+
+  Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic> A_eig;
+  World& world = A.world();
+  if (world.rank() == 0) {
+    A_eig = detail::to_eigen(A);
+    char uplo = 'L';
+    integer n = A_eig.rows();
+    numeric_type* a = A_eig.data();
+    integer lda = n;
+    integer info = 0;
+#if defined(MADNESS_LINALG_USE_LAPACKE)
+    MADNESS_DISPATCH_LAPACK_FN(potrf, &uplo, &n, a, &lda, &info);
+#else
+    MADNESS_DISPATCH_LAPACK_FN(potrf, &uplo, &n, a, &lda, &info, sizeof(char));
+#endif
+
+    if (info != 0) TA_EXCEPTION("LAPACK::potrf failed");
+  }
+  world.gop.broadcast(A_eig, 0);
+  return A_eig;
+}
+
+template <typename Derived>
+void zero_out_upper_triangle(Eigen::MatrixBase<Derived>& A) {
+  A.template triangularView<Eigen::StrictlyUpper>().setZero();
+}
+
+}  // namespace detail
 
 /**
  *  @brief Compute the Cholesky factorization of a HPD rank-2 tensor
@@ -46,30 +104,13 @@ namespace lapack {
  *
  *  @returns The lower triangular Cholesky factor L in TA format
  */
-template <typename Array>
+template <typename Array,
+          typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
 auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
-  auto& world = A.world();
-
-  //    // Call lapack verson of LLT dpotrf_, we have to reverse stuff since
-  //    lapack
-  //    // will think all of our matrices are Col Major
-  //    // RowMatrixXd A_copy = A;
-  //
-  //    char uplo = 'U';  // Do lower, but need to use U because Row -> Col
-  //    integer n = A.rows();
-  //    real8* a = A.data();
-  //    integer lda = n;
-  //    integer info;
-  //
-  //#ifdef MADNESS_LINALG_USE_LAPACKE
-  //    dpotrf_(&uplo, &n, a, &lda, &info);
-  //#else
-  //    dpotrf_(&uplo, &n, a, &lda, &info, sizeof(char));
-  //#endif
-  //
-  //  return L;
-  abort();
-  return Array{};
+  auto L_eig = detail::make_L_eig(A);
+  detail::zero_out_upper_triangle(L_eig);
+  if (l_trange.rank() == 0) l_trange = A.trange();
+  return eigen_to_array<Array>(A.world(), l_trange, L_eig);
 }
 
 /**
@@ -94,26 +135,105 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
  */
 template <typename Array, bool RetL = false>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
-  abort();
+  World& world = A.world();
+  auto L_eig = detail::make_L_eig(A);
+  if constexpr (RetL) detail::zero_out_upper_triangle(L_eig);
+
+  // if need to return L use its copy to compute inverse
+  decltype(L_eig) L_inv_eig;
+  if (RetL && world.rank() == 0) L_inv_eig = L_eig;
+
+  if (world.rank() == 0) {
+    auto& L_inv_eig_ref = RetL ? L_inv_eig : L_eig;
+
+    char uplo = 'L';
+    char diag = 'N';
+    integer n = L_eig.rows();
+    using numeric_type = typename Array::numeric_type;
+    numeric_type* l = L_inv_eig_ref.data();
+    integer lda = n;
+    integer info = 0;
+    MADNESS_DISPATCH_LAPACK_FN(trtri, &uplo, &diag, &n, l, &lda, &info);
+    if (info != 0) TA_EXCEPTION("LAPACK::trtri failed");
+
+    detail::zero_out_upper_triangle(L_inv_eig_ref);
+  }
+  world.gop.broadcast(RetL ? L_inv_eig : L_eig, 0);
+
+  if (l_trange.rank() == 0) l_trange = A.trange();
   if constexpr (RetL)
-    return std::make_tuple(Array{}, Array{});
+    return std::make_tuple(eigen_to_array<Array>(world, l_trange, L_eig),
+                           eigen_to_array<Array>(world, l_trange, L_inv_eig));
   else
-    return Array{};
+    return eigen_to_array<Array>(world, l_trange, L_eig);
 }
 
 template <typename Array>
 auto cholesky_solve(const Array& A, const Array& B,
                     TiledRange x_trange = TiledRange()) {
-  abort();
-  return Array{};
+  using numeric_type = typename Array::numeric_type;
+  static_assert(std::is_same_v<numeric_type, typename Array::element_type>,
+                "TA::lapack::{cholesky*} are only usable with a DistArray of "
+                "scalar types");
+
+  Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic> X_eig;
+  World& world = A.world();
+  if (world.rank() == 0) {
+    auto A_eig = detail::to_eigen(A);
+    X_eig = detail::to_eigen(B);
+    char uplo = 'L';
+    integer n = A_eig.rows();
+    integer nrhs = X_eig.cols();
+    numeric_type* a = A_eig.data();
+    numeric_type* b = X_eig.data();
+    integer lda = n;
+    integer ldb = n;
+    integer info = 0;
+    MADNESS_DISPATCH_LAPACK_FN(posv, &uplo, &n, &nrhs, a, &lda, b, &ldb, &info);
+    if (info != 0) TA_EXCEPTION("LAPACK::posv failed");
+  }
+  world.gop.broadcast(X_eig, 0);
+  if (x_trange.rank() == 0) x_trange = B.trange();
+  return eigen_to_array<Array>(world, x_trange, X_eig);
 }
 
 template <typename Array>
 auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                      TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange()) {
-  abort();
-  return Array{};
+  World& world = A.world();
+  auto L_eig = detail::make_L_eig(A);
+  detail::zero_out_upper_triangle(L_eig);
+
+  using numeric_type = typename Array::numeric_type;
+  static_assert(std::is_same_v<numeric_type, typename Array::element_type>,
+                "TA::lapack::{cholesky*} are only usable with a DistArray of "
+                "scalar types");
+
+  Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic> X_eig;
+  if (world.rank() == 0) {
+    X_eig = detail::to_eigen(B);
+    char uplo = 'L';
+    char trans = transpose == TransposeFlag::Transpose
+                     ? 'T'
+                     : (transpose == TransposeFlag::NoTranspose ? 'N' : 'C');
+    char diag = 'N';
+    integer n = L_eig.rows();
+    integer nrhs = X_eig.cols();
+    numeric_type* a = L_eig.data();
+    numeric_type* b = X_eig.data();
+    integer lda = n;
+    integer ldb = n;
+    integer info = 0;
+    MADNESS_DISPATCH_LAPACK_FN(trtrs, &uplo, &trans, &diag, &n, &nrhs, a, &lda,
+                               b, &ldb, &info);
+    if (info != 0) TA_EXCEPTION("LAPACK::trtrs failed");
+  }
+  world.gop.broadcast(X_eig, 0);
+  if (l_trange.rank() == 0) l_trange = A.trange();
+  if (x_trange.rank() == 0) x_trange = B.trange();
+  return std::make_tuple(eigen_to_array<Array>(world, l_trange, L_eig),
+                         eigen_to_array<Array>(world, x_trange, X_eig));
 }
 
 }  // namespace lapack

@@ -4,6 +4,7 @@
 #include "range_fixture.h"
 #include "unit_test_config.h"
 
+#include "TiledArray/algebra/lapack/chol.h"
 #include "TiledArray/algebra/scalapack/all.h"
 
 using namespace TiledArray::scalapack;
@@ -465,20 +466,29 @@ BOOST_AUTO_TEST_CASE(sca_chol) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto ref_ta = TA::make_array<TA::TArray<double>>(
+  auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
 
-  auto L = cholesky(ref_ta);
+  auto L = cholesky(A);
 
-  BOOST_CHECK(L.trange() == ref_ta.trange());
+  BOOST_CHECK(L.trange() == A.trange());
 
-  ref_ta("i,j") -= L("i,k") * L("j,k").conj();
+  decltype(A) A_minus_LLt;
+  A_minus_LLt("i,j") = A("i,j") - L("i,k") * L("j,k").conj();
 
-  double diff_norm = ref_ta("i,j").norm(*GlobalFixture::world).get();
-  BOOST_CHECK_SMALL(diff_norm, N * N * std::numeric_limits<double>::epsilon());
+  BOOST_CHECK_SMALL(A_minus_LLt("i,j").norm().get(),
+                    N * N * std::numeric_limits<double>::epsilon());
+
+  // check against LAPACK also
+  auto L_ref = TiledArray::lapack::cholesky(A);
+  decltype(L) L_diff;
+  L_diff("i,j") = L("i,j") - L_ref("i,j");
+
+  BOOST_CHECK_SMALL(L_diff("i,j").norm().get(),
+                    N * N * std::numeric_limits<double>::epsilon());
 
   GlobalFixture::world->gop.fence();
 }
@@ -490,21 +500,22 @@ BOOST_AUTO_TEST_CASE(sca_chol_linv) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto ref_ta = TA::make_array<TA::TArray<double>>(
+  auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
 
-  auto Linv = cholesky_linv(ref_ta);
+  auto Linv = cholesky_linv(A);
+  auto Linv_lapack = lapack::cholesky_linv(A);
 
-  BOOST_CHECK(Linv.trange() == ref_ta.trange());
+  BOOST_CHECK(Linv.trange() == A.trange());
 
   TA::TArray<double> tmp(*GlobalFixture::world, trange);
-  tmp("i,j") = Linv("i,k") * ref_ta("k,j");
-  ref_ta("i,j") = tmp("i,k") * Linv("j,k");
+  tmp("i,j") = Linv("i,k") * A("k,j");
+  A("i,j") = tmp("i,k") * Linv("j,k");
 
-  TA::foreach_inplace(ref_ta, [](TA::Tensor<double>& tile) {
+  TA::foreach_inplace(A, [](TA::Tensor<double>& tile) {
     auto range = tile.range();
     auto lo = range.lobound_data();
     auto up = range.upbound_data();
@@ -515,8 +526,14 @@ BOOST_AUTO_TEST_CASE(sca_chol_linv) {
         }
   });
 
-  double norm = ref_ta("i,j").norm(*GlobalFixture::world).get();
+  double norm = A("i,j").norm().get();
   BOOST_CHECK_SMALL(norm, N * N * std::numeric_limits<double>::epsilon());
+
+  // test against LAPACK
+  decltype(Linv) Linv_error;
+  Linv_error("i,j") = Linv("i,j") - Linv_lapack("i,j");
+  BOOST_CHECK_SMALL(Linv_error("i,j").norm().get(),
+                    N * N * std::numeric_limits<double>::epsilon());
 
   GlobalFixture::world->gop.fence();
 }
@@ -528,16 +545,17 @@ BOOST_AUTO_TEST_CASE(sca_chol_linv_retl) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto ref_ta = TA::make_array<TA::TArray<double>>(
+  auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
 
-  auto [L, Linv] = cholesky_linv<decltype(ref_ta), true>(ref_ta);
+  auto [L, Linv] = cholesky_linv<decltype(A), true>(A);
+  auto [L_lapack, Linv_lapack] = lapack::cholesky_linv<decltype(A), true>(A);
 
-  BOOST_CHECK(Linv.trange() == ref_ta.trange());
-  BOOST_CHECK(L.trange() == ref_ta.trange());
+  BOOST_CHECK(Linv.trange() == A.trange());
+  BOOST_CHECK(L.trange() == A.trange());
 
   TA::TArray<double> tmp(*GlobalFixture::world, trange);
   tmp("i,j") = Linv("i,k") * L("k,j");
@@ -556,6 +574,16 @@ BOOST_AUTO_TEST_CASE(sca_chol_linv_retl) {
   double norm = tmp("i,j").norm(*GlobalFixture::world).get();
   BOOST_CHECK_SMALL(norm, N * N * std::numeric_limits<double>::epsilon());
 
+  // test against LAPACK
+  decltype(L) L_error;
+  L_error("i,j") = L("i,j") - L_lapack("i,j");
+  BOOST_CHECK_SMALL(L_error("i,j").norm().get(),
+                    N * N * std::numeric_limits<double>::epsilon());
+  decltype(Linv) Linv_error;
+  Linv_error("i,j") = Linv("i,j") - Linv_lapack("i,j");
+  BOOST_CHECK_SMALL(Linv_error("i,j").norm().get(),
+                    N * N * std::numeric_limits<double>::epsilon());
+
   GlobalFixture::world->gop.fence();
 }
 
@@ -566,15 +594,20 @@ BOOST_AUTO_TEST_CASE(sca_chol_solve) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto ref_ta = TA::make_array<TA::TArray<double>>(
+  auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
 
-  auto iden = cholesky_solve(ref_ta, ref_ta);
+  auto iden = cholesky_solve(A, A);
+  BOOST_CHECK(iden.trange() == A.trange());
 
-  BOOST_CHECK(iden.trange() == ref_ta.trange());
+  auto iden_lapack = lapack::cholesky_solve(A, A);
+  decltype(iden) iden_error;
+  iden_error("i,j") = iden("i,j") - iden_lapack("i,j");
+  BOOST_CHECK_SMALL(iden_error("i,j").norm().get(),
+                    N * N * std::numeric_limits<double>::epsilon());
 
   TA::foreach_inplace(iden, [](TA::Tensor<double>& tile) {
     auto range = tile.range();
@@ -600,17 +633,28 @@ BOOST_AUTO_TEST_CASE(sca_chol_lsolve) {
 
   auto trange = gen_trange(N, {128ul});
 
-  auto ref_ta = TA::make_array<TA::TArray<double>>(
+  auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
 
   // Should produce X = L**H
-  auto [L, X] = cholesky_lsolve(TransposeFlag::NoTranspose, ref_ta, ref_ta);
+  auto [L, X] = cholesky_lsolve(TransposeFlag::NoTranspose, A, A);
+  BOOST_CHECK(X.trange() == A.trange());
+  BOOST_CHECK(L.trange() == A.trange());
 
-  BOOST_CHECK(X.trange() == ref_ta.trange());
-  BOOST_CHECK(L.trange() == ref_ta.trange());
+  // first, test against LAPACK
+  auto [L_lapack, X_lapack] =
+      lapack::cholesky_lsolve(TransposeFlag::NoTranspose, A, A);
+  decltype(L) L_error;
+  L_error("i,j") = L("i,j") - L_lapack("i,j");
+  BOOST_CHECK_SMALL(L_error("i,j").norm().get(),
+                    N * N * std::numeric_limits<double>::epsilon());
+  decltype(X) X_error;
+  X_error("i,j") = X("i,j") - X_lapack("i,j");
+  BOOST_CHECK_SMALL(X_error("i,j").norm().get(),
+                    N * N * std::numeric_limits<double>::epsilon());
 
   X("i,j") -= L("j,i");
 
