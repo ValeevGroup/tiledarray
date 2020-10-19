@@ -59,10 +59,9 @@ auto make_L_eig(const DistArray<Tile, Policy>& A) {
                 "TA::lapack::{cholesky*} are only usable with a DistArray of "
                 "scalar types");
 
-  Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic> A_eig;
   World& world = A.world();
+  auto A_eig = detail::to_eigen(A);
   if (world.rank() == 0) {
-    A_eig = detail::to_eigen(A);
     char uplo = 'L';
     integer n = A_eig.rows();
     numeric_type* a = A_eig.data();
@@ -176,11 +175,10 @@ auto cholesky_solve(const Array& A, const Array& B,
                 "TA::lapack::{cholesky*} are only usable with a DistArray of "
                 "scalar types");
 
-  Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic> X_eig;
+  auto A_eig = detail::to_eigen(A);
+  auto X_eig = detail::to_eigen(B);
   World& world = A.world();
   if (world.rank() == 0) {
-    auto A_eig = detail::to_eigen(A);
-    X_eig = detail::to_eigen(B);
     char uplo = 'L';
     integer n = A_eig.rows();
     integer nrhs = X_eig.cols();
@@ -210,9 +208,8 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                 "TA::lapack::{cholesky*} are only usable with a DistArray of "
                 "scalar types");
 
-  Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic> X_eig;
+  auto X_eig = detail::to_eigen(B);
   if (world.rank() == 0) {
-    X_eig = detail::to_eigen(B);
     char uplo = 'L';
     char trans = transpose == TransposeFlag::Transpose
                      ? 'T'
