@@ -356,10 +356,13 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 /// This function will copy the content of \c matrix into an \c Array object
 /// that is tiled according to the \c trange object. The copy operation is
 /// done in parallel, and this function will block until all elements of
-/// \c matrix have been copied into the result array tiles. The size of
-/// \c world.size() must be equal to 1 or \c replicate must be equal to
-/// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in matrix is identical on all nodes.
+/// \c matrix have been copied into the result array tiles.
+/// Each tile is created
+/// using the local contents of \c matrix, hence
+/// it is your responsibility to ensure that the data in \c matrix
+/// is distributed correctly among the ranks. If in doubt, you should replicate
+/// \c matrix among the ranks prior to calling this.
+///
 /// Usage:
 /// \code
 /// Eigen::MatrixXd m(100, 100);
@@ -383,16 +386,17 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 /// \param world The world where the array will live
 /// \param trange The tiled range of the new array
 /// \param matrix The Eigen matrix to be copied
-/// \param replicated \c true indicates that the result array should be a
-/// replicated array [default = false].
+/// \param replicated if true, the result will be replicated
+/// [default = true].
+/// \param pmap the process map object [default=null]; initialized to the
+/// default if \p replicated is false, or a replicated pmap if \p replicated
+/// is true; ignored if \p replicated is true and \c world.size()>1
 /// \return An \c Array object that is a copy of \c matrix
-/// \throw TiledArray::Exception When world size is greater than 1
-/// \note If using 2 or more World ranks, set \c replicated=true and make sure
-/// \c matrix is the same on each rank!
 template <typename A, typename Derived>
 A eigen_to_array(World& world, const typename A::trange_type& trange,
                  const Eigen::MatrixBase<Derived>& matrix,
-                 bool replicated = false) {
+                 bool replicated = false,
+                 std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   typedef typename A::index1_type size_type;
   // Check that trange matches the dimensions of other
   if ((matrix.cols() > 1) && (matrix.rows() > 1)) {
@@ -417,19 +421,12 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
         "matrix size.");
   }
 
-  // Check that this is not a distributed computing environment
-  if (!replicated)
-    TA_USER_ASSERT(world.size() == 1,
-                   "An array cannot be assigned with an Eigen::Matrix when the "
-                   "number of World ranks is greater than 1.");
-
   // Create a new tensor
-  A array = (replicated && (world.size() > 1)
-                 ? A(world, trange,
-                     std::static_pointer_cast<typename A::pmap_interface>(
-                         std::make_shared<detail::ReplicatedPmap>(
-                             world, trange.tiles_range().volume())))
-                 : A(world, trange));
+  if (replicated && (world.size() > 1))
+    pmap = std::static_pointer_cast<typename A::pmap_interface>(
+        std::make_shared<detail::ReplicatedPmap>(
+            world, trange.tiles_range().volume()));
+  A array = (pmap ? A(world, trange, pmap) : A(world, trange));
 
   // Spawn tasks to copy Eigen to an Array
   madness::AtomicInt counter;
@@ -526,10 +523,13 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
 /// This function will copy the content of \c buffer into an \c Array object
 /// that is tiled according to the \c trange object. The copy operation is
 /// done in parallel, and this function will block until all elements of
-/// \c matrix have been copied into the result array tiles. The size of
-/// \c world.size() must be equal to 1 or \c replicate must be equal to
-/// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in \c buffer is identical on all nodes.
+/// \c matrix have been copied into the result array tiles.
+/// Each tile is created
+/// using the local contents of \c matrix, hence
+/// it is your responsibility to ensure that the data in \c matrix
+/// is distributed correctly among the ranks. If in doubt, you should replicate
+/// \c matrix among the ranks prior to calling this.
+///
 /// Usage:
 /// \code
 /// double* buffer = new double[100 * 100];
@@ -557,8 +557,11 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
 /// \param buffer The row-major matrix buffer to be copied
 /// \param m The number of rows in the matrix
 /// \param n The number of columns in the matrix
-/// \param replicated \c true indicates that the result array should be a
-/// replicated array [default = false].
+/// \param replicated if true, the result will be replicated
+/// [default = true].
+/// \param pmap the process map object [default=null]; initialized to the
+/// default if \p replicated is false, or a replicated pmap if \p replicated
+/// is true; ignored if \p replicated is true and \c world.size()>1
 /// \return An \c Array object that is a copy of \c matrix
 /// \throw TiledArray::Exception When \c m and \c n are not equal to the
 /// number of rows or columns in tiled range.
@@ -566,7 +569,8 @@ template <typename A>
 inline A row_major_buffer_to_array(
     World& world, const typename A::trange_type& trange,
     const typename A::value_type::value_type* buffer, const std::size_t m,
-    const std::size_t n, const bool replicated = false) {
+    const std::size_t n, const bool replicated = false,
+    std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   TA_USER_ASSERT(trange.elements_range().extent(0) == m,
                  "TiledArray::eigen_to_array(): The number of rows in trange "
                  "is not equal to m.");
@@ -579,8 +583,8 @@ inline A row_major_buffer_to_array(
       matrix_type;
   return eigen_to_array(
       world, trange,
-      Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n),
-      replicated);
+      Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n), replicated,
+      pmap);
 }
 
 /// Convert a column-major matrix buffer into an Array object
@@ -588,10 +592,13 @@ inline A row_major_buffer_to_array(
 /// This function will copy the content of \c buffer into an \c Array object
 /// that is tiled according to the \c trange object. The copy operation is
 /// done in parallel, and this function will block until all elements of
-/// \c matrix have been copied into the result array tiles. The size of
-/// \c world.size() must be equal to 1 or \c replicate must be equal to
-/// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in \c buffer is identical on all nodes.
+/// \c matrix have been copied into the result array tiles.
+/// Each tile is created
+/// using the local contents of \c matrix, hence
+/// it is your responsibility to ensure that the data in \c matrix
+/// is distributed correctly among the ranks. If in doubt, you should replicate
+/// \c matrix among the ranks prior to calling this.
+///
 /// Usage:
 /// \code
 /// double* buffer = new double[100 * 100];
@@ -619,8 +626,11 @@ inline A row_major_buffer_to_array(
 /// \param buffer The row-major matrix buffer to be copied
 /// \param m The number of rows in the matrix
 /// \param n The number of columns in the matrix
-/// \param replicated \c true indicates that the result array should be a
-/// replicated array [default = false].
+/// \param replicated if true, the result will be replicated
+/// [default = true].
+/// \param pmap the process map object [default=null]; initialized to the
+/// default if \p replicated is false, or a replicated pmap if \p replicated
+/// is true; ignored if \p replicated is true and \c world.size()>1
 /// \return An \c Array object that is a copy of \c matrix
 /// \throw TiledArray::Exception When \c m and \c n are not equal to the
 /// number of rows or columns in tiled range.
@@ -628,7 +638,8 @@ template <typename A>
 inline A column_major_buffer_to_array(
     World& world, const typename A::trange_type& trange,
     const typename A::value_type::value_type* buffer, const std::size_t m,
-    const std::size_t n, const bool replicated = false) {
+    const std::size_t n, const bool replicated = false,
+    std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   TA_USER_ASSERT(trange.elements_range().extent(0) == m,
                  "TiledArray::eigen_to_array(): The number of rows in trange "
                  "is not equal to m.");
@@ -641,8 +652,8 @@ inline A column_major_buffer_to_array(
       matrix_type;
   return eigen_to_array(
       world, trange,
-      Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n),
-      replicated);
+      Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n), replicated,
+      pmap);
 }
 
 }  // namespace TiledArray
