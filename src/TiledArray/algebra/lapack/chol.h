@@ -75,7 +75,7 @@ auto make_L_eig(const DistArray<Tile, Policy>& A) {
 
     if (info != 0) TA_EXCEPTION("LAPACK::potrf failed");
   }
-  world.gop.broadcast(A_eig, 0);
+  world.gop.broadcast_serializable(A_eig, 0);
   return A_eig;
 }
 
@@ -157,7 +157,7 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
 
     detail::zero_out_upper_triangle(L_inv_eig_ref);
   }
-  world.gop.broadcast(RetL ? L_inv_eig : L_eig, 0);
+  world.gop.broadcast_serializable(RetL ? L_inv_eig : L_eig, 0);
 
   if (l_trange.rank() == 0) l_trange = A.trange();
   if constexpr (RetL)
@@ -190,7 +190,7 @@ auto cholesky_solve(const Array& A, const Array& B,
     MADNESS_DISPATCH_LAPACK_FN(posv, &uplo, &n, &nrhs, a, &lda, b, &ldb, &info);
     if (info != 0) TA_EXCEPTION("LAPACK::posv failed");
   }
-  world.gop.broadcast(X_eig, 0);
+  world.gop.broadcast_serializable(X_eig, 0);
   if (x_trange.rank() == 0) x_trange = B.trange();
   return eigen_to_array<Array>(world, x_trange, X_eig);
 }
@@ -226,7 +226,7 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                                b, &ldb, &info);
     if (info != 0) TA_EXCEPTION("LAPACK::trtrs failed");
   }
-  world.gop.broadcast(X_eig, 0);
+  world.gop.broadcast_serializable(X_eig, 0);
   if (l_trange.rank() == 0) l_trange = A.trange();
   if (x_trange.rank() == 0) x_trange = B.trange();
   return std::make_tuple(eigen_to_array<Array>(world, l_trange, L_eig),

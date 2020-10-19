@@ -351,6 +351,7 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 
 }  // namespace detail
 
+// clang-format off
 /// Convert an Eigen matrix into an Array object
 
 /// This function will copy the content of \c matrix into an \c Array object
@@ -392,6 +393,7 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 /// default if \p replicated is false, or a replicated pmap if \p replicated
 /// is true; ignored if \p replicated is true and \c world.size()>1
 /// \return An \c Array object that is a copy of \c matrix
+// clang-format on
 template <typename A, typename Derived>
 A eigen_to_array(World& world, const typename A::trange_type& trange,
                  const Eigen::MatrixBase<Derived>& matrix,
@@ -433,17 +435,23 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
   counter = 0;
   std::int64_t n = 0;
   for (std::size_t i = 0; i < array.size(); ++i) {
-    world.taskq.add(&detail::counted_eigen_submatrix_to_tensor<A, Derived>,
-                    &matrix, &array, i, &counter);
-    ++n;
+    if (array.is_local(i)) {
+      world.taskq.add(&detail::counted_eigen_submatrix_to_tensor<A, Derived>,
+                      &matrix, &array, i, &counter);
+      ++n;
+    }
   }
 
   // Wait until the write tasks are complete
   array.world().await([&counter, n]() { return counter == n; });
 
+  // truncate, n.b. this can replace the wait above
+  array.truncate();
+
   return array;
 }
 
+// clang-format off
 /// Convert an Array object into an Eigen matrix object
 
 /// This function will copy the content of an \c Array object into matrix. The
@@ -462,10 +470,14 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
 /// \tparam EigenStorageOrder The storage order of the resulting Eigen::Matrix
 ///      object; the default is Eigen::ColMajor, i.e. the column-major storage
 /// \param array The array to be converted. It must be replicated if using 2 or
-/// more World ranks. \return an Eigen matrix; it will contain same data on each
-/// World rank. \throw TiledArray::Exception When world size is greater than 1
-/// and \c array is not replicated. \throw TiledArray::Exception When the number
+/// more World ranks.
+/// \return an Eigen matrix; it will contain same data on each
+/// World rank.
+/// \throw TiledArray::Exception When world size is greater than 1
+/// and \c array is not replicated.
+/// \throw TiledArray::Exception When the number
 /// of dimensions of \c array is not equal to 1 or 2.
+// clang-format on
 template <typename Tile, typename Policy,
           unsigned int EigenStorageOrder = Eigen::ColMajor>
 Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic,
