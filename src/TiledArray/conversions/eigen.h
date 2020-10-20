@@ -61,53 +61,57 @@ typedef Eigen::Matrix<long, Eigen::Dynamic, 1> EigenVectorXl;
 
 /// Construct a const Eigen::Map object for a given Tensor object
 
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
+/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \param tensor The tensor object, laid out according to Storage
 /// \param m The number of rows in the result matrix
 /// \param n The number of columns in the result matrix
 /// \return An m x n Eigen matrix map for \c tensor
 /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
-template <typename T,
+template <typename T, Eigen::StorageOptions Storage = Eigen::RowMajor,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<const Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                      Eigen::Dynamic, Eigen::RowMajor>,
+                                      Eigen::Dynamic, Storage>,
                   Eigen::AutoAlign>
 eigen_map(const T& tensor, const std::size_t m, const std::size_t n) {
   TA_ASSERT((m * n) == tensor.size());
 
   return Eigen::Map<const Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                        Eigen::Dynamic, Eigen::RowMajor>,
+                                        Eigen::Dynamic, Storage>,
                     Eigen::AutoAlign>(tensor.data(), m, n);
 }
 
 /// Construct an Eigen::Map object for a given Tensor object
 
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
+/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \param tensor The tensor object, laid out according to Storage
 /// \param m The number of rows in the result matrix
 /// \param n The number of columns in the result matrix
 /// \return An m x n Eigen matrix map for \c tensor
 /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
-template <typename T,
+template <typename T, Eigen::StorageOptions Storage = Eigen::RowMajor,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                Eigen::Dynamic, Eigen::RowMajor>,
+                                Eigen::Dynamic, Storage>,
                   Eigen::AutoAlign>
 eigen_map(T& tensor, const std::size_t m, const std::size_t n) {
   TA_ASSERT((m * n) == tensor.size());
 
   return Eigen::Map<Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                  Eigen::Dynamic, Eigen::RowMajor>,
+                                  Eigen::Dynamic, Storage>,
                     Eigen::AutoAlign>(tensor.data(), m, n);
 }
 
 /// Construct a const Eigen::Map object for a given Tensor object
 
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
-/// \param n The number of elements in the result matrix
-/// \return An n element Eigen vector map for \c tensor
-/// \throw TiledArray::Exception When n is not equal to \c tensor size
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \param tensor The
+/// tensor object \param n The number of elements in the result matrix \return
+/// An n element Eigen vector map for \c tensor \throw TiledArray::Exception
+/// When n is not equal to \c tensor size
 template <typename T,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<
@@ -127,7 +131,7 @@ eigen_map(const T& tensor, const std::size_t n) {
 /// \param tensor The tensor object
 /// \param n The number of elements in the result matrix
 /// \return An n element Eigen vector map for \c tensor
-/// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+/// \throw TiledArray::Exception When n is not equal to \c tensor size
 template <typename T,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<Eigen::Matrix<typename T::value_type, Eigen::Dynamic, 1>,
@@ -141,42 +145,49 @@ eigen_map(T& tensor, const std::size_t n) {
 
 /// Construct a const Eigen::Map object for a given Tensor object
 
-/// The dimensions of the result tensor
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
+/// The dimensions of the result tensor are extracted from the tensor itself
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
+/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \param tensor The tensor object, laid out according to Storage
 /// \return An Eigen matrix map for \c tensor
 /// \throw TiledArray::Exception When \c tensor dimensions are not equal to 2
 /// or 1.
-template <typename T,
+template <typename T, Eigen::StorageOptions Storage = Eigen::RowMajor,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<const Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                      Eigen::Dynamic, Eigen::RowMajor>,
+                                      Eigen::Dynamic, Storage>,
                   Eigen::AutoAlign>
 eigen_map(const T& tensor) {
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
   const auto* MADNESS_RESTRICT const tensor_extent =
       tensor.range().extent_data();
-  return eigen_map(tensor, tensor_extent[0],
-                   (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
+  return eigen_map<T, Storage>(
+      tensor, tensor_extent[0],
+      (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
 }
 
 /// Construct an Eigen::Map object for a given Tensor object
 
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
+/// The dimensions of the result tensor are extracted from the tensor itself
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
+/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \param tensor The tensor object, laid out according to Storage
 /// \return An Eigen matrix map for \c tensor
 /// \throw When \c tensor dimensions are not equal to 2 or 1.
-template <typename T,
+template <typename T, Eigen::StorageOptions Storage = Eigen::RowMajor,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                Eigen::Dynamic, Eigen::RowMajor>,
+                                Eigen::Dynamic, Storage>,
                   Eigen::AutoAlign>
 eigen_map(T& tensor) {
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
   const auto* MADNESS_RESTRICT const tensor_extent =
       tensor.range().extent_data();
-  return eigen_map(tensor, tensor_extent[0],
-                   (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
+  return eigen_map<T, Storage>(
+      tensor, tensor_extent[0],
+      (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
 }
 
 /// Copy a block of an Eigen matrix into a tensor
