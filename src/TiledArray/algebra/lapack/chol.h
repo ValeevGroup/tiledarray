@@ -98,6 +98,16 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
   return eigen_to_array<Array>(A.world(), l_trange, L_eig);
 }
 
+template <typename ContiguousTensor,
+          typename = std::enable_if_t<
+              TiledArray::detail::is_contiguous_tensor_v<ContiguousTensor>>>
+auto cholesky(const ContiguousTensor& A) {
+  auto A_eig = detail::to_eigen(A);
+  detail::chol_eig(A_eig);
+  detail::zero_out_upper_triangle(A_eig);
+  return detail::from_eigen<ContiguousTensor>(A_eig, A.range());
+}
+
 /**
  *  @brief Compute the inverse of the Cholesky factor of an HPD rank-2 tensor.
  *  Optionally return the Cholesky factor itself
