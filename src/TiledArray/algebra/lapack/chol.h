@@ -88,6 +88,7 @@ auto make_L_eig(const DistArray<Tile, Policy>& A) {
  * empty, will default to array.trange()
  *
  *  @returns The lower triangular Cholesky factor L in TA format
+ *  @note this is a collective operation with respect to the world of @p A
  */
 template <typename Array,
           typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
@@ -98,6 +99,23 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
   return eigen_to_array<Array>(A.world(), l_trange, L_eig);
 }
 
+/**
+ *  @brief Compute the Cholesky factorization of a HPD rank-2 tensor
+ *
+ *  A(i,j) = L(i,k) * conj(L(j,k))
+ *
+ *  Example Usage:
+ *
+ *  auto L = cholesky(A, ...)
+ *
+ *  @tparam ContiguousTensor a contiguous tensor type (i.e., @c
+ * is_contiguous_tensor_v<ContiguousTensor> is true)
+ *
+ *  @param[in] A           Input array to be diagonalized. Must be rank-2
+ *  @returns The lower triangular Cholesky factor L as a ContiguousTensor
+ *  @note this is a non-collective operation, only computes on the rank on which
+ * invoked
+ */
 template <typename ContiguousTensor,
           typename = std::enable_if_t<
               TiledArray::detail::is_contiguous_tensor_v<ContiguousTensor>>>
@@ -127,6 +145,7 @@ auto cholesky(const ContiguousTensor& A) {
  *                         If left empty, will default to array.trange()
  *
  *  @returns The inverse lower triangular Cholesky factor in TA format
+ *  @note this is a collective operation with respect to the world of @p A
  */
 template <typename Array, bool RetL = false,
           typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
