@@ -449,7 +449,7 @@ BOOST_AUTO_TEST_CASE(sca_heig_generalized) {
 
   BOOST_CHECK(evecs.trange() == ref_ta.trange());
 
-  // TODO: Check validity of eigenvectors, not crutial for the time being
+  // TODO: Check validity of eigenvectors, not crucial for the time being
 
   // Check eigenvalue correctness
   double tol = N * N * std::numeric_limits<double>::epsilon();
