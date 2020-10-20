@@ -66,7 +66,7 @@ auto to_eigen(const ContiguousTensor& A) {
   colmajor_matrix_type result(A.range().extent(0),
                               A.range().rank() == 2 ? A.range().extent(1) : 1);
   constexpr const auto layout =
-      TiledArray::detail::ordinal_traits<ContiguousTensor>::layout;
+      TiledArray::detail::ordinal_traits<ContiguousTensor>::type;
   if (layout == TiledArray::OrdinalType::RowMajor) {
     using rowmajor_matrix_type = Eigen::Matrix<numeric_type, Eigen::Dynamic,
                                                Eigen::Dynamic, Eigen::RowMajor>;
