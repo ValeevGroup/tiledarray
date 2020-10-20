@@ -25,6 +25,7 @@
 #include <numeric>
 
 #include <TiledArray/error.h>
+#include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/util/vector.h>
 #include <TiledArray/utility.h>
@@ -57,7 +58,8 @@ namespace detail {
 /// \param[in] perm The permutation
 /// \param[in] arg The input array to be permuted
 /// \param[out] result The output array that will hold the permuted array
-template <typename Perm, typename Arg, typename Result>
+template <typename Perm, typename Arg, typename Result,
+          typename = std::enable_if_t<is_permutation_v<Perm>>>
 inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
   using std::size;
   TA_ASSERT(size(result) == size(arg));
@@ -131,12 +133,6 @@ class Permutation {
   typedef vector<index_type>::const_iterator const_iterator;
 
  private:
-  /// One-line representation of permutation
-  vector<index_type> p_;
-
-  /// The rank of the tensor's elements
-  index_type n_inner_ = 0;
-
   /// Validate input permutation
   /// \return \c false if each element of [first, last) is non-negative, unique
   /// and less than the size of the domain.
@@ -157,6 +153,10 @@ class Permutation {
   // Used to select the correct constructor based on input template types
   struct Enabler {};
 
+ protected:
+  /// One-line representation of permutation
+  vector<index_type> p_;
+
  public:
   Permutation() = default;  // constructs an invalid Permutation
   Permutation(const Permutation&) = default;
@@ -175,8 +175,7 @@ class Permutation {
   /// duplicate elements.
   template <typename InIter, typename std::enable_if<detail::is_input_iterator<
                                  InIter>::value>::type* = nullptr>
-  Permutation(InIter first, InIter last, index_type n_inner = 0)
-      : p_(first, last), n_inner_(n_inner) {
+  Permutation(InIter first, InIter last) : p_(first, last) {
     TA_ASSERT(valid_permutation(first, last));
   }
 
@@ -186,15 +185,14 @@ class Permutation {
   /// \param a The permutation array to be moved
   template <typename Index,
             typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-  explicit Permutation(const Index& a, index_type n_inner = 0)
-      : Permutation(std::cbegin(a), std::cend(a), n_inner) {}
+  explicit Permutation(const Index& a)
+      : Permutation(std::cbegin(a), std::cend(a)) {}
 
   /// std::vector move constructor
 
   /// Move the content of the vector into this permutation
   /// \param a The permutation array to be moved
-  explicit Permutation(vector<index_type>&& a, index_type n_inner = 0)
-      : p_(std::move(a)), n_inner_(n_inner) {
+  explicit Permutation(vector<index_type>&& a) : p_(std::move(a)) {
     TA_ASSERT(valid_permutation(p_.begin(), p_.end()));
   }
 
@@ -211,10 +209,6 @@ class Permutation {
 
   /// \return The domain size
   index_type dim() const { return p_.size(); }
-
-  index_type inner_dim() const { return n_inner_; }
-
-  index_type outer_dim() const { return dim() - inner_dim(); }
 
   /// Begin element iterator factory function
 
@@ -235,17 +229,6 @@ class Permutation {
 
   /// \return An iterator that points to the end of the element range
   const_iterator cend() const { return p_.cend(); }
-
-  Permutation outer_permutation() const {
-    return Permutation{p_.begin(), p_.begin() + outer_dim()};
-  }
-
-  Permutation inner_permutation() const {
-    const auto n_outer = outer_dim();
-    vector<index_type> temp(inner_dim());
-    for (auto i = n_outer; i < dim(); ++i) temp[i - n_outer] = p_[i] - n_outer;
-    return Permutation(temp.begin(), temp.end());
-  }
 
   /// Element accessor
 
@@ -610,6 +593,128 @@ inline std::vector<T> operator*(const Permutation& perm,
   }
   return result;
 }
+
+///////////////////////////////////
+
+/// Permutation of a bipartite set
+class BipartitePermutation : public Permutation {
+ public:
+  BipartitePermutation() = default;
+  BipartitePermutation(const BipartitePermutation&) = default;
+  BipartitePermutation(BipartitePermutation&&) = default;
+  ~BipartitePermutation() = default;
+  BipartitePermutation& operator=(const BipartitePermutation&) = default;
+  BipartitePermutation& operator=(BipartitePermutation&& other) = default;
+
+  // clang-format off
+  /// Construct permutation from a range [first,last)
+
+  /// \tparam InIter An input iterator type
+  /// \param first The beginning of the iterator range
+  /// \param last The end of the iterator range
+  /// \param second_partition_size the size of the second partition; the size of the first is then \c std::distance(first,last)-second_partition_size
+  /// \throw TiledArray::Exception If the permutation contains any element
+  /// that is greater than the size of the permutation or if there are any
+  /// duplicate elements.
+  // clang-format on
+  template <typename InIter, typename std::enable_if<detail::is_input_iterator<
+                                 InIter>::value>::type* = nullptr>
+  BipartitePermutation(InIter first, InIter last,
+                       index_type second_partition_size = 0)
+      : Permutation(first, last), second_size_(second_partition_size) {}
+
+  // clang-format off
+  /// Array constructor
+
+  /// Construct permutation from an Array
+  /// \param a The permutation array to be moved
+  /// \param second_partition_size the size of the second partition; the size of the first is then \c std::distance(first,last)-second_partition_size
+  // clang-format on
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
+  explicit BipartitePermutation(const Index& a,
+                                index_type second_partition_size = 0)
+      : BipartitePermutation(std::cbegin(a), std::cend(a),
+                             second_partition_size) {}
+
+  // clang-format off
+  /// std::vector move constructor
+
+  /// Move the content of the vector into this permutation
+  /// \param a The permutation array to be moved
+  /// \param second_partition_size the size of the second partition; the size of the first is then \c std::distance(first,last)-second_partition_size
+  // clang-format on
+  explicit BipartitePermutation(vector<index_type>&& a,
+                                index_type second_partition_size = 0)
+      : Permutation(std::move(a)), second_size_(second_partition_size) {}
+
+  /// \return reference to the first partition
+  /// \note the partition object is computed on the first invocation and
+  /// memoized
+  const Permutation& first() const {
+    first_ = Permutation{this->begin(), this->begin() + first_size()};
+    return first_;
+  }
+  /// \return reference to the second partition
+  /// \note the partition object is computed on the first invocation and
+  /// memoized
+  const Permutation& second() const {
+    const auto n_first = first_size();
+    vector<index_type> temp(second_size());
+    for (auto i = n_first; i < dim(); ++i) temp[i - n_first] = p_[i] - n_first;
+    second_ = Permutation(temp.begin(), temp.end());
+    return second_;
+  }
+
+  /// \return the size of the first partition
+  index_type first_size() const { return this->dim() - second_size_; }
+
+  /// \return the size of the second partition
+  index_type second_size() const { return second_size_; }
+
+  /// Serialize permutation
+
+  /// MADNESS compatible serialization function
+  /// \tparam Archive The serialization archive type
+  /// \param[in,out] ar The serialization archive
+  template <typename Archive>
+  void serialize(Archive& ar) {
+    ar& static_cast<Permutation&>(*this) & second_size_;
+    if constexpr (madness::archive::is_input_archive<Archive>::value) {
+      first_ = {};
+      second_ = {};
+    }
+  }
+
+ private:
+  /// The size of the second partition
+  index_type second_size_ = 0;
+
+  mutable Permutation first_;
+  mutable Permutation second_;
+};
+
+inline auto inner(const Permutation& p) {
+  abort();
+  return Permutation{};
+}
+
+inline const auto& outer(const Permutation& p) { return p; }
+
+inline auto inner_dim(const Permutation& p) {
+  abort();
+  return 0;
+}
+
+inline auto outer_dim(const Permutation& p) { return p.dim(); }
+
+inline auto inner(const BipartitePermutation& p) { return p.second(); }
+
+inline auto outer(const BipartitePermutation& p) { return p.first(); }
+
+inline auto inner_dim(const BipartitePermutation& p) { return p.second_size(); }
+
+inline auto outer_dim(const BipartitePermutation& p) { return p.first_size(); }
 
 }  // namespace TiledArray
 

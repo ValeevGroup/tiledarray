@@ -26,21 +26,22 @@
 #ifndef TILEDARRAY_TILE_INTERFACE_PERMUTE_H__INCLUDED
 #define TILEDARRAY_TILE_INTERFACE_PERMUTE_H__INCLUDED
 
+#include "../tensor/type_traits.h"
 #include "../tile_interface/cast.h"
 #include "../type_traits.h"
 
 namespace TiledArray {
 
-class Permutation;
-
 /// Create a permuted copy of \c arg
 
 /// \tparam Arg The tile argument type
+/// \tparam Perm A permutation type
 /// \param arg The tile argument to be permuted
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ arg</tt>
-template <typename Arg>
-inline auto permute(const Arg& arg, const Permutation& perm) {
+template <typename Arg, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline auto permute(const Arg& arg, const Perm& perm) {
   return arg.permute(perm);
 }
 
@@ -62,7 +63,7 @@ struct permute_trait {
 
 template <typename Arg>
 struct permute_trait<Arg, typename std::enable_if<TiledArray::detail::is_type<
-                              result_of_permute_t<Arg> >::value>::type> {
+                              result_of_permute_t<Arg>>::value>::type> {
   typedef result_of_permute_t<Arg> type;
 };
 
@@ -81,11 +82,11 @@ class Permute {
 
 template <typename Result, typename Arg>
 class Permute<Result, Arg,
-              typename std::enable_if<!std::is_same<
-                  Result, result_of_permute_t<Arg> >::value>::type>
-    : public TiledArray::Cast<Result, result_of_permute_t<Arg> > {
+              typename std::enable_if<
+                  !std::is_same<Result, result_of_permute_t<Arg>>::value>::type>
+    : public TiledArray::Cast<Result, result_of_permute_t<Arg>> {
  private:
-  typedef TiledArray::Cast<Result, result_of_permute_t<Arg> > Cast_;
+  typedef TiledArray::Cast<Result, result_of_permute_t<Arg>> Cast_;
 
  public:
   typedef Result result_type;  ///< Result tile type

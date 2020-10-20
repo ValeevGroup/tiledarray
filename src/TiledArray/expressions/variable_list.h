@@ -20,12 +20,12 @@
 #ifndef TILEDARRAY_EXPRESSIONS_VARIABLE_LIST_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_VARIABLE_LIST_H__INCLUDED
 
-#include "TiledArray/permutation.h"
-#include "TiledArray/util/annotation.h"
 #include <algorithm>
 #include <iosfwd>
 #include <set>
 #include <string>
+#include "TiledArray/permutation.h"
+#include "TiledArray/util/annotation.h"
 
 namespace TiledArray {
 namespace expressions {
@@ -89,7 +89,7 @@ void find_common(InIter1 first1, const InIter1 last1, InIter2 first2,
 }
 
 template <typename VarLeft, typename VarRight>
-inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
+inline BipartitePermutation var_perm(const VarLeft& l, const VarRight& r) {
   using std::size;
   TA_ASSERT(size(l) == size(r));
   TA_ASSERT(l.outer_dim() == r.outer_dim());
@@ -103,14 +103,13 @@ inline Permutation var_perm(const VarLeft& l, const VarRight& r) {
     *it = std::distance(begin(l), lit);
   }
   // Make sure this permutation doesn't mix outer and inner tensors
-  if(l.is_tot()){
+  if (l.is_tot()) {
     auto outer_dim = l.outer_dim();
-    for(decltype(outer_dim) i = 0; i < outer_dim; ++i)
+    for (decltype(outer_dim) i = 0; i < outer_dim; ++i)
       TA_ASSERT(a[i] < outer_dim);
-    for(auto i = outer_dim; i < a.size(); ++i)
-      TA_ASSERT(a[i] >= outer_dim);
+    for (auto i = outer_dim; i < a.size(); ++i) TA_ASSERT(a[i] >= outer_dim);
   }
-  return Permutation(std::move(a), l.inner_dim());
+  return BipartitePermutation(std::move(a), l.inner_dim());
 }
 }  // namespace detail
 
@@ -188,8 +187,8 @@ class VariableList {
   ///                              guarantee.
   /// \throw std::bad_alloc if there is insufficient memory to tokenize \c vars
   ///                       and store the result. Strong throw guarantee.
-  explicit VariableList(const_reference vars) :
-    VariableList(TiledArray::detail::split_index(vars)) {}
+  explicit VariableList(const_reference vars)
+      : VariableList(TiledArray::detail::split_index(vars)) {}
 
   /// Creates a new VariableList instance by deep-copying \c other
   ///
@@ -408,7 +407,6 @@ class VariableList {
   /// \throw None No throw guarantee.
   size_type inner_dim() const { return n_inner_; }
 
-
   VariableList outer_vars() const {
     return VariableList(container_type(begin(), begin() + outer_dim()),
                         container_type{});
@@ -454,7 +452,6 @@ class VariableList {
   ///                       resulting string. Strong throw guarantee.
   explicit operator value_type() const;
 
-
   /// Swaps the current instance's state with that of \c other
   ///
   /// \param[in] other The instance to swap state with. After this operation,
@@ -486,7 +483,7 @@ class VariableList {
   ///                              guarantee.
   template <typename V,
             typename = std::enable_if_t<TiledArray::detail::is_range_v<V>>>
-  Permutation permutation(const V& other) const {
+  BipartitePermutation permutation(const V& other) const {
     return detail::var_perm(*this, other);
   }
 
@@ -495,21 +492,19 @@ class VariableList {
   /// \return \c true if all variable in this variable list are in \c other,
   /// otherwise \c false.
   bool is_permutation(const VariableList& other) const {
-    if(other.dim() != dim()) return false;
+    if (other.dim() != dim()) return false;
     return std::is_permutation(begin(), end(), other.begin());
   }
 
   /// Constructor implementing VariableList(const value_type&)
-  template<typename OuterType, typename InnerType>
+  template <typename OuterType, typename InnerType>
   VariableList(OuterType&& outer, InnerType&& inner);
 
  private:
   /// Used to unpack the std::pair resulting from split_index
-  template<typename First, typename Second>
-  explicit VariableList(const std::pair<First, Second>& tot_idx):
-      VariableList(tot_idx.first, tot_idx.second){}
-
-
+  template <typename First, typename Second>
+  explicit VariableList(const std::pair<First, Second>& tot_idx)
+      : VariableList(tot_idx.first, tot_idx.second) {}
 
   /// The number of inner indices
   size_type n_inner_ = 0;
@@ -524,10 +519,10 @@ class VariableList {
 };  // class VariableList
 
 /// Returns a set of each annotation found in at least one of the variable lists
-template<typename T, typename...Args>
-auto all_annotations(T&& v, Args&&...args) {
+template <typename T, typename... Args>
+auto all_annotations(T&& v, Args&&... args) {
   std::set<std::string> rv;
-  if constexpr(sizeof...(Args) > 0) {
+  if constexpr (sizeof...(Args) > 0) {
     rv = all_annotations(std::forward<Args>(args)...);
   }
   rv.insert(v.begin(), v.end());
@@ -535,35 +530,33 @@ auto all_annotations(T&& v, Args&&...args) {
 }
 
 /// Returns the set of annotations found in all of the variable lists
-template<typename T, typename...Args>
-auto common_annotations(T&& v, Args&&...args) {
+template <typename T, typename... Args>
+auto common_annotations(T&& v, Args&&... args) {
   std::set<std::string> rv;
-  if constexpr(sizeof...(Args)) {
+  if constexpr (sizeof...(Args)) {
     rv = common_annotations(std::forward<Args>(args)...);
     // Remove all annotations not found in v
     decltype(rv) buffer(rv);
     for (const auto& x : buffer)
       if (!v.count(x)) rv.erase(x);
-  }
-  else{
+  } else {
     // Initialize rv to all annotations in v
     rv.insert(v.begin(), v.end());
   }
   return rv;
 }
 
-template<typename...Args>
-auto bound_annotations(const VariableList& out, Args&&...args){
+template <typename... Args>
+auto bound_annotations(const VariableList& out, Args&&... args) {
   // Get all indices in the input tensors
   auto rv = all_annotations(std::forward<Args>(args)...);
 
   // Remove those found in the output tensor
   decltype(rv) buffer(rv);
-  for(const auto& x : buffer)
-    if(out.count(x)) rv.erase(x);
+  for (const auto& x : buffer)
+    if (out.count(x)) rv.erase(x);
   return rv;
 }
-
 
 /// Exchange the content of the two variable lists.
 inline void swap(VariableList& v0, VariableList& v1) { v0.swap(v1); }
@@ -612,29 +605,29 @@ inline std::ostream& operator<<(std::ostream& out, const VariableList& v) {
 
 inline auto VariableList::modes(const std::string& x) const {
   std::vector<size_type> rv;
-  for(size_type i = 0; i < dim(); ++i)
-    if((*this)[i] == x) rv.push_back(i);
+  for (size_type i = 0; i < dim(); ++i)
+    if ((*this)[i] == x) rv.push_back(i);
   return rv;
 }
 
 inline VariableList::operator value_type() const {
   value_type result;
-  for(size_type i = 0; i < dim(); ++i){
-    if(i == outer_dim()) result += ";";
-    else if(i > 0) result += ",";
+  for (size_type i = 0; i < dim(); ++i) {
+    if (i == outer_dim())
+      result += ";";
+    else if (i > 0)
+      result += ",";
     result += at(i);
   }
 
   return result;
 }
 
-template<typename OuterType, typename InnerType>
-inline VariableList::VariableList(OuterType&& outer,
-                          InnerType&& inner):
-    n_inner_(inner.size()), vars_(outer.size() + inner.size()) {
-  for(size_type i = 0; i < outer.size(); ++i)
-    vars_[i] = outer[i];
-  for(size_type i = 0; i < inner.size(); ++i)
+template <typename OuterType, typename InnerType>
+inline VariableList::VariableList(OuterType&& outer, InnerType&& inner)
+    : n_inner_(inner.size()), vars_(outer.size() + inner.size()) {
+  for (size_type i = 0; i < outer.size(); ++i) vars_[i] = outer[i];
+  for (size_type i = 0; i < inner.size(); ++i)
     vars_[i + outer.size()] = inner[i];
 }
 

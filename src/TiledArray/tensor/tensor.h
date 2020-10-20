@@ -20,18 +20,19 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 
-#include "TiledArray/tile_interface/permute.h"
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/complex.h"
 #include "TiledArray/tensor/kernels.h"
-#include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/tile_interface/clone.h"
+#include "TiledArray/tile_interface/permute.h"
+#include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/util/logger.h"
 namespace TiledArray {
 
 // Forward declare Tensor for type traits
-template<typename T, typename A> class Tensor;
+template <typename T, typename A>
+class Tensor;
 
 namespace detail {
 
@@ -39,8 +40,7 @@ namespace detail {
 template <typename T, typename A>
 struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
 
-} // namespace detail
-
+}  // namespace detail
 
 /// An N-dimensional tensor object
 
@@ -233,13 +233,25 @@ class Tensor {
   /// \tparam T1 A tensor type
   /// \param other The tensor to be copied
   /// \param perm The permutation that will be applied to the copy
-  template <typename T1,
-            typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
-  Tensor(const T1& other, const Permutation& perm)
-      : pimpl_(std::make_shared<Impl>(perm * other.range())) {
+  template <
+      typename T1, typename Perm,
+      typename std::enable_if<is_tensor<T1>::value &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  Tensor(const T1& other, const Perm& perm)
+      : pimpl_(std::make_shared<Impl>(outer(perm) * other.range())) {
     auto op = [](const numeric_t<T1> arg) -> numeric_t<T1> { return arg; };
 
     detail::tensor_init(op, perm, *this, other);
+
+    // If we actually have a ToT the inner permutation was not applied above so
+    // we do that now
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
+    if constexpr (is_tot) {
+      if (inner_dim(perm) == 0) return;
+      auto inner_perm = inner(perm);
+      Permute<value_type, value_type> p;
+      for (auto& x : *this) x = p(x, inner_perm);
+    }
   }
 
   /// Copy and modify the data from \c other
@@ -249,10 +261,11 @@ class Tensor {
   /// \param other The tensor argument
   /// \param op The element-wise operation
   template <typename T1, typename Op,
-            typename std::enable_if<is_tensor<T1>::value &&
-                                    !std::is_same<typename std::decay<Op>::type,
-                                                  Permutation>::value>::type* =
-                nullptr>
+            typename std::enable_if_t<
+                is_tensor<T1>::value &&
+                (!std::is_same_v<typename std::decay<Op>::type, Permutation> &&
+                 !std::is_same_v<typename std::decay<Op>::type,
+                                 BipartitePermutation>)>* = nullptr>
   Tensor(const T1& other, Op&& op)
       : pimpl_(std::make_shared<Impl>(detail::clone_range(other))) {
     detail::tensor_init(op, *this, other);
@@ -264,11 +277,22 @@ class Tensor {
   /// \tparam Op An element-wise operation type
   /// \param other The tensor argument
   /// \param op The element-wise operation
-  template <typename T1, typename Op,
-            typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
-  Tensor(const T1& other, Op&& op, const Permutation& perm)
-      : pimpl_(std::make_shared<Impl>(perm * other.range())) {
+  template <
+      typename T1, typename Op, typename Perm,
+      typename std::enable_if_t<is_tensor<T1>::value &&
+                                detail::is_permutation_v<Perm>>* = nullptr>
+  Tensor(const T1& other, Op&& op, const Perm& perm)
+      : pimpl_(std::make_shared<Impl>(outer(perm) * other.range())) {
     detail::tensor_init(op, perm, *this, other);
+    // If we actually have a ToT the inner permutation was not applied above so
+    // we do that now
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
+    if constexpr (is_tot) {
+      if (inner_dim(perm) == 0) return;
+      auto inner_perm = inner(perm);
+      Permute<value_type, value_type> p;
+      for (auto& x : *this) x = p(x, inner_perm);
+    }
   }
 
   /// Copy and modify the data from \c left, and \c right
@@ -295,20 +319,21 @@ class Tensor {
   /// \param right The right-hand tensor argument
   /// \param op The element-wise operation
   /// \param perm The permutation that will be applied to the arguments
-  template <typename T1, typename T2, typename Op,
-            typename std::enable_if<is_tensor<T1, T2>::value>::type* = nullptr>
-  Tensor(const T1& left, const T2& right, Op&& op, const Permutation& perm)
-      : pimpl_(std::make_shared<Impl>(perm.outer_permutation() * left.range())) {
+  template <
+      typename T1, typename T2, typename Op, typename Perm,
+      typename std::enable_if<is_tensor<T1, T2>::value &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  Tensor(const T1& left, const T2& right, Op&& op, const Perm& perm)
+      : pimpl_(std::make_shared<Impl>(outer(perm) * left.range())) {
     detail::tensor_init(op, perm, *this, left, right);
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
-    if constexpr(is_tot){
-      if( perm.inner_dim() == 0) return;
-      auto inner_perm = perm.inner_permutation();
+    if constexpr (is_tot) {
+      if (inner_dim(perm) == 0) return;
+      auto inner_perm = inner(perm);
       Permute<value_type, value_type> p;
-      for(auto& x : *this)
-        x = p(x, inner_perm);
+      for (auto& x : *this) x = p(x, inner_perm);
     }
   }
 
@@ -802,21 +827,21 @@ class Tensor {
 
   /// \param perm The permutation to be applied to this tensor
   /// \return A permuted copy of this tensor
-  Tensor_ permute(const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  Tensor_ permute(const Perm& perm) const {
     static constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
-    if constexpr (!is_tot){
+    if constexpr (!is_tot) {
       return Tensor_(*this, perm);
-    }
-    else {
+    } else {
       // If we have a ToT we need to apply the permutation in two steps. The
       // first step is identical to the non-ToT case (permute the outer modes)
       // the second step does the inner modes
-      auto inner_perm = perm.inner_permutation();
-      Tensor_ rv(*this, perm.outer_permutation());
-      if(inner_perm == Permutation::identity(inner_perm.dim()))
-        return rv;
+      auto inner_perm = inner(perm);
+      Tensor_ rv(*this, outer(perm));
+      if (inner_perm == Permutation::identity(inner_perm.dim())) return rv;
       Permute<value_type, value_type> p;
-      for(auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
+      for (auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
       return rv;
     }
   }
@@ -875,10 +900,9 @@ class Tensor {
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   Tensor_ binary(const Right& right, Op&& op, const Permutation& perm) const {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
-    if(!is_tot) {
+    if (!is_tot) {
       return Tensor_(*this, right, op, perm);
-    }
-    else{
+    } else {
       // AFAIK the other branch fundamentally relies on raw pointer arithmetic,
       // which won't work for ToTs.
       auto temp = binary(right, std::forward<Op>(op));
@@ -1713,8 +1737,8 @@ class Tensor {
   }
 
   template <typename U, typename AU, typename V,
-      typename std::enable_if<detail::is_tensor_of_tensor<
-          Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
+            typename std::enable_if<detail::is_tensor_of_tensor<
+                Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
   Tensor_ gemm(const Tensor<U, AU>& other, const V factor,
                const math::GemmHelper& gemm_helper) const {
     TA_ASSERT("ToT contraction is NYI");
@@ -1722,10 +1746,10 @@ class Tensor {
   }
 
   template <typename U, typename AU, typename V, typename AV, typename W,
-      typename std::enable_if<detail::is_tensor_of_tensor<
-          Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
+            typename std::enable_if<detail::is_tensor_of_tensor<
+                Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
   Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
-                const W factor, const math::GemmHelper& gemm_helper){
+                const W factor, const math::GemmHelper& gemm_helper) {
     TA_ASSERT("ToT contraction is NYI");
     return *this;
   }
@@ -1737,9 +1761,11 @@ class Tensor {
   /// tensor.
   /// \return The trace of this tensor
   /// \throw TiledArray::Exception When this tensor is empty.
-  template<typename TileType = Tensor_,
-           typename = detail::enable_if_trace_is_defined_t<TileType>>
-  decltype(auto) trace() const { return TiledArray::trace(*this); }
+  template <typename TileType = Tensor_,
+            typename = detail::enable_if_trace_is_defined_t<TileType>>
+  decltype(auto) trace() const {
+    return TiledArray::trace(*this);
+  }
 
   /// Unary reduction operation
 
@@ -1934,7 +1960,7 @@ namespace detail {
 template <typename T, typename A>
 struct Trace<Tensor<T, A>, detail::enable_if_numeric_t<T>> {
   decltype(auto) operator()(const Tensor<T>& t) const {
-    using size_type  = typename Tensor<T>::size_type;
+    using size_type = typename Tensor<T>::size_type;
     using value_type = typename Tensor<T>::value_type;
     const auto range = t.range();
 

@@ -75,7 +75,7 @@ class ExprEngine : private NO_DEFAULTS {
   bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
                         ///< tile)
   /// The permutation that will be applied to the outer tensor of tensors
-  Permutation perm_;
+  BipartitePermutation perm_;
   trange_type trange_;  ///< The tiled range of the result tensor
   shape_type shape_;    ///< The shape of the result tensor
   std::shared_ptr<pmap_interface>
@@ -149,9 +149,10 @@ class ExprEngine : private NO_DEFAULTS {
     if (target_vars != vars_) {
       auto temp_perm = derived().make_perm(target_vars);
       const auto inner_dim = target_vars.inner_dim();
-      perm_ = Permutation(temp_perm.begin(), temp_perm.end(), inner_dim);
-      trange_ = derived().make_trange(perm_.outer_permutation());
-      shape_ = derived().make_shape(perm_.outer_permutation());
+      perm_ =
+          BipartitePermutation(temp_perm.begin(), temp_perm.end(), inner_dim);
+      trange_ = derived().make_trange(outer(perm_));
+      shape_ = derived().make_shape(outer(perm_));
     } else {
       trange_ = derived().make_trange();
       shape_ = derived().make_shape();
@@ -185,7 +186,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// This function will generate the permutation that will be applied to
   /// the result tensor. Derived classes may customize this function by
   /// providing their own implementation it.
-  Permutation make_perm(const VariableList& target_vars) const {
+  BipartitePermutation make_perm(const VariableList& target_vars) const {
     return target_vars.permutation(vars_);
   }
 
@@ -223,7 +224,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// Permutation accessor
 
   /// \return A const reference to the permutation
-  const Permutation& perm() const { return perm_; }
+  const BipartitePermutation& perm() const { return perm_; }
 
   /// Tiled range accessor
 

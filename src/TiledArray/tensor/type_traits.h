@@ -47,6 +47,13 @@ class Tensor;
 template <typename>
 class Tile;
 
+class Permutation;
+class BipartitePermutation;
+
+namespace symmetry {
+class Permutation;
+}
+
 namespace detail {
 
 // Forward declarations
@@ -248,6 +255,41 @@ template <typename T, typename Op>
 struct is_cuda_tile<LazyArrayTile<T, Op>>
     : public is_cuda_tile<typename LazyArrayTile<T, Op>::eval_type> {};
 #endif
+
+template <typename Tensor, typename Enabler = void>
+struct default_permutation;
+
+template <typename Tensor>
+struct default_permutation<Tensor,
+                           std::enable_if_t<!is_tensor_of_tensor_v<Tensor>>> {
+  using type = TiledArray::Permutation;
+};
+
+template <typename Tensor>
+struct default_permutation<Tensor,
+                           std::enable_if_t<is_tensor_of_tensor_v<Tensor>>> {
+  using type = TiledArray::BipartitePermutation;
+};
+
+template <typename Tensor>
+using default_permutation_t = typename default_permutation<Tensor>::type;
+
+template <typename T, typename Enabler = void>
+struct is_permutation : public std::false_type {};
+
+template <>
+struct is_permutation<TiledArray::Permutation> : public std::true_type {};
+
+template <>
+struct is_permutation<TiledArray::BipartitePermutation>
+    : public std::true_type {};
+
+template <>
+struct is_permutation<TiledArray::symmetry::Permutation>
+    : public std::true_type {};
+
+template <typename T>
+static constexpr const auto is_permutation_v = is_permutation<T>::value;
 
 }  // namespace detail
 }  // namespace TiledArray

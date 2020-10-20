@@ -28,6 +28,7 @@
 
 #include <TiledArray/math/transpose.h>
 #include <TiledArray/perm_index.h>
+#include <TiledArray/tensor/type_traits.h>
 
 namespace TiledArray {
 namespace detail {
@@ -110,12 +111,12 @@ inline void fuse_dimensions(SizeType* MADNESS_RESTRICT const fused_size,
 /// result tensor given the element pointer and the result value
 /// \param args The data pointers of the tensors to be permuted
 /// \param perm The permutation that will be applied to the copy
-template <typename InputOp, typename OutputOp, typename Result, typename Arg0,
-          typename... Args>
+template <typename InputOp, typename OutputOp, typename Result, typename Perm,
+          typename Arg0, typename... Args,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
 inline void permute(InputOp&& input_op, OutputOp&& output_op, Result& result,
-                    const Permutation& perm, const Arg0& arg0,
-                    const Args&... args) {
-  detail::PermIndex perm_index_op(arg0.range(), perm.outer_permutation());
+                    const Perm& perm, const Arg0& arg0, const Args&... args) {
+  detail::PermIndex perm_index_op(arg0.range(), outer(perm));
 
   // Cache constants
   const unsigned int ndim = arg0.range().rank();

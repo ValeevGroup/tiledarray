@@ -257,17 +257,32 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
 /// The expected signature of the input operations is:
 /// \code
 /// Result::value_type op(const T1::value_type::value_type, const
-/// Ts::value_type::value_type...) \endcode The expected signature of the output
-/// operations is: \code void op(TR::value_type::value_type*, const
-/// TR::value_type::value_type) \endcode \tparam InputOp The input operation
-/// type \tparam OutputOp The output operation type \tparam TR The result tensor
-/// type \tparam T1 The first argument tensor type \tparam Ts The remaining
-/// argument tensor types \param[in] input_op The operation that is used to
-/// generate the output value from the input arguments \param[in] output_op The
+/// Ts::value_type::value_type...)
+/// \endcode
+/// The expected signature of the output
+/// operations is:
+/// \code void op(TR::value_type::value_type*, const
+/// TR::value_type::value_type)
+/// \endcode
+/// \tparam InputOp The input operation
+/// type
+/// \tparam OutputOp The output operation type
+/// \tparam TR The result tensor
+/// type
+/// \tparam T1 The first argument tensor type
+/// \tparam Ts The remaining
+/// argument tensor types
+/// \param[in] input_op The operation that is used to
+/// generate the output value from the input arguments
+/// \param[in] output_op The
 /// operation that is used to set the value of the result tensor given the
-/// element pointer and the result value \param[in] perm The permutation applied
-/// to the argument tensors \param[in,out] result The result tensor \param[in]
-/// tensor1 The first argument tensor \param[in] tensors The remaining argument
+/// element pointer and the result value
+/// \param[in] perm The permutation applied
+/// to the argument tensors
+/// \param[in,out] result The result tensor
+/// \param[in]
+/// tensor1 The first argument tensor
+/// \param[in] tensors The remaining argument
 /// tensors
 template <typename InputOp, typename OutputOp, typename TR, typename T1,
           typename... Ts,
@@ -283,13 +298,13 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
   TA_ASSERT(perm);
   TA_ASSERT(perm.dim() == tensor1.range().rank());
 
-  auto wrapper_input_op = [&input_op](
-      typename T1::const_reference MADNESS_RESTRICT value1,
-      typename Ts::const_reference MADNESS_RESTRICT... values) ->
+  auto wrapper_input_op =
+      [&input_op](typename T1::const_reference MADNESS_RESTRICT value1,
+                  typename Ts::const_reference MADNESS_RESTRICT... values) ->
       typename T1::value_type {
-    return tensor_op<TR::value_type>(std::forward<InputOp>(input_op), value1,
-                                     values...);
-  };
+        return tensor_op<TR::value_type>(std::forward<InputOp>(input_op),
+                                         value1, values...);
+      };
 
   auto wrapper_output_op =
       [&output_op](typename T1::pointer MADNESS_RESTRICT const result_value,
@@ -351,8 +366,9 @@ inline void inplace_tensor_op(Op&& op, TR& result, const Ts&... tensors) {
   const auto volume = result.range().volume();
 
   auto inplace_tensor_range =
-      [&op, stride](typename TR::pointer MADNESS_RESTRICT const result_data,
-            typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
+      [&op, stride](
+          typename TR::pointer MADNESS_RESTRICT const result_data,
+          typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
           inplace_tensor_op(op, result_data[i], tensors_data[i]...);
       };
@@ -398,8 +414,10 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// Initialize tensor of tensors with contiguous tensor arguments
 
 /// This function initializes the \c i -th element of \c result with the result
-/// of \c op(tensors[i]...) \pre The memory of \c tensor1 has been allocated but
-/// not initialized. \tparam Op The element initialization operation type
+/// of \c op(tensors[i]...)
+/// \pre The memory of \c tensor1 has been allocated but
+/// not initialized.
+/// \tparam Op The element initialization operation type
 /// \tparam TR The result tensor type
 /// \tparam Ts The argument tensor types
 /// \param[in] op The result tensor element initialization operation
@@ -424,27 +442,38 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// Initialize tensor with permuted tensor arguments
 
 /// This function initializes the \c i -th element of \c result with the result
-/// of \c op(tensor1[i], tensors[i]...) \pre The memory of \c result has been
-/// allocated but not initialized. \tparam Op The element initialization
-/// operation type \tparam TR The result tensor type \tparam T1 The first
-/// argument tensor type \tparam Ts The argument tensor types \param[in] op The
-/// result tensor element initialization operation \param[in] perm The
-/// permutation that will be applied to tensor2 \param[out] result The result
-/// tensor \param[in] tensor1 The first argument tensor \param[in] tensors The
+/// of \c op(tensor1[i], tensors[i]...)
+/// \pre The memory of \c result has been
+/// allocated but not initialized.
+/// \tparam Op The element initialization
+/// operation type
+/// \tparam Perm A permutation type
+/// \tparam TR The result tensor type
+/// \tparam T1 The first
+/// argument tensor type
+/// \tparam Ts The argument tensor types
+/// \param[in] op The
+/// result tensor element initialization operation
+/// \param[in] perm The
+/// permutation that will be applied to tensor2
+/// \param[out] result The result
+/// tensor
+/// \param[in] tensor1 The first argument tensor
+/// \param[in] tensors The
 /// argument tensors
-template <typename Op, typename TR, typename T1, typename... Ts,
-          typename std::enable_if<
-              is_tensor<TR, T1, Ts...>::value &&
-              is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
-inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
+template <typename Op, typename Perm, typename TR, typename T1, typename... Ts,
+          typename std::enable_if<is_tensor<TR, T1, Ts...>::value &&
+                                  is_contiguous_tensor<TR, T1, Ts...>::value &&
+                                  is_permutation_v<Perm>>::type* = nullptr>
+inline void tensor_init(Op&& op, const Perm& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
-  TA_ASSERT(is_range_set_congruent(perm.outer_permutation(), result, tensor1, tensors...));
+  TA_ASSERT(is_range_set_congruent(outer(perm), result, tensor1, tensors...));
   TA_ASSERT(perm);
-  TA_ASSERT(perm.outer_dim() == result.range().rank());
+  TA_ASSERT(outer_dim(perm) == result.range().rank());
 
   auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
-                       typename TR::const_reference MADNESS_RESTRICT temp) {
+                      typename TR::const_reference MADNESS_RESTRICT temp) {
     new (result) typename TR::value_type(temp);
   };
 
@@ -458,6 +487,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 /// of \c op(tensor1[i], tensors[i]...) \pre The memory of \c result has been
 /// allocated but not initialized.
 /// \tparam Op The element initialization operation type
+/// \tparam Perm A permutation type
 /// \tparam TR The result tensor type
 /// \tparam T1 The first argument tensor type
 /// \tparam Ts The argument tensor types
@@ -466,28 +496,28 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 /// \param[out] result The result tensor
 /// \param[in] tensor1 The first argument tensor
 /// \param[in] tensors The argument tensors
-template <typename Op, typename TR, typename T1, typename... Ts,
-          typename std::enable_if<
-              is_tensor_of_tensor<TR, T1, Ts...>::value &&
-              is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
-inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
+template <typename Op, typename Perm, typename TR, typename T1, typename... Ts,
+          typename std::enable_if<is_tensor_of_tensor<TR, T1, Ts...>::value &&
+                                  is_contiguous_tensor<TR, T1, Ts...>::value &&
+                                  is_permutation_v<Perm>>::type* = nullptr>
+inline void tensor_init(Op&& op, const Perm& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
-  TA_ASSERT(is_range_set_congruent(perm.outer_permutation(), result, tensor1, tensors...));
+  TA_ASSERT(is_range_set_congruent(outer(perm), result, tensor1, tensors...));
   TA_ASSERT(perm);
-  TA_ASSERT(perm.outer_dim() == result.range().rank());
+  TA_ASSERT(outer_dim(perm) == result.range().rank());
 
   auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
                       typename TR::const_reference MADNESS_RESTRICT temp) {
     new (result) typename TR::value_type(temp);
   };
-  auto tensor_input_op = [&op](
-      typename T1::const_reference MADNESS_RESTRICT value1,
-      typename Ts::const_reference MADNESS_RESTRICT... values) ->
+  auto tensor_input_op =
+      [&op](typename T1::const_reference MADNESS_RESTRICT value1,
+            typename Ts::const_reference MADNESS_RESTRICT... values) ->
       typename TR::value_type {
-    return tensor_op<typename TR::value_type>(std::forward<Op>(op), value1,
-                                              values...);
-  };
+        return tensor_op<typename TR::value_type>(std::forward<Op>(op), value1,
+                                                  values...);
+      };
 
   permute(std::move(tensor_input_op), output_op, result, perm, tensor1,
           tensors...);
@@ -496,12 +526,20 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 /// Initialize tensor with one or more non-contiguous tensor arguments
 
 /// This function initializes the \c i -th element of \c result with the result
-/// of \c op(tensor1[i], tensors[i]...) \pre The memory of \c tensor1 has been
-/// allocated but not initialized. \tparam Op The element initialization
-/// operation type \tparam T1 The result tensor type \tparam Ts The argument
-/// tensor types \param[in] op The result tensor element initialization
-/// operation \param[out] result The result tensor \param[in] tensor1 The first
-/// argument tensor \param[in] tensors The argument tensors
+/// of \c op(tensor1[i], tensors[i]...)
+/// \pre The memory of \c tensor1 has been
+/// allocated but not initialized.
+/// \tparam Op The element initialization
+/// operation type
+/// \tparam T1 The result tensor type
+/// \tparam Ts The argument
+/// tensor types
+/// \param[in] op The result tensor element initialization
+/// operation
+/// \param[out] result The result tensor
+/// \param[in] tensor1 The first
+/// argument tensor
+/// \param[in] tensors The argument tensors
 template <
     typename Op, typename TR, typename T1, typename... Ts,
     typename std::enable_if<
@@ -516,8 +554,8 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   const auto volume = tensor1.range().volume();
 
   auto wrapper_op = [&op](typename TR::pointer MADNESS_RESTRICT result_ptr,
-                        const typename T1::value_type value1,
-                        const typename Ts::value_type... values) {
+                          const typename T1::value_type value1,
+                          const typename Ts::value_type... values) {
     new (result_ptr) typename T1::value_type(op(value1, values...));
   };
 
@@ -530,12 +568,20 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
 /// Initialize tensor with one or more non-contiguous tensor arguments
 
 /// This function initializes the \c i -th element of \c result with the result
-/// of \c op(tensor1[i],tensors[i]...) \pre The memory of \c tensor1 has been
-/// allocated but not initialized. \tparam Op The element initialization
-/// operation type \tparam T1 The result tensor type \tparam Ts The argument
-/// tensor types \param[in] op The result tensor element initialization
-/// operation \param[out] result The result tensor \param[in] tensor1 The first
-/// argument tensor \param[in] tensors The argument tensors
+/// of \c op(tensor1[i],tensors[i]...)
+/// \pre The memory of \c tensor1 has been
+/// allocated but not initialized.
+/// \tparam Op The element initialization
+/// operation type
+/// \tparam T1 The result tensor type
+/// \tparam Ts The argument
+/// tensor types
+/// \param[in] op The result tensor element initialization
+/// operation
+/// \param[out] result The result tensor
+/// \param[in] tensor1 The first
+/// argument tensor
+/// \param[in] tensors The argument tensors
 template <typename Op, typename TR, typename T1, typename... Ts,
           typename std::enable_if<
               is_tensor_of_tensor<TR, T1, Ts...>::value &&
@@ -550,7 +596,8 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
   const auto volume = tensor1.range().volume();
 
   auto inplace_tensor_range =
-      [&op, stride](typename TR::pointer MADNESS_RESTRICT const result_data,
+      [&op, stride](
+          typename TR::pointer MADNESS_RESTRICT const result_data,
           typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
           typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i)
@@ -575,10 +622,16 @@ inline void tensor_init(Op&& op, TR& result, const T1& tensor1,
 /// &tensors[i]...))</tt> for each \c i in the index range of \c tensor1 . \c
 /// result is initialized to \c identity . If HAVE_INTEL_TBB is defined, the
 /// reduction will be executed in an undefined order, otherwise will execute in
-/// the order of increasing \c i . \tparam ReduceOp The element-wise reduction
-/// operation type \tparam JoinOp The result operation type \tparam Scalar A
-/// scalar type \tparam T1 The first argument tensor type \tparam Ts The
-/// argument tensor types \param reduce_op The element-wise reduction operation
+/// the order of increasing \c i .
+/// \tparam ReduceOp The element-wise reduction
+/// operation type
+/// \tparam JoinOp The result operation type
+/// \tparam Scalar A
+/// scalar type
+/// \tparam T1 The first argument tensor type
+/// \tparam Ts The
+/// argument tensor types
+/// \param reduce_op The element-wise reduction operation
 /// \param identity The initial value for the reduction and the result
 /// \param tensor1 The first tensor to be reduced
 /// \param tensors The other tensors to be reduced
@@ -638,7 +691,8 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
 /// each \c i in the index range of \c tensor1 . \c result is initialized to \c
 /// identity . This will execute serially, in the order of increasing \c i (each
 /// element-wise reduction can however be executed in parallel, depending on the
-/// element type). \tparam ReduceOp The element-wise reduction operation type
+/// element type).
+/// \tparam ReduceOp The element-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
 /// \tparam T1 The first argument tensor type
@@ -678,7 +732,8 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
 /// each \c i in the index range of \c tensor1 . \c result is initialized to \c
 /// identity . This will execute serially, in the order of increasing \c i (each
 /// element-wise reduction can however be executed in parallel, depending on the
-/// element type). \tparam ReduceOp The element-wise reduction operation type
+/// element type).
+/// \tparam ReduceOp The element-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
 /// \tparam T1 The first argument tensor type
@@ -748,7 +803,8 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op,
   const auto volume = tensor1.range().volume();
 
   auto tensor_reduce_range =
-      [&reduce_op, &join_op, &identity, stride](Scalar& MADNESS_RESTRICT result,
+      [&reduce_op, &join_op, &identity, stride](
+          Scalar& MADNESS_RESTRICT result,
           typename T1::const_pointer MADNESS_RESTRICT const tensor1_data,
           typename Ts::const_pointer MADNESS_RESTRICT const... tensors_data) {
         for (decltype(result.range().volume()) i = 0ul; i < stride; ++i) {
