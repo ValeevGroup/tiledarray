@@ -665,16 +665,6 @@ using result_of_gemm_t = decltype(gemm(std::declval<T>()...));
 
 // Reduction operations ------------------------------------------------------
 
-/// Sum the hyper-diagonal elements a tile
-
-/// \tparam Arg The tile argument type
-/// \param arg The argument to be summed
-/// \return The sum of the hyper-diagonal elements of \c arg
-//template <typename Arg>
-//inline auto trace(const Arg& arg) {
-//  return arg.trace();
-//}
-
 /// Sum the elements of a tile
 
 /// \tparam Arg The tile argument type
@@ -790,9 +780,6 @@ template <typename Left, typename Right>
 inline auto inner_product(const Left& left, const Right& right) {
   return left.inner_product(right);
 }
-
-//template <typename T>
-//using result_of_trace_t = decltype(mult(std::declval<T>()));
 
 template <typename T>
 using result_of_sum_t = decltype(sum(std::declval<T>()));

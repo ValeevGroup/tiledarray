@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_defined, TileType, trace_is_defined){
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_SUITE(reslt_of_trace_t)
+BOOST_AUTO_TEST_SUITE(result_of_trace_t_helper)
 
 /* This should not compile
 BOOST_AUTO_TEST_CASE_TEMPLATE(not_defined, TileType, trace_not_defined){

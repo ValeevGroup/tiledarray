@@ -1,4 +1,5 @@
 #include "tot_array_fixture.h"
+#include "TiledArray/expressions/contraction_helpers.h"
 
 //------------------------------------------------------------------------------
 //                            Permutations
@@ -2084,8 +2085,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vov_inner_contraction, TestParam, test_params){
   tensor_type<TestParam> lhs(m_world, lhs_il);
   tensor_type<TestParam> rhs(m_world, rhs_il);
   tensor_type<TestParam> result;
-  //einsum(result("i"), lhs("i;j"), rhs("i;j"));
-  //BOOST_CHECK(are_equal(result, corr));
+  einsum(result("i"), lhs("i;j"), rhs("i;j"));
+  BOOST_CHECK(are_equal(result, corr));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
