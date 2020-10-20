@@ -5,6 +5,7 @@
 #include "unit_test_config.h"
 
 #include "TiledArray/algebra/lapack/chol.h"
+#include "TiledArray/algebra/lapack/heig.h"
 #include "TiledArray/algebra/scalapack/all.h"
 
 using namespace TiledArray::scalapack;
@@ -376,16 +377,24 @@ BOOST_AUTO_TEST_CASE(sca_heig_same_tiling) {
       });
 
   auto [evals, evecs] = heig(ref_ta);
+  auto [evals_lapack, evecs_lapack] = lapack::heig(ref_ta);
   // auto evals = heig( ref_ta );
 
   BOOST_CHECK(evecs.trange() == ref_ta.trange());
 
-  // TODO: Check validity of eigenvectors, not crutial for the time being
+  // check eigenvectors against lapack only, for now ...
+  decltype(evecs) evecs_error;
+  evecs_error("i,j") = evecs_lapack("i,j") - evecs("i,j");
+  // TODO need to fix phases of the eigenvectors to be able to compare ...
+  // BOOST_CHECK_SMALL(evecs_error("i,j").norm().get(),
+  //                  N * N * std::numeric_limits<double>::epsilon());
 
   // Check eigenvalue correctness
   double tol = N * N * std::numeric_limits<double>::epsilon();
-  for (int64_t i = 0; i < N; ++i)
+  for (int64_t i = 0; i < N; ++i) {
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
+    BOOST_CHECK_SMALL(std::abs(evals_lapack[i] - exact_evals[i]), tol);
+  }
 
   GlobalFixture::world->gop.fence();
 }
@@ -404,15 +413,23 @@ BOOST_AUTO_TEST_CASE(sca_heig_diff_tiling) {
 
   auto new_trange = gen_trange(N, {64ul});
   auto [evals, evecs] = heig(ref_ta, new_trange, 128);
+  auto [evals_lapack, evecs_lapack] = lapack::heig(ref_ta, new_trange);
 
   BOOST_CHECK(evecs.trange() == new_trange);
 
-  // TODO: Check validity of eigenvectors, not crutial for the time being
+  // check eigenvectors against lapack only, for now ...
+  decltype(evecs) evecs_error;
+  evecs_error("i,j") = evecs_lapack("i,j") - evecs("i,j");
+  // TODO need to fix phases of the eigenvectors to be able to compare ...
+  // BOOST_CHECK_SMALL(evecs_error("i,j").norm().get(),
+  //                  N * N * std::numeric_limits<double>::epsilon());
 
   // Check eigenvalue correctness
   double tol = N * N * std::numeric_limits<double>::epsilon();
-  for (int64_t i = 0; i < N; ++i)
+  for (int64_t i = 0; i < N; ++i) {
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
+    BOOST_CHECK_SMALL(std::abs(evals_lapack[i] - exact_evals[i]), tol);
+  }
 
   GlobalFixture::world->gop.fence();
 }

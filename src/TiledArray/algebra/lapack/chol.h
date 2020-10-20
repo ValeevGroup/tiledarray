@@ -24,6 +24,7 @@
 #ifndef TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
 #define TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
 
+#include <TiledArray/algebra/lapack/util.h>
 #include <TiledArray/config.h>
 #include <TiledArray/conversions/eigen.h>
 
@@ -32,23 +33,24 @@ namespace lapack {
 
 namespace detail {
 
-#define MADNESS_DISPATCH_LAPACK_FN(name, args...)                        \
-  if constexpr (std::is_same_v<numeric_type, double>)                    \
-    d##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, float>)                \
-    s##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, std::complex<double>>) \
-    z##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, std::complex<float>>)  \
-    c##name##_(args);                                                    \
-  else                                                                   \
-    std::abort();
+template <typename Scalar, int RowsAtCompileTime, int ColsAtCompileTime,
+          int Options, int MaxRowsAtCompileTime, int MaxColsAtCompileTime>
+void chol_eig(
+    Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                  MaxRowsAtCompileTime, MaxColsAtCompileTime>& A) {
+  using numeric_type = Scalar;
+  char uplo = 'L';
+  integer n = A.rows();
+  numeric_type* a = A.data();
+  integer lda = n;
+  integer info = 0;
+#if defined(MADNESS_LINALG_USE_LAPACKE)
+  MADNESS_DISPATCH_LAPACK_FN(potrf, &uplo, &n, a, &lda, &info);
+#else
+  MADNESS_DISPATCH_LAPACK_FN(potrf, &uplo, &n, a, &lda, &info, sizeof(char));
+#endif
 
-template <typename Tile, typename Policy>
-auto to_eigen(const DistArray<Tile, Policy>& A) {
-  auto A_repl = A;
-  A_repl.make_replicated();
-  return array_to_eigen<Tile, Policy, Eigen::ColMajor>(A_repl);
+  if (info != 0) TA_EXCEPTION("LAPACK::potrf failed");
 }
 
 template <typename Tile, typename Policy>
@@ -62,26 +64,10 @@ auto make_L_eig(const DistArray<Tile, Policy>& A) {
   World& world = A.world();
   auto A_eig = detail::to_eigen(A);
   if (world.rank() == 0) {
-    char uplo = 'L';
-    integer n = A_eig.rows();
-    numeric_type* a = A_eig.data();
-    integer lda = n;
-    integer info = 0;
-#if defined(MADNESS_LINALG_USE_LAPACKE)
-    MADNESS_DISPATCH_LAPACK_FN(potrf, &uplo, &n, a, &lda, &info);
-#else
-    MADNESS_DISPATCH_LAPACK_FN(potrf, &uplo, &n, a, &lda, &info, sizeof(char));
-#endif
-
-    if (info != 0) TA_EXCEPTION("LAPACK::potrf failed");
+    chol_eig(A_eig);
   }
   world.gop.broadcast_serializable(A_eig, 0);
   return A_eig;
-}
-
-template <typename Derived>
-void zero_out_upper_triangle(Eigen::MatrixBase<Derived>& A) {
-  A.template triangularView<Eigen::StrictlyUpper>().setZero();
 }
 
 }  // namespace detail
@@ -95,7 +81,7 @@ void zero_out_upper_triangle(Eigen::MatrixBase<Derived>& A) {
  *
  *  auto L = cholesky(A, ...)
  *
- *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
+ *  @tparam Array a DistArray type (i.e., @c is_array_v<Array> is true)
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
  *  @param[in] l_trange    TiledRange for resulting Cholesky factor. If left
@@ -123,7 +109,7 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
  *  auto Linv     = cholesky_Linv(A, ...)
  *  auto [L,Linv] = cholesky_Linv<decltype(A),true>(A, ...)
  *
- *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
+ *  @tparam Array a DistArray type (i.e., @c is_array_v<Array> is true)
  *  @tparam RetL  Whether or not to return the cholesky factor
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
@@ -132,7 +118,8 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
  *
  *  @returns The inverse lower triangular Cholesky factor in TA format
  */
-template <typename Array, bool RetL = false>
+template <typename Array, bool RetL = false,
+          typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
   World& world = A.world();
   auto L_eig = detail::make_L_eig(A);
@@ -167,7 +154,8 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
     return eigen_to_array<Array>(world, l_trange, L_eig);
 }
 
-template <typename Array>
+template <typename Array,
+          typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
 auto cholesky_solve(const Array& A, const Array& B,
                     TiledRange x_trange = TiledRange()) {
   using numeric_type = typename Array::numeric_type;
@@ -195,7 +183,8 @@ auto cholesky_solve(const Array& A, const Array& B,
   return eigen_to_array<Array>(world, x_trange, X_eig);
 }
 
-template <typename Array>
+template <typename Array,
+          typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
 auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                      TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange()) {
@@ -236,4 +225,4 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
 }  // namespace lapack
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_ALGEBRA_LAPACK_H__INCLUDED
+#endif  // TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED

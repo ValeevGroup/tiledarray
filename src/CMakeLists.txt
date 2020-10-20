@@ -66,6 +66,8 @@ TiledArray/algebra/lu.h
 TiledArray/algebra/svd.h
 TiledArray/algebra/types.h
 TiledArray/algebra/lapack/chol.h
+TiledArray/algebra/lapack/heig.h
+TiledArray/algebra/lapack/util.h
 TiledArray/algebra/scalapack/chol.h
 TiledArray/algebra/scalapack/heig.h
 TiledArray/algebra/scalapack/lu.h
