@@ -702,6 +702,13 @@ template <typename T, typename... Args>
 struct is_contiguous_tensor_helper<btas::Tensor<T, Args...>>
     : public std::true_type {};
 
+/// btas::RangeNd can be col or row-major
+template <CBLAS_ORDER _Order, typename _Index, typename _Ordinal>
+struct ordinal_traits<btas::RangeNd<_Order, _Index, _Ordinal>> {
+  static constexpr const auto type =
+      _Order == CblasRowMajor ? OrdinalType::RowMajor : OrdinalType::ColMajor;
+};
+
 }  // namespace detail
 }  // namespace TiledArray
 
