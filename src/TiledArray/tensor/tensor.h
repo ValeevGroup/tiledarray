@@ -241,16 +241,17 @@ class Tensor {
       : pimpl_(std::make_shared<Impl>(outer(perm) * other.range())) {
     auto op = [](const numeric_t<T1> arg) -> numeric_t<T1> { return arg; };
 
-    detail::tensor_init(op, perm, *this, other);
+    detail::tensor_init(op, outer(perm), *this, other);
 
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
     if constexpr (is_tot) {
-      if (inner_dim(perm) == 0) return;
-      auto inner_perm = inner(perm);
-      Permute<value_type, value_type> p;
-      for (auto& x : *this) x = p(x, inner_perm);
+      if (inner_dim(perm) != 0) {
+        auto inner_perm = inner(perm);
+        Permute<value_type, value_type> p;
+        for (auto& x : *this) x = p(x, inner_perm);
+      }
     }
   }
 
@@ -283,15 +284,16 @@ class Tensor {
                                 detail::is_permutation_v<Perm>>* = nullptr>
   Tensor(const T1& other, Op&& op, const Perm& perm)
       : pimpl_(std::make_shared<Impl>(outer(perm) * other.range())) {
-    detail::tensor_init(op, perm, *this, other);
+    detail::tensor_init(op, outer(perm), *this, other);
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
     if constexpr (is_tot) {
-      if (inner_dim(perm) == 0) return;
-      auto inner_perm = inner(perm);
-      Permute<value_type, value_type> p;
-      for (auto& x : *this) x = p(x, inner_perm);
+      if (inner_dim(perm) != 0) {
+        auto inner_perm = inner(perm);
+        Permute<value_type, value_type> p;
+        for (auto& x : *this) x = p(x, inner_perm);
+      }
     }
   }
 
@@ -325,15 +327,16 @@ class Tensor {
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor(const T1& left, const T2& right, Op&& op, const Perm& perm)
       : pimpl_(std::make_shared<Impl>(outer(perm) * left.range())) {
-    detail::tensor_init(op, perm, *this, left, right);
+    detail::tensor_init(op, outer(perm), *this, left, right);
     // If we actually have a ToT the inner permutation was not applied above so
     // we do that now
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
     if constexpr (is_tot) {
-      if (inner_dim(perm) == 0) return;
-      auto inner_perm = inner(perm);
-      Permute<value_type, value_type> p;
-      for (auto& x : *this) x = p(x, inner_perm);
+      if (inner_dim(perm) != 0) {
+        auto inner_perm = inner(perm);
+        Permute<value_type, value_type> p;
+        for (auto& x : *this) x = p(x, inner_perm);
+      }
     }
   }
 
@@ -837,11 +840,12 @@ class Tensor {
       // If we have a ToT we need to apply the permutation in two steps. The
       // first step is identical to the non-ToT case (permute the outer modes)
       // the second step does the inner modes
-      auto inner_perm = inner(perm);
       Tensor_ rv(*this, outer(perm));
-      if (inner_perm == Permutation::identity(inner_perm.dim())) return rv;
-      Permute<value_type, value_type> p;
-      for (auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
+      if (inner_dim(perm) != 0) {
+        auto inner_perm = inner(perm);
+        Permute<value_type, value_type> p;
+        for (auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
+      }
       return rv;
     }
   }
@@ -2004,20 +2008,24 @@ struct transform<Tensor<T, A>> {
   Tensor<T, A> operator()(Op&& op, T1&& t1) const {
     return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op));
   }
-  template <typename Op, typename T1>
-  Tensor<T, A> operator()(Op&& op, const Permutation& perm, T1&& t1) const {
-    return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op), perm);
+  template <typename Op, typename Perm, typename T1,
+            typename = std::enable_if_t<
+                detail::is_permutation_v<std::remove_reference_t<Perm>>>>
+  Tensor<T, A> operator()(Op&& op, Perm&& perm, T1&& t1) const {
+    return Tensor<T, A>(std::forward<T1>(t1), std::forward<Op>(op),
+                        std::forward<Perm>(perm));
   }
   template <typename Op, typename T1, typename T2>
   Tensor<T, A> operator()(Op&& op, T1&& t1, T2&& t2) const {
     return Tensor<T, A>(std::forward<T1>(t1), std::forward<T2>(t2),
                         std::forward<Op>(op));
   }
-  template <typename Op, typename T1, typename T2>
-  Tensor<T, A> operator()(Op&& op, const Permutation& perm, T1&& t1,
-                          T2&& t2) const {
+  template <typename Op, typename Perm, typename T1, typename T2,
+            typename = std::enable_if_t<
+                detail::is_permutation_v<std::remove_reference_t<Perm>>>>
+  Tensor<T, A> operator()(Op&& op, Perm&& perm, T1&& t1, T2&& t2) const {
     return Tensor<T, A>(std::forward<T1>(t1), std::forward<T2>(t2),
-                        std::forward<Op>(op), perm);
+                        std::forward<Op>(op), std::forward<Perm>(perm));
   }
 };
 }  // namespace detail

@@ -447,7 +447,6 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// allocated but not initialized.
 /// \tparam Op The element initialization
 /// operation type
-/// \tparam Perm A permutation type
 /// \tparam TR The result tensor type
 /// \tparam T1 The first
 /// argument tensor type
@@ -461,16 +460,16 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// \param[in] tensor1 The first argument tensor
 /// \param[in] tensors The
 /// argument tensors
-template <typename Op, typename Perm, typename TR, typename T1, typename... Ts,
-          typename std::enable_if<is_tensor<TR, T1, Ts...>::value &&
-                                  is_contiguous_tensor<TR, T1, Ts...>::value &&
-                                  is_permutation_v<Perm>>::type* = nullptr>
-inline void tensor_init(Op&& op, const Perm& perm, TR& result,
+template <typename Op, typename TR, typename T1, typename... Ts,
+          typename std::enable_if<
+              is_tensor<TR, T1, Ts...>::value &&
+              is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
+inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
-  TA_ASSERT(is_range_set_congruent(outer(perm), result, tensor1, tensors...));
+  TA_ASSERT(is_range_set_congruent(perm, result, tensor1, tensors...));
   TA_ASSERT(perm);
-  TA_ASSERT(outer_dim(perm) == result.range().rank());
+  TA_ASSERT(perm.dim() == result.range().rank());
 
   auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
                       typename TR::const_reference MADNESS_RESTRICT temp) {
@@ -492,20 +491,19 @@ inline void tensor_init(Op&& op, const Perm& perm, TR& result,
 /// \tparam T1 The first argument tensor type
 /// \tparam Ts The argument tensor types
 /// \param[in] op The result tensor element initialization operation
-/// \param[in] perm The permutation that will be applied to tensor2
 /// \param[out] result The result tensor
 /// \param[in] tensor1 The first argument tensor
 /// \param[in] tensors The argument tensors
-template <typename Op, typename Perm, typename TR, typename T1, typename... Ts,
-          typename std::enable_if<is_tensor_of_tensor<TR, T1, Ts...>::value &&
-                                  is_contiguous_tensor<TR, T1, Ts...>::value &&
-                                  is_permutation_v<Perm>>::type* = nullptr>
-inline void tensor_init(Op&& op, const Perm& perm, TR& result,
+template <typename Op, typename TR, typename T1, typename... Ts,
+          typename std::enable_if<
+              is_tensor_of_tensor<TR, T1, Ts...>::value &&
+              is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
+inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
-  TA_ASSERT(is_range_set_congruent(outer(perm), result, tensor1, tensors...));
+  TA_ASSERT(is_range_set_congruent(perm, result, tensor1, tensors...));
   TA_ASSERT(perm);
-  TA_ASSERT(outer_dim(perm) == result.range().rank());
+  TA_ASSERT(perm.dim() == result.range().rank());
 
   auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
                       typename TR::const_reference MADNESS_RESTRICT temp) {

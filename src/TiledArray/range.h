@@ -1260,6 +1260,17 @@ inline Range operator*(const Permutation& perm, const Range& r) {
   return Range(perm, r);
 }
 
+/// Create a permuted range
+
+/// \param r The range to be permuted
+/// \param perm The permutation to be applied to the range
+/// \return A permuted copy of \c r.
+/// \note this is an adaptor to BTAS' permute
+template <typename I, typename = std::enable_if_t<std::is_integral_v<I>>>
+Range permute(const Range& r, std::initializer_list<I> perm) {
+  return Permutation(perm) * r;
+}
+
 /// Range equality comparison
 
 /// \param r1 The first range to be compared

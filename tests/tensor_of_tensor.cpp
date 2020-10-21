@@ -118,6 +118,7 @@ struct TensorOfTensorFixture {
 
   static const std::array<std::size_t, 2> size;
   static const Permutation perm;
+  static const BipartitePermutation bperm;
 
   Tensor<Tensor<int>> a, b, c;
 #ifdef TILEDARRAY_HAS_BTAS
@@ -158,6 +159,7 @@ Tensor<btas::Tensor<int>>& TensorOfTensorFixture::ToT<btas::Tensor<int>>(
 
 const std::array<std::size_t, 2> TensorOfTensorFixture::size{{10, 11}};
 const Permutation TensorOfTensorFixture::perm{1, 0};
+const BipartitePermutation TensorOfTensorFixture::bperm({1, 0, 3, 2}, 2);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_of_tensor_suite, TensorOfTensorFixture)
 
@@ -216,6 +218,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(unary_perm_constructor, ITensor, itensor_types) {
   }
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(unary_bperm_constructor, ITensor, itensor_types) {
+  const auto& a = ToT<ITensor>(0);
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t(
+      a, [](const int l) { return l * 2; }, bperm));
+  Tensor<ITensor> t(
+      a, [](const int l) { return l * 2; }, bperm);
+
+  BOOST_CHECK(!t.empty());
+  BOOST_CHECK_EQUAL(t.range(), outer(bperm) * a.range());
+
+  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+      BOOST_CHECK(!t(i, j).empty());
+      BOOST_CHECK_EQUAL(t(i, j).range(), permute(a(j, i).range(), {1, 0}));
+      for (auto&& idx : t(i, j).range()) {
+        BOOST_CHECK_EQUAL(t(i, j)(idx[0], idx[1]), a(j, i)(idx[1], idx[0]) * 2);
+      }
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(binary_constructor, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
   const auto& b = ToT<ITensor>(1);
@@ -259,6 +282,30 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(binary_perm_constructor, ITensor, itensor_types) {
   }
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(binary_bperm_constructor, ITensor,
+                              itensor_types) {
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(1);
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t(
+      a, b, [](const int l, const int r) { return l + r; }, bperm));
+  Tensor<ITensor> t(
+      a, b, [](const int l, const int r) { return l + r; }, bperm);
+
+  BOOST_CHECK(!t.empty());
+  BOOST_CHECK_EQUAL(t.range(), outer(bperm) * a.range());
+
+  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+      BOOST_CHECK(!t(i, j).empty());
+      BOOST_CHECK_EQUAL(t(i, j).range(), permute(a(j, i).range(), {1, 0}));
+      for (auto&& idx : t(i, j).range()) {
+        BOOST_CHECK_EQUAL(t(i, j)(idx[0], idx[1]),
+                          a(j, i)(idx[1], idx[0]) + b(j, i)(idx[1], idx[0]));
+      }
+    }
+  }
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(clone, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
   Tensor<ITensor> t;
@@ -280,7 +327,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(clone, ITensor, itensor_types) {
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(permute, ITensor, itensor_types) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(permutation, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
   Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.permute(perm));
@@ -295,6 +342,26 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(permute, ITensor, itensor_types) {
       BOOST_CHECK_NE(t(i, j).data(), a(j, i).data());
       for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
         BOOST_CHECK_EQUAL(t(i, j)[index], a(j, i)[index]);
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(bpermutation, ITensor, itensor_types) {
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
+  BOOST_CHECK_NO_THROW(t = a.permute(bperm));
+
+  BOOST_CHECK(!t.empty());
+  BOOST_CHECK_EQUAL(t.range(), outer(bperm) * a.range());
+
+  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+      BOOST_CHECK(!t(i, j).empty());
+      BOOST_CHECK_NE(t(i, j).data(), a(j, i).data());
+      BOOST_CHECK_EQUAL(t(i, j).range(), permute(a(j, i).range(), {1, 0}));
+      for (auto&& idx : t(i, j).range()) {
+        BOOST_CHECK_EQUAL(t(i, j)(idx[0], idx[1]), a(j, i)(idx[1], idx[0]));
       }
     }
   }

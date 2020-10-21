@@ -701,10 +701,7 @@ inline auto inner(const Permutation& p) {
 
 inline const auto& outer(const Permutation& p) { return p; }
 
-inline auto inner_dim(const Permutation& p) {
-  abort();
-  return 0;
-}
+inline auto inner_dim(const Permutation& p) { return 0; }
 
 inline auto outer_dim(const Permutation& p) { return p.dim(); }
 
