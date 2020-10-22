@@ -1487,6 +1487,18 @@ struct Cast<
 
 /** @}*/
 
+/// Tile equality comparison
+template <typename T1, typename T2>
+bool operator==(const Tile<T1>& t1, const Tile<T2>& t2) {
+  return t1.tensor() == t2.tensor();
+}
+
+/// Tile inequality comparison
+template <typename T1, typename T2>
+bool operator!=(const Tile<T1>& t1, const Tile<T2>& t2) {
+  return !(t1 == t2);
+}
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_TILE_H__INCLUDED
