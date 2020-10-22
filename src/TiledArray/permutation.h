@@ -48,6 +48,9 @@ template <typename T>
 inline std::vector<T> operator*(const Permutation&,
                                 const T* MADNESS_RESTRICT const);
 
+class BipartitePermutation;
+bool operator==(const BipartitePermutation&, const BipartitePermutation&);
+
 namespace detail {
 
 /// Create a permuted copy of an array
@@ -597,14 +600,71 @@ inline std::vector<T> operator*(const Permutation& perm,
 ///////////////////////////////////
 
 /// Permutation of a bipartite set
-class BipartitePermutation : public Permutation {
+class BipartitePermutation {
  public:
+  using index_type = Permutation::index_type;
+  template <typename T>
+  using vector = Permutation::vector<T>;
+
   BipartitePermutation() = default;
   BipartitePermutation(const BipartitePermutation&) = default;
   BipartitePermutation(BipartitePermutation&&) = default;
   ~BipartitePermutation() = default;
   BipartitePermutation& operator=(const BipartitePermutation&) = default;
   BipartitePermutation& operator=(BipartitePermutation&& other) = default;
+
+  /// Bool conversion
+
+  /// \return \c true if the permutation is not empty, otherwise \c false.
+  operator bool() const { return static_cast<bool>(base_); }
+
+  /// Domain size accessor
+
+  /// \return The domain size
+  auto dim() const { return base_.dim(); }
+
+  /// Begin element iterator factory function
+
+  /// \return An iterator that points to the beginning of the element range
+  auto begin() const { return base_.begin(); }
+
+  /// Begin element iterator factory function
+
+  /// \return An iterator that points to the beginning of the element range
+  auto cbegin() const { return base_.cbegin(); }
+
+  /// End element iterator factory function
+
+  /// \return An iterator that points to the end of the element range
+  auto end() const { return base_.end(); }
+
+  /// End element iterator factory function
+
+  /// \return An iterator that points to the end of the element range
+  auto cend() const { return base_.cend(); }
+
+  /// conversion to a plain Permutation is possible if the second partition is
+  /// empty
+  operator Permutation&() & {
+    TA_ASSERT(second_size_ == 0);
+    return base_;
+  }
+  /// conversion to a plain Permutation is possible if the second partition is
+  /// empty
+  operator Permutation&&() && {
+    TA_ASSERT(second_size_ == 0);
+    return std::move(base_);
+  }
+  /// conversion to a plain Permutation is possible if the second partition is
+  /// empty
+  operator const Permutation&() const& {
+    TA_ASSERT(second_size_ == 0);
+    return base_;
+  }
+
+  BipartitePermutation(const Permutation& p,
+                       index_type second_partition_size = 0)
+      : base_(p), second_size_(second_partition_size) {}
 
   // clang-format off
   /// Construct permutation from a range [first,last)
@@ -621,7 +681,7 @@ class BipartitePermutation : public Permutation {
                                  InIter>::value>::type* = nullptr>
   BipartitePermutation(InIter first, InIter last,
                        index_type second_partition_size = 0)
-      : Permutation(first, last), second_size_(second_partition_size) {}
+      : base_(first, last), second_size_(second_partition_size) {}
 
   // clang-format off
   /// Array constructor
@@ -646,7 +706,7 @@ class BipartitePermutation : public Permutation {
   // clang-format on
   explicit BipartitePermutation(vector<index_type>&& a,
                                 index_type second_partition_size = 0)
-      : Permutation(std::move(a)), second_size_(second_partition_size) {}
+      : base_(std::move(a)), second_size_(second_partition_size) {}
 
   /// \return reference to the first partition
   /// \note the partition object is computed on the first invocation and
@@ -661,7 +721,8 @@ class BipartitePermutation : public Permutation {
   const Permutation& second() const {
     const auto n_first = first_size();
     vector<index_type> temp(second_size());
-    for (auto i = n_first; i < dim(); ++i) temp[i - n_first] = p_[i] - n_first;
+    for (auto i = n_first; i < dim(); ++i)
+      temp[i - n_first] = base_[i] - n_first;
     second_ = Permutation(temp.begin(), temp.end());
     return second_;
   }
@@ -679,7 +740,7 @@ class BipartitePermutation : public Permutation {
   /// \param[in,out] ar The serialization archive
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& static_cast<Permutation&>(*this) & second_size_;
+    ar& base_& second_size_;
     if constexpr (madness::archive::is_input_archive<Archive>::value) {
       first_ = {};
       second_ = {};
@@ -687,12 +748,39 @@ class BipartitePermutation : public Permutation {
   }
 
  private:
+  /// the "base" permutation object
+  Permutation base_;
   /// The size of the second partition
   index_type second_size_ = 0;
 
   mutable Permutation first_;
   mutable Permutation second_;
+
+  friend bool operator==(const BipartitePermutation& p1,
+                         const BipartitePermutation& p2);
 };
+
+/// Permutation equality operator
+
+/// \param p1 The left-hand permutation to be compared
+/// \param p2 The right-hand permutation to be compared
+/// \return \c true if all elements of \c p1 and \c p2 are equal and the
+/// partition sizes match, otherwise \c false.
+inline bool operator==(const BipartitePermutation& p1,
+                       const BipartitePermutation& p2) {
+  return (p1.second_size() == p2.second_size()) && p1.base_ == p2.base_;
+}
+
+/// Permutation inequality operator
+
+/// \param p1 The left-hand permutation to be compared
+/// \param p2 The right-hand permutation to be compared
+/// \return \c false if all elements of \c p1 and \c p2 are equal and the
+/// partition sizes match, otherwise \c true.
+inline bool operator!=(const BipartitePermutation& p1,
+                       const BipartitePermutation& p2) {
+  return !(p1 == p2);
+}
 
 inline auto inner(const Permutation& p) {
   abort();
@@ -701,7 +789,10 @@ inline auto inner(const Permutation& p) {
 
 inline const auto& outer(const Permutation& p) { return p; }
 
-inline auto inner_dim(const Permutation& p) { return 0; }
+inline auto inner_dim(const Permutation& p) {
+  abort();
+  return 0;
+}
 
 inline auto outer_dim(const Permutation& p) { return p.dim(); }
 

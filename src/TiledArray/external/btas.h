@@ -24,6 +24,7 @@
 #define TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED
 
 #include <TiledArray/tensor/kernels.h>
+#include <TiledArray/tile_interface/permute.h>
 #include <TiledArray/tile_interface/trace.h>
 #include <TiledArray/utility.h>
 #include "TiledArray/config.h"
@@ -138,8 +139,29 @@ inline btas::Tensor<T, Range, Storage> permute(
   btas::Tensor<T, Range, Storage> result;
   btas::permute(arg, perm.inv().data(), result);
   return result;
-  // auto arg_view = make_ti(arg);
-  // return arg_view.permute(perm);
+}
+
+/// Computes the result of applying bipartite permutation \c perm to \c arg
+template <typename T, typename Range, typename Storage>
+inline btas::Tensor<T, Range, Storage> permute(
+    const btas::Tensor<T, Range, Storage>& arg,
+    const TiledArray::BipartitePermutation& perm) {
+  btas::Tensor<T, Range, Storage> result;
+  constexpr bool is_tot =
+      TiledArray::detail::is_tensor_of_tensor_v<decltype(result)>;
+  if constexpr (!is_tot) {
+    TA_ASSERT(inner_dim(perm) ==
+              0);  // this must be a plain permutation if not ToT
+    btas::permute(arg, outer(perm).inv().data(), result);
+  } else {
+    btas::permute(arg, outer(perm).inv().data(), result);
+    if (inner_dim(perm) != 0) {
+      auto inner_perm = inner(perm);
+      TiledArray::Permute<T, T> p;
+      for (auto& x : result) x = p(x, inner_perm);
+    }
+  }
+  return result;
 }
 
 // Shift operations ----------------------------------------------------------
@@ -192,11 +214,12 @@ inline btas::Tensor<T, Range, Storage> add(
 }
 
 /// result[perm ^ i] = (arg1[i] + arg2[i])
-template <typename T, typename Range, typename Storage>
+template <
+    typename T, typename Range, typename Storage, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const TiledArray::Permutation& perm) {
+    const btas::Tensor<T, Range, Storage>& arg2, const Perm& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.add(arg2_view, perm);
@@ -204,12 +227,14 @@ inline btas::Tensor<T, Range, Storage> add(
 
 /// result[perm ^ i] = (arg1[i] + arg2[i]) * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
+          typename Perm,
           typename std::enable_if<
-              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+              TiledArray::detail::is_numeric_v<Scalar> &&
+              TiledArray::detail::is_permutation_v<Perm>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> add(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
-    const TiledArray::Permutation& perm) {
+    const Perm& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.add(arg2_view, factor, perm);
@@ -262,11 +287,12 @@ inline btas::Tensor<T, Range, Storage> subt(
 }
 
 /// result[perm ^ i] = (arg1[i] - arg2[i]) * factor
-template <typename T, typename Range, typename Storage>
+template <
+    typename T, typename Range, typename Storage, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 inline btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const TiledArray::Permutation& perm) {
+    const btas::Tensor<T, Range, Storage>& arg2, const Perm& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.subt(arg2_view, perm);
@@ -274,12 +300,14 @@ inline btas::Tensor<T, Range, Storage> subt(
 
 /// result[perm ^ i] = (arg1[i] - arg2[i]) * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
+          typename Perm,
           typename std::enable_if<
-              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+              TiledArray::detail::is_numeric_v<Scalar> &&
+              TiledArray::detail::is_permutation_v<Perm>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> subt(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
-    const TiledArray::Permutation& perm) {
+    const Perm& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.subt(arg2_view, factor, perm);
@@ -331,11 +359,12 @@ inline btas::Tensor<T, Range, Storage> mult(
 }
 
 /// result[perm ^ i] = arg1[i] * arg2[i]
-template <typename T, typename Range, typename Storage>
+template <
+    typename T, typename Range, typename Storage, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2,
-    const TiledArray::Permutation& perm) {
+    const btas::Tensor<T, Range, Storage>& arg2, const Perm& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.mult(arg2_view, perm);
@@ -343,12 +372,14 @@ inline btas::Tensor<T, Range, Storage> mult(
 
 /// result[perm ^ i] = arg1[i] * arg2[i] * factor
 template <typename T, typename Range, typename Storage, typename Scalar,
+          typename Perm,
           typename std::enable_if<
-              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+              TiledArray::detail::is_numeric_v<Scalar> &&
+              TiledArray::detail::is_permutation_v<Perm>>::type* = nullptr>
 inline btas::Tensor<T, Range, Storage> mult(
     const btas::Tensor<T, Range, Storage>& arg1,
     const btas::Tensor<T, Range, Storage>& arg2, const Scalar factor,
-    const TiledArray::Permutation& perm) {
+    const Perm& perm) {
   auto arg1_view = make_ti(arg1);
   auto arg2_view = make_ti(arg2);
   return arg1_view.mult(arg2_view, factor, perm);
@@ -395,11 +426,13 @@ inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& result,
   return result_view.scale(factor);
 }
 
-template <typename T, typename Range, typename Storage, typename Scalar,
-          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+template <
+    typename T, typename Range, typename Storage, typename Scalar,
+    typename Perm,
+    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                     TiledArray::detail::is_permutation_v<Perm>>* = nullptr>
 inline decltype(auto) scale(const btas::Tensor<T, Range, Storage>& result,
-                            const Scalar factor,
-                            const TiledArray::Permutation& perm) {
+                            const Scalar factor, const Perm& perm) {
   auto result_view = make_ti(result);
   return result_view.scale(factor, perm);
 }
@@ -419,10 +452,11 @@ inline btas::Tensor<T, Range, Storage> neg(
   return arg_view.neg();
 }
 
-template <typename T, typename Range, typename Storage>
+template <
+    typename T, typename Range, typename Storage, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 inline btas::Tensor<T, Range, Storage> neg(
-    const btas::Tensor<T, Range, Storage>& arg,
-    const TiledArray::Permutation& perm) {
+    const btas::Tensor<T, Range, Storage>& arg, const Perm& perm) {
   auto arg_view = make_ti(arg);
   return arg_view.neg(perm);
 }
@@ -434,10 +468,11 @@ inline btas::Tensor<T, Range, Storage> conj(
   return arg_view.conj();
 }
 
-template <typename T, typename Range, typename Storage>
+template <
+    typename T, typename Range, typename Storage, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 inline btas::Tensor<T, Range, Storage> conj(
-    const btas::Tensor<T, Range, Storage>& arg,
-    const TiledArray::Permutation& perm) {
+    const btas::Tensor<T, Range, Storage>& arg, const Perm& perm) {
   auto arg_view = make_ti(arg);
   return arg_view.conj(perm);
 }
@@ -450,11 +485,14 @@ inline btas::Tensor<T, Range, Storage> conj(
   return arg_view.conj(factor);
 }
 
-template <typename T, typename Range, typename Storage, typename Scalar,
-          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+template <
+    typename T, typename Range, typename Storage, typename Scalar,
+    typename Perm,
+    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                     TiledArray::detail::is_permutation_v<Perm>>* = nullptr>
 inline btas::Tensor<T, Range, Storage> conj(
     const btas::Tensor<T, Range, Storage>& arg, const Scalar factor,
-    const TiledArray::Permutation& perm) {
+    const Perm& perm) {
   auto arg_view = make_ti(arg);
   return arg_view.conj(factor, perm);
 }
@@ -683,7 +721,7 @@ struct TraceIsDefined<btas::Tensor<T, Range, Storage>, enable_if_numeric_t<T>>
  * object
  */
 template <typename Perm>
-typename std::enable_if<!std::is_same<Perm, TiledArray::Permutation>::value,
+typename std::enable_if<!TiledArray::detail::is_permutation_v<Perm>,
                         TiledArray::Range>::type
 permute(const TiledArray::Range& r, const Perm& p) {
   TiledArray::Permutation pp(p.begin(), p.end());

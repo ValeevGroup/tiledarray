@@ -37,7 +37,7 @@ namespace detail {
 template <typename Left, typename Right, typename Op, typename Policy>
 class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
                        public std::enable_shared_from_this<
-                           BinaryEvalImpl<Left, Right, Op, Policy> > {
+                           BinaryEvalImpl<Left, Right, Op, Policy>> {
  public:
   typedef BinaryEvalImpl<Left, Right, Op, Policy>
       BinaryEvalImpl_;  ///< This object type
@@ -77,11 +77,13 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \param pmap The tile-process map
   /// \param perm The permutation that is applied to tile indices
   /// \param op The tile transform operation
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   BinaryEvalImpl(const left_type& left, const right_type& right, World& world,
                  const trange_type& trange, const shape_type& shape,
-                 const std::shared_ptr<pmap_interface>& pmap,
-                 const Permutation& perm, const op_type& op)
-      : DistEvalImpl_(world, trange, shape, pmap, perm),
+                 const std::shared_ptr<pmap_interface>& pmap, const Perm& perm,
+                 const op_type& op)
+      : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         left_(left),
         right_(right),
         op_(op) {

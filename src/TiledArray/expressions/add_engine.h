@@ -44,7 +44,7 @@ template <typename, typename, typename, typename>
 class ScalAddEngine;
 
 template <typename Left, typename Right, typename Result>
-struct EngineTrait<AddEngine<Left, Right, Result> > {
+struct EngineTrait<AddEngine<Left, Right, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -82,7 +82,7 @@ struct EngineTrait<AddEngine<Left, Right, Result> > {
 };
 
 template <typename Left, typename Right, typename Scalar, typename Result>
-struct EngineTrait<ScalAddEngine<Left, Right, Scalar, Result> > {
+struct EngineTrait<ScalAddEngine<Left, Right, Scalar, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -126,7 +126,7 @@ struct EngineTrait<ScalAddEngine<Left, Right, Scalar, Result> > {
 /// \tparam Right The right-hand expression type
 /// \tparam Result The result tile type
 template <typename Left, typename Right, typename Result>
-class AddEngine : public BinaryEngine<AddEngine<Left, Right, Result> > {
+class AddEngine : public BinaryEngine<AddEngine<Left, Right, Result>> {
  public:
   // Class hierarchy typedefs
   typedef AddEngine<Left, Right, Result> AddEngine_;  ///< This class type
@@ -195,7 +195,9 @@ class AddEngine : public BinaryEngine<AddEngine<Left, Right, Result> > {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  static op_type make_tile_op(const Permutation& perm) {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  static op_type make_tile_op(const Perm& perm) {
     return op_type(op_base_type(), perm);
   }
 
@@ -214,7 +216,7 @@ class AddEngine : public BinaryEngine<AddEngine<Left, Right, Result> > {
 /// \tparam Result The result tile type
 template <typename Left, typename Right, typename Scalar, typename Result>
 class ScalAddEngine
-    : public BinaryEngine<ScalAddEngine<Left, Right, Scalar, Result> > {
+    : public BinaryEngine<ScalAddEngine<Left, Right, Scalar, Result>> {
  public:
   // Class hierarchy typedefs
   typedef ScalAddEngine<Left, Right, Scalar, Result>
@@ -294,7 +296,9 @@ class ScalAddEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     return op_type(op_base_type(factor_), perm);
   }
 

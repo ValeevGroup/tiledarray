@@ -18,9 +18,9 @@
  */
 
 #include "TiledArray/expressions/variable_list.h"
+#include <numeric>
 #include "tiledarray.h"
 #include "unit_test_config.h"
-#include <numeric>
 /* General notes on testing the VariableList class.
  *
  * - The old test suite included tests for ensuring valid characters. That
@@ -39,12 +39,11 @@ using TiledArray::expressions::VariableList;
 using TiledArray::expressions::detail::find_common;
 
 // Pull some typedefs from the class to make sure testing uses the right types
-using value_type      = typename VariableList::value_type;
+using value_type = typename VariableList::value_type;
 using const_reference = typename VariableList::const_reference;
-using size_type       = typename VariableList::size_type;
+using size_type = typename VariableList::size_type;
 
 struct VariableListFixture {
-
   World& world = get_default_world();
   std::map<value_type, VariableList> idxs = {
       {"a,b,c,d", VariableList("a,b,c,d")},
@@ -60,8 +59,7 @@ struct VariableListFixture {
       {"i;j", VariableList("i;j")},
       {"i;j,k", VariableList("i;j,k")},
       {"i,j;k", VariableList("i,j;k")},
-      {"i,j;k,l", VariableList("i,j;k,l")}
-  };
+      {"i,j;k,l", VariableList("i,j;k,l")}};
 };
 
 BOOST_FIXTURE_TEST_SUITE(variable_list_suite, VariableListFixture)
@@ -70,7 +68,7 @@ BOOST_FIXTURE_TEST_SUITE(variable_list_suite, VariableListFixture)
  * template meta-programming occurs in the class these tests serve more as a
  * consistency check of the API.
  */
-BOOST_AUTO_TEST_CASE(typedefs){
+BOOST_AUTO_TEST_CASE(typedefs) {
   {
     constexpr bool is_same = std::is_same_v<value_type, std::string>;
     BOOST_CHECK(is_same);
@@ -98,7 +96,7 @@ BOOST_AUTO_TEST_CASE(typedefs){
 /* The default constructor creates and empty container. Here we simply make sure
  * that the accessible state of a default instance is what it is supposed to be.
  */
-BOOST_AUTO_TEST_CASE(default_ctor){
+BOOST_AUTO_TEST_CASE(default_ctor) {
   BOOST_REQUIRE_NO_THROW(VariableList v0);
   VariableList v0;
   {
@@ -119,23 +117,23 @@ BOOST_AUTO_TEST_CASE(default_ctor){
  * indices (operator[], at, iterators); here we only test the at variant. The
  * other access members are tested in their respective unit tests.
  */
-BOOST_AUTO_TEST_CASE(string_ctor){
-  if(world.nproc() == 1){
+BOOST_AUTO_TEST_CASE(string_ctor) {
+  if (world.nproc() == 1) {
     BOOST_CHECK_THROW(VariableList("i,"), TiledArray::Exception);
   }
 
-  for(auto&& [str, idx] : idxs){
+  for (auto&& [str, idx] : idxs) {
     auto&& [outer, inner] = TiledArray::detail::split_index(str);
     BOOST_CHECK_EQUAL(idx.dim(), outer.size() + inner.size());
     BOOST_CHECK_EQUAL(idx.outer_dim(), outer.size());
     BOOST_CHECK_EQUAL(idx.inner_dim(), inner.size());
     BOOST_CHECK_EQUAL(idx.size(), outer.size() + inner.size());
 
-    for(size_type i = 0; i < outer.size(); ++i){
+    for (size_type i = 0; i < outer.size(); ++i) {
       BOOST_CHECK_EQUAL(idx.at(i), outer[i]);
     }
 
-    for(size_type i = 0; i < inner.size(); ++i){
+    for (size_type i = 0; i < inner.size(); ++i) {
       BOOST_CHECK_EQUAL(idx.at(outer.size() + i), inner[i]);
     }
   }
@@ -147,7 +145,7 @@ BOOST_AUTO_TEST_CASE(string_ctor){
  * deep copies. Finally, for copy assignment we ensure that the operation
  * supports chaining.
  */
-BOOST_AUTO_TEST_CASE(copy_ctor){
+BOOST_AUTO_TEST_CASE(copy_ctor) {
   // Default instance
   {
     VariableList v0;
@@ -155,16 +153,15 @@ BOOST_AUTO_TEST_CASE(copy_ctor){
     BOOST_CHECK_EQUAL(v0, v1);
   }
 
-  for(auto&& [str, idx] : idxs){
+  for (auto&& [str, idx] : idxs) {
     VariableList v1(idx);
     BOOST_CHECK_EQUAL(idx, v1);
-    //Ensure deep copy
-    for(size_type i = 0; i < idx.size(); ++i)
-      BOOST_CHECK(&idx[i] != &v1[i]);
+    // Ensure deep copy
+    for (size_type i = 0; i < idx.size(); ++i) BOOST_CHECK(&idx[i] != &v1[i]);
   }
 }
 
-BOOST_AUTO_TEST_CASE(copy_assignment){
+BOOST_AUTO_TEST_CASE(copy_assignment) {
   // Default instance
   {
     VariableList v0, v1;
@@ -173,14 +170,13 @@ BOOST_AUTO_TEST_CASE(copy_assignment){
     BOOST_CHECK_EQUAL(v0, v1);
   }
 
-  for(auto&& [str, idx] : idxs){
+  for (auto&& [str, idx] : idxs) {
     VariableList v1;
     auto pv1 = &(v1 = idx);
     BOOST_CHECK_EQUAL(pv1, &v1);
     BOOST_CHECK_EQUAL(idx, v1);
-    //Ensure deep copy
-    for(size_type i = 0; i < idx.size(); ++i)
-      BOOST_CHECK(&idx[i] != &v1[i]);
+    // Ensure deep copy
+    for (size_type i = 0; i < idx.size(); ++i) BOOST_CHECK(&idx[i] != &v1[i]);
   }
 }
 
@@ -189,14 +185,13 @@ BOOST_AUTO_TEST_CASE(copy_assignment){
  * operator by creating a default constructed VariableList, assigning the
  * indices to it, and then comparing that to the already created instance.
  */
-BOOST_AUTO_TEST_CASE(string_assignment){
-
-  if(world.nproc() == 1){
+BOOST_AUTO_TEST_CASE(string_assignment) {
+  if (world.nproc() == 1) {
     VariableList v1;
     BOOST_CHECK_THROW(v1.operator=("i,"), TiledArray::Exception);
   }
 
-  for(auto&& [str, idx] : idxs){
+  for (auto&& [str, idx] : idxs) {
     VariableList v1;
     auto pv1 = &(v1 = str);
     BOOST_CHECK_EQUAL(pv1, &v1);
@@ -209,7 +204,7 @@ BOOST_AUTO_TEST_CASE(string_assignment){
  * instance is compared using == and != to each other type of instance
  * (including permutations of indices)
  */
-BOOST_AUTO_TEST_CASE(equality){
+BOOST_AUTO_TEST_CASE(equality) {
   // Default instance comparisons
   {
     VariableList v0;
@@ -244,7 +239,7 @@ BOOST_AUTO_TEST_CASE(equality){
   }
 }
 
-BOOST_AUTO_TEST_CASE(inequality){
+BOOST_AUTO_TEST_CASE(inequality) {
   // Default instance comparisons
   {
     VariableList v0;
@@ -279,8 +274,8 @@ BOOST_AUTO_TEST_CASE(inequality){
   }
 }
 
-BOOST_AUTO_TEST_CASE(permute_in_place){
-  if(world.nproc() == 1){
+BOOST_AUTO_TEST_CASE(permute_in_place) {
+  if (world.nproc() == 1) {
     VariableList v0;
     Permutation p{0, 1};
     BOOST_CHECK_THROW(v0 *= p, TiledArray::Exception);
@@ -302,27 +297,27 @@ BOOST_AUTO_TEST_CASE(permute_in_place){
  * suffices to test that data().begin() and data().end() equal begin() and end()
  * respectively.
  */
-BOOST_AUTO_TEST_CASE(begin_itr){
+BOOST_AUTO_TEST_CASE(begin_itr) {
   {
     VariableList v0;
     bool are_same = (v0.begin() == v0.data().begin());
     BOOST_CHECK(are_same);
   }
 
-  for(auto&& [str, idx] : idxs){
+  for (auto&& [str, idx] : idxs) {
     bool are_same = (idx.begin() == idx.data().begin());
     BOOST_CHECK(are_same);
   }
 }
 
-BOOST_AUTO_TEST_CASE(end_itr){
+BOOST_AUTO_TEST_CASE(end_itr) {
   {
     VariableList v0;
     bool are_same = (v0.end() == v0.data().end());
     BOOST_CHECK(are_same);
   }
 
-  for(auto&& [str, idx] : idxs){
+  for (auto&& [str, idx] : idxs) {
     bool are_same = (idx.end() == idx.data().end());
     BOOST_CHECK(are_same);
   }
@@ -333,47 +328,47 @@ BOOST_AUTO_TEST_CASE(end_itr){
  * identical to the one we use for subscript operator, except we also test for
  * out-of-range on the "at" member.
  */
-BOOST_AUTO_TEST_CASE(at_member){
-for(auto&& [str, idx] : idxs) {
+BOOST_AUTO_TEST_CASE(at_member) {
+  for (auto&& [str, idx] : idxs) {
     if (world.nproc() == 1) {
       BOOST_CHECK_THROW(idx.at(idx.size()), std::out_of_range);
     }
     auto [outer, inner] = detail::split_index(str);
-    for(size_type i = 0; i < outer.size(); ++i)
+    for (size_type i = 0; i < outer.size(); ++i)
       BOOST_CHECK_EQUAL(idx.at(i), outer.at(i));
-  for(size_type i = 0; i < inner.size(); ++i)
-    BOOST_CHECK_EQUAL(idx.at(i + outer.size()), inner.at(i));
+    for (size_type i = 0; i < inner.size(); ++i)
+      BOOST_CHECK_EQUAL(idx.at(i + outer.size()), inner.at(i));
   }
 }
 
-BOOST_AUTO_TEST_CASE(subscript_operator){
-  for(auto&& [str, idx] : idxs) {
+BOOST_AUTO_TEST_CASE(subscript_operator) {
+  for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
-    for(size_type i = 0; i < outer.size(); ++i)
+    for (size_type i = 0; i < outer.size(); ++i)
       BOOST_CHECK_EQUAL(idx[i], outer.at(i));
-    for(size_type i = 0; i < inner.size(); ++i)
+    for (size_type i = 0; i < inner.size(); ++i)
       BOOST_CHECK_EQUAL(idx[i + outer.size()], inner.at(i));
   }
 }
 
 // TODO: Test repeated index
-BOOST_AUTO_TEST_CASE(modes){
-  for(auto&& [str, idx] : idxs){
+BOOST_AUTO_TEST_CASE(modes) {
+  for (auto&& [str, idx] : idxs) {
     using r_type = decltype(idx.modes(""));
     using size_type = typename VariableList::size_type;
     auto [outer, inner] = detail::split_index(str);
-    for(size_type i = 0; i < outer.size(); ++i)
+    for (size_type i = 0; i < outer.size(); ++i)
       BOOST_CHECK_EQUAL(idx.modes(outer[i]), r_type{i});
-    for(size_type i = 0; i < inner.size(); ++i)
+    for (size_type i = 0; i < inner.size(); ++i)
       BOOST_CHECK_EQUAL(idx.modes(inner[i]), r_type{outer.size() + i});
   }
 }
 
-BOOST_AUTO_TEST_CASE(count){
-  for(auto&& [str, idx] : idxs) {
+BOOST_AUTO_TEST_CASE(count) {
+  for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
-    for(const auto& x : outer) BOOST_CHECK_EQUAL(idx.count(x), 1);
-    for(const auto& x : inner) BOOST_CHECK_EQUAL(idx.count(x), 1);
+    for (const auto& x : outer) BOOST_CHECK_EQUAL(idx.count(x), 1);
+    for (const auto& x : inner) BOOST_CHECK_EQUAL(idx.count(x), 1);
     BOOST_CHECK_EQUAL(idx.count("not_an_index"), 0);
   }
 }
@@ -383,37 +378,37 @@ BOOST_AUTO_TEST_CASE(count){
  * the sizes resulting from calling `split_index`, which defines how a
  * TiledArray index should be split.
  */
-BOOST_AUTO_TEST_CASE(dim_fxn){
+BOOST_AUTO_TEST_CASE(dim_fxn) {
   BOOST_CHECK_EQUAL(VariableList{}.dim(), 0);
 
-  for(auto&& [str, idx] : idxs) {
+  for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
     BOOST_CHECK_EQUAL(idx.dim(), outer.size() + inner.size());
   }
 }
 
-BOOST_AUTO_TEST_CASE(outer_dim_fxn){
+BOOST_AUTO_TEST_CASE(outer_dim_fxn) {
   BOOST_CHECK_EQUAL(VariableList{}.outer_dim(), 0);
 
-  for(auto&& [str, idx] : idxs) {
+  for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
     BOOST_CHECK_EQUAL(idx.outer_dim(), outer.size());
   }
 }
 
-BOOST_AUTO_TEST_CASE(inner_dim_fxn){
+BOOST_AUTO_TEST_CASE(inner_dim_fxn) {
   BOOST_CHECK_EQUAL(VariableList{}.inner_dim(), 0);
 
-  for(auto&& [str, idx] : idxs) {
+  for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
     BOOST_CHECK_EQUAL(idx.inner_dim(), inner.size());
   }
 }
 
-BOOST_AUTO_TEST_CASE(size_fxn){
+BOOST_AUTO_TEST_CASE(size_fxn) {
   BOOST_CHECK_EQUAL(VariableList{}.size(), 0);
 
-  for(auto&& [str, idx] : idxs) {
+  for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
     BOOST_CHECK_EQUAL(idx.size(), outer.size() + inner.size());
   }
@@ -437,16 +432,16 @@ BOOST_AUTO_TEST_CASE(is_tot_fxn) {
  * indices. If an index with spaces is added, str should be run through
  * detail::remove_whitespace to compensate.
  */
-BOOST_AUTO_TEST_CASE(string_cast){
+BOOST_AUTO_TEST_CASE(string_cast) {
   VariableList v;
   BOOST_CHECK_EQUAL("", static_cast<value_type>(v));
 
-  for(auto [str, idx] : idxs){
+  for (auto [str, idx] : idxs) {
     BOOST_CHECK_EQUAL(str, static_cast<value_type>(idx));
   }
 }
 
-BOOST_AUTO_TEST_CASE(stream_insert){
+BOOST_AUTO_TEST_CASE(stream_insert) {
   {
     VariableList v;
     std::stringstream ss;
@@ -454,14 +449,13 @@ BOOST_AUTO_TEST_CASE(stream_insert){
     BOOST_CHECK_EQUAL("()", ss.str());
   }
 
-  for(auto [str, idx] : idxs){
+  for (auto [str, idx] : idxs) {
     std::stringstream ss;
     ss << idx;
     std::string corr = "(" + str + ")";
     BOOST_CHECK_EQUAL(corr, ss.str());
   }
 }
-
 
 /* To test swap we swap the contents of an already made VariableList with the
  * contents of a defaulted VariableList. The instance that was defaulted is then
@@ -470,8 +464,8 @@ BOOST_AUTO_TEST_CASE(stream_insert){
  * speaking this only shows that we can swap defaulted and non-defaulted
  * instances.
  */
-BOOST_AUTO_TEST_CASE(swap_fxn){
-  for(auto&& [str, idx] : idxs){
+BOOST_AUTO_TEST_CASE(swap_fxn) {
+  for (auto&& [str, idx] : idxs) {
     VariableList v0, v1(idx);
     idx.swap(v0);
     BOOST_CHECK(idx == VariableList{});
@@ -479,8 +473,8 @@ BOOST_AUTO_TEST_CASE(swap_fxn){
   }
 }
 
-BOOST_AUTO_TEST_CASE(swap_free_fxn){
-  for(auto&& [str, idx] : idxs){
+BOOST_AUTO_TEST_CASE(swap_free_fxn) {
+  for (auto&& [str, idx] : idxs) {
     VariableList v0, v1(idx);
     swap(idx, v0);
     BOOST_CHECK(idx == VariableList{});
@@ -488,75 +482,75 @@ BOOST_AUTO_TEST_CASE(swap_free_fxn){
   }
 }
 
-BOOST_AUTO_TEST_CASE(permutation_fxn){
-  if(world.nproc() == 1){
+BOOST_AUTO_TEST_CASE(permutation_fxn) {
+  if (world.nproc() == 1) {
     VariableList v0("i, j");
 
-    { // not both ToT
-        VariableList v1("i;j");
-        BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
+    {  // not both ToT
+      VariableList v1("i;j");
+      BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
     }
 
-    { // wrong size
+    {  // wrong size
       VariableList v1("i");
       BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
     }
 
-    { // not a permutation
+    {  // not a permutation
       VariableList v1("i, a");
       BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
     }
 
-    { // ToTs mix outer and inner
+    {  // ToTs mix outer and inner
       VariableList v1("i,j;k,l");
       VariableList v2("i,k;j,l");
       BOOST_CHECK_THROW(v1.permutation(v2), TiledArray::Exception);
     }
   }
 
-  for(auto [str, idx] : idxs){
+  for (auto [str, idx] : idxs) {
     std::vector<size_type> perm(idx.size());
     std::iota(perm.begin(), perm.end(), 0);
-    if(idx.is_tot()){
-     auto outer_dim = idx.outer_dim();
-      do{
-       do{
-         Permutation p(perm.begin(), perm.end());
-         auto v = p * idx;
-         BOOST_CHECK(v.permutation(idx) == p);
-       } while(std::next_permutation(perm.begin() + outer_dim, perm.end()));
-     } while(std::next_permutation(perm.begin(), perm.begin() + outer_dim));
-    }
-    else {
+    if (idx.is_tot()) {
+      auto outer_dim = idx.outer_dim();
+      do {
+        do {
+          Permutation p(perm.begin(), perm.end());
+          auto v = p * idx;
+          BOOST_CHECK(v.permutation(idx) ==
+                      BipartitePermutation(p, perm.size() - outer_dim));
+        } while (std::next_permutation(perm.begin() + outer_dim, perm.end()));
+      } while (std::next_permutation(perm.begin(), perm.begin() + outer_dim));
+    } else {
       do {
         Permutation p(perm.begin(), perm.end());
         auto v = p * idx;
-        BOOST_CHECK(v.permutation(idx) == p);
+        BOOST_CHECK(v.permutation(idx) == BipartitePermutation(p, 0));
       } while (std::next_permutation(perm.begin(), perm.end()));
     }
   }
 }
 
-BOOST_AUTO_TEST_CASE(is_permutation_fxn){
+BOOST_AUTO_TEST_CASE(is_permutation_fxn) {
   VariableList v0("i, j");
-  { // Different number of variables
+  {  // Different number of variables
     VariableList v1("i");
     BOOST_CHECK(v0.is_permutation(v1) == false);
   }
 
-  { // Different indices
+  {  // Different indices
     VariableList v1("i, a");
     BOOST_CHECK(v1.is_permutation(v0) == false);
   }
 
-  for(auto [str, idx] : idxs){
+  for (auto [str, idx] : idxs) {
     std::vector<size_type> perm(idx.size());
     std::iota(perm.begin(), perm.end(), 0);
-    do{
+    do {
       Permutation p(perm.begin(), perm.end());
       auto v = p * idx;
       BOOST_CHECK(v.is_permutation(idx));
-    } while(std::next_permutation(perm.begin(), perm.end()));
+    } while (std::next_permutation(perm.begin(), perm.end()));
   }
 }
 
@@ -564,7 +558,7 @@ BOOST_AUTO_TEST_CASE(implicit_permutation) {
   Permutation p1({1, 2, 3, 0});
   VariableList v("a,b,c,d");
   VariableList v1 = (p1 * v);
-  Permutation p = TiledArray::expressions::detail::var_perm(v1, v);
+  auto p = TiledArray::expressions::detail::var_perm(v1, v);
 
   BOOST_CHECK_EQUAL_COLLECTIONS(p.begin(), p.end(), p1.begin(), p1.end());
 }
@@ -580,7 +574,6 @@ BOOST_AUTO_TEST_CASE(common) {
   VariableList v_ia("i,a");
   VariableList v_ix("i,x");
   VariableList v_i("i");
-
 
   find_common(v_aib.begin(), v_aib.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
   BOOST_CHECK(p1.first == v_aib.begin() + 1);
@@ -662,11 +655,11 @@ BOOST_AUTO_TEST_CASE(common) {
   BOOST_CHECK(p1.second == v_i.begin() + 1);
   BOOST_CHECK(p2.first == v_i.begin());
   BOOST_CHECK(p2.second == v_i.begin() + 1);
-//  find_common(v_0.begin(), v_0.end(), v_i.begin(), v_i.end(), p1, p2);
-//  BOOST_CHECK(p1.first == v_0.end());
-//  BOOST_CHECK(p1.second == v_0.end());
-//  BOOST_CHECK(p2.first == v_i.end());
-//  BOOST_CHECK(p2.second == v_i.end());
+  //  find_common(v_0.begin(), v_0.end(), v_i.begin(), v_i.end(), p1, p2);
+  //  BOOST_CHECK(p1.first == v_0.end());
+  //  BOOST_CHECK(p1.second == v_0.end());
+  //  BOOST_CHECK(p2.first == v_i.end());
+  //  BOOST_CHECK(p2.second == v_i.end());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

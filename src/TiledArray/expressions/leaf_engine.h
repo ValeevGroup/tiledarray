@@ -163,8 +163,9 @@ class LeafEngine : public ExprEngine<Derived> {
         impl_type;
 
     /// Create the pimpl for the distributed evaluator
-    std::shared_ptr<impl_type> pimpl = std::make_shared<impl_type>(
-        array_, *world_, trange_, shape_, pmap_, perm_, ExprEngine_::make_op());
+    std::shared_ptr<impl_type> pimpl =
+        std::make_shared<impl_type>(array_, *world_, trange_, shape_, pmap_,
+                                    outer(perm_), ExprEngine_::make_op());
 
     return dist_eval_type(pimpl);
   }

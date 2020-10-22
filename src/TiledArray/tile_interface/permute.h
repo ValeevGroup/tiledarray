@@ -39,8 +39,11 @@ namespace TiledArray {
 /// \param arg The tile argument to be permuted
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ arg</tt>
-template <typename Arg, typename Perm,
-          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+template <
+    typename Arg, typename Perm,
+    typename = std::enable_if_t<detail::is_permutation_v<Perm> &&
+                                detail::has_member_function_permute_anyreturn_v<
+                                    const Arg, const Perm&>>>
 inline auto permute(const Arg& arg, const Perm& perm) {
   return arg.permute(perm);
 }
@@ -73,10 +76,16 @@ class Permute {
   typedef Result result_type;  ///< Result tile type
   typedef Arg argument_type;   ///< Argument tile type
 
-  result_type operator()(const argument_type& arg,
-                         const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_type operator()(const argument_type& arg, const Perm& perm) const {
     using TiledArray::permute;
-    return permute(arg, perm);
+    if constexpr (detail::is_bipartite_permutable_v<argument_type>) {
+      return permute(arg, perm);
+    } else {
+      TA_ASSERT(inner_dim(perm));
+      return permute(arg, outer(perm));
+    }
   }
 };
 
@@ -92,10 +101,16 @@ class Permute<Result, Arg,
   typedef Result result_type;  ///< Result tile type
   typedef Arg argument_type;   ///< Argument tile type
 
-  result_type operator()(const argument_type& arg,
-                         const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_type operator()(const argument_type& arg, const Perm& perm) const {
     using TiledArray::permute;
-    return Cast_::operator()(permute(arg, perm));
+    if constexpr (detail::is_bipartite_permutable_v<argument_type>) {
+      return Cast_::operator()(permute(arg, perm));
+    } else {
+      TA_ASSERT(inner_dim(perm));
+      return Cast_::operator()(permute(arg, outer(perm)));
+    }
   }
 };
 

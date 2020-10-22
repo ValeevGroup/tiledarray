@@ -198,6 +198,8 @@ class ExprEngine : private NO_DEFAULTS {
   /// may customize this function by providing their own implementation it.
   op_type make_op() const {
     if (perm_ && permute_tiles_)
+      // permutation can only be applied to the tile, not to its element (if
+      // tile = tensor-of-tensors)
       return derived().make_tile_op(perm_);
     else
       return derived().make_tile_op();
@@ -243,7 +245,7 @@ class ExprEngine : private NO_DEFAULTS {
 
   /// Set the permute tiles flag
 
-  /// \param status The new status for permute tiles (true == permtue result
+  /// \param status The new status for permute tiles (true == permute result
   /// tiles)
   void permute_tiles(const bool status) { permute_tiles_ = status; }
 

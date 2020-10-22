@@ -69,20 +69,26 @@ class Subt {
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   static result_type eval(const left_type& first, const right_type& second,
-                          const Permutation& perm) {
+                          const Perm& perm) {
     using TiledArray::subt;
     return subt(first, second, perm);
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   static result_type eval(ZeroTensor, const right_type& second,
-                          const Permutation& perm) {
+                          const Perm& perm) {
     using TiledArray::neg;
     return neg(second, perm);
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   static result_type eval(const left_type& first, ZeroTensor,
-                          const Permutation& perm) {
+                          const Perm& perm) {
     using TiledArray::permute;
     return permute(first, perm);
   }
@@ -146,8 +152,10 @@ class Subt {
   /// \param right The right-hand tile argument
   /// \param perm The permutation applied to the result tile
   /// \return The permuted and scaled difference of `left` and `right`.
-  template <typename L, typename R>
-  result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+  template <
+      typename L, typename R, typename Perm,
+      typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+  result_type operator()(L&& left, R&& right, const Perm& perm) const {
     return eval(std::forward<L>(left), std::forward<R>(right), perm);
   }
 
@@ -248,20 +256,25 @@ class ScalSubt {
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type eval(const left_type& first, const right_type& second,
-                   const Permutation& perm) const {
+                   const Perm& perm) const {
     using TiledArray::subt;
     return subt(first, second, factor_, perm);
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type eval(ZeroTensor, const right_type& second,
-                   const Permutation& perm) const {
+                   const Perm& perm) const {
     using TiledArray::scale;
     return scale(second, -factor_, perm);
   }
 
-  result_type eval(const left_type& first, ZeroTensor,
-                   const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  result_type eval(const left_type& first, ZeroTensor, const Perm& perm) const {
     using TiledArray::scale;
     return scale(first, factor_, perm);
   }
@@ -338,8 +351,10 @@ class ScalSubt {
   /// \param right The right-hand tile argument
   /// \param perm The permutation applied to the result tile
   /// \return The permuted and scaled difference of `left` and `right`.
-  template <typename L, typename R>
-  result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+  template <
+      typename L, typename R, typename Perm,
+      typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+  result_type operator()(L&& left, R&& right, const Perm& perm) const {
     return eval(std::forward<L>(left), std::forward<R>(right), perm);
   }
 

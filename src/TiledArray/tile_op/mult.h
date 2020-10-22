@@ -66,21 +66,26 @@ class Mult {
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
-
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   static result_type eval(const left_type& first, const right_type& second,
-                          const Permutation& perm) {
+                          const Perm& perm) {
     using TiledArray::mult;
     return mult(first, second, perm);
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   static result_type eval(ZeroTensor, const right_type& second,
-                          const Permutation& perm) {
+                          const Perm& perm) {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   static result_type eval(const left_type& first, ZeroTensor,
-                          const Permutation& perm) {
+                          const Perm& perm) {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
@@ -143,8 +148,10 @@ class Mult {
   /// \param right The right-hand tile argument
   /// \param perm The permutation applied to the result tile
   /// \return The permuted and scaled product of `left` and `right`.
-  template <typename L, typename R>
-  result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+  template <
+      typename L, typename R, typename Perm,
+      typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+  result_type operator()(L&& left, R&& right, const Perm& perm) const {
     return eval(std::forward<L>(left), std::forward<R>(right), perm);
   }
 
@@ -241,20 +248,25 @@ class ScalMult {
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type eval(const left_type& first, const right_type& second,
-                   const Permutation& perm) const {
+                   const Perm& perm) const {
     using TiledArray::mult;
     return mult(first, second, factor_, perm);
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type eval(ZeroTensor, const right_type& second,
-                   const Permutation& perm) const {
+                   const Perm& perm) const {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
 
-  result_type eval(const left_type& first, ZeroTensor,
-                   const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  result_type eval(const left_type& first, ZeroTensor, const Perm& perm) const {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
@@ -329,8 +341,10 @@ class ScalMult {
   /// \param right The right-hand tile argument
   /// \param perm The permutation applied to the result tile
   /// \return The permuted and scaled product of `left` and `right`.
-  template <typename L, typename R>
-  result_type operator()(L&& left, R&& right, const Permutation& perm) const {
+  template <
+      typename L, typename R, typename Perm,
+      typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+  result_type operator()(L&& left, R&& right, const Perm& perm) const {
     return eval(std::forward<L>(left), std::forward<R>(right), perm);
   }
 

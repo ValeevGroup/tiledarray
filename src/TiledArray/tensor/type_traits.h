@@ -291,6 +291,15 @@ struct is_permutation<TiledArray::symmetry::Permutation>
 template <typename T>
 static constexpr const auto is_permutation_v = is_permutation<T>::value;
 
+template <typename T>
+static constexpr const auto is_bipartite_permutation_v =
+    std::is_same_v<T, TiledArray::BipartitePermutation>;
+
+template <typename T>
+static constexpr const auto is_bipartite_permutable_v =
+    is_free_function_permute_anyreturn_v<
+        const T&, const TiledArray::BipartitePermutation&>;
+
 }  // namespace detail
 }  // namespace TiledArray
 

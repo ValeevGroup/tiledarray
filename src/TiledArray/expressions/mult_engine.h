@@ -44,7 +44,7 @@ template <typename, typename, typename, typename>
 class ScalMultEngine;
 
 template <typename Left, typename Right, typename Result>
-struct EngineTrait<MultEngine<Left, Right, Result> > {
+struct EngineTrait<MultEngine<Left, Right, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -84,7 +84,7 @@ struct EngineTrait<MultEngine<Left, Right, Result> > {
 };
 
 template <typename Left, typename Right, typename Scalar, typename Result>
-struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result> > {
+struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -135,7 +135,7 @@ struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result> > {
 /// \tparam Right The right-hand engine type
 /// \tparam Result The result tile type
 template <typename Left, typename Right, typename Result>
-class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
+class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
  public:
   // Class hierarchy typedefs
   typedef MultEngine<Left, Right, Result> MultEngine_;  ///< This class type
@@ -299,7 +299,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   /// \return The result shape
   shape_type make_shape(const Permutation& perm) const {
     return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(),
-                                             perm);
+                                             outer(perm));
   }
 
   /// Non-permuting tile operation factory function
@@ -311,7 +311,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  static op_type make_tile_op(const Permutation& perm) {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  static op_type make_tile_op(const Perm& perm) {
     return op_type(op_base_type(), perm);
   }
 
@@ -351,7 +353,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 /// The result tile type
 template <typename Left, typename Right, typename Scalar, typename Result>
 class ScalMultEngine
-    : public ContEngine<ScalMultEngine<Left, Right, Scalar, Result> > {
+    : public ContEngine<ScalMultEngine<Left, Right, Scalar, Result>> {
  public:
   // Class hierarchy typedefs
   typedef ScalMultEngine<Left, Right, Scalar, Result>
@@ -541,7 +543,9 @@ class ScalMultEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     return op_type(op_base_type(ContEngine_::factor_), perm);
   }
 

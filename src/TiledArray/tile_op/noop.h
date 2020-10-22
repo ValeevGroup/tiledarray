@@ -53,8 +53,9 @@ class Noop {
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
-
-  result_type eval(const Arg& arg, const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_type eval(const Arg& arg, const Perm& perm) const {
     TiledArray::Permute<Result, Arg> permute;
     return permute(arg, perm);
   }
@@ -81,8 +82,9 @@ class Noop {
   /// \param arg The tile argument
   /// \param perm The permutation applied to the result tile
   /// \return A permuted copy of `arg`
-  result_type operator()(const argument_type& arg,
-                         const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_type operator()(const argument_type& arg, const Perm& perm) const {
     return eval(arg, perm);
   }
 

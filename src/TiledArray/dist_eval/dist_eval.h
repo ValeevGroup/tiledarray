@@ -118,10 +118,9 @@ class DistEvalImpl : public TensorImpl<Policy>,
     set_counter_ = 0;
 
     if (perm) {
-      auto outer_perm = outer(perm);
-      Permutation inv_perm(-outer_perm);
+      Permutation inv_perm(-perm);
       range_type source_range = inv_perm * trange.tiles_range();
-      source_to_target_ = PermIndex(source_range, outer_perm);
+      source_to_target_ = PermIndex(source_range, perm);
       target_to_source_ = PermIndex(trange.tiles_range(), inv_perm);
     }
   }

@@ -381,11 +381,11 @@ class ContEngine : public BinaryEngine<Derived> {
     if (target_vars != vars_) {
       // Initialize permuted structure
       perm_ = ExprEngine_::make_perm(target_vars);
-      op_ =
-          op_type(left_op, right_op, factor_, vars_.dim(), left_vars_.dim(),
-                  right_vars_.dim(), (permute_tiles_ ? perm_ : Permutation()));
-      trange_ = ContEngine_::make_trange(perm_);
-      shape_ = ContEngine_::make_shape(perm_);
+      op_ = op_type(left_op, right_op, factor_, vars_.dim(), left_vars_.dim(),
+                    right_vars_.dim(),
+                    (permute_tiles_ ? perm_ : BipartitePermutation{}));
+      trange_ = ContEngine_::make_trange(outer(perm_));
+      shape_ = ContEngine_::make_shape(outer(perm_));
     } else {
       // Initialize non-permuted structure
       op_ = op_type(left_op, right_op, factor_, vars_.dim(), left_vars_.dim(),
@@ -450,7 +450,7 @@ class ContEngine : public BinaryEngine<Derived> {
 
   /// \param perm The permutation to be applied to the array
   /// \return The result tiled range
-  trange_type make_trange(const Permutation& perm = Permutation()) const {
+  trange_type make_trange(const Permutation& perm = {}) const {
     // Compute iteration limits
     const unsigned int left_rank = op_.gemm_helper().left_rank();
     const unsigned int right_rank = op_.gemm_helper().right_rank();

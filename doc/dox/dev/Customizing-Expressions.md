@@ -468,7 +468,11 @@ public:
   op_type make_tile_op() const { return op_type(factor_); }
 
   // Permuting tile operation factory function
-  op_type make_tile_op(const Permutation& perm) const { return op_type(perm, factor_); }
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
+    return op_type(perm, factor_);
+  }
 
   // Expression identification tag used for printing
   std::string make_tag() const {

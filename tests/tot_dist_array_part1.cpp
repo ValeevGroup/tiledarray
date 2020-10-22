@@ -313,7 +313,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(clone, TestParam, test_params) {
  */
 BOOST_AUTO_TEST_CASE_TEMPLATE(copy_assignment, TestParam, test_params) {
   for (auto tr_t : run_all<TestParam>()) {
-    auto& tr = std::get<0>(tr_t);
     auto& t = std::get<2>(tr_t);
     tensor_type<TestParam> t2;
     auto pt2 = &(t2 = t);
