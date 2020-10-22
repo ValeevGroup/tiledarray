@@ -48,7 +48,7 @@ class Range {
   typedef index_type index;  ///< Coordinate index type (deprecated)
   typedef detail::SizeArray<const index1_type>
       index_view_type;  ///< Non-owning variant of index_type
-  typedef index_view_type
+  typedef index_type
       extent_type;  ///< Range extent type, to conform to TWG spec
   typedef std::size_t ordinal_type;  ///< Ordinal type, to conform to TWG spec
   typedef std::make_signed_t<ordinal_type> distance_type;  ///< Distance type
@@ -728,8 +728,7 @@ class Range {
 
   /// Range extent accessor
 
-  /// \return A \c extent_type that contains the extent for each dimension of
-  /// the block range.
+  /// \return A range that contains the extent for each dimension.
   /// \throw nothing
   index_view_type extent() const {
     return index_view_type(extent_data(), rank_);
@@ -1320,6 +1319,13 @@ inline bool is_congruent(const Range& r1, const Range& r2) {
          std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
                     r2.extent_data());
 }
+
+/// Tests whether a range is contiguous, i.e. whether its ordinal values form a
+/// contiguous range
+
+/// \param range a Range
+/// \return true since TiledArray::Range is contiguous by definition
+inline bool is_contiguous(const Range& range) { return true; }
 
 }  // namespace TiledArray
 #endif  // TILEDARRAY_RANGE_H__INCLUDED

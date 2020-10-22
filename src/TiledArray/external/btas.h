@@ -73,6 +73,17 @@ inline TiledArray::Range make_ta_range(
 }
 
 }  // namespace detail
+
+/// Test if the two ranges are congruent
+
+/// This function tests that the rank and extent of
+/// \c r1 are equal to those of \c r2.
+/// \param r1 The first Range to compare
+/// \param r2 The second Range to compare
+inline bool congruent(const Range& r1, const Range& r2) {
+  return is_congruent(r1, r2);
+}
+
 }  // namespace TiledArray
 
 namespace btas {
@@ -122,6 +133,17 @@ inline bool operator==(const TiledArray::Range& range1,
     }
   }
   return false;
+}
+
+template <typename T1, typename S1, typename T2, typename S2>
+bool operator==(const btas::Tensor<T1, TiledArray::Range, S1>& t1,
+                const btas::Tensor<T2, TiledArray::Range, S2>& t2) {
+  auto t1_view = make_ti(t1);
+  auto t2_view = make_ti(t2);
+  using std::data;
+  return t1_view.size() == t2_view.size() &&
+         std::equal(data(t1_view), data(t1_view) + t1_view.size(),
+                    data(t2_view));
 }
 
 /// Computes the result of applying permutation \c perm to \c arg
