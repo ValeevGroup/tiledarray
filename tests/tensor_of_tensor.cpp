@@ -31,6 +31,8 @@
 #endif
 
 #include <TiledArray/tensor.h>
+#include <TiledArray/tile_interface/add.h>
+#include <TiledArray/tile_interface/scale.h>
 #include <TiledArray/tile_op/tile_interface.h>
 
 #include <../tests/unit_test_config.h>
@@ -179,18 +181,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(default_constructor, ITensor, itensor_types) {
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(unary_constructor, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
+  // apply element-wise op
   BOOST_CHECK_NO_THROW(Tensor<ITensor> t(a, [](const int l) { return l * 2; }));
   Tensor<ITensor> t(a, [](const int l) { return l * 2; });
 
-  BOOST_CHECK(!t.empty());
-  BOOST_CHECK_EQUAL(t.range(), a.range());
+  // apply tensor-wise op
+  BOOST_CHECK_NO_THROW(
+      Tensor<ITensor> t2(a, [](const ITensor& v) { return scale(v, 2); }));
+  Tensor<ITensor> t2(a, [](const ITensor& v) { return scale(v, 2); });
 
-  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
-    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
-      BOOST_CHECK(!t(i, j).empty());
-      BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
-      for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
-        BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] * 2);
+  for (auto&& tref : {std::cref(t), std::cref(t2)}) {
+    auto& t = tref.get();
+
+    BOOST_CHECK(!t.empty());
+    BOOST_CHECK_EQUAL(t.range(), a.range());
+    for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+      for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+        BOOST_CHECK(!t(i, j).empty());
+        BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
+        for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
+          BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] * 2);
+        }
       }
     }
   }
@@ -241,19 +252,30 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(unary_bperm_constructor, ITensor, itensor_types) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(binary_constructor, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
   const auto& b = ToT<ITensor>(1);
+
+  // apply element-wise op
   BOOST_CHECK_NO_THROW(
       Tensor<ITensor> t(a, b, [](const int l, const int r) { return l + r; }));
   Tensor<ITensor> t(a, b, [](const int l, const int r) { return l + r; });
 
-  BOOST_CHECK(!t.empty());
-  BOOST_CHECK_EQUAL(t.range(), a.range());
+  // apply tensor-wise op
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t2(
+      a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); }));
+  Tensor<ITensor> t2(
+      a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); });
 
-  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
-    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
-      BOOST_CHECK(!t(i, j).empty());
-      BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
-      for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
-        BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] + b(i, j)[index]);
+  for (auto&& tref : {std::cref(t), std::cref(t2)}) {
+    auto& t = tref.get();
+
+    BOOST_CHECK(!t.empty());
+    BOOST_CHECK_EQUAL(t.range(), a.range());
+    for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+      for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+        BOOST_CHECK(!t(i, j).empty());
+        BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
+        for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
+          BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] + b(i, j)[index]);
+        }
       }
     }
   }

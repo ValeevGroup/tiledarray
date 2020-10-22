@@ -47,10 +47,14 @@ struct transform;
 
 /// Tensor operations with contiguous data
 
-/// This function sets the elements of the result tensor with
-/// \c op(tensor1[i], tensors[i]...)
+/// This function transforms argument tensors applying a callable directly
+/// (i.e., tensor-wise as \c result=op(tensor1,tensors...) ),
+/// or by lowering to the elements (i.e., element-wise as
+/// \c result[i]=op(tensor1[i],tensors[i]...)  )
 /// \tparam TR The tensor result type
-/// \tparam Op The element-wise operation type
+/// \tparam Op A callable used to produce TR when called with the argument
+/// tensors, or produce TR's elements when called with the argument tensor's
+/// elements
 /// \tparam T1 The first argument tensor type
 /// \tparam Ts The remaining argument tensor types
 /// \param op The result tensor element initialization operation
@@ -61,16 +65,24 @@ template <typename TR, typename Op, typename T1, typename... Ts,
               is_tensor<TR, T1, Ts...>::value ||
               is_tensor_of_tensor<TR, T1, Ts...>::value>::type* = nullptr>
 inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
-  return TiledArray::detail::transform<TR>()(std::forward<Op>(op), tensor1,
-                                             tensors...);
+  if constexpr (std::is_invocable_r_v<TR, Op, const T1&, const Ts&...>) {
+    return std::forward<Op>(op)(tensor1, tensors...);
+  } else {
+    return TiledArray::detail::transform<TR>()(std::forward<Op>(op), tensor1,
+                                               tensors...);
+  }
 }
 
 /// Tensor permutation operations with contiguous data
 
-/// This function sets the elements of the result tensor with
-/// \c op(tensor1[i],tensors[i]...)
+/// This function transforms argument tensors applying a callable directly
+/// (i.e., tensor-wise as \c result=op(perm,tensor1,tensors...) ),
+/// or by lowering to the elements (i.e., element-wise as
+/// \c result[i]=op(perm,tensor1[i],tensors[i]...)  )
 /// \tparam TR The tensor result type
-/// \tparam Op The element-wise operation type
+/// \tparam Op A callable used to produce TR when called with the argument
+/// tensors, or produce TR's elements when called with the argument tensor's
+/// elements
 /// \tparam T1 The result tensor type
 /// \tparam Ts The argument tensor types
 /// \param[in] op The operation that is used to compute the result
@@ -85,8 +97,13 @@ template <typename TR, typename Op, typename T1, typename... Ts,
               is_contiguous_tensor<T1, Ts...>::value>::type* = nullptr>
 inline TR tensor_op(Op&& op, const Permutation& perm, const T1& tensor1,
                     const Ts&... tensors) {
-  return TiledArray::detail::transform<TR>()(std::forward<Op>(op), perm,
-                                             tensor1, tensors...);
+  if constexpr (std::is_invocable_r_v<TR, Op, const Permutation&, const T1&,
+                                      const Ts&...>) {
+    return std::forward<Op>(op)(perm, tensor1, tensors...);
+  } else {
+    return TiledArray::detail::transform<TR>()(std::forward<Op>(op), perm,
+                                               tensor1, tensors...);
+  }
 }
 
 /// provides transform functionality to class \p T, useful for nonintrusive
