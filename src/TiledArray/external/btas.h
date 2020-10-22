@@ -657,44 +657,42 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
 
 // sum of the hyperdiagonal elements
 template <typename T, typename Range, typename Storage>
-inline typename btas::Tensor<T, Range, Storage>::value_type trace(
-    const btas::Tensor<T, Range, Storage>& arg) {
+inline T trace(const btas::Tensor<T, Range, Storage>& arg) {
   assert(false);
 }
 // foreach(i) result += arg[i]
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) sum(const btas::Tensor<T, Range, Storage>& arg) {
+inline T sum(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).sum();
 }
 // foreach(i) result *= arg[i]
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) product(const btas::Tensor<T, Range, Storage>& arg) {
+inline T product(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).product();
 }
 
 // foreach(i) result += arg[i] * arg[i]
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) squared_norm(const btas::Tensor<T, Range, Storage>& arg) {
+inline T squared_norm(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).squared_norm();
 };
 
 // foreach(i) result += arg1[i] * arg2[i]
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) dot(const btas::Tensor<T, Range, Storage>& arg1,
-                          const btas::Tensor<T, Range, Storage>& arg2) {
+inline T dot(const btas::Tensor<T, Range, Storage>& arg1,
+             const btas::Tensor<T, Range, Storage>& arg2) {
   return make_ti(arg1).dot(make_ti(arg2));
 };
 
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) inner_product(
-    const btas::Tensor<T, Range, Storage>& arg1,
-    const btas::Tensor<T, Range, Storage>& arg2) {
+inline T inner_product(const btas::Tensor<T, Range, Storage>& arg1,
+                       const btas::Tensor<T, Range, Storage>& arg2) {
   return make_ti(arg1).inner_product(make_ti(arg2));
 };
 
 // sqrt(squared_norm(arg))
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) norm(const btas::Tensor<T, Range, Storage>& arg) {
+inline T norm(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).norm();
 }
 // sqrt(squared_norm(arg))
@@ -705,23 +703,22 @@ inline void norm(const btas::Tensor<T, Range, Storage>& arg,
 }
 // foreach(i) result = max(result, arg[i])
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) max(const btas::Tensor<T, Range, Storage>& arg) {
+inline T max(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).max();
 }
 // foreach(i) result = min(result, arg[i])
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) min(const btas::Tensor<T, Range, Storage>& arg) {
+inline T min(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).min();
 }
 // foreach(i) result = max(result, abs(arg[i]))
 template <typename T, typename Range, typename Storage>
-inline decltype(auto) abs_max(const btas::Tensor<T, Range, Storage>& arg) {
+inline T abs_max(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).abs_max();
 }
 // foreach(i) result = max(result, abs(arg[i]))
 template <typename T, typename Range, typename Storage>
-inline typename btas::Tensor<T, Range, Storage>::value_type abs_min(
-    const btas::Tensor<T, Range, Storage>& arg) {
+inline T abs_min(const btas::Tensor<T, Range, Storage>& arg) {
   return make_ti(arg).abs_min();
 }
 }  // namespace btas
