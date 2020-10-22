@@ -158,7 +158,8 @@ Tensor<bTensorI>& TensorOfTensorFixture::ToT<bTensorI>(size_t idx) {
 
 const std::array<std::size_t, 2> TensorOfTensorFixture::size{{10, 11}};
 const Permutation TensorOfTensorFixture::perm{1, 0};
-const BipartitePermutation TensorOfTensorFixture::bperm({1, 0, 3, 2}, 2);
+const BipartitePermutation TensorOfTensorFixture::bperm(Permutation{1, 0, 3, 2},
+                                                        2);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_of_tensor_suite, TensorOfTensorFixture)
 
