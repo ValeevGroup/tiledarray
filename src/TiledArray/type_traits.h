@@ -856,8 +856,8 @@ template <std::size_t I, typename T, typename = void>
 struct is_std_gettable : std::false_type {};
 
 template <std::size_t I, typename T>
-struct is_std_gettable<I, T,
-                       std::void_t<decltype(::std::get<I>(std::declval<T>()))>>
+struct is_std_gettable<
+    I, T, std::void_t<decltype(::std::get<I>(std::declval<const T&>()))>>
     : std::true_type {};
 
 template <std::size_t I, typename T>
@@ -868,7 +868,7 @@ struct is_boost_gettable : std::false_type {};
 
 template <std::size_t I, typename T>
 struct is_boost_gettable<
-    I, T, std::void_t<decltype(::boost::get<I>(std::declval<T>()))>>
+    I, T, std::void_t<decltype(::boost::get<I>(std::declval<const T&>()))>>
     : std::true_type {};
 
 template <std::size_t I, typename T>
