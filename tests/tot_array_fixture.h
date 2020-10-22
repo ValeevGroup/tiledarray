@@ -47,10 +47,10 @@ using test_params = boost::mpl::list<
     ,
     std::tuple<int, Tensor<btas::Tensor<int, Range>>>,
     std::tuple<float, Tensor<btas::Tensor<float, Range>>>,
-    std::tuple<double, Tensor<btas::Tensor<double, Range>>>,
-    std::tuple<int, btas::Tensor<btas::Tensor<int, Range>, Range>>,
-    std::tuple<float, btas::Tensor<btas::Tensor<float, Range>, Range>>,
-    std::tuple<double, btas::Tensor<btas::Tensor<double, Range>, Range>>
+    std::tuple<double, Tensor<btas::Tensor<double, Range>>>
+//    ,std::tuple<int, btas::Tensor<btas::Tensor<int, Range>, Range>>,
+//    std::tuple<float, btas::Tensor<btas::Tensor<float, Range>, Range>>,
+//    std::tuple<double, btas::Tensor<btas::Tensor<double, Range>, Range>>
 //    ,std::tuple<int, Tile<btas::Tensor<btas::Tensor<int, Range>, Range>>>,
 //    std::tuple<float, Tile<btas::Tensor<btas::Tensor<float, Range>, Range>>>,
 //    std::tuple<double, Tile<btas::Tensor<btas::Tensor<double, Range>, Range>>>
