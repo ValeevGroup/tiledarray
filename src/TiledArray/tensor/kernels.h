@@ -38,7 +38,7 @@ class Tensor;
 namespace detail {
 
 /// customization point transform functionality to tensor class T, useful for
-/// nonintrusive extension of T to be usable as tensor type T in Tensor<T>
+/// nonintrusive extension of T to be usable as element type T in Tensor<T>
 template <typename T>
 struct transform;
 
@@ -89,8 +89,13 @@ inline TR tensor_op(Op&& op, const Permutation& perm, const T1& tensor1,
                                              tensor1, tensors...);
 }
 
-/// provides transform functionality to class T, useful for nonintrusive
-/// extension of T to be usable as tensor type T in Tensor<T>
+/// provides transform functionality to class \p T, useful for nonintrusive
+/// extension of a tensor type \p T to be usable as element type \p T in \c
+/// Tensor<T> \tparam T a tensor type \note The default implementation
+/// constructs T, then computes it by coiterating over elements of the argument
+/// tensors and transforming with the transform \c Op .
+///       This should be specialized for classes like TiledArray::Tensor that
+///       already include the appropriate transform constructors already
 template <typename T>
 struct transform {
   /// creates a result tensor in which element \c i is obtained by \c

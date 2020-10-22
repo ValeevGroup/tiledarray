@@ -2082,7 +2082,7 @@ struct Trace<Tensor<T, A>, detail::enable_if_numeric_t<T>> {
   }
 };
 
-// specialize TiledArray::detail::transform for Tensor
+/// specialization of TiledArray::detail::transform for Tensor
 template <typename T, typename A>
 struct transform<Tensor<T, A>> {
   template <typename Op, typename T1>

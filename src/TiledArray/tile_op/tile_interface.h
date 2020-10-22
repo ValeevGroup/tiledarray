@@ -503,6 +503,8 @@ using result_of_mult_to_t = decltype(mult_to(std::declval<T>()...));
 
 // Scaling operations --------------------------------------------------------
 
+// see tile_interface/scale.h
+
 // Negation operations -------------------------------------------------------
 
 /// Negate the tile argument
