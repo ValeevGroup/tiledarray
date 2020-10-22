@@ -36,44 +36,50 @@
  * - register_set_notifier
  */
 
-
 using namespace TiledArray;
 
 // These are all of the template parameters we are going to test over
-using test_params = boost::mpl::list<
-    std::tuple<int, Tensor<Tensor<int>>>,
-    std::tuple<float, Tensor<Tensor<float>>>,
-    std::tuple<double, Tensor<Tensor<double>>>
+using test_params =
+    boost::mpl::list<std::tuple<int, Tensor<Tensor<int>>>,
+                     std::tuple<float, Tensor<Tensor<float>>>,
+                     std::tuple<double, Tensor<Tensor<double>>>
 #ifdef TILEDARRAY_HAS_BTAS
-    ,std::tuple<int, Tensor<btas::Tensor<int>>>,
-    std::tuple<float, Tensor<btas::Tensor<float>>>,
-    std::tuple<double, Tensor<btas::Tensor<double>>>
+                     ,
+                     std::tuple<int, Tensor<btas::Tensor<int, Range>>>,
+                     std::tuple<float, Tensor<btas::Tensor<float, Range>>>,
+                     std::tuple<double, Tensor<btas::Tensor<double, Range>>>
+//    ,std::tuple<int, btas::Tensor<btas::Tensor<int, Range>, Range>>,
+//    std::tuple<float, btas::Tensor<btas::Tensor<float, Range>, Range>>,
+//    std::tuple<double, btas::Tensor<btas::Tensor<double, Range>, Range>>
+//    ,std::tuple<int, Tile<btas::Tensor<btas::Tensor<int, Range>, Range>>>,
+//    std::tuple<float, Tile<btas::Tensor<btas::Tensor<float, Range>, Range>>>,
+//    std::tuple<double, Tile<btas::Tensor<btas::Tensor<double, Range>, Range>>>
 #endif
->;
+                     >;
 
 // These typedefs unpack the unit test template parameter
 //{
-template<typename TupleElementType>
+template <typename TupleElementType>
 using scalar_type = std::tuple_element_t<0, TupleElementType>;
 
-template<typename TupleElementType>
+template <typename TupleElementType>
 using tile_type = std::tuple_element_t<1, TupleElementType>;
 
-template<typename>
+template <typename>
 using policy_type = DensePolicy;
 //}
 
 // The type of a DistArray consistent with the unit test template parameter
-template<typename TupleElementType>
+template <typename TupleElementType>
 using tensor_type =
-DistArray<tile_type<TupleElementType>, policy_type<TupleElementType>>;
+    DistArray<tile_type<TupleElementType>, policy_type<TupleElementType>>;
 
 // Type of the object storing the tiling
-template<typename TupleElementType>
+template <typename TupleElementType>
 using trange_type = typename tensor_type<TupleElementType>::trange_type;
 
 // Type of the inner tile
-template<typename TupleElementType>
+template <typename TupleElementType>
 using inner_type = typename tile_type<TupleElementType>::value_type;
 
 // Type of an input archive
@@ -90,7 +96,6 @@ using output_archive_type = madness::archive::BinaryFstreamOutputArchive;
  * have differing extents (they must all have the same rank).
  */
 struct ToTArrayFixture {
-
   ToTArrayFixture() : m_world(*GlobalFixture::world) {}
   ~ToTArrayFixture() { GlobalFixture::world->gop.fence(); }
 
@@ -103,16 +108,12 @@ struct ToTArrayFixture {
    * - Multiple tiles, one with a single element and one with multiple elements,
    * - Multiple tiles, each with two elements
    */
-  template<typename TupleElementType>
+  template <typename TupleElementType>
   auto vector_tiled_ranges() {
     using trange_type = trange_type<TupleElementType>;
     return std::vector<trange_type>{
-        trange_type{{0, 1}},
-        trange_type{{0, 2}},
-        trange_type{{0, 1, 2}},
-        trange_type{{0, 1, 3}},
-        trange_type{{0, 2, 4}}
-    };
+        trange_type{{0, 1}}, trange_type{{0, 2}}, trange_type{{0, 1, 2}},
+        trange_type{{0, 1, 3}}, trange_type{{0, 2, 4}}};
   }
 
   /* This function returns an std::vector of tiled ranges. The ranges are for a
@@ -126,23 +127,18 @@ struct ToTArrayFixture {
    *   - Multiple elements in both rows and columns
    * - multiple tiles on rows and columns
    */
-  template<typename TupleElementType>
+  template <typename TupleElementType>
   auto matrix_tiled_ranges() {
     using trange_type = trange_type<TupleElementType>;
     return std::vector<trange_type>{
-        trange_type{{0, 1}, {0, 1}},
-        trange_type{{0, 2}, {0, 1}},
-        trange_type{{0, 2}, {0, 2}},
-        trange_type{{0, 1}, {0, 2}},
-        trange_type{{0, 1}, {0, 1, 2}},
-        trange_type{{0, 1, 2}, {0, 1}},
-        trange_type{{0, 2}, {0, 1, 2}},
-        trange_type{{0, 1, 2}, {0, 2}},
-        trange_type{{0, 1, 2}, {0, 1, 2}}
-    };
+        trange_type{{0, 1}, {0, 1}},      trange_type{{0, 2}, {0, 1}},
+        trange_type{{0, 2}, {0, 2}},      trange_type{{0, 1}, {0, 2}},
+        trange_type{{0, 1}, {0, 1, 2}},   trange_type{{0, 1, 2}, {0, 1}},
+        trange_type{{0, 2}, {0, 1, 2}},   trange_type{{0, 1, 2}, {0, 2}},
+        trange_type{{0, 1, 2}, {0, 1, 2}}};
   }
 
-  template<typename TupleElementType, typename Index>
+  template <typename TupleElementType, typename Index>
   auto inner_vector_tile(Index&& idx) {
     auto sum = std::accumulate(idx.begin(), idx.end(), 0);
     inner_type<TupleElementType> elem(Range(sum + 1));
@@ -150,8 +146,7 @@ struct ToTArrayFixture {
     return elem;
   }
 
-
-  template<typename TupleElementType, typename Index>
+  template <typename TupleElementType, typename Index>
   auto inner_matrix_tile(Index&& idx) {
     unsigned int row_max = idx[0] + 1;
     unsigned int col_max = std::accumulate(idx.begin(), idx.end(), 0) + 1;
@@ -161,24 +156,24 @@ struct ToTArrayFixture {
     return elem;
   }
 
-  template<typename TupleElementType>
+  template <typename TupleElementType>
   auto tensor_of_vector(const TiledRange& tr) {
-    return make_array<tensor_type<TupleElementType>>(m_world, tr,
-        [this](tile_type<TupleElementType>& tile, const Range& r){
+    return make_array<tensor_type<TupleElementType>>(
+        m_world, tr, [this](tile_type<TupleElementType>& tile, const Range& r) {
           tile_type<TupleElementType> new_tile(r);
-          for(auto idx : r){
+          for (auto idx : r) {
             new_tile(idx) = inner_vector_tile<TupleElementType>(idx);
           }
           tile = new_tile;
         });
   }
 
-  template<typename TupleElementType>
+  template <typename TupleElementType>
   auto tensor_of_matrix(const TiledRange& tr) {
-    return make_array<tensor_type<TupleElementType>>(m_world, tr,
-        [this](tile_type<TupleElementType>& tile, const Range& r){
+    return make_array<tensor_type<TupleElementType>>(
+        m_world, tr, [this](tile_type<TupleElementType>& tile, const Range& r) {
           tile_type<TupleElementType> new_tile(r);
-          for(auto idx : r){
+          for (auto idx : r) {
             new_tile(idx) = inner_matrix_tile<TupleElementType>(idx);
           }
           tile = new_tile;
@@ -200,54 +195,57 @@ struct ToTArrayFixture {
    * The unit tests simply loop over the vector testing for all these scenarios
    * with a few lines of code.
    */
-  template<typename TupleElementType>
+  template <typename TupleElementType>
   auto run_all() {
     using trange_type = trange_type<TupleElementType>;
     using tensor_type = tensor_type<TupleElementType>;
     std::vector<std::tuple<trange_type, int, tensor_type>> rv;
 
     // Make vector of vector
-    for(auto tr: vector_tiled_ranges<TupleElementType>())
-      rv.push_back(std::make_tuple(tr, 1, tensor_of_vector<TupleElementType>(tr)));
+    for (auto tr : vector_tiled_ranges<TupleElementType>())
+      rv.push_back(
+          std::make_tuple(tr, 1, tensor_of_vector<TupleElementType>(tr)));
 
     // Make vector of matrix
-    for(auto tr: vector_tiled_ranges<TupleElementType>())
-      rv.push_back(std::make_tuple(tr, 2, tensor_of_matrix<TupleElementType>(tr)));
+    for (auto tr : vector_tiled_ranges<TupleElementType>())
+      rv.push_back(
+          std::make_tuple(tr, 2, tensor_of_matrix<TupleElementType>(tr)));
 
     // Make matrix of vector
-    for(auto tr: matrix_tiled_ranges<TupleElementType>())
-      rv.push_back(std::make_tuple(tr, 1, tensor_of_vector<TupleElementType>(tr)));
+    for (auto tr : matrix_tiled_ranges<TupleElementType>())
+      rv.push_back(
+          std::make_tuple(tr, 1, tensor_of_vector<TupleElementType>(tr)));
 
     // Make matrix of matrix
-    for(auto tr: matrix_tiled_ranges<TupleElementType>())
-      rv.push_back(std::make_tuple(tr, 2, tensor_of_matrix<TupleElementType>(tr)));
+    for (auto tr : matrix_tiled_ranges<TupleElementType>())
+      rv.push_back(
+          std::make_tuple(tr, 2, tensor_of_matrix<TupleElementType>(tr)));
 
-    //Make sure all the tensors are actually made
+    // Make sure all the tensors are actually made
     m_world.gop.fence();
     return rv;
   }
 
-  /* This function tests for exact equality between DistArray instances. By exact
- * equality we mean:
- * - Same type
- * - Either both are initialized or both are not initialized
- * - Same MPI context
- * - Same shape
- * - Same distribution
- * - Same tiling
- * - Components are bit-wise equal (i.e., 3.1400000000 != 3.1400000001)
- *
- * TODO: pmap comparisons
- */
-  template<typename LHSTileType, typename LHSPolicy,
-           typename RHSTileType, typename RHSPolicy>
+  /* This function tests for exact equality between DistArray instances. By
+   * exact equality we mean:
+   * - Same type
+   * - Either both are initialized or both are not initialized
+   * - Same MPI context
+   * - Same shape
+   * - Same distribution
+   * - Same tiling
+   * - Components are bit-wise equal (i.e., 3.1400000000 != 3.1400000001)
+   *
+   * TODO: pmap comparisons
+   */
+  template <typename LHSTileType, typename LHSPolicy, typename RHSTileType,
+            typename RHSPolicy>
   static bool are_equal(const DistArray<LHSTileType, LHSPolicy>& lhs,
-                 const DistArray<RHSTileType, RHSPolicy>& rhs) {
+                        const DistArray<RHSTileType, RHSPolicy>& rhs) {
     // Same type
-    if constexpr(!std::is_same_v<decltype(lhs), decltype(rhs)>){
+    if constexpr (!std::is_same_v<decltype(lhs), decltype(rhs)>) {
       return false;
-    }
-    else {
+    } else {
       // Are initialized?
       if (lhs.is_initialized() != rhs.is_initialized()) return false;
       if (!lhs.is_initialized()) return true;  // both are default constructed
@@ -281,5 +279,5 @@ struct ToTArrayFixture {
   // The world to use for the test suite
   madness::World& m_world;
 
-}; // TotArrayFixture
+};  // TotArrayFixture
 #endif

@@ -39,6 +39,8 @@
 
 using namespace TiledArray;
 
+using bTensorI = btas::Tensor<int, Range>;
+
 struct TensorOfTensorFixture {
   TensorOfTensorFixture()
       : a(make_rand_tensor_of_tensor(Range(size))),
@@ -81,13 +83,12 @@ struct TensorOfTensorFixture {
 
 #ifdef TILEDARRAY_HAS_BTAS
   // Fill a tensor with random data
-  static Tensor<btas::Tensor<int>> make_rand_TobT(const Range& r) {
-    Tensor<btas::Tensor<int>> tensor(r);
+  static Tensor<bTensorI> make_rand_TobT(const Range& r) {
+    Tensor<bTensorI> tensor(r);
     for (decltype(r.extent(0)) i = 0ul; i < r.extent(0); ++i) {
       for (decltype(r.extent(1)) j = 0ul; j < r.extent(1); ++j) {
-        auto make_rand_tensor = [](size_t dim0,
-                                   size_t dim1) -> btas::Tensor<int> {
-          btas::Tensor<int> tensor(dim0, dim1);
+        auto make_rand_tensor = [](size_t dim0, size_t dim1) -> bTensorI {
+          bTensorI tensor(dim0, dim1);
           tensor.generate([]() { return GlobalFixture::world->rand() % 42; });
           return tensor;
         };
@@ -98,13 +99,12 @@ struct TensorOfTensorFixture {
     return tensor;
   }
   // same as make_rand_TobT but with identically-sized tiles
-  static Tensor<btas::Tensor<int>> make_rand_TobT_uniform(const Range& r) {
-    Tensor<btas::Tensor<int>> tensor(r);
+  static Tensor<bTensorI> make_rand_TobT_uniform(const Range& r) {
+    Tensor<bTensorI> tensor(r);
     for (decltype(r.extent(0)) i = 0ul; i < r.extent(0); ++i) {
       for (decltype(r.extent(1)) j = 0ul; j < r.extent(1); ++j) {
-        auto make_rand_tensor = [](size_t dim0,
-                                   size_t dim1) -> btas::Tensor<int> {
-          btas::Tensor<int> tensor(dim0, dim1);
+        auto make_rand_tensor = [](size_t dim0, size_t dim1) -> bTensorI {
+          bTensorI tensor(dim0, dim1);
           tensor.generate([]() { return GlobalFixture::world->rand() % 42; });
           return tensor;
         };
@@ -122,7 +122,7 @@ struct TensorOfTensorFixture {
 
   Tensor<Tensor<int>> a, b, c;
 #ifdef TILEDARRAY_HAS_BTAS
-  Tensor<btas::Tensor<int>> d, e, f, g, h;
+  Tensor<bTensorI> d, e, f, g, h;
 #endif  // defined(TILEDARRAY_HAS_BTAS)
 
   template <typename T>
@@ -144,8 +144,7 @@ Tensor<Tensor<int>>& TensorOfTensorFixture::ToT<Tensor<int>>(size_t idx) {
 
 #ifdef TILEDARRAY_HAS_BTAS
 template <>
-Tensor<btas::Tensor<int>>& TensorOfTensorFixture::ToT<btas::Tensor<int>>(
-    size_t idx) {
+Tensor<bTensorI>& TensorOfTensorFixture::ToT<bTensorI>(size_t idx) {
   if (idx == 0)
     return d;
   else if (idx == 1)
@@ -164,8 +163,7 @@ const BipartitePermutation TensorOfTensorFixture::bperm({1, 0, 3, 2}, 2);
 BOOST_FIXTURE_TEST_SUITE(tensor_of_tensor_suite, TensorOfTensorFixture)
 
 #ifdef TILEDARRAY_HAS_BTAS
-typedef boost::mpl::list<TiledArray::Tensor<int>, btas::Tensor<int>>
-    itensor_types;
+typedef boost::mpl::list<TiledArray::Tensor<int>, bTensorI> itensor_types;
 #else
 typedef boost::mpl::list<TiledArray::Tensor<int>> itensor_types;
 #endif
@@ -1088,7 +1086,7 @@ class Contract {
 };  // class Contract
 
 BOOST_AUTO_TEST_CASE(reduce) {
-  using Tile = btas::Tensor<int>;
+  using Tile = bTensorI;
   // computes sum_{ij} g("a_ij,b_ij") * h("c_ij,b_ij,")
   auto contract_12_32 = Contract<Tile>{1.0, {1, 2}, {3, 2}, {1, 3}};
   static_assert(detail::is_reduce_op_v<Contract<Tile>, Tile, Tile, Tile>,
