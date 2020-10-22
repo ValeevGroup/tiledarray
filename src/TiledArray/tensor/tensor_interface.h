@@ -1135,6 +1135,10 @@ class TensorInterface {
 
 };  // class TensorInterface
 
+/// Shallow comparison operator
+
+/// \return true if \p first and \p second view the same data block through
+/// equivalent ranges
 template <typename T, typename Range, typename OpResult>
 bool operator==(const TensorInterface<T, Range, OpResult>& first,
                 const TensorInterface<T, Range, OpResult>& second) {
