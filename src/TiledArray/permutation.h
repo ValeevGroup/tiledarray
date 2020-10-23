@@ -368,7 +368,7 @@ class Permutation {
   /// Bool conversion
 
   /// \return \c true if the permutation is not empty, otherwise \c false.
-  operator bool() const { return !p_.empty(); }
+  explicit operator bool() const { return !p_.empty(); }
 
   /// Not operator
 
@@ -616,7 +616,7 @@ class BipartitePermutation {
   /// Bool conversion
 
   /// \return \c true if the permutation is not empty, otherwise \c false.
-  operator bool() const { return static_cast<bool>(base_); }
+  explicit operator bool() const { return static_cast<bool>(base_); }
 
   /// Domain size accessor
 
