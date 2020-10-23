@@ -254,7 +254,15 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(unary_bperm_constructor, ITensor, itensor_types) {
   Tensor<ITensor> t2(
       a, [](const ITensor& v) { return scale(v, 2); }, bperm);
 
-  for (auto&& tref : {std::cref(t), std::cref(t2)}) {
+  // apply tensor-wise op with explicit permutation of inner tiles
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t3(
+      a, [p = inner(bperm)](const ITensor& v) { return scale(v, 2, p); },
+      outer(bperm)));
+  Tensor<ITensor> t3(
+      a, [p = inner(bperm)](const ITensor& v) { return scale(v, 2, p); },
+      outer(bperm));
+
+  for (auto&& tref : {std::cref(t), std::cref(t2), std::cref(t3)}) {
     auto& t = tref.get();
 
     BOOST_CHECK(!t.empty());
@@ -359,7 +367,21 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(binary_bperm_constructor, ITensor,
       a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); },
       bperm);
 
-  for (auto&& tref : {std::cref(t), std::cref(t2)}) {
+  // apply tensor-wise op with explicit permutation of inner tiles
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t3(
+      a, b,
+      [p = inner(bperm)](const ITensor& l, const ITensor& r) {
+        return add(l, r, p);
+      },
+      outer(bperm)));
+  Tensor<ITensor> t3(
+      a, b,
+      [p = inner(bperm)](const ITensor& l, const ITensor& r) {
+        return add(l, r, p);
+      },
+      outer(bperm));
+
+  for (auto&& tref : {std::cref(t), std::cref(t2), std::cref(t3)}) {
     auto& t = tref.get();
 
     BOOST_CHECK(!t.empty());
