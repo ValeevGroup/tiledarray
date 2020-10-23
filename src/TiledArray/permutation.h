@@ -681,7 +681,9 @@ class BipartitePermutation {
                                  InIter>::value>::type* = nullptr>
   BipartitePermutation(InIter first, InIter last,
                        index_type second_partition_size = 0)
-      : base_(first, last), second_size_(second_partition_size) {}
+      : base_(first, last), second_size_(second_partition_size) {
+    init();
+  }
 
   // clang-format off
   /// Array constructor
@@ -706,26 +708,14 @@ class BipartitePermutation {
   // clang-format on
   explicit BipartitePermutation(vector<index_type>&& a,
                                 index_type second_partition_size = 0)
-      : base_(std::move(a)), second_size_(second_partition_size) {}
+      : base_(std::move(a)), second_size_(second_partition_size) {
+    init();
+  }
 
   /// \return reference to the first partition
-  /// \note the partition object is computed on the first invocation and
-  /// memoized
-  const Permutation& first() const {
-    first_ = Permutation{this->begin(), this->begin() + first_size()};
-    return first_;
-  }
+  const Permutation& first() const { return first_; }
   /// \return reference to the second partition
-  /// \note the partition object is computed on the first invocation and
-  /// memoized
-  const Permutation& second() const {
-    const auto n_first = first_size();
-    vector<index_type> temp(second_size());
-    for (auto i = n_first; i < dim(); ++i)
-      temp[i - n_first] = base_[i] - n_first;
-    second_ = Permutation(temp.begin(), temp.end());
-    return second_;
-  }
+  const Permutation& second() const { return second_; }
 
   /// \return the size of the first partition
   index_type first_size() const { return this->dim() - second_size_; }
@@ -753,8 +743,18 @@ class BipartitePermutation {
   /// The size of the second partition
   index_type second_size_ = 0;
 
-  mutable Permutation first_;
-  mutable Permutation second_;
+  Permutation first_;
+  Permutation second_;
+
+  // initializes first_ and second_
+  void init() {
+    first_ = Permutation{this->begin(), this->begin() + first_size()};
+    const auto n_first = first_size();
+    vector<index_type> temp(second_size());
+    for (auto i = n_first; i < dim(); ++i)
+      temp[i - n_first] = base_[i] - n_first;
+    second_ = Permutation(temp.begin(), temp.end());
+  }
 
   friend bool operator==(const BipartitePermutation& p1,
                          const BipartitePermutation& p2);
