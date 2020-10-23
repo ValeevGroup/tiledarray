@@ -664,7 +664,9 @@ class BipartitePermutation {
 
   BipartitePermutation(const Permutation& p,
                        index_type second_partition_size = 0)
-      : base_(p), second_size_(second_partition_size) {}
+      : base_(p), second_size_(second_partition_size) {
+    init();
+  }
 
   // clang-format off
   /// Construct permutation from a range [first,last)
