@@ -1859,9 +1859,13 @@ class Tensor {
   /// \c i in the index range of \c this . \c result is initialized to \c
   /// identity . If HAVE_INTEL_TBB is defined, and this is a contiguous tensor,
   /// the reduction will be executed in an undefined order, otherwise will
-  /// execute in the order of increasing \c i . \tparam ReduceOp The reduction
-  /// operation type \tparam JoinOp The join operation type \param reduce_op The
-  /// element-wise reduction operation \param join_op The join result operation
+  /// execute in the order of increasing \c i .
+  /// \tparam ReduceOp The reduction
+  /// operation type
+  /// \tparam JoinOp The join operation type
+  /// \param reduce_op The
+  /// element-wise reduction operation
+  /// \param join_op The join result operation
   /// \param identity The identity value of the reduction
   /// \return The reduced value
   template <typename ReduceOp, typename JoinOp, typename Scalar>
@@ -1877,12 +1881,18 @@ class Tensor {
   /// for each \c i in the index range of \c this . \c result is initialized to
   /// \c identity . If HAVE_INTEL_TBB is defined, and this is a contiguous
   /// tensor, the reduction will be executed in an undefined order, otherwise
-  /// will execute in the order of increasing \c i . \tparam Right The
-  /// right-hand argument tensor type \tparam ReduceOp The reduction operation
-  /// type \tparam JoinOp The join operation type \param other The right-hand
-  /// argument of the binary reduction \param reduce_op The element-wise
-  /// reduction operation \param join_op The join result operation \param
-  /// identity The identity value of the reduction \return The reduced value
+  /// will execute in the order of increasing \c i .
+  /// \tparam Right The
+  /// right-hand argument tensor type
+  /// \tparam ReduceOp The reduction operation
+  /// type
+  /// \tparam JoinOp The join operation type
+  /// \param other The right-hand
+  /// argument of the binary reduction
+  /// \param reduce_op The element-wise
+  /// reduction operation \param join_op The join result operation
+  /// \param identity The identity value of the reduction
+  /// \return The reduced value
   template <typename Right, typename ReduceOp, typename JoinOp, typename Scalar,
             typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
   decltype(auto) reduce(const Right& other, ReduceOp&& reduce_op,

@@ -678,10 +678,10 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
 
 /// Reduction operation for tensors
 
-/// Perform reduction of the tensors by
+/// Perform tensor-wise reduction of the tensors by
 /// executing <tt>reduce_op(result, &tensor1, &tensors...)</tt>.
 /// \c result is initialized to \c identity .
-/// \tparam ReduceOp The element-wise reduction operation type
+/// \tparam ReduceOp The tensor-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
 /// \tparam T1 The first argument tensor type
@@ -706,13 +706,13 @@ Scalar tensor_reduce(ReduceOp&& reduce_op, JoinOp&& join_op, Scalar identity,
 
 /// Reduction operation for contiguous tensors of tensors
 
-/// Perform an element-wise reduction of the tensors by
+/// Perform reduction of the tensor-of-tensors' elements by
 /// executing <tt>join_op(result, reduce_op(tensor1[i], tensors[i]...))</tt> for
 /// each \c i in the index range of \c tensor1 . \c result is initialized to \c
 /// identity . This will execute serially, in the order of increasing \c i (each
-/// element-wise reduction can however be executed in parallel, depending on the
+/// element's reduction can however be executed in parallel, depending on the
 /// element type).
-/// \tparam ReduceOp The element-wise reduction operation type
+/// \tparam ReduceOp The tensor-wise reduction operation type
 /// \tparam JoinOp The result operation type
 /// \tparam Scalar A scalar type
 /// \tparam T1 The first argument tensor type
