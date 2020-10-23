@@ -787,7 +787,9 @@ inline auto inner(const Permutation& p) {
   return Permutation{};
 }
 
-inline const auto& outer(const Permutation& p) { return p; }
+// N.B. can't return ref here due to possible dangling ref when p is bound to
+// temporary
+inline auto outer(const Permutation& p) { return p; }
 
 inline auto inner_dim(const Permutation& p) {
   abort();
