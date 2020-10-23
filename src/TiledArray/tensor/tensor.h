@@ -848,7 +848,8 @@ class Tensor {
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor_ permute(const Perm& perm) const {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
-    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
+    [[maybe_unused]] constexpr bool is_bperm =
+        detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
     // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
     // not match Tensor_");
@@ -996,7 +997,8 @@ class Tensor {
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor_ unary(Op&& op, const Perm& perm) const {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<Tensor_>;
-    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
+    [[maybe_unused]] constexpr bool is_bperm =
+        detail::is_bipartite_permutation_v<Perm>;
     // tile ops pass bipartite permutations here even if this is a plain tensor
     // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
     // not match Tensor_");
