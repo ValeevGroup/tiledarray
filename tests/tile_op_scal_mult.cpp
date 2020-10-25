@@ -50,7 +50,8 @@ struct ScalMultFixture : public RangeFixture {
 
 };  // ScalMultFixture
 
-BOOST_FIXTURE_TEST_SUITE(tile_op_scal_mult_suite, ScalMultFixture)
+BOOST_FIXTURE_TEST_SUITE(tile_op_scal_mult_suite, ScalMultFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions

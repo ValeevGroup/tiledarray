@@ -21,6 +21,11 @@
 #define TILEDARRAY_TEST_MADNESS_FIXTURE_H__INCLUDED
 
 #include <array>
+#include <functional>
+
+#ifndef TILEDARRAY_UNIT_TEST_CONFIG_H__INCLUDED
+#include <unit_test_config.h>
+#endif
 
 namespace madness {
 class World;
@@ -33,6 +38,24 @@ class World;
 #error "TEST_DIM cannot be greater than 20"
 #endif
 
+namespace TiledArray {
+struct unit_test_enabler {
+  using enabler_t = std::function<boost::test_tools::assertion_result(
+      boost::unit_test::test_unit_id)>;
+  enabler_t enabler;
+
+  unit_test_enabler(enabler_t e) : enabler(e) {}
+  unit_test_enabler(bool tf)
+      : enabler([result = tf](boost::unit_test::test_unit_id) {
+          return static_cast<boost::test_tools::assertion_result>(result);
+        }) {}
+
+  boost::test_tools::assertion_result operator()(
+      boost::unit_test::test_unit_id id) {
+    return enabler(id);
+  }
+};
+}  // namespace TiledArray
 struct GlobalFixture {
   GlobalFixture();
   ~GlobalFixture();
@@ -41,6 +64,12 @@ struct GlobalFixture {
 
   static madness::World* world;
   static const std::array<std::size_t, 20> primes;
+
+  // returns world.size > 1 if world is initialized, else return true if envvar
+  // TA_UT_DISTRIBUTED is set
+  static bool is_distributed();
+  static TiledArray::unit_test_enabler world_size_gt_1();
+  static TiledArray::unit_test_enabler world_size_eq_1();
 };
 
 #include <TiledArray/util/bug.h>

@@ -58,7 +58,8 @@ struct TensorViewFixture {
 const std::array<int, 3> TensorViewFixture::lower_bound{{0, 1, 2}};
 const std::array<int, 3> TensorViewFixture::upper_bound{{5, 7, 11}};
 
-BOOST_FIXTURE_TEST_SUITE(tensor_view_suite, TensorViewFixture)
+BOOST_FIXTURE_TEST_SUITE(tensor_view_suite, TensorViewFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(non_const_view) {
   for (auto lower_it = t.range().begin(); lower_it != t.range().end();

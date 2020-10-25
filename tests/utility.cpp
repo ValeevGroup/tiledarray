@@ -36,7 +36,8 @@ struct UtilityFixture {
 
 };  // UtilityFixture
 
-BOOST_FIXTURE_TEST_SUITE(utility_suite, UtilityFixture)
+BOOST_FIXTURE_TEST_SUITE(utility_suite, UtilityFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(vector) {
   std::vector<int> array(10, 1);

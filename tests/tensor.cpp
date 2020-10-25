@@ -30,7 +30,7 @@
 
 const TensorFixture::range_type TensorFixture::r = make_range(81);
 
-BOOST_FIXTURE_TEST_SUITE(tensor_suite, TensorFixture)
+BOOST_FIXTURE_TEST_SUITE(tensor_suite, TensorFixture, TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   // check constructor

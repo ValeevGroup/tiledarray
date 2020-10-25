@@ -50,7 +50,8 @@ struct ScalSubtFixture : public RangeFixture {
 
 };  // SubtFixture
 
-BOOST_FIXTURE_TEST_SUITE(tile_op_scal_subt_suite, ScalSubtFixture)
+BOOST_FIXTURE_TEST_SUITE(tile_op_scal_subt_suite, ScalSubtFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions

@@ -41,7 +41,7 @@ const std::size_t BitsetFixture::blocks = 11;
 // =============================================================================
 // Bitset Test Suite
 
-BOOST_FIXTURE_TEST_SUITE(bitset_suite, BitsetFixture)
+BOOST_FIXTURE_TEST_SUITE(bitset_suite, BitsetFixture, TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(size_constructor) {
   // Check for error free construction

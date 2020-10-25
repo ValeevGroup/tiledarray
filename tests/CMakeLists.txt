@@ -163,6 +163,9 @@ if(ENABLE_MPI)
     add_test(NAME ${executable}-np-${p}
       COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${p} ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> --log_level=warning --show-progress ${MPIEXEC_POSTFLAGS})
     set_tests_properties(${executable}-np-${p} PROPERTIES DEPENDS build_${executable})
+    if (p GREATER 1)
+      set_tests_properties(${executable}-np-${p} PROPERTIES ENVIRONMENT TA_UT_DISTRIBUTED=1)
+    endif()
   endforeach(p)
 else()
   add_test(NAME ${executable}

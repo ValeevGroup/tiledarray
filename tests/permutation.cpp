@@ -73,7 +73,8 @@ typedef boost::mpl::list<TiledArray::Permutation,
 typedef boost::mpl::list<TiledArray::Permutation> ptypes0;
 typedef boost::mpl::list<TiledArray::symmetry::Permutation> ptypes1;
 
-BOOST_FIXTURE_TEST_SUITE(permutation_suite, PermutationFixture)
+BOOST_FIXTURE_TEST_SUITE(permutation_suite, PermutationFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(constructor, Permutation, ptypes0) {
   // check default constructor

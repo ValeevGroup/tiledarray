@@ -76,7 +76,8 @@ struct ContractReduceFixture {
     }                                                                          \
   }
 
-BOOST_FIXTURE_TEST_SUITE(tile_op_contract_reduce_suite, ContractReduceFixture)
+BOOST_FIXTURE_TEST_SUITE(tile_op_contract_reduce_suite, ContractReduceFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   BOOST_REQUIRE_NO_THROW((ContractReduce<TensorI, TensorI, TensorI, int>(

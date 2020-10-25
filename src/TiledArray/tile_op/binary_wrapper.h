@@ -35,7 +35,7 @@ namespace detail {
 
 /// Binary tile operation wrapper
 
-/// This wrapper class is handles evaluation of lazily evaluated tiles in binary
+/// This wrapper class handles evaluation of lazily evaluated tiles in binary
 /// operations and forwards the evaluated arguments to the base operation
 /// object.
 ///

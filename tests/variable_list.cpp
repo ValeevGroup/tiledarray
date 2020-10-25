@@ -62,7 +62,8 @@ struct VariableListFixture {
       {"i,j;k,l", VariableList("i,j;k,l")}};
 };
 
-BOOST_FIXTURE_TEST_SUITE(variable_list_suite, VariableListFixture)
+BOOST_FIXTURE_TEST_SUITE(variable_list_suite, VariableListFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 /* This unit test ensures that the typedefs are what we think they are. Since no
  * template meta-programming occurs in the class these tests serve more as a
