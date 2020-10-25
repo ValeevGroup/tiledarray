@@ -1,12 +1,12 @@
 #set(CMAKE_SYSTEM_NAME Linux)
 # Set compile flags
 set(CMAKE_C_FLAGS_INIT             "-std=c99  -m64 -I/usr/include" CACHE STRING "Inital C compile flags")
-set(CMAKE_C_FLAGS_DEBUG            "-g -Wall" CACHE STRING "Inital C debug compile flags")
+set(CMAKE_C_FLAGS_DEBUG            "-Og -g -Wall" CACHE STRING "Inital C debug compile flags")
 set(CMAKE_C_FLAGS_MINSIZEREL       "-Os -march=native -DNDEBUG" CACHE STRING "Inital C minimum size release compile flags")
 set(CMAKE_C_FLAGS_RELEASE          "-O3 -march=native -DNDEBUG" CACHE STRING "Inital C release compile flags")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-O2 -g -Wall" CACHE STRING "Inital C release with debug info compile flags")
 set(CMAKE_CXX_FLAGS_INIT           "" CACHE STRING "Inital C++ compile flags")
-set(CMAKE_CXX_FLAGS_DEBUG          "-g -Wall" CACHE STRING "Inital C++ debug compile flags")
+set(CMAKE_CXX_FLAGS_DEBUG          "-Og -g -Wall" CACHE STRING "Inital C++ debug compile flags")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -march=native -DNDEBUG" CACHE STRING "Inital C++ minimum size release compile flags")
 # clang issue with mismatched alloc/free in Eigen goes away if NDEBUG is not defined ... just a workaround
 set(CMAKE_CXX_FLAGS_RELEASE        "-O3 -march=native" CACHE STRING "Inital C++ release compile flags")
