@@ -56,6 +56,7 @@ struct unit_test_enabler {
   }
 };
 }  // namespace TiledArray
+
 struct GlobalFixture {
   GlobalFixture();
   ~GlobalFixture();
