@@ -12,7 +12,6 @@ os: linux
 addons:
   apt:
     packages: &base_packages
-    - libboost-all-dev
     - libblas-dev
     - liblapack-dev
     - liblapacke-dev
