@@ -27,5 +27,5 @@ set(INTEGER4 TRUE CACHE BOOL "Set Fortran integer size to 4 bytes")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
 
 set( lapack_LIBRARIES ${BLAS_LINKER_FLAGS} )
-set( blacs_LIBRARIES      "-L$ENV{INSTALL_PREFIX}/scalapack/lib;-lscalapack;${lapack_LIBRARIES};-L/usr/lib/gcc/x86_64-linux-gnu/8;-lgfortran" )
+set( blacs_LIBRARIES      "-L$ENV{INSTALL_PREFIX}/scalapack/lib;-lscalapack;${lapack_LIBRARIES};-L/usr/lib/gcc/x86_64-linux-gnu/8;-lgfortran;-lm" )
 set( scalapack_LIBRARIES  "${blacs_LIBRARIES}" )
