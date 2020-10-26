@@ -1,7 +1,7 @@
 # for each dependency track both current and previous id (the variable for the latter must contain PREVIOUS)
 # to be able to auto-update them
 
-set(TA_TRACKED_BOOST_VERSION 1.33)
+set(TA_TRACKED_BOOST_VERSION 1.68)
 set(TA_TRACKED_BOOST_PREVIOUS_VERSION 1.33)
 set(TA_INSTALL_BOOST_VERSION 1.70.0)
 set(TA_INSTALL_BOOST_PREVIOUS_VERSION 1.70.0)
