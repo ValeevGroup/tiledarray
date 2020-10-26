@@ -94,7 +94,7 @@ matrix:
             - libc++-8-dev
             - libc++abi-8-dev
     - compiler: clang
-      env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
+      env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Release
       addons:
         apt:
           packages:
@@ -104,8 +104,6 @@ matrix:
             - clang-8
             - libc++-8-dev
             - libc++abi-8-dev
-            - graphviz # provides dot for doxygen graphs
-            - fonts-liberation # recommended by graphviz
     - compiler: clang
       env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
@@ -121,7 +119,7 @@ matrix:
             - libc++-9-dev
             - libc++abi-9-dev
     - compiler: clang
-      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Release
+      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
       addons:
         apt:
           sources:
@@ -134,6 +132,9 @@ matrix:
             - clang-9
             - libc++-9-dev
             - libc++abi-9-dev
+            - libclang1-9 # libclang for doxygen
+            - graphviz # provides dot for doxygen graphs
+            - fonts-liberation # recommended by graphviz
 
 #notifications:
 #  email:
