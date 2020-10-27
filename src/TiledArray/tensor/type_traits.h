@@ -152,6 +152,15 @@ struct is_tensor_of_tensor<T1, T2, Ts...> {
 template <typename... Ts>
 constexpr const bool is_tensor_of_tensor_v = is_tensor_of_tensor<Ts...>::value;
 
+template <typename T, typename Enabler = void>
+struct is_ta_tensor : public std::false_type {};
+
+template <typename T, typename A>
+struct is_ta_tensor<Tensor<T, A>> : public std::true_type {};
+
+template <typename T>
+constexpr const bool is_ta_tensor_v = is_ta_tensor<T>::value;
+
 // Test if the tensor is contiguous
 
 template <typename T>

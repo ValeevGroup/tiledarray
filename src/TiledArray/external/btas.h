@@ -759,6 +759,15 @@ template <typename T, typename... Args>
 struct is_contiguous_tensor_helper<btas::Tensor<T, Args...>>
     : public std::true_type {};
 
+template <typename T, typename Enabler = void>
+struct is_btas_tensor : public std::false_type {};
+
+template <typename T, typename... Args>
+struct is_btas_tensor<btas::Tensor<T, Args...>> : public std::true_type {};
+
+template <typename T>
+constexpr const bool is_btas_tensor_v = is_btas_tensor<T>::value;
+
 }  // namespace detail
 }  // namespace TiledArray
 
