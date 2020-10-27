@@ -82,8 +82,9 @@ class ExprOStream {
 
 /// Wrapper object that helps start the expression
 class ExprTraceTarget {
-  std::ostream& os_;          ///< Output stream
-  VariableList target_vars_;  ///< Target variable list for an expression
+  std::ostream& os_;  ///< Output stream
+  BipartiteVariableList
+      target_vars_;  ///< Target variable list for an expression
 
  public:
   /// Constructor

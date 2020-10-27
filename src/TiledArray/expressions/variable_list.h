@@ -34,6 +34,11 @@ class VariableList;
 VariableList operator*(const ::TiledArray::Permutation&, const VariableList&);
 void swap(VariableList&, VariableList&);
 
+class BipartiteVariableList;
+BipartiteVariableList operator*(const ::TiledArray::Permutation&,
+                                const BipartiteVariableList&);
+void swap(BipartiteVariableList&, BipartiteVariableList&);
+
 namespace detail {
 /// Finds the range of common elements for two sets of iterators.
 
@@ -88,30 +93,221 @@ void find_common(InIter1 first1, const InIter1 last1, InIter2 first2,
   common2.second = first2;
 }
 
-template <typename VarLeft, typename VarRight>
-inline BipartitePermutation var_perm(const VarLeft& l, const VarRight& r) {
-  using std::size;
-  TA_ASSERT(size(l) == size(r));
-  TA_ASSERT(l.outer_dim() == r.outer_dim());
-  container::svector<size_t> a(size(l));
-  using std::begin;
-  using std::end;
-  typename VarRight::const_iterator rit = begin(r);
-  for (auto it = begin(a); it != end(a); ++it) {
-    typename VarLeft::const_iterator lit = std::find(begin(l), end(l), *rit++);
-    TA_ASSERT(lit != end(l));
-    *it = std::distance(begin(l), lit);
-  }
-  // Make sure this permutation doesn't mix outer and inner tensors
-  if (l.is_tot()) {
-    auto outer_dim = l.outer_dim();
-    for (decltype(outer_dim) i = 0; i < outer_dim; ++i)
-      TA_ASSERT(a[i] < outer_dim);
-    for (auto i = outer_dim; i < a.size(); ++i) TA_ASSERT(a[i] >= outer_dim);
-  }
-  return BipartitePermutation(std::move(a), l.inner_dim());
-}
+inline Permutation var_perm(const VariableList& l, const VariableList& r);
+inline BipartitePermutation var_perm(const BipartiteVariableList& l,
+                                     const BipartiteVariableList& r);
+
 }  // namespace detail
+
+////////////////////////////////////////////////////////////////////////////////
+
+/// Variable list manages a list variable strings.
+
+/// Each variable is separated by commas. All spaces are ignored and removed
+/// from variable list. So, "a c" will be converted to "ac" and will be
+/// considered a single variable. All variables must be unique.
+class VariableList {
+ public:
+  typedef container::svector<std::string>::const_iterator const_iterator;
+
+  /// Constructs an empty variable list.
+  VariableList() : vars_() {}
+
+  /// constructs a variable lists
+  explicit VariableList(const std::string& vars) {
+    if (vars.size() != 0) init_(vars);
+  }
+
+  template <typename InIter>
+  VariableList(InIter first, InIter last) {
+    static_assert(TiledArray::detail::is_input_iterator<InIter>::value,
+                  "VariableList constructor requires an input iterator");
+    TA_ASSERT(unique_(first, last));
+
+    for (; first != last; ++first)
+      vars_.push_back(trim_spaces_(first->begin(), first->end()));
+  }
+
+  VariableList(const VariableList& other) : vars_(other.vars_) {}
+
+  VariableList& operator=(const VariableList& other) {
+    vars_ = other.vars_;
+
+    return *this;
+  }
+
+  VariableList& operator=(const std::string& vars) {
+    init_(vars);
+    return *this;
+  }
+
+  VariableList& operator*=(const Permutation& p) {
+    TA_ASSERT(p.dim() == dim());
+    vars_ *= p;
+    return *this;
+  }
+
+  /// Returns an iterator to the first variable.
+  const_iterator begin() const { return vars_.begin(); }
+
+  /// Returns an iterator to the end of the variable list.
+  const_iterator end() const { return vars_.end(); }
+
+  /// Returns the n-th string in the variable list.
+  const std::string& at(const std::size_t n) const { return vars_.at(n); }
+
+  /// Returns the n-th string in the variable list.
+  const std::string& operator[](const std::size_t n) const { return vars_[n]; }
+
+  /// Returns the number of strings in the variable list.
+  unsigned int dim() const { return vars_.size(); }
+
+  /// Returns the number of strings in the variable list.
+  unsigned int size() const { return vars_.size(); }
+
+  const auto& data() const { return vars_; }
+
+  std::string string() const {
+    std::string result;
+    using std::cbegin;
+    auto it = cbegin(vars_);
+    if (it == vars_.end()) return result;
+
+    for (result = *it++; it != vars_.end(); ++it) {
+      result += "," + *it;
+    }
+
+    return result;
+  }
+
+  void swap(VariableList& other) { std::swap(vars_, other.vars_); }
+
+  /// Generate permutation relationship for variable lists
+
+  /// The result of this function is a permutation that defines
+  /// \c this=p^other .
+  /// \tparam V A range type
+  /// \param other An array that defines a variable list
+  /// \return \c p as defined by the above relationship
+  template <typename V,
+            typename = std::enable_if_t<TiledArray::detail::is_range_v<V>>>
+  Permutation permutation(const V& other) const {
+    return detail::var_perm(*this, other);
+  }
+
+  /// Check that this variable list is a permutation of \c other
+
+  /// \return \c true if all variable in this variable list are in \c other,
+  /// otherwise \c false.
+  bool is_permutation(const VariableList& other) const {
+    if (vars_.size() != other.vars_.size()) return false;
+
+    for (const_iterator it = begin(); it != end(); ++it) {
+      const_iterator other_it = other.begin();
+      for (; other_it != other.end(); ++other_it)
+        if (*it == *other_it) break;
+      if (other_it == other.end()) return false;
+    }
+
+    return true;
+  }
+
+ private:
+  /// Copies a comma separated list into a vector of strings. All spaces are
+  /// removed from the sub-strings.
+  void init_(const std::string& vars) {
+    std::string::const_iterator start = vars.begin();
+    std::string::const_iterator finish = vars.begin();
+    for (; finish != vars.end(); ++finish) {
+      if (*finish == ',') {
+        vars_.push_back(trim_spaces_(start, finish));
+        start = finish + 1;
+      }
+    }
+    vars_.push_back(trim_spaces_(start, finish));
+
+    TA_ASSERT((unique_(vars_.begin(), vars_.end())));
+  }
+
+  /// Returns a string with all the spaces ( ' ' ) removed from the string
+  /// defined by the start and finish iterators.
+  static std::string trim_spaces_(std::string::const_iterator first,
+                                  std::string::const_iterator last) {
+    TA_ASSERT(first != last);
+    std::string result = "";
+    for (; first != last; ++first) {
+      TA_ASSERT(valid_char_(*first));
+      if (*first != ' ' && *first != '\0') result.append(1, *first);
+    }
+
+    TA_ASSERT(result.length() != 0);
+
+    return result;
+  }
+
+  /// Returns true if all vars contained by the list are unique.
+  template <typename InIter>
+  bool unique_(InIter first, InIter last) const {
+    for (; first != last; ++first) {
+      InIter it2 = first;
+      for (++it2; it2 != last; ++it2)
+        if (first->compare(*it2) == 0) return false;
+    }
+
+    return true;
+  }
+
+  static bool valid_char_(char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || (c == ' ') || (c == ',') || (c == '\0') ||
+           (c == '\'') || (c == '_');
+  }
+
+  friend void swap(VariableList&, VariableList&);
+
+  container::svector<std::string> vars_;
+
+  friend VariableList operator*(const ::TiledArray::Permutation&,
+                                const VariableList&);
+
+};  // class VariableList
+
+/// Exchange the content of the two variable lists.
+inline void swap(VariableList& v0, VariableList& v1) {
+  std::swap(v0.vars_, v1.vars_);
+}
+
+inline bool operator==(const VariableList& v0, const VariableList& v1) {
+  return (v0.dim() == v1.dim()) && std::equal(v0.begin(), v0.end(), v1.begin());
+}
+
+inline bool operator!=(const VariableList& v0, const VariableList& v1) {
+  return !operator==(v0, v1);
+}
+
+inline VariableList operator*(const ::TiledArray::Permutation& p,
+                              const VariableList& v) {
+  TA_ASSERT(p.dim() == v.dim());
+  VariableList result;
+  result.vars_ = p * v.vars_;
+
+  return result;
+}
+
+/// ostream VariableList output operator.
+inline std::ostream& operator<<(std::ostream& out, const VariableList& v) {
+  out << "(";
+  std::size_t d;
+  std::size_t n = v.dim() - 1;
+  for (d = 0; d < n; ++d) {
+    out << v[d] << ", ";
+  }
+  out << v[d];
+  out << ")";
+  return out;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 /// Variable list manages the strings used to label an array's modes
 
@@ -133,7 +329,7 @@ inline BipartitePermutation var_perm(const VarLeft& l, const VarRight& r) {
 /// A ToT index with \f$n\f$ outer indices and \f$m\f$ inner indices is treated
 /// like an index with \f$(n + m)\f$ indices; it is the responsibility of the
 /// operation to do the right thing for a ToT.
-class VariableList {
+class BipartiteVariableList {
  private:
   /// Type of container used to hold individual indices
   using container_type = container::svector<std::string>;
@@ -156,15 +352,16 @@ class VariableList {
 
   /// Constructs an empty variable list.
   ///
-  /// The default VariableList is an empty container. It has no indices (outer
-  /// or inner). Iterators to the beginning of the container are the same as
-  /// iterators to the end of the container. After instantiation the only way to
-  /// add indices to a VariableList instance is via copy/move assignment.
+  /// The default BipartiteVariableList is an empty container. It has no indices
+  /// (outer or inner). Iterators to the beginning of the container are the same
+  /// as iterators to the end of the container. After instantiation the only way
+  /// to add indices to a BipartiteVariableList instance is via copy/move
+  /// assignment.
   ///
   /// \throw None No throw guarantee.
-  VariableList() = default;
+  BipartiteVariableList() = default;
 
-  /// Initializes a VariableList by tokenizing a string
+  /// Initializes a BipartiteVariableList by tokenizing a string
   ///
   /// This constructor invokes TiledArray::detail::split_index to tokenize
   /// \c vars. To label a rank \f$n\f$ tensor, \c vars should contain \f$n\f$
@@ -187,29 +384,32 @@ class VariableList {
   ///                              guarantee.
   /// \throw std::bad_alloc if there is insufficient memory to tokenize \c vars
   ///                       and store the result. Strong throw guarantee.
-  explicit VariableList(const_reference vars)
-      : VariableList(TiledArray::detail::split_index(vars)) {}
+  explicit BipartiteVariableList(const_reference vars)
+      : BipartiteVariableList(TiledArray::detail::split_index(vars)) {}
 
-  /// Creates a new VariableList instance by deep-copying \c other
+  /// Creates a new BipartiteVariableList instance by deep-copying \c other
   ///
-  /// \param[in] other The VariableList to deep copy.
+  /// \param[in] other The BipartiteVariableList to deep copy.
   ///
   /// \throw std::bad_alloc if there is insufficient memory to copy \c other.
   ///                       Strong throw guarantee.
-  VariableList(const VariableList& other) = default;
+  BipartiteVariableList(const BipartiteVariableList& other) = default;
 
-  /// Modifies the current VariableList so it contains a deep copy of \c other.
+  /// Modifies the current BipartiteVariableList so it contains a deep copy of
+  /// \c other.
   ///
-  /// The copy-assignment operator for VariableList erases any already existing
-  /// state (and in the process invalidating any references to it) and replaces
-  /// it with a deep copy of \c other. The current instance, containing a deep
-  /// copy of \c other, is then returned to faciliate chaining.
+  /// The copy-assignment operator for BipartiteVariableList erases any already
+  /// existing state (and in the process invalidating any references to it) and
+  /// replaces it with a deep copy of \c other. The current instance, containing
+  /// a deep copy of \c other, is then returned to faciliate chaining.
   ///
-  /// \param[in] other The VariableList instance whose state will be copied.
-  /// \return The current instance containing a deep copy of \c other's state.
-  /// \throw std::bad_alloc if there is insufficient memory to copy \c other.
+  /// \param[in] other The BipartiteVariableList instance whose state will be
+  /// copied. \return The current instance containing a deep copy of \c other's
+  /// state. \throw std::bad_alloc if there is insufficient memory to copy \c
+  /// other.
   ///                       Strong throw guarantee.
-  VariableList& operator=(const VariableList& other) = default;
+  BipartiteVariableList& operator=(const BipartiteVariableList& other) =
+      default;
 
   /// Sets the current instance to the provided string indices
   ///
@@ -224,51 +424,53 @@ class VariableList {
   ///                              throw guarantee.
   /// \throw std::bad_alloc if there is insufficient memory to parse and store
   ///                       \c vars. Strong throw guarantee.
-  VariableList& operator=(const_reference vars) {
-    VariableList(vars).swap(*this);
+  BipartiteVariableList& operator=(const_reference vars) {
+    BipartiteVariableList(vars).swap(*this);
     return *this;
   }
 
-  /// Applies a permutation, in-place, to the current VariableList instance
+  /// Applies a permutation, in-place, to the current BipartiteVariableList
+  /// instance
   ///
   /// This function applies the Permutation instance, \c p, to the current
-  /// VariableList instance overwriting the already existing state with the
-  /// permuted state.
+  /// BipartiteVariableList instance overwriting the already existing state with
+  /// the permuted state.
   ///
   /// \param[in] p The Permutation to apply. \c p should be of rank `dim()`.
   /// \return The current instance after applying the permutation.
   /// \throw TiledArray::Exception if \c p is not of rank `dim()`. Strong throw
   ///                              guarantee.
-  VariableList& operator*=(const Permutation& p) {
+  BipartiteVariableList& operator*=(const Permutation& p) {
     TA_ASSERT(p.dim() == dim());
     vars_ *= p;
     return *this;
   }
 
-  /// Determines if two VariableList instances are equivalent
+  /// Determines if two BipartiteVariableList instances are equivalent
   ///
   /// Two variableList instances are equivalent if they contain the same number
   /// of indices, the indices are partitioned into inner and outer indices
   /// identically, and if the \f$i\f$-th index of each instance are equivalent
-  /// for all \f$i\f$. In particular this means VariableList instances will
-  /// compare different if they use different capitalization and/or are
+  /// for all \f$i\f$. In particular this means BipartiteVariableList instances
+  /// will compare different if they use different capitalization and/or are
   /// permutations of each other.
   ///
-  /// \param[in] other The VariableList instance we are comparing to.
+  /// \param[in] other The BipartiteVariableList instance we are comparing to.
   /// \return True if the two instances are equivalent and false otherwise.
   /// \throw None No throw guarantee.
-  bool operator==(const VariableList& other) const {
+  bool operator==(const BipartiteVariableList& other) const {
     return std::tie(n_inner_, vars_) == std::tie(other.n_inner_, other.vars_);
   }
 
   /// Returns a random-access iterator pointing to the first string index.
   ///
-  /// For a VariableList which describes a normal tensor (i.e., not a tensor-of-
-  /// tensors) the indices are stored such that the first index in the container
-  /// labels mode 0, the second index labels mode 1, etc. This function returns
-  /// an iterator which points to the first index (that labeling mode 0) in this
-  /// instance. If this instance is empty than the resulting iterator is the
-  /// same as that returned by `end()` and should not be dreferenced.
+  /// For a BipartiteVariableList which describes a normal tensor (i.e., not a
+  /// tensor-of- tensors) the indices are stored such that the first index in
+  /// the container labels mode 0, the second index labels mode 1, etc. This
+  /// function returns an iterator which points to the first index (that
+  /// labeling mode 0) in this instance. If this instance is empty than the
+  /// resulting iterator is the same as that returned by `end()` and should not
+  /// be dreferenced.
   ///
   /// If this instance describes a tensor-of-tensors the indices are stored
   /// flattened such that the outer indices appear before the inner indices. The
@@ -287,12 +489,12 @@ class VariableList {
 
   /// Returns a random-access iterator pointing to just past the last index.
   ///
-  /// For a VariableList which describes a normal tensor (i.e., not a tensor-of-
-  /// tensors) the indices are stored such that the first index in the container
-  /// labels mode 0, the second index labels mode 1, etc. This function returns
-  /// an iterator which points to just past the last index in this instance. If
-  /// this instance is empty than the resulting iterator is the same as that
-  /// returned by `begin()`.
+  /// For a BipartiteVariableList which describes a normal tensor (i.e., not a
+  /// tensor-of- tensors) the indices are stored such that the first index in
+  /// the container labels mode 0, the second index labels mode 1, etc. This
+  /// function returns an iterator which points to just past the last index in
+  /// this instance. If this instance is empty than the resulting iterator is
+  /// the same as that returned by `begin()`.
   ///
   /// If this instance describes a tensor-of-tensors the indices are stored
   /// flattened such that the outer indices appear before the inner indices. The
@@ -380,14 +582,15 @@ class VariableList {
 
   /// Returns the number of outer indices in the variable list
   ///
-  /// VariableList is capable of holding a string labeling a tensor-of-tensors
-  /// or a normal (non-nested) tensor. For a ToT the indices are partitioned
-  /// into outer (those for the outer tensor whose elements are tensors) and
-  /// inner (those for the tensors which are elements of the outer tensor). This
-  /// function returns the number of outer indices in the provided index. By
-  /// convention all indices for a normal tensor are outer indices; however, for
-  /// normal tensors users are encouraged to use `dim()` (or `size()`) instead
-  /// of `outer_dim()` to make it clear that all indices are being considered.
+  /// BipartiteVariableList is capable of holding a string labeling a
+  /// tensor-of-tensors or a normal (non-nested) tensor. For a ToT the indices
+  /// are partitioned into outer (those for the outer tensor whose elements are
+  /// tensors) and inner (those for the tensors which are elements of the outer
+  /// tensor). This function returns the number of outer indices in the provided
+  /// index. By convention all indices for a normal tensor are outer indices;
+  /// however, for normal tensors users are encouraged to use `dim()` (or
+  /// `size()`) instead of `outer_dim()` to make it clear that all indices are
+  /// being considered.
   ///
   /// \return The total number of outer indices in the managed list of labels.
   /// \throw None No throw guarantee.
@@ -395,34 +598,34 @@ class VariableList {
 
   /// Returns the number of inner indices in the variable list
   ///
-  /// VariableList is capable of holding a string labeling a tensor-of-tensors
-  /// or a normal (non-nested) tensor. For a ToT the indices are partitioned
-  /// into outer (those for the outer tensor whose elements are tensors) and
-  /// inner (those for the tensors which are elements of the outer tensor). This
-  /// function returns the number of inner indices in the provided index. By
-  /// convention all indices for a normal tensor are outer indices and this
-  /// function will always return zero.
+  /// BipartiteVariableList is capable of holding a string labeling a
+  /// tensor-of-tensors or a normal (non-nested) tensor. For a ToT the indices
+  /// are partitioned into outer (those for the outer tensor whose elements are
+  /// tensors) and inner (those for the tensors which are elements of the outer
+  /// tensor). This function returns the number of inner indices in the provided
+  /// index. By convention all indices for a normal tensor are outer indices and
+  /// this function will always return zero.
   ///
   /// \return The total number of inner indices in the managed list of labels.
   /// \throw None No throw guarantee.
   size_type inner_dim() const { return n_inner_; }
 
-  VariableList outer_vars() const {
-    return VariableList(container_type(begin(), begin() + outer_dim()),
-                        container_type{});
+  BipartiteVariableList outer_vars() const {
+    return BipartiteVariableList(container_type(begin(), begin() + outer_dim()),
+                                 container_type{});
   }
 
-  VariableList inner_vars() const {
-    return VariableList(container_type(begin() + outer_dim(), end()),
-                        container_type{});
+  BipartiteVariableList inner_vars() const {
+    return BipartiteVariableList(container_type(begin() + outer_dim(), end()),
+                                 container_type{});
   }
 
   /// Returns the total number of indices in the variable list
   ///
-  /// This function returns the total number of indices in the VariableList. For
-  /// a normal, non-nested, tensor this is simply the number of indices. For a
-  /// tensor-of-tensors the total number of indices is the number of outer
-  /// indices plus the number of inner indices.
+  /// This function returns the total number of indices in the
+  /// BipartiteVariableList. For a normal, non-nested, tensor this is simply the
+  /// number of indices. For a tensor-of-tensors the total number of indices is
+  /// the number of outer indices plus the number of inner indices.
   ///
   /// \return The total number of indices in the variable list. For a tensor-of-
   ///         tensors the total number is the sum of the number of outer indices
@@ -442,10 +645,10 @@ class VariableList {
 
   const auto& data() const { return vars_; }
 
-  /// Enables conversion from a VariableList to a string
+  /// Enables conversion from a BipartiteVariableList to a string
   ///
-  /// This function will cast the VariableList instance to a string, such that
-  /// mode labels are separated by commas
+  /// This function will cast the BipartiteVariableList instance to a string,
+  /// such that mode labels are separated by commas
   ///
   /// \return A string representation of the
   /// \throw std::bad_alloc if there is insufficient memory to create the
@@ -458,7 +661,7 @@ class VariableList {
   ///           \c other will contain this instance's state and this instance
   ///           will contain other's state.
   /// \throw None No throw guarantee.
-  void swap(VariableList& other) {
+  void swap(BipartiteVariableList& other) {
     std::swap(n_inner_, other.n_inner_);
     std::swap(vars_, other.vars_);
   }
@@ -491,20 +694,20 @@ class VariableList {
 
   /// \return \c true if all variable in this variable list are in \c other,
   /// otherwise \c false.
-  bool is_permutation(const VariableList& other) const {
+  bool is_permutation(const BipartiteVariableList& other) const {
     if (other.dim() != dim()) return false;
     return std::is_permutation(begin(), end(), other.begin());
   }
 
-  /// Constructor implementing VariableList(const value_type&)
+  /// Constructor implementing BipartiteVariableList(const value_type&)
   template <typename OuterType, typename InnerType>
-  VariableList(OuterType&& outer, InnerType&& inner);
+  BipartiteVariableList(OuterType&& outer, InnerType&& inner);
 
  private:
   /// Used to unpack the std::pair resulting from split_index
   template <typename First, typename Second>
-  explicit VariableList(const std::pair<First, Second>& tot_idx)
-      : VariableList(tot_idx.first, tot_idx.second) {}
+  explicit BipartiteVariableList(const std::pair<First, Second>& tot_idx)
+      : BipartiteVariableList(tot_idx.first, tot_idx.second) {}
 
   /// The number of inner indices
   size_type n_inner_ = 0;
@@ -513,10 +716,10 @@ class VariableList {
   /// are outer indices.
   container_type vars_;
 
-  friend VariableList operator*(const ::TiledArray::Permutation&,
-                                const VariableList&);
+  friend BipartiteVariableList operator*(const ::TiledArray::Permutation&,
+                                         const BipartiteVariableList&);
 
-};  // class VariableList
+};  // class BipartiteVariableList
 
 /// Returns a set of each annotation found in at least one of the variable lists
 template <typename T, typename... Args>
@@ -547,7 +750,7 @@ auto common_annotations(T&& v, Args&&... args) {
 }
 
 template <typename... Args>
-auto bound_annotations(const VariableList& out, Args&&... args) {
+auto bound_annotations(const BipartiteVariableList& out, Args&&... args) {
   // Get all indices in the input tensors
   auto rv = all_annotations(std::forward<Args>(args)...);
 
@@ -559,42 +762,46 @@ auto bound_annotations(const VariableList& out, Args&&... args) {
 }
 
 /// Exchange the content of the two variable lists.
-inline void swap(VariableList& v0, VariableList& v1) { v0.swap(v1); }
+inline void swap(BipartiteVariableList& v0, BipartiteVariableList& v1) {
+  v0.swap(v1);
+}
 
-/// Determines if two VariableLists are different.
+/// Determines if two BipartiteVariableLists are different.
 ///
 /// Two variableList instances are equivalent if they contain the same number
 /// of indices, the indices are partitioned into inner and outer indices
 /// identically, and if the \f$i\f$-th index of each instance are equivalent
-/// for all \f$i\f$. In particular this means VariableList instances will
-/// compare different if they use different capitalization and/or are
+/// for all \f$i\f$. In particular this means BipartiteVariableList instances
+/// will compare different if they use different capitalization and/or are
 /// permutations of each other.
 ///
-/// \param[in] other The VariableList instance we are comparing to.
+/// \param[in] other The BipartiteVariableList instance we are comparing to.
 /// \return True if the two instances are different and false otherwise.
 /// \throw None No throw guarantee.
-inline bool operator!=(const VariableList& v0, const VariableList& v1) {
+inline bool operator!=(const BipartiteVariableList& v0,
+                       const BipartiteVariableList& v1) {
   return !(v0 == v1);
 }
 
-inline VariableList operator*(const ::TiledArray::Permutation& p,
-                              const VariableList& v) {
+inline BipartiteVariableList operator*(const ::TiledArray::Permutation& p,
+                                       const BipartiteVariableList& v) {
   TA_ASSERT(p.dim() == v.dim());
-  VariableList result(v);
+  BipartiteVariableList result(v);
   return result *= p;
 }
 
-/// Prints a VariableList instance to a stream
+/// Prints a BipartiteVariableList instance to a stream
 ///
 /// This function simply casts the VariableList to a string, adds parenthesis to
 /// it, and then inserts the resulting string into the stream.
 ///
 /// \param[in,out] out the stream that \c v will be written to.
-/// \param[in] v The VariableList instance to insert into the stream.
+/// \param[in] v The BipartiteVariableList instance to insert into the stream.
 /// \return \c out will be returned after adding \c v to it.
 /// \throw std::bad_alloc if there is insufficient memory to create the
 ///                       resulting string. Strong throw guarantee.
-inline std::ostream& operator<<(std::ostream& out, const VariableList& v) {
+inline std::ostream& operator<<(std::ostream& out,
+                                const BipartiteVariableList& v) {
   const std::string str = "(" + static_cast<std::string>(v) + ")";
   return out << str;
 }
@@ -603,14 +810,14 @@ inline std::ostream& operator<<(std::ostream& out, const VariableList& v) {
 //                             Implementations
 //------------------------------------------------------------------------------
 
-inline auto VariableList::modes(const std::string& x) const {
+inline auto BipartiteVariableList::modes(const std::string& x) const {
   std::vector<size_type> rv;
   for (size_type i = 0; i < dim(); ++i)
     if ((*this)[i] == x) rv.push_back(i);
   return rv;
 }
 
-inline VariableList::operator value_type() const {
+inline BipartiteVariableList::operator value_type() const {
   value_type result;
   for (size_type i = 0; i < dim(); ++i) {
     if (i == outer_dim())
@@ -624,12 +831,56 @@ inline VariableList::operator value_type() const {
 }
 
 template <typename OuterType, typename InnerType>
-inline VariableList::VariableList(OuterType&& outer, InnerType&& inner)
+inline BipartiteVariableList::BipartiteVariableList(OuterType&& outer,
+                                                    InnerType&& inner)
     : n_inner_(inner.size()), vars_(outer.size() + inner.size()) {
   for (size_type i = 0; i < outer.size(); ++i) vars_[i] = outer[i];
   for (size_type i = 0; i < inner.size(); ++i)
     vars_[i + outer.size()] = inner[i];
 }
+
+namespace detail {
+
+inline Permutation var_perm(const VariableList& l, const VariableList& r) {
+  using std::size;
+  TA_ASSERT(size(l) == size(r));
+  container::svector<size_t> a(size(l));
+  using std::begin;
+  using std::end;
+  auto rit = begin(r);
+  for (auto it = begin(a); it != end(a); ++it) {
+    auto lit = std::find(begin(l), end(l), *rit++);
+    TA_ASSERT(lit != end(l));
+    *it = std::distance(begin(l), lit);
+  }
+  return Permutation(std::move(a));
+}
+
+inline BipartitePermutation var_perm(const BipartiteVariableList& l,
+                                     const BipartiteVariableList& r) {
+  using std::size;
+  TA_ASSERT(size(l) == size(r));
+  TA_ASSERT(l.outer_dim() == r.outer_dim());
+  container::svector<size_t> a(size(l));
+  using std::begin;
+  using std::end;
+  auto rit = begin(r);
+  for (auto it = begin(a); it != end(a); ++it) {
+    auto lit = std::find(begin(l), end(l), *rit++);
+    TA_ASSERT(lit != end(l));
+    *it = std::distance(begin(l), lit);
+  }
+  // Make sure this permutation doesn't mix outer and inner tensors
+  if (l.is_tot()) {
+    auto outer_dim = l.outer_dim();
+    for (decltype(outer_dim) i = 0; i < outer_dim; ++i)
+      TA_ASSERT(a[i] < outer_dim);
+    for (auto i = outer_dim; i < a.size(); ++i) TA_ASSERT(a[i] >= outer_dim);
+  }
+  return BipartitePermutation(std::move(a), l.inner_dim());
+}
+
+}  // namespace detail
 
 }  // namespace expressions
 

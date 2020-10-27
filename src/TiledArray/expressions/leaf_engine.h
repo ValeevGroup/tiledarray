@@ -87,7 +87,7 @@ class LeafEngine : public ExprEngine<Derived> {
   template <typename D>
   LeafEngine(const Expr<D>& expr)
       : ExprEngine_(expr), array_(expr.derived().array()) {
-    vars_ = VariableList(expr.derived().vars());
+    vars_ = BipartiteVariableList(expr.derived().vars());
   }
 
   // Import base class variables to this scope
@@ -96,13 +96,13 @@ class LeafEngine : public ExprEngine<Derived> {
   /// Set the variable list for this expression
 
   /// This function is a noop since the variable list is fixed.
-  void perm_vars(const VariableList&) {}
+  void perm_vars(const BipartiteVariableList&) {}
 
   /// Initialize the variable list of this expression
 
   /// This function only checks for valid variable lists.
   /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
+  void init_vars(const BipartiteVariableList& target_vars) {
 #ifndef NDEBUG
     if (!target_vars.is_permutation(vars_)) {
       if (TiledArray::get_default_world().rank() == 0) {

@@ -194,7 +194,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// variable list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
   /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
+  void perm_vars(const BipartiteVariableList& target_vars) {
     if (contract_)
       ContEngine_::perm_vars(target_vars);
     else {
@@ -205,7 +205,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// Initialize the variable list of this expression
 
   /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
+  void init_vars(const BipartiteVariableList& target_vars) {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
 
@@ -245,7 +245,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
   /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  void init_struct(const BipartiteVariableList& target_vars) {
     if (contract_)
       ContEngine_::init_struct(target_vars);
     else
@@ -336,7 +336,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// \param os The output stream
   /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
+  void print(ExprOStream os, const BipartiteVariableList& target_vars) const {
     if (contract_)
       return ContEngine_::print(os, target_vars);
     else
@@ -417,7 +417,7 @@ class ScalMultEngine
   /// variable list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
   /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
+  void perm_vars(const BipartiteVariableList& target_vars) {
     if (contract_)
       ContEngine_::perm_vars(target_vars);
     else {
@@ -428,7 +428,7 @@ class ScalMultEngine
   /// Initialize the variable list of this expression
 
   /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
+  void init_vars(const BipartiteVariableList& target_vars) {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
 
@@ -464,7 +464,7 @@ class ScalMultEngine
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
   /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  void init_struct(const BipartiteVariableList& target_vars) {
     if (contract_)
       ContEngine_::init_struct(target_vars);
     else
@@ -562,7 +562,7 @@ class ScalMultEngine
 
   /// \param os The output stream
   /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
+  void print(ExprOStream os, const BipartiteVariableList& target_vars) const {
     if (contract_)
       return ContEngine_::print(os, target_vars);
     else

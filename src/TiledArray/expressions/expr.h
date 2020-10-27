@@ -26,9 +26,6 @@
 #ifndef TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 
-#include "TiledArray/config.h"
-#include "TiledArray/tile_interface/trace.h"
-#include "TiledArray/tile.h"
 #include "../reduce_task.h"
 #include "../tile_interface/cast.h"
 #include "../tile_interface/scale.h"
@@ -37,6 +34,9 @@
 #include "../tile_op/shift.h"
 #include "../tile_op/unary_reduction.h"
 #include "../tile_op/unary_wrapper.h"
+#include "TiledArray/config.h"
+#include "TiledArray/tile.h"
+#include "TiledArray/tile_interface/trace.h"
 #include "expr_engine.h"
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/cuda/cuda_task_fn.h>
@@ -398,7 +398,7 @@ class Expr {
     if (tsr.array().is_initialized()) pmap = tsr.array().pmap();
 
     // Get result variable list.
-    VariableList target_vars(tsr.vars());
+    BipartiteVariableList target_vars(tsr.vars());
 
     // Construct the expression engine
     engine_type engine(derived());
@@ -469,7 +469,7 @@ class Expr {
         pmap;
 
     // Get result variable list.
-    VariableList target_vars(tsr.vars());
+    BipartiteVariableList target_vars(tsr.vars());
 
     // Construct the expression engine
     engine_type engine(derived());
@@ -528,7 +528,7 @@ class Expr {
 
   /// \param os The output stream
   /// \param target_vars The target variable list for this expression
-  void print(ExprOStream& os, const VariableList& target_vars) const {
+  void print(ExprOStream& os, const BipartiteVariableList& target_vars) const {
     // Construct the expression engine
     engine_type engine(derived());
     engine.init_vars(target_vars);
@@ -568,7 +568,7 @@ class Expr {
     // Construct the expression engine
     engine_type engine(derived());
     engine.init(world, std::shared_ptr<typename engine_type::pmap_interface>(),
-                VariableList());
+                BipartiteVariableList());
 
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -619,7 +619,7 @@ class Expr {
     engine_type left_engine(derived());
     left_engine.init(world,
                      std::shared_ptr<typename engine_type::pmap_interface>(),
-                     VariableList());
+                     BipartiteVariableList());
 
     // Create the distributed evaluator for this expression
     typename engine_type::dist_eval_type left_dist_eval =
@@ -687,18 +687,18 @@ class Expr {
     return reduce(right_expr, op, default_world());
   }
 
-  template<typename TileType = typename EngineTrait<engine_type>::eval_type,
-           typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
-  Future<result_of_trace_t<TileType>>
-  trace(World& world) const {
+  template <
+      typename TileType = typename EngineTrait<engine_type>::eval_type,
+      typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
+  Future<result_of_trace_t<TileType>> trace(World& world) const {
     typedef typename EngineTrait<engine_type>::eval_type value_type;
     return reduce(TiledArray::TraceReduction<value_type>(), world);
   }
 
-  template<typename TileType = typename EngineTrait<engine_type>::eval_type,
-           typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
-  Future<result_of_trace_t<TileType>>
-  trace() const {
+  template <
+      typename TileType = typename EngineTrait<engine_type>::eval_type,
+      typename = TiledArray::detail::enable_if_trace_is_defined_t<TileType>>
+  Future<result_of_trace_t<TileType>> trace() const {
     return trace(default_world());
   }
 

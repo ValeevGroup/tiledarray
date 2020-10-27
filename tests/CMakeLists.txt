@@ -65,6 +65,7 @@ set(ta_test_src_files  ta_test.cpp
     tensor_impl.cpp
     array_impl.cpp
     variable_list.cpp
+    bipartite_variable_list.cpp
     dist_array.cpp
     conversions.cpp
     eigen.cpp

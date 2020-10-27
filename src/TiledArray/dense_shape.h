@@ -38,7 +38,7 @@ namespace TiledArray {
 
 // Forward declarations
 namespace expressions {
-class VariableList;
+class BipartiteVariableList;
 }  // namespace expressions
 namespace math {
 class GemmHelper;
@@ -372,11 +372,11 @@ class DenseShape {
 
   template <typename Archive>
   void serialize(const Archive& ar) const {}
+
  private:
-  inline static value_type threshold_ = std::numeric_limits<value_type>::epsilon();
+  inline static value_type threshold_ =
+      std::numeric_limits<value_type>::epsilon();
 };  // class DenseShape
-
-
 
 constexpr inline bool operator==(const DenseShape& a, const DenseShape& b) {
   return true;

@@ -105,16 +105,16 @@ class ContEngine : public BinaryEngine<Derived> {
   scalar_type factor_;  ///< Contraction scaling factor
 
  private:
-  VariableList left_vars_;   ///< Left-hand variable list
-  VariableList right_vars_;  ///< Right-hand variable list
-  TensorOp left_op_;         ///< Left-hand operation
-  TensorOp right_op_;        ///< Right-hand operation
-  op_type op_;               ///< Tile operation
+  BipartiteVariableList left_vars_;   ///< Left-hand variable list
+  BipartiteVariableList right_vars_;  ///< Right-hand variable list
+  TensorOp left_op_;                  ///< Left-hand operation
+  TensorOp right_op_;                 ///< Right-hand operation
+  op_type op_;                        ///< Tile operation
   TiledArray::detail::ProcGrid
       proc_grid_;  ///< Process grid for the contraction
   size_type K_;    ///< Inner dimension size
 
-  static unsigned int find(const VariableList& vars, std::string var,
+  static unsigned int find(const BipartiteVariableList& vars, std::string var,
                            unsigned int i, const unsigned int n) {
     for (; i < n; ++i) {
       if (vars[i] == var) break;
@@ -170,7 +170,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// variable list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
   /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
+  void perm_vars(const BipartiteVariableList& target_vars) {
     // Only permute if the arguments can be permuted
     if ((left_op_ == permute_to_no_trans) ||
         (right_op_ == permute_to_no_trans)) {
@@ -365,7 +365,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor as well as the tile operation.
   /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  void init_struct(const BipartiteVariableList& target_vars) {
     // Initialize children
     left_.init_struct(left_vars_);
     right_.init_struct(right_vars_);
@@ -550,7 +550,7 @@ class ContEngine : public BinaryEngine<Derived> {
 
   /// \param os The output stream
   /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
+  void print(ExprOStream os, const BipartiteVariableList& target_vars) const {
     ExprEngine_::print(os, target_vars);
     os.inc();
     left_.print(os, left_vars_);

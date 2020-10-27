@@ -97,7 +97,7 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// variable list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
   /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
+  void perm_vars(const BipartiteVariableList& target_vars) {
     TA_ASSERT(permute_tiles_);
     TA_ASSERT(left_.vars().dim() == target_vars.dim());
     TA_ASSERT(right_.vars().dim() == target_vars.dim());
@@ -131,7 +131,7 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// Initialize the variable list of this expression
 
   /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
+  void init_vars(const BipartiteVariableList& target_vars) {
     left_.init_vars(target_vars);
     right_.init_vars(target_vars);
     perm_vars(target_vars);
@@ -155,7 +155,7 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// This function will initialize the permutation, tiled range, and shape
   /// for the left-hand, right-hand, and result tensor.
   /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  void init_struct(const BipartiteVariableList& target_vars) {
     left_.init_struct(ExprEngine_::vars());
     right_.init_struct(ExprEngine_::vars());
 #ifndef NDEBUG
@@ -227,7 +227,7 @@ class BinaryEngine : public ExprEngine<Derived> {
 
   /// \param os The output stream
   /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
+  void print(ExprOStream os, const BipartiteVariableList& target_vars) const {
     ExprEngine_::print(os, target_vars);
     os.inc();
     left_.print(os, vars_);

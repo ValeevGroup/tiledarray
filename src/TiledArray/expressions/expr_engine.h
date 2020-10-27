@@ -70,8 +70,8 @@ class ExprEngine : private NO_DEFAULTS {
   // The member variables of this class are protected because derived
   // classes will customize initialization.
 
-  World* world_;        ///< The world where this expression will be evaluated
-  VariableList vars_;   ///< The variable list of this expression
+  World* world_;  ///< The world where this expression will be evaluated
+  BipartiteVariableList vars_;  ///< The variable list of this expression
   bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
                         ///< tile)
   /// The permutation that will be applied to the outer tensor of tensors
@@ -108,7 +108,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// \param pmap The process map for the result tensor (may be NULL)
   /// \param target_vars The target variable list of the result tensor
   void init(World& world, std::shared_ptr<pmap_interface> pmap,
-            const VariableList& target_vars) {
+            const BipartiteVariableList& target_vars) {
     if (target_vars.dim()) {
       derived().init_vars(target_vars);
       derived().init_struct(target_vars);
@@ -145,7 +145,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// above initialization.
   /// functions.
   /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  void init_struct(const BipartiteVariableList& target_vars) {
     if (target_vars != vars_) {
       auto temp_perm = derived().make_perm(target_vars);
       const auto inner_dim = target_vars.inner_dim();
@@ -186,7 +186,8 @@ class ExprEngine : private NO_DEFAULTS {
   /// This function will generate the permutation that will be applied to
   /// the result tensor. Derived classes may customize this function by
   /// providing their own implementation it.
-  BipartitePermutation make_perm(const VariableList& target_vars) const {
+  BipartitePermutation make_perm(
+      const BipartiteVariableList& target_vars) const {
     return target_vars.permutation(vars_);
   }
 
@@ -221,7 +222,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// Variable list accessor
 
   /// \return A const reference to the variable list
-  const VariableList& vars() const { return vars_; }
+  const BipartiteVariableList& vars() const { return vars_; }
 
   /// Permutation accessor
 
@@ -253,7 +254,7 @@ class ExprEngine : private NO_DEFAULTS {
 
   /// \param os The output stream
   /// \param target_vars The target variable list for this expression
-  void print(ExprOStream& os, const VariableList& target_vars) const {
+  void print(ExprOStream& os, const BipartiteVariableList& target_vars) const {
     if (perm_) {
       os << "[P " << target_vars << "]"
          << (permute_tiles_ ? " " : " [no permute tiles] ")
