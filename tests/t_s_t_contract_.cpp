@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_CASE(i_i) {
   double lhs = 3.0;
   Tensor<double> rhs(Range{4}, {19, 86, 78, 26});
   Tensor<double> corr(Range{4}, {57.0, 258.0, 234.0, 78.0});
-  BipartiteVariableList oidx("i"), lidx, ridx("i");
+  BipartiteIndexList oidx("i"), lidx, ridx("i");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(ij_ij) {
   Tensor<double> rhs(Range{4, 2}, {71, 49, 20, 28, 9, 98, 100, 74});
   Tensor<double> corr(Range{4, 2},
                       {213.0, 147.0, 60.0, 84.0, 27.0, 294.0, 300.0, 222.0});
-  BipartiteVariableList oidx("i,j"), lidx, ridx("i,j");
+  BipartiteIndexList oidx("i,j"), lidx, ridx("i,j");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(ji_ij) {
   Tensor<double> rhs(Range{4, 2}, {71, 49, 20, 28, 9, 98, 100, 74});
   Tensor<double> corr(Range{2, 4},
                       {213.0, 60.0, 27.0, 300.0, 147.0, 84.0, 294.0, 222.0});
-  BipartiteVariableList oidx("j,i"), lidx, ridx("i,j");
+  BipartiteIndexList oidx("j,i"), lidx, ridx("i,j");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(ijk_ijk) {
        81.0,  12.0,  96.0,  189.0, 114.0, 42.0,  264.0, 219.0, 279.0, 54.0,
        93.0,  258.0, 123.0, 294.0, 63.0,  225.0, 204.0, 291.0, 234.0, 153.0,
        234.0, 204.0, 33.0,  234.0, 291.0, 177.0, 258.0, 237.0});
-  BipartiteVariableList oidx("i,j,k"), lidx, ridx("i,j,k");
+  BipartiteIndexList oidx("i,j,k"), lidx, ridx("i,j,k");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(ikj_ijk) {
        96.0,  96.0,  51.0,  189.0, 114.0, 93.0,  42.0,  258.0, 264.0, 123.0,
        219.0, 294.0, 279.0, 63.0,  54.0,  225.0, 204.0, 33.0,  291.0, 234.0,
        234.0, 291.0, 153.0, 177.0, 234.0, 258.0, 204.0, 237.0});
-  BipartiteVariableList oidx("i,k,j"), lidx, ridx("i,j,k");
+  BipartiteIndexList oidx("i,k,j"), lidx, ridx("i,j,k");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(jik_ijk) {
        234.0, 153.0, 234.0, 204.0, 267.0, 234.0, 213.0, 24.0,  207.0, 9.0,
        105.0, 117.0, 81.0,  12.0,  96.0,  189.0, 93.0,  258.0, 123.0, 294.0,
        63.0,  225.0, 33.0,  234.0, 291.0, 177.0, 258.0, 237.0});
-  BipartiteVariableList oidx("j,i,k"), lidx, ridx("i,j,k");
+  BipartiteIndexList oidx("j,i,k"), lidx, ridx("i,j,k");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(jki_ijk) {
        150.0, 51.0,  54.0,  204.0, 267.0, 105.0, 93.0,  33.0,  234.0, 117.0,
        258.0, 234.0, 213.0, 81.0,  123.0, 291.0, 24.0,  12.0,  294.0, 177.0,
        207.0, 96.0,  63.0,  258.0, 9.0,   189.0, 225.0, 237.0});
-  BipartiteVariableList oidx("j,k,i"), lidx, ridx("i,j,k");
+  BipartiteIndexList oidx("j,k,i"), lidx, ridx("i,j,k");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(kij_ijk) {
        264.0, 123.0, 234.0, 291.0, 249.0, 24.0,  270.0, 12.0,  219.0, 294.0,
        153.0, 177.0, 42.0,  207.0, 96.0,  96.0,  279.0, 63.0,  234.0, 258.0,
        150.0, 9.0,   51.0,  189.0, 54.0,  225.0, 204.0, 237.0});
-  BipartiteVariableList oidx("k,i,j"), lidx, ridx("i,j,k");
+  BipartiteIndexList oidx("k,i,j"), lidx, ridx("i,j,k");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE(kji_ijk) {
        213.0, 81.0,  123.0, 291.0, 249.0, 270.0, 219.0, 153.0, 24.0,  12.0,
        294.0, 177.0, 42.0,  96.0,  279.0, 234.0, 207.0, 96.0,  63.0,  258.0,
        150.0, 51.0,  54.0,  204.0, 9.0,   189.0, 225.0, 237.0});
-  BipartiteVariableList oidx("k,j,i"), lidx, ridx("i,j,k");
+  BipartiteIndexList oidx("k,j,i"), lidx, ridx("i,j,k");
   auto rv = kernels::t_s_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }

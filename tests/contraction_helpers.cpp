@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_SUITE(range_from_annotation_fxn)
 BOOST_AUTO_TEST_CASE(vvv) {
   Range r14({1}, {4});
   Tensor<double> lhs(r14), rhs(r14);
-  BipartiteVariableList i("i");
+  BipartiteIndexList i("i");
   auto r = range_from_annotation(i, i, i, lhs, rhs);
   BOOST_CHECK(r == r14);
 }
@@ -40,7 +40,7 @@ BOOST_AUTO_TEST_CASE(vvm) {
   Range r14({1}, {4});
   Range r14_23({1, 2}, {4, 3});
   Tensor<double> lhs(r14), rhs(r14_23);
-  BipartiteVariableList i("i"), ij("i,j");
+  BipartiteIndexList i("i"), ij("i,j");
   auto r = range_from_annotation(i, i, ij, lhs, rhs);
   BOOST_CHECK(r == r14);
 }
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(vmv) {
   Range r14({1}, {4});
   Range r14_23({1, 2}, {4, 3});
   Tensor<double> lhs(r14_23), rhs(r14);
-  BipartiteVariableList i("i"), ij("i,j");
+  BipartiteIndexList i("i"), ij("i,j");
   auto r = range_from_annotation(i, ij, i, lhs, rhs);
   BOOST_CHECK(r == r14);
 }
@@ -58,7 +58,7 @@ BOOST_AUTO_TEST_CASE(mvm) {
   Range r14({1}, {4});
   Range r14_23({1, 2}, {4, 3});
   Tensor<double> lhs(r14), rhs(r14_23);
-  BipartiteVariableList i("i"), ij("i,j");
+  BipartiteIndexList i("i"), ij("i,j");
   auto r = range_from_annotation(ij, i, ij, lhs, rhs);
   BOOST_CHECK(r == r14_23);
 }
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(mmv) {
   Range r14({1}, {4});
   Range r14_23({1, 2}, {4, 3});
   Tensor<double> lhs(r14_23), rhs(r14);
-  BipartiteVariableList i("i"), ij("i,j");
+  BipartiteIndexList i("i"), ij("i,j");
   auto r = range_from_annotation(ij, ij, i, lhs, rhs);
   BOOST_CHECK(r == r14_23);
 }
@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(mmv) {
 BOOST_AUTO_TEST_CASE(mmm_hadamard) {
   Range r14_23({1, 2}, {4, 3});
   Tensor<double> lhs(r14_23), rhs(r14_23);
-  BipartiteVariableList ij("i,j");
+  BipartiteIndexList ij("i,j");
   auto r = range_from_annotation(ij, ij, ij, lhs, rhs);
   BOOST_CHECK(r == r14_23);
 }
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(mmm_contract) {
   Range r23({2}, {3});
 
   Tensor<double> lhs(r14_23), rhs(r23_35);
-  BipartiteVariableList ij("i,j"), jk("j, k"), ik("i, k"), j("j");
+  BipartiteIndexList ij("i,j"), jk("j, k"), ik("i, k"), j("j");
   {
     auto r = range_from_annotation(ik, ij, jk, lhs, rhs);
     BOOST_CHECK(r == r14_35);
@@ -106,33 +106,33 @@ BOOST_AUTO_TEST_SUITE(make_index_fxn)
 using index_type = std::vector<std::size_t>;
 
 BOOST_AUTO_TEST_CASE(one_free) {
-  BipartiteVariableList i("i");
+  BipartiteIndexList i("i");
   auto idx =
-      make_index(i, BipartiteVariableList{}, i, index_type{0}, index_type{});
+      make_index(i, BipartiteIndexList{}, i, index_type{0}, index_type{});
   BOOST_CHECK_EQUAL(idx, index_type{0});
 }
 
 BOOST_AUTO_TEST_CASE(one_bound) {
-  BipartiteVariableList i("i");
+  BipartiteIndexList i("i");
   auto idx =
-      make_index(BipartiteVariableList{}, i, i, index_type{}, index_type{0});
+      make_index(BipartiteIndexList{}, i, i, index_type{}, index_type{0});
   BOOST_CHECK_EQUAL(idx, index_type{0});
 }
 
 BOOST_AUTO_TEST_CASE(is_free) {
-  BipartiteVariableList i("i"), j("j");
+  BipartiteIndexList i("i"), j("j");
   auto idx = make_index(i, j, i, index_type{0}, index_type{1});
   BOOST_CHECK_EQUAL(idx, index_type{0});
 }
 
 BOOST_AUTO_TEST_CASE(is_bound) {
-  BipartiteVariableList i("i"), j("j");
+  BipartiteIndexList i("i"), j("j");
   auto idx = make_index(j, i, i, index_type{1}, index_type{0});
   BOOST_CHECK_EQUAL(idx, index_type{0});
 }
 
 BOOST_AUTO_TEST_CASE(both_bound) {
-  BipartiteVariableList i("i"), j("j"), ij("i, j");
+  BipartiteIndexList i("i"), j("j"), ij("i, j");
   auto idx = make_index(j, i, ij, index_type{1}, index_type{0});
   index_type corr{0, 1};
   BOOST_CHECK_EQUAL(idx, corr);

@@ -18,16 +18,16 @@
  */
 
 #include <numeric>
-#include "TiledArray/expressions/variable_list.h"
+#include "TiledArray/expressions/index_list.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
-/* General notes on testing the BipartiteVariableList class.
+/* General notes on testing the BipartiteIndexList class.
  *
  * - The old test suite included tests for ensuring valid characters. That
  *   functionality has been moved to the free function `is_valid_index` and is
  *   tested there.
- * - I put the BipartiteVariableLists to test into an std::map, which makes it
+ * - I put the BipartiteIndexLists to test into an std::map, which makes it
  * easier to loop over them and write more compact unit-tests.
  * - I split the constructor and accessor tests into individual unit tests, one
  *   per function. In the event that a bug is found/functionality changes this
@@ -36,35 +36,34 @@
  */
 
 using namespace TiledArray;
-using TiledArray::expressions::BipartiteVariableList;
+using TiledArray::expressions::BipartiteIndexList;
 using TiledArray::expressions::detail::find_common;
 
 // Pull some typedefs from the class to make sure testing uses the right types
-using value_type = typename BipartiteVariableList::value_type;
-using const_reference = typename BipartiteVariableList::const_reference;
-using size_type = typename BipartiteVariableList::size_type;
+using value_type = typename BipartiteIndexList::value_type;
+using const_reference = typename BipartiteIndexList::const_reference;
+using size_type = typename BipartiteIndexList::size_type;
 
-struct BipartiteVariableListFixture {
+struct BipartiteIndexListFixture {
   World& world = get_default_world();
-  std::map<value_type, BipartiteVariableList> idxs = {
-      {"a,b,c,d", BipartiteVariableList("a,b,c,d")},
-      {"a,i,b", BipartiteVariableList("a,i,b")},
-      {"x,i,y", BipartiteVariableList("x,i,y")},
-      {"a,i", BipartiteVariableList("a,i")},
-      {"x,i", BipartiteVariableList("x,i")},
-      {"i,a", BipartiteVariableList("i,a")},
-      {"i,x", BipartiteVariableList("i,x")},
-      {"i", BipartiteVariableList("i")},
-      {"i,j", BipartiteVariableList("i,j")},
-      {"i,j,k", BipartiteVariableList("i,j,k")},
-      {"i;j", BipartiteVariableList("i;j")},
-      {"i;j,k", BipartiteVariableList("i;j,k")},
-      {"i,j;k", BipartiteVariableList("i,j;k")},
-      {"i,j;k,l", BipartiteVariableList("i,j;k,l")}};
+  std::map<value_type, BipartiteIndexList> idxs = {
+      {"a,b,c,d", BipartiteIndexList("a,b,c,d")},
+      {"a,i,b", BipartiteIndexList("a,i,b")},
+      {"x,i,y", BipartiteIndexList("x,i,y")},
+      {"a,i", BipartiteIndexList("a,i")},
+      {"x,i", BipartiteIndexList("x,i")},
+      {"i,a", BipartiteIndexList("i,a")},
+      {"i,x", BipartiteIndexList("i,x")},
+      {"i", BipartiteIndexList("i")},
+      {"i,j", BipartiteIndexList("i,j")},
+      {"i,j,k", BipartiteIndexList("i,j,k")},
+      {"i;j", BipartiteIndexList("i;j")},
+      {"i;j,k", BipartiteIndexList("i;j,k")},
+      {"i,j;k", BipartiteIndexList("i,j;k")},
+      {"i,j;k,l", BipartiteIndexList("i,j;k,l")}};
 };
 
-BOOST_FIXTURE_TEST_SUITE(bipartite_variable_list_suite,
-                         BipartiteVariableListFixture,
+BOOST_FIXTURE_TEST_SUITE(bipartite_index_list_suite, BipartiteIndexListFixture,
                          TA_UT_SKIP_IF_DISTRIBUTED)
 
 /* This unit test ensures that the typedefs are what we think they are. Since no
@@ -85,7 +84,7 @@ BOOST_AUTO_TEST_CASE(typedefs) {
 
   {
     constexpr bool is_same = std::is_same_v<
-        typename BipartiteVariableList::const_iterator,
+        typename BipartiteIndexList::const_iterator,
         typename container::svector<std::string>::const_iterator>;
     BOOST_CHECK(is_same);
   }
@@ -100,22 +99,22 @@ BOOST_AUTO_TEST_CASE(typedefs) {
  * that the accessible state of a default instance is what it is supposed to be.
  */
 BOOST_AUTO_TEST_CASE(default_ctor) {
-  BOOST_REQUIRE_NO_THROW(BipartiteVariableList v0);
-  BipartiteVariableList v0;
+  BOOST_REQUIRE_NO_THROW(BipartiteIndexList v0);
+  BipartiteIndexList v0;
   {
     bool are_same = v0.begin() == v0.end();
     BOOST_CHECK(are_same);
   }
-  BOOST_CHECK_EQUAL(v0.dim(), size_type{0});
-  BOOST_CHECK_EQUAL(v0.outer_dim(), size_type{0});
-  BOOST_CHECK_EQUAL(v0.inner_dim(), size_type{0});
+  BOOST_CHECK_EQUAL(v0.size(), size_type{0});
+  BOOST_CHECK_EQUAL(v0.first_size(), size_type{0});
+  BOOST_CHECK_EQUAL(v0.second_size(), size_type{0});
   BOOST_CHECK_EQUAL(v0.size(), size_type{0});
 }
 
 /* This unit test tests the constructor which takes a string and tokenizes it.
  * The constructor ultimately calls detail::split_index, which is unit tested
  * elsewhere (and thus assumed to work). We compare the state of the resulting
- * BipartiteVariableList to the correct value (as obtained by
+ * BipartiteIndexList to the correct value (as obtained by
  * detail::split_index) for this unit test. There are a number of ways of
  * accessing the individual indices (operator[], at, iterators); here we only
  * test the at variant. The other access members are tested in their respective
@@ -123,14 +122,14 @@ BOOST_AUTO_TEST_CASE(default_ctor) {
  */
 BOOST_AUTO_TEST_CASE(string_ctor) {
   if (world.nproc() == 1) {
-    BOOST_CHECK_THROW(BipartiteVariableList("i,"), TiledArray::Exception);
+    BOOST_CHECK_THROW(BipartiteIndexList("i,"), TiledArray::Exception);
   }
 
   for (auto&& [str, idx] : idxs) {
     auto&& [outer, inner] = TiledArray::detail::split_index(str);
-    BOOST_CHECK_EQUAL(idx.dim(), outer.size() + inner.size());
-    BOOST_CHECK_EQUAL(idx.outer_dim(), outer.size());
-    BOOST_CHECK_EQUAL(idx.inner_dim(), inner.size());
+    BOOST_CHECK_EQUAL(idx.size(), outer.size() + inner.size());
+    BOOST_CHECK_EQUAL(idx.first_size(), outer.size());
+    BOOST_CHECK_EQUAL(idx.second_size(), inner.size());
     BOOST_CHECK_EQUAL(idx.size(), outer.size() + inner.size());
 
     for (size_type i = 0; i < outer.size(); ++i) {
@@ -152,13 +151,13 @@ BOOST_AUTO_TEST_CASE(string_ctor) {
 BOOST_AUTO_TEST_CASE(copy_ctor) {
   // Default instance
   {
-    BipartiteVariableList v0;
-    BipartiteVariableList v1(v0);
+    BipartiteIndexList v0;
+    BipartiteIndexList v1(v0);
     BOOST_CHECK_EQUAL(v0, v1);
   }
 
   for (auto&& [str, idx] : idxs) {
-    BipartiteVariableList v1(idx);
+    BipartiteIndexList v1(idx);
     BOOST_CHECK_EQUAL(idx, v1);
     // Ensure deep copy
     for (size_type i = 0; i < idx.size(); ++i) BOOST_CHECK(&idx[i] != &v1[i]);
@@ -168,14 +167,14 @@ BOOST_AUTO_TEST_CASE(copy_ctor) {
 BOOST_AUTO_TEST_CASE(copy_assignment) {
   // Default instance
   {
-    BipartiteVariableList v0, v1;
+    BipartiteIndexList v0, v1;
     auto pv0 = &(v0 = v1);
     BOOST_CHECK_EQUAL(pv0, &v0);
     BOOST_CHECK_EQUAL(v0, v1);
   }
 
   for (auto&& [str, idx] : idxs) {
-    BipartiteVariableList v1;
+    BipartiteIndexList v1;
     auto pv1 = &(v1 = idx);
     BOOST_CHECK_EQUAL(pv1, &v1);
     BOOST_CHECK_EQUAL(idx, v1);
@@ -185,19 +184,19 @@ BOOST_AUTO_TEST_CASE(copy_assignment) {
 }
 
 /* String assignment allows users to overwrite the state of a
- * BipartiteVariableList instance by assigning a C-string (or std::string) to
+ * BipartiteIndexList instance by assigning a C-string (or std::string) to
  * it. We test this operator by creating a default constructed
- * BipartiteVariableList, assigning the indices to it, and then comparing that
+ * BipartiteIndexList, assigning the indices to it, and then comparing that
  * to the already created instance.
  */
 BOOST_AUTO_TEST_CASE(string_assignment) {
   if (world.nproc() == 1) {
-    BipartiteVariableList v1;
+    BipartiteIndexList v1;
     BOOST_CHECK_THROW(v1.operator=("i,"), TiledArray::Exception);
   }
 
   for (auto&& [str, idx] : idxs) {
-    BipartiteVariableList v1;
+    BipartiteIndexList v1;
     auto pv1 = &(v1 = str);
     BOOST_CHECK_EQUAL(pv1, &v1);
     BOOST_CHECK_EQUAL(idx, v1);
@@ -212,82 +211,82 @@ BOOST_AUTO_TEST_CASE(string_assignment) {
 BOOST_AUTO_TEST_CASE(equality) {
   // Default instance comparisons
   {
-    BipartiteVariableList v0;
-    BOOST_CHECK_EQUAL(v0, BipartiteVariableList());
-    BOOST_CHECK(!(v0 == BipartiteVariableList("i")));
-    BOOST_CHECK(!(v0 == BipartiteVariableList("i,j")));
-    BOOST_CHECK(!(v0 == BipartiteVariableList("i;j")));
+    BipartiteIndexList v0;
+    BOOST_CHECK_EQUAL(v0, BipartiteIndexList());
+    BOOST_CHECK(!(v0 == BipartiteIndexList("i")));
+    BOOST_CHECK(!(v0 == BipartiteIndexList("i,j")));
+    BOOST_CHECK(!(v0 == BipartiteIndexList("i;j")));
   }
 
   // Vector Comparisons
   {
-    BipartiteVariableList v0("i");
-    BOOST_CHECK_EQUAL(v0, BipartiteVariableList("i"));
-    BOOST_CHECK(!(v0 == BipartiteVariableList("j")));
-    BOOST_CHECK(!(v0 == BipartiteVariableList("i,j")));
-    BOOST_CHECK(!(v0 == BipartiteVariableList("i;j")));
+    BipartiteIndexList v0("i");
+    BOOST_CHECK_EQUAL(v0, BipartiteIndexList("i"));
+    BOOST_CHECK(!(v0 == BipartiteIndexList("j")));
+    BOOST_CHECK(!(v0 == BipartiteIndexList("i,j")));
+    BOOST_CHECK(!(v0 == BipartiteIndexList("i;j")));
   }
 
   // Matrix Comparisons
   {
-    BipartiteVariableList v0("i,j");
-    BOOST_CHECK_EQUAL(v0, BipartiteVariableList("i,j"));
-    BOOST_CHECK(!(v0 == BipartiteVariableList("j,i")));
-    BOOST_CHECK(!(v0 == BipartiteVariableList("i;j")));
+    BipartiteIndexList v0("i,j");
+    BOOST_CHECK_EQUAL(v0, BipartiteIndexList("i,j"));
+    BOOST_CHECK(!(v0 == BipartiteIndexList("j,i")));
+    BOOST_CHECK(!(v0 == BipartiteIndexList("i;j")));
   }
 
   // ToT Comparisons
   {
-    BipartiteVariableList v0("i;j");
-    BOOST_CHECK_EQUAL(v0, BipartiteVariableList("i;j"));
-    BOOST_CHECK(!(v0 == BipartiteVariableList("j;i")));
+    BipartiteIndexList v0("i;j");
+    BOOST_CHECK_EQUAL(v0, BipartiteIndexList("i;j"));
+    BOOST_CHECK(!(v0 == BipartiteIndexList("j;i")));
   }
 }
 
 BOOST_AUTO_TEST_CASE(inequality) {
   // Default instance comparisons
   {
-    BipartiteVariableList v0;
-    BOOST_CHECK(!(v0 != BipartiteVariableList()));
-    BOOST_CHECK(v0 != BipartiteVariableList("i"));
-    BOOST_CHECK(v0 != BipartiteVariableList("i,j"));
-    BOOST_CHECK(v0 != BipartiteVariableList("i;j"));
+    BipartiteIndexList v0;
+    BOOST_CHECK(!(v0 != BipartiteIndexList()));
+    BOOST_CHECK(v0 != BipartiteIndexList("i"));
+    BOOST_CHECK(v0 != BipartiteIndexList("i,j"));
+    BOOST_CHECK(v0 != BipartiteIndexList("i;j"));
   }
 
   // Vector Comparisons
   {
-    BipartiteVariableList v0("i");
-    BOOST_CHECK(!(v0 != BipartiteVariableList("i")));
-    BOOST_CHECK(v0 != BipartiteVariableList("j"));
-    BOOST_CHECK(v0 != BipartiteVariableList("i,j"));
-    BOOST_CHECK(v0 != BipartiteVariableList("i;j"));
+    BipartiteIndexList v0("i");
+    BOOST_CHECK(!(v0 != BipartiteIndexList("i")));
+    BOOST_CHECK(v0 != BipartiteIndexList("j"));
+    BOOST_CHECK(v0 != BipartiteIndexList("i,j"));
+    BOOST_CHECK(v0 != BipartiteIndexList("i;j"));
   }
 
   // Matrix Comparisons
   {
-    BipartiteVariableList v0("i,j");
-    BOOST_CHECK(!(v0 != BipartiteVariableList("i,j")));
-    BOOST_CHECK(v0 != BipartiteVariableList("j,i"));
-    BOOST_CHECK(v0 != BipartiteVariableList("i;j"));
+    BipartiteIndexList v0("i,j");
+    BOOST_CHECK(!(v0 != BipartiteIndexList("i,j")));
+    BOOST_CHECK(v0 != BipartiteIndexList("j,i"));
+    BOOST_CHECK(v0 != BipartiteIndexList("i;j"));
   }
 
   // ToT Comparisons
   {
-    BipartiteVariableList v0("i;j");
-    BOOST_CHECK(!(v0 != BipartiteVariableList("i;j")));
-    BOOST_CHECK(v0 != BipartiteVariableList("j;i"));
+    BipartiteIndexList v0("i;j");
+    BOOST_CHECK(!(v0 != BipartiteIndexList("i;j")));
+    BOOST_CHECK(v0 != BipartiteIndexList("j;i"));
   }
 }
 
 BOOST_AUTO_TEST_CASE(permute_in_place) {
   if (world.nproc() == 1) {
-    BipartiteVariableList v0;
+    BipartiteIndexList v0;
     Permutation p{0, 1};
     BOOST_CHECK_THROW(v0 *= p, TiledArray::Exception);
   }
 
   Permutation p({1, 2, 3, 0});
-  BipartiteVariableList v1("a, b, c, d");
+  BipartiteIndexList v1("a, b, c, d");
   auto* pv1 = &(v1 *= p);
   BOOST_CHECK_EQUAL(pv1, &v1);
   BOOST_CHECK_EQUAL(v1[0], "d");
@@ -304,7 +303,7 @@ BOOST_AUTO_TEST_CASE(permute_in_place) {
  */
 BOOST_AUTO_TEST_CASE(begin_itr) {
   {
-    BipartiteVariableList v0;
+    BipartiteIndexList v0;
     bool are_same = (v0.begin() == v0.data().begin());
     BOOST_CHECK(are_same);
   }
@@ -317,7 +316,7 @@ BOOST_AUTO_TEST_CASE(begin_itr) {
 
 BOOST_AUTO_TEST_CASE(end_itr) {
   {
-    BipartiteVariableList v0;
+    BipartiteIndexList v0;
     bool are_same = (v0.end() == v0.data().end());
     BOOST_CHECK(are_same);
   }
@@ -359,13 +358,13 @@ BOOST_AUTO_TEST_CASE(subscript_operator) {
 // TODO: Test repeated index
 BOOST_AUTO_TEST_CASE(modes) {
   for (auto&& [str, idx] : idxs) {
-    using r_type = decltype(idx.modes(""));
-    using size_type = typename BipartiteVariableList::size_type;
+    using r_type = decltype(idx.positions(""));
+    using size_type = typename BipartiteIndexList::size_type;
     auto [outer, inner] = detail::split_index(str);
     for (size_type i = 0; i < outer.size(); ++i)
-      BOOST_CHECK_EQUAL(idx.modes(outer[i]), r_type{i});
+      BOOST_CHECK_EQUAL(idx.positions(outer[i]), r_type{i});
     for (size_type i = 0; i < inner.size(); ++i)
-      BOOST_CHECK_EQUAL(idx.modes(inner[i]), r_type{outer.size() + i});
+      BOOST_CHECK_EQUAL(idx.positions(inner[i]), r_type{outer.size() + i});
   }
 }
 
@@ -378,40 +377,40 @@ BOOST_AUTO_TEST_CASE(count) {
   }
 }
 
-/* To test the dim, outer_dim, inner_dim, and size function we simply loop over
- * the BipartiteVariableList instances and compare the results of the member
+/* To test the dim, outer_size, inner_size, and size function we simply loop
+ * over the BipartiteIndexList instances and compare the results of the member
  * function to the sizes resulting from calling `split_index`, which defines how
  * a TiledArray index should be split.
  */
 BOOST_AUTO_TEST_CASE(dim_fxn) {
-  BOOST_CHECK_EQUAL(BipartiteVariableList{}.dim(), 0);
+  BOOST_CHECK_EQUAL(BipartiteIndexList{}.size(), 0);
 
   for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
-    BOOST_CHECK_EQUAL(idx.dim(), outer.size() + inner.size());
+    BOOST_CHECK_EQUAL(idx.size(), outer.size() + inner.size());
   }
 }
 
-BOOST_AUTO_TEST_CASE(outer_dim_fxn) {
-  BOOST_CHECK_EQUAL(BipartiteVariableList{}.outer_dim(), 0);
+BOOST_AUTO_TEST_CASE(outer_size_fxn) {
+  BOOST_CHECK_EQUAL(BipartiteIndexList{}.first_size(), 0);
 
   for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
-    BOOST_CHECK_EQUAL(idx.outer_dim(), outer.size());
+    BOOST_CHECK_EQUAL(idx.first_size(), outer.size());
   }
 }
 
-BOOST_AUTO_TEST_CASE(inner_dim_fxn) {
-  BOOST_CHECK_EQUAL(BipartiteVariableList{}.inner_dim(), 0);
+BOOST_AUTO_TEST_CASE(inner_size_fxn) {
+  BOOST_CHECK_EQUAL(BipartiteIndexList{}.second_size(), 0);
 
   for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
-    BOOST_CHECK_EQUAL(idx.inner_dim(), inner.size());
+    BOOST_CHECK_EQUAL(idx.second_size(), inner.size());
   }
 }
 
 BOOST_AUTO_TEST_CASE(size_fxn) {
-  BOOST_CHECK_EQUAL(BipartiteVariableList{}.size(), 0);
+  BOOST_CHECK_EQUAL(BipartiteIndexList{}.size(), 0);
 
   for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
@@ -420,17 +419,17 @@ BOOST_AUTO_TEST_CASE(size_fxn) {
 }
 
 BOOST_AUTO_TEST_CASE(is_tot_fxn) {
-  BOOST_CHECK(BipartiteVariableList{}.is_tot() == false);
+  BOOST_CHECK(BipartiteIndexList{}.second_size() == 0);
 
   for (auto&& [str, idx] : idxs) {
     auto [outer, inner] = detail::split_index(str);
-    BOOST_CHECK(idx.is_tot() == detail::is_tot_index(str));
+    BOOST_CHECK((inner_size(idx) != 0) == detail::is_tot_index(str));
   }
 }
 
 /* The string cast operator simply concatenates the indices together using a
  * comma as glue between modes and a semicolon as glue between tensor nestings.
- * This test loops over the BipartiteVariableList instances in the test fixture,
+ * This test loops over the BipartiteIndexList instances in the test fixture,
  * converts them to std::string instances and compares the resulting string
  *
  * Note: This test exploits the fact that there's no spaces in any of the
@@ -438,7 +437,7 @@ BOOST_AUTO_TEST_CASE(is_tot_fxn) {
  * detail::remove_whitespace to compensate.
  */
 BOOST_AUTO_TEST_CASE(string_cast) {
-  BipartiteVariableList v;
+  BipartiteIndexList v;
   BOOST_CHECK_EQUAL("", static_cast<value_type>(v));
 
   for (auto [str, idx] : idxs) {
@@ -448,7 +447,7 @@ BOOST_AUTO_TEST_CASE(string_cast) {
 
 BOOST_AUTO_TEST_CASE(stream_insert) {
   {
-    BipartiteVariableList v;
+    BipartiteIndexList v;
     std::stringstream ss;
     ss << v;
     BOOST_CHECK_EQUAL("()", ss.str());
@@ -462,8 +461,8 @@ BOOST_AUTO_TEST_CASE(stream_insert) {
   }
 }
 
-/* To test swap we swap the contents of an already made BipartiteVariableList
- * with the contents of a defaulted BipartiteVariableList. The instance that was
+/* To test swap we swap the contents of an already made BipartiteIndexList
+ * with the contents of a defaulted BipartiteIndexList. The instance that was
  * defaulted is then compared to a copy of the originally non-defaulted instance
  * and the instance that was non-defaulted is compared to a fresh default
  * instance. Strictly speaking this only shows that we can swap defaulted and
@@ -471,44 +470,44 @@ BOOST_AUTO_TEST_CASE(stream_insert) {
  */
 BOOST_AUTO_TEST_CASE(swap_fxn) {
   for (auto&& [str, idx] : idxs) {
-    BipartiteVariableList v0, v1(idx);
+    BipartiteIndexList v0, v1(idx);
     idx.swap(v0);
-    BOOST_CHECK(idx == BipartiteVariableList{});
+    BOOST_CHECK(idx == BipartiteIndexList{});
     BOOST_CHECK(v0 == v1);
   }
 }
 
 BOOST_AUTO_TEST_CASE(swap_free_fxn) {
   for (auto&& [str, idx] : idxs) {
-    BipartiteVariableList v0, v1(idx);
+    BipartiteIndexList v0, v1(idx);
     swap(idx, v0);
-    BOOST_CHECK(idx == BipartiteVariableList{});
+    BOOST_CHECK(idx == BipartiteIndexList{});
     BOOST_CHECK(v0 == v1);
   }
 }
 
 BOOST_AUTO_TEST_CASE(permutation_fxn) {
   if (world.nproc() == 1) {
-    BipartiteVariableList v0("i, j");
+    BipartiteIndexList v0("i, j");
 
     {  // not both ToT
-      BipartiteVariableList v1("i;j");
+      BipartiteIndexList v1("i;j");
       BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
     }
 
     {  // wrong size
-      BipartiteVariableList v1("i");
+      BipartiteIndexList v1("i");
       BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
     }
 
     {  // not a permutation
-      BipartiteVariableList v1("i, a");
+      BipartiteIndexList v1("i, a");
       BOOST_CHECK_THROW(v1.permutation(v0), TiledArray::Exception);
     }
 
     {  // ToTs mix outer and inner
-      BipartiteVariableList v1("i,j;k,l");
-      BipartiteVariableList v2("i,k;j,l");
+      BipartiteIndexList v1("i,j;k,l");
+      BipartiteIndexList v2("i,k;j,l");
       BOOST_CHECK_THROW(v1.permutation(v2), TiledArray::Exception);
     }
   }
@@ -516,16 +515,16 @@ BOOST_AUTO_TEST_CASE(permutation_fxn) {
   for (auto [str, idx] : idxs) {
     std::vector<size_type> perm(idx.size());
     std::iota(perm.begin(), perm.end(), 0);
-    if (idx.is_tot()) {
-      auto outer_dim = idx.outer_dim();
+    if (idx.second_size() != 0) {
+      auto outer_size = idx.first_size();
       do {
         do {
           Permutation p(perm.begin(), perm.end());
           auto v = p * idx;
           BOOST_CHECK(v.permutation(idx) ==
-                      BipartitePermutation(p, perm.size() - outer_dim));
-        } while (std::next_permutation(perm.begin() + outer_dim, perm.end()));
-      } while (std::next_permutation(perm.begin(), perm.begin() + outer_dim));
+                      BipartitePermutation(p, perm.size() - outer_size));
+        } while (std::next_permutation(perm.begin() + outer_size, perm.end()));
+      } while (std::next_permutation(perm.begin(), perm.begin() + outer_size));
     } else {
       do {
         Permutation p(perm.begin(), perm.end());
@@ -537,14 +536,14 @@ BOOST_AUTO_TEST_CASE(permutation_fxn) {
 }
 
 BOOST_AUTO_TEST_CASE(is_permutation_fxn) {
-  BipartiteVariableList v0("i, j");
+  BipartiteIndexList v0("i, j");
   {  // Different number of variables
-    BipartiteVariableList v1("i");
+    BipartiteIndexList v1("i");
     BOOST_CHECK(v0.is_permutation(v1) == false);
   }
 
   {  // Different indices
-    BipartiteVariableList v1("i, a");
+    BipartiteIndexList v1("i, a");
     BOOST_CHECK(v1.is_permutation(v0) == false);
   }
 
@@ -561,28 +560,28 @@ BOOST_AUTO_TEST_CASE(is_permutation_fxn) {
 
 BOOST_AUTO_TEST_CASE(implicit_permutation) {
   Permutation p1({1, 2, 3, 0});
-  BipartiteVariableList v("a,b,c,d");
-  BipartiteVariableList v1 = (p1 * v);
+  BipartiteIndexList v("a,b,c,d");
+  BipartiteIndexList v1 = (p1 * v);
   auto p = TiledArray::expressions::detail::var_perm(v1, v);
 
   BOOST_CHECK_EQUAL_COLLECTIONS(p.begin(), p.end(), p1.begin(), p1.end());
 }
 
 BOOST_AUTO_TEST_CASE(common) {
-  std::pair<BipartiteVariableList::const_iterator,
-            BipartiteVariableList::const_iterator>
+  std::pair<BipartiteIndexList::const_iterator,
+            BipartiteIndexList::const_iterator>
       p1;
-  std::pair<BipartiteVariableList::const_iterator,
-            BipartiteVariableList::const_iterator>
+  std::pair<BipartiteIndexList::const_iterator,
+            BipartiteIndexList::const_iterator>
       p2;
-  BipartiteVariableList v("a,b,c,d");
-  BipartiteVariableList v_aib("a,i,b");
-  BipartiteVariableList v_xiy("x,i,y");
-  BipartiteVariableList v_ai("a,i");
-  BipartiteVariableList v_xi("x,i");
-  BipartiteVariableList v_ia("i,a");
-  BipartiteVariableList v_ix("i,x");
-  BipartiteVariableList v_i("i");
+  BipartiteIndexList v("a,b,c,d");
+  BipartiteIndexList v_aib("a,i,b");
+  BipartiteIndexList v_xiy("x,i,y");
+  BipartiteIndexList v_ai("a,i");
+  BipartiteIndexList v_xi("x,i");
+  BipartiteIndexList v_ia("i,a");
+  BipartiteIndexList v_ix("i,x");
+  BipartiteIndexList v_i("i");
 
   find_common(v_aib.begin(), v_aib.end(), v_xiy.begin(), v_xiy.end(), p1, p2);
   BOOST_CHECK(p1.first == v_aib.begin() + 1);

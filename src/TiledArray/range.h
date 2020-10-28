@@ -601,7 +601,7 @@ class Range {
   /// \param perm The permutation applied to other
   /// \param other The range to be permuted and copied
   Range(const Permutation& perm, const Range_& other) {
-    TA_ASSERT(perm.dim() == other.rank_);
+    TA_ASSERT(perm.size() == other.rank_);
 
     if (other.rank_ > 0ul) {
       data_ = new index1_type[other.rank_ << 2];
@@ -1230,7 +1230,7 @@ class Range {
 };  // class Range
 
 inline Range& Range::operator*=(const Permutation& perm) {
-  TA_ASSERT(perm.dim() == rank_);
+  TA_ASSERT(perm.size() == rank_);
   if (rank_ > 1ul) {
     // Copy the lower and upper bound data into a temporary array
     auto* MADNESS_RESTRICT const temp_lower = new index1_type[rank_ << 1];

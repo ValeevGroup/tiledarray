@@ -29,7 +29,7 @@ BOOST_AUTO_TEST_CASE(ij_i_j) {
   Tensor<double> lhs(Range{4}, {24, 95, 2, 37});
   Tensor<double> rhs(Range{2}, {35, 17});
   Tensor<double> corr(Range{4, 2}, {840, 408, 3325, 1615, 70, 34, 1295, 629});
-  BipartiteVariableList oidx("i,j"), lidx("i"), ridx("j");
+  BipartiteIndexList oidx("i,j"), lidx("i"), ridx("j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(i_i_i) {
   Tensor<double> lhs(Range{4}, {24, 95, 2, 37});
   Tensor<double> rhs(Range{4}, {36, 6, 30, 73});
   Tensor<double> corr(Range{4}, {864, 570, 60, 2701});
-  BipartiteVariableList oidx("i"), lidx("i"), ridx("i");
+  BipartiteIndexList oidx("i"), lidx("i"), ridx("i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE(ijk_i_jk) {
        3325, 8550, 3705, 9500, 1900, 3895, 6080, 8075, 6840, 9120, 8360, 7790,
        70,   180,  78,   200,  40,   82,   128,  170,  144,  192,  176,  164,
        1295, 3330, 1443, 3700, 740,  1517, 2368, 3145, 2664, 3552, 3256, 3034});
-  BipartiteVariableList oidx("i,j,k"), lidx("i"), ridx("j,k");
+  BipartiteIndexList oidx("i,j,k"), lidx("i"), ridx("j,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(ijk_i_kj) {
        1900, 4275, 3230, 5225, 4845, 1805, 6555, 6365, 3420, 8075, 5415, 5415,
        40,   90,   68,   110,  102,  38,   138,  134,  72,   170,  114,  114,
        740,  1665, 1258, 2035, 1887, 703,  2553, 2479, 1332, 3145, 2109, 2109});
-  BipartiteVariableList oidx("i,j,k"), lidx("i"), ridx("k,j");
+  BipartiteIndexList oidx("i,j,k"), lidx("i"), ridx("k,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(j_i_ij) {
   Tensor<double> lhs(Range{4}, {24, 95, 2, 37});
   Tensor<double> rhs(Range{4, 2}, {97, 3, 34, 83, 83, 63, 84, 98});
   Tensor<double> corr(Range{2}, {8832, 11709});
-  BipartiteVariableList oidx("j"), lidx("i"), ridx("i,j");
+  BipartiteIndexList oidx("j"), lidx("i"), ridx("i,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(j_i_ji) {
   Tensor<double> lhs(Range{4}, {24, 95, 2, 37});
   Tensor<double> rhs(Range{2, 4}, {80, 47, 82, 84, 55, 38, 49, 57});
   Tensor<double> corr(Range{2}, {9657, 7137});
-  BipartiteVariableList oidx("j"), lidx("i"), ridx("j,i");
+  BipartiteIndexList oidx("j"), lidx("i"), ridx("j,i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(ijkl_i_jkl) {
        2368, 3589, 2331, 111,  3256, 2479, 3108, 3145, 2516, 1517, 1036, 1406,
        1887, 2738, 185,  3145, 1998, 555,  333,  2516, 777,  1591, 2220, 2960,
        2664, 814,  333,  1702, 555,  962,  2146, 3589, 3219, 814,  3552, 2368});
-  BipartiteVariableList oidx("i,j,k,l"), lidx("i"), ridx("j,k,l");
+  BipartiteIndexList oidx("i,j,k,l"), lidx("i"), ridx("j,k,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -202,7 +202,7 @@ BOOST_AUTO_TEST_CASE(ijkl_i_jlk) {
        111,  925,  1850, 2590, 296,  2072, 3663, 3589, 2738, 1036, 1776, 2072,
        1850, 74,   111,  1591, 3441, 1480, 3589, 555,  444,  2997, 1258, 3700,
        3256, 1887, 1147, 2479, 3478, 2590, 2331, 3256, 2109, 2146, 1221, 1850});
-  BipartiteVariableList oidx("i,j,k,l"), lidx("i"), ridx("j,l,k");
+  BipartiteIndexList oidx("i,j,k,l"), lidx("i"), ridx("j,l,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -260,7 +260,7 @@ BOOST_AUTO_TEST_CASE(ijkl_i_kjl) {
        1554, 333,  74,   3108, 1443, 3404, 1961, 1517, 3256, 1110, 888,  1554,
        851,  3441, 740,  2590, 2886, 407,  259,  1554, 2516, 3108, 740,  481,
        259,  703,  1406, 148,  3219, 2442, 1850, 1184, 1147, 1776, 37,   444});
-  BipartiteVariableList oidx("i,j,k,l"), lidx("i"), ridx("k,j,l");
+  BipartiteIndexList oidx("i,j,k,l"), lidx("i"), ridx("k,j,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -318,7 +318,7 @@ BOOST_AUTO_TEST_CASE(ijkl_i_klj) {
        1184, 2997, 3663, 3330, 2664, 1924, 74,   1998, 1924, 1110, 629,  1258,
        2886, 1221, 1295, 3515, 3182, 2701, 2849, 2368, 222,  1776, 1221, 777,
        1887, 1443, 2368, 2368, 148,  2331, 1924, 444,  185,  1147, 2479, 1850});
-  BipartiteVariableList oidx("i,j,k,l"), lidx("i"), ridx("k,l,j");
+  BipartiteIndexList oidx("i,j,k,l"), lidx("i"), ridx("k,l,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -376,7 +376,7 @@ BOOST_AUTO_TEST_CASE(ijkl_i_ljk) {
        74,   3182, 3626, 3663, 296,  2886, 1295, 3256, 1998, 1813, 2331, 2553,
        2627, 703,  2701, 3589, 148,  592,  2146, 3071, 1628, 777,  1591, 3330,
        2627, 1887, 1073, 925,  2923, 3145, 3330, 3145, 3441, 2035, 1517, 1591});
-  BipartiteVariableList oidx("i,j,k,l"), lidx("i"), ridx("l,j,k");
+  BipartiteIndexList oidx("i,j,k,l"), lidx("i"), ridx("l,j,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -434,7 +434,7 @@ BOOST_AUTO_TEST_CASE(ijkl_i_lkj) {
        2664, 1073, 1110, 3293, 1998, 222,  1258, 1961, 3145, 3552, 3071, 2368,
        3441, 2886, 2257, 1998, 1036, 555,  3145, 3367, 222,  2701, 1924, 1480,
        2923, 2627, 407,  1332, 407,  3071, 2627, 2960, 2997, 666,  185,  1517});
-  BipartiteVariableList oidx("i,j,k,l"), lidx("i"), ridx("l,k,j");
+  BipartiteIndexList oidx("i,j,k,l"), lidx("i"), ridx("l,k,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -448,7 +448,7 @@ BOOST_AUTO_TEST_CASE(jk_i_ijk) {
        74, 19, 19, 27, 67, 45,  48, 93, 56, 67, 25, 41, 81, 100, 92, 14});
   Tensor<double> corr(Range{2, 6}, {11834, 3872, 2773, 6670, 9289, 14245, 11113,
                                     5651, 4527, 9061, 14651, 7861});
-  BipartiteVariableList oidx("j,k"), lidx("i"), ridx("i,j,k");
+  BipartiteIndexList oidx("j,k"), lidx("i"), ridx("i,j,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -462,7 +462,7 @@ BOOST_AUTO_TEST_CASE(jk_i_ikj) {
        68, 82, 41, 100, 35, 42, 7,  50, 94, 16, 37, 96, 31, 69, 99, 41});
   Tensor<double> corr(Range{2, 6}, {6922, 3006, 5734, 3921, 10992, 12290, 4820,
                                     5396, 11301, 7723, 12015, 2506});
-  BipartiteVariableList oidx("j,k"), lidx("i"), ridx("i,k,j");
+  BipartiteIndexList oidx("j,k"), lidx("i"), ridx("i,k,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -476,7 +476,7 @@ BOOST_AUTO_TEST_CASE(jk_i_jik) {
        11, 81, 78, 69, 24, 60, 81, 9,  75, 11, 72, 74, 78, 20, 90, 15});
   Tensor<double> corr(Range{2, 6}, {7752, 9092, 3154, 6898, 5872, 4592, 5640,
                                     11087, 5005, 9605, 12018, 8212});
-  BipartiteVariableList oidx("j,k"), lidx("i"), ridx("j,i,k");
+  BipartiteIndexList oidx("j,k"), lidx("i"), ridx("j,i,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -490,7 +490,7 @@ BOOST_AUTO_TEST_CASE(jk_i_jki) {
        46, 86, 40, 2,  94, 63, 95, 13, 17, 46, 94, 32, 87, 15, 88, 59});
   Tensor<double> corr(Range{2, 6}, {3916, 4158, 3126, 3568, 7017, 6782, 4242,
                                     11630, 9428, 8912, 6150, 5872});
-  BipartiteVariableList oidx("j,k"), lidx("i"), ridx("j,k,i");
+  BipartiteIndexList oidx("j,k"), lidx("i"), ridx("j,k,i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -504,7 +504,7 @@ BOOST_AUTO_TEST_CASE(jk_i_kij) {
        94, 70, 59, 17, 55, 73, 84, 54, 39, 89, 70, 21, 1,  3,  42, 51});
   Tensor<double> corr(Range{2, 6}, {9120, 4325, 10170, 5228, 11079, 9142, 11565,
                                     8336, 2498, 2782, 5439, 6024});
-  BipartiteVariableList oidx("j,k"), lidx("i"), ridx("k,i,j");
+  BipartiteIndexList oidx("j,k"), lidx("i"), ridx("k,i,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -518,7 +518,7 @@ BOOST_AUTO_TEST_CASE(jk_i_kji) {
        36, 95, 45, 22, 84, 23, 47, 51, 42, 16, 59, 7,  70, 29, 52, 57});
   Tensor<double> corr(Range{2, 6}, {6113, 10210, 8091, 10674, 10793, 2905, 3073,
                                     7979, 8430, 7425, 6182, 6648});
-  BipartiteVariableList oidx("j,k"), lidx("i"), ridx("k,j,i");
+  BipartiteIndexList oidx("j,k"), lidx("i"), ridx("k,j,i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -573,7 +573,7 @@ BOOST_AUTO_TEST_CASE(ijkl_ij_kl) {
        5402, 740,  6068, 4218, 3552, 296,  814,  6734, 74,   5328, 2886, 2146,
        2294, 1258, 1332, 2072, 4144, 7252, 74,   6734, 5550, 3404, 1702, 2886,
        1406, 5698, 518,  444,  4884, 1480, 2294, 7252, 6808, 5032, 1776, 1998});
-  BipartiteVariableList oidx("i,j,k,l"), lidx("i,j"), ridx("k,l");
+  BipartiteIndexList oidx("i,j,k,l"), lidx("i,j"), ridx("k,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -628,7 +628,7 @@ BOOST_AUTO_TEST_CASE(ijkl_ij_lk) {
        3404, 2516, 7326, 3478, 3848, 3552, 2516, 5254, 4440, 5994, 4218, 5476,
        370,  4440, 7252, 814,  6512, 3182, 5772, 74,   4144, 740,  5846, 4958,
        222,  296,  5180, 2516, 2516, 4292, 6734, 5698, 6142, 4810, 5624, 6068});
-  BipartiteVariableList oidx("i,j,k,l"), lidx("i,j"), ridx("l,k");
+  BipartiteIndexList oidx("i,j,k,l"), lidx("i,j"), ridx("l,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -641,7 +641,7 @@ BOOST_AUTO_TEST_CASE(ik_ij_jk) {
                       {6897, 11044, 3927, 9548,  2585, 5775, 3173, 8516,
                        4787, 5404,  2733, 5019,  6647, 9299, 2618, 8806,
                        1887, 4641,  5456, 13087, 6881, 8834, 4000, 7560});
-  BipartiteVariableList oidx("i,k"), lidx("i,j"), ridx("j,k");
+  BipartiteIndexList oidx("i,k"), lidx("i,j"), ridx("j,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -654,7 +654,7 @@ BOOST_AUTO_TEST_CASE(ik_ij_kj) {
                       {5456, 9273, 6204, 3696,  7964, 3410, 2784, 6685,
                        3276, 5328, 5900, 1930,  5151, 7990, 5814, 2142,
                        6800, 3145, 4663, 10399, 5442, 7518, 9132, 3155});
-  BipartiteVariableList oidx("i,k"), lidx("i,j"), ridx("k,j");
+  BipartiteIndexList oidx("i,k"), lidx("i,j"), ridx("k,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -664,7 +664,7 @@ BOOST_AUTO_TEST_CASE(ij_ij_ij) {
   Tensor<double> rhs(Range{4, 2}, {100, 55, 13, 77, 75, 15, 75, 35});
   Tensor<double> corr(Range{4, 2},
                       {8800, 1815, 520, 4081, 6375, 255, 5175, 2590});
-  BipartiteVariableList oidx("i,j"), lidx("i,j"), ridx("i,j");
+  BipartiteIndexList oidx("i,j"), lidx("i,j"), ridx("i,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -674,7 +674,7 @@ BOOST_AUTO_TEST_CASE(ij_ij_ji) {
   Tensor<double> rhs(Range{2, 4}, {73, 66, 85, 59, 58, 12, 14, 8});
   Tensor<double> corr(Range{4, 2},
                       {6424, 1914, 2640, 636, 7225, 238, 4071, 592});
-  BipartiteVariableList oidx("i,j"), lidx("i,j"), ridx("j,i");
+  BipartiteIndexList oidx("i,j"), lidx("i,j"), ridx("j,i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -990,7 +990,7 @@ BOOST_AUTO_TEST_CASE(ijklm_ij_klm) {
        74,   7400, 3182, 4070, 1406, 3034, 7178, 2886, 444,  1036, 2368, 1110,
        5550, 888,  5106, 4514, 3108, 3404, 2516, 3922, 5106, 3404, 6216, 6142,
        3848, 740,  4736, 4514, 5106, 4440, 962,  5032, 4662, 962,  2516, 6586});
-  BipartiteVariableList oidx("i,j,k,l,m"), lidx("i,j"), ridx("k,l,m");
+  BipartiteIndexList oidx("i,j,k,l,m"), lidx("i,j"), ridx("k,l,m");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -1306,7 +1306,7 @@ BOOST_AUTO_TEST_CASE(ijklm_ij_kml) {
        3774, 1184, 7400, 4736, 7030, 5846, 2590, 5180, 2960, 3848, 444,  4662,
        7252, 1406, 1110, 3700, 1036, 1776, 3404, 1776, 6068, 666,  6882, 2368,
        4662, 6734, 3034, 1924, 3182, 6364, 2368, 3922, 370,  222,  1184, 4218});
-  BipartiteVariableList oidx("i,j,k,l,m"), lidx("i,j"), ridx("k,m,l");
+  BipartiteIndexList oidx("i,j,k,l,m"), lidx("i,j"), ridx("k,m,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -1622,7 +1622,7 @@ BOOST_AUTO_TEST_CASE(ijklm_ij_lkm) {
        1332, 3330, 6734, 740,  666,  3700, 1776, 6438, 4958, 3182, 5402, 4144,
        222,  2368, 814,  5846, 5920, 666,  3922, 3848, 3552, 814,  1036, 3552,
        3330, 6734, 888,  4884, 3256, 6216, 74,   5180, 666,  6586, 7252, 74});
-  BipartiteVariableList oidx("i,j,k,l,m"), lidx("i,j"), ridx("l,k,m");
+  BipartiteIndexList oidx("i,j,k,l,m"), lidx("i,j"), ridx("l,k,m");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -1938,7 +1938,7 @@ BOOST_AUTO_TEST_CASE(ijklm_ij_lmk) {
        5032, 5624, 7030, 5920, 6512, 7104, 3552, 4810, 5846, 2146, 4884, 6364,
        4514, 5254, 6660, 814,  1332, 1998, 1332, 888,  6586, 370,  3478, 1924,
        7326, 2960, 1184, 3330, 1554, 6882, 3108, 4884, 7104, 5550, 3256, 5698});
-  BipartiteVariableList oidx("i,j,k,l,m"), lidx("i,j"), ridx("l,m,k");
+  BipartiteIndexList oidx("i,j,k,l,m"), lidx("i,j"), ridx("l,m,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2254,7 +2254,7 @@ BOOST_AUTO_TEST_CASE(ijklm_ij_mkl) {
        6808, 5698, 2072, 962,  2738, 5550, 3404, 5772, 6142, 1702, 4070, 1998,
        4144, 5476, 6882, 4440, 5550, 3922, 4440, 2072, 5476, 3996, 3404, 6882,
        5846, 444,  2294, 1628, 5846, 222,  4144, 4440, 4218, 1184, 2442, 6956});
-  BipartiteVariableList oidx("i,j,k,l,m"), lidx("i,j"), ridx("m,k,l");
+  BipartiteIndexList oidx("i,j,k,l,m"), lidx("i,j"), ridx("m,k,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2570,7 +2570,7 @@ BOOST_AUTO_TEST_CASE(ijklm_ij_mlk) {
        5254, 3034, 2960, 666,  6142, 7326, 5032, 3404, 4514, 1406, 7030, 1554,
        2516, 1776, 6882, 1036, 4810, 6364, 4366, 3922, 6660, 7104, 3330, 5032,
        5328, 6364, 3848, 888,  5254, 5994, 3700, 1406, 6808, 7400, 5328, 444});
-  BipartiteVariableList oidx("i,j,k,l,m"), lidx("i,j"), ridx("m,l,k");
+  BipartiteIndexList oidx("i,j,k,l,m"), lidx("i,j"), ridx("m,l,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2610,7 +2610,7 @@ BOOST_AUTO_TEST_CASE(ikl_ij_jkl) {
        9514, 8802, 3368,  11953, 3717,  4759, 7502,  11471, 6372, 6761,  5334,
        7005, 3924, 6374,  5459,  3604,  7134, 5274,  3481,  6398, 7796,  6564,
        7564, 7601, 1233,  7072,  9350,  4750, 6767,  10941, 11445});
-  BipartiteVariableList oidx("i,k,l"), lidx("i,j"), ridx("j,k,l");
+  BipartiteIndexList oidx("i,k,l"), lidx("i,j"), ridx("j,k,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2651,7 +2651,7 @@ BOOST_AUTO_TEST_CASE(ikl_ij_jlk) {
        9742,  7074, 7143,  7566, 11815, 10795, 8770,  8692,  9138,  3056,  5642,
        9118,  6520, 6750,  8412, 10455, 10292, 1913,  4580,  10988, 7550,  5288,
        4926,  4340, 8850,  587,  9100,  7444,  6413,  11677, 9159});
-  BipartiteVariableList oidx("i,k,l"), lidx("i,j"), ridx("j,l,k");
+  BipartiteIndexList oidx("i,k,l"), lidx("i,j"), ridx("j,l,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2691,7 +2691,7 @@ BOOST_AUTO_TEST_CASE(ikl_ij_kjl) {
        1371, 5976,  12954, 10592, 6475, 3909,  10079, 9632,  4995, 8379,  4054,
        4005, 8025,  7601,  947,   3670, 13511, 9450,  12524, 6379, 5922,  7624,
        9184, 5226,  5223,  8583,  6780, 907,   7887,  2136,  4946});
-  BipartiteVariableList oidx("i,k,l"), lidx("i,j"), ridx("k,j,l");
+  BipartiteIndexList oidx("i,k,l"), lidx("i,j"), ridx("k,j,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2731,7 +2731,7 @@ BOOST_AUTO_TEST_CASE(ikl_ij_klj) {
        9045, 5984, 5002,  8036, 5124,  8992,  3468,  710,  8618, 6290, 6980,
        8879, 7670, 4930,  9177, 6232,  8552,  7721,  9348, 5197, 5694, 10176,
        6159, 5879, 6407,  4106, 10751, 7895,  5890,  8203, 2692});
-  BipartiteVariableList oidx("i,k,l"), lidx("i,j"), ridx("k,l,j");
+  BipartiteIndexList oidx("i,k,l"), lidx("i,j"), ridx("k,l,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2771,7 +2771,7 @@ BOOST_AUTO_TEST_CASE(ikl_ij_ljk) {
        7744, 9734, 5722,  4918,  8793,  4462,  4883,  1109,  12791, 7624,  4522,
        7503, 7033, 8374,  7075,  4266,  10498, 8054,  13082, 6531,  5059,  9014,
        9391, 9028, 13048, 6997,  3432,  6871,  10421, 12584, 7177});
-  BipartiteVariableList oidx("i,k,l"), lidx("i,j"), ridx("l,j,k");
+  BipartiteIndexList oidx("i,k,l"), lidx("i,j"), ridx("l,j,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2813,7 +2813,7 @@ BOOST_AUTO_TEST_CASE(ikl_ij_lkj) {
        6603, 6555,  8393,  587,   8315,  3309, 6053, 10681, 5682, 10805,
        5154, 7256,  7775,  8667,  6484,  9131, 4786, 7208,  6341, 11238,
        8469, 2135,  10420, 2435,  3377,  6714, 1603, 7311,  3935, 4823});
-  BipartiteVariableList oidx("i,k,l"), lidx("i,j"), ridx("l,k,j");
+  BipartiteIndexList oidx("i,k,l"), lidx("i,j"), ridx("l,k,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2826,7 +2826,7 @@ BOOST_AUTO_TEST_CASE(k_ij_ijk) {
        63, 67, 1,  80, 74, 91, 61, 38,  82, 35, 7,  80, 4,  64, 76, 96,
        87, 17, 85, 11, 95, 19, 94, 94,  65, 71, 99, 59, 21, 76, 22, 18});
   Tensor<double> corr(Range{6}, {29779, 25976, 18928, 36120, 17237, 24835});
-  BipartiteVariableList oidx("k"), lidx("i,j"), ridx("i,j,k");
+  BipartiteIndexList oidx("k"), lidx("i,j"), ridx("i,j,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2839,7 +2839,7 @@ BOOST_AUTO_TEST_CASE(k_ij_ikj) {
        100, 85, 54, 26, 74, 92, 63, 85, 4,  11, 16, 83, 95, 85, 56, 93,
        58,  17, 18, 40, 72, 78, 68, 96, 49, 43, 8,  37, 48, 2,  69, 81});
   Tensor<double> corr(Range{6}, {22149, 26287, 30858, 18933, 21608, 28119});
-  BipartiteVariableList oidx("k"), lidx("i,j"), ridx("i,k,j");
+  BipartiteIndexList oidx("k"), lidx("i,j"), ridx("i,k,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2852,7 +2852,7 @@ BOOST_AUTO_TEST_CASE(k_ij_jik) {
        46, 25, 38, 11, 49, 2,  20, 83, 26, 37, 6,  74, 50, 98, 50,  26,
        58, 11, 53, 86, 47, 3,  8,  46, 56, 16, 5,  24, 79, 93, 4,   53});
   Tensor<double> corr(Range{6}, {11501, 19351, 30367, 21460, 16117, 26622});
-  BipartiteVariableList oidx("k"), lidx("i,j"), ridx("j,i,k");
+  BipartiteIndexList oidx("k"), lidx("i,j"), ridx("j,i,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2865,7 +2865,7 @@ BOOST_AUTO_TEST_CASE(k_ij_jki) {
        11, 22, 9,  29, 5,  25, 70, 37, 83, 27, 82, 57, 84, 2,  7,  7,
        6,  45, 12, 20, 12, 39, 89, 82, 92, 93, 61, 7,  80, 18, 81, 23});
   Tensor<double> corr(Range{6}, {18432, 22257, 14826, 32062, 14134, 16616});
-  BipartiteVariableList oidx("k"), lidx("i,j"), ridx("j,k,i");
+  BipartiteIndexList oidx("k"), lidx("i,j"), ridx("j,k,i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2878,7 +2878,7 @@ BOOST_AUTO_TEST_CASE(k_ij_kij) {
        52, 86, 78, 70, 45, 91, 68, 32, 38, 46, 35, 53, 73, 99, 87, 88,
        31, 9,  96, 67, 64, 41, 26, 56, 87, 69, 55, 77, 28, 54, 59, 34});
   Tensor<double> corr(Range{6}, {16807, 31629, 26676, 29474, 22491, 26099});
-  BipartiteVariableList oidx("k"), lidx("i,j"), ridx("k,i,j");
+  BipartiteIndexList oidx("k"), lidx("i,j"), ridx("k,i,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -2891,7 +2891,7 @@ BOOST_AUTO_TEST_CASE(k_ij_kji) {
        73, 21, 28, 9,  55, 21, 76, 42, 3,  99, 90, 94, 30, 24, 41, 1,
        18, 22, 91, 1,  5,  22, 64, 96, 22, 80, 36, 54, 70, 19, 35, 75});
   Tensor<double> corr(Range{6}, {17018, 17351, 17593, 21393, 19791, 21384});
-  BipartiteVariableList oidx("k"), lidx("i,j"), ridx("k,j,i");
+  BipartiteIndexList oidx("k"), lidx("i,j"), ridx("k,j,i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -3474,7 +3474,7 @@ BOOST_AUTO_TEST_CASE(ijklmn_ijk_lmn) {
        1820, 2590, 3850, 6650, 6860, 1470, 6790, 6160, 5530, 2030, 2520, 6300,
        3780, 1610, 630,  4270, 4830, 490,  6370, 2660, 140,  3150, 1330, 1960,
        3010, 2730, 2730, 6300, 5740, 2380, 6790, 5670, 6020, 6720, 2520, 3220});
-  BipartiteVariableList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("l,m,n");
+  BipartiteIndexList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("l,m,n");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -4057,7 +4057,7 @@ BOOST_AUTO_TEST_CASE(ijklmn_ijk_lnm) {
        3780, 6790, 4620, 5670, 630,  1190, 2310, 6440, 420,  6720, 3360, 4760,
        5530, 3920, 6580, 4550, 700,  1190, 5460, 2730, 6510, 3570, 5950, 3710,
        3220, 3500, 3640, 6300, 5950, 6370, 4480, 5530, 1470, 6930, 490,  5110});
-  BipartiteVariableList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("l,n,m");
+  BipartiteIndexList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("l,n,m");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -4640,7 +4640,7 @@ BOOST_AUTO_TEST_CASE(ijklmn_ijk_mln) {
        910,  6720, 2380, 70,   1120, 3150, 420,  630,  4200, 6860, 5390, 5670,
        3360, 6510, 140,  6300, 5110, 2660, 5600, 4340, 4060, 2730, 5950, 5530,
        4550, 3710, 4830, 3220, 70,   1890, 5320, 4200, 4060, 4480, 4060, 5950});
-  BipartiteVariableList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("m,l,n");
+  BipartiteIndexList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("m,l,n");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -5274,7 +5274,7 @@ BOOST_AUTO_TEST_CASE(ijklmn_ijk_mnl) {
        1330, 7000,  5250, 3640, 630,  210,  3010, 420,  4480, 980,   5740,
        1190, 1610,  4200, 1960, 3010, 770,  5740, 3220, 6650, 1610,  910,
        490,  3990,  6720, 1960, 5530, 4620, 3430, 980,  2100, 910});
-  BipartiteVariableList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("m,n,l");
+  BipartiteIndexList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("m,n,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -5857,7 +5857,7 @@ BOOST_AUTO_TEST_CASE(ijklmn_ijk_nlm) {
        6160, 4060, 3220, 3290, 1540, 490,  2450, 6160, 2520, 5250, 1330, 910,
        2660, 210,  3430, 1330, 70,   3570, 3850, 4970, 4690, 5880, 6090, 3570,
        5950, 6300, 350,  6790, 2730, 280,  280,  3010, 3010, 6650, 6580, 5180});
-  BipartiteVariableList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("n,l,m");
+  BipartiteIndexList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("n,l,m");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -6440,7 +6440,7 @@ BOOST_AUTO_TEST_CASE(ijklmn_ijk_nml) {
        280,  3220, 770,  2800, 280,  3570, 4200, 6650, 1750, 3150, 3080, 210,
        2450, 770,  4200, 5530, 1540, 4270, 5180, 1330, 4690, 140,  210,  4270,
        1960, 4130, 1960, 6230, 6860, 6790, 6930, 1750, 560,  6090, 3360, 1540});
-  BipartiteVariableList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("n,m,l");
+  BipartiteIndexList oidx("i,j,k,l,m,n"), lidx("i,j,k"), ridx("n,m,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -6536,7 +6536,7 @@ BOOST_AUTO_TEST_CASE(ijlm_ijk_klm) {
        21030, 10690, 9626,  21252, 13267, 16324, 20547, 17268, 15665, 14018,
        10760, 16160, 20239, 18497, 11111, 12315, 8684,  12732, 13323, 17824,
        17634, 21992, 16765, 20830, 9198,  19865, 22851, 8002,  11790, 13596});
-  BipartiteVariableList oidx("i,j,l,m"), lidx("i,j,k"), ridx("k,l,m");
+  BipartiteIndexList oidx("i,j,l,m"), lidx("i,j,k"), ridx("k,l,m");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -6632,7 +6632,7 @@ BOOST_AUTO_TEST_CASE(ijlm_ijk_kml) {
        15860, 15343, 17875, 15331, 13155, 12909, 10533, 17345, 15733, 17745,
        9439,  16925, 14280, 18059, 13840, 19462, 13271, 15366, 14954, 11518,
        12517, 19161, 20233, 15998, 19668, 21047, 15823, 10741, 13530, 19663});
-  BipartiteVariableList oidx("i,j,l,m"), lidx("i,j,k"), ridx("k,m,l");
+  BipartiteIndexList oidx("i,j,l,m"), lidx("i,j,k"), ridx("k,m,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -6728,7 +6728,7 @@ BOOST_AUTO_TEST_CASE(ijlm_ijk_lkm) {
        14365, 18346, 9880,  9218,  17986, 17041, 17482, 21544, 14210, 17681,
        15150, 14706, 11411, 17610, 19563, 19576, 15195, 13916, 17136, 21687,
        10515, 13767, 10449, 8318,  18394, 15166, 13685, 16063, 18088, 14913});
-  BipartiteVariableList oidx("i,j,l,m"), lidx("i,j,k"), ridx("l,k,m");
+  BipartiteIndexList oidx("i,j,l,m"), lidx("i,j,k"), ridx("l,k,m");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -6824,7 +6824,7 @@ BOOST_AUTO_TEST_CASE(ijlm_ijk_lmk) {
        12710, 24153, 14113, 14888, 7785,  12666, 13909, 10665, 12709, 9701,
        18489, 15344, 9776,  14027, 12476, 22229, 18828, 10594, 10510, 10228,
        11837, 16999, 11766, 17591, 17658, 8439,  17668, 6954,  18540, 16874});
-  BipartiteVariableList oidx("i,j,l,m"), lidx("i,j,k"), ridx("l,m,k");
+  BipartiteIndexList oidx("i,j,l,m"), lidx("i,j,k"), ridx("l,m,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -6919,7 +6919,7 @@ BOOST_AUTO_TEST_CASE(ijlm_ijk_mkl) {
        13013, 14694, 14054, 20273, 12238, 18053, 26325, 17455, 13318, 9375,
        12135, 15129, 11674, 15230, 19515, 21221, 20742, 17472, 17463, 9091,
        9427,  25187, 12494, 18353, 11199, 13007, 15982, 18131, 17249, 11049});
-  BipartiteVariableList oidx("i,j,l,m"), lidx("i,j,k"), ridx("m,k,l");
+  BipartiteIndexList oidx("i,j,l,m"), lidx("i,j,k"), ridx("m,k,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7014,7 +7014,7 @@ BOOST_AUTO_TEST_CASE(ijlm_ijk_mlk) {
        15347, 19289, 14865, 10563, 16217, 11921, 16819, 11354, 12174, 13443,
        20169, 20705, 25549, 11433, 15538, 16013, 11758, 6549,  18843, 20084,
        17391, 16730, 10832, 16423, 6582,  9700,  22115, 11887, 12701, 6743});
-  BipartiteVariableList oidx("i,j,l,m"), lidx("i,j,k"), ridx("m,l,k");
+  BipartiteIndexList oidx("i,j,l,m"), lidx("i,j,k"), ridx("m,l,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7040,7 +7040,7 @@ BOOST_AUTO_TEST_CASE(il_ijk_jkl) {
        27260, 27806, 21418, 16788, 19351, 24262, 28465, 17513, 19831, 27949,
        43137, 47237, 37172, 27304, 34669, 38893, 45971, 27199, 34096, 40307,
        37729, 33822, 32322, 17360, 25984, 30726, 35927, 17676, 28277, 28320});
-  BipartiteVariableList oidx("i,l"), lidx("i,j,k"), ridx("j,k,l");
+  BipartiteIndexList oidx("i,l"), lidx("i,j,k"), ridx("j,k,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7066,7 +7066,7 @@ BOOST_AUTO_TEST_CASE(il_ijk_jlk) {
        8682,  24389, 20946, 19953, 16962, 28471, 22856, 18201, 19978, 10606,
        16536, 31090, 39629, 27811, 29045, 40469, 30213, 24560, 35753, 24979,
        19627, 24437, 27927, 27014, 25256, 29466, 22477, 21344, 27243, 18305});
-  BipartiteVariableList oidx("i,l"), lidx("i,j,k"), ridx("j,l,k");
+  BipartiteIndexList oidx("i,l"), lidx("i,j,k"), ridx("j,l,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7092,7 +7092,7 @@ BOOST_AUTO_TEST_CASE(il_ijk_kjl) {
        18458, 14755, 24782, 20466, 18010, 32395, 31885, 17331, 25932, 23985,
        31953, 23757, 37583, 31745, 25931, 48957, 47352, 35135, 35469, 36064,
        29528, 17579, 32345, 27932, 26014, 32015, 34106, 25950, 22055, 21569});
-  BipartiteVariableList oidx("i,l"), lidx("i,j,k"), ridx("k,j,l");
+  BipartiteIndexList oidx("i,l"), lidx("i,j,k"), ridx("k,j,l");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7118,7 +7118,7 @@ BOOST_AUTO_TEST_CASE(il_ijk_klj) {
        21259, 18328, 19929, 17815, 21681, 23395, 17609, 18284, 29296, 28006,
        35193, 36493, 37199, 33317, 40247, 32954, 27743, 26028, 42263, 45346,
        26386, 26649, 31813, 32801, 30717, 24183, 24557, 24838, 32876, 33152});
-  BipartiteVariableList oidx("i,l"), lidx("i,j,k"), ridx("k,l,j");
+  BipartiteIndexList oidx("i,l"), lidx("i,j,k"), ridx("k,l,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7144,7 +7144,7 @@ BOOST_AUTO_TEST_CASE(il_ijk_ljk) {
        23128, 19593, 21564, 20981, 18752, 12296, 19825, 25350, 25108, 32424,
        35010, 29251, 34157, 40555, 28821, 20293, 33874, 40252, 45723, 46010,
        33345, 21246, 24784, 27090, 22873, 17182, 27153, 33449, 33286, 31615});
-  BipartiteVariableList oidx("i,l"), lidx("i,j,k"), ridx("l,j,k");
+  BipartiteIndexList oidx("i,l"), lidx("i,j,k"), ridx("l,j,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7170,7 +7170,7 @@ BOOST_AUTO_TEST_CASE(il_ijk_lkj) {
        22026, 18271, 22060, 25487, 26689, 26284, 22859, 30637, 31575, 15059,
        37311, 42498, 36322, 48246, 32045, 36956, 42909, 50668, 51956, 24768,
        30557, 33119, 32095, 38676, 18935, 29695, 34295, 35205, 37037, 23736});
-  BipartiteVariableList oidx("i,l"), lidx("i,j,k"), ridx("l,k,j");
+  BipartiteIndexList oidx("i,l"), lidx("i,j,k"), ridx("l,k,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7192,7 +7192,7 @@ BOOST_AUTO_TEST_CASE(ijk_ijk_ijk) {
        30,   1440, 82,   7800, 8096, 3332, 2565, 3591, 324,  342,  696,  80,
        2542, 8827, 1462, 8184, 4020, 119,  7176, 1584, 3081, 2925, 1599, 2765,
        1323, 231,  5607, 781,  675,  3330, 1232, 600,  2310, 2860, 4888, 2450});
-  BipartiteVariableList oidx("i,j,k"), lidx("i,j,k"), ridx("i,j,k");
+  BipartiteIndexList oidx("i,j,k"), lidx("i,j,k"), ridx("i,j,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7214,7 +7214,7 @@ BOOST_AUTO_TEST_CASE(ijk_ijk_ikj) {
        2130, 720,  21,   3500, 1408, 68,   1863, 5244, 1512, 351,  672,  270,
        2542, 194,  1720, 5984, 5226, 399,  6992, 1584, 5214, 1404, 779,  1540,
        3675, 84,   4539, 2059, 325,  2331, 3256, 186,  693,  3685, 2444, 3150});
-  BipartiteVariableList oidx("i,j,k"), lidx("i,j,k"), ridx("i,k,j");
+  BipartiteIndexList oidx("i,j,k"), lidx("i,j,k"), ridx("i,k,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7236,7 +7236,7 @@ BOOST_AUTO_TEST_CASE(ijk_ijk_jik) {
        2190, 1980, 58,   2600, 7832, 1020, 1296, 4617, 4590, 594,  376,  90,
        6478, 4850, 5676, 8448, 335,  252,  7820, 44,   5372, 3276, 1435, 2870,
        637,  204,  7476, 2840, 2075, 1887, 3344, 570,  198,  1485, 2340, 6720});
-  BipartiteVariableList oidx("i,j,k"), lidx("i,j,k"), ridx("j,i,k");
+  BipartiteIndexList oidx("i,j,k"), lidx("i,j,k"), ridx("j,i,k");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7258,7 +7258,7 @@ BOOST_AUTO_TEST_CASE(ijk_ijk_jki) {
        390,  1500, 60,   9200, 6072, 1802, 1323, 5073, 162,  522,  488,  770,
        5576, 8148, 3182, 6424, 5695, 518,  3772, 22,   6399, 1716, 3772, 2030,
        3136, 240,  7298, 213,  600,  2109, 5104, 150,  1353, 1815, 260,  3010});
-  BipartiteVariableList oidx("i,j,k"), lidx("i,j,k"), ridx("j,k,i");
+  BipartiteIndexList oidx("i,j,k"), lidx("i,j,k"), ridx("j,k,i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7280,7 +7280,7 @@ BOOST_AUTO_TEST_CASE(ijk_ijk_kij) {
        2730, 1200, 18,   8100, 5280, 1326, 1647, 1767, 3456, 369,  296,  420,
        574,  2813, 2666, 8448, 402,  119,  8464, 682,  4977, 741,  2624, 1540,
        4753, 57,   1335, 781,  1875, 2294, 8360, 204,  2244, 385,  2652, 350});
-  BipartiteVariableList oidx("i,j,k"), lidx("i,j,k"), ridx("k,i,j");
+  BipartiteIndexList oidx("i,j,k"), lidx("i,j,k"), ridx("k,i,j");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }
@@ -7302,7 +7302,7 @@ BOOST_AUTO_TEST_CASE(ijk_ijk_kji) {
        2520, 450,  71,   7400, 352,  816,  2376, 3078, 5238, 324,  448,  260,
        410,  8342, 3784, 6864, 3417, 84,   828,  968,  1027, 1248, 3362, 805,
        735,  168,  6764, 4615, 1475, 3515, 1144, 354,  1815, 770,  1924, 1120});
-  BipartiteVariableList oidx("i,j,k"), lidx("i,j,k"), ridx("k,j,i");
+  BipartiteIndexList oidx("i,j,k"), lidx("i,j,k"), ridx("k,j,i");
   auto rv = kernels::t_t_t_contract_(oidx, lidx, ridx, lhs, rhs);
   BOOST_CHECK_EQUAL(rv, corr);
 }

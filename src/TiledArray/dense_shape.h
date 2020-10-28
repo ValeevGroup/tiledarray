@@ -37,9 +37,6 @@ class World;
 namespace TiledArray {
 
 // Forward declarations
-namespace expressions {
-class BipartiteVariableList;
-}  // namespace expressions
 namespace math {
 class GemmHelper;
 }  // namespace math

@@ -21,8 +21,8 @@
 #define TILEDARRAY_EXPRESSIONS_CONTRACTION_HELPERS_H__INCLUDED
 
 #include "TiledArray/conversions/make_array.h"
+#include "TiledArray/expressions/index_list.h"
 #include "TiledArray/expressions/tsr_expr.h"
-#include "TiledArray/expressions/variable_list.h"
 #include "TiledArray/tensor/tensor.h"
 
 namespace TiledArray::expressions {
@@ -50,10 +50,10 @@ namespace TiledArray::expressions {
 /// \throw TiledArray::Exception if \p lhs and \p rhs do not agree on the extent
 ///                              for a particular annotation. Strong throw
 ///                              guarantee.
-template <typename LHSType, typename RHSType>
-auto range_from_annotation(const BipartiteVariableList& target_idxs,
-                           const BipartiteVariableList& lhs_idxs,
-                           const BipartiteVariableList& rhs_idxs, LHSType&& lhs,
+template <typename IndexList_, typename LHSType, typename RHSType>
+auto range_from_annotation(const IndexList_& target_idxs,
+                           const IndexList_& lhs_idxs,
+                           const IndexList_& rhs_idxs, LHSType&& lhs,
                            RHSType&& rhs) {
   using range_type = std::decay_t<decltype(lhs.range())>;
   using size_type = typename range_type::size_type;
@@ -64,8 +64,8 @@ auto range_from_annotation(const BipartiteVariableList& target_idxs,
   const auto& rrange = rhs.range();
 
   for (const auto& idx : target_idxs) {
-    const auto lmodes = lhs_idxs.modes(idx);
-    const auto rmodes = rhs_idxs.modes(idx);
+    const auto lmodes = lhs_idxs.positions(idx);
+    const auto rmodes = rhs_idxs.positions(idx);
     TA_ASSERT(lmodes.size() || rmodes.size());  // One of them better have it
 
     auto corr_extent =
@@ -77,18 +77,18 @@ auto range_from_annotation(const BipartiteVariableList& target_idxs,
   return range_type(ranges);
 }
 
-template <typename LHSType, typename RHSType>
-auto trange_from_annotation(const BipartiteVariableList& target_idxs,
-                            const BipartiteVariableList& lhs_idxs,
-                            const BipartiteVariableList& rhs_idxs,
-                            LHSType&& lhs, RHSType&& rhs) {
+template <typename IndexList_, typename LHSType, typename RHSType>
+auto trange_from_annotation(const IndexList_& target_idxs,
+                            const IndexList_& lhs_idxs,
+                            const IndexList_& rhs_idxs, LHSType&& lhs,
+                            RHSType&& rhs) {
   std::vector<TiledRange1> ranges;  // Will be the ranges for each extent
   const auto& lrange = lhs.trange();
   const auto& rrange = rhs.trange();
 
   for (const auto& idx : target_idxs) {
-    const auto lmodes = lhs_idxs.modes(idx);
-    const auto rmodes = rhs_idxs.modes(idx);
+    const auto lmodes = lhs_idxs.positions(idx);
+    const auto rmodes = rhs_idxs.positions(idx);
     TA_ASSERT(lmodes.size() || rmodes.size());  // One of them better have it
 
     auto corr_extent =
@@ -111,13 +111,13 @@ auto trange_from_annotation(const BipartiteVariableList& target_idxs,
 ///
 /// \tparam IndexType The type used to hold ordinal indices. Assumed to satisfy
 ///         random-access container.
-/// \param[in] free_vars A BipartiteVariableList instance containing the free
+/// \param[in] free_vars An index list containing the free
 /// variables
 ///            of the contraction.
-/// \param[in] bound_vars A BipartiteVariableList instance containing the bound
+/// \param[in] bound_vars An index list containing the bound
 /// variables
 ///            of the contraction.
-/// \param[in] tensor_vars A BipartiteVariableList instance containing the
+/// \param[in] tensor_vars An index list containing the
 /// annotation for
 ///            the tensor we want the index of.
 /// \param[in] free_idx A coordinate index such that `free_idx[i]` is the offset
@@ -126,48 +126,55 @@ auto trange_from_annotation(const BipartiteVariableList& target_idxs,
 ///            offset along modes annotated `bound_vars[i]`.
 /// \return A coordinate index such that the i-th element is the offset
 ///         associated with annotation `tensor_vars[i]`.
-template <typename IndexType>
-auto make_index(const BipartiteVariableList& free_vars,
-                const BipartiteVariableList& bound_vars,
-                const BipartiteVariableList& tensor_vars, IndexType&& free_idx,
+template <typename IndexList_, typename IndexType>
+auto make_index(const IndexList_& free_vars, const IndexList_& bound_vars,
+                const IndexList_& tensor_vars, IndexType&& free_idx,
                 IndexType&& bound_idx) {
-  std::decay_t<IndexType> rv(tensor_vars.dim());
-  for (std::size_t i = 0; i < tensor_vars.dim(); ++i) {
+  std::decay_t<IndexType> rv(tensor_vars.size());
+  for (std::size_t i = 0; i < tensor_vars.size(); ++i) {
     const auto& x = tensor_vars[i];
     const bool is_free = free_vars.count(x);
-    const auto modes = is_free ? free_vars.modes(x) : bound_vars.modes(x);
+    const auto modes =
+        is_free ? free_vars.positions(x) : bound_vars.positions(x);
     TA_ASSERT(modes.size() == 1);  // Annotation should only appear once
     rv[i] = is_free ? free_idx[modes[0]] : bound_idx[modes[0]];
   }
   return rv;
 }
 
-/// Wraps process of getting a BipartiteVariableList with the bound variables
-inline auto make_bound_annotation(const BipartiteVariableList& free_vars,
-                                  const BipartiteVariableList& lhs_vars,
-                                  const BipartiteVariableList& rhs_vars) {
+/// Wraps process of getting a list with the bound variables
+inline auto make_bound_annotation(const BipartiteIndexList& free_vars,
+                                  const BipartiteIndexList& lhs_vars,
+                                  const BipartiteIndexList& rhs_vars) {
   const auto bound_temp = bound_annotations(free_vars, lhs_vars, rhs_vars);
-  BipartiteVariableList bound_vars(
+  BipartiteIndexList bound_vars(
       std::vector<std::string>(bound_temp.begin(), bound_temp.end()),
       std::vector<std::string>{});
+  return bound_vars;
+}
+
+/// Wraps process of getting a list with the bound variables
+inline auto make_bound_annotation(const IndexList& free_vars,
+                                  const IndexList& lhs_vars,
+                                  const IndexList& rhs_vars) {
+  const auto bound_temp = bound_annotations(free_vars, lhs_vars, rhs_vars);
+  IndexList bound_vars(bound_temp.begin(), bound_temp.end());
   return bound_vars;
 }
 
 namespace kernels {
 
 // Contract two tensors to a scalar
-template <typename LHSType, typename RHSType>
-auto s_t_t_contract_(const BipartiteVariableList& free_vars,
-                     const BipartiteVariableList& lhs_vars,
-                     const BipartiteVariableList& rhs_vars, LHSType&& lhs,
-                     RHSType&& rhs) {
+template <typename IndexList_, typename LHSType, typename RHSType>
+auto s_t_t_contract_(const IndexList_& free_vars, const IndexList_& lhs_vars,
+                     const IndexList_& rhs_vars, LHSType&& lhs, RHSType&& rhs) {
   using value_type = typename std::decay_t<LHSType>::value_type;
 
   TA_ASSERT(free_vars.size() == 0);
   TA_ASSERT(lhs_vars.size() > 0);
   TA_ASSERT(rhs_vars.size() > 0);
-  TA_ASSERT(!lhs_vars.is_tot());
-  TA_ASSERT(!rhs_vars.is_tot());
+  TA_ASSERT(inner_size(lhs_vars) == 0);
+  TA_ASSERT(inner_size(rhs_vars) == 0);
   TA_ASSERT(lhs_vars.is_permutation(rhs_vars));
 
   // Get the indices being contracted over
@@ -197,13 +204,11 @@ auto s_t_t_contract_(const BipartiteVariableList& free_vars,
 }
 
 // Contract two tensors to a tensor
-template <typename LHSType, typename RHSType>
-auto t_s_t_contract_(const BipartiteVariableList& free_vars,
-                     const BipartiteVariableList& lhs_vars,
-                     const BipartiteVariableList& rhs_vars, LHSType&& lhs,
-                     RHSType&& rhs) {
+template <typename IndexList_, typename LHSType, typename RHSType>
+auto t_s_t_contract_(const IndexList_& free_vars, const IndexList_& lhs_vars,
+                     const IndexList_& rhs_vars, LHSType&& lhs, RHSType&& rhs) {
   auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-    return make_index(free_vars, BipartiteVariableList{}, rhs_vars, free_idx,
+    return make_index(free_vars, BipartiteIndexList{}, rhs_vars, free_idx,
                       bound_idx);
   };
 
@@ -221,11 +226,9 @@ auto t_s_t_contract_(const BipartiteVariableList& free_vars,
 }
 
 // Contract two tensors to a tensor
-template <typename LHSType, typename RHSType>
-auto t_t_t_contract_(const BipartiteVariableList& free_vars,
-                     const BipartiteVariableList& lhs_vars,
-                     const BipartiteVariableList& rhs_vars, LHSType&& lhs,
-                     RHSType&& rhs) {
+template <typename IndexList_, typename LHSType, typename RHSType>
+auto t_t_t_contract_(const IndexList_& free_vars, const IndexList_& lhs_vars,
+                     const IndexList_& rhs_vars, LHSType&& lhs, RHSType&& rhs) {
   // Get the indices being contracted over
   const auto bound_vars = make_bound_annotation(free_vars, lhs_vars, rhs_vars);
 
@@ -266,16 +269,16 @@ auto t_t_t_contract_(const BipartiteVariableList& free_vars,
 }
 
 // Contract two ToTs to a ToT
-template <typename LHSType, typename RHSType>
-auto t_tot_tot_contract_(const BipartiteVariableList& free_vars,
-                         const BipartiteVariableList& lhs_vars,
-                         const BipartiteVariableList& rhs_vars, LHSType&& lhs,
-                         RHSType&& rhs) {
+template <typename IndexList_, typename LHSType, typename RHSType>
+auto t_tot_tot_contract_(const IndexList_& free_vars,
+                         const IndexList_& lhs_vars, const IndexList_& rhs_vars,
+                         LHSType&& lhs, RHSType&& rhs) {
   // Break the annotations up into their inner and outer parts
-  const auto lhs_ovars = lhs_vars.outer_vars();
-  const auto lhs_ivars = lhs_vars.inner_vars();
-  const auto rhs_ovars = rhs_vars.outer_vars();
-  const auto rhs_ivars = rhs_vars.inner_vars();
+  const auto free_ovars = outer(free_vars);
+  const auto lhs_ovars = outer(lhs_vars);
+  const auto lhs_ivars = inner(lhs_vars);
+  const auto rhs_ovars = outer(rhs_vars);
+  const auto rhs_ivars = inner(rhs_vars);
 
   // We assume there's no operation going across the outer and inner tensors
   // (i.e., the set of outer annotations must be disjoint from the inner)
@@ -286,42 +289,42 @@ auto t_tot_tot_contract_(const BipartiteVariableList& free_vars,
   }
 
   // Get the outer indices being contracted over
-  const auto bound_vars =
-      make_bound_annotation(free_vars, lhs_ovars, rhs_ovars);
+  const auto bound_ovars =
+      make_bound_annotation(free_ovars, lhs_ovars, rhs_ovars);
 
   // lambdas to bind annotations, making it easier to get coordinate indices
   auto lhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-    return make_index(free_vars, bound_vars, lhs_ovars, free_idx, bound_idx);
+    return make_index(free_ovars, bound_ovars, lhs_ovars, free_idx, bound_idx);
   };
 
   auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-    return make_index(free_vars, bound_vars, rhs_ovars, free_idx, bound_idx);
+    return make_index(free_ovars, bound_ovars, rhs_ovars, free_idx, bound_idx);
   };
 
   auto orange =
-      range_from_annotation(free_vars, lhs_ovars, rhs_ovars, lhs, rhs);
+      range_from_annotation(free_ovars, lhs_ovars, rhs_ovars, lhs, rhs);
   Tensor<typename std::decay_t<LHSType>::numeric_type> rv(orange, 0.0);
 
   // If bound_vars is empty we're doing Hadamard on the outside
-  if (bound_vars.size() == 0) {  // Hadamard on the outside
+  if (bound_ovars.size() == 0) {  // Hadamard on the outside
     std::decay_t<decltype(*lhs.range().begin())> empty;
     for (const auto& free_idx : orange) {
       const auto& inner_lhs = lhs(lhs_idx(free_idx, empty));
       const auto& inner_rhs = rhs(rhs_idx(free_idx, empty));
-      rv(free_idx) += s_t_t_contract_(BipartiteVariableList{}, lhs_ivars,
-                                      rhs_ivars, inner_lhs, inner_rhs);
+      rv(free_idx) += s_t_t_contract_(IndexList{}, lhs_ivars, rhs_ivars,
+                                      inner_lhs, inner_rhs);
     }
   } else {
     auto bound_range =
-        range_from_annotation(bound_vars, lhs_ovars, rhs_ovars, lhs, rhs);
+        range_from_annotation(bound_ovars, lhs_ovars, rhs_ovars, lhs, rhs);
 
     for (const auto& free_idx : orange) {
       auto& inner_out = rv(free_idx);
       for (const auto& bound_idx : bound_range) {
         const auto& inner_lhs = lhs(lhs_idx(free_idx, bound_idx));
         const auto& inner_rhs = rhs(rhs_idx(free_idx, bound_idx));
-        inner_out += s_t_t_contract_(BipartiteVariableList{}, lhs_ivars,
-                                     rhs_ivars, inner_lhs, inner_rhs);
+        inner_out += s_t_t_contract_(IndexList{}, lhs_ivars, rhs_ivars,
+                                     inner_lhs, inner_rhs);
       }
     }
   }
@@ -329,18 +332,17 @@ auto t_tot_tot_contract_(const BipartiteVariableList& free_vars,
 }
 
 // Contract a tensor and a ToTs to a ToT
-template <typename LHSType, typename RHSType>
-auto tot_t_tot_contract_(const BipartiteVariableList& out_vars,
-                         const BipartiteVariableList& lhs_vars,
-                         const BipartiteVariableList& rhs_vars, LHSType&& lhs,
+template <typename IndexList_, typename LHSType, typename RHSType>
+auto tot_t_tot_contract_(const IndexList_& out_vars, const IndexList_& lhs_vars,
+                         const IndexList_& rhs_vars, LHSType&& lhs,
                          RHSType&& rhs) {
   // Break the annotations up into their inner and outer parts
-  const auto out_ovars = out_vars.outer_vars();
-  const auto out_ivars = out_vars.inner_vars();
-  const auto lhs_ovars = lhs_vars.outer_vars();
-  const auto lhs_ivars = lhs_vars.inner_vars();
-  const auto rhs_ovars = rhs_vars.outer_vars();
-  const auto rhs_ivars = rhs_vars.inner_vars();
+  const auto out_ovars = outer(out_vars);
+  const auto out_ivars = inner(out_vars);
+  const auto lhs_ovars = outer(lhs_vars);
+  const auto lhs_ivars = inner(lhs_vars);
+  const auto rhs_ovars = outer(rhs_vars);
+  const auto rhs_ivars = inner(rhs_vars);
 
   // We assume lhs is either being contracted with the outer indices or the
   // inner indices
@@ -438,18 +440,18 @@ auto tot_t_tot_contract_(const BipartiteVariableList& out_vars,
 }
 
 // Contract two ToTs to a ToT
-template <typename LHSType, typename RHSType>
-auto tot_tot_tot_contract_(const BipartiteVariableList& out_vars,
-                           const BipartiteVariableList& lhs_vars,
-                           const BipartiteVariableList& rhs_vars, LHSType&& lhs,
+template <typename IndexList_, typename LHSType, typename RHSType>
+auto tot_tot_tot_contract_(const IndexList_& out_vars,
+                           const IndexList_& lhs_vars,
+                           const IndexList_& rhs_vars, LHSType&& lhs,
                            RHSType&& rhs) {
   // Break the annotations up into their inner and outer parts
-  const auto out_ovars = out_vars.outer_vars();
-  const auto out_ivars = out_vars.inner_vars();
-  const auto lhs_ovars = lhs_vars.outer_vars();
-  const auto lhs_ivars = lhs_vars.inner_vars();
-  const auto rhs_ovars = rhs_vars.outer_vars();
-  const auto rhs_ivars = rhs_vars.inner_vars();
+  const auto out_ovars = outer(out_vars);
+  const auto out_ivars = inner(out_vars);
+  const auto lhs_ovars = outer(lhs_vars);
+  const auto lhs_ivars = inner(lhs_vars);
+  const auto rhs_ovars = outer(rhs_vars);
+  const auto rhs_ivars = inner(rhs_vars);
 
   // We assume there's no operation going across the outer and inner tensors
   // (i.e., the set of outer annotations must be disjoint from the inner)
@@ -519,10 +521,9 @@ struct KernelSelector;
 
 template <>
 struct KernelSelector<true, true, true> {
-  template <typename LTileType, typename RTileType>
-  auto operator()(const BipartiteVariableList& ovars,
-                  const BipartiteVariableList& lvars,
-                  const BipartiteVariableList& rvars, LTileType&& ltile,
+  template <typename IndexList_, typename LTileType, typename RTileType>
+  auto operator()(const IndexList_& ovars, const IndexList_& lvars,
+                  const IndexList_& rvars, LTileType&& ltile,
                   RTileType&& rtile) const {
     return tot_tot_tot_contract_(ovars, lvars, rvars,
                                  std::forward<LTileType>(ltile),
@@ -532,10 +533,9 @@ struct KernelSelector<true, true, true> {
 
 template <>
 struct KernelSelector<false, true, true> {
-  template <typename LTileType, typename RTileType>
-  auto operator()(const BipartiteVariableList& ovars,
-                  const BipartiteVariableList& lvars,
-                  const BipartiteVariableList& rvars, LTileType&& ltile,
+  template <typename IndexList_, typename LTileType, typename RTileType>
+  auto operator()(const IndexList_& ovars, const IndexList_& lvars,
+                  const IndexList_& rvars, LTileType&& ltile,
                   RTileType&& rtile) const {
     return t_tot_tot_contract_(ovars, lvars, rvars,
                                std::forward<LTileType>(ltile),
@@ -545,10 +545,9 @@ struct KernelSelector<false, true, true> {
 
 template <>
 struct KernelSelector<true, false, true> {
-  template <typename LTileType, typename RTileType>
-  auto operator()(const BipartiteVariableList& ovars,
-                  const BipartiteVariableList& lvars,
-                  const BipartiteVariableList& rvars, LTileType&& ltile,
+  template <typename IndexList_, typename LTileType, typename RTileType>
+  auto operator()(const IndexList_& ovars, const IndexList_& lvars,
+                  const IndexList_& rvars, LTileType&& ltile,
                   RTileType&& rtile) const {
     return tot_t_tot_contract_(ovars, lvars, rvars,
                                std::forward<LTileType>(ltile),
@@ -561,9 +560,9 @@ struct KernelSelector<true, false, true> {
 template <typename ResultType, typename LHSType, typename RHSType>
 void einsum(TsrExpr<ResultType, true> out, const TsrExpr<LHSType, true>& lhs,
             const TsrExpr<RHSType, true>& rhs) {
-  const BipartiteVariableList ovars(out.vars());
-  const BipartiteVariableList lvars(lhs.vars());
-  const BipartiteVariableList rvars(rhs.vars());
+  const BipartiteIndexList ovars(out.vars());
+  const BipartiteIndexList lvars(lhs.vars());
+  const BipartiteIndexList rvars(rhs.vars());
 
   using out_tile_type = typename ResultType::value_type;
   using lhs_tile_type = typename LHSType::value_type;
@@ -576,9 +575,9 @@ void einsum(TsrExpr<ResultType, true> out, const TsrExpr<LHSType, true>& lhs,
   constexpr bool rhs_is_tot =
       TiledArray::detail::is_tensor_of_tensor_v<rhs_tile_type>;
 
-  const auto out_ovars = ovars.outer_vars();
-  const auto lhs_ovars = lvars.outer_vars();
-  const auto rhs_ovars = rvars.outer_vars();
+  const auto out_ovars = outer(ovars);
+  const auto lhs_ovars = outer(lvars);
+  const auto rhs_ovars = outer(rvars);
 
   const auto bound_vars =
       make_bound_annotation(out_ovars, lhs_ovars, rhs_ovars);

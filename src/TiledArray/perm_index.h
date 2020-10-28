@@ -49,10 +49,10 @@ class PermIndex {
 
   /// \param range The input range of ordinal indices
   PermIndex(const Range& range, const Permutation& perm)
-      : weights_(NULL), ndim_(perm.dim()) {
+      : weights_(NULL), ndim_(perm.size()) {
     if (ndim_ > 0) {
       // Check the input data
-      TA_ASSERT(range.rank() == perm.dim());
+      TA_ASSERT(range.rank() == perm.size());
 
       // Construct the inverse permutation
       const Permutation inv_perm_ = -perm;

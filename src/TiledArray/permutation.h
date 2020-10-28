@@ -211,7 +211,14 @@ class Permutation {
   /// Domain size accessor
 
   /// \return The domain size
-  index_type dim() const { return p_.size(); }
+  index_type size() const { return p_.size(); }
+
+  /// Domain size accessor
+
+  /// \return The domain size
+  [[deprecated("use Permutation::size()")]] index_type dim() const {
+    return p_.size();
+  }
 
   /// Begin element iterator factory function
 
@@ -399,7 +406,7 @@ class Permutation {
 /// \return \c true if all elements of \c p1 and \c p2 are equal and in the
 /// same order, otherwise \c false.
 inline bool operator==(const Permutation& p1, const Permutation& p2) {
-  return (p1.dim() == p2.dim()) &&
+  return (p1.size() == p2.size()) &&
          std::equal(p1.data().begin(), p1.data().end(), p2.data().begin());
 }
 
@@ -430,7 +437,7 @@ inline bool operator<(const Permutation& p1, const Permutation& p2) {
 /// \param[in] p The permutation to be added to the output stream
 /// \return The output stream
 inline std::ostream& operator<<(std::ostream& output, const Permutation& p) {
-  std::size_t n = p.dim();
+  std::size_t n = p.size();
   output << "{";
   for (unsigned int dim = 0; dim < n - 1; ++dim)
     output << dim << "->" << p.data()[dim] << ", ";
@@ -484,7 +491,7 @@ inline Permutation operator^(const Permutation& perm, int n) {
 template <typename T, std::size_t N>
 inline std::array<T, N> operator*(const Permutation& perm,
                                   const std::array<T, N>& a) {
-  TA_ASSERT(perm.dim() == a.size());
+  TA_ASSERT(perm.size() == a.size());
   std::array<T, N> result;
   detail::permute_array(perm, a, result);
   return result;
@@ -502,7 +509,7 @@ inline std::array<T, N> operator*(const Permutation& perm,
 template <typename T, std::size_t N>
 inline std::array<T, N>& operator*=(std::array<T, N>& a,
                                     const Permutation& perm) {
-  TA_ASSERT(perm.dim() == a.size());
+  TA_ASSERT(perm.size() == a.size());
   const std::array<T, N> temp = a;
   detail::permute_array(perm, temp, a);
   return a;
@@ -520,8 +527,8 @@ inline std::array<T, N>& operator*=(std::array<T, N>& a,
 template <typename T, typename A>
 inline std::vector<T> operator*(const Permutation& perm,
                                 const std::vector<T, A>& v) {
-  TA_ASSERT(perm.dim() == v.size());
-  std::vector<T> result(perm.dim());
+  TA_ASSERT(perm.size() == v.size());
+  std::vector<T> result(perm.size());
   detail::permute_array(perm, v, result);
   return result;
 }
@@ -555,8 +562,8 @@ inline std::vector<T, A>& operator*=(std::vector<T, A>& v,
 template <typename T, std::size_t N>
 inline boost::container::small_vector<T, N> operator*(
     const Permutation& perm, const boost::container::small_vector<T, N>& v) {
-  TA_ASSERT(perm.dim() == v.size());
-  boost::container::small_vector<T, N> result(perm.dim());
+  TA_ASSERT(perm.size() == v.size());
+  boost::container::small_vector<T, N> result(perm.size());
   detail::permute_array(perm, v, result);
   return result;
 }
@@ -587,7 +594,7 @@ inline boost::container::small_vector<T, N>& operator*=(
 template <typename T>
 inline std::vector<T> operator*(const Permutation& perm,
                                 const T* MADNESS_RESTRICT const ptr) {
-  const unsigned int n = perm.dim();
+  const unsigned int n = perm.size();
   std::vector<T> result(n);
   for (unsigned int i = 0u; i < n; ++i) {
     const typename Permutation::index_type perm_i = perm[i];
@@ -621,7 +628,14 @@ class BipartitePermutation {
   /// Domain size accessor
 
   /// \return The domain size
-  auto dim() const { return base_.dim(); }
+  auto size() const { return base_.size(); }
+
+  /// Domain size accessor
+
+  /// \return The domain size
+  [[deprecated("use BipartitePermutation::size()")]] auto dim() const {
+    return base_.size();
+  }
 
   /// Begin element iterator factory function
 
@@ -720,7 +734,7 @@ class BipartitePermutation {
   const Permutation& second() const { return second_; }
 
   /// \return the size of the first partition
-  index_type first_size() const { return this->dim() - second_size_; }
+  index_type first_size() const { return this->size() - second_size_; }
 
   /// \return the size of the second partition
   index_type second_size() const { return second_size_; }
@@ -753,7 +767,7 @@ class BipartitePermutation {
     first_ = Permutation{this->begin(), this->begin() + first_size()};
     const auto n_first = first_size();
     vector<index_type> temp(second_size());
-    for (auto i = n_first; i < dim(); ++i)
+    for (auto i = n_first; i < size(); ++i)
       temp[i - n_first] = base_[i] - n_first;
     second_ = Permutation(temp.begin(), temp.end());
   }
@@ -784,6 +798,8 @@ inline bool operator!=(const BipartitePermutation& p1,
   return !(p1 == p2);
 }
 
+/////////////// adaptors for the inner-outer language /////////////////////
+
 inline auto inner(const Permutation& p) {
   abort();
   return Permutation{};
@@ -793,20 +809,22 @@ inline auto inner(const Permutation& p) {
 // temporary
 inline auto outer(const Permutation& p) { return p; }
 
-inline auto inner_dim(const Permutation& p) {
+inline auto inner_size(const Permutation& p) {
   abort();
   return 0;
 }
 
-inline auto outer_dim(const Permutation& p) { return p.dim(); }
+inline auto outer_size(const Permutation& p) { return p.size(); }
 
 inline auto inner(const BipartitePermutation& p) { return p.second(); }
 
 inline auto outer(const BipartitePermutation& p) { return p.first(); }
 
-inline auto inner_dim(const BipartitePermutation& p) { return p.second_size(); }
+inline auto inner_size(const BipartitePermutation& p) {
+  return p.second_size();
+}
 
-inline auto outer_dim(const BipartitePermutation& p) { return p.first_size(); }
+inline auto outer_size(const BipartitePermutation& p) { return p.first_size(); }
 
 }  // namespace TiledArray
 

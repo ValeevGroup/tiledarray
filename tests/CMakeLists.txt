@@ -64,8 +64,8 @@ set(ta_test_src_files  ta_test.cpp
     distributed_storage.cpp
     tensor_impl.cpp
     array_impl.cpp
-    variable_list.cpp
-    bipartite_variable_list.cpp
+    index_list.cpp
+    bipartite_index_list.cpp
     dist_array.cpp
     conversions.cpp
     eigen.cpp

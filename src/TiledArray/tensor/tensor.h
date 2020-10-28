@@ -252,7 +252,7 @@ class Tensor {
     // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
     // not match Tensor_");
     if constexpr (is_tot && is_bperm) {
-      if (inner_dim(perm) != 0) {
+      if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
         for (auto& x : *this) x = p(x, inner_perm);
@@ -297,7 +297,7 @@ class Tensor {
     // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
     // not match Tensor_");
     if constexpr (is_tot && is_bperm) {
-      if (inner_dim(perm) != 0) {
+      if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
         for (auto& x : *this) x = p(x, inner_perm);
@@ -345,7 +345,7 @@ class Tensor {
     // static_assert(is_tot || (!is_tot && !is_bperm), "Permutation type does
     // not match Tensor_");
     if constexpr (is_tot && is_bperm) {
-      if (inner_dim(perm) != 0) {
+      if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
         Permute<value_type, value_type> p;
         for (auto& x : *this) x = p(x, inner_perm);
@@ -855,7 +855,7 @@ class Tensor {
     // not match Tensor_");
     if constexpr (!is_tot) {
       if constexpr (is_bperm) {
-        TA_ASSERT(inner_dim(perm) == 0);  // ensure this is a plain permutation
+        TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
         return Tensor_(*this, outer(perm));
       } else
         return Tensor_(*this, perm);
@@ -865,7 +865,7 @@ class Tensor {
       // the second step does the inner modes
       Tensor_ rv(*this, outer(perm));
       if constexpr (is_bperm) {
-        if (inner_dim(perm) != 0) {
+        if (inner_size(perm) != 0) {
           auto inner_perm = inner(perm);
           Permute<value_type, value_type> p;
           for (auto& inner_t : rv) inner_t = p(inner_t, inner_perm);
@@ -939,7 +939,7 @@ class Tensor {
     // not match Tensor_");
     if constexpr (!is_tot) {
       if constexpr (is_bperm) {
-        TA_ASSERT(inner_dim(perm) == 0);  // ensure this is a plain permutation
+        TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
         return Tensor_(*this, right, op, outer(perm));
       } else
         return Tensor_(*this, right, op, perm);
@@ -1004,7 +1004,7 @@ class Tensor {
     // not match Tensor_");
     if constexpr (!is_tot) {
       if constexpr (is_bperm) {
-        TA_ASSERT(inner_dim(perm) == 0);  // ensure this is a plain permutation
+        TA_ASSERT(inner_size(perm) == 0);  // ensure this is a plain permutation
         return Tensor_(*this, op, outer(perm));
       } else
         return Tensor_(*this, op, perm);

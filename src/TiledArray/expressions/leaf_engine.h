@@ -87,42 +87,43 @@ class LeafEngine : public ExprEngine<Derived> {
   template <typename D>
   LeafEngine(const Expr<D>& expr)
       : ExprEngine_(expr), array_(expr.derived().array()) {
-    vars_ = BipartiteVariableList(expr.derived().vars());
+    vars_ = BipartiteIndexList(expr.derived().vars());
   }
 
   // Import base class variables to this scope
   using ExprEngine_::derived;
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function is a noop since the variable list is fixed.
-  void perm_vars(const BipartiteVariableList&) {}
+  /// This function is a noop since the index list is fixed.
+  void perm_vars(const BipartiteIndexList&) {}
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// This function only checks for valid variable lists.
-  /// \param target_vars The target variable list for this expression
-  void init_vars(const BipartiteVariableList& target_vars) {
+  /// This function only checks for valid index lists.
+  /// \param target_vars The target index list for this expression
+  void init_vars(const BipartiteIndexList& target_vars) {
 #ifndef NDEBUG
     if (!target_vars.is_permutation(vars_)) {
       if (TiledArray::get_default_world().rank() == 0) {
         TA_USER_ERROR_MESSAGE(
-            "The array variable list is not compatible with the expected "
+            "The array index list is not compatible with the expected "
             "output:"
             << "\n    expected = " << target_vars
             << "\n    array    = " << vars_);
       }
 
       TA_EXCEPTION(
-          "Target variable is not a permutation of the given array variable "
+          "Target index list is not a permutation of the given array index "
+          "list "
           "list.");
     }
 #endif  // NDEBUG
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// This function is a noop since the variable list is fixed.
+  /// This function is a noop since the index list is fixed.
   void init_vars() {}
 
   void init_distribution(World* world,

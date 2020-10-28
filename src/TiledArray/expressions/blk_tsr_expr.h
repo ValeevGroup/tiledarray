@@ -117,7 +117,7 @@ class BlkTsrExprBase : public Expr<Derived> {
 
  protected:
   reference array_;   ///< The array that this expression
-  std::string vars_;  ///< The tensor variable list
+  std::string vars_;  ///< The tensor index list
   container::svector<std::size_t>
       lower_bound_;  ///< Lower bound of the tile block
   container::svector<std::size_t>

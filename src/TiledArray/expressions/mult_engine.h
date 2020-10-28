@@ -187,14 +187,14 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   MultEngine(const MultExpr<L, R>& expr)
       : ContEngine_(expr), contract_(false) {}
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function will set the variable list for this expression and its
+  /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
-  /// variable list may not be set to target, which indicates that the
+  /// index list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target variable list for this expression
-  void perm_vars(const BipartiteVariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void perm_vars(const BipartiteIndexList& target_vars) {
     if (contract_)
       ContEngine_::perm_vars(target_vars);
     else {
@@ -202,10 +202,10 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// \param target_vars The target variable list for this expression
-  void init_vars(const BipartiteVariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void init_vars(const BipartiteIndexList& target_vars) {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
 
@@ -223,7 +223,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
   void init_vars() {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
@@ -244,8 +244,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const BipartiteVariableList& target_vars) {
+  /// \param target_vars The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_vars) {
     if (contract_)
       ContEngine_::init_struct(target_vars);
     else
@@ -335,8 +335,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const BipartiteVariableList& target_vars) const {
+  /// \param target_vars The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
     if (contract_)
       return ContEngine_::print(os, target_vars);
     else
@@ -410,14 +410,14 @@ class ScalMultEngine
   ScalMultEngine(const ScalMultExpr<L, R, S>& expr)
       : ContEngine_(expr), contract_(false) {}
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function will set the variable list for this expression and its
+  /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
-  /// variable list may not be set to target, which indicates that the
+  /// index list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target variable list for this expression
-  void perm_vars(const BipartiteVariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void perm_vars(const BipartiteIndexList& target_vars) {
     if (contract_)
       ContEngine_::perm_vars(target_vars);
     else {
@@ -425,10 +425,10 @@ class ScalMultEngine
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// \param target_vars The target variable list for this expression
-  void init_vars(const BipartiteVariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void init_vars(const BipartiteIndexList& target_vars) {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
 
@@ -442,7 +442,7 @@ class ScalMultEngine
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
   void init_vars() {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
@@ -463,8 +463,8 @@ class ScalMultEngine
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const BipartiteVariableList& target_vars) {
+  /// \param target_vars The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_vars) {
     if (contract_)
       ContEngine_::init_struct(target_vars);
     else
@@ -561,8 +561,8 @@ class ScalMultEngine
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const BipartiteVariableList& target_vars) const {
+  /// \param target_vars The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
     if (contract_)
       return ContEngine_::print(os, target_vars);
     else

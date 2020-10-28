@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(constructor, Permutation, ptypes0) {
   Permutation p0;
   BOOST_CHECK_EQUAL(p0.data().size(), 0ul);
 
-  // check variable list constructor
+  // check index list constructor
   BOOST_REQUIRE_NO_THROW(Permutation p1({0, 1, 2}));
   Permutation p1({0, 1, 2});
   BOOST_CHECK_EQUAL(p1.data()[0], 0u);

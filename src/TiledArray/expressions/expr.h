@@ -397,8 +397,8 @@ class Expr {
         pmap;
     if (tsr.array().is_initialized()) pmap = tsr.array().pmap();
 
-    // Get result variable list.
-    BipartiteVariableList target_vars(tsr.vars());
+    // Get result index list.
+    BipartiteIndexList target_vars(tsr.vars());
 
     // Construct the expression engine
     engine_type engine(derived());
@@ -468,8 +468,8 @@ class Expr {
     std::shared_ptr<typename BlkTsrExpr<A, Alias>::array_type::pmap_interface>
         pmap;
 
-    // Get result variable list.
-    BipartiteVariableList target_vars(tsr.vars());
+    // Get result index list.
+    BipartiteIndexList target_vars(tsr.vars());
 
     // Construct the expression engine
     engine_type engine(derived());
@@ -527,8 +527,8 @@ class Expr {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream& os, const BipartiteVariableList& target_vars) const {
+  /// \param target_vars The target index list for this expression
+  void print(ExprOStream& os, const BipartiteIndexList& target_vars) const {
     // Construct the expression engine
     engine_type engine(derived());
     engine.init_vars(target_vars);
@@ -568,7 +568,7 @@ class Expr {
     // Construct the expression engine
     engine_type engine(derived());
     engine.init(world, std::shared_ptr<typename engine_type::pmap_interface>(),
-                BipartiteVariableList());
+                BipartiteIndexList());
 
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -619,7 +619,7 @@ class Expr {
     engine_type left_engine(derived());
     left_engine.init(world,
                      std::shared_ptr<typename engine_type::pmap_interface>(),
-                     BipartiteVariableList());
+                     BipartiteIndexList());
 
     // Create the distributed evaluator for this expression
     typename engine_type::dist_eval_type left_dist_eval =

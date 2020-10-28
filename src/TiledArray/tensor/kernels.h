@@ -150,7 +150,7 @@ struct transform {
     TA_ASSERT(!empty(tensor, tensors...));
     TA_ASSERT(is_range_set_congruent(tensor, tensors...));
     TA_ASSERT(perm);
-    TA_ASSERT(perm.dim() == tensor.range().rank());
+    TA_ASSERT(perm.size() == tensor.range().rank());
 
     const auto& range = tensor.range();
     T result(perm ^ range);
@@ -167,7 +167,7 @@ struct transform {
     TA_ASSERT(is_range_congruent(result, tensor, perm));
     TA_ASSERT(is_range_set_congruent(tensor, tensors...));
     TA_ASSERT(perm);
-    TA_ASSERT(perm.dim() == tensor.range().rank());
+    TA_ASSERT(perm.size() == tensor.range().rank());
 
     const auto& range = tensor.range();
     for (auto&& i : range)
@@ -266,7 +266,7 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
   TA_ASSERT(is_range_congruent(result, tensor1, perm));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
   TA_ASSERT(perm);
-  TA_ASSERT(perm.dim() == tensor1.range().rank());
+  TA_ASSERT(perm.size() == tensor1.range().rank());
 
   permute(std::forward<InputOp>(input_op), std::forward<OutputOp>(output_op),
           result, perm, tensor1, tensors...);
@@ -318,7 +318,7 @@ inline void inplace_tensor_op(InputOp&& input_op, OutputOp&& output_op,
   TA_ASSERT(is_range_congruent(result, tensor1, perm));
   TA_ASSERT(is_range_set_congruent(tensor1, tensors...));
   TA_ASSERT(perm);
-  TA_ASSERT(perm.dim() == tensor1.range().rank());
+  TA_ASSERT(perm.size() == tensor1.range().rank());
 
   auto wrapper_input_op =
       [&input_op](typename T1::const_reference MADNESS_RESTRICT value1,
@@ -491,7 +491,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(perm, result, tensor1, tensors...));
   TA_ASSERT(perm);
-  TA_ASSERT(perm.dim() == result.range().rank());
+  TA_ASSERT(perm.size() == result.range().rank());
 
   auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
                       typename TR::const_reference MADNESS_RESTRICT temp) {
@@ -525,7 +525,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
   TA_ASSERT(!empty(result, tensor1, tensors...));
   TA_ASSERT(is_range_set_congruent(perm, result, tensor1, tensors...));
   TA_ASSERT(perm);
-  TA_ASSERT(perm.dim() == result.range().rank());
+  TA_ASSERT(perm.size() == result.range().rank());
 
   auto output_op = [](typename TR::pointer MADNESS_RESTRICT result,
                       typename TR::const_reference MADNESS_RESTRICT temp) {

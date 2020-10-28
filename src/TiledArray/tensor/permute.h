@@ -52,7 +52,7 @@ inline void fuse_dimensions(SizeType* MADNESS_RESTRICT const fused_size,
                             SizeType* MADNESS_RESTRICT const fused_weight,
                             const ExtentType* MADNESS_RESTRICT const size,
                             const Permutation& perm) {
-  const unsigned int ndim1 = perm.dim() - 1u;
+  const unsigned int ndim1 = perm.size() - 1u;
 
   int i = ndim1;
   fused_size[3] = size[i--];

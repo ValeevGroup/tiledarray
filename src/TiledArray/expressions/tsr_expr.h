@@ -92,7 +92,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
  private:
   array_type& array_;  ///< The array that this expression is bound to
-  std::string vars_;   ///< The tensor variable list
+  std::string vars_;   ///< The tensor index list
 
  public:
   // Compiler generated functions
@@ -104,7 +104,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   /// Constructor
 
   /// \param array The array object
-  /// \param vars The variable list that is associated with this expression
+  /// \param vars The index list that is associated with this expression
   TsrExpr(array_type& array, const std::string& vars)
       : array_(array), vars_(vars) {}
 
@@ -335,7 +335,7 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
   /// Constructor
 
   /// \param array The array object
-  /// \param vars The variable list that is associated with this expression
+  /// \param vars The index list that is associated with this expression
   TsrExpr(const array_type& array, const std::string& vars)
       : Expr_(), array_(array), vars_(vars) {}
 

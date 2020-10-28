@@ -83,7 +83,7 @@ class Permute {
     if constexpr (detail::is_bipartite_permutable_v<argument_type>) {
       return permute(arg, perm);
     } else {
-      TA_ASSERT(inner_dim(perm));
+      TA_ASSERT(inner_size(perm));
       return permute(arg, outer(perm));
     }
   }
@@ -108,7 +108,7 @@ class Permute<Result, Arg,
     if constexpr (detail::is_bipartite_permutable_v<argument_type>) {
       return Cast_::operator()(permute(arg, perm));
     } else {
-      TA_ASSERT(inner_dim(perm));
+      TA_ASSERT(inner_size(perm));
       return Cast_::operator()(permute(arg, outer(perm)));
     }
   }

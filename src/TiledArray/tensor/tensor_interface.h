@@ -355,7 +355,7 @@ class TensorInterface {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<TensorInterface>;
     constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     if constexpr (is_tot && is_bperm) {
-      if (inner_dim(perm) != 0) {
+      if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
         Permute<T, T> p;
         for (auto& x : new_tensor) x = p(x, inner_perm);
@@ -419,7 +419,7 @@ class TensorInterface {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<TensorInterface>;
     constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     if constexpr (is_tot && is_bperm) {
-      if (inner_dim(perm) != 0) {
+      if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
         Permute<T, T> p;
         for (auto& x : new_tensor) x = p(x, inner_perm);
@@ -455,7 +455,7 @@ class TensorInterface {
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<TensorInterface>;
     constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
     if constexpr (is_tot && is_bperm) {
-      if (inner_dim(perm) != 0) {
+      if (inner_size(perm) != 0) {
         auto inner_perm = inner(perm);
         Permute<T, T> p;
         for (auto& x : new_tensor) x = p(x, inner_perm);

@@ -282,7 +282,7 @@ EigenSparseTile<T, TagType> mult(const TiledArray::Tensor<T>& arg1,
                                  const EigenSparseTile<T, TagType>& arg2,
                                  const Permutation& perm) {
   TA_ASSERT(arg1.range() == arg2.range());
-  TA_ASSERT(perm.dim() == 2);
+  TA_ASSERT(perm.size() == 2);
   const auto identity_perm = (perm[0] == 0);
 
   typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;
@@ -370,7 +370,7 @@ TiledArray::Tensor<T> mult(const TiledArray::Tensor<T>& arg1,
                            const EigenSparseTile<T, TagType>& arg2,
                            const Permutation& perm) {
   TA_ASSERT(arg1.range() == arg2.range());
-  TA_ASSERT(perm.dim() == 2);
+  TA_ASSERT(perm.size() == 2);
   const auto identity_perm = (perm[0] == 0);
 
   typedef typename EigenSparseTile<T, TagType>::matrix_type matrix_type;

@@ -172,12 +172,12 @@ inline btas::Tensor<T, Range, Storage> permute(
   constexpr bool is_tot =
       TiledArray::detail::is_tensor_of_tensor_v<decltype(result)>;
   if constexpr (!is_tot) {
-    TA_ASSERT(inner_dim(perm) ==
+    TA_ASSERT(inner_size(perm) ==
               0);  // this must be a plain permutation if not ToT
     btas::permute(arg, outer(perm).inv().data(), result);
   } else {
     btas::permute(arg, outer(perm).inv().data(), result);
-    if (inner_dim(perm) != 0) {
+    if (inner_size(perm) != 0) {
       auto inner_perm = inner(perm);
       TiledArray::Permute<T, T> p;
       for (auto& x : result) x = p(x, inner_perm);

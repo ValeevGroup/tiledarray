@@ -185,7 +185,7 @@ struct ContractionEvalFixture : public SparseShapeFixture {
       const Permutation& perm, const Op& op) {
     TA_ASSERT(left.range().rank() == op.left_rank());
     TA_ASSERT(right.range().rank() == op.right_rank());
-    TA_ASSERT((perm.dim() == op.result_rank()) || !perm);
+    TA_ASSERT((perm.size() == op.result_rank()) || !perm);
 
     // Define the impl type
     typedef TiledArray::detail::Summa<

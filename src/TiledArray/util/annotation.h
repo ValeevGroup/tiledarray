@@ -32,14 +32,15 @@
 
 namespace TiledArray::detail {
 
-inline std::string dummy_annotation(unsigned int n_outer_dim,
-                                    unsigned int n_inner_dim = 0) {
+inline std::string dummy_annotation(unsigned int n_outer_size,
+                                    unsigned int n_inner_size = 0) {
   std::ostringstream oss;
-  if (n_outer_dim > 0) oss << "i0";
-  for (unsigned int d = 1; d < n_outer_dim; ++d) oss << ",i" << d;
-  if (n_inner_dim == 0) return oss.str();
-  oss << ";i" << n_outer_dim;
-  for (unsigned int d = 1; d < n_inner_dim; ++d) oss << ",i" << d + n_outer_dim;
+  if (n_outer_size > 0) oss << "i0";
+  for (unsigned int d = 1; d < n_outer_size; ++d) oss << ",i" << d;
+  if (n_inner_size == 0) return oss.str();
+  oss << ";i" << n_outer_size;
+  for (unsigned int d = 1; d < n_inner_size; ++d)
+    oss << ",i" << d + n_outer_size;
   return oss.str();
 }
 
@@ -164,7 +165,7 @@ inline bool is_tot_index(const std::string& idx) {
 /// Splits and sanitizes a string labeling a tensor's modes.
 ///
 /// This function encapsulates TiledArray's string index parsing. It is a free
-/// function to facilitate usage outside the BipartiteVariableList class. This
+/// function to facilitate usage outside the BipartiteIndexList class. This
 /// function will take a string and separate it into the individual mode labels.
 /// The API is designed so that `split_index` can be used with
 /// tensors-of-tensors as well as normal, non-nested tensors. By convention,

@@ -414,7 +414,7 @@ class BlkTsrEngine
 
     // Initialize the permuted range shift vector
     auto outer_perm = outer(perm);
-    TA_ASSERT(outer_perm.dim() == rank);
+    TA_ASSERT(outer_perm.size() == rank);
     for (unsigned int d = 0u; d < rank; ++d) {
       const auto perm_d = outer_perm[d];
       const auto lower_d = lower[d];
@@ -560,7 +560,7 @@ class ScalBlkTsrEngine
 
     // Initialize the permuted range shift vector
     auto outer_perm = outer(perm);
-    TA_ASSERT(outer_perm.dim() == rank);
+    TA_ASSERT(outer_perm.size() == rank);
     for (unsigned int d = 0u; d < rank; ++d) {
       const auto perm_d = outer_perm[d];
       const auto lower_d = lower[d];

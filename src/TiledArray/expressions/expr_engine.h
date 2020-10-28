@@ -71,7 +71,7 @@ class ExprEngine : private NO_DEFAULTS {
   // classes will customize initialization.
 
   World* world_;  ///< The world where this expression will be evaluated
-  BipartiteVariableList vars_;  ///< The variable list of this expression
+  BipartiteIndexList vars_;  ///< The index list of this expression
   bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
                         ///< tile)
   /// The permutation that will be applied to the outer tensor of tensors
@@ -106,10 +106,10 @@ class ExprEngine : private NO_DEFAULTS {
   /// the graph in that order.
   /// \param world The world where the expression will be evaluated
   /// \param pmap The process map for the result tensor (may be NULL)
-  /// \param target_vars The target variable list of the result tensor
+  /// \param target_vars The target index list of the result tensor
   void init(World& world, std::shared_ptr<pmap_interface> pmap,
-            const BipartiteVariableList& target_vars) {
-    if (target_vars.dim()) {
+            const BipartiteIndexList& target_vars) {
+    if (target_vars.size()) {
       derived().init_vars(target_vars);
       derived().init_struct(target_vars);
     } else {
@@ -144,13 +144,13 @@ class ExprEngine : private NO_DEFAULTS {
   /// providing their own implementation of this function or any of the
   /// above initialization.
   /// functions.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const BipartiteVariableList& target_vars) {
+  /// \param target_vars The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_vars) {
     if (target_vars != vars_) {
       auto temp_perm = derived().make_perm(target_vars);
-      const auto inner_dim = target_vars.inner_dim();
+      const auto inner_size = target_vars.second_size();
       perm_ =
-          BipartitePermutation(temp_perm.begin(), temp_perm.end(), inner_dim);
+          BipartitePermutation(temp_perm.begin(), temp_perm.end(), inner_size);
       trange_ = derived().make_trange(outer(perm_));
       shape_ = derived().make_shape(outer(perm_));
     } else {
@@ -186,8 +186,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// This function will generate the permutation that will be applied to
   /// the result tensor. Derived classes may customize this function by
   /// providing their own implementation it.
-  BipartitePermutation make_perm(
-      const BipartiteVariableList& target_vars) const {
+  BipartitePermutation make_perm(const BipartiteIndexList& target_vars) const {
     return target_vars.permutation(vars_);
   }
 
@@ -221,8 +220,8 @@ class ExprEngine : private NO_DEFAULTS {
 
   /// Variable list accessor
 
-  /// \return A const reference to the variable list
-  const BipartiteVariableList& vars() const { return vars_; }
+  /// \return A const reference to the index list
+  const BipartiteIndexList& vars() const { return vars_; }
 
   /// Permutation accessor
 
@@ -253,8 +252,8 @@ class ExprEngine : private NO_DEFAULTS {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream& os, const BipartiteVariableList& target_vars) const {
+  /// \param target_vars The target index list for this expression
+  void print(ExprOStream& os, const BipartiteIndexList& target_vars) const {
     if (perm_) {
       os << "[P " << target_vars << "]"
          << (permute_tiles_ ? " " : " [no permute tiles] ")
