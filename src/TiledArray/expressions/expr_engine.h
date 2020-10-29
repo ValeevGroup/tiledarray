@@ -71,7 +71,9 @@ class ExprEngine : private NO_DEFAULTS {
   // classes will customize initialization.
 
   World* world_;  ///< The world where this expression will be evaluated
-  BipartiteIndexList vars_;  ///< The index list of this expression
+  BipartiteIndexList
+      indices_;  ///< The index list of this expression; bipartite due to need
+                 ///< to support recursive tensors (i.e. Tensor-of-Tensor)
   bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
                         ///< tile)
   /// The permutation that will be applied to the outer tensor of tensors
@@ -90,7 +92,7 @@ class ExprEngine : private NO_DEFAULTS {
   template <typename D>
   ExprEngine(const Expr<D>& expr)
       : world_(NULL),
-        vars_(),
+        indices_(),
         permute_tiles_(true),
         perm_(),
         trange_(),
@@ -101,20 +103,20 @@ class ExprEngine : private NO_DEFAULTS {
   /// Construct and initialize the expression engine
 
   /// This function will initialize all expression engines in the expression
-  /// graph. The <tt>init_vars()</tt>, <tt>init_struct()</tt>, and
+  /// graph. The <tt>init_indices()</tt>, <tt>init_struct()</tt>, and
   /// <tt>init_distribution()</tt> will be called for each node and leaf of
   /// the graph in that order.
   /// \param world The world where the expression will be evaluated
   /// \param pmap The process map for the result tensor (may be NULL)
-  /// \param target_vars The target index list of the result tensor
+  /// \param target_indices The target index list of the result tensor
   void init(World& world, std::shared_ptr<pmap_interface> pmap,
-            const BipartiteIndexList& target_vars) {
-    if (target_vars.size()) {
-      derived().init_vars(target_vars);
-      derived().init_struct(target_vars);
+            const BipartiteIndexList& target_indices) {
+    if (target_indices.size()) {
+      derived().init_indices(target_indices);
+      derived().init_struct(target_indices);
     } else {
-      derived().init_vars();
-      derived().init_struct(vars_);
+      derived().init_indices();
+      derived().init_struct(indices_);
     }
 
     auto override_world = override_ptr_ != nullptr && override_ptr_->world;
@@ -144,10 +146,10 @@ class ExprEngine : private NO_DEFAULTS {
   /// providing their own implementation of this function or any of the
   /// above initialization.
   /// functions.
-  /// \param target_vars The target index list for the result tensor
-  void init_struct(const BipartiteIndexList& target_vars) {
-    if (target_vars != vars_) {
-      perm_ = derived().make_perm(target_vars);
+  /// \param target_indices The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_indices) {
+    if (target_indices != indices_) {
+      perm_ = derived().make_perm(target_indices);
       trange_ = derived().make_trange(outer(perm_));
       shape_ = derived().make_shape(outer(perm_));
     } else {
@@ -183,8 +185,9 @@ class ExprEngine : private NO_DEFAULTS {
   /// This function will generate the permutation that will be applied to
   /// the result tensor. Derived classes may customize this function by
   /// providing their own implementation it.
-  BipartitePermutation make_perm(const BipartiteIndexList& target_vars) const {
-    return target_vars.permutation(vars_);
+  BipartitePermutation make_perm(
+      const BipartiteIndexList& target_indices) const {
+    return target_indices.permutation(indices_);
   }
 
   /// Tile operation factory function
@@ -215,10 +218,10 @@ class ExprEngine : private NO_DEFAULTS {
   /// \return A pointer to world
   World* world() const { return world_; }
 
-  /// Variable list accessor
+  /// Index list accessor
 
   /// \return A const reference to the index list
-  const BipartiteIndexList& vars() const { return vars_; }
+  const BipartiteIndexList& indices() const { return indices_; }
 
   /// Permutation accessor
 
@@ -249,14 +252,14 @@ class ExprEngine : private NO_DEFAULTS {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target index list for this expression
-  void print(ExprOStream& os, const BipartiteIndexList& target_vars) const {
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream& os, const BipartiteIndexList& target_indices) const {
     if (perm_) {
-      os << "[P " << target_vars << "]"
+      os << "[P " << target_indices << "]"
          << (permute_tiles_ ? " " : " [no permute tiles] ")
-         << derived().make_tag() << vars_ << "\n";
+         << derived().make_tag() << indices_ << "\n";
     } else {
-      os << derived().make_tag() << vars_ << "\n";
+      os << derived().make_tag() << indices_ << "\n";
     }
   }
 

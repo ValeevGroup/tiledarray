@@ -378,11 +378,11 @@ class BipartiteIndexList {
   /// Initializes a BipartiteIndexList by tokenizing a string
   ///
   /// This constructor invokes TiledArray::detail::split_index to tokenize
-  /// \c str. To label a rank \f$n\f$ tensor, \c vars should contain \f$n\f$
+  /// \p str. To label a rank \f$n\f$ tensor, \p str should contain \f$n\f$
   /// substrings delimited by \f$(n-1)\f$ commas, e.g., "i,j,k" labels a rank 3
   /// tensor such that mode 0 is "i", mode 1 is "j", and mode 2 is "k". This
   /// constructor can also be used to label tensors-of-tensors. To label a rank
-  /// \f$n\f$ tensor of rank \f$m\f$ tensors, \c vars should contain
+  /// \f$n\f$ tensor of rank \f$m\f$ tensors, \p str should contain
   /// \f$(n + m)\f$ substrings such that the first \f$n\f$ are delimited from
   /// the last \f$m\f$ by a semicolon and the first \f$n\f$ are delimited from
   /// each other by \f$(n-1)\f$ commas and the last \f$m\f$ are delimited from

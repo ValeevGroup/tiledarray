@@ -70,12 +70,12 @@ class LeafEngine : public ExprEngine<Derived> {
 
  protected:
   // Import base class variables to this scope
+  using ExprEngine_::indices_;
   using ExprEngine_::perm_;
   using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
-  using ExprEngine_::vars_;
   using ExprEngine_::world_;
 
   array_type array_;  ///< The array object
@@ -87,7 +87,7 @@ class LeafEngine : public ExprEngine<Derived> {
   template <typename D>
   LeafEngine(const Expr<D>& expr)
       : ExprEngine_(expr), array_(expr.derived().array()) {
-    vars_ = BipartiteIndexList(expr.derived().annotation());
+    indices_ = BipartiteIndexList(expr.derived().annotation());
   }
 
   // Import base class variables to this scope
@@ -96,21 +96,21 @@ class LeafEngine : public ExprEngine<Derived> {
   /// Set the index list for this expression
 
   /// This function is a noop since the index list is fixed.
-  void perm_vars(const BipartiteIndexList&) {}
+  void perm_indices(const BipartiteIndexList&) {}
 
   /// Initialize the index list of this expression
 
   /// This function only checks for valid index lists.
-  /// \param target_vars The target index list for this expression
-  void init_vars(const BipartiteIndexList& target_vars) {
+  /// \param target_indices The target index list for this expression
+  void init_indices(const BipartiteIndexList& target_indices) {
 #ifndef NDEBUG
-    if (!target_vars.is_permutation(vars_)) {
+    if (!target_indices.is_permutation(indices_)) {
       if (TiledArray::get_default_world().rank() == 0) {
         TA_USER_ERROR_MESSAGE(
             "The array index list is not compatible with the expected "
             "output:"
-            << "\n    expected = " << target_vars
-            << "\n    array    = " << vars_);
+            << "\n    expected = " << target_indices
+            << "\n    array    = " << indices_);
       }
 
       TA_EXCEPTION(
@@ -124,7 +124,7 @@ class LeafEngine : public ExprEngine<Derived> {
   /// Initialize the index list of this expression
 
   /// This function is a noop since the index list is fixed.
-  void init_vars() {}
+  void init_indices() {}
 
   void init_distribution(World* world,
                          const std::shared_ptr<pmap_interface>& pmap) {

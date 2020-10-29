@@ -74,12 +74,12 @@ class BinaryEngine : public ExprEngine<Derived> {
 
  protected:
   // Import base class variables to this scope
+  using ExprEngine_::indices_;
   using ExprEngine_::perm_;
   using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
-  using ExprEngine_::vars_;
   using ExprEngine_::world_;
 
   left_type left_;    ///< The left-hand argument
@@ -95,23 +95,23 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
   /// index list may not be set to target, which indicates that the
-  /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target index list for this expression
-  void perm_vars(const BipartiteIndexList& target_vars) {
+  /// result of this expression will be permuted to match \c target_indices.
+  /// \param target_indices The target index list for this expression
+  void perm_indices(const BipartiteIndexList& target_indices) {
     TA_ASSERT(permute_tiles_);
-    TA_ASSERT(left_.vars().size() == target_vars.size());
-    TA_ASSERT(right_.vars().size() == target_vars.size());
+    TA_ASSERT(left_.indices().size() == target_indices.size());
+    TA_ASSERT(right_.indices().size() == target_indices.size());
 
     // Determine the equality of the index lists
     bool left_target = true, right_target = true, left_right = true;
-    for (unsigned int i = 0u; i < target_vars.size(); ++i) {
-      left_target = left_target && left_.vars()[i] == target_vars[i];
-      right_target = right_target && right_.vars()[i] == target_vars[i];
-      left_right = left_right && left_.vars()[i] == right_.vars()[i];
+    for (unsigned int i = 0u; i < target_indices.size(); ++i) {
+      left_target = left_target && left_.indices()[i] == target_indices[i];
+      right_target = right_target && right_.indices()[i] == target_indices[i];
+      left_right = left_right && left_.indices()[i] == right_.indices()[i];
     }
 
     if (left_right) {
-      vars_ = left_.vars();
+      indices_ = left_.indices();
     } else {
       // Determine which argument will be permuted
       const bool perm_left =
@@ -119,34 +119,34 @@ class BinaryEngine : public ExprEngine<Derived> {
                             (left_type::leaves <= right_type::leaves)));
 
       if (perm_left) {
-        vars_ = right_.vars();
-        left_.perm_vars(right_.vars());
+        indices_ = right_.indices();
+        left_.perm_indices(right_.indices());
       } else {
-        vars_ = left_.vars();
-        right_.perm_vars(left_.vars());
+        indices_ = left_.indices();
+        right_.perm_indices(left_.indices());
       }
     }
   }
 
   /// Initialize the index list of this expression
 
-  /// \param target_vars The target index list for this expression
-  void init_vars(const BipartiteIndexList& target_vars) {
-    left_.init_vars(target_vars);
-    right_.init_vars(target_vars);
-    perm_vars(target_vars);
+  /// \param target_indices The target index list for this expression
+  void init_indices(const BipartiteIndexList& target_indices) {
+    left_.init_indices(target_indices);
+    right_.init_indices(target_indices);
+    perm_indices(target_indices);
   }
 
   /// Initialize the index list of this expression
-  void init_vars() {
+  void init_indices() {
     if (left_type::leaves <= right_type::leaves) {
-      left_.init_vars();
-      vars_ = left_.vars();
-      right_.init_vars(vars_);
+      left_.init_indices();
+      indices_ = left_.indices();
+      right_.init_indices(indices_);
     } else {
-      right_.init_vars();
-      vars_ = right_.vars();
-      left_.init_vars(vars_);
+      right_.init_indices();
+      indices_ = right_.indices();
+      left_.init_indices(indices_);
     }
   }
 
@@ -154,10 +154,10 @@ class BinaryEngine : public ExprEngine<Derived> {
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the left-hand, right-hand, and result tensor.
-  /// \param target_vars The target index list for the result tensor
-  void init_struct(const BipartiteIndexList& target_vars) {
-    left_.init_struct(ExprEngine_::vars());
-    right_.init_struct(ExprEngine_::vars());
+  /// \param target_indices The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_indices) {
+    left_.init_struct(ExprEngine_::indices());
+    right_.init_struct(ExprEngine_::indices());
 #ifndef NDEBUG
     if (left_.trange() != right_.trange()) {
       if (TiledArray::get_default_world().rank() == 0) {
@@ -173,7 +173,7 @@ class BinaryEngine : public ExprEngine<Derived> {
           "of the binary operation are not equal.");
     }
 #endif  // NDEBUG
-    ExprEngine_::init_struct(target_vars);
+    ExprEngine_::init_struct(target_indices);
   }
 
   /// Initialize result tensor distribution
@@ -226,12 +226,12 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target index list for this expression
-  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
-    ExprEngine_::print(os, target_vars);
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_indices) const {
+    ExprEngine_::print(os, target_indices);
     os.inc();
-    left_.print(os, vars_);
-    right_.print(os, vars_);
+    left_.print(os, indices_);
+    right_.print(os, indices_);
     os.dec();
   }
 };  // class BinaryEngine

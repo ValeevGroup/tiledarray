@@ -332,7 +332,7 @@ the process map, and a `IndexList` instance containing the final tensor
 indices (*i.e.*, the indices of the tensor being assigned to). The `init`
 member function ultimately calls:
 
-1. `init_vars`
+1. `init_indices`
 2. `init_struct`
 3. `init_distribution`
 
@@ -341,16 +341,16 @@ in that order.
 
 ##### Step 2a: Variable Initialization
 
-Variable initialization starts in `MultEngine::init_vars(const IndexList&)`.
-This function starts by calling the `init_vars()` members of the engines for the
+Variable initialization starts in `MultEngine::init_indices(const IndexList&)`.
+This function starts by calling the `init_indices()` members of the engines for the
 expressions on the left and right sides of the `*` operator (for leaves of the
 AST, like the present case, this is a noop). After giving the expressions on the
-left and right a chance to initialize their variables the variables for the left
+left and right a chance to initialize their indices the indices for the left
 and right side are used to determine what sort of multiplication this is (a
-contraction or a Hadamard-product) and the appropriate base class's `perm_vars`
+contraction or a Hadamard-product) and the appropriate base class's `perm_indices`
 is then called.
 
-The purpose of the `init_vars()`/`init_vars(const IndexList&)` calls are to
+The purpose of the `init_indices()`/`init_indices(const IndexList&)` calls are to
 compute the indices of the tensor which results from a particular branch of the
 AST. The difference between the two calls is whether or not the final indices
 are being provided as a hint to subexpressions (the form accepting one argument

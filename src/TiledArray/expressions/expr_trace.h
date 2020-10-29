@@ -82,22 +82,22 @@ class ExprOStream {
 
 /// Wrapper object that helps start the expression
 class ExprTraceTarget {
-  std::ostream& os_;                ///< Output stream
-  BipartiteIndexList target_vars_;  ///< Target index list for an expression
+  std::ostream& os_;                   ///< Output stream
+  BipartiteIndexList target_indices_;  ///< Target index list for an expression
 
  public:
   /// Constructor
 
   /// \param os Output stream
-  /// \param target_vars The target index list for an expression
-  ExprTraceTarget(std::ostream& os, const std::string& target_vars)
-      : os_(os), target_vars_(target_vars) {}
+  /// \param target_annotation The target annotation for an expression
+  ExprTraceTarget(std::ostream& os, const std::string& target_annotation)
+      : os_(os), target_indices_(target_annotation) {}
 
   /// Copy constructor
 
   /// \param other The object to be copied
   ExprTraceTarget(const ExprTraceTarget& other)
-      : os_(other.os_), target_vars_(other.target_vars_) {}
+      : os_(other.os_), target_indices_(other.target_indices_) {}
 
   /// Start the expression trace
 
@@ -107,11 +107,11 @@ class ExprTraceTarget {
   template <typename D>
   std::ostream& operator<<(const Expr<D>& expr) const {
     if (TiledArray::get_default_world().rank() == 0) {
-      os_ << target_vars_ << " =\n";
+      os_ << target_indices_ << " =\n";
 
       ExprOStream expr_stream(os_);
       expr_stream.inc();
-      expr.derived().print(expr_stream, target_vars_);
+      expr.derived().print(expr_stream, target_indices_);
     }
 
     return os_;
@@ -129,7 +129,7 @@ class ExprTraceTarget {
 template <typename A, bool Alias>
 inline ExprTraceTarget operator<<(std::ostream& os,
                                   const TsrExpr<A, Alias>& tsr) {
-  return ExprTraceTarget(os, tsr.vars());
+  return ExprTraceTarget(os, tsr.annotation());
 }
 
 }  // namespace expressions

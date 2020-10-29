@@ -357,7 +357,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params) {
     auto vars = outer_idx + ";" + inner_idx;
     auto expr = t(vars);
     BOOST_CHECK(are_equal(expr.array(), t));
-    BOOST_CHECK(expr.vars() == vars);
+    BOOST_CHECK(expr.annotation() == vars);
   }
 }
 
@@ -380,7 +380,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params) {
     auto vars = outer_idx + ";" + inner_idx;
     auto expr = t(vars);
     BOOST_CHECK(are_equal(expr.array(), t));
-    BOOST_CHECK(expr.vars() == vars);
+    BOOST_CHECK(expr.annotation() == vars);
   }
 }
 

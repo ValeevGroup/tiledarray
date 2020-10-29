@@ -192,22 +192,22 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
   /// index list may not be set to target, which indicates that the
-  /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target index list for this expression
-  void perm_vars(const BipartiteIndexList& target_vars) {
+  /// result of this expression will be permuted to match \c target_indices.
+  /// \param target_indices The target index list for this expression
+  void perm_indices(const BipartiteIndexList& target_indices) {
     if (contract_)
-      ContEngine_::perm_vars(target_vars);
+      ContEngine_::perm_indices(target_indices);
     else {
-      BinaryEngine_::perm_vars(target_vars);
+      BinaryEngine_::perm_indices(target_indices);
     }
   }
 
   /// Initialize the index list of this expression
 
-  /// \param target_vars The target index list for this expression
-  void init_vars(const BipartiteIndexList& target_vars) {
-    BinaryEngine_::left_.init_vars();
-    BinaryEngine_::right_.init_vars();
+  /// \param target_indices The target index list for this expression
+  void init_indices(const BipartiteIndexList& target_indices) {
+    BinaryEngine_::left_.init_indices();
+    BinaryEngine_::right_.init_indices();
 
     // TODO support general products that involve fused, contracted, and free
     // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
@@ -225,31 +225,32 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     // Only the outer indices matter here since the inner indices only encode
     // the tile op; the type of the tile op does not need to match the type of
     // the operation on the outer indices
-    if (outer(BinaryEngine_::left_.vars()).is_permutation(outer(target_vars))) {
-      TA_ASSERT(outer(BinaryEngine_::left_.vars())
-                    .is_permutation(outer(BinaryEngine_::right_.vars())));
-      BinaryEngine_::perm_vars(target_vars);
+    if (outer(BinaryEngine_::left_.indices())
+            .is_permutation(outer(target_indices))) {
+      TA_ASSERT(outer(BinaryEngine_::left_.indices())
+                    .is_permutation(outer(BinaryEngine_::right_.indices())));
+      BinaryEngine_::perm_indices(target_indices);
     } else {
       contract_ = true;
-      ContEngine_::init_vars();
-      ContEngine_::perm_vars(target_vars);
+      ContEngine_::init_indices();
+      ContEngine_::perm_indices(target_indices);
     }
   }
 
   /// Initialize the index list of this expression
-  void init_vars() {
-    BinaryEngine_::left_.init_vars();
-    BinaryEngine_::right_.init_vars();
+  void init_indices() {
+    BinaryEngine_::left_.init_indices();
+    BinaryEngine_::right_.init_indices();
 
-    if (BinaryEngine_::left_.vars().is_permutation(
-            BinaryEngine_::right_.vars())) {
+    if (BinaryEngine_::left_.indices().is_permutation(
+            BinaryEngine_::right_.indices())) {
       if (left_type::leaves <= right_type::leaves)
-        ExprEngine_::vars_ = BinaryEngine_::left_.vars();
+        ExprEngine_::indices_ = BinaryEngine_::left_.indices();
       else
-        ExprEngine_::vars_ = BinaryEngine_::right_.vars();
+        ExprEngine_::indices_ = BinaryEngine_::right_.indices();
     } else {
       contract_ = true;
-      ContEngine_::init_vars();
+      ContEngine_::init_indices();
     }
   }
 
@@ -257,12 +258,12 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
-  /// \param target_vars The target index list for the result tensor
-  void init_struct(const BipartiteIndexList& target_vars) {
+  /// \param target_indices The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_indices) {
     if (contract_)
-      ContEngine_::init_struct(target_vars);
+      ContEngine_::init_struct(target_indices);
     else
-      BinaryEngine_::init_struct(target_vars);
+      BinaryEngine_::init_struct(target_indices);
   }
 
   /// Initialize result tensor distribution
@@ -348,12 +349,12 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target index list for this expression
-  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_indices) const {
     if (contract_)
-      return ContEngine_::print(os, target_vars);
+      return ContEngine_::print(os, target_indices);
     else
-      return BinaryEngine_::print(os, target_vars);
+      return BinaryEngine_::print(os, target_indices);
   }
 
 };  // class MultEngine
@@ -428,47 +429,47 @@ class ScalMultEngine
   /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
   /// index list may not be set to target, which indicates that the
-  /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target index list for this expression
-  void perm_vars(const BipartiteIndexList& target_vars) {
+  /// result of this expression will be permuted to match \c target_indices.
+  /// \param target_indices The target index list for this expression
+  void perm_indices(const BipartiteIndexList& target_indices) {
     if (contract_)
-      ContEngine_::perm_vars(target_vars);
+      ContEngine_::perm_indices(target_indices);
     else {
-      BinaryEngine_::perm_vars(target_vars);
+      BinaryEngine_::perm_indices(target_indices);
     }
   }
 
   /// Initialize the index list of this expression
 
-  /// \param target_vars The target index list for this expression
-  void init_vars(const BipartiteIndexList& target_vars) {
-    BinaryEngine_::left_.init_vars();
-    BinaryEngine_::right_.init_vars();
+  /// \param target_indices The target index list for this expression
+  void init_indices(const BipartiteIndexList& target_indices) {
+    BinaryEngine_::left_.init_indices();
+    BinaryEngine_::right_.init_indices();
 
-    if (BinaryEngine_::left_.vars().is_permutation(
-            BinaryEngine_::right_.vars())) {
-      BinaryEngine_::perm_vars(target_vars);
+    if (BinaryEngine_::left_.indices().is_permutation(
+            BinaryEngine_::right_.indices())) {
+      BinaryEngine_::perm_indices(target_indices);
     } else {
       contract_ = true;
-      ContEngine_::init_vars();
-      ContEngine_::perm_vars(target_vars);
+      ContEngine_::init_indices();
+      ContEngine_::perm_indices(target_indices);
     }
   }
 
   /// Initialize the index list of this expression
-  void init_vars() {
-    BinaryEngine_::left_.init_vars();
-    BinaryEngine_::right_.init_vars();
+  void init_indices() {
+    BinaryEngine_::left_.init_indices();
+    BinaryEngine_::right_.init_indices();
 
-    if (BinaryEngine_::left_.vars().is_permutation(
-            BinaryEngine_::right_.vars())) {
+    if (BinaryEngine_::left_.indices().is_permutation(
+            BinaryEngine_::right_.indices())) {
       if (left_type::leaves <= right_type::leaves)
-        ExprEngine_::vars_ = BinaryEngine_::left_.vars();
+        ExprEngine_::indices_ = BinaryEngine_::left_.indices();
       else
-        ExprEngine_::vars_ = BinaryEngine_::right_.vars();
+        ExprEngine_::indices_ = BinaryEngine_::right_.indices();
     } else {
       contract_ = true;
-      ContEngine_::init_vars();
+      ContEngine_::init_indices();
     }
   }
 
@@ -476,12 +477,12 @@ class ScalMultEngine
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
-  /// \param target_vars The target index list for the result tensor
-  void init_struct(const BipartiteIndexList& target_vars) {
+  /// \param target_indices The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_indices) {
     if (contract_)
-      ContEngine_::init_struct(target_vars);
+      ContEngine_::init_struct(target_indices);
     else
-      BinaryEngine_::init_struct(target_vars);
+      BinaryEngine_::init_struct(target_indices);
   }
 
   /// Initialize result tensor distribution
@@ -574,12 +575,12 @@ class ScalMultEngine
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target index list for this expression
-  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_indices) const {
     if (contract_)
-      return ContEngine_::print(os, target_vars);
+      return ContEngine_::print(os, target_indices);
     else
-      return BinaryEngine_::print(os, target_vars);
+      return BinaryEngine_::print(os, target_indices);
   }
 
 };  // class ScalMultEngine

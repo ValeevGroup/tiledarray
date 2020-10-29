@@ -428,7 +428,7 @@ class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array, Alias>> {
   /// \return A conjugated block expression object
   ConjBlkTsrExpr<array_type> conj() const {
     return ConjBlkTsrExpr<array_type>(
-        BlkTsrExprBase_::array(), BlkTsrExprBase_::vars(), conj_op(),
+        BlkTsrExprBase_::array(), BlkTsrExprBase_::annotation(), conj_op(),
         BlkTsrExprBase_::lower_bound(), BlkTsrExprBase_::upper_bound());
   }
 
@@ -495,7 +495,7 @@ class BlkTsrExpr<const Array, true>
   /// \return A conjugated block expression object
   ConjBlkTsrExpr<array_type> conj() const {
     return ConjBlkTsrExpr<array_type>(
-        BlkTsrExprBase_::array(), BlkTsrExprBase_::vars(), conj_op(),
+        BlkTsrExprBase_::array(), BlkTsrExprBase_::annotation(), conj_op(),
         BlkTsrExprBase_::lower_bound(), BlkTsrExprBase_::upper_bound());
   }
 
@@ -556,7 +556,7 @@ class ScalBlkTsrExpr : public BlkTsrExprBase<ScalBlkTsrExpr<Array, Scalar>> {
   /// \tparam PairRange Type representing a range of generalized pairs (see
   /// TiledArray::detail::is_gpair_v )
   // \param array The array object
-  // \param vars The array annotation
+  // \param annotation The array annotation
   // \param factor The scaling factor \param
   /// bounds The {lower,upper} bounds of the sub-block
   template <typename PairRange,
@@ -587,7 +587,7 @@ template <typename Array, typename Scalar, bool Alias,
 inline ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>
 operator*(const BlkTsrExpr<Array, Alias>& expr, const Scalar& factor) {
   return ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>(
-      expr.array(), expr.vars(), factor, expr.lower_bound(),
+      expr.array(), expr.annotation(), factor, expr.lower_bound(),
       expr.upper_bound());
 }
 
@@ -605,7 +605,7 @@ template <typename Array, typename Scalar, bool Alias,
 inline ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>
 operator*(const Scalar& factor, const BlkTsrExpr<Array, Alias>& expr) {
   return ScalBlkTsrExpr<typename std::remove_const<Array>::type, Scalar>(
-      expr.array(), expr.vars(), factor, expr.lower_bound(),
+      expr.array(), expr.annotation(), factor, expr.lower_bound(),
       expr.upper_bound());
 }
 
@@ -623,8 +623,8 @@ template <typename Array, typename Scalar1, typename Scalar2,
 inline ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2>> operator*(
     const ScalBlkTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
   return ScalBlkTsrExpr<Array, mult_t<Scalar1, Scalar2>>(
-      expr.array(), expr.vars(), expr.factor() * factor, expr.lower_bound(),
-      expr.upper_bound());
+      expr.array(), expr.annotation(), expr.factor() * factor,
+      expr.lower_bound(), expr.upper_bound());
 }
 
 /// Scaled-block expression factor
@@ -641,8 +641,8 @@ template <typename Array, typename Scalar1, typename Scalar2,
 inline ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1>> operator*(
     const Scalar1& factor, const ScalBlkTsrExpr<Array, Scalar2>& expr) {
   return ScalBlkTsrExpr<Array, mult_t<Scalar2, Scalar1>>(
-      expr.array(), expr.vars(), expr.factor() * factor, expr.lower_bound(),
-      expr.upper_bound());
+      expr.array(), expr.annotation(), expr.factor() * factor,
+      expr.lower_bound(), expr.upper_bound());
 }
 
 /// Negated block expression factor
@@ -657,7 +657,8 @@ operator-(const BlkTsrExpr<Array, true>& expr) {
   typedef
       typename ExprTrait<BlkTsrExpr<Array, true>>::numeric_type numeric_type;
   return ScalBlkTsrExpr<typename std::remove_const<Array>::type, numeric_type>(
-      expr.array(), expr.vars(), -1, expr.lower_bound(), expr.upper_bound());
+      expr.array(), expr.annotation(), -1, expr.lower_bound(),
+      expr.upper_bound());
 }
 
 /// Negated scaled-block expression factor
@@ -669,7 +670,7 @@ operator-(const BlkTsrExpr<Array, true>& expr) {
 template <typename Array, typename Scalar>
 inline ScalBlkTsrExpr<Array, Scalar> operator-(
     const ScalBlkTsrExpr<Array, Scalar>& expr) {
-  return ScalBlkTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+  return ScalBlkTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
                                        -expr.factor(), expr.lower_bound(),
                                        expr.upper_bound());
 }
@@ -684,7 +685,7 @@ template <typename Array, bool Alias>
 inline ConjBlkTsrExpr<typename std::remove_const<Array>::type> conj(
     const BlkTsrExpr<Array, Alias>& expr) {
   return ConjBlkTsrExpr<typename std::remove_const<Array>::type>(
-      expr.array(), expr.vars(), conj_op(), expr.lower_bound(),
+      expr.array(), expr.annotation(), conj_op(), expr.lower_bound(),
       expr.upper_bound());
 }
 
@@ -695,7 +696,7 @@ inline ConjBlkTsrExpr<typename std::remove_const<Array>::type> conj(
 /// \return A tensor expression object
 template <typename Array>
 inline BlkTsrExpr<const Array, true> conj(const ConjBlkTsrExpr<Array>& expr) {
-  return BlkTsrExpr<const Array, true>(expr.array(), expr.vars(),
+  return BlkTsrExpr<const Array, true>(expr.array(), expr.annotation(),
                                        expr.lower_bound(), expr.upper_bound());
 }
 
@@ -709,7 +710,7 @@ template <typename Array, typename Scalar>
 inline ScalConjBlkTsrExpr<Array, Scalar> conj(
     const ScalBlkTsrExpr<Array, Scalar>& expr) {
   return ScalConjBlkTsrExpr<Array, Scalar>(
-      expr.array(), expr.vars(),
+      expr.array(), expr.annotation(),
       conj_op(TiledArray::detail::conj(expr.factor())), expr.lower_bound(),
       expr.upper_bound());
 }
@@ -724,7 +725,7 @@ template <typename Array, typename Scalar>
 inline ScalBlkTsrExpr<Array, Scalar> conj(
     const ScalConjBlkTsrExpr<Array, Scalar>& expr) {
   return ScalBlkTsrExpr<Array, Scalar>(
-      expr.array(), expr.vars(),
+      expr.array(), expr.annotation(),
       TiledArray::detail::conj(expr.factor().factor()), expr.lower_bound(),
       expr.upper_bound());
 }
@@ -741,7 +742,7 @@ template <typename Array, typename Scalar,
               TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline ScalConjBlkTsrExpr<Array, Scalar> operator*(
     const ConjBlkTsrExpr<const Array>& expr, const Scalar& factor) {
-  return ScalConjBlkTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+  return ScalConjBlkTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
                                            conj_op(factor), expr.lower_bound(),
                                            expr.upper_bound());
 }
@@ -758,7 +759,7 @@ template <typename Array, typename Scalar,
               TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
 inline ScalConjBlkTsrExpr<Array, Scalar> operator*(
     const Scalar& factor, const ConjBlkTsrExpr<Array>& expr) {
-  return ScalConjBlkTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+  return ScalConjBlkTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
                                            conj_op(factor), expr.lower_bound(),
                                            expr.upper_bound());
 }
@@ -776,7 +777,7 @@ template <typename Array, typename Scalar1, typename Scalar2,
 inline ScalConjBlkTsrExpr<Array, mult_t<Scalar1, Scalar2>> operator*(
     const ScalConjBlkTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
   return ScalConjBlkTsrExpr<Array, mult_t<Scalar1, Scalar2>>(
-      expr.array(), expr.vars(), conj_op(expr.factor().factor() * factor),
+      expr.array(), expr.annotation(), conj_op(expr.factor().factor() * factor),
       expr.lower_bound(), expr.upper_bound());
 }
 
@@ -793,7 +794,7 @@ template <typename Array, typename Scalar1, typename Scalar2,
 inline ScalConjBlkTsrExpr<Array, mult_t<Scalar2, Scalar1>> operator*(
     const Scalar1& factor, const ScalConjBlkTsrExpr<Array, Scalar2>& expr) {
   return ScalConjBlkTsrExpr<Array, mult_t<Scalar2, Scalar1>>(
-      expr.array(), expr.vars(), conj_op(expr.factor().factor() * factor),
+      expr.array(), expr.annotation(), conj_op(expr.factor().factor() * factor),
       expr.lower_bound(), expr.upper_bound());
 }
 
@@ -808,8 +809,8 @@ inline ScalConjBlkTsrExpr<
 operator-(const ConjBlkTsrExpr<Array>& expr) {
   typedef typename ExprTrait<ConjBlkTsrExpr<Array>>::numeric_type numeric_type;
   return ScalConjBlkTsrExpr<Array, numeric_type>(
-      expr.array(), expr.vars(), conj_op<numeric_type>(-1), expr.lower_bound(),
-      expr.upper_bound());
+      expr.array(), expr.annotation(), conj_op<numeric_type>(-1),
+      expr.lower_bound(), expr.upper_bound());
 }
 
 /// Negated-conjugated-tensor expression factor
@@ -822,7 +823,7 @@ template <typename Array, typename Scalar>
 inline ScalConjBlkTsrExpr<Array, Scalar> operator-(
     const ScalConjBlkTsrExpr<Array, Scalar>& expr) {
   return ScalConjBlkTsrExpr<Array, Scalar>(
-      expr.array(), expr.vars(), conj_op(-expr.factor().factor()),
+      expr.array(), expr.annotation(), conj_op(-expr.factor().factor()),
       expr.lower_bound(), expr.upper_bound());
 }
 

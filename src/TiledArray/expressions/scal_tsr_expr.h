@@ -130,7 +130,7 @@ template <typename Array, typename Scalar,
 inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar> operator*(
     const TsrExpr<Array, true>& expr, const Scalar& factor) {
   return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
-      expr.array(), expr.vars(), factor);
+      expr.array(), expr.annotation(), factor);
 }
 
 /// Scaled-tensor expression factor
@@ -242,7 +242,7 @@ template <typename Array, typename Scalar>
 inline ScalConjTsrExpr<Array, Scalar> conj(
     const ScalTsrExpr<Array, Scalar>& expr) {
   return ScalConjTsrExpr<Array, Scalar>(
-      expr.array(), expr.vars(),
+      expr.array(), expr.annotation(),
       conj_op(TiledArray::detail::conj(expr.factor())));
 }
 

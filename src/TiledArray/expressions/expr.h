@@ -398,11 +398,11 @@ class Expr {
     if (tsr.array().is_initialized()) pmap = tsr.array().pmap();
 
     // Get result index list.
-    BipartiteIndexList target_vars(tsr.annotation());
+    BipartiteIndexList target_indices(tsr.annotation());
 
     // Construct the expression engine
     engine_type engine(derived());
-    engine.init(world, pmap, target_vars);
+    engine.init(world, pmap, target_indices);
 
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -469,11 +469,11 @@ class Expr {
         pmap;
 
     // Get result index list.
-    BipartiteIndexList target_vars(tsr.annotation());
+    BipartiteIndexList target_indices(tsr.annotation());
 
     // Construct the expression engine
     engine_type engine(derived());
-    engine.init(world, pmap, target_vars);
+    engine.init(world, pmap, target_indices);
 
     // Create the distributed evaluator from this expression
     typename engine_type::dist_eval_type dist_eval = engine.make_dist_eval();
@@ -527,13 +527,13 @@ class Expr {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target index list for this expression
-  void print(ExprOStream& os, const BipartiteIndexList& target_vars) const {
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream& os, const BipartiteIndexList& target_indices) const {
     // Construct the expression engine
     engine_type engine(derived());
-    engine.init_vars(target_vars);
-    engine.init_struct(target_vars);
-    engine.print(os, target_vars);
+    engine.init_indices(target_indices);
+    engine.init_struct(target_indices);
+    engine.print(os, target_indices);
   }
 
  private:
@@ -628,7 +628,7 @@ class Expr {
 
     // Evaluate the right-hand expression
     typename D::engine_type right_engine(right_expr.derived());
-    right_engine.init(world, left_engine.pmap(), left_engine.vars());
+    right_engine.init(world, left_engine.pmap(), left_engine.indices());
 
     // Create the distributed evaluator for the right-hand expression
     typename D::engine_type::dist_eval_type right_dist_eval =
