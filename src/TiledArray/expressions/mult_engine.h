@@ -209,12 +209,25 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
 
-    // it's either pure Hadamard (detect by checking that left arg's and
-    // target's vars are the "same") or contraction
-    // TODO add mixed Hadamard+contraction
-    if (BinaryEngine_::left_.vars().is_permutation(target_vars)) {
-      TA_ASSERT(BinaryEngine_::left_.vars().is_permutation(
-          BinaryEngine_::right_.vars()));
+    // TODO support general products that involve fused, contracted, and free
+    // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
+    // contracted, and index j is fused
+    // N.B. Currently only 2 types of products are supported:
+    // - Hadamard product (in which all indices are fused), and,
+    // - pure contraction (>=1 contracted, 0 fused, >=1 free indices)
+    // For the ToT arguments only the Hadamard product is supported
+
+    // Check the *outer* indices to determine whether the arguments are
+    // - contracted, or
+    // - Hadamard-multiplied
+    // The latter is indicated by the equality (modulo permutation) of
+    // the outer left and right arg indices to the target indices.
+    // Only the outer indices matter here since the inner indices only encode
+    // the tile op; the type of the tile op does not need to match the type of
+    // the operation on the outer indices
+    if (outer(BinaryEngine_::left_.vars()).is_permutation(outer(target_vars))) {
+      TA_ASSERT(outer(BinaryEngine_::left_.vars())
+                    .is_permutation(outer(BinaryEngine_::right_.vars())));
       BinaryEngine_::perm_vars(target_vars);
     } else {
       contract_ = true;
