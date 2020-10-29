@@ -560,9 +560,9 @@ struct KernelSelector<true, false, true> {
 template <typename ResultType, typename LHSType, typename RHSType>
 void einsum(TsrExpr<ResultType, true> out, const TsrExpr<LHSType, true>& lhs,
             const TsrExpr<RHSType, true>& rhs) {
-  const BipartiteIndexList ovars(out.vars());
-  const BipartiteIndexList lvars(lhs.vars());
-  const BipartiteIndexList rvars(rhs.vars());
+  const BipartiteIndexList ovars(out.annotation());
+  const BipartiteIndexList lvars(lhs.annotation());
+  const BipartiteIndexList rvars(rhs.annotation());
 
   using out_tile_type = typename ResultType::value_type;
   using lhs_tile_type = typename LHSType::value_type;

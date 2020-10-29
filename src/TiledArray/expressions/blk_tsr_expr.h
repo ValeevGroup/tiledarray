@@ -116,8 +116,8 @@ class BlkTsrExprBase : public Expr<Derived> {
   ///< The array reference type
 
  protected:
-  reference array_;   ///< The array that this expression
-  std::string vars_;  ///< The tensor index list
+  reference array_;         ///< The array that this expression is bound to
+  std::string annotation_;  ///< The array annotation
   container::svector<std::size_t>
       lower_bound_;  ///< Lower bound of the tile block
   container::svector<std::size_t>
@@ -209,18 +209,18 @@ class BlkTsrExprBase : public Expr<Derived> {
   /// \tparam Index1 An integral range type
   /// \tparam Index2 An integral range type
   /// \param array The array object
-  /// \param vars The array annotation variables
+  /// \param annotation The array annotation
   /// \param lower_bound The lower bound of the tile block
   /// \param upper_bound The upper bound of the tile block
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
                 TiledArray::detail::is_integral_range_v<Index2>>>
-  BlkTsrExprBase(reference array, const std::string& vars,
+  BlkTsrExprBase(reference array, const std::string& annotation,
                  const Index1& lower_bound, const Index2& upper_bound)
       : Expr_(),
         array_(array),
-        vars_(vars),
+        annotation_(annotation),
         lower_bound_(std::begin(lower_bound), std::end(lower_bound)),
         upper_bound_(std::begin(upper_bound), std::end(upper_bound)) {
 #ifndef NDEBUG
@@ -231,15 +231,17 @@ class BlkTsrExprBase : public Expr<Derived> {
   /// Block expression constructor
 
   /// \tparam PairRange Type representing a range of generalized pairs (see
-  /// TiledArray::detail::is_gpair_v ) \param array The array object \param vars
-  /// The array annotation variables \param bounds The {lower,upper} bounds of
+  /// TiledArray::detail::is_gpair_v )
+  // \param array The array object
+  // \param annotation The array annotation
+  // \param bounds The {lower,upper} bounds of
   /// the tile block
   template <typename PairRange,
             typename = std::enable_if_t<
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
-  BlkTsrExprBase(reference array, const std::string& vars,
+  BlkTsrExprBase(reference array, const std::string& annotation,
                  const PairRange& bounds)
-      : Expr_(), array_(array), vars_(vars) {
+      : Expr_(), array_(array), annotation_(annotation) {
     const auto rank = array.range().rank();
     lower_bound_.reserve(rank);
     upper_bound_.reserve(rank);
@@ -261,10 +263,10 @@ class BlkTsrExprBase : public Expr<Derived> {
   /// \return a const reference to this array
   reference array() const { return array_; }
 
-  /// Tensor variable string accessor
+  /// Tensor annotation accessor
 
-  /// \return A const reference to the variable string for this tensor
-  const std::string& vars() const { return vars_; }
+  /// \return A const reference to the annotation for this tensor
+  const std::string& annotation() const { return annotation_; }
 
   /// Lower bound accessor
 
@@ -307,39 +309,42 @@ class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array, Alias>> {
   /// \tparam Index1 An integral range type
   /// \tparam Index2 An integral range type
   /// \param array The array object
-  /// \param vars The array annotation variables
+  /// \param annotation The array annotation
   /// \param lower_bound The lower bound of the tile block
   /// \param upper_bound The upper bound of the tile block
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
                 TiledArray::detail::is_integral_range_v<Index2>>>
-  BlkTsrExpr(reference array, const std::string& vars,
+  BlkTsrExpr(reference array, const std::string& annotation,
              const Index1& lower_bound, const Index2& upper_bound)
-      : BlkTsrExprBase_(array, vars, lower_bound, upper_bound) {}
+      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound) {}
 
   /// Block expression constructor
 
   /// \tparam PairRange Type representing a range of generalized pairs (see
-  /// TiledArray::detail::is_gpair_v ) \param array The array object \param vars
-  /// The array annotation variables \param bounds The {lower,upper} bounds of
+  /// TiledArray::detail::is_gpair_v )
+  // \param array The array object
+  // \param annotation The array annotation
+  // \param bounds The {lower,upper} bounds of
   /// the sub-block
   template <typename PairRange,
             typename = std::enable_if_t<
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
-  BlkTsrExpr(reference array, const std::string& vars, const PairRange& bounds)
-      : BlkTsrExprBase_(array, vars, bounds) {}
+  BlkTsrExpr(reference array, const std::string& annotation,
+             const PairRange& bounds)
+      : BlkTsrExprBase_(array, annotation, bounds) {}
 
   /// Block expression constructor
 
   /// \param array The array object
-  /// \param vars The array annotation variables
+  /// \param annotation The array annotation
   /// \param bounds The {lower,upper} bounds of the sub-block
   //  template <typename Index, typename =
   //  std::enable_if_t<std::is_integral_v<Index>>> BlkTsrExpr(reference array,
-  //  const std::string& vars, const
+  //  const std::string& annotation, const
   //    std::initializer_list<std::initializer_list<Index>>& bounds)
-  //        : BlkTsrExprBase_(array, vars, bounds) {}
+  //        : BlkTsrExprBase_(array, annotation, bounds) {}
 
   /// Expression assignment operator
 
@@ -415,7 +420,7 @@ class BlkTsrExpr : public BlkTsrExprBase<BlkTsrExpr<Array, Alias>> {
   /// \return A non-aliased block tensor expression
   BlkTsrExpr<Array, false> no_alias() const {
     return BlkTsrExpr<Array, false>(BlkTsrExprBase_::array_,
-                                    BlkTsrExprBase_::vars_);
+                                    BlkTsrExprBase_::annotation_);
   }
 
   /// Conjugated block tensor expression factory
@@ -459,28 +464,31 @@ class BlkTsrExpr<const Array, true>
   /// \tparam Index1 An integral range type
   /// \tparam Index2 An integral range type
   /// \param array The array object
-  /// \param vars The array annotation variables
+  /// \param annotation The array annotation
   /// \param lower_bound The lower bound of the tile block
   /// \param upper_bound The upper bound of the tile block
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
                 TiledArray::detail::is_integral_range_v<Index2>>>
-  BlkTsrExpr(reference array, const std::string& vars,
+  BlkTsrExpr(reference array, const std::string& annotation,
              const Index1& lower_bound, const Index2& upper_bound)
-      : BlkTsrExprBase_(array, vars, lower_bound, upper_bound) {}
+      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound) {}
 
   /// Block expression constructor
 
   /// \tparam PairRange Type representing a range of generalized pairs (see
-  /// TiledArray::detail::is_gpair_v ) \param array The array object \param vars
-  /// The array annotation variables \param bounds The {lower,upper} bounds of
+  /// TiledArray::detail::is_gpair_v )
+  // \param array The array object
+  // \param annotation The array annotation
+  // \param bounds The {lower,upper} bounds of
   /// the sub-block
   template <typename PairRange,
             typename = std::enable_if_t<
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
-  BlkTsrExpr(reference array, const std::string& vars, const PairRange& bounds)
-      : BlkTsrExprBase_(array, vars, bounds) {}
+  BlkTsrExpr(reference array, const std::string& annotation,
+             const PairRange& bounds)
+      : BlkTsrExprBase_(array, annotation, bounds) {}
 
   /// Conjugated block tensor expression factory
 
@@ -529,7 +537,7 @@ class ScalBlkTsrExpr : public BlkTsrExprBase<ScalBlkTsrExpr<Array, Scalar>> {
   /// \tparam Index1 An integral range type
   /// \tparam Index2 An integral range type
   /// \param array The array object
-  /// \param vars The array annotation variables
+  /// \param annotation The array annotation
   /// \param factor The scaling factor
   /// \param lower_bound The lower bound of the tile block
   /// \param upper_bound The upper bound of the tile block
@@ -537,24 +545,26 @@ class ScalBlkTsrExpr : public BlkTsrExprBase<ScalBlkTsrExpr<Array, Scalar>> {
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
                 TiledArray::detail::is_integral_range_v<Index2>>>
-  ScalBlkTsrExpr(reference array, const std::string& vars,
+  ScalBlkTsrExpr(reference array, const std::string& annotation,
                  const scalar_type factor, const Index1& lower_bound,
                  const Index2& upper_bound)
-      : BlkTsrExprBase_(array, vars, lower_bound, upper_bound),
+      : BlkTsrExprBase_(array, annotation, lower_bound, upper_bound),
         factor_(factor) {}
 
   /// Block expression constructor
 
   /// \tparam PairRange Type representing a range of generalized pairs (see
-  /// TiledArray::detail::is_gpair_v ) \param array The array object \param vars
-  /// The array annotation variables \param factor The scaling factor \param
+  /// TiledArray::detail::is_gpair_v )
+  // \param array The array object
+  // \param vars The array annotation
+  // \param factor The scaling factor \param
   /// bounds The {lower,upper} bounds of the sub-block
   template <typename PairRange,
             typename = std::enable_if_t<
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
-  ScalBlkTsrExpr(reference array, const std::string& vars,
+  ScalBlkTsrExpr(reference array, const std::string& annotation,
                  const scalar_type factor, const PairRange& bounds)
-      : BlkTsrExprBase_(array, vars, bounds), factor_(factor) {}
+      : BlkTsrExprBase_(array, annotation, bounds), factor_(factor) {}
 
   /// Scaling factor accessor
 

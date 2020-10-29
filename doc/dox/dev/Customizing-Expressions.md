@@ -206,8 +206,8 @@ public:
 
 private:
 
-  const array_type& array_; ///< The array that this expression
-  std::string vars_; ///< The tensor variable string
+  const array_type& array_; ///< The array that this expression if bound to
+  std::string annotation_; ///< The array annotation
 
   // Not allowed
   MyLeafExpression_& operator=(MyLeafExpression_&);
@@ -216,16 +216,16 @@ public:
 
   /// Constructors
 
-  MyLeafExpression(const array_type& array, const std::string& vars) :
-    Expr_(), array_(array), vars_(vars) { }
+  MyLeafExpression(const array_type& array, const std::string& annotation) :
+    Expr_(), array_(array), annotation_(annotation) { }
 
   MyLeafExpression(const MyLeafExpression_& other) :
-    array_(other.array_), vars_(other.vars_)
+    array_(other.array_), annotation_(other.annotation_)
   { }
 
   const array_type& array() const { return array_; }
 
-  const std::string& vars() const { return vars_; }
+  const std::string& annotation() const { return annotation_; }
 
 }; // class MyLeafExpression
 ```

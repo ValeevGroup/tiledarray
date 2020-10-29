@@ -398,7 +398,7 @@ class Expr {
     if (tsr.array().is_initialized()) pmap = tsr.array().pmap();
 
     // Get result index list.
-    BipartiteIndexList target_vars(tsr.vars());
+    BipartiteIndexList target_vars(tsr.annotation());
 
     // Construct the expression engine
     engine_type engine(derived());
@@ -469,7 +469,7 @@ class Expr {
         pmap;
 
     // Get result index list.
-    BipartiteIndexList target_vars(tsr.vars());
+    BipartiteIndexList target_vars(tsr.annotation());
 
     // Construct the expression engine
     engine_type engine(derived());

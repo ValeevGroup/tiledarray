@@ -87,7 +87,7 @@ class LeafEngine : public ExprEngine<Derived> {
   template <typename D>
   LeafEngine(const Expr<D>& expr)
       : ExprEngine_(expr), array_(expr.derived().array()) {
-    vars_ = BipartiteIndexList(expr.derived().vars());
+    vars_ = BipartiteIndexList(expr.derived().annotation());
   }
 
   // Import base class variables to this scope
