@@ -147,10 +147,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// \param target_vars The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_vars) {
     if (target_vars != vars_) {
-      auto temp_perm = derived().make_perm(target_vars);
-      const auto inner_size = target_vars.second_size();
-      perm_ =
-          BipartitePermutation(temp_perm.begin(), temp_perm.end(), inner_size);
+      perm_ = derived().make_perm(target_vars);
       trange_ = derived().make_trange(outer(perm_));
       shape_ = derived().make_shape(outer(perm_));
     } else {
