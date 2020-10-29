@@ -43,7 +43,7 @@ struct cuTTFixture {
   int C;
 };
 
-BOOST_FIXTURE_TEST_SUITE(cutt_suite, cuTTFixture);
+BOOST_FIXTURE_TEST_SUITE(cutt_suite, cuTTFixture, TA_UT_SKIP_IF_DISTRIBUTED);
 
 BOOST_AUTO_TEST_CASE(cutt_gpu_mem) {
   int* a_host = (int*)std::malloc(A * A * sizeof(int));

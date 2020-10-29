@@ -69,8 +69,12 @@ inline auto add(const Left& left, const Right& right, const Scalar factor) {
 /// \param right The right-hand argument to be added
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left + right)</tt>
-template <typename Left, typename Right>
-inline auto add(const Left& left, const Right& right, const Permutation& perm) {
+template <
+    typename Left, typename Right, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm> &&
+                                detail::has_member_function_add_anyreturn_v<
+                                    const Left, const Right&, const Perm&>>>
+inline auto add(const Left& left, const Right& right, const Perm& perm) {
   return left.add(right, perm);
 }
 
@@ -85,10 +89,11 @@ inline auto add(const Left& left, const Right& right, const Permutation& perm) {
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
 template <
-    typename Left, typename Right, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+    typename Left, typename Right, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline auto add(const Left& left, const Right& right, const Scalar factor,
-                const Permutation& perm) {
+                const Perm& perm) {
   return left.add(right, factor, perm);
 }
 
@@ -173,8 +178,10 @@ class Add {
     return add(left, right);
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type operator()(const left_type& left, const right_type& right,
-                         const Permutation& perm) const {
+                         const Perm& perm) const {
     using TiledArray::add;
     return add(left, right, perm);
   }
@@ -184,7 +191,8 @@ template <typename Result, typename Left, typename Right>
 class Add<Result, Left, Right,
           typename std::enable_if<!(
               std::is_same<Result, result_of_add_t<Left, Right>>::value &&
-              std::is_same<Result, result_of_add_t<Left, Right, Permutation>>::
+              std::is_same<Result,
+                           result_of_add_t<Left, Right, BipartitePermutation>>::
                   value)>::type> {
  public:
   typedef Result result_type;  ///< Result tile type
@@ -197,10 +205,12 @@ class Add<Result, Left, Right,
     return cast(add(left, right));
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type operator()(const left_type& left, const right_type& right,
-                         const Permutation& perm) const {
+                         const Perm& perm) const {
     using TiledArray::add;
-    TiledArray::Cast<Result, result_of_add_t<Left, Right, Permutation>> cast;
+    TiledArray::Cast<Result, result_of_add_t<Left, Right, Perm>> cast;
     return cast(add(left, right, perm));
   }
 };
@@ -223,9 +233,10 @@ class ScalAdd {
     return add(left, right, factor);
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type operator()(const left_type& left, const right_type& right,
-                         const scalar_type factor,
-                         const Permutation& perm) const {
+                         const scalar_type factor, const Perm& perm) const {
     using TiledArray::add;
     return add(left, right, factor, perm);
   }
@@ -237,7 +248,8 @@ class ScalAdd<
     typename std::enable_if<!(
         std::is_same<Result, result_of_add_t<Left, Right, Scalar>>::value &&
         std::is_same<Result, result_of_add_t<Left, Right, Scalar,
-                                             Permutation>>::value)>::type> {
+                                             BipartitePermutation>>::value)>::
+        type> {
  public:
   static_assert(TiledArray::detail::is_numeric_v<Scalar>,
                 "Cannot scale tiles by a non-scalar type");
@@ -254,12 +266,12 @@ class ScalAdd<
     return cast(add(left, right, factor));
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type operator()(const left_type& left, const right_type& right,
-                         const scalar_type factor,
-                         const Permutation& perm) const {
+                         const scalar_type factor, const Perm& perm) const {
     using TiledArray::add;
-    TiledArray::Cast<Result, result_of_add_t<Left, Right, Scalar, Permutation>>
-        cast;
+    TiledArray::Cast<Result, result_of_add_t<Left, Right, Scalar, Perm>> cast;
     return cast(add(left, right, factor, perm));
   }
 };

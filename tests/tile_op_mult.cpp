@@ -49,7 +49,8 @@ struct MultFixture : public RangeFixture {
 
 };  // MultFixture
 
-BOOST_FIXTURE_TEST_SUITE(tile_op_mult_suite, MultFixture)
+BOOST_FIXTURE_TEST_SUITE(tile_op_mult_suite, MultFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions

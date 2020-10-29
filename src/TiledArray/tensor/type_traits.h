@@ -47,6 +47,13 @@ class Tensor;
 template <typename>
 class Tile;
 
+class Permutation;
+class BipartitePermutation;
+
+namespace symmetry {
+class Permutation;
+}
+
 namespace detail {
 
 // Forward declarations
@@ -144,6 +151,15 @@ struct is_tensor_of_tensor<T1, T2, Ts...> {
 /// is_tensor_of_tensor<Ts...>::value
 template <typename... Ts>
 constexpr const bool is_tensor_of_tensor_v = is_tensor_of_tensor<Ts...>::value;
+
+template <typename T, typename Enabler = void>
+struct is_ta_tensor : public std::false_type {};
+
+template <typename T, typename A>
+struct is_ta_tensor<Tensor<T, A>> : public std::true_type {};
+
+template <typename T>
+constexpr const bool is_ta_tensor_v = is_ta_tensor<T>::value;
 
 // Test if the tensor is contiguous
 
@@ -248,6 +264,50 @@ template <typename T, typename Op>
 struct is_cuda_tile<LazyArrayTile<T, Op>>
     : public is_cuda_tile<typename LazyArrayTile<T, Op>::eval_type> {};
 #endif
+
+template <typename Tensor, typename Enabler = void>
+struct default_permutation;
+
+template <typename Tensor>
+struct default_permutation<Tensor,
+                           std::enable_if_t<!is_tensor_of_tensor_v<Tensor>>> {
+  using type = TiledArray::Permutation;
+};
+
+template <typename Tensor>
+struct default_permutation<Tensor,
+                           std::enable_if_t<is_tensor_of_tensor_v<Tensor>>> {
+  using type = TiledArray::BipartitePermutation;
+};
+
+template <typename Tensor>
+using default_permutation_t = typename default_permutation<Tensor>::type;
+
+template <typename T, typename Enabler = void>
+struct is_permutation : public std::false_type {};
+
+template <>
+struct is_permutation<TiledArray::Permutation> : public std::true_type {};
+
+template <>
+struct is_permutation<TiledArray::BipartitePermutation>
+    : public std::true_type {};
+
+template <>
+struct is_permutation<TiledArray::symmetry::Permutation>
+    : public std::true_type {};
+
+template <typename T>
+static constexpr const auto is_permutation_v = is_permutation<T>::value;
+
+template <typename T>
+static constexpr const auto is_bipartite_permutation_v =
+    std::is_same_v<T, TiledArray::BipartitePermutation>;
+
+template <typename T>
+static constexpr const auto is_bipartite_permutable_v =
+    is_free_function_permute_anyreturn_v<
+        const T&, const TiledArray::BipartitePermutation&>;
 
 }  // namespace detail
 

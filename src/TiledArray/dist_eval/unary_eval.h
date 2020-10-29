@@ -35,7 +35,7 @@ namespace detail {
 template <typename Arg, typename Op, typename Policy>
 class UnaryEvalImpl
     : public DistEvalImpl<typename Op::result_type, Policy>,
-      public std::enable_shared_from_this<UnaryEvalImpl<Arg, Op, Policy> > {
+      public std::enable_shared_from_this<UnaryEvalImpl<Arg, Op, Policy>> {
  public:
   typedef UnaryEvalImpl<Arg, Op, Policy> UnaryEvalImpl_;  ///< This object type
   typedef DistEvalImpl<typename Op::result_type, Policy>
@@ -64,11 +64,15 @@ class UnaryEvalImpl
   /// \param pmap The tile-process map
   /// \param perm The permutation that is applied to tile indices
   /// \param op The tile transform operation
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   UnaryEvalImpl(const arg_type& arg, World& world, const trange_type& trange,
                 const shape_type& shape,
-                const std::shared_ptr<pmap_interface>& pmap,
-                const Permutation& perm, const op_type& op)
-      : DistEvalImpl_(world, trange, shape, pmap, perm), arg_(arg), op_(op) {}
+                const std::shared_ptr<pmap_interface>& pmap, const Perm& perm,
+                const op_type& op)
+      : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
+        arg_(arg),
+        op_(op) {}
 
   /// Virtual destructor
   virtual ~UnaryEvalImpl() {}

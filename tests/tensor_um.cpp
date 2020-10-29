@@ -87,7 +87,8 @@ struct TensorUMFixture {
 
 const TensorUMFixture::range_type TensorUMFixture::r = make_range(81);
 
-BOOST_FIXTURE_TEST_SUITE(tensor_um_suite, TensorUMFixture)
+BOOST_FIXTURE_TEST_SUITE(tensor_um_suite, TensorUMFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   // check constructor

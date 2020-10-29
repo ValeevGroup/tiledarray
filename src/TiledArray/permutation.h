@@ -25,6 +25,7 @@
 #include <numeric>
 
 #include <TiledArray/error.h>
+#include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/util/vector.h>
 #include <TiledArray/utility.h>
@@ -47,6 +48,9 @@ template <typename T>
 inline std::vector<T> operator*(const Permutation&,
                                 const T* MADNESS_RESTRICT const);
 
+class BipartitePermutation;
+bool operator==(const BipartitePermutation&, const BipartitePermutation&);
+
 namespace detail {
 
 /// Create a permuted copy of an array
@@ -57,7 +61,8 @@ namespace detail {
 /// \param[in] perm The permutation
 /// \param[in] arg The input array to be permuted
 /// \param[out] result The output array that will hold the permuted array
-template <typename Perm, typename Arg, typename Result>
+template <typename Perm, typename Arg, typename Result,
+          typename = std::enable_if_t<is_permutation_v<Perm>>>
 inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
   using std::size;
   TA_ASSERT(size(result) == size(arg));
@@ -131,12 +136,6 @@ class Permutation {
   typedef vector<index_type>::const_iterator const_iterator;
 
  private:
-  /// One-line representation of permutation
-  vector<index_type> p_;
-
-  /// The rank of the tensor's elements
-  index_type n_inner_ = 0;
-
   /// Validate input permutation
   /// \return \c false if each element of [first, last) is non-negative, unique
   /// and less than the size of the domain.
@@ -157,6 +156,10 @@ class Permutation {
   // Used to select the correct constructor based on input template types
   struct Enabler {};
 
+ protected:
+  /// One-line representation of permutation
+  vector<index_type> p_;
+
  public:
   Permutation() = default;  // constructs an invalid Permutation
   Permutation(const Permutation&) = default;
@@ -175,8 +178,7 @@ class Permutation {
   /// duplicate elements.
   template <typename InIter, typename std::enable_if<detail::is_input_iterator<
                                  InIter>::value>::type* = nullptr>
-  Permutation(InIter first, InIter last, index_type n_inner = 0)
-      : p_(first, last), n_inner_(n_inner) {
+  Permutation(InIter first, InIter last) : p_(first, last) {
     TA_ASSERT(valid_permutation(first, last));
   }
 
@@ -186,15 +188,14 @@ class Permutation {
   /// \param a The permutation array to be moved
   template <typename Index,
             typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
-  explicit Permutation(const Index& a, index_type n_inner = 0)
-      : Permutation(std::cbegin(a), std::cend(a), n_inner) {}
+  explicit Permutation(const Index& a)
+      : Permutation(std::cbegin(a), std::cend(a)) {}
 
   /// std::vector move constructor
 
   /// Move the content of the vector into this permutation
   /// \param a The permutation array to be moved
-  explicit Permutation(vector<index_type>&& a, index_type n_inner = 0)
-      : p_(std::move(a)), n_inner_(n_inner) {
+  explicit Permutation(vector<index_type>&& a) : p_(std::move(a)) {
     TA_ASSERT(valid_permutation(p_.begin(), p_.end()));
   }
 
@@ -210,11 +211,14 @@ class Permutation {
   /// Domain size accessor
 
   /// \return The domain size
-  index_type dim() const { return p_.size(); }
+  index_type size() const { return p_.size(); }
 
-  index_type inner_dim() const { return n_inner_; }
+  /// Domain size accessor
 
-  index_type outer_dim() const { return dim() - inner_dim(); }
+  /// \return The domain size
+  [[deprecated("use Permutation::size()")]] index_type dim() const {
+    return p_.size();
+  }
 
   /// Begin element iterator factory function
 
@@ -235,17 +239,6 @@ class Permutation {
 
   /// \return An iterator that points to the end of the element range
   const_iterator cend() const { return p_.cend(); }
-
-  Permutation outer_permutation() const {
-    return Permutation{p_.begin(), p_.begin() + outer_dim()};
-  }
-
-  Permutation inner_permutation() const {
-    const auto n_outer = outer_dim();
-    vector<index_type> temp(inner_dim());
-    for (auto i = n_outer; i < dim(); ++i) temp[i - n_outer] = p_[i] - n_outer;
-    return Permutation(temp.begin(), temp.end());
-  }
 
   /// Element accessor
 
@@ -382,7 +375,7 @@ class Permutation {
   /// Bool conversion
 
   /// \return \c true if the permutation is not empty, otherwise \c false.
-  operator bool() const { return !p_.empty(); }
+  explicit operator bool() const { return !p_.empty(); }
 
   /// Not operator
 
@@ -413,7 +406,7 @@ class Permutation {
 /// \return \c true if all elements of \c p1 and \c p2 are equal and in the
 /// same order, otherwise \c false.
 inline bool operator==(const Permutation& p1, const Permutation& p2) {
-  return (p1.dim() == p2.dim()) &&
+  return (p1.size() == p2.size()) &&
          std::equal(p1.data().begin(), p1.data().end(), p2.data().begin());
 }
 
@@ -444,7 +437,7 @@ inline bool operator<(const Permutation& p1, const Permutation& p2) {
 /// \param[in] p The permutation to be added to the output stream
 /// \return The output stream
 inline std::ostream& operator<<(std::ostream& output, const Permutation& p) {
-  std::size_t n = p.dim();
+  std::size_t n = p.size();
   output << "{";
   for (unsigned int dim = 0; dim < n - 1; ++dim)
     output << dim << "->" << p.data()[dim] << ", ";
@@ -498,7 +491,7 @@ inline Permutation operator^(const Permutation& perm, int n) {
 template <typename T, std::size_t N>
 inline std::array<T, N> operator*(const Permutation& perm,
                                   const std::array<T, N>& a) {
-  TA_ASSERT(perm.dim() == a.size());
+  TA_ASSERT(perm.size() == a.size());
   std::array<T, N> result;
   detail::permute_array(perm, a, result);
   return result;
@@ -516,7 +509,7 @@ inline std::array<T, N> operator*(const Permutation& perm,
 template <typename T, std::size_t N>
 inline std::array<T, N>& operator*=(std::array<T, N>& a,
                                     const Permutation& perm) {
-  TA_ASSERT(perm.dim() == a.size());
+  TA_ASSERT(perm.size() == a.size());
   const std::array<T, N> temp = a;
   detail::permute_array(perm, temp, a);
   return a;
@@ -534,8 +527,8 @@ inline std::array<T, N>& operator*=(std::array<T, N>& a,
 template <typename T, typename A>
 inline std::vector<T> operator*(const Permutation& perm,
                                 const std::vector<T, A>& v) {
-  TA_ASSERT(perm.dim() == v.size());
-  std::vector<T> result(perm.dim());
+  TA_ASSERT(perm.size() == v.size());
+  std::vector<T> result(perm.size());
   detail::permute_array(perm, v, result);
   return result;
 }
@@ -569,8 +562,8 @@ inline std::vector<T, A>& operator*=(std::vector<T, A>& v,
 template <typename T, std::size_t N>
 inline boost::container::small_vector<T, N> operator*(
     const Permutation& perm, const boost::container::small_vector<T, N>& v) {
-  TA_ASSERT(perm.dim() == v.size());
-  boost::container::small_vector<T, N> result(perm.dim());
+  TA_ASSERT(perm.size() == v.size());
+  boost::container::small_vector<T, N> result(perm.size());
   detail::permute_array(perm, v, result);
   return result;
 }
@@ -601,7 +594,7 @@ inline boost::container::small_vector<T, N>& operator*=(
 template <typename T>
 inline std::vector<T> operator*(const Permutation& perm,
                                 const T* MADNESS_RESTRICT const ptr) {
-  const unsigned int n = perm.dim();
+  const unsigned int n = perm.size();
   std::vector<T> result(n);
   for (unsigned int i = 0u; i < n; ++i) {
     const typename Permutation::index_type perm_i = perm[i];
@@ -610,6 +603,228 @@ inline std::vector<T> operator*(const Permutation& perm,
   }
   return result;
 }
+
+///////////////////////////////////
+
+/// Permutation of a bipartite set
+class BipartitePermutation {
+ public:
+  using index_type = Permutation::index_type;
+  template <typename T>
+  using vector = Permutation::vector<T>;
+
+  BipartitePermutation() = default;
+  BipartitePermutation(const BipartitePermutation&) = default;
+  BipartitePermutation(BipartitePermutation&&) = default;
+  ~BipartitePermutation() = default;
+  BipartitePermutation& operator=(const BipartitePermutation&) = default;
+  BipartitePermutation& operator=(BipartitePermutation&& other) = default;
+
+  /// Bool conversion
+
+  /// \return \c true if the permutation is not empty, otherwise \c false.
+  explicit operator bool() const { return static_cast<bool>(base_); }
+
+  /// Domain size accessor
+
+  /// \return The domain size
+  auto size() const { return base_.size(); }
+
+  /// Domain size accessor
+
+  /// \return The domain size
+  [[deprecated("use BipartitePermutation::size()")]] auto dim() const {
+    return base_.size();
+  }
+
+  /// Begin element iterator factory function
+
+  /// \return An iterator that points to the beginning of the element range
+  auto begin() const { return base_.begin(); }
+
+  /// Begin element iterator factory function
+
+  /// \return An iterator that points to the beginning of the element range
+  auto cbegin() const { return base_.cbegin(); }
+
+  /// End element iterator factory function
+
+  /// \return An iterator that points to the end of the element range
+  auto end() const { return base_.end(); }
+
+  /// End element iterator factory function
+
+  /// \return An iterator that points to the end of the element range
+  auto cend() const { return base_.cend(); }
+
+  /// conversion to a plain Permutation is possible if the second partition is
+  /// empty
+  operator Permutation&() & {
+    TA_ASSERT(second_size_ == 0);
+    return base_;
+  }
+  /// conversion to a plain Permutation is possible if the second partition is
+  /// empty
+  operator Permutation&&() && {
+    TA_ASSERT(second_size_ == 0);
+    return std::move(base_);
+  }
+  /// conversion to a plain Permutation is possible if the second partition is
+  /// empty
+  operator const Permutation&() const& {
+    TA_ASSERT(second_size_ == 0);
+    return base_;
+  }
+
+  BipartitePermutation(const Permutation& p,
+                       index_type second_partition_size = 0)
+      : base_(p), second_size_(second_partition_size) {
+    init();
+  }
+
+  // clang-format off
+  /// Construct permutation from a range [first,last)
+
+  /// \tparam InIter An input iterator type
+  /// \param first The beginning of the iterator range
+  /// \param last The end of the iterator range
+  /// \param second_partition_size the size of the second partition; the size of the first is then \c std::distance(first,last)-second_partition_size
+  /// \throw TiledArray::Exception If the permutation contains any element
+  /// that is greater than the size of the permutation or if there are any
+  /// duplicate elements.
+  // clang-format on
+  template <typename InIter, typename std::enable_if<detail::is_input_iterator<
+                                 InIter>::value>::type* = nullptr>
+  BipartitePermutation(InIter first, InIter last,
+                       index_type second_partition_size = 0)
+      : base_(first, last), second_size_(second_partition_size) {
+    init();
+  }
+
+  // clang-format off
+  /// Array constructor
+
+  /// Construct permutation from an Array
+  /// \param a The permutation array to be moved
+  /// \param second_partition_size the size of the second partition; the size of the first is then \c std::distance(first,last)-second_partition_size
+  // clang-format on
+  template <typename Index,
+            typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
+  explicit BipartitePermutation(const Index& a,
+                                index_type second_partition_size = 0)
+      : BipartitePermutation(std::cbegin(a), std::cend(a),
+                             second_partition_size) {}
+
+  // clang-format off
+  /// std::vector move constructor
+
+  /// Move the content of the vector into this permutation
+  /// \param a The permutation array to be moved
+  /// \param second_partition_size the size of the second partition; the size of the first is then \c std::distance(first,last)-second_partition_size
+  // clang-format on
+  explicit BipartitePermutation(vector<index_type>&& a,
+                                index_type second_partition_size = 0)
+      : base_(std::move(a)), second_size_(second_partition_size) {
+    init();
+  }
+
+  /// \return reference to the first partition
+  const Permutation& first() const { return first_; }
+  /// \return reference to the second partition
+  const Permutation& second() const { return second_; }
+
+  /// \return the size of the first partition
+  index_type first_size() const { return this->size() - second_size_; }
+
+  /// \return the size of the second partition
+  index_type second_size() const { return second_size_; }
+
+  /// Serialize permutation
+
+  /// MADNESS compatible serialization function
+  /// \tparam Archive The serialization archive type
+  /// \param[in,out] ar The serialization archive
+  template <typename Archive>
+  void serialize(Archive& ar) {
+    ar& base_& second_size_;
+    if constexpr (madness::archive::is_input_archive<Archive>::value) {
+      first_ = {};
+      second_ = {};
+    }
+  }
+
+ private:
+  /// the "base" permutation object
+  Permutation base_;
+  /// The size of the second partition
+  index_type second_size_ = 0;
+
+  Permutation first_;
+  Permutation second_;
+
+  // initializes first_ and second_
+  void init() {
+    first_ = Permutation{this->begin(), this->begin() + first_size()};
+    const auto n_first = first_size();
+    vector<index_type> temp(second_size());
+    for (auto i = n_first; i < size(); ++i)
+      temp[i - n_first] = base_[i] - n_first;
+    second_ = Permutation(temp.begin(), temp.end());
+  }
+
+  friend bool operator==(const BipartitePermutation& p1,
+                         const BipartitePermutation& p2);
+};
+
+/// Permutation equality operator
+
+/// \param p1 The left-hand permutation to be compared
+/// \param p2 The right-hand permutation to be compared
+/// \return \c true if all elements of \c p1 and \c p2 are equal and the
+/// partition sizes match, otherwise \c false.
+inline bool operator==(const BipartitePermutation& p1,
+                       const BipartitePermutation& p2) {
+  return (p1.second_size() == p2.second_size()) && p1.base_ == p2.base_;
+}
+
+/// Permutation inequality operator
+
+/// \param p1 The left-hand permutation to be compared
+/// \param p2 The right-hand permutation to be compared
+/// \return \c false if all elements of \c p1 and \c p2 are equal and the
+/// partition sizes match, otherwise \c true.
+inline bool operator!=(const BipartitePermutation& p1,
+                       const BipartitePermutation& p2) {
+  return !(p1 == p2);
+}
+
+/////////////// adaptors for the inner-outer language /////////////////////
+
+inline auto inner(const Permutation& p) {
+  abort();
+  return Permutation{};
+}
+
+// N.B. can't return ref here due to possible dangling ref when p is bound to
+// temporary
+inline auto outer(const Permutation& p) { return p; }
+
+inline auto inner_size(const Permutation& p) {
+  abort();
+  return 0;
+}
+
+inline auto outer_size(const Permutation& p) { return p.size(); }
+
+inline auto inner(const BipartitePermutation& p) { return p.second(); }
+
+inline auto outer(const BipartitePermutation& p) { return p.first(); }
+
+inline auto inner_size(const BipartitePermutation& p) {
+  return p.second_size();
+}
+
+inline auto outer_size(const BipartitePermutation& p) { return p.first_size(); }
 
 }  // namespace TiledArray
 

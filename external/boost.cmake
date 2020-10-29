@@ -6,6 +6,7 @@ if (BOOST_ROOT OR BOOST_INCLUDEDIR)
 endif()
   
 # Check for Boost
+# - require version 1.68 where Boost.Test preconditions work correctly (see https://svn.boost.org/trac10/ticket/12095)
 find_package(Boost ${TA_TRACKED_BOOST_VERSION})
 
 if (Boost_FOUND)

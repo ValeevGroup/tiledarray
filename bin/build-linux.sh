@@ -15,6 +15,7 @@ export TA_PYTHON=ON
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-scalapack-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
+${TRAVIS_BUILD_DIR}/bin/build-boost-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
 
 # Exit on error
@@ -22,9 +23,9 @@ set -ev
 
 # download latest Doxygen
 if [ "$DEPLOY" = "1" ]; then
-  DOXYGEN_VERSION=1.8.17
+  DOXYGEN_VERSION=1.8.20
   if [ ! -d ${INSTALL_PREFIX}/doxygen-${DOXYGEN_VERSION} ]; then
-    cd ${BUILD_PREFIX} && wget http://doxygen.nl/files/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
+    cd ${BUILD_PREFIX} && wget https://downloads.sourceforge.net/project/doxygen/rel-${DOXYGEN_VERSION}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
     cd ${INSTALL_PREFIX} && tar xzf ${BUILD_PREFIX}/doxygen-${DOXYGEN_VERSION}.linux.bin.tar.gz
   fi
   export PATH=${INSTALL_PREFIX}/doxygen-${DOXYGEN_VERSION}/bin:$PATH
@@ -92,7 +93,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS} ${CODECOVCXXFLAGS}" \
-    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3" \
+    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/madness;${INSTALL_PREFIX}/eigen3;${INSTALL_PREFIX}/boost" \
     -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}" \
     -DTA_PYTHON="${TA_PYTHON}" \
     -DTA_BUILD_UNITTEST=ON \
@@ -123,7 +124,7 @@ else
     -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
-    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3" \
+    -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3;${INSTALL_PREFIX}/boost" \
     -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}" \
     -DTA_PYTHON="${TA_PYTHON}" \
     -DTA_BUILD_UNITTEST=ON \

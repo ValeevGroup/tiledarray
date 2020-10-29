@@ -55,11 +55,13 @@ class ContractReduceBase {
 
  private:
   struct Impl {
+    template <typename Perm, typename = std::enable_if_t<
+                                 TiledArray::detail::is_permutation_v<Perm>>>
     Impl(const madness::cblas::CBLAS_TRANSPOSE left_op,
          const madness::cblas::CBLAS_TRANSPOSE right_op,
          const scalar_type alpha, const unsigned int result_rank,
          const unsigned int left_rank, const unsigned int right_rank,
-         const Permutation& perm = Permutation())
+         const Perm& perm = BipartitePermutation())
         : gemm_helper_(left_op, right_op, result_rank, left_rank, right_rank),
           alpha_(alpha),
           perm_(perm) {}
@@ -67,8 +69,8 @@ class ContractReduceBase {
     math::GemmHelper gemm_helper_;  ///< Gemm helper object
     scalar_type alpha_;  ///< Scaling factor applied to the contraction of
                          ///< the left- and right-hand arguments
-    Permutation perm_;   ///< Permutation that is applied to the final result
-                         ///< tensor
+    BipartitePermutation perm_;  ///< Permutation that is applied to the final
+                                 ///< result tensor
   };
 
   std::shared_ptr<Impl> pimpl_;
@@ -93,12 +95,14 @@ class ContractReduceBase {
   /// \param right_rank The rank of the right-hand tensor
   /// \param perm The permutation to be applied to the result tensor
   /// (default = no permute)
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   ContractReduceBase(const madness::cblas::CBLAS_TRANSPOSE left_op,
                      const madness::cblas::CBLAS_TRANSPOSE right_op,
                      const scalar_type alpha, const unsigned int result_rank,
                      const unsigned int left_rank,
                      const unsigned int right_rank,
-                     const Permutation& perm = Permutation())
+                     const Perm& perm = BipartitePermutation())
       : pimpl_(std::make_shared<Impl>(left_op, right_op, alpha, result_rank,
                                       left_rank, right_rank, perm)) {}
 
@@ -113,7 +117,7 @@ class ContractReduceBase {
   /// Permutation accessor
 
   /// \return A const reference to the permutation for this operation
-  const Permutation& perm() const {
+  const BipartitePermutation& perm() const {
     TA_ASSERT(pimpl_);
     return pimpl_->perm_;
   }
@@ -202,11 +206,14 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// \param right_rank The rank of the right-hand tensor
   /// \param perm The permutation to be applied to the result tensor
   /// (default = no permute)
+  template <
+      typename Perm = BipartitePermutation,
+      typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
   ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
                  const madness::cblas::CBLAS_TRANSPOSE right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Permutation& perm = Permutation())
+                 const Perm& perm = Perm{})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
                             right_rank, perm) {}
 
@@ -266,15 +273,15 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 /// \tparam Right The right-hand tile type
 template <typename Result, typename Left, typename Right>
 class ContractReduce<Result, Left, Right,
-                     TiledArray::detail::ComplexConjugate<void> >
+                     TiledArray::detail::ComplexConjugate<void>>
     : public ContractReduceBase<Result, Left, Right,
-                                TiledArray::detail::ComplexConjugate<void> > {
+                                TiledArray::detail::ComplexConjugate<void>> {
  public:
   typedef ContractReduce<Result, Left, Right,
-                         TiledArray::detail::ComplexConjugate<void> >
+                         TiledArray::detail::ComplexConjugate<void>>
       ContractReduce_;  ///< This class type
   typedef ContractReduceBase<Result, Left, Right,
-                             TiledArray::detail::ComplexConjugate<void> >
+                             TiledArray::detail::ComplexConjugate<void>>
       ContractReduceBase_;  ///< This class type
   typedef typename ContractReduceBase_::first_argument_type
       first_argument_type;  ///< The left tile type
@@ -304,11 +311,14 @@ class ContractReduce<Result, Left, Right,
   /// \param right_rank The rank of the right-hand tensor
   /// \param perm The permutation to be applied to the result tensor
   /// (default = no permute)
+  template <
+      typename Perm = BipartitePermutation,
+      typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
   ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
                  const madness::cblas::CBLAS_TRANSPOSE right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Permutation& perm = Permutation())
+                 const Perm& perm = Perm{})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
                             right_rank, perm) {}
 
@@ -371,15 +381,15 @@ class ContractReduce<Result, Left, Right,
 /// \tparam Scalar The scaling factor type
 template <typename Result, typename Left, typename Right, typename Scalar>
 class ContractReduce<Result, Left, Right,
-                     TiledArray::detail::ComplexConjugate<Scalar> >
+                     TiledArray::detail::ComplexConjugate<Scalar>>
     : public ContractReduceBase<Result, Left, Right,
-                                TiledArray::detail::ComplexConjugate<Scalar> > {
+                                TiledArray::detail::ComplexConjugate<Scalar>> {
  public:
   typedef ContractReduce<Result, Left, Right,
-                         TiledArray::detail::ComplexConjugate<Scalar> >
+                         TiledArray::detail::ComplexConjugate<Scalar>>
       ContractReduce_;  ///< This class type
   typedef ContractReduceBase<Result, Left, Right,
-                             TiledArray::detail::ComplexConjugate<Scalar> >
+                             TiledArray::detail::ComplexConjugate<Scalar>>
       ContractReduceBase_;  ///< This class type
   typedef typename ContractReduceBase_::first_argument_type
       first_argument_type;  ///< The left tile type
@@ -408,11 +418,14 @@ class ContractReduce<Result, Left, Right,
   /// \param right_rank The rank of the right-hand tensor
   /// \param perm The permutation to be applied to the result tensor
   /// (default = no permute)
+  template <
+      typename Perm = BipartitePermutation,
+      typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
   ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
                  const madness::cblas::CBLAS_TRANSPOSE right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Permutation& perm = Permutation())
+                 const Perm& perm = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
                             right_rank, perm) {}
 

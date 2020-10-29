@@ -103,8 +103,8 @@ class UnaryWrapper {
   using eval_t = typename eval_trait<std::decay_t<T>>::type;
 
  private:
-  Op op_;             ///< Tile operation
-  Permutation perm_;  ///< Permutation applied to the result
+  Op op_;                      ///< Tile operation
+  BipartitePermutation perm_;  ///< Permutation applied to the result
 
  public:
   // Compiler generated functions
@@ -114,14 +114,15 @@ class UnaryWrapper {
   UnaryWrapper_& operator=(const UnaryWrapper_&) = default;
   UnaryWrapper_& operator=(UnaryWrapper_&&) = default;
 
-  UnaryWrapper(const Op& op, const Permutation& perm) : op_(op), perm_(perm) {}
+  UnaryWrapper(const Op& op, const BipartitePermutation& perm)
+      : op_(op), perm_(perm) {}
 
   UnaryWrapper(const Op& op) : op_(op), perm_() {}
 
   /// Permutation accessor
 
   /// \return A reference to the permutation applied to the result tile
-  const Permutation& permutation() const { return perm_; }
+  const BipartitePermutation& permutation() const { return perm_; }
 
   /// Apply operator to `arg` and possibly permute the result
 

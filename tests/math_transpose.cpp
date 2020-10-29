@@ -34,7 +34,8 @@ struct TransposeFixture {
 
 };  // TransposeFixture
 
-BOOST_FIXTURE_TEST_SUITE(transpose_suite, TransposeFixture)
+BOOST_FIXTURE_TEST_SUITE(transpose_suite, TransposeFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(copy) {
   const std::size_t m = 20;

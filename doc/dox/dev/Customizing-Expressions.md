@@ -32,7 +32,7 @@ DSL expressions are evaluated in a multi-stage process, each step of which can b
 
 1. __construct an expression object__: expression objects are the nodes of the [abstract syntax tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree) describing a composite expression 
 2. __construct expression engine__: expression engines compute the metadata needed to evaluate the expression, such as the following properties of the result:
-  1. variable list
+  1. index list
   2. structure
     1. `Permutation`
     2. `TiledRange`
@@ -50,7 +50,7 @@ Expression objects capture the minimum amount of information required to define 
 
 There are three basic types of expression objects:
 
-1. leaf -- no arguments (e.g. an `Array` + variable list)
+1. leaf -- no arguments (e.g. an `Array` + index list)
 2. unary -- one argument (e.g. negation)
 3. binary -- two arguments (e.g. addition)
 
@@ -328,7 +328,7 @@ input expression to the engine.
 #### Step 2: Initialization
 
 The overall engine's `init` member is called and provided: the parallel runtime,
-the process map, and a `VariableList` instance containing the final tensor
+the process map, and a `IndexList` instance containing the final tensor
 indices (*i.e.*, the indices of the tensor being assigned to). The `init`
 member function ultimately calls:
 
@@ -341,7 +341,7 @@ in that order.
 
 ##### Step 2a: Variable Initialization
 
-Variable initialization starts in `MultEngine::init_vars(const VariableList&)`.
+Variable initialization starts in `MultEngine::init_vars(const IndexList&)`.
 This function starts by calling the `init_vars()` members of the engines for the
 expressions on the left and right sides of the `*` operator (for leaves of the
 AST, like the present case, this is a noop). After giving the expressions on the
@@ -350,7 +350,7 @@ and right side are used to determine what sort of multiplication this is (a
 contraction or a Hadamard-product) and the appropriate base class's `perm_vars`
 is then called.
 
-The purpose of the `init_vars()`/`init_vars(const VariableList&)` calls are to
+The purpose of the `init_vars()`/`init_vars(const IndexList&)` calls are to
 compute the indices of the tensor which results from a particular branch of the
 AST. The difference between the two calls is whether or not the final indices
 are being provided as a hint to subexpressions (the form accepting one argument
@@ -468,7 +468,11 @@ public:
   op_type make_tile_op() const { return op_type(factor_); }
 
   // Permuting tile operation factory function
-  op_type make_tile_op(const Permutation& perm) const { return op_type(perm, factor_); }
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
+    return op_type(perm, factor_);
+  }
 
   // Expression identification tag used for printing
   std::string make_tag() const {

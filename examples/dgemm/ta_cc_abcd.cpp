@@ -253,7 +253,7 @@ TA::detail::DistEval<typename Op::result_type, Policy> make_contract_eval(
     const TA::Permutation& perm, const Op& op) {
   TA_ASSERT(left.range().rank() == op.left_rank());
   TA_ASSERT(right.range().rank() == op.right_rank());
-  TA_ASSERT((perm.dim() == op.result_rank()) || !perm);
+  TA_ASSERT((perm.size() == op.result_rank()) || !perm);
 
   // Define the impl type
   typedef TA::detail::Summa<TA::detail::DistEval<LeftTile, Policy>,

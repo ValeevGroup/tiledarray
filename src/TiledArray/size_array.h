@@ -23,6 +23,7 @@
 #include <TiledArray/math/outer.h>
 #include <TiledArray/math/partial_reduce.h>
 #include <TiledArray/permutation.h>
+#include <boost/container/small_vector.hpp>
 #include <cstddef>
 
 namespace TiledArray {
@@ -100,6 +101,11 @@ class SizeArray {
     math::copy_vector(last_ - first_, first_, temp.begin());
 
     return temp;
+  }
+
+  template <typename U, std::size_t Size>
+  operator boost::container::small_vector<U, Size>() const {
+    return boost::container::small_vector<U, Size>(first_, last_);
   }
 
   // iterator support

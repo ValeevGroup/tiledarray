@@ -77,7 +77,7 @@ class ScalTsrExpr : public Expr<ScalTsrExpr<Array, Scalar> > {
 
  private:
   const array_type& array_;  ///< The array that this expression
-  std::string vars_;         ///< The tensor variable list
+  std::string vars_;         ///< The tensor index list
   scalar_type factor_;       ///< The scaling factor
 
   // Not allowed

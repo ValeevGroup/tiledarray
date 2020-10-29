@@ -93,27 +93,27 @@ class UnaryEngine : ExprEngine<Derived> {
   using ExprEngine_::derived;
   using ExprEngine_::vars;
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function will set the variable list for this expression and its
+  /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized.
-  /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void perm_vars(const BipartiteIndexList& target_vars) {
     TA_ASSERT(permute_tiles_);
 
     vars_ = target_vars;
     if (arg_.vars() != target_vars) arg_.perm_vars(target_vars);
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void init_vars(const BipartiteIndexList& target_vars) {
     arg_.init_vars(target_vars);
     perm_vars(target_vars);
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
   void init_vars() {
     arg_.init_vars();
     vars_ = arg_.vars();
@@ -123,8 +123,8 @@ class UnaryEngine : ExprEngine<Derived> {
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the left-hand, right-hand, and result tensor.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  /// \param target_vars The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_vars) {
     arg_.init_struct(ExprEngine_::vars());
     ExprEngine_::init_struct(target_vars);
   }
@@ -176,8 +176,8 @@ class UnaryEngine : ExprEngine<Derived> {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
+  /// \param target_vars The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
     ExprEngine_::print(os, target_vars);
     os.inc();
     arg_.print(os, vars_);

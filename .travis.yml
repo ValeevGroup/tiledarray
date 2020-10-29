@@ -2,7 +2,7 @@
 # To validate this file: http://lint.travis-ci.org/
 
 language: cpp
-dist: bionic
+dist: focal
 cache: ccache
 cache:
   directories:
@@ -12,7 +12,6 @@ os: linux
 addons:
   apt:
     packages: &base_packages
-    - libboost-all-dev
     - libblas-dev
     - liblapack-dev
     - liblapacke-dev
@@ -95,7 +94,7 @@ matrix:
             - libc++-8-dev
             - libc++abi-8-dev
     - compiler: clang
-      env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
+      env: CLANG_VERSION=8 GCC_VERSION=8 BUILD_TYPE=Release
       addons:
         apt:
           packages:
@@ -105,14 +104,12 @@ matrix:
             - clang-8
             - libc++-8-dev
             - libc++abi-8-dev
-            - graphviz # provides dot for doxygen graphs
-            - fonts-liberation # recommended by graphviz
     - compiler: clang
       env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
           sources:
-            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal main'
               key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
             - *base_packages
@@ -122,11 +119,11 @@ matrix:
             - libc++-9-dev
             - libc++abi-9-dev
     - compiler: clang
-      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Release
+      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
       addons:
         apt:
           sources:
-            - sourceline: 'deb http://apt.llvm.org/bionic/ llvm-toolchain-bionic-9 main'
+            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal main'
               key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
             - *base_packages
@@ -135,6 +132,9 @@ matrix:
             - clang-9
             - libc++-9-dev
             - libc++abi-9-dev
+            - libclang1-9 # libclang for doxygen
+            - graphviz # provides dot for doxygen graphs
+            - fonts-liberation # recommended by graphviz
 
 #notifications:
 #  email:

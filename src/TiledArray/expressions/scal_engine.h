@@ -40,7 +40,7 @@ template <typename, typename, typename>
 class ScalEngine;
 
 template <typename Arg, typename Scalar, typename Result>
-struct EngineTrait<ScalEngine<Arg, Scalar, Result> > {
+struct EngineTrait<ScalEngine<Arg, Scalar, Result>> {
   // Argument typedefs
   typedef Arg argument_type;  ///< The argument expression engine type
 
@@ -74,7 +74,7 @@ struct EngineTrait<ScalEngine<Arg, Scalar, Result> > {
 
 /// \tparam Arg The argument expression engine type
 template <typename Arg, typename Scalar, typename Result>
-class ScalEngine : public UnaryEngine<ScalEngine<Arg, Scalar, Result> > {
+class ScalEngine : public UnaryEngine<ScalEngine<Arg, Scalar, Result>> {
  public:
   // Class hierarchy typedefs
   typedef ScalEngine<Arg, Scalar, Result> ScalEngine_;  ///< This class type
@@ -146,7 +146,9 @@ class ScalEngine : public UnaryEngine<ScalEngine<Arg, Scalar, Result> > {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     return op_type(perm, factor_);
   }
 

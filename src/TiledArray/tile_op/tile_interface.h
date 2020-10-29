@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_NONINTRUSIVE_API_TENSOR_H__INCLUDED
 #define TILEDARRAY_NONINTRUSIVE_API_TENSOR_H__INCLUDED
 
+#include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/type_traits.h>
 #include <iterator>
 #include <vector>
@@ -33,7 +34,6 @@
 namespace TiledArray {
 
 // Forward declaration
-class Permutation;
 namespace math {
 class GemmHelper;
 }  // namespace math
@@ -233,7 +233,7 @@ class LazyArrayTile;
  *
  * Function (1) creates a copy of the argument tensor that is scaled by
  * \c factor, (2) creates a copy of the argument tensor that is scaled by
- * \c factor and permtued by \c perm, and (3) scales the argument tensor
+ * \c factor and permuted by \c perm, and (3) scales the argument tensor
  * in-place (without creating a copy).
  *
  * Example:
@@ -301,9 +301,9 @@ inline auto subt(const Left& left, const Right& right, const Scalar factor) {
 /// \param right The right-hand argument to be subtracted
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left - right)</tt>
-template <typename Left, typename Right>
-inline auto subt(const Left& left, const Right& right,
-                 const Permutation& perm) {
+template <typename Left, typename Right, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline auto subt(const Left& left, const Right& right, const Perm& perm) {
   return left.subt(right, perm);
 }
 
@@ -318,10 +318,11 @@ inline auto subt(const Left& left, const Right& right,
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left - right) * factor</tt>
 template <
-    typename Left, typename Right, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+    typename Left, typename Right, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline auto subt(const Left& left, const Right& right, const Scalar factor,
-                 const Permutation& perm) {
+                 const Perm& perm) {
   return left.subt(right, factor, perm);
 }
 
@@ -348,9 +349,10 @@ inline auto subt(const Arg& arg, const Scalar value) {
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (arg - value)</tt>
 template <
-    typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline auto subt(const Arg& arg, const Scalar value, const Permutation& perm) {
+    typename Arg, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
+inline auto subt(const Arg& arg, const Scalar value, const Perm& perm) {
   return arg.subt(value, perm);
 }
 
@@ -439,9 +441,12 @@ inline auto mult(const Left& left, const Right& right, const Scalar factor) {
 /// \param right The right-hand argument to be multiplied
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left * right)</tt>
-template <typename Left, typename Right>
-inline auto mult(const Left& left, const Right& right,
-                 const Permutation& perm) {
+template <
+    typename Left, typename Right, typename Perm,
+    typename = std::enable_if_t<detail::is_permutation_v<Perm> &&
+                                detail::has_member_function_mult_anyreturn_v<
+                                    const Left, const Right&, const Perm&>>>
+inline auto mult(const Left& left, const Right& right, const Perm& perm) {
   return left.mult(right, perm);
 }
 
@@ -455,10 +460,11 @@ inline auto mult(const Left& left, const Right& right,
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left * right) * factor</tt>
-template <typename Left, typename Right, typename Scalar,
-          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+template <typename Left, typename Right, typename Scalar, typename Perm,
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                           detail::is_permutation_v<Perm>>* = nullptr>
 inline auto mult(const Left& left, const Right& right, const Scalar factor,
-                 const Permutation& perm) {
+                 const Perm& perm) {
   return left.mult(right, factor, perm);
 }
 
@@ -497,6 +503,8 @@ using result_of_mult_to_t = decltype(mult_to(std::declval<T>()...));
 
 // Scaling operations --------------------------------------------------------
 
+// see tile_interface/scale.h
+
 // Negation operations -------------------------------------------------------
 
 /// Negate the tile argument
@@ -515,8 +523,9 @@ inline auto neg(const Arg& arg) {
 /// \param arg The argument to be negated
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ -arg</tt>
-template <typename Arg>
-inline auto neg(const Arg& arg, const Permutation& perm) {
+template <typename Arg, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline auto neg(const Arg& arg, const Perm& perm) {
   return arg.neg(perm);
 }
 
@@ -568,8 +577,9 @@ inline auto conj(const Arg& arg, const Scalar factor) {
 /// \param arg The tile to be conjugated
 /// \param perm The permutation to be applied to `arg`
 /// \return A complex conjugated and permuted copy of `arg`
-template <typename Arg>
-inline auto conj(const Arg& arg, const Permutation& perm) {
+template <typename Arg, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline auto conj(const Arg& arg, const Perm& perm) {
   return arg.conj(perm);
 }
 
@@ -581,10 +591,11 @@ inline auto conj(const Arg& arg, const Permutation& perm) {
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to `arg`
 /// \return A complex conjugated, scaled, and permuted copy of `arg`
-template <typename Arg, typename Scalar,
-          typename std::enable_if<
-              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
-inline auto conj(const Arg& arg, const Scalar factor, const Permutation& perm) {
+template <
+    typename Arg, typename Scalar, typename Perm,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
+inline auto conj(const Arg& arg, const Scalar factor, const Perm& perm) {
   return arg.conj(factor, perm);
 }
 
@@ -670,8 +681,8 @@ using result_of_gemm_t = decltype(gemm(std::declval<T>()...));
 /// \tparam Arg The tile argument type
 /// \param arg The argument to be summed
 /// \return The sum of the hyper-diagonal elements of \c arg
-//template <typename Arg>
-//inline auto trace(const Arg& arg) {
+// template <typename Arg>
+// inline auto trace(const Arg& arg) {
 //  return arg.trace();
 //}
 
@@ -791,8 +802,8 @@ inline auto inner_product(const Left& left, const Right& right) {
   return left.inner_product(right);
 }
 
-//template <typename T>
-//using result_of_trace_t = decltype(mult(std::declval<T>()));
+// template <typename T>
+// using result_of_trace_t = decltype(mult(std::declval<T>()));
 
 template <typename T>
 using result_of_sum_t = decltype(sum(std::declval<T>()));

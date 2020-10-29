@@ -44,7 +44,7 @@ template <typename, typename, typename, typename>
 class ScalMultEngine;
 
 template <typename Left, typename Right, typename Result>
-struct EngineTrait<MultEngine<Left, Right, Result> > {
+struct EngineTrait<MultEngine<Left, Right, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -84,7 +84,7 @@ struct EngineTrait<MultEngine<Left, Right, Result> > {
 };
 
 template <typename Left, typename Right, typename Scalar, typename Result>
-struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result> > {
+struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -135,7 +135,7 @@ struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result> > {
 /// \tparam Right The right-hand engine type
 /// \tparam Result The result tile type
 template <typename Left, typename Right, typename Result>
-class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
+class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
  public:
   // Class hierarchy typedefs
   typedef MultEngine<Left, Right, Result> MultEngine_;  ///< This class type
@@ -187,14 +187,14 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   MultEngine(const MultExpr<L, R>& expr)
       : ContEngine_(expr), contract_(false) {}
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function will set the variable list for this expression and its
+  /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
-  /// variable list may not be set to target, which indicates that the
+  /// index list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void perm_vars(const BipartiteIndexList& target_vars) {
     if (contract_)
       ContEngine_::perm_vars(target_vars);
     else {
@@ -202,19 +202,32 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void init_vars(const BipartiteIndexList& target_vars) {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
 
-    // it's either pure Hadamard (detect by checking that left arg's and
-    // target's vars are the "same") or contraction
-    // TODO add mixed Hadamard+contraction
-    if (BinaryEngine_::left_.vars().is_permutation(target_vars)) {
-      TA_ASSERT(BinaryEngine_::left_.vars().is_permutation(
-          BinaryEngine_::right_.vars()));
+    // TODO support general products that involve fused, contracted, and free
+    // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
+    // contracted, and index j is fused
+    // N.B. Currently only 2 types of products are supported:
+    // - Hadamard product (in which all indices are fused), and,
+    // - pure contraction (>=1 contracted, 0 fused, >=1 free indices)
+    // For the ToT arguments only the Hadamard product is supported
+
+    // Check the *outer* indices to determine whether the arguments are
+    // - contracted, or
+    // - Hadamard-multiplied
+    // The latter is indicated by the equality (modulo permutation) of
+    // the outer left and right arg indices to the target indices.
+    // Only the outer indices matter here since the inner indices only encode
+    // the tile op; the type of the tile op does not need to match the type of
+    // the operation on the outer indices
+    if (outer(BinaryEngine_::left_.vars()).is_permutation(outer(target_vars))) {
+      TA_ASSERT(outer(BinaryEngine_::left_.vars())
+                    .is_permutation(outer(BinaryEngine_::right_.vars())));
       BinaryEngine_::perm_vars(target_vars);
     } else {
       contract_ = true;
@@ -223,7 +236,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
   void init_vars() {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
@@ -244,8 +257,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  /// \param target_vars The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_vars) {
     if (contract_)
       ContEngine_::init_struct(target_vars);
     else
@@ -299,7 +312,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   /// \return The result shape
   shape_type make_shape(const Permutation& perm) const {
     return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(),
-                                             perm);
+                                             outer(perm));
   }
 
   /// Non-permuting tile operation factory function
@@ -311,7 +324,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  static op_type make_tile_op(const Permutation& perm) {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  static op_type make_tile_op(const Perm& perm) {
     return op_type(op_base_type(), perm);
   }
 
@@ -333,8 +348,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
+  /// \param target_vars The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
     if (contract_)
       return ContEngine_::print(os, target_vars);
     else
@@ -351,7 +366,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 /// The result tile type
 template <typename Left, typename Right, typename Scalar, typename Result>
 class ScalMultEngine
-    : public ContEngine<ScalMultEngine<Left, Right, Scalar, Result> > {
+    : public ContEngine<ScalMultEngine<Left, Right, Scalar, Result>> {
  public:
   // Class hierarchy typedefs
   typedef ScalMultEngine<Left, Right, Scalar, Result>
@@ -408,14 +423,14 @@ class ScalMultEngine
   ScalMultEngine(const ScalMultExpr<L, R, S>& expr)
       : ContEngine_(expr), contract_(false) {}
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function will set the variable list for this expression and its
+  /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
-  /// variable list may not be set to target, which indicates that the
+  /// index list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void perm_vars(const BipartiteIndexList& target_vars) {
     if (contract_)
       ContEngine_::perm_vars(target_vars);
     else {
@@ -423,10 +438,10 @@ class ScalMultEngine
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void init_vars(const BipartiteIndexList& target_vars) {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
 
@@ -440,7 +455,7 @@ class ScalMultEngine
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
   void init_vars() {
     BinaryEngine_::left_.init_vars();
     BinaryEngine_::right_.init_vars();
@@ -461,8 +476,8 @@ class ScalMultEngine
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  /// \param target_vars The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_vars) {
     if (contract_)
       ContEngine_::init_struct(target_vars);
     else
@@ -541,7 +556,9 @@ class ScalMultEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     return op_type(op_base_type(ContEngine_::factor_), perm);
   }
 
@@ -557,8 +574,8 @@ class ScalMultEngine
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
+  /// \param target_vars The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
     if (contract_)
       return ContEngine_::print(os, target_vars);
     else

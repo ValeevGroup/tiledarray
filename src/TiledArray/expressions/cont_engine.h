@@ -105,16 +105,16 @@ class ContEngine : public BinaryEngine<Derived> {
   scalar_type factor_;  ///< Contraction scaling factor
 
  private:
-  VariableList left_vars_;   ///< Left-hand variable list
-  VariableList right_vars_;  ///< Right-hand variable list
-  TensorOp left_op_;         ///< Left-hand operation
-  TensorOp right_op_;        ///< Right-hand operation
-  op_type op_;               ///< Tile operation
+  BipartiteIndexList left_vars_;   ///< Left-hand index list
+  BipartiteIndexList right_vars_;  ///< Right-hand index list
+  TensorOp left_op_;               ///< Left-hand operation
+  TensorOp right_op_;              ///< Right-hand operation
+  op_type op_;                     ///< Tile operation
   TiledArray::detail::ProcGrid
       proc_grid_;  ///< Process grid for the contraction
   size_type K_;    ///< Inner dimension size
 
-  static unsigned int find(const VariableList& vars, std::string var,
+  static unsigned int find(const BipartiteIndexList& vars, std::string var,
                            unsigned int i, const unsigned int n) {
     for (; i < n; ++i) {
       if (vars[i] == var) break;
@@ -163,25 +163,25 @@ class ContEngine : public BinaryEngine<Derived> {
   using ExprEngine_::derived;
   using ExprEngine_::vars;
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function will set the variable list for this expression and its
+  /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
-  /// variable list may not be set to target, which indicates that the
+  /// index list may not be set to target, which indicates that the
   /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
+  /// \param target_vars The target index list for this expression
+  void perm_vars(const BipartiteIndexList& target_vars) {
     // Only permute if the arguments can be permuted
     if ((left_op_ == permute_to_no_trans) ||
         (right_op_ == permute_to_no_trans)) {
       // Compute ranks
-      const unsigned int result_rank = target_vars.dim();
+      const unsigned int result_rank = target_vars.size();
       const unsigned int inner_rank =
-          (left_.vars().dim() + right_.vars().dim() - result_rank) >> 1;
-      const unsigned int left_outer_rank = left_.vars().dim() - inner_rank;
+          (left_.vars().size() + right_.vars().size() - result_rank) >> 1;
+      const unsigned int left_outer_rank = left_.vars().size() - inner_rank;
 
       // Check that the left- and right-hand outer variables are correctly
-      // partitioned in the target variable list.
+      // partitioned in the target index list.
       bool target_partitioned = true;
       for (unsigned int i = 0u; i < left_outer_rank; ++i)
         target_partitioned =
@@ -192,14 +192,14 @@ class ContEngine : public BinaryEngine<Derived> {
       // to fit the target.
       if (target_partitioned) {
         if (left_op_ == permute_to_no_trans) {
-          // Copy left-hand target variables to left and result variable lists.
+          // Copy left-hand target variables to left and result index lists.
           for (unsigned int i = 0u; i < left_outer_rank; ++i) {
             const std::string& var = target_vars[i];
             const_cast<std::string&>(left_vars_[i]) = var;
             const_cast<std::string&>(vars_[i]) = var;
           }
 
-          // Permute the left argument with the new variable list.
+          // Permute the left argument with the new index list.
           left_.perm_vars(left_vars_);
         } else {
           // Copy left-hand outer variables to that of result.
@@ -217,7 +217,7 @@ class ContEngine : public BinaryEngine<Derived> {
             const_cast<std::string&>(vars_[i]) = var;
           }
 
-          // Permute the left argument with the new variable list.
+          // Permute the left argument with the new index list.
           right_.perm_vars(right_vars_);
         } else {
           // Copy right-hand outer variables to that of result.
@@ -229,16 +229,16 @@ class ContEngine : public BinaryEngine<Derived> {
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
   /// \note This function does not initialize the child data as is done in
   /// \c BinaryEngine. Instead they are initialized in \c MultContEngine and
   /// \c ScalMultContEngine.
   void init_vars() {
-    const auto left_rank = left_.vars().dim();
-    const auto right_rank = right_.vars().dim();
+    const auto left_rank = left_.vars().size();
+    const auto right_rank = right_.vars().size();
 
-    // Get non-const references to the argument variable lists.
+    // Get non-const references to the argument index lists.
     auto& left_vars =
         const_cast<container::svector<std::string>&>(left_vars_.data());
     left_vars.reserve(left_rank);
@@ -288,7 +288,7 @@ class ContEngine : public BinaryEngine<Derived> {
     bool inner_vars_ordered = true, left_is_no_trans = true,
          left_is_trans = true, right_is_no_trans = true, right_is_trans = true;
 
-    // If the inner variable lists of the arguments are not in the same
+    // If the inner index lists of the arguments are not in the same
     // order, one of them will need to be permuted. Here, we determine which
     // argument, left or right, will be permuted if a permutation is
     // required. The argument with the lowest rank is preferred since it is
@@ -299,7 +299,7 @@ class ContEngine : public BinaryEngine<Derived> {
                                      (left_type::leaves <= right_type::leaves));
 
     // Extract variables from the right-hand argument, collect information
-    // about the layout of the variable lists, and ensure the inner variable
+    // about the layout of the index lists, and ensure the inner variable
     // lists are in the same order.
     for (unsigned int i = 0ul; i < right_rank; ++i) {
       const std::string& var = right_.vars()[i];
@@ -320,7 +320,7 @@ class ContEngine : public BinaryEngine<Derived> {
 
         // Store inner right variable
         if (inner_vars_ordered) {
-          // Left and right inner variable list order is equal.
+          // Left and right inner index list order is equal.
           left_vars.push_back(var);
         } else if (perm_left) {
           // Permute left so we need to store inner variables according to
@@ -364,8 +364,8 @@ class ContEngine : public BinaryEngine<Derived> {
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor as well as the tile operation.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
+  /// \param target_vars The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_vars) {
     // Initialize children
     left_.init_struct(left_vars_);
     right_.init_struct(right_vars_);
@@ -381,15 +381,15 @@ class ContEngine : public BinaryEngine<Derived> {
     if (target_vars != vars_) {
       // Initialize permuted structure
       perm_ = ExprEngine_::make_perm(target_vars);
-      op_ =
-          op_type(left_op, right_op, factor_, vars_.dim(), left_vars_.dim(),
-                  right_vars_.dim(), (permute_tiles_ ? perm_ : Permutation()));
-      trange_ = ContEngine_::make_trange(perm_);
-      shape_ = ContEngine_::make_shape(perm_);
+      op_ = op_type(left_op, right_op, factor_, vars_.size(), left_vars_.size(),
+                    right_vars_.size(),
+                    (permute_tiles_ ? perm_ : BipartitePermutation{}));
+      trange_ = ContEngine_::make_trange(outer(perm_));
+      shape_ = ContEngine_::make_shape(outer(perm_));
     } else {
       // Initialize non-permuted structure
-      op_ = op_type(left_op, right_op, factor_, vars_.dim(), left_vars_.dim(),
-                    right_vars_.dim());
+      op_ = op_type(left_op, right_op, factor_, vars_.size(), left_vars_.size(),
+                    right_vars_.size());
       trange_ = ContEngine_::make_trange();
       shape_ = ContEngine_::make_shape();
     }
@@ -450,7 +450,7 @@ class ContEngine : public BinaryEngine<Derived> {
 
   /// \param perm The permutation to be applied to the array
   /// \return The result tiled range
-  trange_type make_trange(const Permutation& perm = Permutation()) const {
+  trange_type make_trange(const Permutation& perm = {}) const {
     // Compute iteration limits
     const unsigned int left_rank = op_.gemm_helper().left_rank();
     const unsigned int right_rank = op_.gemm_helper().right_rank();
@@ -549,8 +549,8 @@ class ContEngine : public BinaryEngine<Derived> {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
+  /// \param target_vars The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_vars) const {
     ExprEngine_::print(os, target_vars);
     os.inc();
     left_.print(os, left_vars_);

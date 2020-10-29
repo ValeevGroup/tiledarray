@@ -369,6 +369,25 @@ GENERATE_IS_FREE_FUNCTION_ANYRETURN(size)
 GENERATE_IS_FREE_FUNCTION_ANYRETURN(data)
 GENERATE_IS_FREE_FUNCTION_ANYRETURN(empty)
 
+//////// Tile concept checks
+
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(permute)
+GENERATE_HAS_MEMBER_FUNCTION(permute)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(add)
+GENERATE_HAS_MEMBER_FUNCTION(add)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(add_to)
+GENERATE_HAS_MEMBER_FUNCTION(add_to)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(subt)
+GENERATE_HAS_MEMBER_FUNCTION(subt)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(subt_to)
+GENERATE_HAS_MEMBER_FUNCTION(subt_to)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(mult)
+GENERATE_HAS_MEMBER_FUNCTION(mult)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(mult_to)
+GENERATE_HAS_MEMBER_FUNCTION(mult_to)
+
+GENERATE_IS_FREE_FUNCTION_ANYRETURN(permute)
+
 }  // namespace detail
 }  // namespace TiledArray
 
@@ -837,8 +856,8 @@ template <std::size_t I, typename T, typename = void>
 struct is_std_gettable : std::false_type {};
 
 template <std::size_t I, typename T>
-struct is_std_gettable<I, T,
-                       std::void_t<decltype(::std::get<I>(std::declval<T>()))>>
+struct is_std_gettable<
+    I, T, std::void_t<decltype(::std::get<I>(std::declval<const T&>()))>>
     : std::true_type {};
 
 template <std::size_t I, typename T>
@@ -849,7 +868,7 @@ struct is_boost_gettable : std::false_type {};
 
 template <std::size_t I, typename T>
 struct is_boost_gettable<
-    I, T, std::void_t<decltype(::boost::get<I>(std::declval<T>()))>>
+    I, T, std::void_t<decltype(::boost::get<I>(std::declval<const T&>()))>>
     : std::true_type {};
 
 template <std::size_t I, typename T>

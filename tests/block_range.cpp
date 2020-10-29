@@ -46,7 +46,8 @@ const Range BlockRangeFixture::r0(std::array<int, 3>{{5, 11, 8}});
 const Range BlockRangeFixture::r(std::array<int, 3>{{0, 1, 2}},
                                  std::array<int, 3>{{5, 11, 8}});
 
-BOOST_FIXTURE_TEST_SUITE(block_range_suite, BlockRangeFixture)
+BOOST_FIXTURE_TEST_SUITE(block_range_suite, BlockRangeFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
   BlockRange block_range;

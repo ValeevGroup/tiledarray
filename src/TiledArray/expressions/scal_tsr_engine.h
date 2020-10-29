@@ -39,7 +39,7 @@ template <typename, typename, typename>
 class ScalTsrEngine;
 
 template <typename Tile, typename Policy, typename Scalar, typename Result>
-struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result> > {
+struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result>> {
   // Argument typedefs
   typedef DistArray<Tile, Policy> array_type;  ///< The array type
 
@@ -76,7 +76,7 @@ struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result> > {
 
 /// \tparam A The \c Array type
 template <typename Array, typename Scalar, typename Result>
-class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar, Result> > {
+class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar, Result>> {
  public:
   // Class hierarchy typedefs
   typedef ScalTsrEngine<Array, Scalar, Result>
@@ -143,7 +143,9 @@ class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar, Result> > {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     return op_type(op_base_type(factor_), perm);
   }
 

@@ -8,10 +8,10 @@ namespace {
 using false_types = boost::mpl::list<int*, char, int&>;
 
 using true_types = boost::mpl::list<int, float, double, std::complex<float>,
-    std::complex<double>>;
-}
+                                    std::complex<double>>;
+}  // namespace
 
-BOOST_AUTO_TEST_SUITE(can_make_random)
+BOOST_AUTO_TEST_SUITE(can_make_random, TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(can_make_random_false, ValueType, false_types) {
   using can_make_random_t = CanMakeRandom<ValueType>;

@@ -44,7 +44,7 @@ template <typename, typename, typename, typename>
 class ScalSubtEngine;
 
 template <typename Left, typename Right, typename Result>
-struct EngineTrait<SubtEngine<Left, Right, Result> > {
+struct EngineTrait<SubtEngine<Left, Right, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -82,7 +82,7 @@ struct EngineTrait<SubtEngine<Left, Right, Result> > {
 };  // struct EngineTrait<SubtEngine<Left, Right> >
 
 template <typename Left, typename Right, typename Scalar, typename Result>
-struct EngineTrait<ScalSubtEngine<Left, Right, Scalar, Result> > {
+struct EngineTrait<ScalSubtEngine<Left, Right, Scalar, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -126,7 +126,7 @@ struct EngineTrait<ScalSubtEngine<Left, Right, Scalar, Result> > {
 /// \tparam Right The right-hand expression type
 /// \tparam Result The result tile type
 template <typename Left, typename Right, typename Result>
-class SubtEngine : public BinaryEngine<SubtEngine<Left, Right, Result> > {
+class SubtEngine : public BinaryEngine<SubtEngine<Left, Right, Result>> {
  public:
   // Class hierarchy typedefs
   typedef SubtEngine<Left, Right, Result> SubtEngine_;  ///< This class type
@@ -195,7 +195,9 @@ class SubtEngine : public BinaryEngine<SubtEngine<Left, Right, Result> > {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  static op_type make_tile_op(const Permutation& perm) {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  static op_type make_tile_op(const Perm& perm) {
     return op_type(op_base_type(), perm);
   }
 
@@ -214,7 +216,7 @@ class SubtEngine : public BinaryEngine<SubtEngine<Left, Right, Result> > {
 /// \tparam Result The result tile type
 template <typename Left, typename Right, typename Scalar, typename Result>
 class ScalSubtEngine
-    : public BinaryEngine<ScalSubtEngine<Left, Right, Scalar, Result> > {
+    : public BinaryEngine<ScalSubtEngine<Left, Right, Scalar, Result>> {
  public:
   // Class hierarchy typedefs
   typedef ScalSubtEngine<Left, Right, Scalar, Result>
@@ -294,7 +296,9 @@ class ScalSubtEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     return op_type(op_base_type(factor_), perm);
   }
 

@@ -199,9 +199,9 @@ class Permutation {
                 InIter>::value>::type* = nullptr>
   Permutation(InIter first, InIter last) {
     TA_ASSERT(valid_permutation(first, last));
-    size_t i = 0;
+    index_type i = 0;
     for (auto e = first; e != last; ++e, ++i) {
-      auto p_i = *e;
+      index_type p_i = *e;
       if (i != p_i) p_[i] = p_i;
     }
   }

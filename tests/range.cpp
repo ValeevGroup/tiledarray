@@ -60,7 +60,7 @@ const RangeFixture::index RangeFixture::p4(GlobalFixture::dim, 4);
 const RangeFixture::index RangeFixture::p5(GlobalFixture::dim, 5);
 const RangeFixture::index RangeFixture::p6(GlobalFixture::dim, 6);
 
-BOOST_FIXTURE_TEST_SUITE(range_suite, RangeFixture)
+BOOST_FIXTURE_TEST_SUITE(range_suite, RangeFixture, TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(dimension_accessor) {
   BOOST_CHECK_EQUAL_COLLECTIONS(r.lobound_data(), r.lobound_data() + r.rank(),

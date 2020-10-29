@@ -52,7 +52,7 @@ namespace detail {
 template <typename Left, typename Right, typename Op, typename Policy>
 class Summa
     : public DistEvalImpl<typename Op::result_type, Policy>,
-      public std::enable_shared_from_this<Summa<Left, Right, Op, Policy> > {
+      public std::enable_shared_from_this<Summa<Left, Right, Op, Policy>> {
  public:
   typedef Summa<Left, Right, Op, Policy> Summa_;  ///< This object type
   typedef DistEvalImpl<typename Op::result_type, Policy>
@@ -460,7 +460,7 @@ class Summa
   /// \return \c tile
   template <typename Arg>
   static typename std::enable_if<!is_lazy_tile<typename Arg::value_type>::value,
-                                 Future<typename Arg::eval_type> >::type
+                                 Future<typename Arg::eval_type>>::type
   get_tile(Arg& arg, const typename Arg::ordinal_type index) {
     return arg.get(index);
   }
@@ -480,7 +480,7 @@ class Summa
           && !detail::is_cuda_tile<typename Arg::value_type>::value
 #endif
       ,
-      Future<typename Arg::eval_type> >::type
+      Future<typename Arg::eval_type>>::type
   get_tile(Arg& arg, const typename Arg::ordinal_type index) {
     auto convert_tile_fn =
         &Summa_::template convert_tile<typename Arg::value_type>;
@@ -501,7 +501,7 @@ class Summa
   static typename std::enable_if<
       is_lazy_tile<typename Arg::value_type>::value &&
           detail::is_cuda_tile<typename Arg::value_type>::value,
-      Future<typename Arg::eval_type> >::type
+      Future<typename Arg::eval_type>>::type
   get_tile(Arg& arg, const typename Arg::ordinal_type index) {
     auto convert_tile_fn =
         &Summa_::template convert_tile<typename Arg::value_type>;
@@ -884,7 +884,7 @@ class Summa
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
     // Allocate memory for the reduce pair tasks.
-    std::allocator<ReducePairTask<op_type> > alloc;
+    std::allocator<ReducePairTask<op_type>> alloc;
     reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
     // Iterate over all local tiles
@@ -908,7 +908,7 @@ class Summa
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
     // Allocate memory for the reduce pair tasks.
-    std::allocator<ReducePairTask<op_type> > alloc;
+    std::allocator<ReducePairTask<op_type>> alloc;
     reduce_tasks_ = alloc.allocate(proc_grid_.local_size());
 
     // Initialize iteration variables
@@ -997,7 +997,7 @@ class Summa
     }
 
     // Deallocate the memory for the reduce pair tasks.
-    std::allocator<ReducePairTask<op_type> >().deallocate(
+    std::allocator<ReducePairTask<op_type>>().deallocate(
         reduce_tasks_, proc_grid_.local_size());
   }
 
@@ -1043,7 +1043,7 @@ class Summa
       }
     }
     // Deallocate the memory for the reduce pair tasks.
-    std::allocator<ReducePairTask<op_type> >().deallocate(
+    std::allocator<ReducePairTask<op_type>>().deallocate(
         reduce_tasks_, proc_grid_.local_size());
 
 #ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_FINALIZE
@@ -1517,11 +1517,13 @@ class Summa
   /// \note The trange, shape, and pmap refer to the final,
   ///       permuted, state for the result, NOT to the result during
   ///       the SUMMA evaluation.
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   Summa(const left_type& left, const right_type& right, World& world,
         const trange_type trange, const shape_type& shape,
-        const std::shared_ptr<pmap_interface>& pmap, const Permutation& perm,
+        const std::shared_ptr<pmap_interface>& pmap, const Perm& perm,
         const op_type& op, const ordinal_type k, const ProcGrid& proc_grid)
-      : DistEvalImpl_(world, trange, shape, pmap, perm),
+      : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         left_(left),
         right_(right),
         op_(op),

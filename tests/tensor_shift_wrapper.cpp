@@ -63,7 +63,8 @@ struct ShiftWrapperFixture {
       random_tensor(Range(shifted_lower_bound, shifted_upper_bound))};
 };  // ShiftWrapperFixture
 
-BOOST_FIXTURE_TEST_SUITE(tensor_shift_wrapper_suite, ShiftWrapperFixture)
+BOOST_FIXTURE_TEST_SUITE(tensor_shift_wrapper_suite, ShiftWrapperFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   BOOST_CHECK_NO_THROW(shift(t1));

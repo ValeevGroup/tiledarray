@@ -31,6 +31,8 @@
 #endif
 
 #include <TiledArray/tensor.h>
+#include <TiledArray/tile_interface/add.h>
+#include <TiledArray/tile_interface/scale.h>
 #include <TiledArray/tile_op/tile_interface.h>
 
 #include <../tests/unit_test_config.h>
@@ -38,6 +40,8 @@
 #include <boost/mpl/list.hpp>
 
 using namespace TiledArray;
+
+using bTensorI = btas::Tensor<int, Range>;
 
 struct TensorOfTensorFixture {
   TensorOfTensorFixture()
@@ -81,13 +85,12 @@ struct TensorOfTensorFixture {
 
 #ifdef TILEDARRAY_HAS_BTAS
   // Fill a tensor with random data
-  static Tensor<btas::Tensor<int>> make_rand_TobT(const Range& r) {
-    Tensor<btas::Tensor<int>> tensor(r);
+  static Tensor<bTensorI> make_rand_TobT(const Range& r) {
+    Tensor<bTensorI> tensor(r);
     for (decltype(r.extent(0)) i = 0ul; i < r.extent(0); ++i) {
       for (decltype(r.extent(1)) j = 0ul; j < r.extent(1); ++j) {
-        auto make_rand_tensor = [](size_t dim0,
-                                   size_t dim1) -> btas::Tensor<int> {
-          btas::Tensor<int> tensor(dim0, dim1);
+        auto make_rand_tensor = [](size_t dim0, size_t dim1) -> bTensorI {
+          bTensorI tensor(dim0, dim1);
           tensor.generate([]() { return GlobalFixture::world->rand() % 42; });
           return tensor;
         };
@@ -98,13 +101,12 @@ struct TensorOfTensorFixture {
     return tensor;
   }
   // same as make_rand_TobT but with identically-sized tiles
-  static Tensor<btas::Tensor<int>> make_rand_TobT_uniform(const Range& r) {
-    Tensor<btas::Tensor<int>> tensor(r);
+  static Tensor<bTensorI> make_rand_TobT_uniform(const Range& r) {
+    Tensor<bTensorI> tensor(r);
     for (decltype(r.extent(0)) i = 0ul; i < r.extent(0); ++i) {
       for (decltype(r.extent(1)) j = 0ul; j < r.extent(1); ++j) {
-        auto make_rand_tensor = [](size_t dim0,
-                                   size_t dim1) -> btas::Tensor<int> {
-          btas::Tensor<int> tensor(dim0, dim1);
+        auto make_rand_tensor = [](size_t dim0, size_t dim1) -> bTensorI {
+          bTensorI tensor(dim0, dim1);
           tensor.generate([]() { return GlobalFixture::world->rand() % 42; });
           return tensor;
         };
@@ -118,10 +120,11 @@ struct TensorOfTensorFixture {
 
   static const std::array<std::size_t, 2> size;
   static const Permutation perm;
+  static const BipartitePermutation bperm;
 
   Tensor<Tensor<int>> a, b, c;
 #ifdef TILEDARRAY_HAS_BTAS
-  Tensor<btas::Tensor<int>> d, e, f, g, h;
+  Tensor<bTensorI> d, e, f, g, h;
 #endif  // defined(TILEDARRAY_HAS_BTAS)
 
   template <typename T>
@@ -143,8 +146,7 @@ Tensor<Tensor<int>>& TensorOfTensorFixture::ToT<Tensor<int>>(size_t idx) {
 
 #ifdef TILEDARRAY_HAS_BTAS
 template <>
-Tensor<btas::Tensor<int>>& TensorOfTensorFixture::ToT<btas::Tensor<int>>(
-    size_t idx) {
+Tensor<bTensorI>& TensorOfTensorFixture::ToT<bTensorI>(size_t idx) {
   if (idx == 0)
     return d;
   else if (idx == 1)
@@ -158,12 +160,14 @@ Tensor<btas::Tensor<int>>& TensorOfTensorFixture::ToT<btas::Tensor<int>>(
 
 const std::array<std::size_t, 2> TensorOfTensorFixture::size{{10, 11}};
 const Permutation TensorOfTensorFixture::perm{1, 0};
+const BipartitePermutation TensorOfTensorFixture::bperm(Permutation{1, 0, 3, 2},
+                                                        2);
 
-BOOST_FIXTURE_TEST_SUITE(tensor_of_tensor_suite, TensorOfTensorFixture)
+BOOST_FIXTURE_TEST_SUITE(tensor_of_tensor_suite, TensorOfTensorFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 #ifdef TILEDARRAY_HAS_BTAS
-typedef boost::mpl::list<TiledArray::Tensor<int>, btas::Tensor<int>>
-    itensor_types;
+typedef boost::mpl::list<TiledArray::Tensor<int>, bTensorI> itensor_types;
 #else
 typedef boost::mpl::list<TiledArray::Tensor<int>> itensor_types;
 #endif
@@ -178,18 +182,27 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(default_constructor, ITensor, itensor_types) {
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(unary_constructor, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
+  // apply element-wise op
   BOOST_CHECK_NO_THROW(Tensor<ITensor> t(a, [](const int l) { return l * 2; }));
   Tensor<ITensor> t(a, [](const int l) { return l * 2; });
 
-  BOOST_CHECK(!t.empty());
-  BOOST_CHECK_EQUAL(t.range(), a.range());
+  // apply tensor-wise op
+  BOOST_CHECK_NO_THROW(
+      Tensor<ITensor> t2(a, [](const ITensor& v) { return scale(v, 2); }));
+  Tensor<ITensor> t2(a, [](const ITensor& v) { return scale(v, 2); });
 
-  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
-    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
-      BOOST_CHECK(!t(i, j).empty());
-      BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
-      for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
-        BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] * 2);
+  for (auto&& tref : {std::cref(t), std::cref(t2)}) {
+    auto& t = tref.get();
+
+    BOOST_CHECK(!t.empty());
+    BOOST_CHECK_EQUAL(t.range(), a.range());
+    for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+      for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+        BOOST_CHECK(!t(i, j).empty());
+        BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
+        for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
+          BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] * 2);
+        }
       }
     }
   }
@@ -197,20 +210,73 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(unary_constructor, ITensor, itensor_types) {
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(unary_perm_constructor, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
+
+  // apply element-wise op
   BOOST_CHECK_NO_THROW(Tensor<ITensor> t(
       a, [](const int l) { return l * 2; }, perm));
   Tensor<ITensor> t(
       a, [](const int l) { return l * 2; }, perm);
 
-  BOOST_CHECK(!t.empty());
-  BOOST_CHECK_EQUAL(t.range(), perm * a.range());
+  // apply tensor-wise op
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t2(
+      a, [](const ITensor& v) { return scale(v, 2); }, perm));
+  Tensor<ITensor> t2(
+      a, [](const ITensor& v) { return scale(v, 2); }, perm);
 
-  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
-    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
-      BOOST_CHECK(!t(i, j).empty());
-      BOOST_CHECK_EQUAL(t(i, j).range(), a(j, i).range());
-      for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
-        BOOST_CHECK_EQUAL(t(i, j)[index], a(j, i)[index] * 2);
+  for (auto&& tref : {std::cref(t), std::cref(t2)}) {
+    auto& t = tref.get();
+    BOOST_CHECK(!t.empty());
+    BOOST_CHECK_EQUAL(t.range(), perm * a.range());
+
+    for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+      for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+        BOOST_CHECK(!t(i, j).empty());
+        BOOST_CHECK_EQUAL(t(i, j).range(), a(j, i).range());
+        for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
+          BOOST_CHECK_EQUAL(t(i, j)[index], a(j, i)[index] * 2);
+        }
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(unary_bperm_constructor, ITensor, itensor_types) {
+  const auto& a = ToT<ITensor>(0);
+
+  // apply element-wise op
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t(
+      a, [](const int l) { return l * 2; }, bperm));
+  Tensor<ITensor> t(
+      a, [](const int l) { return l * 2; }, bperm);
+
+  // apply tensor-wise op
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t2(
+      a, [](const ITensor& v) { return scale(v, 2); }, bperm));
+  Tensor<ITensor> t2(
+      a, [](const ITensor& v) { return scale(v, 2); }, bperm);
+
+  // apply tensor-wise op with explicit permutation of inner tiles
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t3(
+      a, [p = inner(bperm)](const ITensor& v) { return scale(v, 2, p); },
+      outer(bperm)));
+  Tensor<ITensor> t3(
+      a, [p = inner(bperm)](const ITensor& v) { return scale(v, 2, p); },
+      outer(bperm));
+
+  for (auto&& tref : {std::cref(t), std::cref(t2), std::cref(t3)}) {
+    auto& t = tref.get();
+
+    BOOST_CHECK(!t.empty());
+    BOOST_CHECK_EQUAL(t.range(), outer(bperm) * a.range());
+
+    for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+      for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+        BOOST_CHECK(!t(i, j).empty());
+        BOOST_CHECK_EQUAL(t(i, j).range(), permute(a(j, i).range(), {1, 0}));
+        for (auto&& idx : t(i, j).range()) {
+          BOOST_CHECK_EQUAL(t(i, j)(idx[0], idx[1]),
+                            a(j, i)(idx[1], idx[0]) * 2);
+        }
       }
     }
   }
@@ -219,19 +285,30 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(unary_perm_constructor, ITensor, itensor_types) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(binary_constructor, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
   const auto& b = ToT<ITensor>(1);
+
+  // apply element-wise op
   BOOST_CHECK_NO_THROW(
       Tensor<ITensor> t(a, b, [](const int l, const int r) { return l + r; }));
   Tensor<ITensor> t(a, b, [](const int l, const int r) { return l + r; });
 
-  BOOST_CHECK(!t.empty());
-  BOOST_CHECK_EQUAL(t.range(), a.range());
+  // apply tensor-wise op
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t2(
+      a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); }));
+  Tensor<ITensor> t2(
+      a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); });
 
-  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
-    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
-      BOOST_CHECK(!t(i, j).empty());
-      BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
-      for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
-        BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] + b(i, j)[index]);
+  for (auto&& tref : {std::cref(t), std::cref(t2)}) {
+    auto& t = tref.get();
+
+    BOOST_CHECK(!t.empty());
+    BOOST_CHECK_EQUAL(t.range(), a.range());
+    for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+      for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+        BOOST_CHECK(!t(i, j).empty());
+        BOOST_CHECK_EQUAL(t(i, j).range(), a(i, j).range());
+        for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
+          BOOST_CHECK_EQUAL(t(i, j)[index], a(i, j)[index] + b(i, j)[index]);
+        }
       }
     }
   }
@@ -240,20 +317,85 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(binary_constructor, ITensor, itensor_types) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(binary_perm_constructor, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
   const auto& b = ToT<ITensor>(1);
+
+  // apply element-wise op
   BOOST_CHECK_NO_THROW(Tensor<ITensor> t(
       a, b, [](const int l, const int r) { return l + r; }, perm));
   Tensor<ITensor> t(
       a, b, [](const int l, const int r) { return l + r; }, perm);
 
-  BOOST_CHECK(!t.empty());
-  BOOST_CHECK_EQUAL(t.range(), perm * a.range());
+  // apply tensor-wise op
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t2(
+      a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); },
+      perm));
+  Tensor<ITensor> t2(
+      a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); }, perm);
 
-  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
-    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
-      BOOST_CHECK(!t(i, j).empty());
-      BOOST_CHECK_EQUAL(t(i, j).range(), a(j, i).range());
-      for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
-        BOOST_CHECK_EQUAL(t(i, j)[index], a(j, i)[index] + b(j, i)[index]);
+  for (auto&& tref : {std::cref(t), std::cref(t2)}) {
+    auto& t = tref.get();
+
+    BOOST_CHECK(!t.empty());
+    BOOST_CHECK_EQUAL(t.range(), perm * a.range());
+
+    for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+      for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+        BOOST_CHECK(!t(i, j).empty());
+        BOOST_CHECK_EQUAL(t(i, j).range(), a(j, i).range());
+        for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
+          BOOST_CHECK_EQUAL(t(i, j)[index], a(j, i)[index] + b(j, i)[index]);
+        }
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(binary_bperm_constructor, ITensor,
+                              itensor_types) {
+  const auto& a = ToT<ITensor>(0);
+  const auto& b = ToT<ITensor>(1);
+
+  // apply element-wise op
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t(
+      a, b, [](const int l, const int r) { return l + r; }, bperm));
+  Tensor<ITensor> t(
+      a, b, [](const int l, const int r) { return l + r; }, bperm);
+
+  // apply tensor-wise op
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t2(
+      a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); },
+      bperm));
+  Tensor<ITensor> t2(
+      a, b, [](const ITensor& l, const ITensor& r) { return add(l, r); },
+      bperm);
+
+  // apply tensor-wise op with explicit permutation of inner tiles
+  BOOST_CHECK_NO_THROW(Tensor<ITensor> t3(
+      a, b,
+      [p = inner(bperm)](const ITensor& l, const ITensor& r) {
+        return add(l, r, p);
+      },
+      outer(bperm)));
+  Tensor<ITensor> t3(
+      a, b,
+      [p = inner(bperm)](const ITensor& l, const ITensor& r) {
+        return add(l, r, p);
+      },
+      outer(bperm));
+
+  for (auto&& tref : {std::cref(t), std::cref(t2), std::cref(t3)}) {
+    auto& t = tref.get();
+
+    BOOST_CHECK(!t.empty());
+    BOOST_CHECK_EQUAL(t.range(), outer(bperm) * a.range());
+
+    for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+      for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+        BOOST_CHECK(!t(i, j).empty());
+        BOOST_CHECK_EQUAL(t(i, j).range(), permute(a(j, i).range(), {1, 0}));
+        for (auto&& idx : t(i, j).range()) {
+          BOOST_CHECK_EQUAL(t(i, j)(idx[0], idx[1]),
+                            a(j, i)(idx[1], idx[0]) + b(j, i)(idx[1], idx[0]));
+        }
       }
     }
   }
@@ -280,7 +422,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(clone, ITensor, itensor_types) {
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(permute, ITensor, itensor_types) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(permutation, ITensor, itensor_types) {
   const auto& a = ToT<ITensor>(0);
   Tensor<ITensor> t;
   BOOST_CHECK_NO_THROW(t = a.permute(perm));
@@ -295,6 +437,26 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(permute, ITensor, itensor_types) {
       BOOST_CHECK_NE(t(i, j).data(), a(j, i).data());
       for (std::size_t index = 0ul; index < t(i, j).size(); ++index) {
         BOOST_CHECK_EQUAL(t(i, j)[index], a(j, i)[index]);
+      }
+    }
+  }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(bpermutation, ITensor, itensor_types) {
+  const auto& a = ToT<ITensor>(0);
+  Tensor<ITensor> t;
+  BOOST_CHECK_NO_THROW(t = a.permute(bperm));
+
+  BOOST_CHECK(!t.empty());
+  BOOST_CHECK_EQUAL(t.range(), outer(bperm) * a.range());
+
+  for (decltype(t.range().extent(0)) i = 0; i < t.range().extent(0); ++i) {
+    for (decltype(t.range().extent(1)) j = 0; j < t.range().extent(1); ++j) {
+      BOOST_CHECK(!t(i, j).empty());
+      BOOST_CHECK_NE(t(i, j).data(), a(j, i).data());
+      BOOST_CHECK_EQUAL(t(i, j).range(), permute(a(j, i).range(), {1, 0}));
+      for (auto&& idx : t(i, j).range()) {
+        BOOST_CHECK_EQUAL(t(i, j)(idx[0], idx[1]), a(j, i)(idx[1], idx[0]));
       }
     }
   }
@@ -1021,7 +1183,7 @@ class Contract {
 };  // class Contract
 
 BOOST_AUTO_TEST_CASE(reduce) {
-  using Tile = btas::Tensor<int>;
+  using Tile = bTensorI;
   // computes sum_{ij} g("a_ij,b_ij") * h("c_ij,b_ij,")
   auto contract_12_32 = Contract<Tile>{1.0, {1, 2}, {3, 2}, {1, 3}};
   static_assert(detail::is_reduce_op_v<Contract<Tile>, Tile, Tile, Tile>,

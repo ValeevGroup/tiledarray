@@ -19,35 +19,58 @@
 
 #define BOOST_TEST_MODULE TiledArray Tests
 #include <TiledArray/initialize.h>
+#include <cstdlib>
 #include "TiledArray/external/madness.h"
 #include "unit_test_config.h"
 
 GlobalFixture::GlobalFixture() {
-  world = &TiledArray::initialize(
-      boost::unit_test::framework::master_test_suite().argc,
-      boost::unit_test::framework::master_test_suite().argv);
+  if (world == nullptr) {
+    world = &TiledArray::initialize(
+        boost::unit_test::framework::master_test_suite().argc,
+        boost::unit_test::framework::master_test_suite().argv);
 
-  //  N.B. uncomment to create debugger:
-  // using TiledArray::Debugger;
-  // auto debugger = std::make_shared<Debugger>("ta_test");
-  // Debugger::set_default_debugger(debugger);
-  // debugger->set_prefix(world->rank());
-  // choose lldb or gdb
-  // debugger->set_cmd("lldb_xterm");
-  // debugger->set_cmd("gdb_xterm");
-  // to launch a debugger here or elsewhere:
-  // Debugger::default_debugger()->debug("ready to run");
+    //  N.B. uncomment to create debugger:
+    // using TiledArray::Debugger;
+    // auto debugger = std::make_shared<Debugger>("ta_test");
+    // Debugger::set_default_debugger(debugger);
+    // debugger->set_prefix(world->rank());
+    // choose lldb or gdb
+    // debugger->set_cmd("lldb_xterm");
+    // debugger->set_cmd("gdb_xterm");
+    // to launch a debugger here or elsewhere:
+    // Debugger::default_debugger()->debug("ready to run");
+  }
 }
 
 GlobalFixture::~GlobalFixture() {
-  world->gop.fence();
-  TiledArray::finalize();
+  if (world) {
+    world->gop.fence();
+    TiledArray::finalize();
+    world = nullptr;
+  }
 }
 
-TiledArray::World* GlobalFixture::world = NULL;
+TiledArray::World* GlobalFixture::world = nullptr;
 const std::array<std::size_t, 20> GlobalFixture::primes = {
     {2,  3,  5,  7,  11, 13, 17, 19, 23, 29,
      31, 37, 41, 43, 47, 53, 59, 61, 67, 71}};
+
+bool GlobalFixture::is_distributed() {
+  if (world)
+    return world->size() > 1;
+  else {
+    auto envvar_cstr = std::getenv("TA_UT_DISTRIBUTED");
+    return envvar_cstr;
+  }
+}
+
+TiledArray::unit_test_enabler GlobalFixture::world_size_gt_1() {
+  return TiledArray::unit_test_enabler(is_distributed());
+}
+
+TiledArray::unit_test_enabler GlobalFixture::world_size_eq_1() {
+  return TiledArray::unit_test_enabler(!is_distributed());
+}
 
 // This line will initialize mpi and madness.
 BOOST_GLOBAL_FIXTURE(GlobalFixture);

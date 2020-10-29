@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_EXPR_TRACE_H__INCLUDED
 #define TILEDARRAY_EXPR_TRACE_H__INCLUDED
 
-#include <TiledArray/expressions/variable_list.h>
+#include <TiledArray/expressions/index_list.h>
 #include <iostream>
 
 namespace TiledArray {
@@ -82,14 +82,14 @@ class ExprOStream {
 
 /// Wrapper object that helps start the expression
 class ExprTraceTarget {
-  std::ostream& os_;          ///< Output stream
-  VariableList target_vars_;  ///< Target variable list for an expression
+  std::ostream& os_;                ///< Output stream
+  BipartiteIndexList target_vars_;  ///< Target index list for an expression
 
  public:
   /// Constructor
 
   /// \param os Output stream
-  /// \param target_vars The target variable list for an expression
+  /// \param target_vars The target index list for an expression
   ExprTraceTarget(std::ostream& os, const std::string& target_vars)
       : os_(os), target_vars_(target_vars) {}
 
