@@ -35,6 +35,126 @@
 namespace TiledArray {
 namespace expressions {
 
+inline auto compute_index_list_contraction(
+    const IndexList& left_indices, const IndexList& right_indices,
+    const bool prefer_to_permute_left = true) {
+  const auto left_rank = left_indices.size();
+  const auto right_rank = right_indices.size();
+
+  container::svector<std::string> result_left_indices;
+  result_left_indices.reserve(left_rank);
+  container::svector<std::string> result_right_indices;
+  result_right_indices.reserve(right_rank);
+  container::svector<std::string> result_indices;
+  result_indices.reserve(std::max(left_rank, right_rank));
+
+  auto find = [](const IndexList& indices, const std::string& idx,
+                 unsigned int i, const unsigned int n) {
+    const auto b = indices.begin() + i;
+    const auto e = indices.begin() + n;
+    const auto it = std::find(b, e, idx);
+    return i + std::distance(b, it);
+  };
+
+  // Extract left-most result and inner indices from the left-hand argument.
+  for (unsigned int i = 0ul; i < left_rank; ++i) {
+    const std::string& var = left_indices[i];
+    if (find(right_indices, var, 0u, right_rank) == right_rank) {
+      // Store outer left variable
+      result_left_indices.push_back(var);
+      result_indices.push_back(var);
+    } else {
+      // Store inner left variable
+      result_right_indices.push_back(var);
+    }
+  }
+
+  // Compute the inner and outer dimension ranks.
+  const unsigned int inner_rank = result_right_indices.size();
+  const unsigned int left_outer_rank = result_left_indices.size();
+  const unsigned int right_outer_rank = right_rank - inner_rank;
+  const unsigned int result_rank = left_outer_rank + right_outer_rank;
+
+  // Resize result indices if necessary.
+  result_indices.reserve(result_rank);
+
+  // Check for an outer product
+  if (inner_rank == 0u) {
+    // Extract the right most outer variables from right hand argument.
+    for (unsigned int i = 0ul; i < right_rank; ++i) {
+      const std::string& var = right_indices[i];
+      result_right_indices.push_back(var);
+      result_indices.push_back(var);
+    }
+    // early return for the inner product since will make the result to be pure
+    // concat of the left and right index lists
+    return std::make_tuple(inner_rank, IndexList(result_left_indices),
+                           IndexList(result_right_indices),
+                           IndexList(result_indices), false, false, false,
+                           false);
+  }
+
+  // Initialize flags that will be used to determine the type of permutation
+  // that will be applied to the arguments (i.e. no permutation, transpose,
+  // or arbitrary permutation).
+  bool inner_indices_ordered = true, left_is_no_trans = true,
+       left_is_trans = true, right_is_no_trans = true, right_is_trans = true;
+
+  // If the inner index lists of the arguments are not in the same
+  // order, one of them will need to be permuted. Here, we determine which
+  // argument, left or right, will be permuted if a permutation is
+  // required. The argument with the lowest rank is preferred since it is
+  // likely to have the smaller memory footprint, or the fewest leaves to
+  // minimize the number of permutations in the expression.
+  const bool perm_left = (left_rank < right_rank) ||
+                         ((left_rank == right_rank) && prefer_to_permute_left);
+
+  // Extract variables from the right-hand argument, collect information
+  // about the layout of the index lists, and ensure the inner variable
+  // lists are in the same order.
+  for (unsigned int i = 0ul; i < right_rank; ++i) {
+    const std::string& idx = right_indices[i];
+    const unsigned int j = find(left_indices, idx, 0u, left_rank);
+    if (j == left_rank) {
+      // Store outer right index
+      result_right_indices.push_back(idx);
+      result_indices.push_back(idx);
+    } else {
+      const unsigned int x = result_left_indices.size() - left_outer_rank;
+
+      // Collect information about the relative position of variables
+      inner_indices_ordered =
+          inner_indices_ordered && (result_right_indices[x] == idx);
+      left_is_no_trans = left_is_no_trans && (j >= left_outer_rank);
+      left_is_trans = left_is_trans && (j < inner_rank);
+      right_is_no_trans = right_is_no_trans && (i < inner_rank);
+      right_is_trans = right_is_trans && (i >= right_outer_rank);
+
+      // Store inner right index
+      if (inner_indices_ordered) {
+        // Left and right inner index list order is equal.
+        result_left_indices.push_back(idx);
+      } else if (perm_left) {
+        // Permute left so we need to store inner indices according to
+        // the order of the right-hand argument.
+        result_left_indices.push_back(idx);
+        result_right_indices[x] = idx;
+        left_is_no_trans = left_is_trans = false;
+      } else {
+        // Permute right so we need to store inner indices according to
+        // the order of the left-hand argument.
+        result_left_indices.push_back(result_right_indices[x]);
+        right_is_no_trans = right_is_trans = false;
+      }
+    }
+  }
+
+  return std::make_tuple(inner_rank, IndexList(result_left_indices),
+                         IndexList(result_right_indices),
+                         IndexList(result_indices), left_is_no_trans,
+                         left_is_trans, right_is_no_trans, right_is_trans);
+}
+
 // Forward declarations
 template <typename, typename>
 class MultExpr;
@@ -115,7 +235,7 @@ class ContEngine : public BinaryEngine<Derived> {
   size_type K_;    ///< Inner dimension size
 
   static unsigned int find(const BipartiteIndexList& indices,
-                           std::string index_label, unsigned int i,
+                           const std::string& index_label, unsigned int i,
                            const unsigned int n) {
     for (; i < n; ++i) {
       if (indices[i] == index_label) break;
@@ -236,129 +356,49 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \c BinaryEngine. Instead they are initialized in \c MultContEngine and
   /// \c ScalMultContEngine.
   void init_indices() {
-    const auto left_rank = left_.indices().size();
-    const auto right_rank = right_.indices().size();
+    unsigned int num_contracted_outer_indices;
+    bool left_is_no_trans, left_is_trans, right_is_no_trans, right_is_trans;
 
-    // Get non-const references to the argument index lists.
-    auto& left_indices =
-        const_cast<container::svector<std::string>&>(left_indices_.data());
-    left_indices.reserve(left_rank);
-    auto& right_indices =
-        const_cast<container::svector<std::string>&>(right_indices_.data());
-    right_indices.reserve(right_rank);
-    auto& result_indices =
-        const_cast<container::svector<std::string>&>(indices_.data());
-    result_indices.reserve(std::max(left_rank, right_rank));
+    // TODO handle outer and inner indices separately
+    IndexList left_outer_indices, right_outer_indices, outer_indices;
+    IndexList left_inner_indices, right_inner_indices, inner_indices;
+    TA_ASSERT(inner_size(left_.indices()) == 0 &&
+              inner_size(right_.indices()) == 0);
 
-    // Extract left-most result and inner indices from the left-hand argument.
-    for (unsigned int i = 0ul; i < left_rank; ++i) {
-      const std::string& var = left_.indices()[i];
-      if (find(right_.indices(), var, 0u, right_rank) == right_rank) {
-        // Store outer left variable
-        left_indices.push_back(var);
-        result_indices.push_back(var);
+    std::tie(num_contracted_outer_indices, left_outer_indices,
+             right_outer_indices, outer_indices, left_is_no_trans,
+             left_is_trans, right_is_no_trans, right_is_trans) =
+        compute_index_list_contraction(outer(left_.indices()),
+                                       outer(right_.indices()),
+                                       left_type::leaves <= right_type::leaves);
+
+    left_indices_ = BipartiteIndexList(left_outer_indices, left_inner_indices);
+    right_indices_ =
+        BipartiteIndexList(right_outer_indices, right_inner_indices);
+    indices_ = BipartiteIndexList(outer_indices, inner_indices);
+
+    if (num_contracted_outer_indices > 0) {
+      // Here we set the type of permutation that will be applied to the
+      // argument tensors. If an argument is in matrix form, permutation of
+      // the tiles is disabled.
+      if (left_is_no_trans) {
+        left_op_ = no_trans;
+        left_.permute_tiles(false);
+      } else if (left_is_trans) {
+        left_op_ = trans;
+        left_.permute_tiles(false);
       } else {
-        // Store inner left variable
-        right_indices.push_back(var);
+        left_.perm_indices(left_indices_);
       }
-    }
-
-    // Compute the inner and outer dimension ranks.
-    const unsigned int inner_rank = right_indices.size();
-    const unsigned int left_outer_rank = left_indices.size();
-    const unsigned int right_outer_rank = right_rank - inner_rank;
-    const unsigned int result_rank = left_outer_rank + right_outer_rank;
-
-    // Resize result indices if necessary.
-    result_indices.reserve(result_rank);
-
-    // Check for an outer product
-    if (inner_rank == 0u) {
-      // Extract the right most outer variables from right hand argument.
-      for (unsigned int i = 0ul; i < right_rank; ++i) {
-        const std::string& var = right_.indices()[i];
-        right_indices.push_back(var);
-        result_indices.push_back(var);
-      }
-      return;  // Quick exit
-    }
-
-    // Initialize flags that will be used to determine the type of permutation
-    // that will be applied to the arguments (i.e. no permutation, transpose,
-    // or arbitrary permutation).
-    bool inner_indices_ordered = true, left_is_no_trans = true,
-         left_is_trans = true, right_is_no_trans = true, right_is_trans = true;
-
-    // If the inner index lists of the arguments are not in the same
-    // order, one of them will need to be permuted. Here, we determine which
-    // argument, left or right, will be permuted if a permutation is
-    // required. The argument with the lowest rank is preferred since it is
-    // likely to have the smaller memory footprint, or the fewest leaves to
-    // minimize the number of permutations in the expression.
-    const bool perm_left =
-        (left_rank < right_rank) || ((left_rank == right_rank) &&
-                                     (left_type::leaves <= right_type::leaves));
-
-    // Extract variables from the right-hand argument, collect information
-    // about the layout of the index lists, and ensure the inner variable
-    // lists are in the same order.
-    for (unsigned int i = 0ul; i < right_rank; ++i) {
-      const std::string& idx = right_.indices()[i];
-      const unsigned int j = find(left_.indices(), idx, 0u, left_rank);
-      if (j == left_rank) {
-        // Store outer right index
-        right_indices.push_back(idx);
-        result_indices.push_back(idx);
+      if (right_is_no_trans) {
+        right_op_ = no_trans;
+        right_.permute_tiles(false);
+      } else if (right_is_trans) {
+        right_op_ = trans;
+        right_.permute_tiles(false);
       } else {
-        const unsigned int x = left_indices.size() - left_outer_rank;
-
-        // Collect information about the relative position of variables
-        inner_indices_ordered =
-            inner_indices_ordered && (right_indices[x] == idx);
-        left_is_no_trans = left_is_no_trans && (j >= left_outer_rank);
-        left_is_trans = left_is_trans && (j < inner_rank);
-        right_is_no_trans = right_is_no_trans && (i < inner_rank);
-        right_is_trans = right_is_trans && (i >= right_outer_rank);
-
-        // Store inner right index
-        if (inner_indices_ordered) {
-          // Left and right inner index list order is equal.
-          left_indices.push_back(idx);
-        } else if (perm_left) {
-          // Permute left so we need to store inner indices according to
-          // the order of the right-hand argument.
-          left_indices.push_back(idx);
-          right_indices[x] = idx;
-          left_is_no_trans = left_is_trans = false;
-        } else {
-          // Permute right so we need to store inner indices according to
-          // the order of the left-hand argument.
-          left_indices.push_back(right_indices[x]);
-          right_is_no_trans = right_is_trans = false;
-        }
+        right_.perm_indices(right_indices_);
       }
-    }
-
-    // Here we set the type of permutation that will be applied to the
-    // argument tensors. If an argument is in matrix form, permutation of
-    // the tiles is disabled.
-    if (left_is_no_trans) {
-      left_op_ = no_trans;
-      left_.permute_tiles(false);
-    } else if (left_is_trans) {
-      left_op_ = trans;
-      left_.permute_tiles(false);
-    } else {
-      left_.perm_indices(left_indices_);
-    }
-    if (right_is_no_trans) {
-      right_op_ = no_trans;
-      right_.permute_tiles(false);
-    } else if (right_is_trans) {
-      right_op_ = trans;
-      right_.permute_tiles(false);
-    } else {
-      right_.perm_indices(right_indices_);
     }
   }
 

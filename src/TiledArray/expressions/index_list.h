@@ -137,6 +137,14 @@ class IndexList {
       indices_.push_back(trim_spaces_(first->begin(), first->end()));
   }
 
+  /// constructs from a container of index labels
+
+  /// \param indices the index container
+  /// \note All whitespaces are discarded, i.e., "a c" will be converted to "ac"
+  /// and will be considered a single index.
+  IndexList(const container_type& indices)
+      : IndexList(indices.begin(), indices.end()) {}
+
   IndexList(const IndexList& other) : indices_(other.indices_) {}
 
   IndexList& operator=(const IndexList& other) {
