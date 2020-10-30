@@ -341,22 +341,15 @@ in that order.
 
 ##### Step 2a: Variable Initialization
 
-Variable initialization starts in `MultEngine::init_indices(const IndexList&)`.
-This function starts by calling the `init_indices()` members of the engines for the
-expressions on the left and right sides of the `*` operator (for leaves of the
-AST, like the present case, this is a noop). After giving the expressions on the
+Variable initialization starts in `MultEngine::init_indices(const IndexList& target_indices)`. The purpose of the `init_indices` is to propagate the target indices (in this case, `{"i","j"}`) for each computation step down the tree; the goal is to minimize the number of permutations (layout changes) needed to evaluate the tree (this is complicated by the fact that some operations can permute their arguments and/or result implicitly, namely GEMM). N.B. For some operations (e.g., reductions) the target index list is empty, hence the `init_indices()` overload is used in that case.
+
+Calling `init_indices(target_indices)` on the top engine in the engine tree calls the `init_indices` recursively on its descendants; in this case, `init_indices` will be invoked for the engines of the
+expressions on the left and right sides of the `*` operator (since the left and right arguments are leaves of the
+AST, these will be no-ops). After giving the expressions on the
 left and right a chance to initialize their indices the indices for the left
 and right side are used to determine what sort of multiplication this is (a
 contraction or a Hadamard-product) and the appropriate base class's `perm_indices`
 is then called.
-
-The purpose of the `init_indices()`/`init_indices(const IndexList&)` calls are to
-compute the indices of the tensor which results from a particular branch of the
-AST. The difference between the two calls is whether or not the final indices
-are being provided as a hint to subexpressions (the form accepting one argument
-is provided the hint). In addition to simply working out the resulting indices
-these functions also work out any permutations (and therefore transposes) needed
-to get the indices in the final order.
 
 ##### Step 2b: Struct Initialization
 
