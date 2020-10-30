@@ -35,9 +35,17 @@
 namespace TiledArray {
 namespace expressions {
 
-inline auto compute_index_list_contraction(
-    const IndexList& left_indices, const IndexList& right_indices,
-    const bool prefer_to_permute_left = true) {
+enum class GEMMTensorArgOp { no_trans = 1, trans = 2, permute_to_no_trans = 3 };
+
+/// Given left and right index lists computes the suggested indices for the left
+/// and right args and the resutl, as well as (if any) ops to be applied to the
+/// args to perform GEMM \return \c {num_contracted_indices, left_index_list,
+/// right_index_list, result_index_list, left_op, right_op}
+inline std::tuple<unsigned int, IndexList, IndexList, IndexList,
+                  GEMMTensorArgOp, GEMMTensorArgOp>
+compute_index_list_contraction(const IndexList& left_indices,
+                               const IndexList& right_indices,
+                               const bool prefer_to_permute_left = true) {
   const auto left_rank = left_indices.size();
   const auto right_rank = right_indices.size();
 
@@ -90,8 +98,9 @@ inline auto compute_index_list_contraction(
     // concat of the left and right index lists
     return std::make_tuple(inner_rank, IndexList(result_left_indices),
                            IndexList(result_right_indices),
-                           IndexList(result_indices), false, false, false,
-                           false);
+                           IndexList(result_indices),
+                           GEMMTensorArgOp::permute_to_no_trans,
+                           GEMMTensorArgOp::permute_to_no_trans);
   }
 
   // Initialize flags that will be used to determine the type of permutation
@@ -149,10 +158,20 @@ inline auto compute_index_list_contraction(
     }
   }
 
+  auto to_tensor_op = [](bool no_trans, bool trans) {
+    if (no_trans)
+      return GEMMTensorArgOp::no_trans;
+    else if (trans)
+      return GEMMTensorArgOp::trans;
+    else
+      return GEMMTensorArgOp::permute_to_no_trans;
+  };
+
   return std::make_tuple(inner_rank, IndexList(result_left_indices),
                          IndexList(result_right_indices),
-                         IndexList(result_indices), left_is_no_trans,
-                         left_is_trans, right_is_no_trans, right_is_trans);
+                         IndexList(result_indices),
+                         to_tensor_op(left_is_no_trans, left_is_trans),
+                         to_tensor_op(right_is_no_trans, right_is_trans));
 }
 
 // Forward declarations
@@ -214,21 +233,14 @@ class ContEngine : public BinaryEngine<Derived> {
   using ExprEngine_::trange_;
   using ExprEngine_::world_;
 
- private:
-  typedef enum {
-    no_trans = 1,
-    trans = 2,
-    permute_to_no_trans = 3,
-  } TensorOp;
-
  protected:
   scalar_type factor_;  ///< Contraction scaling factor
 
  private:
   BipartiteIndexList left_indices_;   ///< Left-hand index list
   BipartiteIndexList right_indices_;  ///< Right-hand index list
-  TensorOp left_op_;                  ///< Left-hand operation
-  TensorOp right_op_;                 ///< Right-hand operation
+  GEMMTensorArgOp left_op_;           ///< Left-hand operation
+  GEMMTensorArgOp right_op_;          ///< Right-hand operation
   op_type op_;                        ///< Tile operation
   TiledArray::detail::ProcGrid
       proc_grid_;  ///< Process grid for the contraction
@@ -256,8 +268,8 @@ class ContEngine : public BinaryEngine<Derived> {
         factor_(1),
         left_indices_(),
         right_indices_(),
-        left_op_(permute_to_no_trans),
-        right_op_(permute_to_no_trans),
+        left_op_(GEMMTensorArgOp::permute_to_no_trans),
+        right_op_(GEMMTensorArgOp::permute_to_no_trans),
         op_(),
         proc_grid_(),
         K_(1u) {}
@@ -274,8 +286,8 @@ class ContEngine : public BinaryEngine<Derived> {
         factor_(expr.factor()),
         left_indices_(),
         right_indices_(),
-        left_op_(permute_to_no_trans),
-        right_op_(permute_to_no_trans),
+        left_op_(GEMMTensorArgOp::permute_to_no_trans),
+        right_op_(GEMMTensorArgOp::permute_to_no_trans),
         op_(),
         proc_grid_(),
         K_(1u) {}
@@ -293,8 +305,8 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \param target_indices The target index list for this expression
   void perm_indices(const BipartiteIndexList& target_indices) {
     // Only permute if the arguments can be permuted
-    if ((left_op_ == permute_to_no_trans) ||
-        (right_op_ == permute_to_no_trans)) {
+    if ((left_op_ == GEMMTensorArgOp::permute_to_no_trans) ||
+        (right_op_ == GEMMTensorArgOp::permute_to_no_trans)) {
       // Compute ranks
       const unsigned int result_rank = target_indices.size();
       const unsigned int inner_rank =
@@ -312,7 +324,7 @@ class ContEngine : public BinaryEngine<Derived> {
       // If target is properly partitioned, then arguments can be permuted
       // to fit the target.
       if (target_partitioned) {
-        if (left_op_ == permute_to_no_trans) {
+        if (left_op_ == GEMMTensorArgOp::permute_to_no_trans) {
           // Copy left-hand target variables to left and result index lists.
           for (unsigned int i = 0u; i < left_outer_rank; ++i) {
             const std::string& var = target_indices[i];
@@ -328,7 +340,7 @@ class ContEngine : public BinaryEngine<Derived> {
             const_cast<std::string&>(indices_[i]) = left_indices_[i];
         }
 
-        if (right_op_ == permute_to_no_trans) {
+        if (right_op_ == GEMMTensorArgOp::permute_to_no_trans) {
           // Copy right-hand target variables to right and result variable
           // lists.
           for (unsigned int i = left_outer_rank, j = inner_rank;
@@ -357,7 +369,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \c ScalMultContEngine.
   void init_indices() {
     unsigned int num_contracted_outer_indices;
-    bool left_is_no_trans, left_is_trans, right_is_no_trans, right_is_trans;
+    GEMMTensorArgOp left_op, right_op;
 
     // TODO handle outer and inner indices separately
     IndexList left_outer_indices, right_outer_indices, outer_indices;
@@ -366,8 +378,7 @@ class ContEngine : public BinaryEngine<Derived> {
               inner_size(right_.indices()) == 0);
 
     std::tie(num_contracted_outer_indices, left_outer_indices,
-             right_outer_indices, outer_indices, left_is_no_trans,
-             left_is_trans, right_is_no_trans, right_is_trans) =
+             right_outer_indices, outer_indices, left_op, right_op) =
         compute_index_list_contraction(outer(left_.indices()),
                                        outer(right_.indices()),
                                        left_type::leaves <= right_type::leaves);
@@ -377,24 +388,21 @@ class ContEngine : public BinaryEngine<Derived> {
         BipartiteIndexList(right_outer_indices, right_inner_indices);
     indices_ = BipartiteIndexList(outer_indices, inner_indices);
 
+    // for outer product no need to mess with the layouts of arguments
+    // otherwise, need to either fix the layouts of args and/or specify their
+    // target indices
     if (num_contracted_outer_indices > 0) {
       // Here we set the type of permutation that will be applied to the
       // argument tensors. If an argument is in matrix form, permutation of
       // the tiles is disabled.
-      if (left_is_no_trans) {
-        left_op_ = no_trans;
-        left_.permute_tiles(false);
-      } else if (left_is_trans) {
-        left_op_ = trans;
+      if (left_op != GEMMTensorArgOp::permute_to_no_trans) {
+        left_op_ = left_op;
         left_.permute_tiles(false);
       } else {
         left_.perm_indices(left_indices_);
       }
-      if (right_is_no_trans) {
-        right_op_ = no_trans;
-        right_.permute_tiles(false);
-      } else if (right_is_trans) {
-        right_op_ = trans;
+      if (right_op != GEMMTensorArgOp::permute_to_no_trans) {
+        right_op_ = right_op;
         right_.permute_tiles(false);
       } else {
         right_.perm_indices(right_indices_);
@@ -416,9 +424,11 @@ class ContEngine : public BinaryEngine<Derived> {
     // evaluate the tiled range and shape.
 
     const madness::cblas::CBLAS_TRANSPOSE left_op =
-        (left_op_ == trans ? madness::cblas::Trans : madness::cblas::NoTrans);
+        (left_op_ == GEMMTensorArgOp::trans ? madness::cblas::Trans
+                                            : madness::cblas::NoTrans);
     const madness::cblas::CBLAS_TRANSPOSE right_op =
-        (right_op_ == trans ? madness::cblas::Trans : madness::cblas::NoTrans);
+        (right_op_ == GEMMTensorArgOp::trans ? madness::cblas::Trans
+                                             : madness::cblas::NoTrans);
 
     if (target_indices != indices_) {
       // Initialize permuted structure
