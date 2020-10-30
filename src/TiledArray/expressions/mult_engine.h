@@ -45,21 +45,32 @@ enum class TensorProduct {
   Invalid = -1
 };
 
+/// computes the tensor product type corresponding to the left and right
+/// argument indices \param left_indices the left argument index list \param
+/// right_indices the right argument index list \return TensorProduct::Invalid
+/// is either argument is empty, TensorProduct::Hadamard if the arguments are
+/// related by a permutation, else TensorProduct::Contraction
 inline TensorProduct compute_product_type(const IndexList& left_indices,
                                           const IndexList& right_indices) {
-  return left_indices.is_permutation(right_indices)
-             ? TensorProduct::Hadamard
-             : TensorProduct::Contraction;
+  TensorProduct result = TensorProduct::Invalid;
+  if (left_indices && right_indices) {
+    if (left_indices.size() == right_indices.size() &&
+        left_indices.is_permutation(right_indices))
+      result = TensorProduct::Hadamard;
+    else
+      result = TensorProduct::Contraction;
+  }
+  return result;
 }
 
+/// computes the tensor product type corresponding to the left and right
+/// argument indices, and validates against the target indices
 inline TensorProduct compute_product_type(const IndexList& left_indices,
                                           const IndexList& right_indices,
                                           const IndexList& target_indices) {
-  auto result = left_indices.is_permutation(target_indices)
-                    ? TensorProduct::Hadamard
-                    : TensorProduct::Contraction;
+  auto result = compute_product_type(left_indices, right_indices);
   if (result == TensorProduct::Hadamard)
-    TA_ASSERT(left_indices.is_permutation(right_indices));
+    TA_ASSERT(left_indices.is_permutation(target_indices));
   return result;
 }
 
@@ -205,6 +216,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
  private:
   TensorProduct product_type_ = TensorProduct::Invalid;
+  TensorProduct inner_product_type_ = TensorProduct::Invalid;
 
  public:
   /// \return the product type
@@ -215,6 +227,16 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     TA_ASSERT(product_type_ == TensorProduct::Hadamard ||
               product_type_ == TensorProduct::Contraction);
     return product_type_;
+  }
+
+  /// \return the inner product type
+  TensorProduct inner_product_type() const {
+    TA_ASSERT(inner_product_type_ !=
+              TensorProduct::Invalid);  // init_indices() must initialize this
+    /// only Hadamard and contraction are supported now
+    TA_ASSERT(inner_product_type_ == TensorProduct::Hadamard ||
+              inner_product_type_ == TensorProduct::Contraction);
+    return inner_product_type_;
   }
 
  public:
@@ -250,6 +272,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     product_type_ = compute_product_type(outer(BinaryEngine_::left_.indices()),
                                          outer(BinaryEngine_::right_.indices()),
                                          outer(target_indices));
+    inner_product_type_ = compute_product_type(
+        inner(BinaryEngine_::left_.indices()),
+        inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
     // TODO support general products that involve fused, contracted, and free
     // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
@@ -268,6 +293,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     // the tile op; the type of the tile op does not need to match the type of
     // the operation on the outer indices
     if (product_type() == TensorProduct::Hadamard) {
+      // assumes inner op is also Hadamard
       BinaryEngine_::perm_indices(target_indices);
     } else {
       ContEngine_::init_indices();
@@ -282,12 +308,20 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     product_type_ =
         compute_product_type(outer(BinaryEngine_::left_.indices()),
                              outer(BinaryEngine_::right_.indices()));
+    inner_product_type_ =
+        compute_product_type(inner(BinaryEngine_::left_.indices()),
+                             inner(BinaryEngine_::right_.indices()));
 
     if (product_type() == TensorProduct::Hadamard) {
-      if (left_type::leaves <= right_type::leaves)
-        ExprEngine_::indices_ = BinaryEngine_::left_.indices();
-      else
-        ExprEngine_::indices_ = BinaryEngine_::right_.indices();
+      auto outer_indices = outer((left_type::leaves <= right_type::leaves)
+                                     ? BinaryEngine_::left_.indices()
+                                     : BinaryEngine_::right_.indices());
+      // assume inner op is also Hadamard
+      // TODO compute inner indices using inner_product_type_
+      auto inner_indices = inner((left_type::leaves <= right_type::leaves)
+                                     ? BinaryEngine_::left_.indices()
+                                     : BinaryEngine_::right_.indices());
+      ExprEngine_::indices_ = BipartiteIndexList(outer_indices, inner_indices);
     } else {
       ContEngine_::init_indices();
     }
@@ -450,6 +484,7 @@ class ScalMultEngine
 
  private:
   TensorProduct product_type_ = TensorProduct::Invalid;
+  TensorProduct inner_product_type_ = TensorProduct::Invalid;
 
  public:
   /// \return the product type
@@ -459,6 +494,15 @@ class ScalMultEngine
     TA_ASSERT(product_type_ == TensorProduct::Hadamard ||
               product_type_ == TensorProduct::Contraction);
     return product_type_;
+  }
+
+  /// \return the inner product type
+  TensorProduct inner_product_type() const {
+    TA_ASSERT(inner_product_type_ != TensorProduct::Invalid);
+    /// only Hadamard and contraction are supported now
+    TA_ASSERT(inner_product_type_ == TensorProduct::Hadamard ||
+              inner_product_type_ == TensorProduct::Contraction);
+    return inner_product_type_;
   }
 
  public:
@@ -495,8 +539,12 @@ class ScalMultEngine
     product_type_ = compute_product_type(outer(BinaryEngine_::left_.indices()),
                                          outer(BinaryEngine_::right_.indices()),
                                          outer(target_indices));
+    inner_product_type_ = compute_product_type(
+        inner(BinaryEngine_::left_.indices()),
+        inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
     if (product_type() == TensorProduct::Hadamard) {
+      // assumes inner op is also Hadamard
       BinaryEngine_::perm_indices(target_indices);
     } else {
       ContEngine_::init_indices();
@@ -512,10 +560,15 @@ class ScalMultEngine
         compute_product_type(outer(BinaryEngine_::left_.indices()),
                              outer(BinaryEngine_::right_.indices()));
     if (product_type() == TensorProduct::Hadamard) {
-      if (left_type::leaves <= right_type::leaves)
-        ExprEngine_::indices_ = BinaryEngine_::left_.indices();
-      else
-        ExprEngine_::indices_ = BinaryEngine_::right_.indices();
+      auto outer_indices = outer((left_type::leaves <= right_type::leaves)
+                                     ? BinaryEngine_::left_.indices()
+                                     : BinaryEngine_::right_.indices());
+      // assume inner op is also Hadamard
+      // TODO compute inner indices using inner_product_type_
+      auto inner_indices = inner((left_type::leaves <= right_type::leaves)
+                                     ? BinaryEngine_::left_.indices()
+                                     : BinaryEngine_::right_.indices());
+      ExprEngine_::indices_ = BipartiteIndexList(outer_indices, inner_indices);
     } else {
       ContEngine_::init_indices();
     }

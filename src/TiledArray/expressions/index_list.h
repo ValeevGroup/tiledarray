@@ -156,6 +156,16 @@ class IndexList {
     return *this;
   }
 
+  /// Bool conversion
+
+  /// \return \c true if the permutation is not empty, otherwise \c false.
+  explicit operator bool() const { return !indices_.empty(); }
+
+  /// Not operator
+
+  /// \return \c true if the permutation is empty, otherwise \c false.
+  bool operator!() const { return indices_.empty(); }
+
   /// Returns an iterator to the first index.
   const_iterator begin() const { return indices_.begin(); }
 
@@ -459,6 +469,16 @@ class BipartiteIndexList {
     return std::tie(second_size_, indices_) ==
            std::tie(other.second_size_, other.indices_);
   }
+
+  /// Bool conversion
+
+  /// \return \c true if the permutation is not empty, otherwise \c false.
+  explicit operator bool() const { return !indices_.empty(); }
+
+  /// Not operator
+
+  /// \return \c true if the permutation is empty, otherwise \c false.
+  bool operator!() const { return indices_.empty(); }
 
   /// Returns a random-access iterator pointing to the first string index.
   ///
