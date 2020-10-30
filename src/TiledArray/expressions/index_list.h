@@ -145,8 +145,8 @@ class IndexList {
     return *this;
   }
 
-  IndexList& operator=(const std::string& vars) {
-    init_(vars);
+  IndexList& operator=(const std::string& str) {
+    init_(str);
     return *this;
   }
 
@@ -248,10 +248,10 @@ class IndexList {
 
  private:
   /// Initializes from a comma-separated sequence of indices
-  void init_(const std::string& vars) {
-    std::string::const_iterator start = vars.begin();
-    std::string::const_iterator finish = vars.begin();
-    for (; finish != vars.end(); ++finish) {
+  void init_(const std::string& str) {
+    std::string::const_iterator start = str.begin();
+    std::string::const_iterator finish = str.begin();
+    for (; finish != str.end(); ++finish) {
       if (*finish == ',') {
         indices_.push_back(trim_spaces_(start, finish));
         start = finish + 1;

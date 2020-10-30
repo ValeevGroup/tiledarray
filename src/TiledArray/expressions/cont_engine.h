@@ -114,10 +114,11 @@ class ContEngine : public BinaryEngine<Derived> {
       proc_grid_;  ///< Process grid for the contraction
   size_type K_;    ///< Inner dimension size
 
-  static unsigned int find(const BipartiteIndexList& vars, std::string var,
-                           unsigned int i, const unsigned int n) {
+  static unsigned int find(const BipartiteIndexList& indices,
+                           std::string index_label, unsigned int i,
+                           const unsigned int n) {
     for (; i < n; ++i) {
-      if (vars[i] == var) break;
+      if (indices[i] == index_label) break;
     }
 
     return i;
