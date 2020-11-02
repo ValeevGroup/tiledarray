@@ -91,6 +91,8 @@ TiledArray/expressions/expr_trace.h
 TiledArray/expressions/leaf_engine.h
 TiledArray/expressions/mult_engine.h
 TiledArray/expressions/mult_expr.h
+TiledArray/expressions/permopt.h
+TiledArray/expressions/product.h
 TiledArray/expressions/scal_engine.h
 TiledArray/expressions/scal_expr.h
 TiledArray/expressions/scal_tsr_engine.h

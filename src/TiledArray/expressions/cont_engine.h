@@ -28,254 +28,13 @@
 
 #include <TiledArray/dist_eval/contraction_eval.h>
 #include <TiledArray/expressions/binary_engine.h>
+#include <TiledArray/expressions/permopt.h>
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/tensor/utility.h>
 #include <TiledArray/tile_op/contract_reduce.h>
 
 namespace TiledArray {
 namespace expressions {
-
-/// types of binary tensor products known to TiledArray
-enum class TensorProduct {
-  /// fused indices only
-  Hadamard,
-  /// (at least 1) free and (at least 1) contracted indices
-  Contraction,
-  /// free, fused, and contracted indices
-  General,
-  /// invalid
-  Invalid = -1
-};
-
-/// computes the tensor product type corresponding to the left and right
-/// argument indices \param left_indices the left argument index list \param
-/// right_indices the right argument index list \return TensorProduct::Invalid
-/// is either argument is empty, TensorProduct::Hadamard if the arguments are
-/// related by a permutation, else TensorProduct::Contraction
-inline TensorProduct compute_product_type(const IndexList& left_indices,
-                                          const IndexList& right_indices) {
-  TensorProduct result = TensorProduct::Invalid;
-  if (left_indices && right_indices) {
-    if (left_indices.size() == right_indices.size() &&
-        left_indices.is_permutation(right_indices))
-      result = TensorProduct::Hadamard;
-    else
-      result = TensorProduct::Contraction;
-  }
-  return result;
-}
-
-/// computes the tensor product type corresponding to the left and right
-/// argument indices, and validates against the target indices
-inline TensorProduct compute_product_type(const IndexList& left_indices,
-                                          const IndexList& right_indices,
-                                          const IndexList& target_indices) {
-  auto result = compute_product_type(left_indices, right_indices);
-  if (result == TensorProduct::Hadamard)
-    TA_ASSERT(left_indices.is_permutation(target_indices));
-  return result;
-}
-
-// clang-format off
-/// Denotes permutation op to be applied to the tensor product arguments in order
-/// to express it as a GEMM
-/// - \c no_trans : no permutation
-/// - \c trans : matrix transpose (i.e. permutation expressible as a matrix
-///   transpose, e.g. "ijklm" -> "lmijk")
-/// - \c permute_to_no_trans : general permutation
-/// \note need to distinguish `trans` from `permute_to_no_trans` since `trans` and `no_trans` can be performed by BLAS' GEMM
-// clang-format on
-enum class GEMMTensorArgOp { no_trans = 1, trans = 2, permute_to_no_trans = 3 };
-
-// clang-format off
-/// Given left and right index lists computes the suggested indices for the left
-/// and right args and the result, as well as (if any) ops to be applied to the
-/// args to perform GEMM
-// clang-format on
-struct GEMMPermutationOptimizer {
-  unsigned int num_contracted_indices;
-  IndexList target_left_indices, target_right_indices, target_result_indices;
-  GEMMTensorArgOp left_op, right_op;
-
-  GEMMPermutationOptimizer() = default;
-  GEMMPermutationOptimizer(const GEMMPermutationOptimizer&) = default;
-  GEMMPermutationOptimizer& operator=(const GEMMPermutationOptimizer&) =
-      default;
-
-  GEMMPermutationOptimizer(const IndexList& left_indices,
-                           const IndexList& right_indices,
-                           const bool prefer_to_permute_left = true) {
-    std::tie(num_contracted_indices, target_left_indices, target_right_indices,
-             target_result_indices, left_op, right_op) =
-        compute_index_list_contraction(left_indices, right_indices,
-                                       prefer_to_permute_left);
-  }
-
-  // clang-format off
-  /// \return `{num_contracted_indices,left_index_list,right_index_list,result_index_list,left_op,right_op}` where
-  ///         - `num_contracted_indices` is the number of contracted indices (1 or greater)
-  ///         - `left_index_list` is the list of target indices for the left argument
-  ///         - `right_index_list` is the list of target indices for the right expression
-  ///         - `result_index_list` is the list of indices produced in the contraction op (this list may need to be further permuted to produce the target indices; see ContEngine::perm_indices )
-  ///         - `left_op` is the permutation to be applied to the left expression result
-  ///         - `right_op` is the permutation to be applied to the right expression result
-  // clang-format on
-  inline std::tuple<unsigned int, IndexList, IndexList, IndexList,
-                    GEMMTensorArgOp, GEMMTensorArgOp>
-  compute_index_list_contraction(const IndexList& left_indices,
-                                 const IndexList& right_indices,
-                                 const bool prefer_to_permute_left = true) {
-    const auto left_rank = left_indices.size();
-    const auto right_rank = right_indices.size();
-
-    container::svector<std::string> result_left_indices;
-    result_left_indices.reserve(left_rank);
-    container::svector<std::string> result_right_indices;
-    result_right_indices.reserve(right_rank);
-    container::svector<std::string> result_indices;
-    result_indices.reserve(std::max(left_rank, right_rank));
-
-    auto find = [](const IndexList& indices, const std::string& idx,
-                   unsigned int i, const unsigned int n) {
-      const auto b = indices.begin() + i;
-      const auto e = indices.begin() + n;
-      const auto it = std::find(b, e, idx);
-      return i + std::distance(b, it);
-    };
-
-    // Extract left-most result and inner indices from the left-hand argument.
-    for (unsigned int i = 0ul; i < left_rank; ++i) {
-      const std::string& var = left_indices[i];
-      if (find(right_indices, var, 0u, right_rank) == right_rank) {
-        // Store outer left variable
-        result_left_indices.push_back(var);
-        result_indices.push_back(var);
-      } else {
-        // Store inner left variable
-        result_right_indices.push_back(var);
-      }
-    }
-
-    // Compute the inner and outer dimension ranks.
-    const unsigned int inner_rank = result_right_indices.size();
-    const unsigned int left_outer_rank = result_left_indices.size();
-    const unsigned int right_outer_rank = right_rank - inner_rank;
-    const unsigned int result_rank = left_outer_rank + right_outer_rank;
-
-    // Resize result indices if necessary.
-    result_indices.reserve(result_rank);
-
-    // If an outer product, result = concat of free indices from left and right
-    if (inner_rank == 0u) {
-      // Extract the right most outer variables from right hand argument.
-      for (unsigned int i = 0ul; i < right_rank; ++i) {
-        const std::string& var = right_indices[i];
-        result_right_indices.push_back(var);
-        result_indices.push_back(var);
-      }
-      // early return for the inner product since will make the result to be
-      // pure concat of the left and right index lists
-      return std::make_tuple(inner_rank, IndexList(result_left_indices),
-                             IndexList(result_right_indices),
-                             IndexList(result_indices),
-                             GEMMTensorArgOp::permute_to_no_trans,
-                             GEMMTensorArgOp::permute_to_no_trans);
-    }
-
-    // Initialize flags that will be used to determine the type of permutation
-    // that will be applied to the arguments (i.e. no permutation, matrix
-    // transpose, or arbitrary permutation).
-    bool inner_indices_ordered = true, left_is_no_trans = true,
-         left_is_trans = true, right_is_no_trans = true, right_is_trans = true;
-
-    // If the inner index lists of the arguments are not in the same
-    // order, one of them will need to be permuted. Here, we determine which
-    // argument, left or right, will be permuted if a permutation is
-    // required. The argument with the lowest rank is preferred since it is
-    // likely to have the smaller memory footprint.
-    const bool perm_left =
-        (left_rank < right_rank) ||
-        ((left_rank == right_rank) && prefer_to_permute_left);
-
-    // Extract variables from the right-hand argument, collect information
-    // about the layout of the index lists, and ensure the inner variable
-    // lists are in the same order.
-    for (unsigned int i = 0ul; i < right_rank; ++i) {
-      const std::string& idx = right_indices[i];
-      const unsigned int j = find(left_indices, idx, 0u, left_rank);
-      if (j == left_rank) {
-        // Store outer right index
-        result_right_indices.push_back(idx);
-        result_indices.push_back(idx);
-      } else {
-        const unsigned int x = result_left_indices.size() - left_outer_rank;
-
-        // Collect information about the relative position of variables
-        inner_indices_ordered =
-            inner_indices_ordered && (result_right_indices[x] == idx);
-        left_is_no_trans = left_is_no_trans && (j >= left_outer_rank);
-        left_is_trans = left_is_trans && (j < inner_rank);
-        right_is_no_trans = right_is_no_trans && (i < inner_rank);
-        right_is_trans = right_is_trans && (i >= right_outer_rank);
-
-        // Store inner right index
-        if (inner_indices_ordered) {
-          // Left and right inner index list order is equal.
-          result_left_indices.push_back(idx);
-        } else if (perm_left) {
-          // Permute left so we need to store inner indices according to
-          // the order of the right-hand argument.
-          result_left_indices.push_back(idx);
-          result_right_indices[x] = idx;
-          left_is_no_trans = left_is_trans = false;
-        } else {
-          // Permute right so we need to store inner indices according to
-          // the order of the left-hand argument.
-          result_left_indices.push_back(result_right_indices[x]);
-          right_is_no_trans = right_is_trans = false;
-        }
-      }
-    }
-
-    auto to_tensor_op = [](bool no_trans, bool trans) {
-      if (no_trans)
-        return GEMMTensorArgOp::no_trans;
-      else if (trans)
-        return GEMMTensorArgOp::trans;
-      else
-        return GEMMTensorArgOp::permute_to_no_trans;
-    };
-
-    return std::make_tuple(inner_rank, IndexList(result_left_indices),
-                           IndexList(result_right_indices),
-                           IndexList(result_indices),
-                           to_tensor_op(left_is_no_trans, left_is_trans),
-                           to_tensor_op(right_is_no_trans, right_is_trans));
-  }
-};
-
-// clang-format off
-/// Given left and right index lists computes the suggested indices for the left
-/// and right args and the result for computing Hadamard product efficiently
-// clang-format on
-struct HadamardPermutationOptimizer {
-  IndexList target_left_indices, target_right_indices, target_result_indices;
-
-  HadamardPermutationOptimizer() = default;
-  HadamardPermutationOptimizer(const HadamardPermutationOptimizer&) = default;
-  HadamardPermutationOptimizer& operator=(const HadamardPermutationOptimizer&) =
-      default;
-
-  HadamardPermutationOptimizer(const IndexList& left_indices,
-                               const IndexList& right_indices,
-                               const bool prefer_to_permute_left = true)
-      : target_left_indices(left_indices),
-        target_right_indices(right_indices),
-        target_result_indices(prefer_to_permute_left ? right_indices
-                                                     : left_indices) {
-    TA_ASSERT(left_indices.is_permutation(right_indices));
-  }
-};
 
 // Forward declarations
 template <typename, typename>
@@ -342,8 +101,8 @@ class ContEngine : public BinaryEngine<Derived> {
  private:
   BipartiteIndexList left_indices_;   ///< Target left-hand index list
   BipartiteIndexList right_indices_;  ///< Target right-hand index list
-  GEMMTensorArgOp left_op_;           ///< Left-hand permute operation
-  GEMMTensorArgOp right_op_;          ///< Right-hand permute operation
+  PermutationType left_op_;           ///< Left-hand permute operation
+  PermutationType right_op_;          ///< Right-hand permute operation
   op_type op_;                        ///< Tile operation
   TiledArray::detail::ProcGrid
       proc_grid_;  ///< Process grid for the contraction
@@ -371,8 +130,8 @@ class ContEngine : public BinaryEngine<Derived> {
         factor_(1),
         left_indices_(),
         right_indices_(),
-        left_op_(GEMMTensorArgOp::permute_to_no_trans),
-        right_op_(GEMMTensorArgOp::permute_to_no_trans),
+        left_op_(PermutationType::general),
+        right_op_(PermutationType::general),
         op_(),
         proc_grid_(),
         K_(1u) {}
@@ -389,8 +148,8 @@ class ContEngine : public BinaryEngine<Derived> {
         factor_(expr.factor()),
         left_indices_(),
         right_indices_(),
-        left_op_(GEMMTensorArgOp::permute_to_no_trans),
-        right_op_(GEMMTensorArgOp::permute_to_no_trans),
+        left_op_(PermutationType::general),
+        right_op_(PermutationType::general),
         op_(),
         proc_grid_(),
         K_(1u) {}
@@ -401,130 +160,102 @@ class ContEngine : public BinaryEngine<Derived> {
 
   /// Set the index list for this expression
 
-  /// This function will set the index list for this expression and its
-  /// children such that the number of permutations is minimized. The final
-  /// index list may not be set to target, which indicates that the
-  /// result of this expression will be permuted to match \c target_indices.
+  /// If arguments can be permuted freely and \p target_indices are
+  /// well-partitioned into left and right args' indices it is possible
+  /// to permute left and right args to order their free indices
+  /// the order that \p target_indices requires.
   /// \param target_indices The target index list for this expression
+  /// \warning this does not take into account the ranks of the args to decide
+  /// whether it makes sense to permute them or the result
+  /// \todo take into account the ranks of the args to decide
+  /// whether it makes sense to permute them or the result
   void perm_indices(const BipartiteIndexList& target_indices) {
-    // Only permute if the arguments can be permuted
-    if ((left_op_ == GEMMTensorArgOp::permute_to_no_trans) ||
-        (right_op_ == GEMMTensorArgOp::permute_to_no_trans)) {
-      // Compute ranks
-      const unsigned int result_rank = target_indices.size();
-      const unsigned int inner_rank =
-          (left_.indices().size() + right_.indices().size() - result_rank) >> 1;
-      const unsigned int left_outer_rank = left_.indices().size() - inner_rank;
+    // prefer to permute the arg with fewest leaves to try to minimize the
+    // number of possible permutations
+    auto outer_opt = std::make_shared<GEMMPermutationOptimizer>(
+        outer(target_indices), outer(left_.indices()), outer(right_.indices()),
+        left_type::leaves <= right_type::leaves);
+    auto inner_opt = make_permutation_optimizer(
+        inner(target_indices), inner(left_.indices()), inner(right_.indices()),
+        left_type::leaves <= right_type::leaves);
 
-      // Check that the left- and right-hand outer variables are correctly
-      // partitioned in the target index list.
-      bool target_partitioned = true;
-      for (unsigned int i = 0u; i < left_outer_rank; ++i)
-        target_partitioned =
-            target_partitioned && (find(target_indices, left_indices_[i], 0u,
-                                        left_outer_rank) < left_outer_rank);
+    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
+                                       inner_opt->target_left_indices());
+    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
+                                        inner_opt->target_right_indices());
+    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
+                                  inner_opt->target_result_indices());
 
-      // If target is properly partitioned, then arguments can be permuted
-      // to fit the target.
-      if (target_partitioned) {
-        if (left_op_ == GEMMTensorArgOp::permute_to_no_trans) {
-          // Copy left-hand target variables to left and result index lists.
-          for (unsigned int i = 0u; i < left_outer_rank; ++i) {
-            const std::string& var = target_indices[i];
-            const_cast<std::string&>(left_indices_[i]) = var;
-            const_cast<std::string&>(indices_[i]) = var;
-          }
-
-          // Permute the left argument with the new index list.
-          left_.perm_indices(left_indices_);
-        } else {
-          // Copy left-hand outer variables to that of result.
-          for (unsigned int i = 0u; i < left_outer_rank; ++i)
-            const_cast<std::string&>(indices_[i]) = left_indices_[i];
-        }
-
-        if (right_op_ == GEMMTensorArgOp::permute_to_no_trans) {
-          // Copy right-hand target variables to right and result variable
-          // lists.
-          for (unsigned int i = left_outer_rank, j = inner_rank;
-               i < result_rank; ++i, ++j) {
-            const std::string& var = target_indices[i];
-            const_cast<std::string&>(right_indices_[j]) = var;
-            const_cast<std::string&>(indices_[i]) = var;
-          }
-
-          // Permute the left argument with the new index list.
-          right_.perm_indices(right_indices_);
-        } else {
-          // Copy right-hand outer variables to that of result.
-          for (unsigned int i = left_outer_rank, j = inner_rank;
-               i < result_rank; ++i, ++j)
-            const_cast<std::string&>(indices_[i]) = right_indices_[j];
-        }
-      }
+    // propagate the indices down the tree, if needed
+    if (left_indices_ != left_.indices()) {
+      TA_ASSERT(outer_opt->left_permtype() == PermutationType::general ||
+                inner_opt->left_permtype() == PermutationType::general);
+      left_.perm_indices(left_indices_);
+    }
+    if (right_indices_ != right_.indices()) {
+      TA_ASSERT(outer_opt->right_permtype() == PermutationType::general ||
+                inner_opt->right_permtype() == PermutationType::general);
+      right_.perm_indices(right_indices_);
     }
   }
 
   /// Initialize the index list of this expression
 
   /// \note This function does not initialize the child data as is done in
-  /// \c BinaryEngine. Instead they are initialized in \c MultContEngine and
-  /// \c ScalMultContEngine.
+  /// \c BinaryEngine. Instead they are initialized in \c MultEngine and
+  /// \c ScalMultEngine since they need child indices to determine the type of
+  /// product
   void init_indices() {
-    auto inner_left_indices = inner(left_.indices());
-    auto inner_right_indices = inner(right_.indices());
-    auto inner_product_type =
-        compute_product_type(inner_left_indices, inner_right_indices);
     // prefer to permute the arg with fewest leaves to try to minimize the
     // number of possible permutations
-    auto outer_opt = GEMMPermutationOptimizer(
+    auto outer_opt = std::make_shared<GEMMPermutationOptimizer>(
         outer(left_.indices()), outer(right_.indices()),
         left_type::leaves <= right_type::leaves);
+    auto inner_opt = make_permutation_optimizer(
+        inner(left_.indices()), inner(right_.indices()),
+        left_type::leaves <= right_type::leaves);
 
-    IndexList inner_left_target_indices, inner_right_target_indices,
-        inner_result_target_indices;
-    if (inner_product_type == TensorProduct::Contraction) {
-      auto inner_opt =
-          GEMMPermutationOptimizer(inner_left_indices, inner_right_indices,
-                                   left_type::leaves <= right_type::leaves);
-      inner_left_target_indices = inner_opt.target_left_indices;
-      inner_right_target_indices = inner_opt.target_right_indices;
-      inner_result_target_indices = inner_opt.target_result_indices;
-    } else if (inner_product_type == TensorProduct::Hadamard) {
-      auto inner_opt =
-          HadamardPermutationOptimizer(inner_left_indices, inner_right_indices,
-                                       left_type::leaves <= right_type::leaves);
-      inner_left_target_indices = inner_opt.target_left_indices;
-      inner_right_target_indices = inner_opt.target_right_indices;
-      inner_result_target_indices = inner_opt.target_result_indices;
-    }
-
-    left_indices_ = BipartiteIndexList(outer_opt.target_left_indices,
-                                       inner_left_target_indices);
-    right_indices_ = BipartiteIndexList(outer_opt.target_right_indices,
-                                        inner_right_target_indices);
-    indices_ = BipartiteIndexList(outer_opt.target_result_indices,
-                                  inner_result_target_indices);
+    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
+                                       inner_opt->target_left_indices());
+    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
+                                        inner_opt->target_right_indices());
+    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
+                                  inner_opt->target_result_indices());
 
     // Here we set the type of permutation that will be applied to the
-    // argument tensors. If an argument is in matrix form, permutation of
-    // the tiles is disabled.
-    if (inner_product_type == TensorProduct::Invalid &&
-        (outer_opt.left_op == GEMMTensorArgOp::trans ||
-         outer_opt.left_op == GEMMTensorArgOp::no_trans)) {
-      left_op_ = outer_opt.left_op;
+    // argument tensors. If both arguments are plain tensors
+    // (tensors-of-scalars) and their permutations can be fused into GEMM,
+    // disable their permutation
+    const bool args_are_plain_tensors =
+        (inner_opt->op_type() == TensorProduct::Invalid);
+    if (args_are_plain_tensors &&
+        (outer_opt->left_permtype() == PermutationType::matrix_transpose ||
+         outer_opt->left_permtype() == PermutationType::identity)) {
+      left_op_ = outer_opt->left_permtype();
       left_.permute_tiles(false);
     } else {
       left_.perm_indices(left_indices_);
     }
-    if (inner_product_type == TensorProduct::Invalid &&
-        (outer_opt.right_op == GEMMTensorArgOp::trans ||
-         outer_opt.right_op == GEMMTensorArgOp::no_trans)) {
-      right_op_ = outer_opt.right_op;
+    if (args_are_plain_tensors &&
+        (outer_opt->right_permtype() == PermutationType::matrix_transpose ||
+         outer_opt->right_permtype() == PermutationType::identity)) {
+      right_op_ = outer_opt->right_permtype();
       right_.permute_tiles(false);
     } else {
       right_.perm_indices(right_indices_);
     }
+  }
+
+  /// Initialize the index list of this expression
+
+  /// \param target_indices the target index list
+  /// \note This function does not initialize the child data as is done in
+  /// \c BinaryEngine. Instead they are initialized in \c MultEngine and
+  /// \c ScalMultEngine since they need child indices to determine the type of
+  /// product
+  void init_indices(const BipartiteIndexList& target_indices) {
+    init_indices();
+    perm_indices(target_indices);
   }
 
   /// Initialize result tensor structure
@@ -541,11 +272,13 @@ class ContEngine : public BinaryEngine<Derived> {
     // evaluate the tiled range and shape.
 
     const madness::cblas::CBLAS_TRANSPOSE left_op =
-        (left_op_ == GEMMTensorArgOp::trans ? madness::cblas::Trans
-                                            : madness::cblas::NoTrans);
+        (left_op_ == PermutationType::matrix_transpose
+             ? madness::cblas::Trans
+             : madness::cblas::NoTrans);
     const madness::cblas::CBLAS_TRANSPOSE right_op =
-        (right_op_ == GEMMTensorArgOp::trans ? madness::cblas::Trans
-                                             : madness::cblas::NoTrans);
+        (right_op_ == PermutationType::matrix_transpose
+             ? madness::cblas::Trans
+             : madness::cblas::NoTrans);
 
     if (target_indices != indices_) {
       // Initialize permuted structure

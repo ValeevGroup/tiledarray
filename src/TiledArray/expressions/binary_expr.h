@@ -27,6 +27,7 @@
 #define TILEDARRAY_EXPRESSIONS_BINARY_H__INCLUDED
 
 #include <TiledArray/expressions/expr.h>
+#include <TiledArray/expressions/permopt.h>
 
 namespace TiledArray {
 namespace expressions {

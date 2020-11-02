@@ -498,16 +498,13 @@ class ScalMultEngine
     product_type_ = compute_product_type(outer(BinaryEngine_::left_.indices()),
                                          outer(BinaryEngine_::right_.indices()),
                                          outer(target_indices));
-    inner_product_type_ = compute_product_type(
-        inner(BinaryEngine_::left_.indices()),
-        inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
     if (product_type() == TensorProduct::Hadamard) {
-      // assumes inner op is also Hadamard
+      // since already initialized left and right arg indices assign the target
+      // indices
       BinaryEngine_::perm_indices(target_indices);
     } else {
-      ContEngine_::init_indices();
-      ContEngine_::perm_indices(target_indices);
+      ContEngine_::init_indices(target_indices);
     }
   }
 
