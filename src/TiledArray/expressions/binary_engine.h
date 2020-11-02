@@ -133,9 +133,11 @@ class BinaryEngine : public ExprEngine<Derived> {
   }
 
   /// Initialize the index list of this expression
-  void init_indices() {
-    left_.init_indices();
-    right_.init_indices();
+  void init_indices(bool children_initialized = false) {
+    if (!children_initialized) {
+      left_.init_indices();
+      right_.init_indices();
+    }
 
     // prefer to permute the arg with fewest leaves to try to minimize the
     // number of possible permutations

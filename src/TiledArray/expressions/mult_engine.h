@@ -226,14 +226,15 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// \param target_indices The target index list for this expression
   void init_indices(const BipartiteIndexList& target_indices) {
+    // to decide what type of product this is must initialize indices down
+    // the tree.
+    // N.B. since this may be a contraction we do not know the target indices
+    // for the left and right, hence do target-neutral initialization
     BinaryEngine_::left_.init_indices();
     BinaryEngine_::right_.init_indices();
     product_type_ = compute_product_type(outer(BinaryEngine_::left_.indices()),
                                          outer(BinaryEngine_::right_.indices()),
                                          outer(target_indices));
-    inner_product_type_ = compute_product_type(
-        inner(BinaryEngine_::left_.indices()),
-        inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
     // TODO support general products that involve fused, contracted, and free
     // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
@@ -255,34 +256,27 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
       // assumes inner op is also Hadamard
       BinaryEngine_::perm_indices(target_indices);
     } else {
-      ContEngine_::init_indices();
+      auto children_initialized = true;
+      ContEngine_::init_indices(children_initialized);
       ContEngine_::perm_indices(target_indices);
     }
   }
 
   /// Initialize the index list of this expression
   void init_indices() {
+    // to decide what type of product this is must initialize indices down the
+    // tree
     BinaryEngine_::left_.init_indices();
     BinaryEngine_::right_.init_indices();
+    auto children_initialized = true;
     product_type_ =
         compute_product_type(outer(BinaryEngine_::left_.indices()),
                              outer(BinaryEngine_::right_.indices()));
-    inner_product_type_ =
-        compute_product_type(inner(BinaryEngine_::left_.indices()),
-                             inner(BinaryEngine_::right_.indices()));
 
     if (product_type() == TensorProduct::Hadamard) {
-      auto outer_indices = outer((left_type::leaves <= right_type::leaves)
-                                     ? BinaryEngine_::left_.indices()
-                                     : BinaryEngine_::right_.indices());
-      // assume inner op is also Hadamard
-      // TODO compute inner indices using inner_product_type_
-      auto inner_indices = inner((left_type::leaves <= right_type::leaves)
-                                     ? BinaryEngine_::left_.indices()
-                                     : BinaryEngine_::right_.indices());
-      ExprEngine_::indices_ = BipartiteIndexList(outer_indices, inner_indices);
+      BinaryEngine_::init_indices(children_initialized);
     } else {
-      ContEngine_::init_indices();
+      ContEngine_::init_indices(children_initialized);
     }
   }
 

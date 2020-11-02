@@ -205,7 +205,11 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \c BinaryEngine. Instead they are initialized in \c MultEngine and
   /// \c ScalMultEngine since they need child indices to determine the type of
   /// product
-  void init_indices() {
+  void init_indices(bool children_initialized = false) {
+    if (!children_initialized) {
+      left_.init_indices();
+      right_.init_indices();
+    }
     // prefer to permute the arg with fewest leaves to try to minimize the
     // number of possible permutations
     auto outer_opt = std::make_shared<GEMMPermutationOptimizer>(
