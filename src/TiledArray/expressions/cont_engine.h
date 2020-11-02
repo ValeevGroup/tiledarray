@@ -234,7 +234,7 @@ class ContEngine : public BinaryEngine<Derived> {
       left_op_ = outer_opt->left_permtype();
       left_.permute_tiles(false);
     } else {
-      left_.perm_indices(left_indices_);
+      if (left_.indices() != left_indices_) left_.perm_indices(left_indices_);
     }
     if (args_are_plain_tensors &&
         (outer_opt->right_permtype() == PermutationType::matrix_transpose ||
@@ -242,7 +242,8 @@ class ContEngine : public BinaryEngine<Derived> {
       right_op_ = outer_opt->right_permtype();
       right_.permute_tiles(false);
     } else {
-      right_.perm_indices(right_indices_);
+      if (right_.indices() != right_indices_)
+        right_.perm_indices(right_indices_);
     }
   }
 

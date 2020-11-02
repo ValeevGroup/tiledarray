@@ -28,6 +28,7 @@
 
 #include <TiledArray/dist_eval/binary_eval.h>
 #include <TiledArray/expressions/expr_engine.h>
+#include <TiledArray/expressions/permopt.h>
 
 namespace TiledArray {
 namespace expressions {
@@ -102,30 +103,24 @@ class BinaryEngine : public ExprEngine<Derived> {
     TA_ASSERT(left_.indices().size() == target_indices.size());
     TA_ASSERT(right_.indices().size() == target_indices.size());
 
-    // Determine the equality of the index lists
-    bool left_target = true, right_target = true, left_right = true;
-    for (unsigned int i = 0u; i < target_indices.size(); ++i) {
-      left_target = left_target && left_.indices()[i] == target_indices[i];
-      right_target = right_target && right_.indices()[i] == target_indices[i];
-      left_right = left_right && left_.indices()[i] == right_.indices()[i];
-    }
+    // prefer to permute the arg with fewest leaves to try to minimize the
+    // number of possible permutations
+    auto outer_opt = std::make_shared<HadamardPermutationOptimizer>(
+        outer(target_indices), outer(left_.indices()), outer(right_.indices()),
+        left_type::leaves <= right_type::leaves);
+    auto inner_opt = make_permutation_optimizer(
+        inner(target_indices), inner(left_.indices()), inner(right_.indices()),
+        left_type::leaves <= right_type::leaves);
 
-    if (left_right) {
-      indices_ = left_.indices();
-    } else {
-      // Determine which argument will be permuted
-      const bool perm_left =
-          (right_target || ((!(left_target || right_target)) &&
-                            (left_type::leaves <= right_type::leaves)));
+    auto left_indices = BipartiteIndexList(outer_opt->target_left_indices(),
+                                           inner_opt->target_left_indices());
+    auto right_indices = BipartiteIndexList(outer_opt->target_right_indices(),
+                                            inner_opt->target_right_indices());
+    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
+                                  inner_opt->target_result_indices());
 
-      if (perm_left) {
-        indices_ = right_.indices();
-        left_.perm_indices(right_.indices());
-      } else {
-        indices_ = left_.indices();
-        right_.perm_indices(left_.indices());
-      }
-    }
+    if (left_.indices() != left_indices) left_.init_indices(left_indices);
+    if (right_.indices() != right_indices) right_.init_indices(right_indices);
   }
 
   /// Initialize the index list of this expression
@@ -139,15 +134,27 @@ class BinaryEngine : public ExprEngine<Derived> {
 
   /// Initialize the index list of this expression
   void init_indices() {
-    if (left_type::leaves <= right_type::leaves) {
-      left_.init_indices();
-      indices_ = left_.indices();
-      right_.init_indices(indices_);
-    } else {
-      right_.init_indices();
-      indices_ = right_.indices();
-      left_.init_indices(indices_);
-    }
+    left_.init_indices();
+    right_.init_indices();
+
+    // prefer to permute the arg with fewest leaves to try to minimize the
+    // number of possible permutations
+    auto outer_opt = std::make_shared<HadamardPermutationOptimizer>(
+        outer(left_.indices()), outer(right_.indices()),
+        left_type::leaves <= right_type::leaves);
+    auto inner_opt = make_permutation_optimizer(
+        inner(left_.indices()), inner(right_.indices()),
+        left_type::leaves <= right_type::leaves);
+
+    auto left_indices = BipartiteIndexList(outer_opt->target_left_indices(),
+                                           inner_opt->target_left_indices());
+    auto right_indices = BipartiteIndexList(outer_opt->target_right_indices(),
+                                            inner_opt->target_right_indices());
+    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
+                                  inner_opt->target_result_indices());
+
+    if (left_.indices() != left_indices) left_.init_indices(left_indices);
+    if (right_.indices() != right_indices) right_.init_indices(right_indices);
   }
 
   /// Initialize result tensor structure
