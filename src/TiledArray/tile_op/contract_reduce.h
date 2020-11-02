@@ -268,7 +268,8 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 /// Contract and (sum) reduce operation
 
 /// This encodes a binary tensor contraction mapped to a GEMM, as well as the
-/// sum reduction and post-processing. \tparam Result The result tile type
+/// sum reduction and post-processing.
+/// \tparam Result The result tile type
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
 template <typename Result, typename Left, typename Right>
