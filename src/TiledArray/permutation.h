@@ -682,6 +682,16 @@ class BipartitePermutation {
     init();
   }
 
+  BipartitePermutation(const Permutation& first, const Permutation& second)
+      : second_size_(second.size()) {
+    vector<index_type> base;
+    base.reserve(first.size() + second.size());
+    for (auto&& v : first) base.emplace_back(v);
+    for (auto&& v : second) base.emplace_back(v);
+    base_ = Permutation(base);
+    init();
+  }
+
   // clang-format off
   /// Construct permutation from a range [first,last)
 
