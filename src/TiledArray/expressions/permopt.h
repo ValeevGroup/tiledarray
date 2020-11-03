@@ -414,8 +414,6 @@ class HadamardPermutationOptimizer : public BinaryOpPermutationOptimizer {
                                const bool prefer_to_permute_left = true)
       : BinaryOpPermutationOptimizer(left_indices, right_indices,
                                      prefer_to_permute_left),
-        target_left_indices_(left_indices),
-        target_right_indices_(right_indices),
         target_result_indices_(prefer_to_permute_left ? right_indices
                                                       : left_indices) {
     TA_ASSERT(left_indices.is_permutation(right_indices));
@@ -426,9 +424,7 @@ class HadamardPermutationOptimizer : public BinaryOpPermutationOptimizer {
                                const IndexList& right_indices,
                                const bool prefer_to_permute_left = true)
       : BinaryOpPermutationOptimizer(result_indices, left_indices,
-                                     right_indices, prefer_to_permute_left),
-        target_left_indices_(left_indices),
-        target_right_indices_(right_indices) {
+                                     right_indices, prefer_to_permute_left) {
     TA_ASSERT(left_indices.is_permutation(result_indices));
     TA_ASSERT(left_indices.is_permutation(right_indices));
 
@@ -453,10 +449,10 @@ class HadamardPermutationOptimizer : public BinaryOpPermutationOptimizer {
   }
 
   const IndexList& target_left_indices() const override final {
-    return target_left_indices_;
+    return target_result_indices_;
   }
   const IndexList& target_right_indices() const override final {
-    return target_right_indices_;
+    return target_result_indices_;
   }
   const IndexList& target_result_indices() const override final {
     return target_result_indices_;
@@ -472,7 +468,7 @@ class HadamardPermutationOptimizer : public BinaryOpPermutationOptimizer {
   }
 
  private:
-  IndexList target_left_indices_, target_right_indices_, target_result_indices_;
+  IndexList target_result_indices_;
 };
 
 class NullBinaryOpPermutationOptimizer : public BinaryOpPermutationOptimizer {

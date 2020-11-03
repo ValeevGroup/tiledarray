@@ -83,8 +83,10 @@ class BinaryEngine : public ExprEngine<Derived> {
   using ExprEngine_::trange_;
   using ExprEngine_::world_;
 
-  left_type left_;    ///< The left-hand argument
-  right_type right_;  ///< The right-hand argument
+  left_type left_;                    ///< The left-hand argument
+  right_type right_;                  ///< The right-hand argument
+  BipartiteIndexList left_indices_;   ///< Target left-hand index list
+  BipartiteIndexList right_indices_;  ///< Target right-hand index list
 
  public:
   template <typename D>
@@ -112,15 +114,15 @@ class BinaryEngine : public ExprEngine<Derived> {
         inner(target_indices), inner(left_.indices()), inner(right_.indices()),
         left_type::leaves <= right_type::leaves);
 
-    auto left_indices = BipartiteIndexList(outer_opt->target_left_indices(),
-                                           inner_opt->target_left_indices());
-    auto right_indices = BipartiteIndexList(outer_opt->target_right_indices(),
-                                            inner_opt->target_right_indices());
+    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
+                                       inner_opt->target_left_indices());
+    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
+                                        inner_opt->target_right_indices());
     indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
                                   inner_opt->target_result_indices());
 
-    if (left_.indices() != left_indices) left_.init_indices(left_indices);
-    if (right_.indices() != right_indices) right_.init_indices(right_indices);
+    if (left_.indices() != left_indices_) left_.init_indices(left_indices_);
+    if (right_.indices() != right_indices_) right_.init_indices(right_indices_);
   }
 
   /// Initialize the index list of this expression
@@ -148,15 +150,15 @@ class BinaryEngine : public ExprEngine<Derived> {
         inner(left_.indices()), inner(right_.indices()),
         left_type::leaves <= right_type::leaves);
 
-    auto left_indices = BipartiteIndexList(outer_opt->target_left_indices(),
-                                           inner_opt->target_left_indices());
-    auto right_indices = BipartiteIndexList(outer_opt->target_right_indices(),
-                                            inner_opt->target_right_indices());
+    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
+                                       inner_opt->target_left_indices());
+    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
+                                        inner_opt->target_right_indices());
     indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
                                   inner_opt->target_result_indices());
 
-    if (left_.indices() != left_indices) left_.init_indices(left_indices);
-    if (right_.indices() != right_indices) right_.init_indices(right_indices);
+    if (left_.indices() != left_indices_) left_.init_indices(left_indices_);
+    if (right_.indices() != right_indices_) right_.init_indices(right_indices_);
   }
 
   /// Initialize result tensor structure
@@ -165,8 +167,8 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// for the left-hand, right-hand, and result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
-    left_.init_struct(ExprEngine_::indices());
-    right_.init_struct(ExprEngine_::indices());
+    left_.init_struct(left_indices_);
+    right_.init_struct(right_indices_);
 #ifndef NDEBUG
     if (left_.trange() != right_.trange()) {
       if (TiledArray::get_default_world().rank() == 0) {
