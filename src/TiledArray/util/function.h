@@ -23,7 +23,7 @@ class shared_function {
   shared_function &operator=(shared_function const &) = default;
   shared_function &operator=(shared_function &&) = default;
 
-  operator bool() const { return f_; }
+  explicit operator bool() const { return f_; }
 
   template <typename... As, typename = std::void_t<decltype(
                                 (std::declval<F &>())(std::declval<As>()...))>>
@@ -105,7 +105,7 @@ class function_ref<R(Args...)> {
   }
 
   /// Converts to true if non-default initialized
-  operator bool() const { return obj_; }
+  explicit operator bool() const { return obj_; }
 
  private:
   void *obj_ = nullptr;
