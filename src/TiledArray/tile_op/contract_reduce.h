@@ -40,9 +40,13 @@ namespace detail {
 
 /// This implementation class is used to provide shallow copy semantics for
 /// ContractReduce. It encodes a binary tensor contraction mapped to a GEMM, as
-/// well as the sum reduction and post-processing. \tparam Result The result
-/// tile type \tparam Left The left-hand tile type \tparam Right The right-hand
-/// tile type \tparam Scalar The scaling factor type
+/// well as the sum reduction and post-processing.
+/// \tparam Result The result
+/// tile type
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand
+/// tile type
+/// \tparam Scalar The scaling factor type
 template <typename Result, typename Left, typename Right, typename Scalar>
 class ContractReduceBase {
  public:
@@ -169,7 +173,8 @@ class ContractReduceBase {
 /// Contract and (sum) reduce operation
 
 /// This encodes a binary tensor contraction mapped to a GEMM, as well as the
-/// sum reduction and post-processing. \tparam Result The result tile type
+/// sum reduction and post-processing.
+/// \tparam Result The result tile type
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
 /// \tparam Scalar The scaling factor type
@@ -251,8 +256,8 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// target
   /// \param[in] left The left-hand tile to be contracted
   /// \param[in] right The right-hand tile to be contracted
-  void operator()(result_type& result, first_argument_type left,
-                  second_argument_type right) const {
+  void operator()(result_type& result, const first_argument_type& left,
+                  const second_argument_type& right) const {
     using TiledArray::empty;
     using TiledArray::gemm;
     if (empty(result))
@@ -360,8 +365,8 @@ class ContractReduce<Result, Left, Right,
   /// target
   /// \param[in] left The left-hand tile to be contracted
   /// \param[in] right The right-hand tile to be contracted
-  void operator()(result_type& result, first_argument_type left,
-                  second_argument_type right) const {
+  void operator()(result_type& result, const first_argument_type& left,
+                  const second_argument_type& right) const {
     using TiledArray::empty;
     using TiledArray::gemm;
     if (empty(result))
@@ -468,8 +473,8 @@ class ContractReduce<Result, Left, Right,
   /// target
   /// \param[in] left The left-hand tile to be contracted
   /// \param[in] right The right-hand tile to be contracted
-  void operator()(result_type& result, first_argument_type left,
-                  second_argument_type right) const {
+  void operator()(result_type& result, const first_argument_type& left,
+                  const second_argument_type& right) const {
     using TiledArray::empty;
     using TiledArray::gemm;
     if (empty(result))

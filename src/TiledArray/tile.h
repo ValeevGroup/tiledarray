@@ -1569,7 +1569,7 @@ inline decltype(auto) inner_product(const Tile<Left>& left,
 
 /// \tparam T The tensor type
 /// \param os The output stream
-/// \param tile The tile to be printted
+/// \param tile The tile to be printed
 /// \return The modified output stream
 template <typename T>
 inline std::ostream& operator<<(std::ostream& os, const Tile<T>& tile) {

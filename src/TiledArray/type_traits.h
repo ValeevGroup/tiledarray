@@ -675,7 +675,8 @@ constexpr const bool is_scalar_v = is_scalar<T>::value;
 /// LazyArrayTile<U> , i.e. when it is a lazy tile wrapper used by e.g. \c
 /// ArrayEvalImpl . otherwise it evaluates to \c std::false_type . Note that \c
 /// is_array_tile<T> implies \c is_lazy_tile<T> , but \c is_lazy_tile<T> does
-/// not imply \c is_array_tile<T> . \tparam T The tile type to test
+/// not imply \c is_array_tile<T> .
+// \tparam T The tile type to test
 template <typename T>
 struct is_array_tile : public std::false_type {};
 

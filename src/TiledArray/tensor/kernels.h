@@ -445,10 +445,10 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// \param[in] op The result tensor element initialization operation
 /// \param[out] result The result tensor
 /// \param[in] tensors The argument tensors
-template <typename Op, typename TR, typename... Ts,
-          typename std::enable_if<
-              is_tensor_of_tensor<TR, Ts...>::value &&
-              is_contiguous_tensor<TR, Ts...>::value>::type* = nullptr>
+template <
+    typename Op, typename TR, typename... Ts,
+    typename std::enable_if<is_tensor_of_tensor<TR, Ts...>::value &&
+                            is_contiguous_tensor<TR>::value>::type* = nullptr>
 inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensors...));
   TA_ASSERT(is_range_set_congruent(result, tensors...));
@@ -482,10 +482,9 @@ inline void tensor_init(Op&& op, TR& result, const Ts&... tensors) {
 /// \param[in] tensor1 The first argument tensor
 /// \param[in] tensors The
 /// argument tensors
-template <typename Op, typename TR, typename T1, typename... Ts,
-          typename std::enable_if<
-              is_tensor<TR, T1, Ts...>::value &&
-              is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
+template <
+    typename Op, typename TR, typename T1, typename... Ts,
+    typename std::enable_if<is_tensor<TR, T1, Ts...>::value>::type* = nullptr>
 inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
@@ -505,7 +504,8 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 /// Initialize tensor of tensors with permuted tensor arguments
 
 /// This function initializes the \c i -th element of \c result with the result
-/// of \c op(tensor1[i], tensors[i]...) \pre The memory of \c result has been
+/// of \c op(tensor1[i], tensors[i]...)
+/// \pre The memory of \c result has been
 /// allocated but not initialized.
 /// \tparam Op The element initialization operation type
 /// \tparam Perm A permutation type
@@ -518,8 +518,7 @@ inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
 /// \param[in] tensors The argument tensors
 template <typename Op, typename TR, typename T1, typename... Ts,
           typename std::enable_if<
-              is_tensor_of_tensor<TR, T1, Ts...>::value &&
-              is_contiguous_tensor<TR, T1, Ts...>::value>::type* = nullptr>
+              is_tensor_of_tensor<TR, T1, Ts...>::value>::type* = nullptr>
 inline void tensor_init(Op&& op, const Permutation& perm, TR& result,
                         const T1& tensor1, const Ts&... tensors) {
   TA_ASSERT(!empty(result, tensor1, tensors...));
