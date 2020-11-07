@@ -431,6 +431,37 @@ inline btas::Tensor<T, Range, Storage>& mult_to(
   return result;
 }
 
+// Generic element-wise binary operations
+// ---------------------------------------------
+
+template <typename T, typename Range, typename Storage, typename Op>
+inline auto binary(const btas::Tensor<T, Range, Storage>& arg1,
+                   const btas::Tensor<T, Range, Storage>& arg2, Op&& op) {
+  auto arg1_view = make_ti(arg1);
+  auto arg2_view = make_ti(arg2);
+  return arg1_view.binary(arg2_view, std::forward<Op>(op));
+}
+
+template <
+    typename T, typename Range, typename Storage, typename Op, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+inline auto binary(const btas::Tensor<T, Range, Storage>& arg1,
+                   const btas::Tensor<T, Range, Storage>& arg2, Op&& op,
+                   const Perm& perm) {
+  auto arg1_view = make_ti(arg1);
+  auto arg2_view = make_ti(arg2);
+  return arg1_view.binary(arg2_view, std::forward<Op>(op), perm);
+}
+
+template <typename T, typename Range, typename Storage, typename Op>
+inline btas::Tensor<T, Range, Storage>& inplace_binary(
+    btas::Tensor<T, Range, Storage>& arg1,
+    const btas::Tensor<T, Range, Storage>& arg2, Op&& op) {
+  auto arg1_view = make_ti(arg1);
+  auto arg2_view = make_ti(arg2);
+  return arg1_view.inplace_binary(arg2_view, std::forward<Op>(op));
+}
+
 template <typename T, typename Range, typename Storage, typename Scalar,
           std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
 inline btas::Tensor<T, Range, Storage>& scale_to(
@@ -534,6 +565,31 @@ inline btas::Tensor<T, Range, Storage>& conj_to(
   auto arg_view = make_ti(arg);
   arg_view.conj_to(factor);
   return arg;
+}
+
+// Generic element-wise unary operations
+// ---------------------------------------------
+
+template <typename T, typename Range, typename Storage, typename Op>
+inline auto unary(const btas::Tensor<T, Range, Storage>& arg, Op&& op) {
+  auto arg_view = make_ti(arg);
+  return arg_view.unary(std::forward<Op>(op));
+}
+
+template <
+    typename T, typename Range, typename Storage, typename Op, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+inline auto unary(const btas::Tensor<T, Range, Storage>& arg, Op&& op,
+                  const Perm& perm) {
+  auto arg_view = make_ti(arg);
+  return arg_view.unary(std::forward<Op>(op), perm);
+}
+
+template <typename T, typename Range, typename Storage, typename Op>
+inline btas::Tensor<T, Range, Storage>& inplace_unary(
+    const btas::Tensor<T, Range, Storage>& arg, Op&& op) {
+  auto arg_view = make_ti(arg);
+  return arg_view.inplace_unary(std::forward<Op>(op));
 }
 
 template <typename T, typename Range, typename Storage, typename Scalar>

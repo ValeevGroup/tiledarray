@@ -1100,6 +1100,66 @@ inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg,
   return result;
 }
 
+// Generic element-wise binary operations
+// ---------------------------------------------
+
+// clang-format off
+/// Binary element-wise transform producing a new tile
+
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam Op An element-wise operation type
+/// \param[in] left The left-hand argument to the transform
+/// \param[in] right The right-hand argument to the transform
+/// \param op An element-wise operation
+/// \return \c result where for each \c i in \c left.range() \c result[i]==op(left[i],right[i])
+// clang-format on
+template <typename Left, typename Right, typename Op>
+inline decltype(auto) binary(const Tile<Left>& left, const Tile<Right>& right,
+                             Op&& op) {
+  return detail::make_tile(
+      binary(left.tensor(), right.tensor(), std::forward<Op>(op)));
+}
+
+// clang-format off
+/// Binary element-wise transform producing a new tile
+
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam Op An element-wise operation type
+/// \tparam Perm A permutation type
+/// \param[in] left The left-hand argument to the transform
+/// \param[in] right The right-hand argument to the transform
+/// \param op An element-wise operation
+/// \param perm The permutation to be applied to the result
+/// \return \c perm^result where for each \c i in \c left.range() \c result[i]==op(left[i],right[i])
+// clang-format on
+template <typename Left, typename Right, typename Op, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline decltype(auto) binary(const Tile<Left>& left, const Tile<Right>& right,
+                             Op&& op, const Perm& perm) {
+  return detail::make_tile(
+      binary(left.tensor(), right.tensor(), std::forward<Op>(op), perm));
+}
+
+// clang-format off
+/// Binary element-wise in-place transform
+
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam Op An element-wise operation type
+/// \param[in,out] left The left-hand argument to the transform; output contains the result of \c binary(left,right,op)
+/// \param[in] right The right-hand argument to the transform
+/// \param op An element-wise operation
+/// \return reference to \p left
+// clang-format on
+template <typename Left, typename Right, typename Op>
+inline Tile<Left>& inplace_binary(Tile<Left>& left, const Tile<Right>& right,
+                                  Op&& op) {
+  inplace_binary(left.tensor(), right.tensor(), std::forward<Op>(op));
+  return left;
+}
+
 // Scaling operations --------------------------------------------------------
 
 /// Scalar the tile argument
@@ -1266,6 +1326,54 @@ template <typename Result, typename Scalar,
 inline Tile<Result>& conj_to(Tile<Result>& result, const Scalar factor) {
   conj_to(result.tensor(), factor);
   return result;
+}
+
+// Generic element-wise unary operations
+// ---------------------------------------------
+
+// clang-format off
+/// Unary element-wise transform producing a new tile
+
+/// \tparam Arg The tile argument type
+/// \tparam Op An element-wise operation type
+/// \param[in] arg The tile to be transformed
+/// \param op An element-wise operation
+/// \return \c result where for each \c i in \c arg.range() \c result[i]==op(arg[i])
+// clang-format on
+template <typename Arg, typename Op>
+inline decltype(auto) unary(const Tile<Arg>& arg, Op&& op) {
+  return detail::make_tile(unary(arg.tensor(), std::forward<Op>(op)));
+}
+
+// clang-format off
+/// Unary element-wise transform producing a new tile
+
+/// \tparam Arg The tile argument type
+/// \tparam Op An element-wise operation type
+/// \param[in] arg The tile to be transformed
+/// \param op An element-wise operation
+/// \param perm The permutation to be applied to the result of the transform
+/// \return \c perm^result where for each \c i in \c arg.range() \c result[i]==op(arg[i])
+// clang-format on
+template <typename Arg, typename Op, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline decltype(auto) unary(const Tile<Arg>& arg, Op&& op, const Perm& perm) {
+  return detail::make_tile(unary(arg.tensor(), std::forward<Op>(op), perm));
+}
+
+// clang-format off
+/// Unary element-wise in-place transform
+
+/// \tparam Arg The tile argument type
+/// \tparam Op An element-wise operation type
+/// \param[in,out] arg The tile to be transformed, on output for each \c i in \c arg.range() \c arg[i] contains \c op(arg[i])
+/// \param op An element-wise operation
+/// \return \c reference to \p arg
+// clang-format on
+template <typename Result, typename Op>
+inline Tile<Result>& inplace_unary(Tile<Result>& arg, Op&& op) {
+  inplace_unary(arg.tensor(), std::forward<Op>(op));
+  return arg;
 }
 
 // Contraction operations ----------------------------------------------------
