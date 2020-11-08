@@ -87,6 +87,91 @@ class BinaryEngine : public ExprEngine<Derived> {
   right_type right_;                  ///< The right-hand argument
   BipartiteIndexList left_indices_;   ///< Target left-hand index list
   BipartiteIndexList right_indices_;  ///< Target right-hand index list
+  PermutationType left_outer_permtype_ =
+      PermutationType::general;  ///< Left-hand permutation type
+  PermutationType right_outer_permtype_ =
+      PermutationType::general;  ///< Right-hand permutation type
+  PermutationType left_inner_permtype_ =
+      PermutationType::general;  ///< Left-hand permutation type
+  PermutationType right_inner_permtype_ =
+      PermutationType::general;  ///< Right-hand permutation type
+
+  template <TensorProduct ProductType>
+  void init_indices_(const BipartiteIndexList& target_indices = {}) {
+    static_assert(ProductType == TensorProduct::Contraction ||
+                  ProductType == TensorProduct::Hadamard);
+    // prefer to permute the arg with fewest leaves to try to minimize the
+    // number of possible permutations
+    using permopt_type =
+        std::conditional_t<ProductType == TensorProduct::Contraction,
+                           GEMMPermutationOptimizer,
+                           HadamardPermutationOptimizer>;
+
+    std::shared_ptr<BinaryOpPermutationOptimizer> outer_opt, inner_opt;
+    if (!target_indices) {
+      outer_opt = std::make_shared<permopt_type>(
+          outer(left_.indices()), outer(right_.indices()),
+          left_type::leaves <= right_type::leaves);
+      inner_opt = make_permutation_optimizer(
+          inner(left_.indices()), inner(right_.indices()),
+          left_type::leaves <= right_type::leaves);
+    } else {
+      outer_opt = std::make_shared<permopt_type>(
+          outer(target_indices), outer(left_.indices()),
+          outer(right_.indices()), left_type::leaves <= right_type::leaves);
+      inner_opt = make_permutation_optimizer(
+          inner(target_indices), inner(left_.indices()),
+          inner(right_.indices()), left_type::leaves <= right_type::leaves);
+    }
+
+    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
+                                       inner_opt->target_left_indices());
+    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
+                                        inner_opt->target_right_indices());
+    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
+                                  inner_opt->target_result_indices());
+
+    left_outer_permtype_ = outer_opt->left_permtype();
+    right_outer_permtype_ = outer_opt->right_permtype();
+    left_inner_permtype_ = inner_opt->left_permtype();
+    right_inner_permtype_ = inner_opt->right_permtype();
+
+    // Here we set the type of permutation that will be applied to the
+    // argument tensors. If both arguments are plain tensors
+    // (tensors-of-scalars) and their permutations can be fused into GEMM,
+    // disable their permutation
+    using left_tile_type = typename EngineTrait<left_type>::eval_type;
+    using right_tile_type = typename EngineTrait<right_type>::eval_type;
+    constexpr bool left_tile_is_tot =
+        TiledArray::detail::is_tensor_of_tensor_v<left_tile_type>;
+    constexpr bool right_tile_is_tot =
+        TiledArray::detail::is_tensor_of_tensor_v<right_tile_type>;
+    static_assert(!(left_tile_is_tot ^ right_tile_is_tot),
+                  "ContEngine can only handle tensors of same nested-ness "
+                  "(both plain or both ToT)");
+    constexpr bool args_are_plain_tensors =
+        !left_tile_is_tot && !right_tile_is_tot;
+    if (args_are_plain_tensors &&
+        (left_outer_permtype_ == PermutationType::matrix_transpose ||
+         left_outer_permtype_ == PermutationType::identity)) {
+      left_.permute_tiles(false);
+    }
+    if (!args_are_plain_tensors &&
+        (left_inner_permtype_ == PermutationType::matrix_transpose ||
+         left_inner_permtype_ == PermutationType::identity)) {
+      left_.permute_tiles(false);
+    }
+    if (args_are_plain_tensors &&
+        (right_outer_permtype_ == PermutationType::matrix_transpose ||
+         right_outer_permtype_ == PermutationType::identity)) {
+      right_.permute_tiles(false);
+    }
+    if (!args_are_plain_tensors &&
+        (right_inner_permtype_ == PermutationType::matrix_transpose ||
+         right_inner_permtype_ == PermutationType::identity)) {
+      right_.permute_tiles(false);
+    }
+  }
 
  public:
   template <typename D>
@@ -105,21 +190,10 @@ class BinaryEngine : public ExprEngine<Derived> {
     TA_ASSERT(left_.indices().size() == target_indices.size());
     TA_ASSERT(right_.indices().size() == target_indices.size());
 
-    // prefer to permute the arg with fewest leaves to try to minimize the
-    // number of possible permutations
-    auto outer_opt = std::make_shared<HadamardPermutationOptimizer>(
-        outer(target_indices), outer(left_.indices()), outer(right_.indices()),
-        left_type::leaves <= right_type::leaves);
-    auto inner_opt = make_permutation_optimizer(
-        inner(target_indices), inner(left_.indices()), inner(right_.indices()),
-        left_type::leaves <= right_type::leaves);
+    init_indices_<TensorProduct::Hadamard>(target_indices);
 
-    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
-                                       inner_opt->target_left_indices());
-    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
-                                        inner_opt->target_right_indices());
-    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
-                                  inner_opt->target_result_indices());
+    TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
+              right_inner_permtype_ == PermutationType::general);
 
     if (left_.indices() != left_indices_) left_.init_indices(left_indices_);
     if (right_.indices() != right_indices_) right_.init_indices(right_indices_);
@@ -141,21 +215,9 @@ class BinaryEngine : public ExprEngine<Derived> {
       right_.init_indices();
     }
 
-    // prefer to permute the arg with fewest leaves to try to minimize the
-    // number of possible permutations
-    auto outer_opt = std::make_shared<HadamardPermutationOptimizer>(
-        outer(left_.indices()), outer(right_.indices()),
-        left_type::leaves <= right_type::leaves);
-    auto inner_opt = make_permutation_optimizer(
-        inner(left_.indices()), inner(right_.indices()),
-        left_type::leaves <= right_type::leaves);
-
-    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
-                                       inner_opt->target_left_indices());
-    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
-                                        inner_opt->target_right_indices());
-    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
-                                  inner_opt->target_result_indices());
+    init_indices_<TensorProduct::Hadamard>();
+    TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
+              right_inner_permtype_ == PermutationType::general);
 
     if (left_.indices() != left_indices_) left_.init_indices(left_indices_);
     if (right_.indices() != right_indices_) right_.init_indices(right_indices_);
@@ -229,7 +291,7 @@ class BinaryEngine : public ExprEngine<Derived> {
     // Construct the distributed evaluator type
     std::shared_ptr<impl_type> pimpl =
         std::make_shared<impl_type>(left, right, *world_, trange_, shape_,
-                                    pmap_, perm_, ExprEngine_::make_op());
+                                    pmap_, perm_, this->derived().make_op());
 
     return dist_eval_type(pimpl);
   }

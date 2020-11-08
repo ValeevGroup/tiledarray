@@ -28,6 +28,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/util/function.h>
 #include <TiledArray/zero_tensor.h>
 
 namespace TiledArray {
@@ -35,8 +36,13 @@ namespace detail {
 
 /// Tile multiplication operation
 
-/// This multiplication will multiply the content two tiles, and accepts
-/// an optional permute argument.
+/// This class implements element-wise multiplication of two tiles,
+/// optionally followed by a permutation of the result, that can
+/// be customized to arbitrary binary operation types. Thus this is
+/// essentially the binary `std::transform` with `std::multiplies` as the
+/// default binary op; the binary op is lowered automatically when applied to
+/// nested tensors.
+///
 /// \tparam Result The result tile type
 /// \tparam Left The left-hand argument type
 /// \tparam Right The right-hand argument type
@@ -55,6 +61,12 @@ class Mult {
   typedef Right right_type;    ///< Right-hand argument base type
   typedef Result result_type;  ///< The result tile type
 
+  using left_value_type = typename left_type::value_type;
+  using right_value_type = typename right_type::value_type;
+  using result_value_type = typename result_type::value_type;
+  using element_op_type = result_value_type(const left_value_type&,
+                                            const right_value_type&);
+
   /// Indicates whether it is *possible* to consume the left tile
   static constexpr bool left_is_consumable =
       LeftConsumable && std::is_same<result_type, left_type>::value;
@@ -63,29 +75,37 @@ class Mult {
       RightConsumable && std::is_same<result_type, right_type>::value;
 
  private:
+  /// type-erased reference to custom element_op
+  /// \note the lifetime is managed by the callee!
+  TiledArray::function_ref<element_op_type> element_op_;
+
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
   template <typename Perm, typename = std::enable_if_t<
                                TiledArray::detail::is_permutation_v<Perm>>>
-  static result_type eval(const left_type& first, const right_type& second,
-                          const Perm& perm) {
-    using TiledArray::mult;
-    return mult(first, second, perm);
+  result_type eval(const left_type& first, const right_type& second,
+                   const Perm& perm) const {
+    if (!element_op_) {
+      using TiledArray::mult;
+      return mult(first, second, perm);
+    } else {
+      using TiledArray::binary;
+      return binary(first, second, element_op_, perm);
+    }
   }
 
   template <typename Perm, typename = std::enable_if_t<
                                TiledArray::detail::is_permutation_v<Perm>>>
-  static result_type eval(ZeroTensor, const right_type& second,
-                          const Perm& perm) {
+  result_type eval(ZeroTensor, const right_type& second,
+                   const Perm& perm) const {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
 
   template <typename Perm, typename = std::enable_if_t<
                                TiledArray::detail::is_permutation_v<Perm>>>
-  static result_type eval(const left_type& first, ZeroTensor,
-                          const Perm& perm) {
+  result_type eval(const left_type& first, ZeroTensor, const Perm& perm) const {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
@@ -96,49 +116,71 @@ class Mult {
 
   template <bool LC, bool RC,
             typename std::enable_if<!(LC || RC)>::type* = nullptr>
-  static result_type eval(const left_type& first, const right_type& second) {
-    using TiledArray::mult;
-    return mult(first, second);
+  result_type eval(const left_type& first, const right_type& second) const {
+    if (!element_op_) {
+      using TiledArray::mult;
+      return mult(first, second);
+    } else {
+      using TiledArray::binary;
+      return binary(first, second, element_op_);
+    }
   }
 
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
-  static result_type eval(left_type& first, const right_type& second) {
+  result_type eval(left_type& first, const right_type& second) const {
+    TA_ASSERT(!element_op_);
     using TiledArray::mult_to;
     return mult_to(first, second);
   }
 
   template <bool LC, bool RC,
             typename std::enable_if<!LC && RC>::type* = nullptr>
-  static result_type eval(const left_type& first, right_type& second) {
+  result_type eval(const left_type& first, right_type& second) const {
+    TA_ASSERT(!element_op_);
     using TiledArray::mult_to;
     return mult_to(second, first);
   }
 
   template <bool LC, bool RC, typename std::enable_if<!RC>::type* = nullptr>
-  static result_type eval(ZeroTensor, const right_type& second) {
+  result_type eval(ZeroTensor, const right_type& second) const {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
 
   template <bool LC, bool RC, typename std::enable_if<RC>::type* = nullptr>
-  static result_type eval(ZeroTensor, right_type& second) {
+  result_type eval(ZeroTensor, right_type& second) const {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
 
   template <bool LC, bool RC, typename std::enable_if<!LC>::type* = nullptr>
-  static result_type eval(const left_type& first, ZeroTensor) {
+  result_type eval(const left_type& first, ZeroTensor) const {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
 
   template <bool LC, bool RC, typename std::enable_if<LC>::type* = nullptr>
-  static result_type eval(left_type& first, ZeroTensor) {
+  result_type eval(left_type& first, ZeroTensor) const {
     TA_ASSERT(false);  // Invalid arguments for this operation
     return result_type();
   }
 
  public:
+  /// The default constructor uses default op (`std::multiplies`) for the
+  /// element-wise operation. This is valid for both plain and nested tensors.
+  /// (times op is lowered naturally)
+  Mult() = default;
+  /// Construct using custom element-wise op
+  /// \tparam ElementOp a callable with signature element_op_type
+  /// \param op
+  template <typename ElementOp,
+            typename = std::enable_if_t<
+                !std::is_same_v<std::remove_reference_t<ElementOp>, Mult_> &&
+                std::is_invocable_r_v<
+                    result_value_type, std::remove_reference_t<ElementOp>,
+                    const left_value_type&, const right_value_type&>>>
+  explicit Mult(ElementOp&& op) : element_op_(std::forward<ElementOp>(op)) {}
+
   /// Multiply-and-permute operator
 
   /// Compute the product of two tiles and permute the result.

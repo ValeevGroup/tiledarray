@@ -27,8 +27,10 @@
 #define TILEDARRAY_EXPRESSIONS_MULT_ENGINE_H__INCLUDED
 
 #include <TiledArray/expressions/cont_engine.h>
+#include <TiledArray/external/btas.h>
 #include <TiledArray/tile_op/binary_wrapper.h>
 #include <TiledArray/tile_op/mult.h>
+#include <btas/optimize/contract.h>
 
 namespace TiledArray {
 namespace expressions {
@@ -42,6 +44,68 @@ template <typename, typename, typename>
 class MultEngine;
 template <typename, typename, typename, typename>
 class ScalMultEngine;
+
+template <typename Tile>
+inline auto make_tile_contract_op(const IndexList& left_indices,
+                                  const IndexList& right_indices,
+                                  const IndexList& result_indices) {
+  static_assert(TiledArray::detail::is_ta_tensor_v<Tile> ||
+                    TiledArray::detail::is_btas_tensor_v<Tile>,
+                "only support BTAS and TA tensors as inner tensors of ToT");
+  // btas::contract only works for col-major storage
+  if constexpr (TiledArray::detail::is_btas_tensor_v<
+                    Tile>) {  // can do arbitrary contractions here
+                              //    auto indices_to_integers = [&]() {
+                              //      // collect all unique indices
+                              //      IndexList::container_type all_indices;
+    //      all_indices.reserve(left_indices.size() + right_indices.size() +
+    //                          result_indices.size());
+    //      all_indices.insert(all_indices.end(), left_indices.data().begin(),
+    //                         left_indices.data().end());
+    //      all_indices.insert(all_indices.end(), right_indices.data().begin(),
+    //                         right_indices.data().end());
+    //      all_indices.insert(all_indices.end(), result_indices.data().begin(),
+    //                         result_indices.data().end());
+    //      auto end_of_unique = std::unique(all_indices.begin(),
+    //      all_indices.end()); all_indices.erase(end_of_unique,
+    //      all_indices.end());
+    //
+    //      // map each index list to numbers
+    //      auto to_integers = [](const container::svector<std::string> indices,
+    //                            const container::svector<std::string>
+    //                            all_indices) {
+    //        TA_ASSERT(!all_indices.empty());
+    //        btas::DEFAULT::index<std::int64_t> result;
+    //        result.reserve(indices.size());
+    //        for (const auto& idx : indices) {
+    //          auto pos = std::find(all_indices.begin(), all_indices.end(),
+    //          idx) -
+    //                     all_indices.begin();
+    //          TA_ASSERT(pos < all_indices.size());
+    //          result.push_back(pos);
+    //        }
+    //        return result;
+    //      };
+    //      auto left_annotation = to_integers(left_indices.data(),
+    //      all_indices); auto right_annotation =
+    //      to_integers(right_indices.data(), all_indices); auto
+    //      result_annotation = to_integers(result_indices.data(), all_indices);
+    //      return std::make_tuple(left_annotation, right_annotation,
+    //                             result_annotation);
+    //    };
+    //    auto [left_annotation, right_annotation, result_annotation] =
+    //        indices_to_integers();
+    //    return [left_annotation = std::move(left_annotation),
+    //            right_annotation = std::move(right_annotation),
+    //            result_annotation = std::move(result_annotation)](
+    //               const Tile& left_tile, const Tile& right_tile) {
+    //      Tile result;
+    //      btas::contract(1, left_tile, left_annotation, right_tile,
+    //                     right_annotation, 0, result, result_annotation);
+    //      return result;
+    //    };
+  }
+}
 
 template <typename Left, typename Right, typename Result>
 struct EngineTrait<MultEngine<Left, Right, Result>> {
@@ -162,6 +226,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
       policy;  ///< The result policy type
   typedef typename EngineTrait<MultEngine_>::dist_eval_type
       dist_eval_type;  ///< The distributed evaluator type
+  typedef typename EngineTrait<MultEngine_>::scalar_type
+      scalar_type;  ///< Tile scalar type
 
   // Meta data typedefs
   typedef
@@ -235,6 +301,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     product_type_ = compute_product_type(outer(BinaryEngine_::left_.indices()),
                                          outer(BinaryEngine_::right_.indices()),
                                          outer(target_indices));
+    inner_product_type_ = compute_product_type(
+        inner(BinaryEngine_::left_.indices()),
+        inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
     // TODO support general products that involve fused, contracted, and free
     // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
@@ -272,6 +341,9 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     product_type_ =
         compute_product_type(outer(BinaryEngine_::left_.indices()),
                              outer(BinaryEngine_::right_.indices()));
+    inner_product_type_ =
+        compute_product_type(inner(BinaryEngine_::left_.indices()),
+                             inner(BinaryEngine_::right_.indices()));
 
     if (product_type() == TensorProduct::Hadamard) {
       BinaryEngine_::init_indices(children_initialized);
@@ -290,6 +362,38 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
       ContEngine_::init_struct(target_indices);
     else
       BinaryEngine_::init_struct(target_indices);
+
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      const auto inner_prod = inner_product_type();
+      if (inner_prod == TensorProduct::Contraction) {
+        using inner_tile_type = typename value_type::value_type;
+        using contract_inner_tile_type =
+            TiledArray::detail::ContractReduce<inner_tile_type, inner_tile_type,
+                                               inner_tile_type, scalar_type>;
+        auto contrreduce_op =
+            (inner(target_indices) != inner(this->indices_))
+                ? contract_inner_tile_type(
+                      to_cblas_op(this->left_inner_permtype_),
+                      to_cblas_op(this->right_inner_permtype_), this->factor_,
+                      inner_size(this->indices_),
+                      inner_size(this->left_indices_),
+                      inner_size(this->right_indices_),
+                      (this->permute_tiles_ ? inner(this->perm_)
+                                            : Permutation{}))
+                : contract_inner_tile_type(
+                      to_cblas_op(this->left_inner_permtype_),
+                      to_cblas_op(this->right_inner_permtype_), this->factor_,
+                      inner_size(this->indices_),
+                      inner_size(this->left_indices_),
+                      inner_size(this->right_indices_));
+        this->inner_tile_op_ = [contrreduce_op](const inner_tile_type& left,
+                                                const inner_tile_type& right) {
+          inner_tile_type result;
+          contrreduce_op(result, left, right);
+          return result;
+        };
+      }
+    }
   }
 
   /// Initialize result tensor distribution
@@ -345,16 +449,42 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// Non-permuting tile operation factory function
 
   /// \return The tile operation
-  static op_type make_tile_op() { return op_type(op_base_type()); }
+  op_type make_tile_op() const {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<
+                      value_type>) {  // nested tensors
+      const auto inner_prod = inner_product_type();
+      if (inner_prod == TensorProduct::Invalid ||
+          inner_prod == TensorProduct::Hadamard) {
+        return op_type(op_base_type());
+      } else if (inner_prod == TensorProduct::Contraction) {
+        return op_type(op_base_type(this->inner_tile_op_));
+      } else
+        abort();
+    } else {  // plain tensors
+      return op_type(op_base_type());
+    }
+  }
 
   /// Permuting tile operation factory function
 
-  /// \param perm The permutation to be applied to tiles
+  /// \param perm The permutation to be applied to the result
   /// \return The tile operation
   template <typename Perm, typename = std::enable_if_t<
                                TiledArray::detail::is_permutation_v<Perm>>>
-  static op_type make_tile_op(const Perm& perm) {
-    return op_type(op_base_type(), perm);
+  op_type make_tile_op(const Perm& perm) const {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<
+                      value_type>) {  // nested tensors
+      const auto inner_prod = inner_product_type();
+      if (inner_prod == TensorProduct::Invalid ||
+          inner_prod == TensorProduct::Hadamard) {
+        return op_type(op_base_type(), perm);
+      } else if (inner_prod == TensorProduct::Contraction) {
+        return op_type(op_base_type(this->inner_tile_op_), perm);
+      } else
+        abort();
+    } else {  // plain tensor
+      return op_type(op_base_type(), perm);
+    }
   }
 
   /// Construct the distributed evaluator for this expression
@@ -382,7 +512,6 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     else
       return BinaryEngine_::print(os, target_indices);
   }
-
 };  // class MultEngine
 
 /// Scaled multiplication expression engine

@@ -86,7 +86,13 @@ class ContEngine : public BinaryEngine<Derived> {
  protected:
   // Import base class variables to this scope
   using BinaryEngine_::left_;
+  using BinaryEngine_::left_indices_;
+  using BinaryEngine_::left_inner_permtype_;
+  using BinaryEngine_::left_outer_permtype_;
   using BinaryEngine_::right_;
+  using BinaryEngine_::right_indices_;
+  using BinaryEngine_::right_inner_permtype_;
+  using BinaryEngine_::right_outer_permtype_;
   using ExprEngine_::indices_;
   using ExprEngine_::perm_;
   using ExprEngine_::permute_tiles_;
@@ -98,15 +104,16 @@ class ContEngine : public BinaryEngine<Derived> {
  protected:
   scalar_type factor_;  ///< Contraction scaling factor
 
- private:
-  BipartiteIndexList left_indices_;   ///< Target left-hand index list
-  BipartiteIndexList right_indices_;  ///< Target right-hand index list
-  PermutationType left_op_;           ///< Left-hand permute operation
-  PermutationType right_op_;          ///< Right-hand permute operation
-  op_type op_;                        ///< Tile operation
+ protected:
+  op_type op_;  ///< Tile operation
+  using tile_element_type = typename value_type::value_type;
+  std::function<tile_element_type(const tile_element_type&,
+                                  const tile_element_type&)>
+      inner_tile_op_;  ///< Tile element operation (only non-null for nested
+                       ///< tensor expressions)
   TiledArray::detail::ProcGrid
-      proc_grid_;  ///< Process grid for the contraction
-  size_type K_;    ///< Inner dimension size
+      proc_grid_;    ///< Process grid for the contraction
+  size_type K_ = 1;  ///< Inner dimension size
 
   static unsigned int find(const BipartiteIndexList& indices,
                            const std::string& index_label, unsigned int i,
@@ -125,16 +132,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \tparam R The right-hand argument expression type
   /// \param expr The parent expression
   template <typename L, typename R>
-  ContEngine(const MultExpr<L, R>& expr)
-      : BinaryEngine_(expr),
-        factor_(1),
-        left_indices_(),
-        right_indices_(),
-        left_op_(PermutationType::general),
-        right_op_(PermutationType::general),
-        op_(),
-        proc_grid_(),
-        K_(1u) {}
+  ContEngine(const MultExpr<L, R>& expr) : BinaryEngine_(expr), factor_(1) {}
 
   /// Constructor
 
@@ -144,15 +142,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \param expr The parent expression
   template <typename L, typename R, typename S>
   ContEngine(const ScalMultExpr<L, R, S>& expr)
-      : BinaryEngine_(expr),
-        factor_(expr.factor()),
-        left_indices_(),
-        right_indices_(),
-        left_op_(PermutationType::general),
-        right_op_(PermutationType::general),
-        op_(),
-        proc_grid_(),
-        K_(1u) {}
+      : BinaryEngine_(expr), factor_(expr.factor()) {}
 
   // Pull base class functions into this class.
   using ExprEngine_::derived;
@@ -170,31 +160,19 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \todo take into account the ranks of the args to decide
   /// whether it makes sense to permute them or the result
   void perm_indices(const BipartiteIndexList& target_indices) {
-    // prefer to permute the arg with fewest leaves to try to minimize the
-    // number of possible permutations
-    auto outer_opt = std::make_shared<GEMMPermutationOptimizer>(
-        outer(target_indices), outer(left_.indices()), outer(right_.indices()),
-        left_type::leaves <= right_type::leaves);
-    auto inner_opt = make_permutation_optimizer(
-        inner(target_indices), inner(left_.indices()), inner(right_.indices()),
-        left_type::leaves <= right_type::leaves);
+    TA_ASSERT(permute_tiles_);
 
-    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
-                                       inner_opt->target_left_indices());
-    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
-                                        inner_opt->target_right_indices());
-    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
-                                  inner_opt->target_result_indices());
+    this->template init_indices_<TensorProduct::Contraction>(target_indices);
 
     // propagate the indices down the tree, if needed
     if (left_indices_ != left_.indices()) {
-      TA_ASSERT(outer_opt->left_permtype() == PermutationType::general ||
-                inner_opt->left_permtype() == PermutationType::general);
+      TA_ASSERT(left_outer_permtype_ == PermutationType::general ||
+                left_inner_permtype_ == PermutationType::general);
       left_.perm_indices(left_indices_);
     }
     if (right_indices_ != right_.indices()) {
-      TA_ASSERT(outer_opt->right_permtype() == PermutationType::general ||
-                inner_opt->right_permtype() == PermutationType::general);
+      TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
+                right_inner_permtype_ == PermutationType::general);
       right_.perm_indices(right_indices_);
     }
   }
@@ -210,44 +188,19 @@ class ContEngine : public BinaryEngine<Derived> {
       left_.init_indices();
       right_.init_indices();
     }
-    // prefer to permute the arg with fewest leaves to try to minimize the
-    // number of possible permutations
-    auto outer_opt = std::make_shared<GEMMPermutationOptimizer>(
-        outer(left_.indices()), outer(right_.indices()),
-        left_type::leaves <= right_type::leaves);
-    auto inner_opt = make_permutation_optimizer(
-        inner(left_.indices()), inner(right_.indices()),
-        left_type::leaves <= right_type::leaves);
 
-    left_indices_ = BipartiteIndexList(outer_opt->target_left_indices(),
-                                       inner_opt->target_left_indices());
-    right_indices_ = BipartiteIndexList(outer_opt->target_right_indices(),
-                                        inner_opt->target_right_indices());
-    indices_ = BipartiteIndexList(outer_opt->target_result_indices(),
-                                  inner_opt->target_result_indices());
+    this->template init_indices_<TensorProduct::Contraction>();
 
-    // Here we set the type of permutation that will be applied to the
-    // argument tensors. If both arguments are plain tensors
-    // (tensors-of-scalars) and their permutations can be fused into GEMM,
-    // disable their permutation
-    const bool args_are_plain_tensors =
-        (inner_opt->op_type() == TensorProduct::Invalid);
-    if (args_are_plain_tensors &&
-        (outer_opt->left_permtype() == PermutationType::matrix_transpose ||
-         outer_opt->left_permtype() == PermutationType::identity)) {
-      left_op_ = outer_opt->left_permtype();
-      left_.permute_tiles(false);
-    } else {
-      if (left_.indices() != left_indices_) left_.perm_indices(left_indices_);
+    // propagate the indices down the tree, if needed
+    if (left_indices_ != left_.indices()) {
+      TA_ASSERT(left_outer_permtype_ == PermutationType::general ||
+                left_inner_permtype_ == PermutationType::general);
+      left_.perm_indices(left_indices_);
     }
-    if (args_are_plain_tensors &&
-        (outer_opt->right_permtype() == PermutationType::matrix_transpose ||
-         outer_opt->right_permtype() == PermutationType::identity)) {
-      right_op_ = outer_opt->right_permtype();
-      right_.permute_tiles(false);
-    } else {
-      if (right_.indices() != right_indices_)
-        right_.perm_indices(right_indices_);
+    if (right_indices_ != right_.indices()) {
+      TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
+                right_inner_permtype_ == PermutationType::general);
+      right_.perm_indices(right_indices_);
     }
   }
 
@@ -277,11 +230,11 @@ class ContEngine : public BinaryEngine<Derived> {
     // evaluate the tiled range and shape.
 
     const madness::cblas::CBLAS_TRANSPOSE left_op =
-        (left_op_ == PermutationType::matrix_transpose
+        (left_outer_permtype_ == PermutationType::matrix_transpose
              ? madness::cblas::Trans
              : madness::cblas::NoTrans);
     const madness::cblas::CBLAS_TRANSPOSE right_op =
-        (right_op_ == PermutationType::matrix_transpose
+        (right_outer_permtype_ == PermutationType::matrix_transpose
              ? madness::cblas::Trans
              : madness::cblas::NoTrans);
 
