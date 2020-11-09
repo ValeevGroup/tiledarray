@@ -217,10 +217,13 @@ class Tensor {
 
   /// \tparam T1 A tensor type
   /// \param other The tensor to be copied
-  template <typename T1,
-            typename std::enable_if<is_tensor<T1>::value &&
-                                    !std::is_same<T1, Tensor_>::value>::type* =
-                nullptr>
+  /// \note this constructor is disabled if \p T1 already has a conversion
+  ///       operator to this type
+  template <
+      typename T1,
+      typename std::enable_if<
+          is_tensor<T1>::value && !std::is_same<T1, Tensor_>::value &&
+          !detail::has_conversion_operator_v<T1, Tensor_>>::type* = nullptr>
   explicit Tensor(const T1& other)
       : pimpl_(std::make_shared<Impl>(detail::clone_range(other))) {
     auto op = [](const numeric_t<T1> arg) -> numeric_t<T1> { return arg; };
