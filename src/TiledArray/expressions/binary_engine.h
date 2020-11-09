@@ -186,17 +186,19 @@ class BinaryEngine : public ExprEngine<Derived> {
   /// result of this expression will be permuted to match \c target_indices.
   /// \param target_indices The target index list for this expression
   void perm_indices(const BipartiteIndexList& target_indices) {
-    TA_ASSERT(permute_tiles_);
-    TA_ASSERT(left_.indices().size() == target_indices.size());
-    TA_ASSERT(right_.indices().size() == target_indices.size());
+    if (permute_tiles_) {
+      TA_ASSERT(left_.indices().size() == target_indices.size());
+      TA_ASSERT(right_.indices().size() == target_indices.size());
 
-    init_indices_<TensorProduct::Hadamard>(target_indices);
+      init_indices_<TensorProduct::Hadamard>(target_indices);
 
-    TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
-              right_inner_permtype_ == PermutationType::general);
+      TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
+                right_inner_permtype_ == PermutationType::general);
 
-    if (left_.indices() != left_indices_) left_.init_indices(left_indices_);
-    if (right_.indices() != right_indices_) right_.init_indices(right_indices_);
+      if (left_.indices() != left_indices_) left_.init_indices(left_indices_);
+      if (right_.indices() != right_indices_)
+        right_.init_indices(right_indices_);
+    }
   }
 
   /// Initialize the index list of this expression
