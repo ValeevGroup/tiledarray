@@ -150,9 +150,11 @@ typename KroneckerDeltaTile<_N>::numeric_type abs_max(
 // Permutation operation
 
 // returns a tile for which result[perm ^ i] = tile[i]
-template <unsigned N>
+template <
+    unsigned N, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 KroneckerDeltaTile<N> permute(const KroneckerDeltaTile<N>& tile,
-                              const TiledArray::Permutation& perm) {
+                              const Perm& perm) {
   abort();
 }
 
@@ -163,10 +165,12 @@ TiledArray::Tensor<T> mult(const KroneckerDeltaTile<_N>& arg1,
   abort();
 }
 // dense_result[perm ^ i] = dense_arg1[i] * sparse_arg2[i]
-template <typename T, unsigned _N>
+template <
+    typename T, unsigned _N, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 TiledArray::Tensor<T> mult(const KroneckerDeltaTile<_N>& arg1,
                            const TiledArray::Tensor<T>& arg2,
-                           const TiledArray::Permutation& perm) {
+                           const Perm& perm) {
   abort();
 }
 
@@ -176,6 +180,22 @@ TiledArray::Tensor<T>& mult_to(TiledArray::Tensor<T>& result,
                                const KroneckerDeltaTile<N>& arg1) {
   abort();
   return result;
+}
+
+// dense_result[i] = binary(dense_arg1[i], sparse_arg2[i], op)
+template <typename T, unsigned _N, typename Op>
+TiledArray::Tensor<T> binary(const KroneckerDeltaTile<_N>& arg1,
+                             const TiledArray::Tensor<T>& arg2, Op&& op) {
+  abort();
+}
+// dense_result[perm ^ i] = binary(dense_arg1[i], sparse_arg2[i], op)
+template <
+    typename T, unsigned _N, typename Op, typename Perm,
+    typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
+TiledArray::Tensor<T> binary(const KroneckerDeltaTile<_N>& arg1,
+                             const TiledArray::Tensor<T>& arg2, Op&& op,
+                             const Perm& perm) {
+  abort();
 }
 
 // Contraction operation
