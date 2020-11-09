@@ -195,9 +195,9 @@ class BinaryEngine : public ExprEngine<Derived> {
       TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
                 right_inner_permtype_ == PermutationType::general);
 
-      if (left_.indices() != left_indices_) left_.init_indices(left_indices_);
+      if (left_.indices() != left_indices_) left_.perm_indices(left_indices_);
       if (right_.indices() != right_indices_)
-        right_.init_indices(right_indices_);
+        right_.perm_indices(right_indices_);
     }
   }
 
@@ -220,9 +220,6 @@ class BinaryEngine : public ExprEngine<Derived> {
     init_indices_<TensorProduct::Hadamard>();
     TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
               right_inner_permtype_ == PermutationType::general);
-
-    if (left_.indices() != left_indices_) left_.init_indices(left_indices_);
-    if (right_.indices() != right_indices_) right_.init_indices(right_indices_);
   }
 
   /// Initialize result tensor structure
