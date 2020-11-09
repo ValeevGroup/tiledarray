@@ -160,20 +160,20 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \todo take into account the ranks of the args to decide
   /// whether it makes sense to permute them or the result
   void perm_indices(const BipartiteIndexList& target_indices) {
-    TA_ASSERT(permute_tiles_);
+    if (permute_tiles_) {
+      this->template init_indices_<TensorProduct::Contraction>(target_indices);
 
-    this->template init_indices_<TensorProduct::Contraction>(target_indices);
-
-    // propagate the indices down the tree, if needed
-    if (left_indices_ != left_.indices()) {
-      TA_ASSERT(left_outer_permtype_ == PermutationType::general ||
-                left_inner_permtype_ == PermutationType::general);
-      left_.perm_indices(left_indices_);
-    }
-    if (right_indices_ != right_.indices()) {
-      TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
-                right_inner_permtype_ == PermutationType::general);
-      right_.perm_indices(right_indices_);
+      // propagate the indices down the tree, if needed
+      if (left_indices_ != left_.indices()) {
+        TA_ASSERT(left_outer_permtype_ == PermutationType::general ||
+                  left_inner_permtype_ == PermutationType::general);
+        left_.perm_indices(left_indices_);
+      }
+      if (right_indices_ != right_.indices()) {
+        TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
+                  right_inner_permtype_ == PermutationType::general);
+        right_.perm_indices(right_indices_);
+      }
     }
   }
 
