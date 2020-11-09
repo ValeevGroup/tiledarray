@@ -4021,7 +4021,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_inner_contraction, TestParam, test_params) {
   tensor_type<TestParam> rhs(m_world, tr);
   rhs.init_elements(init_inner_tensor);
   tensor_type<TestParam> result;
-  result("i,j;n,l") = lhs("i,j;l,m") * rhs("i,j;n,m");
+  BOOST_CHECK_NO_THROW(result("i,j;n,l") = lhs("i,j;l,m") * rhs("i,j;n,m"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
