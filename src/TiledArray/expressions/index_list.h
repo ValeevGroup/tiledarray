@@ -730,7 +730,7 @@ auto all_annotations(T&& v, Args&&... args) {
 template <typename T, typename... Args>
 auto common_annotations(T&& v, Args&&... args) {
   std::set<std::string> rv;
-  if constexpr (sizeof...(Args)) {
+  if constexpr (sizeof...(Args) > 0) {
     rv = common_annotations(std::forward<Args>(args)...);
     // Remove all annotations not found in v
     decltype(rv) buffer(rv);
