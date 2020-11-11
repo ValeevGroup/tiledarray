@@ -239,31 +239,6 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   typedef typename EngineTrait<MultEngine_>::pmap_interface
       pmap_interface;  ///< Process map interface type
 
- private:
-  TensorProduct product_type_ = TensorProduct::Invalid;
-  TensorProduct inner_product_type_ = TensorProduct::Invalid;
-
- public:
-  /// \return the product type
-  TensorProduct product_type() const {
-    TA_ASSERT(product_type_ !=
-              TensorProduct::Invalid);  // init_indices() must initialize this
-    /// only Hadamard and contraction are supported now
-    TA_ASSERT(product_type_ == TensorProduct::Hadamard ||
-              product_type_ == TensorProduct::Contraction);
-    return product_type_;
-  }
-
-  /// \return the inner product type
-  TensorProduct inner_product_type() const {
-    TA_ASSERT(inner_product_type_ !=
-              TensorProduct::Invalid);  // init_indices() must initialize this
-    /// only Hadamard and contraction are supported now
-    TA_ASSERT(inner_product_type_ == TensorProduct::Hadamard ||
-              inner_product_type_ == TensorProduct::Contraction);
-    return inner_product_type_;
-  }
-
  public:
   /// Constructor
 
@@ -281,7 +256,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// result of this expression will be permuted to match \c target_indices.
   /// \param target_indices The target index list for this expression
   void perm_indices(const BipartiteIndexList& target_indices) {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::perm_indices(target_indices);
     else {
       BinaryEngine_::perm_indices(target_indices);
@@ -298,10 +273,10 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     // for the left and right, hence do target-neutral initialization
     BinaryEngine_::left_.init_indices();
     BinaryEngine_::right_.init_indices();
-    product_type_ = compute_product_type(outer(BinaryEngine_::left_.indices()),
-                                         outer(BinaryEngine_::right_.indices()),
-                                         outer(target_indices));
-    inner_product_type_ = compute_product_type(
+    this->product_type_ = compute_product_type(
+        outer(BinaryEngine_::left_.indices()),
+        outer(BinaryEngine_::right_.indices()), outer(target_indices));
+    this->inner_product_type_ = compute_product_type(
         inner(BinaryEngine_::left_.indices()),
         inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
@@ -321,7 +296,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     // Only the outer indices matter here since the inner indices only encode
     // the tile op; the type of the tile op does not need to match the type of
     // the operation on the outer indices
-    if (product_type() == TensorProduct::Hadamard) {
+    if (this->product_type() == TensorProduct::Hadamard) {
       // assumes inner op is also Hadamard
       BinaryEngine_::perm_indices(target_indices);
     } else {
@@ -338,14 +313,14 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     BinaryEngine_::left_.init_indices();
     BinaryEngine_::right_.init_indices();
     auto children_initialized = true;
-    product_type_ =
+    this->product_type_ =
         compute_product_type(outer(BinaryEngine_::left_.indices()),
                              outer(BinaryEngine_::right_.indices()));
-    inner_product_type_ =
+    this->inner_product_type_ =
         compute_product_type(inner(BinaryEngine_::left_.indices()),
                              inner(BinaryEngine_::right_.indices()));
 
-    if (product_type() == TensorProduct::Hadamard) {
+    if (this->product_type() == TensorProduct::Hadamard) {
       BinaryEngine_::init_indices(children_initialized);
     } else {
       ContEngine_::init_indices(children_initialized);
@@ -358,42 +333,11 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
-    if (product_type() == TensorProduct::Contraction)
+    this->init_inner_tile_op(inner(target_indices));
+    if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_struct(target_indices);
     else
       BinaryEngine_::init_struct(target_indices);
-
-    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      const auto inner_prod = inner_product_type();
-      if (inner_prod == TensorProduct::Contraction) {
-        using inner_tile_type = typename value_type::value_type;
-        using contract_inner_tile_type =
-            TiledArray::detail::ContractReduce<inner_tile_type, inner_tile_type,
-                                               inner_tile_type, scalar_type>;
-        auto contrreduce_op =
-            (inner(target_indices) != inner(this->indices_))
-                ? contract_inner_tile_type(
-                      to_cblas_op(this->left_inner_permtype_),
-                      to_cblas_op(this->right_inner_permtype_), this->factor_,
-                      inner_size(this->indices_),
-                      inner_size(this->left_indices_),
-                      inner_size(this->right_indices_),
-                      (this->permute_tiles_ ? inner(this->perm_)
-                                            : Permutation{}))
-                : contract_inner_tile_type(
-                      to_cblas_op(this->left_inner_permtype_),
-                      to_cblas_op(this->right_inner_permtype_), this->factor_,
-                      inner_size(this->indices_),
-                      inner_size(this->left_indices_),
-                      inner_size(this->right_indices_));
-        this->inner_tile_op_ = [contrreduce_op](const inner_tile_type& left,
-                                                const inner_tile_type& right) {
-          inner_tile_type result;
-          contrreduce_op(result, left, right);
-          return result;
-        };
-      }
-    }
   }
 
   /// Initialize result tensor distribution
@@ -403,7 +347,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// \param world The world were the result will be distributed
   /// \param pmap The process map for the result tensor tiles
   void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_distribution(world, pmap);
     else
       BinaryEngine_::init_distribution(world, pmap);
@@ -413,7 +357,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// \return The result tiled range object
   trange_type make_trange() const {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange();
     else
       return BinaryEngine_::make_trange();
@@ -424,7 +368,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// \param perm The permutation to be applied to the array
   /// \return The result tiled range object
   trange_type make_trange(const Permutation& perm) const {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange(perm);
     else
       return BinaryEngine_::make_trange(perm);
@@ -452,9 +396,11 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   op_type make_tile_op() const {
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<
                       value_type>) {  // nested tensors
-      const auto inner_prod = inner_product_type();
-      if (inner_prod == TensorProduct::Invalid ||
-          inner_prod == TensorProduct::Hadamard) {
+      const auto inner_prod = this->inner_product_type();
+      if (inner_prod == TensorProduct::Hadamard) {
+        TA_ASSERT(this->product_type() ==
+                  inner_prod);  // Hadamard automatically works for inner
+                                // dimensions as well
         return op_type(op_base_type());
       } else if (inner_prod == TensorProduct::Contraction) {
         return op_type(op_base_type(this->inner_tile_op_));
@@ -474,9 +420,11 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   op_type make_tile_op(const Perm& perm) const {
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<
                       value_type>) {  // nested tensors
-      const auto inner_prod = inner_product_type();
-      if (inner_prod == TensorProduct::Invalid ||
-          inner_prod == TensorProduct::Hadamard) {
+      const auto inner_prod = this->inner_product_type();
+      if (inner_prod == TensorProduct::Hadamard) {
+        TA_ASSERT(this->product_type() ==
+                  inner_prod);  // Hadamard automatically works for inner
+                                // dimensions as well
         return op_type(op_base_type(), perm);
       } else if (inner_prod == TensorProduct::Contraction) {
         return op_type(op_base_type(this->inner_tile_op_), perm);
@@ -491,7 +439,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
 
   /// \return The distributed evaluator that will evaluate this expression
   dist_eval_type make_dist_eval() const {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_dist_eval();
     else
       return BinaryEngine_::make_dist_eval();
@@ -507,7 +455,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// \param os The output stream
   /// \param target_indices The target index list for this expression
   void print(ExprOStream os, const BipartiteIndexList& target_indices) const {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::print(os, target_indices);
     else
       return BinaryEngine_::print(os, target_indices);
@@ -564,29 +512,6 @@ class ScalMultEngine
   typedef typename EngineTrait<ScalMultEngine_>::pmap_interface
       pmap_interface;  ///< Process map interface type
 
- private:
-  TensorProduct product_type_ = TensorProduct::Invalid;
-  TensorProduct inner_product_type_ = TensorProduct::Invalid;
-
- public:
-  /// \return the product type
-  TensorProduct product_type() const {
-    TA_ASSERT(product_type_ != TensorProduct::Invalid);
-    /// only Hadamard and contraction are supported now
-    TA_ASSERT(product_type_ == TensorProduct::Hadamard ||
-              product_type_ == TensorProduct::Contraction);
-    return product_type_;
-  }
-
-  /// \return the inner product type
-  TensorProduct inner_product_type() const {
-    TA_ASSERT(inner_product_type_ != TensorProduct::Invalid);
-    /// only Hadamard and contraction are supported now
-    TA_ASSERT(inner_product_type_ == TensorProduct::Hadamard ||
-              inner_product_type_ == TensorProduct::Contraction);
-    return inner_product_type_;
-  }
-
  public:
   /// Constructor
 
@@ -605,7 +530,7 @@ class ScalMultEngine
   /// result of this expression will be permuted to match \c target_indices.
   /// \param target_indices The target index list for this expression
   void perm_indices(const BipartiteIndexList& target_indices) {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::perm_indices(target_indices);
     else {
       BinaryEngine_::perm_indices(target_indices);
@@ -618,11 +543,11 @@ class ScalMultEngine
   void init_indices(const BipartiteIndexList& target_indices) {
     BinaryEngine_::left_.init_indices();
     BinaryEngine_::right_.init_indices();
-    product_type_ = compute_product_type(outer(BinaryEngine_::left_.indices()),
-                                         outer(BinaryEngine_::right_.indices()),
-                                         outer(target_indices));
+    this->product_type_ = compute_product_type(
+        outer(BinaryEngine_::left_.indices()),
+        outer(BinaryEngine_::right_.indices()), outer(target_indices));
 
-    if (product_type() == TensorProduct::Hadamard) {
+    if (this->product_type() == TensorProduct::Hadamard) {
       // since already initialized left and right arg indices assign the target
       // indices
       BinaryEngine_::perm_indices(target_indices);
@@ -635,10 +560,10 @@ class ScalMultEngine
   void init_indices() {
     BinaryEngine_::left_.init_indices();
     BinaryEngine_::right_.init_indices();
-    product_type_ =
+    this->product_type_ =
         compute_product_type(outer(BinaryEngine_::left_.indices()),
                              outer(BinaryEngine_::right_.indices()));
-    if (product_type() == TensorProduct::Hadamard) {
+    if (this->product_type() == TensorProduct::Hadamard) {
       auto outer_indices = outer((left_type::leaves <= right_type::leaves)
                                      ? BinaryEngine_::left_.indices()
                                      : BinaryEngine_::right_.indices());
@@ -659,7 +584,8 @@ class ScalMultEngine
   /// for the result tensor.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
-    if (product_type() == TensorProduct::Contraction)
+    this->init_inner_tile_op(inner(target_indices));
+    if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_struct(target_indices);
     else
       BinaryEngine_::init_struct(target_indices);
@@ -672,7 +598,7 @@ class ScalMultEngine
   /// \param world The world were the result will be distributed
   /// \param pmap The process map for the result tensor tiles
   void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_distribution(world, pmap);
     else
       BinaryEngine_::init_distribution(world, pmap);
@@ -682,7 +608,7 @@ class ScalMultEngine
 
   /// \return The distributed evaluator that will evaluate this expression
   dist_eval_type make_dist_eval() const {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_dist_eval();
     else
       return BinaryEngine_::make_dist_eval();
@@ -692,7 +618,7 @@ class ScalMultEngine
 
   /// \return The result tiled range object
   trange_type make_trange() const {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange();
     else
       return BinaryEngine_::make_trange();
@@ -703,7 +629,7 @@ class ScalMultEngine
   /// \param perm The permutation to be applied to the array
   /// \return The result tiled range object
   trange_type make_trange(const Permutation& perm) const {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange(perm);
     else
       return BinaryEngine_::make_trange(perm);
@@ -757,7 +683,7 @@ class ScalMultEngine
   /// \param os The output stream
   /// \param target_indices The target index list for this expression
   void print(ExprOStream os, const BipartiteIndexList& target_indices) const {
-    if (product_type() == TensorProduct::Contraction)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::print(os, target_indices);
     else
       return BinaryEngine_::print(os, target_indices);

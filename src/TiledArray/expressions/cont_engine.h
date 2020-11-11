@@ -125,6 +125,29 @@ class ContEngine : public BinaryEngine<Derived> {
     return i;
   }
 
+  TensorProduct product_type_ = TensorProduct::Invalid;
+  TensorProduct inner_product_type_ = TensorProduct::Invalid;
+
+  /// \return the product type
+  TensorProduct product_type() const {
+    TA_ASSERT(product_type_ !=
+              TensorProduct::Invalid);  // init_indices() must initialize this
+    /// only Hadamard and contraction are supported now
+    TA_ASSERT(product_type_ == TensorProduct::Hadamard ||
+              product_type_ == TensorProduct::Contraction);
+    return product_type_;
+  }
+
+  /// \return the inner product type
+  TensorProduct inner_product_type() const {
+    TA_ASSERT(inner_product_type_ !=
+              TensorProduct::Invalid);  // init_indices() must initialize this
+    /// only Hadamard and contraction are supported now
+    TA_ASSERT(inner_product_type_ == TensorProduct::Hadamard ||
+              inner_product_type_ == TensorProduct::Contraction);
+    return inner_product_type_;
+  }
+
  public:
   /// Constructor
 
@@ -167,13 +190,9 @@ class ContEngine : public BinaryEngine<Derived> {
 
       // propagate the indices down the tree, if needed
       if (left_indices_ != left_.indices()) {
-        TA_ASSERT(left_outer_permtype_ == PermutationType::general ||
-                  left_inner_permtype_ == PermutationType::general);
         left_.perm_indices(left_indices_);
       }
       if (right_indices_ != right_.indices()) {
-        TA_ASSERT(right_outer_permtype_ == PermutationType::general ||
-                  right_inner_permtype_ == PermutationType::general);
         right_.perm_indices(right_indices_);
       }
     }
@@ -212,6 +231,12 @@ class ContEngine : public BinaryEngine<Derived> {
   /// for the result tensor as well as the tile operation.
   /// \param target_indices The target index list for the result tensor
   void init_struct(const BipartiteIndexList& target_indices) {
+    // precondition checks
+    // 1. if ToT inner tile op has been initialized
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      TA_ASSERT(inner_tile_op_);
+    }
+
     // Initialize children
     left_.init_struct(left_indices_);
     right_.init_struct(right_indices_);
@@ -228,18 +253,22 @@ class ContEngine : public BinaryEngine<Derived> {
              ? madness::cblas::Trans
              : madness::cblas::NoTrans);
 
-    if (target_indices != indices_) {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      abort();  // TODO generalize ContractReduce and gemm() to accept
+                // element_op
+    }
+    if (outer(target_indices) != outer(indices_)) {
       // Initialize permuted structure
       perm_ = ExprEngine_::make_perm(target_indices);
-      op_ = op_type(left_op, right_op, factor_, indices_.size(),
-                    left_indices_.size(), right_indices_.size(),
+      op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
+                    outer_size(left_indices_), outer_size(right_indices_),
                     (permute_tiles_ ? perm_ : BipartitePermutation{}));
       trange_ = ContEngine_::make_trange(outer(perm_));
       shape_ = ContEngine_::make_shape(outer(perm_));
     } else {
       // Initialize non-permuted structure
-      op_ = op_type(left_op, right_op, factor_, indices_.size(),
-                    left_indices_.size(), right_indices_.size());
+      op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
+                    outer_size(left_indices_), outer_size(right_indices_));
       trange_ = ContEngine_::make_trange();
       shape_ = ContEngine_::make_shape();
     }
@@ -406,6 +435,41 @@ class ContEngine : public BinaryEngine<Derived> {
     left_.print(os, left_indices_);
     right_.print(os, right_indices_);
     os.dec();
+  }
+
+ protected:
+  void init_inner_tile_op(const IndexList& inner_target_indices) {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      const auto inner_prod = this->inner_product_type();
+      if (inner_prod == TensorProduct::Contraction) {
+        using inner_tile_type = typename value_type::value_type;
+        using contract_inner_tile_type =
+            TiledArray::detail::ContractReduce<inner_tile_type, inner_tile_type,
+                                               inner_tile_type, scalar_type>;
+        auto contrreduce_op =
+            (inner_target_indices != inner(this->indices_))
+                ? contract_inner_tile_type(
+                      to_cblas_op(this->left_inner_permtype_),
+                      to_cblas_op(this->right_inner_permtype_), this->factor_,
+                      inner_size(this->indices_),
+                      inner_size(this->left_indices_),
+                      inner_size(this->right_indices_),
+                      (this->permute_tiles_ ? inner(this->perm_)
+                                            : Permutation{}))
+                : contract_inner_tile_type(
+                      to_cblas_op(this->left_inner_permtype_),
+                      to_cblas_op(this->right_inner_permtype_), this->factor_,
+                      inner_size(this->indices_),
+                      inner_size(this->left_indices_),
+                      inner_size(this->right_indices_));
+        this->inner_tile_op_ = [contrreduce_op](const inner_tile_type& left,
+                                                const inner_tile_type& right) {
+          inner_tile_type result;
+          contrreduce_op(result, left, right);
+          return result;
+        };
+      }
+    }
   }
 
 };  // class ContEngine

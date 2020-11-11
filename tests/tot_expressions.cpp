@@ -3963,8 +3963,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_inner_contraction, TestParam,
                               test_params) {
   using inner_type = inner_type<TestParam>;
   using element_type = typename inner_type::value_type;
-  //  detail::type_printer<inner_type> x;
-  //  detail::type_printer<element_type> y;
+  // only support btas Tensors as inner tensors
+  if constexpr (detail::is_ta_tensor_v<inner_type>) return;
   using trange_type = TiledRange;
   trange_type tr{{0, 2, 3, 5, 7}, {0, 3, 5, 7, 11}};
 
@@ -3982,6 +3982,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_inner_contraction, TestParam,
     return result;
   };
 
+  static_assert(TiledArray::detail::is_tensor_of_tensor_v<tile_type<TestParam>>,
+                "non-ToT tile");
   tensor_type<TestParam> lhs(m_world, tr);
   lhs.init_elements(init_inner_tensor);
   tensor_type<TestParam> rhs(m_world, tr);
