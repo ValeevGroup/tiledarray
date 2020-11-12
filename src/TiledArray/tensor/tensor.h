@@ -1696,132 +1696,144 @@ class Tensor {
   /// \param factor The contraction result will be scaling by this value, then
   /// accumulated into \c this \param gemm_helper The *GEMM operation meta data
   /// \return A reference to \c this
+  /// \note if this is uninitialized, i.e., if \c this->empty()==true will
+  /// this is equivalent to
+  /// \code
+  ///   return (*this = left.gemm(right, factor, gemm_helper));
+  /// \endcode
   template <typename U, typename AU, typename V, typename AV, typename W,
             typename std::enable_if<!detail::is_tensor_of_tensor<
                 Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
   Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
                 const W factor, const math::GemmHelper& gemm_helper) {
-    // Check that this tensor is not empty and has the correct rank
-    TA_ASSERT(pimpl_);
-    TA_ASSERT(pimpl_->range_.rank() == gemm_helper.result_rank());
+    if (this->empty()) {
+      *this = left.gemm(right, factor, gemm_helper);
+    } else {
+      // Check that this tensor is not empty and has the correct rank
+      TA_ASSERT(pimpl_);
+      TA_ASSERT(pimpl_->range_.rank() == gemm_helper.result_rank());
 
-    // Check that the arguments are not empty and have the correct ranks
-    TA_ASSERT(!left.empty());
-    TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
-    TA_ASSERT(!right.empty());
-    TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
+      // Check that the arguments are not empty and have the correct ranks
+      TA_ASSERT(!left.empty());
+      TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
+      TA_ASSERT(!right.empty());
+      TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
-    // Check that the outer dimensions of left match the corresponding
-    // dimensions in result
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_result_congruent(left.range().lobound_data(),
-                                                pimpl_->range_.lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_result_congruent(left.range().upbound_data(),
-                                                pimpl_->range_.upbound_data()));
-    TA_ASSERT(gemm_helper.left_result_congruent(left.range().extent_data(),
-                                                pimpl_->range_.extent_data()));
+      // Check that the outer dimensions of left match the corresponding
+      // dimensions in result
+      TA_ASSERT(ignore_tile_position() || gemm_helper.left_result_congruent(
+                                              left.range().lobound_data(),
+                                              pimpl_->range_.lobound_data()));
+      TA_ASSERT(ignore_tile_position() || gemm_helper.left_result_congruent(
+                                              left.range().upbound_data(),
+                                              pimpl_->range_.upbound_data()));
+      TA_ASSERT(gemm_helper.left_result_congruent(
+          left.range().extent_data(), pimpl_->range_.extent_data()));
 
-    // Check that the outer dimensions of right match the corresponding
-    // dimensions in result
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.right_result_congruent(
-                  right.range().lobound_data(), pimpl_->range_.lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.right_result_congruent(
-                  right.range().upbound_data(), pimpl_->range_.upbound_data()));
-    TA_ASSERT(gemm_helper.right_result_congruent(right.range().extent_data(),
-                                                 pimpl_->range_.extent_data()));
+      // Check that the outer dimensions of right match the corresponding
+      // dimensions in result
+      TA_ASSERT(ignore_tile_position() || gemm_helper.right_result_congruent(
+                                              right.range().lobound_data(),
+                                              pimpl_->range_.lobound_data()));
+      TA_ASSERT(ignore_tile_position() || gemm_helper.right_result_congruent(
+                                              right.range().upbound_data(),
+                                              pimpl_->range_.upbound_data()));
+      TA_ASSERT(gemm_helper.right_result_congruent(
+          right.range().extent_data(), pimpl_->range_.extent_data()));
 
-    // Check that the inner dimensions of left and right match
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_right_congruent(left.range().lobound_data(),
-                                               right.range().lobound_data()));
-    TA_ASSERT(ignore_tile_position() ||
-              gemm_helper.left_right_congruent(left.range().upbound_data(),
-                                               right.range().upbound_data()));
-    TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
-                                               right.range().extent_data()));
+      // Check that the inner dimensions of left and right match
+      TA_ASSERT(ignore_tile_position() ||
+                gemm_helper.left_right_congruent(left.range().lobound_data(),
+                                                 right.range().lobound_data()));
+      TA_ASSERT(ignore_tile_position() ||
+                gemm_helper.left_right_congruent(left.range().upbound_data(),
+                                                 right.range().upbound_data()));
+      TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
+                                                 right.range().extent_data()));
 
-    // Compute gemm dimensions
-    integer m, n, k;
-    gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
+      // Compute gemm dimensions
+      integer m, n, k;
+      gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
-    // Get the leading dimension for left and right matrices.
-    const integer lda =
-        (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
-    const integer ldb =
-        (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+      // Get the leading dimension for left and right matrices.
+      const integer lda =
+          (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+      const integer ldb =
+          (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
 
-    // may need to split gemm into multiply + accumulate for tracing purposes
+      // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
-    {
-      const bool twostep =
-          TiledArray::TileOpsLogger<T>::get_instance().gemm &&
-          TiledArray::TileOpsLogger<T>::get_instance().gemm_print_contributions;
-      std::unique_ptr<T[]> data_copy;
-      size_t tile_volume;
-      if (twostep) {
-        tile_volume = range().volume();
-        data_copy = std::make_unique<T[]>(tile_volume);
-        std::copy(pimpl_->data_, pimpl_->data_ + tile_volume, data_copy.get());
-      }
-      math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-                 left.data(), lda, right.data(), ldb,
-                 twostep ? numeric_type(0) : numeric_type(1), pimpl_->data_, n);
+      {
+        const bool twostep =
+            TiledArray::TileOpsLogger<T>::get_instance().gemm &&
+            TiledArray::TileOpsLogger<T>::get_instance()
+                .gemm_print_contributions;
+        std::unique_ptr<T[]> data_copy;
+        size_t tile_volume;
+        if (twostep) {
+          tile_volume = range().volume();
+          data_copy = std::make_unique<T[]>(tile_volume);
+          std::copy(pimpl_->data_, pimpl_->data_ + tile_volume,
+                    data_copy.get());
+        }
+        math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+                   factor, left.data(), lda, right.data(), ldb,
+                   twostep ? numeric_type(0) : numeric_type(1), pimpl_->data_,
+                   n);
 
-      if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
-          TiledArray::TileOpsLogger<T>::get_instance().gemm) {
-        auto& logger = TiledArray::TileOpsLogger<T>::get_instance();
-        auto apply = [](auto& fnptr, const Range& arg) {
-          return fnptr ? fnptr(arg) : arg;
-        };
-        auto tformed_left_range =
-            apply(logger.gemm_left_range_transform, left.range());
-        auto tformed_right_range =
-            apply(logger.gemm_right_range_transform, right.range());
-        auto tformed_result_range =
-            apply(logger.gemm_result_range_transform, pimpl_->range_);
-        if ((!logger.gemm_result_range_filter ||
-             logger.gemm_result_range_filter(tformed_result_range)) &&
-            (!logger.gemm_left_range_filter ||
-             logger.gemm_left_range_filter(tformed_left_range)) &&
-            (!logger.gemm_right_range_filter ||
-             logger.gemm_right_range_filter(tformed_right_range))) {
-          logger << "TA::Tensor::gemm+: left=" << tformed_left_range
-                 << " right=" << tformed_right_range
-                 << " result=" << tformed_result_range << std::endl;
-          if (TiledArray::TileOpsLogger<T>::get_instance()
-                  .gemm_print_contributions) {
-            if (!TiledArray::TileOpsLogger<T>::get_instance()
-                     .gemm_printer) {  // default printer
-              // must use custom printer if result's range transformed
-              if (!logger.gemm_result_range_transform)
-                logger << *this << std::endl;
-              else
-                logger << make_map(pimpl_->data_, tformed_result_range)
-                       << std::endl;
-            } else {
-              TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
-                  *logger.log, tformed_left_range, left.data(),
-                  tformed_right_range, right.data(), tformed_right_range,
-                  pimpl_->data_);
+        if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
+            TiledArray::TileOpsLogger<T>::get_instance().gemm) {
+          auto& logger = TiledArray::TileOpsLogger<T>::get_instance();
+          auto apply = [](auto& fnptr, const Range& arg) {
+            return fnptr ? fnptr(arg) : arg;
+          };
+          auto tformed_left_range =
+              apply(logger.gemm_left_range_transform, left.range());
+          auto tformed_right_range =
+              apply(logger.gemm_right_range_transform, right.range());
+          auto tformed_result_range =
+              apply(logger.gemm_result_range_transform, pimpl_->range_);
+          if ((!logger.gemm_result_range_filter ||
+               logger.gemm_result_range_filter(tformed_result_range)) &&
+              (!logger.gemm_left_range_filter ||
+               logger.gemm_left_range_filter(tformed_left_range)) &&
+              (!logger.gemm_right_range_filter ||
+               logger.gemm_right_range_filter(tformed_right_range))) {
+            logger << "TA::Tensor::gemm+: left=" << tformed_left_range
+                   << " right=" << tformed_right_range
+                   << " result=" << tformed_result_range << std::endl;
+            if (TiledArray::TileOpsLogger<T>::get_instance()
+                    .gemm_print_contributions) {
+              if (!TiledArray::TileOpsLogger<T>::get_instance()
+                       .gemm_printer) {  // default printer
+                // must use custom printer if result's range transformed
+                if (!logger.gemm_result_range_transform)
+                  logger << *this << std::endl;
+                else
+                  logger << make_map(pimpl_->data_, tformed_result_range)
+                         << std::endl;
+              } else {
+                TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
+                    *logger.log, tformed_left_range, left.data(),
+                    tformed_right_range, right.data(), tformed_right_range,
+                    pimpl_->data_);
+              }
             }
           }
         }
-      }
 
-      if (twostep) {
-        for (size_t v = 0; v != tile_volume; ++v) {
-          pimpl_->data_[v] += data_copy[v];
+        if (twostep) {
+          for (size_t v = 0; v != tile_volume; ++v) {
+            pimpl_->data_[v] += data_copy[v];
+          }
         }
       }
-    }
 #else   // TA_ENABLE_TILE_OPS_LOGGING
-    math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-               left.data(), lda, right.data(), ldb, numeric_type(1),
-               pimpl_->data_, n);
+      math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
+                 left.data(), lda, right.data(), ldb, numeric_type(1),
+                 pimpl_->data_, n);
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
+    }
 
     return *this;
   }
