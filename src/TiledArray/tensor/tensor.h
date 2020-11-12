@@ -1571,11 +1571,12 @@ class Tensor {
   /// \param gemm_helper The *GEMM operation meta data
   /// \return A new tensor which is the result of contracting this tensor with
   /// \c other and scaled by \c factor
-  template <typename U, typename AU, typename V,
-            typename std::enable_if<!detail::is_tensor_of_tensor<
-                Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
+  template <typename U, typename AU, typename V>
   Tensor_ gemm(const Tensor<U, AU>& other, const V factor,
                const math::GemmHelper& gemm_helper) const {
+    static_assert(!detail::is_tensor_of_tensor_v<Tensor_, Tensor<U, AU>>,
+                  "TA::Tensor<T>::gemm without custom element op is only "
+                  "applicable to plain tensors");
     // Check that this tensor is not empty and has the correct rank
     TA_ASSERT(pimpl_);
     TA_ASSERT(pimpl_->range_.rank() == gemm_helper.left_rank());
@@ -1701,11 +1702,13 @@ class Tensor {
   /// \code
   ///   return (*this = left.gemm(right, factor, gemm_helper));
   /// \endcode
-  template <typename U, typename AU, typename V, typename AV, typename W,
-            typename std::enable_if<!detail::is_tensor_of_tensor<
-                Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
+  template <typename U, typename AU, typename V, typename AV, typename W>
   Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
                 const W factor, const math::GemmHelper& gemm_helper) {
+    static_assert(
+        !detail::is_tensor_of_tensor_v<Tensor_, Tensor<U, AU>, Tensor<V, AV>>,
+        "TA::Tensor<T>::gemm without custom element op is only applicable to "
+        "plain tensors");
     if (this->empty()) {
       *this = left.gemm(right, factor, gemm_helper);
     } else {
@@ -1838,23 +1841,6 @@ class Tensor {
     return *this;
   }
 
-  template <typename U, typename AU, typename V,
-            typename std::enable_if<detail::is_tensor_of_tensor<
-                Tensor_, Tensor<U, AU>>::value>::type* = nullptr>
-  Tensor_ gemm(const Tensor<U, AU>& other, const V factor,
-               const math::GemmHelper& gemm_helper) const {
-    TA_ASSERT("ToT contraction is NYI");
-    return Tensor_{};
-  }
-
-  template <typename U, typename AU, typename V, typename AV, typename W,
-            typename std::enable_if<detail::is_tensor_of_tensor<
-                Tensor_, Tensor<U, AU>, Tensor<V, AV>>::value>::type* = nullptr>
-  Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
-                const W factor, const math::GemmHelper& gemm_helper) {
-    TA_ASSERT("ToT contraction is NYI");
-    return *this;
-  }
   // Reduction operations
 
   /// Generalized tensor trace
