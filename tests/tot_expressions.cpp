@@ -3971,7 +3971,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_inner_contraction, TestParam,
   auto init_inner_tensor = [](const auto& elem_idx) {
     using range_type = typename inner_type::range_type;
     int x = 0;
-    auto result = inner_type(range_type(elem_idx[0] + 1, elem_idx[0] + 2));
+    // N.B. to be able to contract for multiple outer index combinations
+    // make all inner tensors same size
+    auto result = inner_type(range_type(3, 5));
     if constexpr (TiledArray::detail::is_ta_tensor_v<inner_type>) {
       // abort();
     } else if constexpr (TiledArray::detail::is_btas_tensor_v<inner_type>) {
@@ -3989,7 +3991,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_inner_contraction, TestParam,
   tensor_type<TestParam> rhs(m_world, tr);
   rhs.init_elements(init_inner_tensor);
   tensor_type<TestParam> result;
-  // result("i,k;l,n") = lhs("i,j;l,m") * rhs("k,j;n,m");
+  result("i,k;l,n") = lhs("i,j;l,m") * rhs("k,j;n,m");
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(mom_inner_contraction, TestParam, test_params) {

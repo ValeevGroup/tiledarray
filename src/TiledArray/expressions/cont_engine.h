@@ -32,6 +32,7 @@
 #include <TiledArray/proc_grid.h>
 #include <TiledArray/tensor/utility.h>
 #include <TiledArray/tile_op/contract_reduce.h>
+#include <TiledArray/tile_op/mult.h>
 
 namespace TiledArray {
 namespace expressions {
@@ -107,10 +108,14 @@ class ContEngine : public BinaryEngine<Derived> {
  protected:
   op_type op_;  ///< Tile operation
   using tile_element_type = typename value_type::value_type;
+  std::function<void(tile_element_type&, const tile_element_type&,
+                     const tile_element_type&)>
+      inner_tile_nonreturn_op_;  ///< Tile element operation (only non-null for
+                                 ///< nested tensor expressions)
   std::function<tile_element_type(const tile_element_type&,
                                   const tile_element_type&)>
-      inner_tile_op_;  ///< Tile element operation (only non-null for nested
-                       ///< tensor expressions)
+      inner_tile_return_op_;  ///< Same as inner_tile_nonreturn_op_ but returns
+                              ///< the result
   TiledArray::detail::ProcGrid
       proc_grid_;    ///< Process grid for the contraction
   size_type K_ = 1;  ///< Inner dimension size
@@ -234,7 +239,8 @@ class ContEngine : public BinaryEngine<Derived> {
     // precondition checks
     // 1. if ToT inner tile op has been initialized
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      TA_ASSERT(inner_tile_op_);
+      TA_ASSERT(inner_tile_nonreturn_op_);
+      TA_ASSERT(inner_tile_return_op_);
     }
 
     // Initialize children
@@ -253,22 +259,33 @@ class ContEngine : public BinaryEngine<Derived> {
              ? madness::cblas::Trans
              : madness::cblas::NoTrans);
 
-    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
-      abort();  // TODO generalize ContractReduce and gemm() to accept
-                // element_op
-    }
     if (outer(target_indices) != outer(indices_)) {
       // Initialize permuted structure
       perm_ = ExprEngine_::make_perm(target_indices);
-      op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
-                    outer_size(left_indices_), outer_size(right_indices_),
-                    (permute_tiles_ ? perm_ : BipartitePermutation{}));
+      if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+        op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
+                      outer_size(left_indices_), outer_size(right_indices_),
+                      (permute_tiles_ ? perm_ : BipartitePermutation{}));
+      } else {
+        // factor_ is absorbed into inner_tile_nonreturn_op_
+        op_ = op_type(left_op, right_op, 1, outer_size(indices_),
+                      outer_size(left_indices_), outer_size(right_indices_),
+                      (permute_tiles_ ? perm_ : BipartitePermutation{}),
+                      this->inner_tile_nonreturn_op_);
+      }
       trange_ = ContEngine_::make_trange(outer(perm_));
       shape_ = ContEngine_::make_shape(outer(perm_));
     } else {
       // Initialize non-permuted structure
-      op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
-                    outer_size(left_indices_), outer_size(right_indices_));
+      if constexpr (!TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+        op_ = op_type(left_op, right_op, factor_, outer_size(indices_),
+                      outer_size(left_indices_), outer_size(right_indices_));
+      } else {
+        // factor_ is absorbed into inner_tile_nonreturn_op_
+        op_ = op_type(left_op, right_op, 1, outer_size(indices_),
+                      outer_size(left_indices_), outer_size(right_indices_),
+                      BipartitePermutation{}, this->inner_tile_nonreturn_op_);
+      }
       trange_ = ContEngine_::make_trange();
       shape_ = ContEngine_::make_shape();
     }
@@ -440,12 +457,16 @@ class ContEngine : public BinaryEngine<Derived> {
  protected:
   void init_inner_tile_op(const IndexList& inner_target_indices) {
     if constexpr (TiledArray::detail::is_tensor_of_tensor_v<value_type>) {
+      using inner_tile_type = typename value_type::value_type;
       const auto inner_prod = this->inner_product_type();
+      TA_ASSERT(inner_prod == TensorProduct::Contraction ||
+                inner_prod == TensorProduct::Hadamard);
       if (inner_prod == TensorProduct::Contraction) {
         using inner_tile_type = typename value_type::value_type;
         using contract_inner_tile_type =
             TiledArray::detail::ContractReduce<inner_tile_type, inner_tile_type,
                                                inner_tile_type, scalar_type>;
+        // factor_ is absorbed into inner_tile_nonreturn_op_
         auto contrreduce_op =
             (inner_target_indices != inner(this->indices_))
                 ? contract_inner_tile_type(
@@ -462,13 +483,59 @@ class ContEngine : public BinaryEngine<Derived> {
                       inner_size(this->indices_),
                       inner_size(this->left_indices_),
                       inner_size(this->right_indices_));
-        this->inner_tile_op_ = [contrreduce_op](const inner_tile_type& left,
-                                                const inner_tile_type& right) {
-          inner_tile_type result;
+        this->inner_tile_nonreturn_op_ = [contrreduce_op](
+                                             inner_tile_type& result,
+                                             const inner_tile_type& left,
+                                             const inner_tile_type& right) {
           contrreduce_op(result, left, right);
-          return result;
         };
-      }
+      } else if (inner_prod == TensorProduct::Hadamard) {
+        if (this->factor_ == 1) {
+          using base_op_type =
+              TiledArray::detail::Mult<inner_tile_type, inner_tile_type,
+                                       inner_tile_type, false, false>;
+          using op_type = TiledArray::detail::BinaryWrapper<
+              base_op_type>;  // can't consume inputs if they are used multiple
+                              // times, e.g. when outer op is gemm
+          auto mult_op = (inner_target_indices != inner(this->indices_))
+                             ? op_type(base_op_type(), this->permute_tiles_
+                                                           ? inner(this->perm_)
+                                                           : Permutation{})
+                             : op_type(base_op_type());
+          this->inner_tile_nonreturn_op_ =
+              [mult_op](inner_tile_type& result, const inner_tile_type& left,
+                        const inner_tile_type& right) {
+                result = mult_op(left, right);
+              };
+        } else {
+          using base_op_type =
+              TiledArray::detail::ScalMult<inner_tile_type, inner_tile_type,
+                                           inner_tile_type, scalar_type, false,
+                                           false>;
+          using op_type = TiledArray::detail::BinaryWrapper<
+              base_op_type>;  // can't consume inputs if they are used multiple
+                              // times, e.g. when outer op is gemm
+          auto mult_op = (inner_target_indices != inner(this->indices_))
+                             ? op_type(base_op_type(this->factor_),
+                                       this->permute_tiles_ ? inner(this->perm_)
+                                                            : Permutation{})
+                             : op_type(base_op_type(this->factor_));
+          this->inner_tile_nonreturn_op_ =
+              [mult_op](inner_tile_type& result, const inner_tile_type& left,
+                        const inner_tile_type& right) {
+                result = mult_op(left, right);
+              };
+        }
+      } else
+        abort();  // unsupported TensorProduct type
+      TA_ASSERT(inner_tile_nonreturn_op_);
+      this->inner_tile_return_op_ =
+          [inner_tile_nonreturn_op = this->inner_tile_nonreturn_op_](
+              const inner_tile_type& left, const inner_tile_type& right) {
+            inner_tile_type result;
+            inner_tile_nonreturn_op(result, left, right);
+            return result;
+          };
     }
   }
 
