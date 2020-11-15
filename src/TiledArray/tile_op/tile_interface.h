@@ -754,7 +754,7 @@ using result_of_inplace_unary_t = decltype(inplace_unary(std::declval<T>()...));
 
 // Contraction operations ----------------------------------------------------
 
-/// Contract and scale tile arguments
+/// Contract 2 tensors over head/tail modes and scale the product
 
 /// The contraction is done via a GEMM operation with fused indices as defined
 /// by \c gemm_config.
@@ -773,25 +773,72 @@ inline auto gemm(const Left& left, const Right& right, const Scalar factor,
   return left.gemm(right, factor, gemm_config);
 }
 
-/// Contract and scale tile arguments to the result tile
+/// Contract 2 tensors over head/tail modes, scale the product, and add
+/// to \c result
 
 /// The contraction is done via a GEMM operation with fused indices as defined
 /// by \c gemm_config.
 /// \tparam Result The result tile type
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
-/// \tparam Scalar A scalar type
+/// \tparam Scalar A numeric type
 /// \param result The contracted result
 /// \param left The left-hand argument to be contracted
 /// \param right The right-hand argument to be contracted
 /// \param factor The scaling factor
 /// \param gemm_config A helper object used to simplify gemm operations
-/// \return A tile that is equal to <tt>result = (left * right) * factor</tt>
+/// \return A tile that is equal to <tt>result + (left * right) * factor</tt>
 template <typename Result, typename Left, typename Right, typename Scalar,
           std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
 inline Result& gemm(Result& result, const Left& left, const Right& right,
                     const Scalar factor, const math::GemmHelper& gemm_config) {
   return result.gemm(left, right, factor, gemm_config);
+}
+
+/// Contract 2 tensors over head/tail modes and accumulate into \c result
+/// using a custom element-wise multiply-add op
+
+/// The contraction is done via a GEMM operation with fused indices as defined
+/// by \c gemm_config.
+/// \tparam Result The result tile type
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam ElementMultiplyAddOp a callable type with signature
+///   \code
+///     void (Result::value_type& result, Left::value_type const& left,
+///     Right::value_type const& right)
+///   \endcode
+///   that implements custom multiply-add operation:
+///   \code
+///     result = (result) ? result add left mult right : left mult add
+///   \endcode
+/// \param result The contracted result; this can be null, will be initialized
+/// as needed \param left The left-hand argument to be contracted \param right
+/// The right-hand argument to be contracted \param gemm_config A helper object
+/// used to simplify gemm operations \param element_multiplyadd_op a custom
+/// multiply op operation for tensor elements \return A tile whose element
+/// <tt>result[i,j]</tt> obtained by executing
+///      `foreach k: element_multiplyadd_op(result[i,j], left[i,k], right[k,j])`
+/// \example For plain tensors GEMM can be implemented (very inefficiently)
+/// using this method as follows:
+/// \code
+///   gemm(result, left, right, gemm_config,
+///        [factor](auto& result, const auto& left, const auto& right) {
+///     result += scalar * (left * right)
+///   });
+/// \endcode
+template <typename Result, typename Left, typename Right,
+          typename ElementMultiplyAddOp,
+          std::enable_if_t<std::is_invocable_r_v<
+              void, std::remove_reference_t<ElementMultiplyAddOp>,
+              typename Result::value_type&, const typename Left::value_type&,
+              const typename Right::value_type&>>* = nullptr>
+inline Result& gemm(Result& result, const Left& left, const Right& right,
+                    const math::GemmHelper& gemm_config,
+                    ElementMultiplyAddOp&& element_multiplyadd_op) {
+  return result.gemm(
+      left, right, gemm_config,
+      std::forward<ElementMultiplyAddOp>(element_multiplyadd_op));
 }
 
 template <typename... T>

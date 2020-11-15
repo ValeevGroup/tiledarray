@@ -1831,11 +1831,91 @@ class Tensor {
           }
         }
       }
-#else   // TA_ENABLE_TILE_OPS_LOGGING
+#else  // TA_ENABLE_TILE_OPS_LOGGING
       math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
                  left.data(), lda, right.data(), ldb, numeric_type(1),
                  pimpl_->data_, n);
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
+    }
+
+    return *this;
+  }
+
+  template <typename U, typename AU, typename V, typename AV,
+            typename ElementMultiplyAddOp,
+            typename = std::enable_if_t<std::is_invocable_r_v<
+                void, std::remove_reference_t<ElementMultiplyAddOp>,
+                value_type&, const U&, const V&>>>
+  Tensor_& gemm(const Tensor<U, AU>& left, const Tensor<V, AV>& right,
+                const math::GemmHelper& gemm_helper,
+                ElementMultiplyAddOp&& elem_muladd_op) {
+    // Check that the arguments are not empty and have the correct ranks
+    TA_ASSERT(!left.empty());
+    TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
+    TA_ASSERT(!right.empty());
+    TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
+
+    // Check that the inner dimensions of left and right match
+    TA_ASSERT(ignore_tile_position() ||
+              gemm_helper.left_right_congruent(left.range().lobound_data(),
+                                               right.range().lobound_data()));
+    TA_ASSERT(ignore_tile_position() ||
+              gemm_helper.left_right_congruent(left.range().upbound_data(),
+                                               right.range().upbound_data()));
+    TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
+                                               right.range().extent_data()));
+
+    if (this->empty()) {  // initialize, if empty
+      *this = Tensor_(gemm_helper.make_result_range<range_type>(left.range(),
+                                                                right.range()));
+    } else {
+      // Check that the outer dimensions of left match the corresponding
+      // dimensions in result
+      TA_ASSERT(ignore_tile_position() || gemm_helper.left_result_congruent(
+                                              left.range().lobound_data(),
+                                              pimpl_->range_.lobound_data()));
+      TA_ASSERT(ignore_tile_position() || gemm_helper.left_result_congruent(
+                                              left.range().upbound_data(),
+                                              pimpl_->range_.upbound_data()));
+      TA_ASSERT(gemm_helper.left_result_congruent(
+          left.range().extent_data(), pimpl_->range_.extent_data()));
+
+      // Check that the outer dimensions of right match the corresponding
+      // dimensions in result
+      TA_ASSERT(ignore_tile_position() || gemm_helper.right_result_congruent(
+                                              right.range().lobound_data(),
+                                              pimpl_->range_.lobound_data()));
+      TA_ASSERT(ignore_tile_position() || gemm_helper.right_result_congruent(
+                                              right.range().upbound_data(),
+                                              pimpl_->range_.upbound_data()));
+      TA_ASSERT(gemm_helper.right_result_congruent(
+          right.range().extent_data(), pimpl_->range_.extent_data()));
+    }
+
+    // Compute gemm dimensions
+    integer M, N, K;
+    gemm_helper.compute_matrix_sizes(M, N, K, left.range(), right.range());
+
+    // Get the leading dimension for left and right matrices.
+    const integer lda =
+        (gemm_helper.left_op() == madness::cblas::NoTrans ? K : M);
+    const integer ldb =
+        (gemm_helper.right_op() == madness::cblas::NoTrans ? N : K);
+
+    for (integer m = 0; m != M; ++m) {
+      for (integer n = 0; n != N; ++n) {
+        auto c_offset = m * N + n;
+        for (integer k = 0; k != K; ++k) {
+          auto a_offset = gemm_helper.left_op() == madness::cblas::NoTrans
+                              ? m * lda + k
+                              : k * lda + m;
+          auto b_offset = gemm_helper.right_op() == madness::cblas::NoTrans
+                              ? k * ldb + n
+                              : n * ldb + k;
+          elem_muladd_op(*(pimpl_->data_ + c_offset), *(left.data() + a_offset),
+                         *(right.data() + b_offset));
+        }
+      }
     }
 
     return *this;
