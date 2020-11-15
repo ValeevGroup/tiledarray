@@ -4028,4 +4028,38 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_inner_contraction, TestParam, test_params) {
   BOOST_CHECK_NO_THROW(result("i,j;n,l") = lhs("i,j;l,m") * rhs("i,j;n,m"));
 }
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_contraction, TestParam, test_params) {
+  using inner_type = inner_type<TestParam>;
+  using element_type = typename inner_type::value_type;
+  // only support btas Tensors as inner tensors
+  if constexpr (detail::is_ta_tensor_v<inner_type>) return;
+  using trange_type = TiledRange;
+  trange_type tr{{0, 2, 3, 5, 7}, {0, 3, 5, 7, 11}};
+
+  auto init_inner_tensor = [](const auto& elem_idx) {
+    using range_type = typename inner_type::range_type;
+    int x = 0;
+    // N.B. to be able to contract for multiple outer index combinations
+    // make all inner tensors same size
+    auto result = inner_type(range_type(3, 5));
+    if constexpr (TiledArray::detail::is_ta_tensor_v<inner_type>) {
+      // abort();
+    } else if constexpr (TiledArray::detail::is_btas_tensor_v<inner_type>) {
+      result.generate([&x]() { return x++; });
+    } else {
+      abort();  // unknown type
+    }
+    return result;
+  };
+
+  static_assert(TiledArray::detail::is_tensor_of_tensor_v<tile_type<TestParam>>,
+                "non-ToT tile");
+  tensor_type<TestParam> lhs(m_world, tr);
+  lhs.init_elements(init_inner_tensor);
+  tensor_type<TestParam> rhs(m_world, tr);
+  rhs.init_elements(init_inner_tensor);
+  tensor_type<TestParam> result;
+  result("i,k;l,m") = lhs("i,j;l,m") * rhs("k,j;l,m");
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -157,8 +157,10 @@ class BinaryEngine : public ExprEngine<Derived> {
       left_.permute_tiles(false);
     }
     if (!args_are_plain_tensors &&
-        (left_inner_permtype_ == PermutationType::matrix_transpose ||
-         left_inner_permtype_ == PermutationType::identity)) {
+        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
+          left_outer_permtype_ == PermutationType::identity) ||
+         (left_inner_permtype_ == PermutationType::matrix_transpose ||
+          left_inner_permtype_ == PermutationType::identity))) {
       left_.permute_tiles(false);
     }
     if (args_are_plain_tensors &&
@@ -167,8 +169,10 @@ class BinaryEngine : public ExprEngine<Derived> {
       right_.permute_tiles(false);
     }
     if (!args_are_plain_tensors &&
-        (right_inner_permtype_ == PermutationType::matrix_transpose ||
-         right_inner_permtype_ == PermutationType::identity)) {
+        ((left_outer_permtype_ == PermutationType::matrix_transpose ||
+          left_outer_permtype_ == PermutationType::identity) ||
+         (right_inner_permtype_ == PermutationType::matrix_transpose ||
+          right_inner_permtype_ == PermutationType::identity))) {
       right_.permute_tiles(false);
     }
   }
