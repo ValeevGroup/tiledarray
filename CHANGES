@@ -3,7 +3,7 @@
 
 Following is a brief summary of changes made in each release of TiledArray.
 
-- day-month-year: 1.0.0-alpha.3
+- 16-November-2020: 1.0.0
   - resolved issue 77: negative indices are supported, use signed 1-index type by default (this brings TA::Range
     in sync with btas::RangeNd), to revert to legacy behavior configure with TA_SIGNED_1INDEX_TYPE=OFF (PR #214)
   - removed interface to Elemental (PR #201)
