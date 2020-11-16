@@ -96,7 +96,7 @@ class ContractReduceBase {
           perm_(perm),
           elem_muladd_op_(std::forward<ElemMultAddOp>(elem_muladd_op)) {
       // non-unit alpha must be absorbed into elem_muladd_op
-      if (elem_muladd_op_) TA_ASSERT(alpha == 1);
+      if (elem_muladd_op_) TA_ASSERT(alpha == scalar_type(1));
     }
 
     math::GemmHelper gemm_helper_;  ///< Gemm helper object
