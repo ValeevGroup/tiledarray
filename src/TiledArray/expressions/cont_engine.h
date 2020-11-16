@@ -490,6 +490,10 @@ class ContEngine : public BinaryEngine<Derived> {
           contrreduce_op(result, left, right);
         };
       } else if (inner_prod == TensorProduct::Hadamard) {
+        // inner tile op depends on the outer op ... e.g. if outer op
+        // is contract then inner must implement (ternary) multiply-add;
+        // if the outer is hadamard then the inner is binary multiply
+        const auto outer_prod = this->product_type();
         if (this->factor_ == 1) {
           using base_op_type =
               TiledArray::detail::Mult<inner_tile_type, inner_tile_type,
@@ -502,11 +506,26 @@ class ContEngine : public BinaryEngine<Derived> {
                                                            ? inner(this->perm_)
                                                            : Permutation{})
                              : op_type(base_op_type());
-          this->inner_tile_nonreturn_op_ =
-              [mult_op](inner_tile_type& result, const inner_tile_type& left,
-                        const inner_tile_type& right) {
+          this->inner_tile_nonreturn_op_ = [mult_op, outer_prod](
+                                               inner_tile_type& result,
+                                               const inner_tile_type& left,
+                                               const inner_tile_type& right) {
+            if (outer_prod == TensorProduct::Hadamard)
+              result = mult_op(left, right);
+            else {
+              TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
+                        outer_prod == TensorProduct::Contraction);
+              // there is currently no fused MultAdd ternary Op, only Add and
+              // Mult thus implement this as 2 separate steps
+              // TODO optimize by implementing (ternary) MultAdd
+              if (empty(result))
                 result = mult_op(left, right);
-              };
+              else {
+                auto result_increment = mult_op(left, right);
+                add_to(result, result_increment);
+              }
+            }
+          };
         } else {
           using base_op_type =
               TiledArray::detail::ScalMult<inner_tile_type, inner_tile_type,
@@ -520,11 +539,26 @@ class ContEngine : public BinaryEngine<Derived> {
                                        this->permute_tiles_ ? inner(this->perm_)
                                                             : Permutation{})
                              : op_type(base_op_type(this->factor_));
-          this->inner_tile_nonreturn_op_ =
-              [mult_op](inner_tile_type& result, const inner_tile_type& left,
-                        const inner_tile_type& right) {
+          this->inner_tile_nonreturn_op_ = [mult_op, outer_prod](
+                                               inner_tile_type& result,
+                                               const inner_tile_type& left,
+                                               const inner_tile_type& right) {
+            TA_ASSERT(outer_prod == TensorProduct::Hadamard ||
+                      outer_prod == TensorProduct::Contraction);
+            if (outer_prod == TensorProduct::Hadamard)
+              result = mult_op(left, right);
+            else {
+              // there is currently no fused MultAdd ternary Op, only Add and
+              // Mult thus implement this as 2 separate steps
+              // TODO optimize by implementing (ternary) MultAdd
+              if (empty(result))
                 result = mult_op(left, right);
-              };
+              else {
+                auto result_increment = mult_op(left, right);
+                add_to(result, result_increment);
+              }
+            }
+          };
         }
       } else
         abort();  // unsupported TensorProduct type
