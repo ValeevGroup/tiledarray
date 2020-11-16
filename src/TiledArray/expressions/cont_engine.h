@@ -268,7 +268,7 @@ class ContEngine : public BinaryEngine<Derived> {
                       (permute_tiles_ ? perm_ : BipartitePermutation{}));
       } else {
         // factor_ is absorbed into inner_tile_nonreturn_op_
-        op_ = op_type(left_op, right_op, 1, outer_size(indices_),
+        op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_),
                       (permute_tiles_ ? perm_ : BipartitePermutation{}),
                       this->inner_tile_nonreturn_op_);
@@ -282,7 +282,7 @@ class ContEngine : public BinaryEngine<Derived> {
                       outer_size(left_indices_), outer_size(right_indices_));
       } else {
         // factor_ is absorbed into inner_tile_nonreturn_op_
-        op_ = op_type(left_op, right_op, 1, outer_size(indices_),
+        op_ = op_type(left_op, right_op, scalar_type(1), outer_size(indices_),
                       outer_size(left_indices_), outer_size(right_indices_),
                       BipartitePermutation{}, this->inner_tile_nonreturn_op_);
       }
