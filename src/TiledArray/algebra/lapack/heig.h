@@ -61,60 +61,61 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
   World& world = A.world();
   auto A_eig = detail::to_eigen(A);
   std::vector<scalar_type> evals;
-  if (world.rank() == 0) {
-    char jobz = 'V';
-    char uplo = 'L';
-    integer n = A_eig.rows();
-    numeric_type* a = A_eig.data();
-    integer lda = n;
-    integer info = 0;
-    evals.resize(n);
-    integer lwork = -1;
-    std::vector<numeric_type> work(1);
-    // run once to query, then to compute
-    while (lwork != static_cast<integer>(work.size())) {
-      if (lwork > 0) {
-        work.resize(lwork);
-      }
-      if constexpr (is_real) {
-#if defined(MADNESS_LINALG_USE_LAPACKE)
-        MADNESS_DISPATCH_LAPACK_FN(syev, &jobz, &uplo, &n, a, &lda,
-                                   evals.data(), work.data(), &lwork, &info);
-#else
-        MADNESS_DISPATCH_LAPACK_FN(syev, &jobz, &uplo, &n, a, &lda,
-                                   evals.data(), work.data(), &lwork, &info,
-                                   sizeof(char), sizeof(char));
-#endif
-      } else {
-        std::vector<scalar_type> rwork;
-        if (lwork == static_cast<integer>(work.size())) rwork.resize(3 * n - 2);
-#if defined(MADNESS_LINALG_USE_LAPACKE)
-        MADNESS_DISPATCH_LAPACK_FN(heev, &jobz, &uplo, &n, a, &lda,
-                                   evals.data(), work.data(), &lwork,
-                                   &rwork.data(), &info);
-#else
-        MADNESS_DISPATCH_LAPACK_FN(
-            heev, &jobz, &uplo, &n, a, &lda, evals.data(), work.data(), &lwork,
-            &rwork.data(), &info, sizeof(char), sizeof(char));
-#endif
-      }
-      if (lwork == -1) {
-        if constexpr (is_real) {
-          lwork = static_cast<integer>(work[0]);
-        } else {
-          lwork = static_cast<integer>(work[0].real());
-        }
-        TA_ASSERT(lwork > 1);
-      }
-    };
+//   if (world.rank() == 0) {
+//     char jobz = 'V';
+//     char uplo = 'L';
+//     integer n = A_eig.rows();
+//     numeric_type* a = A_eig.data();
+//     integer lda = n;
+//     integer info = 0;
+//     evals.resize(n);
+//     integer lwork = -1;
+//     std::vector<numeric_type> work(1);
+//     // run once to query, then to compute
+//     while (lwork != static_cast<integer>(work.size())) {
+//       if (lwork > 0) {
+//         work.resize(lwork);
+//       }
+//       if constexpr (is_real) {
+// #if defined(MADNESS_LINALG_USE_LAPACKE)
+//         MADNESS_DISPATCH_LAPACK_FN(syev, &jobz, &uplo, &n, a, &lda,
+//                                    evals.data(), work.data(), &lwork, &info);
+// #else
+//         MADNESS_DISPATCH_LAPACK_FN(syev, &jobz, &uplo, &n, a, &lda,
+//                                    evals.data(), work.data(), &lwork, &info,
+//                                    sizeof(char), sizeof(char));
+// #endif
+//       } else {
+//         std::vector<scalar_type> rwork;
+//         if (lwork == static_cast<integer>(work.size())) rwork.resize(3 * n - 2);
+// #if defined(MADNESS_LINALG_USE_LAPACKE)
+//         MADNESS_DISPATCH_LAPACK_FN(heev, &jobz, &uplo, &n, a, &lda,
+//                                    evals.data(), work.data(), &lwork,
+//                                    &rwork.data(), &info);
+// #else
+//         MADNESS_DISPATCH_LAPACK_FN(
+//             heev, &jobz, &uplo, &n, a, &lda, evals.data(), work.data(), &lwork,
+//             &rwork.data(), &info, sizeof(char), sizeof(char));
+// #endif
+//       }
+//       if (lwork == -1) {
+//         if constexpr (is_real) {
+//           lwork = static_cast<integer>(work[0]);
+//         } else {
+//           lwork = static_cast<integer>(work[0].real());
+//         }
+//         TA_ASSERT(lwork > 1);
+//       }
+//     };
 
-    if (info != 0) {
-      if (is_real)
-        TA_EXCEPTION("LAPACK::syev failed");
-      else
-        TA_EXCEPTION("LAPACK::heev failed");
-    }
-  }
+//     if (info != 0) {
+//       if (is_real)
+//         TA_EXCEPTION("LAPACK::syev failed");
+//       else
+//         TA_EXCEPTION("LAPACK::heev failed");
+//     }
+//   }
+
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
   if (evec_trange.rank() == 0) evec_trange = A.trange();

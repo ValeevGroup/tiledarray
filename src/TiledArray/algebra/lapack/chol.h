@@ -24,34 +24,15 @@
 #ifndef TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
 #define TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
 
-#include <TiledArray/algebra/lapack/util.h>
 #include <TiledArray/config.h>
+#include <TiledArray/algebra/lapack/lapack.h>
+#include <TiledArray/algebra/lapack/util.h>
 #include <TiledArray/conversions/eigen.h>
 
 namespace TiledArray {
 namespace lapack {
 
 namespace detail {
-
-template <typename Scalar, int RowsAtCompileTime, int ColsAtCompileTime,
-          int Options, int MaxRowsAtCompileTime, int MaxColsAtCompileTime>
-void chol_eig(
-    Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
-                  MaxRowsAtCompileTime, MaxColsAtCompileTime>& A) {
-  using numeric_type = Scalar;
-  char uplo = 'L';
-  integer n = A.rows();
-  numeric_type* a = A.data();
-  integer lda = n;
-  integer info = 0;
-#if defined(MADNESS_LINALG_USE_LAPACKE)
-  MADNESS_DISPATCH_LAPACK_FN(potrf, &uplo, &n, a, &lda, &info);
-#else
-  MADNESS_DISPATCH_LAPACK_FN(potrf, &uplo, &n, a, &lda, &info, sizeof(char));
-#endif
-
-  if (info != 0) TA_EXCEPTION("LAPACK::potrf failed");
-}
 
 template <typename Tile, typename Policy>
 auto make_L_eig(const DistArray<Tile, Policy>& A) {
@@ -121,7 +102,7 @@ template <typename ContiguousTensor,
               TiledArray::detail::is_contiguous_tensor_v<ContiguousTensor>>>
 auto cholesky(const ContiguousTensor& A) {
   auto A_eig = detail::to_eigen(A);
-  detail::chol_eig(A_eig);
+  lapack::cholesky(A_eig);
   detail::zero_out_upper_triangle(A_eig);
   return detail::from_eigen<ContiguousTensor>(A_eig, A.range());
 }
@@ -156,21 +137,11 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
 
   // if need to return L use its copy to compute inverse
   decltype(L_eig) L_inv_eig;
-  if (RetL && world.rank() == 0) L_inv_eig = L_eig;
 
   if (world.rank() == 0) {
+    if (RetL) L_inv_eig = L_eig;
     auto& L_inv_eig_ref = RetL ? L_inv_eig : L_eig;
-
-    char uplo = 'L';
-    char diag = 'N';
-    integer n = L_eig.rows();
-    using numeric_type = typename Array::numeric_type;
-    numeric_type* l = L_inv_eig_ref.data();
-    integer lda = n;
-    integer info = 0;
-    MADNESS_DISPATCH_LAPACK_FN(trtri, &uplo, &diag, &n, l, &lda, &info);
-    if (info != 0) TA_EXCEPTION("LAPACK::trtri failed");
-
+    cholesky_linv(L_inv_eig_ref);
     detail::zero_out_upper_triangle(L_inv_eig_ref);
   }
   world.gop.broadcast_serializable(RetL ? L_inv_eig : L_eig, 0);
@@ -196,16 +167,7 @@ auto cholesky_solve(const Array& A, const Array& B,
   auto X_eig = detail::to_eigen(B);
   World& world = A.world();
   if (world.rank() == 0) {
-    char uplo = 'L';
-    integer n = A_eig.rows();
-    integer nrhs = X_eig.cols();
-    numeric_type* a = A_eig.data();
-    numeric_type* b = X_eig.data();
-    integer lda = n;
-    integer ldb = n;
-    integer info = 0;
-    MADNESS_DISPATCH_LAPACK_FN(posv, &uplo, &n, &nrhs, a, &lda, b, &ldb, &info);
-    if (info != 0) TA_EXCEPTION("LAPACK::posv failed");
+    cholesky_solve(A_eig, X_eig);
   }
   world.gop.broadcast_serializable(X_eig, 0);
   if (x_trange.rank() == 0) x_trange = B.trange();
@@ -228,21 +190,7 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
 
   auto X_eig = detail::to_eigen(B);
   if (world.rank() == 0) {
-    char uplo = 'L';
-    char trans = transpose == TransposeFlag::Transpose
-                     ? 'T'
-                     : (transpose == TransposeFlag::NoTranspose ? 'N' : 'C');
-    char diag = 'N';
-    integer n = L_eig.rows();
-    integer nrhs = X_eig.cols();
-    numeric_type* a = L_eig.data();
-    numeric_type* b = X_eig.data();
-    integer lda = n;
-    integer ldb = n;
-    integer info = 0;
-    MADNESS_DISPATCH_LAPACK_FN(trtrs, &uplo, &trans, &diag, &n, &nrhs, a, &lda,
-                               b, &ldb, &info);
-    if (info != 0) TA_EXCEPTION("LAPACK::trtrs failed");
+    cholesky_lsolve(transpose, L_eig, X_eig);
   }
   world.gop.broadcast_serializable(X_eig, 0);
   if (l_trange.rank() == 0) l_trange = A.trange();

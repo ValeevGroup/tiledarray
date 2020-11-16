@@ -29,19 +29,6 @@
 
 namespace TiledArray {
 namespace lapack {
-
-#define MADNESS_DISPATCH_LAPACK_FN(name, args...)                        \
-  if constexpr (std::is_same_v<numeric_type, double>)                    \
-    d##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, float>)                \
-    s##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, std::complex<double>>) \
-    z##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, std::complex<float>>)  \
-    c##name##_(args);                                                    \
-  else                                                                   \
-    std::abort();
-
 namespace detail {
 
 template <typename Tile, typename Policy>

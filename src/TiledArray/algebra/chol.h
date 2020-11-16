@@ -73,7 +73,7 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                                              x_trange);
   else
 #endif
-    return lapack::cholesky_solve<Array>(transpose, A, B, l_trange, x_trange);
+    return lapack::cholesky_lsolve<Array>(transpose, A, B, l_trange, x_trange);
 }
 
 }  // namespace TiledArray

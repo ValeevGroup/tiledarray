@@ -207,6 +207,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
+TiledArray/algebra/lapack/lapack.cc
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
@@ -302,5 +303,3 @@ install(
   FILES_MATCHING PATTERN "*.h"
   PATTERN "CMakeFiles" EXCLUDE
 )
-
-    
