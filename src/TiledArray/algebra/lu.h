@@ -27,9 +27,8 @@
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/algebra/scalapack/lu.h>
-#else
-#// include eigen
 #endif
+#include <TiledArray/algebra/lapack/lu.h>
 
 namespace TiledArray {
 

@@ -6,6 +6,8 @@
 
 #include "TiledArray/algebra/lapack/chol.h"
 #include "TiledArray/algebra/lapack/heig.h"
+#include "TiledArray/algebra/lapack/svd.h"
+#include "TiledArray/algebra/lapack/lu.h"
 
 using namespace TiledArray::lapack;
 
@@ -68,7 +70,7 @@ BOOST_AUTO_TEST_CASE(chol) {
   TA::Tensor<double> A;
   this->make_ta_reference(A, range);
 
-  auto L = cholesky(A);
+  auto L = lapack::cholesky(A);
 
   decltype(A) A_minus_LLt;
   A_minus_LLt = A.clone();
@@ -78,6 +80,26 @@ BOOST_AUTO_TEST_CASE(chol) {
 
   BOOST_CHECK_SMALL(A_minus_LLt.norm(),
                     N * N * std::numeric_limits<double>::epsilon());
+}
+
+BOOST_AUTO_TEST_CASE(svd) {
+  TA::TArray<double> A;
+  { auto S = lapack::svd<SVDValuesOnly>(A); }
+  { auto [S,U] = lapack::svd<SVDLeftVectors>(A); }
+  { auto [S,VT] = lapack::svd<SVDRightVectors>(A); }
+  { auto [S,U,VT] = lapack::svd<SVDAllVectors>(A); }
+}
+
+BOOST_AUTO_TEST_CASE(heig) {
+  TA::TArray<double> A;
+  { auto W = lapack::heig(A); }
+  { auto W = lapack::heig(A,A); }
+}
+
+BOOST_AUTO_TEST_CASE(lu) {
+  TA::TArray<double> A;
+  { auto W = lapack::lu_solve(A,A); }
+  { auto W = lapack::lu_inv(A); }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

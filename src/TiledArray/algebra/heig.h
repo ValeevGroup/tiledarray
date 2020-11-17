@@ -27,16 +27,30 @@
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/algebra/scalapack/heig.h>
-#else
-// eigen
 #endif
+#include <TiledArray/algebra/lapack/heig.h>
 
 namespace TiledArray {
 
+template <typename Array>
+auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
 #if TILEDARRAY_HAS_SCALAPACK
-using scalapack::heig;
+  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+    return scalapack::heig(A, evec_trange);
+  }
 #endif
+  return lapack::heig(A, evec_trange);
+}
+
+template <typename ArrayA, typename ArrayB, typename EVecType = ArrayA>
+auto heig(const ArrayA& A, const ArrayB& B, TiledRange evec_trange = TiledRange()) {
+#if TILEDARRAY_HAS_SCALAPACK
+  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+    return scalapack::heig(A, B, evec_trange);
+  }
 #endif
+  return lapack::heig(A, B, evec_trange);
+}
 
 }  // namespace TiledArray
 

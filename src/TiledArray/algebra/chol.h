@@ -37,9 +37,8 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000)
     return scalapack::cholesky<Array>(A, l_trange);
-  else
 #endif
-    return lapack::cholesky<Array>(A, l_trange);
+  return lapack::cholesky<Array>(A, l_trange);
 }
 
 template <typename Array, bool RetL = false>
@@ -47,9 +46,8 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000)
     return scalapack::cholesky_linv<Array, RetL>(A, l_trange);
-  else
 #endif
-    return lapack::cholesky_linv<Array, RetL>(A, l_trange);
+  return lapack::cholesky_linv<Array, RetL>(A, l_trange);
 }
 
 template <typename Array>
@@ -58,9 +56,8 @@ auto cholesky_solve(const Array& A, const Array& B,
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000)
     return scalapack::cholesky_solve<Array>(A, B, x_trange);
-  else
 #endif
-    return lapack::cholesky_solve<Array>(A, B, x_trange);
+  return lapack::cholesky_solve<Array>(A, B, x_trange);
 }
 
 template <typename Array>
@@ -71,9 +68,8 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
   if (A.world().size() > 1 && A.range().volume() > 10000000)
     return scalapack::cholesky_lsolve<Array>(transpose, A, B, l_trange,
                                              x_trange);
-  else
 #endif
-    return lapack::cholesky_lsolve<Array>(transpose, A, B, l_trange, x_trange);
+  return lapack::cholesky_lsolve<Array>(transpose, A, B, l_trange, x_trange);
 }
 
 }  // namespace TiledArray

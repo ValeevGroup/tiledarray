@@ -207,7 +207,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
-TiledArray/algebra/lapack/lapack.cc
+TiledArray/algebra/lapack/lapack.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
