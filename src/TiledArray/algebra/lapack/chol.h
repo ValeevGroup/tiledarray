@@ -24,9 +24,9 @@
 #ifndef TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
 #define TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
 
-#include <TiledArray/config.h>
 #include <TiledArray/algebra/lapack/lapack.h>
 #include <TiledArray/algebra/lapack/util.h>
+#include <TiledArray/config.h>
 #include <TiledArray/conversions/eigen.h>
 
 namespace TiledArray {
@@ -45,7 +45,7 @@ auto make_L_eig(const DistArray<Tile, Policy>& A) {
   World& world = A.world();
   auto A_eig = detail::to_eigen(A);
   if (world.rank() == 0) {
-    chol_eig(A_eig);
+    lapack::cholesky(A_eig);
   }
   world.gop.broadcast_serializable(A_eig, 0);
   return A_eig;

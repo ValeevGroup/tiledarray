@@ -22,9 +22,9 @@
  *
  */
 
-#include <TiledArray/config.h>
 #include <TiledArray/algebra/lapack/lapack.h>
 #include <TiledArray/algebra/lapack/util.h>
+#include <TiledArray/config.h>
 #include <madness/tensor/clapack.h>
 #include <Eigen/Core>
 
@@ -43,8 +43,8 @@
 
 namespace TiledArray::lapack {
 
-template<typename T>
-void cholesky(Matrix<T> &A) {
+template <typename T>
+void cholesky(Matrix<T>& A) {
   char uplo = 'L';
   integer n = A.rows();
   auto* a = A.data();
@@ -58,8 +58,8 @@ void cholesky(Matrix<T> &A) {
   if (info != 0) TA_EXCEPTION("LAPACK::potrf failed");
 }
 
-template<typename T>
-void cholesky_linv(Matrix<T> &A) {
+template <typename T>
+void cholesky_linv(Matrix<T>& A) {
   char uplo = 'L';
   char diag = 'N';
   integer n = A.rows();
@@ -70,8 +70,8 @@ void cholesky_linv(Matrix<T> &A) {
   if (info != 0) TA_EXCEPTION("LAPACK::trtri failed");
 }
 
-template<typename T>
-void cholesky_solve(Matrix<T> &A, Matrix<T> &X) {
+template <typename T>
+void cholesky_solve(Matrix<T>& A, Matrix<T>& X) {
   char uplo = 'L';
   integer n = A.rows();
   integer nrhs = X.cols();
@@ -80,16 +80,16 @@ void cholesky_solve(Matrix<T> &A, Matrix<T> &X) {
   integer lda = n;
   integer ldb = n;
   integer info = 0;
-  //TA_LAPACK_CALL(posv, &uplo, &n, &nrhs, a, &lda, b, &ldb, &info);
+  // TA_LAPACK_CALL(posv, &uplo, &n, &nrhs, a, &lda, b, &ldb, &info);
   if (info != 0) TA_EXCEPTION("LAPACK::posv failed");
 }
 
-template<typename T>
-void cholesky_lsolve(TransposeFlag transpose, Matrix<T> &A, Matrix<T> &X) {
+template <typename T>
+void cholesky_lsolve(TransposeFlag transpose, Matrix<T>& A, Matrix<T>& X) {
   char uplo = 'L';
   char trans = transpose == TransposeFlag::Transpose
-    ? 'T'
-    : (transpose == TransposeFlag::NoTranspose ? 'N' : 'C');
+                   ? 'T'
+                   : (transpose == TransposeFlag::NoTranspose ? 'N' : 'C');
   char diag = 'N';
   integer n = A.rows();
   integer nrhs = X.cols();
@@ -98,12 +98,13 @@ void cholesky_lsolve(TransposeFlag transpose, Matrix<T> &A, Matrix<T> &X) {
   integer lda = n;
   integer ldb = n;
   integer info = 0;
-  //TA_LAPACK_CALL(trtrs, &uplo, &trans, &diag, &n, &nrhs, a, &lda, b, &ldb, &info);
+  // TA_LAPACK_CALL(trtrs, &uplo, &trans, &diag, &n, &nrhs, a, &lda, b, &ldb,
+  // &info);
   if (info != 0) TA_EXCEPTION("LAPACK::trtrs failed");
 }
 
-template<typename T>
-void hereig(Matrix<T> &A, Vector<T> &W) {
+template <typename T>
+void hereig(Matrix<T>& A, Vector<T>& W) {
   char jobz = 'V';
   char uplo = 'L';
   integer n = A.rows();
@@ -113,15 +114,27 @@ void hereig(Matrix<T> &A, Vector<T> &W) {
   integer lwork = -1;
   integer info;
   T lwork_dummy;
-  TA_LAPACK_CALL(syev, &jobz, &uplo, &n, a, &lda, w, &lwork_dummy, &lwork, &info, sizeof(char), sizeof(char) );
+#ifndef MADNESS_LINALG_USE_LAPACKE
+  TA_LAPACK_CALL(syev, &jobz, &uplo, &n, a, &lda, w, &lwork_dummy, &lwork,
+                 &info, sizeof(char), sizeof(char));
+#else
+  TA_LAPACK_CALL(syev, &jobz, &uplo, &n, a, &lda, w, &lwork_dummy, &lwork,
+                 &info);
+#endif
   lwork = integer(lwork_dummy);
   Vector<T> work(lwork);
-  TA_LAPACK_CALL(syev, &jobz, &uplo, &n, a, &lda, w, work.data(), &lwork, &info, sizeof(char), sizeof(char) );
+#ifndef MADNESS_LINALG_USE_LAPACKE
+  TA_LAPACK_CALL(syev, &jobz, &uplo, &n, a, &lda, w, work.data(), &lwork, &info,
+                 sizeof(char), sizeof(char));
+#else
+  TA_LAPACK_CALL(syev, &jobz, &uplo, &n, a, &lda, w, work.data(), &lwork,
+                 &info);
+#endif
   if (info != 0) TA_EXCEPTION("lapack::hereig failed");
 }
 
-template<typename T>
-void hereig_gen(Matrix<T> &A, Matrix<T> &B, Vector<T> &W) {
+template <typename T>
+void hereig_gen(Matrix<T>& A, Matrix<T>& B, Vector<T>& W) {
   integer itype = 1;
   char jobz = 'V';
   char uplo = 'L';
@@ -134,21 +147,33 @@ void hereig_gen(Matrix<T> &A, Matrix<T> &B, Vector<T> &W) {
   integer lwork = -1;
   integer info;
   T lwork_dummy;
-  TA_LAPACK_CALL(sygv, &itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w, &lwork_dummy, &lwork, &info, sizeof(char), sizeof(char) );
+#ifndef MADNESS_LINALG_USE_LAPACKE
+  TA_LAPACK_CALL(sygv, &itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w,
+                 &lwork_dummy, &lwork, &info, sizeof(char), sizeof(char));
+#else
+  TA_LAPACK_CALL(sygv, &itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w,
+                 &lwork_dummy, &lwork, &info);
+#endif
   lwork = integer(lwork_dummy);
   Vector<T> work(lwork);
-  TA_LAPACK_CALL(sygv, &itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w, work.data(), &lwork, &info, sizeof(char), sizeof(char) );
+#ifndef MADNESS_LINALG_USE_LAPACKE
+  TA_LAPACK_CALL(sygv, &itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w,
+                 work.data(), &lwork, &info, sizeof(char), sizeof(char));
+#else
+  TA_LAPACK_CALL(sygv, &itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w,
+                 work.data(), &lwork, &info);
+#endif
   if (info != 0) TA_EXCEPTION("lapack::hereig_gen failed");
 }
 
-template<typename T>
-void svd(Matrix<T> &A, Vector<T> &S, Matrix<T> *U, Matrix<T> *VT) {
+template <typename T>
+void svd(Matrix<T>& A, Vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
   integer m = A.rows();
   integer n = A.cols();
   T* a = A.data();
   integer lda = A.rows();
 
-  S.resize(std::max(m,n));
+  S.resize(std::max(m, n));
   T* s = S.data();
 
   char jobu = 'N';
@@ -156,7 +181,7 @@ void svd(Matrix<T> &A, Vector<T> &S, Matrix<T> *U, Matrix<T> *VT) {
   integer ldu = 0;
   if (U) {
     jobu = 'A';
-    U->resize(m,n);
+    U->resize(m, n);
     u = U->data();
     ldu = U->rows();
   }
@@ -166,7 +191,7 @@ void svd(Matrix<T> &A, Vector<T> &S, Matrix<T> *U, Matrix<T> *VT) {
   integer ldvt = 0;
   if (VT) {
     jobvt = 'A';
-    VT->resize(n,m);
+    VT->resize(n, m);
     vt = VT->data();
     ldvt = VT->rows();
   }
@@ -175,32 +200,34 @@ void svd(Matrix<T> &A, Vector<T> &S, Matrix<T> *U, Matrix<T> *VT) {
   integer info;
   T lwork_dummy;
 
-  TA_LAPACK_CALL(
-    gesvd,
-    &jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, &lwork_dummy, &lwork, &info,
-    sizeof(char), sizeof(char)
-  );
+#ifndef MADNESS_LINALG_USE_LAPACKE
+  TA_LAPACK_CALL(gesvd, &jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt,
+                 &lwork_dummy, &lwork, &info, sizeof(char), sizeof(char));
+#else
+  TA_LAPACK_CALL(gesvd, &jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt,
+                 &lwork_dummy, &lwork, &info);
+#endif
   lwork = integer(lwork_dummy);
   Vector<T> work(lwork);
-  TA_LAPACK_CALL(
-    gesvd,
-    &jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, &lwork_dummy, &lwork, &info,
-    sizeof(char), sizeof(char)
-  );
+#ifndef MADNESS_LINALG_USE_LAPACKE
+  TA_LAPACK_CALL(gesvd, &jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt,
+                 &lwork_dummy, &lwork, &info, sizeof(char), sizeof(char));
+#else
+  TA_LAPACK_CALL(gesvd, &jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt,
+                 &lwork_dummy, &lwork, &info);
+#endif
   if (info != 0) TA_EXCEPTION("lapack::hereig_gen failed");
 }
 
-
-#define TA_LAPACK_EXPLICIT(MATRIX,VECTOR)                         \
+#define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                        \
   template void cholesky(MATRIX&);                                \
   template void cholesky_linv(MATRIX&);                           \
-  template void cholesky_solve(MATRIX&,MATRIX&);                  \
-  template void cholesky_lsolve(TransposeFlag,MATRIX&,MATRIX&);   \
-  template void hereig(MATRIX&,VECTOR&);                          \
-  template void hereig_gen(MATRIX&,MATRIX&,VECTOR&);              \
-  template void svd(MATRIX&,VECTOR&,MATRIX*,MATRIX*);
-
+  template void cholesky_solve(MATRIX&, MATRIX&);                 \
+  template void cholesky_lsolve(TransposeFlag, MATRIX&, MATRIX&); \
+  template void hereig(MATRIX&, VECTOR&);                         \
+  template void hereig_gen(MATRIX&, MATRIX&, VECTOR&);            \
+  template void svd(MATRIX&, VECTOR&, MATRIX*, MATRIX*);
 
 TA_LAPACK_EXPLICIT(lapack::Matrix<double>, lapack::Vector<double>);
 
-}
+}  // namespace TiledArray::lapack
