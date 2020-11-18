@@ -61,7 +61,8 @@ class ValArray : private SizeArray<T> {
   static const std::size_t alignment = TILEDARRAY_DEFAULT_ALIGNMENT;
 
  private:
-  mutable madness::AtomicInt* counter_;  ///< The pointer to reference counter
+  /// The pointer to reference counter
+  mutable madness::AtomicInt* counter_ = nullptr;
 
   template <typename U>
   typename std::enable_if<detail::is_scalar_v<U>>::type default_construct(
@@ -98,7 +99,7 @@ class ValArray : private SizeArray<T> {
         sizeof_aligned_atomic_int;
 
     // Allocate buffer
-    void* buffer = NULL;
+    void* buffer = nullptr;
     if (posix_memalign(
             &buffer, alignment,
             (n * sizeof(value_type)) + sizeof_aligned_atomic_int::value) != 0)
@@ -116,39 +117,35 @@ class ValArray : private SizeArray<T> {
   }
 
  public:
-  ValArray() : SizeArray<T>(), counter_(NULL) {}
+  ValArray() = default;
 
-  explicit ValArray(const size_type n) : SizeArray<T>(), counter_(NULL) {
+  explicit ValArray(const size_type n) {
     init(n);
     default_construct(n, SizeArray<T>::data());
   }
 
   template <typename Value, typename std::enable_if<std::is_convertible<
                                 value_type, Value>::value>::type* = nullptr>
-  ValArray(const size_type n, const Value& value)
-      : SizeArray<T>(), counter_(NULL) {
+  ValArray(const size_type n, const Value& value) {
     init(n);
     math::uninitialized_fill_vector(n, value, SizeArray<T>::data());
   }
 
   template <typename Arg>
-  ValArray(const size_type n, const Arg* const arg)
-      : SizeArray<T>(), counter_(NULL) {
+  ValArray(const size_type n, const Arg* const arg) {
     init(n);
     math::uninitialized_copy_vector(n, arg, SizeArray<T>::data());
   }
 
   template <typename Arg, typename Op>
   ValArray(const size_type n, const Arg* MADNESS_RESTRICT const arg,
-           const Op& op)
-      : SizeArray<T>(), counter_(NULL) {
+           const Op& op) {
     init(n);
     math::uninitialized_unary_vector_op(n, arg, SizeArray<T>::data(), op);
   }
 
   template <typename U, typename Op>
-  ValArray(const ValArray<U>& arg, const Op& op)
-      : SizeArray<T>(), counter_(NULL) {
+  ValArray(const ValArray<U>& arg, const Op& op) {
     init(arg.size());
     math::uninitialized_unary_vector_op(arg.size(), arg.data(),
                                         SizeArray<T>::data(), op);
@@ -156,16 +153,14 @@ class ValArray : private SizeArray<T> {
 
   template <typename Left, typename Right, typename Op>
   ValArray(const size_type n, const Left* MADNESS_RESTRICT const left,
-           const Right* MADNESS_RESTRICT const right, const Op& op)
-      : SizeArray<T>(), counter_(NULL) {
+           const Right* MADNESS_RESTRICT const right, const Op& op) {
     init(n);
     math::uninitialized_binary_vector_op(n, left, right, SizeArray<T>::data(),
                                          op);
   }
 
   template <typename U, typename V, typename Op>
-  ValArray(const ValArray<U>& left, const ValArray<V>& right, const Op& op)
-      : SizeArray<T>(), counter_(NULL) {
+  ValArray(const ValArray<U>& left, const ValArray<V>& right, const Op& op) {
     TA_ASSERT(left.size() == right.size());
     init(left.size());
     math::uninitialized_binary_vector_op(left.size(), left.data(), right.data(),
