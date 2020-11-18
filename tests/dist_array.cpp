@@ -643,4 +643,42 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
   BOOST_CHECK_EQUAL_COLLECTIONS(bread.begin(), bread.end(), b.begin(), b.end());
 }
 
+BOOST_AUTO_TEST_CASE(issue_225) {
+  TiledRange1 TR0{0, 3, 8, 10};
+  TiledRange1 TR1{0, 4, 7, 10};
+  TiledRange TR{TR0, TR1};
+  Tensor<float> shape_tensor(TR.tiles_range(), 0.0);
+  shape_tensor(0, 0) = 1.0;
+  shape_tensor(0, 1) = 1.0;
+  shape_tensor(1, 1) = 1.0;
+  shape_tensor(2, 2) = 1.0;
+  SparseShape<float> shape(shape_tensor, TR);
+  TSpArrayD S(world, TR, shape);
+  TSpArrayD St;
+  S.fill(1.0);
+
+  char archive_file_name[] = "tmp.XXXXXX";
+  mktemp(archive_file_name);
+  madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+  St("i,j") = S("j,i");
+  BOOST_REQUIRE_NO_THROW(oar & S);
+  BOOST_REQUIRE_NO_THROW(oar & St);
+  oar.close();
+
+  madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+  decltype(S) S_read;
+  decltype(St) St_read;
+  iar& S_read& St_read;
+
+  BOOST_CHECK_EQUAL(S_read.trange(), S.trange());
+  BOOST_REQUIRE(S_read.shape() == S.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(S_read.begin(), S_read.end(), S.begin(),
+                                S.end());
+  BOOST_CHECK_EQUAL(St_read.trange(), St.trange());
+  BOOST_REQUIRE(St_read.shape() == St.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(St_read.begin(), St_read.end(), St.begin(),
+                                St.end());
+  std::remove(archive_file_name);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
