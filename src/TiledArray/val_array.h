@@ -463,7 +463,6 @@ class ValArray : private SizeArray<T> {
   void serialize(Archive& ar) const {
     // need to write size first to be able to init when deserializing
     ar& size() & madness::archive::wrap(data(), size());
-    TA_ASSERT(counter_ == NULL || *counter_ == 1);
   }
 
   /// (De)serialization
