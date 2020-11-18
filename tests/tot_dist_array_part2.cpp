@@ -18,6 +18,8 @@
  */
 #include "tot_array_fixture.h"
 
+#include <cstdio>
+
 BOOST_FIXTURE_TEST_SUITE(tot_array_suite2, ToTArrayFixture)
 //------------------------------------------------------------------------------
 //                       Fill and Initialize
@@ -678,6 +680,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(serialization, TestParam, test_params) {
       t2.serialize(ar_in);
       BOOST_TEST(are_equal(t2, corr));
     }
+    std::remove(file_name);
   }
 }
 
@@ -698,6 +701,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parallel_serialization, TestParam, test_params) {
       t2.load(m_world, ar_in);
       BOOST_TEST(are_equal(corr, t2));
     }
+    std::remove(file_name);
   }
 }
 
