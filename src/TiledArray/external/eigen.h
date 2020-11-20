@@ -86,4 +86,56 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 
 TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
+namespace madness {
+namespace archive {
+
+template <class>
+class archive_array;
+template <class T>
+inline archive_array<T> wrap(const T*, unsigned int);
+template <class Archive, typename Data>
+struct ArchiveStoreImpl;
+template <class Archive, typename Data>
+struct ArchiveLoadImpl;
+
+template <class Archive, typename Scalar, int RowsAtCompileTime,
+          int ColsAtCompileTime, int Options, int MaxRowsAtCompileTime,
+          int MaxColsAtCompileTime>
+struct ArchiveStoreImpl<
+    Archive,
+    Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                  MaxRowsAtCompileTime, MaxColsAtCompileTime>> {
+  static inline void store(
+      const Archive& ar,
+      const Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                          MaxRowsAtCompileTime, MaxColsAtCompileTime>& t) {
+    ar& t.rows() & t.cols();
+    if (t.size()) ar& madness::archive::wrap(t.data(), t.size());
+  }
+};
+
+template <class Archive, typename Scalar, int RowsAtCompileTime,
+          int ColsAtCompileTime, int Options, int MaxRowsAtCompileTime,
+          int MaxColsAtCompileTime>
+struct ArchiveLoadImpl<
+    Archive,
+    Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                  MaxRowsAtCompileTime, MaxColsAtCompileTime>> {
+  static inline void load(
+      const Archive& ar,
+      Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                    MaxRowsAtCompileTime, MaxColsAtCompileTime>& t) {
+    typename Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime,
+                           Options, MaxRowsAtCompileTime,
+                           MaxColsAtCompileTime>::Index nrows(0),
+        ncols(0);
+    ar& nrows& ncols;
+    t.resize(nrows, ncols);
+    if (t.size()) ar& madness::archive::wrap(t.data(), t.size());
+  }
+};
+
+}  // namespace archive
+}  // namespace madness
+
 #endif  // TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED
