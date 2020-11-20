@@ -1,19 +1,37 @@
 #include <tiledarray.h>
 #include <random>
 #include "TiledArray/config.h"
-#include "range_fixture.h"
+//#include "range_fixture.h"
 #include "unit_test_config.h"
 
-#include "TiledArray/algebra/lapack/chol.h"
+#include "TiledArray/algebra/lapack/cholesky.h"
 #include "TiledArray/algebra/lapack/heig.h"
+#include "TiledArray/algebra/lapack/lu.h"
+#include "TiledArray/algebra/lapack/svd.h"
+
+#include "TiledArray/algebra/cholesky.h"
+#include "TiledArray/algebra/heig.h"
+#include "TiledArray/algebra/lu.h"
+#include "TiledArray/algebra/svd.h"
+
+namespace TA = TiledArray;
+namespace lapack = TA::lapack;
+
+#if TILEDARRAY_HAS_SCALAPACK
+
 #include "TiledArray/algebra/scalapack/all.h"
+namespace scalapack = TA::scalapack;
+#define TILEDARRAY_SCALAPACK_TEST(F, E)                         \
+  GlobalFixture::world->gop.fence();                            \
+  compare("TiledArray::scalapack", lapack::F, scalapack::F, E); \
+  GlobalFixture::world->gop.fence();                            \
+  compare("TiledArray", lapack::F, TiledArray::F, E);
+#else
+#define TILEDARRAY_SCALAPACK_TEST(...)
+#endif
 
-using namespace TiledArray::scalapack;
-
-struct ScaLAPACKFixture {
-  blacspp::Grid grid;
-  BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
-
+struct ReferenceFixture {
+  size_t N;
   std::vector<double> htoeplitz_vector;
   std::vector<double> exact_evals;
 
@@ -41,21 +59,8 @@ struct ScaLAPACKFixture {
     return t.norm();
   };
 
-  inline void construct_scalapack(BlockCyclicMatrix<double>& A) {
-    auto [M, N] = A.dims();
-    for (size_t i = 0; i < M; ++i)
-      for (size_t j = 0; j < N; ++j)
-        if (A.dist().i_own(i, j)) {
-          auto [i_local, j_local] = A.dist().local_indx(i, j);
-          A.local_mat()(i_local, j_local) = matrix_element_generator(i, j);
-        }
-  }
-
-  ScaLAPACKFixture(int64_t N, int64_t NB)
-      : grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
-        ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB),
-        htoeplitz_vector(N),
-        exact_evals(N) {
+  ReferenceFixture(int64_t N = 1000)
+      : N(N), htoeplitz_vector(N), exact_evals(N) {
     // Generate an hermitian Circulant vector
     std::fill(htoeplitz_vector.begin(), htoeplitz_vector.begin(), 0);
     htoeplitz_vector[0] = 100;
@@ -78,12 +83,37 @@ struct ScaLAPACKFixture {
     }
 
     std::sort(exact_evals.begin(), exact_evals.end());
-
-    // Fill reference matrix
-    construct_scalapack(ref_matrix);
   }
+};
 
-  ScaLAPACKFixture() : ScaLAPACKFixture(1000, 128) {}
+struct LinearAlgebraFixture : ReferenceFixture {
+#if TILEDARRAY_HAS_SCALAPACK
+
+  blacspp::Grid grid;
+  scalapack::BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
+
+  LinearAlgebraFixture(int64_t N = 1000, int64_t NB = 128)
+      : ReferenceFixture(N),
+        grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
+        ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB) {
+    for (size_t i = 0; i < N; ++i) {
+      for (size_t j = 0; j < N; ++j) {
+        if (ref_matrix.dist().i_own(i, j)) {
+          auto [i_local, j_local] = ref_matrix.dist().local_indx(i, j);
+          ref_matrix.local_mat()(i_local, j_local) =
+              matrix_element_generator(i, j);
+        }
+      }
+    }
+  }
+  template <class A>
+  static void compare(const char* context, const A& lapack, const A& result,
+                      double e) {
+    BOOST_TEST_CONTEXT(context);
+    auto diff_with_lapack = (lapack("i,j") - result("i,j")).norm().get();
+    BOOST_CHECK_SMALL(diff_with_lapack, e);
+  }
+#endif
 };
 
 TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
@@ -108,7 +138,9 @@ TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
   return TA::TiledRange(ranges.begin(), ranges.end());
 };
 
-BOOST_FIXTURE_TEST_SUITE(scalapack_suite, ScaLAPACKFixture)
+BOOST_FIXTURE_TEST_SUITE(linear_algebra_suite, LinearAlgebraFixture)
+
+#if TILEDARRAY_HAS_SCALAPACK
 
 BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_test) {
   GlobalFixture::world->gop.fence();
@@ -127,7 +159,8 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
+  auto test_ta =
+      scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -155,7 +188,8 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_all_small_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
+  auto test_ta =
+      scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -183,7 +217,7 @@ BOOST_AUTO_TEST_CASE(uniform_dense_tiled_array_to_bc_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_matrix = array_to_block_cyclic(ref_ta, grid, NB, NB);
+  auto test_matrix = scalapack::array_to_block_cyclic(ref_ta, grid, NB, NB);
   GlobalFixture::world->gop.fence();
 
   double local_norm_diff =
@@ -218,7 +252,8 @@ BOOST_AUTO_TEST_CASE(bc_to_random_dense_tiled_array_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
+  auto test_ta =
+      scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -246,7 +281,7 @@ BOOST_AUTO_TEST_CASE(random_dense_tiled_array_to_bc_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_matrix = array_to_block_cyclic(ref_ta, grid, NB, NB);
+  auto test_matrix = scalapack::array_to_block_cyclic(ref_ta, grid, NB, NB);
   GlobalFixture::world->gop.fence();
 
   double local_norm_diff =
@@ -281,8 +316,8 @@ BOOST_AUTO_TEST_CASE(bc_to_sparse_tiled_array_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_ta =
-      block_cyclic_to_array<TA::TSpArray<double>>(ref_matrix, trange);
+  auto test_ta = scalapack::block_cyclic_to_array<TA::TSpArray<double>>(
+      ref_matrix, trange);
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -310,7 +345,7 @@ BOOST_AUTO_TEST_CASE(sparse_tiled_array_to_bc_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_matrix = array_to_block_cyclic(ref_ta, grid, NB, NB);
+  auto test_matrix = scalapack::array_to_block_cyclic(ref_ta, grid, NB, NB);
   GlobalFixture::world->gop.fence();
 
   double local_norm_diff =
@@ -345,7 +380,7 @@ BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_matrix = array_to_block_cyclic(ref_ta, grid, NB, NB);
+  auto test_matrix = scalapack::array_to_block_cyclic(ref_ta, grid, NB, NB);
   GlobalFixture::world->gop.fence();
 
   double local_norm_diff =
@@ -363,10 +398,10 @@ BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {
   GlobalFixture::world->gop.fence();
 };
 
-BOOST_AUTO_TEST_CASE(sca_heig_same_tiling) {
+#endif  // TILEDARRAY_HAS_SCALAPACK
+
+BOOST_AUTO_TEST_CASE(heig_same_tiling) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -376,7 +411,7 @@ BOOST_AUTO_TEST_CASE(sca_heig_same_tiling) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [evals, evecs] = heig(ref_ta);
+  auto [evals, evecs] = lapack::heig(ref_ta);
   auto [evals_lapack, evecs_lapack] = lapack::heig(ref_ta);
   // auto evals = heig( ref_ta );
 
@@ -399,10 +434,8 @@ BOOST_AUTO_TEST_CASE(sca_heig_same_tiling) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_heig_diff_tiling) {
+BOOST_AUTO_TEST_CASE(heig_diff_tiling) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
   auto trange = gen_trange(N, {128ul});
 
   auto ref_ta = TA::make_array<TA::TArray<double>>(
@@ -412,7 +445,7 @@ BOOST_AUTO_TEST_CASE(sca_heig_diff_tiling) {
       });
 
   auto new_trange = gen_trange(N, {64ul});
-  auto [evals, evecs] = heig(ref_ta, new_trange, 128);
+  auto [evals, evecs] = lapack::heig(ref_ta, new_trange);
   auto [evals_lapack, evecs_lapack] = lapack::heig(ref_ta, new_trange);
 
   BOOST_CHECK(evecs.trange() == new_trange);
@@ -434,10 +467,8 @@ BOOST_AUTO_TEST_CASE(sca_heig_diff_tiling) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_heig_generalized) {
+BOOST_AUTO_TEST_CASE(heig_generalized) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -461,7 +492,7 @@ BOOST_AUTO_TEST_CASE(sca_heig_generalized) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto [evals, evecs] = heig(ref_ta, dense_iden);
+  auto [evals, evecs] = lapack::heig(ref_ta, dense_iden);
   // auto evals = heig( ref_ta );
 
   BOOST_CHECK(evecs.trange() == ref_ta.trange());
@@ -476,10 +507,8 @@ BOOST_AUTO_TEST_CASE(sca_heig_generalized) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_chol) {
+BOOST_AUTO_TEST_CASE(cholesky) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -489,7 +518,7 @@ BOOST_AUTO_TEST_CASE(sca_chol) {
         return this->make_ta_reference(t, range);
       });
 
-  auto L = cholesky(A);
+  auto L = lapack::cholesky(A);
 
   BOOST_CHECK(L.trange() == A.trange());
 
@@ -510,10 +539,8 @@ BOOST_AUTO_TEST_CASE(sca_chol) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_chol_linv) {
+BOOST_AUTO_TEST_CASE(cholesky_linv) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -522,9 +549,9 @@ BOOST_AUTO_TEST_CASE(sca_chol_linv) {
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
+  decltype(A) Acopy = A.clone();
 
-  auto Linv = cholesky_linv(A);
-  auto Linv_lapack = lapack::cholesky_linv(A);
+  auto Linv = lapack::cholesky_linv(A);
 
   BOOST_CHECK(Linv.trange() == A.trange());
 
@@ -543,22 +570,18 @@ BOOST_AUTO_TEST_CASE(sca_chol_linv) {
         }
   });
 
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = A("i,j").norm().get();
-  BOOST_CHECK_SMALL(norm, N * N * std::numeric_limits<double>::epsilon());
 
-  // test against LAPACK
-  decltype(Linv) Linv_error;
-  Linv_error("i,j") = Linv("i,j") - Linv_lapack("i,j");
-  BOOST_CHECK_SMALL(Linv_error("i,j").norm().get(),
-                    N * N * std::numeric_limits<double>::epsilon());
+  BOOST_CHECK_SMALL(norm, epsilon);
+
+  TILEDARRAY_SCALAPACK_TEST(cholesky_linv(Acopy), epsilon);
 
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_chol_linv_retl) {
+BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -568,8 +591,7 @@ BOOST_AUTO_TEST_CASE(sca_chol_linv_retl) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [L, Linv] = cholesky_linv<decltype(A), true>(A);
-  auto [L_lapack, Linv_lapack] = lapack::cholesky_linv<decltype(A), true>(A);
+  auto [L, Linv] = lapack::cholesky_linv<decltype(A), true>(A);
 
   BOOST_CHECK(Linv.trange() == A.trange());
   BOOST_CHECK(L.trange() == A.trange());
@@ -588,26 +610,18 @@ BOOST_AUTO_TEST_CASE(sca_chol_linv_retl) {
         }
   });
 
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = tmp("i,j").norm(*GlobalFixture::world).get();
-  BOOST_CHECK_SMALL(norm, N * N * std::numeric_limits<double>::epsilon());
 
-  // test against LAPACK
-  decltype(L) L_error;
-  L_error("i,j") = L("i,j") - L_lapack("i,j");
-  BOOST_CHECK_SMALL(L_error("i,j").norm().get(),
-                    N * N * std::numeric_limits<double>::epsilon());
-  decltype(Linv) Linv_error;
-  Linv_error("i,j") = Linv("i,j") - Linv_lapack("i,j");
-  BOOST_CHECK_SMALL(Linv_error("i,j").norm().get(),
-                    N * N * std::numeric_limits<double>::epsilon());
+  BOOST_CHECK_SMALL(norm, epsilon);
+
+  TILEDARRAY_SCALAPACK_TEST(cholesky_linv(A), epsilon);
 
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_chol_solve) {
+BOOST_AUTO_TEST_CASE(cholesky_solve) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -617,7 +631,7 @@ BOOST_AUTO_TEST_CASE(sca_chol_solve) {
         return this->make_ta_reference(t, range);
       });
 
-  auto iden = cholesky_solve(A, A);
+  auto iden = lapack::cholesky_solve(A, A);
   BOOST_CHECK(iden.trange() == A.trange());
 
   auto iden_lapack = lapack::cholesky_solve(A, A);
@@ -643,10 +657,8 @@ BOOST_AUTO_TEST_CASE(sca_chol_solve) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_chol_lsolve) {
+BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -657,13 +669,13 @@ BOOST_AUTO_TEST_CASE(sca_chol_lsolve) {
       });
 
   // Should produce X = L**H
-  auto [L, X] = cholesky_lsolve(TransposeFlag::NoTranspose, A, A);
+  auto [L, X] = lapack::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
   BOOST_CHECK(X.trange() == A.trange());
   BOOST_CHECK(L.trange() == A.trange());
 
   // first, test against LAPACK
   auto [L_lapack, X_lapack] =
-      lapack::cholesky_lsolve(TransposeFlag::NoTranspose, A, A);
+      lapack::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
   decltype(L) L_error;
   L_error("i,j") = L("i,j") - L_lapack("i,j");
   BOOST_CHECK_SMALL(L_error("i,j").norm().get(),
@@ -681,10 +693,8 @@ BOOST_AUTO_TEST_CASE(sca_chol_lsolve) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_lu_solve) {
+BOOST_AUTO_TEST_CASE(lu_solve) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -694,7 +704,7 @@ BOOST_AUTO_TEST_CASE(sca_lu_solve) {
         return this->make_ta_reference(t, range);
       });
 
-  auto iden = lu_solve(ref_ta, ref_ta);
+  auto iden = lapack::lu_solve(ref_ta, ref_ta);
 
   BOOST_CHECK(iden.trange() == ref_ta.trange());
 
@@ -709,16 +719,17 @@ BOOST_AUTO_TEST_CASE(sca_lu_solve) {
         }
   });
 
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = iden("i,j").norm(*GlobalFixture::world).get();
-  BOOST_CHECK_SMALL(norm, N * N * std::numeric_limits<double>::epsilon());
+
+  BOOST_CHECK_SMALL(norm, epsilon);
+  TILEDARRAY_SCALAPACK_TEST(lu_solve(ref_ta, ref_ta), epsilon);
 
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_lu_inv) {
+BOOST_AUTO_TEST_CASE(lu_inv) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -730,7 +741,7 @@ BOOST_AUTO_TEST_CASE(sca_lu_inv) {
 
   TA::TArray<double> iden(*GlobalFixture::world, trange);
 
-  auto Ainv = lu_inv(ref_ta);
+  auto Ainv = lapack::lu_inv(ref_ta);
   iden("i,j") = Ainv("i,k") * ref_ta("k,j");
 
   BOOST_CHECK(iden.trange() == ref_ta.trange());
@@ -746,17 +757,18 @@ BOOST_AUTO_TEST_CASE(sca_lu_inv) {
         }
   });
 
+  double epsilon = N * N * std::numeric_limits<double>::epsilon();
   double norm = iden("i,j").norm(*GlobalFixture::world).get();
-  BOOST_CHECK_SMALL(norm, N * N * std::numeric_limits<double>::epsilon());
+
+  BOOST_CHECK_SMALL(norm, epsilon);
+  TILEDARRAY_SCALAPACK_TEST(lu_inv(ref_ta), epsilon);
 
   GlobalFixture::world->gop.fence();
 }
 
 #if 1
-BOOST_AUTO_TEST_CASE(sca_svd_values_only) {
+BOOST_AUTO_TEST_CASE(svd_values_only) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -766,7 +778,7 @@ BOOST_AUTO_TEST_CASE(sca_svd_values_only) {
         return this->make_ta_reference(t, range);
       });
 
-  auto S = svd<SVDValuesOnly>(ref_ta, trange, trange);
+  auto S = lapack::svd<TA::SVDValuesOnly>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -779,10 +791,8 @@ BOOST_AUTO_TEST_CASE(sca_svd_values_only) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_svd_leftvectors) {
+BOOST_AUTO_TEST_CASE(svd_leftvectors) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -792,7 +802,7 @@ BOOST_AUTO_TEST_CASE(sca_svd_leftvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, U] = svd<SVDLeftVectors>(ref_ta, trange, trange);
+  auto [S, U] = lapack::svd<TA::SVDLeftVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -805,10 +815,8 @@ BOOST_AUTO_TEST_CASE(sca_svd_leftvectors) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_svd_rightvectors) {
+BOOST_AUTO_TEST_CASE(svd_rightvectors) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -818,7 +826,7 @@ BOOST_AUTO_TEST_CASE(sca_svd_rightvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, VT] = svd<SVDRightVectors>(ref_ta, trange, trange);
+  auto [S, VT] = lapack::svd<TA::SVDRightVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -831,10 +839,8 @@ BOOST_AUTO_TEST_CASE(sca_svd_rightvectors) {
   GlobalFixture::world->gop.fence();
 }
 
-BOOST_AUTO_TEST_CASE(sca_svd_allvectors) {
+BOOST_AUTO_TEST_CASE(svd_allvectors) {
   GlobalFixture::world->gop.fence();
-  auto [M, N] = ref_matrix.dims();
-  BOOST_REQUIRE_EQUAL(M, N);
 
   auto trange = gen_trange(N, {128ul});
 
@@ -844,7 +850,7 @@ BOOST_AUTO_TEST_CASE(sca_svd_allvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, U, VT] = svd<SVDAllVectors>(ref_ta, trange, trange);
+  auto [S, U, VT] = lapack::svd<TA::SVDAllVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),

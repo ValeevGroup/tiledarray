@@ -60,15 +60,17 @@ TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h
 TiledArray/algebra/utils.h
-TiledArray/algebra/chol.h
+TiledArray/algebra/cholesky.h
 TiledArray/algebra/heig.h
 TiledArray/algebra/lu.h
 TiledArray/algebra/svd.h
 TiledArray/algebra/types.h
-TiledArray/algebra/lapack/chol.h
+TiledArray/algebra/lapack/cholesky.h
 TiledArray/algebra/lapack/heig.h
 TiledArray/algebra/lapack/util.h
-TiledArray/algebra/scalapack/chol.h
+TiledArray/algebra/lapack/lu.h
+TiledArray/algebra/lapack/svd.h
+TiledArray/algebra/scalapack/cholesky.h
 TiledArray/algebra/scalapack/heig.h
 TiledArray/algebra/scalapack/lu.h
 TiledArray/algebra/scalapack/svd.h
@@ -207,7 +209,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
-TiledArray/algebra/lapack/lapack.cc
+TiledArray/algebra/lapack/lapack.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later

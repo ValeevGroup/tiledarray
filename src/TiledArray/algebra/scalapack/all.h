@@ -28,7 +28,7 @@
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack/chol.h>
+#include <TiledArray/algebra/scalapack/cholesky.h>
 #include <TiledArray/algebra/scalapack/heig.h>
 #include <TiledArray/algebra/scalapack/lu.h>
 #include <TiledArray/algebra/scalapack/svd.h>

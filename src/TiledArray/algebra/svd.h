@@ -27,16 +27,21 @@
 #include <TiledArray/config.h>
 #ifdef TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/algebra/scalapack/svd.h>
-#else
-// include eigen
 #endif  // TILEDARRAY_HAS_SCALAPACK
+#include <TiledArray/algebra/lapack/svd.h>
 
 namespace TiledArray {
 
-#ifdef TILEDARRAY_HAS_SCALAPACK
-using scalapack::svd;
-#else
+template <typename SVDType, typename Array,
+          typename = TiledArray::detail::enable_if_svd_return_type<SVDType>>
+auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trange = TiledRange()) {
+#if TILEDARRAY_HAS_SCALAPACK
+  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+    return scalapack::svd<SVDType>(A, u_trange, vt_trange);
+  }
 #endif
+  return lapack::svd<SVDType>(A, u_trange, vt_trange);
+}
 
 }  // namespace TiledArray
 
