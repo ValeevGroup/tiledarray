@@ -21,17 +21,16 @@ namespace lapack = TA::lapack;
 
 #include "TiledArray/algebra/scalapack/all.h"
 namespace scalapack = TA::scalapack;
-#define TILEDARRAY_SCALAPACK_TEST(F,E)                               \
-  GlobalFixture::world->gop.fence();                                 \
-  compare("TiledArray::scalapack", lapack::F, scalapack::F, E);      \
-  GlobalFixture::world->gop.fence();                                 \
-  compare("TiledArray",            lapack::F, TiledArray::F, E);
+#define TILEDARRAY_SCALAPACK_TEST(F, E)                         \
+  GlobalFixture::world->gop.fence();                            \
+  compare("TiledArray::scalapack", lapack::F, scalapack::F, E); \
+  GlobalFixture::world->gop.fence();                            \
+  compare("TiledArray", lapack::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SCALAPACK_TEST(...)
 #endif
 
 struct ReferenceFixture {
-
   size_t N;
   std::vector<double> htoeplitz_vector;
   std::vector<double> exact_evals;
@@ -46,7 +45,8 @@ struct ReferenceFixture {
 #endif
   }
 
-  inline double make_ta_reference(TA::Tensor<double>& t, TA::Range const& range) {
+  inline double make_ta_reference(TA::Tensor<double>& t,
+                                  TA::Range const& range) {
     t = TA::Tensor<double>(range, 0.0);
     auto lo = range.lobound_data();
     auto up = range.upbound_data();
@@ -60,8 +60,7 @@ struct ReferenceFixture {
   };
 
   ReferenceFixture(int64_t N = 1000)
-    : N(N), htoeplitz_vector(N), exact_evals(N)
-  {
+      : N(N), htoeplitz_vector(N), exact_evals(N) {
     // Generate an hermitian Circulant vector
     std::fill(htoeplitz_vector.begin(), htoeplitz_vector.begin(), 0);
     htoeplitz_vector[0] = 100;
@@ -84,40 +83,37 @@ struct ReferenceFixture {
     }
 
     std::sort(exact_evals.begin(), exact_evals.end());
-
   }
-
 };
 
 struct LinearAlgebraFixture : ReferenceFixture {
-
 #if TILEDARRAY_HAS_SCALAPACK
 
   blacspp::Grid grid;
   scalapack::BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
-  LinearAlgebraFixture(int64_t N = 1000, int64_t NB = 128) :
-    ReferenceFixture(N),
-    grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
-    ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB)
-  {
+  LinearAlgebraFixture(int64_t N = 1000, int64_t NB = 128)
+      : ReferenceFixture(N),
+        grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
+        ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB) {
     for (size_t i = 0; i < N; ++i) {
       for (size_t j = 0; j < N; ++j) {
         if (ref_matrix.dist().i_own(i, j)) {
           auto [i_local, j_local] = ref_matrix.dist().local_indx(i, j);
-          ref_matrix.local_mat()(i_local, j_local) = matrix_element_generator(i, j);
+          ref_matrix.local_mat()(i_local, j_local) =
+              matrix_element_generator(i, j);
         }
       }
     }
   }
-  template<class A>
-  static void compare(const char *context, const A& lapack, const A& result, double e) {
+  template <class A>
+  static void compare(const char* context, const A& lapack, const A& result,
+                      double e) {
     BOOST_TEST_CONTEXT(context);
     auto diff_with_lapack = (lapack("i,j") - result("i,j")).norm().get();
     BOOST_CHECK_SMALL(diff_with_lapack, e);
   }
 #endif
-
 };
 
 TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
@@ -142,7 +138,6 @@ TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
   return TA::TiledRange(ranges.begin(), ranges.end());
 };
 
-
 BOOST_FIXTURE_TEST_SUITE(linear_algebra_suite, LinearAlgebraFixture)
 
 #if TILEDARRAY_HAS_SCALAPACK
@@ -164,7 +159,8 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
+  auto test_ta =
+      scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -192,7 +188,8 @@ BOOST_AUTO_TEST_CASE(bc_to_uniform_dense_tiled_array_all_small_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
+  auto test_ta =
+      scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -255,7 +252,8 @@ BOOST_AUTO_TEST_CASE(bc_to_random_dense_tiled_array_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_ta = scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
+  auto test_ta =
+      scalapack::block_cyclic_to_array<TA::TArray<double>>(ref_matrix, trange);
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -318,8 +316,8 @@ BOOST_AUTO_TEST_CASE(bc_to_sparse_tiled_array_test) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto test_ta =
-      scalapack::block_cyclic_to_array<TA::TSpArray<double>>(ref_matrix, trange);
+  auto test_ta = scalapack::block_cyclic_to_array<TA::TSpArray<double>>(
+      ref_matrix, trange);
   GlobalFixture::world->gop.fence();
 
   auto norm_diff =
@@ -400,7 +398,7 @@ BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {
   GlobalFixture::world->gop.fence();
 };
 
-#endif // TILEDARRAY_HAS_SCALAPACK
+#endif  // TILEDARRAY_HAS_SCALAPACK
 
 BOOST_AUTO_TEST_CASE(heig_same_tiling) {
   GlobalFixture::world->gop.fence();
@@ -551,6 +549,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
       [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
         return this->make_ta_reference(t, range);
       });
+  decltype(A) Acopy = A.clone();
 
   auto Linv = lapack::cholesky_linv(A);
 
@@ -576,10 +575,9 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
 
   BOOST_CHECK_SMALL(norm, epsilon);
 
-  TILEDARRAY_SCALAPACK_TEST(cholesky_linv(A), epsilon);
+  TILEDARRAY_SCALAPACK_TEST(cholesky_linv(Acopy), epsilon);
 
   GlobalFixture::world->gop.fence();
-
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
@@ -676,7 +674,8 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
   BOOST_CHECK(L.trange() == A.trange());
 
   // first, test against LAPACK
-  auto [L_lapack, X_lapack] = lapack::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
+  auto [L_lapack, X_lapack] =
+      lapack::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
   decltype(L) L_error;
   L_error("i,j") = L("i,j") - L_lapack("i,j");
   BOOST_CHECK_SMALL(L_error("i,j").norm().get(),
@@ -727,7 +726,6 @@ BOOST_AUTO_TEST_CASE(lu_solve) {
   TILEDARRAY_SCALAPACK_TEST(lu_solve(ref_ta, ref_ta), epsilon);
 
   GlobalFixture::world->gop.fence();
-
 }
 
 BOOST_AUTO_TEST_CASE(lu_inv) {
@@ -766,7 +764,6 @@ BOOST_AUTO_TEST_CASE(lu_inv) {
   TILEDARRAY_SCALAPACK_TEST(lu_inv(ref_ta), epsilon);
 
   GlobalFixture::world->gop.fence();
-
 }
 
 #if 1
