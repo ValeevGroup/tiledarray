@@ -208,7 +208,7 @@ template <typename IndexList_, typename LHSType, typename RHSType>
 auto t_s_t_contract_(const IndexList_& free_vars, const IndexList_& lhs_vars,
                      const IndexList_& rhs_vars, LHSType&& lhs, RHSType&& rhs) {
   auto rhs_idx = [=](const auto& free_idx, const auto& bound_idx) {
-    return make_index(free_vars, BipartiteIndexList{}, rhs_vars, free_idx,
+    return make_index(free_vars, std::decay_t<IndexList_>{}, rhs_vars, free_idx,
                       bound_idx);
   };
 
