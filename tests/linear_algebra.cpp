@@ -22,7 +22,9 @@ namespace lapack = TA::lapack;
 #include "TiledArray/algebra/scalapack/all.h"
 namespace scalapack = TA::scalapack;
 #define TILEDARRAY_SCALAPACK_TEST(F,E)                               \
+  GlobalFixture::world->gop.fence();                                 \
   compare("TiledArray::scalapack", lapack::F, scalapack::F, E);      \
+  GlobalFixture::world->gop.fence();                                 \
   compare("TiledArray",            lapack::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SCALAPACK_TEST(...)
@@ -577,6 +579,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv(A), epsilon);
 
   GlobalFixture::world->gop.fence();
+
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
