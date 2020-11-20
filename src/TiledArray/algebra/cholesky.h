@@ -26,9 +26,9 @@
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack/chol.h>
+#include <TiledArray/algebra/scalapack/cholesky.h>
 #endif
-#include <TiledArray/algebra/lapack/chol.h>
+#include <TiledArray/algebra/lapack/cholesky.h>
 
 namespace TiledArray {
 
