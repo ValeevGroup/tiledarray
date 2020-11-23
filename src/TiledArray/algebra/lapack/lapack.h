@@ -92,7 +92,9 @@ void dsyevr(char* jobz, char* range, char* uplo, integer* n, real8* a,
 #define TA_LAPACK_GESVD(...) \
   TA_LAPACK_CALL(gesvd, __VA_ARGS__, sizeof(char), sizeof(char))
 #define TA_LAPACK_TRTRI(...) \
-  TA_LAPACK_CALL(trtri, __VA_ARGS__, sizeof(char), sizeof(char))
+  TA_LAPACK_CALL(            \
+      trtri,                 \
+      __VA_ARGS__)  // see clapack_fortran.h: does not pass sizeof(char)
 #define TA_LAPACK_TRTRS(...) \
   TA_LAPACK_CALL(trtrs, __VA_ARGS__, sizeof(char), sizeof(char), sizeof(char))
 #define TA_LAPACK_SYEV(...) \
