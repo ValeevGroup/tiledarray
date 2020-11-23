@@ -824,6 +824,13 @@ struct is_btas_tensor<btas::Tensor<T, Args...>> : public std::true_type {};
 template <typename T>
 constexpr const bool is_btas_tensor_v = is_btas_tensor<T>::value;
 
+/// btas::RangeNd can be col or row-major
+template <CBLAS_ORDER _Order, typename _Index, typename _Ordinal>
+struct ordinal_traits<btas::RangeNd<_Order, _Index, _Ordinal>> {
+  static constexpr const auto type =
+      _Order == CblasRowMajor ? OrdinalType::RowMajor : OrdinalType::ColMajor;
+};
+
 }  // namespace detail
 }  // namespace TiledArray
 

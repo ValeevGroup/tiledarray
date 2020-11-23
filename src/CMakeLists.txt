@@ -60,6 +60,20 @@ TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h
 TiledArray/algebra/utils.h
+TiledArray/algebra/cholesky.h
+TiledArray/algebra/heig.h
+TiledArray/algebra/lu.h
+TiledArray/algebra/svd.h
+TiledArray/algebra/types.h
+TiledArray/algebra/lapack/cholesky.h
+TiledArray/algebra/lapack/heig.h
+TiledArray/algebra/lapack/util.h
+TiledArray/algebra/lapack/lu.h
+TiledArray/algebra/lapack/svd.h
+TiledArray/algebra/scalapack/cholesky.h
+TiledArray/algebra/scalapack/heig.h
+TiledArray/algebra/scalapack/lu.h
+TiledArray/algebra/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
@@ -114,8 +128,6 @@ TiledArray/math/partial_reduce.h
 TiledArray/math/transpose.h
 TiledArray/math/vector_op.h
 TiledArray/math/scalapack.h
-TiledArray/math/scalapack/heig.h
-TiledArray/math/scalapack/chol.h
 TiledArray/pmap/blocked_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h
@@ -199,6 +211,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
+TiledArray/algebra/lapack/lapack.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
@@ -294,5 +307,3 @@ install(
   FILES_MATCHING PATTERN "*.h"
   PATTERN "CMakeFiles" EXCLUDE
 )
-
-    

@@ -310,6 +310,34 @@ static constexpr const auto is_bipartite_permutable_v =
         const T&, const TiledArray::BipartitePermutation&>;
 
 }  // namespace detail
+
+/// Specifies how coordinates are mapped to ordinal values
+/// - RowMajor: stride decreases as mode index increases
+/// - ColMajor: stride increases with the mode index
+/// - Other: unknown or dynamic order
+enum class OrdinalType { RowMajor = -1, ColMajor = 1, Other = 0, Invalid };
+
+namespace detail {
+
+/// ordinal trait specifies properties of the ordinal
+template <typename Ordinal, typename Enabler = void>
+struct ordinal_traits;
+
+/// TA::Range is hardwired to row-major
+template <>
+struct ordinal_traits<Range> {
+  static constexpr const auto type = OrdinalType::RowMajor;
+};
+
+/// ordinal traits of contiguous tensors are defined by their range type
+template <typename T>
+struct ordinal_traits<T, std::enable_if_t<is_contiguous_tensor_v<T>>> {
+  static constexpr const auto type = ordinal_traits<
+      std::decay_t<decltype(std::declval<const T&>().range())>>::type;
+};
+
+}  // namespace detail
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
