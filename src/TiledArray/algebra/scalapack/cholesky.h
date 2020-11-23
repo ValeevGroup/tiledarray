@@ -18,7 +18,7 @@
  *  David Williams-Young
  *  Computational Research Division, Lawrence Berkeley National Laboratory
  *
- *  chol.h
+ *  cholesky.h
  *  Created:    8 June, 2020
  *
  */

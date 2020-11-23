@@ -17,7 +17,7 @@
  *
  *  Eduard Valeyev
  *
- *  chol.h
+ *  cholesky.h
  *  Created:    16 October, 2020
  *
  */
