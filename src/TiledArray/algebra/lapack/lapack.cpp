@@ -17,81 +17,14 @@
  *
  *  Eduard Valeyev
  *
- *  cholesky.h
+ *  lapack.cpp
  *  Created:    16 October, 2020
  *
  */
 
 #include <TiledArray/algebra/lapack/lapack.h>
 #include <TiledArray/algebra/lapack/util.h>
-#include <TiledArray/config.h>
-#include <madness/tensor/clapack.h>
 #include <Eigen/Core>
-
-#define TA_LAPACK_CALL(name, args...)                                    \
-  typedef T numeric_type;                                                \
-  if constexpr (std::is_same_v<numeric_type, double>)                    \
-    d##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, float>)                \
-    s##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, std::complex<double>>) \
-    z##name##_(args);                                                    \
-  else if constexpr (std::is_same_v<numeric_type, std::complex<float>>)  \
-    c##name##_(args);                                                    \
-  else                                                                   \
-    std::abort();
-
-#define TA_LAPACK_GESV(...) TA_LAPACK_CALL(gesv, __VA_ARGS__)
-#define TA_LAPACK_GETRF(...) TA_LAPACK_CALL(getrf, __VA_ARGS__)
-#define TA_LAPACK_GETRI(...) TA_LAPACK_CALL(getri, __VA_ARGS__)
-
-#ifdef MADNESS_LINALG_USE_LAPACKE
-
-#define TA_LAPACK_POTRF(...)  TA_LAPACK_CALL(potrf, __VA_ARGS__)
-#define TA_LAPACK_POSV(...)  TA_LAPACK_CALL(posv, __VA_ARGS__)
-#define TA_LAPACK_GESVD(...) TA_LAPACK_CALL(gesvd, __VA_ARGS__)
-#define TA_LAPACK_TRTRI(...) TA_LAPACK_CALL(trtri, __VA_ARGS__)
-#define TA_LAPACK_TRTRS(...) TA_LAPACK_CALL(trtrs, __VA_ARGS__)
-#define TA_LAPACK_SYEV(...) TA_LAPACK_CALL(syev, __VA_ARGS__)
-#define TA_LAPACK_SYGV(...) TA_LAPACK_CALL(sygv, __VA_ARGS__)
-
-#else
-
-#ifdef FORTRAN_LINKAGE_LCU
-#define dtrtri dtrtri_
-#define dtrtrs dtrtrs_
-#define dposv dposv_
-#endif
-
-extern "C" { // these arent in madness/clapack_fortran.h
-void dtrtri(const char* uplo, const char* diag,
-            const integer* n,
-            const real8* a, const integer* lda,
-            integer *info,
-            char_len, char_len);
-void dtrtrs(const char* uplo, const char* trans, const char* diag,
-            const integer* n, const integer *nrhs,
-            const real8* a, const integer* lda,
-            const real8* b, const integer* ldb,
-            integer *info,
-            char_len, char_len, char_len);
-void dposv(const char* uplo,
-           const integer* n, const integer *nrhs,
-           const real8* a, const integer* lda,
-           const real8* b, const integer* ldb,
-           integer *info,
-           char_len);
-}
-
-#define TA_LAPACK_POTRF(...)  TA_LAPACK_CALL(potrf, __VA_ARGS__, sizeof(char))
-#define TA_LAPACK_POSV(...)  TA_LAPACK_CALL(posv, __VA_ARGS__, sizeof(char))
-#define TA_LAPACK_GESVD(...) TA_LAPACK_CALL(gesvd, __VA_ARGS__, sizeof(char), sizeof(char))
-#define TA_LAPACK_TRTRI(...) TA_LAPACK_CALL(trtri, __VA_ARGS__, sizeof(char), sizeof(char))
-#define TA_LAPACK_TRTRS(...) TA_LAPACK_CALL(trtrs, __VA_ARGS__, sizeof(char), sizeof(char), sizeof(char))
-#define TA_LAPACK_SYEV(...) TA_LAPACK_CALL(syev, __VA_ARGS__, sizeof(char), sizeof(char))
-#define TA_LAPACK_SYGV(...) TA_LAPACK_CALL(sygv, __VA_ARGS__, sizeof(char), sizeof(char))
-
-#endif // MADNESS_LINALG_USE_LAPACKE
 
 namespace TiledArray::lapack {
 
@@ -184,10 +117,12 @@ void heig(Matrix<T>& A, Matrix<T>& B, std::vector<T>& W) {
   integer lwork = -1;
   integer info;
   T lwork_dummy;
-  TA_LAPACK_SYGV(&itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w, &lwork_dummy, &lwork, &info);
+  TA_LAPACK_SYGV(&itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w, &lwork_dummy,
+                 &lwork, &info);
   lwork = integer(lwork_dummy);
   std::vector<T> work(lwork);
-  TA_LAPACK_SYGV(&itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w, work.data(), &lwork, &info);
+  TA_LAPACK_SYGV(&itype, &jobz, &uplo, &n, a, &lda, b, &ldb, w, work.data(),
+                 &lwork, &info);
   if (info != 0) TA_EXCEPTION("lapack::heig failed");
 }
 
@@ -225,15 +160,17 @@ void svd(Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
   integer info;
   T lwork_dummy;
 
-  TA_LAPACK_GESVD(&jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, &lwork_dummy, &lwork, &info);
+  TA_LAPACK_GESVD(&jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt,
+                  &lwork_dummy, &lwork, &info);
   lwork = integer(lwork_dummy);
   std::vector<T> work(lwork);
-  TA_LAPACK_GESVD(&jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt, work.data(), &lwork, &info);
+  TA_LAPACK_GESVD(&jobu, &jobvt, &m, &n, a, &lda, s, u, &ldu, vt, &ldvt,
+                  work.data(), &lwork, &info);
   if (info != 0) TA_EXCEPTION("lapack::svd failed");
 }
 
-template<typename T>
-void lu_solve(Matrix<T> &A, Matrix<T> &B) {
+template <typename T>
+void lu_solve(Matrix<T>& A, Matrix<T>& B) {
   integer n = A.rows();
   integer nrhs = B.cols();
   T* a = A.data();
@@ -246,8 +183,8 @@ void lu_solve(Matrix<T> &A, Matrix<T> &B) {
   if (info != 0) TA_EXCEPTION("lapack::lu_solve failed");
 }
 
-template<typename T>
-void lu_inv(Matrix<T> &A) {
+template <typename T>
+void lu_inv(Matrix<T>& A) {
   integer n = A.rows();
   T* a = A.data();
   integer lda = A.rows();
@@ -264,7 +201,6 @@ void lu_inv(Matrix<T> &A) {
   if (info != 0) TA_EXCEPTION("lapack::lu_inv failed");
 }
 
-
 #define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                        \
   template void cholesky(MATRIX&);                                \
   template void cholesky_linv(MATRIX&);                           \
@@ -277,6 +213,6 @@ void lu_inv(Matrix<T> &A) {
   template void lu_inv(MATRIX&);
 
 TA_LAPACK_EXPLICIT(lapack::Matrix<double>, std::vector<double>);
-//TA_LAPACK_EXPLICIT(lapack::Matrix<float>, std::vector<float>);
+// TA_LAPACK_EXPLICIT(lapack::Matrix<float>, std::vector<float>);
 
 }  // namespace TiledArray::lapack
