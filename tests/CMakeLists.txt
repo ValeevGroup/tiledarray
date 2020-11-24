@@ -32,85 +32,85 @@ set(executable ta_test)
 # N.B.: The order of files here represents the order in which the tests are run.
 # N.B. 2: if you want to trim this down you may need to resolve linker errors due to missing fixture deps manually
 set(ta_test_src_files  ta_test.cpp
-    # range.cpp
-    # btas.cpp
-    # meta.cpp
-    # type_traits.cpp
-    # utility.cpp
-    # permutation.cpp
-    # symm_permutation_group.cpp
-    # symm_irrep.cpp
-    # symm_representation.cpp
-    # block_range.cpp
-    # perm_index.cpp
-    # transform_iterator.cpp
-    # bitset.cpp
-    # math_outer.cpp
-    # math_partial_reduce.cpp
-    # math_transpose.cpp
-    # math_blas.cpp
-    # tensor.cpp
-    # tensor_of_tensor.cpp
-    # tensor_tensor_view.cpp
-    # tensor_shift_wrapper.cpp
-    # tiled_range1.cpp
-    # tiled_range.cpp
-    # blocked_pmap.cpp
-    # hash_pmap.cpp
-    # cyclic_pmap.cpp
-    # replicated_pmap.cpp
-    # dense_shape.cpp
-    # sparse_shape.cpp
-    # distributed_storage.cpp
-    # tensor_impl.cpp
-    # array_impl.cpp
-    # index_list.cpp
-    # bipartite_index_list.cpp
-    # dist_array.cpp
-    # conversions.cpp
-    # eigen.cpp
-    # dist_op_dist_cache.cpp
-    # dist_op_group.cpp
-    # dist_op_communicator.cpp
-    # tile_op_noop.cpp
-    # tile_op_scal.cpp
-    # dist_eval_array_eval.cpp
-    # dist_eval_unary_eval.cpp
-    # tile_op_add.cpp
-    # tile_op_scal_add.cpp
-    # tile_op_subt.cpp
-    # tile_op_scal_subt.cpp
-    # dist_eval_binary_eval.cpp
-    # tile_op_mult.cpp
-    # tile_op_scal_mult.cpp
-    # tile_op_contract_reduce.cpp
-    # reduce_task.cpp
-    # proc_grid.cpp
-    # dist_eval_contraction_eval.cpp
-    # expressions.cpp
-    # expressions_sparse.cpp
-    # expressions_complex.cpp
-    # expressions_btas.cpp
-    # expressions_mixed.cpp
-    # foreach.cpp
-    # solvers.cpp
-    # initializer_list.cpp
-    # diagonal_array.cpp
-    # retile.cpp
-    # tot_dist_array_part1.cpp
-    # tot_dist_array_part2.cpp
-    # random.cpp
-    # trace.cpp
-    # tot_expressions.cpp
-    # annotation.cpp
-    # diagonal_array.cpp
-    # contraction_helpers.cpp
-    # s_t_t_contract_.cpp
-    # t_t_t_contract_.cpp
-    # t_s_t_contract_.cpp
-    # t_tot_tot_contract_.cpp
-    # tot_tot_tot_contract_.cpp
-    # einsum.cpp
+    range.cpp
+    btas.cpp
+    meta.cpp
+    type_traits.cpp
+    utility.cpp
+    permutation.cpp
+    symm_permutation_group.cpp
+    symm_irrep.cpp
+    symm_representation.cpp
+    block_range.cpp
+    perm_index.cpp
+    transform_iterator.cpp
+    bitset.cpp
+    math_outer.cpp
+    math_partial_reduce.cpp
+    math_transpose.cpp
+    math_blas.cpp
+    tensor.cpp
+    tensor_of_tensor.cpp
+    tensor_tensor_view.cpp
+    tensor_shift_wrapper.cpp
+    tiled_range1.cpp
+    tiled_range.cpp
+    blocked_pmap.cpp
+    hash_pmap.cpp
+    cyclic_pmap.cpp
+    replicated_pmap.cpp
+    dense_shape.cpp
+    sparse_shape.cpp
+    distributed_storage.cpp
+    tensor_impl.cpp
+    array_impl.cpp
+    index_list.cpp
+    bipartite_index_list.cpp
+    dist_array.cpp
+    conversions.cpp
+    eigen.cpp
+    dist_op_dist_cache.cpp
+    dist_op_group.cpp
+    dist_op_communicator.cpp
+    tile_op_noop.cpp
+    tile_op_scal.cpp
+    dist_eval_array_eval.cpp
+    dist_eval_unary_eval.cpp
+    tile_op_add.cpp
+    tile_op_scal_add.cpp
+    tile_op_subt.cpp
+    tile_op_scal_subt.cpp
+    dist_eval_binary_eval.cpp
+    tile_op_mult.cpp
+    tile_op_scal_mult.cpp
+    tile_op_contract_reduce.cpp
+    reduce_task.cpp
+    proc_grid.cpp
+    dist_eval_contraction_eval.cpp
+    expressions.cpp
+    expressions_sparse.cpp
+    expressions_complex.cpp
+    expressions_btas.cpp
+    expressions_mixed.cpp
+    foreach.cpp
+    solvers.cpp
+    initializer_list.cpp
+    diagonal_array.cpp
+    retile.cpp
+    tot_dist_array_part1.cpp
+    tot_dist_array_part2.cpp
+    random.cpp
+    trace.cpp
+    tot_expressions.cpp
+    annotation.cpp
+    diagonal_array.cpp
+    contraction_helpers.cpp
+    s_t_t_contract_.cpp
+    t_t_t_contract_.cpp
+    t_s_t_contract_.cpp
+    t_tot_tot_contract_.cpp
+    tot_tot_tot_contract_.cpp
+    einsum.cpp
     linear_algebra.cpp
 )
 
