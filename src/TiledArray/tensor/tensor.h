@@ -880,26 +880,56 @@ class Tensor {
 
   /// Shift the lower and upper bound of this tensor
 
-  /// \tparam Index The shift array type
+  /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the tensor range
   /// \return A reference to this tensor
-  template <typename Index>
+  template <typename Index,
+            std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   Tensor_& shift_to(const Index& bound_shift) {
     TA_ASSERT(pimpl_);
     pimpl_->range_.inplace_shift(bound_shift);
     return *this;
   }
 
+  /// Shift the lower and upper bound of this tensor
+
+  /// \tparam Integer An integral type
+  /// \param bound_shift The shift to be applied to the tensor range
+  /// \return A reference to this tensor
+  template <typename Integer,
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  Tensor_& shift_to(const std::initializer_list<Integer>& bound_shift) {
+    TA_ASSERT(pimpl_);
+    pimpl_->range_.template inplace_shift<std::initializer_list<Integer>>(
+        bound_shift);
+    return *this;
+  }
+
   /// Shift the lower and upper bound of this range
 
-  /// \tparam Index The shift array type
+  /// \tparam Index An integral range type
   /// \param bound_shift The shift to be applied to the tensor range
   /// \return A shifted copy of this tensor
-  template <typename Index>
+  template <typename Index,
+            std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   Tensor_ shift(const Index& bound_shift) const {
     TA_ASSERT(pimpl_);
     Tensor_ result = clone();
     result.shift_to(bound_shift);
+    return result;
+  }
+
+  /// Shift the lower and upper bound of this range
+
+  /// \tparam Integer An integral type
+  /// \param bound_shift The shift to be applied to the tensor range
+  /// \return A shifted copy of this tensor
+  template <typename Integer,
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  Tensor_ shift(const std::initializer_list<Integer>& bound_shift) const {
+    TA_ASSERT(pimpl_);
+    Tensor_ result = clone();
+    result.template shift_to<std::initializer_list<Integer>>(bound_shift);
     return result;
   }
 
