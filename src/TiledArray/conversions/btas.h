@@ -200,7 +200,8 @@ inline auto make_shape<false>(World&, const TiledArray::TiledRange&) {
 /// \param[in,out] world The world where the result array will live
 /// \param[in] trange The tiled range of the new array
 /// \param[in] src The btas::Tensor<TArgs..> object whose contents will be
-/// copied to the result. \param[in] replicated \c true indicates that the
+/// copied to the result.
+/// \param[in] replicated \c true indicates that the
 /// result array should be a
 ///            replicated array [default = false].
 /// \return A \c DistArray_ object that is a copy of \c src
