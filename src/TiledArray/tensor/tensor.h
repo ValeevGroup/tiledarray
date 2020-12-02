@@ -1635,13 +1635,15 @@ class Tensor {
 
     // Get the leading dimension for left and right matrices.
     const integer lda =
-        (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+        (gemm_helper.left_op() == blas::NoTranspose ? k : m);
     const integer ldb =
-        (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+        (gemm_helper.right_op() == blas::NoTranspose ? n : k);
 
-    math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-               pimpl_->data_, lda, other.data(), ldb, numeric_type(0),
-               result.data(), n);
+    blas::gemm(
+      gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
+      pimpl_->data_, lda, other.data(), ldb, numeric_type(0),
+      result.data(), n
+    );
 
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
     if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
@@ -1790,9 +1792,9 @@ class Tensor {
 
       // Get the leading dimension for left and right matrices.
       const integer lda =
-          (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+          (gemm_helper.left_op() == blas::NoTranspose ? k : m);
       const integer ldb =
-          (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+          (gemm_helper.right_op() == blas::NoTranspose ? n : k);
 
       // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
@@ -1809,10 +1811,12 @@ class Tensor {
           std::copy(pimpl_->data_, pimpl_->data_ + tile_volume,
                     data_copy.get());
         }
-        math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                   factor, left.data(), lda, right.data(), ldb,
-                   twostep ? numeric_type(0) : numeric_type(1), pimpl_->data_,
-                   n);
+        non_distributed::gemm(
+          gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+          factor, left.data(), lda, right.data(), ldb,
+          twostep ? numeric_type(0) : numeric_type(1), pimpl_->data_,
+          n
+        );
 
         if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
             TiledArray::TileOpsLogger<T>::get_instance().gemm) {
@@ -1862,9 +1866,11 @@ class Tensor {
         }
       }
 #else  // TA_ENABLE_TILE_OPS_LOGGING
-      math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
-                 left.data(), lda, right.data(), ldb, numeric_type(1),
-                 pimpl_->data_, n);
+      blas::gemm(
+        gemm_helper.left_op(), gemm_helper.right_op(), m, n, k, factor,
+        left.data(), lda, right.data(), ldb, numeric_type(1),
+        pimpl_->data_, n
+      );
 #endif  // TA_ENABLE_TILE_OPS_LOGGING
     }
 
@@ -1928,18 +1934,18 @@ class Tensor {
 
     // Get the leading dimension for left and right matrices.
     const integer lda =
-        (gemm_helper.left_op() == madness::cblas::NoTrans ? K : M);
+        (gemm_helper.left_op() == blas::NoTranspose ? K : M);
     const integer ldb =
-        (gemm_helper.right_op() == madness::cblas::NoTrans ? N : K);
+        (gemm_helper.right_op() == blas::NoTranspose ? N : K);
 
     for (integer m = 0; m != M; ++m) {
       for (integer n = 0; n != N; ++n) {
         auto c_offset = m * N + n;
         for (integer k = 0; k != K; ++k) {
-          auto a_offset = gemm_helper.left_op() == madness::cblas::NoTrans
+          auto a_offset = gemm_helper.left_op() == blas::NoTranspose
                               ? m * lda + k
                               : k * lda + m;
-          auto b_offset = gemm_helper.right_op() == madness::cblas::NoTrans
+          auto b_offset = gemm_helper.right_op() == blas::NoTranspose
                               ? k * ldb + n
                               : n * ldb + k;
           elem_muladd_op(*(pimpl_->data_ + c_offset), *(left.data() + a_offset),

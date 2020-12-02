@@ -65,11 +65,6 @@ TiledArray/algebra/heig.h
 TiledArray/algebra/lu.h
 TiledArray/algebra/svd.h
 TiledArray/algebra/types.h
-TiledArray/algebra/lapack/cholesky.h
-TiledArray/algebra/lapack/heig.h
-TiledArray/algebra/lapack/util.h
-TiledArray/algebra/lapack/lu.h
-TiledArray/algebra/lapack/svd.h
 TiledArray/algebra/scalapack/cholesky.h
 TiledArray/algebra/scalapack/heig.h
 TiledArray/algebra/scalapack/lu.h
@@ -120,7 +115,6 @@ TiledArray/expressions/unary_expr.h
 TiledArray/expressions/index_list.h
 TiledArray/external/btas.h
 TiledArray/math/blas.h
-TiledArray/math/eigen.h
 TiledArray/math/gemm_helper.h
 TiledArray/math/outer.h
 TiledArray/math/parallel_gemm.h
@@ -180,6 +174,10 @@ TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
+
+TiledArray/algebra/rank-local.h
+TiledArray/algebra/rank-local.cpp
+
 )
 
 if(CUDA_FOUND)
@@ -187,19 +185,19 @@ if(CUDA_FOUND)
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
      TiledArray/external/cutt.h
-     TiledArray/math/cublas.h
-          TiledArray/cuda/btas_cublas.h
-          TiledArray/cuda/btas_um_tensor.h
-          TiledArray/cuda/cpu_cuda_vector.h
-          TiledArray/cuda/cuda_task_fn.h
-          TiledArray/cuda/kernel/mult_kernel.h
-          TiledArray/cuda/kernel/mult_kernel_impl.h
-          TiledArray/cuda/kernel/reduce_kernel.h
-          TiledArray/cuda/kernel/reduce_kernel_impl.h
-          TiledArray/cuda/platform.h
-          TiledArray/cuda/thrust.h
-          TiledArray/cuda/um_allocator.h
-          TiledArray/cuda/um_storage.h)
+     TiledArray/cuda/cublas.h
+     TiledArray/cuda/btas_cublas.h
+     TiledArray/cuda/btas_um_tensor.h
+     TiledArray/cuda/cpu_cuda_vector.h
+     TiledArray/cuda/cuda_task_fn.h
+     TiledArray/cuda/kernel/mult_kernel.h
+     TiledArray/cuda/kernel/mult_kernel_impl.h
+     TiledArray/cuda/kernel/reduce_kernel.h
+     TiledArray/cuda/kernel/reduce_kernel_impl.h
+     TiledArray/cuda/platform.h
+     TiledArray/cuda/thrust.h
+     TiledArray/cuda/um_allocator.h
+     TiledArray/cuda/um_storage.h)
 
 endif(CUDA_FOUND)
 
@@ -211,7 +209,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
-TiledArray/algebra/lapack/lapack.cpp
+TiledArray/algebra/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later

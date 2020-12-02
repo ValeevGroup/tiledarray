@@ -43,12 +43,12 @@ namespace expressions {
 // clang-format on
 enum class PermutationType { identity = 1, matrix_transpose = 2, general = 3 };
 
-inline madness::cblas::CBLAS_TRANSPOSE to_cblas_op(PermutationType permtype) {
+inline blas::TransposeFlag to_cblas_op(PermutationType permtype) {
   TA_ASSERT(permtype == PermutationType::matrix_transpose ||
             permtype == PermutationType::identity);
   return permtype == PermutationType::matrix_transpose
-             ? madness::cblas::Trans
-             : madness::cblas::NoTrans;
+             ? blas::Transpose
+             : blas::NoTranspose;
 }
 
 /// Abstract optimizer of permutations for a binary operation

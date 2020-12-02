@@ -26,7 +26,6 @@
 #ifndef TILEDARRAY_TENSOR_KENERLS_H__INCLUDED
 #define TILEDARRAY_TENSOR_KENERLS_H__INCLUDED
 
-#include <TiledArray/math/eigen.h>
 #include <TiledArray/tensor/permute.h>
 #include <TiledArray/tensor/utility.h>
 

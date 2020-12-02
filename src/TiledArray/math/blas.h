@@ -23,21 +23,31 @@
  *
  */
 
-#ifndef TILEDARRAY_BLAS_H__INCLUDED
-#define TILEDARRAY_BLAS_H__INCLUDED
+#ifndef TILEDARRAY_MATH_BLAS_H__INCLUDED
+#define TILEDARRAY_MATH_BLAS_H__INCLUDED
 
-#include <TiledArray/math/eigen.h>
+#include <TiledArray/external/eigen.h>
 #include <TiledArray/type_traits.h>
 #include <madness/tensor/cblas.h>
 
-namespace TiledArray {
-namespace math {
+namespace TiledArray::math::blas {
+
+using TransposeFlag = madness::cblas::CBLAS_TRANSPOSE;
+static constexpr auto NoTranspose = madness::cblas::NoTrans;
+static constexpr auto Transpose = madness::cblas::Trans;
+static constexpr auto ConjTranspose = madness::cblas::ConjTrans;
+
+template<typename T, int Options = ::Eigen::ColMajor>
+using Matrix = ::Eigen::Matrix<T, ::Eigen::Dynamic, ::Eigen::Dynamic, Options>;
+
+template <typename T>
+using Vector = ::Eigen::Matrix<T, ::Eigen::Dynamic, 1, ::Eigen::ColMajor>;
 
 // BLAS _GEMM wrapper functions
 
 template <typename S1, typename T1, typename T2, typename S2, typename T3>
-inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
-                 madness::cblas::CBLAS_TRANSPOSE op_b, const integer m,
+inline void gemm(TransposeFlag op_a,
+                 TransposeFlag op_b, const integer m,
                  const integer n, const integer k, const S1 alpha, const T1* a,
                  const integer lda, const T2* b, const integer ldb,
                  const S2 beta, T3* c, const integer ldc) {
@@ -129,8 +139,8 @@ inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
   }
 }
 
-inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
-                 madness::cblas::CBLAS_TRANSPOSE op_b, const integer m,
+inline void gemm(TransposeFlag op_a,
+                 TransposeFlag op_b, const integer m,
                  const integer n, const integer k, const float alpha,
                  const float* a, const integer lda, const float* b,
                  const integer ldb, const float beta, float* c,
@@ -139,8 +149,8 @@ inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
                        ldc);
 }
 
-inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
-                 madness::cblas::CBLAS_TRANSPOSE op_b, const integer m,
+inline void gemm(TransposeFlag op_a,
+                 TransposeFlag op_b, const integer m,
                  const integer n, const integer k, const double alpha,
                  const double* a, const integer lda, const double* b,
                  const integer ldb, const double beta, double* c,
@@ -149,8 +159,8 @@ inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
                        ldc);
 }
 
-inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
-                 madness::cblas::CBLAS_TRANSPOSE op_b, const integer m,
+inline void gemm(TransposeFlag op_a,
+                 TransposeFlag op_b, const integer m,
                  const integer n, const integer k,
                  const std::complex<float> alpha, const std::complex<float>* a,
                  const integer lda, const std::complex<float>* b,
@@ -160,8 +170,8 @@ inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
                        ldc);
 }
 
-inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
-                 madness::cblas::CBLAS_TRANSPOSE op_b, const integer m,
+inline void gemm(TransposeFlag op_a,
+                 TransposeFlag op_b, const integer m,
                  const integer n, const integer k,
                  const std::complex<double> alpha,
                  const std::complex<double>* a, const integer lda,
@@ -177,7 +187,7 @@ inline void gemm(madness::cblas::CBLAS_TRANSPOSE op_a,
 template <typename T, typename U>
 inline typename std::enable_if<detail::is_numeric_v<T>>::type scale(
     const integer n, const T alpha, U* x) {
-  eigen_map(x, n) *= alpha;
+  Vector<T>::Map(x, n) *= alpha;
 }
 
 inline void scale(const integer n, const float alpha, float* x) {
@@ -211,7 +221,7 @@ inline void scale(const integer n, const double alpha,
 
 template <typename T, typename U>
 T dot(const integer n, const T* x, const U* y) {
-  return eigen_map(x, n).dot(eigen_map(y, n));
+  return Vector<T>::Map(x, n).dot(Vector<T>::Map(y, n));
 }
 
 inline float dot(integer n, const float* x, const float* y) {
@@ -235,7 +245,10 @@ inline std::complex<double> dot(integer n, const std::complex<double>* x,
 // Import the madness dot functions into the TiledArray namespace
 using madness::cblas::dot;
 
-}  // namespace math
-}  // namespace TiledArray
+}  // namespace TiledArray::local
 
-#endif  // TILEDARRAY_BLAS_H__INCLUDED
+namespace TiledArray {
+  namespace blas = TiledArray::math::blas;
+}
+
+#endif  // TILEDARRAY_MATH_BLAS_H__INCLUDED

@@ -28,7 +28,7 @@
 #ifdef TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/algebra/scalapack/svd.h>
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/lapack/svd.h>
+#include <TiledArray/algebra/non-distributed/svd.h>
 
 namespace TiledArray {
 
@@ -40,7 +40,7 @@ auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trang
     return scalapack::svd<SVDType>(A, u_trange, vt_trange);
   }
 #endif
-  return lapack::svd<SVDType>(A, u_trange, vt_trange);
+  return non_distributed::svd<SVDType>(A, u_trange, vt_trange);
 }
 
 }  // namespace TiledArray

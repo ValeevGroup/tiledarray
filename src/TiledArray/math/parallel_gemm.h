@@ -129,7 +129,7 @@ class MatrixBlockTask : public tbb::task {
 template <integer Size, typename C, typename A = C, typename B = C,
           typename Alpha = C, typename Beta = C>
 class GemmTask : public tbb::task {
-  const madness::cblas::CBLAS_TRANSPOSE op_a_, op_b_;
+  const blas::TransposeFlag op_a_, op_b_;
   const integer m_, n_, k_;
   const Alpha alpha_;
   std::shared_ptr<A> a_;
@@ -140,8 +140,8 @@ class GemmTask : public tbb::task {
   const integer ldc_;
 
  public:
-  GemmTask(madness::cblas::CBLAS_TRANSPOSE op_a,
-           madness::cblas::CBLAS_TRANSPOSE op_b, const integer m,
+  GemmTask(blas::TransposeFlag op_a,
+           blas::TransposeFlag op_b, const integer m,
            const integer n, const integer k, const Alpha alpha,
            const std::shared_ptr<A>& a, const std::shared_ptr<B>& b,
            const Beta beta, const std::shared_ptr<C>& c, const integer ldc)

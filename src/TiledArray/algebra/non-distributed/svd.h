@@ -22,14 +22,16 @@
  *  Created:    12 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_LAPACK_SVD_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_LAPACK_SVD_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_SVD_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_SVD_H__INCLUDED
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/algebra/lapack/lapack.h>
+#include <TiledArray/algebra/non-distributed/util.h>
+#include <TiledArray/algebra/rank-local.h>
+#include <TiledArray/conversions/eigen.h>
 
-namespace TiledArray::lapack {
+namespace TiledArray::non_distributed {
 
 /**
  *  @brief Compute the singular value decomposition (SVD) via ScaLAPACK
@@ -58,6 +60,7 @@ template <typename SVDType, typename Array,
 auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trange = TiledRange()) {
 
   using T = typename Array::numeric_type;
+  using Matrix = algebra::rank_local::Matrix<T>;
 
   World& world = A.world();
   auto A_eig = detail::to_eigen(A);
@@ -67,13 +70,13 @@ auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trang
   constexpr bool need_vt = std::is_same_v<SVDType, SVDRightVectors> or svd_all_vectors;
 
   std::vector<T> S;
-  std::unique_ptr< Matrix<T> > U, VT;
+  std::unique_ptr<Matrix> U, VT;
 
-  if constexpr (need_u) U = std::make_unique< Matrix<T> >();
-  if constexpr (need_vt) VT = std::make_unique< Matrix<T> >();
+  if constexpr (need_u) U = std::make_unique<Matrix>();
+  if constexpr (need_vt) VT = std::make_unique<Matrix>();
 
   if (world.rank() == 0) {
-    lapack::svd(A_eig, S, U.get(), VT.get());
+    algebra::rank_local::svd(A_eig, S, U.get(), VT.get());
   }
 
   world.gop.broadcast_serializable(S, 0);
@@ -98,6 +101,6 @@ auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trang
 
 }
 
-}  // namespace scalapack::TiledArray
+}  // namespace TiledArray::non_distributed
 
-#endif  // TILEDARRAY_ALGEBRA_LAPACK_SVD_H__INCLUDED
+#endif  // TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_SVD_H__INCLUDED

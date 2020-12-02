@@ -22,27 +22,29 @@
  *  Created:    19 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_LAPACK_LU_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_LAPACK_LU_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_LU_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_LU_H__INCLUDED
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/algebra/lapack/lapack.h>
+#include <TiledArray/algebra/non-distributed/util.h>
+#include <TiledArray/algebra/rank-local.h>
+#include <TiledArray/conversions/eigen.h>
 
-namespace TiledArray::lapack {
+namespace TiledArray::non_distributed {
 
 /**
  *  @brief Solve a linear system via LU factorization
  */
 template <typename ArrayA, typename ArrayB>
 auto lu_solve(const ArrayA& A, const ArrayB& B, TiledRange x_trange = TiledRange()) {
-  (void)lapack::array_traits<ArrayA>{};
-  (void)lapack::array_traits<ArrayB>{};
+  (void)detail::array_traits<ArrayA>{};
+  (void)detail::array_traits<ArrayB>{};
   auto& world = A.world();
   auto A_eig = detail::to_eigen(A);
   auto B_eig = detail::to_eigen(B);
   if (world.rank() == 0) {
-    lapack::lu_solve(A_eig, B_eig);
+    algebra::rank_local::lu_solve(A_eig, B_eig);
   }
   world.gop.broadcast_serializable(B_eig, 0);
   if (x_trange.rank() == 0) x_trange = B.trange();
@@ -54,11 +56,11 @@ auto lu_solve(const ArrayA& A, const ArrayB& B, TiledRange x_trange = TiledRange
  */
 template <typename Array>
 auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange()) {
-  (void)lapack::array_traits<Array>{};
+  (void)detail::array_traits<Array>{};
   auto& world = A.world();
   auto A_eig = detail::to_eigen(A);
   if (world.rank() == 0) {
-    lapack::lu_inv(A_eig);
+    algebra::rank_local::lu_inv(A_eig);
   }
   world.gop.broadcast_serializable(A_eig, 0);
   if (ainv_trange.rank() == 0) ainv_trange = A.trange();
@@ -67,4 +69,4 @@ auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange()) {
 
 }  // namespace TiledArray::lapack
 
-#endif  // TILEDARRAY_ALGEBRA_LAPACK_LU_H__INCLUDED
+#endif  // TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_LU_H__INCLUDED

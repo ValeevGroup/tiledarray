@@ -21,15 +21,23 @@
  *  Created:    19 October, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_LAPACK_UTIL_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_LAPACK_UTIL_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_UTIL_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_UTIL_H__INCLUDED
 
 #include <TiledArray/config.h>
 #include <TiledArray/conversions/eigen.h>
 
-namespace TiledArray {
-namespace lapack {
-namespace detail {
+namespace TiledArray::non_distributed::detail {
+
+template<class A>
+struct array_traits {
+  using scalar_type = typename A::scalar_type;
+  using numeric_type = typename A::numeric_type;
+  static const bool complex = !std::is_same_v<scalar_type, numeric_type>;
+  static_assert(std::is_same_v<numeric_type, typename A::element_type>,
+                "TA::linalg is only usable with a DistArray of scalar types");
+};
+
 
 template <typename Tile, typename Policy>
 auto to_eigen(const DistArray<Tile, Policy>& A) {
@@ -101,9 +109,6 @@ void zero_out_upper_triangle(Eigen::MatrixBase<Derived>& A) {
   A.template triangularView<Eigen::StrictlyUpper>().setZero();
 }
 
-}  // namespace detail
-
-}  // namespace lapack
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_ALGEBRA_LAPACK_UTIL_H__INCLUDED
+#endif  // TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_UTIL_H__INCLUDED

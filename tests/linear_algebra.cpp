@@ -4,10 +4,10 @@
 //#include "range_fixture.h"
 #include "unit_test_config.h"
 
-#include "TiledArray/algebra/lapack/cholesky.h"
-#include "TiledArray/algebra/lapack/heig.h"
-#include "TiledArray/algebra/lapack/lu.h"
-#include "TiledArray/algebra/lapack/svd.h"
+#include "TiledArray/algebra/non-distributed/cholesky.h"
+#include "TiledArray/algebra/non-distributed/heig.h"
+#include "TiledArray/algebra/non-distributed/lu.h"
+#include "TiledArray/algebra/non-distributed/svd.h"
 
 #include "TiledArray/algebra/cholesky.h"
 #include "TiledArray/algebra/heig.h"
@@ -15,7 +15,7 @@
 #include "TiledArray/algebra/svd.h"
 
 namespace TA = TiledArray;
-namespace lapack = TA::lapack;
+namespace non_dist = TA::non_distributed;
 
 #if TILEDARRAY_HAS_SCALAPACK
 
@@ -23,9 +23,9 @@ namespace lapack = TA::lapack;
 namespace scalapack = TA::scalapack;
 #define TILEDARRAY_SCALAPACK_TEST(F, E)                         \
   GlobalFixture::world->gop.fence();                            \
-  compare("TiledArray::scalapack", lapack::F, scalapack::F, E); \
+  compare("TiledArray::scalapack", non_dist::F, scalapack::F, E); \
   GlobalFixture::world->gop.fence();                            \
-  compare("TiledArray", lapack::F, TiledArray::F, E);
+  compare("TiledArray", non_dist::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SCALAPACK_TEST(...)
 #endif
@@ -107,11 +107,11 @@ struct LinearAlgebraFixture : ReferenceFixture {
     }
   }
   template <class A>
-  static void compare(const char* context, const A& lapack, const A& result,
+  static void compare(const char* context, const A& non_dist, const A& result,
                       double e) {
     BOOST_TEST_CONTEXT(context);
-    auto diff_with_lapack = (lapack("i,j") - result("i,j")).norm().get();
-    BOOST_CHECK_SMALL(diff_with_lapack, e);
+    auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
+    BOOST_CHECK_SMALL(diff_with_non_dist, e);
   }
 #endif
 };
@@ -411,15 +411,15 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [evals, evecs] = lapack::heig(ref_ta);
-  auto [evals_lapack, evecs_lapack] = lapack::heig(ref_ta);
+  auto [evals, evecs] = non_dist::heig(ref_ta);
+  auto [evals_non_dist, evecs_non_dist] = non_dist::heig(ref_ta);
   // auto evals = heig( ref_ta );
 
   BOOST_CHECK(evecs.trange() == ref_ta.trange());
 
-  // check eigenvectors against lapack only, for now ...
+  // check eigenvectors against non_dist only, for now ...
   decltype(evecs) evecs_error;
-  evecs_error("i,j") = evecs_lapack("i,j") - evecs("i,j");
+  evecs_error("i,j") = evecs_non_dist("i,j") - evecs("i,j");
   // TODO need to fix phases of the eigenvectors to be able to compare ...
   // BOOST_CHECK_SMALL(evecs_error("i,j").norm().get(),
   //                  N * N * std::numeric_limits<double>::epsilon());
@@ -428,7 +428,7 @@ BOOST_AUTO_TEST_CASE(heig_same_tiling) {
   double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i) {
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
-    BOOST_CHECK_SMALL(std::abs(evals_lapack[i] - exact_evals[i]), tol);
+    BOOST_CHECK_SMALL(std::abs(evals_non_dist[i] - exact_evals[i]), tol);
   }
 
   GlobalFixture::world->gop.fence();
@@ -445,14 +445,14 @@ BOOST_AUTO_TEST_CASE(heig_diff_tiling) {
       });
 
   auto new_trange = gen_trange(N, {64ul});
-  auto [evals, evecs] = lapack::heig(ref_ta, new_trange);
-  auto [evals_lapack, evecs_lapack] = lapack::heig(ref_ta, new_trange);
+  auto [evals, evecs] = non_dist::heig(ref_ta, new_trange);
+  auto [evals_non_dist, evecs_non_dist] = non_dist::heig(ref_ta, new_trange);
 
   BOOST_CHECK(evecs.trange() == new_trange);
 
-  // check eigenvectors against lapack only, for now ...
+  // check eigenvectors against non_dist only, for now ...
   decltype(evecs) evecs_error;
-  evecs_error("i,j") = evecs_lapack("i,j") - evecs("i,j");
+  evecs_error("i,j") = evecs_non_dist("i,j") - evecs("i,j");
   // TODO need to fix phases of the eigenvectors to be able to compare ...
   // BOOST_CHECK_SMALL(evecs_error("i,j").norm().get(),
   //                  N * N * std::numeric_limits<double>::epsilon());
@@ -461,7 +461,7 @@ BOOST_AUTO_TEST_CASE(heig_diff_tiling) {
   double tol = N * N * std::numeric_limits<double>::epsilon();
   for (int64_t i = 0; i < N; ++i) {
     BOOST_CHECK_SMALL(std::abs(evals[i] - exact_evals[i]), tol);
-    BOOST_CHECK_SMALL(std::abs(evals_lapack[i] - exact_evals[i]), tol);
+    BOOST_CHECK_SMALL(std::abs(evals_non_dist[i] - exact_evals[i]), tol);
   }
 
   GlobalFixture::world->gop.fence();
@@ -492,7 +492,7 @@ BOOST_AUTO_TEST_CASE(heig_generalized) {
       });
 
   GlobalFixture::world->gop.fence();
-  auto [evals, evecs] = lapack::heig(ref_ta, dense_iden);
+  auto [evals, evecs] = non_dist::heig(ref_ta, dense_iden);
   // auto evals = heig( ref_ta );
 
   BOOST_CHECK(evecs.trange() == ref_ta.trange());
@@ -518,7 +518,7 @@ BOOST_AUTO_TEST_CASE(cholesky) {
         return this->make_ta_reference(t, range);
       });
 
-  auto L = lapack::cholesky(A);
+  auto L = non_dist::cholesky(A);
 
   BOOST_CHECK(L.trange() == A.trange());
 
@@ -528,8 +528,8 @@ BOOST_AUTO_TEST_CASE(cholesky) {
   BOOST_CHECK_SMALL(A_minus_LLt("i,j").norm().get(),
                     N * N * std::numeric_limits<double>::epsilon());
 
-  // check against LAPACK also
-  auto L_ref = TiledArray::lapack::cholesky(A);
+  // check against NON_DIST also
+  auto L_ref = non_dist::cholesky(A);
   decltype(L) L_diff;
   L_diff("i,j") = L("i,j") - L_ref("i,j");
 
@@ -551,7 +551,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
       });
   decltype(A) Acopy = A.clone();
 
-  auto Linv = lapack::cholesky_linv(A);
+  auto Linv = non_dist::cholesky_linv(A);
 
   BOOST_CHECK(Linv.trange() == A.trange());
 
@@ -591,7 +591,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [L, Linv] = lapack::cholesky_linv<decltype(A), true>(A);
+  auto [L, Linv] = non_dist::cholesky_linv<decltype(A), true>(A);
 
   BOOST_CHECK(Linv.trange() == A.trange());
   BOOST_CHECK(L.trange() == A.trange());
@@ -631,12 +631,12 @@ BOOST_AUTO_TEST_CASE(cholesky_solve) {
         return this->make_ta_reference(t, range);
       });
 
-  auto iden = lapack::cholesky_solve(A, A);
+  auto iden = non_dist::cholesky_solve(A, A);
   BOOST_CHECK(iden.trange() == A.trange());
 
-  auto iden_lapack = lapack::cholesky_solve(A, A);
+  auto iden_non_dist = non_dist::cholesky_solve(A, A);
   decltype(iden) iden_error;
-  iden_error("i,j") = iden("i,j") - iden_lapack("i,j");
+  iden_error("i,j") = iden("i,j") - iden_non_dist("i,j");
   BOOST_CHECK_SMALL(iden_error("i,j").norm().get(),
                     N * N * std::numeric_limits<double>::epsilon());
 
@@ -669,19 +669,19 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
       });
 
   // Should produce X = L**H
-  auto [L, X] = lapack::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
+  auto [L, X] = non_dist::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
   BOOST_CHECK(X.trange() == A.trange());
   BOOST_CHECK(L.trange() == A.trange());
 
-  // first, test against LAPACK
-  auto [L_lapack, X_lapack] =
-      lapack::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
+  // first, test against NON_DIST
+  auto [L_non_dist, X_non_dist] =
+      non_dist::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
   decltype(L) L_error;
-  L_error("i,j") = L("i,j") - L_lapack("i,j");
+  L_error("i,j") = L("i,j") - L_non_dist("i,j");
   BOOST_CHECK_SMALL(L_error("i,j").norm().get(),
                     N * N * std::numeric_limits<double>::epsilon());
   decltype(X) X_error;
-  X_error("i,j") = X("i,j") - X_lapack("i,j");
+  X_error("i,j") = X("i,j") - X_non_dist("i,j");
   BOOST_CHECK_SMALL(X_error("i,j").norm().get(),
                     N * N * std::numeric_limits<double>::epsilon());
 
@@ -704,7 +704,7 @@ BOOST_AUTO_TEST_CASE(lu_solve) {
         return this->make_ta_reference(t, range);
       });
 
-  auto iden = lapack::lu_solve(ref_ta, ref_ta);
+  auto iden = non_dist::lu_solve(ref_ta, ref_ta);
 
   BOOST_CHECK(iden.trange() == ref_ta.trange());
 
@@ -741,7 +741,7 @@ BOOST_AUTO_TEST_CASE(lu_inv) {
 
   TA::TArray<double> iden(*GlobalFixture::world, trange);
 
-  auto Ainv = lapack::lu_inv(ref_ta);
+  auto Ainv = non_dist::lu_inv(ref_ta);
   iden("i,j") = Ainv("i,k") * ref_ta("k,j");
 
   BOOST_CHECK(iden.trange() == ref_ta.trange());
@@ -778,7 +778,7 @@ BOOST_AUTO_TEST_CASE(svd_values_only) {
         return this->make_ta_reference(t, range);
       });
 
-  auto S = lapack::svd<TA::SVDValuesOnly>(ref_ta, trange, trange);
+  auto S = non_dist::svd<TA::SVDValuesOnly>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -802,7 +802,7 @@ BOOST_AUTO_TEST_CASE(svd_leftvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, U] = lapack::svd<TA::SVDLeftVectors>(ref_ta, trange, trange);
+  auto [S, U] = non_dist::svd<TA::SVDLeftVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -826,7 +826,7 @@ BOOST_AUTO_TEST_CASE(svd_rightvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, VT] = lapack::svd<TA::SVDRightVectors>(ref_ta, trange, trange);
+  auto [S, VT] = non_dist::svd<TA::SVDRightVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),
@@ -850,7 +850,7 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
         return this->make_ta_reference(t, range);
       });
 
-  auto [S, U, VT] = lapack::svd<TA::SVDAllVectors>(ref_ta, trange, trange);
+  auto [S, U, VT] = non_dist::svd<TA::SVDAllVectors>(ref_ta, trange, trange);
 
   std::vector exact_singular_values = exact_evals;
   std::sort(exact_singular_values.begin(), exact_singular_values.end(),

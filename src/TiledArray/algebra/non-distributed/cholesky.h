@@ -21,16 +21,16 @@
  *  Created:    16 October, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
+#ifndef TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_CHOL_H__INCLUDED
+#define TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_CHOL_H__INCLUDED
 
-#include <TiledArray/algebra/lapack/lapack.h>
-#include <TiledArray/algebra/lapack/util.h>
 #include <TiledArray/config.h>
-#include <TiledArray/conversions/eigen.h>
 
-namespace TiledArray {
-namespace lapack {
+#include <TiledArray/algebra/non-distributed/util.h>
+#include <TiledArray/conversions/eigen.h>
+#include <TiledArray/algebra/rank-local.h>
+
+namespace TiledArray::non_distributed {
 
 namespace detail {
 
@@ -45,7 +45,7 @@ auto make_L_eig(const DistArray<Tile, Policy>& A) {
   World& world = A.world();
   auto A_eig = detail::to_eigen(A);
   if (world.rank() == 0) {
-    lapack::cholesky(A_eig);
+    algebra::rank_local::cholesky(A_eig);
   }
   world.gop.broadcast_serializable(A_eig, 0);
   return A_eig;
@@ -102,7 +102,7 @@ template <typename ContiguousTensor,
               TiledArray::detail::is_contiguous_tensor_v<ContiguousTensor>>>
 auto cholesky(const ContiguousTensor& A) {
   auto A_eig = detail::to_eigen(A);
-  lapack::cholesky(A_eig);
+  algebra::rank_local::cholesky(A_eig);
   detail::zero_out_upper_triangle(A_eig);
   return detail::from_eigen<ContiguousTensor>(A_eig, A.range());
 }
@@ -141,7 +141,7 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
   if (world.rank() == 0) {
     if (RetL) L_inv_eig = L_eig;
     auto& L_inv_eig_ref = RetL ? L_inv_eig : L_eig;
-    cholesky_linv(L_inv_eig_ref);
+    algebra::rank_local::cholesky_linv(L_inv_eig_ref);
     detail::zero_out_upper_triangle(L_inv_eig_ref);
   }
   world.gop.broadcast_serializable(RetL ? L_inv_eig : L_eig, 0);
@@ -167,7 +167,7 @@ auto cholesky_solve(const Array& A, const Array& B,
   auto X_eig = detail::to_eigen(B);
   World& world = A.world();
   if (world.rank() == 0) {
-    cholesky_solve(A_eig, X_eig);
+    algebra::rank_local::cholesky_solve(A_eig, X_eig);
   }
   world.gop.broadcast_serializable(X_eig, 0);
   if (x_trange.rank() == 0) x_trange = B.trange();
@@ -190,7 +190,7 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
 
   auto X_eig = detail::to_eigen(B);
   if (world.rank() == 0) {
-    cholesky_lsolve(transpose, L_eig, X_eig);
+    algebra::rank_local::cholesky_lsolve(transpose, L_eig, X_eig);
   }
   world.gop.broadcast_serializable(X_eig, 0);
   if (l_trange.rank() == 0) l_trange = A.trange();
@@ -199,7 +199,6 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                          eigen_to_array<Array>(world, x_trange, X_eig));
 }
 
-}  // namespace lapack
 }  // namespace TiledArray
 
-#endif  // TILEDARRAY_ALGEBRA_LAPACK_CHOL_H__INCLUDED
+#endif  // TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_CHOL_H__INCLUDED
