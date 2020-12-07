@@ -15,29 +15,37 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Eduard Valeyev
+ *  David Williams-Young
+ *  Computational Research Division, Lawrence Berkeley National Laboratory
  *
- *  lu.h
- *  Created:    16 October, 2020
+ *  svd.h
+ *  Created:    12 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_LU_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_LU_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_FORWARD_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_FORWARD_H__INCLUDED
 
 #include <TiledArray/config.h>
-#if TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack/lu.h>
-#endif
-#include <TiledArray/algebra/non-distributed/lu.h>
+#include <type_traits>
+
+namespace TiledArray::math::linalg {
+
+enum TransposeFlag { NoTranspose, Transpose, ConjTranspose };
+
+struct SVD {
+  enum Vectors {
+    ValuesOnly,
+    LeftVectors,
+    RightVectors,
+    AllVectors
+  };
+};
+
+}  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
+  using TiledArray::math::linalg::TransposeFlag;
+  using TiledArray::math::linalg::SVD;
+}
 
-#if TILEDARRAY_HAS_SCALAPACK
-using scalapack::lu_inv;
-using scalapack::lu_solve;
-#else
-#endif
-
-}  // namespace TiledArray
-
-#endif  // TILEDARRAY_ALGEBRA_LU_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_FORWARD_H__INCLUDED

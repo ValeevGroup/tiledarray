@@ -22,16 +22,16 @@
  *  Created:    12 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_SVD_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_SVD_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_SVD_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_SVD_H__INCLUDED
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/algebra/non-distributed/util.h>
-#include <TiledArray/algebra/rank-local.h>
+#include <TiledArray/math/linalg/util.h>
+#include <TiledArray/math/linalg/rank-local.h>
 #include <TiledArray/conversions/eigen.h>
 
-namespace TiledArray::non_distributed {
+namespace TiledArray::math::linalg::non_distributed {
 
 /**
  *  @brief Compute the singular value decomposition (SVD) via ScaLAPACK
@@ -55,19 +55,18 @@ namespace TiledArray::non_distributed {
  *  @returns A tuple containing the eigenvalues and eigenvectors of input array
  *  as std::vector and in TA format, respectively.
  */
-template <typename SVDType, typename Array,
-          typename = TiledArray::detail::enable_if_svd_return_type<SVDType>>
+template<SVD::Vectors Vectors, typename Array>
 auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trange = TiledRange()) {
 
   using T = typename Array::numeric_type;
-  using Matrix = algebra::rank_local::Matrix<T>;
+  using Matrix = linalg::rank_local::Matrix<T>;
 
   World& world = A.world();
-  auto A_eig = detail::to_eigen(A);
+  auto A_eig = detail::make_matrix(A);
 
-  constexpr bool svd_all_vectors = std::is_same_v<SVDType, SVDAllVectors>;
-  constexpr bool need_u = std::is_same_v<SVDType, SVDLeftVectors> or svd_all_vectors;
-  constexpr bool need_vt = std::is_same_v<SVDType, SVDRightVectors> or svd_all_vectors;
+  constexpr bool svd_all_vectors = (Vectors == SVD::AllVectors);
+  constexpr bool need_u = (Vectors == SVD::LeftVectors) or svd_all_vectors;
+  constexpr bool need_vt = (Vectors == SVD::RightVectors) or svd_all_vectors;
 
   std::vector<T> S;
   std::unique_ptr<Matrix> U, VT;
@@ -76,7 +75,7 @@ auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trang
   if constexpr (need_vt) VT = std::make_unique<Matrix>();
 
   if (world.rank() == 0) {
-    algebra::rank_local::svd(A_eig, S, U.get(), VT.get());
+    linalg::rank_local::svd(A_eig, S, U.get(), VT.get());
   }
 
   world.gop.broadcast_serializable(S, 0);
@@ -101,6 +100,6 @@ auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trang
 
 }
 
-}  // namespace TiledArray::non_distributed
+}  // namespace TiledArray::math::linalg::non_distributed
 
-#endif  // TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_SVD_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_SVD_H__INCLUDED

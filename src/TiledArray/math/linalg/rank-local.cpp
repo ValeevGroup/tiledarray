@@ -22,7 +22,7 @@
  *
  */
 
-#include <TiledArray/algebra/rank-local.h>
+#include <TiledArray/math/linalg/rank-local.h>
 
 #include <lapacke.h>
 
@@ -46,7 +46,7 @@
   else std::abort();                                                           \
   }
 
-namespace TiledArray::algebra::rank_local {
+namespace TiledArray::math::linalg::rank_local {
 
 template <typename T>
 void cholesky(Matrix<T>& A) {
@@ -215,4 +215,4 @@ void lu_inv(Matrix<T>& A) {
 TA_LAPACK_EXPLICIT(Matrix<double>, std::vector<double>);
 TA_LAPACK_EXPLICIT(Matrix<float>, std::vector<float>);
 
-}  // namespace TiledArray::local
+}  // namespace TiledArray::math::linalg::rank_local

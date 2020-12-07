@@ -21,16 +21,16 @@
  *  Created:    16 October, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_CHOL_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_CHOL_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_CHOL_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_CHOL_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack/cholesky.h>
+#include <TiledArray/math/linalg/scalapack/cholesky.h>
 #endif
-#include <TiledArray/algebra/non-distributed/cholesky.h>
+#include <TiledArray/math/linalg/non-distributed/cholesky.h>
 
-namespace TiledArray {
+namespace TiledArray::math::linalg {
 
 template <typename Array>
 auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
@@ -41,13 +41,13 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
   return non_distributed::cholesky<Array>(A, l_trange);
 }
 
-template <typename Array, bool RetL = false>
+template <bool Both = false, typename Array>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000)
-    return scalapack::cholesky_linv<Array, RetL>(A, l_trange);
+    return scalapack::cholesky_linv<Both>(A, l_trange);
 #endif
-  return non_distributed::cholesky_linv<Array, RetL>(A, l_trange);
+  return non_distributed::cholesky_linv<Both>(A, l_trange);
 }
 
 template <typename Array>
@@ -72,6 +72,13 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
   return non_distributed::cholesky_lsolve(transpose, A, B, l_trange, x_trange);
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg
 
-#endif  // TILEDARRAY_ALGEBRA_CHOL_H__INCLUDED
+namespace TiledArray {
+  using TiledArray::math::linalg::cholesky;
+  using TiledArray::math::linalg::cholesky_linv;
+  using TiledArray::math::linalg::cholesky_solve;
+  using TiledArray::math::linalg::cholesky_lsolve;
+}
+
+#endif  // TILEDARRAY_MATH_LINALG_CHOL_H__INCLUDED

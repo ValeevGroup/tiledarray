@@ -22,12 +22,15 @@
  *  Created:  25 May, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
 
-#warning \
-    "TiledArray/math/scalapack.h header is deprecated, please include TiledArray/math/linalg/scalapack/all.h"
+#ifndef TILEDARRAY_MATH_LINALG_LINALG_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_LINALG_H__INCLUDED
 
-#include <TiledArray/math/linalg/scalapack/all.h>
+#include <TiledArray/math/linalg/basic.h>
+#include <TiledArray/math/linalg/conjgrad.h>
+#include <TiledArray/math/linalg/cholesky.h>
+#include <TiledArray/math/linalg/heig.h>
+#include <TiledArray/math/linalg/lu.h>
+#include <TiledArray/math/linalg/svd.h>
 
-#endif
+#endif  // TILEDARRAY_MATH_LINALG_LINALG_H__INCLUDED

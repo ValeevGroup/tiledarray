@@ -23,15 +23,17 @@
  *
  */
 
-#ifndef TILEDARRAY_ALGEBRA_DIIS_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_DIIS_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED
 
-#include <TiledArray/algebra/utils.h>
+#include "TiledArray/dist_array.h"
+#include <TiledArray/math/linalg/basic.h>
+#include "TiledArray/external/eigen.h"
+
 #include <Eigen/QR>
 #include <deque>
-#include "../dist_array.h"
 
-namespace TiledArray {
+namespace TiledArray::math::linalg {
 
 /// DIIS (``direct inversion of iterative subspace'') extrapolation
 
@@ -81,11 +83,11 @@ template <typename D>
 class DIIS {
  public:
   typedef typename D::element_type value_type;
-  typedef typename detail::scalar_t<value_type> scalar_type;
+  typedef typename TiledArray::detail::scalar_t<value_type> scalar_type;
   typedef Eigen::Matrix<value_type, Eigen::Dynamic, Eigen::Dynamic,
                         Eigen::RowMajor>
-      EigenMatrixX;
-  typedef Eigen::Matrix<value_type, Eigen::Dynamic, 1> EigenVectorX;
+      Matrix;
+  typedef Eigen::Matrix<value_type, Eigen::Dynamic, 1> Vector;
 
   /// Constructor
 
@@ -140,6 +142,7 @@ class DIIS {
   /// \param extrapolate_error whether to extrapolate the error (default =
   ///   false).
   void extrapolate(D& x, D& error, bool extrapolate_error = false) {
+
     iter++;
 
     // compute extrapolation coefficients C_ and number of skipped vectors
@@ -172,8 +175,9 @@ class DIIS {
   /// \param nskip number of old vectors to skip (default = 0)
   /// \param increase_iter whether to increase the diis iteration index
   /// (default = false)
-  void extrapolate(D& x, const EigenVectorX& c, unsigned int nskip = 0,
+  void extrapolate(D& x, const Vector& c, unsigned int nskip = 0,
                    bool increase_iter = false) {
+
     if (increase_iter) {
       iter++;
     }
@@ -230,6 +234,7 @@ class DIIS {
   /// (default = false)
   void compute_extrapolation_parameters(const D& error,
                                         bool increase_iter = false) {
+
     if (increase_iter) {
       iter++;
     }
@@ -238,7 +243,7 @@ class DIIS {
     if (errors_.size() == ndiis) {  // holding max # of vectors already? drop
                                     // the least recent error
       errors_.pop_front();
-      EigenMatrixX Bcrop = B_.bottomRightCorner(ndiis - 1, ndiis - 1);
+      Matrix Bcrop = B_.bottomRightCorner(ndiis - 1, ndiis - 1);
       Bcrop.conservativeResize(ndiis, ndiis);
       B_ = Bcrop;
     }
@@ -250,8 +255,8 @@ class DIIS {
     // and compute the most recent elements of B, B(i,j) = <ei|ej>
     for (unsigned int i = 0; i < nvec - 1; i++)
       B_(i, nvec - 1) = B_(nvec - 1, i) =
-          dot_product(errors_[i], errors_[nvec - 1]);
-    B_(nvec - 1, nvec - 1) = dot_product(errors_[nvec - 1], errors_[nvec - 1]);
+          dot(errors_[i], errors_[nvec - 1]);
+    B_(nvec - 1, nvec - 1) = dot(errors_[nvec - 1], errors_[nvec - 1]);
     using std::abs;
     using std::sqrt;
     const auto current_error_2norm = sqrt(abs(B_(nvec - 1, nvec - 1)));
@@ -279,13 +284,13 @@ class DIIS {
         const unsigned int rank = nvec - nskip_ + 1;  // size of matrix A
 
         // set up the DIIS linear system: A c = rhs
-        EigenMatrixX A(rank, rank);
+        Matrix A(rank, rank);
         C_.resize(rank);
 
         A.col(0).setConstant(-1.0);
         A.row(0).setConstant(-1.0);
         A(0, 0) = 0.0;
-        EigenVectorX rhs = EigenVectorX::Zero(rank);
+        Vector rhs = Vector::Zero(rank);
         rhs[0] = -1.0;
 
         scalar_type norm = 1.0;
@@ -310,7 +315,7 @@ class DIIS {
 #endif
 
         // finally, solve the DIIS linear system
-        Eigen::ColPivHouseholderQR<EigenMatrixX> A_QR = A.colPivHouseholderQr();
+        Eigen::ColPivHouseholderQR<Matrix> A_QR = A.colPivHouseholderQr();
         C_ = A_QR.solve(rhs);
         absdetA = A_QR.absDeterminant();
 
@@ -350,7 +355,7 @@ class DIIS {
   }
 
   /// calling this function returns extrapolation coefficients
-  const EigenVectorX& get_coeffs() {
+  const Vector& get_coeffs() {
     TA_USER_ASSERT(
         parameters_computed_ && C_.size() > 0,
         "DIIS: empty coefficients, because they have not been computed");
@@ -379,8 +384,8 @@ class DIIS {
                                              //!< decreasing damping factor once
                                              //!< error 2-norm falls below this
 
-  EigenMatrixX B_;            //!< B(i,j) = <ei|ej>
-  EigenVectorX C_;            //! DIIS coefficients
+  Matrix B_;            //!< B(i,j) = <ei|ej>
+  Vector C_;            //! DIIS coefficients
   bool parameters_computed_;  //! whether diis parameters C_ and nskip_ have
                               //! been computed
   unsigned int nskip_;        //! number of skipped vectors in extrapolation
@@ -399,7 +404,7 @@ class DIIS {
   void init() {
     iter = 0;
 
-    B_ = EigenMatrixX::Zero(ndiis, ndiis);
+    B_ = Matrix::Zero(ndiis, ndiis);
     C_.resize(0);
     parameters_computed_ = false;
     nskip_ = 0;
@@ -416,6 +421,10 @@ class DIIS {
 
 };  // class DIIS
 
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg
 
-#endif  // TILEDARRAY_ALGEBRA_DIIS_H__INCLUDED
+namespace TiledArray {
+  using TiledArray::math::linalg::DIIS;
+}
+
+#endif  // TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED

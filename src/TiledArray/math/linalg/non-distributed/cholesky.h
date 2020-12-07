@@ -21,21 +21,19 @@
  *  Created:    16 October, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_CHOL_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_CHOL_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_CHOL_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_CHOL_H__INCLUDED
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/algebra/non-distributed/util.h>
+#include <TiledArray/math/linalg/util.h>
 #include <TiledArray/conversions/eigen.h>
-#include <TiledArray/algebra/rank-local.h>
+#include <TiledArray/math/linalg/rank-local.h>
 
-namespace TiledArray::non_distributed {
-
-namespace detail {
+namespace TiledArray::math::linalg::non_distributed {
 
 template <typename Tile, typename Policy>
-auto make_L_eig(const DistArray<Tile, Policy>& A) {
+auto rank_local_cholesky(const DistArray<Tile, Policy>& A) {
   using Array = DistArray<Tile, Policy>;
   using numeric_type = typename Array::numeric_type;
   static_assert(std::is_same_v<numeric_type, typename Array::element_type>,
@@ -43,15 +41,13 @@ auto make_L_eig(const DistArray<Tile, Policy>& A) {
                 "scalar types");
 
   World& world = A.world();
-  auto A_eig = detail::to_eigen(A);
+  auto A_eig = detail::make_matrix(A);
   if (world.rank() == 0) {
-    algebra::rank_local::cholesky(A_eig);
+    linalg::rank_local::cholesky(A_eig);
   }
   world.gop.broadcast_serializable(A_eig, 0);
   return A_eig;
 }
-
-}  // namespace detail
 
 /**
  *  @brief Compute the Cholesky factorization of a HPD rank-2 tensor
@@ -74,7 +70,7 @@ auto make_L_eig(const DistArray<Tile, Policy>& A) {
 template <typename Array,
           typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
 auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
-  auto L_eig = detail::make_L_eig(A);
+  auto L_eig = rank_local_cholesky(A);
   detail::zero_out_upper_triangle(L_eig);
   if (l_trange.rank() == 0) l_trange = A.trange();
   return eigen_to_array<Array>(A.world(), l_trange, L_eig);
@@ -101,10 +97,10 @@ template <typename ContiguousTensor,
           typename = std::enable_if_t<
               TiledArray::detail::is_contiguous_tensor_v<ContiguousTensor>>>
 auto cholesky(const ContiguousTensor& A) {
-  auto A_eig = detail::to_eigen(A);
-  algebra::rank_local::cholesky(A_eig);
+  auto A_eig = detail::make_matrix(A);
+  linalg::rank_local::cholesky(A_eig);
   detail::zero_out_upper_triangle(A_eig);
-  return detail::from_eigen<ContiguousTensor>(A_eig, A.range());
+  return detail::make_array<ContiguousTensor>(A_eig, A.range());
 }
 
 /**
@@ -128,26 +124,26 @@ auto cholesky(const ContiguousTensor& A) {
  *  @returns The inverse lower triangular Cholesky factor in TA format
  *  @note this is a collective operation with respect to the world of @p A
  */
-template <typename Array, bool RetL = false,
+template <bool Both, typename Array,
           typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
   World& world = A.world();
-  auto L_eig = detail::make_L_eig(A);
-  if constexpr (RetL) detail::zero_out_upper_triangle(L_eig);
+  auto L_eig = rank_local_cholesky(A);
+  if constexpr (Both) detail::zero_out_upper_triangle(L_eig);
 
   // if need to return L use its copy to compute inverse
   decltype(L_eig) L_inv_eig;
 
   if (world.rank() == 0) {
-    if (RetL) L_inv_eig = L_eig;
-    auto& L_inv_eig_ref = RetL ? L_inv_eig : L_eig;
-    algebra::rank_local::cholesky_linv(L_inv_eig_ref);
+    if (Both) L_inv_eig = L_eig;
+    auto& L_inv_eig_ref = Both ? L_inv_eig : L_eig;
+    linalg::rank_local::cholesky_linv(L_inv_eig_ref);
     detail::zero_out_upper_triangle(L_inv_eig_ref);
   }
-  world.gop.broadcast_serializable(RetL ? L_inv_eig : L_eig, 0);
+  world.gop.broadcast_serializable(Both ? L_inv_eig : L_eig, 0);
 
   if (l_trange.rank() == 0) l_trange = A.trange();
-  if constexpr (RetL)
+  if constexpr (Both)
     return std::make_tuple(eigen_to_array<Array>(world, l_trange, L_eig),
                            eigen_to_array<Array>(world, l_trange, L_inv_eig));
   else
@@ -163,11 +159,11 @@ auto cholesky_solve(const Array& A, const Array& B,
                 "TA::lapack::{cholesky*} are only usable with a DistArray of "
                 "scalar types");
 
-  auto A_eig = detail::to_eigen(A);
-  auto X_eig = detail::to_eigen(B);
+  auto A_eig = detail::make_matrix(A);
+  auto X_eig = detail::make_matrix(B);
   World& world = A.world();
   if (world.rank() == 0) {
-    algebra::rank_local::cholesky_solve(A_eig, X_eig);
+    linalg::rank_local::cholesky_solve(A_eig, X_eig);
   }
   world.gop.broadcast_serializable(X_eig, 0);
   if (x_trange.rank() == 0) x_trange = B.trange();
@@ -180,7 +176,7 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                      TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange()) {
   World& world = A.world();
-  auto L_eig = detail::make_L_eig(A);
+  auto L_eig = rank_local_cholesky(A);
   detail::zero_out_upper_triangle(L_eig);
 
   using numeric_type = typename Array::numeric_type;
@@ -188,9 +184,9 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                 "TA::lapack::{cholesky*} are only usable with a DistArray of "
                 "scalar types");
 
-  auto X_eig = detail::to_eigen(B);
+  auto X_eig = detail::make_matrix(B);
   if (world.rank() == 0) {
-    algebra::rank_local::cholesky_lsolve(transpose, L_eig, X_eig);
+    linalg::rank_local::cholesky_lsolve(transpose, L_eig, X_eig);
   }
   world.gop.broadcast_serializable(X_eig, 0);
   if (l_trange.rank() == 0) l_trange = A.trange();
@@ -199,6 +195,6 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                          eigen_to_array<Array>(world, x_trange, X_eig));
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg
 
-#endif  // TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_CHOL_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_CHOL_H__INCLUDED

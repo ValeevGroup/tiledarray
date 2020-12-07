@@ -15,19 +15,29 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  David Williams-Young
- *  Computational Research Division, Lawrence Berkeley National Laboratory
+ *  Eduard Valeyev
  *
- *  scalapack.h
- *  Created:  25 May, 2020
+ *  lu.h
+ *  Created:    16 October, 2020
  *
  */
-#ifndef TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
-#define TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_LU_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_LU_H__INCLUDED
 
-#warning \
-    "TiledArray/math/scalapack.h header is deprecated, please include TiledArray/math/linalg/scalapack/all.h"
-
-#include <TiledArray/math/linalg/scalapack/all.h>
-
+#include <TiledArray/config.h>
+#if TILEDARRAY_HAS_SCALAPACK
+#include <TiledArray/math/linalg/scalapack/lu.h>
 #endif
+#include <TiledArray/math/linalg/non-distributed/lu.h>
+
+namespace TiledArray {
+
+#if TILEDARRAY_HAS_SCALAPACK
+using scalapack::lu_inv;
+using scalapack::lu_solve;
+#else
+#endif
+
+}  // namespace TiledArray
+
+#endif  // TILEDARRAY_MATH_LINALG_LU_H__INCLUDED

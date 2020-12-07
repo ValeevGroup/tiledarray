@@ -57,18 +57,20 @@ TiledArray/utility.h
 TiledArray/val_array.h
 TiledArray/version.h
 TiledArray/zero_tensor.h
-TiledArray/algebra/conjgrad.h
-TiledArray/algebra/diis.h
-TiledArray/algebra/utils.h
-TiledArray/algebra/cholesky.h
-TiledArray/algebra/heig.h
-TiledArray/algebra/lu.h
-TiledArray/algebra/svd.h
-TiledArray/algebra/types.h
-TiledArray/algebra/scalapack/cholesky.h
-TiledArray/algebra/scalapack/heig.h
-TiledArray/algebra/scalapack/lu.h
-TiledArray/algebra/scalapack/svd.h
+TiledArray/math/linalg/forward.h
+TiledArray/math/linalg/conjgrad.h
+TiledArray/math/linalg/diis.h
+TiledArray/math/linalg/util.h
+TiledArray/math/linalg/cholesky.h
+TiledArray/math/linalg/heig.h
+TiledArray/math/linalg/lu.h
+TiledArray/math/linalg/svd.h
+TiledArray/math/linalg/scalapack/util.h
+TiledArray/math/linalg/scalapack/block_cyclic.h
+TiledArray/math/linalg/scalapack/cholesky.h
+TiledArray/math/linalg/scalapack/heig.h
+TiledArray/math/linalg/scalapack/lu.h
+TiledArray/math/linalg/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
@@ -77,7 +79,6 @@ TiledArray/conversions/foreach.h
 TiledArray/conversions/vector_of_arrays.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
-TiledArray/conversions/block_cyclic.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/conversions/retile.h
@@ -175,8 +176,8 @@ TiledArray/util/singleton.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
 
-TiledArray/algebra/rank-local.h
-TiledArray/algebra/rank-local.cpp
+TiledArray/math/linalg/rank-local.h
+TiledArray/math/linalg/rank-local.cpp
 
 )
 
@@ -209,7 +210,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
-TiledArray/algebra/rank-local.cpp
+TiledArray/math/linalg/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later

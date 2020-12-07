@@ -21,16 +21,16 @@
  *  Created:  16 October,  2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_HEIG_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_HEIG_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_HEIG_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_HEIG_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack/heig.h>
+#include <TiledArray/math/linalg/scalapack/heig.h>
 #endif
-#include <TiledArray/algebra/non-distributed/heig.h>
+#include <TiledArray/math/linalg/non-distributed/heig.h>
 
-namespace TiledArray {
+namespace TiledArray::math::linalg {
 
 template <typename Array>
 auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
@@ -52,6 +52,10 @@ auto heig(const ArrayA& A, const ArrayB& B, TiledRange evec_trange = TiledRange(
   return non_distributed::heig(A, B, evec_trange);
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg
 
-#endif  // TILEDARRAY_ALGEBRA_HEIG_H__INCLUDED
+namespace TiledArray {
+  using TiledArray::math::linalg::heig;
+}
+
+#endif  // TILEDARRAY_MATH_LINALG_HEIG_H__INCLUDED

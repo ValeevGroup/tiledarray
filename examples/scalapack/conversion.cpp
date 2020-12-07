@@ -25,7 +25,10 @@
  */
 
 #include <tiledarray.h>
+#include <TiledArray/math/linalg/scalapack/block_cyclic.h>
 #include <random>
+
+namespace scalapack = TiledArray::math::linalg::scalapack;
 
 template <typename Integral1, typename Integral2>
 int64_t div_ceil(Integral1 x, Integral2 y) {
@@ -66,7 +69,7 @@ int main(int argc, char** argv) {
 
     // Create Test Matrix
     blacspp::Grid grid = blacspp::Grid::square_grid(MPI_COMM_WORLD);
-    TA::scalapack::BlockCyclicMatrix<double> ref_matrix(world, grid, N, N, NB, NB);
+    scalapack::BlockCyclicMatrix<double> ref_matrix(world, grid, N, N, NB, NB);
 
     for (size_t i = 0; i < N; ++i)
       for (size_t j = 0; j < N; ++j)
@@ -125,7 +128,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      TA::scalapack::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
+      scalapack::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
       world.gop.fence();
 
       double local_norm_diff =
@@ -172,7 +175,7 @@ int main(int argc, char** argv) {
           TA::make_array<TA::TArray<double> >(world, trange, make_ta_reference);
 
       world.gop.fence();
-      TA::scalapack::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
+      scalapack::BlockCyclicMatrix<double> test_matrix(ref_ta, grid, NB, NB);
       world.gop.fence();
 
       double local_norm_diff =

@@ -1,6 +1,6 @@
 /*
  *  This file is a part of TiledArray.
- *  Copyright (C) 2020 Virginia Tech
+ *  Copyright (C) 2013  Virginia Tech
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -16,18 +16,21 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  *  Eduard Valeyev
+ *  Department of Chemistry, Virginia Tech
  *
  *  util.h
- *  Created:    19 October, 2020
+ *  May 20, 2013
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_UTIL_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_UTIL_H__INCLUDED
+
+#ifndef TILEDARRAY_MATH_LINALG_UTIL_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_UTIL_H__INCLUDED
 
 #include <TiledArray/config.h>
+#include "TiledArray/dist_array.h"
 #include <TiledArray/conversions/eigen.h>
 
-namespace TiledArray::non_distributed::detail {
+namespace TiledArray::math::linalg::detail {
 
 template<class A>
 struct array_traits {
@@ -40,7 +43,7 @@ struct array_traits {
 
 
 template <typename Tile, typename Policy>
-auto to_eigen(const DistArray<Tile, Policy>& A) {
+auto make_matrix(const DistArray<Tile, Policy>& A) {
   auto A_repl = A;
   A_repl.make_replicated();
   return array_to_eigen<Tile, Policy, Eigen::ColMajor>(A_repl);
@@ -49,7 +52,7 @@ auto to_eigen(const DistArray<Tile, Policy>& A) {
 template <typename ContiguousTensor,
           typename = std::enable_if_t<
               TiledArray::detail::is_contiguous_tensor_v<ContiguousTensor>>>
-auto to_eigen(const ContiguousTensor& A) {
+auto make_matrix(const ContiguousTensor& A) {
   using numeric_type = TiledArray::detail::numeric_t<ContiguousTensor>;
   static_assert(
       std::is_same_v<numeric_type, typename ContiguousTensor::value_type>,
@@ -79,20 +82,16 @@ auto to_eigen(const ContiguousTensor& A) {
   return result;
 }
 
-template <typename ContiguousTensor, typename Scalar, int RowsAtCompileTime,
-          int ColsAtCompileTime, int Options, int MaxRowsAtCompileTime,
-          int MaxColsAtCompileTime,
+template <typename ContiguousTensor, typename Scalar, int ... Options,
           typename = std::enable_if_t<
               TiledArray::detail::is_contiguous_tensor_v<ContiguousTensor>>>
-auto from_eigen(
-    const Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
-                        MaxRowsAtCompileTime, MaxColsAtCompileTime>& A,
-    typename ContiguousTensor::range_type range = {}) {
+auto make_array(const Eigen::Matrix<Scalar, Options...>& A,
+                typename ContiguousTensor::range_type range = {}) {
   using numeric_type = TiledArray::detail::numeric_t<ContiguousTensor>;
   static_assert(
       std::is_same_v<numeric_type, typename ContiguousTensor::value_type>,
-      "TA::lapack::{cholesky*} are only usable with a ContiguousTensor of "
-      "scalar types");
+      "TA::math::linalg is only usable with a ContiguousTensor of scalar types"
+  );
   using range_type = typename ContiguousTensor::range_type;
   if (range.rank() == 0)
     range = range_type(A.rows(), A.cols());
@@ -109,6 +108,6 @@ void zero_out_upper_triangle(Eigen::MatrixBase<Derived>& A) {
   A.template triangularView<Eigen::StrictlyUpper>().setZero();
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg
 
-#endif  // TILEDARRAY_ALGEBRA_NON_DISTRIBUTED_UTIL_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_UTIL_H__INCLUDED

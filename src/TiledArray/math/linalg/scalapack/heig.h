@@ -23,18 +23,18 @@
  *  Edited:    8 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_HEIG_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_SCALAPACK_HEIG_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SCALAPACK_HEIG_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SCALAPACK_HEIG_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
-#include <TiledArray/conversions/block_cyclic.h>
+#include <TiledArray/math/linalg/scalapack/util.h>
+
 #include <scalapackpp/eigenvalue_problem/gevp.hpp>
 #include <scalapackpp/eigenvalue_problem/sevp.hpp>
 
-namespace TiledArray {
-namespace scalapack {
+namespace TiledArray::math::linalg::scalapack {
 
 /**
  *  @brief Solve the standard eigenvalue problem with ScaLAPACK
@@ -165,8 +165,7 @@ auto heig(const ArrayA& A, const ArrayB& B,
   return std::tuple(evals, evecs_ta);
 }
 
-}  // namespace scalapack
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg::scalapack
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_HEIG_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_HEIG_H__INCLUDED

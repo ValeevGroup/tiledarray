@@ -22,23 +22,21 @@
  *  Created:    8 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_CHOL_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_SCALAPACK_CHOL_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SCALAPACK_CHOL_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SCALAPACK_CHOL_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
-#include <TiledArray/algebra/scalapack/util.h>
-#include <TiledArray/algebra/types.h>
-#include <TiledArray/conversions/block_cyclic.h>
+#include <TiledArray/math/linalg/scalapack/util.h>
+#include <TiledArray/math/linalg/forward.h>
 
 #include <scalapackpp/factorizations/potrf.hpp>
 #include <scalapackpp/linear_systems/posv.hpp>
 #include <scalapackpp/linear_systems/trtrs.hpp>
 #include <scalapackpp/matrix_inverse/trtri.hpp>
 
-namespace TiledArray {
-namespace scalapack {
+namespace TiledArray::math::linalg::scalapack {
 
 /**
  *  @brief Compute the Cholesky factorization of a HPD rank-2 tensor
@@ -103,7 +101,7 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange(),
  *  auto [L,Linv] = cholesky_Linv<decltype(A),true>(A, ...)
  *
  *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
- *  @tparam RetL  Whether or not to return the cholesky factor
+ *  @tparam Both  Whether or not to return the cholesky factor
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
  *  @param[in] l_trange    TiledRange for resulting inverse Cholesky factor.
@@ -112,7 +110,7 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange(),
  *
  *  @returns The inverse lower triangular Cholesky factor in TA format
  */
-template <typename Array, bool RetL = false>
+  template <bool Both, typename Array>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange(),
                    size_t NB = default_block_size()) {
   using value_type = typename Array::element_type;
@@ -140,7 +138,7 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange(),
 
   // Copy L if needed
   std::shared_ptr<scalapack::BlockCyclicMatrix<value_type>> L_sca = nullptr;
-  if constexpr (RetL) {
+  if constexpr (Both) {
     L_sca = std::make_shared<scalapack::BlockCyclicMatrix<value_type>>(
         world, grid, N, N, NB, NB);
     L_sca->local_mat() = matrix.local_mat();
@@ -158,7 +156,7 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange(),
   auto Linv = scalapack::block_cyclic_to_array<Array>(matrix, l_trange);
   world.gop.fence();
 
-  if constexpr (RetL) {
+  if constexpr (Both) {
     auto L = scalapack::block_cyclic_to_array<Array>(*L_sca, l_trange);
     world.gop.fence();
     return std::tuple(L, Linv);
@@ -276,8 +274,7 @@ auto cholesky_lsolve(TransposeFlag trans, const Array& A, const Array& B,
   return std::tuple(L, X);
 }
 
-}  // namespace scalapack
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg::scalapack
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_CHOL_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_CHOL_H__INCLUDED

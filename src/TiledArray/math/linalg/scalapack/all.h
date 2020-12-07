@@ -23,15 +23,15 @@
  *
  */
 
-#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_ALL_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_SCALAPACK_ALL_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SCALAPACK_ALL_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SCALAPACK_ALL_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack/cholesky.h>
-#include <TiledArray/algebra/scalapack/heig.h>
-#include <TiledArray/algebra/scalapack/lu.h>
-#include <TiledArray/algebra/scalapack/svd.h>
+#include <TiledArray/math/linalg/scalapack/cholesky.h>
+#include <TiledArray/math/linalg/scalapack/heig.h>
+#include <TiledArray/math/linalg/scalapack/lu.h>
+#include <TiledArray/math/linalg/scalapack/svd.h>
 #endif
 
-#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_ALL_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_ALL_H__INCLUDED

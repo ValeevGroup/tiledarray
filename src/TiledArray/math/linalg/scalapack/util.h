@@ -22,18 +22,16 @@
  *  Created:    19 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_UTIL_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_SCALAPACK_UTIL_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SCALAPACK_UTIL_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SCALAPACK_UTIL_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
-#include <TiledArray/algebra/types.h>
-#include <TiledArray/conversions/block_cyclic.h>
+#include <TiledArray/math/linalg/forward.h>
+#include <TiledArray/math/linalg/scalapack/block_cyclic.h>
 
-namespace TiledArray {
-
-namespace scalapack {
+namespace TiledArray::math::linalg::scalapack {
 
 inline scalapackpp::TransposeFlag to_scalapackpp_transposeflag(
     TransposeFlag t) {
@@ -97,8 +95,7 @@ inline void set_default_block_size(std::size_t NB) {
   detail::default_block_size_accessor() = NB;
 }
 
-}  // namespace scalapack
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg::scalapack
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_UTIL_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_UTIL_H__INCLUDED
