@@ -18,7 +18,7 @@
  *  Eduard Valeyev
  *
  *  lu.h
- *  Created:    16 October, 2020
+ *  Created:  16 October,  2020
  *
  */
 #ifndef TILEDARRAY_MATH_LINALG_LU_H__INCLUDED
@@ -30,14 +30,34 @@
 #endif
 #include <TiledArray/math/linalg/non-distributed/lu.h>
 
-namespace TiledArray {
+namespace TiledArray::math::linalg {
 
+template <typename ArrayA, typename ArrayB>
+auto lu_solve(const ArrayA& A, const ArrayB& B,
+              TiledRange x_trange = TiledRange()) {
 #if TILEDARRAY_HAS_SCALAPACK
-using scalapack::lu_inv;
-using scalapack::lu_solve;
-#else
+  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+    return scalapack::lu_solve(A, B, x_trange);
+  }
 #endif
+  return non_distributed::lu_solve(A, B, x_trange);
+}
 
-}  // namespace TiledArray
+template <typename Array>
+auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange()) {
+#if TILEDARRAY_HAS_SCALAPACK
+  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+    return scalapack::lu_inv(A, ainv_trange);
+  }
+#endif
+  return non_distributed::lu_inv(A, ainv_trange);
+}
+
+}  // namespace TiledArray::math::linalg
+
+namespace TiledArray {
+  using TiledArray::math::linalg::lu_inv;
+  using TiledArray::math::linalg::lu_solve;
+}
 
 #endif  // TILEDARRAY_MATH_LINALG_LU_H__INCLUDED

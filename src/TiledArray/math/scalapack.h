@@ -26,7 +26,7 @@
 #define TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
 
 #warning \
-    "TiledArray/math/scalapack.h header is deprecated, please include TiledArray/math/linalg/scalapack/all.h"
+    "TiledArray/math/scalapack.h header is deprecated, please use TiledArray/math/linalg.h"
 
 #include <TiledArray/math/linalg/scalapack/all.h>
 
