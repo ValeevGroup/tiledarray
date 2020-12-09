@@ -148,7 +148,7 @@ any_files_changed |= replace_dep_id(topsrc, 'cmake.in', 'MADNESS', madness_old_v
 any_files_changed |= replace_dep_id(topsrc, 'md', 'MADNESS', madness_old_tag, madness_new_tag, 'm-a-d-n-e-s-s/madness), tag ', ' ')
 
 # BTAS tag in INSTALL.md
-any_files_changed |= replace_dep_id(topsrc, 'md', 'BTAS', btas_old_tag, btas_new_tag, 'BTAS/BTAS), tag ', '')
+any_files_changed |= replace_dep_id(topsrc, 'md', 'BTAS', btas_old_tag, btas_new_tag, 'ValeevGroup/BTAS), tag ', '')
 
 # cuTT tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'cuTT', cutt_old_tag, cutt_new_tag, '', '')
