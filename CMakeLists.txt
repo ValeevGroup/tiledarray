@@ -96,6 +96,8 @@ include(FeatureSummary)
 # Preload versions/tags of all dependencies ====================================
 include(external/versions.cmake)
 
+set(MPI_CXX_SKIP_MPICXX TRUE CACHE BOOL "MPI_CXX_SKIP_MPICXX")
+
 # Configure options =======================================================
 option(ENABLE_MPI "Enable MPI" ON)
 add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-memory parallel programs")
