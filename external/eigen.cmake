@@ -100,13 +100,14 @@ elseif(TA_EXPERT)
 else()
 
   set(Eigen3_VERSION 3.3.7)
+  set(EIGEN3_URL_HASH MD5=b9e98a200d2455f06db9c661c5610496)
+  set(EIGEN3_URL https://gitlab.com/libeigen/eigen/-/archive/${Eigen3_VERSION}/eigen-${Eigen3_VERSION}.tar.bz2)
+
   include(ExternalProject)
 
   # Set source and build path for Eigen3 in the TiledArray Project
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
-  set(EIGEN3_URL https://gitlab.com/libeigen/eigen/-/archive/${Eigen3_VERSION}/eigen-${Eigen3_VERSION}.tar.bz2)
-  set(EIGEN3_URL_HASH MD5=b9e98a200d2455f06db9c661c5610496)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
 
