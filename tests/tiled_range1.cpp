@@ -25,7 +25,7 @@
 
 using namespace TiledArray;
 
-BOOST_FIXTURE_TEST_SUITE(range1_suite, Range1Fixture)
+BOOST_FIXTURE_TEST_SUITE(range1_suite, Range1Fixture, TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(range_accessor) {
   BOOST_CHECK_EQUAL(tr1.tiles_range().first, tiles.first);
@@ -187,15 +187,14 @@ BOOST_AUTO_TEST_CASE(ostream) {
 BOOST_AUTO_TEST_CASE(element_to_tile) {
   // construct a map that should match the element to tile map for tr1.
   std::vector<std::size_t> e;
-  for (std::size_t t = tr1.tiles_range().first; t < tr1.tiles_range().second;
-       ++t)
-    for (std::size_t i = tr1.tile(t).first; i < tr1.tile(t).second; ++i)
+  for (auto t = tr1.tiles_range().first; t < tr1.tiles_range().second; ++t)
+    for (auto i = tr1.tile(t).first; i < tr1.tile(t).second; ++i)
       e.push_back(t);
 
   // Construct a map that matches the internal element to tile map for tr1.
   std::vector<std::size_t> c;
-  for (std::size_t i = tr1.elements_range().first;
-       i < tr1.elements_range().second; ++i)
+  for (auto i = tr1.elements_range().first; i < tr1.elements_range().second;
+       ++i)
     c.push_back(tr1.element_to_tile(i));
 
   // Check that the expected and internal element to tile maps match.

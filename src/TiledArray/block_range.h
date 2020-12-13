@@ -435,6 +435,13 @@ inline bool operator==(const BlockRange& r1, const BlockRange& r2) {
          static_cast<const Range&>(r1) == static_cast<const Range&>(r2);
 }
 
+/// Tests whether a range is contiguous, i.e. whether its ordinal values form a
+/// contiguous range
+
+/// \param range a BlockRange
+/// \return true since TiledArray::BlockRange is contiguous by definition
+inline bool is_contiguous(const BlockRange& range) { return true; }
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_BLOCK_RANGE_H__INCLUDED

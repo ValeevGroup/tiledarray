@@ -91,8 +91,8 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   using index1_type = TA_1INDEX_TYPE;
 
  private:
-  array_type& array_;  ///< The array that this expression
-  std::string vars_;   ///< The tensor variable list
+  array_type& array_;       ///< The array that this expression is bound to
+  std::string annotation_;  ///< The array annotation
 
  public:
   // Compiler generated functions
@@ -104,9 +104,9 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   /// Constructor
 
   /// \param array The array object
-  /// \param vars The variable list that is associated with this expression
-  TsrExpr(array_type& array, const std::string& vars)
-      : array_(array), vars_(vars) {}
+  /// \param annotation The annotation for \p array
+  TsrExpr(array_type& array, const std::string& annotation)
+      : array_(array), annotation_(annotation) {}
 
   /// Expression assignment operator
 
@@ -178,7 +178,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
   /// \return A non-aliased tensor expression
   TsrExpr<Array, false> no_alias() const {
-    return TsrExpr<Array, false>(array_, vars_);
+    return TsrExpr<Array, false>(array_, annotation_);
   }
 
   /// immutable Block expression factory
@@ -193,7 +193,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
                 TiledArray::detail::is_integral_range_v<Index2>>>
   BlkTsrExpr<const Array, Alias> block(const Index1& lower_bound,
                                        const Index2& upper_bound) const {
-    return BlkTsrExpr<const Array, Alias>(array_, vars_, lower_bound,
+    return BlkTsrExpr<const Array, Alias>(array_, annotation_, lower_bound,
                                           upper_bound);
   }
 
@@ -209,7 +209,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   BlkTsrExpr<const Array, Alias> block(
       const std::initializer_list<Index1>& lower_bound,
       const std::initializer_list<Index2>& upper_bound) const {
-    return BlkTsrExpr<const Array, Alias>(array_, vars_, lower_bound,
+    return BlkTsrExpr<const Array, Alias>(array_, annotation_, lower_bound,
                                           upper_bound);
   }
 
@@ -222,7 +222,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
             typename = std::enable_if_t<
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
   BlkTsrExpr<const Array, Alias> block(const PairRange& bounds) const {
-    return BlkTsrExpr<const Array, Alias>(array_, vars_, bounds);
+    return BlkTsrExpr<const Array, Alias>(array_, annotation_, bounds);
   }
 
   /// immutable Block expression factory
@@ -233,7 +233,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
             typename = std::enable_if_t<std::is_integral_v<Index>>>
   BlkTsrExpr<const Array, Alias> block(
       const std::initializer_list<std::initializer_list<Index>>& bounds) const {
-    return BlkTsrExpr<const Array, Alias>(array_, vars_, bounds);
+    return BlkTsrExpr<const Array, Alias>(array_, annotation_, bounds);
   }
 
   /// mutable Block expression factory
@@ -248,7 +248,8 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
                 TiledArray::detail::is_integral_range_v<Index2>>>
   BlkTsrExpr<Array, Alias> block(const Index1& lower_bound,
                                  const Index2& upper_bound) {
-    return BlkTsrExpr<Array, Alias>(array_, vars_, lower_bound, upper_bound);
+    return BlkTsrExpr<Array, Alias>(array_, annotation_, lower_bound,
+                                    upper_bound);
   }
 
   /// mutable Block expression factory
@@ -263,7 +264,8 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   BlkTsrExpr<Array, Alias> block(
       const std::initializer_list<Index1>& lower_bound,
       const std::initializer_list<Index2>& upper_bound) {
-    return BlkTsrExpr<Array, Alias>(array_, vars_, lower_bound, upper_bound);
+    return BlkTsrExpr<Array, Alias>(array_, annotation_, lower_bound,
+                                    upper_bound);
   }
 
   /// mutable Block expression factory
@@ -275,7 +277,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
             typename = std::enable_if_t<
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
   BlkTsrExpr<Array, Alias> block(const PairRange& bounds) {
-    return BlkTsrExpr<Array, Alias>(array_, vars_, bounds);
+    return BlkTsrExpr<Array, Alias>(array_, annotation_, bounds);
   }
 
   /// mutable Block expression factory
@@ -286,20 +288,20 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
             typename = std::enable_if_t<std::is_integral_v<Index>>>
   BlkTsrExpr<Array, Alias> block(
       const std::initializer_list<std::initializer_list<Index>>& bounds) {
-    return BlkTsrExpr<Array, Alias>(array_, vars_, bounds);
+    return BlkTsrExpr<Array, Alias>(array_, annotation_, bounds);
   }
 
   /// Conjugated-tensor expression factor
 
   /// \return A conjugated expression object
   ConjTsrExpr<Array> conj() const {
-    return ConjTsrExpr<Array>(array_, vars_, conj_op());
+    return ConjTsrExpr<Array>(array_, annotation_, conj_op());
   }
 
-  /// Tensor variable string accessor
+  /// Tensor annotation accessor
 
-  /// \return A const reference to the variable string for this tensor
-  const std::string& vars() const { return vars_; }
+  /// \return A const reference to the annotation for this tensor
+  const std::string& annotation() const { return annotation_; }
 
 };  // class TsrExpr
 
@@ -318,8 +320,8 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
   using index1_type = TA_1INDEX_TYPE;
 
  private:
-  const array_type& array_;  ///< The array that this expression
-  std::string vars_;         ///< The tensor variable string
+  const array_type& array_;  ///< The array that this expression is bound to
+  std::string annotation_;   ///< The array annotation
 
   // Not allowed
   TsrExpr_& operator=(TsrExpr_&);
@@ -335,9 +337,9 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
   /// Constructor
 
   /// \param array The array object
-  /// \param vars The variable list that is associated with this expression
-  TsrExpr(const array_type& array, const std::string& vars)
-      : Expr_(), array_(array), vars_(vars) {}
+  /// \param annotation The annotation for \p array
+  TsrExpr(const array_type& array, const std::string& annotation)
+      : Expr_(), array_(array), annotation_(annotation) {}
 
   /// Array accessor
 
@@ -356,7 +358,7 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
                 TiledArray::detail::is_integral_range_v<Index2>>>
   BlkTsrExpr<const Array, true> block(const Index1& lower_bound,
                                       const Index2& upper_bound) const {
-    return BlkTsrExpr<const Array, true>(array_, vars_, lower_bound,
+    return BlkTsrExpr<const Array, true>(array_, annotation_, lower_bound,
                                          upper_bound);
   }
 
@@ -373,7 +375,7 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
   BlkTsrExpr<const Array, true> block(
       const std::initializer_list<Index1>& lower_bound,
       const std::initializer_list<Index2>& upper_bound) const {
-    return BlkTsrExpr<const Array, true>(array_, vars_, lower_bound,
+    return BlkTsrExpr<const Array, true>(array_, annotation_, lower_bound,
                                          upper_bound);
   }
 
@@ -386,7 +388,7 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
             typename = std::enable_if_t<
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
   BlkTsrExpr<const Array, true> block(const PairRange& bounds) const {
-    return BlkTsrExpr<const Array, true>(array_, vars_, bounds);
+    return BlkTsrExpr<const Array, true>(array_, annotation_, bounds);
   }
 
   /// Block expression
@@ -397,20 +399,20 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
             typename = std::enable_if_t<std::is_integral_v<Index>>>
   BlkTsrExpr<const Array, true> block(
       const std::initializer_list<std::initializer_list<Index>>& bounds) const {
-    return BlkTsrExpr<const Array, true>(array_, vars_, bounds);
+    return BlkTsrExpr<const Array, true>(array_, annotation_, bounds);
   }
 
   /// Conjugated-tensor expression factor
 
   /// \return A conjugated expression object
   ConjTsrExpr<Array> conj() const {
-    return ConjTsrExpr<Array>(array_, vars_, conj_op());
+    return ConjTsrExpr<Array>(array_, annotation_, conj_op());
   }
 
-  /// Tensor variable string accessor
+  /// Tensor annotation accessor
 
-  /// \return A const reference to the variable string for this tensor
-  const std::string& vars() const { return vars_; }
+  /// \return A const reference to the annotation for this tensor
+  const std::string& annotation() const { return annotation_; }
 
 };  // class TsrExpr<const A>
 

@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_TILE_OP_UNARY_REDUCTION_H__INCLUDED
 #define TILEDARRAY_TILE_OP_UNARY_REDUCTION_H__INCLUDED
 
+#include "TiledArray/tile_interface/trace.h"
 #include <TiledArray/tile_op/tile_interface.h>
 
 namespace TiledArray {
@@ -106,7 +107,7 @@ template <typename Tile>
 class TraceReduction {
  public:
   // typedefs
-  using result_type = decltype(trace(std::declval<Tile>()));
+  using result_type = result_of_trace_t<Tile>;
   typedef Tile argument_type;
 
   // Reduction functions

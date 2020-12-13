@@ -27,8 +27,10 @@
 #define TILEDARRAY_EXPRESSIONS_MULT_ENGINE_H__INCLUDED
 
 #include <TiledArray/expressions/cont_engine.h>
+#include <TiledArray/external/btas.h>
 #include <TiledArray/tile_op/binary_wrapper.h>
 #include <TiledArray/tile_op/mult.h>
+#include <btas/optimize/contract.h>
 
 namespace TiledArray {
 namespace expressions {
@@ -43,8 +45,70 @@ class MultEngine;
 template <typename, typename, typename, typename>
 class ScalMultEngine;
 
+template <typename Tile>
+inline auto make_tile_contract_op(const IndexList& left_indices,
+                                  const IndexList& right_indices,
+                                  const IndexList& result_indices) {
+  static_assert(TiledArray::detail::is_ta_tensor_v<Tile> ||
+                    TiledArray::detail::is_btas_tensor_v<Tile>,
+                "only support BTAS and TA tensors as inner tensors of ToT");
+  // btas::contract only works for col-major storage
+  if constexpr (TiledArray::detail::is_btas_tensor_v<
+                    Tile>) {  // can do arbitrary contractions here
+                              //    auto indices_to_integers = [&]() {
+                              //      // collect all unique indices
+                              //      IndexList::container_type all_indices;
+    //      all_indices.reserve(left_indices.size() + right_indices.size() +
+    //                          result_indices.size());
+    //      all_indices.insert(all_indices.end(), left_indices.data().begin(),
+    //                         left_indices.data().end());
+    //      all_indices.insert(all_indices.end(), right_indices.data().begin(),
+    //                         right_indices.data().end());
+    //      all_indices.insert(all_indices.end(), result_indices.data().begin(),
+    //                         result_indices.data().end());
+    //      auto end_of_unique = std::unique(all_indices.begin(),
+    //      all_indices.end()); all_indices.erase(end_of_unique,
+    //      all_indices.end());
+    //
+    //      // map each index list to numbers
+    //      auto to_integers = [](const container::svector<std::string> indices,
+    //                            const container::svector<std::string>
+    //                            all_indices) {
+    //        TA_ASSERT(!all_indices.empty());
+    //        btas::DEFAULT::index<std::int64_t> result;
+    //        result.reserve(indices.size());
+    //        for (const auto& idx : indices) {
+    //          auto pos = std::find(all_indices.begin(), all_indices.end(),
+    //          idx) -
+    //                     all_indices.begin();
+    //          TA_ASSERT(pos < all_indices.size());
+    //          result.push_back(pos);
+    //        }
+    //        return result;
+    //      };
+    //      auto left_annotation = to_integers(left_indices.data(),
+    //      all_indices); auto right_annotation =
+    //      to_integers(right_indices.data(), all_indices); auto
+    //      result_annotation = to_integers(result_indices.data(), all_indices);
+    //      return std::make_tuple(left_annotation, right_annotation,
+    //                             result_annotation);
+    //    };
+    //    auto [left_annotation, right_annotation, result_annotation] =
+    //        indices_to_integers();
+    //    return [left_annotation = std::move(left_annotation),
+    //            right_annotation = std::move(right_annotation),
+    //            result_annotation = std::move(result_annotation)](
+    //               const Tile& left_tile, const Tile& right_tile) {
+    //      Tile result;
+    //      btas::contract(1, left_tile, left_annotation, right_tile,
+    //                     right_annotation, 0, result, result_annotation);
+    //      return result;
+    //    };
+  }
+}
+
 template <typename Left, typename Right, typename Result>
-struct EngineTrait<MultEngine<Left, Right, Result> > {
+struct EngineTrait<MultEngine<Left, Right, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -84,7 +148,7 @@ struct EngineTrait<MultEngine<Left, Right, Result> > {
 };
 
 template <typename Left, typename Right, typename Scalar, typename Result>
-struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result> > {
+struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result>> {
   static_assert(
       std::is_same<typename EngineTrait<Left>::policy,
                    typename EngineTrait<Right>::policy>::value,
@@ -135,7 +199,7 @@ struct EngineTrait<ScalMultEngine<Left, Right, Scalar, Result> > {
 /// \tparam Right The right-hand engine type
 /// \tparam Result The result tile type
 template <typename Left, typename Right, typename Result>
-class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
+class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
  public:
   // Class hierarchy typedefs
   typedef MultEngine<Left, Right, Result> MultEngine_;  ///< This class type
@@ -162,6 +226,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
       policy;  ///< The result policy type
   typedef typename EngineTrait<MultEngine_>::dist_eval_type
       dist_eval_type;  ///< The distributed evaluator type
+  typedef typename EngineTrait<MultEngine_>::scalar_type
+      scalar_type;  ///< Tile scalar type
 
   // Meta data typedefs
   typedef
@@ -173,10 +239,6 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   typedef typename EngineTrait<MultEngine_>::pmap_interface
       pmap_interface;  ///< Process map interface type
 
- private:
-  bool contract_;  ///< Expression type flag (true == contraction, false ==
-                   ///< coefficient-wise multiplication)
-
  public:
   /// Constructor
 
@@ -184,59 +246,84 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   /// \tparam R The right-hand argument expression type
   /// \param expr The parent expression
   template <typename L, typename R>
-  MultEngine(const MultExpr<L, R>& expr)
-      : ContEngine_(expr), contract_(false) {}
+  MultEngine(const MultExpr<L, R>& expr) : ContEngine_(expr) {}
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function will set the variable list for this expression and its
+  /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
-  /// variable list may not be set to target, which indicates that the
-  /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
-    if (contract_)
-      ContEngine_::perm_vars(target_vars);
+  /// index list may not be set to target, which indicates that the
+  /// result of this expression will be permuted to match \c target_indices.
+  /// \param target_indices The target index list for this expression
+  void perm_indices(const BipartiteIndexList& target_indices) {
+    if (this->product_type() == TensorProduct::Contraction)
+      ContEngine_::perm_indices(target_indices);
     else {
-      BinaryEngine_::perm_vars(target_vars);
+      BinaryEngine_::perm_indices(target_indices);
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
-    BinaryEngine_::left_.init_vars();
-    BinaryEngine_::right_.init_vars();
+  /// \param target_indices The target index list for this expression
+  void init_indices(const BipartiteIndexList& target_indices) {
+    // to decide what type of product this is must initialize indices down
+    // the tree.
+    // N.B. since this may be a contraction we do not know the target indices
+    // for the left and right, hence do target-neutral initialization
+    BinaryEngine_::left_.init_indices();
+    BinaryEngine_::right_.init_indices();
+    this->product_type_ = compute_product_type(
+        outer(BinaryEngine_::left_.indices()),
+        outer(BinaryEngine_::right_.indices()), outer(target_indices));
+    this->inner_product_type_ = compute_product_type(
+        inner(BinaryEngine_::left_.indices()),
+        inner(BinaryEngine_::right_.indices()), inner(target_indices));
 
-    // it's either pure Hadamard (detect by checking that left arg's and
-    // target's vars are the "same") or contraction
-    // TODO add mixed Hadamard+contraction
-    if (BinaryEngine_::left_.vars().is_permutation(target_vars)) {
-      TA_ASSERT(BinaryEngine_::left_.vars().is_permutation(
-          BinaryEngine_::right_.vars()));
-      BinaryEngine_::perm_vars(target_vars);
+    // TODO support general products that involve fused, contracted, and free
+    // indices Example: in ijk * jkl -> ijl indices i and l are free, index k is
+    // contracted, and index j is fused
+    // N.B. Currently only 2 types of products are supported:
+    // - Hadamard product (in which all indices are fused), and,
+    // - pure contraction (>=1 contracted, 0 fused, >=1 free indices)
+    // For the ToT arguments only the Hadamard product is supported
+
+    // Check the *outer* indices to determine whether the arguments are
+    // - contracted, or
+    // - Hadamard-multiplied
+    // The latter is indicated by the equality (modulo permutation) of
+    // the outer left and right arg indices to the target indices.
+    // Only the outer indices matter here since the inner indices only encode
+    // the tile op; the type of the tile op does not need to match the type of
+    // the operation on the outer indices
+    if (this->product_type() == TensorProduct::Hadamard) {
+      // assumes inner op is also Hadamard
+      BinaryEngine_::perm_indices(target_indices);
     } else {
-      contract_ = true;
-      ContEngine_::init_vars();
-      ContEngine_::perm_vars(target_vars);
+      auto children_initialized = true;
+      ContEngine_::init_indices(children_initialized);
+      ContEngine_::perm_indices(target_indices);
     }
   }
 
-  /// Initialize the variable list of this expression
-  void init_vars() {
-    BinaryEngine_::left_.init_vars();
-    BinaryEngine_::right_.init_vars();
+  /// Initialize the index list of this expression
+  void init_indices() {
+    // to decide what type of product this is must initialize indices down the
+    // tree
+    BinaryEngine_::left_.init_indices();
+    BinaryEngine_::right_.init_indices();
+    auto children_initialized = true;
+    this->product_type_ =
+        compute_product_type(outer(BinaryEngine_::left_.indices()),
+                             outer(BinaryEngine_::right_.indices()));
+    this->inner_product_type_ =
+        compute_product_type(inner(BinaryEngine_::left_.indices()),
+                             inner(BinaryEngine_::right_.indices()));
 
-    if (BinaryEngine_::left_.vars().is_permutation(
-            BinaryEngine_::right_.vars())) {
-      if (left_type::leaves <= right_type::leaves)
-        ExprEngine_::vars_ = BinaryEngine_::left_.vars();
-      else
-        ExprEngine_::vars_ = BinaryEngine_::right_.vars();
+    if (this->product_type() == TensorProduct::Hadamard) {
+      BinaryEngine_::init_indices(children_initialized);
     } else {
-      contract_ = true;
-      ContEngine_::init_vars();
+      ContEngine_::init_indices(children_initialized);
     }
   }
 
@@ -244,12 +331,13 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
-    if (contract_)
-      ContEngine_::init_struct(target_vars);
+  /// \param target_indices The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_indices) {
+    this->init_inner_tile_op(inner(target_indices));
+    if (this->product_type() == TensorProduct::Contraction)
+      ContEngine_::init_struct(target_indices);
     else
-      BinaryEngine_::init_struct(target_vars);
+      BinaryEngine_::init_struct(target_indices);
   }
 
   /// Initialize result tensor distribution
@@ -259,7 +347,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   /// \param world The world were the result will be distributed
   /// \param pmap The process map for the result tensor tiles
   void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
-    if (contract_)
+    if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_distribution(world, pmap);
     else
       BinaryEngine_::init_distribution(world, pmap);
@@ -269,7 +357,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 
   /// \return The result tiled range object
   trange_type make_trange() const {
-    if (contract_)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange();
     else
       return BinaryEngine_::make_trange();
@@ -280,7 +368,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   /// \param perm The permutation to be applied to the array
   /// \return The result tiled range object
   trange_type make_trange(const Permutation& perm) const {
-    if (contract_)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange(perm);
     else
       return BinaryEngine_::make_trange(perm);
@@ -299,27 +387,59 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   /// \return The result shape
   shape_type make_shape(const Permutation& perm) const {
     return BinaryEngine_::left_.shape().mult(BinaryEngine_::right_.shape(),
-                                             perm);
+                                             outer(perm));
   }
 
   /// Non-permuting tile operation factory function
 
   /// \return The tile operation
-  static op_type make_tile_op() { return op_type(op_base_type()); }
+  op_type make_tile_op() const {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<
+                      value_type>) {  // nested tensors
+      const auto inner_prod = this->inner_product_type();
+      if (inner_prod == TensorProduct::Hadamard) {
+        TA_ASSERT(this->product_type() ==
+                  inner_prod);  // Hadamard automatically works for inner
+                                // dimensions as well
+        return op_type(op_base_type());
+      } else if (inner_prod == TensorProduct::Contraction) {
+        return op_type(op_base_type(this->inner_tile_return_op_));
+      } else
+        abort();
+    } else {  // plain tensors
+      return op_type(op_base_type());
+    }
+  }
 
   /// Permuting tile operation factory function
 
-  /// \param perm The permutation to be applied to tiles
+  /// \param perm The permutation to be applied to the result
   /// \return The tile operation
-  static op_type make_tile_op(const Permutation& perm) {
-    return op_type(op_base_type(), perm);
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
+    if constexpr (TiledArray::detail::is_tensor_of_tensor_v<
+                      value_type>) {  // nested tensors
+      const auto inner_prod = this->inner_product_type();
+      if (inner_prod == TensorProduct::Hadamard) {
+        TA_ASSERT(this->product_type() ==
+                  inner_prod);  // Hadamard automatically works for inner
+                                // dimensions as well
+        return op_type(op_base_type(), perm);
+      } else if (inner_prod == TensorProduct::Contraction) {
+        return op_type(op_base_type(this->inner_tile_return_op_), perm);
+      } else
+        abort();
+    } else {  // plain tensor
+      return op_type(op_base_type(), perm);
+    }
   }
 
   /// Construct the distributed evaluator for this expression
 
   /// \return The distributed evaluator that will evaluate this expression
   dist_eval_type make_dist_eval() const {
-    if (contract_)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_dist_eval();
     else
       return BinaryEngine_::make_dist_eval();
@@ -333,14 +453,13 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
-    if (contract_)
-      return ContEngine_::print(os, target_vars);
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_indices) const {
+    if (this->product_type() == TensorProduct::Contraction)
+      return ContEngine_::print(os, target_indices);
     else
-      return BinaryEngine_::print(os, target_vars);
+      return BinaryEngine_::print(os, target_indices);
   }
-
 };  // class MultEngine
 
 /// Scaled multiplication expression engine
@@ -351,7 +470,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result> > {
 /// The result tile type
 template <typename Left, typename Right, typename Scalar, typename Result>
 class ScalMultEngine
-    : public ContEngine<ScalMultEngine<Left, Right, Scalar, Result> > {
+    : public ContEngine<ScalMultEngine<Left, Right, Scalar, Result>> {
  public:
   // Class hierarchy typedefs
   typedef ScalMultEngine<Left, Right, Scalar, Result>
@@ -393,10 +512,6 @@ class ScalMultEngine
   typedef typename EngineTrait<ScalMultEngine_>::pmap_interface
       pmap_interface;  ///< Process map interface type
 
- private:
-  bool contract_;  ///< Expression type flag (true == contraction, false ==
-                   ///< coefficient-wise multiplication)
-
  public:
   /// Constructor
 
@@ -405,55 +520,61 @@ class ScalMultEngine
   /// \tparam S The expression scalar type
   /// \param expr The parent expression
   template <typename L, typename R, typename S>
-  ScalMultEngine(const ScalMultExpr<L, R, S>& expr)
-      : ContEngine_(expr), contract_(false) {}
+  ScalMultEngine(const ScalMultExpr<L, R, S>& expr) : ContEngine_(expr) {}
 
-  /// Set the variable list for this expression
+  /// Set the index list for this expression
 
-  /// This function will set the variable list for this expression and its
+  /// This function will set the index list for this expression and its
   /// children such that the number of permutations is minimized. The final
-  /// variable list may not be set to target, which indicates that the
-  /// result of this expression will be permuted to match \c target_vars.
-  /// \param target_vars The target variable list for this expression
-  void perm_vars(const VariableList& target_vars) {
-    if (contract_)
-      ContEngine_::perm_vars(target_vars);
+  /// index list may not be set to target, which indicates that the
+  /// result of this expression will be permuted to match \c target_indices.
+  /// \param target_indices The target index list for this expression
+  void perm_indices(const BipartiteIndexList& target_indices) {
+    if (this->product_type() == TensorProduct::Contraction)
+      ContEngine_::perm_indices(target_indices);
     else {
-      BinaryEngine_::perm_vars(target_vars);
+      BinaryEngine_::perm_indices(target_indices);
     }
   }
 
-  /// Initialize the variable list of this expression
+  /// Initialize the index list of this expression
 
-  /// \param target_vars The target variable list for this expression
-  void init_vars(const VariableList& target_vars) {
-    BinaryEngine_::left_.init_vars();
-    BinaryEngine_::right_.init_vars();
+  /// \param target_indices The target index list for this expression
+  void init_indices(const BipartiteIndexList& target_indices) {
+    BinaryEngine_::left_.init_indices();
+    BinaryEngine_::right_.init_indices();
+    this->product_type_ = compute_product_type(
+        outer(BinaryEngine_::left_.indices()),
+        outer(BinaryEngine_::right_.indices()), outer(target_indices));
 
-    if (BinaryEngine_::left_.vars().is_permutation(
-            BinaryEngine_::right_.vars())) {
-      BinaryEngine_::perm_vars(target_vars);
+    if (this->product_type() == TensorProduct::Hadamard) {
+      // since already initialized left and right arg indices assign the target
+      // indices
+      BinaryEngine_::perm_indices(target_indices);
     } else {
-      contract_ = true;
-      ContEngine_::init_vars();
-      ContEngine_::perm_vars(target_vars);
+      ContEngine_::init_indices(target_indices);
     }
   }
 
-  /// Initialize the variable list of this expression
-  void init_vars() {
-    BinaryEngine_::left_.init_vars();
-    BinaryEngine_::right_.init_vars();
-
-    if (BinaryEngine_::left_.vars().is_permutation(
-            BinaryEngine_::right_.vars())) {
-      if (left_type::leaves <= right_type::leaves)
-        ExprEngine_::vars_ = BinaryEngine_::left_.vars();
-      else
-        ExprEngine_::vars_ = BinaryEngine_::right_.vars();
+  /// Initialize the index list of this expression
+  void init_indices() {
+    BinaryEngine_::left_.init_indices();
+    BinaryEngine_::right_.init_indices();
+    this->product_type_ =
+        compute_product_type(outer(BinaryEngine_::left_.indices()),
+                             outer(BinaryEngine_::right_.indices()));
+    if (this->product_type() == TensorProduct::Hadamard) {
+      auto outer_indices = outer((left_type::leaves <= right_type::leaves)
+                                     ? BinaryEngine_::left_.indices()
+                                     : BinaryEngine_::right_.indices());
+      // assume inner op is also Hadamard
+      // TODO compute inner indices using inner_product_type_
+      auto inner_indices = inner((left_type::leaves <= right_type::leaves)
+                                     ? BinaryEngine_::left_.indices()
+                                     : BinaryEngine_::right_.indices());
+      ExprEngine_::indices_ = BipartiteIndexList(outer_indices, inner_indices);
     } else {
-      contract_ = true;
-      ContEngine_::init_vars();
+      ContEngine_::init_indices();
     }
   }
 
@@ -461,12 +582,13 @@ class ScalMultEngine
 
   /// This function will initialize the permutation, tiled range, and shape
   /// for the result tensor.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
-    if (contract_)
-      ContEngine_::init_struct(target_vars);
+  /// \param target_indices The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_indices) {
+    this->init_inner_tile_op(inner(target_indices));
+    if (this->product_type() == TensorProduct::Contraction)
+      ContEngine_::init_struct(target_indices);
     else
-      BinaryEngine_::init_struct(target_vars);
+      BinaryEngine_::init_struct(target_indices);
   }
 
   /// Initialize result tensor distribution
@@ -476,7 +598,7 @@ class ScalMultEngine
   /// \param world The world were the result will be distributed
   /// \param pmap The process map for the result tensor tiles
   void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
-    if (contract_)
+    if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_distribution(world, pmap);
     else
       BinaryEngine_::init_distribution(world, pmap);
@@ -486,7 +608,7 @@ class ScalMultEngine
 
   /// \return The distributed evaluator that will evaluate this expression
   dist_eval_type make_dist_eval() const {
-    if (contract_)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_dist_eval();
     else
       return BinaryEngine_::make_dist_eval();
@@ -496,7 +618,7 @@ class ScalMultEngine
 
   /// \return The result tiled range object
   trange_type make_trange() const {
-    if (contract_)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange();
     else
       return BinaryEngine_::make_trange();
@@ -507,7 +629,7 @@ class ScalMultEngine
   /// \param perm The permutation to be applied to the array
   /// \return The result tiled range object
   trange_type make_trange(const Permutation& perm) const {
-    if (contract_)
+    if (this->product_type() == TensorProduct::Contraction)
       return ContEngine_::make_trange(perm);
     else
       return BinaryEngine_::make_trange(perm);
@@ -541,7 +663,9 @@ class ScalMultEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     return op_type(op_base_type(ContEngine_::factor_), perm);
   }
 
@@ -557,12 +681,12 @@ class ScalMultEngine
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream os, const VariableList& target_vars) const {
-    if (contract_)
-      return ContEngine_::print(os, target_vars);
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream os, const BipartiteIndexList& target_indices) const {
+    if (this->product_type() == TensorProduct::Contraction)
+      return ContEngine_::print(os, target_indices);
     else
-      return BinaryEngine_::print(os, target_vars);
+      return BinaryEngine_::print(os, target_indices);
   }
 
 };  // class ScalMultEngine

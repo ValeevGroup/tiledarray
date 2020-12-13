@@ -28,12 +28,12 @@
 
 #include <TiledArray/tensor/complex.h>
 #include <TiledArray/tensor/kernels.h>
+#include <TiledArray/tile_interface/permute.h>
 #include <TiledArray/type_traits.h>
 
 namespace TiledArray {
 
 // Forward declarations
-class Permutation;
 template <typename T, typename A>
 class Tensor;
 class Range;
@@ -340,13 +340,28 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A tensor where element \c i of the new tensor is equal to
   /// \c op(*this[i],other[i])
-  template <typename Right, typename Op,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  result_tensor binary(const Right& right, Op&& op,
-                       const Permutation& perm) const {
+  template <
+      typename Right, typename Op, typename Perm,
+      typename std::enable_if<is_tensor<Right>::value &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  result_tensor binary(const Right& right, Op&& op, const Perm& perm) const {
     //        return result_tensor(*this, right, op, perm);
-    result_tensor new_tensor(perm * this->range());
-    detail::tensor_init(std::forward<Op>(op), perm, new_tensor, *this, right);
+    result_tensor new_tensor(outer(perm) * this->range());
+    detail::tensor_init(std::forward<Op>(op), outer(perm), new_tensor, *this,
+                        right);
+
+    // If we actually have a ToT the inner permutation was not applied above so
+    // we do that now
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<TensorInterface>;
+    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
+    if constexpr (is_tot && is_bperm) {
+      if (inner_size(perm) != 0) {
+        auto inner_perm = inner(perm);
+        Permute<T, T> p;
+        for (auto& x : new_tensor) x = p(x, inner_perm);
+      }
+    }
+
     return new_tensor;
   }
 
@@ -393,11 +408,24 @@ class TensorInterface {
   /// \throw TiledArray::Exception When this tensor is empty.
   /// \throw TiledArray::Exception The dimension of \c perm does not match
   /// that of this tensor.
-  template <typename Op>
-  result_tensor unary(Op&& op, const Permutation& perm) const {
-    //        return result_tensor(*this, op, perm);
-    result_tensor new_tensor(perm * this->range());
-    detail::tensor_init(std::forward<Op>(op), perm, new_tensor, *this);
+  template <typename Op, typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_tensor unary(Op&& op, const Perm& perm) const {
+    result_tensor new_tensor(outer(perm) * this->range());
+    detail::tensor_init(std::forward<Op>(op), outer(perm), new_tensor, *this);
+
+    // If we actually have a ToT the inner permutation was not applied above so
+    // we do that now
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<TensorInterface>;
+    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
+    if constexpr (is_tot && is_bperm) {
+      if (inner_size(perm) != 0) {
+        auto inner_perm = inner(perm);
+        Permute<T, T> p;
+        for (auto& x : new_tensor) x = p(x, inner_perm);
+      }
+    }
+
     return new_tensor;
   }
 
@@ -415,10 +443,25 @@ class TensorInterface {
 
   // permute operation
   // construct a permuted copy of this tensor
-  result_tensor permute(const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_tensor permute(const Perm& perm) const {
     auto op = [](const T& arg) { return arg; };
-    result_tensor new_tensor(perm * this->range());
-    TiledArray::detail::tensor_init(op, perm, new_tensor, *this);
+    result_tensor new_tensor(outer(perm) * this->range());
+    TiledArray::detail::tensor_init(op, outer(perm), new_tensor, *this);
+
+    // If we actually have a ToT the inner permutation was not applied above so
+    // we do that now
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<TensorInterface>;
+    constexpr bool is_bperm = detail::is_bipartite_permutation_v<Perm>;
+    if constexpr (is_tot && is_bperm) {
+      if (inner_size(perm) != 0) {
+        auto inner_perm = inner(perm);
+        Permute<T, T> p;
+        for (auto& x : new_tensor) x = p(x, inner_perm);
+      }
+    }
+
     return new_tensor;
   }
 
@@ -444,9 +487,11 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements of this tensor are scaled by
   /// \c factor and permuted
-  template <typename Scalar, typename std::enable_if<
-                                 detail::is_numeric_v<Scalar>>::type* = nullptr>
-  result_tensor scale(const Scalar factor, const Permutation& perm) const {
+  template <
+      typename Scalar, typename Perm,
+      typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  result_tensor scale(const Scalar factor, const Perm& perm) const {
     return unary(
         [factor](const numeric_type a) -> numeric_type { return a * factor; },
         perm);
@@ -489,9 +534,11 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other
-  template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  result_tensor add(const Right& right, const Permutation& perm) const {
+  template <
+      typename Right, typename Perm,
+      typename std::enable_if<is_tensor<Right>::value &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  result_tensor add(const Right& right, const Perm& perm) const {
     return binary(
         right,
         [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
@@ -527,12 +574,12 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c other, scaled by \c factor
-  template <
-      typename Right, typename Scalar,
-      typename std::enable_if<is_tensor<Right>::value &&
-                              detail::is_numeric_v<Scalar>>::type* = nullptr>
+  template <typename Right, typename Scalar, typename Perm,
+            typename std::enable_if<
+                is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
+                detail::is_permutation_v<Perm>>::type* = nullptr>
   result_tensor add(const Right& right, const Scalar factor,
-                    const Permutation& perm) const {
+                    const Perm& perm) const {
     return binary(
         right,
         [factor](const numeric_type l, const numeric_t<Right> r)
@@ -556,7 +603,9 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the sum of the elements of
   /// \c this and \c value
-  result_tensor add(const numeric_type value, const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_tensor add(const numeric_type value, const Perm& perm) const {
     return unary(
         [value](const numeric_type a) -> numeric_type { return a + value; },
         perm);
@@ -625,9 +674,11 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the different between the
   /// elements of \c this and \c right
-  template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  result_tensor subt(const Right& right, const Permutation& perm) const {
+  template <
+      typename Right, typename Perm,
+      typename std::enable_if<is_tensor<Right>::value &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  result_tensor subt(const Right& right, const Perm& perm) const {
     return binary(
         right,
         [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
@@ -663,12 +714,12 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the different between the
   /// elements of \c this and \c right, scaled by \c factor
-  template <
-      typename Right, typename Scalar,
-      typename std::enable_if<is_tensor<Right>::value &&
-                              detail::is_numeric_v<Scalar>>::type* = nullptr>
+  template <typename Right, typename Scalar, typename Perm,
+            typename std::enable_if<
+                is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
+                detail::is_permutation_v<Perm>>::type* = nullptr>
   result_tensor subt(const Right& right, const Scalar factor,
-                     const Permutation& perm) const {
+                     const Perm& perm) const {
     return binary(
         right,
         [factor](const numeric_type l, const numeric_t<Right> r)
@@ -688,7 +739,9 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the different between the
   /// elements of \c this and \c value
-  result_tensor subt(const numeric_type value, const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_tensor subt(const numeric_type value, const Perm& perm) const {
     return add(-value, perm);
   }
 
@@ -751,9 +804,11 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the product of the elements
   /// of \c this and \c right
-  template <typename Right,
-            typename std::enable_if<is_tensor<Right>::value>::type* = nullptr>
-  result_tensor mult(const Right& right, const Permutation& perm) const {
+  template <
+      typename Right, typename Perm,
+      typename std::enable_if<is_tensor<Right>::value &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  result_tensor mult(const Right& right, const Perm& perm) const {
     return binary(
         right,
         [](const numeric_type l, const numeric_t<Right> r) -> numeric_type {
@@ -789,12 +844,12 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor where the elements are the product of the elements
   /// of \c this and \c right, scaled by \c factor
-  template <
-      typename Right, typename Scalar,
-      typename std::enable_if<is_tensor<Right>::value &&
-                              detail::is_numeric_v<Scalar>>::type* = nullptr>
+  template <typename Right, typename Scalar, typename Perm,
+            typename std::enable_if<
+                is_tensor<Right>::value && detail::is_numeric_v<Scalar> &&
+                detail::is_permutation_v<Perm>>::type* = nullptr>
   result_tensor mult(const Right& right, const Scalar factor,
-                     const Permutation& perm) const {
+                     const Perm& perm) const {
     return binary(
         right,
         [factor](const numeric_type l, const numeric_t<Right> r)
@@ -844,7 +899,9 @@ class TensorInterface {
 
   /// \param perm The permutation to be applied to this tensor
   /// \return A new tensor that contains the negative values of this tensor
-  result_tensor neg(const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_tensor neg(const Perm& perm) const {
     return unary([](const numeric_type l) -> numeric_type { return -l; }, perm);
   }
 
@@ -878,7 +935,9 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A permuted copy of this tensor that contains the complex
   /// conjugate values
-  result_tensor conj(const Permutation& perm) const {
+  template <typename Perm,
+            typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+  result_tensor conj(const Perm& perm) const {
     return scale(conj_op(), perm);
   }
 
@@ -889,9 +948,11 @@ class TensorInterface {
   /// \param perm The permutation to be applied to this tensor
   /// \return A permuted copy of this tensor that contains the complex
   /// conjugate values
-  template <typename Scalar, typename std::enable_if<
-                                 detail::is_numeric_v<Scalar>>::type* = nullptr>
-  result_tensor conj(const Scalar factor, const Permutation& perm) const {
+  template <
+      typename Scalar, typename Perm,
+      typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                              detail::is_permutation_v<Perm>>::type* = nullptr>
+  result_tensor conj(const Scalar factor, const Perm& perm) const {
     return scale(conj_op(factor), perm);
   }
 
@@ -1074,6 +1135,10 @@ class TensorInterface {
 
 };  // class TensorInterface
 
+/// Shallow comparison operator
+
+/// \return true if \p first and \p second view the same data block through
+/// equivalent ranges
 template <typename T, typename Range, typename OpResult>
 bool operator==(const TensorInterface<T, Range, OpResult>& first,
                 const TensorInterface<T, Range, OpResult>& second) {

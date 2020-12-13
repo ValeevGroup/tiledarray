@@ -45,10 +45,10 @@ class Range {
   typedef container::svector<index1_type>
       index_type;            ///< Coordinate index type, to conform to
                              ///< TWG spec
-  typedef index_type index;  ///< Coordinate index type (decprecated)
+  typedef index_type index;  ///< Coordinate index type (deprecated)
   typedef detail::SizeArray<const index1_type>
       index_view_type;  ///< Non-owning variant of index_type
-  typedef index_view_type
+  typedef index_type
       extent_type;  ///< Range extent type, to conform to TWG spec
   typedef std::size_t ordinal_type;  ///< Ordinal type, to conform to TWG spec
   typedef std::make_signed_t<ordinal_type> distance_type;  ///< Distance type
@@ -601,7 +601,7 @@ class Range {
   /// \param perm The permutation applied to other
   /// \param other The range to be permuted and copied
   Range(const Permutation& perm, const Range_& other) {
-    TA_ASSERT(perm.dim() == other.rank_);
+    TA_ASSERT(perm.size() == other.rank_);
 
     if (other.rank_ > 0ul) {
       data_ = new index1_type[other.rank_ << 2];
@@ -728,8 +728,7 @@ class Range {
 
   /// Range extent accessor
 
-  /// \return A \c extent_type that contains the extent for each dimension of
-  /// the block range.
+  /// \return A range that contains the extent for each dimension.
   /// \throw nothing
   index_view_type extent() const {
     return index_view_type(extent_data(), rank_);
@@ -1231,7 +1230,7 @@ class Range {
 };  // class Range
 
 inline Range& Range::operator*=(const Permutation& perm) {
-  TA_ASSERT(perm.dim() == rank_);
+  TA_ASSERT(perm.size() == rank_);
   if (rank_ > 1ul) {
     // Copy the lower and upper bound data into a temporary array
     auto* MADNESS_RESTRICT const temp_lower = new index1_type[rank_ << 1];
@@ -1258,6 +1257,17 @@ inline void swap(Range& r0, Range& r1) {  // no throw
 /// \return A permuted copy of \c r.
 inline Range operator*(const Permutation& perm, const Range& r) {
   return Range(perm, r);
+}
+
+/// Create a permuted range
+
+/// \param r The range to be permuted
+/// \param perm The permutation to be applied to the range
+/// \return A permuted copy of \c r.
+/// \note this is an adaptor to BTAS' permute
+template <typename I, typename = std::enable_if_t<std::is_integral_v<I>>>
+Range permute(const Range& r, std::initializer_list<I> perm) {
+  return Permutation(perm) * r;
 }
 
 /// Range equality comparison
@@ -1309,6 +1319,13 @@ inline bool is_congruent(const Range& r1, const Range& r2) {
          std::equal(r1.extent_data(), r1.extent_data() + r1.rank(),
                     r2.extent_data());
 }
+
+/// Tests whether a range is contiguous, i.e. whether its ordinal values form a
+/// contiguous range
+
+/// \param range a Range
+/// \return true since TiledArray::Range is contiguous by definition
+inline bool is_contiguous(const Range& range) { return true; }
 
 }  // namespace TiledArray
 #endif  // TILEDARRAY_RANGE_H__INCLUDED

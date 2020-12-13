@@ -330,6 +330,7 @@ else()
           #      "-DCMAKE_Fortran_FLAGS_RELEASE=${CMAKE_Fortran_FLAGS_RELEASE}"
           #      "-DCMAKE_Fortran_FLAGS_RELWITHDEBINFO=${CMAKE_Fortran_FLAGS_RELWITHDEBINFO}"
           #      "-DCMAKE_Fortran_FLAGS_MINSIZEREL=${CMAKE_Fortran_FLAGS_MINSIZEREL}"
+          -DCMAKE_AR=${CMAKE_AR}
           -DENABLE_MPI=${ENABLE_MPI}
           -DMPI_THREAD=multiple
           -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER}
@@ -392,6 +393,11 @@ else()
                          COMPONENTS world HINTS ${MADNESS_BINARY_DIR})
   if (NOT TARGET MADworld)
     message(FATAL_ERROR "Did not receive target MADworld")
+  endif()
+  if (MADNESS_CMAKE_EXTRA_ARGS MATCHES -DENABLE_PARSEC=ON)
+    if (NOT TARGET PaRSEC::parsec)
+      find_package_regimport(PaRSEC CONFIG REQUIRED COMPONENTS parsec)
+    endif()
   endif()
   set(TILEDARRAY_DOWNLOADED_MADNESS ON CACHE BOOL "Whether TA downloaded MADNESS")
   mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)

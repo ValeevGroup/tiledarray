@@ -23,7 +23,7 @@ class shared_function {
   shared_function &operator=(shared_function const &) = default;
   shared_function &operator=(shared_function &&) = default;
 
-  operator bool() const { return f_; }
+  explicit operator bool() const { return f_; }
 
   template <typename... As, typename = std::void_t<decltype(
                                 (std::declval<F &>())(std::declval<As>()...))>>
@@ -47,7 +47,7 @@ class function_ref;
 template <class R, class... Args>
 class function_ref<R(Args...)> {
  public:
-  constexpr function_ref() noexcept = delete;
+  constexpr function_ref() noexcept = default;
 
   /// Creates a `function_ref` which refers to the same callable as `rhs`.
   constexpr function_ref(const function_ref<R(Args...)> &rhs) noexcept =
@@ -79,8 +79,9 @@ class function_ref<R(Args...)> {
   /// \synopsis template <typename F> constexpr function_ref &operator=(F &&f)
   /// noexcept;
   template <typename F,
-            std::enable_if_t<std::is_invocable_r<R, F &&, Args...>::value> * =
-                nullptr>
+            std::enable_if_t<
+                !std::is_same<std::decay_t<F>, function_ref>::value &&
+                std::is_invocable_r<R, F &&, Args...>::value> * = nullptr>
   constexpr function_ref<R(Args...)> &operator=(F &&f) noexcept {
     obj_ = reinterpret_cast<void *>(std::addressof(f));
     callback_ = [](void *obj, Args... args) {
@@ -102,6 +103,9 @@ class function_ref<R(Args...)> {
   R operator()(Args... args) const {
     return callback_(obj_, std::forward<Args>(args)...);
   }
+
+  /// Converts to true if non-default initialized
+  explicit operator bool() const { return obj_; }
 
  private:
   void *obj_ = nullptr;

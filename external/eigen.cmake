@@ -99,13 +99,15 @@ elseif(TA_EXPERT)
 
 else()
 
+  set(Eigen3_VERSION 3.3.7)
+  set(EIGEN3_URL_HASH MD5=b9e98a200d2455f06db9c661c5610496)
+  set(EIGEN3_URL https://gitlab.com/libeigen/eigen/-/archive/${Eigen3_VERSION}/eigen-${Eigen3_VERSION}.tar.bz2)
+
   include(ExternalProject)
 
   # Set source and build path for Eigen3 in the TiledArray Project
   set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
   set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
-  set(EIGEN3_URL https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.bz2)
-  set(EIGEN3_URL_HASH MD5=b9e98a200d2455f06db9c661c5610496)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
 
@@ -161,6 +163,7 @@ if (TARGET TiledArray_Eigen)
   target_include_directories(TiledArray_Eigen INTERFACE ${LAPACK_INCLUDE_DIRS})
   target_compile_definitions(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_DEFINITIONS})
   target_compile_options(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_OPTIONS})
+  set(TiledArray_Eigen_VERSION "${Eigen3_VERSION}" CACHE STRING "Eigen3_VERSION of the library interfaced by TiledArray_Eigen target")
   if (MADNESS_HAS_MKL)
     target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL_ALL)
   else(MADNESS_HAS_MKL)

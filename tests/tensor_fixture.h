@@ -33,7 +33,8 @@ using namespace TiledArray;
 
 struct TensorFixture {
   typedef Tensor<int> TensorN;
-  typedef Tensor<std::complex<double> > TensorZ;
+  typedef Tensor<double> TensorD;
+  typedef Tensor<std::complex<double>> TensorZ;
   typedef TensorN::value_type value_type;
   typedef TensorN::range_type::index index;
   typedef TensorN::size_type size_type;
@@ -58,10 +59,11 @@ struct TensorFixture {
     return range_type(start, finish);
   }
 
-  static void rand_fill(const int seed, const size_type n, int* const data) {
+  template <typename T, typename = std::enable_if_t<std::is_fundamental_v<T>>>
+  static void rand_fill(const int seed, const size_type n, T* const data) {
     GlobalFixture::world->srand(seed);
     for (size_type i = 0ul; i < n; ++i)
-      data[i] = GlobalFixture::world->rand() % 42;
+      data[i] = static_cast<T>(GlobalFixture::world->rand() % 42);
   }
 
   template <typename T>

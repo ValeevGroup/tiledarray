@@ -85,8 +85,11 @@ class Cast<Result, Arg,
   template <typename Result_, typename Arg_>
   static auto invoker(
       Arg_&& arg,
-      std::enable_if_t<detail::has_conversion_operator_v<
-          std::decay_t<Arg_>, madness::Future<Result_>>>* = nullptr) {
+      std::enable_if_t<
+          !madness::is_future<Result_>::value &&
+          !detail::is_convertible<std::decay_t<Arg_>, Result_>::value &&
+          detail::has_conversion_operator_v<
+              std::decay_t<Arg_>, madness::Future<Result_>>>* = nullptr) {
     auto exec = [](Arg_&& arg) {
       return static_cast<madness::Future<Result_>>(std::forward<Arg_>(arg));
     };
@@ -97,8 +100,9 @@ class Cast<Result, Arg,
   /// this converts an Arg object to a Result object
   /// \note get the argument by universal ref as a step towards moving
   /// conversions
-  template <typename Arg_, typename = std::enable_if_t<std::is_same<
-                               argument_type, std::decay_t<Arg_>>::value>>
+  template <typename Arg_,
+            typename = std::enable_if_t<std::is_same<
+                argument_type, madness::remove_fcvr_t<Arg_>>::value>>
   auto operator()(Arg_&& arg) const {
     return this->invoker<result_type>(arg);
   }
@@ -168,7 +172,7 @@ class Cast : public TiledArray::tile_interface::Cast<Result, Arg, Enabler> {};
 /// or more conversions, depending on the implementation of Cast<>, and the
 /// properties of types Arg and Result.
 template <typename Arg, typename Result = typename TiledArray::eval_trait<
-                            std::decay_t<Arg>>::type>
+                            madness::remove_fcvr_t<Arg>>::type>
 auto invoke_cast(Arg&& arg) {
   Cast<Result, std::decay_t<Arg>> cast;
   return TiledArray::meta::invoke(cast, std::forward<Arg>(arg));

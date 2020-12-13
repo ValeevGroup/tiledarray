@@ -22,7 +22,7 @@ a `madness::WorldObject`.
 
 ### Public Class API 
 
-```
+```.cpp
     template <typename T,
               typename = scalapackpp::detail::enable_if_scalapack_supported_t<T>>
     class ScaLAPACKMatrix {
@@ -56,7 +56,7 @@ a `madness::WorldObject`.
 
 ### Converting between `DistArray<T>` Object and `ScaLAPACKMatrix<T>`
 
-```
+```.cpp
   TArray<T> tensor(...);
   // Populate tensor
 

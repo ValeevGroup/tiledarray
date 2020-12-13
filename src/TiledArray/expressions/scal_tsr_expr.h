@@ -76,8 +76,8 @@ class ScalTsrExpr : public Expr<ScalTsrExpr<Array, Scalar> > {
       scalar_type;  ///< Scalar type
 
  private:
-  const array_type& array_;  ///< The array that this expression
-  std::string vars_;         ///< The tensor variable list
+  const array_type& array_;  ///< The array that this expression is bound to
+  std::string annotation_;   ///< The array annotation
   scalar_type factor_;       ///< The scaling factor
 
   // Not allowed
@@ -94,21 +94,21 @@ class ScalTsrExpr : public Expr<ScalTsrExpr<Array, Scalar> > {
   /// Construct a scaled tensor expression
 
   /// \param array The array object
-  /// \param vars The array annotation variables
+  /// \param annotation The array annotation
   /// \param factor The scaling factor
-  ScalTsrExpr(const array_type& array, const std::string& vars,
+  ScalTsrExpr(const array_type& array, const std::string& annotation,
               const scalar_type factor)
-      : Expr_(), array_(array), vars_(vars), factor_(factor) {}
+      : Expr_(), array_(array), annotation_(annotation), factor_(factor) {}
 
   /// Array accessor
 
   /// \return a const reference to this array
   const array_type& array() const { return array_; }
 
-  /// Tensor variable string accessor
+  /// Tensor annotation accessor
 
-  /// \return A const reference to the variable string for this tensor
-  const std::string& vars() const { return vars_; }
+  /// \return A const reference to the annotation for this tensor
+  const std::string& annotation() const { return annotation_; }
 
   /// Scaling factor accessor
 
@@ -130,7 +130,7 @@ template <typename Array, typename Scalar,
 inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar> operator*(
     const TsrExpr<Array, true>& expr, const Scalar& factor) {
   return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
-      expr.array(), expr.vars(), factor);
+      expr.array(), expr.annotation(), factor);
 }
 
 /// Scaled-tensor expression factor
@@ -146,7 +146,7 @@ template <typename Array, typename Scalar,
 inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar> operator*(
     const Scalar& factor, const TsrExpr<Array, true>& expr) {
   return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
-      expr.array(), expr.vars(), factor);
+      expr.array(), expr.annotation(), factor);
 }
 
 /// Scaled-tensor expression factor
@@ -163,7 +163,7 @@ template <typename Array, typename Scalar1, typename Scalar2,
 inline ScalTsrExpr<Array, mult_t<Scalar1, Scalar2> > operator*(
     const ScalTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
   return ScalTsrExpr<Array, mult_t<Scalar1, Scalar2> >(
-      expr.array(), expr.vars(), expr.factor() * factor);
+      expr.array(), expr.annotation(), expr.factor() * factor);
 }
 
 /// Scaled-tensor expression factor
@@ -180,7 +180,7 @@ template <typename Array, typename Scalar1, typename Scalar2,
 inline ScalTsrExpr<Array, mult_t<Scalar2, Scalar1> > operator*(
     const Scalar1& factor, const ScalTsrExpr<Array, Scalar2>& expr) {
   return ScalTsrExpr<Array, mult_t<Scalar2, Scalar1> >(
-      expr.array(), expr.vars(), expr.factor() * factor);
+      expr.array(), expr.annotation(), expr.factor() * factor);
 }
 
 /// Negated-tensor expression factor
@@ -194,7 +194,7 @@ inline ScalTsrExpr<typename std::remove_const<Array>::type,
 operator-(const TsrExpr<Array, true>& expr) {
   return ScalTsrExpr<typename std::remove_const<Array>::type,
                      typename ExprTrait<TsrExpr<Array, true> >::numeric_type>(
-      expr.array(), expr.vars(), -1);
+      expr.array(), expr.annotation(), -1);
 }
 
 /// Negated-tensor expression factor
@@ -206,7 +206,8 @@ operator-(const TsrExpr<Array, true>& expr) {
 template <typename Array, typename Scalar>
 inline ScalTsrExpr<Array, Scalar> operator-(
     const ScalTsrExpr<Array, Scalar>& expr) {
-  return ScalTsrExpr<Array, Scalar>(expr.array(), expr.vars(), -expr.factor());
+  return ScalTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
+                                    -expr.factor());
 }
 
 /// Conjugated tensor expression factory
@@ -218,7 +219,7 @@ template <typename Array>
 inline ConjTsrExpr<typename std::remove_const<Array>::type> conj(
     const TsrExpr<Array, true>& expr) {
   return ConjTsrExpr<typename std::remove_const<Array>::type>(
-      expr.array(), expr.vars(), conj_op());
+      expr.array(), expr.annotation(), conj_op());
 }
 
 /// Conjugate-conjugate tensor expression factory
@@ -228,7 +229,7 @@ inline ConjTsrExpr<typename std::remove_const<Array>::type> conj(
 /// \return A tensor expression object
 template <typename Array>
 inline TsrExpr<const Array, true> conj(const ConjTsrExpr<Array>& expr) {
-  return TsrExpr<const Array, true>(expr.array(), expr.vars());
+  return TsrExpr<const Array, true>(expr.array(), expr.annotation());
 }
 
 /// Conjugated-tensor expression factor
@@ -241,7 +242,7 @@ template <typename Array, typename Scalar>
 inline ScalConjTsrExpr<Array, Scalar> conj(
     const ScalTsrExpr<Array, Scalar>& expr) {
   return ScalConjTsrExpr<Array, Scalar>(
-      expr.array(), expr.vars(),
+      expr.array(), expr.annotation(),
       conj_op(TiledArray::detail::conj(expr.factor())));
 }
 
@@ -255,7 +256,7 @@ template <typename Array, typename Scalar>
 inline ScalTsrExpr<Array, Scalar> conj(
     const ScalConjTsrExpr<Array, Scalar>& expr) {
   return ScalTsrExpr<Array, Scalar>(
-      expr.array(), expr.vars(),
+      expr.array(), expr.annotation(),
       TiledArray::detail::conj(expr.factor().factor()));
 }
 
@@ -271,7 +272,7 @@ template <typename Array, typename Scalar,
               TiledArray::detail::is_numeric_v<Scalar> >::type* = nullptr>
 inline ScalConjTsrExpr<Array, Scalar> operator*(
     const ConjTsrExpr<const Array>& expr, const Scalar& factor) {
-  return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+  return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
                                         conj_op(factor));
 }
 
@@ -287,7 +288,7 @@ template <typename Array, typename Scalar,
               TiledArray::detail::is_numeric_v<Scalar> >::type* = nullptr>
 inline ScalConjTsrExpr<Array, Scalar> operator*(
     const Scalar& factor, const ConjTsrExpr<Array>& expr) {
-  return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+  return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
                                         conj_op(factor));
 }
 
@@ -304,7 +305,8 @@ template <typename Array, typename Scalar1, typename Scalar2,
 inline ScalConjTsrExpr<Array, mult_t<Scalar1, Scalar2> > operator*(
     const ScalConjTsrExpr<Array, Scalar1>& expr, const Scalar2& factor) {
   return ScalConjTsrExpr<Array, mult_t<Scalar1, Scalar2> >(
-      expr.array(), expr.vars(), conj_op(expr.factor().factor() * factor));
+      expr.array(), expr.annotation(),
+      conj_op(expr.factor().factor() * factor));
 }
 
 /// Scaled-tensor expression factor
@@ -320,7 +322,8 @@ template <typename Array, typename Scalar1, typename Scalar2,
 inline ScalConjTsrExpr<Array, mult_t<Scalar2, Scalar1> > operator*(
     const Scalar1& factor, const ScalConjTsrExpr<Array, Scalar2>& expr) {
   return ScalConjTsrExpr<Array, mult_t<Scalar2, Scalar1> >(
-      expr.array(), expr.vars(), conj_op(expr.factor().factor() * factor));
+      expr.array(), expr.annotation(),
+      conj_op(expr.factor().factor() * factor));
 }
 
 /// Negated-conjugated-tensor expression factor
@@ -333,7 +336,7 @@ inline ScalConjTsrExpr<Array,
                        typename ExprTrait<ConjTsrExpr<Array> >::numeric_type>
 operator-(const ConjTsrExpr<Array>& expr) {
   typedef typename ExprTrait<ConjTsrExpr<Array> >::numeric_type numeric_type;
-  return ScalConjTsrExpr<Array, numeric_type>(expr.array(), expr.vars(),
+  return ScalConjTsrExpr<Array, numeric_type>(expr.array(), expr.annotation(),
                                               conj_op<numeric_type>(-1));
 }
 
@@ -346,7 +349,7 @@ operator-(const ConjTsrExpr<Array>& expr) {
 template <typename Array, typename Scalar>
 inline ScalConjTsrExpr<Array, Scalar> operator-(
     const ScalConjTsrExpr<Array, Scalar>& expr) {
-  return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.vars(),
+  return ScalConjTsrExpr<Array, Scalar>(expr.array(), expr.annotation(),
                                         conj_op(-expr.factor().factor()));
 }
 

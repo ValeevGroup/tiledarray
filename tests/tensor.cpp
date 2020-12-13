@@ -23,6 +23,7 @@
 #endif
 
 #include <iterator>
+#include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor.h"
 #include "tensor_fixture.h"
 #include "tiledarray.h"
@@ -30,7 +31,7 @@
 
 const TensorFixture::range_type TensorFixture::r = make_range(81);
 
-BOOST_FIXTURE_TEST_SUITE(tensor_suite, TensorFixture)
+BOOST_FIXTURE_TEST_SUITE(tensor_suite, TensorFixture, TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   // check constructor
@@ -498,6 +499,74 @@ BOOST_AUTO_TEST_CASE(binary_perm_op) {
   for (std::size_t i = 0ul; i < x.size(); ++i) {
     std::size_t pi = x.range().ordinal(perm * t.range().idx(i));
     BOOST_CHECK_EQUAL(x[pi], t[i] - s[i]);
+  }
+}
+
+BOOST_AUTO_TEST_CASE(gemm) {
+  TensorD x(r);
+  rand_fill(431, x.size(), x.data());
+  TensorD y(r);
+  rand_fill(413, y.size(), y.data());
+
+  const auto ndim_contr =
+      r.rank() % 2;  // this many trailing modes will be contracted
+  const auto ndim_free =
+      r.rank() - ndim_contr;  // this many leading modes will be free
+  const auto alpha = 1.5;
+  const auto gemm_helper_nt =
+      math::GemmHelper(madness::cblas::NoTrans, madness::cblas::Trans,
+                       2 * ndim_free, x.range().rank(), y.range().rank());
+
+  // check result-returning gemm
+  TensorD z0;
+  {
+    BOOST_REQUIRE_NO_THROW(z0 = x.gemm(y, alpha, gemm_helper_nt));
+
+    BOOST_CHECK(!z0.empty());
+
+    // Check that range data is correct.
+    auto z0_range_ref =
+        gemm_helper_nt.make_result_range<Range>(x.range(), y.range());
+    BOOST_CHECK_EQUAL(z0.range(), z0_range_ref);
+
+    // verify data
+    std::vector<double> z0_ref(z0.range().volume());
+    {
+      integer m = 1, n = 1, k = 1;
+      gemm_helper_nt.compute_matrix_sizes(m, n, k, x.range(), y.range());
+      madness::cblas::gemm(madness::cblas::Trans, madness::cblas::NoTrans, n, m,
+                           k, alpha, y.data(), k, x.data(), k, 0, z0_ref.data(),
+                           n);
+    }
+    for (std::size_t i = 0ul; i < z0.size(); ++i)
+      BOOST_CHECK_EQUAL(z0[i], z0_ref[i]);
+  }
+
+  // check in-place gemm
+  {
+    // can use uninitialized ...
+    TensorD z1;
+    BOOST_REQUIRE_NO_THROW(z1.gemm(x, y, alpha, gemm_helper_nt));
+    for (std::size_t i = 0ul; i < z0.size(); ++i)
+      BOOST_CHECK_EQUAL(z0[i], z1[i]);
+
+    // .. and uninitialized tensor ..
+    const double z2_init = -1.3;
+    TensorD z2(z0.range(), z2_init);
+    BOOST_REQUIRE_NO_THROW(z2.gemm(x, y, alpha, gemm_helper_nt));
+    for (std::size_t i = 0ul; i < z0.size(); ++i)
+      BOOST_CHECK_EQUAL(z0[i], z2[i] - z2_init);
+
+    // .. and even drop in custom element multiply-add op
+    const double z3_init = 0.00;
+    TensorD z3(z0.range(), z3_init);
+    BOOST_REQUIRE_NO_THROW(
+        z3.gemm(x, y, gemm_helper_nt,
+                [alpha](auto& result, const auto& left, const auto& right) {
+                  result += alpha * (left * right);
+                }));
+    for (std::size_t i = 0ul; i < z0.size(); ++i)
+      BOOST_CHECK_EQUAL(z0[i], z3[i] - z3_init);
   }
 }
 

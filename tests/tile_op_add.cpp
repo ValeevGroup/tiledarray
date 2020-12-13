@@ -49,7 +49,8 @@ struct AddFixture : public RangeFixture {
 
 };  // AddFixture
 
-BOOST_FIXTURE_TEST_SUITE(tile_op_add_suite, AddFixture)
+BOOST_FIXTURE_TEST_SUITE(tile_op_add_suite, AddFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions

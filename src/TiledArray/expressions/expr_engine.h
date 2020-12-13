@@ -70,11 +70,14 @@ class ExprEngine : private NO_DEFAULTS {
   // The member variables of this class are protected because derived
   // classes will customize initialization.
 
-  World* world_;        ///< The world where this expression will be evaluated
-  VariableList vars_;   ///< The variable list of this expression
+  World* world_;  ///< The world where this expression will be evaluated
+  BipartiteIndexList
+      indices_;  ///< The index list of this expression; bipartite due to need
+                 ///< to support recursive tensors (i.e. Tensor-of-Tensor)
   bool permute_tiles_;  ///< Result tile permutation flag (\c true == permute
                         ///< tile)
-  Permutation perm_;    ///< The permutation that will be applied to the result
+  /// The permutation that will be applied to the outer tensor of tensors
+  BipartitePermutation perm_;
   trange_type trange_;  ///< The tiled range of the result tensor
   shape_type shape_;    ///< The shape of the result tensor
   std::shared_ptr<pmap_interface>
@@ -89,7 +92,7 @@ class ExprEngine : private NO_DEFAULTS {
   template <typename D>
   ExprEngine(const Expr<D>& expr)
       : world_(NULL),
-        vars_(),
+        indices_(),
         permute_tiles_(true),
         perm_(),
         trange_(),
@@ -100,20 +103,20 @@ class ExprEngine : private NO_DEFAULTS {
   /// Construct and initialize the expression engine
 
   /// This function will initialize all expression engines in the expression
-  /// graph. The <tt>init_vars()</tt>, <tt>init_struct()</tt>, and
+  /// graph. The <tt>init_indices()</tt>, <tt>init_struct()</tt>, and
   /// <tt>init_distribution()</tt> will be called for each node and leaf of
   /// the graph in that order.
   /// \param world The world where the expression will be evaluated
   /// \param pmap The process map for the result tensor (may be NULL)
-  /// \param target_vars The target variable list of the result tensor
+  /// \param target_indices The target index list of the result tensor
   void init(World& world, std::shared_ptr<pmap_interface> pmap,
-            const VariableList& target_vars) {
-    if (target_vars.dim()) {
-      derived().init_vars(target_vars);
-      derived().init_struct(target_vars);
+            const BipartiteIndexList& target_indices) {
+    if (target_indices.size()) {
+      derived().init_indices(target_indices);
+      derived().init_struct(target_indices);
     } else {
-      derived().init_vars();
-      derived().init_struct(vars_);
+      derived().init_indices();
+      derived().init_struct(indices_);
     }
 
     auto override_world = override_ptr_ != nullptr && override_ptr_->world;
@@ -143,12 +146,12 @@ class ExprEngine : private NO_DEFAULTS {
   /// providing their own implementation of this function or any of the
   /// above initialization.
   /// functions.
-  /// \param target_vars The target variable list for the result tensor
-  void init_struct(const VariableList& target_vars) {
-    if (target_vars != vars_) {
-      perm_ = derived().make_perm(target_vars);
-      trange_ = derived().make_trange(perm_);
-      shape_ = derived().make_shape(perm_);
+  /// \param target_indices The target index list for the result tensor
+  void init_struct(const BipartiteIndexList& target_indices) {
+    if (target_indices != indices_) {
+      perm_ = derived().make_perm(target_indices);
+      trange_ = derived().make_trange(outer(perm_));
+      shape_ = derived().make_shape(outer(perm_));
     } else {
       trange_ = derived().make_trange();
       shape_ = derived().make_shape();
@@ -182,8 +185,9 @@ class ExprEngine : private NO_DEFAULTS {
   /// This function will generate the permutation that will be applied to
   /// the result tensor. Derived classes may customize this function by
   /// providing their own implementation it.
-  Permutation make_perm(const VariableList& target_vars) const {
-    return target_vars.permutation(vars_);
+  BipartitePermutation make_perm(
+      const BipartiteIndexList& target_indices) const {
+    return target_indices.permutation(indices_);
   }
 
   /// Tile operation factory function
@@ -194,6 +198,8 @@ class ExprEngine : private NO_DEFAULTS {
   /// may customize this function by providing their own implementation it.
   op_type make_op() const {
     if (perm_ && permute_tiles_)
+      // permutation can only be applied to the tile, not to its element (if
+      // tile = tensor-of-tensors)
       return derived().make_tile_op(perm_);
     else
       return derived().make_tile_op();
@@ -212,15 +218,15 @@ class ExprEngine : private NO_DEFAULTS {
   /// \return A pointer to world
   World* world() const { return world_; }
 
-  /// Variable list accessor
+  /// Index list accessor
 
-  /// \return A const reference to the variable list
-  const VariableList& vars() const { return vars_; }
+  /// \return A const reference to the index list
+  const BipartiteIndexList& indices() const { return indices_; }
 
   /// Permutation accessor
 
   /// \return A const reference to the permutation
-  const Permutation& perm() const { return perm_; }
+  const BipartitePermutation& perm() const { return perm_; }
 
   /// Tiled range accessor
 
@@ -239,21 +245,21 @@ class ExprEngine : private NO_DEFAULTS {
 
   /// Set the permute tiles flag
 
-  /// \param status The new status for permute tiles (true == permtue result
+  /// \param status The new status for permute tiles (true == permute result
   /// tiles)
   void permute_tiles(const bool status) { permute_tiles_ = status; }
 
   /// Expression print
 
   /// \param os The output stream
-  /// \param target_vars The target variable list for this expression
-  void print(ExprOStream& os, const VariableList& target_vars) const {
+  /// \param target_indices The target index list for this expression
+  void print(ExprOStream& os, const BipartiteIndexList& target_indices) const {
     if (perm_) {
-      os << "[P " << target_vars << "]"
+      os << "[P " << target_indices << "]"
          << (permute_tiles_ ? " " : " [no permute tiles] ")
-         << derived().make_tag() << vars_ << "\n";
+         << derived().make_tag() << indices_ << "\n";
     } else {
-      os << derived().make_tag() << vars_ << "\n";
+      os << derived().make_tag() << indices_ << "\n";
     }
   }
 

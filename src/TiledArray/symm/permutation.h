@@ -35,6 +35,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
+#include <TiledArray/util/vector.h>
 
 namespace TiledArray {
 
@@ -44,31 +45,6 @@ namespace TiledArray {
  */
 
 namespace symmetry {
-
-namespace detail {
-
-/// Create a permuted copy of an array
-
-/// \note a more efficient version of detail::permute_array specialized for
-/// TiledArray::symmetry::Permutation \tparam Perm The permutation type \tparam
-/// Arg The input array type \tparam Result The output array type \param[in]
-/// perm The permutation \param[in] arg The input array to be permuted
-/// \param[out] result The output array that will hold the permuted array
-template <typename Perm, typename Arg, typename Result>
-inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
-  TA_ASSERT(result.size() == arg.size());
-  if (perm.domain_size() < arg.size()) {
-    std::copy(arg.begin(), arg.end(),
-              result.begin());  // if perm does not map every element of arg,
-                                // copy arg to result first
-  }
-  for (const auto& p : perm.data()) {
-    TA_ASSERT(result.size() > p.second);
-    TA_ASSERT(arg.size() > p.second);
-    result[p.second] = arg[p.first];
-  }
-}
-}  // namespace detail
 
 /// Permutation of a sequence of objects indexed by base-0 indices.
 
@@ -142,6 +118,8 @@ class Permutation {
  public:
   typedef Permutation Permutation_;
   typedef unsigned int index_type;
+  template <typename T>
+  using vector = container::svector<T>;
   typedef std::map<index_type, index_type> Map;
   typedef Map::const_iterator const_iterator;
 
@@ -221,24 +199,29 @@ class Permutation {
                 InIter>::value>::type* = nullptr>
   Permutation(InIter first, InIter last) {
     TA_ASSERT(valid_permutation(first, last));
-    size_t i = 0;
+    index_type i = 0;
     for (auto e = first; e != last; ++e, ++i) {
-      auto p_i = *e;
+      index_type p_i = *e;
       if (i != p_i) p_[i] = p_i;
     }
   }
 
-  /// std::vector constructor
+  /// Construct permutation using 1-line form given as an integral range
 
-  /// Construct permutation using 1-line form input as a vector
-  /// \param a vector that specifies permutation in 1-line form
-  explicit Permutation(const std::vector<index_type>& a)
-      : Permutation(a.begin(), a.end()) {}
+  /// \tparam Index An integral range type
+  /// \param a range that specifies permutation in 1-line form
+  template <typename Index, typename std::enable_if<
+                                TiledArray::detail::is_integral_range_v<Index>,
+                                bool>::type* = nullptr>
+  explicit Permutation(Index&& a) : Permutation(begin(a), end(a)) {}
 
   /// Construct permutation with an initializer list
 
+  /// \tparam Integer an integral type
   /// \param list An initializer list of integers
-  explicit Permutation(std::initializer_list<index_type> list)
+  template <typename Integer,
+            std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
+  explicit Permutation(std::initializer_list<Integer> list)
       : Permutation(list.begin(), list.end()) {}
 
   /// Construct permutation using its compressed 2-line form given by std::map
@@ -334,8 +317,8 @@ class Permutation {
   /// </ul>
   /// \return the set of cycles (in canonical format) that represent this
   /// permutation
-  std::vector<std::vector<index_type>> cycles() const {
-    std::vector<std::vector<index_type>> result;
+  vector<vector<index_type>> cycles() const {
+    vector<vector<index_type>> result;
 
     std::set<index_type> placed_in_cycle;
 
@@ -349,7 +332,7 @@ class Permutation {
       auto i = e.first;
       if (placed_in_cycle.find(i) ==
           placed_in_cycle.end()) {  // not in a cycle yet?
-        std::vector<index_type> cycle(1, i);
+        vector<index_type> cycle(1, i);
         placed_in_cycle.insert(i);
 
         index_type next_i = p_nonconst_[i];
@@ -536,6 +519,36 @@ inline Permutation operator^(const Permutation& perm, int n) {
 
 /** @}*/
 
+namespace detail {
+
+// clang-format off
+/// Create a permuted copy of an array
+
+/// \note a more efficient version of detail::permute_array specialized for
+/// TiledArray::symmetry::Permutation
+/// \tparam Arg The input array type
+/// \tparam Result The output array type
+/// \param[in] perm The permutation
+/// \param[in] arg The input array to be permuted
+/// \param[out] result The output array that will hold the permuted array
+// clang-format on
+template <typename Arg, typename Result>
+inline void permute_array(const TiledArray::symmetry::Permutation& perm,
+                          const Arg& arg, Result& result) {
+  TA_ASSERT(result.size() == arg.size());
+  if (perm.domain_size() < arg.size()) {
+    std::copy(arg.begin(), arg.end(),
+              result.begin());  // if perm does not map every element of arg,
+    // copy arg to result first
+  }
+  for (const auto& p : perm.data()) {
+    TA_ASSERT(result.size() > p.second);
+    TA_ASSERT(arg.size() > p.second);
+    result[p.second] = arg[p.first];
+  }
+}
+}  // namespace detail
+
 /// Permute a \c std::array
 
 /// \tparam T The element type of the array
@@ -600,6 +613,40 @@ template <typename T, typename A>
 inline std::vector<T, A>& operator*=(std::vector<T, A>& v,
                                      const Permutation& perm) {
   const std::vector<T, A> temp = v;
+  symmetry::detail::permute_array(perm, temp, v);
+  return v;
+}
+
+/// permute a \c boost::container::small_vector<T>
+
+/// \tparam T The element type of the vector
+/// \tparam N The max static size of the vector
+/// \param perm The permutation
+/// \param v The vector to be permuted
+/// \return A permuted copy of \c v
+/// \throw TiledArray::Exception When the dimension of the permutation is not
+/// equal to the size of \c v.
+template <typename T, std::size_t N>
+inline boost::container::small_vector<T, N> operator*(
+    const Permutation& perm, const boost::container::small_vector<T, N>& v) {
+  boost::container::small_vector<T, N> result(v.size());
+  symmetry::detail::permute_array(perm, v, result);
+  return result;
+}
+
+/// In-place permute a \c boost::container::small_vector
+
+/// \tparam T The element type of the vector
+/// \tparam N The max static size of the vector
+/// \param[out] v The vector to be permuted
+/// \param[in] perm The permutation
+/// \return A reference to \c v
+/// \throw TiledArray::Exception When the dimension of the permutation is not
+/// equal to the size of \c v.
+template <typename T, std::size_t N>
+inline boost::container::small_vector<T, N>& operator*=(
+    boost::container::small_vector<T, N>& v, const Permutation& perm) {
+  const boost::container::small_vector<T, N> temp = v;
   symmetry::detail::permute_array(perm, temp, v);
   return v;
 }

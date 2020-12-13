@@ -24,15 +24,16 @@
 
 #include <madness/world/parallel_archive.h>
 
-#include <TiledArray/pmap/replicated_pmap.h>
-#include <TiledArray/replicator.h>
-//#include <TiledArray/tensor.h>
-#include <TiledArray/array_impl.h>
-#include <TiledArray/conversions/clone.h>
-#include <TiledArray/conversions/truncate.h>
-#include <TiledArray/policies/dense_policy.h>
-#include <TiledArray/tile_interface/cast.h>
-#include <TiledArray/util/initializer_list.h>
+#include "TiledArray/array_impl.h"
+#include "TiledArray/conversions/clone.h"
+#include "TiledArray/conversions/truncate.h"
+#include "TiledArray/pmap/replicated_pmap.h"
+#include "TiledArray/policies/dense_policy.h"
+#include "TiledArray/replicator.h"
+#include "TiledArray/tile_interface/cast.h"
+#include "TiledArray/util/annotation.h"
+#include "TiledArray/util/initializer_list.h"
+#include "TiledArray/util/random.h"
 
 namespace TiledArray {
 
@@ -56,12 +57,22 @@ template <typename Tile = Tensor<double, Eigen::aligned_allocator<double>>,
 class DistArray : public madness::archive::ParallelSerializableObject {
  public:
   typedef DistArray<Tile, Policy> DistArray_;  ///< This object's type
-  typedef TiledArray::detail::ArrayImpl<Tile, Policy> impl_type;
+  typedef TiledArray::detail::ArrayImpl<Tile, Policy>
+      impl_type;  ///< The type of the PIMPL
   typedef typename impl_type::policy_type policy_type;  ///< Policy type
-  typedef typename detail::numeric_type<Tile>::type
-      element_type;  ///< The tile element type
-  typedef typename detail::scalar_type<Tile>::type
-      scalar_type;  ///< The tile scalar type
+
+  /// Type used to hold the components of the tensors in the array. For
+  /// DistArray<Tensor<double>> this will be double. Similarly for
+  /// DistArray<Tensor<Tensor<double>> this will also be double. Notably for
+  /// complex elements of type std::complex<T> numeric_type will be
+  /// std::complex<T> and scalar_type will be T.
+  typedef typename detail::numeric_type<Tile>::type numeric_type;
+
+  /// Type used to hold the scalar components of numeric_type. For real-valued
+  /// arrays scalar_type will be the same as numeric_type; however, for arrays
+  /// with elements of type std::complex<T> scalar_type will be T.
+  typedef typename detail::scalar_type<Tile>::type scalar_type;
+
   typedef typename impl_type::trange_type trange_type;  ///< Tile range type
   typedef
       typename impl_type::range_type range_type;  ///< Elements/tiles range type
@@ -84,6 +95,39 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       const_iterator;  ///< Local tile const iterator
   typedef typename impl_type::pmap_interface
       pmap_interface;  ///< Process map interface type
+
+  /// The type of the elements in the tile. For a tile of type Tensor<T> this is
+  /// T. Note that if the tile type is Tensor<Tensor<double>> this typedef will
+  /// be Tensor<double> and NOT double like numeric_type.
+  typedef typename value_type::value_type element_type;
+
+  ///
+  /// These are some of the types and compile-time values needed for SFINAE.
+  /// They probably should be factored out into a header file so they can be
+  /// used elsewhere too.
+  ///
+  template <typename OtherTile>
+  using is_my_type = std::is_same<DistArray_, DistArray<OtherTile, Policy>>;
+
+  template <typename OtherTile>
+  using enable_if_not_my_type =
+      std::enable_if_t<not is_my_type<OtherTile>::value>;
+
+  template <typename Index>
+  static constexpr bool is_integral_or_integral_range_v =
+      std::is_integral_v<Index> || detail::is_integral_range_v<Index>;
+
+  template <typename Index>
+  using enable_if_is_integral_or_integral_range =
+      std::enable_if_t<is_integral_or_integral_range_v<Index>>;
+
+  template <typename Index>
+  using enable_if_is_integral = std::enable_if_t<std::is_integral_v<Index>>;
+
+  template <typename Value>
+  static constexpr bool is_value_or_future_to_value_v =
+      std::is_same_v<std::decay_t<Value>, Future<value_type>> ||
+      std::is_same_v<std::decay_t<Value>, value_type>;
 
  private:
   std::shared_ptr<impl_type> pimpl_;  ///< Array implementation pointer
@@ -241,7 +285,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///  to create an empty tensor (attempts to do so will raise an error).
   ///
   /// \tparam T The types of the elements in the `std::initializer_list`. Must
-  ///           be implicitly convertible to element_type.
+  ///           be implicitly convertible to numeric_type.
   ///
   /// \param[in] world The world where the resulting array will live.
   /// \param[in] il The initial values for the elements in the array. The
@@ -291,7 +335,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///  empty tensor (attempts to do so will raise an error).
   ///
   /// \tparam T The types of the elements in the `std::initializer_list`. Must
-  ///           be implicitly convertible to element_type.
+  ///           be implicitly convertible to numeric_type.
   ///
   /// \param[in] world The world where the resulting array will live.
   /// \param[in] trange The tiling to use for the resulting array.
@@ -337,9 +381,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// data of the new array. In addition, the tiles of the new array are also
   /// initialized using TiledArray::Cast<Tile,OtherTile>
   /// \param other The array to be copied
-  template <typename OtherTile,
-            typename = std::enable_if_t<not std::is_same<
-                DistArray_, DistArray<OtherTile, Policy>>::value>>
+  template <typename OtherTile, typename = enable_if_not_my_type<OtherTile>>
   explicit DistArray(const DistArray<OtherTile, Policy>& other) : pimpl_() {
     *this = foreach<Tile>(other, [](Tile& result, const OtherTile& source) {
       result = TiledArray::Cast<Tile, OtherTile>{}(source);
@@ -373,34 +415,22 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Accessor for the (shared_ptr to) implementation object
 
   /// \return std::shared_ptr to the const implementation object
-  std::shared_ptr<const impl_type> pimpl() const {
-    check_pimpl();
-    return pimpl_;
-  }
+  std::shared_ptr<const impl_type> pimpl() const { return pimpl_; }
 
   /// Accessor for the (shared_ptr to) implementation object
 
   /// \return std::shared_ptr to the nonconst implementation object
-  std::shared_ptr<impl_type> pimpl() {
-    check_pimpl();
-    return pimpl_;
-  }
+  std::shared_ptr<impl_type> pimpl() { return pimpl_; }
 
   /// Accessor for the (weak_ptr to) implementation object
 
   /// \return std::weak_ptr to the const implementation object
-  std::weak_ptr<const impl_type> weak_pimpl() const {
-    check_pimpl();
-    return pimpl_;
-  }
+  std::weak_ptr<const impl_type> weak_pimpl() const { return pimpl_; }
 
   /// Accessor for the (shared_ptr to) implementation object
 
   /// \return std::weak_ptr to the nonconst implementation object
-  std::weak_ptr<impl_type> weak_pimpl() {
-    check_pimpl();
-    return pimpl_;
-  }
+  std::weak_ptr<impl_type> weak_pimpl() { return pimpl_; }
 
   /// Wait for lazy tile cleanup
 
@@ -428,7 +458,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     DistArray::wait_for_lazy_cleanup(world());
   }
 
-  /// Copy constructor
+  /// Copy assignment
 
   /// This is a shallow copy, that is no data is copied.
   /// \param other The array to be copied
@@ -441,51 +471,56 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Global object id
 
   /// \return A globally unique identifier.
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized.
   /// \note This function is primarily used for debugging purposes. Users
   /// should not rely on this function.
-  madness::uniqueidT id() const { return pimpl_->id(); }
+  madness::uniqueidT id() const { return impl_ref().id(); }
 
   /// Begin iterator factory function
 
   /// \return An iterator to the first local tile.
-  iterator begin() {
-    check_pimpl();
-    return pimpl_->begin();
-  }
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
+  iterator begin() { return impl_ref().begin(); }
 
   /// Begin const iterator factory function
 
   /// \return A const iterator to the first local tile.
-  const_iterator begin() const {
-    check_pimpl();
-    return pimpl_->cbegin();
-  }
+  /// \throw Tiledarray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
+  const_iterator begin() const { return impl_ref().cbegin(); }
 
   /// End iterator factory function
 
   /// \return An iterator to one past the last local tile.
-  iterator end() {
-    check_pimpl();
-    return pimpl_->end();
-  }
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
+  iterator end() { return impl_ref().end(); }
 
   /// End const iterator factory function
 
   /// \return A const iterator to one past the last local tile.
-  const_iterator end() const {
-    check_pimpl();
-    return pimpl_->cend();
-  }
+  /// \throw TiledArray::Exception if the PIMPL has not been initialized. Strong
+  ///                              throw guarantee.
+  const_iterator end() const { return impl_ref().cend(); }
 
-  /// Find local or remote tile
+  /// Find local or remote tile by index
 
-  /// \tparam Index An integral or integral range type
-  /// \param i The tile index
+  /// \tparam Index The type of the index. Should be an integral type for an
+  ///               ordinal index, a type satisfying container of integral
+  ///               instances for a coordinate index, or an integral range type.
+  /// \param[in] i The ordinal or coordinate index of the desired tile or a
+  ///              range or indices.
   /// \return A \c future to tile \c i
   /// \throw TiledArray::Exception When tile \c i is zero
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is a coordinate index with the
+  ///                              wrong rank. Strong throw guarantee.
   template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index> ||
-                                        detail::is_integral_range_v<Index>>>
+            typename = enable_if_is_integral_or_integral_range<Index>>
   Future<value_type> find(const Index& i) const {
     check_index(i);
     return pimpl_->get(i);
@@ -493,107 +528,225 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Find local or remote tile
 
-  /// \tparam Integer An integral type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \tparam Integer An integer type
+  /// \param i An \c std::initializer_list<Integer> indicating the coordinate
+  ///          index of the requested tile.
   /// \return A \c future to tile \c i
   /// \throw TiledArray::Exception When tile \c i is zero
-  template <typename Integer,
-            typename = std::enable_if_t<(std::is_integral_v<Integer>)>>
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is a coordinate index with the
+  ///                              wrong rank. Strong throw guarantee.
+  template <typename Integer, typename = enable_if_is_integral<Integer>>
   Future<value_type> find(const std::initializer_list<Integer>& i) const {
     return find<std::initializer_list<Integer>>(i);
   }
 
-  /// Set a tile and fill it using a sequence
+  /// Find local tile
 
   /// \tparam Index An integral or integral range type
-  /// \tparam InIter An input iterator
-  /// \param i The index or the ordinal of the tile to be set
-  /// \param first The iterator that points to the start of the input sequence
+  /// \param i The tile index
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index> ||
+                                        detail::is_integral_range_v<Index>>>
+  const Future<value_type>& find_local(const Index& i) const {
+    check_local_index(i);
+    return pimpl_->get_local(i);
+  }
+
+  /// Find local tile
+
+  /// \tparam Integer An integral type
+  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Integer,
+            typename = std::enable_if_t<(std::is_integral_v<Integer>)>>
+  const Future<value_type>& find_local(
+      const std::initializer_list<Integer>& i) const {
+    return find_local<std::initializer_list<Integer>>(i);
+  }
+
+  /// Find local tile
+
+  /// \tparam Index An integral or integral range type
+  /// \param i The tile index
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Index,
+            typename = std::enable_if_t<std::is_integral_v<Index> ||
+                                        detail::is_integral_range_v<Index>>>
+  Future<value_type>& find_local(const Index& i) {
+    check_local_index(i);
+    return pimpl_->get_local(i);
+  }
+
+  /// Find local tile
+
+  /// \tparam Integer An integral type
+  /// \param i The tile index, as an \c std::initializer_list<Integer>
+  /// \return A \c future to tile \c i
+  /// \throw TiledArray::Exception When tile \c i is zero or not local
+  template <typename Integer,
+            typename = std::enable_if_t<(std::is_integral_v<Integer>)>>
+  Future<value_type>& find_local(const std::initializer_list<Integer>& i) {
+    return find_local<std::initializer_list<Integer>>(i);
+  }
+
+  /// Set a tile and fill it using a sequence
+  ///
+  /// This function will set an uninitialized tile to the provided value. The
+  /// tile may be specified either by ordinal or coordinate index.
+  ///
+  /// \tparam Index Either an integral type, a container type with integral
+  ///               objects, or an integral range type.
+  /// \tparam InIter Type satisfying input iterator
+  /// \param[in] i The index or the ordinal of the tile to be set. i may be
+  ///              either an ordinal or coordinate index.
+  /// \param[in] first The iterator that points to the start of the input
+  ///                  sequence. It is assumed that the container pointed to by
+  ///                  first minimally contains the same number of elements as
+  ///                  the tile.
+  /// \throw TiledArray::Exception if the tile is already initialized.
   template <
       typename Index, typename InIter,
-      typename = std::enable_if_t<(std::is_integral_v<Index> ||
-                                   detail::is_integral_range_v<Index>)&&detail::
-                                      is_input_iterator<InIter>::value>>
+      typename = std::enable_if_t<is_integral_or_integral_range_v<Index> &&
+                                  detail::is_input_iterator<InIter>::value>>
   void set(const Index& i, InIter first) {
     check_index(i);
     pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), first));
   }
 
   /// Set a tile and fill it using a sequence
-
+  ///
+  /// This function will set an uninitialized tile to the provided value. This
+  /// overload allows the user to specify the coordinate index with an
+  /// initializer list.
+  ///
   /// \tparam Integer An integral type
-  /// \tparam InIter An input iterator
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
-  /// \param first The iterator that points to the new tile data
+  /// \tparam InIter Type satisfying input iterator
+  /// \param[in] i The tile's coordinate index, as an
+  ///            \c std::initializer_list<Integer>
+  /// \param[in] first The iterator that points to the start of the input
+  ///                  sequence. It is assumed that the container pointed to by
+  ///                  first minimally contains the same number of elements as
+  ///                  the tile.
+  /// \throw TiledArray::Exception if the tile is already initialized.
   template <typename Integer, typename InIter,
             typename = std::enable_if_t<(std::is_integral_v<Integer>)&&detail::
                                             is_input_iterator<InIter>::value>>
-  void set(const std::initializer_list<Integer>& i, InIter first) {
+  typename std::enable_if<detail::is_input_iterator<InIter>::value>::type set(
+      const std::initializer_list<Integer>& i, InIter first) {
     set<std::initializer_list<Integer>>(i, first);
   }
 
   /// Set a tile and fill it using a value
 
-  /// \tparam Index An integral or integral range type
-  /// \tparam InIter An input iterator
-  /// \param i The index or the ordinal of the tile to be set
-  /// \param value the value used to fill the tile
+  /// This function sets each element of a tile to the specified value. For
+  /// normal, non-nested, tiles this amounts to setting each scalar component of
+  /// the tile to the provided value. For nested tile types this function sets
+  /// the elements of the outer most tile (so the input value would be of type
+  /// Tensor<T>, assuming a tile type of Tensor<Tensor<T>>).
+  ///
+  /// \tparam Index An integral type, a type satisfying the concept of a
+  ///               container of integral types, or an integral range type.
+  /// \param[in] i Either the ordinal or coordinate index of the tile to be set.
+  /// \param[in] value What each element of the tile will be set to.
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is a coordinate index with the
+  ///                              wrong rank. Strong throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
   template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index> ||
-                                        detail::is_integral_range_v<Index>>>
+            typename = enable_if_is_integral_or_integral_range<Index>>
   void set(const Index& i, const element_type& value = element_type()) {
     check_index(i);
     pimpl_->set(i, value_type(pimpl_->trange().make_tile_range(i), value));
   }
 
-  /// Set a tile and fill it using a value
+  /// Set every element of a tile to a specified value
 
+  /// This function sets each element of a tile to the specified value. For
+  /// normal, non-nested, tiles this amounts to setting each scalar component of
+  /// the tile to the provided value. For nested tile types this function sets
+  /// the elements of the outer most tile (so the input value would be of type
+  /// Tensor<T>, assuming a tile type of Tensor<Tensor<T>>).
+  ///
   /// \tparam Integer An integral type
-  /// \tparam InIter An input iterator
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
-  /// \param value the value used to fill the tile
-  template <typename Integer,
-            typename = std::enable_if_t<std::is_integral_v<Integer>>>
+  /// \param[in] i The coordinate index, as an \c std::initializer_list<Integer>
+  ///              for the tile.
+  /// \param[in] value What the tile elements should be set to.
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i has the wrong rank. Strong
+  ///                              throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
+  template <typename Integer, typename = enable_if_is_integral<Integer>>
   void set(const std::initializer_list<Integer>& i,
            const element_type& value = element_type()) {
     set<std::initializer_list<Integer>>(i, value);
   }
 
-  /// Set a tile directly using a future
+  /// Set a tile directly using a future to a tile
 
-  /// \tparam Index An integral or integral range type
-  /// \tparam Value \c Future<value_type> or \c value_type
-  /// \param i The index or the ordinal of the tile to be set
-  /// \param v a reference to object of type Value
+  /// \tparam Index For an ordinal index should be an integral type and for a
+  ///               coordinate index should be a type satisfying container of
+  ///               integral types. Can also be a range type.
+  /// \param[in] i The ordinal or coordinate index of the tile to set
+  /// \param[in] v The tile's new value
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is a coordinate index with the
+  ///                              wrong rank. Strong throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
   template <
       typename Index, typename Value,
-      typename = std::enable_if_t<
-          (std::is_integral_v<Index> || detail::is_integral_range_v<Index>)&&(
-              std::is_same_v<std::decay_t<Value>, Future<value_type>> ||
-              std::is_same_v<std::decay_t<Value>, value_type>)>>
+      typename = std::enable_if_t<(is_integral_or_integral_range_v<Index> &&
+                                   is_value_or_future_to_value_v<Value>)>>
   void set(const Index& i, Value&& v) {
     check_index(i);
     pimpl_->set(i, std::forward<Value>(v));
   }
 
-  /// Set a tile directly using a future
+  /// Set a tile directly using a future to a tile
 
   /// \tparam Integer An integral type
-  /// \tparam Value \c Future<value_type> or \c value_type
-  /// \param i The tile index, as an \c std::initializer_list<Integer>
-  /// \param v a reference to object of type Value
-  template <typename Index, typename Value,
-            typename = std::enable_if_t<(std::is_integral_v<Index>)&&(
-                std::is_same_v<std::decay_t<Value>, Future<value_type>> ||
-                std::is_same_v<std::decay_t<Value>, value_type>)>>
+  /// \param[in] i The coordinate index of the tile to set, as an
+  ///          \c std::initializer_list<Integer>
+  /// \param[in] f A future to the tile's new value
+  /// \throw TiledArray::Exception If PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if index \c i has the wrong rank. Strong
+  ///                              throw guarantee.
+  /// \throw TiledArray::Exception if tile \c i is already set.
+  template <
+      typename Index, typename Value,
+      typename = std::enable_if_t<
+          (std::is_integral_v<Index>)&&is_value_or_future_to_value_v<Value>>>
   void set(const std::initializer_list<Index>& i, Value&& v) {
     set<std::initializer_list<Index>>(i, std::forward<Value>(v));
   }
 
-  /// Fill all local tiles
+  /// Fill all local tiles with the specified value
 
-  /// \param value The fill value
-  /// \param skip_set If false, will throw if any tiles are already set
+  /// \param[in] value What each local tile should be filled with.
+  /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \throw TiledArray::Exception if the PIMPL is uninitialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if skip_set is false and a local tile is
+  ///                              already set. Weak throw guarantee.
   void fill_local(const element_type& value = element_type(),
                   bool skip_set = false) {
     init_tiles(
@@ -601,27 +754,52 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         skip_set);
   }
 
-  /// Fill all local tiles
+  /// Fill all local tiles with the specified value
 
-  /// \param value The fill value
-  /// \param skip_set If false, will throw if any tiles are already set
-  void fill(const element_type& value = element_type(), bool skip_set = false) {
+  /// \param[in] value What each local tile should be filled with.
+  /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \throw TiledArray::Exception if the PIMPL is uninitialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if skip_set is false and a local tile is
+  ///                              already set. Weak throw guarantee.
+  void fill(const element_type& value = numeric_type(), bool skip_set = false) {
     fill_local(value, skip_set);
   }
 
-  /// Fill all local tiles with random values obtained as \code
-  /// (element_type)std::rand()/RAND_MAX \endcode \param skip_set If false, will
-  /// throw if any tiles are already set
+  /// Fill all local tiles with random values
+  ///
+  /// This function will fill all local tiles with random values. The random
+  /// values are generated by calling TiledArray::detail::MakeRandom, which can
+  /// be specialized to determine how the random values for a given type are
+  /// generated. It should be noted that if MakeRandom does not know how to
+  /// generate random values of type T this function will be disabled via SFINAE
+  /// and attempting to use it will lead to a compile-time error.
+  ///
+  /// \tparam T The type of random value to generate. Defaults to
+  ///           element_type.
+  /// \tparam <anonymous> A template type parameter which will be deduced as
+  ///                     void only if MakeRandom knows how to generate random
+  ///                     values of type T. If MakeRandom does not know how to
+  ///                     generate random values of type T, SFINAE will disable
+  ///                     this function.
+  /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
+  ///                              throw guarantee.
+  /// \throw TiledArray::Exception if skip_set is false and a local tile is
+  ///                              already initialized. Weak throw guarantee.
+  template <typename T = element_type,
+            typename = detail::enable_if_can_make_random_t<T>>
   void fill_random(bool skip_set = false) {
     init_elements(
-        [](const auto&) { return (element_type)std::rand() / RAND_MAX; });
+        [](const auto&) { return detail::MakeRandom<T>::generate_value(); });
   }
 
   /// Initialize (local) tiles with a user provided functor
 
-  /// This function is used to initialize tiles of the array via a function
-  /// (or functor). The work is done in parallel, therefore \c op must be a
-  /// thread safe function/functor. The signature of the functor should be:
+  /// This function is used to initialize the local, non-zero tiles of the array
+  /// via a function (or functor). The work is done in parallel, therefore \c op
+  /// must be a thread safe function/functor. The signature of the functor
+  /// should be:
   /// \code
   /// value_type op(const range_type&)
   /// \endcode
@@ -645,20 +823,22 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///        return tile;
   ///     });
   /// \endcode
-  /// \tparam Op Tile operation type
-  /// \param op The operation used to generate tiles
-  /// \param skip_set If false, will throw if any tiles are already set
+  /// \tparam Op The type of the functor/function
+  /// \param[in] op The operation used to generate tiles
+  /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \throw TiledArray::Exception if the PIMPL is not set. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if a tile is already set and skip_set is
+  ///                              false. Weak throw guarantee.
   template <typename Op>
   void init_tiles(Op&& op, bool skip_set = false) {
-    check_pimpl();
-
     // lifetime management of op depends on whether it is a lvalue ref (i.e. has
     // an external owner) or an rvalue ref
     // - if op is an lvalue ref: pass op to tasks
     // - if op is an rvalue ref pass make_shared_function(op) to tasks
     auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
 
-    auto it = pimpl_->pmap()->begin();
+    auto it = impl_ref().pmap()->begin();
     const auto end = pimpl_->pmap()->end();
     for (; it != end; ++it) {
       const auto& index = *it;
@@ -682,64 +862,79 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     }
   }
 
-  /// Initialize (local) elements with a user provided functor
+  /// Initialize elements of local, non-zero tiles with a user provided functor
 
-  /// This function is used to initialize elements of the array via a function
-  /// (or functor). The work is done in parallel, therefore \c op must be a
-  /// thread safe function/functor. The signature of the functor should be:
+  /// This function is used to initialize the elements of the local, non-zero
+  /// tiles via a function (or functor). The work is done in parallel, therefore
+  /// \c op must be a thread safe function/functor. The signature of the functor
+  /// should be:
   /// \code
-  /// value_type op(const index&)
+  /// element_type op(const index&)
   /// \endcode
   /// For example, in the following code, the array elements are initialized
-  /// with random numbers from 0 to 1: \code array.init_elements([] (const
-  /// auto&)
-  ///     {
+  /// with random numbers from 0 to 1:
+  /// \code
+  /// array.init_elements([] (const auto&) {
   ///        return (double)std::rand() / RAND_MAX;
-  ///     });
+  /// });
   /// \endcode
-  /// \tparam Op Element generator type
-  /// \param op The operation used to generate elements
-  /// \param skip_set If false, will throw if any tiles are already set
+  /// \tparam Op Type of the function/functor which will generate the elements.
+  /// \param[in] op The operation used to generate elements
+  /// \param[in] skip_set If false, will throw if any tiles are already set
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
+  ///                              throw guarnatee.
+  /// \throw TiledArray::Exception if skip_set is false and a local, non-zero
+  ///                              tile is already initialized. Weak throw
+  ///                              guarantee.
   template <typename Op>
   void init_elements(Op&& op, bool skip_set = false) {
     auto op_shared_handle = make_op_shared_handle(std::forward<Op>(op));
-    init_tiles([op = std::move(op_shared_handle)](
-                   const TiledArray::Range& range) -> value_type {
-      // Initialize the tile with the given range object
-      Tile tile(range);
+    init_tiles(
+        [op = std::move(op_shared_handle)](
+            const TiledArray::Range& range) -> value_type {
+          // Initialize the tile with the given range object
+          Tile tile(range);
 
-      // Initialize tile elements
-      for (auto& idx : range) tile[idx] = op(idx);
+          // Initialize tile elements
+          for (auto& idx : range) tile[idx] = op(idx);
 
-      return tile;
-    });
+          return tile;
+        },
+        skip_set);
   }
 
   /// Tiled range accessor
 
+  /// This function returns an object containing the tiling information of the
+  /// array (e.g., the tile boundaries, or which elements go to which tile).
+  /// This should not be confused with `range` which returns a Range object for
+  /// iterating over the tile indices or `elements_range` which returns a Range
+  /// object for iterating over the elements.
+  ///
   /// \return A const reference to the tiled range object for the array
-  const trange_type& trange() const {
-    check_pimpl();
-    return pimpl_->trange();
-  }
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  const trange_type& trange() const { return impl_ref().trange(); }
 
   /// Tile range accessor
 
-  /// \return A const reference to the range object for the array tiles
+  /// This function returns a range object which can be used to iterate over the
+  /// indices of the tiles. This should be contrasted with `trange()` which
+  /// gives an object holding the tiling information (number of tiles, which
+  /// elements belong to which tiles, etc.) and `elements_range()` which returns
+  /// a range object that can be used to iterate over element indices.
+  ///
+  /// \return A const reference to the range object for the array's tiles
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
   /// \deprecated use DistArray::tiles_range()
   // TODO: uncomment [[deprecated("use DistArray::tiles_range()")]]
-  const range_type& range() const {
-    check_pimpl();
-    return pimpl_->tiles_range();
-  }
+  const range_type& range() const { return impl_ref().tiles_range(); }
 
   /// Tile range accessor
 
   /// \return A const reference to the range object for the array tiles
-  const range_type& tiles_range() const {
-    check_pimpl();
-    return pimpl_->tiles_range();
-  }
+  const range_type& tiles_range() const { return impl_ref().tiles_range(); }
 
   /// \deprecated use DistArray::elements_range()
   [[deprecated("use DistArray::elements_range()")]] const typename trange_type::
@@ -750,16 +945,31 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Element range accessor
 
-  /// \return A const reference to the range object for the array elements
+  /// This function returns a Range object which can be used to iterate over
+  /// the indices of the tiles' elements. This should not be confused with
+  /// `trange()` which returns an object containing the tiling information
+  /// (e.g., where the tile boundaries are, or which element is in which tile)
+  /// or `range()` which returns an object for iterating over the indices of the
+  /// tiles.
+  ///
+  /// \return A const reference to the range object for the array's elements
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
   const typename trange_type::range_type& elements_range() const {
-    check_pimpl();
-    return pimpl_->trange().elements_range();
+    return impl_ref().trange().elements_range();
   }
 
-  ordinal_type size() const {
-    check_pimpl();
-    return pimpl_->size();
-  }
+  /// Returns the number of tiles in the tensor
+
+  /// This function returns the number of tiles in the tensor. This is usually
+  /// not the same as the volume of the tensor (i.e., the number of elements in
+  /// the tensor; they are the same only if each tile contains a single
+  /// element).
+  ///
+  /// \return The number of tiles in the tensor.
+  /// \throw TiledArray::Exception if the PIMPL has not been set. Strong throw
+  ///                              guarantee.
+  auto size() const { return impl_ref().size(); }
 
   /// Create a tensor expression
 
@@ -767,25 +977,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A const tensor expression object
   TiledArray::expressions::TsrExpr<const DistArray_, true> operator()(
       const std::string& vars) const {
-#ifndef NDEBUG
-    const unsigned int n =
-        1u + std::count_if(vars.begin(), vars.end(),
-                           [](const char c) { return c == ','; });
-    if (bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-      if (TiledArray::get_default_world().rank() == 0) {
-        TA_USER_ERROR_MESSAGE(
-            "The number of array annotation variables is not equal to the "
-            "array dimension:"
-            << "\n    number of variables  = " << n
-            << "\n    array dimension      = "
-            << pimpl_->trange().tiles_range().rank());
-      }
-
-      TA_EXCEPTION(
-          "The number of array annotation variables is not equal to the array "
-          "dimension.");
-    }
-#endif  // NDEBUG
+    check_str_index(vars);
     return TiledArray::expressions::TsrExpr<const DistArray_, true>(*this,
                                                                     vars);
   }
@@ -796,84 +988,69 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A non-const tensor expression object
   TiledArray::expressions::TsrExpr<DistArray_, true> operator()(
       const std::string& vars) {
-#ifndef NDEBUG
-    const unsigned int n =
-        1u + std::count_if(vars.begin(), vars.end(),
-                           [](const char c) { return c == ','; });
-    if (bool(pimpl_) && n != pimpl_->trange().tiles_range().rank()) {
-      if (TiledArray::get_default_world().rank() == 0) {
-        TA_USER_ERROR_MESSAGE(
-            "The number of array annotation variables is not equal to the "
-            "array dimension:"
-            << "\n    number of variables  = " << n
-            << "\n    array dimension      = "
-            << pimpl_->trange().tiles_range().rank());
-      }
-
-      TA_EXCEPTION(
-          "The number of array annotation variables is not equal to the array "
-          "dimension.");
-    }
-#endif  // NDEBUG
+    check_str_index(vars);
     return TiledArray::expressions::TsrExpr<DistArray_, true>(*this, vars);
   }
 
   /// \deprecated use DistArray::world()
-  [[deprecated]] World& get_world() const {
-    check_pimpl();
-    return pimpl_->world();
-  }
+  [[deprecated]] World& get_world() const { return world(); }
 
   /// World accessor
 
   /// \return A reference to the world that owns this array.
-  World& world() const {
-    check_pimpl();
-    return pimpl_->world();
-  }
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  World& world() const { return impl_ref().world(); }
 
   /// \deprecated use DistArray::pmap()
   [[deprecated]] const std::shared_ptr<pmap_interface>& get_pmap() const {
-    check_pimpl();
-    return pimpl_->pmap();
+    return pmap();
   }
 
   /// Process map accessor
 
   /// \return A reference to the process map that owns this array.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
+  ///                              throw guarantee.
   const std::shared_ptr<pmap_interface>& pmap() const {
-    check_pimpl();
-    return pimpl_->pmap();
+    return impl_ref().pmap();
   }
 
   /// Check dense/sparse
 
   /// \return \c true when \c Array is dense, \c false otherwise.
-  bool is_dense() const {
-    check_pimpl();
-    return pimpl_->is_dense();
-  }
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  bool is_dense() const { return impl_ref().is_dense(); }
 
   /// \deprecated use DistArray::shape()
-  [[deprecated]] const shape_type& get_shape() const { return pimpl_->shape(); }
+  [[deprecated]] const shape_type& get_shape() const { return shape(); }
 
   /// Shape accessor
 
   /// Returns shape object. No communication is required.
   /// \return reference to the shape object.
-  /// \throw TiledArray::Exception When the Array is dense.
-  inline const shape_type& shape() const { return pimpl_->shape(); }
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  inline const shape_type& shape() const { return impl_ref().shape(); }
 
   /// Tile ownership
 
-  /// \tparam Index An integral or integral range type
-  /// \param i The coordinate or ordinal index of a tile
+  /// \tparam Index An integral type, a type satisfying container of
+  ///               integral types, or an integral range type.
+  /// \param[in] i The coordinate or ordinal index of the tile or a range of
+  ///              tiles whose ownership is in question.
   /// \return The process ID of the owner of a tile.
-  /// \note This does not indicate whether a tile exists or not. Only, the
-  /// rank of the process that would own it if it does exist.
+  /// \note This does not indicate whether a tile exists or not. Only, the rank
+  ///       of the process that would own it if it does exist.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if the index is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if \c i is a coordinate index with the wrong
+  ///                              rank. Strong throw guarantee.
   template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index> ||
-                                        detail::is_integral_range_v<Index>>>
+            typename = enable_if_is_integral_or_integral_range<Index>>
   ProcessID owner(const Index& i) const {
     check_index(i);
     return pimpl_->owner(i);
@@ -882,25 +1059,38 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Tile ownership
 
   /// \tparam Index An integral type
-  /// \param i The index of a tile
+  /// \param[in] i The coordinate index of the tile whose ownership is in
+  ///              question.
   /// \return The process ID of the owner of a tile.
-  /// \note This does not indicate whether a tile exists or not. Only, the
-  /// rank of the process that would own it if it does exist.
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  /// \note This does not indicate whether a tile exists or not. Only, the rank
+  ///       of the process that would own it if it does exist.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if the index is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if \c i has the wrong rank. Strong throw
+  ///                              guarantee.
+  template <typename Index, typename = enable_if_is_integral<Index>>
   ProcessID owner(const std::initializer_list<Index>& i) const {
     return owner<std::initializer_list<Index>>(i);
   }
 
   /// Check if the tile at index \c i is stored locally
 
-  /// \tparam Index An integral or integral range type
-  /// \param i The coordinate or ordinal index of a tile
+  /// \tparam Index An integral type, a type satisfying container of
+  ///               integral types, or an integral range type.
+  /// \param[in] i The index of the tile whose locality is being questioned. The
+  ///              index may be either a coordinate or ordinal index.
   /// \return \c true if \c owner(i) is equal to the MPI process rank,
-  /// otherwise \c false.
+  ///         otherwise \c false.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if the index is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if \c i is a coordinate index with the wrong
+  ///                              rank. Strong throw guarantee.
   template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index> ||
-                                        detail::is_integral_range_v<Index>>>
+            typename = enable_if_is_integral_or_integral_range<Index>>
   bool is_local(const Index& i) const {
     check_index(i);
     return pimpl_->is_local(i);
@@ -909,24 +1099,37 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Check if the tile at index \c i is stored locally
 
   /// \tparam Index An integral type
-  /// \param i The coordinate index of the tile to be checked
+  /// \param[in] i The coordinate index of the tile whose locality is being
+  ///              questioned.
   /// \return \c true if \c owner(i) is equal to the MPI process rank,
-  /// otherwise \c false.
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  ///         otherwise \c false.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if the index is out of bounds. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if \c i has the wrong rank. Strong throw
+  ///                              guarantee.
+  template <typename Index, typename = enable_if_is_integral<Index>>
   bool is_local(const std::initializer_list<Index>& i) const {
     return is_local<std::initializer_list<Index>>(i);
   }
 
   /// Check for zero tiles
 
-  /// \tparam Index An integral or integral range type
-  /// \param i The coordinate or ordinal index of a tile
+  /// \tparam Index An integral type, a type satisfying container of
+  ///               integral types, or an integral range type.
+  /// \param[in] i The index of the tile whose nothingness is being
+  ///              contemplated. Can be either an ordinal or coordinate index.
   /// \return \c true if tile at index \c i is zero, false if the tile is
-  /// non-zero or remote existence data is not available.
+  ///         non-zero or remote existence data is not available.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if \c i is not in the range of valid tile
+  ///                              indices. Strong throw guarantee.
+  /// \throw TiledArray::Exception if \c i is a coordinate index with the wrong
+  ///                              rank. Strong throw guarantee.
   template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index> ||
-                                        detail::is_integral_range_v<Index>>>
+            typename = enable_if_is_integral_or_integral_range<Index>>
   bool is_zero(const Index& i) const {
     check_index(i);
     return pimpl_->is_zero(i);
@@ -935,11 +1138,17 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Check for zero tiles
 
   /// \tparam Index An integral type
-  /// \param i The coordinate index of the tile to be checked
+  /// \param[in] i The coordinate index of the tile whose nothingness is being
+  ///              contemplated.
   /// \return \c true if tile at index \c i is zero, false if the tile is
-  /// non-zero or remote existence data is not available.
-  template <typename Index,
-            typename = std::enable_if_t<std::is_integral_v<Index>>>
+  ///         non-zero or remote existence data is not available.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  /// \throw TiledArray::Exception if \c i is not in the range of valid tile
+  ///                              indices. Strong throw guarantee.
+  /// \throw TiledArray::Exception if \c i has the wrong rank. Strong throw
+  ///                              guarantee.
+  template <typename Index, typename = enable_if_is_integral<Index>>
   bool is_zero(const std::initializer_list<Index>& i) const {
     return is_zero<std::initializer_list<Index>>(i);
   }
@@ -947,12 +1156,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Swap this array with \c other
 
   /// \param other The array to be swapped with this array.
+  /// \throw None no throw guarantee.
   void swap(DistArray_& other) { std::swap(pimpl_, other.pimpl_); }
 
   /// Convert a distributed array into a replicated array
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
   void make_replicated() {
-    check_pimpl();
-    if ((!pimpl_->pmap()->is_replicated()) && (world().size() > 1)) {
+    if ((!impl_ref().pmap()->is_replicated()) && (world().size() > 1)) {
       // Construct a replicated array
       auto pmap = std::make_shared<detail::ReplicatedPmap>(world(), size());
       DistArray_ result = DistArray_(world(), trange(), shape(), pmap);
@@ -987,7 +1198,15 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \return \c false if the array has been default initialized, otherwise
   /// \c true.
+  /// \throw None No throw guarantee.
   bool is_initialized() const { return static_cast<bool>(pimpl_); }
+
+  /// Conversion to bool is equivalent to DistArray::is_initialized()
+
+  /// \return \c false if the array has been default initialized, otherwise
+  /// \c true.
+  /// \throw None No throw guarantee.
+  explicit operator bool() const { return is_initialized(); }
 
   /// serialize local contents of a DistArray to an Archive object
 
@@ -1215,18 +1434,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   template <typename Index>
   std::enable_if_t<std::is_integral_v<Index>, void> check_index(
       const Index i) const {
-    check_pimpl();
     TA_USER_ASSERT(
-        pimpl_->tiles_range().includes(i),
+        impl_ref().tiles_range().includes(i),
         "The ordinal index used to access an array tile is out of range.");
   }
 
   template <typename Index>
   std::enable_if_t<detail::is_integral_range_v<Index>, void> check_index(
       const Index& i) const {
-    check_pimpl();
     TA_USER_ASSERT(
-        pimpl_->tiles_range().includes(i),
+        impl_ref().tiles_range().includes(i),
         "The coordinate index used to access an array tile is out of range.");
   }
 
@@ -1235,11 +1452,95 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     check_index<std::initializer_list<Index1>>(i);
   }
 
-  /// Makes sure pimpl has been initialized
-  void check_pimpl() const {
+  template <typename Index>
+  std::enable_if_t<std::is_integral_v<Index>, void> check_local_index(
+      const Index i) const {
+    check_index(i);
+    TA_USER_ASSERT(
+        pimpl_->is_local(i),  // pimpl_ already checked
+        "The ordinal index used to access an array tile is not local.");
+  }
+
+  template <typename Index>
+  std::enable_if_t<detail::is_integral_range_v<Index>, void> check_local_index(
+      const Index& i) const {
+    check_index(i);
+    TA_USER_ASSERT(
+        pimpl_->is_local(i),  // pimpl_ already checked
+        "The coordinate index used to access an array tile is not local.");
+  }
+
+  template <typename Index1>
+  void check_local_index(const std::initializer_list<Index1>& i) const {
+    check_local_index<std::initializer_list<Index1>>(i);
+  }
+
+  /// Ensures that the string indices are consistent with the tensor
+  ///
+  /// This function checks that PIMPL has been
+  /// @param[in] vars The string indices, such as `"i, j"`, the user provided to
+  ///                 label the modes.
+  void check_str_index(const std::string& vars) const {
+#ifndef NDEBUG
+    // Only check indices if the PIMPL is initialized (okay to not initialize
+    // the RHS of an equation)
+    if (!is_initialized()) return;
+
+    constexpr bool is_tot = detail::is_tensor_of_tensor_v<value_type>;
+    const auto rank = range().rank();
+    // TODO: Make constexpr and use structured bindings when CUDA supports C++17
+    if (is_tot) {
+      // Make sure the index is capable of being interpreted as a ToT index
+      TA_ASSERT(detail::is_tot_index(vars));
+      const auto idx = detail::split_index(vars);
+
+      // Rank of outer tiles must match number of outer indices
+      TA_ASSERT(idx.first.size() == rank);
+
+      // Check inner index rank?
+    } else {
+      // Better not be a ToT index
+      TA_ASSERT(!detail::is_tot_index(vars));
+
+      // Number of indices must match rank
+      TA_ASSERT(detail::tokenize_index(vars, ',').size() == rank);
+    }
+#endif  // NDEBUG
+  }
+
+  /// Code factorization of the actual assert for the other overloads
+  void assert_pimpl() const {
     TA_USER_ASSERT(pimpl_,
                    "The Array has not been initialized, likely reason: it was "
                    "default constructed and used.");
+  }
+
+  /// If this is in an initialized state this returns a const
+  /// reference to implementation object.
+  /// This makes the common scenario of: check-pimpl then use *pimpl, into a
+  /// one-liner.
+  ///
+  /// \return A const reference to the implementation object.
+  /// \throw TiledArray::Exception if this is in an uninitialized state
+  /// and the NDEBUG preprocessor macro is not defined. Strong
+  /// throw guarantee.
+  auto& impl_ref() const {
+    assert_pimpl();
+    return *pimpl_;
+  }
+
+  /// If this is in an initialized state this returns a non-const
+  /// reference to implementation object.
+  /// This makes the common scenario of: check-pimpl then use *pimpl, into a
+  /// one-liner.
+  ///
+  /// \return A reference to the implementation object.
+  /// \throw TiledArray::Exception if this is in an uninitialized state
+  /// and the NDEBUG preprocessor macro is not defined. Strong
+  /// throw guarantee.
+  auto& impl_ref() {
+    assert_pimpl();
+    return *pimpl_;
   }
 
 };  // class DistArray

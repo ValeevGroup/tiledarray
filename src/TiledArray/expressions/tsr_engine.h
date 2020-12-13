@@ -45,7 +45,7 @@ template <typename, typename, bool>
 class TsrEngine;
 
 template <typename Tile, typename Policy, typename Result, bool Alias>
-struct EngineTrait<TsrEngine<DistArray<Tile, Policy>, Result, Alias> > {
+struct EngineTrait<TsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
   // Argument typedefs
   typedef DistArray<Tile, Policy> array_type;  ///< The array type
 
@@ -62,7 +62,7 @@ struct EngineTrait<TsrEngine<DistArray<Tile, Policy>, Result, Alias> > {
   typedef typename eval_trait<value_type>::type
       eval_type;  ///< Evaluation tile type
   typedef typename TiledArray::detail::scalar_type<DistArray<Tile,
-                                                             Policy> >::type
+                                                             Policy>>::type
       scalar_type;        ///< Scalar type of tile
   typedef Policy policy;  ///< Policy type
   typedef TiledArray::detail::DistEval<value_type, policy>
@@ -87,7 +87,7 @@ struct EngineTrait<TsrEngine<DistArray<Tile, Policy>, Result, Alias> > {
 /// temporary before assignment
 /// \tparam Result The result tile type
 template <typename Array, typename Result, bool Alias>
-class TsrEngine : public LeafEngine<TsrEngine<Array, Result, Alias> > {
+class TsrEngine : public LeafEngine<TsrEngine<Array, Result, Alias>> {
  public:
   // Class hierarchy typedefs
   typedef TsrEngine<Array, Result, Alias> TsrEngine_;  ///< This class type
@@ -132,7 +132,9 @@ class TsrEngine : public LeafEngine<TsrEngine<Array, Result, Alias> > {
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  static op_type make_tile_op(const Permutation& perm) {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  static op_type make_tile_op(const Perm& perm) {
     return op_type(op_base_type(), perm);
   }
 

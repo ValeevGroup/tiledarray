@@ -48,13 +48,13 @@ template <typename, typename, typename>
 class ScalBlkTsrEngine;
 
 template <typename Tile, typename Policy, typename Result, bool Alias>
-struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias> > {
+struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
   // Argument typedefs
   typedef DistArray<Tile, Policy> array_type;  ///< The array type
 
   // Operational typedefs
   typedef
-      typename TiledArray::detail::scalar_type<DistArray<Tile, Policy> >::type
+      typename TiledArray::detail::scalar_type<DistArray<Tile, Policy>>::type
           scalar_type;
   typedef TiledArray::detail::Shift<
       Result,
@@ -85,7 +85,7 @@ struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias> > {
 };
 
 template <typename Tile, typename Policy, typename Scalar, typename Result>
-struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar, Result> > {
+struct EngineTrait<ScalBlkTsrEngine<DistArray<Tile, Policy>, Scalar, Result>> {
   // Argument typedefs
   typedef DistArray<Tile, Policy> array_type;  ///< The array type
 
@@ -156,12 +156,12 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
 
  protected:
   // Import base class variables to this scope
+  using ExprEngine_::indices_;
   using ExprEngine_::perm_;
   using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
-  using ExprEngine_::vars_;
   using ExprEngine_::world_;
   using LeafEngine_::array_;
 
@@ -234,7 +234,7 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
     const auto* MADNESS_RESTRICT const upper = upper_bound_.data();
 
     // Construct the inverse permutation
-    const Permutation inv_perm = -perm;
+    const auto inv_perm = -perm;
     for (unsigned int d = 0u; d < rank; ++d) {
       const auto inv_perm_d = inv_perm[d];
 
@@ -302,7 +302,7 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
 /// temporary before assignment
 template <typename Array, typename Result, bool Alias>
 class BlkTsrEngine
-    : public BlkTsrEngineBase<BlkTsrEngine<Array, Result, Alias> > {
+    : public BlkTsrEngineBase<BlkTsrEngine<Array, Result, Alias>> {
  public:
   // Class hierarchy typedefs
   typedef BlkTsrEngine<Array, Result, Alias>
@@ -344,12 +344,12 @@ class BlkTsrEngine
   // Import base class variables to this scope
   using BlkTsrEngineBase_::lower_bound_;
   using BlkTsrEngineBase_::upper_bound_;
+  using ExprEngine_::indices_;
   using ExprEngine_::perm_;
   using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
-  using ExprEngine_::vars_;
   using ExprEngine_::world_;
   using LeafEngine_::array_;
 
@@ -400,7 +400,9 @@ class BlkTsrEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     const unsigned int rank = trange_.tiles_range().rank();
 
     // Construct and allocate memory for the shift range
@@ -411,8 +413,10 @@ class BlkTsrEngine
     const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
 
     // Initialize the permuted range shift vector
+    auto outer_perm = outer(perm);
+    TA_ASSERT(outer_perm.size() == rank);
     for (unsigned int d = 0u; d < rank; ++d) {
-      const auto perm_d = perm[d];
+      const auto perm_d = outer_perm[d];
       const auto lower_d = lower[d];
       const auto base_d = trange[d].tile(lower_d).first;
       range_shift[perm_d] = -base_d;
@@ -439,7 +443,7 @@ class BlkTsrEngine
 /// \tparam Result The result tile type
 template <typename Array, typename Scalar, typename Result>
 class ScalBlkTsrEngine
-    : public BlkTsrEngineBase<ScalBlkTsrEngine<Array, Scalar, Result> > {
+    : public BlkTsrEngineBase<ScalBlkTsrEngine<Array, Scalar, Result>> {
  public:
   // Class hierarchy typedefs
   typedef ScalBlkTsrEngine<Array, Scalar, Result>
@@ -483,12 +487,12 @@ class ScalBlkTsrEngine
   // Import base class variables to this scope
   using BlkTsrEngineBase_::lower_bound_;
   using BlkTsrEngineBase_::upper_bound_;
+  using ExprEngine_::indices_;
   using ExprEngine_::perm_;
   using ExprEngine_::permute_tiles_;
   using ExprEngine_::pmap_;
   using ExprEngine_::shape_;
   using ExprEngine_::trange_;
-  using ExprEngine_::vars_;
   using ExprEngine_::world_;
   using LeafEngine_::array_;
 
@@ -542,7 +546,9 @@ class ScalBlkTsrEngine
 
   /// \param perm The permutation to be applied to tiles
   /// \return The tile operation
-  op_type make_tile_op(const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  op_type make_tile_op(const Perm& perm) const {
     const unsigned int rank = trange_.tiles_range().rank();
 
     // Construct and allocate memory for the shift range
@@ -553,8 +559,10 @@ class ScalBlkTsrEngine
     const auto* MADNESS_RESTRICT const lower = lower_bound_.data();
 
     // Initialize the permuted range shift vector
+    auto outer_perm = outer(perm);
+    TA_ASSERT(outer_perm.size() == rank);
     for (unsigned int d = 0u; d < rank; ++d) {
-      const auto perm_d = perm[d];
+      const auto perm_d = outer_perm[d];
       const auto lower_d = lower[d];
       const auto base_d = trange[d].tile(lower_d).first;
       range_shift[perm_d] = -base_d;

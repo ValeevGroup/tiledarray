@@ -369,6 +369,25 @@ GENERATE_IS_FREE_FUNCTION_ANYRETURN(size)
 GENERATE_IS_FREE_FUNCTION_ANYRETURN(data)
 GENERATE_IS_FREE_FUNCTION_ANYRETURN(empty)
 
+//////// Tile concept checks
+
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(permute)
+GENERATE_HAS_MEMBER_FUNCTION(permute)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(add)
+GENERATE_HAS_MEMBER_FUNCTION(add)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(add_to)
+GENERATE_HAS_MEMBER_FUNCTION(add_to)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(subt)
+GENERATE_HAS_MEMBER_FUNCTION(subt)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(subt_to)
+GENERATE_HAS_MEMBER_FUNCTION(subt_to)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(mult)
+GENERATE_HAS_MEMBER_FUNCTION(mult)
+GENERATE_HAS_MEMBER_FUNCTION_ANYRETURN(mult_to)
+GENERATE_HAS_MEMBER_FUNCTION(mult_to)
+
+GENERATE_IS_FREE_FUNCTION_ANYRETURN(permute)
+
 }  // namespace detail
 }  // namespace TiledArray
 
@@ -636,6 +655,10 @@ struct is_numeric<bool> : public std::false_type {};
 template <typename T>
 constexpr const bool is_numeric_v = is_numeric<T>::value;
 
+/// SFINAE type for enabling code when \c T is a numeric type
+template <typename T, typename U = void>
+using enable_if_numeric_t = std::enable_if_t<is_numeric_v<T>, U>;
+
 template <typename T>
 struct is_scalar : public is_numeric<T> {};
 
@@ -652,7 +675,8 @@ constexpr const bool is_scalar_v = is_scalar<T>::value;
 /// LazyArrayTile<U> , i.e. when it is a lazy tile wrapper used by e.g. \c
 /// ArrayEvalImpl . otherwise it evaluates to \c std::false_type . Note that \c
 /// is_array_tile<T> implies \c is_lazy_tile<T> , but \c is_lazy_tile<T> does
-/// not imply \c is_array_tile<T> . \tparam T The tile type to test
+/// not imply \c is_array_tile<T> .
+// \tparam T The tile type to test
 template <typename T>
 struct is_array_tile : public std::false_type {};
 
@@ -833,8 +857,8 @@ template <std::size_t I, typename T, typename = void>
 struct is_std_gettable : std::false_type {};
 
 template <std::size_t I, typename T>
-struct is_std_gettable<I, T,
-                       std::void_t<decltype(::std::get<I>(std::declval<T>()))>>
+struct is_std_gettable<
+    I, T, std::void_t<decltype(::std::get<I>(std::declval<const T&>()))>>
     : std::true_type {};
 
 template <std::size_t I, typename T>
@@ -845,7 +869,7 @@ struct is_boost_gettable : std::false_type {};
 
 template <std::size_t I, typename T>
 struct is_boost_gettable<
-    I, T, std::void_t<decltype(::boost::get<I>(std::declval<T>()))>>
+    I, T, std::void_t<decltype(::boost::get<I>(std::declval<const T&>()))>>
     : std::true_type {};
 
 template <std::size_t I, typename T>
@@ -1164,6 +1188,9 @@ struct is_array : public std::false_type {};
 
 template <typename T, typename P>
 struct is_array<DistArray<T, P>> : public std::true_type {};
+
+template <typename T>
+static constexpr bool is_array_v = is_array<T>::value;
 
 template <typename T>
 using trange_t = typename T::trange_type;

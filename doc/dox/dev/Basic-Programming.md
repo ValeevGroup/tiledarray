@@ -96,7 +96,7 @@ Let's walk through each step in detail.
 ## Initializing the Parallel Runtime Environment
 
 To use TiledArray it is necessary to first initialize its runtime environment, such as [MADNESS](https://github.com/m-a-d-n-e-s-s/madness) and its dependents, CUDA, etc:
-```
+```.cpp
 #include <tiledarray.h> // imports most TiledArray features
 
 int main(int argc, char* argv[]) {
@@ -114,7 +114,7 @@ int main(int argc, char* argv[]) {
 Since TiledArray depends on MPI (via MADWorld), `TA::initialize` first checks if MPI had been initialized. If MPI is not yet initialized `TA::initialize` will do so by calling [`MPI_Init_thread`](https://www.open-mpi.org/doc/current/man3/MPI_Init_thread.3.php). If MPI had already been initialized, then `TA::initialize` will only check that MPI initialization requested proper level of thread safety (serialized or full).
 
 It is easy to initialize TiledArray on a subset of MPI processes by passing the corresponding MPI communicator to `TA::initialize`:
-```
+```.cpp
 #include <tiledarray.h>
 
 int main(int argc, char* argv[]) {
@@ -152,12 +152,12 @@ To construct a `DistArray` object, you must supply following the meta data:
 
 ### Construct TiledRange object
 A TiledRange is defined by tensor/Cartesian product of tilings for each mode. Tiling for 1 mode is represented by class `TA::TiledRange1` which is most easily constructed by specifying tile boundaries as an array of indices. For example, the following code defines 2 tilings for interval [0,10), both consisting of 3 tiles:
-```
+```.cpp
 TA::TiledRange1 TR0{0,3,8,10};
 TA::TiledRange1 TR1{0,4,7,10};
 ```
 The size of tiles in `TR0` are 3, 5, and 2, whereas `TR1`'s tiles has sizes 4, 3, and 3. Combining these tilings produces an order-2 `TiledRange`,
-```
+```.cpp
 TA::TiledRange TR{TR0,TR1};
 ```
 with 3 tiles in each mode, for a total of `10 x 10` (or 100) elements partitioned into 9 tiles, as pictured below:
@@ -165,13 +165,13 @@ with 3 tiles in each mode, for a total of `10 x 10` (or 100) elements partitione
 [[images/tiledrange.png|height=250px]]
 
 `TR` can be constructed directly without defining `TiledRange1` objects first as follows:
-```
+```.cpp
 TA::TiledRange TR{{0,3,8,10},
                   {0,4,7,10}};
 ```
  
 The TiledRange constructor in the above example is useful for simple examples and prototyping code. However, in production code it will be likely necessary to construct `TiledRange` objects with an iterator list of `TiledRange1` objects, e.g.:
-```
+```.cpp
 // Construct tile boundary vector
 std::vector<std::size_t> tile_boundaries;
 for(std::size_t i = 0; i <= 16; i += 4)
@@ -192,7 +192,7 @@ A process map is used to determine owner of a given tile with requiring communic
 **Note**: You are not required to explicitly construct a process map for a `DistArray` object as the `DistArray` object will construct one for you if none is provided. You may want to construct a process map yourself if you require a particular data layout. Process maps can also be used aid in the distribution of work among processes before your array object is constructed (this may be useful when constructing sparse shapes).
 
 To construct a process map using one of the process map provided by TiledArray:
-```
+```.cpp
 const std::size_t m = 20;
 const std::size_t n = 10;
 
@@ -346,11 +346,11 @@ The steps required to initialize a sparse shape are:
 #### Zero-Tile Threshold
 
 The zero-tile threshold is used to determine whether a tile zero or non-zero. A tile is considered to be zero if the 2-norm of the tile divided by the number of elements in the tile is less than the given threshold. That is:
-```
+```.cpp
 tile.norm() / tile.range().volume() < TA::SparseShape::threshold()
 ```
 To set the zero-tile threshold call:
-```
+```.cpp
 TA::SparseShape::threshold(my_theshold);
 ```
 where `my_theshold` is the zero threshold you specify for your application. This threshold is a global value and is used for all `SparseShape` objects. Because the zero-tile threshold is shared by all shapes, it is recommended that you set this value only once at the beginning of your program. If you change the threshold during the execution of your application, it affect all subsequent zero-tile checks but it will not change shape data. You are responsible for ensuring that changes the the threshold value during execution do not adversely affect your application.
@@ -362,7 +362,7 @@ With distributed SparseShape construction, the shape data is _partially_ initial
 The advantage of this method is that computation of tile norms is distributed among all processes, but requires communication between processes. Distributed construction is preferred when the cost of recomputing tile norms on all processes is too high or impractical. The tile norms are shared among processes by the `TA::SparseShape` constructor via an all-reduce summation.
 
 With distributed construction, it is convenient to use a process map to help partition the work load. The process map can then be used to construct `TA::DistArray` objects.
-```
+```.cpp
 // User provided tile factory function.
 Tensor<double> make_tile(const TA::Range& range);
 
@@ -390,7 +390,7 @@ TA::SparseShape<float> shape(world, tile_norms, trange);
 Note that in the above example we loop over every possible local tile and compute it's norm.
 For mostly sparse arrays it is necessary to loop over the nonzero tiles only. The following example
 demonstrates how to do this for a matrix with nonzero blocks on the diagonal only.
-```
+```.cpp
 // tile norms will be provided as a sequence of nonzero elements
 std::vector<std::pair<std::array<size_t,2>,float>> tile_norms;
 // n = the number of tiles in each dimension of the matrix
@@ -411,7 +411,7 @@ With replicated SparseShape construction, the shape data is fully initialized in
 The advantage of this method is that it does not require communication between process, but computation of tile norms for all tiles must be done on all nodes. This method is preferred when the cost of recomputation of tile norms is less than cost of communication used in distributed shape construction.
 
 First, create a `TA::Tensor<float>` object that contains the 2-norm (or [Frobenius Norm](http://mathworld.wolfram.com/FrobeniusNorm.html)) of each tile. 
-```
+```.cpp
 // User provided tile factory function.
 Tensor<double> make_tile(const TA::Range& range);
 
@@ -455,7 +455,7 @@ The ability to parametrize `TA::DistArray` is essential for many advanced applic
 Throughout the rest of the guide we will use these aliases instead of using more verbose `TA::DistArray` type (note, however, that when debugging your code that uses these aliases most debuggers will show the name of the full type rather than the alias names).
 
 This example demonstrates how to construct dense and sparse DistArrays:
-```
+```.cpp
 // Construct a dense DistArray (of doubles) with the default process map
 TA::TArrayD a1(world, trange);
 
@@ -482,7 +482,7 @@ The preferred method is to construct tiles via MADNESS tasks and provide a `madn
 
 ### Explicit Tile Initialization
 The easiest method to initialize a DistArray is to loop over local tiles and explicitly initialize each tile. This method distributes initialization work over all processes in the World. Here's the example:
-```
+```.cpp
 // Construct a dense array
 TA::TArrayD array(world...);
 // Initialize local tiles
@@ -503,7 +503,7 @@ The outer loop in this example iterates over the local tiles of `array`. Within 
 N.B. Of course, filling a DistArray with a constant is such a common use case that there's already a method for exactly that: `array.fill(0.0)`.
 
 There are more serious issues with the last example. First, it is too verbose. Second, it's not generic enough (i.e. trying to reuse it for a sparse DistArray would require changing a few lines). Both issues can be solved by using modern C++ features:
-```
+```.cpp
 // Initialize local tiles
 for(auto it = begin(array); it != end(array); ++it) {
   // Construct a tile
@@ -521,7 +521,7 @@ The new code is better in a few ways:
 * the inner loop has been replaced by a more efficient and cleaner `std::fill` (N.B. any modern compiler at the max optimization level will replace `std::fill` with call to `memset` when appropriate, so this is the fastest way to fill the tile).
 
 You can also initialize tile elements using a coordinate index instead of an ordinal index. The following example is equivalent to the previous example, except the tile elements are accessed via a coordinate index.
-```
+```.cpp
 // Add local tiles
 for(auto it = begin(array); it != end(array); ++it) {
   // Construct a tile
@@ -547,7 +547,7 @@ for(auto it = begin(array); it != end(array); ++it) {
 
 Note that in the examples shown so far tile initialization is parallelized over MPI processes only; on each process _only_ the main thread does the initialization work. To parallelize over threads on each process we can
 also initialize tiles by submitting within MADNESS tasks. To do this we need to define a task function that will generate tiles. For example:
-```
+```.cpp
 auto make_tile(const TA::Range& range) {
   // Construct a tile
   TA::TArrayD::value_type tile(range);
@@ -559,7 +559,7 @@ auto make_tile(const TA::Range& range) {
 }
 ```
 Using `make_tile()`, the first example can be rewritten to generate tiles in parallel.
-```
+```.cpp
 // Add local tiles
 for(auto it = begin(array); it != end(array); ++it) {
   // Construct a tile using a MADNESS task.
@@ -582,7 +582,7 @@ In the above example, we generated one task per tile. However, there is a small 
 
 The example below, does this by recursively dividing an iterator range in half until the number of elements in the range is less than or equal to `block_size`. Once the size of the iterator range is small enough, the task will initialize the tiles in the iterator subrange. You do not want to make block size too small or too big, but it is usually fairly easy to achieve optimal performance.
 
-```
+```.cpp
 // Construct a tile filled with zeros
 template <typename Iterator>
 void make_tile(
@@ -632,13 +632,13 @@ void make_array(TA::TArrayD &array, std::size_t block_size) {
 }
 ```
 `make_array` is the top-level function that initializes an array:
-```
+```.cpp
 make_array(array, 2);  // each task will initialize up to 2 tiles
 ```
 
 # Complete Example Program
 This example shows a complete program that constructs arrays in parallel and performs a tensor contraction.
-```
+```.cpp
 #include <tiledarray.h>
 
 // Construct a TA::Tensor<T> filled with v
@@ -720,7 +720,7 @@ If you want to use a hybrid approach, where each tile is computed on a small sub
 #### Distributed Computation
 
 The procedure for constructing a replicated array with distributed computation is the same as constructing other replicated arrays, except `Array::make_replicated()` is called after the local tiles have been inserted into the array.
-```
+```.cpp
 // Construct a distributed array.
 TA::TArrayD array(world, trange);
 
@@ -742,7 +742,7 @@ array.make_replicated();
 #### Replicated Computation
 
 The procedure for constructing a replicated array with replicated computation is similar to the distributed computation method, except the array is constructed with a replicated process map (pmap).
-```
+```.cpp
 // Construct a replicated array.
 auto replicated_pmap = std::make_shared<TA::detail::ReplicatedPmap>(world, trange.tiles_range().volume());
 TA::TArrayD array(world, trange, replicated_pmap);
@@ -761,7 +761,7 @@ for(std::size_t i = 0; i < array.size(); ++i) {
 # Tensor Expressions
 
 Examples of tensor expressions:
-```
+```.cpp
 E("i,j") = 2.0 * A("i,k") * B("k,j") + C("k,j") * D("k,i");
 
 C("i,j") = A("i,j") + B("i,j");

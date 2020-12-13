@@ -30,6 +30,7 @@
 #include <TiledArray/permutation.h>
 #include <TiledArray/tensor/complex.h>
 #include <TiledArray/tile_op/tile_interface.h>
+#include <TiledArray/util/function.h>
 #include "../tile_interface/add.h"
 #include "../tile_interface/permute.h"
 
@@ -40,9 +41,13 @@ namespace detail {
 
 /// This implementation class is used to provide shallow copy semantics for
 /// ContractReduce. It encodes a binary tensor contraction mapped to a GEMM, as
-/// well as the sum reduction and post-processing. \tparam Result The result
-/// tile type \tparam Left The left-hand tile type \tparam Right The right-hand
-/// tile type \tparam Scalar The scaling factor type
+/// well as the sum reduction and post-processing.
+/// \tparam Result The result
+/// tile type
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand
+/// tile type
+/// \tparam Scalar The scaling factor type
 template <typename Result, typename Left, typename Right, typename Scalar>
 class ContractReduceBase {
  public:
@@ -53,22 +58,56 @@ class ContractReduceBase {
   typedef Result result_type;                 ///< The result type
   typedef Scalar scalar_type;                 ///< The scaling factor type
 
+  using left_value_type = typename Left::value_type;
+  using right_value_type = typename Right::value_type;
+  using result_value_type = typename Result::value_type;
+  using elem_muladd_op_type = void(result_value_type&, const left_value_type&,
+                                   const right_value_type&);
+
+  static_assert(
+      TiledArray::detail::is_tensor_v<left_value_type> ==
+              TiledArray::detail::is_tensor_v<right_value_type> &&
+          TiledArray::detail::is_tensor_v<left_value_type> ==
+              TiledArray::detail::is_tensor_v<result_value_type>,
+      "ContractReduce can only handle plain tensors or nested tensors "
+      "(tensors-of-tensors); mixed contractions are not supported");
+  static constexpr bool plain_tensors =
+      !(TiledArray::detail::is_tensor_v<left_value_type> &&
+        TiledArray::detail::is_tensor_v<right_value_type> &&
+        TiledArray::detail::is_tensor_v<result_value_type>);
+
  private:
   struct Impl {
+    template <
+        typename Perm = BipartitePermutation,
+        typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+        typename = std::enable_if_t<
+            TiledArray::detail::is_permutation_v<Perm> &&
+            std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
+                                  result_value_type&, const left_value_type&,
+                                  const right_value_type&>>>
     Impl(const madness::cblas::CBLAS_TRANSPOSE left_op,
          const madness::cblas::CBLAS_TRANSPOSE right_op,
          const scalar_type alpha, const unsigned int result_rank,
          const unsigned int left_rank, const unsigned int right_rank,
-         const Permutation& perm = Permutation())
+         const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
         : gemm_helper_(left_op, right_op, result_rank, left_rank, right_rank),
           alpha_(alpha),
-          perm_(perm) {}
+          perm_(perm),
+          elem_muladd_op_(std::forward<ElemMultAddOp>(elem_muladd_op)) {
+      // non-unit alpha must be absorbed into elem_muladd_op
+      if (elem_muladd_op_) TA_ASSERT(alpha == scalar_type(1));
+    }
 
     math::GemmHelper gemm_helper_;  ///< Gemm helper object
     scalar_type alpha_;  ///< Scaling factor applied to the contraction of
                          ///< the left- and right-hand arguments
-    Permutation perm_;   ///< Permutation that is applied to the final result
-                         ///< tensor
+    BipartitePermutation perm_;  ///< Permutation that is applied to the final
+                                 ///< result tensor
+
+    /// type-erased reference to custom element multiply-add op
+    /// \note the lifetime is managed by the callee!
+    TiledArray::function_ref<elem_muladd_op_type> elem_muladd_op_;
   };
 
   std::shared_ptr<Impl> pimpl_;
@@ -85,6 +124,8 @@ class ContractReduceBase {
 
   /// Construct contract/reduce functor
 
+  /// \tparam Perm a permutation type
+  /// \tparam ElemMultAddOp a callable with signature elem_muladd_op_type
   /// \param left_op The left-hand BLAS matrix operation
   /// \param right_op The right-hand BLAS matrix operation
   /// \param alpha The scaling factor applied to the contracted tiles
@@ -92,15 +133,25 @@ class ContractReduceBase {
   /// \param left_rank The rank of the left-hand tensor
   /// \param right_rank The rank of the right-hand tensor
   /// \param perm The permutation to be applied to the result tensor
-  /// (default = no permute)
+  ///        (default = no permute)
+  /// \param elem_muladd_op The element multiply-add op
+  template <
+      typename Perm = BipartitePermutation,
+      typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+      typename = std::enable_if_t<
+          TiledArray::detail::is_permutation_v<Perm> &&
+          std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
+                                result_value_type&, const left_value_type&,
+                                const right_value_type&>>>
   ContractReduceBase(const madness::cblas::CBLAS_TRANSPOSE left_op,
                      const madness::cblas::CBLAS_TRANSPOSE right_op,
                      const scalar_type alpha, const unsigned int result_rank,
                      const unsigned int left_rank,
-                     const unsigned int right_rank,
-                     const Permutation& perm = Permutation())
-      : pimpl_(std::make_shared<Impl>(left_op, right_op, alpha, result_rank,
-                                      left_rank, right_rank, perm)) {}
+                     const unsigned int right_rank, const Perm& perm = {},
+                     ElemMultAddOp&& elem_muladd_op = {})
+      : pimpl_(std::make_shared<Impl>(
+            left_op, right_op, alpha, result_rank, left_rank, right_rank, perm,
+            std::forward<ElemMultAddOp>(elem_muladd_op))) {}
 
   /// Gemm meta data accessor
 
@@ -113,7 +164,7 @@ class ContractReduceBase {
   /// Permutation accessor
 
   /// \return A const reference to the permutation for this operation
-  const Permutation& perm() const {
+  const BipartitePermutation& perm() const {
     TA_ASSERT(pimpl_);
     return pimpl_->perm_;
   }
@@ -124,6 +175,14 @@ class ContractReduceBase {
   scalar_type factor() const {
     TA_ASSERT(pimpl_);
     return pimpl_->alpha_;
+  }
+
+  /// Element multiply-add op accessor
+
+  /// \return A const reference to the element multiply-add op function_ref
+  const auto& elem_muladd_op() const {
+    TA_ASSERT(pimpl_);
+    return pimpl_->elem_muladd_op_;
   }
 
   //-------------- these are only used for unit tests -----------------
@@ -165,7 +224,8 @@ class ContractReduceBase {
 /// Contract and (sum) reduce operation
 
 /// This encodes a binary tensor contraction mapped to a GEMM, as well as the
-/// sum reduction and post-processing. \tparam Result The result tile type
+/// sum reduction and post-processing.
+/// \tparam Result The result tile type
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
 /// \tparam Scalar The scaling factor type
@@ -183,6 +243,11 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   typedef Result result_type;  ///< The result tile type.
   typedef Scalar scalar_type;
 
+  using typename ContractReduceBase_::elem_muladd_op_type;
+  using typename ContractReduceBase_::left_value_type;
+  using typename ContractReduceBase_::result_value_type;
+  using typename ContractReduceBase_::right_value_type;
+
   // Compiler generated defaults are fine. N.B. this is shallow-copy.
 
   ContractReduce() = default;
@@ -194,6 +259,8 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 
   /// Construct contract/reduce functor
 
+  /// \tparam Perm a permutation type
+  /// \tparam ElemMultAddOp a callable with signature elem_muladd_op_type
   /// \param left_op The left-hand BLAS matrix operation
   /// \param right_op The right-hand BLAS matrix operation
   /// \param alpha The scaling factor applied to the contracted tiles
@@ -201,14 +268,24 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// \param left_rank The rank of the left-hand tensor
   /// \param right_rank The rank of the right-hand tensor
   /// \param perm The permutation to be applied to the result tensor
-  /// (default = no permute)
+  ///        (default = no permute)
+  /// \param elem_muladd_op The element multiply-add op
+  template <
+      typename Perm = BipartitePermutation,
+      typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+      typename = std::enable_if_t<
+          TiledArray::detail::is_permutation_v<Perm> &&
+          std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
+                                result_value_type&, const left_value_type&,
+                                const right_value_type&>>>
   ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
                  const madness::cblas::CBLAS_TRANSPOSE right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Permutation& perm = Permutation())
+                 const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
-                            right_rank, perm) {}
+                            right_rank, perm,
+                            std::forward<ElemMultAddOp>(elem_muladd_op)) {}
 
   /// Create a result type object
 
@@ -244,16 +321,26 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
   /// target
   /// \param[in] left The left-hand tile to be contracted
   /// \param[in] right The right-hand tile to be contracted
-  void operator()(result_type& result, first_argument_type left,
-                  second_argument_type right) const {
-    using TiledArray::empty;
-    using TiledArray::gemm;
-    if (empty(result))
-      result = gemm(left, right, ContractReduceBase_::factor(),
-                    ContractReduceBase_::gemm_helper());
-    else
-      gemm(result, left, right, ContractReduceBase_::factor(),
-           ContractReduceBase_::gemm_helper());
+  void operator()(result_type& result, const first_argument_type& left,
+                  const second_argument_type& right) const {
+    if constexpr (!ContractReduceBase_::plain_tensors) {
+      TA_ASSERT(this->elem_muladd_op());
+      // not yet implemented
+      using TiledArray::empty;
+      using TiledArray::gemm;
+      gemm(result, left, right, ContractReduceBase_::gemm_helper(),
+           this->elem_muladd_op());
+    } else {  // plain tensors
+      TA_ASSERT(!this->elem_muladd_op());
+      using TiledArray::empty;
+      using TiledArray::gemm;
+      if (empty(result))
+        result = gemm(left, right, ContractReduceBase_::factor(),
+                      ContractReduceBase_::gemm_helper());
+      else
+        gemm(result, left, right, ContractReduceBase_::factor(),
+             ContractReduceBase_::gemm_helper());
+    }
   }
 
 };  // class ContractReduce
@@ -261,20 +348,21 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
 /// Contract and (sum) reduce operation
 
 /// This encodes a binary tensor contraction mapped to a GEMM, as well as the
-/// sum reduction and post-processing. \tparam Result The result tile type
+/// sum reduction and post-processing.
+/// \tparam Result The result tile type
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
 template <typename Result, typename Left, typename Right>
 class ContractReduce<Result, Left, Right,
-                     TiledArray::detail::ComplexConjugate<void> >
+                     TiledArray::detail::ComplexConjugate<void>>
     : public ContractReduceBase<Result, Left, Right,
-                                TiledArray::detail::ComplexConjugate<void> > {
+                                TiledArray::detail::ComplexConjugate<void>> {
  public:
   typedef ContractReduce<Result, Left, Right,
-                         TiledArray::detail::ComplexConjugate<void> >
+                         TiledArray::detail::ComplexConjugate<void>>
       ContractReduce_;  ///< This class type
   typedef ContractReduceBase<Result, Left, Right,
-                             TiledArray::detail::ComplexConjugate<void> >
+                             TiledArray::detail::ComplexConjugate<void>>
       ContractReduceBase_;  ///< This class type
   typedef typename ContractReduceBase_::first_argument_type
       first_argument_type;  ///< The left tile type
@@ -284,6 +372,11 @@ class ContractReduce<Result, Left, Right,
                         std::declval<math::GemmHelper>()))
       result_type;  ///< The result tile type.
   typedef TiledArray::detail::ComplexConjugate<void> scalar_type;
+
+  using typename ContractReduceBase_::elem_muladd_op_type;
+  using typename ContractReduceBase_::left_value_type;
+  using typename ContractReduceBase_::result_value_type;
+  using typename ContractReduceBase_::right_value_type;
 
   // Compiler generated defaults are fine. N.B. This has shallow copy semantics.
 
@@ -296,21 +389,32 @@ class ContractReduce<Result, Left, Right,
 
   /// Construct contract/reduce functor
 
-  /// \param left_op The left-hand BLAS matrix operation
+  /// \tparam ElemeElemMultAddOpntOp a callable with signature
+  /// elem_muladd_op_type \param left_op The left-hand BLAS matrix operation
   /// \param right_op The right-hand BLAS matrix operation
   /// \param alpha The scaling factor applied to the contracted tiles
   /// \param result_rank The rank of the result tensor
   /// \param left_rank The rank of the left-hand tensor
   /// \param right_rank The rank of the right-hand tensor
   /// \param perm The permutation to be applied to the result tensor
-  /// (default = no permute)
+  ///        (default = no permute)
+  /// \param elem_muladd_op The element multiply-add op
+  template <
+      typename Perm = BipartitePermutation,
+      typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+      typename = std::enable_if_t<
+          TiledArray::detail::is_permutation_v<Perm> &&
+          std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
+                                result_value_type&, const left_value_type&,
+                                const right_value_type&>>>
   ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
                  const madness::cblas::CBLAS_TRANSPOSE right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Permutation& perm = Permutation())
+                 const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
-                            right_rank, perm) {}
+                            right_rank, perm,
+                            std::forward<ElemMultAddOp>(elem_muladd_op)) {}
 
   /// Create a result type object
 
@@ -349,14 +453,21 @@ class ContractReduce<Result, Left, Right,
   /// target
   /// \param[in] left The left-hand tile to be contracted
   /// \param[in] right The right-hand tile to be contracted
-  void operator()(result_type& result, first_argument_type left,
-                  second_argument_type right) const {
-    using TiledArray::empty;
-    using TiledArray::gemm;
-    if (empty(result))
-      result = gemm(left, right, 1, ContractReduceBase_::gemm_helper());
-    else
-      gemm(result, left, right, 1, ContractReduceBase_::gemm_helper());
+  void operator()(result_type& result, const first_argument_type& left,
+                  const second_argument_type& right) const {
+    if constexpr (!ContractReduceBase_::plain_tensors) {
+      TA_ASSERT(this->elem_muladd_op());
+      // not yet implemented
+      abort();
+    } else {
+      TA_ASSERT(!this->elem_muladd_op());
+      using TiledArray::empty;
+      using TiledArray::gemm;
+      if (empty(result))
+        result = gemm(left, right, 1, ContractReduceBase_::gemm_helper());
+      else
+        gemm(result, left, right, 1, ContractReduceBase_::gemm_helper());
+    }
   }
 
 };  // class ContractReduce
@@ -371,15 +482,15 @@ class ContractReduce<Result, Left, Right,
 /// \tparam Scalar The scaling factor type
 template <typename Result, typename Left, typename Right, typename Scalar>
 class ContractReduce<Result, Left, Right,
-                     TiledArray::detail::ComplexConjugate<Scalar> >
+                     TiledArray::detail::ComplexConjugate<Scalar>>
     : public ContractReduceBase<Result, Left, Right,
-                                TiledArray::detail::ComplexConjugate<Scalar> > {
+                                TiledArray::detail::ComplexConjugate<Scalar>> {
  public:
   typedef ContractReduce<Result, Left, Right,
-                         TiledArray::detail::ComplexConjugate<Scalar> >
+                         TiledArray::detail::ComplexConjugate<Scalar>>
       ContractReduce_;  ///< This class type
   typedef ContractReduceBase<Result, Left, Right,
-                             TiledArray::detail::ComplexConjugate<Scalar> >
+                             TiledArray::detail::ComplexConjugate<Scalar>>
       ContractReduceBase_;  ///< This class type
   typedef typename ContractReduceBase_::first_argument_type
       first_argument_type;  ///< The left tile type
@@ -389,6 +500,11 @@ class ContractReduce<Result, Left, Right,
                         std::declval<math::GemmHelper>()))
       result_type;  ///< The result tile type.
   typedef TiledArray::detail::ComplexConjugate<Scalar> scalar_type;
+
+  using typename ContractReduceBase_::elem_muladd_op_type;
+  using typename ContractReduceBase_::left_value_type;
+  using typename ContractReduceBase_::result_value_type;
+  using typename ContractReduceBase_::right_value_type;
 
   /// Compiler generated functions
   ContractReduce() = default;
@@ -400,6 +516,7 @@ class ContractReduce<Result, Left, Right,
 
   /// Construct contract/reduce functor
 
+  /// \tparam ElemMultAddOp a callable with signature elem_muladd_op_type
   /// \param left_op The left-hand BLAS matrix operation
   /// \param right_op The right-hand BLAS matrix operation
   /// \param alpha The scaling factor applied to the contracted tiles
@@ -407,14 +524,24 @@ class ContractReduce<Result, Left, Right,
   /// \param left_rank The rank of the left-hand tensor
   /// \param right_rank The rank of the right-hand tensor
   /// \param perm The permutation to be applied to the result tensor
-  /// (default = no permute)
+  ///        (default = no permute)
+  /// \param elem_muladd_op The element multiply-add op
+  template <
+      typename Perm = BipartitePermutation,
+      typename ElemMultAddOp = TiledArray::function_ref<elem_muladd_op_type>,
+      typename = std::enable_if_t<
+          TiledArray::detail::is_permutation_v<Perm> &&
+          std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
+                                result_value_type&, const left_value_type&,
+                                const right_value_type&>>>
   ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
                  const madness::cblas::CBLAS_TRANSPOSE right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
-                 const Permutation& perm = Permutation())
+                 const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
       : ContractReduceBase_(left_op, right_op, alpha, result_rank, left_rank,
-                            right_rank, perm) {}
+                            right_rank, perm,
+                            std::forward<ElemMultAddOp>(elem_muladd_op)) {}
 
   /// Create a result type object
 
@@ -454,14 +581,21 @@ class ContractReduce<Result, Left, Right,
   /// target
   /// \param[in] left The left-hand tile to be contracted
   /// \param[in] right The right-hand tile to be contracted
-  void operator()(result_type& result, first_argument_type left,
-                  second_argument_type right) const {
-    using TiledArray::empty;
-    using TiledArray::gemm;
-    if (empty(result))
-      result = gemm(left, right, 1, ContractReduceBase_::gemm_helper());
-    else
-      gemm(result, left, right, 1, ContractReduceBase_::gemm_helper());
+  void operator()(result_type& result, const first_argument_type& left,
+                  const second_argument_type& right) const {
+    if constexpr (!ContractReduceBase_::plain_tensors) {
+      TA_ASSERT(this->elem_muladd_op());
+      // not yet implemented
+      abort();
+    } else {
+      TA_ASSERT(!this->elem_muladd_op());
+      using TiledArray::empty;
+      using TiledArray::gemm;
+      if (empty(result))
+        result = gemm(left, right, 1, ContractReduceBase_::gemm_helper());
+      else
+        gemm(result, left, right, 1, ContractReduceBase_::gemm_helper());
+    }
   }
 
 };  // class ContractReduce

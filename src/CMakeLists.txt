@@ -60,6 +60,20 @@ TiledArray/zero_tensor.h
 TiledArray/algebra/conjgrad.h
 TiledArray/algebra/diis.h
 TiledArray/algebra/utils.h
+TiledArray/algebra/cholesky.h
+TiledArray/algebra/heig.h
+TiledArray/algebra/lu.h
+TiledArray/algebra/svd.h
+TiledArray/algebra/types.h
+TiledArray/algebra/lapack/cholesky.h
+TiledArray/algebra/lapack/heig.h
+TiledArray/algebra/lapack/util.h
+TiledArray/algebra/lapack/lu.h
+TiledArray/algebra/lapack/svd.h
+TiledArray/algebra/scalapack/cholesky.h
+TiledArray/algebra/scalapack/heig.h
+TiledArray/algebra/scalapack/lu.h
+TiledArray/algebra/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
@@ -84,12 +98,15 @@ TiledArray/expressions/binary_expr.h
 TiledArray/expressions/blk_tsr_engine.h
 TiledArray/expressions/blk_tsr_expr.h
 TiledArray/expressions/cont_engine.h
+TiledArray/expressions/contraction_helpers.h
 TiledArray/expressions/expr.h
 TiledArray/expressions/expr_engine.h
 TiledArray/expressions/expr_trace.h
 TiledArray/expressions/leaf_engine.h
 TiledArray/expressions/mult_engine.h
 TiledArray/expressions/mult_expr.h
+TiledArray/expressions/permopt.h
+TiledArray/expressions/product.h
 TiledArray/expressions/scal_engine.h
 TiledArray/expressions/scal_expr.h
 TiledArray/expressions/scal_tsr_engine.h
@@ -100,7 +117,7 @@ TiledArray/expressions/tsr_engine.h
 TiledArray/expressions/tsr_expr.h
 TiledArray/expressions/unary_engine.h
 TiledArray/expressions/unary_expr.h
-TiledArray/expressions/variable_list.h
+TiledArray/expressions/index_list.h
 TiledArray/external/btas.h
 TiledArray/math/blas.h
 TiledArray/math/eigen.h
@@ -111,8 +128,6 @@ TiledArray/math/partial_reduce.h
 TiledArray/math/transpose.h
 TiledArray/math/vector_op.h
 TiledArray/math/scalapack.h
-TiledArray/math/scalapack/heig.h
-TiledArray/math/scalapack/chol.h
 TiledArray/pmap/blocked_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h
@@ -141,6 +156,7 @@ TiledArray/tile_interface/clone.h
 TiledArray/tile_interface/permute.h
 TiledArray/tile_interface/scale.h
 TiledArray/tile_interface/shift.h
+TiledArray/tile_interface/trace.h
 TiledArray/tile_op/add.h
 TiledArray/tile_op/binary_reduction.h
 TiledArray/tile_op/binary_wrapper.h
@@ -154,11 +170,13 @@ TiledArray/tile_op/subt.h
 TiledArray/tile_op/tile_interface.h
 TiledArray/tile_op/unary_reduction.h
 TiledArray/tile_op/unary_wrapper.h
+TiledArray/util/annotation.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
 TiledArray/util/function.h
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
+TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
@@ -193,6 +211,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
+TiledArray/algebra/lapack/lapack.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
@@ -288,5 +307,3 @@ install(
   FILES_MATCHING PATTERN "*.h"
   PATTERN "CMakeFiles" EXCLUDE
 )
-
-    

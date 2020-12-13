@@ -63,20 +63,79 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 
 #endif
 #endif
-  
+
 /////////////////////////////////////////////////
 // define lapacke types to prevent inclusion of complex.h by
 // Eigen/src/misc/lapacke.h
 #include <madness/tensor/lapacke_types.h>
+
+// If EIGEN_USE_LAPACKE_STRICT is defined, Eigen doesn't check if
+// EIGEN_USE_LAPACKE is defined before setting it, leading to a warning when it
+// is already set, so we unset here to avoid that warning
+#if defined(EIGEN_USE_LAPACKE_STRICT) && defined(EIGEN_USE_LAPACKE)
+#undef EIGEN_USE_LAPACKE
+#endif
 #include <Eigen/Core>
 
 #if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)
-#if !EIGEN_VERSION_AT_LEAST(3,3,7)
+#if !EIGEN_VERSION_AT_LEAST(3, 3, 7)
 #error "Eigen3 < 3.3.7 with LAPACKE enabled may give wrong eigenvalue results"
 #error "Either turn off TILEDARRAY_EIGEN_USE_LAPACKE or use Eigen3 3.3.7"
 #endif
 #endif
 
 TILEDARRAY_PRAGMA_GCC(diagnostic pop)
+
+namespace madness {
+namespace archive {
+
+template <class>
+class archive_array;
+template <class T>
+inline archive_array<T> wrap(const T*, unsigned int);
+template <class Archive, typename Data>
+struct ArchiveStoreImpl;
+template <class Archive, typename Data>
+struct ArchiveLoadImpl;
+
+template <class Archive, typename Scalar, int RowsAtCompileTime,
+          int ColsAtCompileTime, int Options, int MaxRowsAtCompileTime,
+          int MaxColsAtCompileTime>
+struct ArchiveStoreImpl<
+    Archive,
+    Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                  MaxRowsAtCompileTime, MaxColsAtCompileTime>> {
+  static inline void store(
+      const Archive& ar,
+      const Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                          MaxRowsAtCompileTime, MaxColsAtCompileTime>& t) {
+    ar& t.rows() & t.cols();
+    if (t.size()) ar& madness::archive::wrap(t.data(), t.size());
+  }
+};
+
+template <class Archive, typename Scalar, int RowsAtCompileTime,
+          int ColsAtCompileTime, int Options, int MaxRowsAtCompileTime,
+          int MaxColsAtCompileTime>
+struct ArchiveLoadImpl<
+    Archive,
+    Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                  MaxRowsAtCompileTime, MaxColsAtCompileTime>> {
+  static inline void load(
+      const Archive& ar,
+      Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime, Options,
+                    MaxRowsAtCompileTime, MaxColsAtCompileTime>& t) {
+    typename Eigen::Matrix<Scalar, RowsAtCompileTime, ColsAtCompileTime,
+                           Options, MaxRowsAtCompileTime,
+                           MaxColsAtCompileTime>::Index nrows(0),
+        ncols(0);
+    ar& nrows& ncols;
+    t.resize(nrows, ncols);
+    if (t.size()) ar& madness::archive::wrap(t.data(), t.size());
+  }
+};
+
+}  // namespace archive
+}  // namespace madness
 
 #endif  // TILEDARRAY_EXTERNAL_EIGEN_H__INCLUDED

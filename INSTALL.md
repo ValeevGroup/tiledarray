@@ -1,6 +1,6 @@
 # Synopsis
 
-```
+```.cpp
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
 $ cd tiledarray
 $ cmake -B build \
@@ -30,11 +30,11 @@ $ cmake --build build --target install
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/BTAS/BTAS), tag 3e286d05ee3a19ac320c12c380d947c3e31d77ff (will be downloaded automatically, if missing)
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag 8418021a283000ada8edd4994bd81f35652d4b49 (will be downloaded automatically, if missing)
 - BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag eee5fd9f940ef422ee4ee5abf852c910bc826fd4 .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 925552feaf326cca8e83de7bd042074ad3cfd3f1 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
-  If usable MADNESS installation is now found, TiledArray will download and compile
+  If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS. *This is the recommended way to compile MADNESS for all users*.
   A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/master/INSTALL_CMake);
   it also also contains detailed
@@ -110,7 +110,7 @@ we specify CMake variables "manually" (on the command line).
 * Basic configuration. This will search for dependencies on your system. If the 
   required dependencies are not found on your system, they will be downloaded 
   and installed during the build process (this includes Eigen, Boost,
-  and MADNESS, but not MPI or TBB). The CMAKE_PREFIX_PATH cache variables
+  and MADNESS, but not MPI or TBB). The `CMAKE_PREFIX_PATH` cache variables
   is a semicolon separated list of search paths. 
 
 ```
@@ -177,10 +177,6 @@ Additional CMake variables are given below.
 
 Most of these are best specified in a _toolchain file_. TiledArray is recommended to use the toolchains distributed via [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains). TiledArray by default downloads (via [the FetchContent CMake module](https://cmake.org/cmake/help/latest/module/FetchContent.html)) the VG CMake toolkit which makes the toolchains available without having to download the toolchain files manually. E.g., to use toolchain `x` from the VG CMake kit repository provide `-DCMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/x.cmake` to CMake when configuring TiledArray.
 
--D CMAKE_BUILD_TYPE=(Release|Debug|RelWithDebInfo)
--D BUILD_SHARED_LIBS=(TRUE|FALSE)
--D CMAKE_CXX_STANDARD=(17|20)
--D TA_ERROR=(none|throw|assert)
 It is typically not necessary to specify optimization or debug flags as the
 default values provided by CMake are usually correct.
 
@@ -300,7 +296,7 @@ variable:
 
 If Eigen is not found at the configure time, it will be downloaded from the Bitbucket repository.
 
-## Pythom
+## Python
 
 To build Python bindings use the following variable:
 
@@ -366,6 +362,7 @@ support may be added.
 ## Expert configure options:
 
 * `TA_EXPERT` -- Set to `ON` to disable automatic installation of prerequisites. Useful for experts, hence the name. [Default=OFF].
+* `TA_ERROR` -- Set to `none` to disable `TA_ASSERT` assertions, `throw` to cause `TA_ASSERT` assertions to throw, `abort` to cause `TA_ASSERT` assertions to abort, or `assert` to cause `TA_ASSERT` assertions to use C++ assert.
 * `TA_TRACE_TASKS` -- Set to `ON` to enable tracing of MADNESS tasks using custom task tracer. Note that standard profilers/tracers are generally useless (except in the trivial cases) with MADWorld-based programs since the submission context of tasks is not captured by standard tracing tools; this makes it impossible in a nontrivial program to attribute tasks to source code. WARNING: task tracing his will greatly increase the memory requirements. [Default=OFF].
 * `TA_ENABLE_RANGEV3` -- Set to `ON` to find or fetch the Range-V3 library and enable additional tests of TA components with constructs anticipated to be supported in the future. [Default=OFF].
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.

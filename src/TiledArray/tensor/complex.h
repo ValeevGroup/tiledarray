@@ -126,6 +126,10 @@ class ComplexConjugate {
     os << "conj()] [" << cc.factor_;
     return os;
   }
+
+  bool operator==(const ComplexConjugate<S>& other) const {
+    return factor() == other.factor();
+  }
 };
 
 struct ComplexNegTag {};
@@ -134,6 +138,17 @@ struct ComplexNegTag {};
 template <>
 class ComplexConjugate<void> {
  public:
+  ComplexConjugate() = default;
+
+  /// can construct from the identity object of any numeric type
+  template <typename Numeric,
+            typename = std::enable_if_t<
+                detail::is_numeric_v<Numeric> &&
+                !std::is_same_v<Numeric, ComplexConjugate<void>>>>
+  explicit ComplexConjugate(const Numeric factor) {
+    TA_ASSERT(factor == Numeric(1));
+  }
+
   inline ComplexConjugate<ComplexNegTag> operator-() const;
 
   friend std::ostream& operator<<(std::ostream& os,
@@ -141,6 +156,8 @@ class ComplexConjugate<void> {
     os << "conj()";
     return os;
   }
+
+  bool operator==(const ComplexConjugate<void>& other) const { return true; }
 };
 
 /// Specialization of ComplexConjugate<S> for the case of a negative
@@ -155,6 +172,10 @@ class ComplexConjugate<ComplexNegTag> {
     os << "conj()] [-1";
     return os;
   }
+
+  bool operator==(const ComplexConjugate<ComplexNegTag>& other) const {
+    return true;
+  }
 };
 
 inline ComplexConjugate<void> ComplexConjugate<ComplexNegTag>::operator-()
@@ -168,7 +189,7 @@ inline ComplexConjugate<ComplexNegTag> ComplexConjugate<void>::operator-()
 }
 
 template <typename S>
-struct is_numeric<ComplexConjugate<S> > : public std::true_type {};
+struct is_numeric<ComplexConjugate<S>> : public std::true_type {};
 
 /// ComplexConjugate operator factory function
 

@@ -24,7 +24,8 @@
 
 using namespace TiledArray;
 
-BOOST_FIXTURE_TEST_SUITE(tiled_range_suite, TiledRangeFixture)
+BOOST_FIXTURE_TEST_SUITE(tiled_range_suite, TiledRangeFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(accessor) {
   BOOST_CHECK_EQUAL(tr.tiles_range(), tiles_range);

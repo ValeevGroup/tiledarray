@@ -135,7 +135,7 @@ class TiledRange {
 
   /// \return A reference to this object
   TiledRange_& operator*=(const Permutation& p) {
-    TA_ASSERT(p.dim() == range_.rank());
+    TA_ASSERT(p.size() == range_.rank());
     Ranges temp = p * ranges_;
     TiledRange(temp.begin(), temp.end()).swap(*this);
     return *this;
@@ -324,7 +324,7 @@ class TiledRange {
 /// being used by other objects will be permuted. The owner of those
 /// objects are
 inline TiledRange operator*(const Permutation& p, const TiledRange& r) {
-  TA_ASSERT(r.tiles_range().rank() == p.dim());
+  TA_ASSERT(r.tiles_range().rank() == p.size());
   TiledRange::Ranges data = p * r.data();
 
   return TiledRange(data.begin(), data.end());

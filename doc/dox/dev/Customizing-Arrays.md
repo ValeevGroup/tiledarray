@@ -1,12 +1,12 @@
 # Customizing DistArray {#Customizing-Arrays}
 
-* [User Defined Tiles](#wiki-user-defined-tiles)
-  * [Lazy Tiles](#wiki-lazy-tiles)
-  * [Data Tiles](#wiki-data-tiles)
-* [User Defined Shapes](#wiki-ser-defined-shapes)
-* [User Defined Process Map](#wiki-user-defined-process-map)
+* [User Defined Tiles](@ref User-Defined-Tiles)
+  * [Lazy Tiles](@ref User-Defined-Lazy-Tiles)
+  * [Data Tiles](@ref User-Defined-Data-Tiles)
+* [User Defined Shapes](@ref User-Defined-Shapes)
+* [User Defined Process Map](@ref User-Defined-Process-Map)
 
-# User Defined Tiles
+# User Defined Tiles {#User-Defined-Tiles}
 
 The default tile type of `TiledArray::DistArray` is `TiledArray::Tensor`. However, TiledArray supports using user-defined types as tiles.
 There are few scenarios where one would like to provide a non-standard type as a tile; for example,
@@ -14,11 +14,11 @@ user wants to provide a more efficient implementation of certain operations on t
 There are two modes of user-defined types that can be used as tiles: types that store the data elements explicitly (“data tiles”)
 and types that generate a data tile as needed (“lazy evaluation tiles”).
 
-## User-Defined Data Tiles
+## User-Defined Data Tiles {#User-Defined-Data-Tiles}
 
 Any user-defined tensor type can play a role of a data tile provided it matches the same concept as `TiledArray::Tensor`. For brevity, instead of an actual concept spec here is an example of a custom tile type that meets the concept spec.
 
-```
+```.cpp
 class MyTensor {
 public:
   // Typedefs
@@ -177,7 +177,7 @@ public:
 
 It is also possible to implement most of the concept requirements non-intrusively, by providing free functions. This can be helpful if you want to use an existing tensor class as a tile. Here’s an example of how to implement MyTensor without member functions:
 
-```
+```.cpp
 class MyTensor {
 public:
   // Typedefs
@@ -226,7 +226,7 @@ public:
 
 namespace TiledArray {
 
-  // MyTensor is used directly evaluate expressions (see also Lazy Tiles section below)
+  // MyTensor is used directly evaluate expressions (see also the [Lazy Tiles](@ref User-Defined-Lazy-Tiles) section)
   struct eval_trait<MyTensor> {
       typedef MyTensor type;
   };
@@ -392,7 +392,7 @@ namespace TiledArray {
   
 ```
 
-## User-Defined Lazy Tiles
+## User-Defined Lazy Tiles {#User-Defined-Lazy-Tiles}
 
 Lazy tiles are generated only when they are needed and discarded immediately after use. Common uses for lazy tiles include computing arrays on-the-fly, reading them from disk, etc. Lazy tiles are used internally by `TiledArray::DistArray` to generate data tiles that are then fed into arithmetic operations.
 
@@ -404,7 +404,7 @@ The main requirements of lazy tiles are:
 
 Lazy tiles should have the following interface.
 
-```
+```.cpp
 class MyLazyTile {
 public:
   typedef ... eval_type; // The data tile to which this tile will be converted to; typically TiledArray::Tensor
@@ -429,11 +429,11 @@ public:
 }; // class MyLazyTile
 ```
 
-# User Defined Shapes
+# User Defined Shapes {#User-Defined-Shapes}
 
 You can define a shape object for your `Array` object, which defines the sparsity of an array. A shape object is a replicated object, so you should design your shape object accordingly. You may implement an initialization algorithm for your shape that communicates with other processes. However, communication is not allowed after the object has been initialized, shape arithmetic operations must be completely local (non-communicating) operations. 
 
-```
+```.cpp
 class MyShape {
 public:
 
@@ -528,11 +528,11 @@ public:
 }; // class MyShape
 ```
 
-# User Defined Process Map
+# User Defined Process Map {#User-Defined-Process-Map}
 
 You can also create process maps for your `Array` object, which is used by TiledArray to determine the process that owns a tile for a given `Array` object. For a process map to be valid, all tiles are owned by exactly one process and all processes must agree on this tile ownership. The exception to these rules is a replicated process map. In addition, a process map must maintain a list of local tiles.
 
-```
+```.cpp
 class MyPmap : public TiledArray::Pmap {
 protected:
 

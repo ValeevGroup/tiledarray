@@ -56,6 +56,15 @@ ArrayFixture::ArrayFixture()
 
 ArrayFixture::~ArrayFixture() { GlobalFixture::world->gop.fence(); }
 
+namespace {
+std::string to_parallel_archive_file_name(const char* prefix_name, int rank) {
+  char buf[256];
+  MADNESS_ASSERT(strlen(prefix_name) + 7 <= sizeof(buf));
+  sprintf(buf, "%s.%5.5d", prefix_name, rank);
+  return buf;
+}
+}  // namespace
+
 BOOST_FIXTURE_TEST_SUITE(array_suite, ArrayFixture)
 
 BOOST_AUTO_TEST_CASE(constructors) {
@@ -356,6 +365,33 @@ BOOST_AUTO_TEST_CASE(find_local) {
         BOOST_CHECK_EQUAL(*it, value);
     }
   }
+
+  for (auto&& tile_idx : a.range()) {
+    if (a.is_local(tile_idx)) {
+      const Future<ArrayN::value_type>& const_tile_fut = a.find_local(tile_idx);
+      Future<ArrayN::value_type>& nonconst_tile_fut = a.find_local(tile_idx);
+
+      const int value = world.rank() + 1;
+      BOOST_CHECK(const_tile_fut.probe());
+      const auto& const_tile_ref = const_tile_fut.get();
+      for (auto&& val : const_tile_ref) {
+        BOOST_CHECK_EQUAL(val, value);
+      }
+
+      BOOST_CHECK(nonconst_tile_fut.probe());
+      const auto& nonconst_tile_ref = nonconst_tile_fut.get();
+      for (auto&& val : nonconst_tile_ref) {
+        BOOST_CHECK_EQUAL(val, value);
+      }
+
+    } else {
+#ifdef TA_EXCEPTION_ERROR
+      // Check that an exception is thrown when using a default constructed
+      // object
+      BOOST_CHECK_THROW(a.find_local(tile_idx), TiledArray::Exception);
+#endif  // TA_EXCEPTION_ERROR
+    }
+  }
 }
 
 BOOST_AUTO_TEST_CASE(find_remote) {
@@ -563,6 +599,7 @@ BOOST_AUTO_TEST_CASE(dense_serialization) {
   BOOST_CHECK_EQUAL(aread.trange(), a.trange());
   BOOST_REQUIRE(aread.shape() == a.shape());
   BOOST_CHECK_EQUAL_COLLECTIONS(aread.begin(), aread.end(), a.begin(), a.end());
+  std::remove(archive_file_name);
 }
 
 BOOST_AUTO_TEST_CASE(sparse_serialization) {
@@ -580,40 +617,93 @@ BOOST_AUTO_TEST_CASE(sparse_serialization) {
   BOOST_CHECK_EQUAL(bread.trange(), b.trange());
   BOOST_REQUIRE(bread.shape() == b.shape());
   BOOST_CHECK_EQUAL_COLLECTIONS(bread.begin(), bread.end(), b.begin(), b.end());
+  std::remove(archive_file_name);
 }
 
 BOOST_AUTO_TEST_CASE(parallel_serialization) {
-  const int nio = 1;  // use 1 rank for 1
-  char archive_file_name[] = "tmp.XXXXXX";
-  mktemp(archive_file_name);
-  madness::archive::ParallelOutputArchive oar(world, archive_file_name, nio);
+  const int nio = 1;  // use 1 rank for I/O
+  char archive_file_prefix_name[] = "tmp.XXXXXX";
+  mktemp(archive_file_prefix_name);
+  madness::archive::ParallelOutputArchive oar(world, archive_file_prefix_name,
+                                              nio);
   oar& a;
   oar.close();
 
-  madness::archive::ParallelInputArchive iar(world, archive_file_name, nio);
+  madness::archive::ParallelInputArchive iar(world, archive_file_prefix_name,
+                                             nio);
   decltype(a) aread;
   aread.load(world, iar);
 
   BOOST_CHECK_EQUAL(aread.trange(), a.trange());
   BOOST_REQUIRE(aread.shape() == a.shape());
   BOOST_CHECK_EQUAL_COLLECTIONS(aread.begin(), aread.end(), a.begin(), a.end());
+  if (world.rank() < nio) {
+    std::remove(
+        to_parallel_archive_file_name(archive_file_prefix_name, world.rank())
+            .c_str());
+  }
 }
 
 BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
   const int nio = 1;  // use 1 rank for 1
-  char archive_file_name[] = "tmp.XXXXXX";
-  mktemp(archive_file_name);
-  madness::archive::ParallelOutputArchive oar(world, archive_file_name, nio);
+  char archive_file_prefix_name[] = "tmp.XXXXXX";
+  mktemp(archive_file_prefix_name);
+  madness::archive::ParallelOutputArchive oar(world, archive_file_prefix_name,
+                                              nio);
   oar& b;
   oar.close();
 
-  madness::archive::ParallelInputArchive iar(world, archive_file_name, nio);
+  madness::archive::ParallelInputArchive iar(world, archive_file_prefix_name,
+                                             nio);
   decltype(b) bread;
   bread.load(world, iar);
 
   BOOST_CHECK_EQUAL(bread.trange(), b.trange());
   BOOST_REQUIRE(bread.shape() == b.shape());
   BOOST_CHECK_EQUAL_COLLECTIONS(bread.begin(), bread.end(), b.begin(), b.end());
+  if (world.rank() < nio) {
+    std::remove(
+        to_parallel_archive_file_name(archive_file_prefix_name, world.rank())
+            .c_str());
+  }
+}
+
+BOOST_AUTO_TEST_CASE(issue_225) {
+  TiledRange1 TR0{0, 3, 8, 10};
+  TiledRange1 TR1{0, 4, 7, 10};
+  TiledRange TR{TR0, TR1};
+  Tensor<float> shape_tensor(TR.tiles_range(), 0.0);
+  shape_tensor(0, 0) = 1.0;
+  shape_tensor(0, 1) = 1.0;
+  shape_tensor(1, 1) = 1.0;
+  shape_tensor(2, 2) = 1.0;
+  SparseShape<float> shape(shape_tensor, TR);
+  TSpArrayD S(world, TR, shape);
+  TSpArrayD St;
+  S.fill(1.0);
+
+  char archive_file_name[] = "tmp.XXXXXX";
+  mktemp(archive_file_name);
+  madness::archive::BinaryFstreamOutputArchive oar(archive_file_name);
+  St("i,j") = S("j,i");
+  BOOST_REQUIRE_NO_THROW(oar & S);
+  BOOST_REQUIRE_NO_THROW(oar & St);
+  oar.close();
+
+  madness::archive::BinaryFstreamInputArchive iar(archive_file_name);
+  decltype(S) S_read;
+  decltype(St) St_read;
+  iar& S_read& St_read;
+
+  BOOST_CHECK_EQUAL(S_read.trange(), S.trange());
+  BOOST_REQUIRE(S_read.shape() == S.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(S_read.begin(), S_read.end(), S.begin(),
+                                S.end());
+  BOOST_CHECK_EQUAL(St_read.trange(), St.trange());
+  BOOST_REQUIRE(St_read.shape() == St.shape());
+  BOOST_CHECK_EQUAL_COLLECTIONS(St_read.begin(), St_read.end(), St.begin(),
+                                St.end());
+  std::remove(archive_file_name);
 }
 
 BOOST_AUTO_TEST_CASE(issue_225) {

@@ -148,7 +148,7 @@ auto tiled_range_from_il(T&& il, U shape = {}) {
     if constexpr (detail::is_initializer_list_v<
                       std::decay_t<decltype(*first_sub_il_it)>>) {
       auto sub_il_it = il.begin();
-      const size_t sub_il_length = sub_il_it->size();
+      [[maybe_unused]] const size_t sub_il_length = sub_il_it->size();
       for (++sub_il_it; sub_il_it != il.end(); ++sub_il_it) {
         TA_ASSERT(sub_il_it->size() == sub_il_length);
       }
@@ -262,7 +262,7 @@ auto get_elem_from_il(T idx, U&& il, std::size_t depth = 0) {
     return il;
   } else {
     // Make sure the current nesting is long enough
-    TA_ASSERT(il.size() > idx[depth]);
+    TA_ASSERT(il.size() > static_cast<std::size_t>(idx[depth]));
     auto itr = il.begin() + idx[depth];
     if constexpr (nestings_left == 1) {
       return *itr;

@@ -34,13 +34,13 @@ namespace TiledArray {
 
 /// Scalar the tile argument
 
-/// \tparam Arg The tile argument type
-/// \tparam Scalar A scalar type
-/// \param arg The left-hand argument to be scaled
-/// \param factor The scaling factor
-/// \return A tile that is equal to <tt>arg * factor</tt>
+/// \tparam Arg A tile type
+/// \tparam Scalar A numeric type (i.e. TiledArray::detail::is_numeric_v<Scalar>
+/// is true) \param arg The left-hand argument to be scaled \param factor The
+/// scaling factor \return A tile that is equal to <tt>arg * factor</tt>
 template <typename Arg, typename Scalar,
-          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
+          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                           !TiledArray::detail::is_array_v<Arg>>* = nullptr>
 inline auto scale(const Arg& arg, const Scalar factor) {
   return arg.scale(factor);
 }
@@ -53,10 +53,11 @@ inline auto scale(const Arg& arg, const Scalar factor) {
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
-template <typename Arg, typename Scalar,
-          std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>* = nullptr>
-inline auto scale(const Arg& arg, const Scalar factor,
-                  const Permutation& perm) {
+template <
+    typename Arg, typename Scalar, typename Perm,
+    std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> &&
+                     TiledArray::detail::is_permutation_v<Perm>>* = nullptr>
+inline auto scale(const Arg& arg, const Scalar factor, const Perm& perm) {
   return arg.scale(factor, perm);
 }
 
@@ -110,8 +111,10 @@ class Scale {
     return scale(arg, factor);
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type operator()(const argument_type& arg, const scalar_type factor,
-                         const Permutation& perm) const {
+                         const Perm& perm) const {
     using TiledArray::scale;
     return scale(arg, factor, perm);
   }
@@ -136,10 +139,12 @@ class Scale<Result, Arg, Scalar,
     return cast(scale(arg, factor));
   }
 
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   result_type operator()(const argument_type& arg, const scalar_type factor,
-                         const Permutation& perm) const {
+                         const Perm& perm) const {
     using TiledArray::scale;
-    TiledArray::Cast<Result, result_of_scale_t<Arg, Scalar, Permutation>> cast;
+    TiledArray::Cast<Result, result_of_scale_t<Arg, Scalar, Perm>> cast;
     return cast(scale(arg, factor, perm));
   }
 };

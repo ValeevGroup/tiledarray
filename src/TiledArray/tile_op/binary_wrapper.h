@@ -35,7 +35,7 @@ namespace detail {
 
 /// Binary tile operation wrapper
 
-/// This wrapper class is handles evaluation of lazily evaluated tiles in binary
+/// This wrapper class handles evaluation of lazily evaluated tiles in binary
 /// operations and forwards the evaluated arguments to the base operation
 /// object.
 ///
@@ -105,22 +105,21 @@ class BinaryWrapper {
   static constexpr bool right_is_consumable = Op::right_is_consumable;
 
   template <typename T>
-  static constexpr bool is_lazy_tile_v = is_lazy_tile<std::decay_t<T> >::value;
+  static constexpr bool is_lazy_tile_v = is_lazy_tile<std::decay_t<T>>::value;
 
   template <typename T>
-  static constexpr bool is_array_tile_v =
-      is_array_tile<std::decay_t<T> >::value;
+  static constexpr bool is_array_tile_v = is_array_tile<std::decay_t<T>>::value;
 
   template <typename T>
   static constexpr bool is_nonarray_lazy_tile_v =
       is_lazy_tile_v<T> && !is_array_tile_v<T>;
 
   template <typename T>
-  using eval_t = typename eval_trait<std::decay_t<T> >::type;
+  using eval_t = typename eval_trait<std::decay_t<T>>::type;
 
  private:
-  Op op_;             ///< Tile operation
-  Permutation perm_;  ///< Permuation applied to the result
+  Op op_;                      ///< Tile operation
+  BipartitePermutation perm_;  ///< Permutation applied to the result
 
  public:
   // Compiler generated functions
@@ -130,7 +129,9 @@ class BinaryWrapper {
   BinaryWrapper<Op>& operator=(const BinaryWrapper<Op>&) = default;
   BinaryWrapper<Op>& operator=(BinaryWrapper<Op>&&) = default;
 
-  BinaryWrapper(const Op& op, const Permutation& perm) : op_(op), perm_(perm) {}
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  BinaryWrapper(const Op& op, const Perm& perm) : op_(op), perm_(perm) {}
 
   BinaryWrapper(const Op& op) : op_(op), perm_() {}
 
@@ -167,7 +168,7 @@ class BinaryWrapper {
   /// \param right The right-hand argument
   /// \return The result tile from the binary operation applied to the
   /// \c left and \c right arguments.
-  template <typename R, std::enable_if_t<!is_lazy_tile_v<R> >* = nullptr>
+  template <typename R, std::enable_if_t<!is_lazy_tile_v<R>>* = nullptr>
   auto operator()(const ZeroTensor& left, R&& right) const {
     static_assert(
         std::is_same<std::decay_t<R>, right_type>::value,
@@ -185,7 +186,7 @@ class BinaryWrapper {
   /// \param right The right-hand argument
   /// \return The result tile from the binary operation applied to the
   /// \c left and \c right arguments.
-  template <typename L, std::enable_if_t<!is_lazy_tile_v<L> >* = nullptr>
+  template <typename L, std::enable_if_t<!is_lazy_tile_v<L>>* = nullptr>
   auto operator()(L&& left, const ZeroTensor& right) const {
     static_assert(
         std::is_same<std::decay_t<L>, left_type>::value,
@@ -216,8 +217,9 @@ class BinaryWrapper {
   auto operator()(L&& left, R&& right) const {
     auto eval_left = invoke_cast(std::forward<L>(left));
     auto eval_right = invoke_cast(std::forward<R>(right));
-    auto continuation = [this](decltype(eval_left)& l,
-                               decltype(eval_right)& r) {
+    auto continuation = [this](
+                            madness::future_to_ref_t<decltype(eval_left)> l,
+                            madness::future_to_ref_t<decltype(eval_right)> r) {
       return BinaryWrapper_::operator()(l, r);
     };
     return meta::invoke(continuation, eval_left, eval_right);
@@ -241,10 +243,11 @@ class BinaryWrapper {
                                               right_is_consumable)>* = nullptr>
   auto operator()(L&& left, R&& right) const {
     auto eval_left = invoke_cast(std::forward<L>(left));
-    auto continuation = [this](decltype(eval_left)& l, R&& r) {
+    auto continuation = [this](madness::future_to_ref_t<decltype(eval_left)> l,
+                               R&& r) {
       return BinaryWrapper_::operator()(l, std::forward<R>(r));
     };
-    return meta::invoke(continuation, eval_left, right);
+    return meta::invoke(continuation, eval_left, std::forward<R>(right));
   }
 
   /// Evaluate non-lazy and lazy tiles
@@ -264,7 +267,11 @@ class BinaryWrapper {
                        (left_is_consumable || right_is_consumable)>* = nullptr>
   auto operator()(L&& left, R&& right) const {
     auto eval_right = invoke_cast(std::forward<R>(right));
-    return BinaryWrapper_::operator()(std::forward<L>(left), eval_right);
+    auto continuation =
+        [this](L&& l, madness::future_to_ref_t<decltype(eval_right)> r) {
+          return BinaryWrapper_::operator()(std::forward<L>(l), r);
+        };
+    return meta::invoke(continuation, std::forward<L>(left), eval_right);
   }
 
   /// Evaluate two lazy-array tiles
@@ -294,9 +301,9 @@ class BinaryWrapper {
       return op_.consume_right(_left, _right);
     };
     // Override consumable
-    if (is_consumable_tile<eval_t<L> >::value && left.is_consumable())
+    if (is_consumable_tile<eval_t<L>>::value && left.is_consumable())
       return meta::invoke(op_left, eval_left, eval_right);
-    if (is_consumable_tile<eval_t<R> >::value && right.is_consumable())
+    if (is_consumable_tile<eval_t<R>>::value && right.is_consumable())
       return meta::invoke(op_right, eval_left, eval_right);
 
     return meta::invoke(op_, eval_left, eval_right);
@@ -313,7 +320,7 @@ class BinaryWrapper {
     if (perm_) return op_(eval_left, std::forward<R>(right), perm_);
 
     // Override consumable
-    if (is_consumable_tile<eval_t<L> >::value && left.is_consumable())
+    if (is_consumable_tile<eval_t<L>>::value && left.is_consumable())
       return op_.consume_left(eval_left, std::forward<R>(right));
 
     return op_(eval_left, std::forward<R>(right));
@@ -330,7 +337,7 @@ class BinaryWrapper {
     if (perm_) return op_(eval_left, eval_right, perm_);
 
     // Override consumable
-    if (is_consumable_tile<eval_t<L> >::value && left.is_consumable())
+    if (is_consumable_tile<eval_t<L>>::value && left.is_consumable())
       return op_.consume_left(eval_left, eval_right);
 
     return op_(eval_left, eval_right);
@@ -346,7 +353,7 @@ class BinaryWrapper {
     if (perm_) return op_(std::forward<L>(left), eval_right, perm_);
 
     // Override consumable
-    if (is_consumable_tile<eval_t<R> >::value && right.is_consumable())
+    if (is_consumable_tile<eval_t<R>>::value && right.is_consumable())
       return op_.consume_right(std::forward<L>(left), eval_right);
 
     return op_(std::forward<L>(left), eval_right);
@@ -363,7 +370,7 @@ class BinaryWrapper {
     if (perm_) return op_(eval_left, eval_right, perm_);
 
     // Override consumable
-    if (is_consumable_tile<eval_t<R> >::value && right.is_consumable())
+    if (is_consumable_tile<eval_t<R>>::value && right.is_consumable())
       return op_.consume_right(eval_left, eval_right);
 
     return op_(eval_left, eval_right);

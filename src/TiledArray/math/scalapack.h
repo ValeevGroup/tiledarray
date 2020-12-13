@@ -25,14 +25,9 @@
 #ifndef TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
 #define TILEDARRAY_MATH_SCALAPACK_H__INCLUDED
 
-#if TILEDARRAY_HAS_SCALAPACK
+#warning \
+    "TiledArray/math/scalapack.h header is deprecated, please include TiledArray/algebra/scalapack/all.h"
 
-#include <TiledArray/math/scalapack/heig.h>
-#include <TiledArray/math/scalapack/chol.h>
-#include <TiledArray/math/scalapack/svd.h>
-#include <TiledArray/math/scalapack/lu.h>
+#include <TiledArray/algebra/scalapack/all.h>
 
 #endif
-
-#endif
-

@@ -59,9 +59,9 @@ endif(TILEDARRAY_PRERELEASE_ID)
 
 # Set install paths ============================================================
 
-set(TILEDARRAY_INSTALL_BINDIR "bin" 
+set(TILEDARRAY_INSTALL_BINDIR "bin"
     CACHE PATH "TiledArray binary install directory")
-set(TILEDARRAY_INSTALL_INCLUDEDIR "include" 
+set(TILEDARRAY_INSTALL_INCLUDEDIR "include"
     CACHE PATH "TiledArray INCLUDE install directory")
 set(TILEDARRAY_INSTALL_LIBDIR "lib"
     CACHE PATH "TiledArray LIB install directory")
@@ -162,16 +162,15 @@ else ()
 endif()
 redefaultable_option(CMAKE_POSITION_INDEPENDENT_CODE "Default value for POSITION_INDEPENDENT_CODE of targets" ${default_CMAKE_POSITION_INDEPENDENT_CODE})
 
+set(BLA_STATIC FALSE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
 if(BUILD_SHARED_LIBS)
-  set(BLA_STATIC FALSE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH TRUE)
 else()
-  set(BLA_STATIC TRUE CACHE BOOL "Whether to use static linkage for BLAS, LAPACK, and related libraries")
   set(CMAKE_MACOSX_RPATH FALSE)
 endif()
 
 # miscellaneous cmake platform-neutral and platform-specific configuration =============================
-set(CMAKE_FIND_NO_INSTALL_PREFIX TRUE)  # do not search in CMAKE_INSTALL_PREFIX 
+set(CMAKE_FIND_NO_INSTALL_PREFIX TRUE)  # do not search in CMAKE_INSTALL_PREFIX
 set(CMAKE_SKIP_RPATH FALSE)
 set(CMAKE_SKIP_BUILD_RPATH  FALSE)
 set(CMAKE_SKIP_INSTALL_RPATH FALSE)
@@ -394,19 +393,19 @@ export(EXPORT tiledarray
 configure_package_config_file(cmake/tiledarray-config.cmake.in
     "${PROJECT_BINARY_DIR}/tiledarray-config.cmake"
   INSTALL_DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
-  PATH_VARS CMAKE_INSTALL_PREFIX TILEDARRAY_INSTALL_BINDIR 
+  PATH_VARS CMAKE_INSTALL_PREFIX TILEDARRAY_INSTALL_BINDIR
             TILEDARRAY_INSTALL_INCLUDEDIR TILEDARRAY_INSTALL_LIBDIR
             TILEDARRAY_INSTALL_DOCDIR TILEDARRAY_INSTALL_CMAKEDIR)
 
 # Install config, version, and target files
 install(EXPORT tiledarray
     FILE "tiledarray-targets.cmake"
-    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}" 
+    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
     COMPONENT tiledarray)
 install(FILES
     "${PROJECT_BINARY_DIR}/tiledarray-config.cmake"
     "${PROJECT_BINARY_DIR}/tiledarray-config-version.cmake"
-    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}" 
+    DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
     COMPONENT tiledarray)
 
 

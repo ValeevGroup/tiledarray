@@ -22,6 +22,7 @@
 
 #include <TiledArray/tensor/tensor_interface.h>
 #include <TiledArray/tile_interface/cast.h>
+#include <TiledArray/tile_interface/trace.h>
 #include <memory>
 
 // Forward declaration of MADNESS archive type traits
@@ -85,9 +86,12 @@ class Tile {
   /// Tensor type used to represent tile data
   typedef T tensor_type;
   // import types from T
-  using value_type = typename tensor_type::value_type;   ///< value type
-  using range_type = typename tensor_type::range_type;   ///< Tensor range type
-  using index1_type = typename range_type::index1_type;  ///< 1-index type
+  using value_type = typename tensor_type::value_type;    ///< value type
+  using range_type = typename tensor_type::range_type;    ///< Tensor range type
+  using index1_type = typename tensor_type::index1_type;  ///< 1-index type
+  using size_type =
+      typename tensor_type::ordinal_type;  ///< Size type (to meet the container
+                                           ///< concept)
   using reference =
       typename tensor_type::reference;  ///< Element reference type
   using const_reference =
@@ -414,8 +418,8 @@ class Tile {
   // clang-format on
   /// @{
   template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
   decltype(auto) block(const Index1& lower_bound, const Index2& upper_bound) {
     TA_ASSERT(pimpl_);
     return detail::TensorInterface<value_type, BlockRange, tensor_type>(
@@ -424,8 +428,8 @@ class Tile {
   }
 
   template <typename Index1, typename Index2,
-            typename = std::enable_if_t<std::is_integral_v<Index1> &&
-                                        std::is_integral_v<Index2>>>
+            typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
+                                        detail::is_integral_range_v<Index2>>>
   decltype(auto) block(const Index1& lower_bound,
                        const Index2& upper_bound) const {
     TA_ASSERT(pimpl_);
@@ -649,11 +653,13 @@ inline bool empty(const Tile<Arg>& arg) {
 /// Create a permuted copy of \c arg
 
 /// \tparam Arg The tile argument type
+/// \tparam Perm A permutation tile
 /// \param arg The tile argument to be permuted
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ arg</tt>
-template <typename Arg>
-inline decltype(auto) permute(const Tile<Arg>& arg, const Permutation& perm) {
+template <typename Arg, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline decltype(auto) permute(const Tile<Arg>& arg, const Perm& perm) {
   return Tile<Arg>(permute(arg.tensor(), perm));
 }
 
@@ -750,13 +756,15 @@ inline decltype(auto) add(const Tile<Left>& left, const Tile<Right>& right,
 
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
+/// \tparam Perm A permutation type
 /// \param left The left-hand argument to be added
 /// \param right The right-hand argument to be added
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm * (left + right)</tt>
-template <typename Left, typename Right>
+template <typename Left, typename Right, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
 inline decltype(auto) add(const Tile<Left>& left, const Tile<Right>& right,
-                          const Permutation& perm) {
+                          const Perm& perm) {
   return detail::make_tile(add(left.tensor(), right.tensor(), perm));
 }
 
@@ -765,16 +773,18 @@ inline decltype(auto) add(const Tile<Left>& left, const Tile<Right>& right,
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
 /// \tparam Scalar A scalar type
+/// \tparam Perm A permutation tile
 /// \param left The left-hand argument to be added
 /// \param right The right-hand argument to be added
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left + right) * factor</tt>
 template <
-    typename Left, typename Right, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+    typename Left, typename Right, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline decltype(auto) add(const Tile<Left>& left, const Tile<Right>& right,
-                          const Scalar factor, const Permutation& perm) {
+                          const Scalar factor, const Perm& perm) {
   return detail::make_tile(add(left.tensor(), right.tensor(), factor, perm));
 }
 
@@ -796,15 +806,17 @@ inline decltype(auto) add(const Tile<Arg>& arg, const Scalar value) {
 
 /// \tparam Arg The tile argument type
 /// \tparam Scalar A scalar type
+/// \tparam Perm A permutation tile
 /// \param arg The left-hand argument to be added
 /// \param value The constant scalar value to be added
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (arg + value)</tt>
 template <
-    typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+    typename Arg, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline decltype(auto) add(const Tile<Arg>& arg, const Scalar value,
-                          const Permutation& perm) {
+                          const Perm& perm) {
   return detail::make_tile(add(arg.tensor(), value, perm));
 }
 
@@ -888,13 +900,15 @@ inline decltype(auto) subt(const Tile<Left>& left, const Tile<Right>& right,
 
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
+/// \tparam Perm A permutation tile
 /// \param left The left-hand argument to be subtracted
 /// \param right The right-hand argument to be subtracted
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left - right)</tt>
-template <typename Left, typename Right>
+template <typename Left, typename Right, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
 inline decltype(auto) subt(const Tile<Left>& left, const Tile<Right>& right,
-                           const Permutation& perm) {
+                           const Perm& perm) {
   return detail::make_tile(subt(left.tensor(), right.tensor(), perm));
 }
 
@@ -902,16 +916,18 @@ inline decltype(auto) subt(const Tile<Left>& left, const Tile<Right>& right,
 
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
+/// \tparam Perm A permutation tile
 /// \param left The left-hand argument to be subtracted
 /// \param right The right-hand argument to be subtracted
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left - right) * factor</tt>
 template <
-    typename Left, typename Right, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+    typename Left, typename Right, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline decltype(auto) subt(const Tile<Left>& left, const Tile<Right>& right,
-                           const Scalar factor, const Permutation& perm) {
+                           const Scalar factor, const Perm& perm) {
   return detail::make_tile(subt(left.tensor(), right.tensor(), factor, perm));
 }
 
@@ -931,15 +947,17 @@ inline decltype(auto) subt(const Tile<Arg>& arg, const Scalar value) {
 /// Subtract a constant scalar and permute tile argument
 
 /// \tparam Arg The tile argument type
+/// \tparam Perm A permutation tile
 /// \param arg The left-hand argument to be subtracted
 /// \param value The constant scalar value to be subtracted
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (arg - value)</tt>
 template <
-    typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+    typename Arg, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline decltype(auto) subt(const Tile<Arg>& arg, const Scalar value,
-                           const Permutation& perm) {
+                           const Perm& perm) {
   return detail::make_tile(subt(arg.tensor(), value, perm));
 }
 
@@ -1021,13 +1039,15 @@ inline decltype(auto) mult(const Tile<Left>& left, const Tile<Right>& right,
 
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
+/// \tparam Perm A permutation tile
 /// \param left The left-hand argument to be multiplied
 /// \param right The right-hand argument to be multiplied
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left * right)</tt>
-template <typename Left, typename Right>
+template <typename Left, typename Right, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
 inline decltype(auto) mult(const Tile<Left>& left, const Tile<Right>& right,
-                           const Permutation& perm) {
+                           const Perm& perm) {
   return detail::make_tile(mult(left.tensor(), right.tensor(), perm));
 }
 
@@ -1035,16 +1055,18 @@ inline decltype(auto) mult(const Tile<Left>& left, const Tile<Right>& right,
 
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
+/// \tparam Perm A permutation tile
 /// \param left The left-hand argument to be multiplied
 /// \param right The right-hand argument to be multiplied
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (left * right) * factor</tt>
 template <
-    typename Left, typename Right, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+    typename Left, typename Right, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline decltype(auto) mult(const Tile<Left>& left, const Tile<Right>& right,
-                           const Scalar factor, const Permutation& perm) {
+                           const Scalar factor, const Perm& perm) {
   return detail::make_tile(mult(left.tensor(), right.tensor(), factor, perm));
 }
 
@@ -1078,6 +1100,66 @@ inline Tile<Result>& mult_to(Tile<Result>& result, const Tile<Arg>& arg,
   return result;
 }
 
+// Generic element-wise binary operations
+// ---------------------------------------------
+
+// clang-format off
+/// Binary element-wise transform producing a new tile
+
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam Op An element-wise operation type
+/// \param[in] left The left-hand argument to the transform
+/// \param[in] right The right-hand argument to the transform
+/// \param op An element-wise operation
+/// \return \c result where for each \c i in \c left.range() \c result[i]==op(left[i],right[i])
+// clang-format on
+template <typename Left, typename Right, typename Op>
+inline decltype(auto) binary(const Tile<Left>& left, const Tile<Right>& right,
+                             Op&& op) {
+  return detail::make_tile(
+      binary(left.tensor(), right.tensor(), std::forward<Op>(op)));
+}
+
+// clang-format off
+/// Binary element-wise transform producing a new tile
+
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam Op An element-wise operation type
+/// \tparam Perm A permutation type
+/// \param[in] left The left-hand argument to the transform
+/// \param[in] right The right-hand argument to the transform
+/// \param op An element-wise operation
+/// \param perm The permutation to be applied to the result
+/// \return \c perm^result where for each \c i in \c left.range() \c result[i]==op(left[i],right[i])
+// clang-format on
+template <typename Left, typename Right, typename Op, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline decltype(auto) binary(const Tile<Left>& left, const Tile<Right>& right,
+                             Op&& op, const Perm& perm) {
+  return detail::make_tile(
+      binary(left.tensor(), right.tensor(), std::forward<Op>(op), perm));
+}
+
+// clang-format off
+/// Binary element-wise in-place transform
+
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam Op An element-wise operation type
+/// \param[in,out] left The left-hand argument to the transform; output contains the result of \c binary(left,right,op)
+/// \param[in] right The right-hand argument to the transform
+/// \param op An element-wise operation
+/// \return reference to \p left
+// clang-format on
+template <typename Left, typename Right, typename Op>
+inline Tile<Left>& inplace_binary(Tile<Left>& left, const Tile<Right>& right,
+                                  Op&& op) {
+  inplace_binary(left.tensor(), right.tensor(), std::forward<Op>(op));
+  return left;
+}
+
 // Scaling operations --------------------------------------------------------
 
 /// Scalar the tile argument
@@ -1096,15 +1178,17 @@ inline decltype(auto) scale(const Tile<Arg>& arg, const Scalar factor) {
 /// Scale and permute tile argument
 
 /// \tparam Arg The tile argument type
+/// \tparam Perm A permutation tile
 /// \param arg The left-hand argument to be scaled
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ (arg * factor)</tt>
 template <
-    typename Arg, typename Scalar,
-    typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
+    typename Arg, typename Scalar, typename Perm,
+    typename std::enable_if<detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline decltype(auto) scale(const Tile<Arg>& arg, const Scalar factor,
-                            const Permutation& perm) {
+                            const Perm& perm) {
   return detail::make_tile(scale(arg.tensor(), factor, perm));
 }
 
@@ -1138,12 +1222,14 @@ inline decltype(auto) neg(const Tile<Arg>& arg) {
 /// Negate and permute tile argument
 
 /// \tparam Arg The tile argument type
+/// \tparam Perm A permutation tile
 /// \param arg The argument to be negated
 /// \param perm The permutation to be applied to the result
 /// \return A tile that is equal to <tt>perm ^ -arg</tt>
 /// \note equivalent to @c scale(arg,-1,perm)
-template <typename Arg>
-inline decltype(auto) neg(const Tile<Arg>& arg, const Permutation& perm) {
+template <typename Arg, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline decltype(auto) neg(const Tile<Arg>& arg, const Perm& perm) {
   return detail::make_tile(neg(arg.tensor(), perm));
 }
 
@@ -1188,11 +1274,13 @@ inline decltype(auto) conj(const Tile<Arg>& arg, const Scalar factor) {
 /// Create a complex conjugated and permuted copy of a tile
 
 /// \tparam Arg The tile argument type
+/// \tparam Perm A permutation tile
 /// \param arg The tile to be conjugated
 /// \param perm The permutation to be applied to `arg`
 /// \return A complex conjugated and permuted copy of `arg`
-template <typename Arg>
-inline decltype(auto) conj(const Tile<Arg>& arg, const Permutation& perm) {
+template <typename Arg, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline decltype(auto) conj(const Tile<Arg>& arg, const Perm& perm) {
   return detail::make_tile(conj(arg.tensor(), perm));
 }
 
@@ -1200,15 +1288,17 @@ inline decltype(auto) conj(const Tile<Arg>& arg, const Permutation& perm) {
 
 /// \tparam Arg The tile argument type
 /// \tparam Scalar A scalar type
+/// \tparam Perm A permutation tile
 /// \param arg The argument to be conjugated
 /// \param factor The scaling factor
 /// \param perm The permutation to be applied to `arg`
 /// \return A complex conjugated, scaled, and permuted copy of `arg`
-template <typename Arg, typename Scalar,
-          typename std::enable_if<
-              TiledArray::detail::is_numeric_v<Scalar>>::type* = nullptr>
+template <
+    typename Arg, typename Scalar, typename Perm,
+    typename std::enable_if<TiledArray::detail::is_numeric_v<Scalar> &&
+                            detail::is_permutation_v<Perm>>::type* = nullptr>
 inline decltype(auto) conj(const Tile<Arg>& arg, const Scalar factor,
-                           const Permutation& perm) {
+                           const Perm& perm) {
   return detail::make_tile(conj(arg.tensor(), factor, perm));
 }
 
@@ -1238,14 +1328,63 @@ inline Tile<Result>& conj_to(Tile<Result>& result, const Scalar factor) {
   return result;
 }
 
+// Generic element-wise unary operations
+// ---------------------------------------------
+
+// clang-format off
+/// Unary element-wise transform producing a new tile
+
+/// \tparam Arg The tile argument type
+/// \tparam Op An element-wise operation type
+/// \param[in] arg The tile to be transformed
+/// \param op An element-wise operation
+/// \return \c result where for each \c i in \c arg.range() \c result[i]==op(arg[i])
+// clang-format on
+template <typename Arg, typename Op>
+inline decltype(auto) unary(const Tile<Arg>& arg, Op&& op) {
+  return detail::make_tile(unary(arg.tensor(), std::forward<Op>(op)));
+}
+
+// clang-format off
+/// Unary element-wise transform producing a new tile
+
+/// \tparam Arg The tile argument type
+/// \tparam Op An element-wise operation type
+/// \param[in] arg The tile to be transformed
+/// \param op An element-wise operation
+/// \param perm The permutation to be applied to the result of the transform
+/// \return \c perm^result where for each \c i in \c arg.range() \c result[i]==op(arg[i])
+// clang-format on
+template <typename Arg, typename Op, typename Perm,
+          typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
+inline decltype(auto) unary(const Tile<Arg>& arg, Op&& op, const Perm& perm) {
+  return detail::make_tile(unary(arg.tensor(), std::forward<Op>(op), perm));
+}
+
+// clang-format off
+/// Unary element-wise in-place transform
+
+/// \tparam Arg The tile argument type
+/// \tparam Op An element-wise operation type
+/// \param[in,out] arg The tile to be transformed, on output for each \c i in \c arg.range() \c arg[i] contains \c op(arg[i])
+/// \param op An element-wise operation
+/// \return \c reference to \p arg
+// clang-format on
+template <typename Result, typename Op>
+inline Tile<Result>& inplace_unary(Tile<Result>& arg, Op&& op) {
+  inplace_unary(arg.tensor(), std::forward<Op>(op));
+  return arg;
+}
+
 // Contraction operations ----------------------------------------------------
 
-/// Contract and scale tile arguments
+/// Contract 2 tensors over head/tail modes and scale the product
 
 /// The contraction is done via a GEMM operation with fused indices as defined
 /// by \c gemm_config.
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
+/// \tparam Scalar A numeric type
 /// \param left The left-hand argument to be contracted
 /// \param right The right-hand argument to be contracted
 /// \param factor The scaling factor
@@ -1261,19 +1400,21 @@ inline decltype(auto) gemm(const Tile<Left>& left, const Tile<Right>& right,
       gemm(left.tensor(), right.tensor(), factor, gemm_config));
 }
 
-/// Contract and scale tile arguments to the result tile
+/// Contract 2 tensors over head/tail modes, scale the product, and add
+/// to \c result
 
 /// The contraction is done via a GEMM operation with fused indices as defined
 /// by \c gemm_config.
 /// \tparam Result The result tile type
 /// \tparam Left The left-hand tile type
 /// \tparam Right The right-hand tile type
+/// \tparam Scalar A numeric type
 /// \param result The contracted result
 /// \param left The left-hand argument to be contracted
 /// \param right The right-hand argument to be contracted
 /// \param factor The scaling factor
 /// \param gemm_config A helper object used to simplify gemm operations
-/// \return A tile that is equal to <tt>result = (left * right) * factor</tt>
+/// \return A tile that is equal to <tt>result + (left * right) * factor</tt>
 template <
     typename Result, typename Left, typename Right, typename Scalar,
     typename std::enable_if<detail::is_numeric_v<Scalar>>::type* = nullptr>
@@ -1281,6 +1422,47 @@ inline Tile<Result>& gemm(Tile<Result>& result, const Tile<Left>& left,
                           const Tile<Right>& right, const Scalar factor,
                           const math::GemmHelper& gemm_config) {
   gemm(result.tensor(), left.tensor(), right.tensor(), factor, gemm_config);
+  return result;
+}
+
+/// Contract 2 tensors over head/tail modes and accumulate into \c result
+/// using a custom element-wise multiply-add op
+
+/// The contraction is done via a GEMM operation with fused indices as defined
+/// by \c gemm_config.
+/// \tparam Result The result tile type
+/// \tparam Left The left-hand tile type
+/// \tparam Right The right-hand tile type
+/// \tparam ElementMultiplyAddOp a callable type with signature
+///   \code
+///     void (Result::value_type& result, Left::value_type const& left,
+///     Right::value_type const& right)
+///   \endcode
+///   that implements custom multiply-add operation:
+///   \code
+///     result = (result) ? result add left mult right : left mult add
+///   \endcode
+/// \param result The contracted result
+/// \param left The left-hand argument to be contracted
+/// \param right The right-hand argument to be contracted
+/// \param factor The scaling factor
+/// \param gemm_config A helper object used to simplify gemm operations
+/// \param element_multiplyadd_op a custom multiply op operation for tensor
+/// elements \return A tile whose element <tt>result[i,j]</tt> obtained by
+/// executing
+///      `foreach k: element_multiplyadd_op(result[i,j], left[i,k], right[k,j])`
+template <typename Result, typename Left, typename Right,
+          typename ElementMultiplyAddOp,
+          typename std::enable_if<std::is_invocable_r_v<
+              void, std::remove_reference_t<ElementMultiplyAddOp>,
+              typename Result::value_type&, const typename Left::value_type&,
+              const typename Right::value_type&>>::type* = nullptr>
+inline Tile<Result>& gemm(Tile<Result>& result, const Tile<Left>& left,
+                          const Tile<Right>& right,
+                          const math::GemmHelper& gemm_config,
+                          ElementMultiplyAddOp&& element_multiplyadd_op) {
+  gemm(result.tensor(), left.tensor(), right.tensor(), gemm_config,
+       std::forward<ElementMultiplyAddOp>(element_multiplyadd_op));
   return result;
 }
 
@@ -1295,6 +1477,15 @@ template <typename Arg>
 inline decltype(auto) trace(const Tile<Arg>& arg) {
   return trace(arg.tensor());
 }
+
+namespace detail {
+
+/// Signals that we can take the trace of a \c Tile<Arg> if can trace \c Arg
+template <typename Arg>
+struct TraceIsDefined<Tile<Arg>, enable_if_trace_is_defined_t<Arg>>
+    : std::true_type {};
+
+}  // namespace detail
 
 /// Sum the elements of a tile
 
@@ -1422,7 +1613,7 @@ inline decltype(auto) inner_product(const Tile<Left>& left,
 
 /// \tparam T The tensor type
 /// \param os The output stream
-/// \param tile The tile to be printted
+/// \param tile The tile to be printed
 /// \return The modified output stream
 template <typename T>
 inline std::ostream& operator<<(std::ostream& os, const Tile<T>& tile) {
@@ -1447,6 +1638,18 @@ struct Cast<
 };
 
 /** @}*/
+
+/// Tile equality comparison
+template <typename T1, typename T2>
+bool operator==(const Tile<T1>& t1, const Tile<T2>& t2) {
+  return t1.tensor() == t2.tensor();
+}
+
+/// Tile inequality comparison
+template <typename T1, typename T2>
+bool operator!=(const Tile<T1>& t1, const Tile<T2>& t2) {
+  return !(t1 == t2);
+}
 
 }  // namespace TiledArray
 

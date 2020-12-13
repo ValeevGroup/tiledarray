@@ -61,53 +61,57 @@ typedef Eigen::Matrix<long, Eigen::Dynamic, 1> EigenVectorXl;
 
 /// Construct a const Eigen::Map object for a given Tensor object
 
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
+/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \param tensor The tensor object, laid out according to Storage
 /// \param m The number of rows in the result matrix
 /// \param n The number of columns in the result matrix
 /// \return An m x n Eigen matrix map for \c tensor
 /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
-template <typename T,
+template <typename T, Eigen::StorageOptions Storage = Eigen::RowMajor,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<const Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                      Eigen::Dynamic, Eigen::RowMajor>,
+                                      Eigen::Dynamic, Storage>,
                   Eigen::AutoAlign>
 eigen_map(const T& tensor, const std::size_t m, const std::size_t n) {
   TA_ASSERT((m * n) == tensor.size());
 
   return Eigen::Map<const Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                        Eigen::Dynamic, Eigen::RowMajor>,
+                                        Eigen::Dynamic, Storage>,
                     Eigen::AutoAlign>(tensor.data(), m, n);
 }
 
 /// Construct an Eigen::Map object for a given Tensor object
 
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
+/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \param tensor The tensor object, laid out according to Storage
 /// \param m The number of rows in the result matrix
 /// \param n The number of columns in the result matrix
 /// \return An m x n Eigen matrix map for \c tensor
 /// \throw TiledArray::Exception When m * n is not equal to \c tensor size
-template <typename T,
+template <typename T, Eigen::StorageOptions Storage = Eigen::RowMajor,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                Eigen::Dynamic, Eigen::RowMajor>,
+                                Eigen::Dynamic, Storage>,
                   Eigen::AutoAlign>
 eigen_map(T& tensor, const std::size_t m, const std::size_t n) {
   TA_ASSERT((m * n) == tensor.size());
 
   return Eigen::Map<Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                  Eigen::Dynamic, Eigen::RowMajor>,
+                                  Eigen::Dynamic, Storage>,
                     Eigen::AutoAlign>(tensor.data(), m, n);
 }
 
 /// Construct a const Eigen::Map object for a given Tensor object
 
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
-/// \param n The number of elements in the result matrix
-/// \return An n element Eigen vector map for \c tensor
-/// \throw TiledArray::Exception When n is not equal to \c tensor size
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \param tensor The
+/// tensor object \param n The number of elements in the result matrix \return
+/// An n element Eigen vector map for \c tensor \throw TiledArray::Exception
+/// When n is not equal to \c tensor size
 template <typename T,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<
@@ -127,7 +131,7 @@ eigen_map(const T& tensor, const std::size_t n) {
 /// \param tensor The tensor object
 /// \param n The number of elements in the result matrix
 /// \return An n element Eigen vector map for \c tensor
-/// \throw TiledArray::Exception When m * n is not equal to \c tensor size
+/// \throw TiledArray::Exception When n is not equal to \c tensor size
 template <typename T,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<Eigen::Matrix<typename T::value_type, Eigen::Dynamic, 1>,
@@ -141,42 +145,49 @@ eigen_map(T& tensor, const std::size_t n) {
 
 /// Construct a const Eigen::Map object for a given Tensor object
 
-/// The dimensions of the result tensor
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
+/// The dimensions of the result tensor are extracted from the tensor itself
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
+/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \param tensor The tensor object, laid out according to Storage
 /// \return An Eigen matrix map for \c tensor
 /// \throw TiledArray::Exception When \c tensor dimensions are not equal to 2
 /// or 1.
-template <typename T,
+template <typename T, Eigen::StorageOptions Storage = Eigen::RowMajor,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<const Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                      Eigen::Dynamic, Eigen::RowMajor>,
+                                      Eigen::Dynamic, Storage>,
                   Eigen::AutoAlign>
 eigen_map(const T& tensor) {
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
   const auto* MADNESS_RESTRICT const tensor_extent =
       tensor.range().extent_data();
-  return eigen_map(tensor, tensor_extent[0],
-                   (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
+  return eigen_map<T, Storage>(
+      tensor, tensor_extent[0],
+      (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
 }
 
 /// Construct an Eigen::Map object for a given Tensor object
 
-/// \tparam T A tensor type, e.g. TiledArray::Tensor
-/// \param tensor The tensor object
+/// The dimensions of the result tensor are extracted from the tensor itself
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
+/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
+/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \param tensor The tensor object, laid out according to Storage
 /// \return An Eigen matrix map for \c tensor
 /// \throw When \c tensor dimensions are not equal to 2 or 1.
-template <typename T,
+template <typename T, Eigen::StorageOptions Storage = Eigen::RowMajor,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<Eigen::Matrix<typename T::value_type, Eigen::Dynamic,
-                                Eigen::Dynamic, Eigen::RowMajor>,
+                                Eigen::Dynamic, Storage>,
                   Eigen::AutoAlign>
 eigen_map(T& tensor) {
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
   const auto* MADNESS_RESTRICT const tensor_extent =
       tensor.range().extent_data();
-  return eigen_map(tensor, tensor_extent[0],
-                   (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
+  return eigen_map<T, Storage>(
+      tensor, tensor_extent[0],
+      (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
 }
 
 /// Copy a block of an Eigen matrix into a tensor
@@ -195,7 +206,7 @@ template <typename T, typename Derived,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
                                       T& tensor) {
-  typedef typename T::index1_type size_type;
+  [[maybe_unused]] typedef typename T::index1_type size_type;
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
   // Get pointers to the tensor range data
@@ -210,8 +221,8 @@ inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
     // Get tensor range data
     const std::size_t tensor_lower_0 = tensor_lower[0];
     const std::size_t tensor_lower_1 = tensor_lower[1];
-    const std::size_t tensor_upper_0 = tensor_upper[0];
-    const std::size_t tensor_upper_1 = tensor_upper[1];
+    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const std::size_t tensor_upper_1 = tensor_upper[1];
     const std::size_t tensor_extent_0 = tensor_extent[0];
     const std::size_t tensor_extent_1 = tensor_extent[1];
 
@@ -224,7 +235,7 @@ inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
   } else {
     // Get tensor range data
     const std::size_t tensor_lower_0 = tensor_lower[0];
-    const std::size_t tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
     const std::size_t tensor_extent_0 = tensor_extent[0];
 
     // Check that matrix is a vector.
@@ -262,7 +273,7 @@ template <typename T, typename Derived,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline void tensor_to_eigen_submatrix(const T& tensor,
                                       Eigen::MatrixBase<Derived>& matrix) {
-  typedef typename T::index1_type size_type;
+  [[maybe_unused]] typedef typename T::index1_type size_type;
   TA_ASSERT((tensor.range().rank() == 2u) || (tensor.range().rank() == 1u));
 
   // Get pointers to the tensor range data
@@ -277,8 +288,8 @@ inline void tensor_to_eigen_submatrix(const T& tensor,
     // Get tensor range data
     const std::size_t tensor_lower_0 = tensor_lower[0];
     const std::size_t tensor_lower_1 = tensor_lower[1];
-    const std::size_t tensor_upper_0 = tensor_upper[0];
-    const std::size_t tensor_upper_1 = tensor_upper[1];
+    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const std::size_t tensor_upper_1 = tensor_upper[1];
     const std::size_t tensor_extent_0 = tensor_extent[0];
     const std::size_t tensor_extent_1 = tensor_extent[1];
 
@@ -292,7 +303,7 @@ inline void tensor_to_eigen_submatrix(const T& tensor,
   } else {
     // Get tensor range data
     const std::size_t tensor_lower_0 = tensor_lower[0];
-    const std::size_t tensor_upper_0 = tensor_upper[0];
+    [[maybe_unused]] const std::size_t tensor_upper_0 = tensor_upper[0];
     const std::size_t tensor_extent_0 = tensor_extent[0];
 
     TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
@@ -351,15 +362,19 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 
 }  // namespace detail
 
+// clang-format off
 /// Convert an Eigen matrix into an Array object
 
 /// This function will copy the content of \c matrix into an \c Array object
 /// that is tiled according to the \c trange object. The copy operation is
 /// done in parallel, and this function will block until all elements of
-/// \c matrix have been copied into the result array tiles. The size of
-/// \c world.size() must be equal to 1 or \c replicate must be equal to
-/// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in matrix is identical on all nodes.
+/// \c matrix have been copied into the result array tiles.
+/// Each tile is created
+/// using the local contents of \c matrix, hence
+/// it is your responsibility to ensure that the data in \c matrix
+/// is distributed correctly among the ranks. If in doubt, you should replicate
+/// \c matrix among the ranks prior to calling this.
+///
 /// Usage:
 /// \code
 /// Eigen::MatrixXd m(100, 100);
@@ -383,16 +398,18 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 /// \param world The world where the array will live
 /// \param trange The tiled range of the new array
 /// \param matrix The Eigen matrix to be copied
-/// \param replicated \c true indicates that the result array should be a
-/// replicated array [default = false].
+/// \param replicated if true, the result will be replicated
+/// [default = true].
+/// \param pmap the process map object [default=null]; initialized to the
+/// default if \p replicated is false, or a replicated pmap if \p replicated
+/// is true; ignored if \p replicated is true and \c world.size()>1
 /// \return An \c Array object that is a copy of \c matrix
-/// \throw TiledArray::Exception When world size is greater than 1
-/// \note If using 2 or more World ranks, set \c replicated=true and make sure
-/// \c matrix is the same on each rank!
+// clang-format on
 template <typename A, typename Derived>
 A eigen_to_array(World& world, const typename A::trange_type& trange,
                  const Eigen::MatrixBase<Derived>& matrix,
-                 bool replicated = false) {
+                 bool replicated = false,
+                 std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   typedef typename A::index1_type size_type;
   // Check that trange matches the dimensions of other
   if ((matrix.cols() > 1) && (matrix.rows() > 1)) {
@@ -417,36 +434,35 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
         "matrix size.");
   }
 
-  // Check that this is not a distributed computing environment
-  if (!replicated)
-    TA_USER_ASSERT(world.size() == 1,
-                   "An array cannot be assigned with an Eigen::Matrix when the "
-                   "number of World ranks is greater than 1.");
-
   // Create a new tensor
-  A array = (replicated && (world.size() > 1)
-                 ? A(world, trange,
-                     std::static_pointer_cast<typename A::pmap_interface>(
-                         std::make_shared<detail::ReplicatedPmap>(
-                             world, trange.tiles_range().volume())))
-                 : A(world, trange));
+  if (replicated && (world.size() > 1))
+    pmap = std::static_pointer_cast<typename A::pmap_interface>(
+        std::make_shared<detail::ReplicatedPmap>(
+            world, trange.tiles_range().volume()));
+  A array = (pmap ? A(world, trange, pmap) : A(world, trange));
 
   // Spawn tasks to copy Eigen to an Array
   madness::AtomicInt counter;
   counter = 0;
   std::int64_t n = 0;
   for (std::size_t i = 0; i < array.size(); ++i) {
-    world.taskq.add(&detail::counted_eigen_submatrix_to_tensor<A, Derived>,
-                    &matrix, &array, i, &counter);
-    ++n;
+    if (array.is_local(i)) {
+      world.taskq.add(&detail::counted_eigen_submatrix_to_tensor<A, Derived>,
+                      &matrix, &array, i, &counter);
+      ++n;
+    }
   }
 
   // Wait until the write tasks are complete
   array.world().await([&counter, n]() { return counter == n; });
 
+  // truncate, n.b. this can replace the wait above
+  array.truncate();
+
   return array;
 }
 
+// clang-format off
 /// Convert an Array object into an Eigen matrix object
 
 /// This function will copy the content of an \c Array object into matrix. The
@@ -465,10 +481,14 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
 /// \tparam EigenStorageOrder The storage order of the resulting Eigen::Matrix
 ///      object; the default is Eigen::ColMajor, i.e. the column-major storage
 /// \param array The array to be converted. It must be replicated if using 2 or
-/// more World ranks. \return an Eigen matrix; it will contain same data on each
-/// World rank. \throw TiledArray::Exception When world size is greater than 1
-/// and \c array is not replicated. \throw TiledArray::Exception When the number
+/// more World ranks.
+/// \return an Eigen matrix; it will contain same data on each
+/// World rank.
+/// \throw TiledArray::Exception When world size is greater than 1
+/// and \c array is not replicated.
+/// \throw TiledArray::Exception When the number
 /// of dimensions of \c array is not equal to 1 or 2.
+// clang-format on
 template <typename Tile, typename Policy,
           unsigned int EigenStorageOrder = Eigen::ColMajor>
 Eigen::Matrix<typename Tile::value_type, Eigen::Dynamic, Eigen::Dynamic,
@@ -526,10 +546,13 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
 /// This function will copy the content of \c buffer into an \c Array object
 /// that is tiled according to the \c trange object. The copy operation is
 /// done in parallel, and this function will block until all elements of
-/// \c matrix have been copied into the result array tiles. The size of
-/// \c world.size() must be equal to 1 or \c replicate must be equal to
-/// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in \c buffer is identical on all nodes.
+/// \c matrix have been copied into the result array tiles.
+/// Each tile is created
+/// using the local contents of \c matrix, hence
+/// it is your responsibility to ensure that the data in \c matrix
+/// is distributed correctly among the ranks. If in doubt, you should replicate
+/// \c matrix among the ranks prior to calling this.
+///
 /// Usage:
 /// \code
 /// double* buffer = new double[100 * 100];
@@ -557,8 +580,11 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
 /// \param buffer The row-major matrix buffer to be copied
 /// \param m The number of rows in the matrix
 /// \param n The number of columns in the matrix
-/// \param replicated \c true indicates that the result array should be a
-/// replicated array [default = false].
+/// \param replicated if true, the result will be replicated
+/// [default = true].
+/// \param pmap the process map object [default=null]; initialized to the
+/// default if \p replicated is false, or a replicated pmap if \p replicated
+/// is true; ignored if \p replicated is true and \c world.size()>1
 /// \return An \c Array object that is a copy of \c matrix
 /// \throw TiledArray::Exception When \c m and \c n are not equal to the
 /// number of rows or columns in tiled range.
@@ -566,7 +592,8 @@ template <typename A>
 inline A row_major_buffer_to_array(
     World& world, const typename A::trange_type& trange,
     const typename A::value_type::value_type* buffer, const std::size_t m,
-    const std::size_t n, const bool replicated = false) {
+    const std::size_t n, const bool replicated = false,
+    std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   TA_USER_ASSERT(trange.elements_range().extent(0) == m,
                  "TiledArray::eigen_to_array(): The number of rows in trange "
                  "is not equal to m.");
@@ -579,8 +606,8 @@ inline A row_major_buffer_to_array(
       matrix_type;
   return eigen_to_array(
       world, trange,
-      Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n),
-      replicated);
+      Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n), replicated,
+      pmap);
 }
 
 /// Convert a column-major matrix buffer into an Array object
@@ -588,10 +615,13 @@ inline A row_major_buffer_to_array(
 /// This function will copy the content of \c buffer into an \c Array object
 /// that is tiled according to the \c trange object. The copy operation is
 /// done in parallel, and this function will block until all elements of
-/// \c matrix have been copied into the result array tiles. The size of
-/// \c world.size() must be equal to 1 or \c replicate must be equal to
-/// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in \c buffer is identical on all nodes.
+/// \c matrix have been copied into the result array tiles.
+/// Each tile is created
+/// using the local contents of \c matrix, hence
+/// it is your responsibility to ensure that the data in \c matrix
+/// is distributed correctly among the ranks. If in doubt, you should replicate
+/// \c matrix among the ranks prior to calling this.
+///
 /// Usage:
 /// \code
 /// double* buffer = new double[100 * 100];
@@ -619,8 +649,11 @@ inline A row_major_buffer_to_array(
 /// \param buffer The row-major matrix buffer to be copied
 /// \param m The number of rows in the matrix
 /// \param n The number of columns in the matrix
-/// \param replicated \c true indicates that the result array should be a
-/// replicated array [default = false].
+/// \param replicated if true, the result will be replicated
+/// [default = true].
+/// \param pmap the process map object [default=null]; initialized to the
+/// default if \p replicated is false, or a replicated pmap if \p replicated
+/// is true; ignored if \p replicated is true and \c world.size()>1
 /// \return An \c Array object that is a copy of \c matrix
 /// \throw TiledArray::Exception When \c m and \c n are not equal to the
 /// number of rows or columns in tiled range.
@@ -628,7 +661,8 @@ template <typename A>
 inline A column_major_buffer_to_array(
     World& world, const typename A::trange_type& trange,
     const typename A::value_type::value_type* buffer, const std::size_t m,
-    const std::size_t n, const bool replicated = false) {
+    const std::size_t n, const bool replicated = false,
+    std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   TA_USER_ASSERT(trange.elements_range().extent(0) == m,
                  "TiledArray::eigen_to_array(): The number of rows in trange "
                  "is not equal to m.");
@@ -641,8 +675,8 @@ inline A column_major_buffer_to_array(
       matrix_type;
   return eigen_to_array(
       world, trange,
-      Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n),
-      replicated);
+      Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n), replicated,
+      pmap);
 }
 
 }  // namespace TiledArray

@@ -38,22 +38,27 @@
 
 namespace TiledArray {
 
+// clang-format off
 /// Copy a block of a btas::Tensor into a TiledArray::Tensor
 
 /// A block of btas::Tensor \c src will be copied into TiledArray::Tensor \c
 /// dst. The block dimensions will be determined by the dimensions of the range
-/// of \c dst . \tparam T The tensor element type \tparam Range_ The range type
-/// of the source btas::Tensor object \tparam Storage_ The storage type of the
-/// source btas::Tensor object \tparam Allocator_ The allocator type of the
-/// destination TiledArray::Tensor object \param[in] src The source object; its
-/// subblock defined by the {lower,upper} bounds \c
-/// {dst.lobound(),dst.upbound()} will be copied to \c dst \param[out] dst The
-/// object that will contain the contents of the corresponding subblock of src
+/// of \c dst .
+/// \tparam T The tensor element type
+/// \tparam Range_ The range type of the source btas::Tensor object
+/// \tparam Storage_ The storage type of the source btas::Tensor object
+/// \tparam Tensor_ A tensor type (e.g., TiledArray::Tensor or btas::Tensor,
+///         optionally wrapped into TiledArray::Tile)
+/// \param[in] src The source object; its subblock defined by the {lower,upper}
+///            bounds \c {dst.lobound(),dst.upbound()} will be copied to \c dst
+/// \param[out] dst The object that will contain the contents of the
+///             corresponding subblock of src
 /// \throw TiledArray::Exception When the dimensions of \c src and \c dst do not
-/// match.
-template <typename T, typename Range_, typename Storage_, typename Allocator_>
+///        match.
+// clang-format on
+template <typename T, typename Range_, typename Storage_, typename Tensor_>
 inline void btas_subtensor_to_tensor(
-    const btas::Tensor<T, Range_, Storage_>& src, Tensor<T, Allocator_>& dst) {
+    const btas::Tensor<T, Range_, Storage_>& src, Tensor_& dst) {
   TA_ASSERT(dst.range().rank() == src.range().rank());
 
   const auto& src_range = src.range();
@@ -63,25 +68,32 @@ inline void btas_subtensor_to_tensor(
                              dst_range.lobound(), dst_range.upbound());
   using std::data;
   auto src_view = TiledArray::make_const_map(data(src), src_blk_range);
+  auto dst_view = TiledArray::make_map(data(dst), dst_range);
 
-  dst = src_view;
+  dst_view = src_view;
 }
 
+// clang-format off
 /// Copy a block of a btas::Tensor into a TiledArray::Tensor
 
-/// TiledArray::Tensor \c src will be copied into a block of btas::Tensor \c
-/// dst. The block dimensions will be determined by the dimensions of the range
-/// of \c src . \tparam T The tensor element type \tparam Allocator_ The
-/// allocator type of the source TiledArray::Tensor object \tparam Range_ The
-/// range type of the destination btas::Tensor object \tparam Storage_ The
-/// storage type of the destination btas::Tensor object \param[in] src The
-/// source object whose contents will be copied into a subblock of \c dst
+/// TiledArray::Tensor \c src will be copied into a block of btas::Tensor
+/// \c dst. The block dimensions will be determined by the dimensions of the range
+/// of \c src .
+/// \tparam Tensor_ A tensor type (e.g., TiledArray::Tensor or btas::Tensor,
+///         optionally wrapped into TiledArray::Tile)
+/// \tparam T The tensor element type
+/// \tparam Range_ The range type of the destination btas::Tensor object
+/// \tparam Storage_ The storage type of the destination btas::Tensor object
+/// \param[in] src The source object whose contents will be copied into
+///            a subblock of \c dst
 /// \param[out] dst The destination object; its subblock defined by the
-/// {lower,upper} bounds \c {src.lobound(),src.upbound()} will be overwritten
-/// with the content of \c src \throw TiledArray::Exception When the dimensions
-/// of \c src and \c dst do not match.
-template <typename T, typename Allocator_, typename Range_, typename Storage_>
-inline void tensor_to_btas_subtensor(const Tensor<T, Allocator_>& src,
+///             {lower,upper} bounds \c {src.lobound(),src.upbound()} will be
+///             overwritten with the content of \c src
+/// \throw TiledArray::Exception When the dimensions
+///        of \c src and \c dst do not match.
+// clang-format on
+template <typename Tensor_, typename T, typename Range_, typename Storage_>
+inline void tensor_to_btas_subtensor(const Tensor_& src,
                                      btas::Tensor<T, Range_, Storage_>& dst) {
   TA_ASSERT(dst.range().rank() == src.range().rank());
 
@@ -91,9 +103,10 @@ inline void tensor_to_btas_subtensor(const Tensor<T, Allocator_>& src,
       TiledArray::BlockRange(detail::make_ta_range(dst_range),
                              src_range.lobound(), src_range.upbound());
   using std::data;
+  auto src_view = TiledArray::make_const_map(data(src), src_range);
   auto dst_view = TiledArray::make_map(data(dst), dst_blk_range);
 
-  dst_view = src;
+  dst_view = src_view;
 }
 
 namespace detail {
@@ -187,7 +200,8 @@ inline auto make_shape<false>(World&, const TiledArray::TiledRange&) {
 /// \param[in,out] world The world where the result array will live
 /// \param[in] trange The tiled range of the new array
 /// \param[in] src The btas::Tensor<TArgs..> object whose contents will be
-/// copied to the result. \param[in] replicated \c true indicates that the
+/// copied to the result.
+/// \param[in] replicated \c true indicates that the
 /// result array should be a
 ///            replicated array [default = false].
 /// \return A \c DistArray_ object that is a copy of \c src

@@ -47,7 +47,8 @@ struct ScalFixture : public RangeFixture {
 
 };  // ScalFixture
 
-BOOST_FIXTURE_TEST_SUITE(tile_op_scal_neg_suite, ScalFixture)
+BOOST_FIXTURE_TEST_SUITE(tile_op_scal_neg_suite, ScalFixture,
+                         TA_UT_SKIP_IF_DISTRIBUTED)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // Check that the constructors can be called without throwing exceptions

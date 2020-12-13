@@ -21,6 +21,7 @@
  */
 
 #include <TiledArray/config.h>
+#include <TiledArray/tensor/type_traits.h>
 
 #ifdef TILEDARRAY_HAS_BTAS
 
@@ -31,6 +32,28 @@
 #include "unit_test_config.h"
 
 using namespace TiledArray;
+
+static_assert(detail::ordinal_traits<btas::RangeNd<>>::type ==
+                  OrdinalType::RowMajor,
+              "btas::RangeNd<> is row-major");
+static_assert(detail::ordinal_traits<btas::RangeNd<CblasRowMajor>>::type ==
+                  OrdinalType::RowMajor,
+              "btas::RangeNd<CblasRowMajor> is row-major");
+static_assert(detail::ordinal_traits<btas::RangeNd<CblasColMajor>>::type ==
+                  OrdinalType::ColMajor,
+              "btas::RangeNd<CblasColMajor> is col-major");
+static_assert(detail::ordinal_traits<btas::Tensor<double>>::type ==
+                  OrdinalType::RowMajor,
+              "btas::Tenspr<T> is row-major");
+static_assert(
+    detail::ordinal_traits<btas::Tensor<double, TiledArray::Range>>::type ==
+        OrdinalType::RowMajor,
+    "btas::Tenspr<T, TA::Range> is row-major");
+static_assert(
+    detail::ordinal_traits<
+        TiledArray::Tile<btas::Tensor<double, TiledArray::Range>>>::type ==
+        OrdinalType::RowMajor,
+    "TA::Tile<btas::Tenspr<T, TA::Range>> is row-major");
 
 // test both bare (deep-copy) BTAS tensor as well as its shallow-copy wrap in
 // Tile<>, using both btas::RangeNd<> and TiledArray::Range as the range type
@@ -293,7 +316,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
                              *GlobalFixture::world, trange, src, replicated));
 
   // check the array contents
-  for (const auto& t : dst) {
+  for (auto&& t : dst) {
     const auto& tile = t.get();
     const auto& tile_range = tile.range();
     auto src_blk_range = TiledArray::BlockRange(
@@ -356,7 +379,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(sparse_array_conversion, bTensor, tensor_types) {
                              *GlobalFixture::world, trange, src, replicated));
 
   // check the array contents
-  for (const auto& t : dst) {
+  for (auto&& t : dst) {
     const auto& tile = t.get();
     const auto& tile_range = tile.range();
     auto src_blk_range = TiledArray::BlockRange(

@@ -9,6 +9,7 @@
 #  EIGEN3_FOUND - system has eigen lib with correct version
 #  EIGEN3_INCLUDE_DIR - the eigen include directory
 #  EIGEN3_VERSION - eigen version
+#  Eigen3_VERSION - eigen version
 
 # Copyright (c) 2006, 2007 Montel Laurent, <montel@kde.org>
 # Copyright (c) 2008, 2009 Gael Guennebaud, <g.gael@free.fr>

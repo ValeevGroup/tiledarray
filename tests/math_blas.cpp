@@ -47,7 +47,7 @@ struct BlasFixture {
 
 const double BlasFixture::tol = 0.001;
 
-BOOST_FIXTURE_TEST_SUITE(blas_suite, BlasFixture)
+BOOST_FIXTURE_TEST_SUITE(blas_suite, BlasFixture, TA_UT_SKIP_IF_DISTRIBUTED)
 
 typedef boost::mpl::list<int, long, unsigned int, unsigned long> int_types;
 

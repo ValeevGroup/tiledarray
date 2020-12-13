@@ -59,8 +59,9 @@ class Shift {
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
-
-  result_type eval(const argument_type& arg, const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  result_type eval(const argument_type& arg, const Perm& perm) const {
     TiledArray::Permute<result_type, argument_type> permute;
     TiledArray::ShiftTo<result_type, result_type> shift_to;
     result_type result = permute(arg, perm);
@@ -111,8 +112,9 @@ class Shift {
   /// \param arg The tile argument
   /// \param perm The permutation applied to the result tile
   /// \return A permuted and shifted copy of `arg`
-  result_type operator()(const argument_type& arg,
-                         const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  result_type operator()(const argument_type& arg, const Perm& perm) const {
     return eval(arg, perm);
   }
 
@@ -169,8 +171,9 @@ class ScalShift {
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation
   // requires temporary storage space.
-
-  result_type eval(const argument_type& arg, const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  result_type eval(const argument_type& arg, const Perm& perm) const {
     using TiledArray::scale;
     using TiledArray::shift_to;
     result_type result = scale(arg, factor_, perm);
@@ -219,8 +222,9 @@ class ScalShift {
   /// \param arg The tile argument
   /// \param perm The permutation applied to the result tile
   /// \return A permuted and shifted copy of `arg`
-  result_type operator()(const argument_type& arg,
-                         const Permutation& perm) const {
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
+  result_type operator()(const argument_type& arg, const Perm& perm) const {
     return eval(arg, perm);
   }
 

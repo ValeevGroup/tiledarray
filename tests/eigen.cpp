@@ -158,26 +158,9 @@ BOOST_AUTO_TEST_CASE(matrix_to_array) {
   // Fill the matrix with random data
   matrix = decltype(matrix)::Random(matrix.rows(), matrix.cols());
 
-  if (GlobalFixture::world->size() == 1) {
-    // Copy matrix to array
-    BOOST_CHECK_NO_THROW((array = eigen_to_array<TArrayI>(*GlobalFixture::world,
-                                                          trange, matrix)));
-  } else {
-    // Check that eigen_to_array does not work in distributed environments
-#if !defined(TA_USER_ASSERT_DISABLED)
-    BOOST_CHECK_THROW(
-        (eigen_to_array<TArrayI>(*GlobalFixture::world, trange, matrix)),
-        TiledArray::Exception);
-#endif
-
-    // Note: The following tests constructs a replicated array, but the data may
-    // not be identical. That is OK here since we are check the local data, but
-    // in real applications the data should be identical.
-
-    // Copy matrix to a replicated array
-    BOOST_CHECK_NO_THROW((array = eigen_to_array<TArrayI>(
-                              *GlobalFixture::world, trange, matrix, true)));
-  }
+  // Copy matrix to array
+  BOOST_CHECK_NO_THROW(
+      (array = eigen_to_array<TArrayI>(*GlobalFixture::world, trange, matrix)));
 
   // Check that the data in array is equal to that in matrix
   for (Range::const_iterator it = array.range().begin();
@@ -195,27 +178,9 @@ BOOST_AUTO_TEST_CASE(vector_to_array) {
   // Fill the vector with random data
   vector = Eigen::VectorXi::Random(vector.size());
 
-  if (GlobalFixture::world->size() == 1) {
-    // Convert the vector to an array
-    BOOST_CHECK_NO_THROW((array1 = eigen_to_array<TArrayI>(
-                              *GlobalFixture::world, trange1, vector)));
-
-  } else {
-    // Check that eigen_to_array does not work in distributed environments
-#if !defined(TA_USER_ASSERT_DISABLED)
-    BOOST_CHECK_THROW(
-        (eigen_to_array<TArrayI>(*GlobalFixture::world, trange1, vector)),
-        TiledArray::Exception);
-#endif
-
-    // Note: The following tests constructs a replicated array, but the data may
-    // not be identical. That is OK here since we are check the local data, but
-    // in real applications the data should be identical.
-
-    // Convert the vector to an array
-    BOOST_CHECK_NO_THROW((array1 = eigen_to_array<TArrayI>(
-                              *GlobalFixture::world, trange1, vector, true)));
-  }
+  // Convert the vector to an array
+  BOOST_CHECK_NO_THROW((array1 = eigen_to_array<TArrayI>(*GlobalFixture::world,
+                                                         trange1, vector)));
 
   // Check that the data in array matches the data in vector
   for (Range::const_iterator it = array1.range().begin();

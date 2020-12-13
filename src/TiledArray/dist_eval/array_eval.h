@@ -45,7 +45,6 @@ class LazyArrayTile {
   typedef Op op_type;  ///< The operation that will modify this tile
   typedef typename op_type::result_type eval_type;
   typedef Tile tile_type;  ///< The input tile type
-
  private:
   mutable tile_type tile_;  ///< The input tile
   std::shared_ptr<op_type>
@@ -55,6 +54,7 @@ class LazyArrayTile {
   template <typename T>
   using eval_t = typename eval_trait<typename std::decay<T>::type>::type;
 
+ public:
   using conversion_result_type = decltype(
       ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
                                         : (*op_)(tile_)));  ///< conversion_type
@@ -208,11 +208,13 @@ class ArrayEvalImpl
   /// \param pmap The process map for the result tensor tiles
   /// \param perm The permutation that is applied to the tile coordinate index
   /// \param op The operation that will be used to evaluate the tiles of array
+  template <typename Perm, typename = std::enable_if_t<
+                               TiledArray::detail::is_permutation_v<Perm>>>
   ArrayEvalImpl(const array_type& array, World& world,
                 const trange_type& trange, const shape_type& shape,
-                const std::shared_ptr<pmap_interface>& pmap,
-                const Permutation& perm, const op_type& op)
-      : DistEvalImpl_(world, trange, shape, pmap, perm),
+                const std::shared_ptr<pmap_interface>& pmap, const Perm& perm,
+                const op_type& op)
+      : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         array_(array),
         op_(std::make_shared<op_type>(op)),
         block_range_() {}
@@ -230,16 +232,17 @@ class ArrayEvalImpl
   /// \param op The operation that will be used to evaluate the tiles of array
   /// \param lower_bound The sub-block lower bound
   /// \param upper_bound The sub-block upper bound
-  template <typename Index1, typename Index2,
+  template <typename Index1, typename Index2, typename Perm,
             typename = std::enable_if_t<
                 TiledArray::detail::is_integral_range_v<Index1> &&
-                TiledArray::detail::is_integral_range_v<Index2>>>
+                TiledArray::detail::is_integral_range_v<Index2> &&
+                TiledArray::detail::is_permutation_v<Perm>>>
   ArrayEvalImpl(const array_type& array, World& world,
                 const trange_type& trange, const shape_type& shape,
-                const std::shared_ptr<pmap_interface>& pmap,
-                const Permutation& perm, const op_type& op,
-                const Index1& lower_bound, const Index2& upper_bound)
-      : DistEvalImpl_(world, trange, shape, pmap, perm),
+                const std::shared_ptr<pmap_interface>& pmap, const Perm& perm,
+                const op_type& op, const Index1& lower_bound,
+                const Index2& upper_bound)
+      : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         array_(array),
         op_(std::make_shared<op_type>(op)),
         block_range_(array.trange().tiles_range(), lower_bound, upper_bound) {}
