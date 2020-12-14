@@ -47,10 +47,15 @@ target_link_libraries(python-tiledarray INTERFACE Boost::boost)
 
 enable_testing()
 
-# add the executable
+# build step
+add_test(build_python "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target python-tiledarray)
+
+# test step
 add_test(
-  NAME test_tiledarray
+  NAME test_python
   # need to use pytest to find tiledarray module properly
   COMMAND ${PYTHON_EXECUTABLE} -m pytest ${PROJECT_SOURCE_DIR}/test_tiledarray.py
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
   )
+
+set_tests_properties(test_python PROPERTIES DEPENDS build_python)
