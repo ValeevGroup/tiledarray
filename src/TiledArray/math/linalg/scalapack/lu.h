@@ -22,21 +22,19 @@
  *  Created:    19 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_LU_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_SCALAPACK_LU_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SCALAPACK_LU_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SCALAPACK_LU_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
-#include <TiledArray/algebra/scalapack/util.h>
-#include <TiledArray/conversions/block_cyclic.h>
+#include <TiledArray/math/linalg/scalapack/util.h>
 
 #include <scalapackpp/factorizations/getrf.hpp>
 #include <scalapackpp/linear_systems/gesv.hpp>
 #include <scalapackpp/matrix_inverse/getri.hpp>
 
-namespace TiledArray {
-namespace scalapack {
+namespace TiledArray::math::linalg::scalapack {
 
 /**
  *  @brief Solve a linear system via LU factorization
@@ -129,8 +127,7 @@ auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange(),
   return Ainv;
 }
 
-}  // namespace scalapack
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg::scalapack
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_LU_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_LU_H__INCLUDED

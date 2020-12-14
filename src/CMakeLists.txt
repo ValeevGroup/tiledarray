@@ -57,23 +57,20 @@ TiledArray/utility.h
 TiledArray/val_array.h
 TiledArray/version.h
 TiledArray/zero_tensor.h
-TiledArray/algebra/conjgrad.h
-TiledArray/algebra/diis.h
-TiledArray/algebra/utils.h
-TiledArray/algebra/cholesky.h
-TiledArray/algebra/heig.h
-TiledArray/algebra/lu.h
-TiledArray/algebra/svd.h
-TiledArray/algebra/types.h
-TiledArray/algebra/lapack/cholesky.h
-TiledArray/algebra/lapack/heig.h
-TiledArray/algebra/lapack/util.h
-TiledArray/algebra/lapack/lu.h
-TiledArray/algebra/lapack/svd.h
-TiledArray/algebra/scalapack/cholesky.h
-TiledArray/algebra/scalapack/heig.h
-TiledArray/algebra/scalapack/lu.h
-TiledArray/algebra/scalapack/svd.h
+TiledArray/math/linalg/forward.h
+TiledArray/math/linalg/conjgrad.h
+TiledArray/math/linalg/diis.h
+TiledArray/math/linalg/util.h
+TiledArray/math/linalg/cholesky.h
+TiledArray/math/linalg/heig.h
+TiledArray/math/linalg/lu.h
+TiledArray/math/linalg/svd.h
+TiledArray/math/linalg/scalapack/util.h
+TiledArray/math/linalg/scalapack/block_cyclic.h
+TiledArray/math/linalg/scalapack/cholesky.h
+TiledArray/math/linalg/scalapack/heig.h
+TiledArray/math/linalg/scalapack/lu.h
+TiledArray/math/linalg/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
@@ -82,7 +79,6 @@ TiledArray/conversions/foreach.h
 TiledArray/conversions/vector_of_arrays.h
 TiledArray/conversions/make_array.h
 TiledArray/conversions/sparse_to_dense.h
-TiledArray/conversions/block_cyclic.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/conversions/retile.h
@@ -120,7 +116,6 @@ TiledArray/expressions/unary_expr.h
 TiledArray/expressions/index_list.h
 TiledArray/external/btas.h
 TiledArray/math/blas.h
-TiledArray/math/eigen.h
 TiledArray/math/gemm_helper.h
 TiledArray/math/outer.h
 TiledArray/math/parallel_gemm.h
@@ -180,6 +175,10 @@ TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
+
+TiledArray/math/linalg/rank-local.h
+TiledArray/math/linalg/rank-local.cpp
+
 )
 
 if(CUDA_FOUND)
@@ -187,19 +186,19 @@ if(CUDA_FOUND)
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
      TiledArray/external/cutt.h
-     TiledArray/math/cublas.h
-          TiledArray/cuda/btas_cublas.h
-          TiledArray/cuda/btas_um_tensor.h
-          TiledArray/cuda/cpu_cuda_vector.h
-          TiledArray/cuda/cuda_task_fn.h
-          TiledArray/cuda/kernel/mult_kernel.h
-          TiledArray/cuda/kernel/mult_kernel_impl.h
-          TiledArray/cuda/kernel/reduce_kernel.h
-          TiledArray/cuda/kernel/reduce_kernel_impl.h
-          TiledArray/cuda/platform.h
-          TiledArray/cuda/thrust.h
-          TiledArray/cuda/um_allocator.h
-          TiledArray/cuda/um_storage.h)
+     TiledArray/cuda/cublas.h
+     TiledArray/cuda/btas_cublas.h
+     TiledArray/cuda/btas_um_tensor.h
+     TiledArray/cuda/cpu_cuda_vector.h
+     TiledArray/cuda/cuda_task_fn.h
+     TiledArray/cuda/kernel/mult_kernel.h
+     TiledArray/cuda/kernel/mult_kernel_impl.h
+     TiledArray/cuda/kernel/reduce_kernel.h
+     TiledArray/cuda/kernel/reduce_kernel_impl.h
+     TiledArray/cuda/platform.h
+     TiledArray/cuda/thrust.h
+     TiledArray/cuda/um_allocator.h
+     TiledArray/cuda/um_storage.h)
 
 endif(CUDA_FOUND)
 
@@ -211,7 +210,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
-TiledArray/algebra/lapack/lapack.cpp
+TiledArray/math/linalg/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later

@@ -55,13 +55,8 @@
 #include <TiledArray/conversions/eigen.h>
 
 // Linear algebra
-#include <TiledArray/algebra/conjgrad.h>
-#include <TiledArray/dist_array.h>
+#include <TiledArray/math/linalg.h>
 
-// ScaLAPACK functions
-#ifdef TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack/all.h>
-#include <TiledArray/conversions/block_cyclic.h>
-#endif
+#include <TiledArray/dist_array.h>
 
 #endif  // TILEDARRAY_H__INCLUDED

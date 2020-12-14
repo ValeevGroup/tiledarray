@@ -22,18 +22,18 @@
  *  Created:    12 June, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_SCALAPACK_SVD_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_SCALAPACK_SVD_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SCALAPACK_SVD_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SCALAPACK_SVD_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
-#include <TiledArray/algebra/types.h>
-#include <TiledArray/conversions/block_cyclic.h>
+#include <TiledArray/math/linalg/forward.h>
+#include <TiledArray/math/linalg/scalapack/util.h>
+
 #include <scalapackpp/svd.hpp>
 
-namespace TiledArray {
-namespace scalapack {
+namespace TiledArray::math::linalg::scalapack {
 
 /**
  *  @brief Compute the singular value decomposition (SVD) via ScaLAPACK
@@ -59,8 +59,7 @@ namespace scalapack {
  *  @returns A tuple containing the eigenvalues and eigenvectors of input array
  *  as std::vector and in TA format, respectively.
  */
-template <typename SVDType, typename Array,
-          typename = TiledArray::detail::enable_if_svd_return_type<SVDType>>
+template <SVD::Vectors Vectors, typename Array>
 auto svd(const Array& A, TiledRange u_trange, TiledRange vt_trange,
          size_t MB = default_block_size(), size_t NB = default_block_size()) {
   using value_type = typename Array::element_type;
@@ -88,9 +87,9 @@ auto svd(const Array& A, TiledRange u_trange, TiledRange vt_trange,
 
   std::vector<real_type> S(SVD_SIZE);
 
-  constexpr bool need_uv = std::is_same_v<SVDType, SVDAllVectors>;
-  constexpr bool need_u = std::is_same_v<SVDType, SVDLeftVectors> or need_uv;
-  constexpr bool need_vt = std::is_same_v<SVDType, SVDRightVectors> or need_uv;
+  constexpr bool need_uv = (Vectors == SVD::AllVectors);
+  constexpr bool need_u = (Vectors == SVD::LeftVectors) or need_uv;
+  constexpr bool need_vt = (Vectors == SVD::RightVectors) or need_uv;
 
   std::shared_ptr<scalapack::BlockCyclicMatrix<value_type>> U = nullptr,
                                                             VT = nullptr;
@@ -148,8 +147,7 @@ auto svd(const Array& A, TiledRange u_trange, TiledRange vt_trange,
   }
 }
 
-}  // namespace scalapack
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg::scalapack
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_ALGEBRA_SCALAPACK_SVD_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_SVD_H__INCLUDED

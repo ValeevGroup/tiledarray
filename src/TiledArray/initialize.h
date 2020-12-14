@@ -10,7 +10,7 @@
 #include <TiledArray/external/madness.h>
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/external/cuda.h>
-#include <TiledArray/math/cublas.h>
+#include <TiledArray/cuda/cublas.h>
 #include <cutt.h>
 #endif
 #ifdef HAVE_INTEL_MKL

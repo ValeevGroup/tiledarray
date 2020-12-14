@@ -48,21 +48,10 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 #define EIGEN_USE_MKL_ALL 1
 #endif
 #else
-
 //# ifndef EIGEN_USE_BLAS
 //#  define EIGEN_USE_BLAS 1
 //# endif
-
-#ifdef TILEDARRAY_EIGEN_USE_LAPACKE
-#ifndef EIGEN_USE_LAPACKE
-#define EIGEN_USE_LAPACKE 1
-#endif
-#ifndef EIGEN_USE_LAPACKE_STRICT
-#define EIGEN_USE_LAPACKE_STRICT 1
-#endif
-
-#endif
-#endif
+#endif // HAVE_INTEL_MKL
 
 /////////////////////////////////////////////////
 // define lapacke types to prevent inclusion of complex.h by
@@ -75,6 +64,7 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 #if defined(EIGEN_USE_LAPACKE_STRICT) && defined(EIGEN_USE_LAPACKE)
 #undef EIGEN_USE_LAPACKE
 #endif
+
 #include <Eigen/Core>
 
 #if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)

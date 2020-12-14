@@ -23,15 +23,14 @@
  *
  */
 
-#ifndef TILEDARRAY_ALGEBRA_CONJGRAD_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_CONJGRAD_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_CONJGRAD_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_CONJGRAD_H__INCLUDED
 
-#include <TiledArray/algebra/diis.h>
-#include <TiledArray/algebra/utils.h>
-#include <sstream>
-#include "../dist_array.h"
+#include <TiledArray/math/linalg/diis.h>
+#include <TiledArray/math/linalg/basic.h>
+#include "TiledArray/dist_array.h"
 
-namespace TiledArray {
+namespace TiledArray::math::linalg {
 
 /// Solves real linear system <tt> a(x) = b </tt>, with \c a is a linear
 /// function of \c x , using conjugate gradient solver with a diagonal
@@ -69,12 +68,8 @@ struct ConjugateGradientSolver {
   /// elements in the residual.
   value_type operator()(F& a, const D& b, D& x, const D& preconditioner,
                         value_type convergence_target = -1.0) {
-#ifdef TILEDARRAY_CXX_COMPILER_IS_ICC
-    std::size_t n = TiledArray::size(preconditioner);
-#else
-    using TiledArray::size;
-    std::size_t n = size(preconditioner);
-#endif
+
+    std::size_t n = volume(preconditioner);
 
     const bool use_diis = false;
     DIIS<D> diis;
@@ -92,8 +87,8 @@ struct ConjugateGradientSolver {
     // approximate the conditio number as the ratio of the min and max elements
     // of the preconditioner assuming that preconditioner is the approximate
     // inverse of A in Ax - b =0
-    const value_type precond_min = minabs_value(preconditioner);
-    const value_type precond_max = maxabs_value(preconditioner);
+    const value_type precond_min = abs_min(preconditioner);
+    const value_type precond_max = abs_max(preconditioner);
     const value_type cond_number = precond_max / precond_min;
     // std::cout << "condition number = " << precond_max << " / " << precond_min
     // << " = " << cond_number << std::endl;
@@ -112,10 +107,10 @@ struct ConjugateGradientSolver {
     bool converged = false;
     const unsigned int max_niter = n;
     value_type rnorm2 = 0.0;
-    const std::size_t rhs_size = size(b);
+    const std::size_t rhs_size = volume(b);
 
     // starting guess: x_0 = D^-1 . b
-    XX_i = copy(b);
+    XX_i = b;
     vec_multiply(XX_i, preconditioner);
 
     // r_0 = b - a(x)
@@ -126,19 +121,19 @@ struct ConjugateGradientSolver {
     if (use_diis) diis.extrapolate(XX_i, RR_i, true);
 
     // z_0 = D^-1 . r_0
-    ZZ_i = copy(RR_i);
+    ZZ_i = RR_i;
     vec_multiply(ZZ_i, preconditioner);
 
     // p_0 = z_0
-    PP_i = copy(ZZ_i);
+    PP_i = ZZ_i;
 
     unsigned int iter = 0;
     while (not converged) {
       // alpha_i = (r_i . z_i) / (p_i . A . p_i)
-      value_type rz_norm2 = dot_product(RR_i, ZZ_i);
+      value_type rz_norm2 = dot(RR_i, ZZ_i);
       a(PP_i, APP_i);
 
-      const value_type pAp_i = dot_product(PP_i, APP_i);
+      const value_type pAp_i = dot(PP_i, APP_i);
       const value_type alpha_i = rz_norm2 / pAp_i;
 
       // x_i += alpha_i p_i
@@ -156,10 +151,10 @@ struct ConjugateGradientSolver {
       }
 
       // z_i = D^-1 . r_i
-      ZZ_i = copy(RR_i);
+      ZZ_i = RR_i;
       vec_multiply(ZZ_i, preconditioner);
 
-      const value_type rz_ip1_norm2 = dot_product(ZZ_i, RR_i);
+      const value_type rz_ip1_norm2 = dot(ZZ_i, RR_i);
 
       const value_type beta_i = rz_ip1_norm2 / rz_norm2;
 
@@ -173,18 +168,22 @@ struct ConjugateGradientSolver {
       // std::cout << "iter=" << iter << " dnorm=" << r_ip1_norm << std::endl;
 
       if (converged) {
-        assign(x, XX_i);
+        x = XX_i;
       } else if (iter >= max_niter)
         throw std::domain_error(
             "ConjugateGradient: max # of iterations exceeded");
     }  // solver loop
 
-    assign(x, XX_i);
+    x = XX_i;
 
     return rnorm2;
   }
 };
 
-};  // namespace TiledArray
+}  // namespace TiledArray::math::linalg
 
-#endif  // TILEDARRAY_ALGEBRA_CONJGRAD_H__INCLUDED
+namespace TiledArray {
+  using TiledArray::math::linalg::ConjugateGradientSolver;
+}
+
+#endif  // TILEDARRAY_MATH_LINALG_CONJGRAD_H__INCLUDED

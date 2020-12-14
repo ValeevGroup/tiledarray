@@ -21,16 +21,16 @@
  *  Created:  19 October,  2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_LAPACK_HEIG_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_LAPACK_HEIG_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_HEIG_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_HEIG_H__INCLUDED
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/algebra/lapack/lapack.h>
-#include <TiledArray/algebra/lapack/util.h>
+#include <TiledArray/math/linalg/util.h>
+#include <TiledArray/math/linalg/rank-local.h>
 #include <TiledArray/conversions/eigen.h>
 
-namespace TiledArray::lapack {
+namespace TiledArray::math::linalg::non_distributed {
 
 /**
  *  @brief Solve the standard eigenvalue problem with LAPACK
@@ -52,12 +52,12 @@ namespace TiledArray::lapack {
  */
 template <typename Array>
 auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
-  using numeric_type = typename lapack::array_traits<Array>::numeric_type;
+  using numeric_type = typename detail::array_traits<Array>::numeric_type;
   World& world = A.world();
-  auto A_eig = detail::to_eigen(A);
+  auto A_eig = detail::make_matrix(A);
   std::vector<numeric_type> evals;
   if (world.rank() == 0) {
-    lapack::heig(A_eig, evals);
+    linalg::rank_local::heig(A_eig, evals);
   }
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
@@ -93,14 +93,14 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
  */
 template <typename ArrayA, typename ArrayB, typename EVecType = ArrayA>
 auto heig(const ArrayA& A, const ArrayB& B, TiledRange evec_trange = TiledRange()) {
-  using numeric_type = typename lapack::array_traits<ArrayA>::numeric_type;
-  (void)lapack::array_traits<ArrayB>{};
+  using numeric_type = typename detail::array_traits<ArrayA>::numeric_type;
+  (void)detail::array_traits<ArrayB>{};
   World& world = A.world();
-  auto A_eig = detail::to_eigen(A);
-  auto B_eig = detail::to_eigen(B);
+  auto A_eig = detail::make_matrix(A);
+  auto B_eig = detail::make_matrix(B);
   std::vector<numeric_type> evals;
   if (world.rank() == 0) {
-    lapack::heig(A_eig, B_eig, evals);
+    linalg::rank_local::heig(A_eig, B_eig, evals);
   }
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
@@ -111,6 +111,6 @@ auto heig(const ArrayA& A, const ArrayB& B, TiledRange evec_trange = TiledRange(
   );
 }
 
-}  // namespace TiledArray::lapack
+}  // namespace TiledArray::math::linalg
 
-#endif  // TILEDARRAY_ALGEBRA_LAPACK_HEIG_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_HEIG_H__INCLUDED

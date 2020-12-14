@@ -24,8 +24,8 @@
  *
  */
 
-#ifndef TILEDARRAY_CONVERSIONS_TO_BLOCKCYCLIC_H__INCLUDED
-#define TILEDARRAY_CONVERSIONS_TO_BLOCKCYCLIC_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SCALAPACK_TO_BLOCKCYCLIC_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SCALAPACK_TO_BLOCKCYCLIC_H__INCLUDED
 
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
@@ -41,8 +41,7 @@
 #include <scalapackpp/block_cyclic.hpp>
 #include <scalapackpp/util/sfinae.hpp>
 
-namespace TiledArray {
-namespace scalapack {
+namespace TiledArray::math::linalg::scalapack {
 
 template <typename T,
           typename = scalapackpp::detail::enable_if_scalapack_supported_t<T>>
@@ -298,8 +297,7 @@ std::remove_cv_t<Array> block_cyclic_to_array(
   return matrix.template tensor_from_matrix<std::remove_cv_t<Array>>(trange);
 }
 
-}  // namespace scalapack
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#endif  // TILEDARRAY_CONVERSIONS_TO_BLOCKCYCLIC_H__INCLUDED
+#endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_TO_BLOCKCYCLIC_H__INCLUDED

@@ -1605,6 +1605,46 @@ inline std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
+
+template <typename Tile, typename Policy>
+auto rank(const DistArray<Tile, Policy> &a) {
+  return a.trange().tiles_range().rank();
+}
+
+template <typename Tile, typename Policy>
+size_t volume(const DistArray<Tile, Policy>& a) {
+  // this is the number of tiles
+  if (a.size() > 0)  // assuming dense shape
+    return a.trange().elements_range().volume();
+  return 0;
+}
+
+template <typename Tile, typename Policy>
+auto abs_min(const DistArray<Tile, Policy>& a) {
+  return a(detail::dummy_annotation(rank(a))).abs_min();
+}
+
+template <typename Tile, typename Policy>
+auto abs_max(const DistArray<Tile, Policy>& a) {
+  return a(detail::dummy_annotation(rank(a))).abs_max();
+}
+
+template <typename Tile, typename Policy>
+auto dot(const DistArray<Tile, Policy>& a, const DistArray<Tile, Policy>& b) {
+  return (a(detail::dummy_annotation(rank(a)))
+          .dot(b(detail::dummy_annotation(rank(b))))).get();
+}
+
+template <typename Tile, typename Policy>
+auto squared_norm(const DistArray<Tile, Policy>& a) {
+  return a(detail::dummy_annotation(rank(a))).squared_norm();
+}
+
+template <typename Tile, typename Policy>
+auto norm2(const DistArray<Tile, Policy>& a) {
+  return std::sqrt(squared_norm(a));
+}
+
 }  // namespace TiledArray
 
 // serialization

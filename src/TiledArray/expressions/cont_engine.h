@@ -250,14 +250,14 @@ class ContEngine : public BinaryEngine<Derived> {
     // Initialize the tile operation in this function because it is used to
     // evaluate the tiled range and shape.
 
-    const madness::cblas::CBLAS_TRANSPOSE left_op =
+    const blas::TransposeFlag left_op =
         (left_outer_permtype_ == PermutationType::matrix_transpose
-             ? madness::cblas::Trans
-             : madness::cblas::NoTrans);
-    const madness::cblas::CBLAS_TRANSPOSE right_op =
+             ? blas::Transpose
+             : blas::NoTranspose);
+    const blas::TransposeFlag right_op =
         (right_outer_permtype_ == PermutationType::matrix_transpose
-             ? madness::cblas::Trans
-             : madness::cblas::NoTrans);
+             ? blas::Transpose
+             : blas::NoTranspose);
 
     if (outer(target_indices) != outer(indices_)) {
       // Initialize permuted structure
@@ -397,7 +397,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \return The result shape
   shape_type make_shape() const {
     const TiledArray::math::GemmHelper shape_gemm_helper(
-        madness::cblas::NoTrans, madness::cblas::NoTrans,
+        blas::NoTranspose, blas::NoTranspose,
         op_.gemm_helper().result_rank(), op_.gemm_helper().left_rank(),
         op_.gemm_helper().right_rank());
     return left_.shape().gemm(right_.shape(), factor_, shape_gemm_helper);
@@ -409,7 +409,7 @@ class ContEngine : public BinaryEngine<Derived> {
   /// \return The result shape
   shape_type make_shape(const Permutation& perm) const {
     const TiledArray::math::GemmHelper shape_gemm_helper(
-        madness::cblas::NoTrans, madness::cblas::NoTrans,
+        blas::NoTranspose, blas::NoTranspose,
         op_.gemm_helper().result_rank(), op_.gemm_helper().left_rank(),
         op_.gemm_helper().right_rank());
     return left_.shape().gemm(right_.shape(), factor_, shape_gemm_helper, perm);

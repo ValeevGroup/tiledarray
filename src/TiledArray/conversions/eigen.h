@@ -28,7 +28,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/external/madness.h>
-#include <TiledArray/math/eigen.h>
+#include <TiledArray/external/eigen.h>
 #include <TiledArray/pmap/replicated_pmap.h>
 #include <TiledArray/tensor.h>
 #include <tiledarray_fwd.h>

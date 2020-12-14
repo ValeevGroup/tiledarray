@@ -28,9 +28,9 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/external/madness.h>
+#include <TiledArray/math/blas.h>
 
-namespace TiledArray {
-namespace math {
+namespace TiledArray::math {
 
 /// Contraction to *GEMM helper
 
@@ -38,9 +38,9 @@ namespace math {
 /// providing information on how to fuse dimensions
 class GemmHelper {
  private:
-  madness::cblas::CBLAS_TRANSPOSE left_op_;
+  blas::TransposeFlag left_op_;
   ///< Transpose operation that is applied to the left-hand argument
-  madness::cblas::CBLAS_TRANSPOSE right_op_;
+  blas::TransposeFlag right_op_;
   ///< Transpose operation that is applied to the right-hand argument
   unsigned int result_rank_;  ///< The rank of the result tensor
 
@@ -57,8 +57,8 @@ class GemmHelper {
       right_;               ///< Right-hand argument range data
 
  public:
-  GemmHelper(const madness::cblas::CBLAS_TRANSPOSE left_op,
-             const madness::cblas::CBLAS_TRANSPOSE right_op,
+  GemmHelper(const blas::TransposeFlag left_op,
+             const blas::TransposeFlag right_op,
              const unsigned int result_rank, const unsigned int left_rank,
              const unsigned int right_rank)
       : left_op_(left_op),
@@ -74,7 +74,7 @@ class GemmHelper {
     const unsigned int contract_size = num_contract_ranks();
 
     // Store the inner and outer dimension ranges for the left-hand argument.
-    if (left_op == madness::cblas::NoTrans) {
+    if (left_op == blas::NoTranspose) {
       left_.outer[0] = 0u;
       left_.outer[1] = left_.inner[0] = left_rank - contract_size;
       left_.inner[1] = left_rank;
@@ -85,7 +85,7 @@ class GemmHelper {
     }
 
     // Store the inner and outer dimension ranges for the right-hand argument.
-    if (right_op == madness::cblas::NoTrans) {
+    if (right_op == blas::NoTranspose) {
       right_.inner[0] = 0u;
       right_.inner[1] = right_.outer[0] = contract_size;
       right_.outer[1] = right_rank;
@@ -271,11 +271,10 @@ class GemmHelper {
       n *= right_extent[i];
   }
 
-  madness::cblas::CBLAS_TRANSPOSE left_op() const { return left_op_; }
-  madness::cblas::CBLAS_TRANSPOSE right_op() const { return right_op_; }
+  blas::TransposeFlag left_op() const { return left_op_; }
+  blas::TransposeFlag right_op() const { return right_op_; }
 };  // class GemmHelper
 
-}  // namespace math
-}  // namespace TiledArray
+}  // namespace TiledArray::math
 
 #endif  // TILEDARRAY_MATH_GEMM_HELPER_H__INCLUDED

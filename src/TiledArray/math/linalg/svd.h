@@ -21,28 +21,31 @@
  *  Created:    16 October, 2020
  *
  */
-#ifndef TILEDARRAY_ALGEBRA_SVD_H__INCLUDED
-#define TILEDARRAY_ALGEBRA_SVD_H__INCLUDED
+#ifndef TILEDARRAY_MATH_LINALG_SVD_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_SVD_H__INCLUDED
 
 #include <TiledArray/config.h>
 #ifdef TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/scalapack/svd.h>
+#include <TiledArray/math/linalg/scalapack/svd.h>
 #endif  // TILEDARRAY_HAS_SCALAPACK
-#include <TiledArray/algebra/lapack/svd.h>
+#include <TiledArray/math/linalg/non-distributed/svd.h>
 
-namespace TiledArray {
+namespace TiledArray::math::linalg {
 
-template <typename SVDType, typename Array,
-          typename = TiledArray::detail::enable_if_svd_return_type<SVDType>>
+template <SVD::Vectors Vectors, typename Array>
 auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trange = TiledRange()) {
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000) {
-    return scalapack::svd<SVDType>(A, u_trange, vt_trange);
+    return scalapack::svd<Vectors>(A, u_trange, vt_trange);
   }
 #endif
-  return lapack::svd<SVDType>(A, u_trange, vt_trange);
+  return non_distributed::svd<Vectors>(A, u_trange, vt_trange);
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg
 
-#endif  // TILEDARRAY_ALGEBRA_SVD_H__INCLUDED
+namespace TiledArray {
+  using TiledArray::math::linalg::svd;
+}
+
+#endif  // TILEDARRAY_MATH_LINALG_SVD_H__INCLUDED

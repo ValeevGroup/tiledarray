@@ -22,8 +22,8 @@
 #ifndef TILEDARRAY_RETILE_H
 #define TILEDARRAY_RETILE_H
 
-#include "../algebra/utils.h"
-#include "../special/diagonal_array.h"
+#include "TiledArray/util/annotation.h"
+#include "TiledArray/special/diagonal_array.h"
 
 /// \name Retile function
 /// \brief Retiles a tensor with a provided TiledRange

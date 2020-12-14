@@ -43,6 +43,10 @@ else()
   add_subdirectory( ${blacspp_SOURCE_DIR} ${blacspp_BINARY_DIR} )
   add_subdirectory( ${scalapackpp_SOURCE_DIR} ${scalapackpp_BINARY_DIR} )
 
+  # propagate MPI_CXX_SKIP_MPICXX=ON
+  target_compile_definitions( blacspp PRIVATE ${MPI_CXX_COMPILE_DEFINITIONS} )
+  target_compile_definitions( scalapackpp PRIVATE ${MPI_CXX_COMPILE_DEFINITIONS} )
+
   install( TARGETS blacspp scalapackpp EXPORT tiledarray COMPONENT tiledarray )
   # Add these dependencies to External
   add_dependencies(External-tiledarray scalapackpp blacspp)

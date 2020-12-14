@@ -28,10 +28,11 @@
 #include <scalapackpp/eigenvalue_problem/sevp.hpp>
 #include <scalapackpp/pblas/gemm.hpp>
 
-#include <TiledArray/algebra/scalapack/heig.h>
+#include <TiledArray/math/linalg/scalapack/heig.h>
 
 using Array = TA::TArray<double>;
 // using Array = TA::TSpArray<double>;
+namespace scalapack = TiledArray::math::linalg::scalapack;
 
 TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
   assert(TA_NBs.size() > 0);
@@ -93,7 +94,7 @@ int main(int argc, char** argv) {
     tensor_symm("i,j") = 0.5 * (tensor("i,j") + tensor("j,i"));
     tensor("i,j") = tensor_symm("i,j");
 
-    auto [evals, evecs_ta] = TA::scalapack::heig(tensor);
+    auto [evals, evecs_ta] = scalapack::heig(tensor);
 
     //// Check EVP with TA
     Array tmp =

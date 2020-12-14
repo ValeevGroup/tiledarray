@@ -25,7 +25,7 @@
 #define TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
 
 #include <TiledArray/math/blas.h>
-#include <TiledArray/math/cublas.h>
+#include <TiledArray/cuda/cublas.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
