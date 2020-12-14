@@ -60,7 +60,7 @@ set(ta_test_src_files  ta_test.cpp
     cyclic_pmap.cpp
     replicated_pmap.cpp
     dense_shape.cpp
-    sparse_shape.cpp
+    #sparse_shape.cpp
     distributed_storage.cpp
     tensor_impl.cpp
     array_impl.cpp
@@ -111,16 +111,12 @@ set(ta_test_src_files  ta_test.cpp
     t_tot_tot_contract_.cpp
     tot_tot_tot_contract_.cpp
     einsum.cpp
-    linear_algebra.cpp
+    #linear_algebra.cpp
 )
 
 if(CUDA_FOUND)
     list(APPEND ta_test_src_files cutt.cpp expressions_cuda_um.cpp tensor_um.cpp)
 endif()
-
-# if (TARGET TiledArray_SCALAPACK)
-#   list(APPEND ta_test_src_files scalapack.cpp)
-# endif(TARGET TiledArray_SCALAPACK)
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
 if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND AND FALSE)

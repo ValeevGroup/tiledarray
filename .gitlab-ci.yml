@@ -1,0 +1,41 @@
+stages:
+  - build
+
+default:
+  tags: [ docker ]
+
+variables:
+  # to run OpenMPI in docker
+  OMPI_ALLOW_RUN_AS_ROOT: 1
+  OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
+  OMPI_MCA_btl_vader_single_copy_mechanism: none
+
+before_script:
+  #- apt-get install -yq ...
+  - echo 'localhost slots=8' > /etc/openmpi/openmpi-default-hostfile 
+
+build:
+  stage: build
+  timeout: 3h
+  image: valeevgroup/${IMAGE}
+  variables:
+    CXX: ${CXX}
+  script:
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/gitlab-ci.cmake 
+        -D${TA_PYTHON}
+    - make tiledarray
+    - make examples
+    - make ta_test
+    - make check
+  parallel:
+    matrix:
+      - CXX: [ g++ ]
+        IMAGE : [ "ubuntu:20.04" ]
+        TA_PYTHON : [ "TA_PYTHON=ON" ]
+      - CXX: [ clang++-9 ]
+        IMAGE : [ "ubuntu:20.04" ]
+        TA_PYTHON : [ "TA_PYTHON=OFF" ]
+
+
