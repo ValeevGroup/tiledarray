@@ -37,27 +37,6 @@
 TILEDARRAY_PRAGMA_GCC(diagnostic push)
 TILEDARRAY_PRAGMA_GCC(system_header)
 
-////////////////////////////////////////////////
-// this duplicates TiledArray_Eigen definitions
-#if HAVE_INTEL_MKL
-#ifndef EIGEN_USE_MKL  // strangely, defining EIGEN_USE_MKL_ALL does not imply
-                       // EIGEN_USE_MKL
-#define EIGEN_USE_MKL 1
-#endif
-#ifndef EIGEN_USE_MKL_ALL
-#define EIGEN_USE_MKL_ALL 1
-#endif
-#else
-//# ifndef EIGEN_USE_BLAS
-//#  define EIGEN_USE_BLAS 1
-//# endif
-#endif // HAVE_INTEL_MKL
-
-/////////////////////////////////////////////////
-// define lapacke types to prevent inclusion of complex.h by
-// Eigen/src/misc/lapacke.h
-#include <madness/tensor/lapacke_types.h>
-
 // If EIGEN_USE_LAPACKE_STRICT is defined, Eigen doesn't check if
 // EIGEN_USE_LAPACKE is defined before setting it, leading to a warning when it
 // is already set, so we unset here to avoid that warning
@@ -70,9 +49,9 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 #if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)
 #if !EIGEN_VERSION_AT_LEAST(3, 3, 7)
 #error "Eigen3 < 3.3.7 with LAPACKE enabled may give wrong eigenvalue results"
-#error "Either turn off TILEDARRAY_EIGEN_USE_LAPACKE or use Eigen3 3.3.7"
+#error "Either turn off EIGEN_USE_LAPACKE/EIGEN_USE_LAPACKE_STRICT or use Eigen3 3.3.7"
 #endif
-#endif
+#endif // EIGEN_USE_LAPACKE || EIGEN_USE_LAPACKE_STRICT
 
 TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
