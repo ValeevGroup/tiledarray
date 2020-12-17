@@ -11,8 +11,9 @@ variables:
   OMPI_MCA_btl_vader_single_copy_mechanism: none
 
 before_script:
-  #- apt-get install -yq ...
-  - echo 'localhost slots=8' > /etc/openmpi/openmpi-default-hostfile 
+  - echo 'localhost slots=8' > /etc/openmpi/openmpi-default-hostfile
+  - apt-get install -yq intel-mkl-core-c-2020.4-304
+  - ln -s /opt/intel/compilers_and_libraries_2020.4.304/linux/mkl/ /opt/intel/
 
 build:
   stage: build
@@ -20,11 +21,17 @@ build:
   image: valeevgroup/${IMAGE}
   variables:
     CXX: ${CXX}
+    TA_PYTHON : "TA_PYTHON=OFF"
+    ENABLE_MKL : "ENABLE_MKL=OFF"
+    ENABLE_SCALAPACK : "ENABLE_SCALAPACK=OFF"
   script:
     - mkdir build
     - cd build
-    - cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/gitlab-ci.cmake 
+    - cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/gitlab-ci.cmake
+        -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
         -D${TA_PYTHON}
+        -D${ENABLE_MKL}
+        -D${ENABLE_SCALAPACK}
     - make tiledarray
     - make examples
     - make ta_test
@@ -33,7 +40,14 @@ build:
     matrix:
       - CXX: [ g++ ]
         IMAGE : [ "ubuntu:20.04" ]
+        BUILD_TYPE : [ "Release", "Debug" ]
+        ENABLE_MKL : [ "ENABLE_MKL=ON", "ENABLE_MKL=OFF" ]
+        ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
+      - CXX: [ g++ ]
+        IMAGE : [ "ubuntu:20.04" ]
+        BUILD_TYPE : [ "Release", "Debug" ]
         TA_PYTHON : [ "TA_PYTHON=ON" ]
       - CXX: [ clang++-9 ]
         IMAGE : [ "ubuntu:20.04" ]
-        TA_PYTHON : [ "TA_PYTHON=OFF" ]
+        BUILD_TYPE : [ "Release", "Debug" ]
+        ENABLE_MKL : [ "ENABLE_MKL=ON", "ENABLE_MKL=OFF" ]
