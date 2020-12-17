@@ -34,6 +34,7 @@
 #include <TiledArray/error.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/tiled_range.h>
+#include <TiledArray/conversions/make_array.h>
 
 #include <blacspp/grid.hpp>
 #include <blacspp/information.hpp>
