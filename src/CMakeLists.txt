@@ -123,6 +123,7 @@ TiledArray/math/partial_reduce.h
 TiledArray/math/transpose.h
 TiledArray/math/vector_op.h
 TiledArray/math/scalapack.h
+TiledArray/math/linalg/rank-local.h
 TiledArray/pmap/blocked_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h
@@ -176,9 +177,6 @@ TiledArray/util/singleton.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
 
-TiledArray/math/linalg/rank-local.h
-TiledArray/math/linalg/rank-local.cpp
-
 )
 
 if(CUDA_FOUND)
@@ -203,6 +201,7 @@ if(CUDA_FOUND)
 endif(CUDA_FOUND)
 
 set(TILEDARRAY_SOURCE_FILES
+TiledArray/tiledarray.cpp
 TiledArray/tensor/tensor.cpp
 TiledArray/sparse_shape.cpp
 TiledArray/tensor_impl.cpp
