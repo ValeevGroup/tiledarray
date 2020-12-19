@@ -50,7 +50,7 @@ class BlockRange : public Range {
     TA_ASSERT(range.rank());
 
     // Initialize the block range data members
-    data_ = new index1_type[range.rank() << 2];
+    init_datavec(range.rank());
     offset_ = range.offset();
     volume_ = 1ul;
     rank_ = range.rank();
@@ -102,7 +102,7 @@ class BlockRange : public Range {
     TA_ASSERT(range.rank());
 
     // Initialize the block range data members
-    data_ = new index1_type[range.rank() << 2];
+    init_datavec(range.rank());
     offset_ = range.offset();
     volume_ = 1ul;
     rank_ = range.rank();

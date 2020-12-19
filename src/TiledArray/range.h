@@ -60,6 +60,7 @@ class Range {
   static_assert(detail::is_range_v<index_type>);  // index is a Range
 
  protected:
+  container::svector<index1_type, 32> datavec_;
   index1_type* data_ = nullptr;
   ///< An array that holds the dimension information of the
   ///< range. The layout of the array is:
@@ -72,6 +73,14 @@ class Range {
   distance_type offset_ = 0l;  ///< Ordinal index offset correction
   ordinal_type volume_ = 0ul;  ///< Total number of elements
   unsigned int rank_ = 0u;  ///< The rank (or number of dimensions) in the range
+
+  void init_datavec(unsigned int rank) {
+    if (rank > 0) {
+      datavec_.resize(rank << 2);
+      data_ = datavec_.data();
+    } else
+      data_ = nullptr;
+  }
 
  private:
   /// Initialize range data from sequences of lower and upper bounds
@@ -343,7 +352,7 @@ class Range {
     TA_ASSERT(n == size(upper_bound));
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(lower_bound, upper_bound);
     }
@@ -376,10 +385,9 @@ class Range {
     using std::size;
     const auto n = size(lower_bound);
     TA_ASSERT(n == size(upper_bound));
+    init_datavec(n);
+    rank_ = n;
     if (n) {
-      // Initialize array memory
-      data_ = new index1_type[n << 2];
-      rank_ = n;
       init_range_data(lower_bound, upper_bound);
     }
   }
@@ -402,7 +410,7 @@ class Range {
     const auto n = size(extent);
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(extent);
     }
@@ -425,7 +433,7 @@ class Range {
     const auto n = size(extent);
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(extent);
     }
@@ -467,7 +475,7 @@ class Range {
     const auto n = std::size(bounds);
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
     }
@@ -498,7 +506,7 @@ class Range {
     const auto n = size(bounds);
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
     }
@@ -531,7 +539,7 @@ class Range {
       }
 #endif
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
     }
@@ -574,11 +582,11 @@ class Range {
   /// \param other The range to be copied
   Range(const Range_& other) {
     if (other.rank_ > 0ul) {
-      data_ = new index1_type[other.rank_ << 2];
+      datavec_ = other.datavec_;
+      data_ = datavec_.data();
       offset_ = other.offset_;
       volume_ = other.volume_;
       rank_ = other.rank_;
-      memcpy(data_, other.data_, (sizeof(index1_type) << 2) * other.rank_);
     }
   }
 
@@ -586,7 +594,8 @@ class Range {
 
   /// \param other The range to be copied
   Range(Range_&& other)
-      : data_(other.data_),
+      : datavec_(std::move(other.datavec_)),
+        data_(datavec_.data()),
         offset_(other.offset_),
         volume_(other.volume_),
         rank_(other.rank_) {
@@ -604,14 +613,15 @@ class Range {
     TA_ASSERT(perm.size() == other.rank_);
 
     if (other.rank_ > 0ul) {
-      data_ = new index1_type[other.rank_ << 2];
       rank_ = other.rank_;
 
       if (perm) {
+        init_datavec(other.rank_);
         init_range_data(perm, other.lobound_data(), other.upbound_data());
       } else {
         // Simple copy will do
-        memcpy(data_, other.data_, (sizeof(index1_type) << 2) * rank_);
+        datavec_ = other.datavec_;
+        data_ = datavec_.data();
         offset_ = other.offset_;
         volume_ = other.volume_;
       }
@@ -619,19 +629,16 @@ class Range {
   }
 
   /// Destructor
-  ~Range() { delete[] data_; }
+  ~Range() { data_ = nullptr; }
 
   /// Copy assignment operator
 
   /// \param other The range to be copied
   /// \return A reference to this object
   Range_& operator=(const Range_& other) {
-    if (rank_ != other.rank_) {
-      delete[] data_;
-      data_ = (other.rank_ > 0ul ? new index1_type[other.rank_ << 2] : nullptr);
-      rank_ = other.rank_;
-    }
-    memcpy(data_, other.data_, (sizeof(index1_type) << 2) * rank_);
+    datavec_ = other.datavec_;
+    data_ = datavec_.data();
+    rank_ = other.rank_;
     offset_ = other.offset_;
     volume_ = other.volume_;
 
@@ -644,7 +651,8 @@ class Range {
   /// \return A reference to this object
   /// \throw nothing
   Range_& operator=(Range_&& other) {
-    data_ = other.data_;
+    datavec_ = std::move(other.datavec_);
+    data_ = datavec_.data();
     offset_ = other.offset_;
     volume_ = other.volume_;
     rank_ = other.rank_;
@@ -903,8 +911,7 @@ class Range {
 
     // Reallocate memory for range arrays
     if (rank_ != n) {
-      delete[] data_;
-      data_ = (n > 0ul ? new index1_type[n << 2] : nullptr);
+      init_datavec(n);
       rank_ = n;
     }
     if (n > 0ul)
@@ -1112,32 +1119,22 @@ class Range {
             typename std::enable_if<madness::archive::is_input_archive<
                 Archive>::value>::type* = nullptr>
   void serialize(const Archive& ar) {
-    // Get rank
-    unsigned int rank = 0ul;
-    ar& rank;
-
-    // Reallocate the array
-    const unsigned int four_x_rank = rank << 2;
-    if (rank_ != rank) {
-      delete[] data_;
-      data_ = (rank > 0u ? new index1_type[four_x_rank] : nullptr);
-      rank_ = rank;
-    }
-
-    // Get range data
-    ar& madness::archive::wrap(data_, four_x_rank) & offset_& volume_;
+    ar& rank_& datavec_& offset_& volume_;
+    data_ = datavec_.data();
   }
 
   template <typename Archive,
             typename std::enable_if<madness::archive::is_output_archive<
                 Archive>::value>::type* = nullptr>
   void serialize(const Archive& ar) const {
-    ar& rank_& madness::archive::wrap(data_, rank_ << 2) & offset_& volume_;
+    ar& rank_& datavec_& offset_& volume_;
   }
 
   void swap(Range_& other) {
     // Get temp data
-    std::swap(data_, other.data_);
+    std::swap(datavec_, other.datavec_);
+    data_ = datavec_.data();
+    other.data_ = other.datavec_.data();
     std::swap(offset_, other.offset_);
     std::swap(volume_, other.volume_);
     std::swap(rank_, other.rank_);
@@ -1233,14 +1230,11 @@ inline Range& Range::operator*=(const Permutation& perm) {
   TA_ASSERT(perm.size() == rank_);
   if (rank_ > 1ul) {
     // Copy the lower and upper bound data into a temporary array
-    auto* MADNESS_RESTRICT const temp_lower = new index1_type[rank_ << 1];
-    const auto* MADNESS_RESTRICT const temp_upper = temp_lower + rank_;
-    std::memcpy(temp_lower, data_, (sizeof(index1_type) << 1) * rank_);
+    container::svector<index1_type, 16> temp_lower(rank_ << 1);
+    const auto* MADNESS_RESTRICT const temp_upper = temp_lower.data() + rank_;
+    std::memcpy(temp_lower.data(), data_, (sizeof(index1_type) << 1) * rank_);
 
-    init_range_data(perm, temp_lower, temp_upper);
-
-    // Cleanup old memory.
-    delete[] temp_lower;
+    init_range_data(perm, temp_lower.data(), temp_upper);
   }
   return *this;
 }
