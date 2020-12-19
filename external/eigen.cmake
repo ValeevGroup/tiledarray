@@ -151,11 +151,10 @@ if (TARGET TiledArray_Eigen)
   target_compile_definitions(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_DEFINITIONS})
   target_compile_options(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_OPTIONS})
   set(TiledArray_Eigen_VERSION "${Eigen3_VERSION}" CACHE STRING "Eigen3_VERSION of the library interfaced by TiledArray_Eigen target")
+  # Eigen's prototypes for BLAS interface libraries do not match MADNESS cblas
   if (MADNESS_HAS_MKL)
-    target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL_ALL)
+    # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL EIGEN_USE_BLAS)
   else(MADNESS_HAS_MKL)
-    # Eigen's prototypes for non-MKL (i.e. F77) BLAS interface libraries do not match those in MADNESS (and are not const correct)
-    # thus can't use non-MKL BLAS
     # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_BLAS)
   endif(MADNESS_HAS_MKL)
   install(TARGETS TiledArray_Eigen EXPORT tiledarray COMPONENT tiledarray)

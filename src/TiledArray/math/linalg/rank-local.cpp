@@ -23,26 +23,33 @@
  */
 
 #include <TiledArray/math/linalg/rank-local.h>
+#include <TiledArray/math/lapack.h>
 
-#include <lapacke.h>
+template<class F, typename ... Args>
+inline int ta_lapack_call(F f, Args ... args) {
+  lapack_int info;
+  auto ptr = [](auto &&a) {
+    using T = std::remove_reference_t<decltype(a)>;
+    if constexpr (std::is_pointer_v<T>) return a;
+    else return &a;
+  };
+  f(ptr(args)..., &info);
+  return info;
+}
 
-#define TA_LAPACKE_THROW(F) throw std::runtime_error("lapacke::" #F " failed")
+#define TA_LAPACK_ERROR(F) throw std::runtime_error("lapack::" #F " failed")
 
-#define TA_LAPACKE_CALL(F, ARGS...)         \
-  (LAPACKE_##F(LAPACK_COL_MAJOR, ARGS) == 0 || (TA_LAPACKE_THROW(F), false))
+#define TA_LAPACK_CALL(F, ARGS...) \
+  ((ta_lapack_call(F##_, ARGS) == 0) || (TA_LAPACK_ERROR(F), 0))
 
-/// TA_LAPACKE(fn,args) can be called only from template context, with `T`
+/// TA_LAPACK(fn,args) can be called only from template context, with `T`
 /// defining the element type
-#define TA_LAPACKE(name, args...) {                                            \
+#define TA_LAPACK(name, args...) {                                             \
   using numeric_type = T;                                                      \
   if constexpr (std::is_same_v<numeric_type, double>)                          \
-    TA_LAPACKE_CALL(d##name, args);                                            \
+                 TA_LAPACK_CALL(d##name, args);                                \
   else if constexpr (std::is_same_v<numeric_type, float>)                      \
-    TA_LAPACKE_CALL(s##name, args);                                            \
-  else if constexpr (std::is_same_v<numeric_type, std::complex<double>>)       \
-    TA_LAPACKE_CALL(z##name, args);                                            \
-  else if constexpr (std::is_same_v<numeric_type, std::complex<float>>)        \
-    TA_LAPACKE_CALL(c##name, args);                                            \
+                 TA_LAPACK_CALL(s##name, args);                                \
   else std::abort();                                                           \
   }
 
@@ -54,7 +61,7 @@ void cholesky(Matrix<T>& A) {
   lapack_int n = A.rows();
   auto* a = A.data();
   lapack_int lda = n;
-  TA_LAPACKE(potrf, uplo, n, a, lda);
+  TA_LAPACK(potrf, uplo, n, a, lda);
 }
 
 template <typename T>
@@ -64,7 +71,7 @@ void cholesky_linv(Matrix<T>& A) {
   lapack_int n = A.rows();
   auto* l = A.data();
   lapack_int lda = n;
-  TA_LAPACKE(trtri, uplo, diag, n, l, lda);
+  TA_LAPACK(trtri, uplo, diag, n, l, lda);
 }
 
 template <typename T>
@@ -76,7 +83,7 @@ void cholesky_solve(Matrix<T>& A, Matrix<T>& X) {
   auto* b = X.data();
   lapack_int lda = n;
   lapack_int ldb = n;
-  TA_LAPACKE(posv, uplo, n, nrhs, a, lda, b, ldb);
+  TA_LAPACK(posv, uplo, n, nrhs, a, lda, b, ldb);
 }
 
 template <typename T>
@@ -92,7 +99,7 @@ void cholesky_lsolve(TransposeFlag transpose, Matrix<T>& A, Matrix<T>& X) {
   auto* b = X.data();
   lapack_int lda = n;
   lapack_int ldb = n;
-  TA_LAPACKE(trtrs, uplo, trans, diag, n, nrhs, a, lda, b, ldb);
+  TA_LAPACK(trtrs, uplo, trans, diag, n, nrhs, a, lda, b, ldb);
 }
 
 template <typename T>
@@ -106,10 +113,10 @@ void heig(Matrix<T>& A, std::vector<T>& W) {
   T* w = W.data();
   lapack_int lwork = -1;
   std::vector<T> work(1);
-  TA_LAPACKE(syev_work, jobz, uplo, n, a, lda, w, work.data(), lwork);
+  TA_LAPACK(syev, jobz, uplo, n, a, lda, w, work.data(), lwork);
   lwork = lapack_int(work[0]);
   work.resize(lwork);
-  TA_LAPACKE(syev_work, jobz, uplo, n, a, lda, w, work.data(), lwork);
+  TA_LAPACK(syev, jobz, uplo, n, a, lda, w, work.data(), lwork);
 }
 
 template <typename T>
@@ -126,10 +133,10 @@ void heig(Matrix<T>& A, Matrix<T>& B, std::vector<T>& W) {
   T* w = W.data();
   std::vector<T> work(1);
   lapack_int lwork = -1;
-  TA_LAPACKE(sygv_work, itype, jobz, uplo, n, a, lda, b, ldb, w, work.data(), lwork);
+  TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w, work.data(), lwork);
   lwork = lapack_int(work[0]);
   work.resize(lwork);
-  TA_LAPACKE(sygv_work, itype, jobz, uplo, n, a, lda, b, ldb, w, work.data(), lwork);
+  TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w, work.data(), lwork);
 }
 
 template <typename T>
@@ -165,11 +172,11 @@ void svd(Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
   std::vector<T> work(1);
   lapack_int lwork = -1;
 
-  TA_LAPACKE(gesvd_work, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt,
+  TA_LAPACK(gesvd, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt,
              work.data(), lwork);
   lwork = lapack_int(work[0]);
   work.resize(lwork);
-  TA_LAPACKE(gesvd_work, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt,
+  TA_LAPACK(gesvd, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt,
              work.data(), lwork);
 
 }
@@ -183,7 +190,7 @@ void lu_solve(Matrix<T>& A, Matrix<T>& B) {
   T* b = B.data();
   lapack_int ldb = B.rows();
   std::vector<lapack_int> ipiv(n);
-  TA_LAPACKE(gesv, n, nrhs, a, lda, ipiv.data(), b, ldb);
+  TA_LAPACK(gesv, n, nrhs, a, lda, ipiv.data(), b, ldb);
 }
 
 template <typename T>
@@ -192,13 +199,13 @@ void lu_inv(Matrix<T>& A) {
   T* a = A.data();
   lapack_int lda = A.rows();
   std::vector<lapack_int> ipiv(n);
-  TA_LAPACKE(getrf, n, n, a, lda, ipiv.data());
+  TA_LAPACK(getrf, n, n, a, lda, ipiv.data());
   std::vector<T> work(1);
   lapack_int lwork = -1;
-  TA_LAPACKE(getri_work, n, a, lda, ipiv.data(), work.data(), lwork);
+  TA_LAPACK(getri, n, a, lda, ipiv.data(), work.data(), lwork);
   lwork = (lapack_int)work[0];
   work.resize(lwork);
-  TA_LAPACKE(getri_work, n, a, lda, ipiv.data(), work.data(), lwork);
+  TA_LAPACK(getri, n, a, lda, ipiv.data(), work.data(), lwork);
 }
 
 #define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                        \

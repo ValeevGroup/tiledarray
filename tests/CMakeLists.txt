@@ -97,8 +97,8 @@ set(ta_test_src_files  ta_test.cpp
     initializer_list.cpp
     diagonal_array.cpp
     retile.cpp
-    tot_dist_array_part1.cpp
-    tot_dist_array_part2.cpp
+    # tot_dist_array_part1.cpp
+    # tot_dist_array_part2.cpp
     random.cpp
     trace.cpp
     tot_expressions.cpp
@@ -108,8 +108,8 @@ set(ta_test_src_files  ta_test.cpp
     s_t_t_contract_.cpp
     t_t_t_contract_.cpp
     t_s_t_contract_.cpp
-    t_tot_tot_contract_.cpp
-    tot_tot_tot_contract_.cpp
+    # t_tot_tot_contract_.cpp
+    # tot_tot_tot_contract_.cpp
     einsum.cpp
     linalg.cpp
 )
