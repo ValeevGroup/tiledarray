@@ -49,17 +49,34 @@ const Range BlockRangeFixture::r(std::array<int, 3>{{0, 1, 2}},
 BOOST_FIXTURE_TEST_SUITE(block_range_suite, BlockRangeFixture,
                          TA_UT_SKIP_IF_DISTRIBUTED)
 
+const auto target_count = 20;
+
 BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
   BlockRange block_range;
 
+  auto count_valid = 0;
+  auto count_invalid = 0;
+  auto skip = []() {
+    return GlobalFixture::world->rand() % 20 > 9;
+  };
+
+  // loop over all possible subblocks, skipping randomly, until target_count valid+invalid block ranges have been considered
   for (auto lower_it = r0.begin(); lower_it != r0.end(); ++lower_it) {
     const auto lower = *lower_it;
     for (auto upper_it = r0.begin(); upper_it != r0.end(); ++upper_it) {
+      if (skip()) continue;
+      if (count_valid == target_count && count_invalid == target_count) {
+        goto end;
+      }
+
       auto upper = *upper_it;
       for (unsigned int i = 0u; i < upper.size(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
                      [](std::size_t l, std::size_t r0) { return l < r0; })) {
+        if (count_valid == target_count) continue;
+        ++count_valid;
+
         // Check that the sub-block is constructed without exceptions
         BOOST_CHECK_NO_THROW(block_range = BlockRange(r0, lower, upper));
 
@@ -95,25 +112,46 @@ BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
+        if (count_invalid == target_count) continue;
+        ++count_invalid;
+
         // Check for exception with invalid input
         BOOST_CHECK_THROW(BlockRange(r0, lower, upper), TiledArray::Exception);
       }
+#else  // TA_EXCEPTION_ERROR
+      count_invalid = target_count;
 #endif  // TA_EXCEPTION_ERROR
     }
   }
+  end: ;
 }
 
 BOOST_AUTO_TEST_CASE(block) {
   BlockRange block_range;
 
+  auto count_valid = 0;
+  auto count_invalid = 0;
+  auto skip = []() {
+    return GlobalFixture::world->rand() % 20 > 9;
+  };
+
+  // loop over all possible subblocks, skipping randomly, until target_count valid+invalid block ranges have been considered
   for (auto lower_it = r.begin(); lower_it != r.end(); ++lower_it) {
     const auto lower = *lower_it;
     for (auto upper_it = r.begin(); upper_it != r.end(); ++upper_it) {
+      if (skip()) continue;
+      if (count_valid == target_count && count_invalid == target_count) {
+        goto end;
+      }
+
       auto upper = *upper_it;
       for (unsigned int i = 0u; i < r.rank(); ++i) ++(upper[i]);
 
       if (std::equal(lower.begin(), lower.end(), upper.begin(),
                      [](std::size_t l, std::size_t r) { return l < r; })) {
+        if (count_valid == target_count) continue;
+        ++count_valid;
+
         // Check that the sub-block is constructed without exceptions
         BOOST_CHECK_NO_THROW(block_range = BlockRange(r, lower, upper));
 
@@ -229,12 +267,18 @@ BOOST_AUTO_TEST_CASE(block) {
       }
 #ifdef TA_EXCEPTION_ERROR
       else {
+        if (count_invalid == target_count) continue;
+        ++count_invalid;
+
         // Check for exception with invalid input
         BOOST_CHECK_THROW(BlockRange(r, lower, upper), TiledArray::Exception);
       }
+#else  // TA_EXCEPTION_ERROR
+      count_invalid = target_count;
 #endif  // TA_EXCEPTION_ERROR
     }
   }
+  end: ;
 }
 
 BOOST_AUTO_TEST_SUITE_END()
