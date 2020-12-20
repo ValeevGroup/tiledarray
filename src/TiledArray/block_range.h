@@ -33,7 +33,7 @@ namespace TiledArray {
 /// Range that references a subblock of another range
 class BlockRange : public Range {
  private:
-  using Range::data_;
+  using Range::datavec_;
   using Range::offset_;
   using Range::rank_;
   using Range::volume_;
@@ -58,10 +58,10 @@ class BlockRange : public Range {
 
     // Construct temp pointers
     const auto* MADNESS_RESTRICT const range_stride = range.stride_data();
-    auto* MADNESS_RESTRICT const lower = data_;
-    auto* MADNESS_RESTRICT const upper = lower + rank_;
-    auto* MADNESS_RESTRICT const extent = upper + rank_;
-    auto* MADNESS_RESTRICT const stride = extent + rank_;
+    auto* MADNESS_RESTRICT const lower = lobound_data_nc();
+    auto* MADNESS_RESTRICT const upper = upbound_data_nc();
+    auto* MADNESS_RESTRICT const extent = extent_data_nc();
+    auto* MADNESS_RESTRICT const stride = stride_data_nc();
 
     // initialize bounds and extents
     auto lower_it = std::begin(lower_bound);
@@ -110,10 +110,10 @@ class BlockRange : public Range {
 
     // Construct temp pointers
     const auto* MADNESS_RESTRICT const range_stride = range.stride_data();
-    auto* MADNESS_RESTRICT const lower = data_;
-    auto* MADNESS_RESTRICT const upper = lower + rank_;
-    auto* MADNESS_RESTRICT const extent = upper + rank_;
-    auto* MADNESS_RESTRICT const stride = extent + rank_;
+    auto* MADNESS_RESTRICT const lower = lobound_data_nc();
+    auto* MADNESS_RESTRICT const upper = upbound_data_nc();
+    auto* MADNESS_RESTRICT const extent = extent_data_nc();
+    auto* MADNESS_RESTRICT const stride = stride_data_nc();
 
     // Compute range data
     int d = 0;
@@ -333,8 +333,8 @@ class BlockRange : public Range {
     ordinal_type result = 0ul;
 
     // Get pointers to the data
-    const auto* MADNESS_RESTRICT const size = data_ + rank_ + rank_;
-    const auto* MADNESS_RESTRICT const stride = size + rank_;
+    const auto* MADNESS_RESTRICT const size = extent_data();
+    const auto* MADNESS_RESTRICT const stride = stride_data();
 
     // Compute the coordinate index of o in range.
     for (int i = int(rank_) - 1; i >= 0; --i) {

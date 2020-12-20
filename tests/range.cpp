@@ -85,22 +85,32 @@ BOOST_AUTO_TEST_CASE(constructors) {
   // Default Constructor
   BOOST_REQUIRE_NO_THROW(Range r0);
   Range r0;
+  BOOST_CHECK(!r0);
   BOOST_CHECK_EQUAL(r0.rank(), 0u);
-  BOOST_CHECK(r0.lobound_data() == nullptr);
-  BOOST_CHECK(r0.upbound_data() == nullptr);
-  BOOST_CHECK(r0.extent_data() == nullptr);
-  BOOST_CHECK(r0.stride_data() == nullptr);
+  BOOST_CHECK(r0.upbound_data() == r0.lobound_data());
+  BOOST_CHECK(r0.extent_data() == r0.lobound_data());
+  BOOST_CHECK(r0.stride_data() == r0.lobound_data());
   BOOST_CHECK_EQUAL(r0.volume(), 0ul);
 
   // Copy of a default-constructed object
   BOOST_CHECK_NO_THROW(Range r00(r0));
   Range r00(r0);
+  BOOST_CHECK(!r00);
   BOOST_CHECK_EQUAL(r00.rank(), 0u);
-  BOOST_CHECK(r00.lobound_data() == nullptr);
-  BOOST_CHECK(r00.upbound_data() == nullptr);
-  BOOST_CHECK(r00.extent_data() == nullptr);
-  BOOST_CHECK(r00.stride_data() == nullptr);
+  BOOST_CHECK(r00.upbound_data() == r00.lobound_data());
+  BOOST_CHECK(r00.extent_data() == r00.lobound_data());
+  BOOST_CHECK(r00.stride_data() == r00.lobound_data());
   BOOST_CHECK_EQUAL(r00.volume(), 0ul);
+
+  // Rank-0 Range != null Range
+  BOOST_REQUIRE_NO_THROW(Range r0(std::vector<int>{}));
+  Range r1(std::vector<int>{});
+  BOOST_CHECK(r1);
+  BOOST_CHECK_EQUAL(r1.rank(), 0u);
+  BOOST_CHECK(r1.upbound_data() == r1.lobound_data());
+  BOOST_CHECK(r1.extent_data() == r1.lobound_data());
+  BOOST_CHECK(r1.stride_data() == r1.lobound_data());
+  BOOST_CHECK_EQUAL(r1.volume(), 1ul);
 
   index f2 = finish;
   for (std::size_t i = 0; i < f2.size(); ++i) f2[i] += p2[i];
@@ -112,6 +122,7 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_REQUIRE_NO_THROW(Range r5(1u, 2, 3ul, 4l));  // uses param pack
   BOOST_REQUIRE_NO_THROW(Range r5({0, 0, 0}));       // zero extents are OK
   Range r5(p5);
+  BOOST_CHECK(r5);
   BOOST_CHECK_EQUAL_COLLECTIONS(
       r5.lobound_data(), r5.lobound_data() + r5.rank(), p0.begin(), p0.end());
   BOOST_CHECK_EQUAL_COLLECTIONS(
@@ -638,10 +649,9 @@ BOOST_AUTO_TEST_CASE(swap) {
 
   // Check that r contains the data of empty_range.
   BOOST_CHECK_EQUAL(r.rank(), 0u);
-  BOOST_CHECK(r.lobound_data() == nullptr);
-  BOOST_CHECK(r.upbound_data() == nullptr);
-  BOOST_CHECK(r.extent_data() == nullptr);
-  BOOST_CHECK(r.stride_data() == nullptr);
+  BOOST_CHECK(r.upbound_data() == r.lobound_data());
+  BOOST_CHECK(r.extent_data() == r.lobound_data());
+  BOOST_CHECK(r.stride_data() == r.lobound_data());
   BOOST_CHECK_EQUAL(r.volume(), 0ul);
 
   // Check that empty_range contains the data of r.
@@ -661,10 +671,9 @@ BOOST_AUTO_TEST_CASE(swap) {
 
   // Check that empty_range contains its original data.
   BOOST_CHECK_EQUAL(empty_range.rank(), 0u);
-  BOOST_CHECK(empty_range.lobound_data() == nullptr);
-  BOOST_CHECK(empty_range.upbound_data() == nullptr);
-  BOOST_CHECK(empty_range.extent_data() == nullptr);
-  BOOST_CHECK(empty_range.stride_data() == nullptr);
+  BOOST_CHECK(empty_range.upbound_data() == empty_range.lobound_data());
+  BOOST_CHECK(empty_range.extent_data() == empty_range.lobound_data());
+  BOOST_CHECK(empty_range.stride_data() == empty_range.lobound_data());
   BOOST_CHECK_EQUAL(empty_range.volume(), 0ul);
 
   // Check that r its original data.
