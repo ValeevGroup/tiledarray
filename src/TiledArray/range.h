@@ -692,6 +692,7 @@ class Range {
   /// Range lower bound data accessor
 
   /// \return A pointer to the lower bound data (see Range::lobound() )
+  /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
   const index1_type* lobound_data() const { return data(); }
 
@@ -716,6 +717,7 @@ class Range {
   /// Range upper bound data accessor
 
   /// \return A pointer to the upper bound data (see Range::upbound() )
+  /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
   const index1_type* upbound_data() const { return data() + rank_; }
 
@@ -740,6 +742,7 @@ class Range {
   /// Range extent data accessor
 
   /// \return A pointer to the extent data (see Range::extent() )
+  /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
   const index1_type* extent_data() const { return data() + (rank_<<1); }
 
@@ -763,6 +766,7 @@ class Range {
   /// Range stride data accessor
 
   /// \return A pointer to the stride data (see Range::stride() )
+  /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
   const index1_type* stride_data() const {
     return extent_data() + rank_;
