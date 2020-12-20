@@ -60,7 +60,7 @@ class Range {
   static_assert(detail::is_range_v<index_type>);  // index is a Range
 
  protected:
-  container::svector<index1_type, 32> datavec_;
+  container::svector<index1_type, 4*TA_MAX_SOO_RANK_METADATA> datavec_;
   ///< An array that holds the dimension information of the
   ///< range. The layout of the array is:
   ///< \code
@@ -1227,7 +1227,7 @@ inline Range& Range::operator*=(const Permutation& perm) {
   TA_ASSERT(perm.size() == rank_);
   if (rank_ > 1ul) {
     // Copy the lower and upper bound data into a temporary array
-    container::svector<index1_type, 16> temp_lower(rank_ << 1);
+    container::svector<index1_type, 2*TA_MAX_SOO_RANK_METADATA> temp_lower(rank_ << 1);
     const auto* MADNESS_RESTRICT const temp_upper = temp_lower.data() + rank_;
     std::copy(lobound_data(), lobound_data() + (rank_<<1), temp_lower.data());
 

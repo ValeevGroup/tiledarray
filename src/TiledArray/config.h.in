@@ -152,6 +152,9 @@
 # define TA_1INDEX_TYPE std::size_t
 #endif
 
+/* Specifies the rank for up to which to use Small Object Optimization for metadata (e.g. Range, Range::index, etc.) */
+#cmakedefine TA_MAX_SOO_RANK_METADATA @TA_MAX_SOO_RANK_METADATA@
+
 /* Enables tracing MADNESS tasks in TiledArray */
 #cmakedefine TILEDARRAY_ENABLE_TASK_DEBUG_TRACE 1
 
