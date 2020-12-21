@@ -659,8 +659,8 @@ class Range {
 
   /// Conversion to bool
 
-  /// \return false if is null state, i.e. \c this->volume()==0
-  explicit operator bool() const { return volume() != 0; }
+  /// \return false if is null state, i.e. \c this->rank()==0
+  explicit operator bool() const { return rank() != 0; }
 
   /// Rank accessor
 
