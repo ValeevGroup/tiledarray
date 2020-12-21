@@ -60,7 +60,7 @@ class Range {
   static_assert(detail::is_range_v<index_type>);  // index is a Range
 
  protected:
-  container::svector<index1_type, 4*TA_MAX_SOO_RANK_METADATA> datavec_;
+  container::svector<index1_type, 4 * TA_MAX_SOO_RANK_METADATA> datavec_;
   ///< An array that holds the dimension information of the
   ///< range. The layout of the array is:
   ///< \code
@@ -79,7 +79,7 @@ class Range {
 
   index1_type* lobound_data_nc() { return data(); }
   index1_type* upbound_data_nc() { return data() + rank_; }
-  index1_type* extent_data_nc() { return data() + (rank_<<1); }
+  index1_type* extent_data_nc() { return data() + (rank_ << 1); }
   index1_type* stride_data_nc() { return extent_data_nc() + rank_; }
 
  private:
@@ -355,7 +355,8 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(lower_bound, upper_bound);
-    }
+    } else  // rank-0 Range has unit volume
+      volume_ = 1;
   }
 
   // clang-format off
@@ -389,7 +390,8 @@ class Range {
     rank_ = n;
     if (n) {
       init_range_data(lower_bound, upper_bound);
-    }
+    } else  // rank-0 Range has unit volume
+      volume_ = 1;
   }
 
   /// Range constructor from a range of extents
@@ -413,8 +415,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(extent);
-    }
-    else  // rank-0 Range has unit volume
+    } else  // rank-0 Range has unit volume
       volume_ = 1;
   }
 
@@ -438,8 +439,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(extent);
-    }
-    else // rank=0 Range has unit volume
+    } else  // rank=0 Range has unit volume
       volume_ = 1;
   }
 
@@ -482,8 +482,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    }
-    else // rank=0 Range has unit volume
+    } else  // rank=0 Range has unit volume
       volume_ = 1;
   }
 
@@ -515,8 +514,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    }
-    else // rank=0 Range has unit volume
+    } else  // rank=0 Range has unit volume
       volume_ = 1;
   }
 
@@ -550,8 +548,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    }
-    else // rank=0 Range has unit volume
+    } else  // rank=0 Range has unit volume
       volume_ = 1;
   }
 
@@ -590,7 +587,11 @@ class Range {
   /// Copy Constructor
 
   /// \param other The range to be copied
-  Range(const Range_& other) : datavec_(other.datavec_), offset_(other.offset_), volume_(other.volume_), rank_(other.rank_) {}
+  Range(const Range_& other)
+      : datavec_(other.datavec_),
+        offset_(other.offset_),
+        volume_(other.volume_),
+        rank_(other.rank_) {}
 
   /// Copy Constructor
 
@@ -627,8 +628,7 @@ class Range {
         offset_ = other.offset_;
         volume_ = other.volume_;
       }
-    }
-    else  // handle null and rank-0 case
+    } else  // handle null and rank-0 case
       volume_ = other.volume_;
   }
 
@@ -744,7 +744,7 @@ class Range {
   /// \return A pointer to the extent data (see Range::extent() )
   /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
-  const index1_type* extent_data() const { return data() + (rank_<<1); }
+  const index1_type* extent_data() const { return data() + (rank_ << 1); }
 
   /// Range extent accessor
 
@@ -768,9 +768,7 @@ class Range {
   /// \return A pointer to the stride data (see Range::stride() )
   /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
-  const index1_type* stride_data() const {
-    return extent_data() + rank_;
-  }
+  const index1_type* stride_data() const { return extent_data() + rank_; }
 
   /// Range stride accessor
 
@@ -792,8 +790,8 @@ class Range {
 
   /// Range volume accessor
 
-  /// \return The total number of elements in the range, or 0 if this is a null Range
-  /// \throw nothing
+  /// \return The total number of elements in the range, or 0 if this is a null
+  /// Range \throw nothing
   ordinal_type volume() const { return volume_; }
 
   /// alias to volume() to conform to the TWG specification
@@ -1231,9 +1229,10 @@ inline Range& Range::operator*=(const Permutation& perm) {
   TA_ASSERT(perm.size() == rank_);
   if (rank_ > 1ul) {
     // Copy the lower and upper bound data into a temporary array
-    container::svector<index1_type, 2*TA_MAX_SOO_RANK_METADATA> temp_lower(rank_ << 1);
+    container::svector<index1_type, 2 * TA_MAX_SOO_RANK_METADATA> temp_lower(
+        rank_ << 1);
     const auto* MADNESS_RESTRICT const temp_upper = temp_lower.data() + rank_;
-    std::copy(lobound_data(), lobound_data() + (rank_<<1), temp_lower.data());
+    std::copy(lobound_data(), lobound_data() + (rank_ << 1), temp_lower.data());
 
     init_range_data(perm, temp_lower.data(), temp_upper);
   }
