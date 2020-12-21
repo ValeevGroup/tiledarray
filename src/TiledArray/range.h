@@ -586,11 +586,7 @@ class Range {
   /// Copy Constructor
 
   /// \param other The range to be copied
-  Range(const Range_& other)
-      : datavec_(other.datavec_),
-        offset_(other.offset_),
-        volume_(other.volume_),
-        rank_(other.rank_) {}
+  Range(const Range_& other) = default;
 
   /// Move Constructor
 
@@ -638,14 +634,7 @@ class Range {
 
   /// \param other The range to be copied
   /// \return A reference to this object
-  Range_& operator=(const Range_& other) {
-    datavec_ = other.datavec_;
-    rank_ = other.rank_;
-    offset_ = other.offset_;
-    volume_ = other.volume_;
-
-    return *this;
-  }
+  Range_& operator=(const Range_& other) = default;
 
   /// Move assignment operator
 
