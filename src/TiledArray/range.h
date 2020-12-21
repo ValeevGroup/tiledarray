@@ -824,7 +824,7 @@ class Range {
             typename std::enable_if<detail::is_integral_range_v<Index>,
                                     bool>::type* = nullptr>
   bool includes(const Index& index) const {
-    TA_ASSERT(!*this);
+    TA_ASSERT(*this);
     const auto* MADNESS_RESTRICT const lower = lobound_data();
     const auto* MADNESS_RESTRICT const upper = upbound_data();
 
@@ -870,7 +870,7 @@ class Range {
   template <typename Ordinal>
   typename std::enable_if<std::is_integral_v<Ordinal>, bool>::type includes(
       Ordinal i) const {
-    TA_ASSERT(!*this);
+    TA_ASSERT(*this);
     return include_ordinal_(i);
   }
 
