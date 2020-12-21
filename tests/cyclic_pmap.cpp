@@ -58,7 +58,6 @@ BOOST_AUTO_TEST_CASE(constructor) {
     }
   }
 
-#ifdef TA_EXCEPTION_ERROR
   ProcessID size = GlobalFixture::world->size();
 
   BOOST_CHECK_THROW(TiledArray::detail::CyclicPmap pmap(*GlobalFixture::world,
@@ -84,7 +83,6 @@ BOOST_AUTO_TEST_CASE(constructor) {
                           *GlobalFixture::world, 10ul, 10ul, size, size),
                       TiledArray::Exception);
   }
-#endif  // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE(owner) {

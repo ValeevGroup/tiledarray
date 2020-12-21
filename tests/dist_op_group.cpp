@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(constructor_empty) {
   BOOST_CHECK(empty_group.empty());
   BOOST_CHECK_EQUAL(empty_group.size(), 0);
 
-#if defined(TA_EXCEPTION_ERROR) && defined(MADNESS_ASSERTIONS_THROW)
+#if defined(MADNESS_ASSERTIONS_THROW)
   // Check that accessing group data throws exceptions for an empty group.
   BOOST_CHECK_THROW(empty_group.id(), madness::MadnessException);
   BOOST_CHECK_THROW(empty_group.get_world(), madness::MadnessException);
@@ -64,7 +64,7 @@ BOOST_AUTO_TEST_CASE(constructor_empty) {
   ProcessID parent, child1, child2;
   BOOST_CHECK_THROW(empty_group.make_tree(0, parent, child1, child2),
                     madness::MadnessException);
-#endif  // TA_EXCEPTION_ERROR
+#endif  // MADNESS_ASSERTIONS_THROW
 }
 
 BOOST_AUTO_TEST_CASE(constructor_new_group) {

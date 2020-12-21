@@ -27,8 +27,8 @@
 #define TILEDARRAY_CONVERSIONS_EIGEN_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <TiledArray/external/madness.h>
 #include <TiledArray/external/eigen.h>
+#include <TiledArray/external/madness.h>
 #include <TiledArray/pmap/replicated_pmap.h>
 #include <TiledArray/tensor.h>
 #include <tiledarray_fwd.h>
@@ -413,23 +413,23 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
   typedef typename A::index1_type size_type;
   // Check that trange matches the dimensions of other
   if ((matrix.cols() > 1) && (matrix.rows() > 1)) {
-    TA_USER_ASSERT(trange.tiles_range().rank() == 2,
-                   "TiledArray::eigen_to_array(): The number of dimensions in "
-                   "trange is not equal to that of the Eigen matrix.");
-    TA_USER_ASSERT(
-        trange.elements_range().extent(0) == size_type(matrix.rows()),
+    TA_ASSERT(trange.tiles_range().rank() == 2 &&
+              "TiledArray::eigen_to_array(): The number of dimensions in "
+              "trange is not equal to that of the Eigen matrix.");
+    TA_ASSERT(
+        trange.elements_range().extent(0) == size_type(matrix.rows()) &&
         "TiledArray::eigen_to_array(): The number of rows in trange is not "
         "equal to the number of rows in the Eigen matrix.");
-    TA_USER_ASSERT(
-        trange.elements_range().extent(1) == size_type(matrix.cols()),
+    TA_ASSERT(
+        trange.elements_range().extent(1) == size_type(matrix.cols()) &&
         "TiledArray::eigen_to_array(): The number of columns in trange is not "
         "equal to the number of columns in the Eigen matrix.");
   } else {
-    TA_USER_ASSERT(trange.tiles_range().rank() == 1,
-                   "TiledArray::eigen_to_array(): The number of dimensions in "
-                   "trange must match that of the Eigen matrix.");
-    TA_USER_ASSERT(
-        trange.elements_range().extent(0) == size_type(matrix.size()),
+    TA_ASSERT(trange.tiles_range().rank() == 1 &&
+              "TiledArray::eigen_to_array(): The number of dimensions in "
+              "trange must match that of the Eigen matrix.");
+    TA_ASSERT(
+        trange.elements_range().extent(0) == size_type(matrix.size()) &&
         "TiledArray::eigen_to_array(): The size of trange must be equal to the "
         "matrix size.");
   }
@@ -501,17 +501,18 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
   const auto rank = array.trange().tiles_range().rank();
 
   // Check that the array will fit in a matrix or vector
-  TA_USER_ASSERT((rank == 2u) || (rank == 1u),
-                 "TiledArray::array_to_eigen(): The array dimensions must be "
-                 "equal to 1 or 2.");
+  TA_ASSERT((rank == 2u) ||
+            (rank == 1u) &&
+                "TiledArray::array_to_eigen(): The array dimensions must be "
+                "equal to 1 or 2.");
 
   // Check that this is not a distributed computing environment or that the
   // array is replicated
   if (!array.pmap()->is_replicated())
-    TA_USER_ASSERT(array.world().size() == 1,
-                   "TiledArray::array_to_eigen(): non-replicated Array cannot "
-                   "be assigned to an Eigen::Matrix when the number of World "
-                   "ranks is greater than 1.");
+    TA_ASSERT(array.world().size() == 1 &&
+              "TiledArray::array_to_eigen(): non-replicated Array cannot "
+              "be assigned to an Eigen::Matrix when the number of World "
+              "ranks is greater than 1.");
 
   // Construct the Eigen matrix
   const auto* MADNESS_RESTRICT const array_extent =
@@ -594,12 +595,12 @@ inline A row_major_buffer_to_array(
     const typename A::value_type::value_type* buffer, const std::size_t m,
     const std::size_t n, const bool replicated = false,
     std::shared_ptr<typename A::pmap_interface> pmap = {}) {
-  TA_USER_ASSERT(trange.elements_range().extent(0) == m,
-                 "TiledArray::eigen_to_array(): The number of rows in trange "
-                 "is not equal to m.");
-  TA_USER_ASSERT(trange.elements_range().extent(1) == n,
-                 "TiledArray::eigen_to_array(): The number of columns in "
-                 "trange is not equal to n.");
+  TA_ASSERT(trange.elements_range().extent(0) == m &&
+            "TiledArray::eigen_to_array(): The number of rows in trange "
+            "is not equal to m.");
+  TA_ASSERT(trange.elements_range().extent(1) == n &&
+            "TiledArray::eigen_to_array(): The number of columns in "
+            "trange is not equal to n.");
 
   typedef Eigen::Matrix<typename A::value_type::value_type, Eigen::Dynamic,
                         Eigen::Dynamic, Eigen::RowMajor>
@@ -663,12 +664,12 @@ inline A column_major_buffer_to_array(
     const typename A::value_type::value_type* buffer, const std::size_t m,
     const std::size_t n, const bool replicated = false,
     std::shared_ptr<typename A::pmap_interface> pmap = {}) {
-  TA_USER_ASSERT(trange.elements_range().extent(0) == m,
-                 "TiledArray::eigen_to_array(): The number of rows in trange "
-                 "is not equal to m.");
-  TA_USER_ASSERT(trange.elements_range().extent(1) == n,
-                 "TiledArray::eigen_to_array(): The number of columns in "
-                 "trange is not equal to n.");
+  TA_ASSERT(trange.elements_range().extent(0) == m &&
+            "TiledArray::eigen_to_array(): The number of rows in trange "
+            "is not equal to m.");
+  TA_ASSERT(trange.elements_range().extent(1) == n &&
+            "TiledArray::eigen_to_array(): The number of columns in "
+            "trange is not equal to n.");
 
   typedef Eigen::Matrix<typename A::value_type::value_type, Eigen::Dynamic,
                         Eigen::Dynamic, Eigen::ColMajor>

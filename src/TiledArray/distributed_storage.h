@@ -74,10 +74,8 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   void set_handler(const size_type i, const value_type& value) {
     future& f = get_local(i);
 
-#ifndef NDEBUG
     // Check that the future has not been set already.
-    if (f.probe()) TA_EXCEPTION("Tile has already been assigned.");
-#endif  // NDEBUG
+    TA_ASSERT(!f.probe() && "Tile has already been assigned.");
 
     f.set(value);
   }
@@ -281,9 +279,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
         acc.release();
 
         // Check that the future has not been set already.
-#ifndef NDEBUG
-        if (existing_f.probe()) TA_EXCEPTION("Tile has already been assigned.");
-#endif  // NDEBUG
+        TA_ASSERT(!existing_f.probe() && "Tile has already been assigned.");
         // Set the future
         existing_f.set(f);
       }

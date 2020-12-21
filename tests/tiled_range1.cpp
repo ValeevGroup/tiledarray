@@ -60,9 +60,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r.tiles_range().second, 0ul);
     BOOST_CHECK_EQUAL(r.elements_range().first, 0ul);
     BOOST_CHECK_EQUAL(r.elements_range().second, 0ul);
-#ifdef TA_EXCEPTION_ERROR
     BOOST_CHECK_THROW(r.tile(0), Exception);
-#endif  // TA_EXCEPTION_ERROR
   }
 
   // check construction with a iterators and the range info.
@@ -122,10 +120,8 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r.elements_range().second, 28);
   }
 #else  // TA_SIGNED_1INDEX_TYPE
-#if !defined(TA_USER_ASSERT_DISABLED)
   BOOST_CHECK_THROW(TiledRange1 r({-1, 0, 2, 5, 10, 17, 28}),
                     TiledArray::Exception);
-#endif
 #endif  // TA_SIGNED_1INDEX_TYPE
 
   // check copy constructor
@@ -158,7 +154,6 @@ BOOST_AUTO_TEST_CASE(constructor) {
 
   // Check that invalid input throws an exception.
   {
-#ifndef NDEBUG
     std::vector<std::size_t> boundaries;
     BOOST_CHECK_THROW(TiledRange1 r(boundaries.begin(), boundaries.end()),
                       Exception);
@@ -168,7 +163,6 @@ BOOST_AUTO_TEST_CASE(constructor) {
     boundaries.push_back(0);
     BOOST_CHECK_THROW(TiledRange1 r(boundaries.begin(), boundaries.end()),
                       Exception);
-#endif  // NDEBUG
   }
 }
 

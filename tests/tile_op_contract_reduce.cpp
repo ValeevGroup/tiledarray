@@ -93,7 +93,6 @@ BOOST_AUTO_TEST_CASE(make_result) {
   BOOST_CHECK(result.empty());
 }
 
-#ifdef TA_EXCEPTION_ERROR
 BOOST_AUTO_TEST_CASE(permute_empty) {
   // Check the seed operation produces an empty tensor.
   ContractReduce<TensorI, TensorI, TensorI, int> op(
@@ -101,7 +100,6 @@ BOOST_AUTO_TEST_CASE(permute_empty) {
   TensorI t, result;
   BOOST_REQUIRE_THROW(result = op(t), TiledArray::Exception);
 }
-#endif  // TA_EXCEPTION_ERROR
 
 // TODO: Test non-empty permutation
 

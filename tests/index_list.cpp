@@ -170,13 +170,11 @@ BOOST_AUTO_TEST_CASE(constructor) {
   BOOST_CHECK_EQUAL(v10.at(2), "c");
   BOOST_CHECK_EQUAL(v10.at(3), "d");
 
-#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(IndexList v3(",a,b,c"),
                     Exception);  // check invalid input
   BOOST_CHECK_THROW(IndexList v4("a,,b,c"), Exception);
   BOOST_CHECK_THROW(IndexList v5(" ,a,b"), Exception);
   BOOST_CHECK_THROW(IndexList v6("a,  b,   , c"), Exception);
-#endif  // TA_EXCEPTION_ERROR
 
   IndexList v7(" a , b, c, d , e e ,f f, g10,h, i ");  // check input with
                                                        // various spacings.

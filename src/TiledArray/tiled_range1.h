@@ -230,18 +230,18 @@ class TiledRange1 {
   template <typename RandIter>
   static void valid_(RandIter first, RandIter last) {
     // Verify at least 2 elements are present if the vector is not empty.
-    TA_USER_ASSERT((std::distance(first, last) >= 2),
-                   "TiledRange1 construction failed: You need at least 2 "
-                   "elements in the tile boundary list.");
+    TA_ASSERT((std::distance(first, last) >= 2) &&
+              "TiledRange1 construction failed: You need at least 2 "
+              "elements in the tile boundary list.");
     // Verify the requirement that a0 < a1 < a2 < ...
     for (; first != (last - 1); ++first) {
-      TA_USER_ASSERT(
-          *first < *(first + 1),
+      TA_ASSERT(
+          *first < *(first + 1) &&
           "TiledRange1 construction failed: Invalid tile boundary, tile "
           "boundary i must be greater than tile boundary i+1 for all i. ");
-      TA_USER_ASSERT(
+      TA_ASSERT(
           static_cast<index1_type>(*first) <
-              static_cast<index1_type>(*(first + 1)),
+              static_cast<index1_type>(*(first + 1)) &&
           "TiledRange1 construction failed: Invalid tile boundary, tile "
           "boundary i must be greater than tile boundary i+1 for all i. ");
     }
