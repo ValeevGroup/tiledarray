@@ -28,15 +28,21 @@
 namespace TiledArray {
 
 /// \brief A (hyperrectangular) interval on \f$ Z^n \f$, space of integer
-/// n-indices
+/// \f$ n \f$-indices
 
-/// This object represents an n-dimensional, hyperrectangular array
-/// of integers. It provides information on the rank (number of dimensions),
-/// (nonnegative) lower bound, upper bound, extent (size), and stride of
-/// each dimension. It can also be used to
-/// test if an element is included in the range with a coordinate index or
-/// ordinal offset. Finally, it can be used to convert coordinate indices to
-/// ordinal offsets and vice versa.
+/// This object is a range of integers on a \f$ n \f$-dimensional,
+/// hyperrectangular domain, where _rank_ (aka order, number of dimensions)
+/// \f$ n>0 \f$. It is fully specified by its lower and upper bounds. It also
+/// provides zero-cost access to
+///  _extent_ (size) and _stride_ for
+/// each _mode_ (dimension). Range is a _regular_ type with null default state.
+/// \warning Range is with rank 0 is _null_, i.e. invalid. There are many
+/// reasons that rank-0 Range is not supported; summarily, rank-0 Range is not a
+/// special case of rank-\f$ n \f$ Range as many invariants of nonzero-rank
+/// Range are not observed by it. E.g. for any nonempty nonzero-rank Range the
+/// lower bound differs from its upper bound. To define the 0-dimensional limit
+/// of array/tensor to be a scalar, the volume of rank-0 Range should be 1, but
+/// clearly its lower and upper bounds are equal.
 class Range {
  public:
   typedef Range Range_;                ///< This object type
@@ -355,8 +361,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(lower_bound, upper_bound);
-    } else  // rank-0 Range has unit volume
-      volume_ = 1;
+    }  // rank-0 Range is null
   }
 
   // clang-format off
@@ -390,8 +395,7 @@ class Range {
     rank_ = n;
     if (n) {
       init_range_data(lower_bound, upper_bound);
-    } else  // rank-0 Range has unit volume
-      volume_ = 1;
+    }  // rank-0 Range is null
   }
 
   /// Range constructor from a range of extents
@@ -415,8 +419,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(extent);
-    } else  // rank-0 Range has unit volume
-      volume_ = 1;
+    }  // rank-0 Range is null
   }
 
   /// Range constructor from an initializer list of extents
@@ -439,8 +442,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(extent);
-    } else  // rank=0 Range has unit volume
-      volume_ = 1;
+    }  // rank-0 Range is null
   }
 
   // clang-format off
@@ -482,8 +484,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    } else  // rank=0 Range has unit volume
-      volume_ = 1;
+    }  // rank-0 Range is null
   }
 
   // clang-format off
@@ -514,8 +515,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    } else  // rank=0 Range has unit volume
-      volume_ = 1;
+    }  // rank-0 Range is null
   }
 
   // clang-format off
@@ -548,8 +548,7 @@ class Range {
       init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    } else  // rank=0 Range has unit volume
-      volume_ = 1;
+    }  // rank-0 Range is null
   }
 
   /// Range constructor from a pack of extents for each dimension

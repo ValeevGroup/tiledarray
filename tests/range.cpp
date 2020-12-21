@@ -102,25 +102,25 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_CHECK(r00.stride_data() == r00.lobound_data());
   BOOST_CHECK_EQUAL(r00.volume(), 0ul);
 
-  // Rank-0 Range != null Range
+  // Rank-0 Range *IS* null Range
   BOOST_REQUIRE_NO_THROW(Range r1(std::vector<int>{}));
   Range r1(std::vector<int>{});
-  BOOST_CHECK(r1);
+  BOOST_CHECK(!r1);
   BOOST_CHECK_EQUAL(r1.rank(), 0u);
   BOOST_CHECK(r1.upbound_data() == r1.lobound_data());
   BOOST_CHECK(r1.extent_data() == r1.lobound_data());
   BOOST_CHECK(r1.stride_data() == r1.lobound_data());
-  BOOST_CHECK_EQUAL(r1.volume(), 1ul);
+  BOOST_CHECK_EQUAL(r1.volume(), 0ul);
 
-  // another Rank-0 Range
+  // another way to make Rank-0 Range
   BOOST_CHECK_NO_THROW(Range r11(std::vector<int>{}, std::vector<int>{}));
   Range r11(std::vector<int>{}, std::vector<int>{});
-  BOOST_CHECK(r11);
+  BOOST_CHECK(!r11);
   BOOST_CHECK_EQUAL(r11.rank(), 0u);
   BOOST_CHECK(r11.upbound_data() == r11.lobound_data());
   BOOST_CHECK(r11.extent_data() == r11.lobound_data());
   BOOST_CHECK(r11.stride_data() == r11.lobound_data());
-  BOOST_CHECK_EQUAL(r11.volume(), 1ul);
+  BOOST_CHECK_EQUAL(r11.volume(), 0ul);
 
   index f2 = finish;
   for (std::size_t i = 0; i < f2.size(); ++i) f2[i] += p2[i];
