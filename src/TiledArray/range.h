@@ -66,15 +66,15 @@ class Range {
   static_assert(detail::is_range_v<index_type>);  // index is a Range
 
  protected:
+  /// A vector that holds the dimension information of the
+  /// range. Its layout:
+  /// \code
+  /// { lobound[0], ..., lobound[rank_ - 1],
+  ///   upbound[0], ..., upbound[rank_ - 1],
+  ///   extent[0],  ..., extent[rank_ - 1],
+  ///   stride[0],  ..., stride[rank_ - 1] }
+  /// \endcode
   container::svector<index1_type, 4 * TA_MAX_SOO_RANK_METADATA> datavec_;
-  ///< An array that holds the dimension information of the
-  ///< range. The layout of the array is:
-  ///< \code
-  ///< { lobound[0], ..., lobound[rank_ - 1],
-  ///<   upbound[0], ..., upbound[rank_ - 1],
-  ///<   extent[0],  ..., extent[rank_ - 1],
-  ///<   stride[0],  ..., stride[rank_ - 1] }
-  ///< \endcode
   distance_type offset_ = 0l;  ///< Ordinal index offset correction
   ordinal_type volume_ = 0ul;  ///< Total number of elements
   unsigned int rank_ = 0u;  ///< The rank (or number of dimensions) in the range
@@ -592,7 +592,7 @@ class Range {
         volume_(other.volume_),
         rank_(other.rank_) {}
 
-  /// Copy Constructor
+  /// Move Constructor
 
   /// \param other The range to be copied
   Range(Range_&& other)
