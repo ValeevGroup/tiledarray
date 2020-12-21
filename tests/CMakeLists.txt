@@ -60,7 +60,7 @@ set(ta_test_src_files  ta_test.cpp
     cyclic_pmap.cpp
     replicated_pmap.cpp
     dense_shape.cpp
-    #sparse_shape.cpp
+    sparse_shape.cpp
     distributed_storage.cpp
     tensor_impl.cpp
     array_impl.cpp
@@ -143,9 +143,10 @@ target_include_directories(${executable} PRIVATE
     )
 # unit tests
 # 1. should disable error messages
-# 2. must emit exceptions in asserts since some tests check for exceptions
+# N.B. used to manually define TA_EXCEPTION_ERROR here; since some code is now compiled (rather than is header-only) it
+#      is too late to do this here; must set TA_ERROR=throw if want to run unit tests
 target_compile_definitions(${executable} PRIVATE TILEDARRAY_NO_USER_ERROR_MESSAGES=1
-    TA_EXCEPTION_ERROR=1 MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
+    MADNESS_DISPLAY_EXCEPTION_BREAK_MESSAGE=0)
 # optional dependencies
 if (TARGET range-v3::range-v3)
   target_link_libraries(${executable} PRIVATE range-v3::range-v3)

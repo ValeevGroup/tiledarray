@@ -262,11 +262,15 @@ check_type_size("long long" TILEDARRAY_HAS_LONG_LONG LANGUAGE CXX)
 # convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
 ##########################
 set (TA_DEFAULT_ERROR 3)  # default is to abort so that it works with or without NDEBUG
-                          # assert when CMAKE_BUILD_TYPE is Debug or RelWithDebugUnfo
+                          # assert when CMAKE_BUILD_TYPE is Debug or RelWithDebInfo
 string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
 if (CMAKE_BUILD_TYPE AND uppercase_CMAKE_BUILD_TYPE MATCHES "^(DEBUG|RELWITHDEBINFO)$")
   set (TA_DEFAULT_ERROR 2)
 endif()
+# if building unit tests default to throw to be able to test TA_ASSERT statements
+if (TA_BUILD_UNITTEST)
+  set (TA_DEFAULT_ERROR 1)
+endif(TA_BUILD_UNITTEST)
 
 if (TA_ERROR STREQUAL none)
   set (TA_DEFAULT_ERROR 0)
