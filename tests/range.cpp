@@ -346,6 +346,25 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_CHECK_EQUAL(r4.volume(), volume);
 }
 
+BOOST_AUTO_TEST_CASE(move_constructor) {
+  Range r_copy(r);
+  Range x(std::move(r_copy));
+
+  // Check that the data in x matches that of r.
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.lobound_data(), x.lobound_data() + x.rank(),
+                                r.lobound_data(), r.lobound_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.upbound_data(), x.upbound_data() + x.rank(),
+                                r.upbound_data(), r.upbound_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.extent_data(), x.extent_data() + x.rank(),
+                                r.extent_data(), r.extent_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.stride_data(), x.stride_data() + x.rank(),
+                                r.stride_data(), r.stride_data() + r.rank());
+  BOOST_CHECK_EQUAL(x.volume(), r.volume());
+
+  // moved-from object is null
+  BOOST_CHECK(!r_copy);
+}
+
 BOOST_AUTO_TEST_CASE(assignment_operator) {
   Range x;
   x = r;
@@ -360,6 +379,26 @@ BOOST_AUTO_TEST_CASE(assignment_operator) {
   BOOST_CHECK_EQUAL_COLLECTIONS(x.stride_data(), x.stride_data() + x.rank(),
                                 r.stride_data(), r.stride_data() + r.rank());
   BOOST_CHECK_EQUAL(x.volume(), r.volume());
+}
+
+BOOST_AUTO_TEST_CASE(move_assignment_operator) {
+  Range r_copy(r);
+  Range x;
+  x = std::move(r_copy);
+
+  // Check that the data in x matches that of r.
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.lobound_data(), x.lobound_data() + x.rank(),
+                                r.lobound_data(), r.lobound_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.upbound_data(), x.upbound_data() + x.rank(),
+                                r.upbound_data(), r.upbound_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.extent_data(), x.extent_data() + x.rank(),
+                                r.extent_data(), r.extent_data() + r.rank());
+  BOOST_CHECK_EQUAL_COLLECTIONS(x.stride_data(), x.stride_data() + x.rank(),
+                                r.stride_data(), r.stride_data() + r.rank());
+  BOOST_CHECK_EQUAL(x.volume(), r.volume());
+
+  // moved-from object is null
+  BOOST_CHECK(!r_copy);
 }
 
 BOOST_AUTO_TEST_CASE(ostream) {
