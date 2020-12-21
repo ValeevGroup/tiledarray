@@ -133,6 +133,9 @@ option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or 
 option(TA_SIGNED_1INDEX_TYPE "Enables the use of signed 1-index coordinate type (OFF in 1.0.0-alpha.2 and older)" ON)
 add_feature_info(SIGNED_1INDEX_TYPE TA_SIGNED_1INDEX_TYPE "Use of signed 1-index coordinate type in TiledArray")
 
+# define this as needed
+set(TA_MAX_SOO_RANK_METADATA 8 CACHE STRING "Specifies the max rank for which small object optimization will be used (hence, heap use avoided) for metadata objects")
+
 option(TA_TRACE_TASKS "Enable debug tracing of MADNESS tasks in (some components of) TiledArray" OFF)
 add_feature_info(TASK_TRACE_DEBUG TA_TRACE_TASKS "Debug tracing of MADNESS tasks in (some components of) TiledArray")
 set(TILEDARRAY_ENABLE_TASK_DEBUG_TRACE ${TA_TRACE_TASKS})

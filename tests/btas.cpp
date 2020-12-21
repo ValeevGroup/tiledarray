@@ -232,6 +232,18 @@ BTASFixture::TArrayDB0& BTASFixture::array<BTASFixture::TArrayDB0>(size_t idx) {
 
 BOOST_FIXTURE_TEST_SUITE(btas_suite, BTASFixture)
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(tensor_ctor, Tensor, tensor_types) {
+  BOOST_REQUIRE_NO_THROW(Tensor{});
+  Tensor t0;
+  BOOST_CHECK(t0.empty());
+
+  // copy of empty Tensor should be empty ... this makes sure that Tensor's
+  // range treats rank 0 as null state, not as rank-0 state with volume 1
+  BOOST_REQUIRE_NO_THROW(Tensor t1 = t0);
+  Tensor t1 = t0;
+  BOOST_CHECK(t1.empty());
+}
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(copy, Array, array_types) {
   const auto& a = array<Array>(0);
   TArrayD b;
