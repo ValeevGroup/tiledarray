@@ -325,10 +325,10 @@ inline constexpr bool empty() { return true; }
 /// \tparam Ts The remaining tensor types
 /// \param tensor1 The first tensor to test
 /// \param tensors The remaining tensors to test
-/// \return \c true if one or more tensors are empty
+/// \return \c true if one _or_ more tensors are empty
 template <typename T1, typename... Ts>
 inline bool empty(const T1& tensor1, const Ts&... tensors) {
-  return tensor1.empty() && empty(tensors...);
+  return tensor1.empty() || empty(tensors...);
 }
 
 }  // namespace detail
