@@ -28,15 +28,21 @@
 namespace TiledArray {
 
 /// \brief A (hyperrectangular) interval on \f$ Z^n \f$, space of integer
-/// n-indices
+/// \f$ n \f$-indices
 
-/// This object represents an n-dimensional, hyperrectangular array
-/// of integers. It provides information on the rank (number of dimensions),
-/// (nonnegative) lower bound, upper bound, extent (size), and stride of
-/// each dimension. It can also be used to
-/// test if an element is included in the range with a coordinate index or
-/// ordinal offset. Finally, it can be used to convert coordinate indices to
-/// ordinal offsets and vice versa.
+/// This object is a range of integers on a \f$ n \f$-dimensional,
+/// hyperrectangular domain, where _rank_ (aka order, number of dimensions)
+/// \f$ n>0 \f$. It is fully specified by its lower and upper bounds. It also
+/// provides zero-cost access to
+///  _extent_ (size) and _stride_ for
+/// each _mode_ (dimension). Range is a _regular_ type with null default state.
+/// \warning Range is with rank 0 is _null_, i.e. invalid. There are many
+/// reasons that rank-0 Range is not supported; summarily, rank-0 Range is not a
+/// special case of rank-\f$ n \f$ Range as many invariants of nonzero-rank
+/// Range are not observed by it. E.g. for any nonempty nonzero-rank Range the
+/// lower bound differs from its upper bound. To define the 0-dimensional limit
+/// of array/tensor to be a scalar, the volume of rank-0 Range should be 1, but
+/// clearly its lower and upper bounds are equal.
 class Range {
  public:
   typedef Range Range_;                ///< This object type
@@ -60,18 +66,27 @@ class Range {
   static_assert(detail::is_range_v<index_type>);  // index is a Range
 
  protected:
-  index1_type* data_ = nullptr;
-  ///< An array that holds the dimension information of the
-  ///< range. The layout of the array is:
-  ///< \code
-  ///< { lobound[0], ..., lobound[rank_ - 1],
-  ///<   upbound[0], ..., upbound[rank_ - 1],
-  ///<   extent[0],  ..., extent[rank_ - 1],
-  ///<   stride[0],  ..., stride[rank_ - 1] }
-  ///< \endcode
+  /// A vector that holds the dimension information of the
+  /// range. Its layout:
+  /// \code
+  /// { lobound[0], ..., lobound[rank_ - 1],
+  ///   upbound[0], ..., upbound[rank_ - 1],
+  ///   extent[0],  ..., extent[rank_ - 1],
+  ///   stride[0],  ..., stride[rank_ - 1] }
+  /// \endcode
+  container::svector<index1_type, 4 * TA_MAX_SOO_RANK_METADATA> datavec_;
   distance_type offset_ = 0l;  ///< Ordinal index offset correction
   ordinal_type volume_ = 0ul;  ///< Total number of elements
   unsigned int rank_ = 0u;  ///< The rank (or number of dimensions) in the range
+
+  void init_datavec(unsigned int rank) { datavec_.resize(rank << 2); }
+  const index1_type* data() const { return datavec_.data(); }
+  index1_type* data() { return datavec_.data(); }
+
+  index1_type* lobound_data_nc() { return data(); }
+  index1_type* upbound_data_nc() { return data() + rank_; }
+  index1_type* extent_data_nc() { return data() + (rank_ << 1); }
+  index1_type* stride_data_nc() { return extent_data_nc() + rank_; }
 
  private:
   /// Initialize range data from sequences of lower and upper bounds
@@ -81,15 +96,15 @@ class Range {
   /// \param lower_bound The lower bound of the range
   /// \param upper_bound The upper bound of the range
   /// \pre Assume \c rank_ is initialized to the rank of the range and
-  /// \c data_ has been allocated to hold 4*rank_ elements
-  /// \post \c data_ and \c volume_ are initialized with range dimension
+  /// \c datavec_ has been allocated to hold 4*rank_ elements
+  /// \post \c datavec_ and \c volume_ are initialized with range dimension
   /// information.
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
                                         detail::is_integral_range_v<Index2>>>
   void init_range_data(const Index1& lower_bound, const Index2& upper_bound) {
     // Construct temp pointers
-    auto* MADNESS_RESTRICT const lower = data_;
+    auto* MADNESS_RESTRICT const lower = data();
     auto* MADNESS_RESTRICT const upper = lower + rank_;
     auto* MADNESS_RESTRICT const extent = upper + rank_;
     auto* MADNESS_RESTRICT const stride = extent + rank_;
@@ -136,15 +151,15 @@ class Range {
   /// \tparam PairRange Type representing a range of generalized pairs (see TiledArray::detail::is_gpair_v )
   /// \param bounds The {lower,upper} bound of the range for each dimension
   /// \pre Assume \c rank_ is initialized to the rank of the range and
-  /// \c data_ has been allocated to hold 4*rank_ elements
-  /// \post \c data_ and \c volume_ are initialized with range dimension
+  /// \c datavec_ has been allocated to hold 4*rank_ elements
+  /// \post \c datavec_ and \c volume_ are initialized with range dimension
   /// information.
   // clang-format on
   template <typename PairRange,
             typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
   void init_range_data(const PairRange& bounds) {
     // Construct temp pointers
-    auto* MADNESS_RESTRICT const lower = data_;
+    auto* MADNESS_RESTRICT const lower = data();
     auto* MADNESS_RESTRICT const upper = lower + rank_;
     auto* MADNESS_RESTRICT const extent = upper + rank_;
     auto* MADNESS_RESTRICT const stride = extent + rank_;
@@ -178,14 +193,14 @@ class Range {
   /// \tparam Index An integral range type
   /// \param extents A sequence of extents for each dimension
   /// \pre Assume \c rank_ is initialized to the rank of the range and
-  /// \c data_ has been allocated to hold 4*rank_ elements
-  /// \post \c data_ and \c volume_ are initialized with range dimension
+  /// \c datavec_ has been allocated to hold 4*rank_ elements
+  /// \post \c datavec_ and \c volume_ are initialized with range dimension
   /// information.
   template <typename Index, typename std::enable_if_t<
                                 detail::is_integral_range_v<Index>>* = nullptr>
   void init_range_data(const Index& extents) {
     // Construct temp pointers
-    auto* MADNESS_RESTRICT const lower = data_;
+    auto* MADNESS_RESTRICT const lower = data();
     auto* MADNESS_RESTRICT const upper = lower + rank_;
     auto* MADNESS_RESTRICT const extent = upper + rank_;
     auto* MADNESS_RESTRICT const stride = extent + rank_;
@@ -217,8 +232,8 @@ class Range {
   /// \tparam Indices A pack of integral types
   /// \param extents A tuple of extents for each dimension
   /// \pre Assume \c rank_ is initialized to the rank of the range and
-  /// \c data_ has been allocated to hold 4*rank_ elements
-  /// \post \c data_ and \c volume_ are initialized with range dimension
+  /// \c datavec_ has been allocated to hold 4*rank_ elements
+  /// \post \c datavec_ and \c volume_ are initialized with range dimension
   /// information.
   template <typename... Indices,
             typename std::enable_if<
@@ -248,7 +263,7 @@ class Range {
     // Get extent i
     const auto extent_i = std::get<I>(extents);
 
-    auto* MADNESS_RESTRICT const lower = data_;
+    auto* MADNESS_RESTRICT const lower = data();
     auto* MADNESS_RESTRICT const upper = lower + rank_;
     auto* MADNESS_RESTRICT const extent = upper + rank_;
     auto* MADNESS_RESTRICT const stride = extent + rank_;
@@ -267,8 +282,8 @@ class Range {
   /// \param other_lower_bound The lower bound of the unpermuted range
   /// \param other_upper_bound The upper bound of the unpermuted range
   /// \pre Assume \c rank_ is initialized to the rank of the range and
-  /// \c data_ has been allocated to hold 4*rank_ elements
-  /// \post \c data_, \c offset_, and \c volume_ are initialized with the
+  /// \c datavec_ has been allocated to hold 4*rank_ elements
+  /// \post \c datavec_, \c offset_, and \c volume_ are initialized with the
   /// permuted range dimension information from \c other_lower_bound and
   /// \c other_upper_bound.
   void init_range_data(
@@ -276,7 +291,7 @@ class Range {
       const index1_type* MADNESS_RESTRICT const other_lower_bound,
       const index1_type* MADNESS_RESTRICT const other_upper_bound) {
     // Create temporary pointers to this range data
-    auto* MADNESS_RESTRICT const lower = data_;
+    auto* MADNESS_RESTRICT const lower = data();
     auto* MADNESS_RESTRICT const upper = lower + rank_;
     auto* MADNESS_RESTRICT const extent = upper + rank_;
     auto* MADNESS_RESTRICT const stride = extent + rank_;
@@ -311,7 +326,7 @@ class Range {
  public:
   /// Default constructor
 
-  /// Construct a range that has zero rank, volume, and size.
+  /// Constructs a null range, i.e., it has zero volume and rank.
   Range() {}
 
   /// Construct range defined by upper and lower bound ranges
@@ -343,10 +358,10 @@ class Range {
     TA_ASSERT(n == size(upper_bound));
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(lower_bound, upper_bound);
-    }
+    }  // rank-0 Range is null
   }
 
   // clang-format off
@@ -376,12 +391,11 @@ class Range {
     using std::size;
     const auto n = size(lower_bound);
     TA_ASSERT(n == size(upper_bound));
+    init_datavec(n);
+    rank_ = n;
     if (n) {
-      // Initialize array memory
-      data_ = new index1_type[n << 2];
-      rank_ = n;
       init_range_data(lower_bound, upper_bound);
-    }
+    }  // rank-0 Range is null
   }
 
   /// Range constructor from a range of extents
@@ -402,10 +416,10 @@ class Range {
     const auto n = size(extent);
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(extent);
-    }
+    }  // rank-0 Range is null
   }
 
   /// Range constructor from an initializer list of extents
@@ -425,10 +439,10 @@ class Range {
     const auto n = size(extent);
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(extent);
-    }
+    }  // rank-0 Range is null
   }
 
   // clang-format off
@@ -467,10 +481,10 @@ class Range {
     const auto n = std::size(bounds);
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    }
+    }  // rank-0 Range is null
   }
 
   // clang-format off
@@ -498,10 +512,10 @@ class Range {
     const auto n = size(bounds);
     if (n) {
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    }
+    }  // rank-0 Range is null
   }
 
   // clang-format off
@@ -531,10 +545,10 @@ class Range {
       }
 #endif
       // Initialize array memory
-      data_ = new index1_type[n << 2];
+      init_datavec(n);
       rank_ = n;
       init_range_data(bounds);
-    }
+    }  // rank-0 Range is null
   }
 
   /// Range constructor from a pack of extents for each dimension
@@ -572,25 +586,19 @@ class Range {
   /// Copy Constructor
 
   /// \param other The range to be copied
-  Range(const Range_& other) {
-    if (other.rank_ > 0ul) {
-      data_ = new index1_type[other.rank_ << 2];
-      offset_ = other.offset_;
-      volume_ = other.volume_;
-      rank_ = other.rank_;
-      memcpy(data_, other.data_, (sizeof(index1_type) << 2) * other.rank_);
-    }
-  }
+  Range(const Range_& other) = default;
 
-  /// Copy Constructor
+  /// Move Constructor
 
   /// \param other The range to be copied
   Range(Range_&& other)
-      : data_(other.data_),
+      : datavec_(std::move(other.datavec_)),
         offset_(other.offset_),
         volume_(other.volume_),
         rank_(other.rank_) {
-    other.data_ = nullptr;
+    // put other into null state
+    other.datavec_.clear();
+    other.datavec_.shrink_to_fit();
     other.offset_ = 0ul;
     other.volume_ = 0ul;
     other.rank_ = 0u;
@@ -604,39 +612,29 @@ class Range {
     TA_ASSERT(perm.size() == other.rank_);
 
     if (other.rank_ > 0ul) {
-      data_ = new index1_type[other.rank_ << 2];
       rank_ = other.rank_;
 
       if (perm) {
+        init_datavec(other.rank_);
         init_range_data(perm, other.lobound_data(), other.upbound_data());
       } else {
         // Simple copy will do
-        memcpy(data_, other.data_, (sizeof(index1_type) << 2) * rank_);
+        datavec_ = other.datavec_;
         offset_ = other.offset_;
         volume_ = other.volume_;
       }
-    }
+    } else  // handle null and rank-0 case
+      volume_ = other.volume_;
   }
 
   /// Destructor
-  ~Range() { delete[] data_; }
+  ~Range() = default;
 
   /// Copy assignment operator
 
   /// \param other The range to be copied
   /// \return A reference to this object
-  Range_& operator=(const Range_& other) {
-    if (rank_ != other.rank_) {
-      delete[] data_;
-      data_ = (other.rank_ > 0ul ? new index1_type[other.rank_ << 2] : nullptr);
-      rank_ = other.rank_;
-    }
-    memcpy(data_, other.data_, (sizeof(index1_type) << 2) * rank_);
-    offset_ = other.offset_;
-    volume_ = other.volume_;
-
-    return *this;
-  }
+  Range_& operator=(const Range_& other) = default;
 
   /// Move assignment operator
 
@@ -644,18 +642,25 @@ class Range {
   /// \return A reference to this object
   /// \throw nothing
   Range_& operator=(Range_&& other) {
-    data_ = other.data_;
+    datavec_ = std::move(other.datavec_);
     offset_ = other.offset_;
     volume_ = other.volume_;
     rank_ = other.rank_;
 
-    other.data_ = nullptr;
+    // put other into null state
+    other.datavec_.clear();
+    other.datavec_.shrink_to_fit();
     other.offset_ = 0l;
     other.volume_ = 0ul;
     other.rank_ = 0u;
 
     return *this;
   }
+
+  /// Conversion to bool
+
+  /// \return false if is null state, i.e. \c this->volume()==0
+  explicit operator bool() const { return volume() != 0; }
 
   /// Rank accessor
 
@@ -675,8 +680,9 @@ class Range {
   /// Range lower bound data accessor
 
   /// \return A pointer to the lower bound data (see Range::lobound() )
+  /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
-  const index1_type* lobound_data() const { return data_; }
+  const index1_type* lobound_data() const { return data(); }
 
   /// Range lower bound accessor
 
@@ -699,8 +705,9 @@ class Range {
   /// Range upper bound data accessor
 
   /// \return A pointer to the upper bound data (see Range::upbound() )
+  /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
-  const index1_type* upbound_data() const { return data_ + rank_; }
+  const index1_type* upbound_data() const { return data() + rank_; }
 
   /// Range upper bound accessor
 
@@ -723,8 +730,9 @@ class Range {
   /// Range extent data accessor
 
   /// \return A pointer to the extent data (see Range::extent() )
+  /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
-  const index1_type* extent_data() const { return data_ + (rank_ + rank_); }
+  const index1_type* extent_data() const { return data() + (rank_ << 1); }
 
   /// Range extent accessor
 
@@ -746,10 +754,9 @@ class Range {
   /// Range stride data accessor
 
   /// \return A pointer to the stride data (see Range::stride() )
+  /// \note Not necessarily nullptr for rank-0 or null Range
   /// \throw nothing
-  const index1_type* stride_data() const {
-    return data_ + (rank_ + rank_ + rank_);
-  }
+  const index1_type* stride_data() const { return extent_data() + rank_; }
 
   /// Range stride accessor
 
@@ -771,8 +778,8 @@ class Range {
 
   /// Range volume accessor
 
-  /// \return The total number of elements in the range.
-  /// \throw nothing
+  /// \return The total number of elements in the range, or 0 if this is a null
+  /// Range \throw nothing
   ordinal_type volume() const { return volume_; }
 
   /// alias to volume() to conform to the TWG specification
@@ -794,7 +801,7 @@ class Range {
   /// \return An iterator that holds the lower bound index of a tensor (unless
   /// it has zero volume, then it returns same result as end()) \throw nothing
   const_iterator begin() const {
-    return (volume_ > 0) ? const_iterator(data_, this) : end();
+    return (volume_ > 0) ? const_iterator(lobound_data(), this) : end();
   }
 
   /// Index iterator factory
@@ -803,7 +810,7 @@ class Range {
   /// the data layout of a row-major tensor.
   /// \return An iterator that holds the upper bound element index of a tensor
   /// \throw nothing
-  const_iterator end() const { return const_iterator(data_ + rank_, this); }
+  const_iterator end() const { return const_iterator(upbound_data(), this); }
 
   /// Check the coordinate to make sure it is within the range.
 
@@ -817,8 +824,8 @@ class Range {
             typename std::enable_if<detail::is_integral_range_v<Index>,
                                     bool>::type* = nullptr>
   bool includes(const Index& index) const {
-    const auto* MADNESS_RESTRICT const lower = data_;
-    const auto* MADNESS_RESTRICT const upper = lower + rank_;
+    const auto* MADNESS_RESTRICT const lower = lobound_data();
+    const auto* MADNESS_RESTRICT const upper = upbound_data();
 
     bool result = (rank_ > 0u);
     unsigned int d = 0;
@@ -903,8 +910,7 @@ class Range {
 
     // Reallocate memory for range arrays
     if (rank_ != n) {
-      delete[] data_;
-      data_ = (n > 0ul ? new index1_type[n << 2] : nullptr);
+      init_datavec(n);
       rank_ = n;
     }
     if (n > 0ul)
@@ -923,8 +929,8 @@ class Range {
   template <typename Index,
             typename = std::enable_if_t<detail::is_integral_range_v<Index>>>
   Range_& inplace_shift(const Index& bound_shift) {
-    auto* MADNESS_RESTRICT const lower = data_;
-    auto* MADNESS_RESTRICT const upper = data_ + rank_;
+    auto* MADNESS_RESTRICT const lower = lobound_data_nc();
+    auto* MADNESS_RESTRICT const upper = upbound_data_nc();
     const auto* MADNESS_RESTRICT const stride = upper + rank_ + rank_;
 
     // update the data
@@ -1014,7 +1020,7 @@ class Range {
   ordinal_type ordinal(const Index& index) const {
     TA_ASSERT(includes(index));
 
-    auto* MADNESS_RESTRICT const stride = data_ + rank_ + rank_ + rank_;
+    auto* MADNESS_RESTRICT const stride = stride_data();
 
     ordinal_type result = 0ul;
     unsigned int d = 0;
@@ -1075,8 +1081,8 @@ class Range {
 
     // Get pointers to the data
     auto* MADNESS_RESTRICT const result_data = result.data();
-    const auto* MADNESS_RESTRICT const lower = data_;
-    const auto* MADNESS_RESTRICT const size = data_ + rank_ + rank_;
+    const auto* MADNESS_RESTRICT const lower = lobound_data();
+    const auto* MADNESS_RESTRICT const size = extent_data();
 
     // Compute the coordinate index of index in range.
     for (int i = int(rank_) - 1; i >= 0; --i) {
@@ -1108,36 +1114,14 @@ class Range {
     return i;
   }
 
-  template <typename Archive,
-            typename std::enable_if<madness::archive::is_input_archive<
-                Archive>::value>::type* = nullptr>
-  void serialize(const Archive& ar) {
-    // Get rank
-    unsigned int rank = 0ul;
-    ar& rank;
-
-    // Reallocate the array
-    const unsigned int four_x_rank = rank << 2;
-    if (rank_ != rank) {
-      delete[] data_;
-      data_ = (rank > 0u ? new index1_type[four_x_rank] : nullptr);
-      rank_ = rank;
-    }
-
-    // Get range data
-    ar& madness::archive::wrap(data_, four_x_rank) & offset_& volume_;
-  }
-
-  template <typename Archive,
-            typename std::enable_if<madness::archive::is_output_archive<
-                Archive>::value>::type* = nullptr>
-  void serialize(const Archive& ar) const {
-    ar& rank_& madness::archive::wrap(data_, rank_ << 2) & offset_& volume_;
+  template <typename Archive>
+  void serialize(Archive& ar) {
+    ar& rank_& datavec_& offset_& volume_;
   }
 
   void swap(Range_& other) {
     // Get temp data
-    std::swap(data_, other.data_);
+    std::swap(datavec_, other.datavec_);
     std::swap(offset_, other.offset_);
     std::swap(volume_, other.volume_);
     std::swap(rank_, other.rank_);
@@ -1178,8 +1162,8 @@ class Range {
   void increment(index_type& i) const {
     TA_ASSERT(includes(i));
 
-    const auto* MADNESS_RESTRICT const lower = data_;
-    const auto* MADNESS_RESTRICT const upper = data_ + rank_;
+    const auto* MADNESS_RESTRICT const lower = lobound_data();
+    const auto* MADNESS_RESTRICT const upper = upbound_data();
 
     for (int d = int(rank_) - 1; d >= 0; --d) {
       // increment coordinate
@@ -1233,14 +1217,12 @@ inline Range& Range::operator*=(const Permutation& perm) {
   TA_ASSERT(perm.size() == rank_);
   if (rank_ > 1ul) {
     // Copy the lower and upper bound data into a temporary array
-    auto* MADNESS_RESTRICT const temp_lower = new index1_type[rank_ << 1];
-    const auto* MADNESS_RESTRICT const temp_upper = temp_lower + rank_;
-    std::memcpy(temp_lower, data_, (sizeof(index1_type) << 1) * rank_);
+    container::svector<index1_type, 2 * TA_MAX_SOO_RANK_METADATA> temp_lower(
+        rank_ << 1);
+    const auto* MADNESS_RESTRICT const temp_upper = temp_lower.data() + rank_;
+    std::copy(lobound_data(), lobound_data() + (rank_ << 1), temp_lower.data());
 
-    init_range_data(perm, temp_lower, temp_upper);
-
-    // Cleanup old memory.
-    delete[] temp_lower;
+    init_range_data(perm, temp_lower.data(), temp_upper);
   }
   return *this;
 }

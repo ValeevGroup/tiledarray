@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_UTIL_VECTOR_H
 #define TILEDARRAY_UTIL_VECTOR_H
 
+#include "TiledArray/config.h"
 #include <boost/container/small_vector.hpp>
 #include <vector>
 
@@ -38,7 +39,7 @@ namespace container {
 
 template <typename T>
 using vector = std::vector<T>;
-template <typename T, std::size_t N = 8>
+template <typename T, std::size_t N = TA_MAX_SOO_RANK_METADATA>
 using svector = boost::container::small_vector<T, N>;
 
 template <typename Range>
