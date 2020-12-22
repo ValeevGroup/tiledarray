@@ -1595,7 +1595,7 @@ inline std::ostream& operator<<(std::ostream& os,
                                 const DistArray<Tile, Policy>& a) {
   if (a.world().rank() == 0) {
     for (std::size_t i = 0; i < a.size(); ++i)
-      if (!a.is_zero(i)) {
+      if (a.is_local(i) && !a.is_zero(i)) {
         const typename DistArray<Tile, Policy>::value_type tile =
             a.find(i).get();
         os << i << ": " << tile << "\n";
