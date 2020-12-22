@@ -391,7 +391,7 @@ int main(int argc, char** argv) {
 
   start = madness::wall_time();
   for (std::size_t r = 0ul; r < repeat; ++r) {
-    TiledArray::blas::scale(n, 3.0, c);
+    TiledArray::math::blas::scale(n, 3.0, c);
   }
   stop = madness::wall_time();
 

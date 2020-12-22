@@ -24,8 +24,8 @@
 #ifndef TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
 #define TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
 
-#include <TiledArray/math/blas.h>
 #include <TiledArray/cuda/cublas.h>
+#include <TiledArray/math/blas.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
@@ -69,9 +69,9 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
 
   // Get the leading dimension for left and right matrices.
   const integer lda =
-      (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
   const integer ldb =
-      (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
 
   T factor_t = T(factor);
   T zero(0);
@@ -217,9 +217,9 @@ void btas_tensor_gemm_cuda_impl(
 
   // Get the leading dimension for left and right matrices.
   const integer lda =
-      (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
   const integer ldb =
-      (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
 
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
   auto &cuda_stream = detail::get_stream_based_on_range(result.range());

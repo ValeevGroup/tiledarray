@@ -76,17 +76,16 @@ class cuBLASHandlePool {
 };
 // thread_local cublasHandle_t *cuBLASHandlePool::handle_;
 
-inline cublasOperation_t to_cublas_op(
-    madness::cblas::CBLAS_TRANSPOSE cblas_op) {
+inline cublasOperation_t to_cublas_op(math::blas::Op cblas_op) {
   cublasOperation_t result{};
   switch (cblas_op) {
-    case madness::cblas::NoTrans:
+    case math::blas::Op::NoTrans:
       result = CUBLAS_OP_N;
       break;
-    case madness::cblas::Trans:
+    case math::blas::Op::Trans:
       result = CUBLAS_OP_T;
       break;
-    case madness::cblas::ConjTrans:
+    case math::blas::Op::ConjTrans:
       result = CUBLAS_OP_C;
       break;
   }

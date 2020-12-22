@@ -45,7 +45,6 @@
 #include <umpire/strategy/ThreadSafeAllocator.hpp>
 
 #include <TiledArray/external/madness.h>
-#include <madness/tensor/cblas.h>
 #include <madness/world/print.h>
 #include <madness/world/safempi.h>
 #include <madness/world/thread.h>

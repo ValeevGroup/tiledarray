@@ -20,10 +20,10 @@ namespace non_dist = TA::math::linalg::non_distributed;
 #if TILEDARRAY_HAS_SCALAPACK
 namespace scalapack = TA::math::linalg::scalapack;
 #include "TiledArray/math/linalg/scalapack/all.h"
-#define TILEDARRAY_SCALAPACK_TEST(F, E)                         \
-  GlobalFixture::world->gop.fence();                            \
+#define TILEDARRAY_SCALAPACK_TEST(F, E)                           \
+  GlobalFixture::world->gop.fence();                              \
   compare("TiledArray::scalapack", non_dist::F, scalapack::F, E); \
-  GlobalFixture::world->gop.fence();                            \
+  GlobalFixture::world->gop.fence();                              \
   compare("TiledArray", non_dist::F, TiledArray::F, E);
 #else
 #define TILEDARRAY_SCALAPACK_TEST(...)
@@ -614,7 +614,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
 
   BOOST_CHECK_SMALL(norm, epsilon);
 
-  //TILEDARRAY_SCALAPACK_TEST(cholesky_linv<true>(A), epsilon);
+  // TILEDARRAY_SCALAPACK_TEST(cholesky_linv<true>(A), epsilon);
 
   GlobalFixture::world->gop.fence();
 }
@@ -668,13 +668,13 @@ BOOST_AUTO_TEST_CASE(cholesky_lsolve) {
       });
 
   // Should produce X = L**H
-  auto [L, X] = non_dist::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
+  auto [L, X] = non_dist::cholesky_lsolve(TA::NoTranspose, A, A);
   BOOST_CHECK(X.trange() == A.trange());
   BOOST_CHECK(L.trange() == A.trange());
 
   // first, test against NON_DIST
   auto [L_non_dist, X_non_dist] =
-      non_dist::cholesky_lsolve(TA::TransposeFlag::NoTranspose, A, A);
+      non_dist::cholesky_lsolve(TA::NoTranspose, A, A);
   decltype(L) L_error;
   L_error("i,j") = L("i,j") - L_non_dist("i,j");
   BOOST_CHECK_SMALL(L_error("i,j").norm().get(),

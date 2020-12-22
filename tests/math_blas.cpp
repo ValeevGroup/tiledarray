@@ -40,6 +40,7 @@ struct BlasFixture {
       first[i] = GlobalFixture::world->rand() % int(max);
   }
 
+  using integer = TiledArray::math::blas::integer;
   integer m, n, k;
   static const double tol;
 
@@ -69,8 +70,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(integral_gemm, T, int_types) {
 
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(
-        TiledArray::blas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+        TiledArray::math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
+                                     TiledArray::math::blas::Op::NoTrans, m, n,
+                                     k, 3, a, lda, b, ldb, 0, c, ldc));
 
     for (integer i = 0; i < m; ++i) {
       for (integer j = 0; j < n; ++j) {
@@ -119,8 +121,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(integral_gemm_ld, T, int_types) {
 
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(
-        TiledArray::blas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+        TiledArray::math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
+                                     TiledArray::math::blas::Op::NoTrans, m, n,
+                                     k, 3, a, lda, b, ldb, 0, c, ldc));
 
     for (integer i = 0; i < m; ++i) {
       for (integer j = 0; j < n; ++j) {
@@ -168,8 +171,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(floating_point_gemm, T, floating_point_types) {
 
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(
-        TiledArray::blas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+        TiledArray::math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
+                                     TiledArray::math::blas::Op::NoTrans, m, n,
+                                     k, 3, a, lda, b, ldb, 0, c, ldc));
     for (integer i = 0; i < m; ++i) {
       for (integer j = 0; j < n; ++j) {
         // Compute the expected value
@@ -216,8 +220,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(floating_point_gemm_ld, T, floating_point_types) {
 
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(
-        TiledArray::blas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+        TiledArray::math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
+                                     TiledArray::math::blas::Op::NoTrans, m, n,
+                                     k, 3, a, lda, b, ldb, 0, c, ldc));
 
     for (integer i = 0; i < m; ++i) {
       for (integer j = 0; j < n; ++j) {
@@ -263,8 +268,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(complex_gemm, T, floating_point_types) {
 
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(
-        TiledArray::blas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+        TiledArray::math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
+                                     TiledArray::math::blas::Op::NoTrans, m, n,
+                                     k, 3, a, lda, b, ldb, 0, c, ldc));
 
     for (integer i = 0; i < m; ++i) {
       for (integer j = 0; j < n; ++j) {
@@ -315,8 +321,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(complex_gemm_ld, T, floating_point_types) {
 
     // Test the gemm operation
     BOOST_REQUIRE_NO_THROW(
-        TiledArray::blas::gemm(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               m, n, k, 3, a, lda, b, ldb, 0, c, ldc));
+        TiledArray::math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
+                                     TiledArray::math::blas::Op::NoTrans, m, n,
+                                     k, 3, a, lda, b, ldb, 0, c, ldc));
 
     for (integer i = 0; i < m; ++i) {
       for (integer j = 0; j < n; ++j) {

@@ -26,9 +26,9 @@
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/math/linalg/util.h>
 #include <TiledArray/conversions/eigen.h>
 #include <TiledArray/math/linalg/rank-local.h>
+#include <TiledArray/math/linalg/util.h>
 
 namespace TiledArray::math::linalg::non_distributed {
 
@@ -172,7 +172,7 @@ auto cholesky_solve(const Array& A, const Array& B,
 
 template <typename Array,
           typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
-auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
+auto cholesky_lsolve(Op transpose, const Array& A, const Array& B,
                      TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange()) {
   World& world = A.world();
@@ -195,6 +195,6 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
                          eigen_to_array<Array>(world, x_trange, X_eig));
 }
 
-}  // namespace TiledArray::math::linalg
+}  // namespace TiledArray::math::linalg::non_distributed
 
 #endif  // TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_CHOL_H__INCLUDED

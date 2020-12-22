@@ -3,14 +3,14 @@
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/math/linalg/forward.h>
 #include <TiledArray/external/eigen.h>
+#include <TiledArray/math/linalg/forward.h>
 
 #include <vector>
 
 namespace TiledArray::math::linalg::rank_local {
 
-template<typename T, int Options = ::Eigen::ColMajor>
+template <typename T, int Options = ::Eigen::ColMajor>
 using Matrix = ::Eigen::Matrix<T, ::Eigen::Dynamic, ::Eigen::Dynamic, Options>;
 
 // template <typename T>
@@ -26,7 +26,7 @@ template <typename T>
 void cholesky_solve(Matrix<T> &A, Matrix<T> &X);
 
 template <typename T>
-void cholesky_lsolve(TransposeFlag transpose, Matrix<T> &A, Matrix<T> &X);
+void cholesky_lsolve(Op transpose, Matrix<T> &A, Matrix<T> &X);
 
 template <typename T>
 void heig(Matrix<T> &A, std::vector<T> &W);
@@ -35,8 +35,7 @@ template <typename T>
 void heig(Matrix<T> &A, Matrix<T> &B, std::vector<T> &W);
 
 template <typename T>
-void svd(Matrix<T> &A, std::vector<T> &S,
-         Matrix<T> *U, Matrix<T> *VT);
+void svd(Matrix<T> &A, std::vector<T> &S, Matrix<T> *U, Matrix<T> *VT);
 
 template <typename T>
 void lu_solve(Matrix<T> &A, Matrix<T> &B);
@@ -44,6 +43,6 @@ void lu_solve(Matrix<T> &A, Matrix<T> &B);
 template <typename T>
 void lu_inv(Matrix<T> &A);
 
-}  // namespace TiledArray::local
+}  // namespace TiledArray::math::linalg::rank_local
 
 #endif  // TILEDARRAY_MATH_LINALG_RANK_LOCAL_H__INCLUDED

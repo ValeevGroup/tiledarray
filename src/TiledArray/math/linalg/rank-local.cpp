@@ -22,16 +22,19 @@
  *
  */
 
-#include <TiledArray/math/linalg/rank-local.h>
+#include <TiledArray/math/blas.h>
 #include <TiledArray/math/lapack.h>
+#include <TiledArray/math/linalg/rank-local.h>
 
-template<class F, typename ... Args>
-inline int ta_lapack_call(F f, Args ... args) {
+template <class F, typename... Args>
+inline int ta_lapack_fortran_call(F f, Args... args) {
   lapack_int info;
-  auto ptr = [](auto &&a) {
+  auto ptr = [](auto&& a) {
     using T = std::remove_reference_t<decltype(a)>;
-    if constexpr (std::is_pointer_v<T>) return a;
-    else return &a;
+    if constexpr (std::is_pointer_v<T>)
+      return a;
+    else
+      return &a;
   };
   f(ptr(args)..., &info);
   return info;
@@ -39,184 +42,167 @@ inline int ta_lapack_call(F f, Args ... args) {
 
 #define TA_LAPACK_ERROR(F) throw std::runtime_error("lapack::" #F " failed")
 
-#define TA_LAPACK_CALL(F, ARGS...) \
-  ((ta_lapack_call(F##_, ARGS) == 0) || (TA_LAPACK_ERROR(F), 0))
+#define TA_LAPACK_FORTRAN_CALL(F, ARGS...) \
+  ((ta_lapack_fortran_call(F, ARGS) == 0) || (TA_LAPACK_ERROR(F), 0))
 
-/// TA_LAPACK(fn,args) can be called only from template context, with `T`
-/// defining the element type
-#define TA_LAPACK(name, args...) {                                             \
-  using numeric_type = T;                                                      \
-  if constexpr (std::is_same_v<numeric_type, double>)                          \
-                 TA_LAPACK_CALL(d##name, args);                                \
-  else if constexpr (std::is_same_v<numeric_type, float>)                      \
-                 TA_LAPACK_CALL(s##name, args);                                \
-  else std::abort();                                                           \
+/// \brief Invokes the Fortran LAPACK API
+
+/// \warning TA_LAPACK_FORTRAN(fn,args) can be called only from template
+/// context, with `T` defining the element type
+#define TA_LAPACK_FORTRAN(name, args...)                    \
+  {                                                         \
+    using numeric_type = T;                                 \
+    if constexpr (std::is_same_v<numeric_type, double>)     \
+      TA_LAPACK_FORTRAN_CALL(d##name, args);                \
+    else if constexpr (std::is_same_v<numeric_type, float>) \
+      TA_LAPACK_FORTRAN_CALL(s##name, args);                \
+    else                                                    \
+      std::abort();                                         \
   }
+
+/// TA_LAPACK(fn,args) invoked lapack::fn directly and checks the return value
+#define TA_LAPACK(name, args...) \
+  ((::lapack::name(args) == 0) || (TA_LAPACK_ERROR(name), 0))
 
 namespace TiledArray::math::linalg::rank_local {
 
+using integer = math::blas::integer;
+
 template <typename T>
 void cholesky(Matrix<T>& A) {
-  char uplo = 'L';
-  lapack_int n = A.rows();
+  auto uplo = lapack::Uplo::Lower;
+  integer n = A.rows();
   auto* a = A.data();
-  lapack_int lda = n;
+  integer lda = n;
   TA_LAPACK(potrf, uplo, n, a, lda);
 }
 
 template <typename T>
 void cholesky_linv(Matrix<T>& A) {
-  char uplo = 'L';
-  char diag = 'N';
-  lapack_int n = A.rows();
+  auto uplo = lapack::Uplo::Lower;
+  auto diag = lapack::Diag::NonUnit;
+  integer n = A.rows();
   auto* l = A.data();
-  lapack_int lda = n;
+  integer lda = n;
   TA_LAPACK(trtri, uplo, diag, n, l, lda);
 }
 
 template <typename T>
 void cholesky_solve(Matrix<T>& A, Matrix<T>& X) {
-  char uplo = 'L';
-  lapack_int n = A.rows();
-  lapack_int nrhs = X.cols();
+  auto uplo = lapack::Uplo::Lower;
+  integer n = A.rows();
+  integer nrhs = X.cols();
   auto* a = A.data();
   auto* b = X.data();
-  lapack_int lda = n;
-  lapack_int ldb = n;
+  integer lda = n;
+  integer ldb = n;
   TA_LAPACK(posv, uplo, n, nrhs, a, lda, b, ldb);
 }
 
 template <typename T>
-void cholesky_lsolve(TransposeFlag transpose, Matrix<T>& A, Matrix<T>& X) {
-  char uplo = 'L';
-  char trans = transpose == TransposeFlag::Transpose
-                   ? 'T'
-                   : (transpose == TransposeFlag::NoTranspose ? 'N' : 'C');
-  char diag = 'N';
-  lapack_int n = A.rows();
-  lapack_int nrhs = X.cols();
+void cholesky_lsolve(Op transpose, Matrix<T>& A, Matrix<T>& X) {
+  auto uplo = lapack::Uplo::Lower;
+  auto diag = lapack::Diag::NonUnit;
+  integer n = A.rows();
+  integer nrhs = X.cols();
   auto* a = A.data();
   auto* b = X.data();
-  lapack_int lda = n;
-  lapack_int ldb = n;
-  TA_LAPACK(trtrs, uplo, trans, diag, n, nrhs, a, lda, b, ldb);
+  integer lda = n;
+  integer ldb = n;
+  TA_LAPACK(trtrs, uplo, transpose, diag, n, nrhs, a, lda, b, ldb);
 }
 
 template <typename T>
 void heig(Matrix<T>& A, std::vector<T>& W) {
-  char jobz = 'V';
-  char uplo = 'L';
-  lapack_int n = A.rows();
+  auto jobz = lapack::Job::Vec;
+  auto uplo = lapack::Uplo::Lower;
+  integer n = A.rows();
   T* a = A.data();
-  lapack_int lda = A.rows();
+  integer lda = A.rows();
   W.resize(n);
   T* w = W.data();
-  lapack_int lwork = -1;
-  std::vector<T> work(1);
-  TA_LAPACK(syev, jobz, uplo, n, a, lda, w, work.data(), lwork);
-  lwork = lapack_int(work[0]);
-  work.resize(lwork);
-  TA_LAPACK(syev, jobz, uplo, n, a, lda, w, work.data(), lwork);
+  TA_LAPACK(syev, jobz, uplo, n, a, lda, w);
 }
 
 template <typename T>
 void heig(Matrix<T>& A, Matrix<T>& B, std::vector<T>& W) {
-  lapack_int itype = 1;
-  char jobz = 'V';
-  char uplo = 'L';
-  lapack_int n = A.rows();
+  integer itype = 1;
+  auto jobz = lapack::Job::Vec;
+  auto uplo = lapack::Uplo::Lower;
+  integer n = A.rows();
   T* a = A.data();
-  lapack_int lda = A.rows();
+  integer lda = A.rows();
   T* b = B.data();
-  lapack_int ldb = B.rows();
+  integer ldb = B.rows();
   W.resize(n);
   T* w = W.data();
-  std::vector<T> work(1);
-  lapack_int lwork = -1;
-  TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w, work.data(), lwork);
-  lwork = lapack_int(work[0]);
-  work.resize(lwork);
-  TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w, work.data(), lwork);
+  TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w);
 }
 
 template <typename T>
 void svd(Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
-  lapack_int m = A.rows();
-  lapack_int n = A.cols();
+  integer m = A.rows();
+  integer n = A.cols();
   T* a = A.data();
-  lapack_int lda = A.rows();
+  integer lda = A.rows();
 
   S.resize(std::min(m, n));
   T* s = S.data();
 
-  char jobu = 'N';
+  auto jobu = lapack::Job::NoVec;
   T* u = nullptr;
-  lapack_int ldu = m;
+  integer ldu = m;
   if (U) {
-    jobu = 'A';
+    jobu = lapack::Job::AllVec;
     U->resize(m, n);
     u = U->data();
     ldu = U->rows();
   }
 
-  char jobvt = 'N';
+  auto jobvt = lapack::Job::NoVec;
   T* vt = nullptr;
-  lapack_int ldvt = n;
+  integer ldvt = n;
   if (VT) {
-    jobvt = 'A';
+    jobvt = lapack::Job::AllVec;
     VT->resize(n, m);
     vt = VT->data();
     ldvt = VT->rows();
   }
 
-  std::vector<T> work(1);
-  lapack_int lwork = -1;
-
-  TA_LAPACK(gesvd, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt,
-             work.data(), lwork);
-  lwork = lapack_int(work[0]);
-  work.resize(lwork);
-  TA_LAPACK(gesvd, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt,
-             work.data(), lwork);
-
+  TA_LAPACK(gesvd, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt);
 }
 
 template <typename T>
 void lu_solve(Matrix<T>& A, Matrix<T>& B) {
-  lapack_int n = A.rows();
-  lapack_int nrhs = B.cols();
+  integer n = A.rows();
+  integer nrhs = B.cols();
   T* a = A.data();
-  lapack_int lda = A.rows();
+  integer lda = A.rows();
   T* b = B.data();
-  lapack_int ldb = B.rows();
-  std::vector<lapack_int> ipiv(n);
+  integer ldb = B.rows();
+  std::vector<integer> ipiv(n);
   TA_LAPACK(gesv, n, nrhs, a, lda, ipiv.data(), b, ldb);
 }
 
 template <typename T>
 void lu_inv(Matrix<T>& A) {
-  lapack_int n = A.rows();
+  integer n = A.rows();
   T* a = A.data();
-  lapack_int lda = A.rows();
-  std::vector<lapack_int> ipiv(n);
+  integer lda = A.rows();
+  std::vector<integer> ipiv(n);
   TA_LAPACK(getrf, n, n, a, lda, ipiv.data());
-  std::vector<T> work(1);
-  lapack_int lwork = -1;
-  TA_LAPACK(getri, n, a, lda, ipiv.data(), work.data(), lwork);
-  lwork = (lapack_int)work[0];
-  work.resize(lwork);
-  TA_LAPACK(getri, n, a, lda, ipiv.data(), work.data(), lwork);
+  TA_LAPACK(getri, n, a, lda, ipiv.data());
 }
 
-#define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                        \
-  template void cholesky(MATRIX&);                                \
-  template void cholesky_linv(MATRIX&);                           \
-  template void cholesky_solve(MATRIX&, MATRIX&);                 \
-  template void cholesky_lsolve(TransposeFlag, MATRIX&, MATRIX&); \
-  template void heig(MATRIX&, VECTOR&);                           \
-  template void heig(MATRIX&, MATRIX&, VECTOR&);                  \
-  template void svd(MATRIX&, VECTOR&, MATRIX*, MATRIX*);          \
-  template void lu_solve(MATRIX&, MATRIX&);                       \
+#define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)               \
+  template void cholesky(MATRIX&);                       \
+  template void cholesky_linv(MATRIX&);                  \
+  template void cholesky_solve(MATRIX&, MATRIX&);        \
+  template void cholesky_lsolve(Op, MATRIX&, MATRIX&);   \
+  template void heig(MATRIX&, VECTOR&);                  \
+  template void heig(MATRIX&, MATRIX&, VECTOR&);         \
+  template void svd(MATRIX&, VECTOR&, MATRIX*, MATRIX*); \
+  template void lu_solve(MATRIX&, MATRIX&);              \
   template void lu_inv(MATRIX&);
 
 TA_LAPACK_EXPLICIT(Matrix<double>, std::vector<double>);

@@ -28,24 +28,37 @@
 #include <TiledArray/config.h>
 #include <type_traits>
 
+#include <blas/util.hh>
+
 namespace TiledArray::math::linalg {
 
-enum TransposeFlag { NoTranspose, Transpose, ConjTranspose };
+using Op = ::blas::Op;
+static constexpr auto NoTranspose = Op::NoTrans;
+static constexpr auto Transpose = Op::Trans;
+static constexpr auto ConjTranspose = Op::ConjTrans;
+
+/// converts Op to ints in manner useful for bit manipulations
+/// NoTranspose -> 0, Transpose->1, ConjTranspose->2
+inline auto to_int(Op op) {
+  if (op == NoTranspose)
+    return 0;
+  else if (op == Transpose)
+    return 1;
+  else  // op == ConjTranspose
+    return 2;
+}
 
 struct SVD {
-  enum Vectors {
-    ValuesOnly,
-    LeftVectors,
-    RightVectors,
-    AllVectors
-  };
+  enum Vectors { ValuesOnly, LeftVectors, RightVectors, AllVectors };
 };
 
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
-  using TiledArray::math::linalg::TransposeFlag;
-  using TiledArray::math::linalg::SVD;
-}
+using TiledArray::math::linalg::ConjTranspose;
+using TiledArray::math::linalg::NoTranspose;
+using TiledArray::math::linalg::SVD;
+using TiledArray::math::linalg::Transpose;
+}  // namespace TiledArray
 
 #endif  // TILEDARRAY_MATH_LINALG_FORWARD_H__INCLUDED

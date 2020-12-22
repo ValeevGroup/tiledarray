@@ -293,15 +293,16 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 add_custom_target(External-tiledarray)
 
 # required deps:
+# 1. CUDA first since others may depend on it
+if(ENABLE_CUDA)
+  include(external/cuda.cmake)
+endif()
 include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
 # find BTAS first, so that it finds Boost more carefully and also has a chance to memorize where it found it
 include(FindOrFetchBTAS)
 include(external/boost.cmake)
-if(ENABLE_CUDA)
-  include(external/cuda.cmake)
-endif()
 if(ENABLE_SCALAPACK)
   include(external/scalapack.cmake)
 endif()

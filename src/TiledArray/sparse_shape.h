@@ -1464,6 +1464,7 @@ class SparseShape {
     const value_type threshold = threshold_;
     madness::AtomicInt zero_tile_count;
     zero_tile_count = 0;
+    using integer = TiledArray::math::blas::integer;
     integer M = 0, N = 0, K = 0;
     gemm_helper.compute_matrix_sizes(M, N, K, tile_norms_.range(),
                                      other.tile_norms_.range());

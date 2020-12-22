@@ -32,7 +32,6 @@
 TILEDARRAY_PRAGMA_GCC(diagnostic push)
 TILEDARRAY_PRAGMA_GCC(system_header)
 
-#include <madness/tensor/cblas.h>
 #include <madness/world/MADworld.h>
 #include <madness/world/worldmem.h>
 

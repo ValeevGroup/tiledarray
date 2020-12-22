@@ -36,12 +36,14 @@ using namespace TiledArray;
 static_assert(detail::ordinal_traits<btas::RangeNd<>>::type ==
                   OrdinalType::RowMajor,
               "btas::RangeNd<> is row-major");
-static_assert(detail::ordinal_traits<btas::RangeNd<CblasRowMajor>>::type ==
-                  OrdinalType::RowMajor,
-              "btas::RangeNd<CblasRowMajor> is row-major");
-static_assert(detail::ordinal_traits<btas::RangeNd<CblasColMajor>>::type ==
-                  OrdinalType::ColMajor,
-              "btas::RangeNd<CblasColMajor> is col-major");
+static_assert(
+    detail::ordinal_traits<btas::RangeNd<blas::Layout::RowMajor>>::type ==
+        OrdinalType::RowMajor,
+    "btas::RangeNd<blas::Layout::RowMajor> is row-major");
+static_assert(
+    detail::ordinal_traits<btas::RangeNd<blas::Layout::ColMajor>>::type ==
+        OrdinalType::ColMajor,
+    "btas::RangeNd<blas::Layout::ColMajor> is col-major");
 static_assert(detail::ordinal_traits<btas::Tensor<double>>::type ==
                   OrdinalType::RowMajor,
               "btas::Tenspr<T> is row-major");

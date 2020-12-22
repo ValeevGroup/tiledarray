@@ -30,12 +30,12 @@ $ cmake --build build --target install
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 8418021a283000ada8edd4994bd81f35652d4b49 (will be downloaded automatically, if missing)
-- BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 925552feaf326cca8e83de7bd042074ad3cfd3f1 .
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag bd42eb3a2b84a46953edc7a8f7afbe5c98efa2c5 . If usable BTAS installation is not found, TiledArray will download and compile
+  BTAS from source. *This is the recommended way to compile BTAS for all users*.
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag b22ee85059e6ccc9a6e803ba0550652ece8d9df1 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
-  MADNESS. *This is the recommended way to compile MADNESS for all users*.
+  MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
   A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/master/INSTALL_CMake);
   it also also contains detailed
   MADNESS compilation instructions.
@@ -43,10 +43,14 @@ $ cmake --build build --target install
   Compiling MADNESS requires the following prerequisites:
   - An implementation of Message Passing Interface version 2 or 3, with support
     for `MPI_THREAD_MULTIPLE`.
-  - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
   - (optional)
     Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb‎) or
     an [open-source](https://www.threadingbuildingblocks.org/) form
+
+  Compiling BTAS requires the following prerequisites:
+  - [blaspp](https://bitbucket.org/icl/blaspp.git) -- C++ API for BLAS
+  - [lapackpp](https://bitbucket.org/icl/lapackpp.git) -- C++ API for LAPACK
+  - BLAS and LAPACK libraries
 
 Optional prerequisites:
 - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 11 or later is required. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
@@ -89,7 +93,7 @@ TiledArray source tree.
 TiledArray is configured and built with CMake. When configuring with CMake, you specify a set
 of CMake variables on the command line, where each variable argument is prepended with the '-D'
 option. Typically, you will need to specify the install path for TiledArray,
-build type, MPI Compiler wrappers, and BLAS and LAPACK libraries.
+build type, and MPI Compiler wrappers.
 
 For many platforms TiledArray provides *toolchain* files that can greatly simplify configuration;
 they are located under `$TILEDARRAY_SOURCE_DIR/cmake/toolchains`.
@@ -206,74 +210,41 @@ to use TiledArray in a distributed memory environment. Note, if you
 build MADNESS yourself, you must also configure MADNESS with `ENABLE_MPI=OFF`
 to enable this option.
 
-## BLAS and LAPACK
+## BLAS/LAPACK
 
-TiledArray requires a serial BLAS implementation, either by linking with a
+Even for basic operation TiledArray requires a serial BLAS implementation, either by linking with a
 serial version of the BLAS library or by setting the number of threads to one
 (1) with an environment variable. This is necessary because TiledArray evaluates tensor
 expressions in parallel by subdividing them into small tasks, each of which is assumed
 to be single-threaded; attempting to run a multi-threaded BLAS function inside
-tasks will oversubscribe the hardware cores.
+tasks will oversubscribe the hardware cores (this only exception to this if the MADNESS
+runtime uses the same task backend as the BLAS library; this only happens if MADNESS
+is configured to use Intel TBB and TBB-based Intel MKL library is used). Thus
+it is user's responsibility to correctly specify the BLAS/LAPACK libraries and/or
+set the environment variables (e.g. `OMP_NUM_THREADS`, `MKL_NUM_THREADS`, etc.)
+to ensure single-threaded execution of BLAS/LAPACK kernels
+as needed.
 
-BLAS library dependency is provided by the MADNESS library, which checks for presence
-of BLAS and LAPACK (which also depends on BLAS) at the configure time. Therefore, if
-MADNESS is already installed on your machine you do not need to do anything. However,
-the most common scenario is where TiledArray will configure and compile
-MADNESS as part of its compilation; in this case it is necessary to specify
-how to find the LAPACK library to TiledArray, which will in turn pass this info
-to MADNESS. This is done by setting the following
-CMake variables:
 
-* `LAPACK_LIBRARIES` -- a string specifying LAPACK libraries and all of its dependencies (such as BLAS library, math library, etc.); this string can also include linker directory flags (`-L`)
-* `LAPACK_INCLUDE_DIRS` -- (optional) a list of directories which contain BLAS/LAPACK-related header files
-* `LAPACK_COMPILE_DEFINITIONS` -- (optional) a list of preprocessor definitions required for any code that uses BLAS/LAPACK-related header files
-* `LAPACK_COMPILE_OPTIONS` -- (optional) a list of compiler options required for any code that uses BLAS/LAPACK-related header files
+As of version 1.0 TiledArray also provides a direct (non-iterative) linear solvers API
+implemented using LAPACK and (optionally) ScaLAPACK. Therefore LAPACK is now a mandatory
+prerequisite of TiledArray
+
+BLAS/LAPACK dependencies are provided by the BTAS library, which in turn uses BLAS++/LAPACK++
+C++ linear algebra packages to discover the BLAS and LAPACK libraries at configure time.
+The most common scenario is where TiledArray will configure and compile BTAS dependency
+and its BLAS++/LAPACK++ prerequisites from source (this is strongly recommended). The following
+CMake variables can be used to control how BLAS/LAPACK discovery occurs:
+
 * `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS libraries will be preferred.
+* `BLA_VENDOR` -- controls which vendor BLAS/LAPACK library will be sought
+  (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
+  by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
+  framework on MacOS use `-DBLA_VENDOR=Apple`.
 
-The last three variables are only needed if your code will use non-Fortran BLAS/LAPACK library API (such as CBLAS or LAPACKE)
-and thus needs access to the header files. TiledArray only uses BLAS via the Fortran API, hence the last three
-variables do not need to be specified.
-
-Since TiledArray uses the Fortran API of BLAS, it may be necessary to
-specify the Fortran integer size used by the particular BLAS library:
-
-* `INTEGER4` -- Specifies the integer size (in bytes) assumed by the BLAS/LAPACK Fortran API [Default=TRUE]
-      TRUE = Fortran integer*4, FALSE = Fortran integer*8
-
-You should use the default value unless you know it is necessary for your BLAS
-implementation.
-
-Common optimized libraries OpenBLAS/GotoBLAS, BLIS, MKL (on Intel platforms),
-Atlas, Accelerate (on OS X), ESSL (on BlueGene platforms), or ACML (on AMD 
-platforms). You can also use the Netlib reference implementation if nothing else
-is available, but this will be very slow.
-
-Example flags:
-
-* Accelerate on OS X
-
-  -D LAPACK_LIBRARIES="-framework Accelerate"
-
-* OpenBLAS with Netlib LAPACK
-
-  -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack -L/path/to/openblas/lib -lopenblas -lpthread"
-
-* Netlib
-
-  -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack -L/path/to/blas/lib -lblas"
-
-* MKL on Linux
-
-  -D LAPACK_LIBRARIES="-L${MKLROOT}/lib/intel64 -Wl,--start-group -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -Wl,--end-group -lpthread -lm”
-  
-* MKL on OS X
-
-  -D LAPACK_LIBRARIES="-L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm"
-
-For additional information on linking different versions of MKL, see the MKL
-Link Advisor page.
-
-    https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
+More information can be found in the installation instructions for
+[BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
+[LAPACK++](https://icl.bitbucket.io/lapackpp/md__i_n_s_t_a_l_l.html).
 
 ## CUDA
 

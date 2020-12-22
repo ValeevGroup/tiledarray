@@ -41,8 +41,8 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK_NO_THROW(SparseShape<float> x);
   SparseShape<float> x, y;
   Permutation perm;
-  math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               2u, 2u, 2u);
+  math::GemmHelper gemm_helper(TiledArray::math::blas::Op::NoTrans,
+                               TiledArray::math::blas::Op::NoTrans, 2u, 2u, 2u);
 
   BOOST_CHECK(x.empty());
   BOOST_CHECK(!x.is_dense());
@@ -1267,9 +1267,9 @@ BOOST_AUTO_TEST_CASE(gemm) {
   size_type zero_tile_count = 0ul;
 
   // Evaluate the contraction of sparse shapes
-  math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               2u, left.data().range().rank(),
-                               right.data().range().rank());
+  math::GemmHelper gemm_helper(
+      TiledArray::math::blas::Op::NoTrans, TiledArray::math::blas::Op::NoTrans,
+      2u, left.data().range().rank(), right.data().range().rank());
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper));
 
@@ -1326,9 +1326,9 @@ BOOST_AUTO_TEST_CASE(gemm_perm) {
   size_type zero_tile_count = 0ul;
 
   // Evaluate the contraction of sparse shapes
-  math::GemmHelper gemm_helper(madness::cblas::NoTrans, madness::cblas::NoTrans,
-                               2u, left.data().range().rank(),
-                               right.data().range().rank());
+  math::GemmHelper gemm_helper(
+      TiledArray::math::blas::Op::NoTrans, TiledArray::math::blas::Op::NoTrans,
+      2u, left.data().range().rank(), right.data().range().rank());
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper, perm));
 
