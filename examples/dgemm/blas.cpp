@@ -60,7 +60,8 @@ int main(int argc, char** argv) {
   std::fill_n(c, matrix_size * matrix_size, 0.0);
 
   // BLAS dgemm arguments
-  char opa = 'n', opb = 'n';
+  using namespace TiledArray::math::blas;
+  auto opa = Op::NoTrans, opb = Op::NoTrans;
   const double alpha = 1l, beta = 0l;
   const integer m = matrix_size, n = matrix_size, k = matrix_size;
   const integer lda = matrix_size, ldb = matrix_size, ldc = matrix_size;
@@ -72,7 +73,7 @@ int main(int argc, char** argv) {
   // Note: If TiledArray has not been configured with blas, this will be an
   // eigen call.
   for (int i = 0; i < repeat; ++i) {
-    F77_DGEMM(&opb, &opa, &n, &m, &k, &alpha, b, &ldb, a, &lda, &beta, c, &ldc);
+    gemm(opa, opb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
   }
 
   // Stop clock
