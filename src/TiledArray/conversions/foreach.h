@@ -186,8 +186,7 @@ inline std::
                 "if inplace==false, Op must be callable with signature "
                 "void(ResultTile&,const ArgTile&, const ArgTiles&...)");
 
-  TA_USER_ASSERT(compare_trange(arg, args...),
-                 "Tiled ranges of args must match");
+  TA_ASSERT(compare_trange(arg, args...) && "Tiled ranges of args must match");
 
   typedef DistArray<ArgTile, Policy> arg_array_type;
   typedef DistArray<ResultTile, Policy> result_array_type;
@@ -261,8 +260,8 @@ inline std::
                 "ret(ResultTile&,const ArgTile&, const ArgTiles&...), where "
                 "ret={void,Policy::shape_type::value_type}");
 
-  TA_USER_ASSERT(detail::compare_trange(arg, args...),
-                 "Tiled ranges of args must match");
+  TA_ASSERT(detail::compare_trange(arg, args...) &&
+            "Tiled ranges of args must match");
 
   typedef DistArray<ArgTile, Policy> arg_array_type;
   typedef DistArray<ResultTile, Policy> result_array_type;

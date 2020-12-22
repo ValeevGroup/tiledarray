@@ -79,10 +79,8 @@ BOOST_AUTO_TEST_CASE(set_value) {
   BOOST_CHECK_EQUAL(n, t.max_size());
 
   // Check throw for an out-of-range set.
-#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t.set(t.max_size(), 1), TiledArray::Exception);
   BOOST_CHECK_THROW(t.set(t.max_size() + 2, 1), TiledArray::Exception);
-#endif  // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE(array_operator) {
@@ -99,10 +97,8 @@ BOOST_AUTO_TEST_CASE(array_operator) {
   BOOST_CHECK_EQUAL(n, t.max_size());
 
   // Check throw for an out-of-range set.
-#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t.get(t.max_size()), TiledArray::Exception);
   BOOST_CHECK_THROW(t.get(t.max_size() + 2), TiledArray::Exception);
-#endif  // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_SUITE_END()

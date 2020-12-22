@@ -66,9 +66,9 @@ inline const TiledArray::Range& make_ta_range(const TiledArray::Range& range) {
 template <CBLAS_ORDER Order, typename... Args>
 inline TiledArray::Range make_ta_range(
     const btas::RangeNd<Order, Args...>& range) {
-  TA_USER_ASSERT(Order == CblasRowMajor,
-                 "TiledArray::detail::make_ta_range(btas::RangeNd<Order,...>): "
-                 "not supported for col-major Order");
+  TA_ASSERT(Order == CblasRowMajor &&
+            "TiledArray::detail::make_ta_range(btas::RangeNd<Order,...>): "
+            "not supported for col-major Order");
   return TiledArray::Range(range.lobound(), range.upbound());
 }
 
@@ -632,11 +632,9 @@ inline btas::Tensor<T, Range, Storage> gemm(
 
   T factor_t(factor);
 
-  TiledArray::blas::gemm(
-    gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-    factor_t, left.data(), lda, right.data(), ldb, T(0),
-    result.data(), n
-  );
+  TiledArray::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+                         factor_t, left.data(), lda, right.data(), ldb, T(0),
+                         result.data(), n);
 
   return result;
 }
@@ -708,11 +706,9 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
 
   T factor_t(factor);
 
-  TiledArray::blas::gemm(
-    gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-    factor_t, left.data(), lda, right.data(), ldb, T(1),
-    result.data(), n
-  );
+  TiledArray::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
+                         factor_t, left.data(), lda, right.data(), ldb, T(1),
+                         result.data(), n);
 }
 
 // sum of the hyperdiagonal elements

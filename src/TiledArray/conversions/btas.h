@@ -215,14 +215,14 @@ DistArray_ btas_tensor_to_array(World& world,
                                 bool replicated = false) {
   // Test preconditions
   const auto rank = trange.tiles_range().rank();
-  TA_USER_ASSERT(rank == src.range().rank(),
-                 "TiledArray::btas_tensor_to_array(): rank of destination "
-                 "trange does not match the rank of source BTAS tensor.");
+  TA_ASSERT(rank == src.range().rank() &&
+            "TiledArray::btas_tensor_to_array(): rank of destination "
+            "trange does not match the rank of source BTAS tensor.");
   auto dst_range_extents = trange.elements_range().extent();
   for (std::remove_const_t<decltype(rank)> d = 0; d != rank; ++d) {
-    TA_USER_ASSERT(dst_range_extents[d] == src.range().extent(d),
-                   "TiledArray::btas_tensor_to_array(): source dimension does "
-                   "not match destination dimension.");
+    TA_ASSERT(dst_range_extents[d] == src.range().extent(d) &&
+              "TiledArray::btas_tensor_to_array(): source dimension does "
+              "not match destination dimension.");
   }
 
   using Tensor_ = btas::Tensor<T, Range, Storage>;
@@ -231,8 +231,8 @@ DistArray_ btas_tensor_to_array(World& world,
 
   // Check that this is not a distributed computing environment
   if (!replicated)
-    TA_USER_ASSERT(
-        world.size() == 1,
+    TA_ASSERT(
+        world.size() == 1 &&
         "An array can be created from a btas::Tensor if the number of World "
         "ranks is greater than 1 only when replicated=true.");
 
@@ -302,8 +302,8 @@ array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src,
                      int target_rank = -1) {
   // Test preconditions
   if (target_rank == -1 && !src.pmap()->is_replicated())
-    TA_USER_ASSERT(
-        src.world().size() == 1,
+    TA_ASSERT(
+        src.world().size() == 1 &&
         "TiledArray::array_to_btas_tensor(): a non-replicated array can only "
         "be converted to a btas::Tensor on every rank if the number of World "
         "ranks is 1.");

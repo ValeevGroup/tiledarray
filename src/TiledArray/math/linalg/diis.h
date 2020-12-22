@@ -26,8 +26,8 @@
 #ifndef TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED
 #define TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED
 
-#include "TiledArray/dist_array.h"
 #include <TiledArray/math/linalg/basic.h>
+#include "TiledArray/dist_array.h"
 #include "TiledArray/external/eigen.h"
 
 #include <Eigen/QR>
@@ -142,7 +142,6 @@ class DIIS {
   /// \param extrapolate_error whether to extrapolate the error (default =
   ///   false).
   void extrapolate(D& x, D& error, bool extrapolate_error = false) {
-
     iter++;
 
     // compute extrapolation coefficients C_ and number of skipped vectors
@@ -155,9 +154,9 @@ class DIIS {
     const unsigned int nvec = errors_.size();
 
     // sizes of the x set and the error set should equal, otherwise throw
-    TA_USER_ASSERT(x_.size() == errors_.size(),
-                   "DIIS: numbers of guess and error vectors do not match, "
-                   "likely due to a programming error");
+    TA_ASSERT(x_.size() == errors_.size() &&
+              "DIIS: numbers of guess and error vectors do not match, "
+              "likely due to a programming error");
 
     // extrapolate the error if needed
     if (extrapolate_error && (mixing_fraction == 0.0 || x_extrap_.empty())) {
@@ -177,7 +176,6 @@ class DIIS {
   /// (default = false)
   void extrapolate(D& x, const Vector& c, unsigned int nskip = 0,
                    bool increase_iter = false) {
-
     if (increase_iter) {
       iter++;
     }
@@ -207,8 +205,8 @@ class DIIS {
       const unsigned int nvec = x_.size();
       const unsigned int rank = nvec - nskip + 1;  // size of coefficients
 
-      TA_USER_ASSERT(c.size() == rank,
-                     "DIIS: numbers of coefficients and x's do not match");
+      TA_ASSERT(c.size() == rank &&
+                "DIIS: numbers of coefficients and x's do not match");
       zero(x);
       for (unsigned int k = nskip, kk = 1; k < nvec; ++k, ++kk) {
         if (not do_mixing || x_extrap_.empty()) {
@@ -234,7 +232,6 @@ class DIIS {
   /// (default = false)
   void compute_extrapolation_parameters(const D& error,
                                         bool increase_iter = false) {
-
     if (increase_iter) {
       iter++;
     }
@@ -254,8 +251,7 @@ class DIIS {
 
     // and compute the most recent elements of B, B(i,j) = <ei|ej>
     for (unsigned int i = 0; i < nvec - 1; i++)
-      B_(i, nvec - 1) = B_(nvec - 1, i) =
-          dot(errors_[i], errors_[nvec - 1]);
+      B_(i, nvec - 1) = B_(nvec - 1, i) = dot(errors_[i], errors_[nvec - 1]);
     B_(nvec - 1, nvec - 1) = dot(errors_[nvec - 1], errors_[nvec - 1]);
     using std::abs;
     using std::sqrt;
@@ -356,9 +352,8 @@ class DIIS {
 
   /// calling this function returns extrapolation coefficients
   const Vector& get_coeffs() {
-    TA_USER_ASSERT(
-        parameters_computed_ && C_.size() > 0,
-        "DIIS: empty coefficients, because they have not been computed");
+    TA_ASSERT(parameters_computed_ && C_.size() > 0 &&
+              "DIIS: empty coefficients, because they have not been computed");
     return C_;
   }
 
@@ -384,8 +379,8 @@ class DIIS {
                                              //!< decreasing damping factor once
                                              //!< error 2-norm falls below this
 
-  Matrix B_;            //!< B(i,j) = <ei|ej>
-  Vector C_;            //! DIIS coefficients
+  Matrix B_;                  //!< B(i,j) = <ei|ej>
+  Vector C_;                  //! DIIS coefficients
   bool parameters_computed_;  //! whether diis parameters C_ and nskip_ have
                               //! been computed
   unsigned int nskip_;        //! number of skipped vectors in extrapolation
@@ -424,7 +419,7 @@ class DIIS {
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
-  using TiledArray::math::linalg::DIIS;
+using TiledArray::math::linalg::DIIS;
 }
 
 #endif  // TILEDARRAY_MATH_LINALG_DIIS_H__INCLUDED

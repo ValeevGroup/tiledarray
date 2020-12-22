@@ -97,7 +97,6 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}" \
     -DTA_PYTHON="${TA_PYTHON}" \
     -DTA_BUILD_UNITTEST=ON \
-    -DTA_ERROR="throw" \
     -DENABLE_SCALAPACK=ON
 
 else
@@ -128,7 +127,6 @@ else
     -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}" \
     -DTA_PYTHON="${TA_PYTHON}" \
     -DTA_BUILD_UNITTEST=ON \
-    -DTA_ERROR="throw" \
     -DENABLE_SCALAPACK=ON
 
 fi

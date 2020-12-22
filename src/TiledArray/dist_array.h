@@ -207,25 +207,25 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       pmap = Policy::default_pmap(world, trange.tiles_range().volume());
     } else {
       // Validate the process map
-      TA_USER_ASSERT(pmap->size() == trange.tiles_range().volume(),
-                     "Array::Array() -- The size of the process map is not "
-                     "equal to the number of tiles in the TiledRange object.");
-      TA_USER_ASSERT(
-          pmap->rank() == typename pmap_interface::size_type(world.rank()),
+      TA_ASSERT(pmap->size() == trange.tiles_range().volume() &&
+                "Array::Array() -- The size of the process map is not "
+                "equal to the number of tiles in the TiledRange object.");
+      TA_ASSERT(
+          pmap->rank() == typename pmap_interface::size_type(world.rank()) &&
           "Array::Array() -- The rank of the process map is not equal to that "
           "of the world object.");
-      TA_USER_ASSERT(
-          pmap->procs() == typename pmap_interface::size_type(world.size()),
+      TA_ASSERT(
+          pmap->procs() == typename pmap_interface::size_type(world.size()) &&
           "Array::Array() -- The number of processes in the process map is not "
           "equal to that of the world object.");
     }
 
     // Validate the shape
-    TA_USER_ASSERT(!shape.empty(),
-                   "Array::Array() -- The shape is not initialized.");
-    TA_USER_ASSERT(shape.validate(trange.tiles_range()),
-                   "Array::Array() -- The range of the shape is not equal to "
-                   "the tiles range.");
+    TA_ASSERT(!shape.empty() &&
+              "Array::Array() -- The shape is not initialized.");
+    TA_ASSERT(shape.validate(trange.tiles_range()) &&
+              "Array::Array() -- The range of the shape is not equal to "
+              "the tiles range.");
 
     return std::shared_ptr<impl_type>(new impl_type(world, trange, shape, pmap),
                                       lazy_deleter);
@@ -1434,16 +1434,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   template <typename Index>
   std::enable_if_t<std::is_integral_v<Index>, void> check_index(
       const Index i) const {
-    TA_USER_ASSERT(
-        impl_ref().tiles_range().includes(i),
+    TA_ASSERT(
+        impl_ref().tiles_range().includes(i) &&
         "The ordinal index used to access an array tile is out of range.");
   }
 
   template <typename Index>
   std::enable_if_t<detail::is_integral_range_v<Index>, void> check_index(
       const Index& i) const {
-    TA_USER_ASSERT(
-        impl_ref().tiles_range().includes(i),
+    TA_ASSERT(
+        impl_ref().tiles_range().includes(i) &&
         "The coordinate index used to access an array tile is out of range.");
   }
 
@@ -1456,18 +1456,18 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   std::enable_if_t<std::is_integral_v<Index>, void> check_local_index(
       const Index i) const {
     check_index(i);
-    TA_USER_ASSERT(
-        pimpl_->is_local(i),  // pimpl_ already checked
-        "The ordinal index used to access an array tile is not local.");
+    TA_ASSERT(pimpl_->is_local(i)  // pimpl_ already checked
+              &&
+              "The ordinal index used to access an array tile is not local.");
   }
 
   template <typename Index>
   std::enable_if_t<detail::is_integral_range_v<Index>, void> check_local_index(
       const Index& i) const {
     check_index(i);
-    TA_USER_ASSERT(
-        pimpl_->is_local(i),  // pimpl_ already checked
-        "The coordinate index used to access an array tile is not local.");
+    TA_ASSERT(
+        pimpl_->is_local(i)  // pimpl_ already checked
+        && "The coordinate index used to access an array tile is not local.");
   }
 
   template <typename Index1>
@@ -1510,9 +1510,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// Code factorization of the actual assert for the other overloads
   void assert_pimpl() const {
-    TA_USER_ASSERT(pimpl_,
-                   "The Array has not been initialized, likely reason: it was "
-                   "default constructed and used.");
+    TA_ASSERT(pimpl_ &&
+              "The Array has not been initialized, likely reason: it was "
+              "default constructed and used.");
   }
 
   /// If this is in an initialized state this returns a const
@@ -1605,9 +1605,8 @@ inline std::ostream& operator<<(std::ostream& os,
   return os;
 }
 
-
 template <typename Tile, typename Policy>
-auto rank(const DistArray<Tile, Policy> &a) {
+auto rank(const DistArray<Tile, Policy>& a) {
   return a.trange().tiles_range().rank();
 }
 
@@ -1632,7 +1631,8 @@ auto abs_max(const DistArray<Tile, Policy>& a) {
 template <typename Tile, typename Policy>
 auto dot(const DistArray<Tile, Policy>& a, const DistArray<Tile, Policy>& b) {
   return (a(detail::dummy_annotation(rank(a)))
-          .dot(b(detail::dummy_annotation(rank(b))))).get();
+              .dot(b(detail::dummy_annotation(rank(b)))))
+      .get();
 }
 
 template <typename Tile, typename Policy>

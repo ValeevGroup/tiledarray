@@ -136,28 +136,4 @@ inline void exception_break() {}
   std::cerr << "!! ERROR TiledArray: " << m << "\n";
 #endif  // TILEDARRAY_NO_USER_ERROR_MESSAGES
 
-#ifndef NDEBUG
-// User interface assertion
-#define TA_USER_ASSERT(a, m)          \
-  do {                                \
-    if (!(a)) {                       \
-      TA_USER_ERROR_MESSAGE(m)        \
-      TiledArray::exception_break();  \
-      throw TiledArray::Exception(m); \
-    }                                 \
-  } while (0)
-
-#else
-
-// Disable user interface assertion when NDEBUG is defined
-// this avoids unused variable warnings, see
-// http://cnicholson.net/2009/02/stupid-c-tricks-adventures-in-assert/
-#define TA_USER_ASSERT(a, m) \
-  do {                       \
-    (void)sizeof(a);         \
-  } while (0)
-#define TA_USER_ASSERT_DISABLED 1
-
-#endif
-
 #endif  // TILEDARRAY_ERROR_H__INCLUDED

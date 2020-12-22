@@ -60,10 +60,8 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK(!bool(x));
   BOOST_CHECK(!x.data());
 
-#ifdef TA_EXCEPTION_ERROR
   // Check that an exception is thrown when using a default constructed object
   BOOST_CHECK_THROW(x(0), TiledArray::Exception);
-#endif  // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE(constructor) {

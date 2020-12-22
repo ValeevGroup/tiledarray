@@ -23,6 +23,12 @@
 #include "TiledArray/external/madness.h"
 #include "unit_test_config.h"
 
+#include <TiledArray/error.h>
+#ifndef TA_EXCEPTION_ERROR
+#error \
+    "TiledArray unit tests can only be built if CMake variable TA_ERROR is set of \"throw\""
+#endif
+
 GlobalFixture::GlobalFixture() {
   if (world == nullptr) {
     world = &TiledArray::initialize(

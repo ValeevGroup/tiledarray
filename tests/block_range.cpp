@@ -56,11 +56,10 @@ BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
 
   auto count_valid = 0;
   auto count_invalid = 0;
-  auto skip = []() {
-    return GlobalFixture::world->rand() % 20 > 9;
-  };
+  auto skip = []() { return GlobalFixture::world->rand() % 20 > 9; };
 
-  // loop over all possible subblocks, skipping randomly, until target_count valid+invalid block ranges have been considered
+  // loop over all possible subblocks, skipping randomly, until target_count
+  // valid+invalid block ranges have been considered
   for (auto lower_it = r0.begin(); lower_it != r0.end(); ++lower_it) {
     const auto lower = *lower_it;
     for (auto upper_it = r0.begin(); upper_it != r0.end(); ++upper_it) {
@@ -109,21 +108,16 @@ BOOST_AUTO_TEST_CASE(block_zero_lower_bound) {
           // Check that the index returned by idx is correct
           BOOST_CHECK_EQUAL(block_range.idx(index), *it);
         }
-      }
-#ifdef TA_EXCEPTION_ERROR
-      else {
+      } else {
         if (count_invalid == target_count) continue;
         ++count_invalid;
 
         // Check for exception with invalid input
         BOOST_CHECK_THROW(BlockRange(r0, lower, upper), TiledArray::Exception);
       }
-#else  // TA_EXCEPTION_ERROR
-      count_invalid = target_count;
-#endif  // TA_EXCEPTION_ERROR
     }
   }
-  end: ;
+end:;
 }
 
 BOOST_AUTO_TEST_CASE(block) {
@@ -131,11 +125,10 @@ BOOST_AUTO_TEST_CASE(block) {
 
   auto count_valid = 0;
   auto count_invalid = 0;
-  auto skip = []() {
-    return GlobalFixture::world->rand() % 20 > 9;
-  };
+  auto skip = []() { return GlobalFixture::world->rand() % 20 > 9; };
 
-  // loop over all possible subblocks, skipping randomly, until target_count valid+invalid block ranges have been considered
+  // loop over all possible subblocks, skipping randomly, until target_count
+  // valid+invalid block ranges have been considered
   for (auto lower_it = r.begin(); lower_it != r.end(); ++lower_it) {
     const auto lower = *lower_it;
     for (auto upper_it = r.begin(); upper_it != r.end(); ++upper_it) {
@@ -264,21 +257,16 @@ BOOST_AUTO_TEST_CASE(block) {
             BOOST_CHECK_EQUAL(br6, bref);
           }
         }
-      }
-#ifdef TA_EXCEPTION_ERROR
-      else {
+      } else {
         if (count_invalid == target_count) continue;
         ++count_invalid;
 
         // Check for exception with invalid input
         BOOST_CHECK_THROW(BlockRange(r, lower, upper), TiledArray::Exception);
       }
-#else  // TA_EXCEPTION_ERROR
-      count_invalid = target_count;
-#endif  // TA_EXCEPTION_ERROR
     }
   }
-  end: ;
+end:;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

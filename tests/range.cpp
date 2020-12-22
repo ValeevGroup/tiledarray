@@ -152,9 +152,7 @@ BOOST_AUTO_TEST_CASE(constructors) {
       Range r(ranges::views::zip(p2, f2)));  // uses zipped range of p2 and f2
 #endif
 
-#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(Range r2(f2, p2), Exception);  // lobound > upbound
-#endif  // TA_EXCEPTION_ERROR
   Range r2(p2, f2);
   BOOST_CHECK_EQUAL_COLLECTIONS(
       r2.lobound_data(), r2.lobound_data() + r2.rank(), p2.begin(), p2.end());
@@ -179,10 +177,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
   // test the rest of bound-based ctors
   {
     Range ref({0, 1, 2}, {4, 6, 8});
-#ifdef TA_EXCEPTION_ERROR
     // BOOST_CHECK_THROW(Range ref{{0, 1, 2}, {4, 6, 8}}, Exception);  // mind
     // the parens!
-#endif  // TA_EXCEPTION_ERROR
 
     // uses initializer_list of pairs
     BOOST_REQUIRE_NO_THROW(
@@ -326,10 +322,8 @@ BOOST_AUTO_TEST_CASE(constructors) {
     BOOST_CHECK_EQUAL(r2.volume(), 48);
   }
 #else  // TA_SIGNED_1INDEX_TYPE
-#ifdef TA_EXCEPTION_ERROR
   BOOST_REQUIRE_THROW(Range r2({{-1, 1}, {-2, 2}, {0, 6}}),
                       TiledArray::Exception);
-#endif
 #endif  // TA_SIGNED_1INDEX_TYPE
 
   // Copy Constructor

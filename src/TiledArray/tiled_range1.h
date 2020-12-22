@@ -66,8 +66,10 @@ class TiledRange1 {
   TiledRange1()
       : range_(0, 0), elements_range_(0, 0), tiles_ranges_(), elem2tile_() {}
 
-  /// Constructs a range with the boundaries provided by [first, last).
-  /// Start_tile_index is the index of the first tile.
+  /// Constructs a range with the boundaries provided by
+  /// the range [ \p first , \p last ).
+  /// \note validity of the [ \p first , \p last ) range is checked using
+  /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
   template <typename RandIter,
             typename std::enable_if<
                 detail::is_random_iterator<RandIter>::value>::type* = nullptr>
@@ -84,11 +86,14 @@ class TiledRange1 {
 
   /// Construct a 1D tiled range.
 
-  /// This will construct a 1D tiled range with tile boundaries {t0, t_rest}
+  /// This will construct a 1D tiled range with tile boundaries
+  /// {\p t0 , \p t_rest... }
   /// The number of tile boundaries is n + 1, where n is the number of tiles.
-  /// Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
+  /// Tiles are defined as [\p t0, t1), [t1, t2), [t2, t3), ...
   /// \param t0 The starting index of the first tile
   /// \param t_rest The rest of tile boundaries
+  /// \note validity of the {\p t0 , \p t_rest... } range is checked using
+  /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
   template <typename... _sizes>
   explicit TiledRange1(const index1_type& t0, const _sizes&... t_rest) {
     const auto n = sizeof...(_sizes) + 1;
@@ -98,12 +103,15 @@ class TiledRange1 {
 
   /// Construct a 1D tiled range.
 
-  /// This will construct a 1D tiled range with tile boundaries {t0, t_rest}
+  /// This will construct a 1D tiled range with tile boundaries
+  /// {\p t0 , \p t_rest... }
   /// The number of tile boundaries is n + 1, where n is the number of tiles.
-  /// Tiles are defined as [t0, t1), [t1, t2), [t2, t3), ...
+  /// Tiles are defined as [\p t0 , t1), [t1, t2), [t2, t3), ...
   /// Tiles are indexed starting with 0.
   /// \tparam Integer An integral type
   /// \param list The list of tile boundaries in order from smallest to largest
+  /// \note validity of the {\p t0 , \p t_rest... } range is checked using
+  /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
   template <typename Integer,
             typename = std::enable_if_t<std::is_integral_v<Integer>>>
   explicit TiledRange1(const std::initializer_list<Integer>& list) {
@@ -230,18 +238,18 @@ class TiledRange1 {
   template <typename RandIter>
   static void valid_(RandIter first, RandIter last) {
     // Verify at least 2 elements are present if the vector is not empty.
-    TA_USER_ASSERT((std::distance(first, last) >= 2),
-                   "TiledRange1 construction failed: You need at least 2 "
-                   "elements in the tile boundary list.");
+    TA_ASSERT((std::distance(first, last) >= 2) &&
+              "TiledRange1 construction failed: You need at least 2 "
+              "elements in the tile boundary list.");
     // Verify the requirement that a0 < a1 < a2 < ...
     for (; first != (last - 1); ++first) {
-      TA_USER_ASSERT(
-          *first < *(first + 1),
+      TA_ASSERT(
+          *first < *(first + 1) &&
           "TiledRange1 construction failed: Invalid tile boundary, tile "
           "boundary i must be greater than tile boundary i+1 for all i. ");
-      TA_USER_ASSERT(
+      TA_ASSERT(
           static_cast<index1_type>(*first) <
-              static_cast<index1_type>(*(first + 1)),
+              static_cast<index1_type>(*(first + 1)) &&
           "TiledRange1 construction failed: Invalid tile boundary, tile "
           "boundary i must be greater than tile boundary i+1 for all i. ");
     }

@@ -238,9 +238,7 @@ BOOST_AUTO_TEST_CASE(array_to_matrix) {
     }
   } else {
     // Check that eigen_to_array throws when there is more than one node
-#if !defined(TA_USER_ASSERT_DISABLED)
     BOOST_CHECK_THROW(array_to_eigen(array), TiledArray::Exception);
-#endif
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);
@@ -322,9 +320,7 @@ BOOST_AUTO_TEST_CASE(array_to_vector) {
     }
   } else {
     // Check that eigen_to_array throws when there is more than one node
-#if !defined(TA_USER_ASSERT_DISABLED)
     BOOST_CHECK_THROW(array_to_eigen(array1), TiledArray::Exception);
-#endif
 
     // Fill local tiles with data
     GlobalFixture::world->srand(27);

@@ -48,7 +48,6 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK(!x.is_dense());
   BOOST_CHECK(!x.validate(tr.tiles_range()));
 
-#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(x[0], Exception);
 
   BOOST_CHECK_THROW(x.perm(perm), Exception);
@@ -77,7 +76,6 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
 
   BOOST_CHECK_THROW(x.gemm(y, 2.0, gemm_helper), Exception);
   BOOST_CHECK_THROW(x.gemm(y, 2.0, gemm_helper, perm), Exception);
-#endif  // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE(non_comm_constructor) {
@@ -324,14 +322,11 @@ BOOST_AUTO_TEST_CASE(block) {
         auto result4 = sparse_shape.block(ranges::views::zip(lower, upper));
         BOOST_CHECK_EQUAL(result, result4);
 #endif
-      }
-#ifdef TA_EXCEPTION_ERROR
-      else {
+      } else {
         // Check that block throws an exception with a bad block range
         BOOST_CHECK_THROW(sparse_shape.block(lower, upper),
                           TiledArray::Exception);
       }
-#endif  // TA_EXCEPTION_ERROR
     }
   }
 }
@@ -419,14 +414,11 @@ BOOST_AUTO_TEST_CASE(block_scale) {
         BOOST_CHECK_EQUAL(result, result4);
 #endif
 
-      }
-#ifdef TA_EXCEPTION_ERROR
-      else {
+      } else {
         // Check that block throws an exception with a bad block range
         BOOST_CHECK_THROW(sparse_shape.block(lower, upper),
                           TiledArray::Exception);
       }
-#endif  // TA_EXCEPTION_ERROR
     }
   }
 }
@@ -516,14 +508,11 @@ BOOST_AUTO_TEST_CASE(block_perm) {
         BOOST_CHECK_EQUAL(result, result4);
 #endif
 
-      }
-#ifdef TA_EXCEPTION_ERROR
-      else {
+      } else {
         // Check that block throws an exception with a bad block range
         BOOST_CHECK_THROW(sparse_shape.block(lower, upper),
                           TiledArray::Exception);
       }
-#endif  // TA_EXCEPTION_ERROR
     }
   }
 }
@@ -617,14 +606,11 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
         BOOST_CHECK_EQUAL(result, result4);
 #endif
 
-      }
-#ifdef TA_EXCEPTION_ERROR
-      else {
+      } else {
         // Check that block throws an exception with a bad block range
         BOOST_CHECK_THROW(sparse_shape.block(lower, upper),
                           TiledArray::Exception);
       }
-#endif  // TA_EXCEPTION_ERROR
     }
   }
 }

@@ -51,9 +51,7 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
                     const_cast<const TensorN&>(x).end());
 
   // check for element access error
-#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(x[0], Exception);
-#endif  // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE(range_constructor) {
@@ -327,10 +325,8 @@ BOOST_AUTO_TEST_CASE(element_access) {
 #endif
 
   // check out of range error
-#ifdef TA_EXCEPTION_ERROR
   BOOST_CHECK_THROW(t[r.upbound()], Exception);
   BOOST_CHECK_THROW(t[r.volume()], Exception);
-#endif  // TA_EXCEPTION_ERROR
 }
 
 BOOST_AUTO_TEST_CASE(iteration) {

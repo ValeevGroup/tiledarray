@@ -52,9 +52,9 @@ namespace detail {
 struct default_world {
   static World& get() {
     if (!world()) {
-      TA_USER_ASSERT(madness::initialized(),
-                     "TiledArray::detail::default_world::get() called "
-                     "before madness::initialize()");
+      TA_ASSERT(madness::initialized() &&
+                "TiledArray::detail::default_world::get() called "
+                "before madness::initialize()");
       world() = &madness::World::get_default();
     }
     return *world();
