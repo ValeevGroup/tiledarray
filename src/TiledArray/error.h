@@ -63,6 +63,9 @@ inline void exception_break() {}
 #define TA_EXCEPTION_MESSAGE(file, line, mess) \
   "TiledArray: exception at " file "(" TA_STRINGIZE(line) "): " mess
 
+/// throws TiledArray::Exception with message \p m annotated with the file name
+/// and line number
+/// \param m a C-style string constant
 #define TA_EXCEPTION(m)                                                       \
   do {                                                                        \
     TiledArray::exception_break();                                            \
@@ -79,45 +82,51 @@ inline void exception_break() {}
 #undef TA_ABORT_ERROR
 #endif
 
+/// TiledArray assertion is configured to throw TiledArray::Exception
+/// if \p a is false
+/// \param a an expression convertible to bool
 #define TA_ASSERT(a)                             \
   do {                                           \
     if (!(a)) TA_EXCEPTION("assertion failure"); \
   } while (0)
-#define TA_TEST(a) TA_ASSERT(a)
 
 #elif defined(TA_ASSERT_ERROR)
 // This sections defines behavior for TiledArray assertion error checking which
 // uses assertions.
 #include <cassert>
+
+/// TiledArray assertion is configured to call \c assert()
+/// if \p a is false
+/// \param a an expression convertible to bool
 #define TA_ASSERT(a) assert(a)
-#define TA_TEST(a) TA_ASSERT(a)
+
 #elif defined(TA_ABORT_ERROR)
 // This sections defines behavior for TiledArray assertion error checking which
 // calls std::abort
 #include <cstdlib>
+
+/// TiledArray assertion is configured to call std::abort if \p a is false
+/// \param a an expression convertible to bool
 #define TA_ASSERT(a)        \
   do {                      \
     if (!(a)) std::abort(); \
   } while (0)
-#define TA_TEST(a) TA_ASSERT(a)
+
 #else
 // This section defines behavior for TiledArray assertion error checking which
 // does no error checking.
 // WARNING: TiledArray will perform no error checking.
 // this avoids unused variable warnings, see
 // http://cnicholson.net/2009/02/stupid-c-tricks-adventures-in-assert/
+
+/// TiledArray assertion is configured to do nothing
+/// \param a an expression convertible to bool
 #define TA_ASSERT(a) \
   do {               \
     (void)sizeof(a); \
   } while (0)
-#define TA_TEST(a) (a)
 
 #endif  // TA_EXCEPTION_ERROR
-
-#define TA_CHECK(a)                          \
-  do {                                       \
-    if (!(a)) TA_EXCEPTION("check failure"); \
-  } while (0)
 
 #ifdef TILEDARRAY_NO_USER_ERROR_MESSAGES
 #define TA_USER_ERROR_MESSAGE(m)
