@@ -153,6 +153,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
   }
 
   // Check that invalid input throws an exception.
+#ifndef NDEBUG
   {
     std::vector<std::size_t> boundaries;
     BOOST_CHECK_THROW(TiledRange1 r(boundaries.begin(), boundaries.end()),
@@ -164,6 +165,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_THROW(TiledRange1 r(boundaries.begin(), boundaries.end()),
                       Exception);
   }
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(ostream) {
