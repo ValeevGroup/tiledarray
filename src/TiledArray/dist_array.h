@@ -975,6 +975,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \param vars A string with a comma-separated list of variables
   /// \return A const tensor expression object
+  /// \note size and contents of \p vars are validated using
+  ///   DistArray::check_str_index()
   TiledArray::expressions::TsrExpr<const DistArray_, true> operator()(
       const std::string& vars) const {
     check_str_index(vars);
@@ -986,6 +988,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \param vars A string with a comma-separated list of variables
   /// \return A non-const tensor expression object
+  /// \note size and contents of \p vars are validated using
+  ///   DistArray::check_str_index()
   TiledArray::expressions::TsrExpr<DistArray_, true> operator()(
       const std::string& vars) {
     check_str_index(vars);
@@ -1480,6 +1484,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// This function checks that PIMPL has been
   /// @param[in] vars The string indices, such as `"i, j"`, the user provided to
   ///                 label the modes.
+  /// @warning this tests contents of @p vars using #TA_ASSERT() only if
+  /// preprocessor macro @c NDEBUG is not defined
   void check_str_index(const std::string& vars) const {
 #ifndef NDEBUG
     // Only check indices if the PIMPL is initialized (okay to not initialize

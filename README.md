@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/ValeevGroup/tiledarray.svg?branch=master)](https://travis-ci.org/ValeevGroup/tiledarray)
+[![Build Status](https://travis-ci.com/ValeevGroup/tiledarray.svg?branch=master)](https://travis-ci.com/ValeevGroup/tiledarray)
 [![codecov](https://codecov.io/gh/ValeevGroup/tiledarray/branch/master/graph/badge.svg)](https://codecov.io/gh/ValeevGroup/tiledarray)
 
 # Synopsis
