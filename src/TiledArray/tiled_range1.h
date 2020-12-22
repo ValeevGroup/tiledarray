@@ -69,7 +69,7 @@ class TiledRange1 {
   /// Constructs a range with the boundaries provided by
   /// the range [ \p first , \p last ).
   /// \note validity of the [ \p first , \p last ) range is checked using
-  /// #TA_ASSERT() only if preprocessor macro #NDEBUG is not defined
+  /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
   template <typename RandIter,
             typename std::enable_if<
                 detail::is_random_iterator<RandIter>::value>::type* = nullptr>
@@ -93,7 +93,7 @@ class TiledRange1 {
   /// \param t0 The starting index of the first tile
   /// \param t_rest The rest of tile boundaries
   /// \note validity of the {\p t0 , \p t_rest... } range is checked using
-  /// #TA_ASSERT() only if preprocessor macro #NDEBUG is not defined
+  /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
   template <typename... _sizes>
   explicit TiledRange1(const index1_type& t0, const _sizes&... t_rest) {
     const auto n = sizeof...(_sizes) + 1;
@@ -111,7 +111,7 @@ class TiledRange1 {
   /// \tparam Integer An integral type
   /// \param list The list of tile boundaries in order from smallest to largest
   /// \note validity of the {\p t0 , \p t_rest... } range is checked using
-  /// #TA_ASSERT() only if preprocessor macro #NDEBUG is not defined
+  /// #TA_ASSERT() only if preprocessor macro \c NDEBUG is not defined
   template <typename Integer,
             typename = std::enable_if_t<std::is_integral_v<Integer>>>
   explicit TiledRange1(const std::initializer_list<Integer>& list) {
