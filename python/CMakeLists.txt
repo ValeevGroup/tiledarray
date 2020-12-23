@@ -54,7 +54,7 @@ add_test(build_python "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target 
 add_test(
   NAME test_python
   # need to use pytest to find tiledarray module properly
-  COMMAND ${PYTHON_EXECUTABLE} -m pytest ${PROJECT_SOURCE_DIR}/test_tiledarray.py
+  COMMAND ${PYTHON_EXECUTABLE} -m pytest ${PROJECT_SOURCE_DIR}/test_tiledarray.py -v
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
   )
 

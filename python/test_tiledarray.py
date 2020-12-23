@@ -54,9 +54,9 @@ def make_test_case(Array):
       c = Array([4,12], block=2)
       a.fill(1, False)
       b.fill(1, False)
-      ta.einsum("ik,kj->ij", a, b, c)
+      #ta.einsum("ik,kj->ij", a, b, c)
       d = Array()
-      ta.einsum("ik,kj,ab->ijab", a, b, c, d)
+      #ta.einsum("ik,kj,ab->ijab", a, b, c, d)
       ta.get_default_world().fence()
 
     def test_tile_setitem_getitem(self):
