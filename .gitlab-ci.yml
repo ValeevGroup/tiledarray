@@ -26,7 +26,10 @@ build:
   script:
     - mkdir build
     - cd build
-    - source /opt/intel/compilers_and_libraries_2020.4.304/linux/mkl/bin/mklvars.sh intel64
+    - |-
+      if [[ "X$BLAS" != "X" ]]; then
+        source /opt/intel/compilers_and_libraries_2020.4.304/linux/mkl/bin/mklvars.sh intel64
+      fi
     - cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/gitlab-ci.cmake
         -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
         -D${TA_PYTHON}
