@@ -105,9 +105,6 @@ add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-
 option(ENABLE_SCALAPACK "Enable ScaLAPACK Bindings in TiledArray" OFF)
 add_feature_info(ScaLAPACK ENABLE_SCALAPACK "ScaLAPACK provides distributed linear algebra")
 
-redefaultable_option(ENABLE_MKL "Enable use of MKL (info passed to MADNESS)" ON)
-add_feature_info(MKL ENABLE_MKL "Intel Math Kernel Library provides linear algebra and other math functionality")
-
 redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" OFF)
 add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks (TBB) supports programming shared-memory systems")
 

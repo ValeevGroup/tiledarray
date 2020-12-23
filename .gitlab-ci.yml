@@ -22,7 +22,7 @@ build:
   variables:
     CXX: ${CXX}
     TA_PYTHON : "TA_PYTHON=OFF"
-    ENABLE_MKL : "ENABLE_MKL=OFF"
+    BLAS : ""
     ENABLE_SCALAPACK : "ENABLE_SCALAPACK=OFF"
   script:
     - mkdir build
@@ -30,8 +30,8 @@ build:
     - cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/gitlab-ci.cmake
         -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
         -D${TA_PYTHON}
-        -D${ENABLE_MKL}
         -D${ENABLE_SCALAPACK}
+        ${BLAS}
     - make tiledarray
     - make examples
     - make ta_test
@@ -41,7 +41,7 @@ build:
       - CXX: [ g++ ]
         IMAGE : [ "ubuntu:20.04" ]
         BUILD_TYPE : [ "Release", "Debug" ]
-        ENABLE_MKL : [ "ENABLE_MKL=ON", "ENABLE_MKL=OFF" ]
+        BLAS : [ "BLA_VENDOR=Intel10_64lp_seq", "BLA_VENDOR=Intel10_64lp", "" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
       - CXX: [ g++ ]
         IMAGE : [ "ubuntu:20.04" ]
@@ -50,4 +50,4 @@ build:
       - CXX: [ clang++-9 ]
         IMAGE : [ "ubuntu:20.04" ]
         BUILD_TYPE : [ "Release", "Debug" ]
-        ENABLE_MKL : [ "ENABLE_MKL=ON", "ENABLE_MKL=OFF" ]
+        BLAS : [ "BLA_VENDOR=Intel10_64lp_seq", "BLA_VENDOR=Intel10_64lp", "" ]

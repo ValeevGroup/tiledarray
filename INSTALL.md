@@ -289,7 +289,6 @@ The following CMake options may be used to modify build behavior or find MADNESS
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
 * `ENABLE_SCALAPACK` -- Enable use of ScaLAPACK bindings [Default=OFF]
 * `ENABLE_TBB` -- Enable the use of TBB when building MADNESS [Default=ON]
-* `ENABLE_MKL` -- Enable the use of MKL when building MADNESS [Default=ON]
 * `ENABLE_GPERFTOOLS` -- Enable the use of gperftools when building MADNESS [Default=OFF]
 * `ENABLE_TCMALLOC_MINIMAL` -- Enable the use of gperftool's tcmalloc_minimal library only (the rest of gperftools is skipped) when building MADNESS [Default=OFF]
 * `ENABLE_LIBUNWIND` -- Force the discovery of libunwind library when building MADNESS [Default=OFF]
