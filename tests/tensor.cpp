@@ -531,9 +531,10 @@ BOOST_AUTO_TEST_CASE(gemm) {
     {
       integer m = 1, n = 1, k = 1;
       gemm_helper_nt.compute_matrix_sizes(m, n, k, x.range(), y.range());
-      math::blas::gemm(TiledArray::math::blas::Op::Trans,
-                       TiledArray::math::blas::Op::NoTrans, n, m, k, alpha,
-                       y.data(), k, x.data(), k, 0, z0_ref.data(), n);
+      math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
+                       TiledArray::math::blas::Op::Trans,
+                       m, n, k, alpha,
+                       x.data(), k, y.data(), k, 0, z0_ref.data(), n);
     }
     for (std::size_t i = 0ul; i < z0.size(); ++i)
       BOOST_CHECK_EQUAL(z0[i], z0_ref[i]);
