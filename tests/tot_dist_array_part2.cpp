@@ -348,8 +348,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params) {
     std::string outer_idx = (outer_rank == 1 ? "i" : "i,j");
     std::string inner_idx = (inner_rank == 1 ? "k" : "k,l");
 
-    // call operators validate inputs if NDEBUG
-#ifdef NDEBUG
+    // call operators validate inputs only if NDEBUG not defined
+#ifndef NDEBUG
     if (m_world.nproc() == 1) {
       using except_t = TiledArray::Exception;
       // Throws if no semicolon
@@ -375,7 +375,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params) {
     std::string outer_idx = (outer_rank == 1 ? "i" : "i,j");
     std::string inner_idx = (inner_rank == 1 ? "k" : "k,l");
 
-    // call operators validate inputs if NDEBUG
+    // call operators validate inputs only if NDEBUG not defined
 #ifndef NDEBUG
     if (m_world.nproc() == 1) {
       using except_t = TiledArray::Exception;
