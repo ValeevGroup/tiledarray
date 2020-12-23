@@ -131,10 +131,6 @@ any_files_changed = False
 
 # Boost version in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'Boost', boost_old_version, boost_new_version, 'boost.org/), version ', ' or higher')
-# Boost install version in boost.cmake
-any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Boost', boost_old_install_version, boost_new_install_version, 'boostorg/release/', '/source/boost')
-any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Boost', dots_to_undescores(boost_old_install_version), dots_to_undescores(boost_new_install_version), 'source/boost_', '.tar.gz')
-any_files_changed |= replace_dep_id(topsrc, 'cmake', 'Boost', boost_old_install_url_hash, boost_new_install_url_hash, 'SHA256=', '')
 
 # Eigen version in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'Eigen', eigen_old_version, eigen_new_version, 'eigen.tuxfamily.org), version ', ' or higher')
