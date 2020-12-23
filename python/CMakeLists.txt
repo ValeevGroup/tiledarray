@@ -48,7 +48,7 @@ target_link_libraries(python-tiledarray INTERFACE Boost::boost)
 enable_testing()
 
 # build step
-add_test(build_python "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target python-tiledarray)
+add_test(build_python "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR} --target python-tiledarray)
 
 # test step
 add_test(
