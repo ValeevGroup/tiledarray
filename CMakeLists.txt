@@ -297,8 +297,10 @@ endif()
 include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
-include(FindOrFetchBoost)
+# BTAS does a better job of building and checking Boost since it uses Boost::serialization
+# it also memorized the location of its config for use from install tree
 include(FindOrFetchBTAS)
+include(FindOrFetchBoost)
 if(ENABLE_SCALAPACK)
   include(external/scalapack.cmake)
 endif()
