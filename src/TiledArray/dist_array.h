@@ -1582,9 +1582,9 @@ extern template class DistArray<Tensor<long, Eigen::aligned_allocator<long>>,
 
 /// Add the tensor to an output stream
 
-/// This function will iterate through all tiles on node 0 and print non-zero
-/// tiles. It will wait for each tile to be evaluated (i.e. it is a blocking
-/// function). Tasks will continue to be processed.
+/// This function will iterate through all tiles on all nodes (MPI ranks) 
+/// and print local non-zero tiles. It will wait for each tile to be evaluated 
+/// (i.e. it is a blocking function). Tasks will continue to be processed.
 /// \tparam T The element type of Array
 /// \tparam Tile The Tile type
 /// \param os The output stream
@@ -1593,14 +1593,12 @@ extern template class DistArray<Tensor<long, Eigen::aligned_allocator<long>>,
 template <typename Tile, typename Policy>
 inline std::ostream& operator<<(std::ostream& os,
                                 const DistArray<Tile, Policy>& a) {
-  if (a.world().rank() == 0) {
-    for (std::size_t i = 0; i < a.size(); ++i)
-      if (a.is_local(i) && !a.is_zero(i)) {
-        const typename DistArray<Tile, Policy>::value_type tile =
-            a.find(i).get();
-        os << i << ": " << tile << "\n";
-      }
-  }
+  for (std::size_t i = 0; i < a.size(); ++i)
+    if (a.is_local(i) && !a.is_zero(i)) {
+      const typename DistArray<Tile, Policy>::value_type tile =
+          a.find(i).get();
+      os << "MPI rank " << a.world().rank()<< ": " << i << ": " << tile << "\n";
+    }
   a.world().gop.fence();
   return os;
 }
