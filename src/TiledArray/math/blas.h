@@ -29,6 +29,7 @@
 #include <TiledArray/external/eigen.h>
 #include <TiledArray/type_traits.h>
 
+#include <blas/wrappers.hh>
 #include <blas/dot.hh>
 #include <blas/gemm.hh>
 #include <blas/scal.hh>
