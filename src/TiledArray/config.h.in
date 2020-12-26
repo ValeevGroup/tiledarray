@@ -86,23 +86,8 @@
 #endif  // __has_include(<btas/features.h>)
 #endif  // __has_include
 #endif  // !defined(TILEDARRAY_HAS_BTAS)
-
-/* if have BTAS and MADNESS detected MKL, configure BTAS+LAPACK for BTAS via #define's */
-#if defined(TILEDARRAY_HAS_BTAS) && defined(HAVE_INTEL_MKL)
-// _HAS_INTEL_MKL is obsolete in BTAS 1.0.0
-#ifndef _HAS_INTEL_MKL
-#  define _HAS_INTEL_MKL
-#endif
-#ifndef BTAS_HAS_CBLAS
-#  define BTAS_HAS_CBLAS
-#endif
-// these are introduced in BTAS 1.0.0
-#ifndef BTAS_HAS_LAPACKE
-#  define BTAS_HAS_LAPACKE
-#endif
-#ifndef BTAS_HAS_INTEL_MKL
-#  define BTAS_HAS_INTEL_MKL
-#endif
+#if defined(TILEDARRAY_HAS_BTAS) && defined(BTAS_HAS_INTEL_MKL)
+#  define TILEDARRAY_HAS_INTEL_MKL
 #endif
 
 /* Add macro TILEDARRAY_FORCE_INLINE which does as the name implies. */
