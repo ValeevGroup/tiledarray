@@ -1,4 +1,6 @@
-# Synopsis
+# TiledArray Installation Guide
+
+## Synopsis
 
 ```.cpp
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
@@ -12,7 +14,15 @@ $ cmake --build build
 $ cmake --build build --target install
 ```
 
-# Prerequisites
+## Introduction
+
+There are 2 ways to build TiledArray:
+- by searching for pre-compiled dependencies first; some dependencies, if they are not found, TiledArray will build from source, and
+- by building all critical dependencies from source.
+
+Both methods are supported. However, for most users we _strongly_ recommend to build as many dependencies from source as possible. Only package maintainers have necessary expertise to properly build TiledArray from separately built components. Hence by default TiledArray will not look for precompiled versions of critical dependencies (MADNESS, BTAS, etc.).
+
+## Prerequisites
 
 - C++ compiler with support for the [C++17 standard](http://www.iso.org/standard/68564.html), or a more recent standard. This includes the following compilers:
   - [GNU C++](https://gcc.gnu.org/), version 7.0 or higher
@@ -40,14 +50,14 @@ $ cmake --build build --target install
   it also also contains detailed
   MADNESS compilation instructions.
 
-  Compiling MADNESS requires the following prerequisites:
+Compiling MADNESS requires the following prerequisites:
   - An implementation of Message Passing Interface version 2 or 3, with support
     for `MPI_THREAD_MULTIPLE`.
   - (optional)
-    Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb‎) or
+    Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb) or
     an [open-source](https://www.threadingbuildingblocks.org/) form
 
-  Compiling BTAS requires the following prerequisites:
+Compiling BTAS requires the following prerequisites:
   - [blaspp](https://bitbucket.org/icl/blaspp.git) -- C++ API for BLAS
   - [lapackpp](https://bitbucket.org/icl/lapackpp.git) -- C++ API for LAPACK
   - BLAS and LAPACK libraries
@@ -63,13 +73,13 @@ Optional prerequisites:
 - Python3 interpreter -- to test (optionally-built) Python bindings
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20; only used for some unit testing of the functionality anticipated to be supported by future C++ standards.
 
-Most of the dependencies (except for MADNESS) can be installed with a package manager,
+Most of the dependencies (except for MADNESS and BTAS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
 this is the preferred method. Since on some systems configuring
 and building MADNESS can be difficult even for experts, we recommend letting the
 TiledArray download and build MADNESS for you.
 
-# Obtain TiledArray source code
+## Obtain TiledArray source code
 
 Check out the source code as follows:
 
@@ -88,25 +98,21 @@ Instructions below assume that you are located in the build directory. We will a
 the environment variable `TILEDARRAY_SOURCE_DIR` specifies the location of the
 TiledArray source tree.
 
-# Configure TiledArray
+## Configure TiledArray
 
 TiledArray is configured and built with CMake. When configuring with CMake, you specify a set
 of CMake variables on the command line, where each variable argument is prepended with the '-D'
 option. Typically, you will need to specify the install path for TiledArray,
 build type, and MPI Compiler wrappers.
 
-For many platforms TiledArray provides *toolchain* files that can greatly simplify configuration;
-they are located under `$TILEDARRAY_SOURCE_DIR/cmake/toolchains`.
-It is strongly recommended that all users use one of the provided toolchains as is or as the
-basis for a custom toolchain file.
-Here's how to compile TiledArray on a macOS system:
-
+For basic builds you may not need to provide any arguments to CMake, however most users will want to nudge CMake towards configuring TiledArray as desired by specifying the C++ compiler to use, the MPI compiler wrapper to use, etc. The Valeev Research Group provides a number of toolchain files that can be used to specify a generic or a specific platform, e.g. to compile MPQC on MacOS use this script:
 ```
 $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
         -D CMAKE_BUILD_TYPE=Release \
         -D CMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/macos-clang-mpi-accelerate.cmake \
         $TILEDARRAY_SOURCE_DIR
 ```
+Note that the `macos-clang-mpi-accelerate` toolchain file is part of the [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains) which is downloaded and placed within the build tree by CMake at configure time.
 
 Following are several common examples of configuring TiledArray where instead of a toolchain file
 we specify CMake variables "manually" (on the command line).
@@ -246,6 +252,16 @@ More information can be found in the installation instructions for
 [BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
 [LAPACK++](https://icl.bitbucket.io/lapackpp/md__i_n_s_t_a_l_l.html).
 
+Additional platform-specific BLAS/LAPACK notes are listed below.
+
+### Intel Math Kernel Library (MKL)
+
+Intel MKL is freely available collection of high-performance libraries that implements BLAS, LAPACK, and ScaLAPACK APIs. MKL is complex: it supports both serial kernels as well as parallel kernels that can take advantage of multiple cores via the use of OpenMP and Intel TBB (the Intel OneAPI toolkit)[https://software.intel.com/oneapi] provides MKL also capable of execution on some Intel GPUs and FPGAs), and the (necessary MKL link options)[https://software.intel.com/sites/products/mkl/mkl_link_line_advisor.htm] will depend on the compiler, OS, and other details.
+
+Fortunately, Intel MKL can be discovered by BLAS++/LAPACK++ automatically in most instances; if needed, specifying `BLA_VENDOR` with appropriate argument can be used to force TiledArray to use MKL. Unfortunately it is not possible to specify the use of TBB-based backend for MKL without the use of a toolchain file. All MKL-enabled toolchains in [The Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains) can be used to configure TiledArray to use sequential, OpenMP, or TBB backend by setting the `MKL_THREADING` CMake cache variable to `SEQ`, `OMP`, or `TBB`, respectively. The toolchains also respect the user-provided choice of `BLA_STATIC`. If multiple MKL versions are present on your system, specify the apropriate variant of the library by loading the corresponding `mklvars.sh` script to set environment variables `MKLROOT` and, if necessary, `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH`.
+
+Also note that even if OpenMP or TBB backends are used, TiledArray will be default set the number of threads to be used by MKL kernels to 1, regardless of the value of environment variables `MKL_NUM_THREADS`/`OMP_NUM_THREADS`. It is possible to change the number of threads to be used programmatically in your application by calling MKL function `mkl_set_num_threads()`.
+
 ## CUDA
 
 Support for execution on CUDA-enabled hardware is controlled by the following variables:
@@ -301,7 +317,6 @@ The following CMake options may be used to modify build behavior or find MADNESS
 
 The following environment variables can be used to help discovery of MADNESS dependencies:
 * `TBBROOT` -- the install prefix of TBB
-* `MKLROOT` -- the install prefix of MKL
 * `GPERFTOOLS_DIR` -- the install prefix of gperftools
 * `LIBUNWIND_DIR` -- the install prefix of libunwind
 
