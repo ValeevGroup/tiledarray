@@ -125,11 +125,11 @@ TiledArray/math/vector_op.h
 TiledArray/math/scalapack.h
 TiledArray/math/linalg/rank-local.h
 TiledArray/pmap/blocked_pmap.h
-TiledArray/pmap/round_robin_pmap.h
 TiledArray/pmap/cyclic_pmap.h
 TiledArray/pmap/hash_pmap.h
 TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
+TiledArray/pmap/round_robin_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
 TiledArray/special/diagonal_array.h
