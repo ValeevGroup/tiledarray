@@ -30,6 +30,12 @@ pybind11_add_module(python-tiledarray MODULE src/tiledarray.cc)
 # mpi c libs need come from tiledarray
 target_link_libraries(python-tiledarray PRIVATE tiledarray)
 
+# pybind uses sized deallocations when using C++17, clang requires -fsized-deallocation compiler flag to enable them
+# see https://reviews.llvm.org/D8467 and https://github.com/pybind/pybind11/issues/1818
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  target_compile_options(python-tiledarray PRIVATE -fsized-deallocation)
+endif()
+
 set_target_properties(
   python-tiledarray
   PROPERTIES
