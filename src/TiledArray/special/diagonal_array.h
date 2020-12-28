@@ -286,6 +286,7 @@ diagonal_array(World &world, TiledRange const &trange,
     detail::write_diag_tiles_to_array_rng(A, diagonals_begin);
     return A;
   }
+  abort();  // unreachable
 }
 
 }  // namespace TiledArray
