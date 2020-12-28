@@ -1,5 +1,5 @@
 [![Travis Build Status](https://travis-ci.com/ValeevGroup/tiledarray.svg?branch=master)](https://travis-ci.com/ValeevGroup/tiledarray)
-[![Gitlab Pipeline Status](https://gitlab.com/ValeevGroup/tiledarray/badges/master/pipeline.svg)](https://gitlab.com/ValeevGroup/tiledarray/-/commits/master)
+[![Gitlab Pipeline Status](https://gitlab.com/ValeevGroup/tiledarray/badges/master/pipeline.svg)](https://gitlab.com/ValeevGroup/tiledarray/-/pipelines?page=1&scope=all&ref=master)
 [![codecov](https://codecov.io/gh/ValeevGroup/tiledarray/branch/master/graph/badge.svg)](https://codecov.io/gh/ValeevGroup/tiledarray)
 
 # Synopsis
