@@ -121,7 +121,7 @@ struct PermutationGroupFixture {
 };  // PermutationGroupFixture
 
 BOOST_FIXTURE_TEST_SUITE(symm_group_suite, PermutationGroupFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // SymmetricGroup "degree" ctor

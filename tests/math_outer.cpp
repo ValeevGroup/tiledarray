@@ -63,7 +63,7 @@ struct OuterFixture {
 };  // OuterFixture
 
 BOOST_FIXTURE_TEST_SUITE(math_outer_suite, OuterFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(outer_kernel) {
   const std::vector<int> reference = result;

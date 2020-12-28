@@ -50,7 +50,7 @@ const std::array<std::size_t, 4> PermIndexFixture::finish = {
     {3ul, 5ul, 7ul, 11ul}};
 
 BOOST_FIXTURE_TEST_SUITE(perm_index_suite, PermIndexFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK_NO_THROW(PermIndex x;);

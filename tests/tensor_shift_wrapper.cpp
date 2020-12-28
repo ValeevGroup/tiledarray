@@ -64,7 +64,7 @@ struct ShiftWrapperFixture {
 };  // ShiftWrapperFixture
 
 BOOST_FIXTURE_TEST_SUITE(tensor_shift_wrapper_suite, ShiftWrapperFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   BOOST_CHECK_NO_THROW(shift(t1));
