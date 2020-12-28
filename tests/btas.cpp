@@ -55,6 +55,12 @@ static_assert(
         OrdinalType::RowMajor,
     "TA::Tile<btas::Tenspr<T, TA::Range>> is row-major");
 
+// test traits
+static_assert(TiledArray::detail::is_ta_tensor_v<btas::Tensor<int>> == false, "btas::Tensor is not a TA::Tensor");
+static_assert(TiledArray::detail::is_ta_tensor_v<TiledArray::Tensor<int>> == true, "TA::Tensor is a TA::Tensor");
+static_assert(TiledArray::detail::is_btas_tensor_v<btas::Tensor<int>> == true, "btas::Tensor is a btas::Tensor");
+static_assert(TiledArray::detail::is_btas_tensor_v<TiledArray::Tensor<int>> == false, "TA::Tensor is not a btas::Tensor");
+
 // test both bare (deep-copy) BTAS tensor as well as its shallow-copy wrap in
 // Tile<>, using both btas::RangeNd<> and TiledArray::Range as the range type
 typedef boost::mpl::list<
