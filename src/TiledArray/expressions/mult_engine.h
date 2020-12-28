@@ -409,6 +409,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     } else {  // plain tensors
       return op_type(op_base_type());
     }
+    abort();  // unreachable
   }
 
   /// Permuting tile operation factory function
@@ -433,6 +434,7 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
     } else {  // plain tensor
       return op_type(op_base_type(), perm);
     }
+    abort();  // unreachable
   }
 
   /// Construct the distributed evaluator for this expression

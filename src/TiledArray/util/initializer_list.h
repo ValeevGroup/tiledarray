@@ -156,6 +156,7 @@ auto tiled_range_from_il(T&& il, U shape = {}) {
 
     return tiled_range_from_il(*first_sub_il_it, std::move(shape));
   }
+  abort();  // unreachable
 }
 
 //------------------------------------------------------------------------------
@@ -270,6 +271,7 @@ auto get_elem_from_il(T idx, U&& il, std::size_t depth = 0) {
       return get_elem_from_il(std::forward<T>(idx), *itr, depth + 1);
     }
   }
+  abort();  // unreachable
 }
 
 //------------------------------------------------------------------------------

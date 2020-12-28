@@ -148,6 +148,7 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
                            eigen_to_array<Array>(world, l_trange, L_inv_eig));
   else
     return eigen_to_array<Array>(world, l_trange, L_eig);
+  abort();  // unreachable
 }
 
 template <typename Array,

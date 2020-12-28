@@ -876,6 +876,7 @@ class Tensor {
       }
       return rv;
     }
+    abort();  // unreachable
   }
 
   /// Shift the lower and upper bound of this tensor
@@ -983,6 +984,7 @@ class Tensor {
       Permute<Tensor_, Tensor_> p;
       return p(temp, perm);
     }
+    abort();  // unreachable
   }
 
   /// Use a binary, element wise operation to modify this tensor
@@ -1046,6 +1048,7 @@ class Tensor {
       Permute<Tensor_, Tensor_> p;
       return p(temp, perm);
     }
+    abort();  // unreachable
   }
 
   /// Use a unary, element wise operation to modify this tensor
