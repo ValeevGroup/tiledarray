@@ -1,8 +1,9 @@
 # for each dependency track both current and previous id (the variable for the latter must contain PREVIOUS)
 # to be able to auto-update them
 
-set(TA_TRACKED_BOOST_VERSION 1.68)
-set(TA_TRACKED_BOOST_PREVIOUS_VERSION 1.33)
+# Boost explicitly downgraded to 1.59 from 1.68
+set(TA_TRACKED_BOOST_VERSION 1.59)
+set(TA_TRACKED_BOOST_PREVIOUS_VERSION 1.68)
 set(TA_INSTALL_BOOST_VERSION 1.70.0)
 set(TA_INSTALL_BOOST_PREVIOUS_VERSION 1.70.0)
 set(TA_INSTALL_BOOST_URL_HASH 882b48708d211a5f48e60b0124cf5863c1534cd544ecd0664bb534a4b5d506e9)

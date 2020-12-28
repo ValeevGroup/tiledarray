@@ -4,12 +4,6 @@ stages:
 default:
   tags: [ docker ]
 
-variables:
-  # to run OpenMPI in docker
-  OMPI_ALLOW_RUN_AS_ROOT: 1
-  OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: 1
-  OMPI_MCA_btl_vader_single_copy_mechanism: none
-
 before_script:
   - echo 'localhost slots=8' > /etc/openmpi/openmpi-default-hostfile
   - apt-get install -yq intel-mkl-core-c-2020.4-304
@@ -18,36 +12,32 @@ before_script:
 build:
   stage: build
   timeout: 3h
+  interruptible: true
   image: valeevgroup/${IMAGE}
   variables:
     CXX: ${CXX}
-    TA_PYTHON : "TA_PYTHON=OFF"
     ENABLE_MKL : "ENABLE_MKL=OFF"
     ENABLE_SCALAPACK : "ENABLE_SCALAPACK=OFF"
   script:
     - mkdir build
     - cd build
-    - cmake .. -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchains/gitlab-ci.cmake
-        -DCMAKE_BUILD_TYPE=${BUILD_TYPE}
-        -D${TA_PYTHON}
-        -D${ENABLE_MKL}
-        -D${ENABLE_SCALAPACK}
-    - make tiledarray
-    - make examples
-    - make ta_test
-    - make check
+    - ../bin/gitlab-ci.sh ..
+        CMAKE_BUILD_TYPE=${BUILD_TYPE}
+        ${TA_PYTHON}
+        ${ENABLE_MKL}
+        ${ENABLE_SCALAPACK}
+        MPIEXEC_PREFLAGS="--allow-run-as-root"
+        blacs_LIBRARIES=scalapack-openmpi
+        scalapack_LIBRARIES=scalapack-openmpi
+        lapack_LIBRARIES=lapack
   parallel:
     matrix:
-      - CXX: [ g++ ]
-        IMAGE : [ "ubuntu:20.04" ]
+      - IMAGE : [ "ubuntu:20.04" ]
+        CXX: [ g++, clang++-9 ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_MKL : [ "ENABLE_MKL=ON", "ENABLE_MKL=OFF" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
-      - CXX: [ g++ ]
-        IMAGE : [ "ubuntu:20.04" ]
+      - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
+        CXX: [ g++ ]
         BUILD_TYPE : [ "Release", "Debug" ]
         TA_PYTHON : [ "TA_PYTHON=ON" ]
-      - CXX: [ clang++-9 ]
-        IMAGE : [ "ubuntu:20.04" ]
-        BUILD_TYPE : [ "Release", "Debug" ]
-        ENABLE_MKL : [ "ENABLE_MKL=ON", "ENABLE_MKL=OFF" ]

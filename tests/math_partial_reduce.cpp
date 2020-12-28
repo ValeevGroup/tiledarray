@@ -67,7 +67,7 @@ struct PartialReduceFixture {
 };  // PartialReduceFixture
 
 BOOST_FIXTURE_TEST_SUITE(math_partial_reduce_suite, PartialReduceFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(unary_row_reduce) {
   // Create a copy of the result for later use.

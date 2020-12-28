@@ -23,7 +23,7 @@
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
-BOOST_AUTO_TEST_SUITE(t_t_t_contract_fxn, TA_UT_SKIP_IF_DISTRIBUTED)
+BOOST_AUTO_TEST_SUITE(t_t_t_contract_fxn, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(ij_i_j) {
   Tensor<double> lhs(Range{4}, {24, 95, 2, 37});

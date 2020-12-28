@@ -36,7 +36,7 @@ struct IrrepFixture {
 using TiledArray::Irrep;
 
 BOOST_FIXTURE_TEST_SUITE(symm_irrep_suite, IrrepFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   {

@@ -97,7 +97,7 @@ U1_Operator identity<U1_Operator>() {
 }  // namespace symmetry
 }  // namespace TiledArray
 
-BOOST_FIXTURE_TEST_SUITE(symm_representation_suite, GroupRepresentationFixture, TA_UT_SKIP_IF_DISTRIBUTED)
+BOOST_FIXTURE_TEST_SUITE(symm_representation_suite, GroupRepresentationFixture, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // representation for permutation symmetry

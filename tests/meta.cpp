@@ -31,7 +31,7 @@
 
 struct MetaFixture {};  // MetaFixture
 
-BOOST_FIXTURE_TEST_SUITE(meta_suite, MetaFixture, TA_UT_SKIP_IF_DISTRIBUTED)
+BOOST_FIXTURE_TEST_SUITE(meta_suite, MetaFixture, TA_UT_LABEL_SERIAL)
 
 double sin(double x) { return std::sin(x); }
 double cos(double x) { return std::cos(x); }

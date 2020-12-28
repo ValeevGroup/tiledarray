@@ -25,7 +25,7 @@
 
 # Create example executable
 
-foreach(_exec blas eigen ta_band ta_dense ta_sparse ta_dense_nonuniform
+foreach(_exec ta_blas ta_eigen ta_band ta_dense ta_sparse ta_dense_nonuniform
               ta_dense_asymm ta_sparse_grow ta_dense_new_tile
               ta_cc_abcd)
 

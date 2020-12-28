@@ -164,7 +164,7 @@ const BipartitePermutation TensorOfTensorFixture::bperm(Permutation{1, 0, 3, 2},
                                                         2);
 
 BOOST_FIXTURE_TEST_SUITE(tensor_of_tensor_suite, TensorOfTensorFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 #ifdef TILEDARRAY_HAS_BTAS
 typedef boost::mpl::list<TiledArray::Tensor<int>, bTensorI> itensor_types;
