@@ -47,7 +47,7 @@ const Range BlockRangeFixture::r(std::array<int, 3>{{0, 1, 2}},
                                  std::array<int, 3>{{5, 11, 8}});
 
 BOOST_FIXTURE_TEST_SUITE(block_range_suite, BlockRangeFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 const auto target_count = 20;
 

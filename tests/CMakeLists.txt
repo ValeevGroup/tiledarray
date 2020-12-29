@@ -23,7 +23,7 @@
 #
 
 CONFIGURE_FILE(
-  ${CMAKE_CURRENT_SOURCE_DIR}/unit_test_config_h.in
+  ${CMAKE_CURRENT_SOURCE_DIR}/unit_test_config.h.in
   ${PROJECT_BINARY_DIR}/tests/unit_test_config.h
 )
 
@@ -157,9 +157,16 @@ add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --
 
 # Add a test(s)
 if(ENABLE_MPI)
+  set (${executable}_np_1_args --run_test=!@distributed)
+  set (${executable}_np_2_args --run_test=!@serial)
   foreach(p RANGE 1 2)
-    add_test(NAME ${executable}-np-${p}
-      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${p} ${MPIEXEC_PREFLAGS} $<TARGET_FILE:${executable}> --log_level=warning --show-progress ${MPIEXEC_POSTFLAGS})
+    add_test(
+      NAME ${executable}-np-${p}
+      COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${p}
+        ${MPIEXEC_PREFLAGS}
+        $<TARGET_FILE:${executable}> --log_level=warning --show-progress ${${executable}_np_${p}_args}
+        ${MPIEXEC_POSTFLAGS}
+      )
     set_tests_properties(${executable}-np-${p} PROPERTIES DEPENDS build_${executable})
     if (p GREATER 1)
       set_tests_properties(${executable}-np-${p} PROPERTIES ENVIRONMENT TA_UT_DISTRIBUTED=1)

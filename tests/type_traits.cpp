@@ -42,7 +42,7 @@ struct TypeTraitsFixture {
 };  // TypeTraitsFixture
 
 BOOST_FIXTURE_TEST_SUITE(type_traits_suite, TypeTraitsFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(sanity) {
   constexpr bool double_has_value_type =

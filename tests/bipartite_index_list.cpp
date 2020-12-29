@@ -64,7 +64,7 @@ struct BipartiteIndexListFixture {
 };
 
 BOOST_FIXTURE_TEST_SUITE(bipartite_index_list_suite, BipartiteIndexListFixture,
-                         TA_UT_SKIP_IF_DISTRIBUTED)
+                         TA_UT_LABEL_SERIAL)
 
 /* This unit test ensures that the typedefs are what we think they are. Since no
  * template meta-programming occurs in the class these tests serve more as a

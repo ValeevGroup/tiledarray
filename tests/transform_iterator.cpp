@@ -80,7 +80,7 @@ struct TransformIterFixture {
 std::vector<int> TransformIterFixture::v1(make_vec(1));
 std::vector<int> TransformIterFixture::v2(make_vec(2));
 
-BOOST_FIXTURE_TEST_SUITE(transform_iterator_suite, TransformIterFixture, TA_UT_SKIP_IF_DISTRIBUTED)
+BOOST_FIXTURE_TEST_SUITE(transform_iterator_suite, TransformIterFixture, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(constructor) {
   // Check binary transform iterator constructor
