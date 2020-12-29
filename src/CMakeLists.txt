@@ -213,7 +213,7 @@ TiledArray/math/linalg/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
-set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS)
+set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers)
 
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)

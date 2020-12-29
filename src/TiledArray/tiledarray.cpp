@@ -8,7 +8,7 @@
 #endif
 
 #ifdef TILEDARRAY_HAS_INTEL_MKL
-#include <mkl.h>
+#include <mkl_service.h>
 #endif
 
 namespace TiledArray {
