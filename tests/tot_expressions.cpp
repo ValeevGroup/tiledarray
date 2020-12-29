@@ -1,5 +1,22 @@
 #include "tot_array_fixture.h"
 
+template <typename Tensor, typename ElementGenerator>
+std::enable_if_t<TiledArray::detail::is_btas_tensor_v<Tensor>, Tensor>
+make_tensor(typename Tensor::range_type&& range, ElementGenerator&& op) {
+  Tensor result(std::move(range));
+  result.generate(std::forward<ElementGenerator>(op));
+  return result;
+}
+
+template <typename Tensor, typename ElementGenerator>
+std::enable_if_t<TiledArray::detail::is_ta_tensor_v<Tensor>, Tensor>
+make_tensor(typename Tensor::range_type&& range, ElementGenerator&& op) {
+  Tensor result(std::move(range));
+  std::generate(result.begin(), result.end(),
+                std::forward<ElementGenerator>(op));
+  return result;
+}
+
 //------------------------------------------------------------------------------
 //                            Permutations
 //------------------------------------------------------------------------------
@@ -4230,8 +4247,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_inner_contraction, TestParam,
                               test_params) {
   using inner_type = inner_type<TestParam>;
   using element_type = typename inner_type::value_type;
-  // only support btas Tensors as inner tensors
-  if constexpr (detail::is_ta_tensor_v<inner_type>) return;
   using trange_type = TiledRange;
   trange_type tr{{0, 2, 3, 5, 7}, {0, 3, 5, 7, 11}};
 
@@ -4240,15 +4255,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_inner_contraction, TestParam,
     int x = 0;
     // N.B. to be able to contract for multiple outer index combinations
     // make all inner tensors same size
-    auto result = inner_type(range_type(3, 5));
-    if constexpr (TiledArray::detail::is_ta_tensor_v<inner_type>) {
-      // abort();
-    } else if constexpr (TiledArray::detail::is_btas_tensor_v<inner_type>) {
-      result.generate([&x]() { return x++; });
-    } else {
-      abort();  // unknown type
-    }
-    return result;
+    return make_tensor<inner_type>(range_type(3, 5), [&x]() { return x++; });
   };
 
   static_assert(TiledArray::detail::is_tensor_of_tensor_v<tile_type<TestParam>>,
@@ -4263,8 +4270,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_inner_contraction, TestParam,
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(mom_inner_contraction, TestParam, test_params) {
   using inner_type = inner_type<TestParam>;
-  // only support btas Tensors as inner tensors
-  if constexpr (detail::is_ta_tensor_v<inner_type>) return;
   using element_type = typename inner_type::value_type;
   //  detail::type_printer<inner_type> x;
   //  detail::type_printer<element_type> y;
@@ -4274,15 +4279,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_inner_contraction, TestParam, test_params) {
   auto init_inner_tensor = [](const auto& elem_idx) {
     using range_type = typename inner_type::range_type;
     int x = 0;
-    auto result = inner_type(range_type(elem_idx[0] + 1, elem_idx[0] + 2));
-    if constexpr (TiledArray::detail::is_ta_tensor_v<inner_type>) {
-      // abort();
-    } else if constexpr (TiledArray::detail::is_btas_tensor_v<inner_type>) {
-      result.generate([&x]() { return x++; });
-    } else {
-      abort();  // unknown type
-    }
-    return result;
+    return make_tensor<inner_type>(range_type(elem_idx[0] + 1, elem_idx[0] + 2),
+                                   [&x]() { return x++; });
   };
 
   static_assert(TiledArray::detail::is_tensor_of_tensor_v<tile_type<TestParam>>,
@@ -4298,8 +4296,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_inner_contraction, TestParam, test_params) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_contraction, TestParam, test_params) {
   using inner_type = inner_type<TestParam>;
   using element_type = typename inner_type::value_type;
-  // only support btas Tensors as inner tensors
-  if constexpr (detail::is_ta_tensor_v<inner_type>) return;
   using trange_type = TiledRange;
   trange_type tr{{0, 2, 3, 5, 7}, {0, 3, 5, 7, 11}};
 
@@ -4308,15 +4304,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(mom_outer_contraction, TestParam, test_params) {
     int x = 0;
     // N.B. to be able to contract for multiple outer index combinations
     // make all inner tensors same size
-    auto result = inner_type(range_type(3, 5));
-    if constexpr (TiledArray::detail::is_ta_tensor_v<inner_type>) {
-      // abort();
-    } else if constexpr (TiledArray::detail::is_btas_tensor_v<inner_type>) {
-      result.generate([&x]() { return x++; });
-    } else {
-      abort();  // unknown type
-    }
-    return result;
+    return make_tensor<inner_type>(range_type(3, 5), [&x]() { return x++; });
   };
 
   static_assert(TiledArray::detail::is_tensor_of_tensor_v<tile_type<TestParam>>,
