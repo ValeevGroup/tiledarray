@@ -39,7 +39,7 @@ build:
       - IMAGE : [ "ubuntu:20.04" ]
         CXX: [ g++, clang++-9 ]
         BUILD_TYPE : [ "Release", "Debug" ]
-        BLAS : [ "-DBLA_VENDOR=Intel10_64lp_seq", "-DBLA_VENDOR=Intel10_64lp", "" ]
+        BLAS : [ "BLA_VENDOR=Intel10_64lp_seq", "BLA_VENDOR=Intel10_64lp", "" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
         CXX: [ g++ ]
