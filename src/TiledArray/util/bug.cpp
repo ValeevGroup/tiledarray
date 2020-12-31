@@ -43,8 +43,7 @@
 #define NSIG 100
 #endif
 
-using namespace std;
-using namespace TiledArray;
+namespace TiledArray {
 
 //////////////////////////////////////////////////////////////////////
 // static variables
@@ -207,7 +206,7 @@ void Debugger::debug(const char *reason) {
     std::cout << reason;
   else
     std::cout << "no reason given";
-  std::cout << endl;
+  std::cout << std::endl;
 
   if (!cmd_.empty()) {
     int pid = getpid();
@@ -233,18 +232,18 @@ void Debugger::debug(const char *reason) {
     // before starting the debugger de-register signal handler for SIGTRAP to
     // let the debugger take over
     release(SIGTRAP);
-    std::cout << prefix_ << "Debugger: starting \"" << cmd << "\"" << endl;
+    std::cout << prefix_ << "Debugger: starting \"" << cmd << "\"" << std::endl;
     debugger_ready_ = 0;
     const auto system_retvalue = system(cmd.c_str());
     if (system_retvalue != 0) {  // call to system() failed
       std::cout << prefix_
                 << "Failed debugger launch: system() did not succeed ..."
-                << endl;
+                << std::endl;
     } else {  // call to system() succeeded
       // wait until the debugger is ready
       if (sleep_) {
         std::cout << prefix_ << "Sleeping " << sleep_
-                  << " seconds to wait for debugger ..." << endl;
+                  << " seconds to wait for debugger ..." << std::endl;
         sleep(sleep_);
       }
       if (wait_for_debugger_) {
@@ -257,7 +256,7 @@ void Debugger::debug(const char *reason) {
         }
 
         std::cout << prefix_ << ": waiting for the user ..."
-                  << make_ready_message << endl;
+                  << make_ready_message << std::endl;
         while (!debugger_ready_)
           ;
       }
@@ -294,10 +293,10 @@ void Debugger::got_signal(int sig) {
   }
 
   if (exit_on_signal_) {
-    std::cout << prefix_ << "Debugger: exiting" << endl;
+    std::cout << prefix_ << "Debugger: exiting" << std::endl;
     exit(1);
   } else {
-    std::cout << prefix_ << "Debugger: continuing" << endl;
+    std::cout << prefix_ << "Debugger: continuing" << std::endl;
   }
 
   // handle(sig);
@@ -333,11 +332,11 @@ void Debugger::__traceback(const std::string &prefix, const char *reason) {
   std::cout << prefix << "Debugger::traceback(using libunwind):";
 #elif defined(HAVE_BACKTRACE)  // !HAVE_LIBUNWIND
   std::cout << prefix << "Debugger::traceback(using backtrace):";
-#else                          // !HAVE_LIBUNWIND && !HAVE_BACKTRACE
+#else  // !HAVE_LIBUNWIND && !HAVE_BACKTRACE
 #if defined(SIMPLE_STACK)
   std::cout << prefix << "Debugger::traceback:";
 #else
-  std::cout << prefix << "traceback not available for this arch" << endl;
+  std::cout << prefix << "traceback not available for this arch" << std::endl;
   return;
 #endif  // SIMPLE_STACK
 #endif  // HAVE_LIBUNWIND, HAVE_BACKTRACE
@@ -346,7 +345,7 @@ void Debugger::__traceback(const std::string &prefix, const char *reason) {
     std::cout << reason;
   else
     std::cout << "no reason given";
-  std::cout << endl;
+  std::cout << std::endl;
 
   if (result.empty())
     std::cout << prefix << "backtrace returned no state information"
@@ -354,10 +353,6 @@ void Debugger::__traceback(const std::string &prefix, const char *reason) {
   else
     std::cout << result.str(nframes_to_skip) << std::endl;
 }
-
-/////////////////////////////////////////////////////////////////////////////
-
-namespace TiledArray {
 
 void launch_gdb_xterm() {
   auto debugger = std::make_shared<TiledArray::Debugger>();
