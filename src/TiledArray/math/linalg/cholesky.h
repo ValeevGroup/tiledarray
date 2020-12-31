@@ -61,7 +61,7 @@ auto cholesky_solve(const Array& A, const Array& B,
 }
 
 template <typename Array>
-auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
+auto cholesky_lsolve(Op transpose, const Array& A, const Array& B,
                      TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange()) {
 #if TILEDARRAY_HAS_SCALAPACK
@@ -75,10 +75,10 @@ auto cholesky_lsolve(TransposeFlag transpose, const Array& A, const Array& B,
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
-  using TiledArray::math::linalg::cholesky;
-  using TiledArray::math::linalg::cholesky_linv;
-  using TiledArray::math::linalg::cholesky_solve;
-  using TiledArray::math::linalg::cholesky_lsolve;
-}
+using TiledArray::math::linalg::cholesky;
+using TiledArray::math::linalg::cholesky_linv;
+using TiledArray::math::linalg::cholesky_lsolve;
+using TiledArray::math::linalg::cholesky_solve;
+}  // namespace TiledArray
 
 #endif  // TILEDARRAY_MATH_LINALG_CHOL_H__INCLUDED

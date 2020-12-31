@@ -82,22 +82,18 @@ if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
   endif()
     
   # ensure fresh MADNESS
-  if (DEFINED LAPACK_INCLUDE_DIRS)  # introduced in 093f60398d0b552871ca635b06d0144008c3e183
-    CHECK_CXX_SOURCE_COMPILES(
-          "
-      #include <madness/world/world.h>
-      #include <madness/world/worldmem.h>
-      int main(int argc, char** argv) {
-        // test 1
-        madness::print_meminfo_enable();
-
-        // test 2
-        madness::World::is_default(SafeMPI::COMM_WORLD);
-
-        return 0;
-      }
-      "  MADNESS_IS_FRESH)
-  endif(DEFINED LAPACK_INCLUDE_DIRS)
+  CHECK_CXX_SOURCE_COMPILES(
+        "
+    #include <madness/world/world.h>
+    #include <madness/world/worldmem.h>
+    int main(int argc, char** argv) {
+      // test 1
+      madness::print_meminfo_enable();
+      // test 2
+      madness::World::is_default(SafeMPI::COMM_WORLD);
+      return 0;
+    }
+    "  MADNESS_IS_FRESH)
 
   if (NOT MADNESS_IS_FRESH)
     message(FATAL_ERROR "MADNESS is not fresh enough; update to ${MADNESS_OLDEST_TAG} or more recent")
@@ -142,46 +138,6 @@ else()
   endif()
   
   # Setup configure variables
-
-  # Set Fortran integer size
-  if(INTEGER4)
-      set(F77_INT_SIZE 4)
-  else(INTEGER4)
-      set (F77_INT_SIZE 8)
-  endif(INTEGER4)
-
-  # aggregate LAPACK variables
-  # N.B. Even if these were given in toolchain file (recommended) this will simply duplicate their definitions
-  # on the command line ... this is fine (cmake is burning all around me)
-  set (MAD_LAPACK_OPTIONS -DENABLE_MKL=${ENABLE_MKL} -DFORTRAN_INTEGER_SIZE=${F77_INT_SIZE})
-  if (DEFINED LAPACK_LIBRARIES)
-      set(LAPACK_LIBRARIES ${LAPACK_LIBRARIES} CACHE STRING "LAPACK libraries")
-      # to keep LAPACK_LIBRARIES as a list do a double-escape of the semicolon
-      # N.B. quotes around MAD_LAPACK_OPTIONS in MADNESS_CMAKE_ARGS
-      string(REPLACE ";" "\\\;" PROTECTED_LAPACK_LIBRARIES "${LAPACK_LIBRARIES}")
-      set(MAD_LAPACK_OPTIONS -DLAPACK_LIBRARIES=\"${PROTECTED_LAPACK_LIBRARIES}\" "${MAD_LAPACK_OPTIONS}")
-  endif (DEFINED LAPACK_LIBRARIES)
-  if (DEFINED LAPACK_INCLUDE_DIRS)
-      set(LAPACK_INCLUDE_DIRS ${LAPACK_INCLUDE_DIRS} CACHE STRING "LAPACK include directories")
-      # to keep LAPACK_INCLUDE_DIRS as a list do a double-escape of the semicolon
-      # N.B. quotes around MAD_LAPACK_OPTIONS in MADNESS_CMAKE_ARGS
-      string(REPLACE ";" "\\\;" PROTECTED_LAPACK_INCLUDE_DIRS "${LAPACK_INCLUDE_DIRS}")
-      set(MAD_LAPACK_OPTIONS -DLAPACK_INCLUDE_DIRS=\"${PROTECTED_LAPACK_INCLUDE_DIRS}\" "${MAD_LAPACK_OPTIONS}")
-  endif(DEFINED LAPACK_INCLUDE_DIRS)
-  if (DEFINED LAPACK_COMPILE_OPTIONS)
-      set(LAPACK_COMPILE_OPTIONS ${LAPACK_COMPILE_OPTIONS} CACHE STRING "LAPACK compiler options")
-      # to keep LAPACK_COMPILE_OPTIONS as a list do a double-escape of the semicolon
-      # N.B. quotes around MAD_LAPACK_OPTIONS in MADNESS_CMAKE_ARGS
-      string(REPLACE ";" "\\\;" PROTECTED_LAPACK_COMPILE_OPTIONS "${LAPACK_COMPILE_OPTIONS}")
-      set(MAD_LAPACK_OPTIONS -DLAPACK_COMPILE_OPTIONS=\"${PROTECTED_LAPACK_COMPILE_OPTIONS}\" "${MAD_LAPACK_OPTIONS}")
-  endif(DEFINED LAPACK_COMPILE_OPTIONS)
-  if (DEFINED LAPACK_COMPILE_DEFINITIONS)
-      set(LAPACK_COMPILE_DEFINITIONS ${LAPACK_COMPILE_DEFINITIONS} CACHE STRING "LAPACK compile definitions")
-      # to keep LAPACK_COMPILE_DEFINITIONS as a list do a double-escape of the semicolon
-      # N.B. quotes around MAD_LAPACK_OPTIONS in MADNESS_CMAKE_ARGS
-      string(REPLACE ";" "\\\;" PROTECTED_LAPACK_COMPILE_DEFINITIONS "${LAPACK_COMPILE_DEFINITIONS}")
-      set(MAD_LAPACK_OPTIONS -DLAPACK_COMPILE_DEFINITIONS=\"${PROTECTED_LAPACK_COMPILE_DEFINITIONS}\" "${MAD_LAPACK_OPTIONS}")
-  endif(DEFINED LAPACK_COMPILE_DEFINITIONS)
 
   # Set error handling method (for TA_DEFAULT_ERROR values see top-level CMakeLists.txt)
   if(TA_DEFAULT_ERROR EQUAL 0)
@@ -304,7 +260,9 @@ else()
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} ${MADNESS_EXTRA_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${CMAKE_CXX_FLAGS_MINSIZEREL} ${MADNESS_EXTRA_CXX_FLAGS}")
 
-  set(MADNESS_CMAKE_ARGS       -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+  set(MADNESS_CMAKE_ARGS
+          -DMADNESS_BUILD_MADWORLD_ONLY=ON
+          -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
           -DMADNESS_ASSUMES_ASLR_DISABLED=${TA_ASSUMES_ASLR_DISABLED}
           -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
           -DCMAKE_POSITION_INDEPENDENT_CODE=${CMAKE_POSITION_INDEPENDENT_CODE}
@@ -336,11 +294,8 @@ else()
           -DMPI_CXX_COMPILER=${MPI_CXX_COMPILER}
           -DMPI_C_COMPILER=${MPI_C_COMPILER}
           -DMPI_CXX_SKIP_MPICXX=ON  # introduced in cmake 3.10, disables search for C++ MPI-2 bindings
-          -DENABLE_MKL=${ENABLE_MKL}
           -DENABLE_TBB=${ENABLE_TBB}
           "-DTBB_ROOT_DIR=${TBB_ROOT_DIR}"
-          -DENABLE_LIBXC=FALSE
-          "${MAD_LAPACK_OPTIONS}"
           -DENABLE_GPERFTOOLS=${ENABLE_GPERFTOOLS}
           -DENABLE_TCMALLOC_MINIMAL=${ENABLE_TCMALLOC_MINIMAL}
           -DENABLE_LIBUNWIND=${ENABLE_LIBUNWIND}
@@ -415,12 +370,7 @@ else()
   endif(BUILD_SHARED_LIBS)
   set(MADNESS_LIBRARIES ${MADNESS_WORLD_LIBRARY})
 
-# BUT it also need cblas/clapack headers ... these are not packaged into a library with a target
-  # these headers depend on LAPACK which is a dependency of MADlinalg, hence
-  # add MADlinalg's include dirs to MADNESS_INCLUDE_DIRS and MADNESS's LAPACK_LIBRARIES to MADNESS_LINKER_FLAGS (!)
-  list(APPEND MADNESS_LIBRARIES "${LAPACK_LIBRARIES}")
-
-  # custom target for building MADNESS components .. only MADworld here! Headers from MADlinalg do not need compilation
+  # custom target for building MADNESS components .. only MADworld here!
   # N.B. Ninja needs spelling out the byproducts of custom targets, see https://cmake.org/cmake/help/v3.3/policy/CMP0058.html
   set(MADNESS_BUILD_BYPRODUCTS "${MADNESS_BINARY_DIR}/src/madness/world/lib${MADNESS_WORLD_LIBRARY}${CMAKE_STATIC_LIBRARY_SUFFIX}")
   message(STATUS "custom target build-madness is expected to build these byproducts: ${MADNESS_BUILD_BYPRODUCTS}")
@@ -438,7 +388,7 @@ else()
   
   # Since 'install-madness' target cannot be linked to the 'install' target,
   # we will do it manually here.
-  set(INSTALL_MADNESS_SUBTARGETS install-madness-world install-madness-clapack install-madness-config install-madness-common)
+  set(INSTALL_MADNESS_SUBTARGETS install-madness-world install-madness-config install-madness-common)
   foreach(INSTALL_MADNESS_SUBTARGET IN LISTS INSTALL_MADNESS_SUBTARGETS)
     install(CODE
       "execute_process(

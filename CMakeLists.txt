@@ -105,9 +105,6 @@ add_feature_info(MPI ENABLE_MPI "Message-Passing Interface supports distributed-
 option(ENABLE_SCALAPACK "Enable ScaLAPACK Bindings in TiledArray" OFF)
 add_feature_info(ScaLAPACK ENABLE_SCALAPACK "ScaLAPACK provides distributed linear algebra")
 
-redefaultable_option(ENABLE_MKL "Enable use of MKL (info passed to MADNESS)" ON)
-add_feature_info(MKL ENABLE_MKL "Intel Math Kernel Library provides linear algebra and other math functionality")
-
 redefaultable_option(ENABLE_TBB "Enable use of TBB with MADNESS" OFF)
 add_feature_info(TBB ENABLE_TBB "Intel Thread-Building Blocks (TBB) supports programming shared-memory systems")
 
@@ -293,15 +290,19 @@ include_directories(${PROJECT_SOURCE_DIR}/src ${PROJECT_BINARY_DIR}/src)
 add_custom_target(External-tiledarray)
 
 # required deps:
-include(external/madness.cmake)
-detect_MADNESS_configuration()
-include(external/eigen.cmake)
-# find BTAS first, so that it finds Boost more carefully and also has a chance to memorize where it found it
-include(FindOrFetchBTAS)
-include(external/boost.cmake)
+# 1. CUDA first since others may depend on it
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
+include(external/madness.cmake)
+detect_MADNESS_configuration()
+include(external/eigen.cmake)
+# BTAS does a better job of building and checking Boost since it uses Boost::serialization
+# it also memorized the location of its config for use from install tree
+include(FindOrFetchBTAS)
+# this generates blaspp_headers needed to include header files associated with the BLAS++ libraries
+include(FindBLASPPHeaders)
+include(FindOrFetchBoost)
 if(ENABLE_SCALAPACK)
   include(external/scalapack.cmake)
 endif()

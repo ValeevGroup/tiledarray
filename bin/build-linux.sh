@@ -134,6 +134,8 @@ fi
 # Build all libraries, examples, and applications
 make -j2 all VERBOSE=1
 make install
+# remove install dir to avoid broken artifacts like BTAS polluting the next build via cached copy
+rm -rf $INSTALL_DIR
 
 # Validate
 make -j1 ta_test VERBOSE=1

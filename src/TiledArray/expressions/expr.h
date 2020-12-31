@@ -43,6 +43,8 @@
 #include <TiledArray/external/cuda.h>
 #endif
 
+#include <TiledArray/tensor/type_traits.h>
+
 namespace TiledArray {
 namespace expressions {
 
@@ -192,7 +194,7 @@ class Expr {
       typename std::enable_if<!std::is_same<typename A::value_type, T>::value &&
                               is_lazy_tile<T>::value
 #ifdef TILEDARRAY_HAS_CUDA
-                              && !::TiledArray::detail::is_cuda_tile<T>::value
+                              && !::TiledArray::detail::is_cuda_tile_v<T>
 #endif
                               >::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
@@ -215,7 +217,7 @@ class Expr {
             typename std::enable_if<
                 !std::is_same<typename A::value_type, T>::value &&
                 is_lazy_tile<T>::value &&
-                ::TiledArray::detail::is_cuda_tile<T>::value>::type* = nullptr>
+                ::TiledArray::detail::is_cuda_tile_v<T>>::type* = nullptr>
   void set_tile(A& array, const I& index, const Future<T>& tile) const {
     array.set(index, madness::add_cuda_task(
                          array.world(),
@@ -252,7 +254,7 @@ class Expr {
       typename A, typename I, typename T, typename Op,
       typename std::enable_if<!std::is_same<typename A::value_type, T>::value
 #ifdef TILEDARRAY_HAS_CUDA
-                              && !::TiledArray::detail::is_cuda_tile<T>::value
+                              && !::TiledArray::detail::is_cuda_tile_v<T>
 #endif
                               >::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
@@ -280,7 +282,7 @@ class Expr {
   template <typename A, typename I, typename T, typename Op,
             typename std::enable_if<
                 !std::is_same<typename A::value_type, T>::value &&
-                ::TiledArray::detail::is_cuda_tile<T>::value>::type* = nullptr>
+                ::TiledArray::detail::is_cuda_tile_v<T>>::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
                 const std::shared_ptr<Op>& op) const {
     auto eval_tile_fn =
@@ -309,7 +311,7 @@ class Expr {
       typename A, typename I, typename T, typename Op,
       typename std::enable_if<std::is_same<typename A::value_type, T>::value
 #ifdef TILEDARRAY_HAS_CUDA
-                              && !::TiledArray::detail::is_cuda_tile<T>::value
+                              && !::TiledArray::detail::is_cuda_tile_v<T>
 #endif
                               >::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
@@ -337,7 +339,7 @@ class Expr {
   template <typename A, typename I, typename T, typename Op,
             typename std::enable_if<
                 std::is_same<typename A::value_type, T>::value&& ::TiledArray::
-                    detail::is_cuda_tile<T>::value>::type* = nullptr>
+                    detail::is_cuda_tile_v<T>>::type* = nullptr>
   void set_tile(A& array, const I index, const Future<T>& tile,
                 const std::shared_ptr<Op>& op) const {
     auto eval_tile_fn_ptr = &Expr_::template eval_tile<const T&, Op>;

@@ -70,6 +70,7 @@ inline TR tensor_op(Op&& op, const T1& tensor1, const Ts&... tensors) {
     return TiledArray::detail::transform<TR>()(std::forward<Op>(op), tensor1,
                                                tensors...);
   }
+  abort();  // unreachable
 }
 
 /// Tensor permutation operations with contiguous data

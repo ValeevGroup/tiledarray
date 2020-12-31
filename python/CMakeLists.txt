@@ -56,11 +56,21 @@ enable_testing()
 # build step
 add_test(build_python "${CMAKE_COMMAND}" --build ${CMAKE_BINARY_DIR} --target python-tiledarray)
 
+# check for presence of prerequisite modules
+foreach(_mod pytest numpy)
+  execute_process(COMMAND ${PYTHON_EXECUTABLE} -c "import ${_mod}"
+        OUTPUT_QUIET ERROR_QUIET
+        RESULTS_VARIABLE check_for_${_mod})
+  if (check_for_${_mod})
+    message(FATAL_ERROR "Python module \"${_mod}\" is not installed; install via \"${PYTHON_EXECUTABLE} -m pip install ${_mod}\" and rerun cmake")
+  endif(check_for_${_mod})
+endforeach(_mod)
+
 # test step
 add_test(
   NAME test_python
   # need to use pytest to find tiledarray module properly
-  COMMAND ${PYTHON_EXECUTABLE} -m pytest ${PROJECT_SOURCE_DIR}/test_tiledarray.py
+  COMMAND ${PYTHON_EXECUTABLE} -m pytest ${PROJECT_SOURCE_DIR}/test_tiledarray.py -v
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
   )
 

@@ -23,24 +23,6 @@ macro (detect_MADNESS_configuration)
           CACHE STRING "Sanitized list of MADNESS include directories usable in build tree")
 
   list(APPEND CMAKE_REQUIRED_INCLUDES ${MADNESS_INTERNAL_INCLUDE_DIRS})
-  if (NOT DEFINED MADNESS_HAS_MKL)
-    CHECK_CXX_SOURCE_COMPILES(
-            "
-    #include <madness/config.h>
-    #ifndef HAVE_INTEL_MKL
-    # error \"MADNESS does not have MKL\"
-    #endif
-    int main(int argc, char** argv) {
-      return 0;
-    }
-    "  MADNESS_HAS_MKL)
-  endif()
-
-  if (MADNESS_HAS_MKL)
-    unset(MADNESS_HAS_MKL)
-    set(MADNESS_HAS_MKL ON CACHE BOOL "MADNESS detected usable Intel MKL" FORCE)
-  endif()
-
   if (NOT DEFINED MADNESS_HAS_TBB)
     CHECK_CXX_SOURCE_COMPILES(
         "
@@ -57,24 +39,6 @@ macro (detect_MADNESS_configuration)
   if (MADNESS_HAS_TBB)
     unset(MADNESS_HAS_TBB)
     set(MADNESS_HAS_TBB ON CACHE BOOL "MADNESS detected usable Intel TBB" FORCE)
-  endif()
-
-  if (NOT DEFINED MADNESS_FORTRAN_DEFAULT_INTEGER4)
-    CHECK_CXX_SOURCE_COMPILES(
-        "
-    #include <madness/config.h>
-    #if MADNESS_FORTRAN_DEFAULT_INTEGER_SIZE != 4
-    # error \"MADNESS does not assume integer*4 for Fortran BLAS/LAPACK interfaces\"
-    #endif
-    int main(int argc, char** argv) {
-      return 0;
-    }
-    "  MADNESS_FORTRAN_DEFAULT_INTEGER4)
-  endif()
-
-  if (MADNESS_FORTRAN_DEFAULT_INTEGER4)
-    unset(MADNESS_FORTRAN_DEFAULT_INTEGER4)
-    set(MADNESS_FORTRAN_DEFAULT_INTEGER4 ON CACHE BOOL "MADNESS assumes integer*4 for Fortran BLAS/LAPACK integers" FORCE)
   endif()
 
   unset(CMAKE_REQUIRED_QUIET)

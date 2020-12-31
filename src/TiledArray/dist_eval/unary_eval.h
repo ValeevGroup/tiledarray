@@ -22,6 +22,8 @@
 
 #include <TiledArray/dist_eval/dist_eval.h>
 
+#include <TiledArray/tensor/type_traits.h>
+
 namespace TiledArray {
 namespace detail {
 
@@ -113,7 +115,7 @@ class UnaryEvalImpl
   /// \param i The tile index
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
-  std::enable_if_t<detail::is_cuda_tile<U>::value, void> eval_tile(
+  std::enable_if_t<detail::is_cuda_tile_v<U>, void> eval_tile(
       const ordinal_type i, tile_argument_type tile) {
     // TODO avoid copy Op object
     auto result_tile =
@@ -124,7 +126,7 @@ class UnaryEvalImpl
   /// \param i The tile index
   /// \param tile The tile to be evaluated
   template <typename U = value_type>
-  std::enable_if_t<!detail::is_cuda_tile<U>::value, void> eval_tile(
+  std::enable_if_t<!detail::is_cuda_tile_v<U>, void> eval_tile(
       const ordinal_type i, tile_argument_type tile) {
     DistEvalImpl_::set_tile(i, op_(tile));
   }

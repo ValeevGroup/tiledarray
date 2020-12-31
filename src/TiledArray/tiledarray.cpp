@@ -1,14 +1,14 @@
-#include <TiledArray/initialize.h>
 #include <TiledArray/config.h>
+#include <TiledArray/initialize.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/external/cuda.h>
 #include <TiledArray/cuda/cublas.h>
+#include <TiledArray/external/cuda.h>
 #include <cutt.h>
 #endif
 
-#ifdef HAVE_INTEL_MKL
-#include <mkl.h>
+#ifdef TILEDARRAY_HAS_INTEL_MKL
+#include <mkl_service.h>
 #endif
 
 namespace TiledArray {
@@ -48,15 +48,15 @@ inline bool& finalized_accessor() {
   static bool flag = false;
   return flag;
 }
-#ifdef HAVE_INTEL_MKL
+#ifdef TILEDARRAY_HAS_INTEL_MKL
 inline int& mklnumthreads_accessor() {
   static int value = -1;
   return value;
 }
 #endif
 
-}  // namespace detail
-}
+}  // namespace
+}  // namespace TiledArray
 
 /// @return true if TiledArray (and, necessarily, MADWorld runtime) is in an
 /// initialized state
@@ -77,11 +77,9 @@ bool TiledArray::finalized() { return finalized_accessor(); }
 
 /// @throw TiledArray::Exception if TiledArray initialized MADWorld and
 /// TiledArray::finalize() had been called
-TiledArray::World& TiledArray::initialize(
-  int& argc, char**& argv,
-  const SafeMPI::Intracomm& comm,
-  bool quiet)
-{
+TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
+                                          const SafeMPI::Intracomm& comm,
+                                          bool quiet) {
   if (initialized_madworld() && finalized())
     throw Exception(
         "TiledArray finalized MADWorld already, cannot re-initialize MADWorld "
@@ -103,7 +101,7 @@ TiledArray::World& TiledArray::initialize(
 #ifdef TILEDARRAY_HAS_CUDA
     TiledArray::cuda_initialize();
 #endif
-#ifdef HAVE_INTEL_MKL
+#ifdef TILEDARRAY_HAS_INTEL_MKL
     // record number of MKL threads and set to 1
     mklnumthreads_accessor() = mkl_get_max_threads();
     mkl_set_num_threads(1);
@@ -118,7 +116,7 @@ TiledArray::World& TiledArray::initialize(
 /// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized
 /// when TiledArray::initialize was called).
 void TiledArray::finalize() {
-#ifdef HAVE_INTEL_MKL
+#ifdef TILEDARRAY_HAS_INTEL_MKL
   // reset number of MKL threads
   mkl_set_num_threads(mklnumthreads_accessor());
 #endif

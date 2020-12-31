@@ -1,4 +1,6 @@
-# Synopsis
+# TiledArray Installation Guide
+
+## Synopsis
 
 ```.cpp
 $ git clone https://github.com/ValeevGroup/TiledArray.git tiledarray
@@ -12,7 +14,15 @@ $ cmake --build build
 $ cmake --build build --target install
 ```
 
-# Prerequisites
+## Introduction
+
+There are 2 ways to build TiledArray:
+- by searching for pre-compiled dependencies first; some dependencies, if they are not found, TiledArray will build from source, and
+- by building all critical dependencies from source.
+
+Both methods are supported. However, for most users we _strongly_ recommend to build as many dependencies from source as possible. Only package maintainers have necessary expertise to properly build TiledArray from separately built components. Hence by default TiledArray will not look for precompiled versions of critical dependencies (MADNESS, BTAS, etc.).
+
+## Prerequisites
 
 - C++ compiler with support for the [C++17 standard](http://www.iso.org/standard/68564.html), or a more recent standard. This includes the following compilers:
   - [GNU C++](https://gcc.gnu.org/), version 7.0 or higher
@@ -30,23 +40,27 @@ $ cmake --build build --target install
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 52cd6dba22aea0da3ccaf2e3c2ee00f821621d3f (will be downloaded automatically, if missing)
-- BLAS library
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 925552feaf326cca8e83de7bd042074ad3cfd3f1 .
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag bd42eb3a2b84a46953edc7a8f7afbe5c98efa2c5 . If usable BTAS installation is not found, TiledArray will download and compile
+  BTAS from source. *This is the recommended way to compile BTAS for all users*.
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag b22ee85059e6ccc9a6e803ba0550652ece8d9df1 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
-  MADNESS. *This is the recommended way to compile MADNESS for all users*.
+  MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
   A detailed list of MADNESS prerequisites can be found at [MADNESS' INSTALL file](https://github.com/m-a-d-n-e-s-s/madness/blob/master/INSTALL_CMake);
   it also also contains detailed
   MADNESS compilation instructions.
 
-  Compiling MADNESS requires the following prerequisites:
+Compiling MADNESS requires the following prerequisites:
   - An implementation of Message Passing Interface version 2 or 3, with support
     for `MPI_THREAD_MULTIPLE`.
-  - BLAS and LAPACK libraries (only BLAS is used by TiledArray, but without LAPACK MADNESS will not compile)
   - (optional)
-    Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb‎) or
+    Intel Thread Building Blocks (TBB), available in a [commercial](software.intel.com/tbb) or
     an [open-source](https://www.threadingbuildingblocks.org/) form
+
+Compiling BTAS requires the following prerequisites:
+  - [blaspp](https://bitbucket.org/icl/blaspp.git) -- C++ API for BLAS
+  - [lapackpp](https://bitbucket.org/icl/lapackpp.git) -- C++ API for LAPACK
+  - BLAS and LAPACK libraries
 
 Optional prerequisites:
 - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 11 or later is required. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
@@ -59,13 +73,13 @@ Optional prerequisites:
 - Python3 interpreter -- to test (optionally-built) Python bindings
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20; only used for some unit testing of the functionality anticipated to be supported by future C++ standards.
 
-Most of the dependencies (except for MADNESS) can be installed with a package manager,
+Most of the dependencies (except for MADNESS and BTAS) can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
 this is the preferred method. Since on some systems configuring
 and building MADNESS can be difficult even for experts, we recommend letting the
 TiledArray download and build MADNESS for you.
 
-# Obtain TiledArray source code
+## Obtain TiledArray source code
 
 Check out the source code as follows:
 
@@ -84,25 +98,21 @@ Instructions below assume that you are located in the build directory. We will a
 the environment variable `TILEDARRAY_SOURCE_DIR` specifies the location of the
 TiledArray source tree.
 
-# Configure TiledArray
+## Configure TiledArray
 
 TiledArray is configured and built with CMake. When configuring with CMake, you specify a set
 of CMake variables on the command line, where each variable argument is prepended with the '-D'
 option. Typically, you will need to specify the install path for TiledArray,
-build type, MPI Compiler wrappers, and BLAS and LAPACK libraries.
+build type, and MPI Compiler wrappers.
 
-For many platforms TiledArray provides *toolchain* files that can greatly simplify configuration;
-they are located under `$TILEDARRAY_SOURCE_DIR/cmake/toolchains`.
-It is strongly recommended that all users use one of the provided toolchains as is or as the
-basis for a custom toolchain file.
-Here's how to compile TiledArray on a macOS system:
-
+For basic builds you may not need to provide any arguments to CMake, however most users will want to nudge CMake towards configuring TiledArray as desired by specifying the C++ compiler to use, the MPI compiler wrapper to use, etc. The Valeev Research Group provides a number of toolchain files that can be used to specify a generic or a specific platform, e.g. to compile MPQC on MacOS use this script:
 ```
 $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
         -D CMAKE_BUILD_TYPE=Release \
         -D CMAKE_TOOLCHAIN_FILE=cmake/vg/toolchains/macos-clang-mpi-accelerate.cmake \
         $TILEDARRAY_SOURCE_DIR
 ```
+Note that the `macos-clang-mpi-accelerate` toolchain file is part of the [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains) which is downloaded and placed within the build tree by CMake at configure time.
 
 Following are several common examples of configuring TiledArray where instead of a toolchain file
 we specify CMake variables "manually" (on the command line).
@@ -206,74 +216,53 @@ to use TiledArray in a distributed memory environment. Note, if you
 build MADNESS yourself, you must also configure MADNESS with `ENABLE_MPI=OFF`
 to enable this option.
 
-## BLAS and LAPACK
+## BLAS/LAPACK
 
-TiledArray requires a serial BLAS implementation, either by linking with a
+Even for basic operation TiledArray requires a serial BLAS implementation, either by linking with a
 serial version of the BLAS library or by setting the number of threads to one
 (1) with an environment variable. This is necessary because TiledArray evaluates tensor
 expressions in parallel by subdividing them into small tasks, each of which is assumed
 to be single-threaded; attempting to run a multi-threaded BLAS function inside
-tasks will oversubscribe the hardware cores.
+tasks will oversubscribe the hardware cores (this only exception to this if the MADNESS
+runtime uses the same task backend as the BLAS library; this only happens if MADNESS
+is configured to use Intel TBB and TBB-based Intel MKL library is used). Thus
+it is user's responsibility to correctly specify the BLAS/LAPACK libraries and/or
+set the environment variables (e.g. `OMP_NUM_THREADS`, `MKL_NUM_THREADS`, etc.)
+to ensure single-threaded execution of BLAS/LAPACK kernels
+as needed.
 
-BLAS library dependency is provided by the MADNESS library, which checks for presence
-of BLAS and LAPACK (which also depends on BLAS) at the configure time. Therefore, if
-MADNESS is already installed on your machine you do not need to do anything. However,
-the most common scenario is where TiledArray will configure and compile
-MADNESS as part of its compilation; in this case it is necessary to specify
-how to find the LAPACK library to TiledArray, which will in turn pass this info
-to MADNESS. This is done by setting the following
-CMake variables:
 
-* `LAPACK_LIBRARIES` -- a string specifying LAPACK libraries and all of its dependencies (such as BLAS library, math library, etc.); this string can also include linker directory flags (`-L`)
-* `LAPACK_INCLUDE_DIRS` -- (optional) a list of directories which contain BLAS/LAPACK-related header files
-* `LAPACK_COMPILE_DEFINITIONS` -- (optional) a list of preprocessor definitions required for any code that uses BLAS/LAPACK-related header files
-* `LAPACK_COMPILE_OPTIONS` -- (optional) a list of compiler options required for any code that uses BLAS/LAPACK-related header files
+As of version 1.0 TiledArray also provides a direct (non-iterative) linear solvers API
+implemented using LAPACK and (optionally) ScaLAPACK. Therefore LAPACK is now a mandatory
+prerequisite of TiledArray
+
+BLAS/LAPACK dependencies are provided by the BTAS library, which in turn uses BLAS++/LAPACK++
+C++ linear algebra packages to discover the BLAS and LAPACK libraries at configure time.
+The most common scenario is where TiledArray will configure and compile BTAS dependency
+and its BLAS++/LAPACK++ prerequisites from source (this is strongly recommended). The following
+CMake variables can be used to control how BLAS/LAPACK discovery occurs:
+
 * `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS libraries will be preferred.
+* `BLA_VENDOR` -- controls which vendor BLAS/LAPACK library will be sought
+  (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
+  by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
+  framework on MacOS use `-DBLA_VENDOR=Apple`.
 
-The last three variables are only needed if your code will use non-Fortran BLAS/LAPACK library API (such as CBLAS or LAPACKE)
-and thus needs access to the header files. TiledArray only uses BLAS via the Fortran API, hence the last three
-variables do not need to be specified.
+More information can be found in the installation instructions for
+[BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
+[LAPACK++](https://icl.bitbucket.io/lapackpp/md__i_n_s_t_a_l_l.html).
 
-Since TiledArray uses the Fortran API of BLAS, it may be necessary to
-specify the Fortran integer size used by the particular BLAS library:
+Additional platform-specific BLAS/LAPACK notes are listed below.
 
-* `INTEGER4` -- Specifies the integer size (in bytes) assumed by the BLAS/LAPACK Fortran API [Default=TRUE]
-      TRUE = Fortran integer*4, FALSE = Fortran integer*8
+### Intel Math Kernel Library (MKL)
 
-You should use the default value unless you know it is necessary for your BLAS
-implementation.
+Intel MKL is a freely-available collection of high-performance libraries that implements BLAS, LAPACK, and ScaLAPACK APIs. MKL is complex: it supports both serial kernels as well as parallel kernels that can take advantage of multiple cores via the use of OpenMP and Intel TBB (the [Intel OneAPI toolkit](https://software.intel.com/oneapi) provides MKL also capable of execution on some Intel GPUs and FPGAs), and the [necessary MKL link options](https://software.intel.com/sites/products/mkl/mkl_link_line_advisor.htm) will depend on the compiler, OS, and other details.
 
-Common optimized libraries OpenBLAS/GotoBLAS, BLIS, MKL (on Intel platforms),
-Atlas, Accelerate (on OS X), ESSL (on BlueGene platforms), or ACML (on AMD 
-platforms). You can also use the Netlib reference implementation if nothing else
-is available, but this will be very slow.
+Fortunately, Intel MKL can be discovered by BLAS++/LAPACK++ automatically in most instances; if needed, specifying `BLA_VENDOR` with [appropriate argument](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables) can be used to force TiledArray to use MKL. Unfortunately it is not possible to specify the use of TBB-based backend for MKL without the use of a toolchain file. All MKL-enabled toolchains in [The Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains) can be used to configure TiledArray to use sequential, OpenMP, or TBB backend by setting the `MKL_THREADING` CMake cache variable to `SEQ`, `OMP`, or `TBB`, respectively. The toolchains also respect the user-provided choice of `BLA_STATIC`. If multiple MKL versions are present on your system, specify the apropriate variant of the library by loading the corresponding `mklvars.sh` script to set environment variables `MKLROOT` and, if necessary, `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH`.
 
-Example flags:
+Also note that even if OpenMP or TBB backends are used, TiledArray will be default set the number of threads to be used by MKL kernels to 1, regardless of the value of environment variables `MKL_NUM_THREADS`/`OMP_NUM_THREADS`. It is possible to change the number of threads to be used programmatically in your application by calling MKL function `mkl_set_num_threads()`.
 
-* Accelerate on OS X
-
-  -D LAPACK_LIBRARIES="-framework Accelerate"
-
-* OpenBLAS with Netlib LAPACK
-
-  -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack -L/path/to/openblas/lib -lopenblas -lpthread"
-
-* Netlib
-
-  -D LAPACK_LIBRARIES="-L/path/to/lapack/lib -llapack -L/path/to/blas/lib -lblas"
-
-* MKL on Linux
-
-  -D LAPACK_LIBRARIES="-L${MKLROOT}/lib/intel64 -Wl,--start-group -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -Wl,--end-group -lpthread -lm”
-  
-* MKL on OS X
-
-  -D LAPACK_LIBRARIES="-L${MKLROOT}/lib -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm"
-
-For additional information on linking different versions of MKL, see the MKL
-Link Advisor page.
-
-    https://software.intel.com/en-us/articles/intel-mkl-link-line-advisor
+On 64-bit platforms it is possible to specify whether to use 32-bit (`LP64`, the default) or 64-bit (`ILP64`) integers in BLAS/LAPACK API. To choose the `ILP64` interface when using the VG MKL toolchains set CMake cache variable `INTEGER4` to `OFF`; the same is achieved when using the default BLAS/LAPACK detection by setting `BLA_VENDOR` to [one of the valid `Intel*64ilp*` choices](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables). N.B. Currently `ILP64` variant of BLACS/ScaLAPACK is not supported, due to [a pending issue](https://github.com/wavefunction91/blacspp/issues/5).
 
 ## CUDA
 
@@ -318,7 +307,6 @@ The following CMake options may be used to modify build behavior or find MADNESS
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
 * `ENABLE_SCALAPACK` -- Enable use of ScaLAPACK bindings [Default=OFF]
 * `ENABLE_TBB` -- Enable the use of TBB when building MADNESS [Default=ON]
-* `ENABLE_MKL` -- Enable the use of MKL when building MADNESS [Default=ON]
 * `ENABLE_GPERFTOOLS` -- Enable the use of gperftools when building MADNESS [Default=OFF]
 * `ENABLE_TCMALLOC_MINIMAL` -- Enable the use of gperftool's tcmalloc_minimal library only (the rest of gperftools is skipped) when building MADNESS [Default=OFF]
 * `ENABLE_LIBUNWIND` -- Force the discovery of libunwind library when building MADNESS [Default=OFF]
@@ -331,7 +319,6 @@ The following CMake options may be used to modify build behavior or find MADNESS
 
 The following environment variables can be used to help discovery of MADNESS dependencies:
 * `TBBROOT` -- the install prefix of TBB
-* `MKLROOT` -- the install prefix of MKL
 * `GPERFTOOLS_DIR` -- the install prefix of gperftools
 * `LIBUNWIND_DIR` -- the install prefix of libunwind
 

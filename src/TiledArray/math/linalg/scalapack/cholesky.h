@@ -28,8 +28,8 @@
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
-#include <TiledArray/math/linalg/scalapack/util.h>
 #include <TiledArray/math/linalg/forward.h>
+#include <TiledArray/math/linalg/scalapack/util.h>
 
 #include <scalapackpp/factorizations/potrf.hpp>
 #include <scalapackpp/linear_systems/posv.hpp>
@@ -110,7 +110,7 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange(),
  *
  *  @returns The inverse lower triangular Cholesky factor in TA format
  */
-  template <bool Both, typename Array>
+template <bool Both, typename Array>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange(),
                    size_t NB = default_block_size()) {
   using value_type = typename Array::element_type;
@@ -215,7 +215,7 @@ auto cholesky_solve(const Array& A, const Array& B,
 }
 
 template <typename Array>
-auto cholesky_lsolve(TransposeFlag trans, const Array& A, const Array& B,
+auto cholesky_lsolve(Op trans, const Array& A, const Array& B,
                      TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange(),
                      size_t NB = default_block_size()) {

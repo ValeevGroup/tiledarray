@@ -29,6 +29,8 @@
 #include <TiledArray/shape.h>
 #include <TiledArray/type_traits.h>
 
+#include <TiledArray/tensor/type_traits.h>
+
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_EVAL 1
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE 1
 //#define TILEDARRAY_ENABLE_SUMMA_TRACE_STEP 1
@@ -477,7 +479,7 @@ class Summa
   static typename std::enable_if<
       is_lazy_tile<typename Arg::value_type>::value
 #ifdef TILEDARRAY_HAS_CUDA
-          && !detail::is_cuda_tile<typename Arg::value_type>::value
+          && !detail::is_cuda_tile_v<typename Arg::value_type>
 #endif
       ,
       Future<typename Arg::eval_type>>::type
@@ -500,7 +502,7 @@ class Summa
   template <typename Arg>
   static typename std::enable_if<
       is_lazy_tile<typename Arg::value_type>::value &&
-          detail::is_cuda_tile<typename Arg::value_type>::value,
+          detail::is_cuda_tile_v<typename Arg::value_type>,
       Future<typename Arg::eval_type>>::type
   get_tile(Arg& arg, const typename Arg::ordinal_type index) {
     auto convert_tile_fn =

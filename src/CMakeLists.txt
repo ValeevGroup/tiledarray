@@ -213,7 +213,7 @@ TiledArray/math/linalg/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
-set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS)
+set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers)
 
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)
@@ -255,6 +255,7 @@ add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
 
   target_link_libraries(${targetname} PUBLIC ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
   target_link_libraries(${targetname} PUBLIC MADworld)
+  target_link_libraries(${targetname} PUBLIC Boost::boost)
 
   if (TARGET build-madness)
     add_dependencies(${targetname} build-madness)
@@ -275,7 +276,6 @@ add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
   string(REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
   target_compile_options(${targetname} PUBLIC ${CMAKE_CXX_FLAG_LIST})
   target_compile_features(${targetname} PUBLIC "cxx_std_${CMAKE_CXX_STANDARD}")
-  target_include_directories(${targetname} PUBLIC ${Boost_INCLUDE_DIRS})
 
   if (CUDA_FOUND)
     target_include_directories(${targetname} PUBLIC ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})

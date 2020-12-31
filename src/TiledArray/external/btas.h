@@ -44,7 +44,7 @@
 namespace btas {
 template <>
 struct range_traits<TiledArray::Range> {
-  const static CBLAS_ORDER order = CblasRowMajor;
+  const static blas::Layout order = blas::Layout::RowMajor;
   using index_type = TiledArray::Range::index_type;
   using ordinal_type = TiledArray::Range::ordinal_type;
   constexpr static const bool is_general_layout = false;
@@ -63,10 +63,10 @@ inline const TiledArray::Range& make_ta_range(const TiledArray::Range& range) {
 
 /// \param[in] range a btas::RangeNd object
 /// \throw TiledArray::Exception if \c range is non-row-major
-template <CBLAS_ORDER Order, typename... Args>
+template <::blas::Layout Order, typename... Args>
 inline TiledArray::Range make_ta_range(
     const btas::RangeNd<Order, Args...>& range) {
-  TA_ASSERT(Order == CblasRowMajor &&
+  TA_ASSERT(Order == ::blas::Layout::RowMajor &&
             "TiledArray::detail::make_ta_range(btas::RangeNd<Order,...>): "
             "not supported for col-major Order");
   return TiledArray::Range(range.lobound(), range.upbound());
@@ -94,7 +94,7 @@ namespace btas {
 /// \c r1 are equal to those of \c r2.
 /// \param r1 The first Range to compare
 /// \param r2 The second Range to compare
-template <CBLAS_ORDER Order, typename... Args>
+template <blas::Layout Order, typename... Args>
 inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
                          const btas::RangeNd<Order, Args...>& r2) {
   return (r1.rank() == r2.rank()) &&
@@ -621,20 +621,21 @@ inline btas::Tensor<T, Range, Storage> gemm(
       std::cbegin(left.range().extent()), std::cbegin(right.range().extent())));
 
   // Compute gemm dimensions
+  using integer = TiledArray::math::blas::integer;
   integer m = 1, n = 1, k = 1;
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
   const integer lda =
-      (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
   const integer ldb =
-      (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
 
   T factor_t(factor);
 
-  TiledArray::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                         factor_t, left.data(), lda, right.data(), ldb, T(0),
-                         result.data(), n);
+  TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m,
+                               n, k, factor_t, left.data(), lda, right.data(),
+                               ldb, T(0), result.data(), n);
 
   return result;
 }
@@ -695,20 +696,21 @@ inline void gemm(btas::Tensor<T, Range, Storage>& result,
       std::cbegin(left.range().extent()), std::cbegin(right.range().extent())));
 
   // Compute gemm dimensions
+  using integer = TiledArray::math::blas::integer;
   integer m, n, k;
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
   // Get the leading dimension for left and right matrices.
   const integer lda =
-      (gemm_helper.left_op() == madness::cblas::NoTrans ? k : m);
+      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
   const integer ldb =
-      (gemm_helper.right_op() == madness::cblas::NoTrans ? n : k);
+      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
 
   T factor_t(factor);
 
-  TiledArray::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
-                         factor_t, left.data(), lda, right.data(), ldb, T(1),
-                         result.data(), n);
+  TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m,
+                               n, k, factor_t, left.data(), lda, right.data(),
+                               ldb, T(1), result.data(), n);
 }
 
 // sum of the hyperdiagonal elements
@@ -825,10 +827,11 @@ template <typename T>
 constexpr const bool is_btas_tensor_v = is_btas_tensor<T>::value;
 
 /// btas::RangeNd can be col or row-major
-template <CBLAS_ORDER _Order, typename _Index, typename _Ordinal>
+template <::blas::Layout _Order, typename _Index, typename _Ordinal>
 struct ordinal_traits<btas::RangeNd<_Order, _Index, _Ordinal>> {
-  static constexpr const auto type =
-      _Order == CblasRowMajor ? OrdinalType::RowMajor : OrdinalType::ColMajor;
+  static constexpr const auto type = _Order == ::blas::Layout::RowMajor
+                                         ? OrdinalType::RowMajor
+                                         : OrdinalType::ColMajor;
 };
 
 }  // namespace detail
@@ -869,7 +872,7 @@ struct ArchiveStoreImpl<Archive, btas::varray<T>> {
   }
 };
 
-template <class Archive, CBLAS_ORDER _Order, typename _Index>
+template <class Archive, blas::Layout _Order, typename _Index>
 struct ArchiveLoadImpl<Archive, btas::BoxOrdinal<_Order, _Index>> {
   static inline void load(const Archive& ar,
                           btas::BoxOrdinal<_Order, _Index>& o) {
@@ -882,7 +885,7 @@ struct ArchiveLoadImpl<Archive, btas::BoxOrdinal<_Order, _Index>> {
   }
 };
 
-template <class Archive, CBLAS_ORDER _Order, typename _Index>
+template <class Archive, blas::Layout _Order, typename _Index>
 struct ArchiveStoreImpl<Archive, btas::BoxOrdinal<_Order, _Index>> {
   static inline void store(const Archive& ar,
                            const btas::BoxOrdinal<_Order, _Index>& o) {
@@ -890,7 +893,8 @@ struct ArchiveStoreImpl<Archive, btas::BoxOrdinal<_Order, _Index>> {
   }
 };
 
-template <class Archive, CBLAS_ORDER _Order, typename _Index, typename _Ordinal>
+template <class Archive, blas::Layout _Order, typename _Index,
+          typename _Ordinal>
 struct ArchiveLoadImpl<Archive, btas::RangeNd<_Order, _Index, _Ordinal>> {
   static inline void load(const Archive& ar,
                           btas::RangeNd<_Order, _Index, _Ordinal>& r) {
@@ -904,7 +908,8 @@ struct ArchiveLoadImpl<Archive, btas::RangeNd<_Order, _Index, _Ordinal>> {
   }
 };
 
-template <class Archive, CBLAS_ORDER _Order, typename _Index, typename _Ordinal>
+template <class Archive, blas::Layout _Order, typename _Index,
+          typename _Ordinal>
 struct ArchiveStoreImpl<Archive, btas::RangeNd<_Order, _Index, _Ordinal>> {
   static inline void store(const Archive& ar,
                            const btas::RangeNd<_Order, _Index, _Ordinal>& r) {

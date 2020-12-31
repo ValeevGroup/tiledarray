@@ -33,14 +33,13 @@
 
 namespace TiledArray::math::linalg::scalapack {
 
-inline scalapackpp::TransposeFlag to_scalapackpp_transposeflag(
-    TransposeFlag t) {
+inline scalapackpp::TransposeFlag to_scalapackpp_transposeflag(Op t) {
   switch (t) {
-    case TransposeFlag::NoTranspose:
+    case Op::NoTrans:
       return scalapackpp::TransposeFlag::NoTranspose;
-    case TransposeFlag::Transpose:
+    case Op::Trans:
       return scalapackpp::TransposeFlag::Transpose;
-    case TransposeFlag::ConjTranspose:
+    case Op::ConjTrans:
       return scalapackpp::TransposeFlag::ConjTranspose;
     default:
       abort();

@@ -81,8 +81,9 @@ struct ContractionEvalFixture : public SparseShapeFixture {
       const unsigned int result_rank, const unsigned int left_rank,
       const unsigned int right_rank, const Permutation& perm = Permutation()) {
     return ContractReduce<TensorI, TensorI, TensorI, int>(
-        madness::cblas::NoTrans, madness::cblas::NoTrans, 1, result_rank,
-        left_rank, right_rank, perm);
+        TiledArray::math::blas::Op::NoTrans,
+        TiledArray::math::blas::Op::NoTrans, 1, result_rank, left_rank,
+        right_rank, perm);
   }
 
   static TiledArray::detail::UnaryWrapper<Noop<TensorI, TensorI, true> >

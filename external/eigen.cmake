@@ -145,17 +145,18 @@ endif()
 
 # finish configuring TiledArray_Eigen and install
 if (TARGET TiledArray_Eigen)
-  # TiledArray_Eigen uses LAPACK/MKL
-  target_link_libraries(TiledArray_Eigen INTERFACE ${LAPACK_LIBRARIES})
-  target_include_directories(TiledArray_Eigen INTERFACE ${LAPACK_INCLUDE_DIRS})
-  target_compile_definitions(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_DEFINITIONS})
-  target_compile_options(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_OPTIONS})
   set(TiledArray_Eigen_VERSION "${Eigen3_VERSION}" CACHE STRING "Eigen3_VERSION of the library interfaced by TiledArray_Eigen target")
-  # Eigen's prototypes for BLAS interface libraries do not match MADNESS cblas
-  if (MADNESS_HAS_MKL)
-    # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL EIGEN_USE_BLAS)
-  else(MADNESS_HAS_MKL)
-    # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_BLAS)
-  endif(MADNESS_HAS_MKL)
+  # TiledArray_Eigen uses LAPACK/MKL
+  # N.B. used to ... seems to be disabled
+#  target_link_libraries(TiledArray_Eigen INTERFACE ${LAPACK_LIBRARIES})
+#  target_include_directories(TiledArray_Eigen INTERFACE ${LAPACK_INCLUDE_DIRS})
+#  target_compile_definitions(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_DEFINITIONS})
+#  target_compile_options(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_OPTIONS})
+#  # Eigen's prototypes for BLAS interface libraries do not match MADNESS cblas
+#  if (MADNESS_HAS_MKL)
+#    # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL EIGEN_USE_BLAS)
+#  else(MADNESS_HAS_MKL)
+#    # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_BLAS)
+#  endif(MADNESS_HAS_MKL)
   install(TARGETS TiledArray_Eigen EXPORT tiledarray COMPONENT tiledarray)
 endif(TARGET TiledArray_Eigen)

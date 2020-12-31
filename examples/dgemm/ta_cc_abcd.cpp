@@ -328,8 +328,8 @@ make_contract(const unsigned int result_rank, const unsigned int left_rank,
               const TA::Permutation& perm = TA::Permutation()) {
   return TA::detail::ContractReduce<Tile, Tile, Tile,
                                     typename Tile::value_type>(
-      madness::cblas::NoTrans, madness::cblas::NoTrans, 1, result_rank,
-      left_rank, right_rank, perm);
+      TiledArray::math::blas::Op::NoTrans, TiledArray::math::blas::Op::NoTrans,
+      1, result_rank, left_rank, right_rank, perm);
 }
 
 template <typename Tile>

@@ -39,15 +39,15 @@
 using namespace TiledArray;
 
 // These are all of the template parameters we are going to test over
-using test_params = boost::mpl::list<
-    std::tuple<int, Tensor<Tensor<int>>>,
-    std::tuple<float, Tensor<Tensor<float>>>,
-    std::tuple<double, Tensor<Tensor<double>>>
+using test_params =
+    boost::mpl::list<std::tuple<int, Tensor<Tensor<int>>>,
+                     std::tuple<float, Tensor<Tensor<float>>>,
+                     std::tuple<double, Tensor<Tensor<double>>>
 #ifdef TILEDARRAY_HAS_BTAS
-    ,
-    std::tuple<int, Tensor<btas::Tensor<int, Range>>>,
-    std::tuple<float, Tensor<btas::Tensor<float, Range>>>,
-    std::tuple<double, Tensor<btas::Tensor<double, Range>>>
+                     ,
+                     std::tuple<int, Tensor<btas::Tensor<int, Range>>>,
+                     std::tuple<float, Tensor<btas::Tensor<float, Range>>>,
+                     std::tuple<double, Tensor<btas::Tensor<double, Range>>>
 //    ,std::tuple<int, btas::Tensor<btas::Tensor<int, Range>, Range>>,
 //    std::tuple<float, btas::Tensor<btas::Tensor<float, Range>, Range>>,
 //    std::tuple<double, btas::Tensor<btas::Tensor<double, Range>, Range>>
@@ -55,7 +55,7 @@ using test_params = boost::mpl::list<
 //    std::tuple<float, Tile<btas::Tensor<btas::Tensor<float, Range>, Range>>>,
 //    std::tuple<double, Tile<btas::Tensor<btas::Tensor<double, Range>, Range>>>
 #endif
-    >;
+                     >;
 
 // These typedefs unpack the unit test template parameter
 //{
@@ -275,6 +275,7 @@ struct ToTArrayFixture {
       lhs.world().gop.fence();
       return are_same;
     }
+    abort();  // unreachable
   }
   // The world to use for the test suite
   madness::World& m_world;

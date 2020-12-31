@@ -499,6 +499,7 @@ BOOST_AUTO_TEST_CASE(binary_perm_op) {
 }
 
 BOOST_AUTO_TEST_CASE(gemm) {
+  using integer = TiledArray::math::blas::integer;
   TensorD x(r);
   rand_fill(431, x.size(), x.data());
   TensorD y(r);
@@ -509,9 +510,9 @@ BOOST_AUTO_TEST_CASE(gemm) {
   const auto ndim_free =
       r.rank() - ndim_contr;  // this many leading modes will be free
   const auto alpha = 1.5;
-  const auto gemm_helper_nt =
-      math::GemmHelper(madness::cblas::NoTrans, madness::cblas::Trans,
-                       2 * ndim_free, x.range().rank(), y.range().rank());
+  const auto gemm_helper_nt = math::GemmHelper(
+      TiledArray::math::blas::Op::NoTrans, TiledArray::math::blas::Op::Trans,
+      2 * ndim_free, x.range().rank(), y.range().rank());
 
   // check result-returning gemm
   TensorD z0;
@@ -530,9 +531,10 @@ BOOST_AUTO_TEST_CASE(gemm) {
     {
       integer m = 1, n = 1, k = 1;
       gemm_helper_nt.compute_matrix_sizes(m, n, k, x.range(), y.range());
-      madness::cblas::gemm(madness::cblas::Trans, madness::cblas::NoTrans, n, m,
-                           k, alpha, y.data(), k, x.data(), k, 0, z0_ref.data(),
-                           n);
+      math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
+                       TiledArray::math::blas::Op::Trans,
+                       m, n, k, alpha,
+                       x.data(), k, y.data(), k, 0, z0_ref.data(), n);
     }
     for (std::size_t i = 0ul; i < z0.size(); ++i)
       BOOST_CHECK_EQUAL(z0[i], z0_ref[i]);

@@ -27,8 +27,9 @@
 #define TILEDARRAY_MATH_GEMM_HELPER_H__INCLUDED
 
 #include <TiledArray/error.h>
-#include <TiledArray/external/madness.h>
 #include <TiledArray/math/blas.h>
+
+#include <vector>
 
 namespace TiledArray::math {
 
@@ -38,9 +39,9 @@ namespace TiledArray::math {
 /// providing information on how to fuse dimensions
 class GemmHelper {
  private:
-  blas::TransposeFlag left_op_;
+  blas::Op left_op_;
   ///< Transpose operation that is applied to the left-hand argument
-  blas::TransposeFlag right_op_;
+  blas::Op right_op_;
   ///< Transpose operation that is applied to the right-hand argument
   unsigned int result_rank_;  ///< The rank of the result tensor
 
@@ -57,8 +58,7 @@ class GemmHelper {
       right_;               ///< Right-hand argument range data
 
  public:
-  GemmHelper(const blas::TransposeFlag left_op,
-             const blas::TransposeFlag right_op,
+  GemmHelper(const blas::Op left_op, const blas::Op right_op,
              const unsigned int result_rank, const unsigned int left_rank,
              const unsigned int right_rank)
       : left_op_(left_op),
@@ -251,8 +251,9 @@ class GemmHelper {
   /// \param[in] left The left-hand range object
   /// \param[in] right The right-hand range object
   template <typename Left, typename Right>
-  void compute_matrix_sizes(integer& m, integer& n, integer& k,
-                            const Left& left, const Right& right) const {
+  void compute_matrix_sizes(blas::integer& m, blas::integer& n,
+                            blas::integer& k, const Left& left,
+                            const Right& right) const {
     // Check that the arguments are not empty and have the correct ranks
     TA_ASSERT(left.rank() == left_.rank);
     TA_ASSERT(right.rank() == right_.rank);
@@ -271,8 +272,8 @@ class GemmHelper {
       n *= right_extent[i];
   }
 
-  blas::TransposeFlag left_op() const { return left_op_; }
-  blas::TransposeFlag right_op() const { return right_op_; }
+  blas::Op left_op() const { return left_op_; }
+  blas::Op right_op() const { return right_op_; }
 };  // class GemmHelper
 
 }  // namespace TiledArray::math

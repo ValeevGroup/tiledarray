@@ -86,8 +86,7 @@ class ContractReduceBase {
             std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                   result_value_type&, const left_value_type&,
                                   const right_value_type&>>>
-    Impl(const madness::cblas::CBLAS_TRANSPOSE left_op,
-         const madness::cblas::CBLAS_TRANSPOSE right_op,
+    Impl(const math::blas::Op left_op, const math::blas::Op right_op,
          const scalar_type alpha, const unsigned int result_rank,
          const unsigned int left_rank, const unsigned int right_rank,
          const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
@@ -143,9 +142,9 @@ class ContractReduceBase {
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&>>>
-  ContractReduceBase(const madness::cblas::CBLAS_TRANSPOSE left_op,
-                     const madness::cblas::CBLAS_TRANSPOSE right_op,
-                     const scalar_type alpha, const unsigned int result_rank,
+  ContractReduceBase(const math::blas::Op left_op,
+                     const math::blas::Op right_op, const scalar_type alpha,
+                     const unsigned int result_rank,
                      const unsigned int left_rank,
                      const unsigned int right_rank, const Perm& perm = {},
                      ElemMultAddOp&& elem_muladd_op = {})
@@ -278,8 +277,7 @@ class ContractReduce : public ContractReduceBase<Result, Left, Right, Scalar> {
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&>>>
-  ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
-                 const madness::cblas::CBLAS_TRANSPOSE right_op,
+  ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
                  const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
@@ -407,8 +405,7 @@ class ContractReduce<Result, Left, Right,
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&>>>
-  ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
-                 const madness::cblas::CBLAS_TRANSPOSE right_op,
+  ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
                  const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})
@@ -534,8 +531,7 @@ class ContractReduce<Result, Left, Right,
           std::is_invocable_r_v<void, std::remove_reference_t<ElemMultAddOp>,
                                 result_value_type&, const left_value_type&,
                                 const right_value_type&>>>
-  ContractReduce(const madness::cblas::CBLAS_TRANSPOSE left_op,
-                 const madness::cblas::CBLAS_TRANSPOSE right_op,
+  ContractReduce(const math::blas::Op left_op, const math::blas::Op right_op,
                  const scalar_type alpha, const unsigned int result_rank,
                  const unsigned int left_rank, const unsigned int right_rank,
                  const Perm& perm = {}, ElemMultAddOp&& elem_muladd_op = {})

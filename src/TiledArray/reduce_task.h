@@ -627,7 +627,7 @@ class ReduceTask {
 
 #ifdef TILEDARRAY_HAS_CUDA
     template <typename Result = result_type>
-    std::enable_if_t<detail::is_cuda_tile<Result>::value, void> internal_run(
+    std::enable_if_t<detail::is_cuda_tile_v<Result>, void> internal_run(
         const madness::TaskThreadEnv&) {
       TA_ASSERT(ready_result_);
 
@@ -640,7 +640,7 @@ class ReduceTask {
     }
 
     template <typename Result = result_type>
-    std::enable_if_t<!detail::is_cuda_tile<Result>::value, void>
+    std::enable_if_t<!detail::is_cuda_tile_v<Result>, void>
 #else
     void
 #endif

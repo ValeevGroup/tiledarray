@@ -27,7 +27,7 @@ class shared_function {
 
   template <typename... As, typename = std::void_t<decltype(
                                 (std::declval<F &>())(std::declval<As>()...))>>
-  auto operator()(As &&... as) const {
+  auto operator()(As &&...as) const {
     return (*f_)(std::forward<As>(as)...);
   }
 
@@ -133,6 +133,7 @@ auto make_op_shared_handle(Op &&op) {
     return result_t(op);
   else
     return make_shared_function<Op_>(std::forward<Op>(op));
+  abort();  // unreachable
 }
 
 }  // namespace TiledArray

@@ -62,11 +62,11 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DCMAKE_INSTALL_PREFIX="${INSTALL_DIR}" \
       -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
       -DCMAKE_CXX_FLAGS="-ftemplate-depth=1024 -Wno-unused-command-line-argument ${EXTRACXXFLAGS}" \
+      -DMADNESS_BUILD_MADWORLD_ONLY=ON \
       -DENABLE_MPI=ON \
       -DMPI_THREAD=multiple \
       -DENABLE_TBB=OFF \
       -DTBB_ROOT_DIR=/usr \
-      -DENABLE_MKL=OFF \
       -DFORTRAN_INTEGER_SIZE=4 \
       -DENABLE_LIBXC=OFF \
       -DENABLE_GPERFTOOLS=OFF \
@@ -74,7 +74,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DDISABLE_WORLD_GET_DEFAULT=ON
 
     # Build MADworld + LAPACK/BLAS interface
-    make -j2 install-madness-world install-madness-clapack install-madness-common install-madness-config VERBOSE=1
+    make -j2 install-madness-world install-madness-common install-madness-config VERBOSE=1
   fi
 
 fi

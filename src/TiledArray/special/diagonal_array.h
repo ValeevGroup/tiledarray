@@ -243,6 +243,7 @@ Array diagonal_array(World &world, TiledRange const &trange, T val = 1) {
     detail::write_diag_tiles_to_array_val(A, val);
     return A;
   }
+  abort();  // unreachable
 }
 
 /// \brief Creates a non-constant diagonal DistArray
@@ -285,6 +286,7 @@ diagonal_array(World &world, TiledRange const &trange,
     detail::write_diag_tiles_to_array_rng(A, diagonals_begin);
     return A;
   }
+  abort();  // unreachable
 }
 
 }  // namespace TiledArray
