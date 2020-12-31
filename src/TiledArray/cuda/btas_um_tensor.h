@@ -107,7 +107,7 @@ namespace TiledArray {
 /// gemm
 ///
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btasUMTensorVarray<T, Range> gemm(
     const btasUMTensorVarray<T, Range> &left,
     const btasUMTensorVarray<T, Range> &right, Scalar factor,
@@ -115,7 +115,7 @@ btasUMTensorVarray<T, Range> gemm(
   return btas_tensor_gemm_cuda_impl(left, right, factor, gemm_helper);
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void gemm(btasUMTensorVarray<T, Range> &result,
           const btasUMTensorVarray<T, Range> &left,
           const btasUMTensorVarray<T, Range> &right, Scalar factor,
@@ -204,30 +204,30 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
 
   synchronize_stream(&stream);
 
-  return std::move(result);
+  return result;
 }
 
 ///
 /// scale
 ///
 
-template <typename T, typename Range, typename Scalar>
+template <typename T, typename Range, typename Scalar, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
                                    const Scalar factor) {
   detail::to_cuda(arg);
   return btas_tensor_scale_cuda_impl(arg, factor);
 }
 
-template <typename T, typename Range, typename Scalar>
+template <typename T, typename Range, typename Scalar, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void scale_to(btasUMTensorVarray<T, Range> &arg, const Scalar factor) {
   detail::to_cuda(arg);
   btas_tensor_scale_to_cuda_impl(arg, factor);
 }
 
-template <typename T, typename Range, typename Scalar>
+template <typename T, typename Range, typename Scalar, typename Perm, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_permutation_v<Perm>>>
 btasUMTensorVarray<T, Range> scale(const btasUMTensorVarray<T, Range> &arg,
                                    const Scalar factor,
-                                   const TiledArray::Permutation &perm) {
+                                   const Perm &perm) {
   auto result = scale(arg, factor);
 
   // wait to finish before switch stream
@@ -247,9 +247,9 @@ btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg) {
   return btas_tensor_scale_cuda_impl(arg, T(-1.0));
 }
 
-template <typename T, typename Range>
+template <typename T, typename Range, typename Perm, typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 btasUMTensorVarray<T, Range> neg(const btasUMTensorVarray<T, Range> &arg,
-                                 const TiledArray::Permutation &perm) {
+                                 const Perm &perm) {
   auto result = neg(arg);
 
   // wait to finish before switch stream
@@ -277,19 +277,19 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
   return btas_tensor_subt_cuda_impl(arg1, arg2, T(1.0));
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor) {
   auto result = subt(arg1, arg2);
   btas_tensor_scale_to_cuda_impl(result, factor);
-  return std::move(result);
+  return result;
 }
 
-template <typename T, typename Range>
+template <typename T, typename Range, typename Perm, typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
-                                  const TiledArray::Permutation &perm) {
+                                  const Perm &perm) {
   auto result = subt(arg1, arg2);
 
   // wait to finish before switch stream
@@ -299,11 +299,11 @@ btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
   return permute(result, perm);
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename Perm, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_permutation_v<Perm>>>
 btasUMTensorVarray<T, Range> subt(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor,
-                                  const TiledArray::Permutation &perm) {
+                                  const Perm &perm) {
   auto result = subt(arg1, arg2, factor);
 
   // wait to finish before switch stream
@@ -325,7 +325,7 @@ void subt_to(btasUMTensorVarray<T, Range> &result,
   btas_tensor_subt_to_cuda_impl(result, arg1, T(1.0));
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void subt_to(btasUMTensorVarray<T, Range> &result,
              const btasUMTensorVarray<T, Range> &arg1, const Scalar factor) {
   subt_to(result, arg1);
@@ -344,20 +344,20 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
   return btas_tensor_add_cuda_impl(arg1, arg2, T(1.0));
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2,
                                  const Scalar factor) {
   auto result = add(arg1, arg2);
   btas_tensor_scale_to_cuda_impl(result, factor);
-  return std::move(result);
+  return result;
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename Perm, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_permutation_v<Perm>>>
 btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2,
                                  const Scalar factor,
-                                 const TiledArray::Permutation &perm) {
+                                 const Perm &perm) {
   auto result = add(arg1, arg2, factor);
 
   // wait to finish before switch stream
@@ -367,10 +367,10 @@ btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
   return permute(result, perm);
 }
 
-template <typename T, typename Range>
+template <typename T, typename Range, typename Perm, typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 btasUMTensorVarray<T, Range> add(const btasUMTensorVarray<T, Range> &arg1,
                                  const btasUMTensorVarray<T, Range> &arg2,
-                                 const TiledArray::Permutation &perm) {
+                                 const Perm &perm) {
   auto result = add(arg1, arg2);
 
   // wait to finish before switch stream
@@ -392,7 +392,7 @@ void add_to(btasUMTensorVarray<T, Range> &result,
   btas_tensor_add_to_cuda_impl(result, arg, T(1.0));
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void add_to(btasUMTensorVarray<T, Range> &result,
             const btasUMTensorVarray<T, Range> &arg, const Scalar factor) {
   add_to(result, arg);
@@ -422,19 +422,19 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
   return btas_tensor_mult_cuda_impl(arg1, arg2);
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor) {
   auto result = mult(arg1, arg2);
   btas_tensor_scale_to_cuda_impl(result, factor);
-  return std::move(result);
+  return result;
 }
 
-template <typename T, typename Range>
+template <typename T, typename Range, typename Perm, typename = std::enable_if_t<TiledArray::detail::is_permutation_v<Perm>>>
 btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
-                                  const TiledArray::Permutation &perm) {
+                                  const Perm &perm) {
   auto result = mult(arg1, arg2);
 
   // wait to finish before switch stream
@@ -444,11 +444,11 @@ btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
   return permute(result, perm);
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Range, typename Scalar, typename Perm, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar> && TiledArray::detail::is_permutation_v<Perm>>>
 btasUMTensorVarray<T, Range> mult(const btasUMTensorVarray<T, Range> &arg1,
                                   const btasUMTensorVarray<T, Range> &arg2,
                                   const Scalar factor,
-                                  const TiledArray::Permutation &perm) {
+                                  const Perm &perm) {
   auto result = mult(arg1, arg2, factor);
 
   // wait to finish before switch stream
@@ -469,7 +469,7 @@ void mult_to(btasUMTensorVarray<T, Range> &result,
   btas_tensor_mult_to_cuda_impl(result, arg);
 }
 
-template <typename T, typename Scalar, typename Range>
+template <typename T, typename Scalar, typename Range, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void mult_to(btasUMTensorVarray<T, Range> &result,
              const btasUMTensorVarray<T, Range> &arg, const Scalar factor) {
   mult_to(result, arg);
@@ -641,7 +641,7 @@ um_tensor_to_ta_tensor(
                         cudaMemcpyDefault, stream));
     synchronize_stream(&stream);
 
-    return std::move(result);
+    return result;
   };
 
   const auto convert_tile_um = [](const UMTensor &tile) {
@@ -657,7 +657,7 @@ um_tensor_to_ta_tensor(
 
     std::copy_n(tile.data(), n, result.data());
 
-    return std::move(result);
+    return result;
   };
 
   const char *use_legacy_conversion =

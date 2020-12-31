@@ -34,6 +34,8 @@
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 
+#include <TiledArray/math/blas.h>
+
 #define CublasSafeCall(err) __cublasSafeCall(err, __FILE__, __LINE__)
 
 inline void __cublasSafeCall(cublasStatus_t err, const char *file,

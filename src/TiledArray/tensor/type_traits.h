@@ -26,6 +26,8 @@
 #ifndef TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
 #define TILEDARRAY_TENSOR_TYPE_TRAITS_H__INCLUDED
 
+#include <TiledArray/config.h>
+
 #include <TiledArray/type_traits.h>
 #include <type_traits>
 
@@ -263,6 +265,10 @@ struct is_cuda_tile<Tile<T>> : public is_cuda_tile<T> {};
 template <typename T, typename Op>
 struct is_cuda_tile<LazyArrayTile<T, Op>>
     : public is_cuda_tile<typename LazyArrayTile<T, Op>::eval_type> {};
+
+template <typename T>
+static constexpr const auto is_cuda_tile_v = is_cuda_tile<T>::value;
+
 #endif
 
 template <typename Tensor, typename Enabler = void>

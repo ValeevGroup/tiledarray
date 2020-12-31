@@ -40,7 +40,8 @@
 
 namespace TiledArray {
 
-template <typename T, typename Scalar, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage,
+    typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
     const btas::Tensor<T, Range, Storage> &left,
     const btas::Tensor<T, Range, Storage> &right, Scalar factor,
@@ -64,6 +65,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
       std::cbegin(left.range().extent()), std::cbegin(right.range().extent())));
 
   // Compute gemm dimensions
+  using TiledArray::math::blas::integer;
   integer m = 1, n = 1, k = 1;
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
@@ -147,7 +149,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
         right.storage(), cuda_stream);
 
-    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
+    TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
                            k, factor_t, left.data(), lda, right.data(), ldb,
                            zero, result.data(), n);
   }
@@ -155,7 +157,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_gemm_cuda_impl(
   return result;
 }
 
-template <typename T, typename Scalar, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void btas_tensor_gemm_cuda_impl(
     btas::Tensor<T, Range, Storage> &result,
     const btas::Tensor<T, Range, Storage> &left,
@@ -212,6 +214,7 @@ void btas_tensor_gemm_cuda_impl(
       std::cbegin(left.range().extent()), std::cbegin(right.range().extent())));
 
   // Compute gemm dimensions
+  using TiledArray::math::blas::integer;
   integer m, n, k;
   gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
@@ -276,7 +279,7 @@ void btas_tensor_gemm_cuda_impl(
     TiledArray::to_execution_space<TiledArray::ExecutionSpace::CPU>(
         result.storage(), cuda_stream);
 
-    TiledArray::math::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
+    TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
                            k, factor_t, left.data(), lda, right.data(), ldb,
                            one, result.data(), n);
   }
@@ -308,7 +311,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_clone_cuda_impl(
 }
 
 /// result[i] = a * arg[i]
-template <typename T, typename Range, typename Storage, typename Scalar>
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg, const Scalar a) {
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
@@ -330,7 +334,8 @@ btas::Tensor<T, Range, Storage> btas_tensor_scale_cuda_impl(
 }
 
 /// result[i] *= a
-template <typename T, typename Range, typename Storage, typename Scalar>
+template <typename T, typename Range, typename Storage, typename Scalar,
+    typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void btas_tensor_scale_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                     const Scalar a) {
   CudaSafeCall(cudaSetDevice(cudaEnv::instance()->current_cuda_device_id()));
@@ -345,7 +350,8 @@ void btas_tensor_scale_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 }
 
 /// result[i] = arg1[i] - a * arg2[i]
-template <typename T, typename Scalar, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage,
+    typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg1,
     const btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
@@ -373,7 +379,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_subt_cuda_impl(
 }
 
 /// result[i] -= a * arg1[i]
-template <typename T, typename Scalar, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                    const btas::Tensor<T, Range, Storage> &arg1,
                                    const Scalar a) {
@@ -392,7 +398,7 @@ void btas_tensor_subt_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
 }
 
 /// result[i] = arg1[i] + a * arg2[i]
-template <typename T, typename Scalar, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
     const btas::Tensor<T, Range, Storage> &arg1,
     const btas::Tensor<T, Range, Storage> &arg2, const Scalar a) {
@@ -412,7 +418,7 @@ btas::Tensor<T, Range, Storage> btas_tensor_add_cuda_impl(
 }
 
 /// result[i] += a * arg[i]
-template <typename T, typename Scalar, typename Range, typename Storage>
+template <typename T, typename Scalar, typename Range, typename Storage, typename = std::enable_if_t<TiledArray::detail::is_numeric_v<Scalar>>>
 void btas_tensor_add_to_cuda_impl(btas::Tensor<T, Range, Storage> &result,
                                   const btas::Tensor<T, Range, Storage> &arg,
                                   const Scalar a) {
@@ -480,6 +486,7 @@ btas_tensor_squared_norm_cuda_impl(const btas::Tensor<T, Range, Storage> &arg) {
   auto &cuda_stream = detail::get_stream_based_on_range(arg.range());
 
   auto &storage = arg.storage();
+  using TiledArray::math::blas::integer;
   integer size = storage.size();
   T result = 0;
   if (in_memory_space<MemorySpace::CUDA>(storage)) {
@@ -504,6 +511,7 @@ typename btas::Tensor<T, Range, Storage>::value_type btas_tensor_dot_cuda_impl(
 
   auto &cuda_stream = detail::get_stream_based_on_range(arg1.range());
 
+  using TiledArray::math::blas::integer;
   integer size = arg1.storage().size();
 
   TA_ASSERT(size == arg2.storage().size());

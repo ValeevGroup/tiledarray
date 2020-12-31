@@ -23,6 +23,8 @@
 #include <TiledArray/dist_eval/dist_eval.h>
 #include <TiledArray/zero_tensor.h>
 
+#include <TiledArray/tensor/type_traits.h>
+
 namespace TiledArray {
 namespace detail {
 
@@ -126,7 +128,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \param left The left-hand tile
   /// \param right The right-hand tile
   template <typename L, typename R, typename U = value_type>
-  std::enable_if_t<!detail::is_cuda_tile<U>::value, void> eval_tile(
+  std::enable_if_t<!detail::is_cuda_tile_v<U>, void> eval_tile(
       const ordinal_type i, L left, R right) {
     DistEvalImpl_::set_tile(i, op_(left, right));
   }
@@ -135,7 +137,7 @@ class BinaryEvalImpl : public DistEvalImpl<typename Op::result_type, Policy>,
   /// \param left The left-hand tile
   /// \param right The right-hand tile
   template <typename L, typename R, typename U = value_type>
-  std::enable_if_t<detail::is_cuda_tile<U>::value, void> eval_tile(
+  std::enable_if_t<detail::is_cuda_tile_v<U>, void> eval_tile(
       const ordinal_type i, L left, R right) {
     // TODO avoid copy the Op object
     auto result_tile =
