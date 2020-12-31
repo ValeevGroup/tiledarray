@@ -59,29 +59,6 @@ endif()
 
 add_library( TiledArray_SCALAPACK INTERFACE )
 target_link_libraries( TiledArray_SCALAPACK INTERFACE scalapackpp::scalapackpp blacspp::blacspp)
-#target_compile_definitions( TiledArray_SCALAPACK INTERFACE "TA_ENABLE_SCALAPACK" )
-
-#get_property( _SCALAPACK_INCLUDE_DIRS
-#        TARGET   scalapackpp::scalapackpp
-#        PROPERTY INTERFACE_INCLUDE_DIRECTORIES
-#        )
-#
-#get_property( _SCALAPACK_LIBRARIES
-#        TARGET   scalapackpp::scalapackpp
-#        PROPERTY INTERFACE_LINK_LIBRARIES
-#        )
-#
-#get_property( _SCALAPACK_COMPILE_FEATURES
-#        TARGET   scalapackpp::scalapackpp
-#        PROPERTY INTERFACE_COMPILE_FEATURES
-#        )
-#
-#set_target_properties( TiledArray_SCALAPACK PROPERTIES
-#        INTERFACE_INCLUDE_DIRECTORIES "${_SCALAPACK_INCLUDE_DIRS}"
-#        INTERFACE_LINK_LIBRARIES      "${_SCALAPACK_LIBRARIES}"
-#        INTERFACE_COMPILE_FEATURES    "${_SCALAPACK_COMPILE_FEATURES}"
-#        INTERFACE_COMPILE_DEFINITIONS "TA_ENABLE_SCALAPACK"
-#        )
 
 install( TARGETS TiledArray_SCALAPACK EXPORT tiledarray COMPONENT tiledarray )
 
