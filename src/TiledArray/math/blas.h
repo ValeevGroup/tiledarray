@@ -29,11 +29,11 @@
 #include <TiledArray/external/eigen.h>
 #include <TiledArray/type_traits.h>
 
-#include <blas/wrappers.hh>
 #include <blas/dot.hh>
 #include <blas/gemm.hh>
 #include <blas/scal.hh>
 #include <blas/util.hh>
+#include <blas/wrappers.hh>
 
 #include <cstdint>
 
@@ -50,7 +50,7 @@ static constexpr auto ConjTranspose = Op::ConjTrans;
 
 /// converts Op to ints in manner useful for bit manipulations
 /// NoTranspose -> 0, Transpose->1, ConjTranspose->2
-inline auto to_int(Op op) {
+inline int64_t to_int(Op op) {
   if (op == NoTranspose)
     return 0;
   else if (op == Transpose)
