@@ -369,6 +369,7 @@ class Tensor {
   template <typename T1,
             typename std::enable_if<is_tensor<T1>::value>::type* = nullptr>
   Tensor_& operator=(const T1& other) {
+    pimpl_ = std::make_shared<Impl>(detail::clone_range(other));
     detail::inplace_tensor_op(
         [](reference MADNESS_RESTRICT tr,
            typename T1::const_reference MADNESS_RESTRICT t1) { tr = t1; },

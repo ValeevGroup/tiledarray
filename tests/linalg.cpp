@@ -44,9 +44,9 @@ struct ReferenceFixture {
 #endif
   }
 
-  inline double make_ta_reference(TA::Tensor<double>& t,
-                                  TA::Range const& range) {
-    t = TA::Tensor<double>(range, 0.0);
+  template <typename Tile>
+  inline double make_ta_reference(Tile& t, TA::Range const& range) {
+    t = Tile(range, 0.0);
     auto lo = range.lobound_data();
     auto up = range.upbound_data();
     for (auto m = lo[0]; m < up[0]; ++m) {
@@ -55,7 +55,7 @@ struct ReferenceFixture {
       }
     }
 
-    return t.norm();
+    return norm(t);
   };
 
   ReferenceFixture(int64_t N = 1000)
@@ -308,23 +308,35 @@ BOOST_AUTO_TEST_CASE(bc_to_sparse_tiled_array_test) {
 
   auto trange = gen_trange(N, {static_cast<size_t>(NB)});
 
-  auto ref_ta = TA::make_array<TA::TSpArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // test with TA and btas tile
+  using typelist_t =
+      std::tuple<TA::Tensor<double>, btas::Tensor<double, TA::Range>>;
+  typelist_t typevals;
 
-  GlobalFixture::world->gop.fence();
-  auto test_ta = scalapack::block_cyclic_to_array<TA::TSpArray<double>>(
-      ref_matrix, trange);
-  GlobalFixture::world->gop.fence();
+  auto test = [&](const auto& typeval_ref) {
+    using Tile = std::decay_t<decltype(typeval_ref)>;
+    using Array = TA::DistArray<Tile, TA::SparsePolicy>;
 
-  auto norm_diff =
-      (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
+    auto ref_ta = TA::make_array<Array>(
+        *GlobalFixture::world, trange,
+        [this](Tile& t, TA::Range const& range) -> double {
+          return this->make_ta_reference(t, range);
+        });
 
-  BOOST_CHECK_SMALL(norm_diff, std::numeric_limits<double>::epsilon());
+    GlobalFixture::world->gop.fence();
+    auto test_ta = scalapack::block_cyclic_to_array<Array>(ref_matrix, trange);
+    GlobalFixture::world->gop.fence();
 
-  GlobalFixture::world->gop.fence();
+    auto norm_diff =
+        (ref_ta("i,j") - test_ta("i,j")).norm(*GlobalFixture::world).get();
+
+    BOOST_CHECK_SMALL(norm_diff, std::numeric_limits<double>::epsilon());
+
+    GlobalFixture::world->gop.fence();
+  };
+
+  test(std::get<0>(typevals));
+  test(std::get<1>(typevals));
 };
 
 BOOST_AUTO_TEST_CASE(sparse_tiled_array_to_bc_test) {
@@ -337,29 +349,42 @@ BOOST_AUTO_TEST_CASE(sparse_tiled_array_to_bc_test) {
 
   auto trange = gen_trange(N, {static_cast<size_t>(NB)});
 
-  auto ref_ta = TA::make_array<TA::TSpArray<double>>(
-      *GlobalFixture::world, trange,
-      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
-        return this->make_ta_reference(t, range);
-      });
+  // test with TA and btas tile
+  using typelist_t =
+      std::tuple<TA::Tensor<double>, btas::Tensor<double, TA::Range>>;
+  typelist_t typevals;
 
-  GlobalFixture::world->gop.fence();
-  auto test_matrix = scalapack::array_to_block_cyclic(ref_ta, grid, NB, NB);
-  GlobalFixture::world->gop.fence();
+  auto test = [&](const auto& typeval_ref) {
+    using Tile = std::decay_t<decltype(typeval_ref)>;
+    using Array = TA::DistArray<Tile, TA::SparsePolicy>;
 
-  double local_norm_diff =
-      (test_matrix.local_mat() - ref_matrix.local_mat()).norm();
-  local_norm_diff *= local_norm_diff;
+    auto ref_ta = TA::make_array<Array>(
+        *GlobalFixture::world, trange,
+        [this](Tile& t, TA::Range const& range) -> double {
+          return this->make_ta_reference(t, range);
+        });
 
-  double norm_diff;
-  MPI_Allreduce(&local_norm_diff, &norm_diff, 1, MPI_DOUBLE, MPI_SUM,
-                MPI_COMM_WORLD);
+    GlobalFixture::world->gop.fence();
+    auto test_matrix = scalapack::array_to_block_cyclic(ref_ta, grid, NB, NB);
+    GlobalFixture::world->gop.fence();
 
-  norm_diff = std::sqrt(norm_diff);
+    double local_norm_diff =
+        (test_matrix.local_mat() - ref_matrix.local_mat()).norm();
+    local_norm_diff *= local_norm_diff;
 
-  BOOST_CHECK_SMALL(norm_diff, std::numeric_limits<double>::epsilon());
+    double norm_diff;
+    MPI_Allreduce(&local_norm_diff, &norm_diff, 1, MPI_DOUBLE, MPI_SUM,
+                  MPI_COMM_WORLD);
 
-  GlobalFixture::world->gop.fence();
+    norm_diff = std::sqrt(norm_diff);
+
+    BOOST_CHECK_SMALL(norm_diff, std::numeric_limits<double>::epsilon());
+
+    GlobalFixture::world->gop.fence();
+  };
+
+  test(std::get<0>(typevals));
+  test(std::get<1>(typevals));
 };
 
 BOOST_AUTO_TEST_CASE(const_tiled_array_to_bc_test) {

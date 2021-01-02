@@ -30,11 +30,11 @@
 #include <TiledArray/config.h>
 #if TILEDARRAY_HAS_SCALAPACK
 
+#include <TiledArray/conversions/make_array.h>
 #include <TiledArray/dist_array.h>
 #include <TiledArray/error.h>
 #include <TiledArray/tensor.h>
 #include <TiledArray/tiled_range.h>
-#include <TiledArray/conversions/make_array.h>
 
 #include <blacspp/grid.hpp>
 #include <blacspp/information.hpp>
@@ -58,7 +58,10 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
   col_major_mat_t local_mat_;       ///< Local block cyclic buffer
   std::pair<size_t, size_t> dims_;  ///< Dims of the matrix
 
-  void put_tile(const Tensor<T>& tile) {
+  template <typename Tile,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_contiguous_tensor_v<Tile>>>
+  void put_tile(const Tile& tile) {
     // Extract Tile information
     const auto* lo = tile.range().lobound_data();
     const auto* up = tile.range().upbound_data();
@@ -104,9 +107,22 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
 
         } else {
           // Send the subblock to a remote rank for processing
-          Tensor<T> subblock(tile.block({i, j}, {i_last, j_last}));
-          world_base_t::send(owner(i, j), &BlockCyclicMatrix<T>::put_tile,
-                             subblock);
+          Tensor<T> subblock;
+          if constexpr (TiledArray::detail::is_ta_tensor_v<Tile>)
+            subblock = tile.block({i, j}, {i_last, j_last});
+          else {
+            auto tile_blk_range = TiledArray::BlockRange(
+                TiledArray::detail::make_ta_range(tile.range()), {i, j},
+                {i_last, j_last});
+            using std::data;
+            auto tile_blk_view =
+                TiledArray::make_const_map(data(tile), tile_blk_range);
+            subblock = tile_blk_view;
+          }
+          world_base_t::send(
+              owner(i, j),
+              &BlockCyclicMatrix<T>::template put_tile<decltype(subblock)>,
+              subblock);
         }
 
       }  // for (j)
@@ -114,7 +130,10 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
 
   }  // put_tile
 
-  Tensor<T> extract_submatrix(std::vector<size_t> lo, std::vector<size_t> up) {
+  template <typename Tile,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_contiguous_tensor_v<Tile>>>
+  Tile extract_submatrix(std::vector<size_t> lo, std::vector<size_t> up) {
     assert(bc_dist_.i_own(lo[0], lo[1]));
 
     auto [i_st, j_st] = bc_dist_.local_indx(lo[0], lo[1]);
@@ -123,7 +142,7 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
     auto j_extent = up[1] - lo[1];
 
     Range range(lo, up);
-    Tensor<T> tile(range);
+    Tile tile(range);
 
     auto tile_map = eigen_map(tile);
 
@@ -172,7 +191,7 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
                           array.trange().dim(1).extent(), MB, NB) {
     TA_ASSERT(array.trange().rank() == 2);
 
-    for (auto it = array.begin(); it != array.end(); ++it) put_tile(*it);
+    for (auto it = array.begin(); it != array.end(); ++it) put_tile(it->get());
     world_base_t::process_pending();
   }
 
@@ -197,8 +216,9 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
 
   template <typename Array>
   Array tensor_from_matrix(const TiledRange& trange) const {
-    auto construct_tile = [&](Tensor<T>& tile, const Range& range) {
-      tile = Tensor<T>(range);
+    using Tile = typename Array::value_type;
+    auto construct_tile = [&](Tile& tile, const Range& range) {
+      tile = Tile(range);
 
       // Extract Tile information
       const auto* lo = tile.range().lobound_data();
@@ -246,13 +266,24 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
             std::vector<size_t> lo{i, j};
             std::vector<size_t> up{i_last, j_last};
             madness::Future<Tensor<T>> remtile_fut = world_base_t::send(
-                owner(i, j), &BlockCyclicMatrix<T>::extract_submatrix, lo, up);
+                owner(i, j),
+                &BlockCyclicMatrix<T>::template extract_submatrix<Tensor<T>>,
+                lo, up);
 
-            tile.block(lo, up) = remtile_fut.get();
+            if constexpr (TiledArray::detail::is_ta_tensor_v<Tile>)
+              tile.block(lo, up) = remtile_fut.get();
+            else {
+              auto tile_blk_range = TiledArray::BlockRange(
+                  TiledArray::detail::make_ta_range(tile.range()), lo, up);
+              using std::data;
+              auto tile_blk_view =
+                  TiledArray::make_map(data(tile), tile_blk_range);
+              tile_blk_view = remtile_fut.get();
+            }
           }
         }
 
-      return tile.norm();
+      return norm(tile);
     };
 
     return make_array<Array>(world_base_t::get_world(), trange, construct_tile);
@@ -298,7 +329,7 @@ std::remove_cv_t<Array> block_cyclic_to_array(
   return matrix.template tensor_from_matrix<std::remove_cv_t<Array>>(trange);
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::math::linalg::scalapack
 
 #endif  // TILEDARRAY_HAS_SCALAPACK
 #endif  // TILEDARRAY_MATH_LINALG_SCALAPACK_TO_BLOCKCYCLIC_H__INCLUDED
