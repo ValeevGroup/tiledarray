@@ -91,7 +91,7 @@ bool operator!=(const cuda_um_allocator_impl<T1>& lhs,
 
 /// see
 /// https://stackoverflow.com/questions/21028299/is-this-behavior-of-vectorresizesize-type-n-under-c11-and-boost-container/21028912#21028912
-template <typename T, typename A = std::allocator<T>>
+template <typename T, typename A>
 class default_init_allocator : public A {
   using a_t = std::allocator_traits<A>;
 

@@ -22,6 +22,10 @@
 
 #include <complex>
 
+#include <btas/fwd.h>
+
+#include <TiledArray/config.h>
+
 namespace Eigen {  // fwd define Eigen's aligned allocator for
                    // TiledArray::Tensor
 template <class>
@@ -31,6 +35,7 @@ class aligned_allocator;
 namespace TiledArray {
 
 // Ranges
+class Range;
 class TiledRange1;
 class TiledRange;
 
@@ -52,6 +57,32 @@ typedef Tensor<std::complex<double>,
 typedef Tensor<std::complex<float>,
                Eigen::aligned_allocator<std::complex<float> > >
     TensorC;
+
+// CUDA tensor
+#ifdef TILEDARRAY_HAS_CUDA
+
+template <class T>
+class cuda_um_allocator_impl;
+
+template <typename T, typename A = std::allocator<T>>
+class default_init_allocator;
+
+template <typename T>
+using cuda_um_allocator = default_init_allocator<T, cuda_um_allocator_impl<T>>;
+
+/// \brief a vector that lives in CUDA Unified Memory, with most operations
+/// implemented on the CPU
+template <typename T>
+using cuda_um_btas_varray = ::btas::varray<T, TiledArray::cuda_um_allocator<T>>;
+
+/**
+ * btas::Tensor with UM storage cuda_um_btas_varray
+ */
+template <typename T, typename Range = TiledArray::Range>
+using btasUMTensorVarray =
+    ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
+
+#endif
 
 // TiledArray Arrays
 template <typename, typename>

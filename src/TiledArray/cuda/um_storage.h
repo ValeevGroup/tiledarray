@@ -37,12 +37,6 @@
 
 namespace TiledArray {
 
-/// \brief a vector that lives in CUDA Unified Memory, with most operations
-/// implemented on the CPU
-
-template <typename T>
-using cuda_um_btas_varray = btas::varray<T, TiledArray::cuda_um_allocator<T>>;
-
 template <typename T>
 using cuda_um_thrust_vector =
     thrust::device_vector<T, TiledArray::cuda_um_allocator<T>>;

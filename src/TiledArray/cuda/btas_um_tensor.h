@@ -24,6 +24,8 @@
 #ifndef TILEDARRAY_CUDA_CUDA_UM_TENSOR_H
 #define TILEDARRAY_CUDA_CUDA_UM_TENSOR_H
 
+#include <tiledarray_fwd.h>
+
 #include <TiledArray/external/btas.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
@@ -34,14 +36,6 @@
 #include <TiledArray/tile.h>
 
 namespace TiledArray {
-
-/*
- * btas::Tensor with UM storage cuda_um_btas_varray
- */
-
-template <typename T, typename Range = TiledArray::Range>
-using btasUMTensorVarray =
-    ::btas::Tensor<T, Range, TiledArray::cuda_um_btas_varray<T>>;
 
 template <typename T, typename Range>
 struct eval_trait<
