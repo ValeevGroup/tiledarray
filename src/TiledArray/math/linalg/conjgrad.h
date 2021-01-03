@@ -32,6 +32,7 @@
 
 namespace TiledArray::math::linalg {
 
+// clang-format off
 /// Solves real linear system <tt> a(x) = b </tt>, with \c a is a linear
 /// function of \c x , using conjugate gradient solver with a diagonal
 /// preconditioner.
@@ -41,20 +42,22 @@ namespace TiledArray::math::linalg {
 /// , \c D must implement <tt> operator()(const D&, D&) const </tt> \c
 /// D::element_type must be defined and \c D must provide the following
 /// stand-alone functions:
-///   \li <tt> std::size_t size(const D&) </tt>
-///   \li <tt> D clone(const D&) </tt>
-///   \li <tt> D copy(const D&) </tt>
+///   \li <tt> std::size_t volume(const D&) </tt> (returns the total number of elements)
+///   \li <tt> D clone(const D&) </tt>, returns a deep copy
 ///   \li <tt> value_type minabs_value(const D&) </tt>
 ///   \li <tt> value_type maxabs_value(const D&) </tt>
 ///   \li <tt> void vec_multiply(D& a, const D& b) </tt> (element-wise multiply
-///   of \c a by \c b ) \li <tt> value_type dot_product(const D& a, const D& b)
-///   </tt> \li <tt> void scale(D&, value_type) </tt> \li <tt> void axpy(D& y,
-///   value_type a, const D& x) </tt> \li <tt> void assign(D&, const D&) </tt>
+///   of \c a by \c b )
+///   \li <tt> value_type dot_product(const D& a, const D& b) </tt>
+///   \li <tt> void scale(D&, value_type) </tt>
+///   \li <tt> void axpy(D& y,value_type a, const D& x) </tt>
+///   \li <tt> void assign(D&, const D&) </tt>
 ///   \li <tt> double norm2(const D&) </tt>
 ///
 /// These functions should be defined in the TiledArray namespace to be safe,
 /// although most compilers can safely find these functions in another namespace
 /// via ADL.
+// clang-format on
 template <typename D, typename F>
 struct ConjugateGradientSolver {
   typedef typename D::element_type value_type;
