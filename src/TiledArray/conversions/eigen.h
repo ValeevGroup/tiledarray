@@ -226,8 +226,8 @@ inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
     const std::size_t tensor_extent_0 = tensor_extent[0];
     const std::size_t tensor_extent_1 = tensor_extent[1];
 
-    TA_ASSERT(tensor_upper_0 <= size_type(matrix.rows()));
-    TA_ASSERT(tensor_upper_1 <= size_type(matrix.cols()));
+    TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.rows()));
+    TA_ASSERT(tensor_upper_1 <= std::size_t(matrix.cols()));
 
     // Copy matrix
     eigen_map(tensor, tensor_extent_0, tensor_extent_1) = matrix.block(
@@ -242,13 +242,13 @@ inline void eigen_submatrix_to_tensor(const Eigen::MatrixBase<Derived>& matrix,
     TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
 
     if (matrix.rows() == 1) {
-      TA_ASSERT(tensor_upper_0 <= size_type(matrix.cols()));
+      TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.cols()));
 
       // Copy the row vector to tensor
       eigen_map(tensor, 1, tensor_extent_0) =
           matrix.block(0, tensor_lower_0, 1, tensor_extent_0);
     } else {
-      TA_ASSERT(tensor_upper_0 <= size_type(matrix.rows()));
+      TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.rows()));
 
       // Copy the column vector to tensor
       eigen_map(tensor, tensor_extent_0, 1) =
@@ -293,8 +293,8 @@ inline void tensor_to_eigen_submatrix(const T& tensor,
     const std::size_t tensor_extent_0 = tensor_extent[0];
     const std::size_t tensor_extent_1 = tensor_extent[1];
 
-    TA_ASSERT(tensor_upper_0 <= size_type(matrix.rows()));
-    TA_ASSERT(tensor_upper_1 <= size_type(matrix.cols()));
+    TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.rows()));
+    TA_ASSERT(tensor_upper_1 <= std::size_t(matrix.cols()));
 
     // Copy tensor into matrix
     matrix.block(tensor_lower_0, tensor_lower_1, tensor_extent_0,
@@ -309,13 +309,13 @@ inline void tensor_to_eigen_submatrix(const T& tensor,
     TA_ASSERT((matrix.rows() == 1) || (matrix.cols() == 1));
 
     if (matrix.rows() == 1) {
-      TA_ASSERT(tensor_upper_0 <= size_type(matrix.cols()));
+      TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.cols()));
 
       // Copy tensor into row vector
       matrix.block(0, tensor_lower_0, 1, tensor_extent_0) =
           eigen_map(tensor, 1, tensor_extent_0);
     } else {
-      TA_ASSERT(tensor_upper_0 <= size_type(matrix.rows()));
+      TA_ASSERT(tensor_upper_0 <= std::size_t(matrix.rows()));
 
       // Copy tensor into column vector
       matrix.block(tensor_lower_0, 0, tensor_extent_0, 1) =
