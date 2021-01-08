@@ -35,7 +35,7 @@
 #include <vector>
 
 #include <pthread.h>
-#if __APPLE__
+#if defined(__APPLE__) && defined(__x86_64__)
 #include <mach/mach.h>
 #include <stdexcept>
 #endif
@@ -219,7 +219,7 @@ class MemoryWatchpoint_x86_64 {
   friend class MemoryWatchPool;
 
   void init(bool create) {
-#if __APPLE__
+#if defined(__APPLE__) && defined(__x86_64__)
     x86_debug_state dr;
     mach_msg_type_number_t dr_count = x86_DEBUG_STATE_COUNT;
 
@@ -261,7 +261,7 @@ class MemoryWatchpoint_x86_64 {
       throw std::runtime_error(
           "MemoryWatchpoint_x86_64::MemoryWatchpoint_x86_64(): "
           "thread_set_state failed");
-#endif  // defined(__APPLE__)
+#endif  // defined(__APPLE__) && defined(__x86_64__)
   }
 };
 
