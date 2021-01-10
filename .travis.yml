@@ -136,12 +136,6 @@ matrix:
             - graphviz # provides dot for doxygen graphs
             - fonts-liberation # recommended by graphviz
 
-#notifications:
-#  email:
-#    recipients:
-#      - @github.com
-#    on_success: change
-#    on_failure: always
 before_install:
   - env
   - mkdir -p ${BUILD_PREFIX} && mkdir -p ${INSTALL_PREFIX}
@@ -166,3 +160,7 @@ after_success:
   - if [ "$COMPUTE_COVERAGE" = "1" ]; then bash <(curl -s https://codecov.io/bash) -t token; fi;
   # deploy artifacts: currently only dox
   - if [ "$DEPLOY" = "1" ]; then bash ${TRAVIS_BUILD_DIR}/bin/deploy-$TRAVIS_OS_NAME.sh; fi;
+
+notifications:
+  slack:
+    secure: aSmy6FmiEf+0gcbVpJs0GIrmpI1dF7/WFOXgUkM2wLxw5DBQxE4LW/yt01mvFqAMJLe0LzGujx/V/z98i0kA1S8DEMTqJ+IG2bbdmgb5CAw5LTP5Air1P2SeAyKW/eAAsnGsERaEnHj8nnZEa2dhbAFOPD5QDM7nwWG/xUkIGMU=
