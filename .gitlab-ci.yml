@@ -2,46 +2,46 @@ stages:
   - build
 
 default:
-  tags: [ docker ]
-
-before_script:
-  - echo 'localhost slots=8' > /etc/openmpi/openmpi-default-hostfile
-  - apt-get install -yq intel-mkl-core-c-2020.4-304
-
-build:
-  stage: build
-  timeout: 3h
+  # timeout: 3h # NB doesnt work as of 1/2021
   interruptible: true
+
+ubuntu:
+  stage: build
+  tags: [ docker ]
+  timeout: 3h
   image: valeevgroup/${IMAGE}
   variables:
-    CXX: ${CXX}
-    TA_PYTHON : "TA_PYTHON=OFF"
-    BLAS : ""
+    TA_PYTHON : "TA_PYTHON=ON"
     ENABLE_SCALAPACK : "ENABLE_SCALAPACK=OFF"
+  before_script:
+    - echo 'localhost slots=8' > /etc/openmpi/openmpi-default-hostfile
+    - |-
+      if [[ "$BLA_VENDOR" == "BLA_VENDOR=Intel10"* ]]; then
+        apt-get install -yq intel-mkl-core-c-2020.4-304
+        source /opt/intel/compilers_and_libraries_2020.4.304/linux/mkl/bin/mklvars.sh intel64
+        echo "MKLROOT=$MKLROOT"
+      fi
   script:
     - mkdir build
     - cd build
-    - |-
-      if [[ "X$BLAS" != "X" ]]; then
-        source /opt/intel/compilers_and_libraries_2020.4.304/linux/mkl/bin/mklvars.sh intel64
-      fi
+    - TA_CI_CONFIG="CMAKE_BUILD_TYPE=${BUILD_TYPE} ${TA_PYTHON} ${BLA_VENDOR} ${ENABLE_SCALAPACK}"
+    - unset BUILD_TYPE TA_PYTHON BLA_VENDOR ENABLE_SCALAPACK
+    # !!! Unset env vars that may conflict with build, eg FindBLAS uses $ENV{BLA_VENDOR}
     - ../bin/gitlab-ci.sh ..
-        CMAKE_BUILD_TYPE=${BUILD_TYPE}
-        ${TA_PYTHON}
-        ${ENABLE_SCALAPACK}
-        ${BLAS}
+        ${TA_CI_CONFIG}
         MPIEXEC_PREFLAGS="--allow-run-as-root"
         blacs_LIBRARIES=scalapack-openmpi
         scalapack_LIBRARIES=scalapack-openmpi
-        lapack_LIBRARIES=lapack
+        #lapack_LIBRARIES=lapack
   parallel:
     matrix:
-      - IMAGE : [ "ubuntu:20.04" ]
-        CXX: [ g++, clang++-9 ]
-        BUILD_TYPE : [ "Release", "Debug" ]
-        BLAS : [ "BLA_VENDOR=Intel10_64lp_seq", "BLA_VENDOR=Intel10_64lp", "" ]
-        ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
         CXX: [ g++ ]
+        BUILD_TYPE : [ "Release" ]
+        BLA_VENDOR : [ "BLA_VENDOR=Intel10_64lp_seq", "BLA_VENDOR=Intel10_64lp" ]
+        ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
+        TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
+      - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
+        CXX: [ g++, clang++-9 ]
         BUILD_TYPE : [ "Release", "Debug" ]
-        TA_PYTHON : [ "TA_PYTHON=ON" ]
+        ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
