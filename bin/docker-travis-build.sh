@@ -50,7 +50,7 @@ chmod +x $build
 # make Dockerfile
 cat > Dockerfile << END
 # Travis default 'Focal' image
-FROM travisci/ci-ubuntu-2004:packer-1600162361-606a7440
+FROM travisci/ci-ubuntu-2004:packer-1609444725-e5de6974
 
 # Use baseimage-docker's init system.
 CMD ["/sbin/my_init"]
