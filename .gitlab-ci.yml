@@ -5,6 +5,38 @@ default:
   # timeout: 3h # NB doesnt work as of 1/2021
   interruptible: true
 
+variables:
+  MAD_NUM_THREADS : 2
+  TA_CI_TARGETS : "tiledarray examples ta_test check"
+  TA_CI_CONFIG : >
+                 TA_BUILD_UNITTEST=TRUE
+                 CMAKE_BUILD_TYPE=${BUILD_TYPE}
+                 ${TA_PYTHON}
+                 ${ENABLE_CUDA}
+                 ${BLA_VENDOR}
+                 ${ENABLE_SCALAPACK}
+
+before_script:
+  - echo 'localhost slots=2' > /etc/openmpi/openmpi-default-hostfile
+  - echo "CI_RUNNER_TAGS=$CI_RUNNER_TAGS"
+  # NB: tag parsing below is not robust
+  - CMAKE_BUILD_PARALLEL_LEVEL=$(echo $CI_RUNNER_TAGS | sed -n 's/CMAKE_BUILD_PARALLEL_LEVEL=\([0-9]\+\).*/\1/p')
+  - export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:=1}
+  - echo "CMAKE_BUILD_PARALLEL_LEVEL=$CMAKE_BUILD_PARALLEL_LEVEL"
+  - |-
+    if [[ "$BLA_VENDOR" == "BLA_VENDOR=Intel10"* ]]; then
+      # apt-get install -yq intel-mkl-core-c-2020.4-304
+      # source /opt/intel/compilers_and_libraries_2020.4.304/linux/mkl/bin/mklvars.sh intel64
+      make -C /home/ValeevGroup install/intel-mkl
+      source /opt/intel/mkl/bin/mklvars.sh intel64
+      echo "MKLROOT=$MKLROOT"
+    fi
+  - |-
+    if [[ "$ENABLE_CUDA" == "ENABLE_CUDA=ON" ]]; then
+      make -C /home/ValeevGroup install/cuda
+      export CUDACXX=/usr/local/cuda/bin/nvcc
+    fi
+
 ubuntu:
   stage: build
   tags: [ docker ]
@@ -13,23 +45,15 @@ ubuntu:
   variables:
     TA_PYTHON : "TA_PYTHON=ON"
     ENABLE_SCALAPACK : "ENABLE_SCALAPACK=OFF"
-  before_script:
-    - echo 'localhost slots=8' > /etc/openmpi/openmpi-default-hostfile
-    - |-
-      if [[ "$BLA_VENDOR" == "BLA_VENDOR=Intel10"* ]]; then
-        apt-get install -yq intel-mkl-core-c-2020.4-304
-        source /opt/intel/compilers_and_libraries_2020.4.304/linux/mkl/bin/mklvars.sh intel64
-        echo "MKLROOT=$MKLROOT"
-      fi
   script:
     - mkdir build
     - cd build
-    - TA_CI_CONFIG="CMAKE_BUILD_TYPE=${BUILD_TYPE} ${TA_PYTHON} ${BLA_VENDOR} ${ENABLE_SCALAPACK}"
-    - unset BUILD_TYPE TA_PYTHON BLA_VENDOR ENABLE_SCALAPACK
     # !!! Unset env vars that may conflict with build, eg FindBLAS uses $ENV{BLA_VENDOR}
+    - unset BUILD_TYPE TA_PYTHON BLA_VENDOR ENABLE_SCALAPACK ENABLE_CUDA
     - ../bin/gitlab-ci.sh ..
+        ${TA_CI_TARGETS}
         ${TA_CI_CONFIG}
-        MPIEXEC_PREFLAGS="--allow-run-as-root"
+        MPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
         blacs_LIBRARIES=scalapack-openmpi
         scalapack_LIBRARIES=scalapack-openmpi
         #lapack_LIBRARIES=lapack
@@ -45,3 +69,8 @@ ubuntu:
         CXX: [ g++, clang++-9 ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
+      - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
+        CXX: [ g++ ]
+        BUILD_TYPE : [ "Release", "Debug" ]
+        ENABLE_CUDA : [ "ENABLE_CUDA=ON" ]
+        TA_CI_TARGETS : [ "tiledarray examples" ]
