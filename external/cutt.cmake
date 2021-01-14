@@ -103,10 +103,21 @@ else()
             BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cutt -v
             BUILD_BYPRODUCTS ${CUTT_BUILD_BYPRODUCTS}
             #--Install step---------------
-	    INSTALL_COMMAND cmake -E echo "Skipping default install step."
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "cuTT will be installed during TiledArray's installation."
             #--Custom targets-------------
             STEP_TARGETS build
             )
+
+    # do install of cuTT as part of building TiledArray's install target
+    install(CODE
+            "execute_process(
+               COMMAND \"${CMAKE_COMMAND}\" \"--build\" \".\" \"--target\" \"install\"
+               WORKING_DIRECTORY \"${EXTERNAL_BUILD_DIR}\"
+               RESULT_VARIABLE error_code)
+               if(error_code)
+                 message(FATAL_ERROR \"Failed to install cuTT\")
+               endif()
+            ")
 
     # Add cuTT dependency to External
     add_dependencies(External-tiledarray cutt-build)
