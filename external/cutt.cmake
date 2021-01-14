@@ -102,7 +102,7 @@ else()
             BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cutt -v
             BUILD_BYPRODUCTS ${CUTT_BUILD_BYPRODUCTS}
             #--Install step---------------
-            INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+	    INSTALL_COMMAND cmake -E echo "Skipping default install step."
             #--Custom targets-------------
             STEP_TARGETS build
             )

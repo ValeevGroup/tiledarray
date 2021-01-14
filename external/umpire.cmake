@@ -108,7 +108,7 @@ else()
             BUILD_COMMAND ${CMAKE_COMMAND} --build . -v
             BUILD_BYPRODUCTS ${UMPIRE_BUILD_BYPRODUCTS}
             #--Install step---------------
-            INSTALL_COMMAND ${CMAKE_COMMAND} --build . --target install
+	    INSTALL_COMMAND cmake -E echo "Skipping default install step."
             #--Custom targets-------------
             STEP_TARGETS build
             )
