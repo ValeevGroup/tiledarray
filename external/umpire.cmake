@@ -23,6 +23,9 @@ else()
 
     include(ExternalProject)
 
+    # to pass CMAKE_C_* vars to external project
+    enable_language(C)
+
     # set source and build path for Umpire in the TiledArray project
     set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/Umpire)
     set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/Umpire)

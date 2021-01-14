@@ -19,6 +19,9 @@ else()
 
     include(ExternalProject)
 
+    # to pass CMAKE_C_* vars to external project
+    enable_language(C)
+
     # set source and build path for cuTT in the TiledArray project
     set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/cutt)
     # cutt only supports in source build
