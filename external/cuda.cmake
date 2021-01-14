@@ -18,7 +18,17 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
 
 # find CUDA toolkit
-find_package(CUDAToolkit REQUIRED COMPONENTS cublas nvToolsExt)
+# NB CUDAToolkit does NOT have COMPONENTS
+find_package(CUDAToolkit REQUIRED)
+
+if (NOT TARGET CUDA::cublas)
+  message(FATAL_ERROR "CUDA::cublas not found")
+endif()
+
+if (NOT TARGET CUDA::nvToolsExt)
+  message(FATAL_ERROR "CUDA::nvToolsExt not found")
+endif()
+
 if (NOT DEFINED CUDAToolkit_ROOT)
   get_filename_component(CUDAToolkit_ROOT "${CUDAToolkit_INCLUDE_DIR}/../" ABSOLUTE CACHE)
 endif(NOT DEFINED CUDAToolkit_ROOT)
