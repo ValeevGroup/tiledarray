@@ -10,13 +10,20 @@ fi
 project_dir=$1
 shift
 
-cmake_args="-DTA_BUILD_UNITTEST=TRUE"
+targets=""
+cmake_args=""
 
-for arg in $@; do
-    cmake_args+=" -D$arg"
+for arg in "$@"; do
+    #echo $arg
+    case $arg in
+         *=*) cmake_args+=" \"-D$arg\"" ;;
+         *)   targets+=" $arg" ;;
+    esac
 done
 
-cmake_build_target="cmake --build . --target "
+echo "CMake args: $cmake_args"
+echo "Build targets: $targets"
+echo ""
 
 set -e
 set -x
@@ -26,10 +33,9 @@ export OMPI_ALLOW_RUN_AS_ROOT=1
 export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
 export OMPI_MCA_btl_vader_single_copy_mechanism="none"
 
-cmake $project_dir $cmake_args
+eval "cmake $project_dir $cmake_args"
 
-$cmake_build_target tiledarray
-$cmake_build_target examples
-$cmake_build_target ta_test
-$cmake_build_target check
-
+for target in $targets; do
+    echo "Building target $target"
+    eval "cmake --build . --target $target"
+done
