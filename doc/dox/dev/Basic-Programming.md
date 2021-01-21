@@ -351,9 +351,9 @@ tile.norm() / tile.range().volume() < TA::SparseShape::threshold()
 ```
 To set the zero-tile threshold call:
 ```.cpp
-TA::SparseShape::threshold(my_theshold);
+TA::SparseShape::threshold(my_threshold);
 ```
-where `my_theshold` is the zero threshold you specify for your application. This threshold is a global value and is used for all `SparseShape` objects. Because the zero-tile threshold is shared by all shapes, it is recommended that you set this value only once at the beginning of your program. If you change the threshold during the execution of your application, it affect all subsequent zero-tile checks but it will not change shape data. You are responsible for ensuring that changes the the threshold value during execution do not adversely affect your application.
+where `my_threshold` is the zero threshold you specify for your application. This threshold is a global value and is used for all `SparseShape` objects. Because the zero-tile threshold is shared by all shapes, it is recommended that you set this value only once at the beginning of your program. If you change the threshold during the execution of your application, it affect all subsequent zero-tile checks but it will not change shape data. You are responsible for ensuring that changes the the threshold value during execution do not adversely affect your application.
 
 #### Distributed SparseShape Construction
 
