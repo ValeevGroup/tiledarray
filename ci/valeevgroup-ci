@@ -1,0 +1,62 @@
+#!/bin/bash
+
+set -e
+
+build_dir=$1
+shift
+
+var=" "
+targets=" "
+
+for arg in "$@"; do
+  #echo $arg
+    case $arg in
+    CXX=*) eval "export $arg" ;;
+    *=*)   vars+="\"-D$arg\" "
+           unset $(echo "$arg" | cut -d= -f1)
+           ;;
+    *)     targets+="$arg ";;
+  esac
+done
+
+function cmd {
+    echo "+ $@"
+    eval "$@"
+}
+
+function section_start {
+    echo -e "\e[0Ksection_start:`date +%s`:$1[collapsed=$2]\r\e[0K$3"    
+}
+
+function section_end {
+    echo -e "\e[0Ksection_end:`date +%s`:$1\r\e[0K"
+}
+
+section_start host_system_info, true, "# Host system info"
+cmd "cmake -P ci/host_system_info.cmake"
+section_end host_system_information
+
+section_start preparing_system, true, "# Preparing system"
+cmd "source ci/openmpi.env"
+cmd "echo 'localhost slots=2' > /etc/openmpi/openmpi-default-hostfile"
+if [[ "$vars" =~ \"-DBLA_VENDOR=Intel ]]; then
+  cmd "make -C /home/ValeevGroup install/intel-mkl"
+  cmd "source /opt/intel/mkl/bin/mklvars.sh intel64"
+  cmd "echo MKLROOT=\$MKLROOT"
+fi
+if [[ "$vars" =~ \"-DENABLE_CUDA=(ON|TRUE|1|YES)\" ]]; then
+  cmd "make -C /home/ValeevGroup install/cuda"
+  cmd "export CUDACXX=/usr/local/cuda/bin/nvcc"
+fi
+section_end preparing_system
+
+section_start configure, false, "# Configure"
+cmd "cmake -B${build_dir} $vars"
+section_end configure
+
+for target in ${targets}; do
+  section_start build_${target}, false, "# Build ${target}"
+  cmd "cmake --build ${build_dir} --target ${target}"
+  section_end build_${target}
+done
+
