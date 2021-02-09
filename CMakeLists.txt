@@ -34,6 +34,7 @@ FetchContent_Populate(
     vg_cmake_kit
     QUIET
     GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
+    GIT_TAG evaleev/feature/wfn91-linalg-discovery
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-build
     SUBBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-subbuild
@@ -297,6 +298,10 @@ endif()
 include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
+# use David Williams-Young's linear algebra discovery modules
+include("${vg_cmake_kit_SOURCE_DIR}/modules/FetchWfn91LinAlgModules.cmake")
+find_package(BLAS REQUIRED)
+find_package(LAPACK REQUIRED)
 # BTAS does a better job of building and checking Boost since it uses Boost::serialization
 # it also memorized the location of its config for use from install tree
 include(FindOrFetchBTAS)
