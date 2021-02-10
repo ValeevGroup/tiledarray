@@ -1,0 +1,59 @@
+name: TiledArray CI
+
+on: [push]
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL : 2
+
+jobs:
+
+  MacOS-Build:
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os : [ macos-latest ]
+        cxx : [ clang++, /usr/local/bin/g++-10 ]
+        build_type : [ Release, Debug ]
+        prerequisites : [ gcc@10 boost eigen open-mpi ]
+
+    name: "${{ matrix.os }}: ${{ matrix.cxx }} ${{ matrix.build_type }}"
+    runs-on: ${{ matrix.os }}
+    env:
+      CXX : ${{ matrix.cxx }}
+      BUILD_CONFIG : >
+        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        -DTA_BUILD_UNITTEST=ON
+        -DMPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Host system info
+      shell: bash
+      run: cmake -P ${{github.workspace}}/ci/host_system_info.cmake
+
+    - name: Install ${{matrix.prerequisites}}
+      run: brew install ${{matrix.prerequisites}}
+
+    - name: "Configure build: ${{ env.BUILD_CONFIG }}"
+      shell: bash
+      run: |
+        set -x;
+        cmake -B${{github.workspace}}/build $BUILD_CONFIG
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      run: |
+        cmake --build . --target tiledarray
+        cmake --build . --target examples
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      shell: bash
+      #run: ctest -C $${{matrix.build_type}}
+      run: |
+        source ${{github.workspace}}/ci/openmpi.env
+        cmake --build . --target ta_test
+        cmake --build . --target check
