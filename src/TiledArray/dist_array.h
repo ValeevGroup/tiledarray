@@ -1498,10 +1498,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     if (is_tot) {
       // Make sure the index is capable of being interpreted as a ToT index
       TA_ASSERT(detail::is_tot_index(vars));
-      const auto idx = detail::split_index(vars);
 
       // Rank of outer tiles must match number of outer indices
-      TA_ASSERT(idx.first.size() == rank);
+      // is_tot_index(vars) implies vars.find(';') < vars.size()
+      TA_ASSERT(std::count(vars.begin(), vars.begin() + vars.find(';'), ',') +
+                    1ul ==
+                rank);
 
       // Check inner index rank?
     } else {
@@ -1509,7 +1511,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       TA_ASSERT(!detail::is_tot_index(vars));
 
       // Number of indices must match rank
-      TA_ASSERT(detail::tokenize_index(vars, ',').size() == rank);
+      TA_ASSERT(std::count(vars.begin(), vars.end(), ',') + 1ul == rank);
     }
 #endif  // NDEBUG
   }
