@@ -32,6 +32,7 @@ TiledArray/bitset.h
 TiledArray/block_range.h
 TiledArray/dense_shape.h
 TiledArray/dist_array.h
+TiledArray/dist_array_vector.h
 TiledArray/distributed_storage.h
 TiledArray/error.h
 TiledArray/external/madness.h

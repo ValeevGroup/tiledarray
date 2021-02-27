@@ -90,6 +90,8 @@ class DensePolicy;
 struct ZeroTensor;
 template <typename, typename>
 class DistArray;
+template <typename, typename>
+class DistArrayVector;
 namespace detail {
 template <typename, typename>
 class LazyArrayTile;
@@ -1191,6 +1193,15 @@ struct is_array<DistArray<T, P>> : public std::true_type {};
 
 template <typename T>
 static constexpr bool is_array_v = is_array<T>::value;
+
+template <typename T>
+struct is_arrayvec : public std::false_type {};
+
+template <typename T, typename P>
+struct is_arrayvec<DistArrayVector<T, P>> : public std::true_type {};
+
+template <typename T>
+static constexpr bool is_arrayvec_v = is_arrayvec<T>::value;
 
 template <typename T>
 using trange_t = typename T::trange_type;

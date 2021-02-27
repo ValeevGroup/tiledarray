@@ -68,6 +68,7 @@ set(ta_test_src_files  ta_test.cpp
     index_list.cpp
     bipartite_index_list.cpp
     dist_array.cpp
+    dist_array_vector.cpp
     conversions.cpp
     eigen.cpp
     dist_op_dist_cache.cpp

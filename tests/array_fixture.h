@@ -42,6 +42,17 @@ struct ArrayFixture : public TiledRangeFixture {
   TiledArray::World& world;
   ArrayN a;
   SpArrayN b;
+
+  template <typename Policy>
+  const auto& array() const {
+    if constexpr (std::is_same_v<Policy, SparsePolicy>)
+      return b;
+    else if constexpr (std::is_same_v<Policy, DensePolicy>)
+      return a;
+    else
+      abort();
+  }
+
 };  // struct ArrayFixture
 
 #endif  // TILEDARRAY_TEST_ARRAY_FIXTURE_H__INCLUDED

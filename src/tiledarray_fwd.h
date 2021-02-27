@@ -47,15 +47,15 @@ class SparsePolicy;
 template <typename, typename>
 class Tensor;
 
-typedef Tensor<double, Eigen::aligned_allocator<double> > TensorD;
-typedef Tensor<int, Eigen::aligned_allocator<int> > TensorI;
-typedef Tensor<float, Eigen::aligned_allocator<float> > TensorF;
-typedef Tensor<long, Eigen::aligned_allocator<long> > TensorL;
+typedef Tensor<double, Eigen::aligned_allocator<double>> TensorD;
+typedef Tensor<int, Eigen::aligned_allocator<int>> TensorI;
+typedef Tensor<float, Eigen::aligned_allocator<float>> TensorF;
+typedef Tensor<long, Eigen::aligned_allocator<long>> TensorL;
 typedef Tensor<std::complex<double>,
-               Eigen::aligned_allocator<std::complex<double> > >
+               Eigen::aligned_allocator<std::complex<double>>>
     TensorZ;
 typedef Tensor<std::complex<float>,
-               Eigen::aligned_allocator<std::complex<float> > >
+               Eigen::aligned_allocator<std::complex<float>>>
     TensorC;
 
 // CUDA tensor
@@ -90,31 +90,35 @@ class DistArray;
 
 // Dense Array Typedefs
 template <typename T>
-using TArray = DistArray<Tensor<T, Eigen::aligned_allocator<T> >, DensePolicy>;
+using TArray = DistArray<Tensor<T, Eigen::aligned_allocator<T>>, DensePolicy>;
 typedef TArray<double> TArrayD;
 typedef TArray<int> TArrayI;
 typedef TArray<float> TArrayF;
 typedef TArray<long> TArrayL;
-typedef TArray<std::complex<double> > TArrayZ;
-typedef TArray<std::complex<float> > TArrayC;
+typedef TArray<std::complex<double>> TArrayZ;
+typedef TArray<std::complex<float>> TArrayC;
 
 // Sparse Array Typedefs
 template <typename T>
 using TSpArray =
-    DistArray<Tensor<T, Eigen::aligned_allocator<T> >, SparsePolicy>;
+    DistArray<Tensor<T, Eigen::aligned_allocator<T>>, SparsePolicy>;
 typedef TSpArray<double> TSpArrayD;
 typedef TSpArray<int> TSpArrayI;
 typedef TSpArray<float> TSpArrayF;
 typedef TSpArray<long> TSpArrayL;
-typedef TSpArray<std::complex<double> > TSpArrayZ;
-typedef TSpArray<std::complex<float> > TSpArrayC;
+typedef TSpArray<std::complex<double>> TSpArrayZ;
+typedef TSpArray<std::complex<float>> TSpArrayC;
 
 // type alias for backward compatibility: the old Array has static type,
 // DistArray is rank-polymorphic
 template <typename T, unsigned int = 0,
-          typename Tile = Tensor<T, Eigen::aligned_allocator<T> >,
+          typename Tile = Tensor<T, Eigen::aligned_allocator<T>>,
           typename Policy = DensePolicy>
 using Array = DistArray<Tile, Policy>;
+
+// vector pack of DistArray's
+template <typename, typename>
+class DistArrayVector;
 
 }  // namespace TiledArray
 
