@@ -38,12 +38,6 @@ class DistArray;
 
 namespace expressions {
 
-// Forward declaration
-template <typename, bool>
-class TsrExpr;
-template <typename, typename, bool>
-class TsrEngine;
-
 template <typename Tile, typename Policy, typename Result, bool Alias>
 struct EngineTrait<TsrEngine<DistArray<Tile, Policy>, Result, Alias>> {
   // Argument typedefs

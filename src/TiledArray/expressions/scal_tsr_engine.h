@@ -26,17 +26,13 @@
 #ifndef TILEDARRAY_EXPRESSIONS_SCAL_TSR_ENGINE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_SCAL_TSR_ENGINE_H__INCLUDED
 
+#include <TiledArray/expressions/fwd.h>
 #include <TiledArray/expressions/leaf_engine.h>
 #include <TiledArray/tile_op/scal.h>
 #include <TiledArray/tile_op/unary_wrapper.h>
 
 namespace TiledArray {
 namespace expressions {
-
-template <typename, typename>
-class ScalTsrExpr;
-template <typename, typename, typename>
-class ScalTsrEngine;
 
 template <typename Tile, typename Policy, typename Scalar, typename Result>
 struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result>> {

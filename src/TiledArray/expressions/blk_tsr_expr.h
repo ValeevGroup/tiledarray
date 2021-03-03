@@ -35,14 +35,6 @@
 namespace TiledArray {
 namespace expressions {
 
-// Forward declaration
-template <typename, bool>
-class TsrExpr;
-template <typename, bool>
-class BlkTsrExpr;
-template <typename, typename>
-class ScalBlkTsrExpr;
-
 template <typename Array>
 using ConjBlkTsrExpr =
     ScalBlkTsrExpr<Array, TiledArray::detail::ComplexConjugate<void>>;
