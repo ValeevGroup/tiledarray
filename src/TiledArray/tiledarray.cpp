@@ -132,3 +132,12 @@ void TiledArray::finalize() {
   initialized_accessor() = false;
   finalized_accessor() = true;
 }
+
+void TiledArray::ta_abort() {
+  std::abort();
+}
+
+void TiledArray::ta_abort(const std::string &m) {
+  std::cerr << m << std::endl;
+  ta_abort();
+}

@@ -1487,7 +1487,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// @warning this tests contents of @p vars using #TA_ASSERT() only if
   /// preprocessor macro @c NDEBUG is not defined
   void check_str_index(const std::string& vars) const {
-#ifndef NDEBUG
+#if (TA_ASSERT_POLICY != TA_ASSERT_IGNORE)
     // Only check indices if the PIMPL is initialized (okay to not initialize
     // the RHS of an equation)
     if (!is_initialized()) return;
