@@ -66,10 +66,24 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(constructors, ArrayVec, tparams) {
 BOOST_AUTO_TEST_CASE_TEMPLATE(expressions, ArrayVec, tparams) {
   const auto& arr = array<typename ArrayVec::policy_type>();
 
+  // array -> arrayvec
   {
     ArrayVec av;
     BOOST_REQUIRE_NO_THROW(av("i,j,k") = arr("i,j,k"));
     BOOST_CHECK_EQUAL(av.size(), 1);
+  }
+
+  // arrayvec op array -> arrayvec
+  {
+    ArrayVec av0, av1, av2, av3;
+    av0("i,j,k") = arr("i,k,j");
+    // these don't compile
+//    BOOST_REQUIRE_NO_THROW(av1("i,j,k") = av0("i,j,k") + arr("i,k,j"));
+//    BOOST_CHECK_EQUAL(av1.size(), 1);
+//    BOOST_REQUIRE_NO_THROW(av2("i,j,k") = arr("i,k,j") + av1("i,j,k"));
+//    BOOST_CHECK_EQUAL(av2.size(), 1);
+//    BOOST_REQUIRE_NO_THROW(av3("i,j,k") = 3.0 * (1 * av2("i,j,k") - 2 * arr("i,k,j")) * av1("i,j,k"));
+//    BOOST_CHECK_EQUAL(av3.size(), 1);
   }
 }
 
