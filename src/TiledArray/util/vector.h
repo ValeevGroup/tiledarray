@@ -26,9 +26,9 @@
 #ifndef TILEDARRAY_UTIL_VECTOR_H
 #define TILEDARRAY_UTIL_VECTOR_H
 
-#include "TiledArray/config.h"
 #include <boost/container/small_vector.hpp>
 #include <vector>
+#include "TiledArray/config.h"
 
 #include <TiledArray/utility.h>
 #include <madness/world/archive.h>
@@ -83,32 +83,6 @@ constexpr auto iv(Int i0, Ints... rest) {
 
 }  // namespace container
 }  // namespace TiledArray
-
-namespace madness {
-namespace archive {
-
-template <class Archive, typename T, std::size_t N, typename A>
-struct ArchiveLoadImpl<Archive, boost::container::small_vector<T, N, A>> {
-  static inline void load(const Archive& ar,
-                          boost::container::small_vector<T, N, A>& x) {
-    std::size_t n{};
-    ar& n;
-    x.resize(n);
-    for (auto& xi : x) ar& xi;
-  }
-};
-
-template <class Archive, typename T, std::size_t N, typename A>
-struct ArchiveStoreImpl<Archive, boost::container::small_vector<T, N, A>> {
-  static inline void store(const Archive& ar,
-                           const boost::container::small_vector<T, N, A>& x) {
-    ar& x.size();
-    for (const auto& xi : x) ar& xi;
-  }
-};
-
-}  // namespace archive
-}  // namespace madness
 
 namespace TiledArray {
 
