@@ -9,7 +9,6 @@ variables:
   MAD_NUM_THREADS : 2
   TA_TARGETS : "tiledarray examples ta_test check"
   TA_CONFIG : >
-    TA_BUILD_UNITTEST=TRUE
     CMAKE_BUILD_TYPE=${BUILD_TYPE}
     ${TA_PYTHON}
     ${ENABLE_CUDA}
