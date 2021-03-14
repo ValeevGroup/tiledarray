@@ -37,35 +37,57 @@ namespace detail {
 /// A vector of objects that, if there is only one object, can be implicitly
 /// converted to it
 
-/// @tparam T the type of contained objects
+/// @tparam T the type of contained objects; must be copy constructable and
+/// move constructable, does not have to be copy or move assignable
 template <typename T>
 class VectorBase : public container::svector<T> {
  public:
   using base_type = container::svector<T>;
 
   VectorBase() = default;
+  /// copy ctor delegates to ctor that uses emplace_back
+  VectorBase(const VectorBase &other)
+      : VectorBase(static_cast<const base_type &>(other)) {}
+  /// move ctor delegates to ctor that uses emplace_back
+  VectorBase(VectorBase &&other)
+      : VectorBase(static_cast<base_type &&>(other)) {}
 
-  VectorBase(std::size_t sz) : base_type(sz) {}
+  /// constructs a vector of default-constructed objects
+  /// @param[in] sz the target size of the vector
+  explicit VectorBase(std::size_t sz) : base_type(sz) {}
 
-  template <typename... Args,
-            typename = std::enable_if_t<
-                (std::is_same_v<std::remove_reference_t<Args>, T> && ...)>>
-  VectorBase(Args &&..._t) : base_type{std::forward<Args>(_t)...} {}
+  /// copies objects from a std::vector
+  /// @param v a std::vector from which the objects will be copied
+  explicit VectorBase(const std::vector<T> &v) {
+    this->reserve(v.size());
+    for (auto &&e : v) {
+      this->emplace_back(e);
+    }
+  }
 
-  VectorBase(const std::vector<T> &v) : base_type{v.begin(), v.end()} {}
-
-  VectorBase(std::vector<T> &&v) {
+  /// moves objects from a std::vector
+  /// @param v a std::vector from which the objects will be moved
+  explicit VectorBase(std::vector<T> &&v) {
     this->reserve(v.size());
     for (auto &&e : v) {
       this->emplace_back(std::move(e));
     }
   }
 
+  /// copies objects from a container::svector
+  /// @param v a container::svector from which the objects will be copied
   template <std::size_t Size>
-  VectorBase(const container::svector<T, Size> &v) : container::svector<T>{v} {}
+  explicit VectorBase(const container::svector<T, Size> &v) {
+    this->reserve(v.size());
+    for (auto &&e : v) {
+      this->emplace_back(e);
+    }
+  }
 
+  /// moves objects from a container::svector
+  /// @param v a container::svector from which the objects will be moved
   template <std::size_t Size>
-  VectorBase(container::svector<T, Size> &&v) {
+  explicit VectorBase(container::svector<T, Size> &&v) {
     this->reserve(v.size());
     for (auto &&e : v) {
       this->emplace_back(std::move(e));
@@ -75,6 +97,26 @@ class VectorBase : public container::svector<T> {
   template <typename B, typename E>
   VectorBase(B &&begin, E &&end)
       : container::svector<T>{std::forward<B>(begin), std::forward<E>(end)} {}
+
+  /// copy assignment
+  VectorBase &operator=(const VectorBase &other) {
+    this->clear();
+    if (this->size() < other.size()) this->reserve(other.size());
+    for (auto &&e : other) {
+      this->emplace_back(e);
+    }
+    return *this;
+  }
+
+  /// move assignment
+  VectorBase &operator=(VectorBase &&other) {
+    this->clear();
+    if (this->size() < other.size()) this->reserve(other.size());
+    for (auto &&e : other) {
+      this->emplace_back(std::move(e));
+    }
+    return *this;
+  }
 
   /// converts to a nonconst lvalue ref to the first object is there is only one
   /// @throw TiledArray::Exception if the number of objects is not equal to 1
@@ -115,6 +157,7 @@ class VectorBase : public container::svector<T> {
 
 }  // namespace detail
 
+/// a vector of Shape objects
 template <typename Shape_>
 class ShapeVector : public detail::VectorBase<Shape_> {
  public:
@@ -190,6 +233,7 @@ struct is_tsr_expression<TsrExpr<Array, Alias>> : public std::true_type {};
 template <typename E>
 constexpr const bool is_tsr_expression_v = is_tsr_expression<E>::value;
 
+/// a vector of Expr objects
 template <typename Expr_, typename = enable_if_expression<Expr_>>
 class ExprVector : public TiledArray::detail::VectorBase<Expr_> {
  public:
@@ -443,9 +487,6 @@ const Expr<E> &to_base_expr(const ExprVector<E> &e) {
   ExprVector<result_type<Left, Right>> operator op(                         \
       const ExprVector<Left> &left, const Expr<Right> &right) {             \
     const auto sz = left.size();                                            \
-    if (sz == 1) {                                                          \
-      return {to_base_expr(left) op right};                                 \
-    }                                                                       \
     ExprVector<result_type<Left, Right>> result;                            \
     result.reserve(sz);                                                     \
     for (size_t i = 0; i != sz; ++i) result.emplace_back(left[i] op right); \
@@ -455,9 +496,6 @@ const Expr<E> &to_base_expr(const ExprVector<E> &e) {
   ExprVector<result_type<Left, Right>> operator op(                         \
       const Expr<Left> &left, const ExprVector<Right> &right) {             \
     const auto sz = right.size();                                           \
-    if (sz == 1) {                                                          \
-      return {left op to_base_expr(right)};                                 \
-    }                                                                       \
     ExprVector<result_type<Left, Right>> result;                            \
     result.reserve(sz);                                                     \
     for (size_t i = 0; i != sz; ++i) result.emplace_back(left op right[i]); \
