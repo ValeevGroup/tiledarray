@@ -135,7 +135,6 @@ $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
 ```
 $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
         -D CMAKE_BUILD_TYPE=Debug \
-        -D TA_BUILD_UNITTEST=ON \
         -D BOOST_ROOT=/path/to/boost \
         -D CMAKE_PREFIX_PATH=/path/to/dependency;/path/to/another/dependency \
         $TILEDARRAY_SOURCE_DIR
@@ -349,7 +348,8 @@ support may be added.
 ## Expert configure options:
 
 * `TA_EXPERT` -- Set to `ON` to disable automatic installation of prerequisites. Useful for experts, hence the name. [Default=OFF].
-* `TA_ERROR` -- Set to `none` to disable `TA_ASSERT` assertions, `throw` to cause `TA_ASSERT` assertions to throw, `abort` to cause `TA_ASSERT` assertions to abort, or `assert` to cause `TA_ASSERT` assertions to use C++ assert. The default is `throw` if `TA_BUILD_UNITTEST` is set, else is `assert` if `CMAKE_BUILD_TYPE` is `Debug` or `RelWithDebInfo`, else is `abort`.
+* `TA_ASSERT_POLICY` -- Set to `TA_ASSERT_IGNORE` to disable `TA_ASSERT` assertions, `TA_ASSERT_THROW` to cause `TA_ASSERT` assertions to throw, `TA_ASSERT_ABORT` to cause `TA_ASSERT` assertions to abort. The default is `TA_ASSERT_THROW`.
+* `TA_BUILD_UNITTEST` -- Set of `OFF` to disable building unit tests. The default is `ON`.
 * `TA_TRACE_TASKS` -- Set to `ON` to enable tracing of MADNESS tasks using custom task tracer. Note that standard profilers/tracers are generally useless (except in the trivial cases) with MADWorld-based programs since the submission context of tasks is not captured by standard tracing tools; this makes it impossible in a nontrivial program to attribute tasks to source code. WARNING: task tracing his will greatly increase the memory requirements. [Default=OFF].
 * `TA_ENABLE_RANGEV3` -- Set to `ON` to find or fetch the Range-V3 library and enable additional tests of TA components with constructs anticipated to be supported in the future. [Default=OFF].
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
