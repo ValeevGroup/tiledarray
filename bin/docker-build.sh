@@ -35,7 +35,7 @@ RUN apt-get update && apt-get install -y python3 ninja-build liblapacke-dev libl
 RUN CMAKE_URL="https://cmake.org/files/v${CMAKE_VERSION%.[0-9]}/cmake-${CMAKE_VERSION}-Linux-x86_64.tar.gz" && wget --no-check-certificate -O - \$CMAKE_URL | tar --strip-components=1 -xz -C /usr/local
 ENV CMAKE=/usr/local/bin/cmake
 # 3. download and build TiledArray
-RUN cd /usr/local/src && git clone --depth=1 https://github.com/ValeevGroup/tiledarray.git && cd /usr/local/src/tiledarray && mkdir build && cd build && \$CMAKE .. -G Ninja -DCMAKE_CXX_COMPILER=clang++-8 -DCMAKE_C_COMPILER=clang-8 -DTA_BUILD_UNITTEST=ON -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=RelWithDebInfo && \$CMAKE --build . --target tiledarray && \$CMAKE --build . --target check && $CMAKE --build . --target examples && \$CMAKE --build . --target install
+RUN cd /usr/local/src && git clone --depth=1 https://github.com/ValeevGroup/tiledarray.git && cd /usr/local/src/tiledarray && mkdir build && cd build && \$CMAKE .. -G Ninja -DCMAKE_CXX_COMPILER=clang++-8 -DCMAKE_C_COMPILER=clang-8 -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_BUILD_TYPE=RelWithDebInfo && \$CMAKE --build . --target tiledarray && \$CMAKE --build . --target check && $CMAKE --build . --target examples && \$CMAKE --build . --target install
 
 # Clean up APT when done.
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
