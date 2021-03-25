@@ -88,11 +88,11 @@ set(ta_test_src_files  ta_test.cpp
     reduce_task.cpp
     proc_grid.cpp
     dist_eval_contraction_eval.cpp
-    #expressions.cpp
-    #expressions_sparse.cpp
-    #expressions_complex.cpp
-    #expressions_btas.cpp
-    #expressions_mixed.cpp
+    expressions.cpp
+    expressions_sparse.cpp
+    expressions_complex.cpp
+    expressions_btas.cpp
+    expressions_mixed.cpp
     foreach.cpp
     solvers.cpp
     initializer_list.cpp
@@ -102,7 +102,7 @@ set(ta_test_src_files  ta_test.cpp
     tot_dist_array_part2.cpp
     random.cpp
     trace.cpp
-    #tot_expressions.cpp
+    tot_expressions.cpp
     annotation.cpp
     diagonal_array.cpp
     contraction_helpers.cpp
