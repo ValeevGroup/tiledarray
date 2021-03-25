@@ -150,27 +150,6 @@ void svd(Job jobu, Job jobvt, Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Mat
   S.resize(k);
   T* s = S.data();
 
-#if 0
-  auto jobu = lapack::Job::NoVec;
-  T* u = nullptr;
-  integer ldu = m;
-  if (U) {
-    jobu = lapack::Job::SomeVec;
-    U->resize(m, k);
-    u = U->data();
-    ldu = U->rows();
-  }
-
-  auto jobvt = lapack::Job::NoVec;
-  T* vt = nullptr;
-  integer ldvt = n;
-  if (VT) {
-    jobvt = lapack::Job::SomeVec;
-    VT->resize(k, n);
-    vt = VT->data();
-    ldvt = VT->rows();
-  }
-#else
   T* u  = nullptr;
   T* vt = nullptr;
   integer ldu = 1, ldvt = 1;
@@ -203,8 +182,6 @@ void svd(Job jobu, Job jobvt, Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Mat
     ldvt = n;
   }
     
-#endif
-
   TA_LAPACK(gesvd, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt);
 }
 
