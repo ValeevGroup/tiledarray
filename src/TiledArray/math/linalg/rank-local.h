@@ -10,6 +10,8 @@
 
 namespace TiledArray::math::linalg::rank_local {
 
+using Job = ::lapack::Job;
+
 template <typename T, int Options = ::Eigen::ColMajor>
 using Matrix = ::Eigen::Matrix<T, ::Eigen::Dynamic, ::Eigen::Dynamic, Options>;
 
@@ -35,7 +37,14 @@ template <typename T>
 void heig(Matrix<T> &A, Matrix<T> &B, std::vector<T> &W);
 
 template <typename T>
-void svd(Matrix<T> &A, std::vector<T> &S, Matrix<T> *U, Matrix<T> *VT);
+void svd(Job jobu, Job jobvt, Matrix<T> &A, std::vector<T> &S, Matrix<T> *U, Matrix<T> *VT);
+
+template <typename T>
+void svd(Matrix<T> &A, std::vector<T> &S, Matrix<T> *U, Matrix<T> *VT) {
+  svd( U  ? Job::SomeVec : Job::NoVec, 
+       VT ? Job::SomeVec : Job::NoVec,
+       A, S, U, VT );
+}
 
 template <typename T>
 void lu_solve(Matrix<T> &A, Matrix<T> &B);

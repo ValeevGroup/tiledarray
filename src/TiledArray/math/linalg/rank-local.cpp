@@ -140,7 +140,7 @@ void heig(Matrix<T>& A, Matrix<T>& B, std::vector<T>& W) {
 }
 
 template <typename T>
-void svd(Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
+void svd(Job jobu, Job jobvt, Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
   integer m = A.rows();
   integer n = A.cols();
   integer k = std::min(m, n);
@@ -150,6 +150,7 @@ void svd(Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
   S.resize(k);
   T* s = S.data();
 
+#if 0
   auto jobu = lapack::Job::NoVec;
   T* u = nullptr;
   integer ldu = m;
@@ -169,6 +170,40 @@ void svd(Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
     vt = VT->data();
     ldvt = VT->rows();
   }
+#else
+  T* u  = nullptr;
+  T* vt = nullptr;
+  integer ldu = 1, ldvt = 1;
+  if( (jobu == Job::SomeVec or jobu == Job::AllVec) and (not U) ) 
+    TA_LAPACK_ERROR("Requested out-of-place right singular vectors with null U input");
+  if( (jobvt == Job::SomeVec or jobvt == Job::AllVec) and (not VT) ) 
+    TA_LAPACK_ERROR("Requested out-of-place left singular vectors with null VT input");
+
+  if( jobu == Job::SomeVec ) {
+    U->resize(m, k);
+    u = U->data();
+    ldu = m;
+  }
+
+  if( jobu == Job::AllVec ) {
+    U->resize(m, m);
+    u = U->data();
+    ldu = m;
+  }
+
+  if( jobvt == Job::SomeVec ) {
+    VT->resize(k, n);
+    vt = VT->data();
+    ldvt = k;
+  }
+
+  if( jobvt == Job::AllVec ) {
+    VT->resize(n, n);
+    vt = VT->data();
+    ldvt = n;
+  }
+    
+#endif
 
   TA_LAPACK(gesvd, jobu, jobvt, m, n, a, lda, s, u, ldu, vt, ldvt);
 }
@@ -195,15 +230,15 @@ void lu_inv(Matrix<T>& A) {
   TA_LAPACK(getri, n, a, lda, ipiv.data());
 }
 
-#define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)               \
-  template void cholesky(MATRIX&);                       \
-  template void cholesky_linv(MATRIX&);                  \
-  template void cholesky_solve(MATRIX&, MATRIX&);        \
-  template void cholesky_lsolve(Op, MATRIX&, MATRIX&);   \
-  template void heig(MATRIX&, VECTOR&);                  \
-  template void heig(MATRIX&, MATRIX&, VECTOR&);         \
-  template void svd(MATRIX&, VECTOR&, MATRIX*, MATRIX*); \
-  template void lu_solve(MATRIX&, MATRIX&);              \
+#define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                       \
+  template void cholesky(MATRIX&);                               \
+  template void cholesky_linv(MATRIX&);                          \
+  template void cholesky_solve(MATRIX&, MATRIX&);                \
+  template void cholesky_lsolve(Op, MATRIX&, MATRIX&);           \
+  template void heig(MATRIX&, VECTOR&);                          \
+  template void heig(MATRIX&, MATRIX&, VECTOR&);                 \
+  template void svd(Job,Job,MATRIX&, VECTOR&, MATRIX*, MATRIX*); \
+  template void lu_solve(MATRIX&, MATRIX&);                      \
   template void lu_inv(MATRIX&);
 
 TA_LAPACK_EXPLICIT(Matrix<double>, std::vector<double>);
