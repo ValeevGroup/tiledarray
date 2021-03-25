@@ -143,18 +143,19 @@ template <typename T>
 void svd(Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
   integer m = A.rows();
   integer n = A.cols();
+  integer k = std::min(m, n);
   T* a = A.data();
   integer lda = A.rows();
 
-  S.resize(std::min(m, n));
+  S.resize(k);
   T* s = S.data();
 
   auto jobu = lapack::Job::NoVec;
   T* u = nullptr;
   integer ldu = m;
   if (U) {
-    jobu = lapack::Job::AllVec;
-    U->resize(m, n);
+    jobu = lapack::Job::SomeVec;
+    U->resize(m, k);
     u = U->data();
     ldu = U->rows();
   }
@@ -163,8 +164,8 @@ void svd(Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
   T* vt = nullptr;
   integer ldvt = n;
   if (VT) {
-    jobvt = lapack::Job::AllVec;
-    VT->resize(n, m);
+    jobvt = lapack::Job::SomeVec;
+    VT->resize(k, n);
     vt = VT->data();
     ldvt = VT->rows();
   }
