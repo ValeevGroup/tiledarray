@@ -28,12 +28,16 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
+#include <TiledArray/util/allocator.h>
+
 #include <TiledArray/external/cuda.h>
 
 #include <memory>
 #include <stdexcept>
 
 namespace TiledArray {
+
+namespace detail {
 
 /// CUDA UM allocator, based on boilerplate by Howard Hinnant
 /// (https://howardhinnant.github.io/allocator_boilerplate.html)
@@ -89,39 +93,11 @@ bool operator!=(const cuda_um_allocator_impl<T1>& lhs,
   return !(lhs == rhs);
 }
 
-/// see
-/// https://stackoverflow.com/questions/21028299/is-this-behavior-of-vectorresizesize-type-n-under-c11-and-boost-container/21028912#21028912
-template <typename T, typename A>
-class default_init_allocator : public A {
-  using a_t = std::allocator_traits<A>;
-
- public:
-  using reference = typename A::reference;  // std::allocator<T>::reference
-                                            // deprecated in C++17, but thrust
-                                            // still relying on this
-  using const_reference = typename A::const_reference;  // ditto
-
-  template <typename U>
-  struct rebind {
-    using other =
-        default_init_allocator<U, typename a_t::template rebind_alloc<U>>;
-  };
-
-  using A::A;
-
-  template <typename U>
-  void construct(U* ptr) noexcept(
-      std::is_nothrow_default_constructible<U>::value) {
-    ::new (static_cast<void*>(ptr)) U;
-  }
-  template <typename U, typename... Args>
-  void construct(U* ptr, Args&&... args) {
-    a_t::construct(static_cast<A&>(*this), ptr, std::forward<Args>(args)...);
-  }
-};
+}  // namespace detail
 
 template <typename T>
-using cuda_um_allocator = default_init_allocator<T, cuda_um_allocator_impl<T>>;
+using cuda_um_allocator =
+    default_init_allocator<T, detail::cuda_um_allocator_impl<T>>;
 
 }  // namespace TiledArray
 
