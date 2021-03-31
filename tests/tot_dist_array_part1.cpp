@@ -8,7 +8,6 @@ BOOST_FIXTURE_TEST_SUITE(tot_array_suite1, ToTArrayFixture)
  * assumed that the unit tests of the PIMPL's types ensure the correctness of
  * those. The directly affected types are:
  *
- * - DistArray_
  * - impl_type
  * - numeric_type
  * - scalar_type
@@ -22,13 +21,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(typedefs, TestParam, test_params) {
 
   // The type of the DistArray whose types are being tested
   using tensor_t = tensor_type<TestParam>;
-
-  //------------ Actual type checks start here -------------------------
-  {
-    constexpr bool is_same =
-        std::is_same_v<typename tensor_t::DistArray_, tensor_t>;
-    BOOST_TEST(is_same);
-  }
 
   {
     using corr_impl_type = detail::ArrayImpl<tile_type, policy_type>;
