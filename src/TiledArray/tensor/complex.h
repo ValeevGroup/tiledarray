@@ -40,7 +40,8 @@ namespace detail {
 /// \param r The real scalar
 /// \return `r`
 template <typename R,
-          typename std::enable_if<!is_complex<R>::value>::type* = nullptr>
+          typename std::enable_if<is_numeric_v<R> &&
+                                  !is_complex<R>::value>::type* = nullptr>
 TILEDARRAY_FORCE_INLINE R conj(const R r) {
   return r;
 }
@@ -61,7 +62,8 @@ TILEDARRAY_FORCE_INLINE std::complex<R> conj(const std::complex<R> z) {
 /// \tparam R A numeric type
 /// \return `r`
 template <typename L, typename R,
-          typename std::enable_if<!is_complex<L>::value>::type* = nullptr>
+          typename std::enable_if<is_numeric_v<L> &&
+                                  !is_complex<L>::value>::type* = nullptr>
 TILEDARRAY_FORCE_INLINE auto inner_product(const L l, const R r) {
   return l * r;
 }
@@ -72,7 +74,8 @@ TILEDARRAY_FORCE_INLINE auto inner_product(const L l, const R r) {
 /// \tparam R A numeric type
 /// \return `r`
 template <typename L, typename R,
-          typename std::enable_if<is_complex<L>::value>::type* = nullptr>
+          typename std::enable_if<is_numeric_v<L> &&
+                                  is_complex<L>::value>::type* = nullptr>
 TILEDARRAY_FORCE_INLINE auto inner_product(const L l, const R r) {
   return TiledArray::detail::conj(l) * r;
 }
@@ -85,7 +88,8 @@ TILEDARRAY_FORCE_INLINE auto inner_product(const L l, const R r) {
 /// \param r The real scalar
 /// \return `r`
 template <typename R,
-          typename std::enable_if<!is_complex<R>::value>::type* = nullptr>
+          typename std::enable_if<is_numeric_v<R> &&
+                                  !is_complex<R>::value>::type* = nullptr>
 TILEDARRAY_FORCE_INLINE R norm(const R r) {
   return r * r;
 }
