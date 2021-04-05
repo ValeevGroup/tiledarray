@@ -251,8 +251,10 @@ class DIIS {
 
     // and compute the most recent elements of B, B(i,j) = <ei|ej>
     for (unsigned int i = 0; i < nvec - 1; i++)
-      B_(i, nvec - 1) = B_(nvec - 1, i) = dot(errors_[i], errors_[nvec - 1]);
-    B_(nvec - 1, nvec - 1) = dot(errors_[nvec - 1], errors_[nvec - 1]);
+      B_(i, nvec - 1) = B_(nvec - 1, i) =
+          inner_product(errors_[i], errors_[nvec - 1]);
+    B_(nvec - 1, nvec - 1) =
+        inner_product(errors_[nvec - 1], errors_[nvec - 1]);
     using std::abs;
     using std::sqrt;
     const auto current_error_2norm = sqrt(abs(B_(nvec - 1, nvec - 1)));

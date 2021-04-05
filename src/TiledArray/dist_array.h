@@ -1644,6 +1644,14 @@ auto dot(const DistArray<Tile, Policy>& a, const DistArray<Tile, Policy>& b) {
 }
 
 template <typename Tile, typename Policy>
+auto inner_product(const DistArray<Tile, Policy>& a,
+                   const DistArray<Tile, Policy>& b) {
+  return (a(detail::dummy_annotation(rank(a)))
+              .inner_product(b(detail::dummy_annotation(rank(b)))))
+      .get();
+}
+
+template <typename Tile, typename Policy>
 auto squared_norm(const DistArray<Tile, Policy>& a) {
   return a(detail::dummy_annotation(rank(a))).squared_norm();
 }
