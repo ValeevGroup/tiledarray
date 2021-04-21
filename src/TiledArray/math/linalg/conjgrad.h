@@ -26,8 +26,8 @@
 #ifndef TILEDARRAY_MATH_LINALG_CONJGRAD_H__INCLUDED
 #define TILEDARRAY_MATH_LINALG_CONJGRAD_H__INCLUDED
 
-#include <TiledArray/math/linalg/diis.h>
 #include <TiledArray/math/linalg/basic.h>
+#include <TiledArray/math/linalg/diis.h>
 #include "TiledArray/dist_array.h"
 
 namespace TiledArray::math::linalg {
@@ -48,7 +48,7 @@ namespace TiledArray::math::linalg {
 ///   \li <tt> value_type maxabs_value(const D&) </tt>
 ///   \li <tt> void vec_multiply(D& a, const D& b) </tt> (element-wise multiply
 ///   of \c a by \c b )
-///   \li <tt> value_type dot_product(const D& a, const D& b) </tt>
+///   \li <tt> value_type inner_product(const D& a, const D& b) </tt>
 ///   \li <tt> void scale(D&, value_type) </tt>
 ///   \li <tt> void axpy(D& y,value_type a, const D& x) </tt>
 ///   \li <tt> void assign(D&, const D&) </tt>
@@ -71,7 +71,6 @@ struct ConjugateGradientSolver {
   /// elements in the residual.
   value_type operator()(F& a, const D& b, D& x, const D& preconditioner,
                         value_type convergence_target = -1.0) {
-
     std::size_t n = volume(preconditioner);
 
     const bool use_diis = false;
@@ -133,10 +132,10 @@ struct ConjugateGradientSolver {
     unsigned int iter = 0;
     while (not converged) {
       // alpha_i = (r_i . z_i) / (p_i . A . p_i)
-      value_type rz_norm2 = dot(RR_i, ZZ_i);
+      value_type rz_norm2 = inner_product(RR_i, ZZ_i);
       a(PP_i, APP_i);
 
-      const value_type pAp_i = dot(PP_i, APP_i);
+      const value_type pAp_i = inner_product(PP_i, APP_i);
       const value_type alpha_i = rz_norm2 / pAp_i;
 
       // x_i += alpha_i p_i
@@ -157,7 +156,7 @@ struct ConjugateGradientSolver {
       ZZ_i = RR_i;
       vec_multiply(ZZ_i, preconditioner);
 
-      const value_type rz_ip1_norm2 = dot(ZZ_i, RR_i);
+      const value_type rz_ip1_norm2 = inner_product(ZZ_i, RR_i);
 
       const value_type beta_i = rz_ip1_norm2 / rz_norm2;
 
@@ -186,7 +185,7 @@ struct ConjugateGradientSolver {
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
-  using TiledArray::math::linalg::ConjugateGradientSolver;
+using TiledArray::math::linalg::ConjugateGradientSolver;
 }
 
 #endif  // TILEDARRAY_MATH_LINALG_CONJGRAD_H__INCLUDED
