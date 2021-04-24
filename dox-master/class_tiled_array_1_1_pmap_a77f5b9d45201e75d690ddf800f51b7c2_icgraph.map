@@ -1,0 +1,4 @@
+<map id="TiledArray::Pmap::owner" name="TiledArray::Pmap::owner">
+<area shape="rect" id="node1" title="Maps tile to the processor that owns it." alt="" coords="225,20,407,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#aa250dd5d0d7ae4ff8aa37c5023904618" title="Element owner." alt="" coords="5,5,177,61"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::is_reduce_op_&lt; std::void_t&lt; decltype(std::declval&lt; ReduceOp &amp; &gt;()(std::declval&lt; Result &amp; &gt;(), std::declval&lt; const Args * &gt;()...))&gt;, ReduceOp, Result, Args... &gt;" name="TiledArray::detail::is_reduce_op_&lt; std::void_t&lt; decltype(std::declval&lt; ReduceOp &amp; &gt;()(std::declval&lt; Result &amp; &gt;(), std::declval&lt; const Args * &gt;()...))&gt;, ReduceOp, Result, Args... &gt;">
+<area shape="rect" id="node1" title=" " alt="" coords="5,80,208,209"/>
+<area shape="rect" id="node2" title=" " alt="" coords="65,5,149,32"/>
+</map>

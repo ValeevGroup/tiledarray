@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::DistributedStorage::owner" name="TiledArray::detail::DistributedStorage::owner">
+<area shape="rect" id="node1" title="Element owner." alt="" coords="207,5,359,61"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#a1f2ed572953ea119f4cfb8505fca50b6" title="Get local or remote element." alt="" coords="5,5,159,61"/>
+</map>

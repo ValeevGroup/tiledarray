@@ -1,0 +1,6 @@
+<map id="TiledArray::expressions::ScalBlkTsrExpr::factor" name="TiledArray::expressions::ScalBlkTsrExpr::factor">
+<area shape="rect" id="node1" title="Scaling factor accessor." alt="" coords="228,71,403,112"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1expressions.html#ac7284a64b205e8aed1de05d3929868c6" title="Conjugate&#45;conjugate tensor expression factory." alt="" coords="5,5,180,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1expressions.html#abc722ffb4e064a5f9a728cf61530ca92" title="Scaled block tensor expression factor." alt="" coords="5,71,180,112"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1expressions.html#a579e3b723a991e23d6e5e5b8cf728f9a" title="Negated&#45;conjugated&#45;tensor expression factor." alt="" coords="5,136,180,177"/>
+</map>

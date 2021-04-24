@@ -1,0 +1,7 @@
+<map id="TiledArray::Tensor::inplace_unary" name="TiledArray::Tensor::inplace_unary">
+<area shape="rect" id="node1" title="Use a unary, element wise operation to modify this tensor." alt="" coords="240,104,379,145"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tensor.html#ad959a4848795f8352fd9dfd25631948a" title="Add a constant to this tensor." alt="" coords="11,5,187,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_sparse_shape.html#a369e1a3d9a37069ede03c6726f0c6005" title=" " alt="" coords="9,71,189,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_tensor.html#a0f298b826efdc604b419d2da13d4a862" title="Negate elements of this tensor." alt="" coords="11,136,187,177"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_tensor.html#a19ee5e211e0a606f194bde6699b9d373" title="Scale this tensor." alt="" coords="5,201,192,243"/>
+</map>

@@ -1,0 +1,6 @@
+<map id="TiledArray::detail::permute" name="TiledArray::detail::permute">
+<area shape="rect" id="node1" title="Construct a permuted tensor copy." alt="" coords="283,115,416,156"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#af174120ffd75a14d13077eff16452d9b" title="In&#45;place tensor permutation operations with contiguous data." alt="" coords="46,5,194,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_contract_reduce.html#a3edb113a3e4524ffa21985587b0b7311" title="Post processing step." alt="" coords="5,71,235,200"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1detail.html#a2788b8e3e27331097aa656a0e6e36b20" title="Initialize tensor with permuted tensor arguments." alt="" coords="53,224,187,265"/>
+</map>

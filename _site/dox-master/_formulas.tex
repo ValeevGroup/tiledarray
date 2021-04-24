@@ -1,0 +1,276 @@
+\documentclass{article}
+\usepackage{ifthen}
+\usepackage{epsfig}
+\usepackage[utf8]{inputenc}
+\usepackage{newunicodechar}
+  \newunicodechar{⁻}{${}^{-}$}% Superscript minus
+  \newunicodechar{²}{${}^{2}$}% Superscript two
+  \newunicodechar{³}{${}^{3}$}% Superscript three
+
+\pagestyle{empty}
+\begin{document}
+$ f(x) = 0 $
+\pagebreak
+
+$ f(x) $
+\pagebreak
+
+$ x $
+\pagebreak
+
+$ x_i $
+\pagebreak
+
+$ e_i = f(x_i) $
+\pagebreak
+
+$ e $
+\pagebreak
+
+$ x_{i+1} = x_i + g(e_i) $
+\pagebreak
+
+$ \epsilon $
+\pagebreak
+
+$ ||x_{i+1} - x_i|| < \epsilon $
+\pagebreak
+
+$ x \equiv \mathbf{P} $
+\pagebreak
+
+$ f(\mathbf{P}) \equiv [\mathbf{F}, \mathbf{P}] $
+\pagebreak
+
+$ \mathbf{F} = \mathbf{F}(\mathbf{P}) $
+\pagebreak
+
+$ \mathbf{F} $
+\pagebreak
+
+$ x \equiv \mathbf{F} $
+\pagebreak
+
+$ f(\mathbf{F}) \equiv [\mathbf{F}, \mathbf{P}] $
+\pagebreak
+
+$ f(\mathbf{F}) \equiv \{ F_i^a \} $
+\pagebreak
+
+$ i $
+\pagebreak
+
+$ a $
+\pagebreak
+
+$ \{ x_k \}, k=0..i $
+\pagebreak
+
+$ \{ e_k \} $
+\pagebreak
+
+$ \{ C_k \} $
+\pagebreak
+
+$ x_{\mathrm{extrap},i+1} = \sum\limits_{k=0}^i C_{k,i} x_{k} $
+\pagebreak
+
+$ x_{\mathrm{extrap},i+1} = \sum\limits_{k=0}^i C_{k,i} ( (1-f) x_{k} + f x_{extrap,k} ) $
+\pagebreak
+
+$ \left( \begin{tabular}{ccccc} 0 & 1 & 2 & 3 & 4 \\ 0 & 2 & 3 & 1 & 4 \end{tabular} \right) $
+\pagebreak
+
+$ \{0, 2, 3, 1, 4\} $
+\pagebreak
+
+$ \{1, 2, 3\} $
+\pagebreak
+
+$ \{0, 2, 3, 1\} $
+\pagebreak
+
+$ \{ 1 \to 2, 2 \to 3, 3 \to 1 \} $
+\pagebreak
+
+$ P^n $
+\pagebreak
+
+$ P $
+\pagebreak
+
+$ \{3, 2, 1, 0 \} $
+\pagebreak
+
+$ P \times P^{-1} = I $
+\pagebreak
+
+$ I $
+\pagebreak
+
+$ \{ k | k \in [0,N) \} $
+\pagebreak
+
+$ \{ \{i,j\} | i \in [0,N_{\rm row}),j\in[0,N_{\rm col})\} $
+\pagebreak
+
+$ k $
+\pagebreak
+
+$ \{ k_{\rm row}, k_{\rm col} \} \equiv \{ k / N_{\rm col}, k \% N_{\rm col} \} $
+\pagebreak
+
+$ P_{\rm row} $
+\pagebreak
+
+$ P_{\rm cols} $
+\pagebreak
+
+$ p \equiv \{ p_{\rm row}, p_{\rm col} \} $
+\pagebreak
+
+$ \{ k_{\rm row}, k_{\rm col} \} $
+\pagebreak
+
+$ \{ p_{\rm row}, p_{\rm col} \} = \{ k_{\rm row} \% N_{\rm row}, k_{\rm col} \% N_{\rm col} \} $
+\pagebreak
+
+\[ T = \frac{MK}{P_{\rm{row}}} \left(\alpha + \frac{mk}{\beta}\right) \left((P/P_{\rm{row}}) - 1\right) + \frac{KN}{P/P_{\rm{row}}} \left(\alpha + \frac{kn}{\beta}\right) \left(P_{\rm{row}} - 1\right) \]
+\pagebreak
+
+$P_{\rm{row}}$
+\pagebreak
+
+$M$
+\pagebreak
+
+$N$
+\pagebreak
+
+$K$
+\pagebreak
+
+$m$
+\pagebreak
+
+$n$
+\pagebreak
+
+$k$
+\pagebreak
+
+$P$
+\pagebreak
+
+$\alpha$
+\pagebreak
+
+$\beta$
+\pagebreak
+
+$dT/dP_{\rm{row}} = 0$
+\pagebreak
+
+$\alpha \approx 0$
+\pagebreak
+
+\[ Nn(2 P_{\rm{row}}^4 - P_{\rm{row}}^3) + Mm(P P_{\rm{row}} - P^2) = 0 \]
+\pagebreak
+
+$ Z^n $
+\pagebreak
+
+\[ {\rm{shape}}_{ij...} = \frac{\|A_{ij...}\|}{N_i N_j ...} \]
+\pagebreak
+
+$ij...$
+\pagebreak
+
+$\|A_{ij}\|$
+\pagebreak
+
+$N_i N_j ...$
+\pagebreak
+
+\[ {(\rm{result})}_{ij...} = |(\rm{factor})| (\rm{this})_{ij...} \]
+\pagebreak
+
+\[ {(\rm{result})}_{ji...} = \rm{perm}(j,i) |(\rm{factor})| (\rm{this})_{ij...} \]
+\pagebreak
+
+\[ {(\rm{result})}_{ij...} = (\rm{this})_{ij...} + (\rm{other})_{ij...} \]
+\pagebreak
+
+\[ {(\rm{result})}_{ji...} = \rm{perm}(i,j) (\rm{this})_{ij...} + (\rm{other})_{ij...} \]
+\pagebreak
+
+\[ {(\rm{result})}_{ij...} = |(\rm{factor})| ((\rm{this})_{ij...} + (\rm{other})_{ij...}) \]
+\pagebreak
+
+$ S_n $
+\pagebreak
+
+$ M $
+\pagebreak
+
+$ n $
+\pagebreak
+
+$ M_i $
+\pagebreak
+
+$ (i = 0, \dots , n-1) $
+\pagebreak
+
+$ S_3 $
+\pagebreak
+
+\[ \begin{tabular}{ c c c } Young tableaux & partition [$\mu$] & Yamanouchi symbols M \\ & & \\ \begin{tabular}{ |c| } \hline 1 \\ \hline 2 \\ \hline 3 \\ \hline \end{tabular} & [111] & 123 \\ & & \\ \begin{tabular}{ |c|c|c| } \hline 1 & 2 & 3 \\ \hline \end{tabular} & [3] & 111 \\ & & \\ \begin{tabular}{ |c|c } \hline 1 & \multicolumn{1}{|c|}{2} \\ \hline 3 \\ \cline{1-1} \end{tabular} & [21] & 112 \\ & & \\ \begin{tabular}{ |c|c } \hline 1 & \multicolumn{1}{|c|}{3} \\ \hline 2 \\ \cline{1-1} \end{tabular} & [21] & 121 \\ \end{tabular} \]
+\pagebreak
+
+$ \{0 \to 3, 1 \to 2, 2 \to 1, 0 \to 3 \} $
+\pagebreak
+
+$ \{1->3, 2->1, 3->2\} $
+\pagebreak
+
+$ P \times P^{-1} = P^{-1} \times P = I $
+\pagebreak
+
+$ \{x_0, x_1, \dots x_{n-1}\} $
+\pagebreak
+
+$ G $
+\pagebreak
+
+$ h $
+\pagebreak
+
+$ \{ a: a = h g h^{-1}, \forall g \in G \} $
+\pagebreak
+
+$ \{ 0, 1, \dots \} $
+\pagebreak
+
+$ G = S_2 $
+\pagebreak
+
+$ \{0,1\} $
+\pagebreak
+
+$ h = {1->2, 2->1} $
+\pagebreak
+
+$ S_2 $
+\pagebreak
+
+$ \{0,2\} $
+\pagebreak
+
+$ \{0, 1, \dots n-1\} $
+\pagebreak
+
+\[ {\rm norm}(z) = zz^* = {\rm Re}(z)^2 + {\rm Im}(z)^2 \]
+\pagebreak
+
+\end{document}

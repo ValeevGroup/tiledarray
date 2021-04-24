@@ -1,0 +1,4 @@
+<map id="TiledArray::DistArray::shape" name="TiledArray::DistArray::shape">
+<area shape="rect" id="node1" title="Shape accessor." alt="" coords="5,5,163,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a76cd7671afcfd0f01b7870c73812e311" title="Tensor shape accessor." alt="" coords="211,5,359,47"/>
+</map>

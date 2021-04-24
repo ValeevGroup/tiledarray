@@ -1,0 +1,5 @@
+<map id="TiledArray::truncate" name="TiledArray::truncate">
+<area shape="rect" id="node1" title="Truncate a dense Array." alt="" coords="225,46,376,73"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#aa4eb781438f1d5ffec3f75b879ead8c0" title="Convert a btas::Tensor object into a TiledArray::DistArray object." alt="" coords="5,5,177,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_dist_array.html#a4c63ec23a819fe9537c9f09fe5ea3e66" title=" " alt="" coords="13,71,170,112"/>
+</map>

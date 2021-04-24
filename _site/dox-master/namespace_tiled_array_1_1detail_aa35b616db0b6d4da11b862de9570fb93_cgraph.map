@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::is_range_congruent" name="TiledArray::detail::is_range_congruent">
+<area shape="rect" id="node1" title="Test that the ranges of a pair of permuted tensors are congruent." alt="" coords="5,5,163,47"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#ad03979f84fd9f2823892518870a3c779" title="Test that two BlockRange objects are congruent." alt="" coords="211,13,389,39"/>
+</map>

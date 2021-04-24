@@ -1,0 +1,5 @@
+<map id="TiledArray::shift" name="TiledArray::shift">
+<area shape="rect" id="node1" title="Shift the range of arg." alt="" coords="5,42,131,69"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="179,5,312,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#a3ed423a0b023a4a5aadfb5012d968a4a" title="Shift a tensor from one range to another." alt="" coords="183,71,308,98"/>
+</map>

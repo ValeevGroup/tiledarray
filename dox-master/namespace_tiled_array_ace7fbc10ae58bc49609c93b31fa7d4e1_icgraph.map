@@ -1,0 +1,4 @@
+<map id="TiledArray::btas_subtensor_to_tensor" name="TiledArray::btas_subtensor_to_tensor">
+<area shape="rect" id="node1" title="Copy a block of a btas::Tensor into a TiledArray::Tensor." alt="" coords="241,13,436,54"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#aead432075c6c7f2e9f7c329c96bc4d4a" title=" " alt="" coords="5,5,193,61"/>
+</map>

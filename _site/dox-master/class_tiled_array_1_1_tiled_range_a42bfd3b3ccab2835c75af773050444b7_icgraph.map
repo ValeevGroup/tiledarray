@@ -1,0 +1,5 @@
+<map id="TiledArray::TiledRange::dim" name="TiledArray::TiledRange::dim">
+<area shape="rect" id="node1" title="Accessor of the tiled range for one of the dimensions." alt="" coords="488,13,691,39"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#a716b4de519b8ce66cdf12b9e6578f30b" title="fuses the SparseShape objects of a tilewise&#45;round&#45;robin distributed vector of Arrays into single Spar..." alt="" coords="225,5,440,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#ac602cf7316f1296d1f59f76975f5cdfb" title="fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimen..." alt="" coords="5,5,177,47"/>
+</map>

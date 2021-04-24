@@ -1,0 +1,6 @@
+<map id="TiledArray::symmetry::operator*" name="TiledArray::symmetry::operator*">
+<area shape="rect" id="node1" title="permute a boost::container::small_vector&lt;T&gt;" alt="" coords="5,39,168,80"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1symmetry_1_1detail.html#ac331378e2e95af5ef0b824a9b8cc7225" title="Create a permuted copy of an array." alt="" coords="216,39,387,80"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1symmetry_1_1_permutation.html#afd92c66ea44090adb7efab12d9285ab7" title="Data accessor." alt="" coords="453,5,616,47"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1symmetry_1_1_permutation.html#aa8651f3f09e8df6137712ad1a9e32b2e" title="Permutation domain size." alt="" coords="435,71,635,112"/>
+</map>

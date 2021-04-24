@@ -1,0 +1,7 @@
+<map id="TiledArray::math::PartialReduceUnwind::col_reduce" name="TiledArray::math::PartialReduceUnwind::col_reduce">
+<area shape="rect" id="node1" title=" " alt="" coords="679,39,876,80"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1math_1_1_partial_reduce_unwind.html#ae0bbc7a687f572ae839f53c917622449" title=" " alt="" coords="433,5,631,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1math.html#a9f1007e79aa7792c2036a82d5124f7f5" title="Reduce the columns of a matrix." alt="" coords="453,71,611,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1detail_1_1_size_array.html#a0bfe643fa49af010cdf17918b279294f" title="Column reduce operation." alt="" coords="216,71,385,112"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_val_array.html#af6bd2b2b66b41199ad48194bfe13c16c" title="Reduce column operation." alt="" coords="5,71,168,112"/>
+</map>

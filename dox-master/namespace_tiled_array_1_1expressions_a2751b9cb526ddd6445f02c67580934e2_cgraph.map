@@ -1,0 +1,9 @@
+<map id="TiledArray::expressions::make_permutation_optimizer" name="TiledArray::expressions::make_permutation_optimizer">
+<area shape="rect" id="node1" title=" " alt="" coords="5,103,228,144"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1expressions.html#a2db91e7238e5892488736fb7d729f07f" title=" " alt="" coords="298,69,477,111"/>
+<area shape="rect" id="node7" href="$namespace_tiled_array_1_1expressions.html#ab0e690e18e0fda26db4f5618bc9a253b" title=" " alt="" coords="276,135,499,176"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1expressions_1_1_index_list.html#a7e2eb3f838b235d08aa8cd2273a50700" title="Check that this index list is a permutation of other." alt="" coords="547,37,741,79"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1expressions_1_1_index_list.html#a18a1285c2e6e1006bdc532a2c1c12734" title="Returns the number of elements in the index list." alt="" coords="557,103,731,144"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1expressions_1_1_index_list.html#a31a80c988b915a2d93af201cc8693871" title="Returns an iterator to the first index." alt="" coords="789,5,964,47"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1expressions_1_1_index_list.html#ae03734b5314b101d0ee684902cf6f7df" title="Returns an iterator to the end of the index list." alt="" coords="789,71,964,112"/>
+</map>

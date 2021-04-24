@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::DistEval::is_local" name="TiledArray::detail::DistEval::is_local">
+<area shape="rect" id="node1" title="Query for a locally owned tile." alt="" coords="5,5,147,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a1745ecb0c82d8e11e84ef11d2e19b664" title="Query for a locally owned tile." alt="" coords="195,5,353,47"/>
+</map>

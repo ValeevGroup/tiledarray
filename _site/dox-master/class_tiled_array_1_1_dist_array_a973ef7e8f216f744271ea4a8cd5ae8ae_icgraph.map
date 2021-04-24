@@ -1,0 +1,52 @@
+<map id="TiledArray::DistArray::trange" name="TiledArray::DistArray::trange">
+<area shape="rect" id="node1" title="Tiled range accessor." alt="" coords="1055,1504,1212,1545"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#ae732935e243d742f37911ca9592ab851" title="Convert a TiledArray::DistArray object into a btas::Tensor object." alt="" coords="845,5,995,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#ad4ffc6de9b633a34e7d724191cd11f3f" title="Convert an Array object into an Eigen matrix object." alt="" coords="845,71,995,112"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array.html#a299983d3798619c4de88f351bbe369ae" title=" " alt="" coords="591,729,719,755"/>
+<area shape="rect" id="node7" href="$namespace_tiled_array.html#a7c9fa503cbbd6e5627b1e1878cf51141" title="Create a deep copy of an array." alt="" coords="855,969,985,995"/>
+<area shape="rect" id="node11" href="$namespace_tiled_array.html#aa8dd17cb98b5fea3b58d4006dabe0ac4" title=" " alt="" coords="833,779,1007,806"/>
+<area shape="rect" id="node13" href="$namespace_tiled_array.html#ac602cf7316f1296d1f59f76975f5cdfb" title="fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimen..." alt="" coords="289,1821,461,1863"/>
+<area shape="rect" id="node14" href="$class_tiled_array_1_1_dist_array.html#a740c01f878f645a3ab53274c912e0b72" title="Initialize (local) tiles with a user provided functor." alt="" coords="841,1588,999,1629"/>
+<area shape="rect" id="node17" href="$class_tiled_array_1_1_dist_array.html#aa2d67872f963bb7a42d3f43872067148" title=" " alt="" coords="841,1653,999,1695"/>
+<area shape="rect" id="node19" href="$class_tiled_array_1_1_dist_array.html#ab6d6a8154d95e480234a02493bf618cc" title="Convert a distributed array into a replicated array." alt="" coords="841,1719,999,1760"/>
+<area shape="rect" id="node20" href="$namespace_tiled_array.html#a3c28810e12b3c4546b217c1663db4627" title=" " alt="" coords="301,1071,449,1112"/>
+<area shape="rect" id="node21" href="$namespace_tiled_array.html#a3267e9a11180a964d1a2d0eb7f89de5f" title=" " alt="" coords="303,1136,447,1177"/>
+<area shape="rect" id="node22" href="$namespace_tiled_array.html#a61defae49af63d3b383a69b525abb6ac" title=" " alt="" coords="305,210,444,237"/>
+<area shape="rect" id="node23" href="$namespace_tiled_array.html#a90e2f4b420375c45a2c21049e27377aa" title=" " alt="" coords="855,502,985,529"/>
+<area shape="rect" id="node29" href="$class_tiled_array_1_1_dist_array.html#af417cca16b096e2df95490fe79914928" title="serialize local contents of a DistArray to an Archive object" alt="" coords="841,1784,999,1825"/>
+<area shape="rect" id="node30" href="$namespace_tiled_array.html#afc51ed34e98a417052d745d91994de70" title=" " alt="" coords="859,1486,981,1513"/>
+<area shape="rect" id="node44" href="$class_tiled_array_1_1_dist_array.html#ac3cdc1442eaf288a10279190d87d0461" title="Stores this array to an Archive object." alt="" coords="841,1849,999,1891"/>
+<area shape="rect" id="node45" href="$namespace_tiled_array.html#a40ec22d8c4caa8f1662a6c124430e802" title="extracts a subarray of a fused array created with fuse_vector_of_arrays and creates the array in loca..." alt="" coords="843,1915,997,1956"/>
+<area shape="rect" id="node46" href="$namespace_tiled_array.html#aa14fae9ffb07568e7366e6e1964665cc" title=" " alt="" coords="843,1981,997,2007"/>
+<area shape="rect" id="node47" href="$namespace_tiled_array.html#a8957a8fceb6790b1ea9e5637728e0f66" title="Function to convert a dense array into a block sparse array." alt="" coords="841,2031,999,2058"/>
+<area shape="rect" id="node48" href="$namespace_tiled_array.html#a297fc199c0e4a33cd3d6122b7c71f514" title=" " alt="" coords="285,334,465,361"/>
+<area shape="rect" id="node49" href="$namespace_tiled_array_1_1detail.html#a31b41f257f8f107174ffbfd3b9e7c0c3" title=" " alt="" coords="841,2083,999,2124"/>
+<area shape="rect" id="node50" href="$namespace_tiled_array.html#a3558ec56f9d00590c35846d8f13c1b76" title=" " alt="" coords="858,2149,982,2175"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_d_i_i_s.html#a6fd568abd2246acbc0f6ea1ee6e20905" title=" " alt="" coords="272,678,477,705"/>
+<area shape="rect" id="node6" href="$struct_tiled_array_1_1_conjugate_gradient_solver.html#ae3a281e82d2974cdb9decefcd69dff73" title=" " alt="" coords="5,747,224,788"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1_dist_array.html#a7f1586d7c20390d1a25c9f2a4432731b" title="Create a deep copy of this array." alt="" coords="577,961,734,1003"/>
+<area shape="rect" id="node9" href="$group___tile_interface.html#gaec378f0f4b197546fb0b69f16748bfa1" title="Create a copy of arg." alt="" coords="590,830,721,857"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1tile__interface_1_1_clone.html#a376265d1f2ebd6ba898c665f269cae01" title=" " alt="" coords="564,881,747,937"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1_d_i_i_s.html#adba4b9aeb0b361453aeb9c48c1dd992a" title=" " alt="" coords="556,663,755,704"/>
+<area shape="rect" id="node15" href="$class_tiled_array_1_1_dist_array.html#a3ae16a62d1f3a7f64f67a80b6ccad8bb" title="Fill all local tiles." alt="" coords="577,2172,734,2213"/>
+<area shape="rect" id="node16" href="$class_tiled_array_1_1_dist_array.html#a415c792db252572ee66bf3dc6e8827e6" title="Initialize (local) elements with a user provided functor." alt="" coords="577,2107,734,2148"/>
+<area shape="rect" id="node18" href="$structmadness_1_1archive_1_1_archive_load_impl_3_01_parallel_input_archive_00_01_tiled_array_1_127f6223a4fbe7d043e5343ca6e61407e.html#a665594267ce09e80cb90991d42dfa099" title=" " alt="" coords="540,2237,771,2308"/>
+<area shape="rect" id="node24" href="$class_tiled_array_1_1detail_1_1_scal_shift.html#a47e1706841cce77ac84f234c6f80312c" title=" " alt="" coords="589,465,722,507"/>
+<area shape="rect" id="node25" href="$class_tiled_array_1_1tile__interface_1_1_scale.html#a6399e0a5c2048cfcbd4332b0d8bf2f42" title=" " alt="" coords="556,582,755,638"/>
+<area shape="rect" id="node26" href="$class_tiled_array_1_1tile__interface_1_1_scale_3_01_result_00_01_arg_00_01_scalar_00_01typename_ee347b292fb673c512c87cb2d547dcbe.html#a6832704f169f2fe2f392d663a16eac21" title=" " alt="" coords="538,239,773,339"/>
+<area shape="rect" id="node27" href="$namespace_tiled_array.html#a93accba5edcc96b461552d4a9483ec3d" title="Create a copy of left that is scaled by right." alt="" coords="576,363,735,390"/>
+<area shape="rect" id="node28" href="$group___tile_interface.html#gaebe37fcda193946fcc4501b42796e9cc" title="Scalar the tile argument." alt="" coords="590,414,721,441"/>
+<area shape="rect" id="node31" href="$class_tiled_array_1_1_sparse_shape.html#a6e638781d0d2ec4347947b7ed627b9e5" title=" " alt="" coords="549,1727,761,1754"/>
+<area shape="rect" id="node32" href="$class_tiled_array_1_1expressions_1_1_blk_tsr_expr_base.html#a4233158dc2d8f961fbe420397cdc715c" title=" " alt="" coords="525,1778,785,1834"/>
+<area shape="rect" id="node33" href="$class_tiled_array_1_1_sparse_policy.html#a94a435055f28049a34bf37fc563882d7" title="Create a default process map." alt="" coords="566,1859,745,1900"/>
+<area shape="rect" id="node34" href="$class_tiled_array_1_1_dense_policy.html#a2fee774f3a4b7b5d3c9aba3ea8af7c3f" title="Create a default process map." alt="" coords="567,1924,743,1965"/>
+<area shape="rect" id="node35" href="$namespace_tiled_array_1_1detail.html#aa3f00e852b717ed4084f8fd331d4e6c2" title="Compute the fused dimensions for permutation." alt="" coords="585,1989,725,2031"/>
+<area shape="rect" id="node36" href="$namespace_tiled_array_1_1detail.html#a716b4de519b8ce66cdf12b9e6578f30b" title="fuses the SparseShape objects of a tilewise&#45;round&#45;robin distributed vector of Arrays into single Spar..." alt="" coords="548,1596,763,1637"/>
+<area shape="rect" id="node37" href="$class_tiled_array_1_1_range.html#ae5e7eefde499cee60bc2bd63c47f63bb" title="calculate the coordinate index of the ordinal index, index." alt="" coords="292,1211,457,1238"/>
+<area shape="rect" id="node38" href="$class_tiled_array_1_1_range.html#a5a4793ce1597fbfd2bd9d7330d1e035d" title="Check the coordinate to make sure it is within the range." alt="" coords="583,1231,728,1272"/>
+<area shape="rect" id="node39" href="$class_tiled_array_1_1_block_range.html#a05bebb6ba9b6cfbbc3c1215b45d6a102" title="calculate the coordinate index of the ordinal index, index." alt="" coords="288,1280,461,1321"/>
+<area shape="rect" id="node40" href="$namespace_tiled_array_1_1detail.html#a85557b284f443993530894acbb158b58" title="Get the inner size." alt="" coords="583,1348,727,1389"/>
+<area shape="rect" id="node41" href="$class_tiled_array_1_1_range.html#a8e43ff7ba296a6c6fb589d2af5221b3c" title="Shift the lower and upper bound of this range." alt="" coords="583,1413,728,1455"/>
+<area shape="rect" id="node42" href="$class_tiled_array_1_1_range.html#a5ff9afe0f1eaa7e83de7790436fd1c01" title="calculate the ordinal index of index" alt="" coords="583,1479,728,1520"/>
+<area shape="rect" id="node43" href="$class_tiled_array_1_1detail_1_1_perm_index.html#ab54930056c8997aa0c41fbb37fc4175e" title="Construct permuting functor." alt="" coords="566,1661,745,1703"/>
+</map>

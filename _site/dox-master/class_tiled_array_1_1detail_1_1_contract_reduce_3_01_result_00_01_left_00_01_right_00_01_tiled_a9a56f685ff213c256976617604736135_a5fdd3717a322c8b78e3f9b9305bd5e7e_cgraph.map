@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::ContractReduce&lt; Result, Left, Right, TiledArray::detail::ComplexConjugate&lt; void &gt; &gt;::operator()" name="TiledArray::detail::ContractReduce&lt; Result, Left, Right, TiledArray::detail::ComplexConjugate&lt; void &gt; &gt;::operator()">
+<area shape="rect" id="node1" title="Reduce two result objects." alt="" coords="5,5,204,91"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#ga5eaf2e2efc1f2ca1fca6e5e2fcee256e" title="Add to the result tile." alt="" coords="252,35,392,61"/>
+</map>

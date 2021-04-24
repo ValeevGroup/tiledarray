@@ -1,0 +1,5 @@
+<map id="TiledArray::detail::TensorInterface::data" name="TiledArray::detail::TensorInterface::data">
+<area shape="rect" id="node1" title="Data pointer accessor." alt="" coords="292,39,459,80"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#a42595fd971b6420e4b921afb9eef9cb8" title="Shallow comparison operator." alt="" coords="58,5,191,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a010f2aceeccc4160366d47293d2b95ea" title="Construct a new view of tensor." alt="" coords="5,71,244,112"/>
+</map>

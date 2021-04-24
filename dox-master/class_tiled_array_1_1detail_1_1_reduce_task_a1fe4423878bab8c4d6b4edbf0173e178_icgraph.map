@@ -1,0 +1,5 @@
+<map id="TiledArray::detail::ReduceTask::add" name="TiledArray::detail::ReduceTask::add">
+<area shape="rect" id="node1" title="Add an argument to the reduction task." alt="" coords="245,53,384,94"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_reduce_pair_task.html#ae61d309a85889238ae9accb53e0f403f" title="Add a pair of arguments to the reduction task." alt="" coords="20,5,183,61"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1expressions_1_1_expr.html#a6a0051e5efeb0d6cfb33edf84c69209a" title=" " alt="" coords="5,85,197,141"/>
+</map>

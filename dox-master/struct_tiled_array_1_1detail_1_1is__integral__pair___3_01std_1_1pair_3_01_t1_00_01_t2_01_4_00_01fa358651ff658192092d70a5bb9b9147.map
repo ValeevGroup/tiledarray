@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::is_integral_pair_&lt; std::pair&lt; T1, T2 &gt;, typename std::enable_if&lt; std::is_integral&lt; T1 &gt;::value &amp;&amp;std::is_integral&lt; T2 &gt;::value &gt;::type &gt;" name="TiledArray::detail::is_integral_pair_&lt; std::pair&lt; T1, T2 &gt;, typename std::enable_if&lt; std::is_integral&lt; T1 &gt;::value &amp;&amp;std::is_integral&lt; T2 &gt;::value &gt;::type &gt;">
+<area shape="rect" id="node1" title=" " alt="" coords="5,80,227,195"/>
+<area shape="rect" id="node2" title=" " alt="" coords="74,5,158,32"/>
+</map>

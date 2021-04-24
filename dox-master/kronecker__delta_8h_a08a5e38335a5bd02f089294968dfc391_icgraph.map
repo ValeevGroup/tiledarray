@@ -1,0 +1,18 @@
+<map id="max" name="max">
+<area shape="rect" id="node1" title=" " alt="" coords="277,470,328,497"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tensor.html#a5f7a6a051f5d87261a8b71a078d68624" title="Absolute maximum element." alt="" coords="22,5,213,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#aadf392a65c7edfe026984dc11b0d47d8" title="Absolute maximum element." alt="" coords="19,71,216,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_tensor.html#ae6914ca99f535592a4477df637511b58" title="Absolute minimum element." alt="" coords="24,136,211,177"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a19eafabec70f0ff8c67d5a48a41db533" title="Absolute minimum element." alt="" coords="21,201,214,243"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_irrep.html#a2e3fb129fdfd47fb66bab646854550f1" title="Irrep constructor." alt="" coords="50,267,185,308"/>
+<area shape="rect" id="node7" href="$namespace_tiled_array_1_1detail.html#a39f1aefd43dea7ce3158f142a57e5994" title=" " alt="" coords="33,332,201,373"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#af3a337e3cd4f50cb9bbcc4abc3e54bc1" title="Maximum element." alt="" coords="34,397,201,439"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1_tensor.html#a92f492a7c588bc82c2fafc45519bdb6b" title="Maximum element." alt="" coords="37,463,198,504"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#af06857f977bbfd0e4ea9fca89ed7bc2e" title="Minimum element." alt="" coords="36,528,199,569"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1_tensor.html#a8a22a994aafd87df8d012ddce92bad3a" title="Minimum element." alt="" coords="39,593,196,635"/>
+<area shape="rect" id="node12" href="$namespace_tiled_array.html#ae1deaffe62f8c644f5e3dc2e21789771" title=" " alt="" coords="31,659,203,700"/>
+<area shape="rect" id="node13" href="$class_tiled_array_1_1_min_reduction_3_01_tile_00_01typename_01std_1_1enable__if_3_01detail_1_1isbbf8cab6c762ebd87aacbfefa47f9cbf.html#afcef9184caec0b23102270d80a9c64ee" title=" " alt="" coords="5,725,229,810"/>
+<area shape="rect" id="node14" href="$class_tiled_array_1_1_abs_min_reduction.html#ac9492b4f17c6105970a80885cec93089" title=" " alt="" coords="13,835,222,876"/>
+<area shape="rect" id="node15" href="$class_tiled_array_1_1_max_reduction_3_01_tile_00_01typename_01std_1_1enable__if_3_01detail_1_1is72dbf640bf0586b2657ce5cdd9539f2d.html#aa6d6552c51ae8ad482500fc250a93731" title=" " alt="" coords="5,901,229,986"/>
+<area shape="rect" id="node16" href="$class_tiled_array_1_1_abs_max_reduction.html#ab05cf71172dd6761932d3053d5be99bb" title=" " alt="" coords="11,1011,224,1052"/>
+</map>

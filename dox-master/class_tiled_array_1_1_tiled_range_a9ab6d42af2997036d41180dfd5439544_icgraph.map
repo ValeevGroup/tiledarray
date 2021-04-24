@@ -1,0 +1,8 @@
+<map id="TiledArray::TiledRange::data" name="TiledArray::TiledRange::data">
+<area shape="rect" id="node1" title="Tile dimension boundary array accessor." alt="" coords="457,89,627,131"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tiled_range.html#a72c2801bd7826ff047a4e0975d188cf4" title="Construct a range for the tile indexed by the given index." alt="" coords="233,5,402,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#a2b1fa4c93060bc503429e3527f2993ad" title="TiledRange permutation operator." alt="" coords="238,71,397,98"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array.html#a95a1447230c9a5ca4906ee3684cbe890" title="Returns true when all tile and element ranges are the same." alt="" coords="231,122,404,149"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array_1_1detail.html#a3f0780ab65ca5778bd4ee8f2783a082a" title="prepends an extra dimension to a TRange" alt="" coords="225,173,409,215"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array.html#ac602cf7316f1296d1f59f76975f5cdfb" title="fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimen..." alt="" coords="5,173,177,215"/>
+</map>

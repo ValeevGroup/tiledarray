@@ -1,0 +1,5 @@
+<map id="TiledArray::is_congruent" name="TiledArray::is_congruent">
+<area shape="rect" id="node1" title="Test that two TiledRange1 objects are congruent." alt="" coords="5,42,184,69"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tiled_range1.html#a804300d74a4872393801144e33ad9963" title="Returns an iterator to the first tile in the range." alt="" coords="248,5,425,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tiled_range1.html#a7325e80dbe95df50fbee3baa8669f54a" title="Returns an iterator to the end of the range." alt="" coords="232,71,441,98"/>
+</map>

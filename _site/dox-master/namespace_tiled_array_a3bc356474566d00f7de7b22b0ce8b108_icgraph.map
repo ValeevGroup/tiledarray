@@ -1,0 +1,7 @@
+<map id="TiledArray::reduce_cuda_kernel_impl" name="TiledArray::reduce_cuda_kernel_impl">
+<area shape="rect" id="node1" title="T = reduce(T* arg)" alt="" coords="248,104,392,145"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a0f71d75add02ed829ddc72f0a5e19e83" title=" " alt="" coords="15,5,191,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#ae1deaffe62f8c644f5e3dc2e21789771" title=" " alt="" coords="17,71,189,112"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array.html#a2340821470ffaf86a80c7f1e3a9cbf53" title=" " alt="" coords="5,136,200,177"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array.html#ad43d5179dda74b3b85d1e8520e2f12a6" title=" " alt="" coords="15,201,190,243"/>
+</map>

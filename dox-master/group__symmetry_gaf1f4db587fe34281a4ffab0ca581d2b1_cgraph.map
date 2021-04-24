@@ -1,0 +1,7 @@
+<map id="TiledArray::operator^" name="TiledArray::operator^">
+<area shape="rect" id="node1" title="Raise perm to the n&#45;th power." alt="" coords="5,95,168,122"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_permutation.html#aa55c066a6e99750bf23821d411571b61" title="Raise this permutation to the n&#45;th power." alt="" coords="216,95,427,122"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_permutation.html#ad95e4399f7fe19844d0cea88d2c395e9" title="Identity permutation factory function." alt="" coords="489,29,665,71"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_permutation.html#a19553c4f16c0931beab9fbbdbe3407cf" title="Construct the inverse of this permutation." alt="" coords="475,95,679,122"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_permutation.html#a951282c5249d8403bddc27bd1ed9d605" title="Product of this permutation by other." alt="" coords="489,147,665,188"/>
+</map>

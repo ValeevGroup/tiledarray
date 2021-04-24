@@ -1,0 +1,5 @@
+<map id="TiledArray::Pmap::known_local_size" name="TiledArray::Pmap::known_local_size">
+<area shape="rect" id="node1" title="Queries whether local size is known." alt="" coords="259,23,443,65"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_pmap.html#a62e5d3c75895d69e678ec28ea6e9668f" title="Check if there are any local elements." alt="" coords="17,5,199,32"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_pmap.html#a0bbb1fe78429704141e172d68cbda086" title="Local size accessor." alt="" coords="5,56,211,83"/>
+</map>

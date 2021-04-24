@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::diagonal_shape" name="TiledArray::detail::diagonal_shape">
+<area shape="rect" id="node1" title="computes shape data (i.e. Frobenius norms of the tiles) for a constant diagonal tensor" alt="" coords="205,5,339,47"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a8d2668989011ee62fa6314733cfc4a32" title="Creates a constant diagonal DistArray." alt="" coords="5,5,157,47"/>
+</map>

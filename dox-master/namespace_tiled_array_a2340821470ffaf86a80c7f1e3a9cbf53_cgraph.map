@@ -1,0 +1,4 @@
+<map id="TiledArray::product_reduce_cuda_kernel_impl" name="TiledArray::product_reduce_cuda_kernel_impl">
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,200,47"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a3bc356474566d00f7de7b22b0ce8b108" title="T = reduce(T* arg)" alt="" coords="248,5,391,47"/>
+</map>

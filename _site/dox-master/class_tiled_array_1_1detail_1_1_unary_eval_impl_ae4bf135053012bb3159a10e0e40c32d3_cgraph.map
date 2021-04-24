@@ -1,0 +1,9 @@
+<map id="TiledArray::detail::UnaryEvalImpl::discard_tile" name="TiledArray::detail::UnaryEvalImpl::discard_tile">
+<area shape="rect" id="node1" title="Discard a tile that is not needed." alt="" coords="5,136,215,177"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_unary_eval_impl.html#af872a1b2cbdbf64adb0afc07e8fd4397" title="Get tile at index i." alt="" coords="263,136,445,177"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_dist_eval_impl.html#abcf32be8432d0438f25184c0f0cff4c3" title="Unique object id accessor." alt="" coords="506,5,639,47"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a1745ecb0c82d8e11e84ef11d2e19b664" title="Query for a locally owned tile." alt="" coords="493,71,652,112"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a2c5ad33baf5e6d3778e685929ca78504" title="Query for a zero tile." alt="" coords="495,136,650,177"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1detail_1_1_dist_eval_impl.html#adc302e5053f59eb340f886c9ad4f8116" title="Permute index from a target index to a source index." alt="" coords="495,202,650,258"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#aad3dc345429ff7e85c8f0d970d3038bd" title="World accessor." alt="" coords="500,283,645,324"/>
+</map>

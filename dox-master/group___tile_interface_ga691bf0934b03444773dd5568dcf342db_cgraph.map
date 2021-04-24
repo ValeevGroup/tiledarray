@@ -1,0 +1,5 @@
+<map id="TiledArray::binary" name="TiledArray::binary">
+<area shape="rect" id="node1" title="Binary element&#45;wise transform producing a new tile." alt="" coords="5,31,143,57"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#ga4eb0d0c051737f67276e03e895aefad9" title="Binary element&#45;wise transform producing a new tile." alt="" coords="191,5,328,32"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="376,23,509,65"/>
+</map>

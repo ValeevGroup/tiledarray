@@ -1,0 +1,7 @@
+<map id="TiledArray::detail::diagonal_range" name="TiledArray::detail::diagonal_range">
+<area shape="rect" id="node1" title="Computes a range of the diagonal elements (if any) in a rank&#45;d Range." alt="" coords="407,79,540,120"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#a33aa537f17e1c4de2e8abf7093e29699" title="computes shape data (i.e. Frobenius norms of the tiles) for a constant diagonal tensor" alt="" coords="215,5,349,47"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1detail.html#a8c268a352be16fc597e6ad2c7d6a7560" title="Writes tiles of a nonconstant diagonal array." alt="" coords="205,71,359,127"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array_1_1detail.html#a808571423d2d6d551e9844f0b38369a8" title="Writes tiles of a constant diagonal array." alt="" coords="205,151,359,207"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#a8d2668989011ee62fa6314733cfc4a32" title="Creates a constant diagonal DistArray." alt="" coords="5,83,157,124"/>
+</map>

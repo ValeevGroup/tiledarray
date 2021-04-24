@@ -1,0 +1,8 @@
+<map id="TiledArray::detail::ArrayImpl::get_local" name="TiledArray::detail::ArrayImpl::get_local">
+<area shape="rect" id="node1" title="Local tile future accessor." alt="" coords="5,151,167,193"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#a654459493f4460bc5341fc1a41521ae3" title="Get local element." alt="" coords="229,5,381,61"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a1745ecb0c82d8e11e84ef11d2e19b664" title="Query for a locally owned tile." alt="" coords="226,86,385,127"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a2c5ad33baf5e6d3778e685929ca78504" title="Query for a zero tile." alt="" coords="228,151,383,193"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#acc3da081fcb2fd124122dc750d182a96" title="Tiles range accessor." alt="" coords="215,217,396,258"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a1a16c42818cf3c0174187604ed457e79" title="Tiled range accessor." alt="" coords="230,282,381,323"/>
+</map>

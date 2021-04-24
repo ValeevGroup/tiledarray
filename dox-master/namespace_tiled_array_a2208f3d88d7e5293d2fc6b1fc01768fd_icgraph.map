@@ -1,0 +1,7 @@
+<map id="TiledArray::squared_norm" name="TiledArray::squared_norm">
+<area shape="rect" id="node1" title=" " alt="" coords="545,79,735,105"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a736de0045a7f48b5df63e3137260e40b" title=" " alt="" coords="303,20,441,47"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_squared_norm_reduction.html#ae29200c16028bc21d3a944a09f042a9c" title=" " alt="" coords="247,71,497,113"/>
+<area shape="rect" id="node5" href="$group___tile_interface.html#ga0367bc300cd4417138d2ac139048c234" title="Squared vector 2&#45;norm of the elements of a tile." alt="" coords="277,137,467,164"/>
+<area shape="rect" id="node3" href="$struct_tiled_array_1_1math_1_1linalg_1_1_conjugate_gradient_solver.html#a76d41343afbc8d219dcaafb4ab32a64e" title=" " alt="" coords="5,5,199,61"/>
+</map>

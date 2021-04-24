@@ -1,0 +1,7 @@
+<map id="TiledArray::dot" name="TiledArray::dot">
+<area shape="rect" id="node1" title="Vector dot product of a tile." alt="" coords="5,42,123,69"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a56e8a14dc06218506b921b90d86bf622" title=" " alt="" coords="171,42,288,69"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1detail.html#a05c44cde899d571534b6ff2e9d22ed75" title=" " alt="" coords="336,5,493,47"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array.html#ae6e2da9f3855369c97e61e9105cce50a" title=" " alt="" coords="352,71,477,98"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="541,64,699,105"/>
+</map>

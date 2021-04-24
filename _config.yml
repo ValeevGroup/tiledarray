@@ -1,0 +1,23 @@
+theme: jekyll-theme-minimal
+include:
+  - _optimization-_guide.html
+  - _basic-_programming.html
+  - _customizing-_arrays_8md.html
+  - _customizing-_arrays.html
+  - _workflow-_notes.html
+  - _tutorial-_tiled_array-and-_eigen.html
+  - _optimization-_guide_8md.html
+  - _basic-_programming_8md.html
+  - _tutorial-_tiled_array-and-_sca_l_a_p_a_c_k.html
+  - _tutorial-_tiled_array-and-_sca_l_a_p_a_c_k_8md.html
+  - _for-example.html
+  - _travis-_c_i-_administration-_notes.html
+  - _workflow-_notes_8md.html
+  - _tutorial-_tiled_array-and-_python_8md.html
+  - _customizing-_expressions.html
+  - _formulas.tex
+  - _r_e_a_d_m_e_8md.html
+  - _travis-_c_i-_administration-_notes_8md.html
+  - _tutorial-_tiled_array-and-_python.html
+  - _customizing-_expressions_8md.html
+  - _tutorial-_tiled_array-and-_eigen_8md.html

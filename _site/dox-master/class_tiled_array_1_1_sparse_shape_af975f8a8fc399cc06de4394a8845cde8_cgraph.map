@@ -1,0 +1,4 @@
+<map id="TiledArray::SparseShape::scale" name="TiledArray::SparseShape::scale">
+<area shape="rect" id="node1" title="Scale shape." alt="" coords="5,5,185,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tensor.html#a436d7001abd661cec40f412138d6defd" title="Use a unary, element wise operation to construct a new tensor." alt="" coords="233,5,372,47"/>
+</map>

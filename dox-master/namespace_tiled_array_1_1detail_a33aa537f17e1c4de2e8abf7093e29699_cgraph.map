@@ -1,0 +1,17 @@
+<map id="TiledArray::detail::diagonal_shape" name="TiledArray::detail::diagonal_shape">
+<area shape="rect" id="node1" title="computes shape data (i.e. Frobenius norms of the tiles) for a constant diagonal tensor" alt="" coords="5,305,139,347"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#ae2c7d290f2fb4704eecc33b0894de068" title="Computes a range of the diagonal elements (if any) in a rank&#45;d Range." alt="" coords="205,123,338,164"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1_tiled_range.html#a0e4a2c7494c37bf43a7aa51387c8e596" title="Convert an element index to a tile index." alt="" coords="187,188,356,229"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1_tiled_range.html#ac8c1d53822fd3da51824e4d97a11dd2a" title="The rank accessor." alt="" coords="407,247,576,288"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1_tiled_range.html#a968fbd936a1606e7885e0912a739f331" title="Access the element range." alt="" coords="187,305,356,347"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1_range.html#ae240375dff3cdc73e249dfa9ee91c1b4" title="Range extent accessor." alt="" coords="199,371,344,412"/>
+<area shape="rect" id="node14" href="$class_tiled_array_1_1_tiled_range.html#a3b9b907038dcf65d86d1bc12811c8333" title="Construct a range for the tile indexed by the given ordinal index." alt="" coords="187,436,356,477"/>
+<area shape="rect" id="node15" href="$class_tiled_array_1_1_tiled_range.html#a1980b233eaa1fc559b62cc8affc2bd34" title="Access the tile range." alt="" coords="407,465,576,507"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_range.html#ac1fe1f599524763265207c84e909dd15" title="Range lower bound data accessor." alt="" coords="419,64,564,105"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_range.html#a491195742ae543d2e53d2234bbd0b631" title="Rank accessor." alt="" coords="404,195,579,222"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array.html#ae6e2da9f3855369c97e61e9105cce50a" title=" " alt="" coords="429,13,554,39"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1_range.html#a7ee2666c973a1cc4a17845f6a410dbe9" title="Range upper bound data accessor." alt="" coords="419,129,564,171"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_range.html#a2208a1aeda0c14164e2689ee284aace2" title=" " alt="" coords="627,137,801,163"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="635,5,793,47"/>
+<area shape="rect" id="node13" href="$class_tiled_array_1_1_range.html#ad3a6a74a7146b195f299c49c843b6fa5" title="Range extent data accessor." alt="" coords="419,341,564,383"/>
+</map>

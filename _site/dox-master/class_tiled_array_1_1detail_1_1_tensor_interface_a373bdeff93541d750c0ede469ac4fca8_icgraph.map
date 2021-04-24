@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::TensorInterface::data" name="TiledArray::detail::TensorInterface::data">
+<area shape="rect" id="node1" title="Data pointer accessor." alt="" coords="292,5,459,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a010f2aceeccc4160366d47293d2b95ea" title="Construct a new view of tensor." alt="" coords="5,5,244,47"/>
+</map>

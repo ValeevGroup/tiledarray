@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::TensorInterface::scale" name="TiledArray::detail::TensorInterface::scale">
+<area shape="rect" id="node1" title="Construct a scaled copy of this tensor." alt="" coords="219,5,391,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#abe962a9632cf8da0e5bbcf7c12420acd" title="Create a complex conjugated copy of this tensor." alt="" coords="5,5,171,47"/>
+</map>

@@ -1,0 +1,6 @@
+<map id="TiledArray::Permutation::inv" name="TiledArray::Permutation::inv">
+<area shape="rect" id="node1" title="Construct the inverse of this permutation." alt="" coords="475,31,679,57"/>
+<area shape="rect" id="node2" href="$group__symmetry.html#gaeb2fae98580d4113b53ee2f7385c22fc" title="Inverse permutation operator." alt="" coords="244,5,399,32"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_permutation.html#aa55c066a6e99750bf23821d411571b61" title="Raise this permutation to the n&#45;th power." alt="" coords="216,56,427,83"/>
+<area shape="rect" id="node4" href="$group__symmetry.html#gaf1f4db587fe34281a4ffab0ca581d2b1" title="Raise perm to the n&#45;th power." alt="" coords="5,56,168,83"/>
+</map>

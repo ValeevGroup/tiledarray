@@ -1,0 +1,5 @@
+<map id="TiledArray::is_congruent" name="TiledArray::is_congruent">
+<area shape="rect" id="node1" title="Test the two ranges are congruent." alt="" coords="5,42,184,69"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_range.html#afd7dd885ff139cc535b8f1e42a4442f3" title="Range extent data accessor." alt="" coords="247,5,392,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_range.html#a491195742ae543d2e53d2234bbd0b631" title="Rank accessor." alt="" coords="232,71,407,98"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="TiledArray::neg" name="TiledArray::neg">
+<area shape="rect" id="node1" title="Negate the tile argument." alt="" coords="208,31,328,57"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#ga58ae23d7dae957803f4d65404e15fc6a" title="Negate and permute tile argument." alt="" coords="23,5,143,32"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#ac90b5d6c5aae4293d2b9d3456477aeba" title="Create a negated copy of arg." alt="" coords="5,56,160,83"/>
+</map>

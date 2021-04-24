@@ -1,0 +1,4 @@
+<map id="TiledArray::make_array" name="TiledArray::make_array">
+<area shape="rect" id="node1" title="Construct dense Array." alt="" coords="228,13,401,39"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1math_1_1linalg_1_1non__distributed.html#a2911a1fc73b5129d3ea27a74cb7a9a24" title="Compute the singular value decomposition (SVD) via ScaLAPACK." alt="" coords="5,5,180,47"/>
+</map>

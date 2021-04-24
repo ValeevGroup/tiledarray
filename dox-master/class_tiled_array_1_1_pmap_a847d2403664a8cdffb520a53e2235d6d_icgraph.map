@@ -1,0 +1,5 @@
+<map id="TiledArray::Pmap::size" name="TiledArray::Pmap::size">
+<area shape="rect" id="node1" title="Size accessor." alt="" coords="321,67,488,94"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#ad72ed7199cfe577f8ce10dd1eac8f1be" title=" " alt="" coords="37,5,241,76"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_round_robin_pmap.html#a395ae6659a54cbd6b81927fe6ae7d616" title="Construct Round Robin map." alt="" coords="5,100,273,141"/>
+</map>

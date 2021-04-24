@@ -1,0 +1,52 @@
+<map id="TiledArray/sparse_shape.cpp" name="TiledArray/sparse_shape.cpp">
+<area shape="rect" id="node1" title=" " alt="" coords="1203,5,1413,32"/>
+<area shape="rect" id="node2" href="$sparse__shape_8h.html" title=" " alt="" coords="1247,80,1369,107"/>
+<area shape="rect" id="node3" href="$tensor_8h.html" title=" " alt="" coords="759,155,905,181"/>
+<area shape="rect" id="node29" href="$shift__wrapper_8h.html" title=" " alt="" coords="494,229,661,271"/>
+<area shape="rect" id="node46" href="$tensor__interface_8h.html" title=" " alt="" coords="291,229,469,271"/>
+<area shape="rect" id="node48" href="$tiled__range_8h.html" title=" " alt="" coords="1936,475,2115,502"/>
+<area shape="rect" id="node49" href="$val__array_8h.html" title=" " alt="" coords="2041,565,2205,591"/>
+<area shape="rect" id="node50" title=" " alt="" coords="2190,155,2266,181"/>
+<area shape="rect" id="node4" href="$block__range_8h.html" title=" " alt="" coords="1728,475,1912,502"/>
+<area shape="rect" id="node28" href="$operators_8h.html" title=" " alt="" coords="295,393,507,420"/>
+<area shape="rect" id="node35" href="$tensor_2tensor_8h.html" title=" " alt="" coords="737,237,927,263"/>
+<area shape="rect" id="node47" href="$tensor__map_8h.html" title=" " alt="" coords="1123,468,1301,509"/>
+<area shape="rect" id="node5" href="$range_8h.html" title=" " alt="" coords="1749,565,1891,591"/>
+<area shape="rect" id="node6" href="$permutation_8h.html" title=" " alt="" coords="1401,743,1586,770"/>
+<area shape="rect" id="node18" href="$vector_8h.html" title=" " alt="" coords="2224,833,2395,859"/>
+<area shape="rect" id="node23" href="$range__iterator_8h.html" title=" " alt="" coords="2451,743,2647,770"/>
+<area shape="rect" id="node24" href="$size__array_8h.html" title=" " alt="" coords="1988,654,2159,681"/>
+<area shape="rect" id="node7" href="$error_8h.html" title=" " alt="" coords="1473,833,1607,859"/>
+<area shape="rect" id="node9" href="$tensor_2type__traits_8h.html" title=" " alt="" coords="635,825,802,867"/>
+<area shape="rect" id="node10" href="$type__traits_8h.html" title=" " alt="" coords="829,1004,1003,1031"/>
+<area shape="rect" id="node21" href="$utility_8h.html" title=" " alt="" coords="1991,922,2132,949"/>
+<area shape="rect" id="node8" title=" " alt="" coords="1065,922,1209,949"/>
+<area shape="rect" id="node17" title=" " alt="" coords="673,922,765,949"/>
+<area shape="rect" id="node11" title=" " alt="" coords="1500,1079,1569,1105"/>
+<area shape="rect" id="node12" title=" " alt="" coords="877,1079,955,1105"/>
+<area shape="rect" id="node13" title=" " alt="" coords="1227,1079,1314,1105"/>
+<area shape="rect" id="node14" title=" " alt="" coords="2026,1079,2097,1105"/>
+<area shape="rect" id="node15" title=" " alt="" coords="979,1079,1039,1105"/>
+<area shape="rect" id="node16" title=" " alt="" coords="692,1079,852,1105"/>
+<area shape="rect" id="node19" title=" " alt="" coords="2232,915,2395,956"/>
+<area shape="rect" id="node20" title=" " alt="" coords="2163,1004,2226,1031"/>
+<area shape="rect" id="node22" title=" " alt="" coords="2478,1004,2589,1031"/>
+<area shape="rect" id="node25" href="$outer_8h.html" title=" " alt="" coords="1973,833,2149,859"/>
+<area shape="rect" id="node26" href="$partial__reduce_8h.html" title=" " alt="" coords="2120,736,2293,777"/>
+<area shape="rect" id="node27" title=" " alt="" coords="1974,743,2045,770"/>
+<area shape="rect" id="node30" href="$kernels_8h.html" title=" " alt="" coords="547,319,744,345"/>
+<area shape="rect" id="node31" href="$tensor_2permute_8h.html" title=" " alt="" coords="589,654,795,681"/>
+<area shape="rect" id="node32" href="$tensor_2utility_8h.html" title=" " alt="" coords="1496,393,1683,420"/>
+<area shape="rect" id="node33" href="$tiled__range1_8h.html" title=" " alt="" coords="1661,743,1848,770"/>
+<area shape="rect" id="node34" title=" " alt="" coords="1733,833,1797,859"/>
+<area shape="rect" id="node36" href="$blas_8h.html" title=" " alt="" coords="1029,743,1200,770"/>
+<area shape="rect" id="node39" href="$gemm__helper_8h.html" title=" " alt="" coords="1155,647,1328,688"/>
+<area shape="rect" id="node40" href="$complex_8h.html" title=" " alt="" coords="315,319,522,345"/>
+<area shape="rect" id="node41" href="$tile__interface_2clone_8h.html" title=" " alt="" coords="347,736,525,777"/>
+<area shape="rect" id="node43" href="$tile__interface_2permute_8h.html" title=" " alt="" coords="144,736,323,777"/>
+<area shape="rect" id="node44" href="$trace_8h.html" title=" " alt="" coords="667,557,845,599"/>
+<area shape="rect" id="node45" href="$logger_8h.html" title=" " alt="" coords="1325,475,1496,502"/>
+<area shape="rect" id="node37" href="$external_2eigen_8h.html" title=" " alt="" coords="1149,825,1296,867"/>
+<area shape="rect" id="node38" title=" " alt="" coords="1030,833,1125,859"/>
+<area shape="rect" id="node42" href="$cast_8h.html" title=" " alt="" coords="347,833,509,859"/>
+</map>

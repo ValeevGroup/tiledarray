@@ -1,0 +1,5 @@
+<map id="TiledArray::symmetry::detail::permute_array" name="TiledArray::symmetry::detail::permute_array">
+<area shape="rect" id="node1" title="Create a permuted copy of an array." alt="" coords="216,39,387,80"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1symmetry.html#ad897b7e61e7cbef5aad6393f4fe00f29" title="Permute a std::array." alt="" coords="5,5,168,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1symmetry.html#a4ab4c8f86a1a412a364d61a122f175c1" title="In&#45;place permute a std::array." alt="" coords="5,71,168,112"/>
+</map>

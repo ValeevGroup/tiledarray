@@ -1,0 +1,12 @@
+<map id="TiledArray::detail::PermIndex::PermIndex" name="TiledArray::detail::PermIndex::PermIndex">
+<area shape="rect" id="node1" title="Construct permuting functor." alt="" coords="5,144,184,185"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_permutation.html#a770e0ad314f1483ffa83a6c5175a2ce2" title="Permutation data accessor." alt="" coords="232,5,408,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_range.html#ad3a6a74a7146b195f299c49c843b6fa5" title="Range extent data accessor." alt="" coords="462,132,607,173"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_range.html#a491195742ae543d2e53d2234bbd0b631" title="Rank accessor." alt="" coords="233,122,407,149"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_permutation.html#aacb3f970f21779e9a6c2024790dc7270" title="Domain size accessor." alt="" coords="232,173,408,215"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_range.html#a2523a775f51d85652316b03a83492db1" title="Range stride data accessor." alt="" coords="247,239,393,280"/>
+<area shape="rect" id="node8" href="$namespace_tiled_array.html#aea673bd36f494b9b4c040ea0e09c00bd" title=" " alt="" coords="247,305,393,331"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_range.html#a2208a1aeda0c14164e2689ee284aace2" title=" " alt="" coords="661,139,836,166"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1_dist_array.html#a911b5f4183473c9c9300c370b90374df" title="Returns the number of tiles in the tensor." alt="" coords="456,264,613,305"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="456,329,613,371"/>
+</map>

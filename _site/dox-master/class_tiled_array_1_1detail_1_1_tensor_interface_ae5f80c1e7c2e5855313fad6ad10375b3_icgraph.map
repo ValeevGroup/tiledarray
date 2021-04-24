@@ -1,0 +1,7 @@
+<map id="TiledArray::detail::TensorInterface::unary" name="TiledArray::detail::TensorInterface::unary">
+<area shape="rect" id="node1" title="Use a unary, element wise operation to construct a new tensor." alt="" coords="439,71,613,112"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a31362893bb066fe8568529f881028611" title="Add a constant to a copy of this tensor." alt="" coords="223,5,386,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a115f6c8f776a9d58a238dfc810758b34" title="Create a negated copy of this tensor." alt="" coords="223,71,386,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a4738cdadac53a8979ffb09d1409e0a1e" title="Construct a scaled copy of this tensor." alt="" coords="219,136,391,177"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#abe962a9632cf8da0e5bbcf7c12420acd" title="Create a complex conjugated copy of this tensor." alt="" coords="5,136,171,177"/>
+</map>

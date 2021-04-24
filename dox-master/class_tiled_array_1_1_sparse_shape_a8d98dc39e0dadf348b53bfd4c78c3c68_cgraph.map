@@ -1,0 +1,5 @@
+<map id="TiledArray::SparseShape::update_block" name="TiledArray::SparseShape::update_block">
+<area shape="rect" id="node1" title="Creates a copy of this with a sub&#45;block updated with contents of another shape." alt="" coords="5,39,185,80"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tensor.html#af8b56ffb1b81b392017203932ee03e6f" title="Constructs a view of the block defined by lower_bound and upper_bound." alt="" coords="233,5,372,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tensor.html#a7b98a790ddf50ce4097387d49119017c" title=" " alt="" coords="233,71,372,112"/>
+</map>

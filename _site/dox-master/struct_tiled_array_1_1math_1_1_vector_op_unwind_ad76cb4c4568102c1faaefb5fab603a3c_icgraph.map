@@ -1,0 +1,21 @@
+<map id="TiledArray::math::VectorOpUnwind::scatter" name="TiledArray::math::VectorOpUnwind::scatter">
+<area shape="rect" id="node1" title=" " alt="" coords="1699,123,1877,164"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1math.html#a6137a96c445b26d23187018efa876aa5" title=" " alt="" coords="1468,123,1651,164"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1math.html#a79f23f474e674e836e56de43b7357d60" title="Compute the outer of x and y to modify a." alt="" coords="1237,46,1409,73"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array_1_1math.html#a89ff3fb5ad1a86bf9b9842a55f4f4c5f" title="Compute and store outer of x and y in a." alt="" coords="1225,130,1420,157"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1math_1_1_block.html#a5b8fd799fcafd39809f7f7a5dcc2493f" title=" " alt="" coords="1235,253,1410,295"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1detail_1_1_size_array.html#a9b3dda799f523dfcb72132c8624cc624" title="Outer operation." alt="" coords="1005,5,1138,47"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_val_array.html#aeb7b31eb82314fafbfd4b7806e61bb5d" title="Outer operation." alt="" coords="749,5,883,47"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_sparse_shape.html#a6e638781d0d2ec4347947b7ed627b9e5" title=" " alt="" coords="965,71,1177,98"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1_sparse_shape.html#a369e1a3d9a37069ede03c6726f0c6005" title=" " alt="" coords="981,123,1161,164"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1detail_1_1_size_array.html#a8c710040cd50de2b7c1f2390c10b8413" title="Outer fill operation." alt="" coords="993,188,1149,229"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1detail_1_1_val_array.html#af224734fb71eaeefb4d229631fcb1dc1" title="Outer fill operation." alt="" coords="741,188,891,229"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1math_1_1_transpose_unwind_3_010_01_4.html#ab4095fabb8bc2f8b9421c750c0df9c9d" title=" " alt="" coords="970,253,1173,295"/>
+<area shape="rect" id="node13" href="$class_tiled_array_1_1math_1_1_transpose_unwind.html#a4f8998233c204a3e00403d3533a96137" title=" " alt="" coords="970,319,1173,360"/>
+<area shape="rect" id="node14" href="$namespace_tiled_array_1_1math.html#abb08079140fa4ea486e8d6e77baf7158" title=" " alt="" coords="715,319,917,360"/>
+<area shape="rect" id="node15" href="$namespace_tiled_array_1_1math.html#a0734d99af5ce0b09816a2934366c9071" title="Matrix transpose and initialization." alt="" coords="464,326,667,353"/>
+<area shape="rect" id="node16" href="$namespace_tiled_array_1_1detail.html#ae1a6955d66acd00dd89cd34669e7fe09" title="Construct a permuted tensor copy." alt="" coords="283,319,416,360"/>
+<area shape="rect" id="node17" href="$namespace_tiled_array_1_1detail.html#af174120ffd75a14d13077eff16452d9b" title="In&#45;place tensor permutation operations with contiguous data." alt="" coords="46,209,194,251"/>
+<area shape="rect" id="node18" href="$class_tiled_array_1_1detail_1_1_contract_reduce.html#a3edb113a3e4524ffa21985587b0b7311" title="Post processing step." alt="" coords="5,275,235,404"/>
+<area shape="rect" id="node19" href="$namespace_tiled_array_1_1detail.html#a2788b8e3e27331097aa656a0e6e36b20" title="Initialize tensor with permuted tensor arguments." alt="" coords="53,428,187,469"/>
+</map>

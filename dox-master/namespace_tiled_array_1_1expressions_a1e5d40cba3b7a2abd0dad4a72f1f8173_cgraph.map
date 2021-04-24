@@ -1,0 +1,5 @@
+<map id="TiledArray::expressions::operator&#45;" name="TiledArray::expressions::operator&#45;">
+<area shape="rect" id="node1" title="Negated&#45;conjugated&#45;tensor expression factor." alt="" coords="5,39,180,80"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1expressions_1_1_scal_tsr_expr.html#af3375998fede7395b91ebb524915f1f7" title="Tensor annotation accessor." alt="" coords="228,5,411,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1expressions_1_1_scal_tsr_expr.html#a6f3d23b62950d10eed33cd85d92071bc" title="Array accessor." alt="" coords="232,71,407,112"/>
+</map>

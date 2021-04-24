@@ -1,0 +1,5 @@
+<map id="TiledArray::subt" name="TiledArray::subt">
+<area shape="rect" id="node1" title="Subtract tile arguments." alt="" coords="209,31,333,57"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#ac6846288ddd37fd160c0afcdf72ce03b" title="Tensor minus operator." alt="" coords="5,5,161,32"/>
+<area shape="rect" id="node3" href="$group___tile_interface.html#gad477a9e151bd7d6bb29dacda947c83aa" title="Subtract and scale tile arguments." alt="" coords="21,56,145,83"/>
+</map>

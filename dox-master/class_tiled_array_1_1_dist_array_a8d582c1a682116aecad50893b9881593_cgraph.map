@@ -1,0 +1,4 @@
+<map id="TiledArray::DistArray::wait_for_lazy_cleanup" name="TiledArray::DistArray::wait_for_lazy_cleanup">
+<area shape="rect" id="node1" title="Wait for lazy tile cleanup." alt="" coords="5,5,180,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_dist_array.html#a1464487f0736a9c87b365ca2de8dab29" title="World accessor." alt="" coords="228,5,385,47"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="TiledArray::is_replicated" name="TiledArray::is_replicated">
+<area shape="rect" id="node1" title="collective bitwise&#45;compare&#45;reduce for SparseShape objects" alt="" coords="5,111,184,138"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_sparse_shape.html#adb1bfeb045c67d93118696bb61db67f7" title="Data accessor." alt="" coords="232,5,412,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tensor.html#a9270d658412efce71cde14a4e9488664" title="Data direct access." alt="" coords="253,71,391,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_tensor.html#ab27ca10b5f528a0625e1eacd76106880" title="Tensor dimension size accessor." alt="" coords="253,136,391,177"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array.html#aea673bd36f494b9b4c040ea0e09c00bd" title=" " alt="" coords="249,202,395,229"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_dist_array.html#a911b5f4183473c9c9300c370b90374df" title="Returns the number of tiles in the tensor." alt="" coords="460,161,617,203"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="460,227,617,268"/>
+</map>

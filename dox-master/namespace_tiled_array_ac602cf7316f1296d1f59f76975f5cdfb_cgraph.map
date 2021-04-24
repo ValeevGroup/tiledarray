@@ -1,0 +1,32 @@
+<map id="TiledArray::fuse_vector_of_arrays_tiles" name="TiledArray::fuse_vector_of_arrays_tiles">
+<area shape="rect" id="node1" title="fuses a vector of DistArray objects, each with the same TiledRange into a DistArray with 1 more dimen..." alt="" coords="5,491,177,533"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1dist__subarray__vec.html#a179f3b1aba92e11760bbaaa431d82410" title=" " alt="" coords="259,95,407,151"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tile.html#ae3505402edb0ddce41a6f04de6e82c59" title="Data direct access." alt="" coords="254,175,411,201"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_range.html#ae240375dff3cdc73e249dfa9ee91c1b4" title="Range extent accessor." alt="" coords="260,226,405,267"/>
+<area shape="rect" id="node8" href="$namespace_tiled_array_1_1detail.html#a716b4de519b8ce66cdf12b9e6578f30b" title="fuses the SparseShape objects of a tilewise&#45;round&#45;robin distributed vector of Arrays into single Spar..." alt="" coords="225,291,440,333"/>
+<area shape="rect" id="node14" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="750,415,907,457"/>
+<area shape="rect" id="node15" href="$class_tiled_array_1_1_tiled_range.html#a1980b233eaa1fc559b62cc8affc2bd34" title="Access the tile range." alt="" coords="505,357,674,398"/>
+<area shape="rect" id="node16" href="$class_tiled_array_1_1_dist_array.html#ab824f8b38418197da56e2e52d611681c" title="Check for zero tiles." alt="" coords="511,590,668,631"/>
+<area shape="rect" id="node18" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="266,626,399,667"/>
+<area shape="rect" id="node19" href="$class_tiled_array_1_1_dist_array.html#a26ad3fc01bc940ec5be321058196d180" title="Process map accessor." alt="" coords="254,691,411,733"/>
+<area shape="rect" id="node20" href="$namespace_tiled_array_1_1detail.html#a3f0780ab65ca5778bd4ee8f2783a082a" title="prepends an extra dimension to a TRange" alt="" coords="241,757,425,798"/>
+<area shape="rect" id="node22" href="$class_tiled_array_1_1_dist_array.html#a32ab8231e6a7ef385ac938d1f98c649e" title=" " alt="" coords="241,575,425,601"/>
+<area shape="rect" id="node27" href="$class_tiled_array_1_1detail_1_1_size_array.html#acca3c890ec0aeacf730d251a54105ac4" title=" " alt="" coords="266,822,399,863"/>
+<area shape="rect" id="node28" href="$class_tiled_array_1_1_range.html#a63700b9c4ebc8c67f46325f77ed4cd2a" title="Range volume accessor." alt="" coords="260,887,405,929"/>
+<area shape="rect" id="node29" href="$namespace_tiled_array.html#aea673bd36f494b9b4c040ea0e09c00bd" title=" " alt="" coords="260,473,405,500"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_tile.html#a0736062c5f5f96f07bcff8a302b2c372" title=" " alt="" coords="505,5,674,32"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_range.html#ad3a6a74a7146b195f299c49c843b6fa5" title="Range extent data accessor." alt="" coords="517,57,662,98"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_range.html#a2208a1aeda0c14164e2689ee284aace2" title=" " alt="" coords="741,64,916,91"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1_tiled_range1.html#a804300d74a4872393801144e33ad9963" title="Returns an iterator to the first tile in the range." alt="" coords="501,174,678,215"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1_tensor.html#a9270d658412efce71cde14a4e9488664" title="Data direct access." alt="" coords="520,291,659,333"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1_tiled_range.html#a42bfd3b3ccab2835c75af773050444b7" title="Accessor of the tiled range for one of the dimensions." alt="" coords="488,123,691,149"/>
+<area shape="rect" id="node13" href="$namespace_tiled_array.html#ae6e2da9f3855369c97e61e9105cce50a" title=" " alt="" coords="527,240,652,267"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1_tiled_range.html#ac8c1d53822fd3da51824e4d97a11dd2a" title="The rank accessor." alt="" coords="744,115,913,157"/>
+<area shape="rect" id="node17" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a2c5ad33baf5e6d3778e685929ca78504" title="Query for a zero tile." alt="" coords="751,545,906,586"/>
+<area shape="rect" id="node21" href="$class_tiled_array_1_1_tiled_range.html#a9ab6d42af2997036d41180dfd5439544" title="Tile dimension boundary array accessor." alt="" coords="505,773,674,814"/>
+<area shape="rect" id="node23" href="$class_tiled_array_1_1detail_1_1_array_impl.html#a3205617f6c181fc8857407704007622c" title="Set tile." alt="" coords="523,655,656,697"/>
+<area shape="rect" id="node26" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a1a16c42818cf3c0174187604ed457e79" title="Tiled range accessor." alt="" coords="753,757,904,798"/>
+<area shape="rect" id="node24" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#aa74a42e37342f0c2a80f623ac077266e" title="Set element i with value." alt="" coords="739,691,919,733"/>
+<area shape="rect" id="node25" href="$class_tiled_array_1_1detail_1_1_array_impl.html#a35765a0668e9e787ef688eb76f28a94e" title=" " alt="" coords="741,611,916,667"/>
+<area shape="rect" id="node30" href="$class_tiled_array_1_1_dist_array.html#a911b5f4183473c9c9300c370b90374df" title="Returns the number of tiles in the tensor." alt="" coords="511,525,668,566"/>
+</map>

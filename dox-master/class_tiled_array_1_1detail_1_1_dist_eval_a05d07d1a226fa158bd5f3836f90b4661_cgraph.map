@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::DistEval::discard" name="TiledArray::detail::DistEval::discard">
+<area shape="rect" id="node1" title="Discard a tile that is not needed." alt="" coords="5,5,144,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_dist_eval_impl.html#ac5b0385015a3d29f97d2469dae382756" title="Discard a tile that is not needed." alt="" coords="192,5,388,47"/>
+</map>

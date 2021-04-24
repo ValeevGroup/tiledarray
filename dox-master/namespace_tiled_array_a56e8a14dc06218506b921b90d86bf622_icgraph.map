@@ -1,0 +1,5 @@
+<map id="TiledArray::dot" name="TiledArray::dot">
+<area shape="rect" id="node1" title=" " alt="" coords="237,35,355,61"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#gaf71813b13896a29698efff4232719d70" title="Vector dot product of a tile." alt="" coords="39,5,156,32"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_dot_reduction.html#ae9f6343d37bfa088e4a28896cac26f7a" title=" " alt="" coords="5,57,189,98"/>
+</map>

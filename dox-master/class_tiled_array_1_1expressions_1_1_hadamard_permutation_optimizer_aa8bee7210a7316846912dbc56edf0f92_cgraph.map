@@ -1,0 +1,8 @@
+<map id="TiledArray::expressions::HadamardPermutationOptimizer::HadamardPermutationOptimizer" name="TiledArray::expressions::HadamardPermutationOptimizer::HadamardPermutationOptimizer">
+<area shape="rect" id="node1" title=" " alt="" coords="5,103,248,159"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1expressions_1_1_index_list.html#a7e2eb3f838b235d08aa8cd2273a50700" title="Check that this index list is a permutation of other." alt="" coords="316,37,511,79"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1expressions_1_1_binary_op_permutation_optimizer.html#a2b53942c08e280bd2c0c2fdf7db8503d" title=" " alt="" coords="296,103,531,159"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1expressions_1_1_binary_op_permutation_optimizer.html#ae42e48fd991051b087490a39d3e056bc" title=" " alt="" coords="296,183,531,239"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1expressions_1_1_index_list.html#a31a80c988b915a2d93af201cc8693871" title="Returns an iterator to the first index." alt="" coords="579,5,753,47"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1expressions_1_1_index_list.html#ae03734b5314b101d0ee684902cf6f7df" title="Returns an iterator to the end of the index list." alt="" coords="579,71,753,112"/>
+</map>

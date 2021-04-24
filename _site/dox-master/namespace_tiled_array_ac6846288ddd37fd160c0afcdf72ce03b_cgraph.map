@@ -1,0 +1,5 @@
+<map id="TiledArray::operator&#45;" name="TiledArray::operator&#45;">
+<area shape="rect" id="node1" title="Tensor minus operator." alt="" coords="5,13,160,39"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#ga58d10685bc8b980fed30a5e64db19caa" title="Subtract tile arguments." alt="" coords="208,13,332,39"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="380,5,513,47"/>
+</map>

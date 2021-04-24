@@ -1,0 +1,4 @@
+<map id="TiledArray::Tensor::add" name="TiledArray::Tensor::add">
+<area shape="rect" id="node1" title="Add this and other to construct a new tensors." alt="" coords="213,13,384,39"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tensor.html#adafd98999ba0678b42e4a8f1312a4252" title="Subtract a constant from a copy of this tensor." alt="" coords="5,5,165,47"/>
+</map>

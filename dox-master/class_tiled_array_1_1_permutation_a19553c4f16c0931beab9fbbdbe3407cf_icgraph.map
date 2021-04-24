@@ -1,0 +1,8 @@
+<map id="TiledArray::Permutation::inv" name="TiledArray::Permutation::inv">
+<area shape="rect" id="node1" title="Construct the inverse of this permutation." alt="" coords="475,56,679,83"/>
+<area shape="rect" id="node2" href="$group__symmetry.html#gaeb2fae98580d4113b53ee2f7385c22fc" title="Inverse permutation operator." alt="" coords="243,5,399,32"/>
+<area shape="rect" id="node3" href="$namespacebtas.html#a9d347f47ae661ba169686b9628a24ec2" title="Computes the result of applying permutation perm to arg." alt="" coords="265,56,378,83"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_permutation.html#aa55c066a6e99750bf23821d411571b61" title="Raise this permutation to the n&#45;th power." alt="" coords="216,107,427,133"/>
+<area shape="rect" id="node4" href="$namespacebtas.html#a16b19ab846f8daa7b9fbd59662b49d67" title="Computes the result of applying bipartite permutation perm to arg." alt="" coords="30,56,143,83"/>
+<area shape="rect" id="node6" href="$group__symmetry.html#gaf1f4db587fe34281a4ffab0ca581d2b1" title="Raise perm to the n&#45;th power." alt="" coords="5,107,168,133"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="TiledArray::tile_interface::ScalAdd&lt; Result, Left, Right, Scalar, typename std::enable_if&lt;!(std::is_same&lt; Result, result_of_add_t&lt; Left, Right, Scalar &gt;&gt;::value &amp;&amp;std::is_same&lt; Result, result_of_add_t&lt; Left, Right, Scalar, BipartitePermutation &gt;&gt;::value)&gt;::type &gt;::operator()" name="TiledArray::tile_interface::ScalAdd&lt; Result, Left, Right, Scalar, typename std::enable_if&lt;!(std::is_same&lt; Result, result_of_add_t&lt; Left, Right, Scalar &gt;&gt;::value &amp;&amp;std::is_same&lt; Result, result_of_add_t&lt; Left, Right, Scalar, BipartitePermutation &gt;&gt;::value)&gt;::type &gt;::operator()">
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,364,149"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#ga4f9977ff8130c6b95fc646e6a968f7a6" title="Add tile arguments." alt="" coords="412,64,532,91"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="580,57,713,98"/>
+</map>

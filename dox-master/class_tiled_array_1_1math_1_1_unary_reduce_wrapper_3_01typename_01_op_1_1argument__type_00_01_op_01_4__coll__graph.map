@@ -1,0 +1,4 @@
+<map id="TiledArray::math::UnaryReduceWrapper&lt; typename Op::argument_type, Op &gt;" name="TiledArray::math::UnaryReduceWrapper&lt; typename Op::argument_type, Op &gt;">
+<area shape="rect" id="node1" title="Unary reduction wrapper class that handles lazy tile evaluation." alt="" coords="5,80,256,136"/>
+<area shape="rect" id="node2" title=" " alt="" coords="111,5,151,32"/>
+</map>

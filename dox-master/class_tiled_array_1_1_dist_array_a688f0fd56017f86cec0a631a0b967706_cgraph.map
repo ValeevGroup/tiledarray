@@ -1,0 +1,20 @@
+<map id="TiledArray::DistArray::serialize" name="TiledArray::DistArray::serialize">
+<area shape="rect" id="node1" title="deserialize local contents of a DistArray from an Archive object" alt="" coords="5,247,163,288"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_dist_array.html#a8f63920a51f61fd746fef31cc0a0929e" title="Begin iterator factory function." alt="" coords="226,5,383,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_dist_array.html#a8587157f8ad46d5da4f786b79110d0ab" title="End iterator factory function." alt="" coords="211,71,399,98"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array.html#a8bb41dd83ecdc33052c9c02eeda152e8" title=" " alt="" coords="219,123,390,164"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_dist_array.html#a26ad3fc01bc940ec5be321058196d180" title="Process map accessor." alt="" coords="226,188,383,229"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1_dist_array.html#a32ab8231e6a7ef385ac938d1f98c649e" title=" " alt="" coords="213,254,397,281"/>
+<area shape="rect" id="node14" href="$class_tiled_array_1_1_dist_array.html#a3140a5cda14c2ea5b5e7c654099f015d" title="Shape accessor." alt="" coords="226,305,383,347"/>
+<area shape="rect" id="node15" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="447,364,604,405"/>
+<area shape="rect" id="node16" href="$namespace_tiled_array.html#aea673bd36f494b9b4c040ea0e09c00bd" title=" " alt="" coords="232,422,377,449"/>
+<area shape="rect" id="node18" href="$class_tiled_array_1_1_dist_array.html#a1464487f0736a9c87b365ca2de8dab29" title="World accessor." alt="" coords="226,473,383,515"/>
+<area shape="rect" id="node5" href="$struct_tiled_array_1_1detail_1_1default__world.html#af83d72c429e45b6b67859fac623d6af7" title=" " alt="" coords="451,87,599,128"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array.html#a52e6e0c952abcd7466a0efdcbf305681" title=" " alt="" coords="662,75,822,102"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1detail_1_1_array_impl.html#a3205617f6c181fc8857407704007622c" title="Set tile." alt="" coords="459,247,592,288"/>
+<area shape="rect" id="node13" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a1a16c42818cf3c0174187604ed457e79" title="Tiled range accessor." alt="" coords="667,339,817,380"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a2c5ad33baf5e6d3778e685929ca78504" title="Query for a zero tile." alt="" coords="665,127,819,168"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#aa74a42e37342f0c2a80f623ac077266e" title="Set element i with value." alt="" coords="652,192,832,233"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1detail_1_1_array_impl.html#a35765a0668e9e787ef688eb76f28a94e" title=" " alt="" coords="655,258,829,314"/>
+<area shape="rect" id="node17" href="$class_tiled_array_1_1_dist_array.html#a911b5f4183473c9c9300c370b90374df" title="Returns the number of tiles in the tensor." alt="" coords="447,429,604,471"/>
+</map>

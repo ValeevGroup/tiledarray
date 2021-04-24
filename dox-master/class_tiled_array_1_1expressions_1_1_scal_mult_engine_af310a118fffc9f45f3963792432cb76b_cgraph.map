@@ -1,0 +1,17 @@
+<map id="TiledArray::expressions::ScalMultEngine::init_distribution" name="TiledArray::expressions::ScalMultEngine::init_distribution">
+<area shape="rect" id="node1" title="Initialize result tensor distribution." alt="" coords="5,218,180,274"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1expressions_1_1_binary_engine.html#a2069b3499de8a8429fb2a26e190d77e2" title="Initialize result tensor distribution." alt="" coords="228,115,455,156"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1expressions_1_1_cont_engine.html#a9604e6a4e31d3ccb9a9b715fbaa61835" title="Initialize result tensor distribution." alt="" coords="234,257,449,299"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1expressions_1_1_expr_engine.html#acf0603659bd63cddedf46e67ba4683c9" title="Initialize result tensor distribution." alt="" coords="509,37,722,79"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1expressions_1_1_expr_engine.html#a62146dd980001df45a3cb504448afe4d" title="Process map accessor." alt="" coords="776,5,951,47"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1expressions_1_1_expr_engine.html#aa1de3670950f97c5fdafea1d0bb61a27" title="World accessor." alt="" coords="776,71,951,112"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1detail_1_1_contract_reduce_base.html#a2a8c3244be344218737bd709188de030" title="Gemm meta data accessor." alt="" coords="533,103,698,159"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1math_1_1_gemm_helper.html#a396a556d1bfcc30f88942d41abcf1fc6" title="Left&#45;hand argument rank accessor." alt="" coords="503,184,728,225"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1detail_1_1_proc_grid.html#a719cb5bf3093f210185b809c89ad688f" title="Construct column phased a cyclic process." alt="" coords="538,250,693,306"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1detail_1_1_proc_grid.html#a677e97b905e065e3b785a6bd80486871" title="Construct a cyclic process." alt="" coords="529,331,702,372"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1detail_1_1_proc_grid.html#a710de6f07a936b9917a41f9344f57dd8" title="Construct row phased a cyclic process." alt="" coords="535,397,695,453"/>
+<area shape="rect" id="node14" href="$class_tiled_array_1_1math_1_1_gemm_helper.html#aced23424836c0a2aa5547299ff1b92f1" title="Compute the number of contracted ranks." alt="" coords="503,477,728,519"/>
+<area shape="rect" id="node15" href="$class_tiled_array_1_1math_1_1_gemm_helper.html#aa37e6e689bc93980f9d535ac44cddd42" title="Right&#45;hand argument rank accessor." alt="" coords="503,543,728,584"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1detail_1_1_proc_grid.html#a89298db9fb8c72b15b4215a555cc0573" title="Element row count accessor." alt="" coords="797,257,930,299"/>
+<area shape="rect" id="node13" href="$class_tiled_array_1_1detail_1_1_proc_grid.html#ada765eb48d3bc4cb4c0214f6778f758b" title="Element column count accessor." alt="" coords="797,404,930,445"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="TiledArray::SparseShape::block" name="TiledArray::SparseShape::block">
+<area shape="rect" id="node1" title="Create a copy of a sub&#45;block of the shape." alt="" coords="5,5,185,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_sparse_shape.html#ae4ae1d45a69313588bf73176c99ccd18" title="Create a permuted shape of this shape." alt="" coords="233,5,413,47"/>
+</map>

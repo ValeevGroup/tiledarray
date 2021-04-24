@@ -1,0 +1,5 @@
+<map id="TiledArray::Debugger::handle" name="TiledArray::Debugger::handle">
+<area shape="rect" id="node1" title="The Debugger will be activated when sig is caught." alt="" coords="419,5,577,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_debugger.html#a584a236f7d43ee5f197c488f0ff273b0" title="This calls handle(int) with all of the major signals." alt="" coords="212,5,371,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_debugger.html#a0bf3d37ae43412067cb7a8a31eee4d69" title="Programmatic construction of Debugger." alt="" coords="5,5,164,47"/>
+</map>

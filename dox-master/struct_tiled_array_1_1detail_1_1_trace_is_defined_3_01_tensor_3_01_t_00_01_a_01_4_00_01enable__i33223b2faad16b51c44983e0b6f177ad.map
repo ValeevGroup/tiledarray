@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::TraceIsDefined&lt; Tensor&lt; T, A &gt;, enable_if_numeric_t&lt; T &gt; &gt;" name="TiledArray::detail::TraceIsDefined&lt; Tensor&lt; T, A &gt;, enable_if_numeric_t&lt; T &gt; &gt;">
+<area shape="rect" id="node1" title="Signals that we can take the trace of a Tensor&lt;T, A&gt; (for numeric T)" alt="" coords="5,80,211,151"/>
+<area shape="rect" id="node2" title=" " alt="" coords="66,5,150,32"/>
+</map>

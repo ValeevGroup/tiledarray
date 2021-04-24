@@ -1,0 +1,4 @@
+<map id="TiledArray::Range::inplace_shift" name="TiledArray::Range::inplace_shift">
+<area shape="rect" id="node1" title="Shift the lower and upper bound of this range." alt="" coords="199,5,344,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_range.html#ab1c7f0bac49b3f6273bab8b25f3a2959" title="Create a Range with shiften lower and upper bounds." alt="" coords="5,5,151,47"/>
+</map>

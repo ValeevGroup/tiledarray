@@ -1,0 +1,5 @@
+<map id="TiledArray::operator&#45;" name="TiledArray::operator&#45;">
+<area shape="rect" id="node1" title="Create a negated copy of arg." alt="" coords="5,13,161,39"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#ga6bd5665b8e247cd53460501c3f672751" title="Negate the tile argument." alt="" coords="209,13,329,39"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="377,5,511,47"/>
+</map>

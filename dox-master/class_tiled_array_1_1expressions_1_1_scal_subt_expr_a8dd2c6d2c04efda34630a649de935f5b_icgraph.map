@@ -1,0 +1,6 @@
+<map id="TiledArray::expressions::ScalSubtExpr::factor" name="TiledArray::expressions::ScalSubtExpr::factor">
+<area shape="rect" id="node1" title="Scaling factor accessor." alt="" coords="228,71,403,112"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1expressions.html#af1476f7093217c083d7b87b949ec430e" title="Conjugated subtraction expression factor." alt="" coords="5,5,180,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1expressions.html#a2f15cf4ac14e91da7993cf7c0455d3a2" title="Scaled&#45;subtraction expression factor." alt="" coords="5,71,180,112"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1expressions.html#a95500ccedeab73c43b28ad7d23d3a3f9" title="Negated&#45;conjugated subtraction expression factor." alt="" coords="5,136,180,177"/>
+</map>

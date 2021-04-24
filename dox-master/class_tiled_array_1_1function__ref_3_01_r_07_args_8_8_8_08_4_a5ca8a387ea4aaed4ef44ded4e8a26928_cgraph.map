@@ -1,0 +1,4 @@
+<map id="TiledArray::function_ref&lt; R(Args...)&gt;::swap" name="TiledArray::function_ref&lt; R(Args...)&gt;::swap">
+<area shape="rect" id="node1" title="Swaps the referred callables of *this and rhs." alt="" coords="5,5,180,47"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a8386153a74ac2847e5c1025d438fd1a6" title="Swaps the referred callables of lhs and rhs." alt="" coords="228,13,359,39"/>
+</map>

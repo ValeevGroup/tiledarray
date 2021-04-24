@@ -1,0 +1,14 @@
+<map id="min" name="min">
+<area shape="rect" id="node1" title=" " alt="" coords="277,326,324,353"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a19eafabec70f0ff8c67d5a48a41db533" title="Absolute minimum element." alt="" coords="21,5,214,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tensor.html#ae6914ca99f535592a4477df637511b58" title="Absolute minimum element." alt="" coords="24,71,211,112"/>
+<area shape="rect" id="node4" href="$kronecker__delta_8h.html#ae33f74c464abec8b0dfb2318ccdc1ffb" title=" " alt="" coords="85,137,149,163"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#af3a337e3cd4f50cb9bbcc4abc3e54bc1" title="Maximum element." alt="" coords="34,188,201,229"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_tensor.html#a92f492a7c588bc82c2fafc45519bdb6b" title="Maximum element." alt="" coords="37,253,198,295"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#af06857f977bbfd0e4ea9fca89ed7bc2e" title="Minimum element." alt="" coords="36,319,199,360"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1_tensor.html#a8a22a994aafd87df8d012ddce92bad3a" title="Minimum element." alt="" coords="39,384,196,425"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1_min_reduction_3_01_tile_00_01typename_01std_1_1enable__if_3_01detail_1_1isbbf8cab6c762ebd87aacbfefa47f9cbf.html#abf3ae2aed54aa5597f3beac29ed6a17f" title=" " alt="" coords="5,450,229,535"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1_max_reduction_3_01_tile_00_01typename_01std_1_1enable__if_3_01detail_1_1is72dbf640bf0586b2657ce5cdd9539f2d.html#a804012316f1c316ebbe3ec83a32d9527" title=" " alt="" coords="5,559,229,645"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1_abs_min_reduction.html#acf3f9d18d0be4c35a32cf796ed015391" title=" " alt="" coords="14,669,221,711"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1_tensor.html#a55359fea2390ffcef398cf66623593f5" title="Generalized tensor trace." alt="" coords="35,735,200,776"/>
+</map>

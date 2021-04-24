@@ -1,0 +1,4 @@
+<map id="TiledArray::array_from_il" name="TiledArray::array_from_il">
+<area shape="rect" id="node1" title="Converts an std::initializer_list into a single tile array." alt="" coords="5,13,188,39"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a8291483119dcf3831ee15dce5be0b85a" title="Creates a TiledRange for the provided initializer list." alt="" coords="236,5,405,47"/>
+</map>

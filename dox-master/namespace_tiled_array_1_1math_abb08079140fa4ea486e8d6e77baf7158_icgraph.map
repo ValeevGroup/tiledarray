@@ -1,0 +1,11 @@
+<map id="TiledArray::math::transpose_block" name="TiledArray::math::transpose_block">
+<area shape="rect" id="node1" title=" " alt="" coords="1025,60,1228,101"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1math.html#a0734d99af5ce0b09816a2934366c9071" title="Matrix transpose and initialization." alt="" coords="775,67,977,94"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1math_1_1linalg.html#a6ee83ee2082f3287a5d0d13c0009717f" title=" " alt="" coords="5,5,180,47"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1math_1_1linalg_1_1non__distributed.html#a7ec45055eb979e6039b8d4652ef4b90f" title=" " alt="" coords="228,35,471,76"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array_1_1math_1_1linalg_1_1rank__local.html#ae463390391cf7ff7e702a2b4d643ed81" title=" " alt="" coords="519,89,727,131"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array_1_1detail.html#a3f41e1794be8e3f5515437c8301585a9" title="Construct a permuted tensor copy." alt="" coords="556,180,689,221"/>
+<area shape="rect" id="node7" href="$namespace_tiled_array_1_1detail.html#af174120ffd75a14d13077eff16452d9b" title="In&#45;place tensor permutation operations with contiguous data." alt="" coords="275,100,423,141"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1detail_1_1_contract_reduce.html#a3edb113a3e4524ffa21985587b0b7311" title="Post processing step." alt="" coords="235,165,464,295"/>
+<area shape="rect" id="node9" href="$namespace_tiled_array_1_1detail.html#a2788b8e3e27331097aa656a0e6e36b20" title="Initialize tensor with permuted tensor arguments." alt="" coords="283,319,416,360"/>
+</map>

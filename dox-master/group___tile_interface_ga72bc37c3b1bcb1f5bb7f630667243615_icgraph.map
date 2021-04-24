@@ -1,0 +1,5 @@
+<map id="TiledArray::trace" name="TiledArray::trace">
+<area shape="rect" id="node1" title="Sum the hyper&#45;diagonal elements a tile." alt="" coords="248,46,377,73"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_trace_reduction.html#a68acb17a2729cc5f1719ee12c6380873" title=" " alt="" coords="5,5,200,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tensor.html#a7e9f9ab3a09d88f89ac402fcf656e056" title="Generalized tensor trace." alt="" coords="20,71,185,112"/>
+</map>

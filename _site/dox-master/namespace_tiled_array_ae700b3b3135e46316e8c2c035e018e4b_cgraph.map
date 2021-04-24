@@ -1,0 +1,4 @@
+<map id="TiledArray::flatten_il" name="TiledArray::flatten_il">
+<area shape="rect" id="node1" title="Flattens the contents of a (possibly nested) initializer_list into the provided buffer." alt="" coords="5,5,159,32"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#ae54a1dd465e47636322ec0b1451e1493" title=" " alt="" coords="207,5,333,32"/>
+</map>

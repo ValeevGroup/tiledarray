@@ -1,0 +1,7 @@
+<map id="TiledArray::detail::TileReference::future" name="TiledArray::detail::TileReference::future">
+<area shape="rect" id="node1" title=" " alt="" coords="448,71,615,112"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tile_reference.html#a5849258d39efbcd976336a8e4f43568c" title=" " alt="" coords="252,71,400,112"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_tile_reference.html#a66b86d42f24c8e32b2a652895ad74a4f" title=" " alt="" coords="5,5,204,47"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1detail.html#a218cac85d033808e795a87a686ce4fb6" title="redirect operator to std::ostream for TileReference objects" alt="" coords="38,71,171,112"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array_1_1detail.html#a2cdeb370801b331554b63c01f4ac402b" title="comparison operator for TileReference objects" alt="" coords="38,136,171,177"/>
+</map>

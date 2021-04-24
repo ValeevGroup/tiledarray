@@ -1,0 +1,6 @@
+<map id="TiledArray::detail::DistributedStorage::get_local" name="TiledArray::detail::DistributedStorage::get_local">
+<area shape="rect" id="node1" title="Get local element." alt="" coords="420,43,572,99"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#a1f2ed572953ea119f4cfb8505fca50b6" title="Get local or remote element." alt="" coords="215,5,368,61"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_array_impl.html#a976c071617066ff9056b417dee527456" title="Local tile future accessor." alt="" coords="211,86,372,127"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_dist_array.html#a05fce33b89486110604677540fccb4f1" title="Find local tile." alt="" coords="5,86,163,127"/>
+</map>

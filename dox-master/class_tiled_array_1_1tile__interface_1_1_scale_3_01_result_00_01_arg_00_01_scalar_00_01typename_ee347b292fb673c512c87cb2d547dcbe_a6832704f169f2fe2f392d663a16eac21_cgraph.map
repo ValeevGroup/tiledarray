@@ -1,0 +1,5 @@
+<map id="TiledArray::tile_interface::Scale&lt; Result, Arg, Scalar, typename std::enable_if&lt;!std::is_same&lt; Result, result_of_scale_t&lt; Arg, Scalar &gt; &gt;::value &gt;::type &gt;::operator()" name="TiledArray::tile_interface::Scale&lt; Result, Arg, Scalar, typename std::enable_if&lt;!std::is_same&lt; Result, result_of_scale_t&lt; Arg, Scalar &gt; &gt;::value &gt;::type &gt;::operator()">
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,240,105"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#gaebe37fcda193946fcc4501b42796e9cc" title="Scalar the tile argument." alt="" coords="288,42,419,69"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="467,35,600,76"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="TiledArray::DistArray::is_initialized" name="TiledArray::DistArray::is_initialized">
+<area shape="rect" id="node1" title="Check if the array is initialized." alt="" coords="211,5,368,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_dist_array.html#a0766700c987581f5ca4524bf4b35affd" title="Conversion to bool is equivalent to DistArray::is_initialized()" alt="" coords="5,5,163,47"/>
+</map>

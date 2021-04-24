@@ -1,0 +1,6 @@
+<map id="TiledArray::detail::TensorImpl::owner" name="TiledArray::detail::TensorImpl::owner">
+<area shape="rect" id="node1" title="Query a tile owner." alt="" coords="271,71,420,112"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_dist_array.html#a34d40e565641af4eda3875719c40c142" title="Tile ownership." alt="" coords="35,5,193,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_dist_eval.html#a778949e3314fe0737905abbab37c6b72" title="Query a tile owner." alt="" coords="47,71,181,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1detail_1_1_dist_eval_impl.html#a56fb5b7ec0185f7cf9ed6b297d72ab4a" title="Set tensor value." alt="" coords="5,136,223,207"/>
+</map>

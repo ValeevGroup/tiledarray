@@ -1,0 +1,26 @@
+<map id="TiledArray/tile_interface/permute.h" name="TiledArray/tile_interface/permute.h">
+<area shape="rect" id="node1" title=" " alt="" coords="221,5,400,47"/>
+<area shape="rect" id="node2" href="$tensor_2type__traits_8h.html" title=" " alt="" coords="102,95,263,121"/>
+<area shape="rect" id="node4" href="$type__traits_8h.html" title=" " alt="" coords="234,169,408,196"/>
+<area shape="rect" id="node12" href="$cast_8h.html" title=" " alt="" coords="348,95,510,121"/>
+<area shape="rect" id="node3" title=" " alt="" coords="345,408,489,435"/>
+<area shape="rect" id="node11" title=" " alt="" coords="118,169,210,196"/>
+<area shape="rect" id="node5" title=" " alt="" coords="29,251,98,278"/>
+<area shape="rect" id="node6" title=" " alt="" coords="123,251,202,278"/>
+<area shape="rect" id="node7" title=" " alt="" coords="226,251,312,278"/>
+<area shape="rect" id="node8" title=" " alt="" coords="336,251,407,278"/>
+<area shape="rect" id="node9" title=" " alt="" coords="431,251,491,278"/>
+<area shape="rect" id="node10" title=" " alt="" coords="516,251,676,278"/>
+<area shape="rect" id="node13" href="$meta_8h.html" title=" " alt="" coords="918,169,998,196"/>
+<area shape="rect" id="node14" href="$madness_8h.html" title=" " alt="" coords="700,244,846,285"/>
+<area shape="rect" id="node22" title=" " alt="" coords="870,251,1046,278"/>
+<area shape="rect" id="node23" title=" " alt="" coords="1070,251,1244,278"/>
+<area shape="rect" id="node24" title=" " alt="" coords="1268,244,1430,285"/>
+<area shape="rect" id="node15" title=" " alt="" coords="454,333,532,360"/>
+<area shape="rect" id="node16" title=" " alt="" coords="556,333,760,360"/>
+<area shape="rect" id="node17" title=" " alt="" coords="784,333,991,360"/>
+<area shape="rect" id="node18" href="$error_8h.html" title=" " alt="" coords="1015,333,1150,360"/>
+<area shape="rect" id="node19" title=" " alt="" coords="942,408,1028,435"/>
+<area shape="rect" id="node20" title=" " alt="" coords="1053,408,1112,435"/>
+<area shape="rect" id="node21" title=" " alt="" coords="1136,408,1216,435"/>
+</map>

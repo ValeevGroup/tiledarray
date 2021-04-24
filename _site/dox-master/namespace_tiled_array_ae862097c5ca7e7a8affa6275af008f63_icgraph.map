@@ -1,0 +1,4 @@
+<map id="TiledArray::tensor_to_btas_subtensor" name="TiledArray::tensor_to_btas_subtensor">
+<area shape="rect" id="node1" title="Copy a block of a btas::Tensor into a TiledArray::Tensor." alt="" coords="204,13,352,54"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#aae305e910ce674d71f550e104c354cb5" title="Task function for assigning a tensor to an Eigen submatrix." alt="" coords="5,5,156,61"/>
+</map>

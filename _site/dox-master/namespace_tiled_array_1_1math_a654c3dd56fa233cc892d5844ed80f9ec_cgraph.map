@@ -1,0 +1,14 @@
+<map id="TiledArray::math::col_reduce" name="TiledArray::math::col_reduce">
+<area shape="rect" id="node1" title="Reduce the columns of a matrix." alt="" coords="5,125,163,167"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1math_1_1_partial_reduce_unwind.html#a3c48db0184c45edfe097cf8b60c7da24" title=" " alt="" coords="211,60,407,101"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1math.html#a9085136f802b954e3a2bd643cd13d8b5" title=" " alt="" coords="463,5,632,47"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array_1_1math.html#a9e1b4b91971f158442e36a9172045a83" title=" " alt="" coords="219,125,399,167"/>
+<area shape="rect" id="node8" href="$namespace_tiled_array_1_1math.html#af3538be07513fbf1cb420e6ff0631e52" title=" " alt="" coords="216,191,401,232"/>
+<area shape="rect" id="node11" href="$namespace_tiled_array_1_1math.html#aadfeae00d061d08d80824c75f5c1855c" title=" " alt="" coords="217,256,400,297"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1math.html#a9a5d7ed52ec58b94cc8c9532624a45ad" title=" " alt="" coords="688,64,844,105"/>
+<area shape="rect" id="node5" href="$struct_tiled_array_1_1math_1_1_vector_op_unwind.html#a4d1f8bfb9c56806c000338fdd393c872" title=" " alt="" coords="892,64,1071,105"/>
+<area shape="rect" id="node7" href="$struct_tiled_array_1_1math_1_1_vector_op_unwind.html#a968a99ba63c4bee7199ea1c7bab1fceb" title=" " alt="" coords="458,125,637,167"/>
+<area shape="rect" id="node9" href="$namespace_tiled_array_1_1math.html#a3fd6348022ed6ff4698c20bc8ec1a759" title=" " alt="" coords="455,191,640,232"/>
+<area shape="rect" id="node10" href="$namespace_tiled_array_1_1math.html#a75bfae8d964e10120d677654383c2d3b" title=" " alt="" coords="688,191,844,232"/>
+<area shape="rect" id="node12" href="$struct_tiled_array_1_1math_1_1_vector_op_unwind.html#a4efdedd3c89d0f2be14659b59a6acfb7" title=" " alt="" coords="458,256,637,297"/>
+</map>

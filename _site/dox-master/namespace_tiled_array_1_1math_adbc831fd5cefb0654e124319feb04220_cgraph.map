@@ -1,0 +1,4 @@
+<map id="TiledArray::math::scale" name="TiledArray::math::scale">
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,177,32"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1math.html#a22056174e33ac377b23b9a8eeba7269f" title="Construct a const Eigen::Map object for a given Tensor object." alt="" coords="225,5,436,32"/>
+</map>

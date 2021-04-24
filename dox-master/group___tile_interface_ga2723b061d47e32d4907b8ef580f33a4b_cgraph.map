@@ -1,0 +1,5 @@
+<map id="TiledArray::unary" name="TiledArray::unary">
+<area shape="rect" id="node1" title="Unary element&#45;wise transform producing a new tile." alt="" coords="5,13,139,39"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="368,5,501,47"/>
+<area shape="rect" id="node3" href="$group___tile_interface.html#ga547cfd18b8ef1453c69372f3fc121ba8" title="Unary element&#45;wise transform producing a new tile." alt="" coords="187,38,320,65"/>
+</map>

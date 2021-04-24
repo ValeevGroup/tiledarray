@@ -1,0 +1,4 @@
+<map id="TiledArray::TiledRange::make_tile_range" name="TiledArray::TiledRange::make_tile_range">
+<area shape="rect" id="node1" title="Construct a range for the tile indexed by the given ordinal index." alt="" coords="5,5,175,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tiled_range.html#a1980b233eaa1fc559b62cc8affc2bd34" title="Access the tile range." alt="" coords="223,5,392,47"/>
+</map>

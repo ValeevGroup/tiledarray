@@ -1,0 +1,4 @@
+<map id="TiledArray::congruent" name="TiledArray::congruent">
+<area shape="rect" id="node1" title="Test if the two ranges are congruent." alt="" coords="5,5,167,32"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#ad03979f84fd9f2823892518870a3c779" title="Test that two BlockRange objects are congruent." alt="" coords="215,5,393,32"/>
+</map>

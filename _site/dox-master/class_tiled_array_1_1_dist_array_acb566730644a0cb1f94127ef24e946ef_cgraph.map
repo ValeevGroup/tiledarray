@@ -1,0 +1,4 @@
+<map id="TiledArray::DistArray::owner" name="TiledArray::DistArray::owner">
+<area shape="rect" id="node1" title="Tile ownership." alt="" coords="5,5,163,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#aa2f991fbd8db5cfae1169165dcb3b959" title="Query a tile owner." alt="" coords="211,5,360,47"/>
+</map>

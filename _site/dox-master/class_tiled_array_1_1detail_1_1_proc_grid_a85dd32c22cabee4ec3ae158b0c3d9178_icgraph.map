@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::ProcGrid::proc_rows" name="TiledArray::detail::ProcGrid::proc_rows">
+<area shape="rect" id="node1" title="Process row count accessor." alt="" coords="191,5,349,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_summa.html#aeed429ea381f240951f5982d61c4597b" title="Get tile at index i." alt="" coords="5,5,143,47"/>
+</map>

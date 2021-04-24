@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::BinaryEvalImpl::get_tile" name="TiledArray::detail::BinaryEvalImpl::get_tile">
+<area shape="rect" id="node1" title="Get tile at index i." alt="" coords="265,5,452,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_binary_eval_impl.html#a9b6c4e3f406a909b0faffc3a9955422b" title="Discard a tile that is not needed." alt="" coords="5,5,217,47"/>
+</map>

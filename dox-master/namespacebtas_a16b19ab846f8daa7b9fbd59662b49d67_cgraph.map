@@ -1,0 +1,9 @@
+<map id="btas::permute" name="btas::permute">
+<area shape="rect" id="node1" title="Computes the result of applying bipartite permutation perm to arg." alt="" coords="5,111,119,138"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1expressions.html#aaa916053b01d4407e9bb64a5ac96be6c" title=" " alt="" coords="167,5,341,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1expressions.html#a50fd6f8e74b6034042951677d597e333" title=" " alt="" coords="167,71,341,112"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1expressions.html#ae15def585e8b19dc068c89dac450b901" title=" " alt="" coords="167,136,341,177"/>
+<area shape="rect" id="node5" href="$namespacebtas.html#a9d347f47ae661ba169686b9628a24ec2" title="Computes the result of applying permutation perm to arg." alt="" coords="197,202,311,229"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_permutation.html#a770e0ad314f1483ffa83a6c5175a2ce2" title="Permutation data accessor." alt="" coords="403,165,579,207"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_permutation.html#a19553c4f16c0931beab9fbbdbe3407cf" title="Construct the inverse of this permutation." alt="" coords="389,231,593,258"/>
+</map>

@@ -1,0 +1,14 @@
+<map id="TiledArray::detail::tensor_reduce" name="TiledArray::detail::tensor_reduce">
+<area shape="rect" id="node1" title="Reduction operation for contiguous tensors." alt="" coords="5,123,139,164"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#a2b25c9db0387e3327718de2cbc9112c6" title="Test for empty tensors in an empty list." alt="" coords="223,5,356,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1symmetry.html#ab88cc83a558d388cedeec00d2457827d" title="identity for group of objects of type T" alt="" coords="450,85,613,127"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1detail.html#a0d75a0a0d43e9a5d8beec072cdbe678c" title="Test that the ranges of a permuted tensor is congruent with itself." alt="" coords="197,123,381,164"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array_1_1math.html#a31eade2ac2d813846fc814cdc9238a10" title=" " alt="" coords="187,189,392,215"/>
+<area shape="rect" id="node10" href="$namespace_tiled_array.html#aea673bd36f494b9b4c040ea0e09c00bd" title=" " alt="" coords="217,246,362,273"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array_1_1math.html#ad9f624a1f3753b2b2f03c88c80eec453" title=" " alt="" coords="440,173,623,215"/>
+<area shape="rect" id="node7" href="$namespace_tiled_array_1_1math.html#aadfeae00d061d08d80824c75f5c1855c" title=" " alt="" coords="671,140,853,181"/>
+<area shape="rect" id="node9" href="$namespace_tiled_array_1_1math.html#ad4c48eda75480eb3d3d267635eed78bb" title=" " alt="" coords="671,205,853,247"/>
+<area shape="rect" id="node8" href="$struct_tiled_array_1_1math_1_1_vector_op_unwind.html#a4efdedd3c89d0f2be14659b59a6acfb7" title=" " alt="" coords="901,140,1080,181"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1_dist_array.html#a911b5f4183473c9c9300c370b90374df" title="Returns the number of tiles in the tensor." alt="" coords="453,239,610,280"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="453,304,610,345"/>
+</map>

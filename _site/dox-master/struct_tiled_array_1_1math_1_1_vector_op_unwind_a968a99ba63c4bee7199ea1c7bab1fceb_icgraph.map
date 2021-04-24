@@ -1,0 +1,15 @@
+<map id="TiledArray::math::VectorOpUnwind::gather" name="TiledArray::math::VectorOpUnwind::gather">
+<area shape="rect" id="node1" title=" " alt="" coords="913,129,1092,171"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1math.html#a9e1b4b91971f158442e36a9172045a83" title=" " alt="" coords="685,129,865,171"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1math.html#a9f1007e79aa7792c2036a82d5124f7f5" title="Reduce the columns of a matrix." alt="" coords="461,5,619,47"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1math_1_1_block.html#a25325c8f4acbdd450cb8b7bf298a117b" title=" " alt="" coords="453,71,627,112"/>
+<area shape="rect" id="node7" href="$namespace_tiled_array_1_1math.html#a79f23f474e674e836e56de43b7357d60" title="Compute the outer of x and y to modify a." alt="" coords="454,137,626,163"/>
+<area shape="rect" id="node10" href="$namespace_tiled_array_1_1math.html#a649f7b79a81def375d481ecf773e25a1" title="Compute the outer of x, y, and a, and store the result in b." alt="" coords="443,187,637,214"/>
+<area shape="rect" id="node11" href="$namespace_tiled_array_1_1math.html#a5acd091094a00c0418ade7e1f6bc38a4" title="Reduce the rows of a matrix." alt="" coords="459,239,621,280"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1detail_1_1_size_array.html#a0bfe643fa49af010cdf17918b279294f" title="Column reduce operation." alt="" coords="223,5,392,47"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_val_array.html#af6bd2b2b66b41199ad48194bfe13c16c" title="Reduce column operation." alt="" coords="7,5,170,47"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1detail_1_1_size_array.html#a9b3dda799f523dfcb72132c8624cc624" title="Outer operation." alt="" coords="241,129,374,171"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1detail_1_1_val_array.html#aeb7b31eb82314fafbfd4b7806e61bb5d" title="Outer operation." alt="" coords="22,129,155,171"/>
+<area shape="rect" id="node12" href="$class_tiled_array_1_1detail_1_1_size_array.html#ada0bc07b5eea703ee594cf03657e8407" title="Row reduce operation." alt="" coords="220,239,395,280"/>
+<area shape="rect" id="node13" href="$class_tiled_array_1_1detail_1_1_val_array.html#a2e5b79e6666b7cc88443bde033eec690" title="Reduce row operation." alt="" coords="5,239,172,280"/>
+</map>

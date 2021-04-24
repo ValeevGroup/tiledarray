@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::UnaryEvalImpl::get_tile" name="TiledArray::detail::UnaryEvalImpl::get_tile">
+<area shape="rect" id="node1" title="Get tile at index i." alt="" coords="263,5,445,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_unary_eval_impl.html#aa751dcaa95129e8a8bfe1c47579a2e81" title="Discard a tile that is not needed." alt="" coords="5,5,215,47"/>
+</map>

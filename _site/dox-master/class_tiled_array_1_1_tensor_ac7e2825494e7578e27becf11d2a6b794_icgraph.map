@@ -1,0 +1,12 @@
+<map id="TiledArray::Tensor::reduce" name="TiledArray::Tensor::reduce">
+<area shape="rect" id="node1" title="Unary reduction operation." alt="" coords="279,283,417,324"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tensor.html#a5f7a6a051f5d87261a8b71a078d68624" title="Absolute maximum element." alt="" coords="23,5,213,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tensor.html#ae6914ca99f535592a4477df637511b58" title="Absolute minimum element." alt="" coords="25,71,211,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_tensor.html#a33d2d35f79fdf07d7c6878c89d8a9288" title="Vector dot (not inner!) product." alt="" coords="41,136,195,177"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_tensor.html#a82161c441a1caca56cb1a894c6ebc7b0" title="Vector inner product." alt="" coords="35,202,201,258"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_tensor.html#a92f492a7c588bc82c2fafc45519bdb6b" title="Maximum element." alt="" coords="37,283,199,324"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_tensor.html#a8a22a994aafd87df8d012ddce92bad3a" title="Minimum element." alt="" coords="39,348,197,389"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1_tensor.html#af5f4315e4e0cdef9beb147ce929c5db7" title="Product of elements." alt="" coords="27,413,209,455"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1_tensor.html#a47757d8cd5015280a09ee20f453c86c2" title="Square of vector 2&#45;norm." alt="" coords="5,479,231,520"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1_tensor.html#a31122a03a46628005e60ed0ad1494f14" title="Sum of elements." alt="" coords="38,544,198,585"/>
+</map>

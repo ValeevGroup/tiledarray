@@ -1,0 +1,5 @@
+<map id="TiledArray::truncate" name="TiledArray::truncate">
+<area shape="rect" id="node1" title="Truncate a sparse Array." alt="" coords="5,35,156,61"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#gaf68ae245fa13091be35fcc8cad8b2ba6" title="Vector 2&#45;norm of a tile." alt="" coords="217,5,348,32"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_dist_array.html#a1464487f0736a9c87b365ca2de8dab29" title="World accessor." alt="" coords="204,57,361,98"/>
+</map>

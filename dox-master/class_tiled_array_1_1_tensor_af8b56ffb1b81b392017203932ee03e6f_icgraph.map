@@ -1,0 +1,4 @@
+<map id="TiledArray::Tensor::block" name="TiledArray::Tensor::block">
+<area shape="rect" id="node1" title="Constructs a view of the block defined by lower_bound and upper_bound." alt="" coords="233,5,372,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_sparse_shape.html#afc63decd7b2f8c09274229cd0d69cf84" title="Creates a copy of this with a sub&#45;block updated with contents of another shape." alt="" coords="5,5,185,47"/>
+</map>

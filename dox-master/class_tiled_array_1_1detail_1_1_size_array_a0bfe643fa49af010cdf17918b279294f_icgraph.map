@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::SizeArray::col_reduce" name="TiledArray::detail::SizeArray::col_reduce">
+<area shape="rect" id="node1" title="Column reduce operation." alt="" coords="216,5,385,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_val_array.html#af6bd2b2b66b41199ad48194bfe13c16c" title="Reduce column operation." alt="" coords="5,5,168,47"/>
+</map>

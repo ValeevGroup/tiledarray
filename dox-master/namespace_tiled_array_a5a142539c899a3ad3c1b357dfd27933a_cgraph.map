@@ -1,0 +1,5 @@
+<map id="TiledArray::operator*" name="TiledArray::operator*">
+<area shape="rect" id="node1" title="permute a boost::container::small_vector&lt;T&gt;" alt="" coords="5,46,164,73"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#a2cd1e7c394cfe8c14fe1419e4320b97d" title="Create a permuted copy of an array." alt="" coords="233,5,367,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_permutation.html#aacb3f970f21779e9a6c2024790dc7270" title="Domain size accessor." alt="" coords="212,71,388,112"/>
+</map>

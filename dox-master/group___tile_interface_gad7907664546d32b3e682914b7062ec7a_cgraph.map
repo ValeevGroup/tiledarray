@@ -1,0 +1,5 @@
+<map id="TiledArray::conj" name="TiledArray::conj">
+<area shape="rect" id="node1" title="Create a complex conjugated, scaled, and permuted copy of a tile." alt="" coords="5,31,128,57"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#ga4d7a9a1250ba51b27addd91171a1c77f" title="Create a complex conjugated copy of a tile." alt="" coords="176,5,299,32"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="347,23,480,65"/>
+</map>

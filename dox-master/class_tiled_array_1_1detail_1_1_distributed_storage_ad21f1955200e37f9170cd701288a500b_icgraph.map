@@ -1,0 +1,5 @@
+<map id="TiledArray::detail::DistributedStorage::is_local" name="TiledArray::detail::DistributedStorage::is_local">
+<area shape="rect" id="node1" title="Local element query." alt="" coords="207,45,359,101"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#a1f2ed572953ea119f4cfb8505fca50b6" title="Get local or remote element." alt="" coords="5,5,159,61"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#aa74a42e37342f0c2a80f623ac077266e" title="Set element i with value." alt="" coords="6,85,158,141"/>
+</map>

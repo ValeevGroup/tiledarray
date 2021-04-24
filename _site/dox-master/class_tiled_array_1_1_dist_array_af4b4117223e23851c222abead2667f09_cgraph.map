@@ -1,0 +1,4 @@
+<map id="TiledArray::DistArray::truncate" name="TiledArray::DistArray::truncate">
+<area shape="rect" id="node1" title="Update shape data and remove tiles that are below the zero threshold." alt="" coords="5,5,163,47"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#aa0af128d43db2c62731b3f789ce7d614" title="Truncate a dense Array." alt="" coords="211,13,361,39"/>
+</map>

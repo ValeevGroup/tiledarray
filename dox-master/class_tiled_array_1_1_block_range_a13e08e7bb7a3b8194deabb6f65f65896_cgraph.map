@@ -1,0 +1,8 @@
+<map id="TiledArray::BlockRange::ordinal" name="TiledArray::BlockRange::ordinal">
+<area shape="rect" id="node1" title=" " alt="" coords="5,39,179,80"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_range.html#ab9c09b84ef48f256ae09c542a4f9e1e3" title="calculate the ordinal index of i" alt="" coords="227,39,372,80"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_range.html#a5a4793ce1597fbfd2bd9d7330d1e035d" title="Check the coordinate to make sure it is within the range." alt="" coords="420,39,565,80"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_range.html#ac1fe1f599524763265207c84e909dd15" title="Range lower bound data accessor." alt="" coords="613,5,759,47"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_range.html#a7ee2666c973a1cc4a17845f6a410dbe9" title="Range upper bound data accessor." alt="" coords="613,71,759,112"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_range.html#a2208a1aeda0c14164e2689ee284aace2" title=" " alt="" coords="807,46,981,73"/>
+</map>

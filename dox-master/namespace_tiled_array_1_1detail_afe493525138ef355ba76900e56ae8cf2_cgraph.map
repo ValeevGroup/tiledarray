@@ -1,0 +1,5 @@
+<map id="TiledArray::detail::counted_tensor_to_eigen_submatrix" name="TiledArray::detail::counted_tensor_to_eigen_submatrix">
+<area shape="rect" id="node1" title="Task function for assigning a tensor to an Eigen submatrix." alt="" coords="5,5,156,61"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a3f423f82e222f193a882c9ea1cb7567f" title="Copy the content of a tensor into an Eigen matrix block." alt="" coords="204,13,363,54"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#a03e3bc36192ae1bb9b4f6e3da001023a" title="Construct a const Eigen::Map object for a given Tensor object." alt="" coords="411,20,579,47"/>
+</map>

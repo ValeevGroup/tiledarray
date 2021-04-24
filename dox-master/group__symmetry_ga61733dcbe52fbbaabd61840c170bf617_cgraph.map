@@ -1,0 +1,5 @@
+<map id="TiledArray::symmetry::operator==" name="TiledArray::symmetry::operator==">
+<area shape="rect" id="node1" title="PermutationGroup equality operator." alt="" coords="5,39,168,80"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1symmetry_1_1_permutation_group.html#ac678ad44fa8c495cb9f20042bf514a13" title="Elements vector accessor." alt="" coords="216,5,435,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1symmetry_1_1_permutation_group.html#a7cf3b6cfa0e031ba3df8f8f78c4f41f7" title="Group order accessor." alt="" coords="230,71,421,112"/>
+</map>

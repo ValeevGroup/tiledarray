@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::is_range_congruent" name="TiledArray::detail::is_range_congruent">
+<area shape="rect" id="node1" title="Check for congruent range objects with a shifted tensor." alt="" coords="5,5,163,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_shift_wrapper.html#a1d098067185016b50f5f7670e9a29bc4" title="Tensor type conversion operator." alt="" coords="211,5,369,47"/>
+</map>

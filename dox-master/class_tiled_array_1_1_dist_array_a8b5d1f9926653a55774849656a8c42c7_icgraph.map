@@ -1,0 +1,4 @@
+<map id="TiledArray::DistArray::is_local" name="TiledArray::DistArray::is_local">
+<area shape="rect" id="node1" title="Check if the tile at index i is stored locally." alt="" coords="232,5,389,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_array_eval_impl.html#a23c05e7c00e15b4e55f6e29e0d56496a" title="Get tile at index i." alt="" coords="5,5,184,47"/>
+</map>

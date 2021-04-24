@@ -1,0 +1,7 @@
+<map id="TiledArray::expressions::Expr::dot" name="TiledArray::expressions::Expr::dot">
+<area shape="rect" id="node1" title=" " alt="" coords="476,61,651,102"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a1e4ffd2673648a15c05d1380f0be0079" title=" " alt="" coords="273,35,391,61"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1expressions_1_1_expr.html#a1cefb485ec42608b0c78a0d91316fb58" title=" " alt="" coords="236,85,428,141"/>
+<area shape="rect" id="node3" href="$group___tile_interface.html#gaf71813b13896a29698efff4232719d70" title="Vector dot product of a tile." alt="" coords="38,5,155,32"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_dot_reduction.html#ae9f6343d37bfa088e4a28896cac26f7a" title=" " alt="" coords="5,57,188,98"/>
+</map>

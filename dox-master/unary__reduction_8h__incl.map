@@ -1,0 +1,16 @@
+<map id="TiledArray/tile_op/unary_reduction.h" name="TiledArray/tile_op/unary_reduction.h">
+<area shape="rect" id="node1" title=" " alt="" coords="185,5,328,47"/>
+<area shape="rect" id="node2" href="$trace_8h.html" title=" " alt="" coords="77,95,255,136"/>
+<area shape="rect" id="node4" href="$tile__interface_8h.html" title=" " alt="" coords="309,95,447,136"/>
+<area shape="rect" id="node3" title=" " alt="" coords="5,273,97,300"/>
+<area shape="rect" id="node5" href="$tensor_2type__traits_8h.html" title=" " alt="" coords="152,184,319,225"/>
+<area shape="rect" id="node7" href="$type__traits_8h.html" title=" " alt="" coords="291,273,465,300"/>
+<area shape="rect" id="node11" title=" " alt="" coords="617,348,688,375"/>
+<area shape="rect" id="node14" title=" " alt="" coords="541,191,604,218"/>
+<area shape="rect" id="node6" title=" " alt="" coords="122,273,266,300"/>
+<area shape="rect" id="node8" title=" " alt="" coords="41,348,110,375"/>
+<area shape="rect" id="node9" title=" " alt="" coords="135,348,213,375"/>
+<area shape="rect" id="node10" title=" " alt="" coords="237,348,324,375"/>
+<area shape="rect" id="node12" title=" " alt="" coords="348,348,408,375"/>
+<area shape="rect" id="node13" title=" " alt="" coords="433,348,593,375"/>
+</map>

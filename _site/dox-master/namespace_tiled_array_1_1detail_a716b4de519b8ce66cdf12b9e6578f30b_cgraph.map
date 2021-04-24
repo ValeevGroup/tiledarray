@@ -1,0 +1,13 @@
+<map id="TiledArray::detail::fuse_vector_of_shapes_tiles" name="TiledArray::detail::fuse_vector_of_shapes_tiles">
+<area shape="rect" id="node1" title="fuses the SparseShape objects of a tilewise&#45;round&#45;robin distributed vector of Arrays into single Spar..." alt="" coords="5,129,220,171"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tiled_range1.html#a804300d74a4872393801144e33ad9963" title="Returns an iterator to the first tile in the range." alt="" coords="281,5,458,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tensor.html#a9270d658412efce71cde14a4e9488664" title="Data direct access." alt="" coords="300,71,439,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_tiled_range.html#a42bfd3b3ccab2835c75af773050444b7" title="Accessor of the tiled range for one of the dimensions." alt="" coords="268,137,471,163"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array.html#afc51ed34e98a417052d745d91994de70" title=" " alt="" coords="308,187,431,214"/>
+<area shape="rect" id="node11" href="$class_tiled_array_1_1_tiled_range.html#a1980b233eaa1fc559b62cc8affc2bd34" title="Access the tile range." alt="" coords="285,239,454,280"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_tiled_range.html#ac8c1d53822fd3da51824e4d97a11dd2a" title="The rank accessor." alt="" coords="519,115,688,156"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_dist_array.html#a2978e91e67813dcd47b83864865e9134" title=" " alt="" coords="525,180,682,221"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="525,245,682,287"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a375267701695c018c436a3f015f510e0" title="Tensor tile volume accessor." alt="" coords="744,180,879,221"/>
+<area shape="rect" id="node10" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a1a16c42818cf3c0174187604ed457e79" title="Tiled range accessor." alt="" coords="736,245,887,287"/>
+</map>

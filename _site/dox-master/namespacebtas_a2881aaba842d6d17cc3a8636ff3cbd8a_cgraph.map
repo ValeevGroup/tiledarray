@@ -1,0 +1,5 @@
+<map id="btas::shift" name="btas::shift">
+<area shape="rect" id="node1" title="Shift the range of arg." alt="" coords="5,31,92,57"/>
+<area shape="rect" id="node2" href="$namespacebtas.html#ac6013e307524f065e93c88e84ce48f31" title="Computes the result of applying permutation perm to arg." alt="" coords="147,5,240,32"/>
+<area shape="rect" id="node3" href="$namespacebtas.html#a9dd3f5ebc6a1243870bb4b56a0a9536f" title="Shift the range of arg in place." alt="" coords="140,56,247,83"/>
+</map>

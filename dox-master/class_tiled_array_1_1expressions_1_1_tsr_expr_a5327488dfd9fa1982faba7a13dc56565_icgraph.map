@@ -1,0 +1,9 @@
+<map id="TiledArray::expressions::TsrExpr::annotation" name="TiledArray::expressions::TsrExpr::annotation">
+<area shape="rect" id="node1" title="Tensor annotation accessor." alt="" coords="245,181,420,223"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1expressions.html#abf6f4325728a2dc2fa0b455a9849cf28" title="Conjugated tensor expression factory." alt="" coords="14,5,189,47"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1expressions.html#a7d9da5950dc1d059d338cc95d53ef9f7" title=" " alt="" coords="14,71,189,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1expressions_1_1_expr.html#a7ee981b74753b06503d84a87f6118b96" title="Evaluate this object and assign it to tsr." alt="" coords="5,137,197,193"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array_1_1expressions.html#aecbbec5c02266d34aab22d0f563d6520" title="Scaled&#45;tensor expression factor." alt="" coords="14,217,189,259"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array_1_1expressions.html#a27073108cbe3377a89810963c592bd60" title="Negated&#45;tensor expression factor." alt="" coords="14,283,189,324"/>
+<area shape="rect" id="node7" href="$namespace_tiled_array_1_1expressions.html#a15b36ae1afd5bba0736e0f2cf9faad9c" title="Expression trace factory function." alt="" coords="14,348,189,389"/>
+</map>

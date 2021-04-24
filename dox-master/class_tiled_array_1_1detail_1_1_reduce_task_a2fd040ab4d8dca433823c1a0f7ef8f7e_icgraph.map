@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::ReduceTask::submit" name="TiledArray::detail::ReduceTask::submit">
+<area shape="rect" id="node1" title="Submit the reduction task to the task queue." alt="" coords="245,13,405,54"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1expressions_1_1_expr.html#a6a0051e5efeb0d6cfb33edf84c69209a" title=" " alt="" coords="5,5,197,61"/>
+</map>

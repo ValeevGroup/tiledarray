@@ -1,0 +1,8 @@
+<map id="TiledArray::symmetry::Permutation::domain_size" name="TiledArray::symmetry::Permutation::domain_size">
+<area shape="rect" id="node1" title="Permutation domain size." alt="" coords="435,39,635,80"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1symmetry.html#a75815606db9d438c3d2dd1b9f8dcb493" title="Permutation equality operator." alt="" coords="220,5,383,47"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1symmetry_1_1detail.html#ac331378e2e95af5ef0b824a9b8cc7225" title="Create a permuted copy of an array." alt="" coords="216,71,387,112"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array_1_1symmetry.html#a292bd9400b83f487689c5ae5a96b2563" title="Permutation inequality operator." alt="" coords="5,5,168,47"/>
+<area shape="rect" id="node5" href="$namespace_tiled_array_1_1symmetry.html#ad897b7e61e7cbef5aad6393f4fe00f29" title="Permute a std::array." alt="" coords="5,71,168,112"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array_1_1symmetry.html#a4ab4c8f86a1a412a364d61a122f175c1" title="In&#45;place permute a std::array." alt="" coords="5,136,168,177"/>
+</map>

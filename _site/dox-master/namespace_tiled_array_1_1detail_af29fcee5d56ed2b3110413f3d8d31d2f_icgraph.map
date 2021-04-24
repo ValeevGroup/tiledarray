@@ -1,0 +1,4 @@
+<map id="TiledArray::detail::subshape_from_fused_tile" name="TiledArray::detail::subshape_from_fused_tile">
+<area shape="rect" id="node1" title="extracts the shape of a slice of a fused array created with fuse_vector_of_arrays" alt="" coords="207,5,408,47"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#a40ec22d8c4caa8f1662a6c124430e802" title="extracts a subarray of a fused array created with fuse_vector_of_arrays and creates the array in loca..." alt="" coords="5,5,159,47"/>
+</map>

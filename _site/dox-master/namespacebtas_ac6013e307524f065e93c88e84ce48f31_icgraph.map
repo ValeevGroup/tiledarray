@@ -1,0 +1,4 @@
+<map id="btas::clone" name="btas::clone">
+<area shape="rect" id="node1" title="Computes the result of applying permutation perm to arg." alt="" coords="140,5,233,32"/>
+<area shape="rect" id="node2" href="$namespacebtas.html#a2881aaba842d6d17cc3a8636ff3cbd8a" title="Shift the range of arg." alt="" coords="5,5,92,32"/>
+</map>

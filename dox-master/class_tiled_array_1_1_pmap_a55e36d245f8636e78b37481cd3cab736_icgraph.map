@@ -1,0 +1,6 @@
+<map id="TiledArray::Pmap::is_local" name="TiledArray::Pmap::is_local">
+<area shape="rect" id="node1" title="Check that the tile is owned by this process." alt="" coords="244,93,396,134"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#a654459493f4460bc5341fc1a41521ae3" title="Get local element." alt="" coords="5,5,196,61"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_distributed_storage.html#ad21f1955200e37f9170cd701288a500b" title="Local element query." alt="" coords="10,85,191,141"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_pmap_1_1_iterator.html#a33aa62fa9ebd71e32a9bfa367661200e" title="Creates an iterator of an integer range [begin_idx,end_idx)" alt="" coords="6,166,195,207"/>
+</map>

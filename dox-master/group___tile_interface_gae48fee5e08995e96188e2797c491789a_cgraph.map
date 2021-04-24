@@ -1,0 +1,5 @@
+<map id="TiledArray::subt" name="TiledArray::subt">
+<area shape="rect" id="node1" title="Subtract, scale, and permute tile arguments." alt="" coords="5,13,129,39"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="349,5,483,47"/>
+<area shape="rect" id="node3" href="$group___tile_interface.html#ga58d10685bc8b980fed30a5e64db19caa" title="Subtract tile arguments." alt="" coords="177,38,301,65"/>
+</map>

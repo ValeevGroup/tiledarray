@@ -1,0 +1,7 @@
+<map id="TiledArray::Tensor::unary" name="TiledArray::Tensor::unary">
+<area shape="rect" id="node1" title="Use a unary, element wise operation to construct a new tensor." alt="" coords="233,104,372,145"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tensor.html#a5aa248d8fc5421a3403e9eee7e47fc4a" title="Add a constant to a copy of this tensor." alt="" coords="17,5,173,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_tensor.html#a90085facd751fa8fd4eff4aa4b1d73ef" title="Create a negated copy of this tensor." alt="" coords="17,71,173,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_tensor.html#a199903e3d39e1eaa85f6f3a582bde77e" title="Construct a scaled copy of this tensor." alt="" coords="12,136,179,177"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_sparse_shape.html#af975f8a8fc399cc06de4394a8845cde8" title="Scale shape." alt="" coords="5,201,185,243"/>
+</map>

@@ -1,0 +1,9 @@
+<map id="TiledArray::Range::inplace_shift" name="TiledArray::Range::inplace_shift">
+<area shape="rect" id="node1" title="Shift the lower and upper bound of this range." alt="" coords="5,71,151,112"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_range.html#a1bf48d11be5cc79eb0a2e55653c870fe" title=" " alt="" coords="392,5,537,47"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_range.html#a6dc4ec3890d4f27bd8028bdbee34b7ce" title="Range stride accessor." alt="" coords="199,71,344,112"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1_range.html#a53a6014241a50268616cc372cc6e2915" title=" " alt="" coords="585,129,731,171"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1_range.html#a2208a1aeda0c14164e2689ee284aace2" title=" " alt="" coords="779,71,953,98"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_range.html#a2523a775f51d85652316b03a83492db1" title="Range stride data accessor." alt="" coords="392,71,537,112"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_range.html#ad3a6a74a7146b195f299c49c843b6fa5" title="Range extent data accessor." alt="" coords="585,64,731,105"/>
+</map>

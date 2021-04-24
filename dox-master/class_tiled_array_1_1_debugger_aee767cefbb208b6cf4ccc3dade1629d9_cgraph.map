@@ -1,0 +1,4 @@
+<map id="TiledArray::Debugger::set_prefix" name="TiledArray::Debugger::set_prefix">
+<area shape="rect" id="node1" title="Set the prefix to the decimal represention of p followed by a &quot;: &quot;." alt="" coords="5,5,164,47"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_debugger.html#a21e68ef2be69db78cad4f0e181f1c701" title="This sets a prefix which preceeds all messages printing by Debugger." alt="" coords="212,5,371,47"/>
+</map>

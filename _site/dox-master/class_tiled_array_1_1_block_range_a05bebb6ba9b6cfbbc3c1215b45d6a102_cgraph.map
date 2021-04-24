@@ -1,0 +1,11 @@
+<map id="TiledArray::BlockRange::ordinal" name="TiledArray::BlockRange::ordinal">
+<area shape="rect" id="node1" title="calculate the coordinate index of the ordinal index, index." alt="" coords="5,68,179,109"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_range.html#a5a4793ce1597fbfd2bd9d7330d1e035d" title="Check the coordinate to make sure it is within the range." alt="" coords="227,9,372,51"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#afc51ed34e98a417052d745d91994de70" title=" " alt="" coords="431,46,554,73"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1_range.html#aa7e02abf182f849d3f95842ca3574161" title="Range stride accessor." alt="" coords="227,127,372,168"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1_dist_array.html#a2978e91e67813dcd47b83864865e9134" title=" " alt="" coords="613,5,771,47"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_dist_array.html#a973ef7e8f216f744271ea4a8cd5ae8ae" title="Tiled range accessor." alt="" coords="613,71,771,112"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a375267701695c018c436a3f015f510e0" title="Tensor tile volume accessor." alt="" coords="827,5,961,47"/>
+<area shape="rect" id="node7" href="$class_tiled_array_1_1detail_1_1_tensor_impl.html#a1a16c42818cf3c0174187604ed457e79" title="Tiled range accessor." alt="" coords="819,71,969,112"/>
+<area shape="rect" id="node9" href="$class_tiled_array_1_1_range.html#a72b4e14fa4aeb70240cd6617ef7fcdb3" title="Range stride data accessor." alt="" coords="420,127,565,168"/>
+</map>

@@ -1,0 +1,4 @@
+<map id="TiledArray::row_major_buffer_to_array" name="TiledArray::row_major_buffer_to_array">
+<area shape="rect" id="node1" title="Convert a row&#45;major matrix buffer into an Array object." alt="" coords="5,5,171,47"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array.html#acc20cb6cde49d2af9af3312a0309f540" title="Convert an Eigen matrix into an Array object." alt="" coords="219,5,371,47"/>
+</map>

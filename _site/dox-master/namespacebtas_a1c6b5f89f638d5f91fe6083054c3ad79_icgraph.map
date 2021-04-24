@@ -1,0 +1,29 @@
+<map id="btas::make_ti" name="btas::make_ti">
+<area shape="rect" id="node1" title=" " alt="" coords="464,563,575,589"/>
+<area shape="rect" id="node2" href="$namespacebtas.html#a8842ba1c9128b053bdaed6d8823c40f5" title=" " alt="" coords="282,5,399,32"/>
+<area shape="rect" id="node3" href="$namespacebtas.html#a011e6890597bd1bc673dd033f509f2ca" title=" " alt="" coords="284,56,397,83"/>
+<area shape="rect" id="node4" href="$namespacebtas.html#ae5d3f3f0f6ac8f4c087427715ffdd1ff" title="result[i] = arg1[i] + arg2[i]" alt="" coords="299,107,382,133"/>
+<area shape="rect" id="node7" href="$namespacebtas.html#aee4759a861155cd658b0062ebe2a5937" title="result[i] += arg[i]" alt="" coords="289,157,392,184"/>
+<area shape="rect" id="node8" href="$namespacebtas.html#ab0424d321d2d50f00a9906ccec0bcda8" title=" " alt="" coords="298,208,383,235"/>
+<area shape="rect" id="node9" href="$namespacebtas.html#aada6663e3bd192ab8b4683c05a9d7445" title=" " alt="" coords="288,259,393,285"/>
+<area shape="rect" id="node10" href="$namespacebtas.html#a76161ff72f9bc2a7002cd786e6b5f80c" title=" " alt="" coords="301,309,380,336"/>
+<area shape="rect" id="node11" href="$namespacebtas.html#a387dd50286853db018260a9e1535c6f3" title=" " alt="" coords="267,360,414,387"/>
+<area shape="rect" id="node12" href="$namespacebtas.html#a5a2fc600878e76cc51b31a92bff9e780" title=" " alt="" coords="297,411,384,437"/>
+<area shape="rect" id="node13" href="$namespacebtas.html#ad12da8ea3364d1a0136262cc43f5e599" title=" " alt="" coords="299,461,382,488"/>
+<area shape="rect" id="node14" href="$namespacebtas.html#ad59655f519cac7f5bc8d74c18f71a125" title="result[i] = arg1[i] * arg2[i]" alt="" coords="297,512,385,539"/>
+<area shape="rect" id="node15" href="$namespacebtas.html#ab9ad5c400e784d48c3ee0911322f3b7a" title="result[i] *= arg[i]" alt="" coords="287,563,395,589"/>
+<area shape="rect" id="node16" href="$namespacebtas.html#aa0f6059a48415009d2661ec3dd8da7b9" title=" " alt="" coords="299,613,382,640"/>
+<area shape="rect" id="node17" href="$namespacebtas.html#a7d2dea3215eb090cf7b07f370700d6be" title=" " alt="" coords="289,664,392,691"/>
+<area shape="rect" id="node18" href="$namespacebtas.html#ad0298cfb7a12544d3151419df226221d" title=" " alt="" coords="295,715,387,741"/>
+<area shape="rect" id="node20" href="$namespacebtas.html#a9d347f47ae661ba169686b9628a24ec2" title="Computes the result of applying permutation perm to arg." alt="" coords="284,765,397,792"/>
+<area shape="rect" id="node21" href="$namespacebtas.html#adcdae4cf3f6bd6bb75284323e1b10bd4" title=" " alt="" coords="287,816,394,843"/>
+<area shape="rect" id="node22" href="$namespacebtas.html#aed113eb8797085b43ad2793ac9e26b09" title=" " alt="" coords="295,867,387,893"/>
+<area shape="rect" id="node23" href="$namespacebtas.html#af12698466c68f4e1b35adedcd5a5a3bd" title=" " alt="" coords="285,917,397,944"/>
+<area shape="rect" id="node24" href="$namespacebtas.html#adabfb66846361deb01740e9a621e5127" title=" " alt="" coords="265,968,416,995"/>
+<area shape="rect" id="node25" href="$namespacebtas.html#a29d4129d4f0499fbb2f080d71f07fa03" title="result[i] = arg1[i] &#45; arg2[i]" alt="" coords="297,1019,384,1045"/>
+<area shape="rect" id="node26" href="$namespacebtas.html#ac839d2f32e4f2011111fee3fc4bab9aa" title="result[i] &#45;= arg[i]" alt="" coords="287,1069,394,1096"/>
+<area shape="rect" id="node27" href="$namespacebtas.html#a55be3a3fe2e9e2b93d1978f796e0b627" title=" " alt="" coords="297,1120,384,1147"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_sparse_shape.html#aee71616ddb1f299beef74fa2476480cb" title=" " alt="" coords="5,77,217,104"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_sparse_shape.html#a5f31be2ce146a510a303f4bd137f0ea5" title=" " alt="" coords="21,129,201,170"/>
+<area shape="rect" id="node19" href="$class_tiled_array_1_1_sparse_shape.html#a369e1a3d9a37069ede03c6726f0c6005" title=" " alt="" coords="21,707,201,749"/>
+</map>

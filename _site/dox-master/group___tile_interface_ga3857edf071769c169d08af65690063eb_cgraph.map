@@ -1,0 +1,4 @@
+<map id="TiledArray::subt_to" name="TiledArray::subt_to">
+<area shape="rect" id="node1" title="Subtract and scale from the result tile." alt="" coords="5,5,149,32"/>
+<area shape="rect" id="node2" href="$group___tile_interface.html#ga67b0fd498d81c2a5898673bcb0152934" title="Subtract from the result tile." alt="" coords="197,5,341,32"/>
+</map>

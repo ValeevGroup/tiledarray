@@ -1,0 +1,10 @@
+<map id="TiledArray::detail::ContractReduce&lt; Result, Left, Right, TiledArray::detail::ComplexConjugate&lt; void &gt; &gt;::operator()" name="TiledArray::detail::ContractReduce&lt; Result, Left, Right, TiledArray::detail::ComplexConjugate&lt; void &gt; &gt;::operator()">
+<area shape="rect" id="node1" title="Post processing step." alt="" coords="5,122,204,207"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#a32a7abe197b45ae95a4132fc240ed383" title="Wrapper function for std::conj" alt="" coords="289,5,422,47"/>
+<area shape="rect" id="node3" href="$group___tile_interface.html#ga4d7a9a1250ba51b27addd91171a1c77f" title="Create a complex conjugated copy of a tile." alt="" coords="294,71,417,98"/>
+<area shape="rect" id="node5" href="$group___tile_interface.html#ga5d755d58b153633beaf43d985aa64081" title="In&#45;place complex conjugate a tile." alt="" coords="284,122,427,149"/>
+<area shape="rect" id="node6" href="$namespace_tiled_array_1_1detail.html#a2b25c9db0387e3327718de2cbc9112c6" title="Test for empty tensors in an empty list." alt="" coords="289,173,422,215"/>
+<area shape="rect" id="node7" href="$group___tile_interface.html#gacd7e8d783c93f6a965a52cfc7124b6d0" title="Check that arg is empty (no data)" alt="" coords="286,239,425,266"/>
+<area shape="rect" id="node8" href="$class_tiled_array_1_1detail_1_1_contract_reduce_base.html#a81fc8ead7955d34aaca8e5318e0f38cf" title="Permutation accessor." alt="" coords="252,291,459,332"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="507,64,640,105"/>
+</map>

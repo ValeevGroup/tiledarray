@@ -1,0 +1,5 @@
+<map id="TiledArray::scale" name="TiledArray::scale">
+<area shape="rect" id="node1" title="Scale and permute tile argument." alt="" coords="5,13,136,39"/>
+<area shape="rect" id="node2" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="363,5,496,47"/>
+<area shape="rect" id="node3" href="$group___tile_interface.html#gaebe37fcda193946fcc4501b42796e9cc" title="Scalar the tile argument." alt="" coords="184,38,315,65"/>
+</map>

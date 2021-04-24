@@ -1,0 +1,5 @@
+<map id="TiledArray::min_reduce_cuda_kernel_impl" name="TiledArray::min_reduce_cuda_kernel_impl">
+<area shape="rect" id="node1" title=" " alt="" coords="5,27,177,69"/>
+<area shape="rect" id="node2" href="$kronecker__delta_8h.html#a08a5e38335a5bd02f089294968dfc391" title=" " alt="" coords="272,5,323,32"/>
+<area shape="rect" id="node3" href="$namespace_tiled_array.html#a3bc356474566d00f7de7b22b0ce8b108" title="T = reduce(T* arg)" alt="" coords="225,57,369,98"/>
+</map>

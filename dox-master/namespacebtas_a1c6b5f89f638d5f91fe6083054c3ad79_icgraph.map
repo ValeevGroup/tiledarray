@@ -1,0 +1,33 @@
+<map id="btas::make_ti" name="btas::make_ti">
+<area shape="rect" id="node1" title=" " alt="" coords="467,664,577,691"/>
+<area shape="rect" id="node2" href="$namespacebtas.html#aedcf0891512d793481b12cab9b1ae7f0" title=" " alt="" coords="283,5,401,32"/>
+<area shape="rect" id="node3" href="$namespacebtas.html#a2afd1872245aa4e457e9906bbe3a4b47" title=" " alt="" coords="285,56,399,83"/>
+<area shape="rect" id="node4" href="$namespacebtas.html#ae5d3f3f0f6ac8f4c087427715ffdd1ff" title="result[i] = arg1[i] + arg2[i]" alt="" coords="301,107,383,133"/>
+<area shape="rect" id="node7" href="$namespacebtas.html#aee4759a861155cd658b0062ebe2a5937" title="result[i] += arg[i]" alt="" coords="291,157,393,184"/>
+<area shape="rect" id="node8" href="$namespacebtas.html#a64b037d09f9f4552e0fdc6a7d29372fd" title=" " alt="" coords="293,208,391,235"/>
+<area shape="rect" id="node9" href="$namespacebtas.html#ab0424d321d2d50f00a9906ccec0bcda8" title=" " alt="" coords="299,259,385,285"/>
+<area shape="rect" id="node10" href="$namespacebtas.html#aada6663e3bd192ab8b4683c05a9d7445" title=" " alt="" coords="289,309,395,336"/>
+<area shape="rect" id="node11" href="$namespacebtas.html#a3a9aabc23b3730d308a84261f1ddf488" title=" " alt="" coords="303,360,381,387"/>
+<area shape="rect" id="node12" href="$namespacebtas.html#afab875748c09486abd26680f181ed24a" title=" " alt="" coords="269,411,415,437"/>
+<area shape="rect" id="node13" href="$namespacebtas.html#aae445d834ec9ec51ec32a74dba0c56bd" title=" " alt="" coords="265,461,419,488"/>
+<area shape="rect" id="node14" href="$namespacebtas.html#adf7481e5fe1b2ea9c4bfda2c0a9ba53c" title=" " alt="" coords="267,512,417,539"/>
+<area shape="rect" id="node15" href="$namespacebtas.html#ad6eadfcf22f2ac39234c7683f7bea464" title=" " alt="" coords="299,563,385,589"/>
+<area shape="rect" id="node16" href="$namespacebtas.html#a369afcc135629500af1b3a7888bc223d" title=" " alt="" coords="301,613,383,640"/>
+<area shape="rect" id="node17" href="$namespacebtas.html#ad59655f519cac7f5bc8d74c18f71a125" title="result[i] = arg1[i] * arg2[i]" alt="" coords="298,664,386,691"/>
+<area shape="rect" id="node18" href="$namespacebtas.html#ab9ad5c400e784d48c3ee0911322f3b7a" title="result[i] *= arg[i]" alt="" coords="288,715,396,741"/>
+<area shape="rect" id="node19" href="$namespacebtas.html#aa0f6059a48415009d2661ec3dd8da7b9" title=" " alt="" coords="301,765,383,792"/>
+<area shape="rect" id="node20" href="$namespacebtas.html#a7d2dea3215eb090cf7b07f370700d6be" title=" " alt="" coords="291,816,393,843"/>
+<area shape="rect" id="node21" href="$namespacebtas.html#aaa7a449c311972787c50617d5dc4e2f6" title=" " alt="" coords="296,867,388,893"/>
+<area shape="rect" id="node23" href="$namespacebtas.html#ae6c720e7b79ecf7742fc51c4df5f9d06" title=" " alt="" coords="275,917,409,944"/>
+<area shape="rect" id="node24" href="$namespacebtas.html#ad218893d683b0c4b07584fa1a2e5f84a" title=" " alt="" coords="289,968,395,995"/>
+<area shape="rect" id="node25" href="$namespacebtas.html#aed113eb8797085b43ad2793ac9e26b09" title=" " alt="" coords="296,1019,388,1045"/>
+<area shape="rect" id="node26" href="$namespacebtas.html#af12698466c68f4e1b35adedcd5a5a3bd" title=" " alt="" coords="286,1069,398,1096"/>
+<area shape="rect" id="node27" href="$namespacebtas.html#a35c901ba48760a5c6611b85597acb389" title=" " alt="" coords="267,1120,417,1147"/>
+<area shape="rect" id="node28" href="$namespacebtas.html#a29d4129d4f0499fbb2f080d71f07fa03" title="result[i] = arg1[i] &#45; arg2[i]" alt="" coords="299,1171,385,1197"/>
+<area shape="rect" id="node29" href="$namespacebtas.html#ac839d2f32e4f2011111fee3fc4bab9aa" title="result[i] &#45;= arg[i]" alt="" coords="289,1221,395,1248"/>
+<area shape="rect" id="node30" href="$namespacebtas.html#ade8a0b0a7388ce43278da2c4496f2d18" title=" " alt="" coords="299,1272,385,1299"/>
+<area shape="rect" id="node31" href="$namespacebtas.html#a59185b57ae243dfe9d4d1c16b606b7d7" title=" " alt="" coords="295,1323,389,1349"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1_sparse_shape.html#aee71616ddb1f299beef74fa2476480cb" title=" " alt="" coords="5,77,217,104"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_sparse_shape.html#a5f31be2ce146a510a303f4bd137f0ea5" title=" " alt="" coords="21,129,201,170"/>
+<area shape="rect" id="node22" href="$class_tiled_array_1_1_sparse_shape.html#a369e1a3d9a37069ede03c6726f0c6005" title=" " alt="" coords="21,859,201,901"/>
+</map>

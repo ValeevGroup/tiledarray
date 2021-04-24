@@ -1,0 +1,4 @@
+<map id="TiledArray::swap" name="TiledArray::swap">
+<area shape="rect" id="node1" title="Exchange the data of the two given ranges." alt="" coords="5,13,136,39"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1_tiled_range1.html#a6cceff1ac7cf448502e83993911e24a6" title="swapper" alt="" coords="184,5,361,47"/>
+</map>

@@ -1,0 +1,5 @@
+<map id="TiledArray::symmetry::detail::permute_array" name="TiledArray::symmetry::detail::permute_array">
+<area shape="rect" id="node1" title="Create a permuted copy of an array." alt="" coords="5,39,176,80"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1symmetry_1_1_permutation.html#afd92c66ea44090adb7efab12d9285ab7" title="Data accessor." alt="" coords="243,5,405,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1symmetry_1_1_permutation.html#aa8651f3f09e8df6137712ad1a9e32b2e" title="Permutation domain size." alt="" coords="224,71,424,112"/>
+</map>

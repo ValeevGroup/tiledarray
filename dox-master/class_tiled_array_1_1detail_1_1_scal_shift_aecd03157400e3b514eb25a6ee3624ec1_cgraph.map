@@ -1,0 +1,8 @@
+<map id="TiledArray::detail::ScalShift::operator()" name="TiledArray::detail::ScalShift::operator()">
+<area shape="rect" id="node1" title="Shift and permute operator." alt="" coords="5,35,164,76"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_scal_shift.html#ae3f1a18c88fa41d76e8e17cd7c8d6e36" title=" " alt="" coords="212,35,345,76"/>
+<area shape="rect" id="node3" href="$group___tile_interface.html#gaebe37fcda193946fcc4501b42796e9cc" title="Scalar the tile argument." alt="" coords="400,15,531,42"/>
+<area shape="rect" id="node5" href="$group___tile_interface.html#ga10e76f18a1f5bfd9efe378b1330c0e57" title="Shift the range of arg in place." alt="" coords="393,67,537,94"/>
+<area shape="rect" id="node4" href="$namespace_tiled_array_1_1detail.html#ada724a31400bb94f55097560394438de" title="Factory function for tiles." alt="" coords="603,5,737,47"/>
+<area shape="rect" id="node6" href="$class_tiled_array_1_1_tile.html#a0736062c5f5f96f07bcff8a302b2c372" title=" " alt="" coords="585,71,755,98"/>
+</map>

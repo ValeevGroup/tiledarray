@@ -1,0 +1,5 @@
+<map id="TiledArray::MinReduction&lt; Tile, typename std::enable_if&lt; detail::is_strictly_ordered&lt; detail::numeric_t&lt; Tile &gt; &gt;::value &gt;::type &gt;::operator()" name="TiledArray::MinReduction&lt; Tile, typename std::enable_if&lt; detail::is_strictly_ordered&lt; detail::numeric_t&lt; Tile &gt; &gt;::value &gt;::type &gt;::operator()">
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,229,91"/>
+<area shape="rect" id="node2" href="$kronecker__delta_8h.html#a5293a3b60a370d9ad5a058384c3485af" title=" " alt="" coords="315,9,361,36"/>
+<area shape="rect" id="node3" href="$group___tile_interface.html#gad4d977af50ab495f09a985dbfb871a3d" title="Minimum element of a tile." alt="" coords="277,60,399,87"/>
+</map>

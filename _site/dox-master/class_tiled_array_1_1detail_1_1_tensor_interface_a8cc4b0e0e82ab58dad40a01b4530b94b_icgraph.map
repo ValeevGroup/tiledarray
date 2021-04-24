@@ -1,0 +1,7 @@
+<map id="TiledArray::detail::TensorInterface::inplace_unary" name="TiledArray::detail::TensorInterface::inplace_unary">
+<area shape="rect" id="node1" title="Use a unary, element wise operation to modify this tensor." alt="" coords="479,71,708,112"/>
+<area shape="rect" id="node2" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a5c3cfbd8b10ff2801543f4584d753a5f" title="Add a constant to this tensor." alt="" coords="243,5,426,47"/>
+<area shape="rect" id="node3" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#ae8094e4b120557459a28f1f21513f774" title="Negate elements of this tensor." alt="" coords="243,71,426,112"/>
+<area shape="rect" id="node4" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#afdf25cc0015b6214fac0682074137d33" title="Scale this tensor." alt="" coords="239,136,431,177"/>
+<area shape="rect" id="node5" href="$class_tiled_array_1_1detail_1_1_tensor_interface.html#a176752a6002f24f0e378f27d94a8bba8" title="Complex conjugate this tensor." alt="" coords="5,136,191,177"/>
+</map>
