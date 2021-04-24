@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
   }
   if ((Nm % Bm) != 0ul || Nn % Bn != 0ul || Nk % Bk != 0ul) {
     std::cerr
-        << "Error: diminsion size must be evenly divisible by block size.\n";
+        << "Error: dimension size must be evenly divisible by block size.\n";
     return 1;
   }
   const long repeat = (argc >= 8 ? atol(argv[7]) : 5);
