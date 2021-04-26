@@ -90,7 +90,8 @@ class TiledRange {
   explicit TiledRange(const TRange1Range& range_of_trange1s)
       : range_(),
         elements_range_(),
-        ranges_(begin(range_of_trange1s), end(range_of_trange1s)) {
+        ranges_(std::begin(range_of_trange1s), std::end(range_of_trange1s))
+  {
     init();
   }
 
@@ -286,6 +287,10 @@ class TiledRange {
   }
 
   /// Tile dimension boundary array accessor
+
+  auto begin() const { return ranges_.begin(); }
+  auto end() const { return ranges_.end(); }
+  const auto& at(size_t idx) const { return ranges_.at(idx); }
 
   /// \return A reference to the array of Range1 objects.
   /// \throw nothing
