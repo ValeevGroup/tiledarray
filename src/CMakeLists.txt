@@ -178,6 +178,7 @@ TiledArray/util/index.cpp
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/random.h
+TiledArray/util/range.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
