@@ -23,7 +23,6 @@ jobs:
       CXX : ${{ matrix.cxx }}
       BUILD_CONFIG : >
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DTA_BUILD_UNITTEST=ON
         -DMPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
 
     steps:

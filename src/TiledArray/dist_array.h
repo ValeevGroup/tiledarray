@@ -1487,7 +1487,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// @warning this tests contents of @p vars using #TA_ASSERT() only if
   /// preprocessor macro @c NDEBUG is not defined
   void check_str_index(const std::string& vars) const {
-#ifndef NDEBUG
+#if (TA_ASSERT_POLICY != TA_ASSERT_IGNORE)
     // Only check indices if the PIMPL is initialized (okay to not initialize
     // the RHS of an equation)
     if (!is_initialized()) return;
@@ -1498,10 +1498,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     if (is_tot) {
       // Make sure the index is capable of being interpreted as a ToT index
       TA_ASSERT(detail::is_tot_index(vars));
-      const auto idx = detail::split_index(vars);
 
       // Rank of outer tiles must match number of outer indices
-      TA_ASSERT(idx.first.size() == rank);
+      // is_tot_index(vars) implies vars.find(';') < vars.size()
+      TA_ASSERT(std::count(vars.begin(), vars.begin() + vars.find(';'), ',') +
+                    1ul ==
+                rank);
 
       // Check inner index rank?
     } else {
@@ -1509,7 +1511,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       TA_ASSERT(!detail::is_tot_index(vars));
 
       // Number of indices must match rank
-      TA_ASSERT(detail::tokenize_index(vars, ',').size() == rank);
+      TA_ASSERT(std::count(vars.begin(), vars.end(), ',') + 1ul == rank);
     }
 #endif  // NDEBUG
   }
@@ -1638,6 +1640,14 @@ template <typename Tile, typename Policy>
 auto dot(const DistArray<Tile, Policy>& a, const DistArray<Tile, Policy>& b) {
   return (a(detail::dummy_annotation(rank(a)))
               .dot(b(detail::dummy_annotation(rank(b)))))
+      .get();
+}
+
+template <typename Tile, typename Policy>
+auto inner_product(const DistArray<Tile, Policy>& a,
+                   const DistArray<Tile, Policy>& b) {
+  return (a(detail::dummy_annotation(rank(a)))
+              .inner_product(b(detail::dummy_annotation(rank(b)))))
       .get();
 }
 
