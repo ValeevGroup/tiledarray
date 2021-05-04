@@ -286,7 +286,7 @@ class dist_subarray_vec
 /// @sa detail::fuse_vector_of_shapes_tiles
 /// TODO rename to fuse_tilewise_vector_of_arrays
 template <typename Tile, typename Policy>
-TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
+TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
     madness::World& global_world,
     const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
     const std::size_t fused_dim_extent,
