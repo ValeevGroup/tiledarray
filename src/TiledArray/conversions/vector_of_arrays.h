@@ -290,7 +290,7 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
     madness::World& global_world,
     const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
     const std::size_t fused_dim_extent,
-    const TiledArray::TiledRange& array_trange, std::size_t block_size = 1) {
+    const TiledArray::TiledRange& array_trange, std::size_t target_block_size = 1) {
   auto nproc = global_world.size();
 
   // make instances of array_vec globally accessible
@@ -298,6 +298,9 @@ TA::DistArray<Tile, Policy> fuse_vector_of_arrays_tiles(
   detail::dist_subarray_vec<Array> arrays(global_world, array_vec,
                                           fused_dim_extent);
 
+    std::size_t nblocks =
+            (fused_dim_extent + target_block_size - 1) / target_block_size;
+    std::size_t block_size = (fused_dim_extent + nblocks - 1) / nblocks;
   // make fused tiledrange
   auto fused_trange =
       detail::prepend_dim_to_trange(fused_dim_extent, array_trange, block_size);
