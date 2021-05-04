@@ -289,8 +289,26 @@ detect_MADNESS_configuration()
 include(external/eigen.cmake)
 # use David Williams-Young's linear algebra discovery modules
 include("${vg_cmake_kit_SOURCE_DIR}/modules/FetchWfn91LinAlgModules.cmake")
-find_package(BLAS REQUIRED)
-find_package(LAPACK REQUIRED)
+if(ENABLE_SCALAPACK)
+  find_package(ScaLAPACK REQUIRED)
+  # Propagate ScaLAPACK -> BLAS/LAPACK if not set 
+  # (ScaLAPACK necessacarily contains a BLAS/LAPACK linker by standard)
+  # TODO: Tell David to write a macro that hides this verbosity from user space
+  if( NOT BLAS_LIBRARIES )
+    set( BLAS_LIBRARIES "${ScaLAPACK_LIBRARIES}" CACHE STRING "BLAS LIBRARIES" )
+  endif()
+  if( NOT LAPACK_LIBRARIES )
+    set( LAPACK_LIBRARIES "${ScaLAPACK_LIBRARIES}" CACHE STRING "LAPACK LIBRARIES" )
+  endif()
+else()
+  find_package(LAPACK REQUIRED)
+  # Propagate LAPACK -> BLAS if not set 
+  # (LAPACK necessacarily contains a BLAS linker by standard)
+  # TODO: Tell David to write a macro that hides this verbosity from user space
+  if( NOT BLAS_LIBRARIES )
+    set( BLAS_LIBRARIES "${LAPACK_LIBRARIES}" CACHE STRING "BLAS LIBRARIES" )
+  endif()
+endif()
 # BTAS does a better job of building and checking Boost since it uses Boost::serialization
 # it also memorized the location of its config for use from install tree
 include(FindOrFetchBTAS)
