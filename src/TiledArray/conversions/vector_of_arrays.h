@@ -284,7 +284,6 @@ class dist_subarray_vec
 /// tilewise-round-robin fashion.
 ///       The result will live in @c global_world.
 /// @sa detail::fuse_vector_of_shapes_tiles
-/// TODO rename to fuse_tilewise_vector_of_arrays
 template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
     madness::World& global_world,
@@ -391,9 +390,8 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
 /// @param[in] split_trange TiledRange of the split Array object
 /// @return the @c i -th subarray
 /// @sa detail::subshape_from_fused_tile
-/// TODO rename to split_tilewise_fused_array
 template <typename Tile, typename Policy>
-void subarray_from_fused_array(
+void split_tilewise_fused_array(
     madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
     std::size_t tile_idx,
     std::vector<TA::DistArray<Tile, Policy>>& split_arrays,
