@@ -40,4 +40,3 @@ repos:
                 files: \.(c|cc|cxx|cpp|h|hpp|hxx)$
                 entry: clang-format -i
                 args: [--style=file]
-                additional_dependencies: [clang-format]

@@ -16,7 +16,7 @@ else (TARGET range-v3::range-v3)
       BINARY_DIR RANGEV3_BINARY_DIR
       )
 
-  # set BTAS_CONFIG to the install location so that we know where to find it
+  # set range-v3_CONFIG to the install location so that we know where to find it
   set(range-v3_CONFIG ${CMAKE_INSTALL_PREFIX}/lib/cmake/range-v3/range-v3-config.cmake)
 
 endif(TARGET range-v3::range-v3)

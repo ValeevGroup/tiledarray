@@ -1,0 +1,97 @@
+#!/bin/bash
+
+set -e
+
+build_dir=""
+metrics=""
+
+var=" "
+targets=" "
+
+while [ $# -gt 0 ]; do
+  case $1 in
+    --build)   shift; build_dir=$1 ;;
+    --metrics) shift; metrics=$1 ;;
+    -*) echo "Invalid option $arg"; exit 1 ;;
+    CXX=*) eval "export $1" ;;
+    *=*)   vars+="\"-D$1\" "
+	   # NB unset vars from s.t. CMake doesn't see env vars, eg BLA_VENDOR
+           unset $(echo "$1" | cut -d= -f1)
+           ;;
+    *)     targets+="$1 ";;
+  esac
+  shift
+done
+
+if [ -z "$build_dir" ]; then
+    echo "--build <build-dir> is required"
+    exit 1
+fi
+
+xtime="/usr/bin/time"
+
+if [ -n "$metrics" ]; then
+    #sudo apt install time
+    if [ ! -x $xtime ]; then
+	echo >&2 "${xtime} is not executable, metrics disabled"
+	metrics=""
+    fi
+    rm -f "${metrics}"
+fi
+
+function time_cmd {
+    step=$1; shift
+    cmd="$@"
+    echo "+ $cmd"
+    if [ -n "$metrics" ]; then
+	format="'${step}.memory %Mk\n${step}.time %E\n'"
+	cmd="${xtime} -f ${format} -a -o $metrics $cmd"
+	#echo "$cmd"
+    fi
+    eval "$cmd"
+}
+
+function cmd {
+    echo "+ $@"
+    eval "$@"
+}
+
+# NB Gitlab section: https://docs.gitlab.com/ee/ci/jobs/#custom-collapsible-sections
+function section_start {
+    echo -e "section_start:`date +%s`:$1\r\e[0K$2"
+}
+
+function section_end {
+    echo -e "section_end:`date +%s`:$1\r\e[0K"
+}
+
+echo ""
+section_start "host_system_info[collapsed=true]" "Host system info"
+cmd "cmake -P ci/host_system_info.cmake"
+section_end host_system_info
+
+section_start "preparing_system_section[collapsed=true]" "Preparing system"
+cmd "source ci/openmpi.env"
+cmd "echo 'localhost slots=2' > /etc/openmpi/openmpi-default-hostfile"
+if [[ "$vars" =~ \"-DBLA_VENDOR=Intel ]]; then
+  cmd "make -C /home/ValeevGroup install/intel-mkl"
+  cmd "source /opt/intel/mkl/bin/mklvars.sh intel64"
+  cmd "echo MKLROOT=\$MKLROOT"
+fi
+if [[ "$vars" =~ \"-D([a-zA-Z]+_)?ENABLE_CUDA=(ON|TRUE|1|YES)\" ]]; then
+  cmd "make -C /home/ValeevGroup install/cuda"
+  cmd "export CUDACXX=/usr/local/cuda/bin/nvcc"
+fi
+section_end preparing_system_section
+
+section_start configure_section "Configure"
+cmd mkdir -p ${build_dir}
+time_cmd configure "cmake -B${build_dir} $vars"
+section_end configure_section
+
+for target in ${targets}; do
+  section_start build_${target}_section "Build ${target}"
+  time_cmd ${target} "cmake --build ${build_dir} --target ${target}"
+  section_end build_${target}_section
+done
+

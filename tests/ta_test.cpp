@@ -24,9 +24,8 @@
 #include "unit_test_config.h"
 
 #include <TiledArray/error.h>
-#ifndef TA_EXCEPTION_ERROR
-#error \
-    "TiledArray unit tests can only be built if CMake variable TA_ERROR is set of \"throw\""
+#if (TA_ASSERT_POLICY != TA_ASSERT_THROW)
+#error "TiledArray unit tests require TA_ASSERT_POLICY=TA_ASSERT_THROW"
 #endif
 
 GlobalFixture::GlobalFixture() {

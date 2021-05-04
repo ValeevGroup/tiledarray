@@ -26,6 +26,7 @@
 set(TILEDARRAY_HEADER_FILES
 tiledarray.h
 tiledarray_fwd.h
+TiledArray/fwd.h
 TiledArray/config.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
@@ -98,6 +99,7 @@ TiledArray/expressions/contraction_helpers.h
 TiledArray/expressions/expr.h
 TiledArray/expressions/expr_engine.h
 TiledArray/expressions/expr_trace.h
+TiledArray/expressions/fwd.h
 TiledArray/expressions/leaf_engine.h
 TiledArray/expressions/mult_engine.h
 TiledArray/expressions/mult_expr.h
@@ -177,7 +179,6 @@ TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/time.h
 TiledArray/util/vector.h
-
 )
 
 if(CUDA_FOUND)

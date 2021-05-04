@@ -53,8 +53,11 @@
 #endif
 
 
-/* Defines the default error checking behavior. none = 0, throw = 1, assert = 2, abort = 3 */
-#define TA_DEFAULT_ERROR @TA_DEFAULT_ERROR@
+/* Defines the default error checking behavior */
+#define TA_ASSERT_THROW 2
+#define TA_ASSERT_ABORT 3
+#define TA_ASSERT_IGNORE 4
+#define TA_ASSERT_POLICY @TA_ASSERT_POLICY@
 
 /* define if compiler supports long double, the value is sizeof(long double) */
 #cmakedefine TILEDARRAY_HAS_LONG_DOUBLE 1
@@ -69,7 +72,7 @@
 #cmakedefine TILEDARRAY_CACHELINE_SIZE @TILEDARRAY_CACHELINE_SIZE@
 
 /* Define if TA has enabled ScaLAPACK Bindings */
-#cmakedefine TILEDARRAY_HAS_SCALAPACK 1 
+#cmakedefine TILEDARRAY_HAS_SCALAPACK 1
 
 /* Define if TiledArray configured with CUDA support */
 #cmakedefine TILEDARRAY_HAS_CUDA @TILEDARRAY_HAS_CUDA@

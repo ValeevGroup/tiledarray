@@ -49,9 +49,9 @@ int main(int argc, char** argv) {
   // Construct a 2D tiled range structure that defines
   // the tiling of an array. Each dimension contains
   // 10 tiles.
-  TA::TiledRange trange = 
-      { { 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 },
-        { 0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 } };
+    auto trange = TA::TiledRange{
+      TA::TiledRange1{0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100},
+      TA::TiledRange1{0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100}};
   
   // Construct and fill the argument arrays with data
   TA::TArrayD A(world, trange);

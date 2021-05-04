@@ -125,7 +125,7 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
   set(ENABLE_LIBUNWIND ON)
   add_feature_info(Libunwind ENABLE_LIBUNWIND "Libunwind provides stack unwinding")
 endif()
-option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" OFF)
+option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" ON)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
 option(TA_SIGNED_1INDEX_TYPE "Enables the use of signed 1-index coordinate type (OFF in 1.0.0-alpha.2 and older)" ON)
@@ -256,28 +256,17 @@ include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE LANGUAGE CXX)
 check_type_size("long long" TILEDARRAY_HAS_LONG_LONG LANGUAGE CXX)
 
-##########################
-# convert string values of TA_ERROR to numerical values expected by TA_DEFAULT_ERROR
-##########################
-set (TA_DEFAULT_ERROR 3)  # default is to abort so that it works with or without NDEBUG
-                          # assert when CMAKE_BUILD_TYPE is Debug or RelWithDebInfo
-string(TOUPPER "${CMAKE_BUILD_TYPE}" uppercase_CMAKE_BUILD_TYPE)
-if (CMAKE_BUILD_TYPE AND uppercase_CMAKE_BUILD_TYPE MATCHES "^(DEBUG|RELWITHDEBINFO)$")
-  set (TA_DEFAULT_ERROR 2)
-endif()
-# if building unit tests default to throw to be able to test TA_ASSERT statements
-if (TA_BUILD_UNITTEST)
-  set (TA_DEFAULT_ERROR 1)
-endif(TA_BUILD_UNITTEST)
+# TA_ASSERT
+set (TA_ASSERT_POLICY TA_ASSERT_THROW CACHE STRING "")
+set_property(
+  CACHE TA_ASSERT_POLICY PROPERTY
+  STRINGS TA_ASSERT_THROW TA_ASSERT_ABORT TA_ASSERT_IGNORE)
 
-if (TA_ERROR STREQUAL none)
-  set (TA_DEFAULT_ERROR 0)
-elseif (TA_ERROR STREQUAL throw)
-  set (TA_DEFAULT_ERROR 1)
-elseif (TA_ERROR STREQUAL assert)
-  set (TA_DEFAULT_ERROR 2)
-elseif (TA_ERROR STREQUAL abort)
-  set (TA_DEFAULT_ERROR 3)
+# if building unit tests default to throw to be able to test TA_ASSERT statements
+if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW))
+  if (TA_BUILD_UNITTEST)
+    message(FATAL_ERROR "TA_ASSERT_POLICY=${TA_ASSERT_POLICY} requires TA_BUILD_UNITTEST=OFF")
+  endif(TA_BUILD_UNITTEST)
 endif()
 
 ##########################

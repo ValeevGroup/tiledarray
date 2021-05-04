@@ -107,6 +107,9 @@ class function_ref<R(Args...)> {
   /// Converts to true if non-default initialized
   explicit operator bool() const { return obj_; }
 
+  /// @return true if `other` refers to the same callable as `*this`
+  bool operator==(const function_ref& other) const { return obj_ == other.obj_; }
+
  private:
   void *obj_ = nullptr;
   R (*callback_)(void *, Args...) = nullptr;

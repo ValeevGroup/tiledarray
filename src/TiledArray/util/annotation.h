@@ -54,7 +54,7 @@ inline auto remove_whitespace(std::string s) {
   return s;
 }
 
-/// Splits a sting into tokens based on a character delimiter
+/// Splits a string into tokens based on a character delimiter
 ///
 /// This function assumes that the input string can be considered a series of
 /// delimiter separated tokens. It will split the string into tokens and return
