@@ -68,7 +68,7 @@ inline TA::TiledRange prepend_dim_to_trange(
 /// @return SparseShape of fused Array object
 /// TODO rename to fuse_tilewise_vector_of_shapes
 template <typename Tile>
-TA::SparseShape<float> fuse_vector_of_shapes_tiles(
+TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
     madness::World& global_world,
     const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
     const std::size_t array_rank, const TA::TiledRange& fused_trange) {
@@ -156,7 +156,7 @@ TA::SparseShape<float> fuse_vector_of_shapes_tiles(
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
 /// @return DenseShape of fused Array object
 template <typename Tile>
-TA::DenseShape fuse_vector_of_shapes_tiles(
+TA::DenseShape fuse_tilewise_vector_of_shapes(
     madness::World&,
     const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
     const std::size_t array_rank, const TA::TiledRange& fused_trange) {
@@ -283,7 +283,7 @@ class dist_subarray_vec
 /// global_world, but the subarrays are "local" to each rank and distributed in
 /// tilewise-round-robin fashion.
 ///       The result will live in @c global_world.
-/// @sa detail::fuse_vector_of_shapes_tiles
+/// @sa detail::fuse_tilewise_vector_of_shapes
 template <typename Tile, typename Policy>
 TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
     madness::World& global_world,
@@ -306,7 +306,7 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
   // make fused shape
-  auto fused_shape = detail::fuse_vector_of_shapes_tiles(
+  auto fused_shape = detail::fuse_tilewise_vector_of_shapes(
       global_world, arrays.array_accessor(), fused_dim_extent, fused_trange);
 
   // make fused array
