@@ -209,7 +209,7 @@ inline TA::SparseShape<float> tilewise_slice_of_fused_shape(
 /// the index of the corresponding tile of the leading dimension)
 /// @param[in] split_trange TiledRange of the target subarray objct
 /// @return the Shape of the @c i -th subarray
-inline TA::DenseShape subshape_from_fused_tile(
+inline TA::DenseShape tilewise_slice_of_fused_shape(
     const TA::TiledRange& split_trange,
     const TA::DensePolicy::shape_type& shape, const std::size_t tile_idx,
     const std::size_t split_ntiles, const std::size_t tile_size) {
@@ -408,7 +408,7 @@ void split_tilewise_fused_array(
   // Create tile_size arrays and put them into split_arrays
   for (size_t i = tile_range.first; i < tile_range.second; ++i) {
     auto split_shape = detail::tilewise_slice_of_fused_shape(
-            split_trange, shape, tile_idx, split_ntiles, tile_size);
+        split_trange, shape, tile_idx, split_ntiles, tile_size);
     // create split Array object
     TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
                                             split_shape);
