@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_dense, r,
+          TiledArray::split_tilewise_fused_array(this_world, b_dense, r,
                                                 b_dense_vector, tr_split);
         }
       }
@@ -308,7 +308,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_sparse, r,
+          TiledArray::split_tilewise_fused_array(this_world, b_sparse, r,
                                                 b_sparse_vector, tr_split);
         }
       }
@@ -374,7 +374,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_dense, r,
+          TiledArray::split_tilewise_fused_array(this_world, b_dense, r,
                                                 b_dense_vector, tr_split);
         }
       }
@@ -410,7 +410,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_sparse, r,
+          TiledArray::split_tilewise_fused_array(this_world, b_sparse, r,
                                                 b_sparse_vector, tr_split);
         }
       }
