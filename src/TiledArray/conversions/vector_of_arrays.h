@@ -177,7 +177,7 @@ TA::DenseShape fuse_tilewise_vector_of_shapes(
 /// fused array
 /// @return the Shape of the @c i -th subarray
 // TODO rename to tilewise_slice_of_fused_shape
-inline TA::SparseShape<float> subshape_from_fused_tile(
+inline TA::SparseShape<float> tilewise_slice_of_fused_shape(
     const TA::TiledRange& split_trange,
     const TA::SparsePolicy::shape_type& shape, const std::size_t tile_idx,
     const std::size_t split_ntiles, const std::size_t tile_size) {
@@ -389,7 +389,7 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
 /// @param[in] tile_of_i tile range information for tile i
 /// @param[in] split_trange TiledRange of the split Array object
 /// @return the @c i -th subarray
-/// @sa detail::subshape_from_fused_tile
+/// @sa detail::tilewise_slice_of_fused_shape
 template <typename Tile, typename Policy>
 void split_tilewise_fused_array(
     madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
@@ -407,8 +407,8 @@ void split_tilewise_fused_array(
 
   // Create tile_size arrays and put them into split_arrays
   for (size_t i = tile_range.first; i < tile_range.second; ++i) {
-    auto split_shape = detail::subshape_from_fused_tile(
-        split_trange, shape, tile_idx, split_ntiles, tile_size);
+    auto split_shape = detail::tilewise_slice_of_fused_shape(
+            split_trange, shape, tile_idx, split_ntiles, tile_size);
     // create split Array object
     TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
                                             split_shape);
