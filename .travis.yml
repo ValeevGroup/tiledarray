@@ -83,64 +83,36 @@ matrix:
             - g++-9
             - gfortran-9
     - compiler: clang
-      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Debug
+      env: CLANG_VERSION=11 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
         apt:
           sources:
-            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-9 main'
+            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main'
               key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
             - *base_packages
             - g++-8
             - gfortran-8
-            - clang-9
-            - libc++-9-dev
-            - libc++abi-9-dev
+            - clang-11
+            - libc++-11-dev
+            - libc++abi-11-dev
     - compiler: clang
-      env: CLANG_VERSION=9 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
+      env: CLANG_VERSION=11 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
       addons:
         apt:
           sources:
-            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-9 main'
+            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main'
               key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
           packages:
             - *base_packages
             - g++-8
             - gfortran-8
-            - clang-9
-            - libc++-9-dev
-            - libc++abi-9-dev
+            - clang-11
+            - libc++-11-dev
+            - libc++abi-11-dev
             - libclang1-9 # libclang for doxygen
             - graphviz # provides dot for doxygen graphs
             - fonts-liberation # recommended by graphviz
-    - compiler: clang
-      env: CLANG_VERSION=10 GCC_VERSION=8 BUILD_TYPE=Debug
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages:
-            - *base_packages
-            - g++-8
-            - gfortran-8
-            - clang-10
-            - libc++-10-dev
-            - libc++abi-10-dev
-    - compiler: clang
-      env: CLANG_VERSION=10 GCC_VERSION=8 BUILD_TYPE=Release
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-10 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages:
-            - *base_packages
-            - g++-8
-            - gfortran-8
-            - clang-10
-            - libc++-10-dev
-            - libc++abi-10-dev
 
 before_install:
   - env
