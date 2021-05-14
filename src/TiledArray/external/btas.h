@@ -53,12 +53,6 @@ struct range_traits<TiledArray::Range> {
 
 namespace TiledArray {
 namespace detail {
-// these convert any range into TiledArray::Range
-
-inline const TiledArray::Range& make_ta_range(const TiledArray::Range& range) {
-  return range;
-}
-
 /// makes TiledArray::Range from a btas::RangeNd
 
 /// \param[in] range a btas::RangeNd object

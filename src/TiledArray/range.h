@@ -1311,5 +1311,16 @@ inline bool is_congruent(const Range& r1, const Range& r2) {
 /// \return true since TiledArray::Range is contiguous by definition
 inline bool is_contiguous(const Range& range) { return true; }
 
+namespace detail {
+
+// TiledArray::detail::make_ta_range(rng) converts to its TA equivalent
+
+/// "converts" TiledArray::Range into TiledArray::Range
+inline const TiledArray::Range& make_ta_range(const TiledArray::Range& range) {
+  return range;
+}
+
+}  // namespace detail
+
 }  // namespace TiledArray
 #endif  // TILEDARRAY_RANGE_H__INCLUDED
