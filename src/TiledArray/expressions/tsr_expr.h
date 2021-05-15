@@ -39,13 +39,6 @@ namespace expressions {
 using TiledArray::detail::numeric_t;
 using TiledArray::detail::scalar_t;
 
-template <typename E>
-struct is_aliased : public std::true_type {};
-
-template <typename Array, bool Alias>
-struct is_aliased<TsrExpr<Array, Alias>>
-    : public std::integral_constant<bool, Alias> {};
-
 template <typename Array, bool Alias>
 struct ExprTrait<TsrExpr<Array, Alias>> {
   typedef Array array_type;  ///< The \c Array type

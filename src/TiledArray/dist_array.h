@@ -20,9 +20,7 @@
 #ifndef TILEDARRAY_ARRAY_H__INCLUDED
 #define TILEDARRAY_ARRAY_H__INCLUDED
 
-#include <cstdlib>
-
-#include <madness/world/parallel_archive.h>
+#include "TiledArray/expressions/fwd.h"
 
 #include "TiledArray/array_impl.h"
 #include "TiledArray/conversions/clone.h"
@@ -35,15 +33,14 @@
 #include "TiledArray/util/initializer_list.h"
 #include "TiledArray/util/random.h"
 
+#include <cstdlib>
+#include <madness/world/parallel_archive.h>
+
 namespace TiledArray {
 
 // Forward declarations
 template <typename, typename>
 class Tensor;
-namespace expressions {
-template <typename, bool>
-class TsrExpr;
-}  // namespace expressions
 
 /// A (multidimensional) tiled array
 
@@ -56,7 +53,6 @@ template <typename Tile = Tensor<double, Eigen::aligned_allocator<double>>,
           typename Policy = DensePolicy>
 class DistArray : public madness::archive::ParallelSerializableObject {
  public:
-  typedef DistArray<Tile, Policy> DistArray_;  ///< This object's type
   typedef TiledArray::detail::ArrayImpl<Tile, Policy>
       impl_type;  ///< The type of the PIMPL
   typedef typename impl_type::policy_type policy_type;  ///< Policy type
@@ -107,7 +103,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// used elsewhere too.
   ///
   template <typename OtherTile>
-  using is_my_type = std::is_same<DistArray_, DistArray<OtherTile, Policy>>;
+  using is_my_type = std::is_same<DistArray, DistArray<OtherTile, Policy>>;
 
   template <typename OtherTile>
   using enable_if_not_my_type =
@@ -149,7 +145,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         try {
           world.gop.lazy_sync(id, [pimpl]() {
             delete pimpl;
-            DistArray_::cleanup_counter_--;
+            DistArray::cleanup_counter_--;
           });
         } catch (madness::MadnessException& e) {
           fprintf(stderr,
@@ -245,7 +241,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// This is a shallow copy, that is no data is copied.
   /// \param other The array to be copied
-  DistArray(const DistArray_& other) : pimpl_(other.pimpl_) {}
+  DistArray(const DistArray& other) : pimpl_(other.pimpl_) {}
 
   /// Dense array constructor
 
@@ -301,27 +297,27 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              raised \p world and \p il are unchanged.
   template <typename T>
   DistArray(World& world, detail::vector_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, il)) {}
+      : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
   DistArray(World& world, detail::matrix_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, il)) {}
+      : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
   DistArray(World& world, detail::tensor3_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, il)) {}
+      : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
   DistArray(World& world, detail::tensor4_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, il)) {}
+      : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
   DistArray(World& world, detail::tensor5_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, il)) {}
+      : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
   DistArray(World& world, detail::tensor6_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, il)) {}
+      : DistArray(array_from_il<DistArray>(world, il)) {}
   ///@}
 
   /// \name Tiling initializer list constructors
@@ -352,27 +348,27 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              raised \p world and \p il are unchanged.
   template <typename T>
   DistArray(World& world, const trange_type& trange, detail::vector_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, trange, il)) {}
+      : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
   DistArray(World& world, const trange_type& trange, detail::matrix_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, trange, il)) {}
+      : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
   DistArray(World& world, const trange_type& trange, detail::tensor3_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, trange, il)) {}
+      : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
   DistArray(World& world, const trange_type& trange, detail::tensor4_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, trange, il)) {}
+      : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
   DistArray(World& world, const trange_type& trange, detail::tensor5_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, trange, il)) {}
+      : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
   DistArray(World& world, const trange_type& trange, detail::tensor6_il<T> il)
-      : DistArray(array_from_il<DistArray_>(world, trange, il)) {}
+      : DistArray(array_from_il<DistArray>(world, trange, il)) {}
   /// @}
 
   /// converting copy constructor
@@ -410,7 +406,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Create a deep copy of this array
 
   /// \return An array that is equal to this array
-  DistArray_ clone() const { return TiledArray::clone(*this); }
+  DistArray clone() const { return TiledArray::clone(*this); }
 
   /// Accessor for the (shared_ptr to) implementation object
 
@@ -462,7 +458,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// This is a shallow copy, that is no data is copied.
   /// \param other The array to be copied
-  DistArray_& operator=(const DistArray_& other) {
+  DistArray& operator=(const DistArray& other) {
     pimpl_ = other.pimpl_;
 
     return *this;
@@ -977,10 +973,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A const tensor expression object
   /// \note size and contents of \p vars are validated using
   ///   DistArray::check_str_index()
-  TiledArray::expressions::TsrExpr<const DistArray_, true> operator()(
-      const std::string& vars) const {
+  auto operator()(const std::string& vars) const {
     check_str_index(vars);
-    return TiledArray::expressions::TsrExpr<const DistArray_, true>(*this,
+    return TiledArray::expressions::TsrExpr<const DistArray>(*this,
                                                                     vars);
   }
 
@@ -990,10 +985,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \return A non-const tensor expression object
   /// \note size and contents of \p vars are validated using
   ///   DistArray::check_str_index()
-  TiledArray::expressions::TsrExpr<DistArray_, true> operator()(
-      const std::string& vars) {
+  auto operator()(const std::string& vars) {
     check_str_index(vars);
-    return TiledArray::expressions::TsrExpr<DistArray_, true>(*this, vars);
+    return TiledArray::expressions::TsrExpr<DistArray>(*this, vars);
   }
 
   /// \deprecated use DistArray::world()
@@ -1161,7 +1155,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \param other The array to be swapped with this array.
   /// \throw None no throw guarantee.
-  void swap(DistArray_& other) { std::swap(pimpl_, other.pimpl_); }
+  void swap(DistArray& other) { std::swap(pimpl_, other.pimpl_); }
 
   /// Convert a distributed array into a replicated array
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
@@ -1170,19 +1164,19 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     if ((!impl_ref().pmap()->is_replicated()) && (world().size() > 1)) {
       // Construct a replicated array
       auto pmap = std::make_shared<detail::ReplicatedPmap>(world(), size());
-      DistArray_ result = DistArray_(world(), trange(), shape(), pmap);
+      DistArray result = DistArray(world(), trange(), shape(), pmap);
 
       // Create the replicator object that will do an all-to-all broadcast of
       // the local tile data.
       auto replicator =
-          std::make_shared<detail::Replicator<DistArray_>>(*this, result);
+          std::make_shared<detail::Replicator<DistArray>>(*this, result);
 
       // Put the replicator pointer in the deferred cleanup object so it will
       // be deleted at the end of the next fence.
       TA_ASSERT(replicator.unique());  // Required for deferred_cleanup
       madness::detail::deferred_cleanup(world(), replicator);
 
-      DistArray_::operator=(result);
+      DistArray::operator=(result);
     }
   }
 
@@ -1264,7 +1258,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
     // use default pmap, ensure it's the same pmap used to serialize
     auto volume = trange.tiles_range().volume();
-    auto pmap = detail::policy_t<DistArray_>::default_pmap(world, volume);
+    auto pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
     size_t pmap_hash_code = 0;
     ar& pmap_hash_code;
     if (pmap_hash_code != typeid(pmap.get()).hash_code())
@@ -1337,7 +1331,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
       // use default pmap
       auto volume = trange.tiles_range().volume();
-      auto pmap = detail::policy_t<DistArray_>::default_pmap(world, volume);
+      auto pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
       pimpl_.reset(
           new impl_type(world, std::move(trange), std::move(shape), pmap));
 
@@ -1371,7 +1365,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
       // use default pmap
       auto volume = trange.tiles_range().volume();
-      auto pmap = detail::policy_t<DistArray_>::default_pmap(world, volume);
+      auto pmap = detail::policy_t<DistArray>::default_pmap(world, volume);
       pimpl_.reset(
           new impl_type(world, std::move(trange), std::move(shape), pmap));
     }
@@ -1487,7 +1481,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// @warning this tests contents of @p vars using #TA_ASSERT() only if
   /// preprocessor macro @c NDEBUG is not defined
   void check_str_index(const std::string& vars) const {
-#ifndef NDEBUG
+#if (TA_ASSERT_POLICY != TA_ASSERT_IGNORE)
     // Only check indices if the PIMPL is initialized (okay to not initialize
     // the RHS of an equation)
     if (!is_initialized()) return;
@@ -1498,10 +1492,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     if (is_tot) {
       // Make sure the index is capable of being interpreted as a ToT index
       TA_ASSERT(detail::is_tot_index(vars));
-      const auto idx = detail::split_index(vars);
 
       // Rank of outer tiles must match number of outer indices
-      TA_ASSERT(idx.first.size() == rank);
+      // is_tot_index(vars) implies vars.find(';') < vars.size()
+      TA_ASSERT(std::count(vars.begin(), vars.begin() + vars.find(';'), ',') +
+                    1ul ==
+                rank);
 
       // Check inner index rank?
     } else {
@@ -1509,7 +1505,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       TA_ASSERT(!detail::is_tot_index(vars));
 
       // Number of indices must match rank
-      TA_ASSERT(detail::tokenize_index(vars, ',').size() == rank);
+      TA_ASSERT(std::count(vars.begin(), vars.end(), ',') + 1ul == rank);
     }
 #endif  // NDEBUG
   }
@@ -1638,6 +1634,14 @@ template <typename Tile, typename Policy>
 auto dot(const DistArray<Tile, Policy>& a, const DistArray<Tile, Policy>& b) {
   return (a(detail::dummy_annotation(rank(a)))
               .dot(b(detail::dummy_annotation(rank(b)))))
+      .get();
+}
+
+template <typename Tile, typename Policy>
+auto inner_product(const DistArray<Tile, Policy>& a,
+                   const DistArray<Tile, Policy>& b) {
+  return (a(detail::dummy_annotation(rank(a)))
+              .inner_product(b(detail::dummy_annotation(rank(b)))))
       .get();
 }
 

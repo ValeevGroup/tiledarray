@@ -26,16 +26,12 @@
 #ifndef TILEDARRAY_EXPR_TRACE_H__INCLUDED
 #define TILEDARRAY_EXPR_TRACE_H__INCLUDED
 
+#include <TiledArray/expressions/fwd.h>
 #include <TiledArray/expressions/index_list.h>
 #include <iostream>
 
 namespace TiledArray {
 namespace expressions {
-
-template <typename>
-class Expr;
-template <typename, bool>
-class TsrExpr;
 
 /// Expression output stream
 class ExprOStream {

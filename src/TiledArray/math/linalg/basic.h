@@ -27,8 +27,11 @@
 #define TILEDARRAY_MATH_LINALG_BASIC_H__INCLUDED
 
 #include "TiledArray/dist_array.h"
+#include "TiledArray/external/eigen.h"
 
 namespace TiledArray::math::linalg {
+
+// freestanding adaptors for DistArray needed by solvers like DIIS
 
 template <typename Tile, typename Policy>
 inline void vec_multiply(DistArray<Tile, Policy>& a1,
@@ -58,5 +61,52 @@ inline void axpy(DistArray<Tile, Policy>& y, S alpha,
 }
 
 }  // namespace TiledArray::math::linalg
+
+namespace Eigen {
+
+// freestanding adaptors for Eigen::MatrixBase needed by solvers like DIIS
+
+template <typename Derived>
+inline void vec_multiply(Eigen::MatrixBase<Derived>& a1,
+                         const Eigen::MatrixBase<Derived>& a2) {
+  a1.array() *= a2.array();
+}
+
+template <typename Derived, typename S>
+inline void scale(Eigen::MatrixBase<Derived>& a, S scaling_factor) {
+  using numeric_type = typename Eigen::MatrixBase<Derived>::value_type;
+  a.array() *= numeric_type(scaling_factor);
+}
+
+template <typename Derived>
+inline void zero(Eigen::MatrixBase<Derived>& a) {
+  a = Derived::Zero(a.rows(), a.cols());
+}
+
+template <typename Derived, typename S>
+inline void axpy(Eigen::MatrixBase<Derived>& y, S alpha,
+                 const Eigen::MatrixBase<Derived>& x) {
+  using numeric_type = typename Eigen::MatrixBase<Derived>::value_type;
+  y.array() += numeric_type(alpha) * x.array();
+}
+
+template <typename Derived>
+inline auto dot(const Eigen::MatrixBase<Derived>& l,
+                const Eigen::MatrixBase<Derived>& r) {
+  return l.adjoint().dot(r);
+}
+
+template <typename Derived>
+inline auto inner_product(const Eigen::MatrixBase<Derived>& l,
+                          const Eigen::MatrixBase<Derived>& r) {
+  return l.dot(r);
+}
+
+template <typename Derived>
+inline auto norm2(const Eigen::MatrixBase<Derived>& m) {
+  return m.template lpNorm<2>();
+}
+
+}  // namespace Eigen
 
 #endif  // TILEDARRAY_MATH_LINALG_BASIC_H__INCLUDED

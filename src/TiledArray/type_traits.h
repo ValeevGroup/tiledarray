@@ -65,17 +65,6 @@ inline constexpr bool is_integral_v = is_integral<T>::value;
 //////////////////////////////////////////////////////////////////////////////////////////////
 // forward declarations
 
-namespace Eigen {
-
-template <typename, int, int, int, int, int>
-class Matrix;
-template <typename, int, int, int, int, int>
-class Array;
-template <typename, int, typename>
-class Map;
-
-}  // namespace Eigen
-
 namespace madness {
 
 template <typename T>
@@ -735,20 +724,6 @@ template <typename T>
 struct numeric_type<T, typename std::enable_if<is_lazy_tile<T>::value &&
                                                !is_numeric_v<T>>::type>
     : public numeric_type<typename eval_trait<T>::type> {};
-
-template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
-struct numeric_type<Eigen::Matrix<T, Rows, Cols, Opts, MaxRows, MaxCols>, void>
-    : public numeric_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows,
-                                                 MaxCols>::Scalar> {};
-
-template <typename T, int Rows, int Cols, int Opts, int MaxRows, int MaxCols>
-struct numeric_type<Eigen::Array<T, Rows, Cols, Opts, MaxRows, MaxCols>, void>
-    : public numeric_type<typename Eigen::Matrix<T, Rows, Cols, Opts, MaxRows,
-                                                 MaxCols>::Scalar> {};
-
-template <typename PlainObjectType, int MapOptions, typename StrideType>
-struct numeric_type<Eigen::Map<PlainObjectType, MapOptions, StrideType>, void>
-    : public numeric_type<PlainObjectType> {};
 
 /// \c numeric_t<T> is an alias for \c numeric_type<T>::type
 template <typename T>

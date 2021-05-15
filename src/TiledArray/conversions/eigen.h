@@ -412,10 +412,13 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
                  std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   typedef typename A::index1_type size_type;
   // Check that trange matches the dimensions of other
-  if ((matrix.cols() > 1) && (matrix.rows() > 1)) {
-    TA_ASSERT(trange.tiles_range().rank() == 2 &&
-              "TiledArray::eigen_to_array(): The number of dimensions in "
-              "trange is not equal to that of the Eigen matrix.");
+  const auto rank  = trange.tiles_range().rank();
+
+  TA_ASSERT(rank == 1 || rank == 2 && 
+      "TiledArray::eigen_to_array(): The number of dimensions in "
+      "trange must match that of the Eigen matrix.");
+
+  if(rank == 2) {
     TA_ASSERT(
         trange.elements_range().extent(0) == size_type(matrix.rows()) &&
         "TiledArray::eigen_to_array(): The number of rows in trange is not "
@@ -425,15 +428,12 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
         "TiledArray::eigen_to_array(): The number of columns in trange is not "
         "equal to the number of columns in the Eigen matrix.");
   } else {
-    TA_ASSERT(trange.tiles_range().rank() == 1 &&
-              "TiledArray::eigen_to_array(): The number of dimensions in "
-              "trange must match that of the Eigen matrix.");
     TA_ASSERT(
         trange.elements_range().extent(0) == size_type(matrix.size()) &&
         "TiledArray::eigen_to_array(): The size of trange must be equal to the "
         "matrix size.");
   }
-
+    
   // Create a new tensor
   if (replicated && (world.size() > 1))
     pmap = std::static_pointer_cast<typename A::pmap_interface>(

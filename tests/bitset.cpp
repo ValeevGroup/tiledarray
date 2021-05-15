@@ -22,6 +22,8 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+#include <climits>
+
 using namespace TiledArray;
 
 struct BitsetFixture {
@@ -35,7 +37,7 @@ struct BitsetFixture {
 };
 
 const std::size_t BitsetFixture::size =
-    sizeof(BitsetFixture::Bitset::block_type) * 8 * 10.5;
+    sizeof(BitsetFixture::Bitset::block_type) * CHAR_BIT * 10.5;
 const std::size_t BitsetFixture::blocks = 11;
 
 // =============================================================================

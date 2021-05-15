@@ -53,12 +53,6 @@ struct range_traits<TiledArray::Range> {
 
 namespace TiledArray {
 namespace detail {
-// these convert any range into TiledArray::Range
-
-inline const TiledArray::Range& make_ta_range(const TiledArray::Range& range) {
-  return range;
-}
-
 /// makes TiledArray::Range from a btas::RangeNd
 
 /// \param[in] range a btas::RangeNd object
@@ -850,92 +844,5 @@ struct Cast<TiledArray::Tensor<T, Allocator>,
   }
 };
 }  // namespace TiledArray
-
-namespace madness {
-namespace archive {
-
-template <class Archive, typename T>
-struct ArchiveLoadImpl<Archive, btas::varray<T>> {
-  static inline void load(const Archive& ar, btas::varray<T>& x) {
-    typename btas::varray<T>::size_type n{};
-    ar& n;
-    x.resize(n);
-    for (typename btas::varray<T>::value_type& xi : x) ar& xi;
-  }
-};
-
-template <class Archive, typename T>
-struct ArchiveStoreImpl<Archive, btas::varray<T>> {
-  static inline void store(const Archive& ar, const btas::varray<T>& x) {
-    ar& x.size();
-    for (const typename btas::varray<T>::value_type& xi : x) ar& xi;
-  }
-};
-
-template <class Archive, blas::Layout _Order, typename _Index>
-struct ArchiveLoadImpl<Archive, btas::BoxOrdinal<_Order, _Index>> {
-  static inline void load(const Archive& ar,
-                          btas::BoxOrdinal<_Order, _Index>& o) {
-    typename btas::BoxOrdinal<_Order, _Index>::stride_type stride{};
-    typename btas::BoxOrdinal<_Order, _Index>::value_type offset{};
-    bool cont{};
-    ar& stride& offset& cont;
-    o = btas::BoxOrdinal<_Order, _Index>(std::move(stride), std::move(offset),
-                                         std::move(cont));
-  }
-};
-
-template <class Archive, blas::Layout _Order, typename _Index>
-struct ArchiveStoreImpl<Archive, btas::BoxOrdinal<_Order, _Index>> {
-  static inline void store(const Archive& ar,
-                           const btas::BoxOrdinal<_Order, _Index>& o) {
-    ar& o.stride() & o.offset() & o.contiguous();
-  }
-};
-
-template <class Archive, blas::Layout _Order, typename _Index,
-          typename _Ordinal>
-struct ArchiveLoadImpl<Archive, btas::RangeNd<_Order, _Index, _Ordinal>> {
-  static inline void load(const Archive& ar,
-                          btas::RangeNd<_Order, _Index, _Ordinal>& r) {
-    typedef typename btas::BaseRangeNd<
-        btas::RangeNd<_Order, _Index, _Ordinal>>::index_type index_type;
-    index_type lobound{}, upbound{};
-    _Ordinal ordinal{};
-    ar& lobound& upbound& ordinal;
-    r = btas::RangeNd<_Order, _Index, _Ordinal>(
-        std::move(lobound), std::move(upbound), std::move(ordinal));
-  }
-};
-
-template <class Archive, blas::Layout _Order, typename _Index,
-          typename _Ordinal>
-struct ArchiveStoreImpl<Archive, btas::RangeNd<_Order, _Index, _Ordinal>> {
-  static inline void store(const Archive& ar,
-                           const btas::RangeNd<_Order, _Index, _Ordinal>& r) {
-    ar& r.lobound() & r.upbound() & r.ordinal();
-  }
-};
-
-template <class Archive, typename _T, class _Range, class _Store>
-struct ArchiveLoadImpl<Archive, btas::Tensor<_T, _Range, _Store>> {
-  static inline void load(const Archive& ar,
-                          btas::Tensor<_T, _Range, _Store>& t) {
-    _Range range{};
-    _Store store{};
-    ar& range& store;
-    t = btas::Tensor<_T, _Range, _Store>(std::move(range), std::move(store));
-  }
-};
-
-template <class Archive, typename _T, class _Range, class _Store>
-struct ArchiveStoreImpl<Archive, btas::Tensor<_T, _Range, _Store>> {
-  static inline void store(const Archive& ar,
-                           const btas::Tensor<_T, _Range, _Store>& t) {
-    ar& t.range() & t.storage();
-  }
-};
-}  // namespace archive
-}  // namespace madness
 
 #endif /* TILEDARRAY_EXTERNAL_BTAS_H__INCLUDED */
