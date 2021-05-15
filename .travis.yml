@@ -82,6 +82,7 @@ matrix:
             - *base_packages
             - g++-9
             - gfortran-9
+  allow_failures:   # travis focal images broken right now: https://travis-ci.community/t/clang-10-was-recently-broken-on-linux-unmet-dependencies-for-clang-10-clang-tidy-10-valgrind/11527
     - compiler: clang
       env: CLANG_VERSION=11 GCC_VERSION=8 BUILD_TYPE=Debug
       addons:
