@@ -292,7 +292,7 @@ include("${vg_cmake_kit_SOURCE_DIR}/modules/FetchWfn91LinAlgModules.cmake")
 if(ENABLE_SCALAPACK)
   find_package(ScaLAPACK REQUIRED)
   # Propagate ScaLAPACK -> BLAS/LAPACK if not set 
-  # (ScaLAPACK necessacarily contains a BLAS/LAPACK linker by standard)
+  # (ScaLAPACK necessarily contains a BLAS/LAPACK linker by standard)
   # TODO: Tell David to write a macro that hides this verbosity from user space
   if( NOT BLAS_LIBRARIES )
     set( BLAS_LIBRARIES "${ScaLAPACK_LIBRARIES}" CACHE STRING "BLAS LIBRARIES" )
