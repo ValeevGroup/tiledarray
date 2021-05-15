@@ -33,21 +33,21 @@
 
 namespace TiledArray::math::linalg::scalapack {
 
-inline scalapackpp::TransposeFlag to_scalapackpp_transposeflag(Op t) {
+inline scalapackpp::Op to_scalapackpp_transposeflag(Op t) {
   switch (t) {
     case Op::NoTrans:
-      return scalapackpp::TransposeFlag::NoTranspose;
+      return scalapackpp::Op::NoTrans;
     case Op::Trans:
-      return scalapackpp::TransposeFlag::Transpose;
+      return scalapackpp::Op::Trans;
     case Op::ConjTrans:
-      return scalapackpp::TransposeFlag::ConjTranspose;
+      return scalapackpp::Op::ConjTrans;
     default:
       abort();
   }
 }
 
 template <typename T>
-void zero_triangle(blacspp::Triangle tri, scalapack::BlockCyclicMatrix<T>& A,
+void zero_triangle(blacspp::Uplo tri, scalapack::BlockCyclicMatrix<T>& A,
                    bool zero_diag = false) {
   auto zero_el = [&](size_t I, size_t J) {
     if (A.dist().i_own(I, J)) {
@@ -59,7 +59,7 @@ void zero_triangle(blacspp::Triangle tri, scalapack::BlockCyclicMatrix<T>& A,
   auto [M, N] = A.dims();
 
   // Zero the lower triangle
-  if (tri == blacspp::Triangle::Lower) {
+  if (tri == blacspp::Uplo::Lower) {
     if (zero_diag)
       for (size_t j = 0; j < N; ++j)
         for (size_t i = j; i < M; ++i) zero_el(i, j);

@@ -40,7 +40,7 @@
 #include <blacspp/information.hpp>
 
 #include <scalapackpp/block_cyclic.hpp>
-#include <scalapackpp/util/sfinae.hpp>
+#include <scalapackpp/util/type_traits.hpp>
 
 namespace TiledArray::math::linalg::scalapack {
 
