@@ -34,7 +34,6 @@ FetchContent_Populate(
     vg_cmake_kit
     QUIET
     GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
-    GIT_TAG evaleev/feature/wfn91-linalg-discovery
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-build
     SUBBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-subbuild
