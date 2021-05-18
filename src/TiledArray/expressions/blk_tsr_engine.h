@@ -26,6 +26,7 @@
 #ifndef TILEDARRAY_EXPRESSIONS_BLK_TSR_ENGINE_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_BLK_TSR_ENGINE_H__INCLUDED
 
+#include <TiledArray/expressions/fwd.h>
 #include <TiledArray/expressions/leaf_engine.h>
 #include <TiledArray/tile_op/shift.h>
 
@@ -36,16 +37,6 @@ template <typename, typename>
 class DistArray;
 
 namespace expressions {
-
-// Forward declaration
-template <typename, bool>
-class BlkTsrExpr;
-template <typename, typename>
-class ScalBlkTsrExpr;
-template <typename, typename, bool>
-class BlkTsrEngine;
-template <typename, typename, typename>
-class ScalBlkTsrEngine;
 
 template <typename Tile, typename Policy, typename Result, bool Alias>
 struct EngineTrait<BlkTsrEngine<DistArray<Tile, Policy>, Result, Alias>> {

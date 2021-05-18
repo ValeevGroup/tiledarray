@@ -30,7 +30,8 @@ int main(int argc, char** argv) {
     std::cout << "multiplies A(Nm,Nk) * B(Nk,Nn), with dimensions m, n, and k "
                  "blocked by Bm, Bn, and Bk, respectively"
               << std::endl
-              << "Usage: " << argv[0] << " Nm Bm Nn Bn Nk Bk [repetitions]\n";
+              << "Usage: " << argv[0]
+              << " Nm Bm Nn Bn Nk Bk [repetitions=5] [real=double]\n";
     return 0;
   }
   const long Nm = atol(argv[1]);
@@ -49,12 +50,18 @@ int main(int argc, char** argv) {
   }
   if ((Nm % Bm) != 0ul || Nn % Bn != 0ul || Nk % Bk != 0ul) {
     std::cerr
-        << "Error: diminsion size must be evenly divisible by block size.\n";
+        << "Error: dimension size must be evenly divisible by block size.\n";
     return 1;
   }
   const long repeat = (argc >= 8 ? atol(argv[7]) : 5);
   if (repeat <= 0) {
     std::cerr << "Error: number of repetitions must be greater than zero.\n";
+    return 1;
+  }
+
+  const std::string real_type_str = (argc >= 9 ? argv[8] : "double");
+  if (real_type_str != "double" && real_type_str != "float") {
+    std::cerr << "Error: invalid real type " << real_type_str << ".\n";
     return 1;
   }
 
@@ -124,39 +131,57 @@ int main(int argc, char** argv) {
   TiledArray::TiledRange  // TRange for b
       trange_b(blocking_B.begin(), blocking_B.end());
 
-  // Construct and initialize arrays
-  // by default use TiledArray tensors, uncomment second line if want to use
-  // btas::Tensor instead
-  using Array = TiledArray::TArrayD;
-  // using Array =
-  // TiledArray::DistArray<TiledArray::Tile<btas::Tensor<double>>>;
-  Array a(world, trange_a);
-  Array b(world, trange_b);
-  Array c(world, trange_c);
-  a.fill(1.0);
-  b.fill(1.0);
+  auto run = [&](auto* tarray_ptr) {
+    using Array = std::decay_t<std::remove_pointer_t<decltype(tarray_ptr)>>;
 
-  // Start clock
-  world.gop.fence();
-  const double wall_time_start = madness::wall_time();
+    // Construct and initialize arrays
+    Array a(world, trange_a);
+    Array b(world, trange_b);
+    Array c(world, trange_c);
+    a.fill(1.0);
+    b.fill(1.0);
 
-  // Do matrix multiplication
-  for (int i = 0; i < repeat; ++i) {
-    c("m,n") = a("m,k") * b("k,n");
+    // Start clock
     world.gop.fence();
-    if (world.rank() == 0) std::cout << "Iteration " << i + 1 << "\n";
+    const double wall_time_start = madness::wall_time();
+
+    // Do matrix multiplication
+    for (int i = 0; i < repeat; ++i) {
+      c("m,n") = a("m,k") * b("k,n");
+      world.gop.fence();
+      if (world.rank() == 0) std::cout << "Iteration " << i + 1 << "\n";
+    }
+
+    // Stop clock
+    const double wall_time_stop = madness::wall_time();
+
+    if (world.rank() == 0)
+      std::cout << "Average wall time   = "
+                << (wall_time_stop - wall_time_start) / double(repeat)
+                << " sec\nAverage GFLOPS      = "
+                << double(repeat) * 2.0 * double(Nn * Nm * Nk) /
+                       (wall_time_stop - wall_time_start) / 1.0e9
+                << "\n";
+  };
+
+  // by default use TiledArray tensors
+  constexpr bool use_btas = false;
+  // btas::Tensor instead
+  if (real_type_str == "double") {
+    if constexpr (!use_btas)
+      run(static_cast<TiledArray::TArrayD*>(nullptr));
+    else
+      run(static_cast<TiledArray::DistArray<
+              TiledArray::Tile<btas::Tensor<double, TiledArray::Range>>>*>(
+          nullptr));
+  } else {
+    if constexpr (!use_btas)
+      run(static_cast<TiledArray::TArrayF*>(nullptr));
+    else
+      run(static_cast<TiledArray::DistArray<
+              TiledArray::Tile<btas::Tensor<float, TiledArray::Range>>>*>(
+          nullptr));
   }
-
-  // Stop clock
-  const double wall_time_stop = madness::wall_time();
-
-  if (world.rank() == 0)
-    std::cout << "Average wall time   = "
-              << (wall_time_stop - wall_time_start) / double(repeat)
-              << " sec\nAverage GFLOPS      = "
-              << double(repeat) * 2.0 * double(Nn * Nm * Nm) /
-                     (wall_time_stop - wall_time_start) / 1.0e9
-              << "\n";
 
   TiledArray::finalize();
   return 0;

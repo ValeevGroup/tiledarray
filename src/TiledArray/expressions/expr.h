@@ -26,6 +26,9 @@
 #ifndef TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 #define TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED
 
+#include "TiledArray/expressions/fwd.h"
+
+
 #include "../reduce_task.h"
 #include "../tile_interface/cast.h"
 #include "../tile_interface/scale.h"
@@ -45,18 +48,7 @@
 
 #include <TiledArray/tensor/type_traits.h>
 
-namespace TiledArray {
-namespace expressions {
-
-// Forward declaration
-template <typename>
-struct ExprTrait;
-template <typename, bool>
-class TsrExpr;
-template <typename, bool>
-class BlkTsrExpr;
-template <typename>
-struct is_aliased;
+namespace TiledArray::expressions {
 
 template <typename Engine>
 struct EngineParamOverride {
@@ -881,7 +873,6 @@ class Expr {
 
 };  // class Expr
 
-}  // namespace expressions
-}  // namespace TiledArray
+}
 
 #endif  // TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED

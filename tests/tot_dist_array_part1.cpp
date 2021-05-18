@@ -24,11 +24,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(typedefs, TestParam, test_params) {
   using tensor_t = tensor_type<TestParam>;
 
   //------------ Actual type checks start here -------------------------
-  {
-    constexpr bool is_same =
-        std::is_same_v<typename tensor_t::DistArray_, tensor_t>;
-    BOOST_TEST(is_same);
-  }
 
   {
     using corr_impl_type = detail::ArrayImpl<tile_type, policy_type>;

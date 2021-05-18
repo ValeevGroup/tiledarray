@@ -128,7 +128,7 @@ template <typename Array, typename Scalar,
           typename std::enable_if<
               TiledArray::detail::is_numeric_v<Scalar> >::type* = nullptr>
 inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar> operator*(
-    const TsrExpr<Array, true>& expr, const Scalar& factor) {
+    const TsrExpr<Array>& expr, const Scalar& factor) {
   return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
       expr.array(), expr.annotation(), factor);
 }
@@ -144,7 +144,7 @@ template <typename Array, typename Scalar,
           typename std::enable_if<
               TiledArray::detail::is_numeric_v<Scalar> >::type* = nullptr>
 inline ScalTsrExpr<typename std::remove_const<Array>::type, Scalar> operator*(
-    const Scalar& factor, const TsrExpr<Array, true>& expr) {
+    const Scalar& factor, const TsrExpr<Array>& expr) {
   return ScalTsrExpr<typename std::remove_const<Array>::type, Scalar>(
       expr.array(), expr.annotation(), factor);
 }
@@ -190,10 +190,10 @@ inline ScalTsrExpr<Array, mult_t<Scalar2, Scalar1> > operator*(
 /// \return A scaled-tensor expression object
 template <typename Array>
 inline ScalTsrExpr<typename std::remove_const<Array>::type,
-                   typename ExprTrait<TsrExpr<Array, true> >::numeric_type>
-operator-(const TsrExpr<Array, true>& expr) {
+                   typename ExprTrait<TsrExpr<Array> >::numeric_type>
+operator-(const TsrExpr<Array>& expr) {
   return ScalTsrExpr<typename std::remove_const<Array>::type,
-                     typename ExprTrait<TsrExpr<Array, true> >::numeric_type>(
+                     typename ExprTrait<TsrExpr<Array> >::numeric_type>(
       expr.array(), expr.annotation(), -1);
 }
 
@@ -217,7 +217,7 @@ inline ScalTsrExpr<Array, Scalar> operator-(
 /// \return A conjugated expression object
 template <typename Array>
 inline ConjTsrExpr<typename std::remove_const<Array>::type> conj(
-    const TsrExpr<Array, true>& expr) {
+    const TsrExpr<Array>& expr) {
   return ConjTsrExpr<typename std::remove_const<Array>::type>(
       expr.array(), expr.annotation(), conj_op());
 }
@@ -228,8 +228,8 @@ inline ConjTsrExpr<typename std::remove_const<Array>::type> conj(
 /// \param expr The tensor expression object
 /// \return A tensor expression object
 template <typename Array>
-inline TsrExpr<const Array, true> conj(const ConjTsrExpr<Array>& expr) {
-  return TsrExpr<const Array, true>(expr.array(), expr.annotation());
+inline TsrExpr<const Array> conj(const ConjTsrExpr<Array>& expr) {
+  return TsrExpr<const Array>(expr.array(), expr.annotation());
 }
 
 /// Conjugated-tensor expression factor

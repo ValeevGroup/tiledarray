@@ -74,7 +74,7 @@ inline void btas_subtensor_to_tensor(
 }
 
 // clang-format off
-/// Copy a block of a btas::Tensor into a TiledArray::Tensor
+/// Copy a TiledArray::Tensor into a block of a btas::Tensor
 
 /// TiledArray::Tensor \c src will be copied into a block of btas::Tensor
 /// \c dst. The block dimensions will be determined by the dimensions of the range
