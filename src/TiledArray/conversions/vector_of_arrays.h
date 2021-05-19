@@ -23,17 +23,20 @@ namespace detail {
 /// @return TiledRange of fused Array object
 inline TA::TiledRange prepend_dim_to_trange(
     std::size_t array_rank, const TiledArray::TiledRange& array_trange,
-    std::size_t block_size = 1) {
+    std::size_t nblocks, std::size_t avg_block_size, std::size_t num_avg_plus_one) {
   /// make the new TiledRange1 for new dimension
   TA::TiledRange1 new_trange1;
   {
     std::vector<std::size_t> new_trange1_v;
-    auto range_size = array_rank;
-    new_trange1_v.push_back(0);
-    for (decltype(range_size) i = block_size; i < range_size; i += block_size) {
-      new_trange1_v.push_back(i);
+    new_trange1_v.reserve(nblocks + 1);
+    auto block_counter = 0;
+    for(auto i = 0; i < num_avg_plus_one; ++i, block_counter += avg_block_size + 1){
+      new_trange1_v.push_back(block_counter);
     }
-    new_trange1_v.push_back(range_size);
+    for (auto i = num_avg_plus_one; i < nblocks; ++i, block_counter+= avg_block_size) {
+      new_trange1_v.push_back(block_counter);
+    }
+    new_trange1_v.push_back(array_rank);
     new_trange1 = TA::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
   }
 
@@ -176,7 +179,6 @@ TA::DenseShape fuse_tilewise_vector_of_shapes(
 /// @param[in] tile_size the size of the tile of the leading dimension of the
 /// fused array
 /// @return the Shape of the @c i -th subarray
-// TODO rename to tilewise_slice_of_fused_shape
 inline TA::SparseShape<float> tilewise_slice_of_fused_shape(
     const TA::TiledRange& split_trange,
     const TA::SparsePolicy::shape_type& shape, const std::size_t tile_idx,
@@ -296,13 +298,16 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
   using Array = TA::DistArray<Tile, Policy>;
   detail::dist_subarray_vec<Array> arrays(global_world, array_vec,
                                           fused_dim_extent);
-
-    std::size_t nblocks =
-            (fused_dim_extent + target_block_size - 1) / target_block_size;
-    std::size_t block_size = (fused_dim_extent + nblocks - 1) / nblocks;
   // make fused tiledrange
+  std::size_t nblocks =
+          (fused_dim_extent + target_block_size - 1) / target_block_size;
+  //std::size_t block_size = (array_rank + nblocks - 1) / nblocks;
+  auto dv = std::div((int) (fused_dim_extent + nblocks - 1), (int) nblocks);
+  auto avg_block_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
+
   auto fused_trange =
-      detail::prepend_dim_to_trange(fused_dim_extent, array_trange, block_size);
+      detail::prepend_dim_to_trange(fused_dim_extent, array_trange, nblocks,
+    avg_block_size, num_avg_plus_one);
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
   // make fused shape
@@ -347,7 +352,11 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
 
       const auto div1 = std::ldiv(tile_idx_mode0, nproc);
       const auto tile_idx_on_owner = div1.quot;
-      const auto vector_idx_offset_on_owner = tile_idx_on_owner * block_size;
+      const auto block_size = (tile_idx_mode0 < num_avg_plus_one) ?
+              avg_block_size + 1 : avg_block_size;
+      const auto vector_idx_offset_on_owner = (tile_idx_mode0 >= num_avg_plus_one) ?
+              num_avg_plus_one * (block_size + 1) + (tile_idx_on_owner - num_avg_plus_one) * block_size :
+              tile_idx_on_owner * block_size;
       const auto owner_rank = div1.rem;
 
       auto fused_tile_range =
@@ -355,8 +364,7 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
       // make a vector of Futures to the input tiles
       std::vector<madness::Future<Tile>> input_tiles;
       input_tiles.reserve(fused_tile_range.extent(0));
-      for (size_t v = 0, vidx = tile_idx_mode0 * block_size;
-           v != block_size && vidx < fused_dim_extent; ++v, ++vidx) {
+      for (size_t v = 0; v != block_size; ++v) {
         using Index = decltype(tile_ord_array);
         input_tiles.emplace_back(
             arrays.task(owner_rank,
