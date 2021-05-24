@@ -1118,7 +1118,19 @@ class Range {
 
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& rank_& datavec_& offset_& volume_;
+    ar& rank_;
+    const auto four_x_rank = rank_ << 2;
+    // read via madness::archive::wrap to be able to
+    // - avoid having to serialize datavec_'s size
+    // - read old archives that represented datavec_ by bare ptr
+    if constexpr (madness::archive::is_input_archive<Archive>::value) {
+      datavec_.resize(four_x_rank);
+      ar >> madness::archive::wrap(datavec_.data(), four_x_rank);
+    } else if constexpr (madness::archive::is_output_archive<Archive>::value) {
+      ar << madness::archive::wrap(datavec_.data(), four_x_rank);
+    } else
+      abort();  // unreachable
+    ar& offset_& volume_;
   }
 
   void swap(Range_& other) {
