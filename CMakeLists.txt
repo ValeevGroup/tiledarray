@@ -26,6 +26,9 @@
 
 cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
 
+# Preload versions/tags of all dependencies ====================================
+include(external/versions.cmake)
+
 ###############################################################################
 # Bring ValeevGroup cmake toolkit
 ###############################################################################
@@ -34,6 +37,7 @@ FetchContent_Populate(
     vg_cmake_kit
     QUIET
     GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
+    GIT_TAG             ${TA_TRACKED_VGCMAKEKIT_TAG}
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-build
     SUBBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-subbuild
@@ -92,9 +96,6 @@ include(LoadFetchContent)
 include(CMakeDependentOption)
 include(CMakePackageConfigHelpers)
 include(FeatureSummary)
-
-# Preload versions/tags of all dependencies ====================================
-include(external/versions.cmake)
 
 set(MPI_CXX_SKIP_MPICXX TRUE CACHE BOOL "MPI_CXX_SKIP_MPICXX")
 
