@@ -250,10 +250,14 @@ class SparseShape {
     return result_size_vectors;
   }
 
-  decltype(zero_tile_count_) compute_zero_tile_count() {
+  /// @brief screens out zero tiles by zeroing out the norms of tiles below
+  ///        the threshold
+  /// @return the number of zero tiles
+  auto screen_out_zero_tiles() {
     decltype(zero_tile_count_) zero_tile_count = 0;
-    for (auto&& n : tile_norms_) {
+    for (auto& n : tile_norms_) {
       if (n < threshold()) {
+        n = 0;
         ++zero_tile_count;
       }
     }
@@ -308,7 +312,7 @@ class SparseShape {
       zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(
           tile_norms_, size_vectors_.get());
     } else {
-      zero_tile_count_ = compute_zero_tile_count();
+      zero_tile_count_ = screen_out_zero_tiles();
     }
   }
 
@@ -382,7 +386,7 @@ class SparseShape {
           tile_norms_, size_vectors_.get());
       ;
     } else {
-      zero_tile_count_ = compute_zero_tile_count();
+      zero_tile_count_ = screen_out_zero_tiles();
     }
   }
 
@@ -406,7 +410,7 @@ class SparseShape {
               const TiledRange& trange)
       : SparseShape(tile_norms, trange) {
     world.gop.max(tile_norms_.data(), tile_norms_.size());
-    zero_tile_count_ = compute_zero_tile_count();
+    zero_tile_count_ = screen_out_zero_tiles();
   }
 
   /// Copy constructor
