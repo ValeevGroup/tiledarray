@@ -25,7 +25,7 @@ fi
 export INSTALL_DIR=${INSTALL_PREFIX}/boost
 if [ ! -d "${INSTALL_DIR}" ]; then
     rm -fr boost_${BOOST_VERSION}.tar.bz2
-    wget https://dl.bintray.com/boostorg/release/1.74.0/source/boost_${BOOST_VERSION}.tar.bz2
+    wget https://boostorg.jfrog.io/artifactory/main/release/1.74.0/source/boost_${BOOST_VERSION}.tar.bz2
     tar -xjf boost_${BOOST_VERSION}.tar.bz2
     cd boost_${BOOST_VERSION}
     cat > user-config.jam << END
