@@ -67,7 +67,7 @@ auto lu_solve(const ArrayA& A, const ArrayB& B,
   auto [B_Mloc, B_Nloc] = B_sca.dist().get_local_dims(N, NRHS);
   auto desc_b = B_sca.dist().descinit_noerror(N, NRHS, B_Mloc);
 
-  std::vector<scalapackpp::scalapack_int> IPIV(A_Mloc + MB);
+  std::vector<int64_t> IPIV(A_Mloc + MB);
 
   auto info =
       scalapackpp::pgesv(N, NRHS, A_sca.local_mat().data(), 1, 1, desc_a,
@@ -104,7 +104,7 @@ auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange(),
   auto [A_Mloc, A_Nloc] = A_sca.dist().get_local_dims(N, N);
   auto desc_a = A_sca.dist().descinit_noerror(N, N, A_Mloc);
 
-  std::vector<scalapackpp::scalapack_int> IPIV(A_Mloc + MB);
+  std::vector<int64_t> IPIV(A_Mloc + MB);
 
   {
     auto info = scalapackpp::pgetrf(N, N, A_sca.local_mat().data(), 1, 1,

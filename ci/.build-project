@@ -15,7 +15,7 @@ while [ $# -gt 0 ]; do
     -*) echo "Invalid option $arg"; exit 1 ;;
     CXX=*) eval "export $1" ;;
     *=*)   vars+="\"-D$1\" "
-	   # NB unset vars from s.t. CMake doesn't see env vars, eg BLA_VENDOR
+           # NB unset vars from s.t. CMake doesn't see env vars, eg BLA_VENDOR
            unset $(echo "$1" | cut -d= -f1)
            ;;
     *)     targets+="$1 ";;
@@ -33,8 +33,8 @@ xtime="/usr/bin/time"
 if [ -n "$metrics" ]; then
     #sudo apt install time
     if [ ! -x $xtime ]; then
-	echo >&2 "${xtime} is not executable, metrics disabled"
-	metrics=""
+        echo >&2 "${xtime} is not executable, metrics disabled"
+        metrics=""
     fi
     rm -f "${metrics}"
 fi
@@ -44,9 +44,9 @@ function time_cmd {
     cmd="$@"
     echo "+ $cmd"
     if [ -n "$metrics" ]; then
-	format="'${step}.memory %Mk\n${step}.time %E\n'"
-	cmd="${xtime} -f ${format} -a -o $metrics $cmd"
-	#echo "$cmd"
+        format="'${step}.memory %Mk\n${step}.time %E\n'"
+        cmd="${xtime} -f ${format} -a -o $metrics $cmd"
+        #echo "$cmd"
     fi
     eval "$cmd"
 }
@@ -73,7 +73,7 @@ section_end host_system_info
 section_start "preparing_system_section[collapsed=true]" "Preparing system"
 cmd "source ci/openmpi.env"
 cmd "echo 'localhost slots=2' > /etc/openmpi/openmpi-default-hostfile"
-if [[ "$vars" =~ \"-DBLA_VENDOR=Intel ]]; then
+if [[ "$vars" =~ \"-DBLAS_PREFERENCE_LIST=IntelMKL ]]; then
   cmd "make -C /home/ValeevGroup install/intel-mkl"
   cmd "source /opt/intel/mkl/bin/mklvars.sh intel64"
   cmd "echo MKLROOT=\$MKLROOT"
@@ -94,4 +94,3 @@ for target in ${targets}; do
   time_cmd ${target} "cmake --build ${build_dir} --target ${target}"
   section_end build_${target}_section
 done
-

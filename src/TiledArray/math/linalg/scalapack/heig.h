@@ -80,7 +80,7 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange(),
   scalapack::BlockCyclicMatrix<value_type> evecs(world, grid, N, N, NB, NB);
 
   auto info = scalapackpp::hereig(
-      scalapackpp::VectorFlag::Vectors, blacspp::Triangle::Lower, N,
+      scalapackpp::Job::Vec, blacspp::Uplo::Lower, N,
       matrix.local_mat().data(), 1, 1, desc, evals.data(),
       evecs.local_mat().data(), 1, 1, desc);
   if (info) TA_EXCEPTION("EVP Failed");
@@ -150,7 +150,7 @@ auto heig(const ArrayA& A, const ArrayB& B,
   scalapack::BlockCyclicMatrix<value_type> evecs(world, grid, N, N, NB, NB);
 
   auto info = scalapackpp::hereig_gen(
-      scalapackpp::VectorFlag::Vectors, blacspp::Triangle::Lower, N,
+      scalapackpp::Job::Vec, blacspp::Uplo::Lower, N,
       A_sca.local_mat().data(), 1, 1, desc, B_sca.local_mat().data(), 1, 1,
       desc, evals.data(), evecs.local_mat().data(), 1, 1, desc);
   if (info) TA_EXCEPTION("EVP Failed");

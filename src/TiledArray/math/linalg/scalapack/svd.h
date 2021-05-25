@@ -94,14 +94,14 @@ auto svd(const Array& A, TiledRange u_trange, TiledRange vt_trange,
   std::shared_ptr<scalapack::BlockCyclicMatrix<value_type>> U = nullptr,
                                                             VT = nullptr;
 
-  scalapackpp::VectorFlag JOBU = scalapackpp::VectorFlag::NoVectors;
-  scalapackpp::VectorFlag JOBVT = scalapackpp::VectorFlag::NoVectors;
+  scalapackpp::Job JOBU = scalapackpp::Job::NoVec;
+  scalapackpp::Job JOBVT = scalapackpp::Job::NoVec;
 
   value_type* U_ptr = nullptr;
   value_type* VT_ptr = nullptr;
 
   if constexpr (need_u) {
-    JOBU = scalapackpp::VectorFlag::Vectors;
+    JOBU = scalapackpp::Job::Vec;
     U = std::make_shared<scalapack::BlockCyclicMatrix<value_type>>(
         world, grid, M, SVD_SIZE, MB, NB);
 
@@ -109,7 +109,7 @@ auto svd(const Array& A, TiledRange u_trange, TiledRange vt_trange,
   }
 
   if constexpr (need_vt) {
-    JOBVT = scalapackpp::VectorFlag::Vectors;
+    JOBVT = scalapackpp::Job::Vec;
     VT = std::make_shared<scalapack::BlockCyclicMatrix<value_type>>(
         world, grid, SVD_SIZE, N, MB, NB);
 

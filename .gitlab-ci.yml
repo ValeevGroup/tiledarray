@@ -13,6 +13,7 @@ variables:
     ${TA_PYTHON}
     ${ENABLE_CUDA}
     ${BLA_VENDOR}
+    ${BLA_THREADS}
     ${ENABLE_SCALAPACK}
 
 before_script:
@@ -37,8 +38,9 @@ ubuntu:
         ${TA_CONFIG}
         ${TA_TARGETS}
         MPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
-        blacs_LIBRARIES=scalapack-openmpi
-        scalapack_LIBRARIES=scalapack-openmpi
+        ScaLAPACK_LIBRARIES="scalapack-openmpi;lapack;blas;MPI::MPI_C"
+        #blacs_LIBRARIES=scalapack-openmpi
+        #scalapack_LIBRARIES=scalapack-openmpi
         #lapack_LIBRARIES=lapack
   artifacts:
     paths:
@@ -53,7 +55,8 @@ ubuntu:
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
         CXX: [ g++ ]
         BUILD_TYPE : [ "Release" ]
-        BLA_VENDOR : [ "BLA_VENDOR=Intel10_64lp_seq", "BLA_VENDOR=Intel10_64lp" ]
+        BLA_VENDOR : [ "BLAS_PREFERENCE_LIST=IntelMKL" ]
+        BLA_THREADS : [ "intelmkl_PREFERED_THREAD_LEVEL=tbb" ]
         # ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
         TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
