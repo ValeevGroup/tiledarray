@@ -254,7 +254,24 @@ algebra in TA:
   discovery modules will override the standard CMake modules for BLAS and LAPACK,
   provide modules to discover BLACS and ScaLAPACK. These modules
   will then be invoked to discover the linear algebra libraries as robustly as
-  feasible.
+  feasible. The following CMake cache variables can be used to control the behavior
+  of the NWChemEx discovery kit:
+  - `{BLAS,LAPACK,ScaLAPACK}_PREFERS_STATIC`: if set to on, will prefer to link the corresponding component statically.
+    Instead of setting these variables directly the user can use variables `BLA_STATIC` used by
+    the standard CMake [BLAS](https://cmake.org/cmake/help/latest/module/FindBLAS.html)
+    and [LAPACK](https://cmake.org/cmake/help/latest/module/FindLAPACK.html) CMake modules.
+  - `{BLAS,LAPACK,ScaLAPACK}_PREFERENCE_LIST`: these specify the variants of the corresponding libraries to search,
+    in the order of preference. The following are permitted values in these lists:
+    - `ReferenceBLAS`: NETLIB reference implementations
+    - `IntelMKL`: Intel Math Kernel Library
+    - `IBMESSL`: IBM Engineering and Scientific Subroutine Library
+    - `BLIS`: BLAS-Like Instantiation Software
+    - `OpenBLAS`: OpenBLAS
+    - `Accelerate`: Apple's Accelerate framework
+    - `FLAME`: (LAPACK-only) [libFLAME](https://www.cs.utexas.edu/~flame/web/libFLAME.html)
+    To maintain compatibility with the standard BLAS and CMake CMake modules the user can
+    also simply specify the `BLA_VENDOR` variable which specifies the particular library variant
+    to seek, as described in the corresponding [module docs](https://cmake.org/cmake/help/latest/module/FindBLAS.html).
 - If the use of the NWChemEx kit is disabled by setting CMake cache variable `ENABLE_WFN91_LINALG_DISCOVERY_KIT` to `OFF`
   BLAS/LAPACK are imported transitively via the BLAS++/LAPACK++ libraries (which are themselves
   imported transitively via the BTAS library). Under the most common scenario, where TiledArray
