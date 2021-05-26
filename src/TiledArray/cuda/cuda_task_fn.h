@@ -131,6 +131,9 @@ struct cudaTaskFn : public TaskInterface {
       //      std::string message = "callback on cudaTaskFn: " + address.str() +
       //        '\n'; std::cout << message;
       callback->notify();
+      // must flush the prebuf (if any) to make sure this cleanup task will be
+      // actually submitted
+      ThreadPool::instance()->flush_prebuf();
       const auto t1 = TiledArray::now();
 
       TiledArray::detail::cuda_taskfn_callback_duration_ns() +=
@@ -799,10 +802,10 @@ add_cuda_taskfn(
     cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>* t) {
   typename cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
       res(t->result());
-  // add the cuda task
-  world.taskq.add(static_cast<TaskInterface*>(t));
   // add the internal async task in cuda task as well
   world.taskq.add(t->async_task());
+  // add the cuda task
+  world.taskq.add(static_cast<TaskInterface*>(t));
   return res;
 }
 
