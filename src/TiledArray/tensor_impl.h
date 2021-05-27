@@ -62,11 +62,20 @@ class TensorImpl : private NO_DEFAULTS {
   /// \param trange The tiled range for this tensor
   /// \param shape The shape of this tensor
   /// \param pmap The tile-process map
+  /// \param replicate_shape if true, will replicate the shape from rank 0, else
+  ///        will use as is, but assert that the data is _bitwise_ identical
+  ///        between ranks
   /// \throw TiledArray::Exception When the size of shape is not equal to
   /// zero
   TensorImpl(World& world, const trange_type& trange, const shape_type& shape,
-             const std::shared_ptr<pmap_interface>& pmap)
+             const std::shared_ptr<pmap_interface>& pmap,
+             bool replicate_shape = true)
       : world_(world), trange_(trange), shape_(shape), pmap_(pmap) {
+    // ensure that shapes are identical on every rank
+    if (replicate_shape)
+      world.gop.broadcast_serializable(shape_, 0);
+    else
+      TA_ASSERT(is_replicated(world, shape_));
     // Validate input data.
     TA_ASSERT(pmap_);
     TA_ASSERT(pmap_->size() == trange_.tiles_range().volume());
@@ -75,8 +84,6 @@ class TensorImpl : private NO_DEFAULTS {
     TA_ASSERT(pmap_->procs() ==
               typename pmap_interface::size_type(world_.size()));
     TA_ASSERT(shape_.validate(trange_.tiles_range()));
-    // ensure that shapes are identical on every rank
-    TA_ASSERT(is_replicated(world, shape));
   }
 
   /// Virtual destructor
