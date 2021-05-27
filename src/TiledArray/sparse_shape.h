@@ -1627,10 +1627,15 @@ bool is_replicated(World& world, const SparseShape<T>& shape) {
   const auto volume = shape.data().size();
   std::vector<T> data(shape.data().data(), shape.data().data() + volume);
   world.gop.max(data.data(), volume);
+  bool result = true;
   for (size_t i = 0; i != data.size(); ++i) {
-    if (data[i] != shape.data()[i]) return false;
+    if (data[i] != shape.data()[i]) {
+      result = false;
+      break;
+    }
   }
-  return true;
+  world.gop.logic_and(&result, 1);
+  return result;
 }
 
 #ifndef TILEDARRAY_HEADER_ONLY
