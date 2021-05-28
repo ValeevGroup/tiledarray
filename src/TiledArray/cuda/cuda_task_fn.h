@@ -123,6 +123,7 @@ struct cudaTaskFn : public TaskInterface {
 
    private:
     static void CUDART_CB cuda_callback(void* userData) {
+      TA_ASSERT(!madness::is_madness_thread());
       const auto t0 = TiledArray::now();
       // convert void * to AsyncTaskInterface*
       auto* callback = static_cast<cudaTaskFn_*>(userData);
@@ -131,9 +132,6 @@ struct cudaTaskFn : public TaskInterface {
       //      std::string message = "callback on cudaTaskFn: " + address.str() +
       //        '\n'; std::cout << message;
       callback->notify();
-      // must flush the prebuf (if any) to make sure this cleanup task will be
-      // actually submitted
-      ThreadPool::instance()->flush_prebuf();
       const auto t1 = TiledArray::now();
 
       TiledArray::detail::cuda_taskfn_callback_duration_ns() +=
