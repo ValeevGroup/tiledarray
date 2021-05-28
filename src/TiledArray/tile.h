@@ -25,18 +25,6 @@
 #include <TiledArray/tile_interface/trace.h>
 #include <memory>
 
-// Forward declaration of MADNESS archive type traits
-namespace madness {
-namespace archive {
-
-template <typename>
-struct is_output_archive;
-template <typename>
-struct is_input_archive;
-
-}  // namespace archive
-}  // namespace madness
-
 namespace TiledArray {
 
 /**

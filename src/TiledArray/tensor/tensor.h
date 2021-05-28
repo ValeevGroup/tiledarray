@@ -627,7 +627,7 @@ class Tensor {
   template <typename Archive,
             typename std::enable_if<madness::is_output_archive_v<
                 Archive>>::type* = nullptr>
-  void serialize(const Archive& ar) {
+  void serialize(Archive& ar) {
     if (pimpl_) {
       ar & pimpl_->range_.volume();
       ar& madness::archive::wrap(pimpl_->data_, pimpl_->range_.volume());
