@@ -33,6 +33,7 @@
 
 #include <TiledArray/config.h>
 #include <madness/config.h>
+#include <madness/world/archive.h>
 
 TILEDARRAY_PRAGMA_GCC(diagnostic push)
 TILEDARRAY_PRAGMA_GCC(system_header)
@@ -57,15 +58,6 @@ TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
 namespace madness {
 namespace archive {
-
-template <class>
-class archive_array;
-template <class T>
-inline archive_array<T> wrap(const T*, unsigned int);
-template <class Archive, typename Data>
-struct ArchiveStoreImpl;
-template <class Archive, typename Data>
-struct ArchiveLoadImpl;
 
 template <class Archive, typename Scalar, int RowsAtCompileTime,
           int ColsAtCompileTime, int Options, int MaxRowsAtCompileTime,

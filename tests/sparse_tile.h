@@ -138,8 +138,8 @@ class EigenSparseTile {
 
   // output
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_output_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_output_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     if (impl_) {
       ar & true;
@@ -159,8 +159,8 @@ class EigenSparseTile {
 
   // output
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_input_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_input_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     bool have_impl = false;
     ar& have_impl;

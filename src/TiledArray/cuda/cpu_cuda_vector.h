@@ -7,6 +7,8 @@
 #include <TiledArray/cuda/platform.h>
 #include <TiledArray/cuda/thrust.h>
 
+#include <madness/world/archive.h>
+
 namespace TiledArray {
 
 /// \brief a vector that lives on either host or device side, or both
@@ -203,12 +205,6 @@ const T* device_data(const cpu_cuda_vector<T>& storage) {
 
 namespace madness {
 namespace archive {
-
-// forward decls
-template <class Archive, typename T>
-struct ArchiveLoadImpl;
-template <class Archive, typename T>
-struct ArchiveStoreImpl;
 
 template <class Archive, typename T>
 struct ArchiveLoadImpl<Archive, TiledArray::cpu_cuda_vector<T>> {
