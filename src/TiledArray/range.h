@@ -1123,10 +1123,10 @@ class Range {
     // read via madness::archive::wrap to be able to
     // - avoid having to serialize datavec_'s size
     // - read old archives that represented datavec_ by bare ptr
-    if constexpr (madness::archive::is_input_archive<Archive>::value) {
+    if constexpr (madness::is_input_archive_v<Archive>) {
       datavec_.resize(four_x_rank);
       ar >> madness::archive::wrap(datavec_.data(), four_x_rank);
-    } else if constexpr (madness::archive::is_output_archive<Archive>::value) {
+    } else if constexpr (madness::is_output_archive_v<Archive>) {
       ar << madness::archive::wrap(datavec_.data(), four_x_rank);
     } else
       abort();  // unreachable
