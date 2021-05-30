@@ -23,22 +23,11 @@
 #include <TiledArray/error.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/utility.h>
+#include <madness/world/archive.h>
 #include <cassert>
 #include <initializer_list>
 #include <mutex>
 #include <vector>
-
-// Forward declaration of MADNESS archive type traits
-namespace madness {
-namespace archive {
-
-template <typename>
-struct is_output_archive;
-template <typename>
-struct is_input_archive;
-
-}  // namespace archive
-}  // namespace madness
 
 namespace TiledArray {
 
@@ -216,15 +205,15 @@ class TiledRange1 {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_input_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_input_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(const Archive& ar) {
     ar& range_& elements_range_& tiles_ranges_& elem2tile_;
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_output_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_output_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(const Archive& ar) const {
     ar& range_& elements_range_& tiles_ranges_& elem2tile_;
   }

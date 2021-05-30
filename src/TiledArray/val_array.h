@@ -454,7 +454,7 @@ class ValArray : private SizeArray<T> {
   /// \param[out] ar an Archive object
   template <typename Archive,
             typename = std::enable_if_t<
-                madness::archive::is_output_archive<Archive>::value>>
+                madness::is_output_archive_v<Archive>>>
   void serialize(Archive& ar) const {
     // need to write size first to be able to init when deserializing
     ar& size() & madness::archive::wrap(data(), size());
@@ -466,7 +466,7 @@ class ValArray : private SizeArray<T> {
   /// \param[out] ar an Archive object
   template <typename Archive,
             typename = std::enable_if_t<
-                madness::archive::is_input_archive<Archive>::value>>
+                madness::is_input_archive_v<Archive>>>
   void serialize(Archive& ar) {
     size_t sz = 0;
     ar& sz;

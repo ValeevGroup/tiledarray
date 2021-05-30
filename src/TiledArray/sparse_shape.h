@@ -1565,8 +1565,8 @@ class SparseShape {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_input_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_input_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(const Archive& ar) {
     ar& tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();
@@ -1578,8 +1578,8 @@ class SparseShape {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_output_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_output_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(const Archive& ar) const {
     ar& tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();
@@ -1627,10 +1627,15 @@ bool is_replicated(World& world, const SparseShape<T>& shape) {
   const auto volume = shape.data().size();
   std::vector<T> data(shape.data().data(), shape.data().data() + volume);
   world.gop.max(data.data(), volume);
+  bool result = true;
   for (size_t i = 0; i != data.size(); ++i) {
-    if (data[i] != shape.data()[i]) return false;
+    if (data[i] != shape.data()[i]) {
+      result = false;
+      break;
+    }
   }
-  return true;
+  world.gop.logic_and(&result, 1);
+  return result;
 }
 
 #ifndef TILEDARRAY_HEADER_ONLY

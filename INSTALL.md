@@ -40,9 +40,9 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag bbb11894802d7e2f89182a2e7fce9aed1078f851 . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag d7794799e4510cf66844081dd8f1f5b648112d33 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-  - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag a3f3dce8c9d81262cf9fd7b29f97fcdafc7372a5 .
+  - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag ce21aa7723c5c94ecc2e459c22891053eddd5a95 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
@@ -215,7 +215,7 @@ to use TiledArray in a distributed memory environment. Note, if you
 build MADNESS yourself, you must also configure MADNESS with `ENABLE_MPI=OFF`
 to enable this option.
 
-## BLAS/LAPACK
+## Linear Algebra: BLAS/LAPACK/ScaLAPACK
 
 Even for basic operation TiledArray requires a serial BLAS implementation, either by linking with a
 serial version of the BLAS library or by setting the number of threads to one
@@ -230,26 +230,68 @@ set the environment variables (e.g. `OMP_NUM_THREADS`, `MKL_NUM_THREADS`, etc.)
 to ensure single-threaded execution of BLAS/LAPACK kernels
 as needed.
 
-
 As of version 1.0 TiledArray also provides a direct (non-iterative) linear solvers API
 implemented using LAPACK and (optionally) ScaLAPACK. Therefore LAPACK is now a mandatory
-prerequisite of TiledArray
+prerequisite of TiledArray. The use of ScaLAPACK can be enabled by setting CMake cache
+variable `ENABLE_SCALAPACK` to `ON`.
 
-BLAS/LAPACK dependencies are provided by the BTAS library, which in turn uses BLAS++/LAPACK++
-C++ linear algebra packages to discover the BLAS and LAPACK libraries at configure time.
-The most common scenario is where TiledArray will configure and compile BTAS dependency
-and its BLAS++/LAPACK++ prerequisites from source (this is strongly recommended). The following
-CMake variables can be used to control how BLAS/LAPACK discovery occurs:
-
-* `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS libraries will be preferred.
-* `BLA_VENDOR` -- controls which vendor BLAS/LAPACK library will be sought
+Robust discovery of linear algebra libraries, and _especially_ their distributed-memory
+variants, is a complex process. Unfortunately even for serial/shared-memory linear
+algebra libraries only basic scenarios are supported by the standard CMake modules
+(e.g., [BLAS](https://cmake.org/cmake/help/latest/module/FindBLAS.html) and
+[LAPACK](https://cmake.org/cmake/help/latest/module/FindLAPACK.html)).
+There are several discovery mechanisms available for robust discovery of linear
+algebra in TA:
+- By specifying the `BLAS_LIBRARIES`, `LAPACK_LIBRARIES`, and (if `ENABLE_SCALAPACK` is on)
+  `ScaLAPACK_LIBRARIES` CMake cache variables via CMake command line or via a toolchain.
+  Doing this overrides all other mechanisms of discovery described below and is recommended
+  if the discovery fails for some reason. To help with setting these variables for specific
+  platforms consider using toolchain files from
+  [the Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains) (see examples above).
+- The default discovery method utilizes [the recently developed linear algebra discovery kit](https://github.com/wavefunction91/cmake-modules) developed by
+  [David Williams-Young](https://github.com/wavefunction91) and co-workers
+  for the [NWChemEx project](https://github.com/)NWChemEx-Project). The
+  discovery modules will override the standard CMake modules for BLAS and LAPACK,
+  provide modules to discover BLACS and ScaLAPACK. These modules
+  will then be invoked to discover the linear algebra libraries as robustly as
+  feasible. The following CMake cache variables can be used to control the behavior
+  of the NWChemEx discovery kit:
+  - `{BLAS,LAPACK,ScaLAPACK}_PREFERS_STATIC`: if set to on, will prefer to link the corresponding component statically.
+  - `{BLAS,LAPACK,ScaLAPACK}_PREFERENCE_LIST`: these specify the variants of the corresponding libraries to search,
+    in the order of preference. The following are permitted values in these lists:
+    - `ReferenceBLAS`: NETLIB reference implementations
+    - `IntelMKL`: Intel Math Kernel Library
+    - `IBMESSL`: IBM Engineering and Scientific Subroutine Library
+    - `BLIS`: BLAS-Like Instantiation Software
+    - `OpenBLAS`: OpenBLAS
+    - `Accelerate`: Apple's Accelerate framework
+    - `FLAME`: (LAPACK-only) [libFLAME](https://www.cs.utexas.edu/~flame/web/libFLAME.html)
+    *N.B.* These differ from the recognized values of the `BLA_VENDOR` variable used by the [BLAS+LAPACK CMake modules](https://cmake.org/cmake/help/latest/module/FindBLAS.html).
+- If the use of the NWChemEx kit is disabled by setting CMake cache variable `ENABLE_WFN91_LINALG_DISCOVERY_KIT` to `OFF`
+  BLAS/LAPACK are imported transitively via the BLAS++/LAPACK++ libraries (which are themselves
+  imported transitively via the BTAS library). Under the most common scenario, where TiledArray
+  will configure and compile BTAS dependency and its BLAS++/LAPACK++ prerequisites from source
+  (this is strongly recommended), BLAS/LAPACK will thus be discovered and imported by
+  BLAS++/LAPACK++ during the TA configuration. There are 2 mechanisms by which BLAS++/LAPACK++
+  discover BLAS/LAPACK:
+  - _the built-in custom discovery kit_; no options exist to provide any control
+  - standard CMake BLAS/LAPACK modules.
+  
+  The latter is used if CMake cache variable `BLA_VENDOR` is specified:
+  - `BLA_VENDOR` -- controls which vendor BLAS/LAPACK library will be sought
   (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
   by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
   framework on MacOS use `-DBLA_VENDOR=Apple`.
 
-More information can be found in the installation instructions for
-[BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
-[LAPACK++](https://icl.bitbucket.io/lapackpp/md__i_n_s_t_a_l_l.html).
+  More information can be found in the installation instructions for
+  [BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
+  [LAPACK++](https://icl.bitbucket.io/lapackpp/md__i_n_s_t_a_l_l.html).
+  
+  Note that BLAS++/LAPACK++ discover BLAS and LAPACK only; ScaLAPACK
+  library is always discovered using the NWChemEx kit.
+
+Also note that all discovery methods respect the following CMake cache variable:
+- `BLA_STATIC` -- indicates whether static or shared LAPACK and BLAS libraries will be preferred.
 
 Additional platform-specific BLAS/LAPACK notes are listed below.
 
@@ -257,11 +299,19 @@ Additional platform-specific BLAS/LAPACK notes are listed below.
 
 Intel MKL is a freely-available collection of high-performance libraries that implements BLAS, LAPACK, and ScaLAPACK APIs. MKL is complex: it supports both serial kernels as well as parallel kernels that can take advantage of multiple cores via the use of OpenMP and Intel TBB (the [Intel OneAPI toolkit](https://software.intel.com/oneapi) provides MKL also capable of execution on some Intel GPUs and FPGAs), and the [necessary MKL link options](https://software.intel.com/sites/products/mkl/mkl_link_line_advisor.htm) will depend on the compiler, OS, and other details.
 
-Fortunately, Intel MKL can be discovered by BLAS++/LAPACK++ automatically in most instances; if needed, specifying `BLA_VENDOR` with [appropriate argument](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables) can be used to force TiledArray to use MKL. Unfortunately it is not possible to specify the use of TBB-based backend for MKL without the use of a toolchain file. All MKL-enabled toolchains in [The Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains) can be used to configure TiledArray to use sequential, OpenMP, or TBB backend by setting the `MKL_THREADING` CMake cache variable to `SEQ`, `OMP`, or `TBB`, respectively. The toolchains also respect the user-provided choice of `BLA_STATIC`. If multiple MKL versions are present on your system, specify the apropriate variant of the library by loading the corresponding `mklvars.sh` script to set environment variables `MKLROOT` and, if necessary, `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH`.
+To discover and configure the use of Intel MKL consider these suggestions:
+- The use of NWChemEx discovery kit is strongly recommended for discovering Intel MKL. The following CMake cache variables can be used to specify the desired Intel MKL configuration:
+  - `intelmkl_PREFERS_STATIC`: whether to look for static or shared/dynamic libraries (default = `OFF`)
+  - `intelmkl_PREFERED_THREAD_LEVEL`: which threading backend to use, supported values are `sequential`, `openmp`, and `tbb` (default = `openmp`)
+  - `intelmkl_PREFERED_THREAD_LIBRARY`: which thread library to use, supported values are `intel`, `gnu`, and `pgi` (default depends on the compile)
+
+- Most common configurations of Intel MKL can also be discovered by BLAS++/LAPACK++ automatically; if needed, specifying `BLA_VENDOR` with [appropriate argument](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables) can be used to force TiledArray to use MKL. Unfortunately it is not possible to specify the use of TBB-based backend for MKL without the use of a toolchain file.
+  
+- All MKL-enabled toolchains in [The Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains) can be used to configure TiledArray to use sequential, OpenMP, or TBB backend by setting the `MKL_THREADING` CMake cache variable to `SEQ`, `OMP`, or `TBB`, respectively. The toolchains also respect the user-provided choice of `BLA_STATIC`. If multiple MKL versions are present on your system, specify the apropriate variant of the library by loading the corresponding `mklvars.sh` script to set environment variables `MKLROOT` and, if necessary, `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH`.
+  
+  On 64-bit platforms it is possible to specify whether to use 32-bit (`LP64`, the default) or 64-bit (`ILP64`) integers in BLAS/LAPACK API. To choose the `ILP64` interface when using the VG MKL toolchains set CMake cache variable `INTEGER4` to `OFF`; the same is achieved when using the default BLAS/LAPACK detection by setting `BLA_VENDOR` to [one of the valid `Intel*64ilp*` choices](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables). N.B. Currently `ILP64` variant of BLACS/ScaLAPACK is not supported, due to [a pending issue](https://github.com/wavefunction91/blacspp/issues/5).
 
 Also note that even if OpenMP or TBB backends are used, TiledArray will be default set the number of threads to be used by MKL kernels to 1, regardless of the value of environment variables `MKL_NUM_THREADS`/`OMP_NUM_THREADS`. It is possible to change the number of threads to be used programmatically in your application by calling MKL function `mkl_set_num_threads()`.
-
-On 64-bit platforms it is possible to specify whether to use 32-bit (`LP64`, the default) or 64-bit (`ILP64`) integers in BLAS/LAPACK API. To choose the `ILP64` interface when using the VG MKL toolchains set CMake cache variable `INTEGER4` to `OFF`; the same is achieved when using the default BLAS/LAPACK detection by setting `BLA_VENDOR` to [one of the valid `Intel*64ilp*` choices](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables). N.B. Currently `ILP64` variant of BLACS/ScaLAPACK is not supported, due to [a pending issue](https://github.com/wavefunction91/blacspp/issues/5).
 
 ## CUDA
 
@@ -304,11 +354,12 @@ the correct revision of MADNESS.
 The following CMake options may be used to modify build behavior or find MADNESS:
 
 * `ENABLE_MPI` -- Enable MPI [Default=ON]
-* `ENABLE_SCALAPACK` -- Enable use of ScaLAPACK bindings [Default=OFF]
+* `ENABLE_SCALAPACK` -- Enable the use of ScaLAPACK bindings [Default=OFF]
 * `ENABLE_TBB` -- Enable the use of TBB when building MADNESS [Default=ON]
 * `ENABLE_GPERFTOOLS` -- Enable the use of gperftools when building MADNESS [Default=OFF]
 * `ENABLE_TCMALLOC_MINIMAL` -- Enable the use of gperftool's tcmalloc_minimal library only (the rest of gperftools is skipped) when building MADNESS [Default=OFF]
 * `ENABLE_LIBUNWIND` -- Force the discovery of libunwind library when building MADNESS [Default=OFF]
+* `ENABLE_WFN91_LINALG_DISCOVERY_KIT` -- Enable the use of NWChemEx's linear algebra discovery [Default=ON]
 * `MADNESS_SOURCE_DIR` -- Path to the MADNESS source directory
 * `MADNESS_BINARY_DIR` -- Path to the MADNESS build directory
 * `MADNESS_URL` -- Path to the MADNESS repository [Default=MADNESS git repository]

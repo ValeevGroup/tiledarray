@@ -73,12 +73,12 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange(),
   auto [Mloc, Nloc] = matrix.dist().get_local_dims(N, N);
   auto desc = matrix.dist().descinit_noerror(N, N, Mloc);
 
-  auto info = scalapackpp::ppotrf(blacspp::Triangle::Lower, N,
+  auto info = scalapackpp::ppotrf(blacspp::Uplo::Lower, N,
                                   matrix.local_mat().data(), 1, 1, desc);
   if (info) TA_EXCEPTION("Cholesky Failed");
 
   // Zero out the upper triangle
-  zero_triangle(blacspp::Triangle::Upper, matrix);
+  zero_triangle(blacspp::Uplo::Upper, matrix);
 
   if (l_trange.rank() == 0) l_trange = A.trange();
 
@@ -129,12 +129,12 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange(),
   auto [Mloc, Nloc] = matrix.dist().get_local_dims(N, N);
   auto desc = matrix.dist().descinit_noerror(N, N, Mloc);
 
-  auto info = scalapackpp::ppotrf(blacspp::Triangle::Lower, N,
+  auto info = scalapackpp::ppotrf(blacspp::Uplo::Lower, N,
                                   matrix.local_mat().data(), 1, 1, desc);
   if (info) TA_EXCEPTION("Cholesky Failed");
 
   // Zero out the upper triangle
-  zero_triangle(blacspp::Triangle::Upper, matrix);
+  zero_triangle(blacspp::Uplo::Upper, matrix);
 
   // Copy L if needed
   std::shared_ptr<scalapack::BlockCyclicMatrix<value_type>> L_sca = nullptr;
@@ -146,7 +146,7 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange(),
 
   // Compute inverse
   info =
-      scalapackpp::ptrtri(blacspp::Triangle::Lower, blacspp::Diagonal::NonUnit,
+      scalapackpp::ptrtri(blacspp::Uplo::Lower, blacspp::Diag::NonUnit,
                           N, matrix.local_mat().data(), 1, 1, desc);
   if (info) TA_EXCEPTION("TRTRI Failed");
 
@@ -200,7 +200,7 @@ auto cholesky_solve(const Array& A, const Array& B,
     desc_b = B_sca.dist().descinit_noerror(N, NRHS, Mloc);
   }
 
-  auto info = scalapackpp::pposv(blacspp::Triangle::Lower, N, NRHS,
+  auto info = scalapackpp::pposv(blacspp::Uplo::Lower, N, NRHS,
                                  A_sca.local_mat().data(), 1, 1, desc_a,
                                  B_sca.local_mat().data(), 1, 1, desc_b);
   if (info) TA_EXCEPTION("Cholesky Solve Failed");
@@ -250,18 +250,18 @@ auto cholesky_lsolve(Op trans, const Array& A, const Array& B,
     desc_b = B_sca.dist().descinit_noerror(N, NRHS, Mloc);
   }
 
-  auto info = scalapackpp::ppotrf(blacspp::Triangle::Lower, N,
+  auto info = scalapackpp::ppotrf(blacspp::Uplo::Lower, N,
                                   A_sca.local_mat().data(), 1, 1, desc_a);
   if (info) TA_EXCEPTION("Cholesky Failed");
 
   info = scalapackpp::ptrtrs(
-      blacspp::Triangle::Lower, to_scalapackpp_transposeflag(trans),
-      blacspp::Diagonal::NonUnit, N, NRHS, A_sca.local_mat().data(), 1, 1,
+      blacspp::Uplo::Lower, to_scalapackpp_transposeflag(trans),
+      blacspp::Diag::NonUnit, N, NRHS, A_sca.local_mat().data(), 1, 1,
       desc_a, B_sca.local_mat().data(), 1, 1, desc_b);
   if (info) TA_EXCEPTION("TRTRS Failed");
 
   // Zero out the upper triangle
-  zero_triangle(blacspp::Triangle::Upper, A_sca);
+  zero_triangle(blacspp::Uplo::Upper, A_sca);
 
   if (l_trange.rank() == 0) l_trange = A.trange();
   if (x_trange.rank() == 0) x_trange = B.trange();
