@@ -35,6 +35,8 @@
 #include <TiledArray/cuda/platform.h>
 #include <TiledArray/utility.h>
 
+#include <madness/world/archive.h>
+
 namespace TiledArray {
 
 template <typename T>
@@ -123,12 +125,6 @@ const typename Storage::value_type* device_data(const Storage& storage) {
 
 namespace madness {
 namespace archive {
-
-// forward decls
-template <class Archive, typename T>
-struct ArchiveLoadImpl;
-template <class Archive, typename T>
-struct ArchiveStoreImpl;
 
 template <class Archive, typename T>
 struct ArchiveLoadImpl<Archive, TiledArray::cuda_um_thrust_vector<T>> {
