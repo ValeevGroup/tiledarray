@@ -629,11 +629,11 @@ class Tensor {
                 Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     if (pimpl_) {
-      ar & pimpl_->range_.volume();
+      ar & static_cast<int64_t>(pimpl_->range_.volume());
       ar& madness::archive::wrap(pimpl_->data_, pimpl_->range_.volume());
       ar & pimpl_->range_;
     } else {
-      ar& ordinal_type(0ul);
+      ar& int64_t{-1};
     }
   }
 
@@ -646,9 +646,9 @@ class Tensor {
             typename std::enable_if<madness::is_input_archive_v<
                 Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
-    ordinal_type n = 0ul;
+    int64_t n = 0;
     ar& n;
-    if (n) {
+    if (n != -1) {
       std::shared_ptr<Impl> temp = std::make_shared<Impl>();
       temp->data_ = temp->allocate(n);
       try {
