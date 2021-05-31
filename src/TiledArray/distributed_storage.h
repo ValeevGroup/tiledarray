@@ -142,7 +142,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   virtual ~DistributedStorage() {
     if (num_live_ds_ != 0) {
       madness::print_error(
-          "DistributedStorage (object id=\", id(), \") destroyed while "
+          "DistributedStorage (object id=", this->id(), ") destroyed while "
           "outstanding tasks exist. Add a fence() to extend the lifetime of "
           "this object.");
       abort();
