@@ -293,6 +293,12 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     }
   }
 
+  /// Reports the number of live DelayedSet requests
+
+  /// @return const reference to the atomic counter of live DelayedSet requests
+  const madness::AtomicInt& num_live_ds() const {
+    return num_live_ds_;
+  }
 };  // class DistributedStorage
 
 }  // namespace detail

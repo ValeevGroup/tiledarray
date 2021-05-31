@@ -142,6 +142,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         const madness::uniqueidT id = pimpl->id();
         cleanup_counter_++;
 
+        // wait for all DelayedSet's to vanish
+        world.await([&]() { return (pimpl->num_live_ds() == 0); }, true);
+
         try {
           world.gop.lazy_sync(id, [pimpl]() {
             delete pimpl;
