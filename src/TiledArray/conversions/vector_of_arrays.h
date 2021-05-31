@@ -68,13 +68,15 @@ inline TA::TiledRange prepend_dim_to_trange(
 /// @param array_rank Sum of the sizes of @c arrays on each rank
 ///        (the size of @c arrays on each rank will depend on world.size)
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
+/// @param[in] avg_block_size The average number of elements per block
+/// @param[in] num_avg_plus_one Number of tiles with one more than the average block size.
 /// @return SparseShape of fused Array object
-/// TODO rename to fuse_tilewise_vector_of_shapes
 template <typename Tile>
 TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
-    madness::World& global_world,
-    const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
-    const std::size_t array_rank, const TA::TiledRange& fused_trange) {
+        madness::World& global_world,
+        const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
+        const std::size_t array_rank, const TA::TiledRange& fused_trange,
+        const size_t avg_block_size, const size_t num_avg_plus_one) {
   if (arrays.size() == 0) {
     TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range(), 0.f);
     return TA::SparseShape<float>(global_world, fused_tile_norms, fused_trange,
@@ -82,9 +84,6 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
   }
   const std::size_t rank = global_world.rank();
   auto size = global_world.size();
-  auto first_tile_in_mode0 = *fused_trange.dim(0).begin();
-  const auto block_size =
-      first_tile_in_mode0.second - first_tile_in_mode0.first;
 
   std::size_t ntiles_per_array = arrays[0].trange().tiles_range().volume();
   // precompute tile volumes for later repeated use
@@ -94,12 +93,12 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
     for (auto&& tile_idx : tiles_range) {
       const auto tile_ord = tiles_range.ordinal(tile_idx);
       tile_volumes[tile_ord] =
-          arrays[0].trange().make_tile_range(tile_idx).volume();
+              arrays[0].trange().make_tile_range(tile_idx).volume();
     }
   }
 
   TA::Tensor<float> fused_tile_norms(
-      fused_trange.tiles_range(), 0.f);  // use nonzeroes for local tiles only
+          fused_trange.tiles_range(), 0.f);  // use nonzeroes for local tiles only
 
   // compute norms of fused tiles
   // N.B. tile norms are stored in scaled format, unscale in order to compute
@@ -107,28 +106,28 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
   std::size_t narrays = array_rank;
   size_t fused_tile_ord = 0;
   auto element_offset_in_owner = 0;
-  for (size_t vidx = 0, fused_vidx = 0; vidx < narrays;
-       vidx += block_size, ++fused_vidx) {
+  // need to do this loop twice once for tiles with avg + 1 and once for tiles with avg
+  auto block_size = avg_block_size + 1;
+  size_t vidx = 0, fused_vidx = 0;
+  for (; fused_vidx < num_avg_plus_one; vidx += block_size, ++fused_vidx) {
     bool have_rank = (rank == fused_vidx % size);
     // how many arrays actually constribute to this fused tile ... last fused
     // tile may have fewer than block_size
     if (have_rank) {
-      const auto vblk_size =
-          (narrays - vidx) >= block_size ? block_size : narrays - vidx;
       for (size_t tile_ord = 0; tile_ord != ntiles_per_array;
            ++tile_ord, ++fused_tile_ord) {
-        auto array_ptr = arrays.begin() + element_offset_in_owner * vblk_size;
+        auto array_ptr = arrays.begin() + element_offset_in_owner * block_size;
         float unscaled_fused_tile_norm2 = 0;
         const auto tile_volume = tile_volumes[tile_ord];
-        for (size_t v = 0, vv = vidx; v != vblk_size; ++v, ++vv) {
+        for (size_t v = 0, vv = vidx; v != block_size; ++v, ++vv) {
           const auto unscaled_tile_norm =
-              (*(array_ptr)).shape().data()[tile_ord] * tile_volume;
+                  (*(array_ptr)).shape().data()[tile_ord] * tile_volume;
           unscaled_fused_tile_norm2 += unscaled_tile_norm * unscaled_tile_norm;
           ++array_ptr;
         }
-        const auto fused_tile_volume = tile_volume * vblk_size;
+        const auto fused_tile_volume = tile_volume * block_size;
         const auto fused_tile_norm =
-            std::sqrt(unscaled_fused_tile_norm2) / fused_tile_volume;
+                std::sqrt(unscaled_fused_tile_norm2) / fused_tile_volume;
 
         *(fused_tile_norms.data() + fused_tile_ord) = fused_tile_norm;
       }
@@ -138,6 +137,34 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
     }
   }
 
+  block_size = avg_block_size;
+  for (;vidx < narrays; vidx += block_size, ++fused_vidx) {
+    bool have_rank = (rank == fused_vidx % size);
+    // how many arrays actually constribute to this fused tile ... last fused
+    // tile may have fewer than block_size
+    if (have_rank) {
+      for (size_t tile_ord = 0; tile_ord != ntiles_per_array;
+           ++tile_ord, ++fused_tile_ord) {
+        auto array_ptr = arrays.begin() + element_offset_in_owner * block_size;
+        float unscaled_fused_tile_norm2 = 0;
+        const auto tile_volume = tile_volumes[tile_ord];
+        for (size_t v = 0, vv = vidx; v != block_size; ++v, ++vv) {
+          const auto unscaled_tile_norm =
+                  (*(array_ptr)).shape().data()[tile_ord] * tile_volume;
+          unscaled_fused_tile_norm2 += unscaled_tile_norm * unscaled_tile_norm;
+          ++array_ptr;
+        }
+        const auto fused_tile_volume = tile_volume * block_size;
+        const auto fused_tile_norm =
+                std::sqrt(unscaled_fused_tile_norm2) / fused_tile_volume;
+
+        *(fused_tile_norms.data() + fused_tile_ord) = fused_tile_norm;
+      }
+      element_offset_in_owner += 1;
+    } else {
+      fused_tile_ord += ntiles_per_array;
+    }
+  }
   auto fused_shapes = TA::SparseShape<float>(global_world, fused_tile_norms,
                                              fused_trange, true);
 
@@ -157,12 +184,15 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
 /// @param array_rank Sum of the sizes of @c arrays on each rank
 ///        (the size of @c arrays on each rank will depend on world.size)
 /// @param[in] fused_trange the TiledRange of the fused @c arrays
+/// @param[in] avg_block_size The average number of elements per block
+/// @param[in] num_avg_plus_one Number of tiles with one more than the average block size.
 /// @return DenseShape of fused Array object
 template <typename Tile>
 TA::DenseShape fuse_tilewise_vector_of_shapes(
     madness::World&,
     const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
-    const std::size_t array_rank, const TA::TiledRange& fused_trange) {
+    const std::size_t array_rank, const TA::TiledRange& fused_trange,
+    const size_t avg_block_size, const size_t num_avg_plus_one) {
   return TA::DenseShape(1, fused_trange);
 }
 
@@ -310,9 +340,13 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
     avg_block_size, num_avg_plus_one);
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
+  std::cout << fused_trange << std::endl;
   // make fused shape
+//  auto fused_shape = detail::fuse_tilewise_vector_of_shapes(
+//      global_world, arrays.array_accessor(), fused_dim_extent, fused_trange);
   auto fused_shape = detail::fuse_tilewise_vector_of_shapes(
-      global_world, arrays.array_accessor(), fused_dim_extent, fused_trange);
+          global_world, arrays.array_accessor(), fused_dim_extent, fused_trange,
+          avg_block_size, num_avg_plus_one);
 
   // make fused array
   TA::DistArray<Tile, Policy> fused_array(global_world, fused_trange,
