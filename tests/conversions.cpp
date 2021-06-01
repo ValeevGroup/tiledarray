@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
   // Make a tiled range with arbitrary block size
   TiledArray::TiledRange tr;
   TiledArray::TiledRange tr_split;
-  std::size_t block_size = 35;
+  std::size_t block_size = 50;
   std::size_t dim_one = 1336;
   std::size_t dim_two = 552;
   {
