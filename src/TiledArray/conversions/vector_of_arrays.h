@@ -340,10 +340,6 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
     avg_block_size, num_avg_plus_one);
   std::size_t ntiles_per_array = array_trange.tiles_range().volume();
 
-  std::cout << fused_trange << std::endl;
-  // make fused shape
-//  auto fused_shape = detail::fuse_tilewise_vector_of_shapes(
-//      global_world, arrays.array_accessor(), fused_dim_extent, fused_trange);
   auto fused_shape = detail::fuse_tilewise_vector_of_shapes(
           global_world, arrays.array_accessor(), fused_dim_extent, fused_trange,
           avg_block_size, num_avg_plus_one);
@@ -373,6 +369,10 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
     return result;
   };
 
+  auto div1 = std::div(num_avg_plus_one, nproc);
+  auto navg_pone_on_owner = div1.quot;
+  if(global_world.rank() < div1.rem) ++navg_pone_on_owner;
+  //auto navg_pone_on_owner = num_avg_plus_one / nproc;
   /// write to blocks of fused_array
   for (auto&& fused_tile_ord : *fused_array.pmap()) {
     if (!fused_array.is_zero(fused_tile_ord)) {
@@ -388,9 +388,11 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
       const auto tile_idx_on_owner = div1.quot;
       const auto block_size = (tile_idx_mode0 < num_avg_plus_one) ?
               avg_block_size + 1 : avg_block_size;
-      const auto vector_idx_offset_on_owner = (tile_idx_mode0 >= num_avg_plus_one) ?
-              num_avg_plus_one * (block_size + 1) + (tile_idx_on_owner - num_avg_plus_one) * block_size :
-              tile_idx_on_owner * block_size;
+
+      const auto vector_idx_offset_on_owner = (tile_idx_mode0 < num_avg_plus_one) ?
+            tile_idx_on_owner * block_size :
+            navg_pone_on_owner * (block_size + 1) + (tile_idx_on_owner - navg_pone_on_owner) * block_size;
+
       const auto owner_rank = div1.rem;
 
       auto fused_tile_range =
