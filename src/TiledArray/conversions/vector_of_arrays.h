@@ -394,13 +394,6 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
                                                  tile_idx_on_owner * block_size :
                                                  (num_avg_plusone_on_owner) * (block_size + 1) + (tile_idx_on_owner - num_avg_plusone_on_owner) * block_size);
 
-//        if(global_world.rank() == 0){
-//          std::cout << "owner_rank: " <<  owner_rank << std::endl;
-//          std::cout << "tile_idx_mode0 " << tile_idx_mode0 <<
-//          "\nblock_size: " << block_size << "\tvector_idx_offset_on_owner: " << vector_idx_offset_on_owner
-//          << "\n" << std::endl;
-//        }
-
         auto fused_tile_range =
                 fused_array.trange().make_tile_range(fused_tile_ord);
         // make a vector of Futures to the input tiles
