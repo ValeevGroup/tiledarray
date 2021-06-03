@@ -33,7 +33,7 @@ include(external/versions.cmake)
 # Bring ValeevGroup cmake toolkit
 ###############################################################################
 include(FetchContent)
-FetchContent_Populate(
+FetchContent_Declare(
     vg_cmake_kit
     QUIET
     GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
@@ -42,6 +42,10 @@ FetchContent_Populate(
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-build
     SUBBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-subbuild
 )
+FetchContent_GetProperties(vg_cmake_kit)
+if (NOT vg_cmake_kit_POPULATED)
+  FetchContent_MakeAvailable(vg_cmake_kit)
+endif(NOT vg_cmake_kit_POPULATED)
 
 project (TiledArray LANGUAGES)
 enable_language(CXX)
