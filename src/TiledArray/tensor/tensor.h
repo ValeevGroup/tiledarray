@@ -629,11 +629,11 @@ class Tensor {
                 Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     if (pimpl_) {
-      ar & static_cast<int64_t>(pimpl_->range_.volume());
+      ar & static_cast<unsigned long>(pimpl_->range_.volume());
       ar& madness::archive::wrap(pimpl_->data_, pimpl_->range_.volume());
       ar & pimpl_->range_;
     } else {
-      ar& int64_t{-1};
+      ar& 18446744073709551557ul;  // largest 64-bit prime
     }
   }
 
@@ -646,9 +646,9 @@ class Tensor {
             typename std::enable_if<madness::is_input_archive_v<
                 Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
-    int64_t n = 0;
+    unsigned long n = 0;
     ar& n;
-    if (n != -1) {
+    if (n != 18446744073709551557ul) {
       std::shared_ptr<Impl> temp = std::make_shared<Impl>();
       temp->data_ = temp->allocate(n);
       try {
