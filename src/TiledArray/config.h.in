@@ -133,11 +133,13 @@
 #endif
 
 /* Defines the 1-index type used by TiledArray */
-#cmakedefine TA_SIGNED_1INDEX_TYPE 1
-#if defined(TA_SIGNED_1INDEX_TYPE)
-# define TA_1INDEX_TYPE std::int_fast64_t
-#else
-# define TA_1INDEX_TYPE std::size_t
+#if !defined(TA_1INDEX_TYPE)
+#  cmakedefine TA_SIGNED_1INDEX_TYPE 1
+#  if defined(TA_SIGNED_1INDEX_TYPE)
+#    define TA_1INDEX_TYPE long
+#  else
+#    define TA_1INDEX_TYPE unsigned long
+#  endif
 #endif
 
 /* Specifies the rank for up to which to use Small Object Optimization for metadata (e.g. Range, Range::index, etc.) */
