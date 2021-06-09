@@ -54,6 +54,8 @@ class Tensor {
       std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
       "Tensor<T>: T must be an assignable type (e.g. cannot be const)");
 
+  constexpr static std::uint64_t largest_64bit_prime = 18446744073709551557ull;
+
  public:
   typedef Tensor<T, A> Tensor_;                          ///< This class type
   typedef Range range_type;                              ///< Tensor range type
@@ -633,7 +635,7 @@ class Tensor {
       ar& madness::archive::wrap(pimpl_->data_, pimpl_->range_.volume());
       ar & pimpl_->range_;
     } else {
-      ar& 18446744073709551557ul;  // largest 64-bit prime
+      ar& largest_64bit_prime;
     }
   }
 
@@ -646,9 +648,9 @@ class Tensor {
             typename std::enable_if<madness::is_input_archive_v<
                 Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
-    unsigned long n = 0;
+    std::uint64_t n = 0;
     ar& n;
-    if (n != 18446744073709551557ul) {
+    if (n != largest_64bit_prime) {
       std::shared_ptr<Impl> temp = std::make_shared<Impl>();
       temp->data_ = temp->allocate(n);
       try {
