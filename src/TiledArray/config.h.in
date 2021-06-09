@@ -136,9 +136,9 @@
 #if !defined(TA_1INDEX_TYPE)
 #  cmakedefine TA_SIGNED_1INDEX_TYPE 1
 #  if defined(TA_SIGNED_1INDEX_TYPE)
-#    define TA_1INDEX_TYPE long
+#    define TA_1INDEX_TYPE std::int64_t
 #  else
-#    define TA_1INDEX_TYPE unsigned long
+#    define TA_1INDEX_TYPE std::uint64_t
 #  endif
 #endif
 
