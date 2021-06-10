@@ -631,8 +631,9 @@ class Tensor {
                 Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     if (pimpl_) {
-      ar & static_cast<unsigned long>(pimpl_->range_.volume());
-      ar& madness::archive::wrap(pimpl_->data_, pimpl_->range_.volume());
+      const std::uint64_t volume = pimpl_->range_.volume();
+      ar & volume;
+      ar& madness::archive::wrap(pimpl_->data_, volume);
       ar & pimpl_->range_;
     } else {
       ar& largest_64bit_prime;
