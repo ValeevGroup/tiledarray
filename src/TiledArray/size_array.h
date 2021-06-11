@@ -23,7 +23,7 @@
 #include <TiledArray/math/outer.h>
 #include <TiledArray/math/partial_reduce.h>
 #include <TiledArray/permutation.h>
-#include <boost/container/small_vector.hpp>
+#include <TiledArray/util/vector.h>
 #include <cstddef>
 
 namespace TiledArray {
