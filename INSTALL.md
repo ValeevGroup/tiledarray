@@ -301,9 +301,9 @@ Intel MKL is a freely-available collection of high-performance libraries that im
 
 To discover and configure the use of Intel MKL consider these suggestions:
 - The use of NWChemEx discovery kit is strongly recommended for discovering Intel MKL. The following CMake cache variables can be used to specify the desired Intel MKL configuration:
-  - `intelmkl_PREFERS_STATIC`: whether to look for static or shared/dynamic libraries (default = `OFF`)
-  - `intelmkl_PREFERED_THREAD_LEVEL`: which threading backend to use, supported values are `sequential`, `openmp`, and `tbb` (default = `openmp`)
-  - `intelmkl_PREFERED_THREAD_LIBRARY`: which thread library to use, supported values are `intel`, `gnu`, and `pgi` (default depends on the compile)
+  - `IntelMKL_PREFERS_STATIC`: whether to look for static or shared/dynamic libraries (default = `OFF`)
+  - `IntelMKL_THREAD_LAYER`: which threading backend to use, supported values are `sequential`, `openmp`, and `tbb` (default = `openmp`)
+  - `IntelMKL_OMP_LIBRARY`: which thread library to use, supported values are `Intel`, `GNU`, and `PGI` (default depends on the compile)
 
 - Most common configurations of Intel MKL can also be discovered by BLAS++/LAPACK++ automatically; if needed, specifying `BLA_VENDOR` with [appropriate argument](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables) can be used to force TiledArray to use MKL. Unfortunately it is not possible to specify the use of TBB-based backend for MKL without the use of a toolchain file.
   
