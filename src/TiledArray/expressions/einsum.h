@@ -6,6 +6,7 @@
 #include "TiledArray/util/index.h"
 #include "TiledArray/util/range.h"
 #include "TiledArray/tiled_range1.h"
+#include "TiledArray/tiled_range.h"
 //#include "TiledArray/util/string.h"
 
 namespace TiledArray::expressions {
@@ -48,8 +49,6 @@ auto einsum(
   std::tuple<Index,Indices...> cs,
   World &world)
 {
-
-  printf("einsum(A,B,c)\n");
 
   auto a = std::get<0>(idx(A));
   auto b = std::get<0>(idx(B));
