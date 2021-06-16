@@ -42,7 +42,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Range: header-only, *only used for unit testing*
 - [BTAS](http://github.com/ValeevGroup/BTAS), tag d7794799e4510cf66844081dd8f1f5b648112d33 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-  - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag b378fd6f1fcadf1cd1ce4541ca4100c335b874ee .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 7ce06234c23aa8e0ab3d9e9b87eff9cd85390d80 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
@@ -301,9 +301,9 @@ Intel MKL is a freely-available collection of high-performance libraries that im
 
 To discover and configure the use of Intel MKL consider these suggestions:
 - The use of NWChemEx discovery kit is strongly recommended for discovering Intel MKL. The following CMake cache variables can be used to specify the desired Intel MKL configuration:
-  - `intelmkl_PREFERS_STATIC`: whether to look for static or shared/dynamic libraries (default = `OFF`)
-  - `intelmkl_PREFERED_THREAD_LEVEL`: which threading backend to use, supported values are `sequential`, `openmp`, and `tbb` (default = `openmp`)
-  - `intelmkl_PREFERED_THREAD_LIBRARY`: which thread library to use, supported values are `intel`, `gnu`, and `pgi` (default depends on the compile)
+  - `IntelMKL_PREFERS_STATIC`: whether to look for static or shared/dynamic libraries (default = `OFF`)
+  - `IntelMKL_THREAD_LAYER`: which threading backend to use, supported values are `sequential`, `openmp`, and `tbb` (default = `openmp`)
+  - `IntelMKL_OMP_LIBRARY`: which thread library to use, supported values are `Intel`, `GNU`, and `PGI` (default depends on the compile)
 
 - Most common configurations of Intel MKL can also be discovered by BLAS++/LAPACK++ automatically; if needed, specifying `BLA_VENDOR` with [appropriate argument](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables) can be used to force TiledArray to use MKL. Unfortunately it is not possible to specify the use of TBB-based backend for MKL without the use of a toolchain file.
   

@@ -56,7 +56,7 @@ ubuntu:
         CXX: [ g++ ]
         BUILD_TYPE : [ "Release" ]
         BLA_VENDOR : [ "BLAS_PREFERENCE_LIST=IntelMKL" ]
-        BLA_THREADS : [ "intelmkl_PREFERED_THREAD_LEVEL=tbb" ]
+        BLA_THREADS : [ "IntelMKL_THREAD_LAYER=tbb" ]
         # ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
         TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
