@@ -59,6 +59,8 @@ class Tensor {
       std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
       "Tensor<T>: T must be an assignable type (e.g. cannot be const)");
 
+  constexpr static std::uint64_t largest_64bit_prime = 18446744073709551557ull;
+
  public:
   typedef Range range_type;                              ///< Tensor range type
   typedef typename range_type::index1_type index1_type;  ///< 1-index type
@@ -610,8 +612,8 @@ class Tensor {
   /// Output serialization function
 
   /// This function enables serialization within MADNESS
-  /// \tparam Archive The output archive type
-  /// \param[out] ar The output archive
+  /// \tparam Archive A MADNESS archive type
+  /// \param[out] ar An input/output archive
   template <typename Archive>
   void serialize(Archive& ar) {
     bool empty = this->empty();
@@ -621,13 +623,15 @@ class Tensor {
     if (!empty) {
       ar & range;
       ar & batch_size;
-      if (madness::archive::is_input_archive<Archive>::value) {
+      if constexpr (madness::is_input_archive_v<Archive>) {
         *this = Tensor(range, batch_size, default_construct{true});
       }
       ar & madness::archive::wrap(this->data_.get(), range.volume()*batch_size);
     }
-    else if (madness::archive::is_input_archive<Archive>::value) {
-      *this = Tensor{};
+    else {
+      if constexpr (madness::is_input_archive_v<Archive>) {
+        *this = Tensor{};
+      }
     }
   }
 

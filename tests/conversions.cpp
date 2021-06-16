@@ -276,14 +276,14 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_dense, r,
+          TiledArray::split_tilewise_fused_array(this_world, b_dense, r,
                                                 b_dense_vector, tr_split);
         }
       }
       TA::set_default_world(world);
       world.gop.fence();
       // convert vector of arrays back into dense array
-      auto b_dense_fused = TiledArray::fuse_vector_of_arrays_tiles(
+      auto b_dense_fused = TiledArray::fuse_tilewise_vector_of_arrays(
           world, b_dense_vector, 11, tr_split, 1);
       b_dense_vector.clear();
 
@@ -308,7 +308,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_sparse, r,
+          TiledArray::split_tilewise_fused_array(this_world, b_sparse, r,
                                                 b_sparse_vector, tr_split);
         }
       }
@@ -316,7 +316,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       world.gop.fence();
 
       // convert vector of arrays back into dense array
-      auto b_sparse_fused = TiledArray::fuse_vector_of_arrays_tiles(
+      auto b_sparse_fused = TiledArray::fuse_tilewise_vector_of_arrays(
           world, b_sparse_vector, 11, tr_split, 1);
       b_sparse_vector.clear();
 
@@ -325,6 +325,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
   }
 }
 
+#if 1
 BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
   // Generate a world for each world rank
   const auto rank = (*GlobalFixture::world).rank();
@@ -374,7 +375,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_dense, r,
+          TiledArray::split_tilewise_fused_array(this_world, b_dense, r,
                                                 b_dense_vector, tr_split);
         }
       }
@@ -382,7 +383,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
       world.gop.fence();
 
       // convert vector of arrays back into dense array
-      auto b_dense_fused = TiledArray::fuse_vector_of_arrays_tiles(
+      auto b_dense_fused = TiledArray::fuse_tilewise_vector_of_arrays(
           world, b_dense_vector, dim_one, tr_split, block_size);
       b_dense_vector.clear();
 
@@ -405,20 +406,20 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
     auto num_mode0_tiles = text[0];
 
     {
-      // Convert dense array to vector of arrays
+      // Convert sparse array to vector of arrays
       std::vector<TSpArrayI> b_sparse_vector;
       TA::set_default_world(this_world);
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
-          TiledArray::subarray_from_fused_array(this_world, b_sparse, r,
+          TiledArray::split_tilewise_fused_array(this_world, b_sparse, r,
                                                 b_sparse_vector, tr_split);
         }
       }
       TA::set_default_world(world);
       world.gop.fence();
 
-      // convert vector of arrays back into dense array
-      auto b_sparse_fused = TiledArray::fuse_vector_of_arrays_tiles(
+      // convert vector of arrays back into sparse array
+      auto b_sparse_fused = TiledArray::fuse_tilewise_vector_of_arrays(
           world, b_sparse_vector, dim_one, tr_split, block_size);
       b_sparse_vector.clear();
       // Check to see if the fused and original arrays are the same
@@ -427,5 +428,6 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
     }
   }
 }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()

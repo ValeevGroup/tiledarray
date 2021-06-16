@@ -40,7 +40,7 @@
 #include <blacspp/information.hpp>
 
 #include <scalapackpp/block_cyclic.hpp>
-#include <scalapackpp/util/sfinae.hpp>
+#include <scalapackpp/util/type_traits.hpp>
 
 namespace TiledArray::math::linalg::scalapack {
 
@@ -226,11 +226,11 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
       auto tile_map = eigen_map(tile);
 
       // Extract distribution information
-      const auto mb = bc_dist_.mb();
-      const auto nb = bc_dist_.nb();
+      const size_t mb = bc_dist_.mb();
+      const size_t nb = bc_dist_.nb();
 
-      const auto m = dims_.first;
-      const auto n = dims_.second;
+      decltype(mb) m = dims_.first;
+      decltype(mb) n = dims_.second;
 
       // Loop over 2D BC compatible blocks
       size_t i_extent, j_extent;
@@ -239,16 +239,16 @@ class BlockCyclicMatrix : public madness::WorldObject<BlockCyclicMatrix<T>> {
         for (size_t j = lo[1], j_t = 0ul; j < up[1];
              j += j_extent, j_t += j_extent) {
           // Determine indices of start of BC owning block
-          const decltype(m) i_block_begin = (i / mb) * mb;
-          const decltype(n) j_block_begin = (j / nb) * nb;
+          decltype(m) i_block_begin = (i / mb) * mb;
+          decltype(m) j_block_begin = (j / nb) * nb;
 
           // Determine indices of end of BC owning block
           const auto i_block_end = std::min(m, i_block_begin + mb);
           const auto j_block_end = std::min(n, j_block_begin + nb);
 
-          // Cut block if necessacary to adhere to tile dimensions
-          const auto i_last = std::min(i_block_end, static_cast<size_t>(up[0]));
-          const auto j_last = std::min(j_block_end, static_cast<size_t>(up[1]));
+          // Cut block if necessary to adhere to tile dimensions
+          const auto i_last = std::min(i_block_end, static_cast<decltype(m)>(up[0]));
+          const auto j_last = std::min(j_block_end, static_cast<decltype(m)>(up[1]));
 
           // Calculate extents of the block to be copied
           i_extent = i_last - i;

@@ -250,10 +250,14 @@ class SparseShape {
     return result_size_vectors;
   }
 
-  decltype(zero_tile_count_) compute_zero_tile_count() {
+  /// @brief screens out zero tiles by zeroing out the norms of tiles below
+  ///        the threshold
+  /// @return the number of zero tiles
+  auto screen_out_zero_tiles() {
     decltype(zero_tile_count_) zero_tile_count = 0;
-    for (auto&& n : tile_norms_) {
+    for (auto& n : tile_norms_) {
       if (n < threshold()) {
+        n = 0;
         ++zero_tile_count;
       }
     }
@@ -308,7 +312,7 @@ class SparseShape {
       zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(
           tile_norms_, size_vectors_.get());
     } else {
-      zero_tile_count_ = compute_zero_tile_count();
+      zero_tile_count_ = screen_out_zero_tiles();
     }
   }
 
@@ -382,7 +386,7 @@ class SparseShape {
           tile_norms_, size_vectors_.get());
       ;
     } else {
-      zero_tile_count_ = compute_zero_tile_count();
+      zero_tile_count_ = screen_out_zero_tiles();
     }
   }
 
@@ -406,7 +410,7 @@ class SparseShape {
               const TiledRange& trange)
       : SparseShape(tile_norms, trange) {
     world.gop.max(tile_norms_.data(), tile_norms_.size());
-    zero_tile_count_ = compute_zero_tile_count();
+    zero_tile_count_ = screen_out_zero_tiles();
   }
 
   /// Copy constructor
@@ -1561,8 +1565,8 @@ class SparseShape {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_input_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_input_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(const Archive& ar) {
     ar& tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();
@@ -1574,8 +1578,8 @@ class SparseShape {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_output_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_output_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(const Archive& ar) const {
     ar& tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();
@@ -1623,10 +1627,15 @@ bool is_replicated(World& world, const SparseShape<T>& shape) {
   const auto volume = shape.data().size();
   std::vector<T> data(shape.data().data(), shape.data().data() + volume);
   world.gop.max(data.data(), volume);
+  bool result = true;
   for (size_t i = 0; i != data.size(); ++i) {
-    if (data[i] != shape.data()[i]) return false;
+    if (data[i] != shape.data()[i]) {
+      result = false;
+      break;
+    }
   }
-  return true;
+  world.gop.logic_and(&result, 1);
+  return result;
 }
 
 #ifndef TILEDARRAY_HEADER_ONLY

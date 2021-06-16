@@ -123,6 +123,7 @@ struct cudaTaskFn : public TaskInterface {
 
    private:
     static void CUDART_CB cuda_callback(void* userData) {
+      TA_ASSERT(!madness::is_madness_thread());
       const auto t0 = TiledArray::now();
       // convert void * to AsyncTaskInterface*
       auto* callback = static_cast<cudaTaskFn_*>(userData);
@@ -799,10 +800,10 @@ add_cuda_taskfn(
     cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>* t) {
   typename cudaTaskFn<fnT, a1T, a2T, a3T, a4T, a5T, a6T, a7T, a8T, a9T>::futureT
       res(t->result());
-  // add the cuda task
-  world.taskq.add(static_cast<TaskInterface*>(t));
   // add the internal async task in cuda task as well
   world.taskq.add(t->async_task());
+  // add the cuda task
+  world.taskq.add(static_cast<TaskInterface*>(t));
   return res;
 }
 

@@ -25,18 +25,6 @@
 #include <TiledArray/tile_interface/trace.h>
 #include <memory>
 
-// Forward declaration of MADNESS archive type traits
-namespace madness {
-namespace archive {
-
-template <typename>
-struct is_output_archive;
-template <typename>
-struct is_input_archive;
-
-}  // namespace archive
-}  // namespace madness
-
 namespace TiledArray {
 
 /**
@@ -569,8 +557,8 @@ class Tile {
   // Serialization -----------------------------------------------------------
 
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_output_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_output_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(Archive& ar) const {
     // Serialize data for empty tile check
     bool empty = !static_cast<bool>(pimpl_);
@@ -582,8 +570,8 @@ class Tile {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::archive::is_input_archive<
-                Archive>::value>::type* = nullptr>
+            typename std::enable_if<madness::is_input_archive_v<
+                Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     // Check for empty tile
     bool empty = false;

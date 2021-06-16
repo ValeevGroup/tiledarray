@@ -6,6 +6,8 @@
 #include <TiledArray/external/eigen.h>
 #include <TiledArray/math/linalg/forward.h>
 
+#include <lapack.hh>
+
 #include <vector>
 
 namespace TiledArray::math::linalg::rank_local {

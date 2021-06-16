@@ -545,8 +545,12 @@ class BipartiteIndexList {
   /// \param[in] n The index of the requested mode label. \c n should be in the
   ///              range [0, dim()).
   /// \return A read-only reference to the requested string index.
-  /// \throw std::out_of_range if \c n is not in the range [0, dim()). Strong
-  ///                          throw guarantee.
+#ifdef BOOST_CONTAINER_USE_STD_EXCEPTIONS
+  /// \throw std::out_of_range
+#else // BOOST_CONTAINER_USE_STD_EXCEPTIONS
+  /// \throw boost::container::out_of_range
+#endif
+  ///         if \c n is not in the range [0, dim()). Strong throw guarantee.
   const_reference at(const size_type n) const { return indices_.at(n); }
 
   /// Returns the n-th string in the index list.

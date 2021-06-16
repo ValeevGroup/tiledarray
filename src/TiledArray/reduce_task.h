@@ -307,6 +307,8 @@ class ReduceTask {
 #ifdef TILEDARRAY_HAS_CUDA
 
     static void CUDART_CB cuda_reduceobject_delete_callback(void* userData) {
+      TA_ASSERT(!madness::is_madness_thread());
+
       const auto t0 = TiledArray::now();
 
       std::vector<void*>* objects = static_cast<std::vector<void*>*>(userData);
@@ -341,6 +343,8 @@ class ReduceTask {
     }
 
     static void CUDART_CB cuda_dependency_dec_callback(void* userData) {
+      TA_ASSERT(!madness::is_madness_thread());
+
       const auto t0 = TiledArray::now();
 
       std::vector<void*>* objects = static_cast<std::vector<void*>*>(userData);
@@ -363,6 +367,8 @@ class ReduceTask {
 
     static void CUDART_CB
     cuda_dependency_dec_reduceobject_delete_callback(void* userData) {
+      TA_ASSERT(!madness::is_madness_thread());
+
       const auto t0 = TiledArray::now();
 
       std::vector<void*>* objects = static_cast<std::vector<void*>*>(userData);
@@ -398,6 +404,8 @@ class ReduceTask {
     }
 
     static void CUDART_CB cuda_readyresult_reset_callback(void* userData) {
+      TA_ASSERT(!madness::is_madness_thread());
+
       const auto t0 = TiledArray::now();
 
       std::vector<void*>* objects = static_cast<std::vector<void*>*>(userData);

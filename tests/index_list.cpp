@@ -136,7 +136,12 @@ BOOST_AUTO_TEST_CASE(accessors) {
   BOOST_CHECK_EQUAL(v[0], "a");     // check 1st variable access
   BOOST_CHECK_EQUAL(v[3], "d");     // check last variable access
   BOOST_CHECK_THROW(v.at(4),
-                    std::out_of_range);  // check for out of range throw.
+#ifdef BOOST_CONTAINER_USE_STD_EXCEPTIONS
+                    std::out_of_range
+#else
+                    boost::container::out_of_range
+#endif
+  );  // check for out of range throw.
 }
 
 BOOST_AUTO_TEST_CASE(constructor) {

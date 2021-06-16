@@ -1118,7 +1118,19 @@ class Range {
 
   template <typename Archive>
   void serialize(Archive& ar) {
-    ar& rank_& datavec_& offset_& volume_;
+    ar& rank_;
+    const auto four_x_rank = rank_ << 2;
+    // read via madness::archive::wrap to be able to
+    // - avoid having to serialize datavec_'s size
+    // - read old archives that represented datavec_ by bare ptr
+    if constexpr (madness::is_input_archive_v<Archive>) {
+      datavec_.resize(four_x_rank);
+      ar >> madness::archive::wrap(datavec_.data(), four_x_rank);
+    } else if constexpr (madness::is_output_archive_v<Archive>) {
+      ar << madness::archive::wrap(datavec_.data(), four_x_rank);
+    } else
+      abort();  // unreachable
+    ar& offset_& volume_;
   }
 
   void swap(Range_& other) {
@@ -1310,6 +1322,17 @@ inline bool is_congruent(const Range& r1, const Range& r2) {
 /// \param range a Range
 /// \return true since TiledArray::Range is contiguous by definition
 inline bool is_contiguous(const Range& range) { return true; }
+
+namespace detail {
+
+// TiledArray::detail::make_ta_range(rng) converts to its TA equivalent
+
+/// "converts" TiledArray::Range into TiledArray::Range
+inline const TiledArray::Range& make_ta_range(const TiledArray::Range& range) {
+  return range;
+}
+
+}  // namespace detail
 
 }  // namespace TiledArray
 #endif  // TILEDARRAY_RANGE_H__INCLUDED

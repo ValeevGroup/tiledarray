@@ -335,7 +335,13 @@ BOOST_AUTO_TEST_CASE(end_itr) {
 BOOST_AUTO_TEST_CASE(at_member) {
   for (auto&& [str, idx] : idxs) {
     if (world.nproc() == 1) {
-      BOOST_CHECK_THROW(idx.at(idx.size()), std::out_of_range);
+    BOOST_CHECK_THROW(idx.at(idx.size()),
+#ifdef BOOST_CONTAINER_USE_STD_EXCEPTIONS
+                        std::out_of_range
+#else
+        boost::container::out_of_range
+#endif
+                            );
     }
     auto [outer, inner] = detail::split_index(str);
     for (size_type i = 0; i < outer.size(); ++i)

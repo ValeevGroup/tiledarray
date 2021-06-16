@@ -71,13 +71,15 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   DistributedStorage(const DistributedStorage_&);
   DistributedStorage_& operator=(const DistributedStorage_&);
 
-  void set_handler(const size_type i, const value_type& value) {
+  template <typename Value>
+  std::enable_if_t<std::is_same_v<std::decay_t<Value>,value_type>, void>
+      set_handler(const size_type i, Value&& value) {
     future& f = get_local(i);
 
     // Check that the future has not been set already.
     TA_ASSERT(!f.probe() && "Tile has already been assigned.");
 
-    f.set(value);
+    f.set(std::forward<Value>(value));
   }
 
   void get_handler(const size_type i,
@@ -87,8 +89,10 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     remote_f.set(f);
   }
 
-  void set_remote(const size_type i, const value_type& value) {
-    WorldObject_::task(owner(i), &DistributedStorage_::set_handler, i, value,
+  template <typename Value>
+  std::enable_if_t<std::is_same_v<std::decay_t<Value>,value_type> || std::is_same_v<std::decay_t<Value>,future>, void>
+  set_remote(const size_type i, Value&& value) {
+    WorldObject_::task(owner(i), &DistributedStorage_::set_handler<std::decay_t<value_type>&>, i, std::forward<Value>(value),
                        madness::TaskAttributes::hipri());
   }
 
@@ -142,7 +146,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   virtual ~DistributedStorage() {
     if (num_live_ds_ != 0) {
       madness::print_error(
-          "DistributedStorage (object id=\", id(), \") destroyed while "
+          "DistributedStorage (object id=", this->id(), ") destroyed while "
           "outstanding tasks exist. Add a fence() to extend the lifetime of "
           "this object.");
       abort();
@@ -249,7 +253,8 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   /// \param i The element to be set
   /// \param value The value of element \c i
   /// \throw TiledArray::Exception If \c i is greater than or equal to \c
-  /// max_size() . \throw madness::MadnessException If \c i has already been
+  /// max_size() .
+  /// \throw madness::MadnessException If \c i has already been
   /// set.
   void set(size_type i, const value_type& value) {
     TA_ASSERT(i < max_size_);
@@ -257,6 +262,22 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
       set_handler(i, value);
     else
       set_remote(i, value);
+  }
+
+  /// Set element \c i with \c value
+
+  /// \param i The element to be set
+  /// \param value The value of element \c i
+  /// \throw TiledArray::Exception If \c i is greater than or equal to \c
+  /// max_size() .
+  /// \throw madness::MadnessException If \c i has already been
+  /// set.
+  void set(size_type i, value_type&& value) {
+    TA_ASSERT(i < max_size_);
+    if (is_local(i))
+      set_handler(i, std::move(value));
+    else
+      set_remote(i, std::move(value));
   }
 
   /// Set element \c i with a \c Future \c f
@@ -293,6 +314,12 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
     }
   }
 
+  /// Reports the number of live DelayedSet requests
+
+  /// @return const reference to the atomic counter of live DelayedSet requests
+  const madness::AtomicInt& num_live_ds() const {
+    return num_live_ds_;
+  }
 };  // class DistributedStorage
 
 }  // namespace detail

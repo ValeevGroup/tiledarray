@@ -632,6 +632,14 @@ class ArrayImpl : public TensorImpl<Policy> {
     return value;
   }
 
+  /// Reports the number of live DelayedSet requests for this object's
+  /// DistributedStorage
+
+  /// @return const reference to the atomic counter of live DelayedSet requests
+  const madness::AtomicInt& num_live_ds() const {
+    return data_.num_live_ds();
+  }
+
 };  // class ArrayImpl
 
 #ifndef TILEDARRAY_HEADER_ONLY

@@ -796,7 +796,7 @@ class BipartitePermutation {
   template <typename Archive>
   void serialize(Archive& ar) {
     ar& base_& second_size_;
-    if constexpr (madness::archive::is_input_archive<Archive>::value) {
+    if constexpr (madness::is_input_archive_v<Archive>) {
       first_ = {};
       second_ = {};
     }

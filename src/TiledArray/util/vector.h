@@ -27,6 +27,15 @@
 #define TILEDARRAY_UTIL_VECTOR_H
 
 #include <boost/container/small_vector.hpp>
+
+// Boost.Container 1.75 and earlier uses standard exception classes, 1.76+ use
+// Boost.Container exceptions, unless BOOST_CONTAINER_USE_STD_EXCEPTIONS is defined:
+// https://www.boost.org/doc/libs/master/doc/html/container/release_notes.html#container.release_notes.release_notes_boost_1_76_00
+// Define BOOST_CONTAINER_USE_STD_EXCEPTIONS for Boost <1.76 so that exception checking can use this macro with all versions of Boost
+#if BOOST_VERSION < 107600 && !defined(BOOST_CONTAINER_USE_STD_EXCEPTIONS)
+# define BOOST_CONTAINER_USE_STD_EXCEPTIONS 1
+#endif
+
 #include <vector>
 #include "TiledArray/config.h"
 

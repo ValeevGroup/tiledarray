@@ -142,6 +142,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         const madness::uniqueidT id = pimpl->id();
         cleanup_counter_++;
 
+        // wait for all DelayedSet's to vanish
+        world.await([&]() { return (pimpl->num_live_ds() == 0); }, true);
+
         try {
           world.gop.lazy_sync(id, [pimpl]() {
             delete pimpl;
@@ -1214,7 +1217,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   template <typename Archive,
             typename = std::enable_if_t<
                 !Archive::is_parallel_archive &&
-                madness::archive::is_output_archive<Archive>::value>>
+                madness::is_output_archive_v<Archive>>>
   void serialize(const Archive& ar) const {
     // serialize array type, world size, rank, and pmap type to be able
     // to ensure same data type and same data distribution expected
@@ -1234,7 +1237,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   template <typename Archive,
             typename = std::enable_if_t<
                 !Archive::is_parallel_archive &&
-                madness::archive::is_input_archive<Archive>::value>>
+                madness::is_input_archive_v<Archive>>>
   void serialize(const Archive& ar) {
     auto& world = TiledArray::get_default_world();
 
