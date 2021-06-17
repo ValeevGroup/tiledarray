@@ -955,17 +955,28 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     return impl_ref().trange().elements_range();
   }
 
-  /// Returns the number of tiles in the tensor
+  /// Returns the total number of tiles in the tensor
 
-  /// This function returns the number of tiles in the tensor. This is usually
-  /// not the same as the volume of the tensor (i.e., the number of elements in
-  /// the tensor; they are the same only if each tile contains a single
-  /// element).
+  /// This function returns the total number of tiles in the tensor.
   ///
-  /// \return The number of tiles in the tensor.
+  /// \return The total number of tiles in the tensor.
   /// \throw TiledArray::Exception if the PIMPL has not been set. Strong throw
   ///                              guarantee.
+  /// \warning This is not the same as the number of elements in the tensor.
   auto size() const { return impl_ref().size(); }
+
+  /// Returns the actual number of tiles in the tensor
+
+  /// This function returns the number of tiles actually stored (i.e., nonzero)
+  /// in the tensor. This is usually not the same as the volume of the tensor
+  /// (i.e., the number of elements in the tensor; they are the same only
+  /// if each tile contains a single element).
+  ///
+  /// \return The actual number of tiles in the tensor.
+  /// \throw TiledArray::Exception if the PIMPL has not been set. Strong throw
+  ///                              guarantee.
+  /// \sa DistArray::size()
+  auto nonzero_size() const { return size() - shape().nzeroes(); }
 
   /// Create a tensor expression
 
