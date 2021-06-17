@@ -237,14 +237,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// no tile or meta data. Most of the functions are not available when the
   /// array is uninitialized, but these arrays may be assign via a tensor
   /// expression assignment or the copy construction.
+  DistArray() = default;
 
-  DistArray() : pimpl_() {}
+  /// Copy ctor
+  /// \note this class has shallow-copy semantics
+  DistArray(const DistArray& other) = default;
 
-  /// Copy constructor
-
-  /// This is a shallow copy, that is no data is copied.
-  /// \param other The array to be copied
-  DistArray(const DistArray& other) : pimpl_(other.pimpl_) {}
+  /// Move ctor
+  DistArray(DistArray&& other) = default;
 
   /// Dense array constructor
 
@@ -458,14 +458,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// Copy assignment
+  /// \note this class has shallow-copy semantics
+  DistArray& operator=(const DistArray& other) = default;
 
-  /// This is a shallow copy, that is no data is copied.
-  /// \param other The array to be copied
-  DistArray& operator=(const DistArray& other) {
-    pimpl_ = other.pimpl_;
-
-    return *this;
-  }
+  /// Move assignment
+  DistArray& operator=(DistArray&& other) = default;
 
   /// Global object id
 
