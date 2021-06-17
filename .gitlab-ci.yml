@@ -38,7 +38,7 @@ ubuntu:
         ${TA_CONFIG}
         ${TA_TARGETS}
         MPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
-        ScaLAPACK_LIBRARIES="scalapack-openmpi;lapack;blas;MPI::MPI_C"
+        ScaLAPACK_LIBRARIES="scalapack-openmpi;lapack;blas"
         #blacs_LIBRARIES=scalapack-openmpi
         #scalapack_LIBRARIES=scalapack-openmpi
         #lapack_LIBRARIES=lapack
