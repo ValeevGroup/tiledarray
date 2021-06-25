@@ -43,6 +43,12 @@ else()
     ## use patched BLT
     include(FetchBLT)
 
+    if (TA_ASSERT_POLICY EQUAL TA_ASSERT_IGNORE)
+        set(enable_umpire_asserts OFF)
+    else()
+        set(enable_umpire_asserts ON)
+    endif()
+
     set(UMPIRE_CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
         -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
@@ -71,7 +77,7 @@ else()
         -DENABLE_TESTS=OFF
         -DENABLE_EXAMPLES=OFF
         -DENABLE_LOGGING=OFF
-        -DENABLE_ASSERTS=${TA_DEFAULT_ERROR}
+        -DENABLE_ASSERTS=${enable_umpire_asserts}
         -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
         -DCMAKE_CUDA_STANDARD=${CMAKE_CUDA_STANDARD}
         -DCMAKE_CUDA_EXTENSIONS=${CMAKE_CUDA_EXTENSIONS}

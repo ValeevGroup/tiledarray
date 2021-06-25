@@ -139,14 +139,12 @@ else()
   
   # Setup configure variables
 
-  # Set error handling method (for TA_DEFAULT_ERROR values see top-level CMakeLists.txt)
-  if(TA_DEFAULT_ERROR EQUAL 0)
+  # Set error handling method (for TA_ASSERT_POLICY allowed values see top-level CMakeLists.txt)
+  if(TA_ASSERT_POLICY EQUAL TA_ASSERT_IGNORE)
     set(_MAD_ASSERT_TYPE disable)
-  elseif(TA_DEFAULT_ERROR EQUAL 1)
+  elseif(TA_ASSERT_POLICY EQUAL TA_ASSERT_THROW)
     set(_MAD_ASSERT_TYPE throw)
-  elseif(TA_DEFAULT_ERROR EQUAL 2)
-    set(_MAD_ASSERT_TYPE assert)
-  elseif(TA_DEFAULT_ERROR EQUAL 3)
+  elseif(TA_ASSERT_POLICY EQUAL TA_ASSERT_ABORT)
     set(_MAD_ASSERT_TYPE abort)
   endif()
   set(MAD_ASSERT_TYPE ${_MAD_ASSERT_TYPE} CACHE INTERNAL "MADNESS assert type")
