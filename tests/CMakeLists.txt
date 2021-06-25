@@ -120,7 +120,7 @@ if(CUDA_FOUND)
 endif()
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
-if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND AND FALSE)
+if (NOT (TA_ASSERT_POLICY EQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE)
   add_ta_executable(${executable} "${ta_test_src_files}" "MADworld;${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
   if (LAPACK_INCLUDE_DIRS)
