@@ -29,11 +29,13 @@
 #include <TiledArray/math/linalg/scalapack/cholesky.h>
 #endif
 #include <TiledArray/math/linalg/non-distributed/cholesky.h>
+#include <TiledArray/util/threads.h>
 
 namespace TiledArray::math::linalg {
 
 template <typename Array>
 auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000)
     return scalapack::cholesky<Array>(A, l_trange);
@@ -43,6 +45,7 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
 
 template <bool Both = false, typename Array>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000)
     return scalapack::cholesky_linv<Both>(A, l_trange);
@@ -53,6 +56,7 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
 template <typename Array>
 auto cholesky_solve(const Array& A, const Array& B,
                     TiledRange x_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000)
     return scalapack::cholesky_solve<Array>(A, B, x_trange);
@@ -64,6 +68,7 @@ template <typename Array>
 auto cholesky_lsolve(Op transpose, const Array& A, const Array& B,
                      TiledRange l_trange = TiledRange(),
                      TiledRange x_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000)
     return scalapack::cholesky_lsolve<Array>(transpose, A, B, l_trange,
