@@ -29,11 +29,13 @@
 #include <TiledArray/math/linalg/scalapack/svd.h>
 #endif  // TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/math/linalg/non-distributed/svd.h>
+#include <TiledArray/util/threads.h>
 
 namespace TiledArray::math::linalg {
 
 template <SVD::Vectors Vectors, typename Array>
 auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.range().volume() > 10000000) {
     return scalapack::svd<Vectors>(A, u_trange, vt_trange);
