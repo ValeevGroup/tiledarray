@@ -4,7 +4,7 @@
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/cuda/cublas.h>
 #include <TiledArray/external/cuda.h>
-#include <cutt.h>
+#include <librett.h>
 #endif
 
 #ifdef TILEDARRAY_HAS_INTEL_MKL

@@ -116,7 +116,7 @@ set(ta_test_src_files  ta_test.cpp
 )
 
 if(CUDA_FOUND)
-    list(APPEND ta_test_src_files cutt.cpp expressions_cuda_um.cpp tensor_um.cpp)
+    list(APPEND ta_test_src_files librett.cpp expressions_cuda_um.cpp tensor_um.cpp)
 endif()
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
