@@ -16,10 +16,12 @@
 *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
-#include "TiledArray/expressions/contraction_helpers.h"
+#include "TiledArray/expressions/einsum.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
 #include "tot_array_fixture.h"
+
+#include "TiledArray/expressions/contraction_helpers.h"
 
 using namespace TiledArray;
 using namespace TiledArray::expressions;
@@ -83,8 +85,7 @@ BOOST_AUTO_TEST_CASE(ik_mn_eq_ij_mn_times_jk_mn){
   matrix_il corr_il {{corr_elem_0_0, corr_elem_0_1, corr_elem_0_2, corr_elem_0_3, corr_elem_0_4, corr_elem_0_5},{corr_elem_1_0, corr_elem_1_1, corr_elem_1_2, corr_elem_1_3, corr_elem_1_4, corr_elem_1_5},{corr_elem_2_0, corr_elem_2_1, corr_elem_2_2, corr_elem_2_3, corr_elem_2_4, corr_elem_2_5},{corr_elem_3_0, corr_elem_3_1, corr_elem_3_2, corr_elem_3_3, corr_elem_3_4, corr_elem_3_5}};
   TiledRange corr_trange{{0, 2, 4},{0, 2, 4, 6}};
   dist_array_t corr(world, corr_trange, corr_il);
-  dist_array_t out;
-  einsum(out("i,k;m,n"), lhs("i,j;m,n"), rhs("j,k;m,n"));
+  dist_array_t out = einsum(lhs("i,j;m,n"), rhs("j,k;m,n"), "i,k;m,n");
   const bool are_equal = ToTArrayFixture::are_equal(corr, out);
   BOOST_CHECK(are_equal);
 }
@@ -146,8 +147,7 @@ BOOST_AUTO_TEST_CASE(ik_mn_eq_ij_mn_times_kj_mn){
   matrix_il corr_il {{corr_elem_0_0, corr_elem_0_1, corr_elem_0_2, corr_elem_0_3, corr_elem_0_4, corr_elem_0_5},{corr_elem_1_0, corr_elem_1_1, corr_elem_1_2, corr_elem_1_3, corr_elem_1_4, corr_elem_1_5},{corr_elem_2_0, corr_elem_2_1, corr_elem_2_2, corr_elem_2_3, corr_elem_2_4, corr_elem_2_5},{corr_elem_3_0, corr_elem_3_1, corr_elem_3_2, corr_elem_3_3, corr_elem_3_4, corr_elem_3_5}};
   TiledRange corr_trange{{0, 2, 4},{0, 2, 4, 6}};
   dist_array_t corr(world, corr_trange, corr_il);
-  dist_array_t out;
-  einsum(out("i,k;m,n"), lhs("i,j;m,n"), rhs("k,j;m,n"));
+  dist_array_t out = einsum(lhs("i,j;m,n"), rhs("k,j;m,n"), "i,k;m,n");
   const bool are_equal = ToTArrayFixture::are_equal(corr, out);
   BOOST_CHECK(are_equal);
 }
@@ -189,8 +189,7 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ij_mn_times_ij_mn){
   matrix_il corr_il {{corr_elem_0_0, corr_elem_0_1},{corr_elem_1_0, corr_elem_1_1},{corr_elem_2_0, corr_elem_2_1},{corr_elem_3_0, corr_elem_3_1}};
   TiledRange corr_trange{{0, 2, 4},{0, 2}};
   dist_array_t corr(world, corr_trange, corr_il);
-  dist_array_t out;
-  einsum(out("i,j;m,n"), lhs("i,j;m,n"), rhs("i,j;m,n"));
+  dist_array_t out = einsum(lhs("i,j;m,n"), rhs("i,j;m,n"), "i,j;m,n");
   const bool are_equal = ToTArrayFixture::are_equal(corr, out);
   BOOST_CHECK(are_equal);
 }
@@ -232,9 +231,53 @@ BOOST_AUTO_TEST_CASE(ij_mn_eq_ij_mn_times_ji_mn){
   matrix_il corr_il {{corr_elem_0_0, corr_elem_0_1},{corr_elem_1_0, corr_elem_1_1},{corr_elem_2_0, corr_elem_2_1},{corr_elem_3_0, corr_elem_3_1}};
   TiledRange corr_trange{{0, 2, 4},{0, 2}};
   dist_array_t corr(world, corr_trange, corr_il);
-  dist_array_t out;
-  einsum(out("i,j;m,n"), lhs("i,j;m,n"), rhs("j,i;m,n"));
+  dist_array_t out = einsum(lhs("i,j;m,n"), rhs("j,i;m,n"), "i,j;m,n");
   const bool are_equal = ToTArrayFixture::are_equal(corr, out);
+  BOOST_CHECK(are_equal);
+}
+
+BOOST_AUTO_TEST_CASE(xxx) {
+  using dist_array_t = DistArray<Tensor<Tensor<double>>, DensePolicy>;
+  using matrix_il = TiledArray::detail::matrix_il<Tensor<double>>;
+  auto& world = TiledArray::get_default_world();
+  Tensor<double> lhs_elem_0_0(Range{7, 2}, {15, 75, 54, 54, 72, 62, 97, 90, 17, 94, 19, 54, 13, 31});
+  Tensor<double> lhs_elem_0_1(Range{8, 3}, {82, 91, 60, 11, 47, 38, 87, 13, 72, 39, 59, 90, 26, 38, 2, 34, 30, 32, 46, 6, 26, 92, 47, 14});
+  Tensor<double> lhs_elem_1_0(Range{8, 3}, {53, 88, 72, 12, 58, 85, 55, 6, 50, 76, 51, 52, 77, 13, 4, 99, 30, 12, 16, 21, 60, 75, 55, 99});
+  Tensor<double> lhs_elem_1_1(Range{9, 4}, {16, 65, 6, 84, 85, 30, 97, 79, 2, 13, 4, 90, 32, 98, 88, 40, 25, 27, 8, 50, 56, 5, 42, 11, 20, 3, 51, 55, 32, 75, 8, 25, 4, 99, 75, 50});
+  Tensor<double> lhs_elem_2_0(Range{9, 4}, {39, 24, 23, 32, 10, 22, 94, 47, 85, 22, 77, 22, 92, 28, 61, 53, 21, 81, 57, 63, 37, 75, 93, 91, 24, 14, 56, 69, 42, 100, 17, 44, 78, 47, 33, 67});
+  Tensor<double> lhs_elem_2_1(Range{10, 5}, {93, 27, 38, 15, 87, 88, 48, 19, 54, 81, 6, 60, 70, 75, 1, 21, 34, 6, 74, 26, 5, 5, 75, 21, 31, 62, 53, 18, 17, 14, 19, 33, 96, 56, 94, 12, 30, 14, 94, 31, 25, 59, 72, 88, 66, 98, 56, 79, 11, 50});
+  Tensor<double> lhs_elem_3_0(Range{10, 5}, {49, 46, 13, 98, 77, 100, 23, 99, 77, 64, 10, 31, 10, 70, 30, 18, 89, 45, 81, 24, 45, 39, 83, 31, 3, 89, 35, 93, 70, 84, 43, 26, 96, 59, 57, 1, 3, 33, 27, 53, 33, 3, 53, 7, 80, 54, 47, 77, 62, 23});
+  Tensor<double> lhs_elem_3_1(Range{11, 6}, {27, 61, 27, 63, 45, 14, 80, 20, 73, 74, 74, 9, 59, 92, 5, 4, 78, 27, 53, 94, 70, 74, 1, 48, 30, 97, 51, 42, 93, 93, 81, 94, 73, 67, 23, 98, 58, 17, 75, 73, 92, 16, 59, 5, 82, 22, 43, 58, 68, 44, 27, 69, 79, 42, 99, 48, 78, 18, 9, 63, 1, 50, 9, 10, 82, 39});
+  matrix_il lhs_il {{lhs_elem_0_0, lhs_elem_0_1},{lhs_elem_1_0, lhs_elem_1_1},{lhs_elem_2_0, lhs_elem_2_1},{lhs_elem_3_0, lhs_elem_3_1}};
+  TiledRange lhs_trange{{0, 2, 4},{0, 2}};
+  dist_array_t lhs(world, lhs_trange, lhs_il);
+  Tensor<double> rhs_elem_0_0(Range{7, 2}, {55, 2, 99, 28, 98, 27, 80, 69, 1, 66, 5, 9, 1, 80});
+  Tensor<double> rhs_elem_0_1(Range{8, 3}, {19, 23, 52, 93, 6, 89, 68, 10, 4, 23, 24, 20, 99, 85, 81, 36, 82, 54, 36, 46, 26, 85, 15, 28});
+  Tensor<double> rhs_elem_0_2(Range{9, 4}, {57, 32, 86, 49, 55, 32, 100, 46, 2, 82, 84, 69, 63, 69, 12, 62, 21, 87, 1, 40, 61, 56, 90, 53, 74, 72, 5, 21, 49, 97, 69, 83, 48, 38, 88, 9});
+  Tensor<double> rhs_elem_0_3(Range{10, 5}, {28, 7, 4, 92, 30, 7, 3, 70, 16, 51, 71, 14, 37, 33, 92, 90, 75, 29, 52, 59, 15, 15, 96, 50, 39, 72, 22, 60, 56, 95, 45, 33, 25, 22, 23, 100, 26, 27, 38, 88, 89, 36, 48, 46, 6, 88, 16, 100, 54, 43});
+  Tensor<double> rhs_elem_1_0(Range{8, 3}, {55, 21, 79, 3, 77, 82, 65, 83, 66, 12, 100, 9, 40, 55, 8, 75, 82, 85, 100, 78, 39, 42, 65, 56});
+  Tensor<double> rhs_elem_1_1(Range{9, 4}, {45, 21, 58, 73, 57, 33, 27, 58, 56, 45, 88, 79, 78, 97, 23, 4, 87, 22, 9, 21, 54, 44, 81, 98, 53, 60, 29, 70, 83, 75, 30, 56, 61, 67, 18, 61});
+  Tensor<double> rhs_elem_1_2(Range{10, 5}, {11, 17, 75, 95, 66, 51, 95, 79, 10, 2, 43, 3, 85, 64, 67, 50, 32, 8, 48, 58, 35, 20, 87, 82, 40, 46, 70, 39, 46, 37, 38, 81, 87, 64, 31, 32, 7, 14, 94, 21, 33, 75, 67, 5, 80, 80, 36, 53, 99, 93});
+  Tensor<double> rhs_elem_1_3(Range{11, 6}, {64, 8, 79, 99, 13, 5, 64, 76, 2, 81, 78, 89, 88, 89, 83, 99, 71, 50, 18, 59, 91, 100, 91, 99, 20, 54, 72, 9, 43, 21, 61, 57, 18, 80, 12, 27, 95, 31, 92, 4, 6, 59, 27, 82, 98, 32, 82, 53, 52, 8, 31, 32, 38, 63, 32, 47, 24, 86, 64, 29, 86, 46, 96, 79, 48, 58});
+  matrix_il rhs_il {{rhs_elem_0_0, rhs_elem_0_1, rhs_elem_0_2, rhs_elem_0_3},{rhs_elem_1_0, rhs_elem_1_1, rhs_elem_1_2, rhs_elem_1_3}};
+  TiledRange rhs_trange{{0, 2},{0, 2, 4}};
+  dist_array_t rhs(world, rhs_trange, rhs_il);
+  Tensor<double> corr_elem_0_0(Range{7, 2}, {825, 150, 5346, 1512, 7056, 1674, 7760, 6210, 17, 6204, 95, 486, 13, 2480});
+  Tensor<double> corr_elem_0_1(Range{8, 3}, {4510, 1911, 4740, 33, 3619, 3116, 5655, 1079, 4752, 468, 5900, 810, 1040, 2090, 16, 2550, 2460, 2720, 4600, 468, 1014, 3864, 3055, 784});
+  Tensor<double> corr_elem_1_0(Range{8, 3}, {1007, 2024, 3744, 1116, 348, 7565, 3740, 60, 200, 1748, 1224, 1040, 7623, 1105, 324, 3564, 2460, 648, 576, 966, 1560, 6375, 825, 2772});
+  Tensor<double> corr_elem_1_1(Range{9, 4}, {720, 1365, 348, 6132, 4845, 990, 2619, 4582, 112, 585, 352, 7110, 2496, 9506, 2024, 160, 2175, 594, 72, 1050, 3024, 220, 3402, 1078, 1060, 180, 1479, 3850, 2656, 5625, 240, 1400, 244, 6633, 1350, 3050});
+  Tensor<double> corr_elem_2_0(Range{9, 4}, {2223, 768, 1978, 1568, 550, 704, 9400, 2162, 170, 1804, 6468, 1518, 5796, 1932, 732, 3286, 441, 7047, 57, 2520, 2257, 4200, 8370, 4823, 1776, 1008, 280, 1449, 2058, 9700, 1173, 3652, 3744, 1786, 2904, 603});
+  Tensor<double> corr_elem_2_1(Range{10, 5}, {1023, 459, 2850, 1425, 5742, 4488, 4560, 1501, 540, 162, 258, 180, 5950, 4800, 67, 1050, 1088, 48, 3552, 1508, 175, 100, 6525, 1722, 1240, 2852, 3710, 702, 782, 518, 722, 2673, 8352, 3584, 2914, 384, 210, 196, 8836, 651, 825, 4425, 4824, 440, 5280, 7840, 2016, 4187, 1089, 4650});
+  Tensor<double> corr_elem_3_0(Range{10, 5}, {1372, 322, 52, 9016, 2310, 700, 69, 6930, 1232, 3264, 710, 434, 370, 2310, 2760, 1620, 6675, 1305, 4212, 1416, 675, 585, 7968, 1550, 117, 6408, 770, 5580, 3920, 7980, 1935, 858, 2400, 1298, 1311, 100, 78, 891, 1026, 4664, 2937, 108, 2544, 322, 480, 4752, 752, 7700, 3348, 989});
+  Tensor<double> corr_elem_3_1(Range{11, 6}, {1728, 488, 2133, 6237, 585, 70, 5120, 1520, 146, 5994, 5772, 801, 5192, 8188, 415, 396, 5538, 1350, 954, 5546, 6370, 7400, 91, 4752, 600, 5238, 3672, 378, 3999, 1953, 4941, 5358, 1314, 5360, 276, 2646, 5510, 527, 6900, 292, 552, 944, 1593, 410, 8036, 704, 3526, 3074, 3536, 352, 837, 2208, 3002, 2646, 3168, 2256, 1872, 1548, 576, 1827, 86, 2300, 864, 790, 3936, 2262});
+  matrix_il corr_il {{corr_elem_0_0, corr_elem_0_1},{corr_elem_1_0, corr_elem_1_1},{corr_elem_2_0, corr_elem_2_1},{corr_elem_3_0, corr_elem_3_1}};
+  TiledRange corr_trange{{0, 2, 4},{0, 2}};
+  dist_array_t corr(world, corr_trange, corr_il);
+  dist_array_t r0 = einsum(lhs("i,h;m,n"), rhs("h,i;m,n"), "i,h;m,n");
+  dist_array_t r1;
+  einsum(r1("i,h;m,n"), lhs("i,h;m,n"), rhs("h,i;m,n"));
+
+  const bool are_equal = ToTArrayFixture::are_equal(r0, r1);
   BOOST_CHECK(are_equal);
 }
 
