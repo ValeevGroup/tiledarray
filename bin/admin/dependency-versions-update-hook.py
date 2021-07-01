@@ -106,11 +106,11 @@ with open(version_cmake_path) as inf:
                 btas_old_tag = tokens[2]
             else:
                 btas_new_tag = tokens[2]
-        elif tokens[1].find('CUTT') != -1:
+        elif tokens[1].find('LIBRETT') != -1:
             if tokens[1].find('PREVIOUS') != -1:
-                cutt_old_tag = tokens[2]
+                librett_old_tag = tokens[2]
             else:
-                cutt_new_tag = tokens[2]
+                librett_new_tag = tokens[2]
         elif tokens[1].find('UMPIRE') != -1:
             if tokens[1].find('PREVIOUS') != -1:
                 umpire_old_tag = tokens[2]
@@ -146,8 +146,8 @@ any_files_changed |= replace_dep_id(topsrc, 'md', 'MADNESS', madness_old_tag, ma
 # BTAS tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'BTAS', btas_old_tag, btas_new_tag, 'ValeevGroup/BTAS), tag ', '')
 
-# cuTT tag in INSTALL.md
-any_files_changed |= replace_dep_id(topsrc, 'md', 'cuTT', cutt_old_tag, cutt_new_tag, '', '')
+# libreTT tag in INSTALL.md
+any_files_changed |= replace_dep_id(topsrc, 'md', 'libreTT', librett_old_tag, librett_new_tag, '', '')
 
 # Umpire tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'Umpire', umpire_old_tag, umpire_new_tag, '', '')
