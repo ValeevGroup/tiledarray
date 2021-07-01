@@ -27,8 +27,8 @@
 #include <TiledArray/cuda/btas_um_tensor.h>
 #include "unit_test_config.h"
 
-struct cuTTFixture {
-  //  cuTTFixture()
+struct libreTTFixture {
+  //  libreTTFixture()
   //      : A(100),
   //        B(50),
   //        C(20),
@@ -36,16 +36,16 @@ struct cuTTFixture {
   //        extent({100, 100}),
   //        extent_nonsym({100, 50}),
   //        perm({1, 0}) {}
-  cuTTFixture() : A(10), B(5), C(2) {}
+  libreTTFixture() : A(10), B(5), C(2) {}
 
   int A;
   int B;
   int C;
 };
 
-BOOST_FIXTURE_TEST_SUITE(cutt_suite, cuTTFixture, TA_UT_LABEL_SERIAL);
+BOOST_FIXTURE_TEST_SUITE(librett_suite, libreTTFixture, TA_UT_LABEL_SERIAL);
 
-BOOST_AUTO_TEST_CASE(cutt_gpu_mem) {
+BOOST_AUTO_TEST_CASE(librett_gpu_mem) {
   int* a_host = (int*)std::malloc(A * A * sizeof(int));
   int* b_host = (int*)std::malloc(A * A * sizeof(int));
   int iter = 0;
@@ -68,17 +68,17 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  cuttHandle plan;
-  cuttResult_t status;
+  librettHandle plan;
+  librettResult_t status;
 
-  status = cuttPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
+  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  status = cuttExecute(plan, a_device, b_device);
+  status = librettExecute(plan, a_device, b_device);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
-  cuttDestroy(plan);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
+  librettDestroy(plan);
 
   cudaMemcpy(b_host, b_device, A * A * sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem) {
   cudaFree(b_device);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym) {
+BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym) {
   int* a_host = (int*)std::malloc(A * B * sizeof(int));
   int* b_host = (int*)std::malloc(A * B * sizeof(int));
   int iter = 0;
@@ -115,8 +115,8 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym) {
 
   cudaMemcpy(a_device, a_host, A * B * sizeof(int), cudaMemcpyHostToDevice);
 
-  cuttHandle plan;
-  cuttResult_t status;
+  librettHandle plan;
+  librettResult_t status;
 
   std::vector<int> extent({B, A});
   TiledArray::extent_to_col_major(extent);
@@ -124,14 +124,14 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status = cuttPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
+  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  status = cuttExecute(plan, a_device, b_device);
+  status = librettExecute(plan, a_device, b_device);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
-  cuttDestroy(plan);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
+  librettDestroy(plan);
 
   cudaMemcpy(b_host, b_device, A * B * sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym) {
   cudaFree(b_device);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym_rank_three_column_major) {
+BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_column_major) {
   int* a_host = (int*)std::malloc(A * B * C * sizeof(int));
   int* b_host = (int*)std::malloc(A * B * C * sizeof(int));
   int iter = 0;
@@ -172,28 +172,28 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym_rank_three_column_major) {
 
   // b(j,i,k) = a(i,j,k)
 
-  cuttHandle plan;
-  cuttResult_t status;
+  librettHandle plan;
+  librettResult_t status;
 
   std::vector<int> extent3{int(A), int(B), int(C)};
 
   std::vector<int> perm3{1, 0, 2};
   //  std::vector<int> perm3{0, 2, 1};
 
-  status = cuttPlanMeasure(&plan, 3, extent3.data(), perm3.data(), sizeof(int),
+  status = librettPlanMeasure(&plan, 3, extent3.data(), perm3.data(), sizeof(int),
                            0, a_device, b_device);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  status = cuttExecute(plan, a_device, b_device);
+  status = librettExecute(plan, a_device, b_device);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
   cudaMemcpy(b_host, b_device, A * B * C * sizeof(int), cudaMemcpyDeviceToHost);
 
-  status = cuttDestroy(plan);
+  status = librettDestroy(plan);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
   iter = 0;
   for (std::size_t k = 0; k < C; k++) {
@@ -212,7 +212,7 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym_rank_three_column_major) {
   cudaFree(b_device);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym_rank_three_row_major) {
+BOOST_AUTO_TEST_CASE(librett_gpu_mem_nonsym_rank_three_row_major) {
   int* a_host = (int*)std::malloc(A * B * C * sizeof(int));
   int* b_host = (int*)std::malloc(A * B * C * sizeof(int));
   int iter = 0;
@@ -234,8 +234,8 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym_rank_three_row_major) {
 
   // b(j,i,k) = a(i,j,k)
 
-  cuttHandle plan;
-  cuttResult_t status;
+  librettHandle plan;
+  librettResult_t status;
 
   std::vector<int> extent({A, B, C});
   TiledArray::extent_to_col_major(extent);
@@ -243,20 +243,20 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym_rank_three_row_major) {
   std::vector<int> perm({1, 0, 2});
   TiledArray::permutation_to_col_major(perm);
 
-  status = cuttPlanMeasure(&plan, 3, extent.data(), perm.data(), sizeof(int), 0,
+  status = librettPlanMeasure(&plan, 3, extent.data(), perm.data(), sizeof(int), 0,
                            a_device, b_device);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  status = cuttExecute(plan, a_device, b_device);
+  status = librettExecute(plan, a_device, b_device);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
   cudaMemcpy(b_host, b_device, A * B * C * sizeof(int), cudaMemcpyDeviceToHost);
 
-  status = cuttDestroy(plan);
+  status = librettDestroy(plan);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
   iter = 0;
   for (std::size_t i = 0; i < A; i++) {
@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE(cutt_gpu_mem_nonsym_rank_three_row_major) {
   cudaFree(b_device);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_unified_mem) {
+BOOST_AUTO_TEST_CASE(librett_unified_mem) {
   int* a_um;
   cudaMallocManaged(&a_um, A * A * sizeof(int));
 
@@ -290,8 +290,8 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem) {
     }
   }
 
-  cuttHandle plan;
-  cuttResult_t status;
+  librettHandle plan;
+  librettResult_t status;
 
   std::vector<int> extent({A, A});
   TiledArray::extent_to_col_major(extent);
@@ -299,15 +299,15 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status = cuttPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
+  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  status = cuttExecute(plan, a_um, b_um);
+  status = librettExecute(plan, a_um, b_um);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  cuttDestroy(plan);
+  librettDestroy(plan);
 
   cudaDeviceSynchronize();
 
@@ -323,7 +323,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem) {
   cudaFree(b_um);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym) {
+BOOST_AUTO_TEST_CASE(librett_unified_mem_nonsym) {
   int* a_um;
   cudaMallocManaged(&a_um, A * B * sizeof(int));
 
@@ -338,8 +338,8 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym) {
     }
   }
 
-  cuttHandle plan;
-  cuttResult_t status;
+  librettHandle plan;
+  librettResult_t status;
 
   std::vector<int> extent({B, A});
   TiledArray::extent_to_col_major(extent);
@@ -347,15 +347,15 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym) {
   std::vector<int> perm({1, 0});
   TiledArray::permutation_to_col_major(perm);
 
-  status = cuttPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
+  status = librettPlan(&plan, 2, extent.data(), perm.data(), sizeof(int), 0);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  status = cuttExecute(plan, a_um, b_um);
+  status = librettExecute(plan, a_um, b_um);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  cuttDestroy(plan);
+  librettDestroy(plan);
   cudaDeviceSynchronize();
 
   iter = 0;
@@ -369,7 +369,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_nonsym) {
   cudaFree(b_um);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three) {
+BOOST_AUTO_TEST_CASE(librett_unified_mem_rank_three) {
   int* a_um;
   cudaMallocManaged(&a_um, A * B * C * sizeof(int));
 
@@ -386,8 +386,8 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three) {
     }
   }
 
-  cuttHandle plan;
-  cuttResult_t status;
+  librettHandle plan;
+  librettResult_t status;
 
   // b(k,i,j) = a(i,j,k)
 
@@ -397,15 +397,15 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three) {
   std::vector<int> perm({2, 0, 1});
   TiledArray::permutation_to_col_major(perm);
 
-  status = cuttPlan(&plan, 3, extent.data(), perm.data(), sizeof(int), 0);
+  status = librettPlan(&plan, 3, extent.data(), perm.data(), sizeof(int), 0);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  status = cuttExecute(plan, a_um, b_um);
+  status = librettExecute(plan, a_um, b_um);
 
-  BOOST_CHECK(status == CUTT_SUCCESS);
+  BOOST_CHECK(status == LIBRETT_SUCCESS);
 
-  cuttDestroy(plan);
+  librettDestroy(plan);
   cudaDeviceSynchronize();
 
   iter = 0;
@@ -421,7 +421,7 @@ BOOST_AUTO_TEST_CASE(cutt_unified_mem_rank_three) {
   cudaFree(b_um);
 }
 
-BOOST_AUTO_TEST_CASE(cutt_um_tensor) {
+BOOST_AUTO_TEST_CASE(librett_um_tensor) {
   TiledArray::Range range{A, A};
 
   using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
@@ -453,7 +453,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(cutt_um_tensor_nonsym) {
+BOOST_AUTO_TEST_CASE(librett_um_tensor_nonsym) {
   TiledArray::Range range{B, A};
 
   using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
@@ -485,7 +485,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_nonsym) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_three) {
+BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_three) {
   TiledArray::Range range{A, B, C};
 
   using Tile = TiledArray::btasUMTensorVarray<int, TiledArray::Range>;
@@ -540,7 +540,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_three) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_four) {
+BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_four) {
   std::size_t a = 2;
   std::size_t b = 3;
   std::size_t c = 6;
@@ -609,7 +609,7 @@ BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_four) {
   }
 }
 
-BOOST_AUTO_TEST_CASE(cutt_um_tensor_rank_six) {
+BOOST_AUTO_TEST_CASE(librett_um_tensor_rank_six) {
   std::size_t a = 2;
   std::size_t b = 3;
   std::size_t c = 6;

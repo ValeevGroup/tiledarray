@@ -187,7 +187,7 @@ btasUMTensorVarray<T, Range> permute(const btasUMTensorVarray<T, Range> &arg,
                                       std::move(storage));
 
   // invoke the permute function
-  cutt_permute(const_cast<T *>(device_data(arg.storage())),
+  librett_permute(const_cast<T *>(device_data(arg.storage())),
                device_data(result.storage()), arg.range(), perm, stream);
 
   synchronize_stream(&stream);

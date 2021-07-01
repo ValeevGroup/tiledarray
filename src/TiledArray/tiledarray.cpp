@@ -21,14 +21,14 @@ inline void cuda_initialize() {
   cudaEnv::instance();
   //
   cuBLASHandlePool::handle();
-  // initialize cuTT
-  cuttInitialize();
+  // initialize LibreTT
+  librettInitialize();
 }
 
 /// finalize cuda environment
 inline void cuda_finalize() {
   CudaSafeCall(cudaDeviceSynchronize());
-  cuttFinalize();
+  librettFinalize();
   cublasDestroy(cuBLASHandlePool::handle());
   delete &cuBLASHandlePool::handle();
   cudaEnv::instance().reset(nullptr);
