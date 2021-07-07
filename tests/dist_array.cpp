@@ -622,12 +622,12 @@ BOOST_AUTO_TEST_CASE(parallel_serialization) {
   const int nio = 1;  // use 1 rank for I/O
   char archive_file_prefix_name[] = "tmp.XXXXXX";
   mktemp(archive_file_prefix_name);
-  madness::archive::ParallelOutputArchive oar(world, archive_file_prefix_name,
+  madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
                                               nio);
   oar& a;
   oar.close();
 
-  madness::archive::ParallelInputArchive iar(world, archive_file_prefix_name,
+  madness::archive::ParallelInputArchive<> iar(world, archive_file_prefix_name,
                                              nio);
   decltype(a) aread;
   aread.load(world, iar);
@@ -646,12 +646,12 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
   const int nio = 1;  // use 1 rank for 1
   char archive_file_prefix_name[] = "tmp.XXXXXX";
   mktemp(archive_file_prefix_name);
-  madness::archive::ParallelOutputArchive oar(world, archive_file_prefix_name,
+  madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
                                               nio);
   oar& b;
   oar.close();
 
-  madness::archive::ParallelInputArchive iar(world, archive_file_prefix_name,
+  madness::archive::ParallelInputArchive<> iar(world, archive_file_prefix_name,
                                              nio);
   decltype(b) bread;
   bread.load(world, iar);

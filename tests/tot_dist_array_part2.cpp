@@ -691,13 +691,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(parallel_serialization, TestParam, test_params) {
     char file_name[] = "tmp.XXXXXX";
     mktemp(file_name);
     {
-      madness::archive::ParallelOutputArchive ar_out(m_world, file_name, nio);
+      madness::archive::ParallelOutputArchive<> ar_out(m_world, file_name, nio);
       corr.store(ar_out);
     }
 
     tensor_type<TestParam> t2;
     {
-      madness::archive::ParallelInputArchive ar_in(m_world, file_name, nio);
+      madness::archive::ParallelInputArchive<> ar_in(m_world, file_name, nio);
       t2.load(m_world, ar_in);
       BOOST_TEST(are_equal(corr, t2));
     }
