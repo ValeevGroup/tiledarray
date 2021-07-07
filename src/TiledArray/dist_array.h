@@ -1664,18 +1664,18 @@ auto norm2(const DistArray<Tile, Policy>& a) {
 namespace madness {
 namespace archive {
 template <class Tile, class Policy>
-struct ArchiveLoadImpl<ParallelInputArchive,
+struct ArchiveLoadImpl<ParallelInputArchive<>,
                        TiledArray::DistArray<Tile, Policy>> {
-  static inline void load(const ParallelInputArchive& ar,
+  static inline void load(const ParallelInputArchive<>& ar,
                           TiledArray::DistArray<Tile, Policy>& x) {
     x.load(*ar.get_world(), ar);
   }
 };
 
 template <class Tile, class Policy>
-struct ArchiveStoreImpl<ParallelOutputArchive,
+struct ArchiveStoreImpl<ParallelOutputArchive<>,
                         TiledArray::DistArray<Tile, Policy>> {
-  static inline void store(const ParallelOutputArchive& ar,
+  static inline void store(const ParallelOutputArchive<>& ar,
                            const TiledArray::DistArray<Tile, Policy>& x) {
     x.store(ar);
   }
