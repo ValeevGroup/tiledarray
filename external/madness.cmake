@@ -32,9 +32,12 @@ if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
   set(TILEDARRAY_DOWNLOADED_MADNESS OFF CACHE BOOL "Whether TA downloaded MADNESS")
   mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
 
-  set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")
+  set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")  # if MADNESS were installed
   if (NOT EXISTS "${CONFIG_H_PATH}")
-    message(FATAL_ERROR "did not find MADNESS' config.h")
+    set(CONFIG_H_PATH "${MADNESS_DIR}/src/madness/config.h")  # if MADNESS were used from build tree
+    if (NOT EXISTS "${CONFIG_H_PATH}")
+      message(FATAL_ERROR "did not find MADNESS' config.h")
+    endif()
   endif()
   file(STRINGS "${CONFIG_H_PATH}" MADNESS_REVISION_LINE REGEX "define MADNESS_REVISION")
   if (MADNESS_REVISION_LINE) # MADNESS_REVISION found? make sure it matches the required tag exactly
