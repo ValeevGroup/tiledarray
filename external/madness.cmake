@@ -32,7 +32,7 @@ if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
   set(TILEDARRAY_DOWNLOADED_MADNESS OFF CACHE BOOL "Whether TA downloaded MADNESS")
   mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
 
-  set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")
+  set(CONFIG_H_PATH "${MADNESS_DIR}/src/madness/config.h")
   if (NOT EXISTS "${CONFIG_H_PATH}")
     message(FATAL_ERROR "did not find MADNESS' config.h")
   endif()
