@@ -92,7 +92,7 @@ template<typename ValueType>
 struct MakeRandom {
   /// Generates a random value of type ValueType
   static ValueType generate_value() {
-    return static_cast<ValueType>(std::rand() / RAND_MAX);
+    return static_cast<ValueType>(static_cast<double>(std::rand()) / RAND_MAX);
   }
 };
 
