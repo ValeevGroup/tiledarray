@@ -76,8 +76,9 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
         "TiledArray finalized MADWorld already, cannot re-initialize MADWorld "
         "again");
   if (!initialized()) {
-    if (!madness::initialized())
+    if (!madness::initialized()) {
       initialized_madworld_accessor() = true;
+    }
     else {  // if MADWorld initialized, we must assume that comm is its default
             // World.
       if (madness::World::is_default(comm))
@@ -126,4 +127,17 @@ void TiledArray::ta_abort() {
 void TiledArray::ta_abort(const std::string &m) {
   std::cerr << m << std::endl;
   ta_abort();
+}
+
+
+void TiledArray::taskq_wait_busy() {
+  madness::threadpool_wait_policy(madness::WaitPolicy::Busy);
+}
+
+void TiledArray::taskq_wait_yield() {
+  madness::threadpool_wait_policy(madness::WaitPolicy::Yield);
+}
+
+void TiledArray::taskq_wait_usleep(int us) {
+  madness::threadpool_wait_policy(madness::WaitPolicy::Sleep, us);
 }
