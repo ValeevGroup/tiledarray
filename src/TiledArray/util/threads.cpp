@@ -5,6 +5,8 @@
 #include <mkl_service.h>
 #endif
 
+int TiledArray::max_threads = 1;
+
 int TiledArray::get_num_threads() {
 #ifdef TILEDARRAY_HAS_INTEL_MKL
   return mkl_get_max_threads();

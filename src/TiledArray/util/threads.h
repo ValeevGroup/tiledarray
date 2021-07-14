@@ -3,7 +3,7 @@
 
 namespace TiledArray {
 
-  static int max_threads = 1;
+  extern int max_threads;
 
   int get_num_threads();
   void set_num_threads(int);
