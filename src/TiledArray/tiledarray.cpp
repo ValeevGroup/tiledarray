@@ -1,14 +1,11 @@
 #include <TiledArray/config.h>
 #include <TiledArray/initialize.h>
+#include <TiledArray/util/threads.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/cuda/cublas.h>
 #include <TiledArray/external/cuda.h>
 #include <cutt.h>
-#endif
-
-#ifdef TILEDARRAY_HAS_INTEL_MKL
-#include <mkl_service.h>
 #endif
 
 namespace TiledArray {
@@ -48,12 +45,6 @@ inline bool& finalized_accessor() {
   static bool flag = false;
   return flag;
 }
-#ifdef TILEDARRAY_HAS_INTEL_MKL
-inline int& mklnumthreads_accessor() {
-  static int value = -1;
-  return value;
-}
-#endif
 
 }  // namespace
 }  // namespace TiledArray
@@ -85,8 +76,9 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
         "TiledArray finalized MADWorld already, cannot re-initialize MADWorld "
         "again");
   if (!initialized()) {
-    if (!madness::initialized())
+    if (!madness::initialized()) {
       initialized_madworld_accessor() = true;
+    }
     else {  // if MADWorld initialized, we must assume that comm is its default
             // World.
       if (madness::World::is_default(comm))
@@ -101,11 +93,8 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
 #ifdef TILEDARRAY_HAS_CUDA
     TiledArray::cuda_initialize();
 #endif
-#ifdef TILEDARRAY_HAS_INTEL_MKL
-    // record number of MKL threads and set to 1
-    mklnumthreads_accessor() = mkl_get_max_threads();
-    mkl_set_num_threads(1);
-#endif
+    TiledArray::max_threads = TiledArray::get_num_threads();
+    TiledArray::set_num_threads(1);
     madness::print_meminfo_disable();
     initialized_accessor() = true;
     return default_world;
@@ -116,10 +105,8 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
 /// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized
 /// when TiledArray::initialize was called).
 void TiledArray::finalize() {
-#ifdef TILEDARRAY_HAS_INTEL_MKL
-  // reset number of MKL threads
-  mkl_set_num_threads(mklnumthreads_accessor());
-#endif
+  // reset number of threads
+  TiledArray::set_num_threads(TiledArray::max_threads);
 #ifdef TILEDARRAY_HAS_CUDA
   TiledArray::cuda_finalize();
 #endif
@@ -140,4 +127,17 @@ void TiledArray::ta_abort() {
 void TiledArray::ta_abort(const std::string &m) {
   std::cerr << m << std::endl;
   ta_abort();
+}
+
+
+void TiledArray::taskq_wait_busy() {
+  madness::threadpool_wait_policy(madness::WaitPolicy::Busy);
+}
+
+void TiledArray::taskq_wait_yield() {
+  madness::threadpool_wait_policy(madness::WaitPolicy::Yield);
+}
+
+void TiledArray::taskq_wait_usleep(int us) {
+  madness::threadpool_wait_policy(madness::WaitPolicy::Sleep, us);
 }

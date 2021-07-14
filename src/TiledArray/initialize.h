@@ -50,6 +50,10 @@ inline World& initialize(int& argc, char**& argv, const MPI_Comm& comm,
 /// when TiledArray::initialize was called).
 void finalize();
 
+void taskq_wait_busy();
+void taskq_wait_yield();
+void taskq_wait_usleep(int);
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_INITIALIZE_H__INCLUDED

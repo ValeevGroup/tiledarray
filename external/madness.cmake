@@ -11,8 +11,15 @@ include(ExternalProject)
 include(ConvertIncludesListToCompilerArgs)
 include(ConvertLibrariesListToCompilerArgs)
 
-set(MADNESS_OLDEST_TAG ${TA_TRACKED_MADNESS_TAG} CACHE STRING
-        "The oldest revision hash or tag of MADNESS that can be used")
+# user specified madness
+set(MADNESS_TAG "" CACHE STRING "Revision hash or tag to use when building MADNESS")
+mark_as_advanced(FORCE MADNESS_TAG)
+
+set(_madness_tag ${TA_TRACKED_MADNESS_TAG})
+
+if (MADNESS_TAG)
+  set(_madness_tag ${MADNESS_TAG})
+endif()
 
 find_package_regimport(MADNESS ${TA_TRACKED_MADNESS_VERSION} CONFIG QUIET COMPONENTS world HINTS ${MADNESS_ROOT_DIR})
 
@@ -32,19 +39,17 @@ if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
   set(TILEDARRAY_DOWNLOADED_MADNESS OFF CACHE BOOL "Whether TA downloaded MADNESS")
   mark_as_advanced(TILEDARRAY_DOWNLOADED_MADNESS)
 
-  set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")
+  set(CONFIG_H_PATH "${MADNESS_DIR}/../../../include/madness/config.h")  # if MADNESS were installed
   if (NOT EXISTS "${CONFIG_H_PATH}")
-    message(FATAL_ERROR "did not find MADNESS' config.h")
+    set(CONFIG_H_PATH "${MADNESS_DIR}/src/madness/config.h")  # if MADNESS were used from build tree
+    if (NOT EXISTS "${CONFIG_H_PATH}")
+      message(FATAL_ERROR "did not find MADNESS' config.h")
+    endif()
   endif()
   file(STRINGS "${CONFIG_H_PATH}" MADNESS_REVISION_LINE REGEX "define MADNESS_REVISION")
   if (MADNESS_REVISION_LINE) # MADNESS_REVISION found? make sure it matches the required tag exactly
     string(REGEX REPLACE ".*define[ \t]+MADNESS_REVISION[ \t]+\"([a-z0-9]+)\"" "\\1" MADNESS_REVISION "${MADNESS_REVISION_LINE}")
-    if (MADNESS_TAG) # user-defined MADNESS_TAG overrides TA_TRACKED_MADNESS_TAG
-      set(MADNESS_REQUIRED_TAG "${MADNESS_TAG}")
-    else (MADNESS_TAG)
-      set(MADNESS_REQUIRED_TAG "${TA_TRACKED_MADNESS_TAG}")
-    endif (MADNESS_TAG)
-    if ("${MADNESS_REVISION}" STREQUAL "${MADNESS_REQUIRED_TAG}")
+    if ("${MADNESS_REVISION}" STREQUAL "${_madness_tag}")
       message(STATUS "Found MADNESS with required revision ${MADNESS_REQUIRED_TAG}")
     else()
       message(FATAL_ERROR "Found MADNESS with revision ${MADNESS_REVISION}, but ${MADNESS_REQUIRED_TAG} is required; if MADNESS was built by TiledArray, remove the TiledArray install directory, else build the required revision of MADNESS")
@@ -96,7 +101,7 @@ if (MADNESS_FOUND AND NOT TILEDARRAY_DOWNLOADED_MADNESS)
     "  MADNESS_IS_FRESH)
 
   if (NOT MADNESS_IS_FRESH)
-    message(FATAL_ERROR "MADNESS is not fresh enough; update to ${MADNESS_OLDEST_TAG} or more recent")
+    message(FATAL_ERROR "MADNESS is not fresh enough; update to ${_madness_tag}")
   endif()
 
   cmake_pop_check_state()
@@ -130,23 +135,15 @@ else()
         "Path to the MADNESS build directory")
   set(MADNESS_URL "https://github.com/m-a-d-n-e-s-s/madness.git" CACHE STRING 
         "Path to the MADNESS repository")
-  set(MADNESS_TAG "${MADNESS_OLDEST_TAG}" CACHE STRING
-        "Revision hash or tag to use when building MADNESS")
-  
-  if("${MADNESS_TAG}" STREQUAL "")
-    message(FATAL_ERROR "Invalid value given for MADNESS_TAG; specify a valid hash or tag.")
-  endif()
   
   # Setup configure variables
 
-  # Set error handling method (for TA_DEFAULT_ERROR values see top-level CMakeLists.txt)
-  if(TA_DEFAULT_ERROR EQUAL 0)
+  # Set error handling method (for TA_ASSERT_POLICY allowed values see top-level CMakeLists.txt)
+  if(TA_ASSERT_POLICY STREQUAL TA_ASSERT_IGNORE)
     set(_MAD_ASSERT_TYPE disable)
-  elseif(TA_DEFAULT_ERROR EQUAL 1)
+  elseif(TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW)
     set(_MAD_ASSERT_TYPE throw)
-  elseif(TA_DEFAULT_ERROR EQUAL 2)
-    set(_MAD_ASSERT_TYPE assert)
-  elseif(TA_DEFAULT_ERROR EQUAL 3)
+  elseif(TA_ASSERT_POLICY STREQUAL TA_ASSERT_ABORT)
     set(_MAD_ASSERT_TYPE abort)
   endif()
   set(MAD_ASSERT_TYPE ${_MAD_ASSERT_TYPE} CACHE INTERNAL "MADNESS assert type")
@@ -200,11 +197,11 @@ else()
     set(error_code 1)
     execute_process(
       COMMAND "${GIT_EXECUTABLE}" fetch origin master
-      COMMAND "${GIT_EXECUTABLE}" checkout ${MADNESS_TAG}
+      COMMAND "${GIT_EXECUTABLE}" checkout ${_madness_tag}
       WORKING_DIRECTORY "${MADNESS_SOURCE_DIR}"
       RESULT_VARIABLE error_code)
     if(error_code)
-      message(FATAL_ERROR "Failed to checkout tag: '${MADNESS_TAG}'")
+      message(FATAL_ERROR "Failed to checkout tag: '${_madness_tag}'")
     endif()
         
     # Add update-madness target that will pull updates to the madness source 
@@ -213,7 +210,7 @@ else()
     # project is built.
     add_custom_target(update-madness
       COMMAND ${GIT_EXECUTABLE} fetch origin master
-      COMMAND ${GIT_EXECUTABLE} checkout ${MADNESS_TAG}
+      COMMAND ${GIT_EXECUTABLE} checkout ${_madness_tag}
       WORKING_DIRECTORY ${MADNESS_SOURCE_DIR}
       COMMENT "Updating source for 'madness' from ${MADNESS_URL}")
 
