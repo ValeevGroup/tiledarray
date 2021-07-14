@@ -474,6 +474,11 @@ class SparseShape {
     return float(zero_tile_count_) / float(tile_norms_.size());
   }
 
+  /// Accesses the number of zero entries
+
+  /// \return The number of zero entries
+  std::size_t nzeroes() const { return zero_tile_count_; }
+
   /// Threshold accessor
 
   /// \return The current threshold

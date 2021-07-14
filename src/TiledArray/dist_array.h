@@ -237,14 +237,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// no tile or meta data. Most of the functions are not available when the
   /// array is uninitialized, but these arrays may be assign via a tensor
   /// expression assignment or the copy construction.
+  DistArray() = default;
 
-  DistArray() : pimpl_() {}
+  /// Copy ctor
+  /// \note this class has shallow-copy semantics
+  DistArray(const DistArray& other) = default;
 
-  /// Copy constructor
-
-  /// This is a shallow copy, that is no data is copied.
-  /// \param other The array to be copied
-  DistArray(const DistArray& other) : pimpl_(other.pimpl_) {}
+  /// Move ctor
+  DistArray(DistArray&& other) = default;
 
   /// Dense array constructor
 
@@ -458,14 +458,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// Copy assignment
+  /// \note this class has shallow-copy semantics
+  DistArray& operator=(const DistArray& other) = default;
 
-  /// This is a shallow copy, that is no data is copied.
-  /// \param other The array to be copied
-  DistArray& operator=(const DistArray& other) {
-    pimpl_ = other.pimpl_;
-
-    return *this;
-  }
+  /// Move assignment
+  DistArray& operator=(DistArray&& other) = default;
 
   /// Global object id
 
@@ -958,17 +955,28 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     return impl_ref().trange().elements_range();
   }
 
-  /// Returns the number of tiles in the tensor
+  /// Returns the total number of tiles in the tensor
 
-  /// This function returns the number of tiles in the tensor. This is usually
-  /// not the same as the volume of the tensor (i.e., the number of elements in
-  /// the tensor; they are the same only if each tile contains a single
-  /// element).
+  /// This function returns the total number of tiles in the tensor.
   ///
-  /// \return The number of tiles in the tensor.
+  /// \return The total number of tiles in the tensor.
   /// \throw TiledArray::Exception if the PIMPL has not been set. Strong throw
   ///                              guarantee.
+  /// \warning This is not the same as the number of elements in the tensor.
   auto size() const { return impl_ref().size(); }
+
+  /// Returns the actual number of tiles in the tensor
+
+  /// This function returns the number of tiles actually stored (i.e., nonzero)
+  /// in the tensor. This is usually not the same as the volume of the tensor
+  /// (i.e., the number of elements in the tensor; they are the same only
+  /// if each tile contains a single element).
+  ///
+  /// \return The actual number of tiles in the tensor.
+  /// \throw TiledArray::Exception if the PIMPL has not been set. Strong throw
+  ///                              guarantee.
+  /// \sa DistArray::size()
+  auto nonzero_size() const { return size() - shape().nzeroes(); }
 
   /// Create a tensor expression
 
