@@ -49,7 +49,7 @@ class Tensor;
 /// used to construct distributed tensor algebraic operations.
 /// \tparam T The element type of for array tiles
 /// \tparam Tile The tile type [ Default = \c Tensor<T> ]
-template <typename Tile = Tensor<double, Eigen::aligned_allocator<double>>,
+template <typename Tile = Tensor<double>,
           typename Policy = DensePolicy>
 class DistArray : public madness::archive::ParallelSerializableObject {
  public:
@@ -1555,33 +1555,23 @@ madness::AtomicInt DistArray<Tile, Policy>::cleanup_counter_;
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
-extern template class DistArray<
-    Tensor<double, Eigen::aligned_allocator<double>>, DensePolicy>;
-extern template class DistArray<Tensor<float, Eigen::aligned_allocator<float>>,
-                                DensePolicy>;
-extern template class DistArray<Tensor<int, Eigen::aligned_allocator<int>>,
-                                DensePolicy>;
-extern template class DistArray<Tensor<long, Eigen::aligned_allocator<long>>,
-                                DensePolicy>;
-//  extern template
-//  class DistArray<Tensor<std::complex<double>,
-//  Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>; extern
-//  template class DistArray<Tensor<std::complex<float>,
-//  Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>
+extern template class DistArray<Tensor<double>, DensePolicy>;
+extern template class DistArray<Tensor<float>, DensePolicy>;
+// extern template class DistArray<Tensor<int>,
+//                                DensePolicy>;
+// extern template class DistArray<Tensor<long>,
+//                                DensePolicy>;
+extern template class DistArray<Tensor<std::complex<double>>, DensePolicy>;
+extern template class DistArray<Tensor<std::complex<float>>, DensePolicy>;
 
-extern template class DistArray<
-    Tensor<double, Eigen::aligned_allocator<double>>, SparsePolicy>;
-extern template class DistArray<Tensor<float, Eigen::aligned_allocator<float>>,
-                                SparsePolicy>;
-extern template class DistArray<Tensor<int, Eigen::aligned_allocator<int>>,
-                                SparsePolicy>;
-extern template class DistArray<Tensor<long, Eigen::aligned_allocator<long>>,
-                                SparsePolicy>;
-//  extern template
-//  class DistArray<Tensor<std::complex<double>,
-//  Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>; extern
-//  template class DistArray<Tensor<std::complex<float>,
-//  Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
+extern template class DistArray<Tensor<double>, SparsePolicy>;
+extern template class DistArray<Tensor<float>, SparsePolicy>;
+// extern template class DistArray<Tensor<int>,
+//                                SparsePolicy>;
+// extern template class DistArray<Tensor<long>,
+//                                SparsePolicy>;
+extern template class DistArray<Tensor<std::complex<double>>, SparsePolicy>;
+extern template class DistArray<Tensor<std::complex<float>>, SparsePolicy>;
 
 #endif  // TILEDARRAY_HEADER_ONLY
 

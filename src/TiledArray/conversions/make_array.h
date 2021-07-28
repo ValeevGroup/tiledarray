@@ -146,9 +146,7 @@ inline Array make_array(World& world, const detail::trange_t<Array>& trange,
   tiles.reserve(pmap->size());
 
   // Construct a tensor to hold updated tile norms for the result shape.
-  TiledArray::Tensor<
-      typename detail::shape_t<Array>::value_type,
-      Eigen::aligned_allocator<typename detail::shape_t<Array>::value_type> >
+  TiledArray::Tensor<typename detail::shape_t<Array>::value_type>
       tile_norms(trange.tiles_range(), 0);
 
   // Construct the task function used to construct the result tiles.

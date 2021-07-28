@@ -2250,15 +2250,12 @@ struct transform<Tensor<T, A>> {
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
-extern template class Tensor<double, Eigen::aligned_allocator<double>>;
-extern template class Tensor<float, Eigen::aligned_allocator<float>>;
-extern template class Tensor<int, Eigen::aligned_allocator<int>>;
-extern template class Tensor<long, Eigen::aligned_allocator<long>>;
-//  extern template
-//  class Tensor<std::complex<double>,
-//  Eigen::aligned_allocator<std::complex<double> > >; extern template class
-//  Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> >
-//  >;
+extern template class Tensor<double>;
+extern template class Tensor<float>;
+// extern template class Tensor<int>;
+// extern template class Tensor<long>;
+extern template class Tensor<std::complex<double>>;
+extern template class Tensor<std::complex<float>>;
 
 #endif  // TILEDARRAY_HEADER_ONLY
 

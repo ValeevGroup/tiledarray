@@ -644,33 +644,23 @@ class ArrayImpl : public TensorImpl<Policy> {
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
-extern template class ArrayImpl<
-    Tensor<double, Eigen::aligned_allocator<double>>, DensePolicy>;
-extern template class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float>>,
-                                DensePolicy>;
-extern template class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int>>,
-                                DensePolicy>;
-extern template class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long>>,
-                                DensePolicy>;
-//    extern template
-//    class ArrayImpl<Tensor<std::complex<double>,
-//    Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>; extern
-//    template class ArrayImpl<Tensor<std::complex<float>,
-//    Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>;
+extern template class ArrayImpl<Tensor<double>, DensePolicy>;
+extern template class ArrayImpl<Tensor<float>, DensePolicy>;
+// extern template class ArrayImpl<Tensor<int>,
+//                                DensePolicy>;
+// extern template class ArrayImpl<Tensor<long>,
+//                                DensePolicy>;
+extern template class ArrayImpl<Tensor<std::complex<double>>, DensePolicy>;
+extern template class ArrayImpl<Tensor<std::complex<float>>, DensePolicy>;
 
-extern template class ArrayImpl<
-    Tensor<double, Eigen::aligned_allocator<double>>, SparsePolicy>;
-extern template class ArrayImpl<Tensor<float, Eigen::aligned_allocator<float>>,
-                                SparsePolicy>;
-extern template class ArrayImpl<Tensor<int, Eigen::aligned_allocator<int>>,
-                                SparsePolicy>;
-extern template class ArrayImpl<Tensor<long, Eigen::aligned_allocator<long>>,
-                                SparsePolicy>;
-//    extern template
-//    class ArrayImpl<Tensor<std::complex<double>,
-//    Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>; extern
-//    template class ArrayImpl<Tensor<std::complex<float>,
-//    Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
+extern template class ArrayImpl<Tensor<double>, SparsePolicy>;
+extern template class ArrayImpl<Tensor<float>, SparsePolicy>;
+// extern template class ArrayImpl<Tensor<int>,
+//                                SparsePolicy>;
+// extern template class ArrayImpl<Tensor<long>,
+//                                SparsePolicy>;
+extern template class ArrayImpl<Tensor<std::complex<double>>, SparsePolicy>;
+extern template class ArrayImpl<Tensor<std::complex<float>>, SparsePolicy>;
 
 #endif  // TILEDARRAY_HEADER_ONLY
 
