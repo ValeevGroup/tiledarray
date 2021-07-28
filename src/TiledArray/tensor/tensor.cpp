@@ -28,13 +28,11 @@
 
 namespace TiledArray {
 
-template class Tensor<double, Eigen::aligned_allocator<double> >;
-template class Tensor<float, Eigen::aligned_allocator<float> >;
-template class Tensor<int, Eigen::aligned_allocator<int> >;
-template class Tensor<long, Eigen::aligned_allocator<long> >;
-//  template class Tensor<std::complex<double>,
-//  Eigen::aligned_allocator<std::complex<double> > >; template class
-//  Tensor<std::complex<float>, Eigen::aligned_allocator<std::complex<float> >
-//  >;
+template class Tensor<double>;
+template class Tensor<float>;
+// template class Tensor<int>;
+// template class Tensor<long>;
+template class Tensor<std::complex<double>>;
+template class Tensor<std::complex<float>>;
 
 }  // namespace TiledArray
