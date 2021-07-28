@@ -38,11 +38,7 @@
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 
-// for memory management
-#include <umpire/Umpire.hpp>
-#include <umpire/strategy/DynamicPool.hpp>
-#include <umpire/strategy/SizeLimiter.hpp>
-#include <umpire/strategy/ThreadSafeAllocator.hpp>
+#include <TiledArray/external/umpire.h>
 
 #include <TiledArray/external/madness.h>
 #include <madness/world/print.h>
@@ -209,11 +205,10 @@ class cudaEnv {
     }
   }
 
-  /// no copy constructor
-  cudaEnv(cudaEnv& cuda_global) = delete;
-
-  /// no assignment constructor
-  cudaEnv operator=(cudaEnv& cuda_global) = delete;
+  cudaEnv(const cudaEnv&) = delete;
+  cudaEnv(cudaEnv&&) = delete;
+  cudaEnv& operator=(const cudaEnv&) = delete;
+  cudaEnv& operator=(cudaEnv&&) = delete;
 
   /// access to static member
   static std::unique_ptr<cudaEnv>& instance() {

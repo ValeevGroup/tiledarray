@@ -35,7 +35,6 @@ TiledArray/dense_shape.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
 TiledArray/error.h
-TiledArray/external/madness.h
 TiledArray/initialize.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
@@ -117,6 +116,10 @@ TiledArray/expressions/unary_engine.h
 TiledArray/expressions/unary_expr.h
 TiledArray/expressions/index_list.h
 TiledArray/external/btas.h
+TiledArray/external/madness.h
+TiledArray/external/umpire.h
+TiledArray/host/env.h
+TiledArray/host/allocator.h
 TiledArray/math/blas.h
 TiledArray/math/gemm_helper.h
 TiledArray/math/outer.h
@@ -217,7 +220,7 @@ TiledArray/math/linalg/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
-set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers)
+set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers TiledArray_UMPIRE)
 
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)
@@ -234,7 +237,7 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray depends on
-  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_UMPIRE TiledArray_CUTT)
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_CUTT)
 
 endif(CUDA_FOUND)
 

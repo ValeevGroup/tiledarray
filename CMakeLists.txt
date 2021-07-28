@@ -294,6 +294,7 @@ endif()
 include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
+include(external/umpire.cmake)
 
 ###### discover linear algebra
 

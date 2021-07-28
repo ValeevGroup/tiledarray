@@ -20,6 +20,8 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 
+#include "TiledArray/host/allocator.h"
+
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/complex.h"
@@ -28,6 +30,7 @@
 #include "TiledArray/tile_interface/permute.h"
 #include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/util/logger.h"
+
 namespace TiledArray {
 
 // Forward declare Tensor for type traits
@@ -627,12 +630,12 @@ class Tensor {
   /// \tparam Archive The output archive type
   /// \param[out] ar The output archive
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     if (pimpl_) {
       const std::uint64_t volume = pimpl_->range_.volume();
-      ar & volume;
+      ar& volume;
       ar& madness::archive::wrap(pimpl_->data_, volume);
       ar & pimpl_->range_;
     } else {
@@ -646,8 +649,8 @@ class Tensor {
   /// \tparam Archive The input archive type
   /// \param[out] ar The input archive
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     std::uint64_t n = 0;
     ar& n;
@@ -1872,7 +1875,7 @@ class Tensor {
           }
         }
       }
-#else  // TA_ENABLE_TILE_OPS_LOGGING
+#else   // TA_ENABLE_TILE_OPS_LOGGING
       math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
                        factor, left.data(), lda, right.data(), ldb,
                        numeric_type(1), pimpl_->data_, n);

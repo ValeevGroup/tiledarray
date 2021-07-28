@@ -33,6 +33,15 @@ template <class>
 class aligned_allocator;
 }  // namespace Eigen
 
+namespace TiledArray {
+template <class T>
+class host_allocator_impl;
+template <typename T, typename A>
+class default_init_allocator;
+template <typename T>
+using host_allocator = default_init_allocator<T, host_allocator_impl<T>>;
+}  // namespace TiledArray
+
 namespace madness {
 class World;
 }
@@ -54,7 +63,8 @@ class SparsePolicy;
 
 // TiledArray Tensors
 template <typename T,
-          typename A = Eigen::aligned_allocator<T> /* std::allocator<T> */>
+          typename A = host_allocator<
+              T> /* or Eigen::aligned_allocator<T> or std::allocator<T> */>
 class Tensor;
 
 typedef Tensor<double> TensorD;

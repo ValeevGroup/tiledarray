@@ -2,6 +2,8 @@
 ## find Umpire
 ##
 
+if (NOT TARGET TiledArray_UMPIRE)
+
 find_path(_UMPIRE_INSTALL_DIR NAMES include/umpire/Umpire.hpp HINTS ${UMPIRE_INSTALL_DIR})
 
 # if user provides UMPIRE, use it
@@ -70,20 +72,24 @@ else()
         -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
         -DCMAKE_AR=${CMAKE_AR}
         -DBLT_SOURCE_DIR=${BLT_SOURCE_DIR}
-        -DBLT_CXX_STD=c++${CMAKE_CUDA_STANDARD}
-        -DENABLE_CUDA=ON
+        -DBLT_CXX_STD=c++${CMAKE_CXX_STANDARD}
         -DENABLE_BENCHMARKS=OFF
         -DENABLE_OPENMP=OFF
         -DENABLE_TESTS=OFF
         -DENABLE_EXAMPLES=OFF
         -DENABLE_LOGGING=OFF
         -DENABLE_ASSERTS=${enable_umpire_asserts}
-        -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
-        -DCMAKE_CUDA_STANDARD=${CMAKE_CUDA_STANDARD}
-        -DCMAKE_CUDA_EXTENSIONS=${CMAKE_CUDA_EXTENSIONS}
-        -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
-        -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
         )
+    if (ENABLE_CUDA)
+        list(APPEND UMPIRE_CMAKE_ARGS
+                -DENABLE_CUDA=ON
+                -DCMAKE_CUDA_COMPILER=${CMAKE_CUDA_COMPILER}
+                -DCMAKE_CUDA_STANDARD=${CMAKE_CUDA_STANDARD}
+                -DCMAKE_CUDA_EXTENSIONS=${CMAKE_CUDA_EXTENSIONS}
+                -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
+                -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
+                )
+    endif(ENABLE_CUDA)
     if (CMAKE_TOOLCHAIN_FILE)
         set(UMPIRE_CMAKE_ARGS "${UMPIRE_CMAKE_ARGS}"
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
@@ -160,3 +166,5 @@ set_target_properties(
 install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)
 
 #TODO test Umpire
+
+endif(NOT TARGET TiledArray_UMPIRE)
