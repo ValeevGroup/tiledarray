@@ -1,6 +1,6 @@
 FetchContent_Declare(
     BLT
-    GIT_REPOSITORY      https://github.com/evaleev/blt.git
+    GIT_REPOSITORY      https://github.com/LLNL/blt.git
     GIT_TAG             origin/develop
 )
 FetchContent_MakeAvailable(BLT)
