@@ -28,7 +28,7 @@
 
 // for memory management
 #include <umpire/Umpire.hpp>
-#include <umpire/strategy/DynamicPool.hpp>
+#include <umpire/strategy/QuickPool.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
 #include <umpire/strategy/ThreadSafeAllocator.hpp>
 
@@ -78,7 +78,7 @@ class hostEnv {
   /// initialize the instance using explicit params
   static void initialize(World& world,
                          const std::uint64_t max_memory_size = (1ul << 40),
-                         const std::uint64_t page_size = (1ul << 30)) {
+                         const std::uint64_t page_size = (1ul << 22)) {
     // initialize only when not initialized
     if (instance_accessor() == nullptr) {
       // uncomment to debug umpire ops
@@ -97,15 +97,12 @@ class hostEnv {
       constexpr auto introspect = false;
 #endif
 
-      // start with empty memory, increase each by 1 GB
-      auto alloc_grain = 1ul << 30;
-
       // allocate zero memory for device pool, same grain for subsequent allocs
       auto host_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
               "size_limited_alloc", rm.getAllocator("HOST"), max_memory_size);
       auto host_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
+          rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "HostDynamicPool", host_size_limited_alloc, 0, page_size);
       auto thread_safe_host_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
