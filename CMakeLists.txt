@@ -132,6 +132,10 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
   set(ENABLE_LIBUNWIND ON)
   add_feature_info(Libunwind ENABLE_LIBUNWIND "Libunwind provides stack unwinding")
 endif()
+
+option(TA_TENSOR_MEM_PROFILE "Turn on instrumented profiling of TA::Tensor memory use" OFF)
+add_feature_info(TENSOR_MEM_PROFILE TA_TENSOR_MEM_PROFILE "instrumented profiling of TA::Tensor memory use")
+
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" ON)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 

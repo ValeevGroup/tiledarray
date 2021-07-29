@@ -405,6 +405,7 @@ support may be added.
 * `TA_ENABLE_RANGEV3` -- Set to `ON` to find or fetch the Range-V3 library and enable additional tests of TA components with constructs anticipated to be supported in the future. [Default=OFF].
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.
+* `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile memory allocations in TA::Tensor.
 
 # Build TiledArray
 
