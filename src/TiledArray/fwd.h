@@ -25,14 +25,16 @@
 #include <btas/fwd.h>
 #include <complex>
 
-// #include <boost/container/detail/std_fwd.hpp>  // fwddecl for std::allocator
+// uncomment to import fwddecl for std::allocator
+// #include <boost/container/detail/std_fwd.hpp>
 
-namespace Eigen {  // fwd define Eigen's aligned allocator for
-                   // TiledArray::Tensor
+// fwddecl Eigen::aligned_allocator
+namespace Eigen {
 template <class>
 class aligned_allocator;
 }  // namespace Eigen
 
+// fwddecl host_allocator
 namespace TiledArray {
 template <class T>
 class host_allocator_impl;
@@ -62,9 +64,8 @@ class DensePolicy;
 class SparsePolicy;
 
 // TiledArray Tensors
-template <typename T,
-          typename A = host_allocator<
-              T> /* or Eigen::aligned_allocator<T> or std::allocator<T> */>
+// can also use host_allocator<T> and std::allocator<T> for A
+template <typename T, typename A = Eigen::aligned_allocator<T>>
 class Tensor;
 
 typedef Tensor<double> TensorD;
