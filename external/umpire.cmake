@@ -85,6 +85,9 @@ else()
                 -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
                 -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
                 )
+        if (DEFINED CMAKE_CUDA_ARCHITECTURES)
+            list(APPEND UMPIRE_CMAKE_ARGS -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES})
+        endif(DEFINED CMAKE_CUDA_ARCHITECTURES)
     endif(ENABLE_CUDA)
     if (CMAKE_TOOLCHAIN_FILE)
         set(UMPIRE_CMAKE_ARGS "${UMPIRE_CMAKE_ARGS}"
@@ -110,7 +113,6 @@ else()
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${UMPIRE_URL}
             GIT_TAG ${UMPIRE_TAG}
-            GIT_SUBMODULES ""  # N.B. do not initialize modules!
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
             LIST_SEPARATOR ::
