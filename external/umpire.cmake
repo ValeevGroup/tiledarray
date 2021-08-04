@@ -42,9 +42,6 @@ else()
 
     message("** Will clone Umpire from ${UMPIRE_URL}")
 
-    ## use patched BLT
-    include(FetchBLT)
-
     if (TA_ASSERT_POLICY EQUAL TA_ASSERT_IGNORE)
         set(enable_umpire_asserts OFF)
     else()
@@ -71,7 +68,6 @@ else()
         -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
         -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
         -DCMAKE_AR=${CMAKE_AR}
-        -DBLT_SOURCE_DIR=${BLT_SOURCE_DIR}
         -DBLT_CXX_STD=c++${CMAKE_CXX_STANDARD}
         -DENABLE_BENCHMARKS=OFF
         -DENABLE_OPENMP=OFF
