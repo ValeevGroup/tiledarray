@@ -29,9 +29,9 @@ else()
     enable_language(C)
 
     # set source and build path for Umpire in the TiledArray project
-    set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/Umpire)
-    set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/Umpire)
-    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/external/Umpire)
+    set(EXTERNAL_SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/umpire-src)
+    set(EXTERNAL_BUILD_DIR ${CMAKE_BINARY_DIR}/_deps/umpire-build)
+    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
     if (NOT UMPIRE_URL)
         set(UMPIRE_URL https://github.com/LLNL/Umpire.git)
@@ -107,8 +107,8 @@ else()
 
     ExternalProject_Add(Umpire
             PREFIX ${CMAKE_INSTALL_PREFIX}
-            STAMP_DIR ${PROJECT_BINARY_DIR}/external/Umpire-stamp
-            TMP_DIR ${PROJECT_BINARY_DIR}/external/tmp
+            STAMP_DIR ${CMAKE_BINARY_DIR}/_deps/umpire-ep-artifacts
+            TMP_DIR ${CMAKE_BINARY_DIR}/_deps/umpire-ep-artifacts   # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${UMPIRE_URL}
