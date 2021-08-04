@@ -39,17 +39,21 @@ namespace TiledArray {
 /// CUDA UM allocator, based on boilerplate by Howard Hinnant
 /// (https://howardhinnant.github.io/allocator_boilerplate.html)
 template <class T>
-class cuda_um_allocator_impl : public umpire_allocator<T> {
+class cuda_um_allocator_impl : public umpire_allocator_impl<T> {
  public:
-  using base_type = umpire_allocator<T>;
-  using base_type;
+  using base_type = umpire_allocator_impl<T>;
+  using typename base_type::const_pointer;
+  using typename base_type::const_reference;
+  using typename base_type::pointer;
+  using typename base_type::reference;
+  using typename base_type::value_type;
 
   cuda_um_allocator_impl() noexcept
       : base_type(&cudaEnv::instance()->um_dynamic_pool()) {}
 
   template <class U>
   cuda_um_allocator_impl(const cuda_um_allocator_impl<U>& rhs) noexcept
-      : base_type(static_cast<const umpire_allocator<U>&>(rhs)) {}
+      : base_type(static_cast<const umpire_allocator_impl<U>&>(rhs)) {}
 
   template <typename T1, typename T2>
   friend bool operator==(const cuda_um_allocator_impl<T1>& lhs,
