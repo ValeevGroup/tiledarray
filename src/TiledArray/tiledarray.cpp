@@ -2,6 +2,8 @@
 #include <TiledArray/initialize.h>
 #include <TiledArray/util/threads.h>
 
+#include <madness/world/safempi.h>
+
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/cuda/cublas.h>
 #include <TiledArray/external/cuda.h>
@@ -78,9 +80,8 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
   if (!initialized()) {
     if (!madness::initialized()) {
       initialized_madworld_accessor() = true;
-    }
-    else {  // if MADWorld initialized, we must assume that comm is its default
-            // World.
+    } else {  // if MADWorld initialized, we must assume that comm is its
+              // default World.
       if (madness::World::is_default(comm))
         throw Exception(
             "MADWorld initialized before TiledArray::initialize(argc, argv, "
@@ -120,15 +121,12 @@ void TiledArray::finalize() {
   finalized_accessor() = true;
 }
 
-void TiledArray::ta_abort() {
-  std::abort();
-}
+void TiledArray::ta_abort() { SafeMPI::COMM_WORLD.Abort(); }
 
-void TiledArray::ta_abort(const std::string &m) {
+void TiledArray::ta_abort(const std::string& m) {
   std::cerr << m << std::endl;
   ta_abort();
 }
-
 
 void TiledArray::taskq_wait_busy() {
   madness::threadpool_wait_policy(madness::WaitPolicy::Busy);

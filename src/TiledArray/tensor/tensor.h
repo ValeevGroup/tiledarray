@@ -20,6 +20,8 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 
+#include "TiledArray/host/allocator.h"
+
 #include "TiledArray/math/blas.h"
 #include "TiledArray/math/gemm_helper.h"
 #include "TiledArray/tensor/complex.h"
@@ -28,13 +30,17 @@
 #include "TiledArray/tile_interface/permute.h"
 #include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/util/logger.h"
+
 namespace TiledArray {
 
-// Forward declare Tensor for type traits
-template <typename T, typename A>
-class Tensor;
-
 namespace detail {
+
+#ifdef TA_TENSOR_MEM_PROFILE
+inline static std::mutex
+    ta_tensor_mem_profile_mtx;  // protects the following statics
+inline static std::uint64_t nbytes_allocated = 0;
+inline static std::uint64_t max_nbytes_allocated = 0;
+#endif  // TA_TENSOR_MEM_PROFILE
 
 /// Signals that we can take the trace of a Tensor<T, A> (for numeric \c T)
 template <typename T, typename A>
@@ -90,6 +96,46 @@ class Tensor {
 
   /// This tensor is used as an evaluated intermediate for other tensors.
   class Impl : public allocator_type {
+#ifdef TA_TENSOR_MEM_PROFILE
+    enum class MemOp{Alloc, Dealloc};
+    void alloc_record(std::uint64_t n, MemOp action) {
+      const double to_MiB =
+          1 / (1024.0 * 1024.0); /* Convert from bytes to MiB */
+      const auto nbytes = n * sizeof(value_type);
+      {
+        std::scoped_lock lock(detail::ta_tensor_mem_profile_mtx);
+        if (action == MemOp::Alloc) {
+          detail::nbytes_allocated += nbytes;
+          detail::max_nbytes_allocated =
+              std::max(detail::nbytes_allocated, detail::max_nbytes_allocated);
+        } else
+          detail::nbytes_allocated -= nbytes;
+      }
+      char buf[1024];
+      auto value_type_str = []() {
+        if constexpr (std::is_same_v<value_type, double>)
+          return "double";
+        else if constexpr (std::is_same_v<value_type, float>)
+          return "float";
+        else if constexpr (std::is_same_v<value_type, std::complex<double>>)
+          return "zdouble";
+        else if constexpr (std::is_same_v<value_type, std::complex<float>>)
+          return "zfloat";
+        else
+          return "";
+      };
+      std::snprintf(
+          buf, 1023,
+          "TA::Tensor<%s>: %sallocated %lf MiB [wm = %lf MiB hwm = %lf MiB]\n",
+          value_type_str(), (action == MemOp::Dealloc ? "de" : "  "),
+          nbytes * to_MiB, detail::nbytes_allocated * to_MiB,
+          detail::max_nbytes_allocated * to_MiB);
+      auto& os = madness::print_meminfo_ostream();
+      os << buf;
+      os.flush();
+    }
+#endif
+
    public:
     /// Default constructor
 
@@ -101,21 +147,30 @@ class Tensor {
     /// \param range The N-dimensional range for this tensor
     explicit Impl(const range_type& range)
         : allocator_type(), range_(range), data_(NULL) {
-      data_ = allocator_type::allocate(range.volume());
+      data_ = allocator_type::allocate(range_.volume());
+#ifdef TA_TENSOR_MEM_PROFILE
+      alloc_record(range_.volume(), MemOp::Alloc);
+#endif
     }
 
     /// Construct with rvalue range
 
     /// \param range The N-dimensional range for this tensor
     explicit Impl(range_type&& range)
-        : allocator_type(), range_(range), data_(NULL) {
-      data_ = allocator_type::allocate(range.volume());
+        : allocator_type(), range_(std::move(range)), data_(NULL) {
+      data_ = allocator_type::allocate(range_.volume());
+#ifdef TA_TENSOR_MEM_PROFILE
+      alloc_record(range_.volume(), MemOp::Alloc);
+#endif
     }
 
     ~Impl() {
       math::destroy_vector(range_.volume(), data_);
       allocator_type::deallocate(data_, range_.volume());
       data_ = NULL;
+#ifdef TA_TENSOR_MEM_PROFILE
+      alloc_record(range_.volume(), MemOp::Dealloc);
+#endif
     }
 
     range_type range_;  ///< Tensor size info
@@ -627,12 +682,12 @@ class Tensor {
   /// \tparam Archive The output archive type
   /// \param[out] ar The output archive
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     if (pimpl_) {
       const std::uint64_t volume = pimpl_->range_.volume();
-      ar & volume;
+      ar& volume;
       ar& madness::archive::wrap(pimpl_->data_, volume);
       ar & pimpl_->range_;
     } else {
@@ -646,8 +701,8 @@ class Tensor {
   /// \tparam Archive The input archive type
   /// \param[out] ar The input archive
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     std::uint64_t n = 0;
     ar& n;
@@ -1872,7 +1927,7 @@ class Tensor {
           }
         }
       }
-#else  // TA_ENABLE_TILE_OPS_LOGGING
+#else   // TA_ENABLE_TILE_OPS_LOGGING
       math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n, k,
                        factor, left.data(), lda, right.data(), ldb,
                        numeric_type(1), pimpl_->data_, n);

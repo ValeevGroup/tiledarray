@@ -132,6 +132,10 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
   set(ENABLE_LIBUNWIND ON)
   add_feature_info(Libunwind ENABLE_LIBUNWIND "Libunwind provides stack unwinding")
 endif()
+
+option(TA_TENSOR_MEM_PROFILE "Turn on instrumented profiling of TA::Tensor memory use" OFF)
+add_feature_info(TENSOR_MEM_PROFILE TA_TENSOR_MEM_PROFILE "instrumented profiling of TA::Tensor memory use")
+
 option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" ON)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
@@ -264,7 +268,7 @@ check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE LANGUAGE CXX)
 check_type_size("long long" TILEDARRAY_HAS_LONG_LONG LANGUAGE CXX)
 
 # TA_ASSERT
-set (TA_ASSERT_POLICY TA_ASSERT_THROW CACHE STRING "")
+set (TA_ASSERT_POLICY TA_ASSERT_THROW CACHE STRING "Controls the behavior of TA_ASSERT; TA_ASSERT_THROW causes TA_ASSERT to throw, TA_ASSERT_ABORT causes TA_ASSERT to abort, TA_ASSERT_IGNORE makes TA_ASSERT a no-op")
 set_property(
   CACHE TA_ASSERT_POLICY PROPERTY
   STRINGS TA_ASSERT_THROW TA_ASSERT_ABORT TA_ASSERT_IGNORE)
@@ -294,6 +298,7 @@ endif()
 include(external/madness.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
+include(external/umpire.cmake)
 
 ###### discover linear algebra
 
