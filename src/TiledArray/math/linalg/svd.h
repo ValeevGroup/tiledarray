@@ -37,7 +37,7 @@ template <SVD::Vectors Vectors, typename Array>
 auto svd(const Array& A, TiledRange u_trange = TiledRange(), TiledRange vt_trange = TiledRange()) {
   TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
-  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+  if (A.world().size() > 1 && A.elements_range().volume() > 10000000) {
     return scalapack::svd<Vectors>(A, u_trange, vt_trange);
   }
 #endif
