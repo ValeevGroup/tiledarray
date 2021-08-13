@@ -539,6 +539,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(vector, T, scalar_type_list) {
   for (tile_type tile : array) {
     BOOST_CHECK(std::equal(tile.begin(), tile.end(), il.begin()));
   }
+
+  // test that can construct (sparse array) directly from an initializer list
+  auto sp_array = TSpArray<T>(world, {T{1}, T{2}, T{3}});
+  for (auto&& tile : sp_array) {
+    BOOST_CHECK(std::equal(tile.get().begin(), tile.get().end(), il.begin()));
+  }
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty_matrix, T, scalar_type_list) {
@@ -566,6 +572,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(square_matrix, T, scalar_type_list) {
       }
     }
   }
+
+  // test that can construct (sparse array) directly from an initializer list
+  auto sp_array = TSpArray<T>(
+      world, {{T{1}, T{2}, T{3}}, {T{4}, T{5}, T{6}}, {T{7}, T{8}, T{9}}});
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(tall_matrix, T, scalar_type_list) {
