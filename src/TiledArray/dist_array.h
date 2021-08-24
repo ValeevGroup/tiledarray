@@ -33,8 +33,8 @@
 #include "TiledArray/util/initializer_list.h"
 #include "TiledArray/util/random.h"
 
-#include <cstdlib>
 #include <madness/world/parallel_archive.h>
+#include <cstdlib>
 
 namespace TiledArray {
 
@@ -49,8 +49,7 @@ class Tensor;
 /// used to construct distributed tensor algebraic operations.
 /// \tparam T The element type of for array tiles
 /// \tparam Tile The tile type [ Default = \c Tensor<T> ]
-template <typename Tile = Tensor<double, Eigen::aligned_allocator<double>>,
-          typename Policy = DensePolicy>
+template <typename Tile = Tensor<double>, typename Policy = DensePolicy>
 class DistArray : public madness::archive::ParallelSerializableObject {
  public:
   typedef TiledArray::detail::ArrayImpl<Tile, Policy>
@@ -299,27 +298,41 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              `{{1, 2}, {3, 4, 5}}`). If an exception is
   ///                              raised \p world and \p il are unchanged.
   template <typename T>
-  DistArray(World& world, detail::vector_il<T> il)
+  DistArray(World& world,
+            std::initializer_list<T>
+                il)  // N.B. clang does not like detail::vector_il<T> here
       : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail::matrix_il<T> il)
+  DistArray(World& world, std::initializer_list<std::initializer_list<T>> il)
       : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail::tensor3_il<T> il)
+  DistArray(
+      World& world,
+      std::initializer_list<std::initializer_list<std::initializer_list<T>>> il)
       : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail::tensor4_il<T> il)
+  DistArray(World& world, std::initializer_list<std::initializer_list<
+                              std::initializer_list<std::initializer_list<T>>>>
+                              il)
       : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail::tensor5_il<T> il)
+  DistArray(World& world,
+            std::initializer_list<std::initializer_list<std::initializer_list<
+                std::initializer_list<std::initializer_list<T>>>>>
+                il)
       : DistArray(array_from_il<DistArray>(world, il)) {}
 
   template <typename T>
-  DistArray(World& world, detail::tensor6_il<T> il)
+  DistArray(
+      World& world,
+      std::initializer_list<
+          std::initializer_list<std::initializer_list<std::initializer_list<
+              std::initializer_list<std::initializer_list<T>>>>>>
+          il)
       : DistArray(array_from_il<DistArray>(world, il)) {}
   ///@}
 
@@ -350,27 +363,42 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///                              `{{1, 2}, {3, 4, 5}}`). If an exception is
   ///                              raised \p world and \p il are unchanged.
   template <typename T>
-  DistArray(World& world, const trange_type& trange, detail::vector_il<T> il)
+  DistArray(World& world, const trange_type& trange,
+            std::initializer_list<T> il)
       : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
-  DistArray(World& world, const trange_type& trange, detail::matrix_il<T> il)
+  DistArray(World& world, const trange_type& trange,
+            std::initializer_list<std::initializer_list<T>> il)
       : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
-  DistArray(World& world, const trange_type& trange, detail::tensor3_il<T> il)
+  DistArray(
+      World& world, const trange_type& trange,
+      std::initializer_list<std::initializer_list<std::initializer_list<T>>> il)
       : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
-  DistArray(World& world, const trange_type& trange, detail::tensor4_il<T> il)
+  DistArray(World& world, const trange_type& trange,
+            std::initializer_list<std::initializer_list<
+                std::initializer_list<std::initializer_list<T>>>>
+                il)
       : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
-  DistArray(World& world, const trange_type& trange, detail::tensor5_il<T> il)
+  DistArray(World& world, const trange_type& trange,
+            std::initializer_list<std::initializer_list<std::initializer_list<
+                std::initializer_list<std::initializer_list<T>>>>>
+                il)
       : DistArray(array_from_il<DistArray>(world, trange, il)) {}
 
   template <typename T>
-  DistArray(World& world, const trange_type& trange, detail::tensor6_il<T> il)
+  DistArray(
+      World& world, const trange_type& trange,
+      std::initializer_list<
+          std::initializer_list<std::initializer_list<std::initializer_list<
+              std::initializer_list<std::initializer_list<T>>>>>>
+          il)
       : DistArray(array_from_il<DistArray>(world, trange, il)) {}
   /// @}
 
@@ -986,8 +1014,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   ///   DistArray::check_str_index()
   auto operator()(const std::string& vars) const {
     check_str_index(vars);
-    return TiledArray::expressions::TsrExpr<const DistArray>(*this,
-                                                                    vars);
+    return TiledArray::expressions::TsrExpr<const DistArray>(*this, vars);
   }
 
   /// Create a tensor expression
@@ -1223,9 +1250,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// @tparam Archive an Archive type
   /// @warning this does not fence; it is user's responsibility to do that
   template <typename Archive,
-            typename = std::enable_if_t<
-                !Archive::is_parallel_archive &&
-                madness::is_output_archive_v<Archive>>>
+            typename = std::enable_if_t<!Archive::is_parallel_archive &&
+                                        madness::is_output_archive_v<Archive>>>
   void serialize(const Archive& ar) const {
     // serialize array type, world size, rank, and pmap type to be able
     // to ensure same data type and same data distribution expected
@@ -1243,9 +1269,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// @tparam Archive an Archive type
   /// @warning this does not fence; it is user's responsibility to do that
   template <typename Archive,
-            typename = std::enable_if_t<
-                !Archive::is_parallel_archive &&
-                madness::is_input_archive_v<Archive>>>
+            typename = std::enable_if_t<!Archive::is_parallel_archive &&
+                                        madness::is_input_archive_v<Archive>>>
   void serialize(const Archive& ar) {
     auto& world = TiledArray::get_default_world();
 
@@ -1563,33 +1588,23 @@ madness::AtomicInt DistArray<Tile, Policy>::cleanup_counter_;
 
 #ifndef TILEDARRAY_HEADER_ONLY
 
-extern template class DistArray<
-    Tensor<double, Eigen::aligned_allocator<double>>, DensePolicy>;
-extern template class DistArray<Tensor<float, Eigen::aligned_allocator<float>>,
-                                DensePolicy>;
-extern template class DistArray<Tensor<int, Eigen::aligned_allocator<int>>,
-                                DensePolicy>;
-extern template class DistArray<Tensor<long, Eigen::aligned_allocator<long>>,
-                                DensePolicy>;
-//  extern template
-//  class DistArray<Tensor<std::complex<double>,
-//  Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>; extern
-//  template class DistArray<Tensor<std::complex<float>,
-//  Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>
+extern template class DistArray<Tensor<double>, DensePolicy>;
+extern template class DistArray<Tensor<float>, DensePolicy>;
+// extern template class DistArray<Tensor<int>,
+//                                DensePolicy>;
+// extern template class DistArray<Tensor<long>,
+//                                DensePolicy>;
+extern template class DistArray<Tensor<std::complex<double>>, DensePolicy>;
+extern template class DistArray<Tensor<std::complex<float>>, DensePolicy>;
 
-extern template class DistArray<
-    Tensor<double, Eigen::aligned_allocator<double>>, SparsePolicy>;
-extern template class DistArray<Tensor<float, Eigen::aligned_allocator<float>>,
-                                SparsePolicy>;
-extern template class DistArray<Tensor<int, Eigen::aligned_allocator<int>>,
-                                SparsePolicy>;
-extern template class DistArray<Tensor<long, Eigen::aligned_allocator<long>>,
-                                SparsePolicy>;
-//  extern template
-//  class DistArray<Tensor<std::complex<double>,
-//  Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>; extern
-//  template class DistArray<Tensor<std::complex<float>,
-//  Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
+extern template class DistArray<Tensor<double>, SparsePolicy>;
+extern template class DistArray<Tensor<float>, SparsePolicy>;
+// extern template class DistArray<Tensor<int>,
+//                                SparsePolicy>;
+// extern template class DistArray<Tensor<long>,
+//                                SparsePolicy>;
+extern template class DistArray<Tensor<std::complex<double>>, SparsePolicy>;
+extern template class DistArray<Tensor<std::complex<float>>, SparsePolicy>;
 
 #endif  // TILEDARRAY_HEADER_ONLY
 

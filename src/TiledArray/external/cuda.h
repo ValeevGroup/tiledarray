@@ -38,11 +38,7 @@
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
 
-// for memory management
-#include <umpire/Umpire.hpp>
-#include <umpire/strategy/DynamicPool.hpp>
-#include <umpire/strategy/SizeLimiter.hpp>
-#include <umpire/strategy/ThreadSafeAllocator.hpp>
+#include <TiledArray/external/umpire.h>
 
 #include <TiledArray/external/madness.h>
 #include <madness/world/print.h>
@@ -209,11 +205,10 @@ class cudaEnv {
     }
   }
 
-  /// no copy constructor
-  cudaEnv(cudaEnv& cuda_global) = delete;
-
-  /// no assignment constructor
-  cudaEnv operator=(cudaEnv& cuda_global) = delete;
+  cudaEnv(const cudaEnv&) = delete;
+  cudaEnv(cudaEnv&&) = delete;
+  cudaEnv& operator=(const cudaEnv&) = delete;
+  cudaEnv& operator=(cudaEnv&&) = delete;
 
   /// access to static member
   static std::unique_ptr<cudaEnv>& instance() {
@@ -257,7 +252,7 @@ class cudaEnv {
       // subsequent allocs will use 1/10 of the total device memory
       auto alloc_grain = mem_total_free.second / 10;
       auto um_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
+          rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "UMDynamicPool", rm.getAllocator("UM"), mem_total_free.second,
               alloc_grain);
       auto thread_safe_um_dynamic_pool =
@@ -270,7 +265,7 @@ class cudaEnv {
               "size_limited_alloc", rm.getAllocator("DEVICE"),
               mem_total_free.first);
       auto dev_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::DynamicPool, introspect>(
+          rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "CUDADynamicPool", dev_size_limited_alloc, 0, alloc_grain);
       auto thread_safe_dev_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(

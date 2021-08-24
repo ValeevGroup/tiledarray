@@ -10,6 +10,7 @@ variables:
   TA_TARGETS : "tiledarray examples ta_test check"
   TA_CONFIG : >
     CMAKE_BUILD_TYPE=${BUILD_TYPE}
+    TA_ASSERT_POLICY=TA_ASSERT_THROW
     ${TA_PYTHON}
     ${ENABLE_CUDA}
     ${BLA_VENDOR}
