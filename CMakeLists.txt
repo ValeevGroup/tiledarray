@@ -141,7 +141,6 @@ endif()
 option(TA_TENSOR_MEM_PROFILE "Turn on instrumented profiling of TA::Tensor memory use" OFF)
 add_feature_info(TENSOR_MEM_PROFILE TA_TENSOR_MEM_PROFILE "instrumented profiling of TA::Tensor memory use")
 
-option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" ON)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
 option(TA_SIGNED_1INDEX_TYPE "Enables the use of signed 1-index coordinate type (OFF in 1.0.0-alpha.2 and older)" ON)
@@ -286,9 +285,9 @@ set_property(
 
 # if building unit tests default to throw to be able to test TA_ASSERT statements
 if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW))
-  if (TA_BUILD_UNITTEST)
-    message(FATAL_ERROR "TA_ASSERT_POLICY=${TA_ASSERT_POLICY} requires TA_BUILD_UNITTEST=OFF")
-  endif(TA_BUILD_UNITTEST)
+  if (BUILD_TESTING)
+    message(FATAL_ERROR "TA_ASSERT_POLICY=${TA_ASSERT_POLICY} requires BUILD_TESTING=OFF")
+  endif(BUILD_TESTING)
 endif()
 
 ##########################
@@ -371,12 +370,12 @@ add_subdirectory(doc)
 ##########################
 # checking/testing
 ##########################
-enable_testing()
-if (TA_BUILD_UNITTEST)
-  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} -V)
+include(CTest)
+if (BUILD_TESTING)
+  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} -V -R "tiledarray/unit")
   add_subdirectory(tests)
 else()
-  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
+  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, give -DBUILD_TESTING=ON to cmake")
 endif()
 
 ##########################

@@ -40,9 +40,9 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag b7bddfcef89612652878854a447bacf4d3f6a5b0 . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag 0dc805fd7f2dea5e56eff94ab1c44b2b2397edd7 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 0c0b41e8490f53c62508fd0c8d918fb642488fc2 .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 34ef8e6d6c61098d44ca559a530b4096e40b9a01 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
@@ -400,7 +400,7 @@ support may be added.
 
 * `TA_EXPERT` -- Set to `ON` to disable automatic installation of prerequisites. Useful for experts, hence the name. [Default=OFF].
 * `TA_ASSERT_POLICY` -- Set to `TA_ASSERT_IGNORE` to disable `TA_ASSERT` assertions, `TA_ASSERT_THROW` to cause `TA_ASSERT` assertions to throw, `TA_ASSERT_ABORT` to cause `TA_ASSERT` assertions to abort. The default is `TA_ASSERT_IGNORE` if CMake uses a single-configuration generator and`CMAKE_BUILD_TYPE` is set to `Release` or `MinSizeRel`, else the default is `TA_ASSERT_THROW`.
-* `TA_BUILD_UNITTEST` -- Set of `OFF` to disable building unit tests. The default is `ON`.
+* `BUILD_TESTING` -- Set of `OFF` to disable building unit tests. The default is `ON`.
 * `TA_TRACE_TASKS` -- Set to `ON` to enable tracing of MADNESS tasks using custom task tracer. Note that standard profilers/tracers are generally useless (except in the trivial cases) with MADWorld-based programs since the submission context of tasks is not captured by standard tracing tools; this makes it impossible in a nontrivial program to attribute tasks to source code. WARNING: task tracing his will greatly increase the memory requirements. [Default=OFF].
 * `TA_ENABLE_RANGEV3` -- Set to `ON` to find or fetch the Range-V3 library and enable additional tests of TA components with constructs anticipated to be supported in the future. [Default=OFF].
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
