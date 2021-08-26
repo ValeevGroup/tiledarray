@@ -51,9 +51,6 @@ if (NOT TARGET MADworld)
   # force 'all' target to build madness and MADworld using this dummy target
   add_custom_target(tiledarray-force-all-to-build-madness-target ALL DEPENDS madness MADworld)
 
-  # add MADworld target to the tiledarray export set
-  install(TARGETS MADworld EXPORT tiledarray)
-
 endif(NOT TARGET MADworld)
 
 # postcond check
