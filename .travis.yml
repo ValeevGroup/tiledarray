@@ -73,6 +73,16 @@ matrix:
             - g++-9
             - gfortran-9
     - compiler: gcc
+      env: GCC_VERSION=9 BUILD_TYPE=Debug MADNESS_OVER_PARSEC=1
+      addons:
+        apt:
+          sources:
+            - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          packages:
+            - *base_packages
+            - g++-9
+            - gfortran-9
+    - compiler: gcc
       env: GCC_VERSION=9 BUILD_TYPE=Release
       addons:
         apt:

@@ -15,6 +15,7 @@ jobs:
         os : [ macos-latest ]
         cxx : [ clang++, /usr/local/bin/g++-10 ]
         build_type : [ Release, Debug ]
+        task_backend: [ Pthreads, PaRSEC ]
         prerequisites : [ gcc@10 boost eigen open-mpi ]
 
     name: "${{ matrix.os }}: ${{ matrix.cxx }} ${{ matrix.build_type }}"
@@ -22,6 +23,7 @@ jobs:
     env:
       CXX : ${{ matrix.cxx }}
       BUILD_CONFIG : >
+        -DMADNESS_TASK_BACKEND=${{ matrix.task_backend }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DMPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
         -DTA_ASSERT_POLICY=TA_ASSERT_THROW
