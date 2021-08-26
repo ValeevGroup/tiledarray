@@ -56,4 +56,4 @@ jobs:
       run: |
         source ${{github.workspace}}/ci/openmpi.env
         cmake --build . --target ta_test
-        cmake --build . --target check
+        cmake --build . --target check-tiledarray
