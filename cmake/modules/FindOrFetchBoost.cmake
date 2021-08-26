@@ -37,7 +37,7 @@ if (NOT TARGET Boost::boost)
       DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
       COMPONENT boost-libs)
 
-endif(TARGET Boost::boost)
+endif(NOT TARGET Boost::boost)
 
 # postcond check
 if (NOT TARGET Boost::boost)
