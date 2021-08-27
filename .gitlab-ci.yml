@@ -7,7 +7,7 @@ default:
 
 variables:
   MAD_NUM_THREADS : 2
-  TA_TARGETS : "tiledarray examples ta_test check"
+  TA_TARGETS : "tiledarray examples ta_test check-tiledarray"
   TA_CONFIG : >
     CMAKE_BUILD_TYPE=${BUILD_TYPE}
     TA_ASSERT_POLICY=TA_ASSERT_THROW

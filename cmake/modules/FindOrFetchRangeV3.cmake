@@ -1,8 +1,14 @@
-find_package(range-v3 QUIET CONFIG)
-
-if (TARGET range-v3::range-v3)
+# try find_package
+if (NOT TARGET range-v3::range-v3)
+  include (FindPackageRegimport)
+  find_package_regimport(range-v3 QUIET CONFIG)
+  if (TARGET range-v3::range-v3)
     message(STATUS "Found Range-V3 CONFIG at ${range-v3_CONFIG}")
-else (TARGET range-v3::range-v3)
+  endif (TARGET range-v3::range-v3)
+endif (NOT TARGET range-v3::range-v3)
+
+# if not found, build via FetchContent
+if (NOT TARGET range-v3::range-v3)
 
   include(FetchContent)
   FetchContent_Declare(
@@ -19,7 +25,7 @@ else (TARGET range-v3::range-v3)
   # set range-v3_CONFIG to the install location so that we know where to find it
   set(range-v3_CONFIG ${CMAKE_INSTALL_PREFIX}/lib/cmake/range-v3/range-v3-config.cmake)
 
-endif(TARGET range-v3::range-v3)
+endif(NOT TARGET range-v3::range-v3)
 
 # postcond check
 if (NOT TARGET range-v3::range-v3)

@@ -28,16 +28,16 @@ if(NOT DISABLE_MPI)
   enable_language(C)
     
   # Add the mpi_bandwidth executable
-  add_ta_executable(mpi_bandwidth "mpi_bandwidth.c" "${MADNESS_LIBRARIES}")
+  add_ta_executable(mpi_bandwidth "mpi_bandwidth.c" MADworld)
   add_dependencies(examples-tiledarray mpi_bandwidth)
 
   # Add the mpi_latency executable
-  add_ta_executable(mpi_latency "mpi_latency.c" "${MADNESS_LIBRARIES}")
+  add_ta_executable(mpi_latency "mpi_latency.c" MADworld)
   add_dependencies(examples-tiledarray mpi_latency)
 
 
   if(CUDA_FOUND)
-    add_ta_executable(mpi_cuda "mpi_cuda.cpp" "${MADNESS_LIBRARIES}")
+    add_ta_executable(mpi_cuda "mpi_cuda.cpp" MADworld)
     set_source_files_properties(mpi_cuda.cpp
             PROPERTIES
             LANGUAGE CUDA)

@@ -6,11 +6,12 @@
  * AUTHOR: Blaise Barney
  * LAST REVISED: 04/13/05
  ****************************************************************************/
+#include <madness/madness_config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
-#include "mpi.h"
+#include MADNESS_MPI_HEADER
 
 #define MAXTASKS 8192
 /* Change the next four parameters to suit your case */

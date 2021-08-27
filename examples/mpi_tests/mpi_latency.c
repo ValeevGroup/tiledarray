@@ -9,11 +9,12 @@
  * AUTHOR: Blaise Barney
  * LAST REVISED: 04/13/05
  ******************************************************************************/
+#include <madness/madness_config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
-#include "mpi.h"
+#include MADNESS_MPI_HEADER
 #define NUMBER_REPS 1000
 
 int main(int argc, char *argv[]) {
