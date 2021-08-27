@@ -51,7 +51,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     cd madness
 
     if [ -n "${MADNESS_OVER_PARSEC}" ]; then
-	MADNESS_BACKEND_OPTION="-DMADNESS_TASK_BACKEND=PaRSEC"
+	MADNESS_BACKEND_OPTION="-DMADNESS_TASK_BACKEND=PaRSEC -DPaRSEC_ROOT_DIR=${INSTALL_PREFIX}/parsec"
     fi
 
     # check out the tracked tag of MADNESS
