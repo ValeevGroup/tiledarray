@@ -308,6 +308,9 @@ endif()
 include(FindOrFetchMADWorld)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
+# the FetchContent-based version will not work due to BLT target name conflicts
+# include(FindOrFetchUmpire)
+# use the ExternalProject-based version
 include(external/umpire.cmake)
 
 ###### discover linear algebra
@@ -344,7 +347,7 @@ endif(ENABLE_WFN91_LINALG_DISCOVERY_KIT)
 include(FindOrFetchBTAS)
 include(FindOrFetchBoost)
 if(ENABLE_SCALAPACK)
-  include(external/scalapack.cmake)
+  include(FindOrFetchScaLAPACK)
 endif()
 if (TA_ENABLE_RANGEV3)
   include(FindOrFetchRangeV3)

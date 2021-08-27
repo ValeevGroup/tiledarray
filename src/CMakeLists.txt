@@ -220,6 +220,7 @@ TiledArray/math/linalg/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
+# when FetchContent umpire: set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers umpire)
 set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers TiledArray_UMPIRE)
 
 # TODO better ways to handle tiledarray cuda dependency
@@ -263,9 +264,6 @@ add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
   target_link_libraries(${targetname} PUBLIC ${TILEDARRAY_PRIVATE_LINK_LIBRARIES})
   target_link_libraries(${targetname} PUBLIC MADworld)
   target_link_libraries(${targetname} PUBLIC Boost::boost)
-
-  # build all external deps before building tiledarray
-  add_dependencies(${targetname} External-tiledarray)
 
   # append current CMAKE_CXX_FLAGS
   string(REPLACE " " ";" CMAKE_CXX_FLAG_LIST "${CMAKE_CXX_FLAGS}")
