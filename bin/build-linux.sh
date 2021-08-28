@@ -14,9 +14,6 @@ export TA_PYTHON=ON
 
 ${TRAVIS_BUILD_DIR}/bin/build-mpich-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-scalapack-mpich-linux.sh
-if [ -n "${MADNESS_OVER_PARSEC}" ]; then
-    ${TRAVIS_BUILD_DIR}/bin/build-parsec-linux.sh
-fi
 ${TRAVIS_BUILD_DIR}/bin/build-madness-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-boost-linux.sh
 ${TRAVIS_BUILD_DIR}/bin/build-eigen3-linux.sh
