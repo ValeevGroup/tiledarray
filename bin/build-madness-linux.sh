@@ -55,7 +55,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     fi
 
     # check out the tracked tag of MADNESS
-    git clone https://github.com/m-a-d-n-e-s-s/madness madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
+    git clone https://github.com/TESSEorg/madness.git madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
 
     cmake madness_src \
       -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
