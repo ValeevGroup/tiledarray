@@ -16,7 +16,7 @@ jobs:
         cxx : [ clang++, /usr/local/bin/g++-10 ]
         build_type : [ Release, Debug ]
         task_backend: [ Pthreads, PaRSEC ]
-        prerequisites : [ gcc@10 boost eigen open-mpi ]
+        prerequisites : [ gcc@10 boost eigen open-mpi bison@3.7 ]
 
     name: "${{ matrix.os }}: ${{ matrix.cxx }} ${{ matrix.build_type }}"
     runs-on: ${{ matrix.os }}
