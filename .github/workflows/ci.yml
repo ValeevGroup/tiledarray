@@ -36,7 +36,9 @@ jobs:
       run: cmake -P ${{github.workspace}}/ci/host_system_info.cmake
 
     - name: Install ${{matrix.prerequisites}}
-      run: brew install ${{matrix.prerequisites}}
+      run: |
+        brew install ${{matrix.prerequisites}}
+	echo "/usr/local/opt/bison/bin" >> $GITHUB_PATH
 
     - name: "Configure build: ${{ env.BUILD_CONFIG }}"
       shell: bash
