@@ -51,6 +51,9 @@ if (NOT TARGET MADworld)
   # force 'all' target to build madness and MADworld using this dummy target
   add_custom_target(tiledarray-force-all-to-build-madness-target ALL DEPENDS madness MADworld)
 
+  # set MADNESS_CONFIG to the install location so that we know where to find it
+  set(MADNESS_CONFIG ${CMAKE_INSTALL_PREFIX}/${MADNESS_INSTALL_CMAKEDIR}/madness-config.cmake)
+
 endif(NOT TARGET MADworld)
 
 # postcond check
