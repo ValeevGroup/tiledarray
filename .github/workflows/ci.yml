@@ -24,6 +24,7 @@ jobs:
       BUILD_CONFIG : >
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DMPIEXEC_PREFLAGS='--bind-to;none;--allow-run-as-root'
+        -DTA_ASSERT_POLICY=TA_ASSERT_THROW
 
     steps:
     - uses: actions/checkout@v2
@@ -55,4 +56,4 @@ jobs:
       run: |
         source ${{github.workspace}}/ci/openmpi.env
         cmake --build . --target ta_test
-        cmake --build . --target check
+        cmake --build . --target check-tiledarray

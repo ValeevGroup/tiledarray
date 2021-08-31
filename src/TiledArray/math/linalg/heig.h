@@ -29,13 +29,15 @@
 #include <TiledArray/math/linalg/scalapack/heig.h>
 #endif
 #include <TiledArray/math/linalg/non-distributed/heig.h>
+#include <TiledArray/util/threads.h>
 
 namespace TiledArray::math::linalg {
 
 template <typename Array>
 auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
-  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+  if (A.world().size() > 1 && A.elements_range().volume() > 10000000) {
     return scalapack::heig(A, evec_trange);
   }
 #endif
@@ -43,9 +45,11 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
 }
 
 template <typename ArrayA, typename ArrayB, typename EVecType = ArrayA>
-auto heig(const ArrayA& A, const ArrayB& B, TiledRange evec_trange = TiledRange()) {
+auto heig(const ArrayA& A, const ArrayB& B,
+          TiledRange evec_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
-  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+  if (A.world().size() > 1 && A.elements_range().volume() > 10000000) {
     return scalapack::heig(A, B, evec_trange);
   }
 #endif
@@ -55,7 +59,7 @@ auto heig(const ArrayA& A, const ArrayB& B, TiledRange evec_trange = TiledRange(
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
-  using TiledArray::math::linalg::heig;
+using TiledArray::math::linalg::heig;
 }
 
 #endif  // TILEDARRAY_MATH_LINALG_HEIG_H__INCLUDED

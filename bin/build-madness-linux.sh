@@ -73,8 +73,8 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DASSERTION_TYPE=throw \
       -DDISABLE_WORLD_GET_DEFAULT=ON
 
-    # Build MADworld + LAPACK/BLAS interface
-    make -j2 install-madness-world install-madness-common install-madness-config VERBOSE=1
+    # Build+install MADworld interface
+    make -j2 install VERBOSE=1
   fi
 
 fi

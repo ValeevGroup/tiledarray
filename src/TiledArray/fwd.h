@@ -25,14 +25,27 @@
 #include <btas/fwd.h>
 #include <complex>
 
-namespace Eigen {  // fwd define Eigen's aligned allocator for
-                   // TiledArray::Tensor
+// uncomment to import fwddecl for std::allocator
+// #include <boost/container/detail/std_fwd.hpp>
+
+// fwddecl Eigen::aligned_allocator
+namespace Eigen {
 template <class>
 class aligned_allocator;
 }  // namespace Eigen
 
+// fwddecl host_allocator
+namespace TiledArray {
+template <class T>
+class host_allocator_impl;
+template <typename T, typename A>
+class default_init_allocator;
+template <typename T>
+using host_allocator = default_init_allocator<T, host_allocator_impl<T>>;
+}  // namespace TiledArray
+
 namespace madness {
-  class World;
+class World;
 }
 
 namespace TiledArray {
@@ -44,25 +57,23 @@ World& get_default_world();
 class Range;
 class TiledRange1;
 class TiledRange;
+class BlockRange;
 
 // TiledArray Policy
 class DensePolicy;
 class SparsePolicy;
 
 // TiledArray Tensors
-template <typename, typename>
+// can also use host_allocator<T> and std::allocator<T> for A
+template <typename T, typename A = Eigen::aligned_allocator<T>>
 class Tensor;
 
-typedef Tensor<double, Eigen::aligned_allocator<double> > TensorD;
-typedef Tensor<int, Eigen::aligned_allocator<int> > TensorI;
-typedef Tensor<float, Eigen::aligned_allocator<float> > TensorF;
-typedef Tensor<long, Eigen::aligned_allocator<long> > TensorL;
-typedef Tensor<std::complex<double>,
-               Eigen::aligned_allocator<std::complex<double> > >
-    TensorZ;
-typedef Tensor<std::complex<float>,
-               Eigen::aligned_allocator<std::complex<float> > >
-    TensorC;
+typedef Tensor<double> TensorD;
+typedef Tensor<int> TensorI;
+typedef Tensor<float> TensorF;
+typedef Tensor<long> TensorL;
+typedef Tensor<std::complex<double>> TensorZ;
+typedef Tensor<std::complex<float>> TensorC;
 
 // CUDA tensor
 #ifdef TILEDARRAY_HAS_CUDA
@@ -90,35 +101,43 @@ using btasUMTensorVarray =
 
 #endif
 
+template <typename>
+class Tile;
+
+class Permutation;
+class BipartitePermutation;
+
+namespace symmetry {
+class Permutation;
+}
+
 // TiledArray Arrays
 template <typename, typename>
 class DistArray;
 
 // Dense Array Typedefs
 template <typename T>
-using TArray = DistArray<Tensor<T, Eigen::aligned_allocator<T> >, DensePolicy>;
+using TArray = DistArray<Tensor<T>, DensePolicy>;
 typedef TArray<double> TArrayD;
 typedef TArray<int> TArrayI;
 typedef TArray<float> TArrayF;
 typedef TArray<long> TArrayL;
-typedef TArray<std::complex<double> > TArrayZ;
-typedef TArray<std::complex<float> > TArrayC;
+typedef TArray<std::complex<double>> TArrayZ;
+typedef TArray<std::complex<float>> TArrayC;
 
 // Sparse Array Typedefs
 template <typename T>
-using TSpArray =
-    DistArray<Tensor<T, Eigen::aligned_allocator<T> >, SparsePolicy>;
+using TSpArray = DistArray<Tensor<T>, SparsePolicy>;
 typedef TSpArray<double> TSpArrayD;
 typedef TSpArray<int> TSpArrayI;
 typedef TSpArray<float> TSpArrayF;
 typedef TSpArray<long> TSpArrayL;
-typedef TSpArray<std::complex<double> > TSpArrayZ;
-typedef TSpArray<std::complex<float> > TSpArrayC;
+typedef TSpArray<std::complex<double>> TSpArrayZ;
+typedef TSpArray<std::complex<float>> TSpArrayC;
 
 // type alias for backward compatibility: the old Array has static type,
 // DistArray is rank-polymorphic
-template <typename T, unsigned int = 0,
-          typename Tile = Tensor<T, Eigen::aligned_allocator<T> >,
+template <typename T, unsigned int = 0, typename Tile = Tensor<T>,
           typename Policy = DensePolicy>
 using Array = DistArray<Tile, Policy>;
 

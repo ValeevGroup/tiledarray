@@ -29,14 +29,16 @@
 #include <TiledArray/math/linalg/scalapack/lu.h>
 #endif
 #include <TiledArray/math/linalg/non-distributed/lu.h>
+#include <TiledArray/util/threads.h>
 
 namespace TiledArray::math::linalg {
 
 template <typename ArrayA, typename ArrayB>
 auto lu_solve(const ArrayA& A, const ArrayB& B,
               TiledRange x_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
-  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+  if (A.world().size() > 1 && A.elements_range().volume() > 10000000) {
     return scalapack::lu_solve(A, B, x_trange);
   }
 #endif
@@ -45,8 +47,9 @@ auto lu_solve(const ArrayA& A, const ArrayB& B,
 
 template <typename Array>
 auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange()) {
+  TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
-  if (A.world().size() > 1 && A.range().volume() > 10000000) {
+  if (A.world().size() > 1 && A.elements_range().volume() > 10000000) {
     return scalapack::lu_inv(A, ainv_trange);
   }
 #endif
@@ -56,8 +59,8 @@ auto lu_inv(const Array& A, TiledRange ainv_trange = TiledRange()) {
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
-  using TiledArray::math::linalg::lu_inv;
-  using TiledArray::math::linalg::lu_solve;
-}
+using TiledArray::math::linalg::lu_inv;
+using TiledArray::math::linalg::lu_solve;
+}  // namespace TiledArray
 
 #endif  // TILEDARRAY_MATH_LINALG_LU_H__INCLUDED

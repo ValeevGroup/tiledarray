@@ -23,10 +23,10 @@ else()
     enable_language(C)
 
     # set source and build path for cuTT in the TiledArray project
-    set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/cutt)
+    set(EXTERNAL_SOURCE_DIR   ${CMAKE_BINARY_DIR}/_deps/cutt-src)
     # cutt only supports in source build
-    set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/cutt)
-    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/external/cutt)
+    set(EXTERNAL_BUILD_DIR  ${CMAKE_BINARY_DIR}/_deps/cutt-build)
+    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
     if (NOT CUTT_URL)
         set(CUTT_URL https://github.com/ValeevGroup/cutt.git)
@@ -72,6 +72,9 @@ else()
         -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
         -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
         )
+    if (DEFINED CMAKE_CUDA_ARCHITECTURES)
+        list(APPEND CUTT_CMAKE_ARGS -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES})
+    endif(DEFINED CMAKE_CUDA_ARCHITECTURES)
     if (CMAKE_TOOLCHAIN_FILE)
         set(CUTT_CMAKE_ARGS "${CUTT_CMAKE_ARGS}"
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
@@ -89,8 +92,8 @@ else()
 
     ExternalProject_Add(cutt
             PREFIX ${CMAKE_INSTALL_PREFIX}
-            STAMP_DIR ${PROJECT_BINARY_DIR}/external/cutt-stamp
-            TMP_DIR ${PROJECT_BINARY_DIR}/external/tmp
+            STAMP_DIR ${CMAKE_BINARY_DIR}/_deps/cutt-ep-artifacts
+            TMP_DIR ${CMAKE_BINARY_DIR}/_deps/cutt-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${CUTT_URL}

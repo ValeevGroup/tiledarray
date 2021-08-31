@@ -125,6 +125,7 @@ else
     -DCMAKE_PREFIX_PATH="${INSTALL_PREFIX}/eigen3;${INSTALL_PREFIX}/boost" \
     -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}" \
     -DTA_PYTHON="${TA_PYTHON}" \
+    -DTA_ASSERT_POLICY=TA_ASSERT_THROW \
     -DENABLE_SCALAPACK=ON
 
 fi
@@ -140,7 +141,7 @@ make -j1 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
 # to find dep shared libs (do we need this since El is gone?)
 export LD_LIBRARY_PATH=${INSTALL_PREFIX}/TA/lib:${INSTALL_PREFIX}/madness/lib:${LD_LIBRARY_PATH}
-make check
+make check-tiledarray
 
 # Build examples
 make -j2 examples VERBOSE=1
