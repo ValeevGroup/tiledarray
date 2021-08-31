@@ -30,8 +30,7 @@ foreach(_exec conversion evp)
 
   # Add executable
   add_executable(scalapack-${_exec} EXCLUDE_FROM_ALL ${_exec}.cpp)
-  target_link_libraries(scalapack-${_exec} PRIVATE tiledarray ${MADNESS_DISABLEPIE_LINKER_FLAG})
-  add_dependencies(scalapack-${_exec} External-tiledarray)
+  target_link_libraries(scalapack-${_exec} PRIVATE tiledarray)
   add_dependencies(examples-tiledarray scalapack-${_exec})
 
 endforeach()
