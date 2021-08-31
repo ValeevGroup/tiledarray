@@ -153,7 +153,7 @@ class Tensor {
       std::uninitialized_default_construct_n(ptr, size);
       // std::uninitialized_value_construct_n(ptr, size);
     }
-    auto deleter = [allocator = std::move(allocator),
+    auto deleter = [this, allocator = std::move(allocator),
                     size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
       allocator.deallocate(ptr, size);
@@ -165,7 +165,7 @@ class Tensor {
   }
 
   Tensor(range_type&& range, size_t batch_size, bool default_construct)
-      : range_(strd::move(range)), batch_size_(batch_size) {
+      : range_(std::move(range)), batch_size_(batch_size) {
     size_t size = range_.volume() * batch_size;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
@@ -176,7 +176,7 @@ class Tensor {
       std::uninitialized_default_construct_n(ptr, size);
       // std::uninitialized_value_construct_n(ptr, size);
     }
-    auto deleter = [allocator = std::move(allocator),
+    auto deleter = [this, allocator = std::move(allocator),
                     size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
       allocator.deallocate(ptr, size);
@@ -1700,15 +1700,16 @@ class Tensor {
       std::unique_ptr<T[]> data_copy;
       size_t tile_volume;
       if (twostep) {
-        tile_volume = range().volume();
+        tile_volume = range().volume() * batch_size();
         data_copy = std::make_unique<T[]>(tile_volume);
-        std::copy(pimpl_->data_, pimpl_->data_ + tile_volume, data_copy.get());
+        std::copy(data_.get(), data_.get() + tile_volume, data_copy.get());
       }
-      non_distributed::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m, n,
-                            k, factor, left.data(), lda, right.data(), ldb,
-                            twostep ? numeric_type(0) : numeric_type(1),
-                            pimpl_->data_, n);
-
+      for (size_t i = 0; i < this->batch_size(); ++i) {
+        auto Ci = this->batch(i);
+        TiledArray::gemm(alpha, A.batch(i), B.batch(i),
+                         twostep ? numeric_type(0) : numeric_type(1), Ci,
+                         gemm_helper);
+      }
       if (TiledArray::TileOpsLogger<T>::get_instance_ptr() != nullptr &&
           TiledArray::TileOpsLogger<T>::get_instance().gemm) {
         auto& logger = TiledArray::TileOpsLogger<T>::get_instance();
@@ -1716,11 +1717,11 @@ class Tensor {
           return fnptr ? fnptr(arg) : arg;
         };
         auto tformed_left_range =
-            apply(logger.gemm_left_range_transform, left.range());
+            apply(logger.gemm_left_range_transform, A.range());
         auto tformed_right_range =
-            apply(logger.gemm_right_range_transform, right.range());
+            apply(logger.gemm_right_range_transform, B.range());
         auto tformed_result_range =
-            apply(logger.gemm_result_range_transform, pimpl_->range_);
+            apply(logger.gemm_result_range_transform, this->range_);
         if ((!logger.gemm_result_range_filter ||
              logger.gemm_result_range_filter(tformed_result_range)) &&
             (!logger.gemm_left_range_filter ||
@@ -1738,13 +1739,13 @@ class Tensor {
               if (!logger.gemm_result_range_transform)
                 logger << *this << std::endl;
               else
-                logger << make_map(pimpl_->data_, tformed_result_range)
+                logger << make_map(this->data_.get(), tformed_result_range)
                        << std::endl;
             } else {
               TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
-                  *logger.log, tformed_left_range, left.data(),
-                  tformed_right_range, right.data(), tformed_right_range,
-                  pimpl_->data_);
+                  *logger.log, tformed_left_range, A.data(),
+                  tformed_right_range, B.data(), tformed_right_range,
+                  this->data(), this->batch_size());
             }
           }
         }
@@ -1752,7 +1753,7 @@ class Tensor {
 
       if (twostep) {
         for (size_t v = 0; v != tile_volume; ++v) {
-          pimpl_->data_[v] += data_copy[v];
+          this->data_.get()[v] += data_copy[v];
         }
       }
     }
@@ -2091,13 +2092,14 @@ template <typename Alpha, typename... As, typename... Bs, typename Beta,
           typename... Cs>
 void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
           Beta beta, Tensor<Cs...>& C, const math::GemmHelper& gemm_helper) {
-  // static_assert(
-  //     !detail::is_tensor_of_tensor_v<Tensor, Tensor<U, AU>, Tensor<V, AV>>,
-  //     "TA::Tensor<T>::gemm without custom element op is only applicable to "
-  //     "plain tensors");
+  static_assert(
+      !detail::is_tensor_of_tensor_v<Tensor<As...>, Tensor<Bs...>,
+                                     Tensor<Cs...>>,
+      "TA::Tensor<T>::gemm without custom element op is only applicable to "
+      "plain tensors");
   {
-    // Check that this tensor is not empty and has the correct rank
-    // TA_ASSERT(pimpl_);
+    // Check that tensor C is not empty and has the correct rank
+    TA_ASSERT(!C.empty());
     TA_ASSERT(C.range().rank() == gemm_helper.result_rank());
 
     // Check that the arguments are not empty and have the correct ranks
@@ -2105,6 +2107,10 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
     TA_ASSERT(A.range().rank() == gemm_helper.left_rank());
     TA_ASSERT(!B.empty());
     TA_ASSERT(B.range().rank() == gemm_helper.right_rank());
+
+    TA_ASSERT(A.batch_size() == 1);
+    TA_ASSERT(B.batch_size() == 1);
+    TA_ASSERT(C.batch_size() == 1);
 
     // Check that the outer dimensions of left match the corresponding
     // dimensions in result
@@ -2152,13 +2158,15 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
     // may need to split gemm into multiply + accumulate for tracing purposes
 #ifdef TA_ENABLE_TILE_OPS_LOGGING
     {
+      using numeric_type = typename Tensor<Cs...>::numeric_type;
+      using T = numeric_type;
       const bool twostep =
           TiledArray::TileOpsLogger<T>::get_instance().gemm &&
           TiledArray::TileOpsLogger<T>::get_instance().gemm_print_contributions;
       std::unique_ptr<T[]> data_copy;
       size_t tile_volume;
       if (twostep) {
-        tile_volume = range().volume();
+        tile_volume = C.range().volume();
         data_copy = std::make_unique<T[]>(tile_volume);
         std::copy(C.data(), C.data() + tile_volume, data_copy.get());
       }
@@ -2193,13 +2201,14 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
                      .gemm_printer) {  // default printer
               // must use custom printer if result's range transformed
               if (!logger.gemm_result_range_transform)
-                logger << *this << std::endl;
+                logger << C << std::endl;
               else
                 logger << make_map(C.data(), tformed_result_range) << std::endl;
             } else {
               TiledArray::TileOpsLogger<T>::get_instance().gemm_printer(
                   *logger.log, tformed_left_range, A.data(),
-                  tformed_right_range, B.data(), tformed_right_range, C.data());
+                  tformed_right_range, B.data(), tformed_right_range, C.data(),
+                  C.batch_size());
             }
           }
         }
