@@ -55,6 +55,9 @@ struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
 
 /// An N-dimensional tensor object
 
+/// A contiguous row-major tensor with shallow-copy semantics.
+/// As of TiledArray 1.1 Tensor represents a batch of tensors with same Range
+/// (the default batch size = 1).
 /// \tparam T the value type of this tensor
 /// \tparam A The allocator type for the data
 template <typename T, typename Allocator>
@@ -190,14 +193,15 @@ class Tensor {
   /// Construct a tensor with a range equal to \c range. The data is
   /// uninitialized.
   /// \param range The range of the tensor
+  /// \param batch_size The batch size
+  /// \param data shared pointer to the data
   Tensor(const range_type& range, size_t batch_size,
          std::shared_ptr<value_type> data)
       : range_(range), batch_size_(batch_size), data_(data) {}
 
   range_type range_;  ///< range
   size_t batch_size_ = 1;
-  std::shared_ptr<value_type>
-      data_;  ///< Shared pointer to implementation object
+  std::shared_ptr<value_type> data_;  ///< Shared pointer to the data
 
  public:
   // Compiler generated functions
@@ -401,8 +405,15 @@ class Tensor {
     }
   }
 
+  /// The batch size accessor
+
+  /// @return the size of tensor batch represented by `*this`
   size_t batch_size() const { return this->batch_size_; }
 
+  /// @param[in] idx the batch index
+  /// @pre `idx < this->batch_size()`
+  /// @return (plain, i.e. batch_size=1) Tensor representing element \p idx of
+  /// the batch
   Tensor batch(size_t idx) const {
     TA_ASSERT(idx < this->batch_size());
     std::shared_ptr<value_type> data(this->data_,
@@ -410,12 +421,19 @@ class Tensor {
     return Tensor(this->range(), 1, data);
   }
 
+  /// Returns Tensor representing the data using another range and batch size
+
+  /// @param[in] range the Range of the result
+  /// @param[in] batch_size the batch size of the result
+  /// @return Tensor object representing `this->data()` using @p range and @p
+  /// batch_size
   auto reshape(const range_type& range, size_t batch_size = 1) const {
     TA_ASSERT(this->range().volume() * this->batch_size() ==
               range.volume() * batch_size);
     return Tensor(range, batch_size, this->data_);
   }
 
+  /// @return a deep copy of `*this`
   Tensor clone() const {
     Tensor result;
     if (data_) {
@@ -650,12 +668,12 @@ class Tensor {
   /// \return An iterator to the last data element
   iterator end() { return (this->data() ? this->data() + this->size() : NULL); }
 
-  /// Data direct access
+  /// Read-only access to the data
 
   /// \return A const pointer to the tensor data
   const_pointer data() const { return this->data_.get(); }
 
-  /// Data direct access
+  /// Mutable access to the data
 
   /// \return A const pointer to the tensor data
   pointer data() { return this->data_.get(); }

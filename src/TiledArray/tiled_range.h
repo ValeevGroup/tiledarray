@@ -27,8 +27,9 @@ namespace TiledArray {
 
 /// Range data of a tiled array
 
-/// TiledRange is a direct (Cartesian) product of 1-dimensional tiled ranges
-/// (TiledRange1)
+/// TiledRange is a direct (Cartesian) product of 1-dimensional tiled ranges,
+/// represented as TiledRange1 objects. Thus TiledRange is a semantically
+/// contiguous (C++) range of TiledRange1 objects.
 class TiledRange {
  private:
   /// Constructed with a set of ranges pointed to by [ first, last ).
@@ -90,8 +91,7 @@ class TiledRange {
   explicit TiledRange(const TRange1Range& range_of_trange1s)
       : range_(),
         elements_range_(),
-        ranges_(std::begin(range_of_trange1s), std::end(range_of_trange1s))
-  {
+        ranges_(std::begin(range_of_trange1s), std::end(range_of_trange1s)) {
     init();
   }
 
@@ -303,24 +303,24 @@ class TiledRange {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(const Archive& ar) {
     ar& range_& elements_range_& ranges_;
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(const Archive& ar) const {
     ar& range_& elements_range_& ranges_;
   }
 
  private:
-  range_type range_;  ///< Stores information on tile indexing for the range.
-  range_type elements_range_;  ///< Stores information on element indexing for
-                               ///< the range.
-  Ranges ranges_;              ///< Stores tile boundaries for each dimension.
+  range_type range_;           ///< Range of tile indices
+  range_type elements_range_;  ///< Range of element indices
+  Ranges ranges_;  ///< tiled (1d) range, aka TiledRange1, for each mode
+                   ///< `*this` is a direct product of these tilings
 };
 
 /// TiledRange permutation operator.
