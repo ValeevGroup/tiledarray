@@ -166,7 +166,7 @@ if(ENABLE_MPI)
       NAME tiledarray/unit/run-np-${p}
       COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${p}
         ${MPIEXEC_PREFLAGS}
-        $<TARGET_FILE:${executable}> --log_level=warning --show-progress ${${executable}_np_${p}_args}
+        $<TARGET_FILE:${executable}> --log_level=unit_scope ${${executable}_np_${p}_args}
         ${MPIEXEC_POSTFLAGS}
       )
     set_tests_properties(tiledarray/unit/run-np-${p}
