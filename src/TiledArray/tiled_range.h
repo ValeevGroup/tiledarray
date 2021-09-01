@@ -70,6 +70,11 @@ class TiledRange {
   static_assert(std::is_same_v<TiledRange1::index1_type, index1_type>);
   typedef container::svector<TiledRange1> Ranges;
 
+  /// TiledRange is a contiguous C++ range of TiledRange1 objects
+  using const_iterator = typename Ranges::const_iterator;
+  /// TiledRange is a contiguous C++ range of TiledRange1 objects
+  using value_type = typename Ranges::value_type;
+
   /// Default constructor
   TiledRange() : range_(), elements_range_(), ranges_() {}
 
@@ -286,13 +291,18 @@ class TiledRange {
     return ranges_[d];
   }
 
-  /// Tile dimension boundary array accessor
+  /// \return iterator pointing to the beginning of the range of TiledRange1
+  /// objects
+  const_iterator begin() const { return ranges_.begin(); }
 
-  auto begin() const { return ranges_.begin(); }
-  auto end() const { return ranges_.end(); }
-  const auto& at(size_t idx) const { return ranges_.at(idx); }
+  /// \return iterator pointing to the end of the range of TiledRange1 objects
+  const_iterator end() const { return ranges_.end(); }
 
-  /// \return A reference to the array of Range1 objects.
+  /// \param[in] d mode index
+  /// \return const reference to the TiledRange1 object for mode \p d
+  const TiledRange1& at(size_t d) const { return ranges_.at(d); }
+
+  /// \return A reference to the array of TiledRange1 objects.
   /// \throw nothing
   const Ranges& data() const { return ranges_; }
 
