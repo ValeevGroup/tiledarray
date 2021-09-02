@@ -42,7 +42,7 @@ else()
 
     message("** Will clone Umpire from ${UMPIRE_URL}")
 
-    if (TA_ASSERT_POLICY EQUAL TA_ASSERT_IGNORE)
+    if (TA_ASSERT_POLICY STREQUAL TA_ASSERT_IGNORE)
         set(enable_umpire_asserts OFF)
     else()
         set(enable_umpire_asserts ON)

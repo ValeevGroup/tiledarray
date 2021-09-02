@@ -1700,13 +1700,13 @@ struct ArchiveStoreImpl<ParallelOutputArchive<>,
 template <class Tile, class Policy>
 void save(const TiledArray::DistArray<Tile, Policy>& x,
           const std::string name) {
-  archive::ParallelOutputArchive ar2(x.world(), name.c_str(), 1);
+  archive::ParallelOutputArchive<> ar2(x.world(), name.c_str(), 1);
   ar2& x;
 }
 
 template <class Tile, class Policy>
 void load(TiledArray::DistArray<Tile, Policy>& x, const std::string name) {
-  archive::ParallelInputArchive ar2(x.world(), name.c_str(), 1);
+  archive::ParallelInputArchive<> ar2(x.world(), name.c_str(), 1);
   ar2& x;
 }
 
