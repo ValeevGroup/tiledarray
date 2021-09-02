@@ -406,7 +406,8 @@ support may be added.
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.
 * `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile memory allocations in TA::Tensor.
-
+* `TA_UT_CTEST_TIMEOUT` -- The value (in seconds) of the timeout to use for running the TA unit tests via CTest when building the `check`/`check-tiledarray` targets. The default timeout is 1500s.
+ 
 # Build TiledArray
 
 ```
