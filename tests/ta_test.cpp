@@ -45,6 +45,11 @@ GlobalFixture::GlobalFixture() {
     // to launch a debugger here or elsewhere:
     // Debugger::default_debugger()->debug("ready to run");
   }
+
+  if (world->rank() != 0) {
+    boost::unit_test::unit_test_log.set_threshold_level(
+        boost::unit_test::log_all_errors);
+  }
 }
 
 GlobalFixture::~GlobalFixture() {
