@@ -335,7 +335,7 @@ if (ENABLE_WFN91_LINALG_DISCOVERY_KIT)
   else(ENABLE_SCALAPACK)
     find_package(LAPACK REQUIRED)
     # Propagate LAPACK -> BLAS if not set
-    # (LAPACK necessacarily contains a BLAS linker by standard)
+    # (LAPACK necessarily contains a BLAS linker by standard)
     # TODO: Tell David to write a macro that hides this verbosity from user space
     if( NOT BLAS_LIBRARIES )
       set( BLAS_LIBRARIES "${LAPACK_LIBRARIES}" CACHE STRING "BLAS LIBRARIES" )
