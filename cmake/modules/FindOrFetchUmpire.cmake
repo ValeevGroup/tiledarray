@@ -10,6 +10,13 @@ endif (NOT TARGET umpire)
 # if not found, build via FetchContent
 if (NOT TARGET umpire)
 
+  # caveat: on recent Ubuntu default libstdc++ provides filesystem, but if using older gcc (gcc-8) must link against
+  # libstdc++fs: https://bugs.launchpad.net/ubuntu/+source/gcc-8/+bug/1824721 ... skip the use of std::filesystem altogether with pre-9 gcc!!!
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+    # disable by populating cache with compile test result variable
+    set(UMPIRE_ENABLE_FILESYSTEM OFF CACHE BOOL "Whether Umpire to use std::filesystem")
+  endif()
+
   include(FetchContent)
   FetchContent_Declare(
       umpire
