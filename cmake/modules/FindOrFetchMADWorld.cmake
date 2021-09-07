@@ -46,10 +46,6 @@ if (NOT TARGET MADworld)
           SOURCE_DIR MADNESS_SOURCE_DIR
           BINARY_DIR MADNESS_BINARY_DIR
           )
-  set_property(DIRECTORY ${MADNESS_SOURCE_DIR} PROPERTY EXCLUDE_FROM_ALL TRUE)
-  # making madness targets EXCLUDE_FROM_ALL via the above makes its install statement "UB": https://cmake.org/cmake/help/latest/command/install.html#installing-targets
-  # force 'all' target to build madness and MADworld using this dummy target
-  add_custom_target(tiledarray-force-all-to-build-madness-target ALL DEPENDS madness MADworld)
 
   # set MADNESS_CONFIG to the install location so that we know where to find it
   set(MADNESS_CONFIG ${CMAKE_INSTALL_PREFIX}/${MADNESS_INSTALL_CMAKEDIR}/madness-config.cmake)
