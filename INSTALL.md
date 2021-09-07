@@ -40,7 +40,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 0dc805fd7f2dea5e56eff94ab1c44b2b2397edd7 . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag 8ac131460e05e9470779880e15acc5642a451e7a . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 51f0615f094bca5110ea149100e39c0edb25a4f2 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
@@ -275,13 +275,22 @@ algebra in TA:
   BLAS++/LAPACK++ during the TA configuration. There are 2 mechanisms by which BLAS++/LAPACK++
   discover BLAS/LAPACK:
   - _the built-in custom discovery kit_; no options exist to provide any control
-  - standard CMake BLAS/LAPACK modules.
+  - standard CMake [BLAS](https://cmake.org/cmake/help/latest/module/FindBLAS.html)/[LAPACK](https://cmake.org/cmake/help/latest/module/FindLAPACK.html) modules.
   
   The latter is used if CMake cache variable `BLA_VENDOR` is specified:
   - `BLA_VENDOR` -- controls which vendor BLAS/LAPACK library will be sought
-  (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
-  by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
-  framework on MacOS use `-DBLA_VENDOR=Apple`.
+    (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
+    by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
+    framework on MacOS use `-DBLA_VENDOR=Apple`.
+
+  Unfortunately, if the standard CMake modules discover BLAS/LAPACK,
+  BLAS++/LAPACK++ will not attempt to discover their name mangling convention.
+  To specify the name mangling to be assumed by BLAS++/LAPACK++ specify CMake cache variable `LINALG_MANGLING`:
+  - `LINALG_MANGLING` -- specifies the name mangling assumed by BLAS++/LAPACK++
+     when using BLAS/LAPACK. Valid values are:
+    - `lower`: function/variable `dgemm` will be mangled to `dgemm`,
+    - `UPPER`: function/variable `dgemm` will be mangled to `DGEMM`,
+    - `lower_`: function/variable `dgemm` will be mangled to `dgemm_` (default).
 
   More information can be found in the installation instructions for
   [BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
