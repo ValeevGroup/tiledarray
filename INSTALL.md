@@ -275,13 +275,22 @@ algebra in TA:
   BLAS++/LAPACK++ during the TA configuration. There are 2 mechanisms by which BLAS++/LAPACK++
   discover BLAS/LAPACK:
   - _the built-in custom discovery kit_; no options exist to provide any control
-  - standard CMake BLAS/LAPACK modules.
+  - standard CMake [BLAS](https://cmake.org/cmake/help/latest/module/FindBLAS.html)/[LAPACK](https://cmake.org/cmake/help/latest/module/FindLAPACK.html) modules.
   
   The latter is used if CMake cache variable `BLA_VENDOR` is specified:
   - `BLA_VENDOR` -- controls which vendor BLAS/LAPACK library will be sought
-  (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
-  by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
-  framework on MacOS use `-DBLA_VENDOR=Apple`.
+    (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
+    by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
+    framework on MacOS use `-DBLA_VENDOR=Apple`.
+
+  Unfortunately, if the standard CMake modules discover BLAS/LAPACK,
+  BLAS++/LAPACK++ will not attempt to discover their name mangling convention.
+  To specify the name mangling to be assumed by BLAS++/LAPACK++ specify CMake cache variable `LINALG_MANGLING`:
+  - `LINALG_MANGLING` -- specifies the name mangling assumed by BLAS++/LAPACK++
+     when using BLAS/LAPACK. Valid values are:
+    - `lower`: function/variable `dgemm` will be mangled to `dgemm`,
+    - `UPPER`: function/variable `dgemm` will be mangled to `DGEMM`,
+    - `lower_`: function/variable `dgemm` will be mangled to `dgemm_` (default).
 
   More information can be found in the installation instructions for
   [BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
