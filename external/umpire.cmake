@@ -76,6 +76,15 @@ else()
         -DENABLE_LOGGING=OFF
         -DENABLE_ASSERTS=${enable_umpire_asserts}
         )
+
+    # caveat: on recent Ubuntu default libstdc++ provides filesystem, but if using older gcc (gcc-8) must link against
+    # libstdc++fs: https://bugs.launchpad.net/ubuntu/+source/gcc-8/+bug/1824721 ... skip the use of std::filesystem altogether with pre-9 gcc!!!
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+        # disable by populating cache with compile test result variable
+        list(APPEND UMPIRE_CMAKE_ARGS
+             -DUMPIRE_ENABLE_FILESYSTEM=OFF)
+    endif()
+
     if (ENABLE_CUDA)
         list(APPEND UMPIRE_CMAKE_ARGS
                 -DENABLE_CUDA=ON
