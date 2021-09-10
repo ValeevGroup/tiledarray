@@ -141,7 +141,7 @@ make -j1 ta_test VERBOSE=1
 export MAD_NUM_THREADS=2
 # to find dep shared libs (do we need this since El is gone?)
 export LD_LIBRARY_PATH=${INSTALL_PREFIX}/TA/lib:${INSTALL_PREFIX}/madness/lib:${LD_LIBRARY_PATH}
-make check
+make check-tiledarray
 
 # Build examples
 make -j2 examples VERBOSE=1

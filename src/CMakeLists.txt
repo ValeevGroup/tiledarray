@@ -176,10 +176,14 @@ TiledArray/util/annotation.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
 TiledArray/util/function.h
+TiledArray/util/index.h
+TiledArray/util/index.cpp
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/random.h
+TiledArray/util/range.h
 TiledArray/util/singleton.h
+TiledArray/util/string.h
 TiledArray/util/threads.h
 TiledArray/util/threads.cpp
 TiledArray/util/time.h
@@ -220,6 +224,7 @@ TiledArray/math/linalg/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
+# when FetchContent umpire: set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers umpire)
 set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers TiledArray_UMPIRE)
 
 # TODO better ways to handle tiledarray cuda dependency

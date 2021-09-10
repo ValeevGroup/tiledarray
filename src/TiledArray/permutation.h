@@ -34,6 +34,7 @@ namespace TiledArray {
 
 // Forward declarations
 class Permutation;
+
 bool operator==(const Permutation&, const Permutation&);
 std::ostream& operator<<(std::ostream&, const Permutation&);
 template <typename T, std::size_t N>
@@ -74,6 +75,32 @@ inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
     result[pi] = arg[i];
   }
 }
+
+template<typename P, typename In, typename Out, bool Inverse>
+void permute_n(size_t N, P p, In in, Out out, std::bool_constant<Inverse>) {
+  for (size_t k = 0; k < N; ++k) {
+    if constexpr (Inverse) {
+      out[*p++] = *in++;
+    }
+    else {
+      *out++ = in[*p++];
+    }
+  }
+}
+
+template<typename P, typename S, bool Inverse>
+auto permute(const P &p, const S &s, std::bool_constant<Inverse>) {
+  // using std::size;
+  // using std::begin;
+  // size_t K = size(p);
+  // S r(K);
+  // detail::permute_n(K, begin(p), begin(s), begin(r), args...);
+  // return r;
+  if (!p) return s;
+  if constexpr (Inverse) return p.inv()*s;
+  else return p*s;
+}
+
 }  // namespace detail
 
 /**
@@ -602,6 +629,18 @@ inline std::vector<T> operator*(const Permutation& perm,
     result[perm_i] = ptr_i;
   }
   return result;
+}
+
+template<typename S>
+S apply(const Permutation &p, const S &s) {
+  using detail::permute;
+  return permute(p, s, std::false_type{});
+}
+
+template<typename S>
+S apply_inverse(const Permutation &p, const S &s) {
+  using detail::permute;
+  return permute(p, s, std::true_type{});
 }
 
 ///////////////////////////////////

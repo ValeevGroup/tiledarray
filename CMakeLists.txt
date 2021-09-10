@@ -33,14 +33,19 @@ include(external/versions.cmake)
 # Bring ValeevGroup cmake toolkit
 ###############################################################################
 include(FetchContent)
+if (DEFINED PROJECT_BINARY_DIR)
+  set(VG_CMAKE_KIT_PREFIX_DIR PROJECT_BINARY_DIR)
+else ()
+  set(VG_CMAKE_KIT_PREFIX_DIR CMAKE_CURRENT_BINARY_DIR)
+endif()
 FetchContent_Declare(
     vg_cmake_kit
     QUIET
     GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
     GIT_TAG             ${TA_TRACKED_VGCMAKEKIT_TAG}
-    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-build
-    SUBBUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/cmake/vg-subbuild
+    SOURCE_DIR ${${VG_CMAKE_KIT_PREFIX_DIR}}/cmake/vg
+    BINARY_DIR ${${VG_CMAKE_KIT_PREFIX_DIR}}/cmake/vg-build
+    SUBBUILD_DIR ${${VG_CMAKE_KIT_PREFIX_DIR}}/cmake/vg-subbuild
 )
 FetchContent_GetProperties(vg_cmake_kit)
 if (NOT vg_cmake_kit_POPULATED)
@@ -136,7 +141,6 @@ endif()
 option(TA_TENSOR_MEM_PROFILE "Turn on instrumented profiling of TA::Tensor memory use" OFF)
 add_feature_info(TENSOR_MEM_PROFILE TA_TENSOR_MEM_PROFILE "instrumented profiling of TA::Tensor memory use")
 
-option(TA_BUILD_UNITTEST "Causes building TiledArray unit tests" ON)
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
 
 option(TA_SIGNED_1INDEX_TYPE "Enables the use of signed 1-index coordinate type (OFF in 1.0.0-alpha.2 and older)" ON)
@@ -261,7 +265,7 @@ if (CMAKE_CXX_STANDARD EQUAL 20 AND CMAKE_VERSION VERSION_LESS 3.12.0)
     cmake_minimum_required (VERSION 3.12.0)
 endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL  "Whether to use extensions of C++ ISO Standard version")
+set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL  "Whether to use extensions of C++  ISO Standard version")
 # Check type support
 include(CheckTypeSize)
 check_type_size("long double" TILEDARRAY_HAS_LONG_DOUBLE LANGUAGE CXX)
@@ -281,9 +285,9 @@ set_property(
 
 # if building unit tests default to throw to be able to test TA_ASSERT statements
 if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW))
-  if (TA_BUILD_UNITTEST)
-    message(FATAL_ERROR "TA_ASSERT_POLICY=${TA_ASSERT_POLICY} requires TA_BUILD_UNITTEST=OFF")
-  endif(TA_BUILD_UNITTEST)
+  if (BUILD_TESTING)
+    message(FATAL_ERROR "TA_ASSERT_POLICY=${TA_ASSERT_POLICY} requires BUILD_TESTING=OFF")
+  endif(BUILD_TESTING)
 endif()
 
 ##########################
@@ -301,9 +305,12 @@ add_custom_target(External-tiledarray)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
-include(external/madness.cmake)
+include(FindOrFetchMADWorld)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
+# the FetchContent-based version will not work due to BLT target name conflicts
+# include(FindOrFetchUmpire)
+# use the ExternalProject-based version
 include(external/umpire.cmake)
 
 ###### discover linear algebra
@@ -328,7 +335,7 @@ if (ENABLE_WFN91_LINALG_DISCOVERY_KIT)
   else(ENABLE_SCALAPACK)
     find_package(LAPACK REQUIRED)
     # Propagate LAPACK -> BLAS if not set
-    # (LAPACK necessacarily contains a BLAS linker by standard)
+    # (LAPACK necessarily contains a BLAS linker by standard)
     # TODO: Tell David to write a macro that hides this verbosity from user space
     if( NOT BLAS_LIBRARIES )
       set( BLAS_LIBRARIES "${LAPACK_LIBRARIES}" CACHE STRING "BLAS LIBRARIES" )
@@ -340,7 +347,7 @@ endif(ENABLE_WFN91_LINALG_DISCOVERY_KIT)
 include(FindOrFetchBTAS)
 include(FindOrFetchBoost)
 if(ENABLE_SCALAPACK)
-  include(external/scalapack.cmake)
+  include(FindOrFetchScaLAPACK)
 endif()
 if (TA_ENABLE_RANGEV3)
   include(FindOrFetchRangeV3)
@@ -366,12 +373,16 @@ add_subdirectory(doc)
 ##########################
 # checking/testing
 ##########################
-enable_testing()
-if (TA_BUILD_UNITTEST)
-  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} -V)
+include(CTest)
+if (BUILD_TESTING)
+  set(_ctest_args -V -R "tiledarray/unit")
+  if (DEFINED TA_UT_CTEST_TIMEOUT)
+    list(APPEND _ctest_args --timeout ${TA_UT_CTEST_TIMEOUT})
+  endif(DEFINED TA_UT_CTEST_TIMEOUT)
+  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} ${_ctest_args})
   add_subdirectory(tests)
 else()
-  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, add --unittest to configure, or give -DTA_BUILD_UNITTEST=TRUE to cmake")
+  add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, give -DBUILD_TESTING=ON to cmake")
 endif()
 
 ##########################
