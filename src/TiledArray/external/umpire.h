@@ -30,7 +30,7 @@
 
 // for memory management
 #include <umpire/Umpire.hpp>
-#include <umpire/strategy/DynamicPool.hpp>
+#include <umpire/strategy/QuickPool.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
 #include <umpire/strategy/ThreadSafeAllocator.hpp>
 
