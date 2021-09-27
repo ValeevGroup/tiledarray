@@ -384,9 +384,9 @@ class cudaEnv {
   // the world used to initialize this
   World* world_;
 
-  /// a Thread Safe, Dynamic memory pool for CUDA Unified Memory
+  /// a thread-safe dynamically-sized memory pool for CUDA Unified Memory
   umpire::Allocator um_dynamic_pool_;
-  /// a Thread Safe, Size-Limited Dynamic memory pool for CUDA Memory
+  /// a thread-safe size-limited dynamically-sized memory pool for CUDA Memory
   umpire::Allocator device_dynamic_pool_;
 
   int num_cuda_devices_;
