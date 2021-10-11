@@ -40,10 +40,15 @@ TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
 namespace TiledArray {
 
-/// \brief Maps integers (identifying tasks or data tokens) to process ranks.
+/// Process map
 
-/// This is the base and interface class for other process maps. It provides
-/// access to the local tile iterator and basic process map information.
+/// \paragraph Pmap maps tokens (integers identifying tasks or data) to process
+/// ranks. Since in TiledArray this is usually used to map tile indices, we
+/// refer to tokens as tiles throughout.
+///
+/// \paragraph This is the base and interface class for other process maps.
+/// It provides access to the local tile iterator and basic process map
+/// information.
 /// Derived classes are responsible for distribution of tiles. The general
 /// idea of process map objects is to compute process owners with an O(1)
 /// algorithm to provide fast access to tile owner information and avoid
@@ -75,12 +80,13 @@ class Pmap {
 
   /// \param world The world where the tiles will be mapped
   /// \param size The number of tiles to be mapped
-  Pmap(World& world, const size_type size)
+  /// \param size The number of tiles that maps to this rank
+  Pmap(World& world, const size_type size, const size_type local_size = 0)
       : rank_(world.rank()),
         procs_(world.size()),
         size_(size),
         local_(),
-        local_size_(0) {}
+        local_size_(local_size) {}
 
   virtual ~Pmap() {}
 
