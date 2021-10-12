@@ -796,7 +796,6 @@ BOOST_AUTO_TEST_CASE(ik_mn_eq_ij_times_jk_mn) {
       {corr_elem_3_0, corr_elem_3_1, corr_elem_3_2, corr_elem_3_3}};
 
   dist_array_t corr(world, lhs_trange, corr_il);
-  std::cout << out << std::endl;
   const bool are_equal = ToTArrayFixture::are_equal(out, corr);
   BOOST_CHECK(are_equal);
 }
@@ -865,12 +864,12 @@ BOOST_AUTO_TEST_CASE(ik_mn_eq_ij_times_kj_mn) {
       {corr_elem_3_0, corr_elem_3_1, corr_elem_3_2, corr_elem_3_3}};
 
   dist_array_t corr(world, lhs_trange, corr_il);
-  std::cout << out << std::endl;
   const bool are_equal = ToTArrayFixture::are_equal(out, corr);
   BOOST_CHECK(are_equal);
 }
 
 BOOST_AUTO_TEST_CASE(ik_mn_eq_jm_times_ik_jn) {
+  using dist_array_t = DistArray<Tensor<Tensor<double>>, DensePolicy>;
   using matrix_il = TiledArray::detail::matrix_il<Tensor<double>>;
   auto& world = TiledArray::get_default_world();
 
@@ -908,12 +907,12 @@ BOOST_AUTO_TEST_CASE(ik_mn_eq_jm_times_ik_jn) {
                     {corr_elem_3_0, corr_elem_3_1}};
 
   dist_array_t corr(world, lhs_trange, corr_il);
-  std::cout << out << std::endl;
   const bool are_equal = ToTArrayFixture::are_equal(out, corr);
   BOOST_CHECK(are_equal);
 }
 
 BOOST_AUTO_TEST_CASE(ik_mn_eq_jm_times_ik_nj) {
+  using dist_array_t = DistArray<Tensor<Tensor<double>>, DensePolicy>;
   using matrix_il = TiledArray::detail::matrix_il<Tensor<double>>;
   auto& world = TiledArray::get_default_world();
 
@@ -951,7 +950,6 @@ BOOST_AUTO_TEST_CASE(ik_mn_eq_jm_times_ik_nj) {
                     {corr_elem_3_0, corr_elem_3_1}};
 
   dist_array_t corr(world, lhs_trange, corr_il);
-  std::cout << out << std::endl;
   const bool are_equal = ToTArrayFixture::are_equal(out, corr);
   BOOST_CHECK(are_equal);
 }

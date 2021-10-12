@@ -1,38 +1,39 @@
+#ifndef TILEDARRAY_UTIL_RANGE_H__INCLUDED
+#define TILEDARRAY_UTIL_RANGE_H__INCLUDED
+
 #include <TiledArray/util/vector.h>
 
-#include <vector>
 #include <boost/iterator/counting_iterator.hpp>
+#include <vector>
 
 namespace TiledArray::range {
 
-template<typename T>
+template <typename T>
 using small_vector = container::svector<T>;
 
 struct Range {
   using value_type = int64_t;
   using iterator = boost::counting_iterator<value_type>;
-  template<class Pair>
-  explicit Range(Pair &&pair) : Range(pair.first, pair.second) {}
+  template <class Pair>
+  explicit Range(Pair&& pair) : Range(pair.first, pair.second) {}
   Range(value_type begin, value_type end) : begin_(begin), end_(end) {}
   auto begin() const { return iterator(begin_); }
   auto end() const { return iterator(end_); }
   auto size() const { return end_ - begin_; }
-protected:
-  const value_type begin_, end_;
 
+ protected:
+  const value_type begin_, end_;
 };
 
-template<typename R, typename T = small_vector<typename R::value_type> >
+template <typename R, typename T = small_vector<typename R::value_type> >
 struct RangeProduct {
-
   using ranges_type = std::vector<R>;
 
-public:
-
+ public:
   RangeProduct() = default;
   RangeProduct(std::initializer_list<R> ranges) : ranges_(ranges) {}
 
-  RangeProduct& operator *= (R a) {
+  RangeProduct& operator*=(R a) {
     this->ranges_.push_back(a);
     return *this;
   }
@@ -43,15 +44,17 @@ public:
     using iterator1 = decltype(std::begin(ranges_type{}[0]));
     auto operator*() const {
       T r;
-      for (auto &it : its_) { r.push_back(*it); }
+      for (auto& it : its_) {
+        r.push_back(*it);
+      }
       return r;
     }
-    bool operator!=(const iterator &other) const {
+    bool operator!=(const iterator& other) const {
       return !(this->p_ == other.p_ && this->its_ == other.its_);
     }
     iterator& operator++() {
       size_t i = its_.size();
-      auto &ranges = p_->ranges();
+      auto& ranges = p_->ranges();
       while (i > 0) {
         --i;
         ++its_[i];
@@ -61,9 +64,10 @@ public:
       }
       return *this;
     }
-  private:
+
+   private:
     friend class RangeProduct;
-    explicit iterator(const RangeProduct *p, bool End = false) {
+    explicit iterator(const RangeProduct* p, bool End = false) {
       this->p_ = p;
       using std::begin;
       using std::end;
@@ -73,34 +77,30 @@ public:
         End = false;
       }
     }
-  private:
-    const RangeProduct *p_;
+
+   private:
+    const RangeProduct* p_;
     small_vector<iterator1> its_;
   };
 
-  auto begin() const {
-    return iterator(this);
-  }
+  auto begin() const { return iterator(this); }
 
-  auto end() const {
-    return iterator(this, true);
-  }
+  auto end() const { return iterator(this, true); }
 
-protected:
+ protected:
   ranges_type ranges_;
-
 };
 
-RangeProduct<Range> operator*(Range a, Range b){
+RangeProduct<Range> operator*(Range a, Range b) {
   return RangeProduct<Range>({a, b});
 };
 
-template<typename R, typename T>
-RangeProduct<R,T> operator*(const RangeProduct<R,T>& a, Range b) {
-  return RangeProduct<R,T>(a) *= b;
+template <typename R, typename T>
+RangeProduct<R, T> operator*(const RangeProduct<R, T>& a, Range b) {
+  return RangeProduct<R, T>(a) *= b;
 };
 
-template<typename R, typename F>
+template <typename R, typename F>
 void cartesian_foreach(const std::vector<R>& rs, F f) {
   using It = decltype(std::begin(rs[0]));
   using T = typename R::value_type;
@@ -127,4 +127,6 @@ void cartesian_foreach(const std::vector<R>& rs, F f) {
   }
 }
 
-}  // namespace TiledArray::expressions
+}  // namespace TiledArray::range
+
+#endif

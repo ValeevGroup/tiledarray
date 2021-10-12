@@ -1,16 +1,19 @@
+#ifndef TILEDARRAY_UTIL_INDEX_H__INCLUDED
+#define TILEDARRAY_UTIL_INDEX_H__INCLUDED
+
 // Samuel R. Powell, 2021
 #include "TiledArray/expressions/fwd.h"
 
 #include <TiledArray/error.h>
-#include <TiledArray/util/vector.h>
 #include <TiledArray/permutation.h>
+#include <TiledArray/util/vector.h>
 
-#include <string>
 #include <iosfwd>
+#include <string>
 
 namespace TiledArray::index {
 
-template<typename T>
+template <typename T>
 using small_vector = container::svector<T>;
 
 small_vector<std::string> tokenize(const std::string &s);
@@ -19,30 +22,32 @@ small_vector<std::string> validate(const small_vector<std::string> &v);
 
 std::string join(const small_vector<std::string> &v);
 
-template<typename T, typename U>
-using enable_if_string = std::enable_if_t< std::is_same_v<T,std::string>, U>;
+template <typename T, typename U>
+using enable_if_string = std::enable_if_t<std::is_same_v<T, std::string>, U>;
 
 /// an n-index, with n a runtime parameter
-template<typename T>
+template <typename T>
 class Index {
-public:
+ public:
   using container_type = small_vector<T>;
   using value_type = typename container_type::value_type;
 
   Index() = default;
   Index(container_type &&s) : data_(std::move(s)) {}
 
-  template<typename S, typename U = void>
+  template <typename S, typename U = void>
   Index(const S &s) : data_(s.begin(), s.end()) {}
 
-  template<typename U = void>
+  template <typename U = void>
   Index(const std::string &s) : Index(index::tokenize(s)) {}
 
-  template<typename U = void>
+  template <typename U = void>
   Index(const char *s) : Index(std::string(s)) {}
 
-  template<typename U = void>
-  operator std::string() const { return index::join(data_); }
+  template <typename U = void>
+  operator std::string() const {
+    return index::join(data_);
+  }
 
   explicit operator bool() const { return !data_.empty(); }
 
@@ -50,22 +55,20 @@ public:
     return (this->data_ == other.data_);
   }
 
-  bool operator!=(const Index &other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const Index &other) const { return !(*this == other); }
 
   size_t size() const { return data_.size(); }
 
   auto begin() const { return data_.begin(); }
   auto end() const { return data_.end(); }
 
-  auto find(const T& v) const {
+  auto find(const T &v) const {
     return std::find(this->begin(), this->end(), v);
   }
 
-  const auto& operator[](size_t idx) const { return data_.at(idx); }
+  const auto &operator[](size_t idx) const { return data_.at(idx); }
 
-  size_t indexof(const T& v) const {
+  size_t indexof(const T &v) const {
     for (size_t i = 0; i < this->size(); ++i) {
       if (this[i] == v) return i;
     }
@@ -73,16 +76,14 @@ public:
   }
 
   /// Returns true if argument exists in the Index object, else returns false
-  bool contains(const T& v) const {
-    return (this->find(v) != this->end());
-  }
+  bool contains(const T &v) const { return (this->find(v) != this->end()); }
 
  private:
   container_type data_;
 };
 
-template<typename T>
-std::ostream& operator<<(std::ostream& os, const Index<T> &idx) {
+template <typename T>
+std::ostream &operator<<(std::ostream &os, const Index<T> &idx) {
   os << std::string(idx);
   return os;
 }
@@ -91,7 +92,7 @@ std::ostream& operator<<(std::ostream& os, const Index<T> &idx) {
 /// @param[in] a an Index object
 /// @param[in] b an Index object
 /// @pre a and b do not have duplicates
-template<typename T>
+template <typename T>
 Index<T> operator&(const Index<T> &a, const Index<T> &b) {
   typename Index<T>::container_type r;
   for (const auto &s : a) {
@@ -104,7 +105,7 @@ Index<T> operator&(const Index<T> &a, const Index<T> &b) {
 /// @param[in] a an Index object
 /// @param[in] b an Index object
 /// @pre a and b do not have duplicates
-template<typename T>
+template <typename T>
 Index<T> operator|(const Index<T> &a, const Index<T> &b) {
   typename Index<T>::container_type r;
   r.assign(a.begin(), a.end());
@@ -119,7 +120,7 @@ Index<T> operator|(const Index<T> &a, const Index<T> &b) {
 /// @param[in] a an Index object
 /// @param[in] b an Index object
 /// @note unline operator| @p a and @p b can have have duplicates
-template<typename T>
+template <typename T>
 Index<T> operator+(const Index<T> &a, const Index<T> &b) {
   typename Index<T>::container_type r;
   r.assign(a.begin(), a.end());
@@ -131,7 +132,7 @@ Index<T> operator+(const Index<T> &a, const Index<T> &b) {
 /// @param[in] a an Index object
 /// @param[in] b an Index object
 /// @note unline operator& @p a and @p b can have have duplicates
-template<typename T>
+template <typename T>
 Index<T> operator-(const Index<T> &a, const Index<T> &b) {
   typename Index<T>::container_type r;
   for (const auto &s : a) {
@@ -145,22 +146,24 @@ Index<T> operator-(const Index<T> &a, const Index<T> &b) {
 /// @param[in] a an Index object
 /// @param[in] b an Index object
 /// @pre a and b do not have duplicates
-template<typename T>
+template <typename T>
 inline Index<T> operator^(const Index<T> &a, const Index<T> &b) {
   return (a | b) - (a & b);
 }
 
-template<typename T>
-size_t rank(const Index<T> &idx) { return idx.size(); }
+template <typename T>
+size_t rank(const Index<T> &idx) {
+  return idx.size();
+}
 
 template <typename T>
-Index<T> sorted(const Index<T>& a) {
+Index<T> sorted(const Index<T> &a) {
   typename Index<T>::container_type r(a.begin(), a.end());
   std::sort(r.begin(), r.end());
   return Index<T>(r);
 }
 
-template<typename T>
+template <typename T>
 Permutation permutation(const Index<T> &s, const Index<T> &p) {
   assert(sorted(s) == sorted(p));
   small_vector<size_t> m;
@@ -171,30 +174,30 @@ Permutation permutation(const Index<T> &s, const Index<T> &p) {
   return Permutation(m);
 }
 
-template<typename T, bool Inverse>
-auto permute(const Permutation &p, const Index<T> &s, std::bool_constant<Inverse>) {
+template <typename T, bool Inverse>
+auto permute(const Permutation &p, const Index<T> &s,
+             std::bool_constant<Inverse>) {
   if (!p) return s;
   using R = typename Index<T>::container_type;
   R r(p.size());
-  detail::permute_n(p.size(), p.begin(), s.begin(), r.begin(), std::bool_constant<Inverse>{});
+  detail::permute_n(p.size(), p.begin(), s.begin(), r.begin(),
+                    std::bool_constant<Inverse>{});
   return Index<T>{r};
 }
 
 /// @brief Index-annotated collection of objects
 /// @tparam Value
 /// This is a map using Index::element_type as key
-template<typename K, typename V>
+template <typename K, typename V>
 struct IndexMap {
-
   using key_type = K;
   using value_type = V;
 
   IndexMap(const Index<K> &keys, std::initializer_list<V> s)
-    : IndexMap(keys, s.begin(), s.end()) {}
+      : IndexMap(keys, s.begin(), s.end()) {}
 
   template <typename S>
-  IndexMap(const Index<K> &keys, S &&s)
-    : IndexMap(keys, s.begin(), s.end()) {}
+  IndexMap(const Index<K> &keys, S &&s) : IndexMap(keys, s.begin(), s.end()) {}
 
   template <typename It>
   IndexMap(const Index<K> &keys, It begin, It end) {
@@ -202,25 +205,23 @@ struct IndexMap {
     data_.reserve(keys.size());
     for (auto &&key : keys) {
       assert(it != end);
-      data_.emplace_back(std::pair<K,V>{key, *it});
+      data_.emplace_back(std::pair<K, V>{key, *it});
       ++it;
     }
     assert(it == end);
   }
 
-  IndexMap(const small_vector<std::pair<K, V> > &data) : data_(data) { }
+  IndexMap(const small_vector<std::pair<K, V> > &data) : data_(data) {}
 
   /// @return const iterator pointing to the element associated with @p key
   auto find(const key_type &key) const {
-    return std::find_if(
-      data_.begin(), data_.end(),
-      [&key](const auto &v) { return key == v.first; }
-    );
+    return std::find_if(data_.begin(), data_.end(),
+                        [&key](const auto &v) { return key == v.first; });
   }
 
   /// @return reference to the element associated with @p key
   /// @throw TA::Exception if @p key is not in this map
-  const auto& operator[](const key_type &key) const {
+  const auto &operator[](const key_type &key) const {
     auto it = find(key);
     if (it != data_.end()) return it->second;
     throw TiledArray::Exception("IndexMap::at(key): key not found");
@@ -242,16 +243,15 @@ struct IndexMap {
   auto end() const { return data_.end(); }
 
  private:
-  small_vector< std::pair<key_type, value_type> > data_;
-
+  small_vector<std::pair<key_type, value_type> > data_;
 };
 
-template<typename K, typename V>
-bool operator==(const IndexMap<K,V>& lhs, const IndexMap<K,V>& rhs) {
-  for (const auto& [k,v] : lhs) {
+template <typename K, typename V>
+bool operator==(const IndexMap<K, V> &lhs, const IndexMap<K, V> &rhs) {
+  for (const auto &[k, v] : lhs) {
     if (rhs.find(k) == rhs.end() || v != rhs[k]) return false;
   }
-  for (const auto& [k,v] : rhs) {
+  for (const auto &[k, v] : rhs) {
     if (lhs.find(k) == lhs.end()) return false;
   }
   return true;
@@ -259,9 +259,9 @@ bool operator==(const IndexMap<K,V>& lhs, const IndexMap<K,V>& rhs) {
 
 /// TODO to be filled by Sam
 template <typename K, typename V>
-IndexMap<K,V> operator|(const IndexMap<K,V> &a, const IndexMap<K,V> &b) {
-  small_vector< std::pair<K, V> > d(a.begin(), a.end());
-  for (const auto [k,v] : b) {
+IndexMap<K, V> operator|(const IndexMap<K, V> &a, const IndexMap<K, V> &b) {
+  small_vector<std::pair<K, V> > d(a.begin(), a.end());
+  for (const auto [k, v] : b) {
     if (a.find(k) != a.end()) {
       TA_ASSERT(a[k] == b[k]);
       continue;
@@ -279,24 +279,24 @@ using Index = TiledArray::index::Index<std::string>;
 using TiledArray::index::IndexMap;
 
 /// converts the annotation of an expression to an Index
-template<typename Array>
+template <typename Array>
 auto idx(const std::string &s) {
   if constexpr (detail::is_tensor_of_tensor_v<typename Array::value_type>) {
     auto semi = std::find(s.begin(), s.end(), ';');
     assert(semi != s.end());
     auto first = std::string(s.begin(), semi);
-    auto second = std::string(semi+1, s.end());
-    return std::tuple<Index,Index>{ first, second };
-  }
-  else {
-    return std::tuple<Index>{ s };
+    auto second = std::string(semi + 1, s.end());
+    return std::tuple<Index, Index>{first, second};
+  } else {
+    return std::tuple<Index>{s};
   }
 }
 
 /// converts the annotation of an expression to an Index
-template<typename A, bool Alias>
+template <typename A, bool Alias>
 auto idx(const expressions::TsrExpr<A, Alias> &e) {
   return idx<A>(e.annotation());
 }
 
 }  // namespace TiledArray
+#endif
