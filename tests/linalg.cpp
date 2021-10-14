@@ -888,4 +888,56 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
 }
 #endif
 
+BOOST_AUTO_TEST_CASE(householder_qr_q_only) {
+  GlobalFixture::world->gop.fence();
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double>>(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto Q = non_dist::householder_qr<decltype(ref_ta),true>( ref_ta );
+
+  // Make sure the Q is orthogonal at least
+  TA::TArray<double> Iden( *GlobalFixture::world, trange );
+  Iden("i,j") = Q("k,i") * Q("k,j");
+  auto I_eig = TA::array_to_eigen(Iden);
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+  BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
+
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE(householder_qr) {
+  GlobalFixture::world->gop.fence();
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double>>(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  auto [Q,R] = non_dist::householder_qr<decltype(ref_ta)>( ref_ta );
+
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+
+  // Check reconstruction error
+  TA::TArray<double> QR_ERROR;
+  QR_ERROR("i,j") = ref_ta("i,j") - Q("i,k") * R("k,j");
+  BOOST_CHECK_SMALL( QR_ERROR("i,j").norm().get(), tol );
+
+  // Check orthonormality of Q
+  TA::TArray<double> Iden;
+  Iden("i,j") = Q("k,i") * Q("k,j");
+  auto I_eig = TA::array_to_eigen(Iden);
+  BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
+
+  GlobalFixture::world->gop.fence();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
