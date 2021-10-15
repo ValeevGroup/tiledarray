@@ -9,7 +9,7 @@
 
 namespace TiledArray::math::linalg::non_distributed {
 
-template <typename ArrayV, bool QOnly = false>
+template <bool QOnly, typename ArrayV>
 auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
                      TiledRange r_trange = TiledRange() ) {
 
