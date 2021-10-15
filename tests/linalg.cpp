@@ -893,8 +893,13 @@ void householder_qr_q_only_test( const ArrayT& A, double tol ) {
 
   using value_type = typename ArrayT::element_type;
 
+  #if TILEDARRAY_HAS_SCALAPACK
   auto Q = use_scalapack ? scalapack::householder_qr<true>( A ) :
                            non_dist:: householder_qr<true>( A );
+  #else
+  static_assert(not use_scalapack);
+  auto Q = non_dist::householder_qr<true>( A );
+  #endif
 
 
   // Make sure the Q is orthogonal at least
@@ -909,8 +914,13 @@ void householder_qr_q_only_test( const ArrayT& A, double tol ) {
 template <bool use_scalapack, typename ArrayT>
 void householder_qr_test( const ArrayT& A, double tol ) {
 
+  #if TILEDARRAY_HAS_SCALAPACK
   auto [Q,R] = use_scalapack ? scalapack::householder_qr<false>( A ) :
                                non_dist:: householder_qr<false>( A );
+  #else
+  static_assert(not use_scalapack);
+  auto [Q,R] = non_dist::householder_qr<false>( A );
+  #endif
 
   // Check reconstruction error
   TA::TArray<double> QR_ERROR;
