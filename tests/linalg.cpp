@@ -899,6 +899,7 @@ void householder_qr_q_only_test( const ArrayT& A, double tol ) {
 
   // Make sure the Q is orthogonal at least
   TA::TArray<double> Iden; Iden("i,j") = Q("k,i") * Q("k,j");
+  Iden.make_replicated();
   auto I_eig = TA::array_to_eigen(Iden);
   const auto N = A.trange().dim(1).extent();
   BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
@@ -917,8 +918,8 @@ void householder_qr_test( const ArrayT& A, double tol ) {
   BOOST_CHECK_SMALL( QR_ERROR("i,j").norm().get(), tol );
 
   // Check orthonormality of Q
-  TA::TArray<double> Iden;
-  Iden("i,j") = Q("k,i") * Q("k,j");
+  TA::TArray<double> Iden; Iden("i,j") = Q("k,i") * Q("k,j");
+  Iden.make_replicated();
   auto I_eig = TA::array_to_eigen(Iden);
   const auto N = A.trange().dim(1).extent();
   BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
@@ -962,6 +963,81 @@ BOOST_AUTO_TEST_CASE(householder_qr) {
   #if TILEDARRAY_HAS_SCALAPACK
   householder_qr_test<true>( ref_ta, tol );
   #endif
+
+  GlobalFixture::world->gop.fence();
+}
+
+
+
+
+
+
+template <typename ArrayT>
+void cholesky_qr_q_only_test( const ArrayT& A, double tol ) {
+
+  using value_type = typename ArrayT::element_type;
+
+  auto Q = TiledArray::math::linalg::cholesky_qr<true>( A );
+
+
+  // Make sure the Q is orthogonal at least
+  TA::TArray<double> Iden; Iden("i,j") = Q("k,i") * Q("k,j");
+  Iden.make_replicated();
+  auto I_eig = TA::array_to_eigen(Iden);
+  const auto N = A.trange().dim(1).extent();
+  BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
+
+}
+
+template <typename ArrayT>
+void cholesky_qr_test( const ArrayT& A, double tol ) {
+
+  auto [Q,R] = TiledArray::math::linalg::cholesky_qr<false>( A );
+
+  // Check reconstruction error
+  TA::TArray<double> QR_ERROR;
+  QR_ERROR("i,j") = A("i,j") - Q("i,k") * R("k,j");
+  BOOST_CHECK_SMALL( QR_ERROR("i,j").norm().get(), tol );
+
+  // Check orthonormality of Q
+  TA::TArray<double> Iden; Iden("i,j") = Q("k,i") * Q("k,j");
+  Iden.make_replicated();
+  auto I_eig = TA::array_to_eigen(Iden);
+  const auto N = A.trange().dim(1).extent();
+  BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
+}
+
+BOOST_AUTO_TEST_CASE(cholesky_qr_q_only) {
+  GlobalFixture::world->gop.fence();
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double>>(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+  cholesky_qr_q_only_test( ref_ta, tol );
+
+  GlobalFixture::world->gop.fence();
+}
+
+BOOST_AUTO_TEST_CASE(cholesky_qr) {
+  GlobalFixture::world->gop.fence();
+
+  auto trange = gen_trange(N, {128ul});
+
+  auto ref_ta = TA::make_array<TA::TArray<double>>(
+      *GlobalFixture::world, trange,
+      [this](TA::Tensor<double>& t, TA::Range const& range) -> double {
+        return this->make_ta_reference(t, range);
+      });
+
+
+  double tol = N * N * std::numeric_limits<double>::epsilon();
+  cholesky_qr_test( ref_ta, tol );
 
   GlobalFixture::world->gop.fence();
 }
