@@ -289,6 +289,13 @@ class dist_subarray_vec
   /// @return number of Array in @c split_array
   unsigned long size() const { return rank_; }
 
+  void delete_arrays(int begin_index, int end_index){
+    for(auto array_ptr = split_array.begin() + begin_index; array_ptr() != split_array.begin() + end_index; ++array_ptr()) {
+      (*array_ptr) = Array();
+    }
+    Array::wait_for_lazy_cleanup();
+  }
+
  private:
   const std::vector<Array>& split_array;
   const int rank_;
@@ -456,7 +463,8 @@ void split_tilewise_fused_array(
     // create split Array object
     TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
                                             split_shape);
-    split_arrays.push_back(split_array);
+    //split_arrays.push_back(split_array);
+    split_arrays.emplace_back(std::move(split_array));
   }
 
   /// copy the data from tile
@@ -484,6 +492,70 @@ void split_tilewise_fused_array(
   return;
 }
 
+/// @brief extracts a subarray of a fused array created with
+/// fuse_vector_of_arrays and creates the array in @c local_world.
+
+/// @param[in] local_world The World object where the @i -th subarray is
+///             created
+/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
+/// @param[in] i the index of the subarray to be extracted
+///            (i.e. the index of the corresponding *element* index of the
+///            leading dimension)
+/// @param[in] tile_of_i tile range information for tile i
+/// @param[in] split_trange TiledRange of the split Array object
+/// @return the @c i -th subarray
+/// @sa detail::tilewise_slice_of_fused_shape
+template <typename Tile, typename Policy>
+void split_insert_tilewise_fused_array(
+    madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
+    std::size_t tile_idx,
+    std::vector<TA::DistArray<Tile, Policy>>& split_arrays,
+    const TA::TiledRange& split_trange) {
+  TA_ASSERT(tile_idx < fused_array.trange().dim(0).extent());
+  auto arrays_size = split_arrays.size();
+
+  // calculate the number of elements in the 0th dimension are in this tile
+  auto tile_range = fused_array.trange().dim(0).tile(tile_idx);
+  auto tile_size = tile_range.second - tile_range.first;
+  std::size_t split_ntiles = split_trange.tiles_range().volume();
+  auto& shape = fused_array.shape();
+
+  // Create tile_size arrays and put them into split_arrays
+  auto split_arrays_size = split_arrays.size();
+  auto ptr_split_arrays_end = (split_arrays.begin() + split_arrays_size);
+  for (size_t i = tile_range.first; i < tile_range.second; ++i, ++ ptr_split_arrays_end) {
+    auto split_shape = detail::tilewise_slice_of_fused_shape(
+        split_trange, shape, tile_idx, split_ntiles, tile_size);
+    // create split Array object
+    TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
+                                            split_shape);
+    split_arrays.insert(ptr_split_arrays_end, split_array);
+  }
+
+  /// copy the data from tile
+  auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
+                      const size_t i_offset_in_tile) {
+    const auto split_tile_volume = range.volume();
+    return Tile(range,
+                fused_tile.data() + i_offset_in_tile * split_tile_volume);
+  };
+
+  /// write to blocks of fused_array
+  auto split_array_ptr = split_arrays.data();
+  for (std::size_t index : *(*split_array_ptr).pmap()) {
+    std::size_t fused_array_index = tile_idx * split_ntiles + index;
+    if (!fused_array.is_zero(fused_array_index)) {
+      for (std::size_t i = tile_range.first, tile_count = 0;
+           i < tile_range.second; ++i, ++tile_count) {
+        auto& array = *(split_array_ptr + arrays_size + tile_count);
+        array.set(index, local_world.taskq.add(
+                             make_tile, array.trange().make_tile_range(index),
+                             fused_array.find(fused_array_index), tile_count));
+      }
+    }
+  }
+  return;
+}
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_CONVERSIONS_VECTOR_OF_ARRAYS_H_
