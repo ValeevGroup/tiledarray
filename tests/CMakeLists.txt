@@ -120,7 +120,7 @@ if(CUDA_FOUND)
 endif()
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
-if (NOT TA_DEFAULT_ERROR EQUAL 1 AND NOT CUDA_FOUND AND FALSE)
+if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE)
   add_ta_executable(${executable} "${ta_test_src_files}" "MADworld;${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
   if (LAPACK_INCLUDE_DIRS)
@@ -154,7 +154,8 @@ if (TARGET range-v3::range-v3)
 endif (TARGET range-v3::range-v3)
 
 # Add targets
-add_test(build_${executable} "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
+add_test(tiledarray/unit/build "${CMAKE_COMMAND}" --build ${PROJECT_BINARY_DIR} --target ${executable})
+set_tests_properties(tiledarray/unit/build PROPERTIES FIXTURES_SETUP TA_UNIT_TESTS_EXEC)
 
 # Add a test(s)
 if(ENABLE_MPI)
@@ -162,19 +163,24 @@ if(ENABLE_MPI)
   set (${executable}_np_2_args --run_test=!@serial)
   foreach(p RANGE 1 2)
     add_test(
-      NAME ${executable}-np-${p}
+      NAME tiledarray/unit/run-np-${p}
       COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${p}
         ${MPIEXEC_PREFLAGS}
-        $<TARGET_FILE:${executable}> --log_level=warning --show-progress ${${executable}_np_${p}_args}
+        $<TARGET_FILE:${executable}> --log_level=unit_scope ${${executable}_np_${p}_args}
         ${MPIEXEC_POSTFLAGS}
       )
-    set_tests_properties(${executable}-np-${p} PROPERTIES DEPENDS build_${executable})
+    set_tests_properties(tiledarray/unit/run-np-${p}
+            PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
+            ENVIRONMENT MAD_NUM_THREADS=2)
+
     if (p GREATER 1)
-      set_tests_properties(${executable}-np-${p} PROPERTIES ENVIRONMENT TA_UT_DISTRIBUTED=1)
+      set_tests_properties(tiledarray/unit/run-np-${p} PROPERTIES ENVIRONMENT TA_UT_DISTRIBUTED=1)
     endif()
   endforeach(p)
 else()
-  add_test(NAME ${executable}
-      COMMAND ${executable})
-  set_tests_properties(${executable} PROPERTIES DEPENDS build_${executable})
+  add_test(NAME tiledarray/unit/run-np-1
+           COMMAND ${executable})
+  set_tests_properties(tiledarray/unit/run-np-1
+          PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
+          ENVIRONMENT MAD_NUM_THREADS=2)
 endif()

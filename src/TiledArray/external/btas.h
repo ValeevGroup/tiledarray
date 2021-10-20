@@ -49,6 +49,19 @@ struct range_traits<TiledArray::Range> {
   using ordinal_type = TiledArray::Range::ordinal_type;
   constexpr static const bool is_general_layout = false;
 };
+
+template <>
+class boxrange_iteration_order<TiledArray::Range> {
+ public:
+  enum {
+    row_major = boxrange_iteration_order<void>::row_major,
+    other = boxrange_iteration_order<void>::other,
+    column_major = boxrange_iteration_order<void>::column_major
+  };
+
+  static constexpr int value = row_major;
+};
+
 }  // namespace btas
 
 namespace TiledArray {
@@ -96,17 +109,17 @@ inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
                     r2.extent_data());
 }
 
-template <typename T, typename Range, typename Storage>
-decltype(auto) make_ti(const btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<const T, Range,
-                                             btas::Tensor<T, Range, Storage>>(
+template <typename T, typename Storage>
+decltype(auto) make_ti(const btas::Tensor<T, TiledArray::Range, Storage>& arg) {
+  return TiledArray::detail::TensorInterface<
+      const T, TiledArray::Range, btas::Tensor<T, TiledArray::Range, Storage>>(
       arg.range(), arg.data());
 }
 
-template <typename T, typename Range, typename Storage>
-decltype(auto) make_ti(btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<T, Range,
-                                             btas::Tensor<T, Range, Storage>>(
+template <typename T, typename Storage>
+decltype(auto) make_ti(btas::Tensor<T, TiledArray::Range, Storage>& arg) {
+  return TiledArray::detail::TensorInterface<
+      T, TiledArray::Range, btas::Tensor<T, TiledArray::Range, Storage>>(
       arg.range(), arg.data());
 }
 

@@ -23,10 +23,10 @@ else()
     enable_language(C)
 
     # set source and build path for libreTT in the TiledArray project
-    set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/librett)
+    set(EXTERNAL_SOURCE_DIR   ${FETCHCONTENT_BASE_DIR}/librett-src)
     # librett only supports in source build
-    set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/librett)
-    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/external/librett)
+    set(EXTERNAL_BUILD_DIR  ${FETCHCONTENT_BASE_DIR}//librett-build)
+    set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
     if (NOT LIBRETT_URL)
         set(LIBRETT_URL https://github.com/victor-anisimov/Librett)
@@ -72,6 +72,9 @@ else()
         -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
         -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
         )
+    if (DEFINED CMAKE_CUDA_ARCHITECTURES)
+        list(APPEND LIBRETT_CMAKE_ARGS -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES})
+    endif(DEFINED CMAKE_CUDA_ARCHITECTURES)
     if (CMAKE_TOOLCHAIN_FILE)
         set(LIBRETT_CMAKE_ARGS "${LIBRETT_CMAKE_ARGS}"
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
@@ -89,8 +92,8 @@ else()
 
     ExternalProject_Add(librett
             PREFIX ${CMAKE_INSTALL_PREFIX}
-            STAMP_DIR ${PROJECT_BINARY_DIR}/external/librett-stamp
-            TMP_DIR ${PROJECT_BINARY_DIR}/external/tmp
+            STAMP_DIR ${FETCHCONTENT_BASE_DIR}/librett-ep-artifacts
+            TMP_DIR ${FETCHCONTENT_BASE_DIR}/librett-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${LIBRETT_URL}

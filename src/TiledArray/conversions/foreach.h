@@ -30,6 +30,8 @@
 #include <TiledArray/type_traits.h>
 #include <TiledArray/util/function.h>
 
+#include <algorithm>
+
 /// Forward declarations
 namespace Eigen {
 template <typename>
@@ -277,9 +279,8 @@ inline std::
   tiles.reserve(arg.pmap()->size());
 
   // Construct a tensor to hold updated tile norms for the result shape.
-  TiledArray::Tensor<typename shape_type::value_type,
-                     Eigen::aligned_allocator<typename shape_type::value_type>>
-      tile_norms(arg.trange().tiles_range(), 0);
+  TiledArray::Tensor<typename shape_type::value_type> tile_norms(
+      arg.trange().tiles_range(), 0);
 
   // Construct the task function used to construct the result tiles.
   madness::AtomicInt counter;
@@ -325,12 +326,10 @@ inline std::
                             detail::get_sparse_tile(index, args)...);
         ++task_count;
         tiles.emplace_back(index, std::move(result_tile));
-        if (op_returns_void)  // if Op does not evaluate norms, use the (scaled)
-                              // norms of the first arg need max reduction here,
-                              // hence c++17, until then just assert false
-          TA_ASSERT(false &&
-                    "ShapeReductionMethod::Union not supported with "
-                    "void-returning Op");
+        if (op_returns_void)  // if Op does not evaluate norms, find max
+                              // (scaled) norms of all args
+          tile_norms[index] =
+              std::max({arg_shape_data[index], args.shape().data()[index]...});
       }
       break;
     default:

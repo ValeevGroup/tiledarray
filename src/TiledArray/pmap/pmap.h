@@ -42,8 +42,13 @@ namespace TiledArray {
 
 /// Process map
 
-/// This is the base and interface class for other process maps. It provides
-/// access to the local tile iterator and basic process map information.
+/// \paragraph Pmap maps tokens (integers identifying tasks or data) to process
+/// ranks. Since in TiledArray this is usually used to map tile indices, we
+/// refer to tokens as tiles throughout.
+///
+/// \paragraph This is the base and interface class for other process maps.
+/// It provides access to the local tile iterator and basic process map
+/// information.
 /// Derived classes are responsible for distribution of tiles. The general
 /// idea of process map objects is to compute process owners with an O(1)
 /// algorithm to provide fast access to tile owner information and avoid
@@ -75,12 +80,13 @@ class Pmap {
 
   /// \param world The world where the tiles will be mapped
   /// \param size The number of tiles to be mapped
-  Pmap(World& world, const size_type size)
+  /// \param size The number of tiles that maps to this rank
+  Pmap(World& world, const size_type size, const size_type local_size = 0)
       : rank_(world.rank()),
         procs_(world.size()),
         size_(size),
         local_(),
-        local_size_(0) {}
+        local_size_(local_size) {}
 
   virtual ~Pmap() {}
 
@@ -137,13 +143,20 @@ class Pmap {
 
   /// Replicated array status
 
-  /// \return \c true if the array is replicated, and false otherwise
+  /// \return \c true if the map is _replicated_, i.e. if owner() always
+  ///         returns the rank of the process on which it is called
   virtual bool is_replicated() const { return false; }
 
   /// \name Iteration
   /// @{
 
  private:
+  /// customizes how to iterate over local indices
+
+  /// overload this and construct Iterator with `use_pmap_advance=true`
+  /// if need to implement custom iteration over local indices
+  /// \param[in,out] value current index value on input, next value on output
+  /// \param[in[ increment if true, increase \p value, else decrease
   virtual void advance(size_type& value, bool increment) const {
     if (increment)
       ++value;
@@ -165,9 +178,10 @@ class Pmap {
     /// \param begin_idx start of the range
     /// \param end_idx end of the range (one past the last element)
     /// \param idx the current index to which points; if \c idx==end_idx this
-    /// creates an end iterator \param checking whether to use \c
-    /// pmap.is_local() when iterating \param use_pmap_advance whether to use \c
-    /// pmap.advance() to increment/decrement
+    ///        creates an end iterator
+    /// \param checking whether to use \c pmap.is_local() when iterating
+    /// \param use_pmap_advance whether to use \c Pmap::advance() to
+    ///        increment/decrement
     Iterator(const Pmap& pmap, size_type begin_idx, size_type end_idx,
              size_type idx, bool checking, bool use_pmap_advance = false)
         : pmap_(&pmap),
@@ -266,8 +280,9 @@ class Pmap {
 
     /// \brief Iterator comparer
     /// \warning asserts that \c this and \c other have the same attributes
-    /// (host, range, etc.) \param other an Iterator \return true, if \c
-    /// **this==*other
+    ///          (host, range, etc.)
+    /// \param other an Iterator
+    /// \return true, if \c **this==*other
     bool equal(Iterator const& other) const {
       TA_ASSERT(this->pmap_ == other.pmap_ && this->use_it_ == other.use_it_);
       return use_it_ ? this->it_ == other.it_ : this->idx_ == other.idx_;

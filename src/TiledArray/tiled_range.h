@@ -27,8 +27,9 @@ namespace TiledArray {
 
 /// Range data of a tiled array
 
-/// TiledRange is a direct (Cartesian) product of 1-dimensional tiled ranges
-/// (TiledRange1)
+/// TiledRange is a direct (Cartesian) product of 1-dimensional tiled ranges,
+/// represented as TiledRange1 objects. Thus TiledRange is a semantically
+/// contiguous (C++) range of TiledRange1 objects.
 class TiledRange {
  private:
   /// Constructed with a set of ranges pointed to by [ first, last ).
@@ -69,6 +70,11 @@ class TiledRange {
   static_assert(std::is_same_v<TiledRange1::index1_type, index1_type>);
   typedef container::svector<TiledRange1> Ranges;
 
+  /// TiledRange is a contiguous C++ range of TiledRange1 objects
+  using const_iterator = typename Ranges::const_iterator;
+  /// TiledRange is a contiguous C++ range of TiledRange1 objects
+  using value_type = typename Ranges::value_type;
+
   /// Default constructor
   TiledRange() : range_(), elements_range_(), ranges_() {}
 
@@ -90,7 +96,7 @@ class TiledRange {
   explicit TiledRange(const TRange1Range& range_of_trange1s)
       : range_(),
         elements_range_(),
-        ranges_(begin(range_of_trange1s), end(range_of_trange1s)) {
+        ranges_(std::begin(range_of_trange1s), std::end(range_of_trange1s)) {
     init();
   }
 
@@ -285,9 +291,18 @@ class TiledRange {
     return ranges_[d];
   }
 
-  /// Tile dimension boundary array accessor
+  /// \return iterator pointing to the beginning of the range of TiledRange1
+  /// objects
+  const_iterator begin() const { return ranges_.begin(); }
 
-  /// \return A reference to the array of Range1 objects.
+  /// \return iterator pointing to the end of the range of TiledRange1 objects
+  const_iterator end() const { return ranges_.end(); }
+
+  /// \param[in] d mode index
+  /// \return const reference to the TiledRange1 object for mode \p d
+  const TiledRange1& at(size_t d) const { return ranges_.at(d); }
+
+  /// \return A reference to the array of TiledRange1 objects.
   /// \throw nothing
   const Ranges& data() const { return ranges_; }
 
@@ -298,24 +313,24 @@ class TiledRange {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(const Archive& ar) {
     ar& range_& elements_range_& ranges_;
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(const Archive& ar) const {
     ar& range_& elements_range_& ranges_;
   }
 
  private:
-  range_type range_;  ///< Stores information on tile indexing for the range.
-  range_type elements_range_;  ///< Stores information on element indexing for
-                               ///< the range.
-  Ranges ranges_;              ///< Stores tile boundaries for each dimension.
+  range_type range_;           ///< Range of tile indices
+  range_type elements_range_;  ///< Range of element indices
+  Ranges ranges_;  ///< tiled (1d) range, aka TiledRange1, for each mode
+                   ///< `*this` is a direct product of these tilings
 };
 
 /// TiledRange permutation operator.

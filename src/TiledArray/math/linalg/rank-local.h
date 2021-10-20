@@ -54,6 +54,9 @@ void lu_solve(Matrix<T> &A, Matrix<T> &B);
 template <typename T>
 void lu_inv(Matrix<T> &A);
 
+template <bool QOnly,typename T>
+void householder_qr( Matrix<T> &V, Matrix<T> &R );
+
 }  // namespace TiledArray::math::linalg::rank_local
 
 #endif  // TILEDARRAY_MATH_LINALG_RANK_LOCAL_H__INCLUDED

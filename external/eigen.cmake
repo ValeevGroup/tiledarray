@@ -93,15 +93,13 @@ else()
   include(ExternalProject)
 
   # Set source and build path for Eigen3 in the TiledArray Project
-  set(EXTERNAL_SOURCE_DIR   ${PROJECT_BINARY_DIR}/external/source/eigen)
-  set(EXTERNAL_BUILD_DIR  ${PROJECT_BINARY_DIR}/external/build/eigen)
+  set(EXTERNAL_SOURCE_DIR   ${FETCHCONTENT_BASE_DIR}/eigen-src)
+  set(EXTERNAL_BUILD_DIR  ${FETCHCONTENT_BASE_DIR}/eigen-build)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
 
   ExternalProject_Add(eigen3
     PREFIX ${CMAKE_INSTALL_PREFIX}
-    STAMP_DIR ${EXTERNAL_BUILD_DIR}/stamp
-    TMP_DIR ${EXTERNAL_BUILD_DIR}/tmp
    #--Download step--------------
     DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
     URL ${EIGEN3_URL}

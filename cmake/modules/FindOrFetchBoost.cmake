@@ -3,12 +3,17 @@ if (BOOST_ROOT OR BOOST_INCLUDEDIR)
   set(Boost_NO_SYSTEM_PATHS TRUE)
 endif()
 
-# Check for Boost
-find_package(Boost ${TA_TRACKED_BOOST_VERSION} QUIET)
+# try find_package
+if (NOT TARGET Boost::boost)
+  include(FindPackageRegimport)
+  find_package_regimport(Boost ${TA_TRACKED_BOOST_VERSION} QUIET)
+  if (TARGET Boost::boost)
+    message(STATUS "Found Boost ${Boost_VERSION}: ${Boost_INCLUDE_DIRS}")
+  endif(TARGET Boost::boost)
+endif (NOT TARGET Boost::boost)
 
-if (TARGET Boost::boost)
-  message(STATUS "Found Boost ${Boost_VERSION}: ${Boost_INCLUDE_DIRS}")
-else (TARGET Boost::boost)
+# if not found, build via FetchContent
+if (NOT TARGET Boost::boost)
   include (FetchContent)
   cmake_minimum_required (VERSION 3.14.0)  # for FetchContent_MakeAvailable
 
@@ -24,7 +29,7 @@ else (TARGET Boost::boost)
 
   # current boost-cmake/master does not install boost correctly, so warn that installed TiledArray will not be usable
   # boost-cmake/install_rules https://github.com/Orphis/boost-cmake/pull/45 is supposed to fix it but is inactive
-  message(WARNING "Building Boost from source makes TiledArray unusable from the install location! Install TA using package manager or manually and reconfigure/reinstall TiledArray to fix this")
+  message(WARNING "Building Boost from source makes TiledArray unusable from the install location! Install Boost using package manager or manually and reconfigure/reinstall TiledArray to fix this")
   export(EXPORT tiledarray
       FILE "${PROJECT_BINARY_DIR}/boost-targets.cmake")
   install(EXPORT tiledarray
@@ -32,7 +37,7 @@ else (TARGET Boost::boost)
       DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
       COMPONENT boost-libs)
 
-endif(TARGET Boost::boost)
+endif(NOT TARGET Boost::boost)
 
 # postcond check
 if (NOT TARGET Boost::boost)

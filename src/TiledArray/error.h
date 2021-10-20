@@ -22,6 +22,8 @@
 
 #include <TiledArray/config.h>
 
+#include <TiledArray/util/bug.h>
+
 #ifndef TA_ASSERT_POLICY
 #define TA_ASSERT_POLICY TA_ASSERT_THROW
 #endif
@@ -29,18 +31,20 @@
 #define TA_STRINGIZE_IMPL(s) #s
 #define TA_STRINGIZE(s) TA_STRINGIZE_IMPL(s)
 
-#define TA_ASSERT_MESSAGE(EXPR, ...)            \
+#define TA_ASSERT_MESSAGE(EXPR, ...) \
   __FILE__ ":" TA_STRINGIZE(__LINE__) ": "      \
   "TA_ASSERT failed: " TA_STRINGIZE(EXPR)
 
 #if TA_ASSERT_POLICY == TA_ASSERT_IGNORE
-#define TA_ASSERT(...) do { } while(0)
+#define TA_ASSERT(...) \
+  do {                 \
+  } while (0)
 #else
-#define TA_ASSERT(EXPR, ...)                                            \
-  do {                                                                  \
-    if (!(EXPR))                                                        \
-      TiledArray::assert_failed(TA_ASSERT_MESSAGE(EXPR, __VA_ARGS__));  \
-  } while(0)
+#define TA_ASSERT(EXPR, ...)                                           \
+  do {                                                                 \
+    if (!(EXPR))                                                       \
+      TiledArray::assert_failed(TA_ASSERT_MESSAGE(EXPR, __VA_ARGS__)); \
+  } while (0)
 
 #endif
 
@@ -72,7 +76,7 @@ inline void assert_failed(const std::string &m) {
 #endif
 }
 
-} // namespace TiledArray
+}  // namespace TiledArray
 
 #define TA_EXCEPTION_MESSAGE(file, line, mess) \
   "TiledArray: exception at " file "(" TA_STRINGIZE(line) "): " mess

@@ -363,10 +363,11 @@ class SparseShape {
   /// The tile norms are max-reduced across all processes (via
   /// an all reduce).
   /// Next, the norms are scaled by the inverse of the corresponding tile's
-  /// volumes. \param world The world where the shape will live \param
-  /// tile_norms The Frobenius norm of tiles by default; expected to contain
-  /// nonzeros
-  ///        for this rank's subset of tiles, or be replicated.
+  /// volumes.
+  /// \param world The world where the shape will live
+  /// \param tile_norms The Frobenius norm of tiles by default;
+  ///        expected to contain nonzeros for this rank's subset of tiles,
+  ///        or be replicated.
   /// \param trange The tiled range of the tensor
   /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
   /// are already scaled
@@ -1578,8 +1579,8 @@ class SparseShape {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(const Archive& ar) const {
     ar& tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();

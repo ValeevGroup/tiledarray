@@ -205,15 +205,15 @@ class TiledRange1 {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(const Archive& ar) {
     ar& range_& elements_range_& tiles_ranges_& elem2tile_;
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(const Archive& ar) const {
     ar& range_& elements_range_& tiles_ranges_& elem2tile_;
   }
@@ -317,14 +317,19 @@ inline std::ostream& operator<<(std::ostream& out, const TiledRange1& rng) {
   return out;
 }
 
+// clang-format off
 /// Concatenates two ranges
 
 /// Tiles of the second range are concatenated to the tiles of the first. For
-/// example: \code assert(concat((TiledRange1{1, 3, 7, 9}),(TiledRange1{0, 3, 4,
-/// 5})) == (TiledRange1{1, 3, 7, 9, 12, 13, 14}));
-/// assert(concat((TiledRange1{0, 3, 4, 5}),(TiledRange1{1, 3, 7, 9})) ==
-/// (TiledRange1{0, 3, 4, 5, 7, 11, 13})); \endcode \param r1 first range \param
-/// r2 second range \return concatenated range
+/// example:
+/// \code
+/// assert(concat((TiledRange1{1, 3, 7, 9}),(TiledRange1{0, 3, 4, 5})) == (TiledRange1{1, 3, 7, 9, 12, 13, 14}));
+/// assert(concat((TiledRange1{0, 3, 4, 5}),(TiledRange1{1, 3, 7, 9})) == (TiledRange1{0, 3, 4, 5, 7, 11, 13}));
+/// \endcode
+/// \param r1 first range
+/// \param r2 second range
+/// \return concatenated range
+// clang-format on
 inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
   std::vector<TiledRange1::index1_type> hashmarks;
   hashmarks.reserve(r1.tile_extent() + r2.tile_extent() + 1);

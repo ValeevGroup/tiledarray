@@ -31,6 +31,7 @@
 #include <TiledArray/math/linalg/cholesky.h>
 #include <TiledArray/math/linalg/heig.h>
 #include <TiledArray/math/linalg/lu.h>
+#include <TiledArray/math/linalg/qr.h>
 #include <TiledArray/math/linalg/svd.h>
 
 #endif  // TILEDARRAY_MATH_LINALG_LINALG_H__INCLUDED

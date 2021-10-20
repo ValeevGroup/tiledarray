@@ -44,7 +44,7 @@ class ReplicatedPmap : public Pmap {
  public:
   typedef Pmap::size_type size_type;  ///< Size type
 
-  /// Construct Blocked map
+  /// Construct a replicated map
 
   /// \param world A reference to the world
   /// \param size The number of elements to be mapped
@@ -84,7 +84,7 @@ class ReplicatedPmap : public Pmap {
     return Iterator(*this, 0, this->size_, this->size_, false);
   }
 
-};  // class MapByRow
+};  // class ReplicatedPmap
 
 }  // namespace detail
 }  // namespace TiledArray

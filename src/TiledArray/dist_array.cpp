@@ -31,30 +31,22 @@
 
 namespace TiledArray {
 
-template class DistArray<Tensor<double, Eigen::aligned_allocator<double> >,
-                         DensePolicy>;
-template class DistArray<Tensor<float, Eigen::aligned_allocator<float> >,
-                         DensePolicy>;
-template class DistArray<Tensor<int, Eigen::aligned_allocator<int> >,
-                         DensePolicy>;
-template class DistArray<Tensor<long, Eigen::aligned_allocator<long> >,
-                         DensePolicy>;
-//  template class DistArray<Tensor<std::complex<double>,
-//  Eigen::aligned_allocator<std::complex<double> > >, DensePolicy>; template
-//  class DistArray<Tensor<std::complex<float>,
-//  Eigen::aligned_allocator<std::complex<float> > >, DensePolicy>;
+template class DistArray<Tensor<double>, DensePolicy>;
+template class DistArray<Tensor<float>, DensePolicy>;
+// template class DistArray<Tensor<int>,
+//                         DensePolicy>;
+// template class DistArray<Tensor<long>,
+//                         DensePolicy>;
+template class DistArray<Tensor<std::complex<double>>, DensePolicy>;
+template class DistArray<Tensor<std::complex<float>>, DensePolicy>;
 
-template class DistArray<Tensor<double, Eigen::aligned_allocator<double> >,
-                         SparsePolicy>;
-template class DistArray<Tensor<float, Eigen::aligned_allocator<float> >,
-                         SparsePolicy>;
-template class DistArray<Tensor<int, Eigen::aligned_allocator<int> >,
-                         SparsePolicy>;
-template class DistArray<Tensor<long, Eigen::aligned_allocator<long> >,
-                         SparsePolicy>;
-//  template class DistArray<Tensor<std::complex<double>,
-//  Eigen::aligned_allocator<std::complex<double> > >, SparsePolicy>; template
-//  class DistArray<Tensor<std::complex<float>,
-//  Eigen::aligned_allocator<std::complex<float> > >, SparsePolicy>;
+template class DistArray<Tensor<double>, SparsePolicy>;
+template class DistArray<Tensor<float>, SparsePolicy>;
+// template class DistArray<Tensor<int>,
+//                         SparsePolicy>;
+// template class DistArray<Tensor<long>,
+//                         SparsePolicy>;
+template class DistArray<Tensor<std::complex<double>>, SparsePolicy>;
+template class DistArray<Tensor<std::complex<float>>, SparsePolicy>;
 
 }  // namespace TiledArray

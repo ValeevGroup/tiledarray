@@ -35,7 +35,6 @@ TiledArray/dense_shape.h
 TiledArray/dist_array.h
 TiledArray/distributed_storage.h
 TiledArray/error.h
-TiledArray/external/madness.h
 TiledArray/initialize.h
 TiledArray/perm_index.h
 TiledArray/permutation.h
@@ -65,12 +64,14 @@ TiledArray/math/linalg/util.h
 TiledArray/math/linalg/cholesky.h
 TiledArray/math/linalg/heig.h
 TiledArray/math/linalg/lu.h
+TiledArray/math/linalg/qr.h
 TiledArray/math/linalg/svd.h
 TiledArray/math/linalg/scalapack/util.h
 TiledArray/math/linalg/scalapack/block_cyclic.h
 TiledArray/math/linalg/scalapack/cholesky.h
 TiledArray/math/linalg/scalapack/heig.h
 TiledArray/math/linalg/scalapack/lu.h
+TiledArray/math/linalg/scalapack/qr.h
 TiledArray/math/linalg/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
@@ -117,6 +118,10 @@ TiledArray/expressions/unary_engine.h
 TiledArray/expressions/unary_expr.h
 TiledArray/expressions/index_list.h
 TiledArray/external/btas.h
+TiledArray/external/madness.h
+TiledArray/external/umpire.h
+TiledArray/host/env.h
+TiledArray/host/allocator.h
 TiledArray/math/blas.h
 TiledArray/math/gemm_helper.h
 TiledArray/math/outer.h
@@ -132,6 +137,7 @@ TiledArray/pmap/hash_pmap.h
 TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/pmap/round_robin_pmap.h
+TiledArray/pmap/user_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
 TiledArray/special/diagonal_array.h
@@ -173,10 +179,16 @@ TiledArray/util/annotation.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
 TiledArray/util/function.h
+TiledArray/util/index.h
+TiledArray/util/index.cpp
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/random.h
+TiledArray/util/range.h
 TiledArray/util/singleton.h
+TiledArray/util/string.h
+TiledArray/util/threads.h
+TiledArray/util/threads.cpp
 TiledArray/util/time.h
 TiledArray/util/vector.h
 )
@@ -215,7 +227,8 @@ TiledArray/math/linalg/rank-local.cpp
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
-set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers)
+# when FetchContent umpire: set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers umpire)
+set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers TiledArray_UMPIRE)
 
 # TODO better ways to handle tiledarray cuda dependency
 if(CUDA_FOUND)

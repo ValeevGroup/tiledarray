@@ -30,6 +30,7 @@
 
 #include <TiledArray/type_traits.h>
 #include <type_traits>
+#include <TiledArray/fwd.h>
 
 namespace Eigen {
 
@@ -42,20 +43,6 @@ class aligned_allocator;
 namespace TiledArray {
 
 // Forward declarations
-class Range;
-class BlockRange;
-template <typename T, typename A = Eigen::aligned_allocator<T>>
-class Tensor;
-template <typename>
-class Tile;
-
-class Permutation;
-class BipartitePermutation;
-
-namespace symmetry {
-class Permutation;
-}
-
 namespace detail {
 
 // Forward declarations
