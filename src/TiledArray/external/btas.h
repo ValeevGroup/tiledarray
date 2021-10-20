@@ -49,6 +49,19 @@ struct range_traits<TiledArray::Range> {
   using ordinal_type = TiledArray::Range::ordinal_type;
   constexpr static const bool is_general_layout = false;
 };
+
+template <>
+class boxrange_iteration_order<TiledArray::Range> {
+ public:
+  enum {
+    row_major = boxrange_iteration_order<void>::row_major,
+    other = boxrange_iteration_order<void>::other,
+    column_major = boxrange_iteration_order<void>::column_major
+  };
+
+  static constexpr int value = row_major;
+};
+
 }  // namespace btas
 
 namespace TiledArray {

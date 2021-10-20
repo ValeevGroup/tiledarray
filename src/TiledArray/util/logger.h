@@ -41,7 +41,7 @@ struct TileOpsLogger : public Singleton<TileOpsLogger<T>> {
   using range_filter_t = std::function<bool(const Range&)>;
   using gemm_printer_t =
       std::function<void(std::ostream& os, const Range&, const T*, const Range&,
-                         const T*, const Range&, const T*)>;
+                         const T*, const Range&, const T*, std::size_t)>;
 
   // GEMM task logging
   bool gemm = false;

@@ -42,7 +42,7 @@ else()
 
     message("** Will clone Umpire from ${UMPIRE_URL}")
 
-    if (TA_ASSERT_POLICY EQUAL TA_ASSERT_IGNORE)
+    if (TA_ASSERT_POLICY STREQUAL TA_ASSERT_IGNORE)
         set(enable_umpire_asserts OFF)
     else()
         set(enable_umpire_asserts ON)
@@ -76,6 +76,15 @@ else()
         -DENABLE_LOGGING=OFF
         -DENABLE_ASSERTS=${enable_umpire_asserts}
         )
+
+    # caveat: on recent Ubuntu default libstdc++ provides filesystem, but if using older gcc (gcc-8) must link against
+    # libstdc++fs: https://bugs.launchpad.net/ubuntu/+source/gcc-8/+bug/1824721 ... skip the use of std::filesystem altogether with pre-9 gcc!!!
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
+        # disable by populating cache with compile test result variable
+        list(APPEND UMPIRE_CMAKE_ARGS
+             -DUMPIRE_ENABLE_FILESYSTEM=OFF)
+    endif()
+
     if (ENABLE_CUDA)
         list(APPEND UMPIRE_CMAKE_ARGS
                 -DENABLE_CUDA=ON
@@ -158,7 +167,7 @@ set_target_properties(
         INTERFACE_INCLUDE_DIRECTORIES
         "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src/umpire/tpl/camp/include>;$<BUILD_INTERFACE:${EXTERNAL_BUILD_DIR}/include>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/include>"
         INTERFACE_LINK_LIBRARIES
-        "$<BUILD_INTERFACE:${UMPIRE_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/lib/libumpire.${UMPIRE_DEFAULT_LIBRARY_SUFFIX}>"
+        "$<BUILD_INTERFACE:${UMPIRE_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_UMPIRE_INSTALL_DIR}/lib/libumpire${UMPIRE_DEFAULT_LIBRARY_SUFFIX}>"
         )
 
 install(TARGETS TiledArray_UMPIRE EXPORT tiledarray COMPONENT tiledarray)

@@ -40,9 +40,9 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 0dc805fd7f2dea5e56eff94ab1c44b2b2397edd7 . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag e540f265e1d16cc35b1b6726470160ed0046c530 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 34ef8e6d6c61098d44ca559a530b4096e40b9a01 .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag f9aa38e4f46c5ea6ca6bbceb945beae5230f9ad0 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
@@ -65,7 +65,7 @@ Compiling BTAS requires the following prerequisites:
 Optional prerequisites:
 - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 11 or later is required. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
   - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 0e8685bf82910bc7435835f846e88f1b39f47f09).
-  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag 5201a47a35e3844160dcbecd0916f8c96aa7dd07).
+  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f9640e0fa4245691cdd434e4f719ac5f7d455f82).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
   - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS (tag 88076f1706be083ead882f6ce0bfc6884a72fc03)
@@ -275,13 +275,22 @@ algebra in TA:
   BLAS++/LAPACK++ during the TA configuration. There are 2 mechanisms by which BLAS++/LAPACK++
   discover BLAS/LAPACK:
   - _the built-in custom discovery kit_; no options exist to provide any control
-  - standard CMake BLAS/LAPACK modules.
+  - standard CMake [BLAS](https://cmake.org/cmake/help/latest/module/FindBLAS.html)/[LAPACK](https://cmake.org/cmake/help/latest/module/FindLAPACK.html) modules.
   
   The latter is used if CMake cache variable `BLA_VENDOR` is specified:
   - `BLA_VENDOR` -- controls which vendor BLAS/LAPACK library will be sought
-  (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
-  by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
-  framework on MacOS use `-DBLA_VENDOR=Apple`.
+    (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
+    by default all possible vendor libraries will be considered. E.g., to force the use of the Accelerate
+    framework on MacOS use `-DBLA_VENDOR=Apple`.
+
+  Unfortunately, if the standard CMake modules discover BLAS/LAPACK,
+  BLAS++/LAPACK++ will not attempt to discover their name mangling convention.
+  To specify the name mangling to be assumed by BLAS++/LAPACK++ specify CMake cache variable `LINALG_MANGLING`:
+  - `LINALG_MANGLING` -- specifies the name mangling assumed by BLAS++/LAPACK++
+     when using BLAS/LAPACK. Valid values are:
+    - `lower`: function/variable `dgemm` will be mangled to `dgemm`,
+    - `UPPER`: function/variable `dgemm` will be mangled to `DGEMM`,
+    - `lower_`: function/variable `dgemm` will be mangled to `dgemm_` (default).
 
   More information can be found in the installation instructions for
   [BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
@@ -406,7 +415,8 @@ support may be added.
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.
 * `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile memory allocations in TA::Tensor.
-
+* `TA_UT_CTEST_TIMEOUT` -- The value (in seconds) of the timeout to use for running the TA unit tests via CTest when building the `check`/`check-tiledarray` targets. The default timeout is 1500s.
+ 
 # Build TiledArray
 
 ```

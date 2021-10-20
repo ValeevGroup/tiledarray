@@ -64,12 +64,14 @@ TiledArray/math/linalg/util.h
 TiledArray/math/linalg/cholesky.h
 TiledArray/math/linalg/heig.h
 TiledArray/math/linalg/lu.h
+TiledArray/math/linalg/qr.h
 TiledArray/math/linalg/svd.h
 TiledArray/math/linalg/scalapack/util.h
 TiledArray/math/linalg/scalapack/block_cyclic.h
 TiledArray/math/linalg/scalapack/cholesky.h
 TiledArray/math/linalg/scalapack/heig.h
 TiledArray/math/linalg/scalapack/lu.h
+TiledArray/math/linalg/scalapack/qr.h
 TiledArray/math/linalg/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
@@ -135,6 +137,7 @@ TiledArray/pmap/hash_pmap.h
 TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/pmap/round_robin_pmap.h
+TiledArray/pmap/user_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
 TiledArray/special/diagonal_array.h
@@ -176,10 +179,14 @@ TiledArray/util/annotation.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
 TiledArray/util/function.h
+TiledArray/util/index.h
+TiledArray/util/index.cpp
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/random.h
+TiledArray/util/range.h
 TiledArray/util/singleton.h
+TiledArray/util/string.h
 TiledArray/util/threads.h
 TiledArray/util/threads.cpp
 TiledArray/util/time.h

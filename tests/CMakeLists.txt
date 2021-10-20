@@ -120,7 +120,7 @@ if(CUDA_FOUND)
 endif()
 
 # if tiledarray library was compiled without exceptions, use TA header-only (see below)
-if (NOT (TA_ASSERT_POLICY EQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE)
+if (NOT (TA_ASSERT_POLICY STREQUAL TA_ASSERT_THROW) AND NOT CUDA_FOUND AND FALSE)
   add_ta_executable(${executable} "${ta_test_src_files}" "MADworld;${TILEDARRAY_PRIVATE_LINK_LIBRARIES}")
   target_compile_definitions(${executable} PRIVATE TILEDARRAY_HEADER_ONLY=1)
   if (LAPACK_INCLUDE_DIRS)
@@ -166,7 +166,7 @@ if(ENABLE_MPI)
       NAME tiledarray/unit/run-np-${p}
       COMMAND ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} ${p}
         ${MPIEXEC_PREFLAGS}
-        $<TARGET_FILE:${executable}> --log_level=warning --show-progress ${${executable}_np_${p}_args}
+        $<TARGET_FILE:${executable}> --log_level=unit_scope ${${executable}_np_${p}_args}
         ${MPIEXEC_POSTFLAGS}
       )
     set_tests_properties(tiledarray/unit/run-np-${p}

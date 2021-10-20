@@ -207,6 +207,34 @@ void lu_inv(Matrix<T>& A) {
   TA_LAPACK(getri, n, a, lda, ipiv.data());
 }
 
+template <bool QOnly, typename T>
+void householder_qr( Matrix<T> &V, Matrix<T> &R ) {
+  integer m = V.rows();
+  integer n = V.cols();
+  integer k = std::min(m,n);
+  integer ldv = V.rows(); // Col Major
+  T* v = V.data();
+  std::vector<T> tau(k);
+  lapack::geqrf( m, n, v, ldv, tau.data() );
+
+  // Extract R
+  if constexpr ( not QOnly ) {
+    // Resize R just in case
+    R.resize(k,n);
+    R.fill(0.);
+    // Extract Upper triangle into R
+    integer ldr = R.rows();
+    T* r = R.data();
+    lapack::lacpy( lapack::MatrixType::Upper, k, n, v, ldv, r, ldr );
+  }
+
+  // Explicitly form Q
+  // TODO: This is wrong for complex, but it doesn't look like R/C is caught 
+  //       anywhere else either...
+  lapack::orgqr( m, n, k, v, ldv, tau.data() );
+
+}
+
 #define TA_LAPACK_EXPLICIT(MATRIX, VECTOR)                       \
   template void cholesky(MATRIX&);                               \
   template void cholesky_linv(MATRIX&);                          \
@@ -216,7 +244,9 @@ void lu_inv(Matrix<T>& A) {
   template void heig(MATRIX&, MATRIX&, VECTOR&);                 \
   template void svd(Job,Job,MATRIX&, VECTOR&, MATRIX*, MATRIX*); \
   template void lu_solve(MATRIX&, MATRIX&);                      \
-  template void lu_inv(MATRIX&);
+  template void lu_inv(MATRIX&);                                 \
+  template void householder_qr<true>(MATRIX&,MATRIX&);           \
+  template void householder_qr<false>(MATRIX&,MATRIX&); 
 
 TA_LAPACK_EXPLICIT(Matrix<double>, std::vector<double>);
 TA_LAPACK_EXPLICIT(Matrix<float>, std::vector<float>);
