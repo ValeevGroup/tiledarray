@@ -25,41 +25,9 @@
 #include <TiledArray/math/blas.h>
 #include <TiledArray/math/lapack.h>
 #include <TiledArray/math/linalg/rank-local.h>
-
-template <class F, typename... Args>
-inline int ta_lapack_fortran_call(F f, Args... args) {
-  lapack_int info;
-  auto ptr = [](auto&& a) {
-    using T = std::remove_reference_t<decltype(a)>;
-    if constexpr (std::is_pointer_v<T>)
-      return a;
-    else
-      return &a;
-  };
-  f(ptr(args)..., &info);
-  return info;
-}
+#include <TiledArray/type_traits.h>
 
 #define TA_LAPACK_ERROR(F) throw std::runtime_error("lapack::" #F " failed")
-
-#define TA_LAPACK_FORTRAN_CALL(F, ARGS...) \
-  ((ta_lapack_fortran_call(F, ARGS) == 0) || (TA_LAPACK_ERROR(F), 0))
-
-/// \brief Invokes the Fortran LAPACK API
-
-/// \warning TA_LAPACK_FORTRAN(fn,args) can be called only from template
-/// context, with `T` defining the element type
-#define TA_LAPACK_FORTRAN(name, args...)                    \
-  {                                                         \
-    using numeric_type = T;                                 \
-    if constexpr (std::is_same_v<numeric_type, double>)     \
-      TA_LAPACK_FORTRAN_CALL(d##name, args);                \
-    else if constexpr (std::is_same_v<numeric_type, float>) \
-      TA_LAPACK_FORTRAN_CALL(s##name, args);                \
-    else                                                    \
-      std::abort();                                         \
-  }
-
 /// TA_LAPACK(fn,args) invoked lapack::fn directly and checks the return value
 #define TA_LAPACK(name, args...) \
   ((::lapack::name(args) == 0) || (TA_LAPACK_ERROR(name), 0))
@@ -113,19 +81,22 @@ void cholesky_lsolve(Op transpose, Matrix<T>& A, Matrix<T>& X) {
 }
 
 template <typename T>
-void heig(Matrix<T>& A, std::vector<T>& W) {
+void heig(Matrix<T>& A, std::vector<detail::real_type_t<T>>& W) {
   auto jobz = lapack::Job::Vec;
   auto uplo = lapack::Uplo::Lower;
   integer n = A.rows();
   T* a = A.data();
   integer lda = A.rows();
   W.resize(n);
-  T* w = W.data();
-  TA_LAPACK(syev, jobz, uplo, n, a, lda, w);
+  auto* w = W.data();
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    TA_LAPACK(heev, jobz, uplo, n, a, lda, w);
+  else
+    TA_LAPACK(syev, jobz, uplo, n, a, lda, w);
 }
 
 template <typename T>
-void heig(Matrix<T>& A, Matrix<T>& B, std::vector<T>& W) {
+void heig(Matrix<T>& A, Matrix<T>& B, std::vector<detail::real_type_t<T>>& W) {
   integer itype = 1;
   auto jobz = lapack::Job::Vec;
   auto uplo = lapack::Uplo::Lower;
@@ -135,12 +106,16 @@ void heig(Matrix<T>& A, Matrix<T>& B, std::vector<T>& W) {
   T* b = B.data();
   integer ldb = B.rows();
   W.resize(n);
-  T* w = W.data();
-  TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w);
+  auto* w = W.data();
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    TA_LAPACK(hegv, itype, jobz, uplo, n, a, lda, b, ldb, w);
+  else
+    TA_LAPACK(sygv, itype, jobz, uplo, n, a, lda, b, ldb, w);
 }
 
 template <typename T>
-void svd(Job jobu, Job jobvt, Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Matrix<T>* VT) {
+void svd(Job jobu, Job jobvt, Matrix<T>& A, std::vector<detail::real_type_t<T>>& S, 
+         Matrix<T>* U, Matrix<T>* VT) {
   integer m = A.rows();
   integer n = A.cols();
   integer k = std::min(m, n);
@@ -148,7 +123,7 @@ void svd(Job jobu, Job jobvt, Matrix<T>& A, std::vector<T>& S, Matrix<T>* U, Mat
   integer lda = A.rows();
 
   S.resize(k);
-  T* s = S.data();
+  auto* s = S.data();
 
   T* u  = nullptr;
   T* vt = nullptr;
@@ -231,7 +206,10 @@ void householder_qr( Matrix<T> &V, Matrix<T> &R ) {
   // Explicitly form Q
   // TODO: This is wrong for complex, but it doesn't look like R/C is caught 
   //       anywhere else either...
-  lapack::orgqr( m, n, k, v, ldv, tau.data() );
+  if constexpr (TiledArray::detail::is_complex_v<T>)
+    lapack::ungqr( m, n, k, v, ldv, tau.data() );
+  else
+    lapack::orgqr( m, n, k, v, ldv, tau.data() );
 
 }
 
@@ -250,5 +228,7 @@ void householder_qr( Matrix<T> &V, Matrix<T> &R ) {
 
 TA_LAPACK_EXPLICIT(Matrix<double>, std::vector<double>);
 TA_LAPACK_EXPLICIT(Matrix<float>, std::vector<float>);
+TA_LAPACK_EXPLICIT(Matrix<std::complex<double>>, std::vector<double>);
+TA_LAPACK_EXPLICIT(Matrix<std::complex<float>>, std::vector<float>);
 
 }  // namespace TiledArray::math::linalg::rank_local

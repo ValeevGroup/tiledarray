@@ -12,6 +12,15 @@
 
 namespace TiledArray::math::linalg::rank_local {
 
+namespace detail {
+  template <typename T>
+  struct real_type { using type = T; };
+  template <typename T>
+  struct real_type< std::complex<T> > { using type = T; };
+  template <typename T>
+  using real_type_t = typename real_type<T>::type;
+}
+
 using Job = ::lapack::Job;
 
 template <typename T, int Options = ::Eigen::ColMajor>
@@ -33,16 +42,18 @@ template <typename T>
 void cholesky_lsolve(Op transpose, Matrix<T> &A, Matrix<T> &X);
 
 template <typename T>
-void heig(Matrix<T> &A, std::vector<T> &W);
+void heig(Matrix<T> &A, std::vector<detail::real_type_t<T>> &W);
 
 template <typename T>
-void heig(Matrix<T> &A, Matrix<T> &B, std::vector<T> &W);
+void heig(Matrix<T> &A, Matrix<T> &B, std::vector<detail::real_type_t<T>> &W);
 
 template <typename T>
-void svd(Job jobu, Job jobvt, Matrix<T> &A, std::vector<T> &S, Matrix<T> *U, Matrix<T> *VT);
+void svd(Job jobu, Job jobvt, Matrix<T> &A, std::vector<detail::real_type_t<T>> &S, 
+         Matrix<T> *U, Matrix<T> *VT);
 
 template <typename T>
-void svd(Matrix<T> &A, std::vector<T> &S, Matrix<T> *U, Matrix<T> *VT) {
+void svd(Matrix<T> &A, std::vector<detail::real_type_t<T>> &S, 
+         Matrix<T> *U, Matrix<T> *VT) {
   svd( U  ? Job::SomeVec : Job::NoVec, 
        VT ? Job::SomeVec : Job::NoVec,
        A, S, U, VT );
