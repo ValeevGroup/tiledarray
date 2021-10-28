@@ -31,12 +31,12 @@ inline TA::TiledRange prepend_dim_to_trange(
     new_trange1_v.reserve(nblocks + 1);
     auto block_counter = 0;
     for(auto i = 0; i < num_avg_plus_one; ++i, block_counter += avg_block_size + 1){
-      new_trange1_v.push_back(block_counter);
+      new_trange1_v.emplace_back(block_counter);
     }
     for (auto i = num_avg_plus_one; i < nblocks; ++i, block_counter+= avg_block_size) {
-      new_trange1_v.push_back(block_counter);
+      new_trange1_v.emplace_back(block_counter);
     }
-    new_trange1_v.push_back(array_rank);
+    new_trange1_v.emplace_back(array_rank);
     new_trange1 = TA::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
   }
 
@@ -87,7 +87,8 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
 
   std::size_t ntiles_per_array = arrays[0].trange().tiles_range().volume();
   // precompute tile volumes for later repeated use
-  std::vector<size_t> tile_volumes(ntiles_per_array);
+  std::vector<size_t> tile_volumes();
+  tile_volumes.reserve(ntiles_per_array);
   {
     const auto& tiles_range = arrays[0].trange().tiles_range();
     for (auto&& tile_idx : tiles_range) {
