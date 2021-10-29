@@ -87,7 +87,7 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
 
   std::size_t ntiles_per_array = arrays[0].trange().tiles_range().volume();
   // precompute tile volumes for later repeated use
-  std::vector<size_t> tile_volumes();
+  std::vector<size_t> tile_volumes;
   tile_volumes.reserve(ntiles_per_array);
   {
     const auto& tiles_range = arrays[0].trange().tiles_range();
