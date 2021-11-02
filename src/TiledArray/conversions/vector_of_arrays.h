@@ -598,29 +598,35 @@ void split_contract_tilewise_fused_array(
   std::size_t split_ntilesL = split_trangeL.tiles_range().volume(),
               split_ntilesR = split_trangeR.tiles_range().volume();
   auto& shapeL = fused_arrayL.shape(),
-       shapeR = fused_arrayR.shape();
-
-  /// copy the data from tile
-  auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
-                      const size_t i_offset_in_tile) {
-    const auto split_tile_volume = range.volume();
-    return Tile(range,
-                fused_tile.data() + i_offset_in_tile * split_tile_volume);
-  };
+       &shapeR = fused_arrayR.shape();
 
   // constructs the rth array in the tile_idx tile of either the left or right fused array
-  auto construct_split_array = [&local_world](TA::DistArray<Tile, Policy>& fused_array,
-                                  TA::DistArray<Tile, Policy>& split_array,
+  auto construct_split_array =
+      [&local_world = static_cast<const madness::World&>(local_world),
+       &tile_range](const TA::DistArray<Tile, Policy>& fused_array,
+                    TA::DistArray<Tile, Policy>& split_array,
                                   std::size_t tile_idx,
                                   std::size_t split_ntiles){
-    for (std::size_t index : split_array.pmap()) {
+        /// copy the data from tile
+        auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
+                            const size_t i_offset_in_tile) {
+          const auto split_tile_volume = range.volume();
+          return Tile(range,
+                      fused_tile.data() + i_offset_in_tile * split_tile_volume);
+        };
+
+    for (std::size_t index : *split_array.pmap()) {
       std::size_t fused_array_index = tile_idx * split_ntiles + index;
       if (!fused_array.is_zero(fused_array_index)) {
+        auto tile = fused_array.find(fused_array_index);
+        auto range = split_array.trange().make_tile_range(index);
+        std::cout << tile.get().size() << std::endl;
+        std::cout << tile.get().range() << std::endl;
+        std::cout << split_array.trange().make_tile_range(index) << std::endl;
         for (std::size_t i = tile_range.first, tile_count = 0;
              i < tile_range.second; ++i, ++tile_count) {
           split_array.set(index, local_world.taskq.add(
-                               make_tile, split_array.trange().make_tile_range(index),
-                               fused_array.find(fused_array_index), tile_count));
+                               make_tile, range, tile, tile_count));
         }
       }
     }
@@ -632,15 +638,18 @@ void split_contract_tilewise_fused_array(
   auto split_arrays_size = split_arrays.size();
   auto ptr_split_arrays_end = (split_arrays.begin() + split_arrays_size);
   for (size_t i = tile_range.first; i < tile_range.second; ++i, ++ ptr_split_arrays_end) {
+    // make split_array shapes
     auto split_shapeL = detail::tilewise_slice_of_fused_shape(
         split_trangeL, shapeL, tile_idxL, split_ntilesL, tile_size),
          split_shapeR = detail::tilewise_slice_of_fused_shape(
              split_trangeR, shapeR, tile_idxR, split_ntilesR, tile_size);
-    // create split Array object
+
+    // create split Array objects and temporary array for contraction
     TA::DistArray<Tile, Policy> split_arrayL(local_world, split_trangeL
                                              ,split_shapeL),
         split_arrayR(local_world, split_trangeR, split_shapeR),
         contraced_array;
+    std::cout << split_arrayL.trange() << std::endl;
     construct_split_array(fused_arrayL, split_arrayL, tile_idxL, split_ntilesL);
     construct_split_array(fused_arrayR, split_arrayR, tile_idxR, split_ntilesR);
     contraced_array(contract_vars_final) = split_arrayL(contract_vars_L) * split_arrayR(contract_vars_R);
