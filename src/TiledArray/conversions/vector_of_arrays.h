@@ -89,12 +89,12 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
   // precompute tile volumes for later repeated use
   std::vector<size_t> tile_volumes;
   tile_volumes.reserve(ntiles_per_array);
+  auto tile_volumes_ptr = tile_volumes.begin();
   {
     const auto& tiles_range = arrays[0].trange().tiles_range();
     for (auto&& tile_idx : tiles_range) {
       const auto tile_ord = tiles_range.ordinal(tile_idx);
-      tile_volumes[tile_ord] =
-              arrays[0].trange().make_tile_range(tile_idx).volume();
+      tile_volumes.emplace(tile_volumes_ptr + tile_ord, arrays[0].trange().make_tile_range(tile_idx).volume());
     }
   }
 
@@ -555,6 +555,98 @@ void split_insert_tilewise_fused_array(
       }
     }
   }
+  return;
+}
+
+/// @brief extracts a subarray of a fused array created with
+/// fuse_vector_of_arrays and creates the array in @c local_world.
+
+/// @param[in] local_world The World object where the @i -th subarray is
+///             created
+/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
+/// @param[in] i the index of the subarray to be extracted
+///            (i.e. the index of the corresponding *element* index of the
+///            leading dimension)
+/// @param[in] tile_of_i tile range information for tile i
+/// @param[in] split_trange TiledRange of the split Array object
+/// @return the @c i -th subarray
+/// @sa detail::tilewise_slice_of_fused_shape
+template <typename Tile, typename Policy>
+void split_contract_tilewise_fused_array(
+    madness::World& local_world,
+    const TA::DistArray<Tile, Policy>& fused_arrayL,
+    const TA::DistArray<Tile, Policy>& fused_arrayR,
+    std::size_t tile_idxL, std::size_t tile_idxR,
+    std::vector<TA::DistArray<Tile, Policy>>& split_arrays,
+    const TA::TiledRange& split_trangeL,const TA::TiledRange& split_trangeR,
+    const std::string& contract_vars_L, const std::string& contract_vars_R,
+    const std::string& contract_vars_final
+    ) {
+  // check to see that the number of tiles for the rank dimension are the same for both fused_arrays
+  //TA_ASSERT(fused_arrayL.trange().dim(0).extent() == fused_arrayR.trange().dim(0).extent());
+  // Check to see if the tile_idx's are in the fused arrays
+  TA_ASSERT(tile_idxL < fused_arrayL.trange().dim(0).extent());
+  TA_ASSERT(tile_idxR < fused_arrayR.trange().dim(0).extent());
+  auto arrays_size = split_arrays.size();
+
+  // calculate the number of elements in the 0th dimension are in this tile
+  auto tile_range = fused_arrayL.trange().dim(0).tile(tile_idxL);
+  // make sure that the size of the tile in the left array is the same as in
+  // the right array.
+  TA_ASSERT(tile_range == fused_arrayR.trange().dim(0).tile(tile_idxR));
+  auto tile_size = tile_range.second - tile_range.first;
+  std::size_t split_ntilesL = split_trangeL.tiles_range().volume(),
+              split_ntilesR = split_trangeR.tiles_range().volume();
+  auto& shapeL = fused_arrayL.shape(),
+       shapeR = fused_arrayR.shape();
+
+  /// copy the data from tile
+  auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
+                      const size_t i_offset_in_tile) {
+    const auto split_tile_volume = range.volume();
+    return Tile(range,
+                fused_tile.data() + i_offset_in_tile * split_tile_volume);
+  };
+
+  // constructs the rth array in the tile_idx tile of either the left or right fused array
+  auto construct_split_array = [&local_world](TA::DistArray<Tile, Policy>& fused_array,
+                                  TA::DistArray<Tile, Policy>& split_array,
+                                  std::size_t tile_idx,
+                                  std::size_t split_ntiles){
+    for (std::size_t index : split_array.pmap()) {
+      std::size_t fused_array_index = tile_idx * split_ntiles + index;
+      if (!fused_array.is_zero(fused_array_index)) {
+        for (std::size_t i = tile_range.first, tile_count = 0;
+             i < tile_range.second; ++i, ++tile_count) {
+          split_array.set(index, local_world.taskq.add(
+                               make_tile, split_array.trange().make_tile_range(index),
+                               fused_array.find(fused_array_index), tile_count));
+        }
+      }
+    }
+    return;
+  };
+  // I am going to walk through all the rank index (i.e. the first mode)
+  // make a split array for the left and the right hand fused array
+  // and then contract them
+  auto split_arrays_size = split_arrays.size();
+  auto ptr_split_arrays_end = (split_arrays.begin() + split_arrays_size);
+  for (size_t i = tile_range.first; i < tile_range.second; ++i, ++ ptr_split_arrays_end) {
+    auto split_shapeL = detail::tilewise_slice_of_fused_shape(
+        split_trangeL, shapeL, tile_idxL, split_ntilesL, tile_size),
+         split_shapeR = detail::tilewise_slice_of_fused_shape(
+             split_trangeR, shapeR, tile_idxR, split_ntilesR, tile_size);
+    // create split Array object
+    TA::DistArray<Tile, Policy> split_arrayL(local_world, split_trangeL
+                                             ,split_shapeL),
+        split_arrayR(local_world, split_trangeR, split_shapeR),
+        contraced_array;
+    construct_split_array(fused_arrayL, split_arrayL, tile_idxL, split_ntilesL);
+    construct_split_array(fused_arrayR, split_arrayR, tile_idxR, split_ntilesR);
+    contraced_array(contract_vars_final) = split_arrayL(contract_vars_L) * split_arrayR(contract_vars_R);
+    split_arrays.insert(ptr_split_arrays_end, contraced_array);
+  }
+
   return;
 }
 }  // namespace TiledArray
