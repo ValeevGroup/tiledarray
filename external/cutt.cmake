@@ -23,9 +23,9 @@ else()
     enable_language(C)
 
     # set source and build path for cuTT in the TiledArray project
-    set(EXTERNAL_SOURCE_DIR   ${CMAKE_BINARY_DIR}/_deps/cutt-src)
+    set(EXTERNAL_SOURCE_DIR   ${FETCHCONTENT_BASE_DIR}/cutt-src)
     # cutt only supports in source build
-    set(EXTERNAL_BUILD_DIR  ${CMAKE_BINARY_DIR}/_deps/cutt-build)
+    set(EXTERNAL_BUILD_DIR  ${FETCHCONTENT_BASE_DIR}/cutt-build)
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
     if (NOT CUTT_URL)
@@ -92,8 +92,8 @@ else()
 
     ExternalProject_Add(cutt
             PREFIX ${CMAKE_INSTALL_PREFIX}
-            STAMP_DIR ${CMAKE_BINARY_DIR}/_deps/cutt-ep-artifacts
-            TMP_DIR ${CMAKE_BINARY_DIR}/_deps/cutt-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
+            STAMP_DIR ${FETCHCONTENT_BASE_DIR}/cutt-ep-artifacts
+            TMP_DIR ${FETCHCONTENT_BASE_DIR}/cutt-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
             GIT_REPOSITORY ${CUTT_URL}

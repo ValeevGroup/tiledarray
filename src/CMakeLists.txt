@@ -64,12 +64,14 @@ TiledArray/math/linalg/util.h
 TiledArray/math/linalg/cholesky.h
 TiledArray/math/linalg/heig.h
 TiledArray/math/linalg/lu.h
+TiledArray/math/linalg/qr.h
 TiledArray/math/linalg/svd.h
 TiledArray/math/linalg/scalapack/util.h
 TiledArray/math/linalg/scalapack/block_cyclic.h
 TiledArray/math/linalg/scalapack/cholesky.h
 TiledArray/math/linalg/scalapack/heig.h
 TiledArray/math/linalg/scalapack/lu.h
+TiledArray/math/linalg/scalapack/qr.h
 TiledArray/math/linalg/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h

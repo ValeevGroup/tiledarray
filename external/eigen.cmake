@@ -93,8 +93,8 @@ else()
   include(ExternalProject)
 
   # Set source and build path for Eigen3 in the TiledArray Project
-  set(EXTERNAL_SOURCE_DIR   ${CMAKE_BINARY_DIR}/_deps/eigen-src)
-  set(EXTERNAL_BUILD_DIR  ${CMAKE_BINARY_DIR}/_deps/eigen-build)
+  set(EXTERNAL_SOURCE_DIR   ${FETCHCONTENT_BASE_DIR}/eigen-src)
+  set(EXTERNAL_BUILD_DIR  ${FETCHCONTENT_BASE_DIR}/eigen-build)
 
   message("** Will build Eigen from ${EIGEN3_URL}")
 
