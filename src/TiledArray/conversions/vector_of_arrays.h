@@ -693,7 +693,7 @@ double split_contract_dot_tilewise_fused_array(
   // calculate the number of elements in the 0th dimension are in this tile
   auto tile_range = fused_arrayL.trange().dim(0).tile(tile_idxL);
   auto tile_rangeR = fused_arrayR.trange().dim(0).tile(tile_idxR);
-  auto tile_range_dot = dot_array.trange().dim(0).tile(tile_idxR);
+  auto tile_range_dot = dot_array.trange().dim(0).tile(tile_idx_dot);
 
   auto tile_size = tile_range.second - tile_range.first;
   // make sure that the size of the tile in the left array is the same as in
