@@ -558,19 +558,29 @@ void split_insert_tilewise_fused_array(
   return;
 }
 
-/// @brief extracts a subarray of a fused array created with
-/// fuse_vector_of_arrays and creates the array in @c local_world.
+/// @brief extracts a subarray of two fused arrays created with
+/// fuse_vector_of_arrays, contracts the arrays and returns a
+/// vector of arrays with the result.
 
 /// @param[in] local_world The World object where the @i -th subarray is
 ///             created
-/// @param[in] fused_array a DistArray created with fuse_vector_of_arrays
-/// @param[in] i the index of the subarray to be extracted
+/// @param[in] fused_arrayL a DistArray created with fuse_vector_of_arrays; LHS of the contraction
+/// @param[in] fused_arrayR a DistArray created with fuse_vector_of_arrays; RHS of the contraction
+/// @param[in] tile_idxL the index of the subarray to be extracted from @c fused_arrayL
 ///            (i.e. the index of the corresponding *element* index of the
-///            leading dimension)
+///            leading dimension
+/// @param[in] tile_idxR the index of the subarray to be extracted from @c fused_arrayR
+/////            (i.e. the index of the corresponding *element* index of the
+/////            leading dimension))
+/// @param[in,out] split_arrays in: a vector of split arrays, can be empty or have things in it
+/// out: the split DistArrays which are a result of the contraction of @c fused_arrayL and @c fused_arrayR
 /// @param[in] tile_of_i tile range information for tile i
-/// @param[in] split_trange TiledRange of the split Array object
-/// @return the @c i -th subarray
-/// @sa detail::tilewise_slice_of_fused_shape
+/// @param[in] split_trangeL TiledRange of the split Array object from @c fused_arrayL
+/// @param[in] split_trangeR TiledRange of the split Array object from @c fused_arrayR
+/// @param[in] contract_vars_L variable list for the LHS of the contraction
+/// @param[in] contract_vars_R variable list for the RHS of the contraction
+/// @param[in] contract_vars_final variable list for the result of the contraction
+
 template <typename Tile, typename Policy>
 void split_contract_tilewise_fused_array(
     madness::World& local_world,
