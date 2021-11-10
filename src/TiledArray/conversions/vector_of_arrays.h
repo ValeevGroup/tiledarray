@@ -662,7 +662,8 @@ void split_contract_tilewise_fused_array(
 
     // contract the arrays of the tiles and insert them into the split arrays
     mult_array(contract_vars_final) = scal_mult * split_arrayL(contract_vars_L) * split_arrayR(contract_vars_R);
-    split_arrays.insert(ptr_split_arrays, mult_array);
+    //split_arrays.insert(ptr_split_arrays, mult_array);
+    split_arrays.emplace_back(mult_array);
   }
 
   return;
