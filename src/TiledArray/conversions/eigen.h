@@ -399,7 +399,7 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 /// \param trange The tiled range of the new array
 /// \param matrix The Eigen matrix to be copied
 /// \param replicated if true, the result will be replicated
-/// [default = true].
+///        [default = false].
 /// \param pmap the process map object [default=null]; initialized to the
 /// default if \p replicated is false, or a replicated pmap if \p replicated
 /// is true; ignored if \p replicated is true and \c world.size()>1
@@ -412,13 +412,14 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
                  std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   typedef typename A::index1_type size_type;
   // Check that trange matches the dimensions of other
-  const auto rank  = trange.tiles_range().rank();
+  const auto rank = trange.tiles_range().rank();
 
-  TA_ASSERT(rank == 1 || rank == 2 && 
-      "TiledArray::eigen_to_array(): The number of dimensions in "
-      "trange must match that of the Eigen matrix.");
+  TA_ASSERT(rank == 1 ||
+            rank == 2 &&
+                "TiledArray::eigen_to_array(): The number of dimensions in "
+                "trange must match that of the Eigen matrix.");
 
-  if(rank == 2) {
+  if (rank == 2) {
     TA_ASSERT(
         trange.elements_range().extent(0) == size_type(matrix.rows()) &&
         "TiledArray::eigen_to_array(): The number of rows in trange is not "
@@ -433,7 +434,7 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
         "TiledArray::eigen_to_array(): The size of trange must be equal to the "
         "matrix size.");
   }
-    
+
   // Create a new tensor
   if (replicated && (world.size() > 1))
     pmap = std::static_pointer_cast<typename A::pmap_interface>(

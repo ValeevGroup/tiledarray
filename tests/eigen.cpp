@@ -155,8 +155,10 @@ BOOST_AUTO_TEST_CASE(tensor_to_submatrix) {
 }
 
 BOOST_AUTO_TEST_CASE(matrix_to_array) {
-  // Fill the matrix with random data
+  // Fill the matrix with random data and replicate across the world
   matrix = decltype(matrix)::Random(matrix.rows(), matrix.cols());
+  GlobalFixture::world->gop.broadcast(matrix.data(),
+                                      matrix.rows() * matrix.cols(), 0);
 
   // Copy matrix to array
   BOOST_CHECK_NO_THROW(
@@ -175,8 +177,9 @@ BOOST_AUTO_TEST_CASE(matrix_to_array) {
 }
 
 BOOST_AUTO_TEST_CASE(vector_to_array) {
-  // Fill the vector with random data
+  // Fill the vector with random data and replicate across the world
   vector = Eigen::VectorXi::Random(vector.size());
+  GlobalFixture::world->gop.broadcast(vector.data(), vector.size(), 0);
 
   // Convert the vector to an array
   BOOST_CHECK_NO_THROW((array1 = eigen_to_array<TArrayI>(*GlobalFixture::world,
