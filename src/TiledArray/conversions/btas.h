@@ -301,11 +301,10 @@ DistArray_ btas_tensor_to_array(World& world,
 /// \return BTAS tensor object containing the data of \c src , if my rank equals
 ///         \c target_rank or \c target_rank==-1 ,
 ///         default-initialized BTAS tensor otherwise.
-template <typename Tile, typename Policy,
-          typename Storage = std::vector<typename Tile::value_type>>
-btas::Tensor<typename Tile::value_type, btas::DEFAULT::range, Storage>
-array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src,
-                     int target_rank = -1) {
+template <typename Tile, typename Policy, typename Range_ = TiledArray::Range,
+          typename Storage_ = btas::DEFAULT::storage<typename Tile::value_type>>
+btas::Tensor<typename Tile::value_type, Range_, Storage_> array_to_btas_tensor(
+    const TiledArray::DistArray<Tile, Policy>& src, int target_rank = -1) {
   // Test preconditions
   if (target_rank == -1 && !src.pmap()->is_replicated())
     TA_ASSERT(
@@ -316,7 +315,7 @@ array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src,
 
   using result_type =
       btas::Tensor<typename TiledArray::DistArray<Tile, Policy>::element_type,
-                   btas::DEFAULT::range, Storage>;
+                   Range_, Storage_>;
   using result_range_type = typename result_type::range_type;
 
   // Construct the result
