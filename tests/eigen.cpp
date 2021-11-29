@@ -34,7 +34,8 @@ struct EigenFixture : public TiledRangeFixture {
                dims[1].elements_range().second),
         rmatrix(dims[0].elements_range().second,
                 dims[1].elements_range().second),
-        vector(dims[0].elements_range().second) {}
+        vector(dims[0].elements_range().second),
+        tensor(extents) {}
 
   TiledRange trange;
   TiledRange trange1;
@@ -43,6 +44,7 @@ struct EigenFixture : public TiledRangeFixture {
   Eigen::MatrixXi matrix;
   EigenMatrixXi rmatrix;
   Eigen::VectorXi vector;
+  Eigen::Tensor<int, GlobalFixture::dim> tensor;
 };
 
 BOOST_FIXTURE_TEST_SUITE(eigen_suite, EigenFixture)
@@ -157,8 +159,7 @@ BOOST_AUTO_TEST_CASE(tensor_to_submatrix) {
 BOOST_AUTO_TEST_CASE(matrix_to_array) {
   // Fill the matrix with random data and replicate across the world
   matrix = decltype(matrix)::Random(matrix.rows(), matrix.cols());
-  GlobalFixture::world->gop.broadcast(matrix.data(),
-                                      matrix.rows() * matrix.cols(), 0);
+  GlobalFixture::world->gop.broadcast_serializable(matrix, 0);
 
   // Copy matrix to array
   BOOST_CHECK_NO_THROW(
@@ -179,7 +180,7 @@ BOOST_AUTO_TEST_CASE(matrix_to_array) {
 BOOST_AUTO_TEST_CASE(vector_to_array) {
   // Fill the vector with random data and replicate across the world
   vector = Eigen::VectorXi::Random(vector.size());
-  GlobalFixture::world->gop.broadcast(vector.data(), vector.size(), 0);
+  GlobalFixture::world->gop.broadcast_serializable(vector, 0);
 
   // Convert the vector to an array
   BOOST_CHECK_NO_THROW((array1 = eigen_to_array<TArrayI>(*GlobalFixture::world,
@@ -193,6 +194,21 @@ BOOST_AUTO_TEST_CASE(vector_to_array) {
          tile_it != tile.get().range().end(); ++tile_it) {
       BOOST_CHECK_EQUAL(tile.get()[*tile_it], vector((*tile_it)[0]));
     }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(tensor_to_array) {
+  // Fill tensor with random data and replicate across the world
+  tensor.setRandom();
+  GlobalFixture::world->gop.broadcast_serializable(tensor, 0);
+
+  // test serialization if have more than 1 rank
+  if (GlobalFixture::world->size() > 1) {
+    decltype(tensor) tensor_copy;
+    if (GlobalFixture::world->rank() == 1) tensor_copy = tensor;
+    GlobalFixture::world->gop.broadcast_serializable(tensor_copy, 1);
+    Eigen::Tensor<bool, 0> eq = (tensor == tensor_copy).all();
+    BOOST_CHECK(eq() == true);
   }
 }
 
