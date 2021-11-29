@@ -59,11 +59,12 @@ typedef Eigen::Matrix<std::complex<float>, 1, Eigen::Dynamic> EigenVectorXcf;
 typedef Eigen::Matrix<int, Eigen::Dynamic, 1> EigenVectorXi;
 typedef Eigen::Matrix<long, Eigen::Dynamic, 1> EigenVectorXl;
 
-/// Construct a const Eigen::Map object for a given Tensor object
+/// Construct a const 2-d Eigen::Map object for a given Tensor object
 
-/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
-/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
-/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely,
+///         \c TiledArray::detail::is_contiguous_tensor_v<T> must be true
+/// \tparam Storage the tensor layout, either Eigen::RowMajor (default) or
+///         Eigen::ColMajor
 /// \param tensor The tensor object, laid out according to Storage
 /// \param m The number of rows in the result matrix
 /// \param n The number of columns in the result matrix
@@ -82,11 +83,12 @@ eigen_map(const T& tensor, const std::size_t m, const std::size_t n) {
                     Eigen::AutoAlign>(tensor.data(), m, n);
 }
 
-/// Construct an Eigen::Map object for a given Tensor object
+/// Construct a 2-d Eigen::Map object for a given Tensor object
 
-/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
-/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
-/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely,
+///         \c TiledArray::detail::is_contiguous_tensor_v<T> must be true
+/// \tparam Storage the tensor layout, either Eigen::RowMajor (default) or
+///         Eigen::ColMajor
 /// \param tensor The tensor object, laid out according to Storage
 /// \param m The number of rows in the result matrix
 /// \param n The number of columns in the result matrix
@@ -105,13 +107,14 @@ eigen_map(T& tensor, const std::size_t m, const std::size_t n) {
                     Eigen::AutoAlign>(tensor.data(), m, n);
 }
 
-/// Construct a const Eigen::Map object for a given Tensor object
+/// Construct a const 1-d Eigen::Map object for a given Tensor object
 
-/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
-/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \param tensor The
-/// tensor object \param n The number of elements in the result matrix \return
-/// An n element Eigen vector map for \c tensor \throw TiledArray::Exception
-/// When n is not equal to \c tensor size
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely,
+///         \c TiledArray::detail::is_contiguous_tensor_v<T> must be true
+/// \param tensor The tensor object
+/// \param n The number of elements in the result matrix
+/// \return An n element Eigen vector map for \c tensor
+/// \throw TiledArray::Exception When n is not equal to \c tensor size
 template <typename T,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<
@@ -125,7 +128,7 @@ eigen_map(const T& tensor, const std::size_t n) {
       Eigen::AutoAlign>(tensor.data(), n);
 }
 
-/// Construct an Eigen::Map object for a given Tensor object
+/// Construct a 1-d Eigen::Map object for a given Tensor object
 
 /// \tparam T A tensor type, e.g. TiledArray::Tensor
 /// \param tensor The tensor object
@@ -143,12 +146,13 @@ eigen_map(T& tensor, const std::size_t n) {
                     Eigen::AutoAlign>(tensor.data(), n);
 }
 
-/// Construct a const Eigen::Map object for a given Tensor object
+/// Construct a const 2-d Eigen::Map object for a given Tensor object
 
 /// The dimensions of the result tensor are extracted from the tensor itself
-/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
-/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
-/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely,
+///         \c TiledArray::detail::is_contiguous_tensor_v<T> must be true
+/// \tparam Storage the tensor layout, either Eigen::RowMajor (default) or
+///         Eigen::ColMajor
 /// \param tensor The tensor object, laid out according to Storage
 /// \return An Eigen matrix map for \c tensor
 /// \throw TiledArray::Exception When \c tensor dimensions are not equal to 2
@@ -167,7 +171,7 @@ eigen_map(const T& tensor) {
       (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
 }
 
-/// Construct an Eigen::Map object for a given Tensor object
+/// Construct a 2-d Eigen::Map object for a given Tensor object
 
 /// The dimensions of the result tensor are extracted from the tensor itself
 /// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c

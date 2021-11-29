@@ -115,7 +115,7 @@ namespace detail {
 /// TiledArray::DistArray
 
 /// \tparam DistArray_ a TiledArray::DistArray type
-/// \tparam TArgs the type pack in btas::Tensor<TArgs...> type
+/// \tparam BTAS_Tensor_ a btas::Tensor type
 /// \param src The btas::Tensor object whose block will be copied
 /// \param dst The array that will hold the result
 /// \param i The index of the tile to be copied
@@ -134,8 +134,8 @@ void counted_btas_subtensor_to_tensor(const BTAS_Tensor_* src, DistArray_* dst,
 
 /// Task function for assigning a tensor to an Eigen submatrix
 
-/// \tparam Tensor_ a TiledArray::Tensor type
-/// \tparam TArgs the type pack in btas::Tensor<TArgs...> type
+/// \tparam TA_Tensor_ a TiledArray::Tensor type
+/// \tparam BTAS_Tensor_ a btas::Tensor type
 /// \param src The source tensor
 /// \param dst The destination tensor
 /// \param counter The task counter
@@ -276,7 +276,9 @@ DistArray_ btas_tensor_to_array(World& world,
 /// object. The copy operation is done in parallel, and this function will block
 /// until all elements of \c src have been copied into the result array tiles.
 /// The size of \c src.world().size() must be equal to 1 or \c src must be a
-/// replicated TiledArray::DistArray. Usage: \code TiledArray::TArrayD
+/// replicated TiledArray::DistArray. Usage:
+/// \code
+/// TiledArray::TArrayD
 /// array(world, trange);
 /// // Set tiles of array ...
 ///
@@ -284,10 +286,14 @@ DistArray_ btas_tensor_to_array(World& world,
 /// \endcode
 /// \tparam Tile the tile type of \c src
 /// \tparam Policy the policy type of \c src
+/// \tparam Range_ the range type of the result (either, btas::RangeNd or
+///         TiledArray::Range)
+/// \tparam Storage_ the storage type of the result
 /// \param[in] src The TiledArray::DistArray<Tile,Policy> object whose contents
 /// will be copied to the result. \return A \c btas::Tensor object that is a
-/// copy of \c src \throw TiledArray::Exception When world size is greater than
-/// 1 and \c src is not replicated
+/// copy of \c src
+/// \throw TiledArray::Exception When world size is greater than
+///        1 and \c src is not replicated
 /// \param[in] target_rank the rank on which to create the BTAS tensor
 ///            containing the data of \c src ; if \c target_rank=-1 then
 ///            create the BTAS tensor on every rank (this requires
