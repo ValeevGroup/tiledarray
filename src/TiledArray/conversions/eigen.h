@@ -781,7 +781,7 @@ inline void tensor_to_eigen_subtensor(
   auto dst_block =
       dst.slice(to_array(src_range.lobound()), to_array(src_range.extent()));
   auto src_eigen_map = Eigen::TensorMap<
-      const Eigen::Tensor<T, NumIndices_, Eigen::RowMajor, IndexType_>>(
+      Eigen::Tensor<const T, NumIndices_, Eigen::RowMajor, IndexType_>>(
       src.data(), to_array(src_range.extent()));
   if constexpr (static_cast<int>(std::decay_t<decltype(dst)>::Layout) ==
                 static_cast<int>(Eigen::ColMajor))
