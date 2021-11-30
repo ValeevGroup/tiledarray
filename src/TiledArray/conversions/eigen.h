@@ -418,10 +418,9 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
   // Check that trange matches the dimensions of other
   const auto rank = trange.tiles_range().rank();
 
-  TA_ASSERT(rank == 1 ||
-            rank == 2 &&
-                "TiledArray::eigen_to_array(): The number of dimensions in "
-                "trange must match that of the Eigen matrix.");
+  TA_ASSERT((rank == 1 || rank == 2) &&
+            "TiledArray::eigen_to_array(): The number of dimensions in "
+            "trange must match that of the Eigen matrix.");
 
   if (rank == 2) {
     TA_ASSERT(
@@ -506,10 +505,9 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
   const auto rank = array.trange().tiles_range().rank();
 
   // Check that the array will fit in a matrix or vector
-  TA_ASSERT((rank == 2u) ||
-            (rank == 1u) &&
-                "TiledArray::array_to_eigen(): The array dimensions must be "
-                "equal to 1 or 2.");
+  TA_ASSERT(((rank == 2u) || (rank == 1u)) &&
+            "TiledArray::array_to_eigen(): The array dimensions must be "
+            "equal to 1 or 2.");
 
   // Check that this is not a distributed computing environment or that the
   // array is replicated
@@ -720,7 +718,7 @@ inline void eigen_subtensor_to_tensor(
     return result;
   };
 
-  auto reverse_extent_indices = []() {
+  [[maybe_unused]] auto reverse_extent_indices = []() {
     std::array<IndexType_, NumIndices_> result;
     std::iota(result.rbegin(), result.rend(), 0);
     return result;
@@ -732,7 +730,8 @@ inline void eigen_subtensor_to_tensor(
   auto dst_eigen_map = Eigen::TensorMap<
       Eigen::Tensor<T, NumIndices_, Eigen::RowMajor, IndexType_>>(
       dst.data(), to_array(dst_range.extent()));
-  if constexpr (std::decay_t<decltype(src)>::Layout == Eigen::ColMajor)
+  if constexpr (static_cast<int>(std::decay_t<decltype(src)>::Layout) ==
+                static_cast<int>(Eigen::ColMajor))
     dst_eigen_map = src_block.swap_layout().shuffle(reverse_extent_indices());
   else
     dst_eigen_map = src_block;
@@ -772,7 +771,7 @@ inline void tensor_to_eigen_subtensor(
     return result;
   };
 
-  auto reverse_extent_indices = []() {
+  [[maybe_unused]] auto reverse_extent_indices = []() {
     std::array<IndexType_, NumIndices_> result;
     std::iota(result.rbegin(), result.rend(), 0);
     return result;
@@ -784,7 +783,8 @@ inline void tensor_to_eigen_subtensor(
   auto src_eigen_map = Eigen::TensorMap<
       const Eigen::Tensor<T, NumIndices_, Eigen::RowMajor, IndexType_>>(
       src.data(), to_array(src_range.extent()));
-  if constexpr (std::decay_t<decltype(dst)>::Layout == Eigen::ColMajor)
+  if constexpr (static_cast<int>(std::decay_t<decltype(dst)>::Layout) ==
+                static_cast<int>(Eigen::ColMajor))
     dst_block = src_eigen_map.swap_layout().shuffle(reverse_extent_indices());
   else
     dst_block = src_eigen_map;
