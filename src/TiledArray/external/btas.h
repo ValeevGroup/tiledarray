@@ -109,18 +109,18 @@ inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
                     r2.extent_data());
 }
 
-template <typename T, typename Storage>
-decltype(auto) make_ti(const btas::Tensor<T, TiledArray::Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<
-      const T, TiledArray::Range, btas::Tensor<T, TiledArray::Range, Storage>>(
-      arg.range(), arg.data());
+template <typename T, typename Range, typename Storage>
+decltype(auto) make_ti(const btas::Tensor<T, Range, Storage>& arg) {
+  return TiledArray::detail::TensorInterface<const T, TiledArray::Range,
+                                             btas::Tensor<T, Range, Storage>>(
+      TiledArray::detail::make_ta_range(arg.range()), arg.data());
 }
 
-template <typename T, typename Storage>
-decltype(auto) make_ti(btas::Tensor<T, TiledArray::Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<
-      T, TiledArray::Range, btas::Tensor<T, TiledArray::Range, Storage>>(
-      arg.range(), arg.data());
+template <typename T, typename Range, typename Storage>
+decltype(auto) make_ti(btas::Tensor<T, Range, Storage>& arg) {
+  return TiledArray::detail::TensorInterface<T, TiledArray::Range,
+                                             btas::Tensor<T, Range, Storage>>(
+      TiledArray::detail::make_ta_range(arg.range()), arg.data());
 }
 
 template <typename... Args>
@@ -852,7 +852,9 @@ struct Cast<TiledArray::Tensor<T, Allocator>,
   auto operator()(const btas::Tensor<T, Range_, Storage>& arg) const {
     TiledArray::Tensor<T, Allocator> result(detail::make_ta_range(arg.range()));
     using std::begin;
-    std::copy(btas::cbegin(arg), btas::cend(arg), begin(result));
+    using std::cbegin;
+    using std::cend;
+    std::copy(cbegin(arg), cend(arg), begin(result));
     return result;
   }
 };

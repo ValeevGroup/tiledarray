@@ -731,7 +731,7 @@ class SparseShape {
     std::shared_ptr<vector_type> size_vectors(
         new vector_type[rank], std::default_delete<vector_type[]>());
 
-    int d = 0;
+    unsigned int d = 0;
     using std::begin;
     using std::end;
     auto lower_it = begin(lower_bound);
@@ -772,7 +772,7 @@ class SparseShape {
     std::shared_ptr<vector_type> size_vectors(
         new vector_type[rank], std::default_delete<vector_type[]>());
 
-    int d = 0;
+    unsigned int d = 0;
     for (auto&& bound_d : bounds) {
       // Get the new range size
       const auto lower_d = detail::at(bound_d, 0);
@@ -1566,8 +1566,8 @@ class SparseShape {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(const Archive& ar) {
     ar& tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();

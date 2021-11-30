@@ -115,7 +115,7 @@ namespace detail {
 /// TiledArray::DistArray
 
 /// \tparam DistArray_ a TiledArray::DistArray type
-/// \tparam TArgs the type pack in btas::Tensor<TArgs...> type
+/// \tparam BTAS_Tensor_ a btas::Tensor type
 /// \param src The btas::Tensor object whose block will be copied
 /// \param dst The array that will hold the result
 /// \param i The index of the tile to be copied
@@ -124,7 +124,7 @@ namespace detail {
 /// counter.
 template <typename DistArray_, typename BTAS_Tensor_>
 void counted_btas_subtensor_to_tensor(const BTAS_Tensor_* src, DistArray_* dst,
-                                      const typename DistArray_::ordinal_type i,
+                                      const typename Range::index_type i,
                                       madness::AtomicInt* counter) {
   typename DistArray_::value_type tensor(dst->trange().make_tile_range(i));
   btas_subtensor_to_tensor(*src, tensor);
@@ -134,8 +134,8 @@ void counted_btas_subtensor_to_tensor(const BTAS_Tensor_* src, DistArray_* dst,
 
 /// Task function for assigning a tensor to an Eigen submatrix
 
-/// \tparam Tensor_ a TiledArray::Tensor type
-/// \tparam TArgs the type pack in btas::Tensor<TArgs...> type
+/// \tparam TA_Tensor_ a TiledArray::Tensor type
+/// \tparam BTAS_Tensor_ a btas::Tensor type
 /// \param src The source tensor
 /// \param dst The destination tensor
 /// \param counter The task counter
@@ -171,10 +171,14 @@ inline auto make_shape<false>(World&, const TiledArray::TiledRange&) {
 /// has sparse policy, a sparse map with large norm is created to ensure all the
 /// values from \c src copy to the \c DistArray_ object. The copy operation is
 /// done in parallel, and this function will block until all elements of
-/// \c src have been copied into the result array tiles. The size of
-/// \c world.size() must be equal to 1 or \c replicate must be equal to
-/// \c true . If \c replicate is \c true, it is your responsibility to ensure
-/// that the data in \c src is identical on all nodes. Upon completion,
+/// \c src have been copied into the result array tiles.
+/// Each tile is created
+/// using the local contents of \c src, hence
+/// it is your responsibility to ensure that the data in \c src
+/// is distributed correctly among the ranks. If in doubt, you should replicate
+/// \c src among the ranks prior to calling this.
+///
+/// Upon completion,
 /// if the \c DistArray_ object has sparse policy truncate() is called.\n
 /// Usage:
 /// \code
@@ -201,18 +205,20 @@ inline auto make_shape<false>(World&, const TiledArray::TiledRange&) {
 /// \param[in] trange The tiled range of the new array
 /// \param[in] src The btas::Tensor<TArgs..> object whose contents will be
 /// copied to the result.
-/// \param[in] replicated \c true indicates that the
-/// result array should be a
-///            replicated array [default = false].
+/// \param replicated if true, the result will be replicated
+///        [default = false].
+/// \param pmap the process map object [default=null]; initialized to the
+/// default if \p replicated is false, or a replicated pmap if \p replicated
+/// is true; ignored if \p replicated is true and \c world.size()>1
 /// \return A \c DistArray_ object that is a copy of \c src
 /// \throw TiledArray::Exception When world size is greater than 1
 /// \note If using 2 or more World ranks, set \c replicated=true and make sure
 /// \c matrix is the same on each rank!
 template <typename DistArray_, typename T, typename Range, typename Storage>
-DistArray_ btas_tensor_to_array(World& world,
-                                const TiledArray::TiledRange& trange,
-                                const btas::Tensor<T, Range, Storage>& src,
-                                bool replicated = false) {
+DistArray_ btas_tensor_to_array(
+    World& world, const TiledArray::TiledRange& trange,
+    const btas::Tensor<T, Range, Storage>& src, bool replicated = false,
+    std::shared_ptr<typename DistArray_::pmap_interface> pmap = {}) {
   // Test preconditions
   const auto rank = trange.tiles_range().rank();
   TA_ASSERT(rank == src.range().rank() &&
@@ -229,35 +235,26 @@ DistArray_ btas_tensor_to_array(World& world,
   using Policy_ = typename DistArray_::policy_type;
   const auto is_sparse = !is_dense_v<Policy_>;
 
-  // Check that this is not a distributed computing environment
-  if (!replicated)
-    TA_ASSERT(
-        world.size() == 1 &&
-        "An array can be created from a btas::Tensor if the number of World "
-        "ranks is greater than 1 only when replicated=true.");
-
   // Make a shape, only used if making a sparse array
   using Shape_ = typename DistArray_::shape_type;
   Shape_ shape = detail::make_shape<is_sparse>(world, trange);
 
   // Create a new tensor
-  DistArray_ array =
-      (replicated && (world.size() > 1)
-           ? DistArray_(
-                 world, trange, shape,
-                 std::static_pointer_cast<typename DistArray_::pmap_interface>(
-                     std::make_shared<detail::ReplicatedPmap>(
-                         world, trange.tiles_range().volume())))
-           : DistArray_(world, trange, shape));
+  if (replicated && (world.size() > 1))
+    pmap = std::static_pointer_cast<typename DistArray_::pmap_interface>(
+        std::make_shared<detail::ReplicatedPmap>(
+            world, trange.tiles_range().volume()));
+  DistArray_ array = (pmap ? DistArray_(world, trange, shape, pmap)
+                           : DistArray_(world, trange, shape));
 
   // Spawn copy tasks
   madness::AtomicInt counter;
   counter = 0;
   std::int64_t n = 0;
-  for (typename DistArray_::ordinal_type i = 0; i < array.size(); ++i) {
+  for (auto&& acc : array) {
     world.taskq.add(
         &detail::counted_btas_subtensor_to_tensor<DistArray_, Tensor_>, &src,
-        &array, i, &counter);
+        &array, acc.index(), &counter);
     ++n;
   }
 
@@ -276,7 +273,9 @@ DistArray_ btas_tensor_to_array(World& world,
 /// object. The copy operation is done in parallel, and this function will block
 /// until all elements of \c src have been copied into the result array tiles.
 /// The size of \c src.world().size() must be equal to 1 or \c src must be a
-/// replicated TiledArray::DistArray. Usage: \code TiledArray::TArrayD
+/// replicated TiledArray::DistArray. Usage:
+/// \code
+/// TiledArray::TArrayD
 /// array(world, trange);
 /// // Set tiles of array ...
 ///
@@ -284,10 +283,14 @@ DistArray_ btas_tensor_to_array(World& world,
 /// \endcode
 /// \tparam Tile the tile type of \c src
 /// \tparam Policy the policy type of \c src
+/// \tparam Range_ the range type of the result (either, btas::RangeNd or
+///         TiledArray::Range)
+/// \tparam Storage_ the storage type of the result
 /// \param[in] src The TiledArray::DistArray<Tile,Policy> object whose contents
-/// will be copied to the result. \return A \c btas::Tensor object that is a
-/// copy of \c src \throw TiledArray::Exception When world size is greater than
-/// 1 and \c src is not replicated
+/// will be copied to the result.
+/// \return A \c btas::Tensor object that is a copy of \c src
+/// \throw TiledArray::Exception When world size is greater than
+///        1 and \c src is not replicated
 /// \param[in] target_rank the rank on which to create the BTAS tensor
 ///            containing the data of \c src ; if \c target_rank=-1 then
 ///            create the BTAS tensor on every rank (this requires
@@ -295,13 +298,13 @@ DistArray_ btas_tensor_to_array(World& world,
 /// \return BTAS tensor object containing the data of \c src , if my rank equals
 ///         \c target_rank or \c target_rank==-1 ,
 ///         default-initialized BTAS tensor otherwise.
-template <typename Tile, typename Policy,
-          typename Storage = std::vector<typename Tile::value_type>>
-btas::Tensor<typename Tile::value_type, btas::DEFAULT::range, Storage>
-array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src,
-                     int target_rank = -1) {
+template <typename Tile, typename Policy, typename Range_ = TiledArray::Range,
+          typename Storage_ = btas::DEFAULT::storage<typename Tile::value_type>>
+btas::Tensor<typename Tile::value_type, Range_, Storage_> array_to_btas_tensor(
+    const TiledArray::DistArray<Tile, Policy>& src, int target_rank = -1) {
   // Test preconditions
-  if (target_rank == -1 && !src.pmap()->is_replicated())
+  if (target_rank == -1 && src.world().size() > 1 &&
+      !src.pmap()->is_replicated())
     TA_ASSERT(
         src.world().size() == 1 &&
         "TiledArray::array_to_btas_tensor(): a non-replicated array can only "
@@ -310,7 +313,7 @@ array_to_btas_tensor(const TiledArray::DistArray<Tile, Policy>& src,
 
   using result_type =
       btas::Tensor<typename TiledArray::DistArray<Tile, Policy>::element_type,
-                   btas::DEFAULT::range, Storage>;
+                   Range_, Storage_>;
   using result_range_type = typename result_type::range_type;
 
   // Construct the result

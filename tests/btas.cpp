@@ -332,10 +332,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(dense_array_conversion, bTensor, tensor_types) {
   using TArray = TiledArray::TArray<T>;
   TArray dst;
   const auto replicated = true;
-  if (GlobalFixture::world->size() > 1)
-    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TArray>(
-                            *GlobalFixture::world, trange, src, not replicated),
-                        TiledArray::Exception);
+  BOOST_REQUIRE_NO_THROW(
+      dst = btas_tensor_to_array<TArray>(*GlobalFixture::world, trange, src,
+                                         not replicated));
   BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TArray>(
                              *GlobalFixture::world, trange, src, replicated));
 
@@ -393,10 +392,9 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(sparse_array_conversion, bTensor, tensor_types) {
   using TSpArray = TiledArray::TSpArray<T>;
   TSpArray dst;
   const auto replicated = true;
-  if (GlobalFixture::world->size() > 1)
-    BOOST_REQUIRE_THROW(dst = btas_tensor_to_array<TSpArray>(
-                            *GlobalFixture::world, trange, src, not replicated),
-                        TiledArray::Exception);
+  BOOST_REQUIRE_NO_THROW(
+      dst = btas_tensor_to_array<TSpArray>(*GlobalFixture::world, trange, src,
+                                           not replicated));
   BOOST_REQUIRE_NO_THROW(dst = btas_tensor_to_array<TSpArray>(
                              *GlobalFixture::world, trange, src, replicated));
 
