@@ -852,7 +852,9 @@ struct Cast<TiledArray::Tensor<T, Allocator>,
   auto operator()(const btas::Tensor<T, Range_, Storage>& arg) const {
     TiledArray::Tensor<T, Allocator> result(detail::make_ta_range(arg.range()));
     using std::begin;
-    std::copy(btas::cbegin(arg), btas::cend(arg), begin(result));
+    using std::cbegin;
+    using std::cend;
+    std::copy(cbegin(arg), cend(arg), begin(result));
     return result;
   }
 };
