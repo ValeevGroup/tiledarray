@@ -64,7 +64,7 @@ Compiling BTAS requires the following prerequisites:
 
 Optional prerequisites:
 - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 11 or later is required. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
-  - [LibreTT](github.com/victor-anisimov/Librett) -- Portable Tensor Transpose library for CUDA and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) with additional thread-safety improvements and SYCL support along with other enhancements (tag e4fb8ded31e6883ea4e27a6343c05dc5f1833170).
+  - [LibreTT](github.com/victor-anisimov/Librett) -- Free Tensor Transpose library for CUDA and SYCL platforms that is based on the [original cuTT library](github.com/ap-hynninen/cutt) with additional thread-safety improvements and SYCL support along with other enhancements (tag e4fb8ded31e6883ea4e27a6343c05dc5f1833170).
   - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f04abd1dd038c84262915a493d8f78576bb80fd0).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
