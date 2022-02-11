@@ -49,8 +49,11 @@ if (TARGET TiledArray_Eigen)
 
   # INTERFACE libraries cannot be used as CMAKE_REQUIRED_LIBRARIES, so must manually transfer deps info
   get_property(EIGEN3_INCLUDE_DIRS TARGET TiledArray_Eigen PROPERTY INTERFACE_INCLUDE_DIRECTORIES)
+  if (NOT MADNESS_INTERNAL_INCLUDE_DIRS)
+    message(FATAL_ERROR "eigen.cmake must be loaded after calling detect_MADNESS_config()")
+  endif()
   list(APPEND CMAKE_REQUIRED_INCLUDES ${EIGEN3_INCLUDE_DIRS} ${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src
-       ${LAPACK_INCLUDE_DIRS})
+       ${MADNESS_INTERNAL_INCLUDE_DIRS} ${LAPACK_INCLUDE_DIRS})
   list(APPEND CMAKE_REQUIRED_LIBRARIES ${LAPACK_LIBRARIES})
   foreach(_def ${LAPACK_COMPILE_DEFINITIONS})
     list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D${_def}")
@@ -83,11 +86,8 @@ elseif(TA_EXPERT)
 
 else()
 
-  # last resort: unpack and copy to install dir
-  # N.B. NOT building via FetchContent since Eigen3 is not subprojectable due to polluting global namespace of targets (e.g. lapack, check, etc.)
-
-  set(Eigen3_VERSION ${TA_INSTALL_EIGEN_VERSION})
-  set(EIGEN3_URL_HASH ${TA_INSTALL_EIGEN_URL_HASH})
+  set(Eigen3_VERSION 3.3.7)
+  set(EIGEN3_URL_HASH MD5=b9e98a200d2455f06db9c661c5610496)
   set(EIGEN3_URL https://gitlab.com/libeigen/eigen/-/archive/${Eigen3_VERSION}/eigen-${Eigen3_VERSION}.tar.bz2)
 
   include(ExternalProject)
@@ -144,5 +144,17 @@ endif()
 # finish configuring TiledArray_Eigen and install
 if (TARGET TiledArray_Eigen)
   set(TiledArray_Eigen_VERSION "${Eigen3_VERSION}" CACHE STRING "Eigen3_VERSION of the library interfaced by TiledArray_Eigen target")
+  # TiledArray_Eigen uses LAPACK/MKL
+  # N.B. used to ... seems to be disabled
+#  target_link_libraries(TiledArray_Eigen INTERFACE ${LAPACK_LIBRARIES})
+#  target_include_directories(TiledArray_Eigen INTERFACE ${LAPACK_INCLUDE_DIRS})
+#  target_compile_definitions(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_DEFINITIONS})
+#  target_compile_options(TiledArray_Eigen INTERFACE ${LAPACK_COMPILE_OPTIONS})
+#  # Eigen's prototypes for BLAS interface libraries do not match MADNESS cblas
+#  if (MADNESS_HAS_MKL)
+#    # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_MKL EIGEN_USE_BLAS)
+#  else(MADNESS_HAS_MKL)
+#    # target_compile_definitions(TiledArray_Eigen INTERFACE EIGEN_USE_BLAS)
+#  endif(MADNESS_HAS_MKL)
   install(TARGETS TiledArray_Eigen EXPORT tiledarray COMPONENT tiledarray)
 endif(TARGET TiledArray_Eigen)

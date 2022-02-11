@@ -28,6 +28,7 @@
 
 #include "TiledArray/expressions/fwd.h"
 
+
 #include "../reduce_task.h"
 #include "../tile_interface/cast.h"
 #include "../tile_interface/scale.h"
@@ -515,10 +516,6 @@ class Expr {
     dist_eval.wait();
     // Swap the new array with the result array object.
     result.swap(tsr.array());
-    result
-        .defer_deleter_to_next_fence();  // if tsr.array().impl() is referred to
-                                         // by outstanding tasks need to defer
-                                         // destruction to the next fence
   }
 
   /// Expression print
@@ -876,6 +873,6 @@ class Expr {
 
 };  // class Expr
 
-}  // namespace TiledArray::expressions
+}
 
 #endif  // TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED

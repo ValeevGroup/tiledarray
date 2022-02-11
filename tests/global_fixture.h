@@ -61,7 +61,7 @@ struct GlobalFixture {
   GlobalFixture();
   ~GlobalFixture();
 
-  static constexpr unsigned int dim = TEST_DIM;
+  static const unsigned int dim = TEST_DIM;
 
   static madness::World* world;
   static const std::array<std::size_t, 20> primes;
