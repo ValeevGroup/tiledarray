@@ -895,7 +895,12 @@ class Summa
       // Initialize the reduction task
       ReducePairTask<op_type>* MADNESS_RESTRICT const reduce_task =
           reduce_tasks_ + t;
-      new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_);
+      new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
+                                                ,
+                                                nullptr, t
+#endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
+      );
     }
 
     return proc_grid_.local_size();
@@ -939,7 +944,12 @@ class Summa
           ss << index << " ";
 #endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
 
-          new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_);
+          new (reduce_task) ReducePairTask<op_type>(TensorImpl_::world(), op_
+#ifdef TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
+                                                    ,
+                                                    nullptr, index
+#endif  // TILEDARRAY_ENABLE_SUMMA_TRACE_INITIALIZE
+          );
           ++tile_count;
         } else {
           // Construct an empty task to represent zero tiles.

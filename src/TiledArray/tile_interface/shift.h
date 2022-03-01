@@ -91,12 +91,12 @@ using TiledArray::shift;
 using TiledArray::shift_to;
 
 template <typename T>
-using result_of_shift_t = typename std::decay<decltype(
-    shift(std::declval<T>(), std::declval<std::vector<long>>()))>::type;
+using result_of_shift_t = typename std::decay<decltype(shift(
+    std::declval<T>(), std::declval<container::svector<long>>()))>::type;
 
 template <typename T>
-using result_of_shift_to_t = typename std::decay<decltype(
-    shift_to(std::declval<T>(), std::declval<std::vector<long>>()))>::type;
+using result_of_shift_to_t = typename std::decay<decltype(shift_to(
+    std::declval<T>(), std::declval<container::svector<long>>()))>::type;
 
 template <typename Result, typename Arg, typename Enabler = void>
 class Shift {

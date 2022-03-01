@@ -59,7 +59,7 @@ auto range_from_annotation(const IndexList_& target_idxs,
   using size_type = typename range_type::size_type;
   using extent_type = std::pair<size_type, size_type>;
 
-  std::vector<extent_type> ranges;  // Will be the ranges for each extent
+  container::svector<extent_type> ranges;  // Will be the ranges for each extent
   const auto& lrange = lhs.range();
   const auto& rrange = rhs.range();
 
@@ -82,7 +82,7 @@ auto trange_from_annotation(const IndexList_& target_idxs,
                             const IndexList_& lhs_idxs,
                             const IndexList_& rhs_idxs, LHSType&& lhs,
                             RHSType&& rhs) {
-  std::vector<TiledRange1> ranges;  // Will be the ranges for each extent
+  container::svector<TiledRange1> ranges;  // Will be the ranges for each extent
   const auto& lrange = lhs.trange();
   const auto& rrange = rhs.trange();
 
@@ -148,8 +148,8 @@ inline auto make_bound_annotation(const BipartiteIndexList& free_vars,
                                   const BipartiteIndexList& rhs_vars) {
   const auto bound_temp = bound_annotations(free_vars, lhs_vars, rhs_vars);
   BipartiteIndexList bound_vars(
-      std::vector<std::string>(bound_temp.begin(), bound_temp.end()),
-      std::vector<std::string>{});
+      container::svector<std::string>(bound_temp.begin(), bound_temp.end()),
+      container::svector<std::string>{});
   return bound_vars;
 }
 

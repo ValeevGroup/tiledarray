@@ -40,8 +40,9 @@ namespace detail {
 
 /// computes [min,max) describing the diagonal elements that rank-d Range
 /// contains; if the input Range contains no diagonal elements this return an
-/// empty Range \param[in] rng an input (rank-d) Range \return the range of
-/// diagonal elements, as a rank-1 Range
+/// empty Range
+/// \param[in] rng an input (rank-d) Range
+/// \return the range of diagonal elements, as a rank-1 Range
 inline Range diagonal_range(Range const &rng) {
   const auto rank = rng.rank();
   TA_ASSERT(rng.rank() > 0);
@@ -62,10 +63,13 @@ inline Range diagonal_range(Range const &rng) {
 }
 
 /// \brief computes shape data (i.e. Frobenius norms of the tiles) for a
-/// constant diagonal tensor \tparam T a numeric type \param trange a TiledRange
-/// of the result \param val value of the diagonal elements \return a
-/// Tensor<float> containing the Frobenius norms of the tiles of a DistArray
-/// with \p val on the diagonal and zeroes elsewhere
+/// constant diagonal tensor
+/// \tparam T a numeric type
+/// \param trange a TiledRange of the result
+/// \param val value of the diagonal elements
+/// \return a Tensor<float> containing the Frobenius norms of
+///         the tiles of a DistArray with \p val on the diagonal and
+///         zeroes elsewhere
 template <typename T>
 Tensor<float> diagonal_shape(TiledRange const &trange, T val) {
   Tensor<float> shape(trange.tiles_range(), 0.0);
@@ -79,7 +83,8 @@ Tensor<float> diagonal_shape(TiledRange const &trange, T val) {
   // shortest dimension
   while (diag_elem < diag_extent) {
     // Get the tile index corresponding to the current diagonal_elem
-    auto tile_idx = trange.element_to_tile(std::vector<int>(ndim, diag_elem));
+    auto tile_idx =
+        trange.element_to_tile(container::svector<long>(ndim, diag_elem));
     auto tile_range = trange.make_tile_range(tile_idx);
 
     // Compute the range of diagonal elements in the tile
@@ -98,13 +103,15 @@ Tensor<float> diagonal_shape(TiledRange const &trange, T val) {
 }
 
 /// \brief computes shape data (i.e. Frobenius norms of the tiles) for a
-/// non-constant diagonal tensor \tparam RandomAccessIterator an iterator over
-/// the range of diagonal elements \param[in] trange a TiledRange of the result
+/// non-constant diagonal tensor
+/// \tparam RandomAccessIterator an iterator over
+/// the range of diagonal elements
+/// \param[in] trange a TiledRange of the result
 /// \param[in] diagonals_begin the begin iterator of the range of the diagonals
 /// \param[in] diagonals_end the end iterator of the range of the diagonals; if
-/// not given, default initialized and thus will not be checked \return a
-/// Tensor<float> containing the Frobenius norms of the tiles of a DistArray
-/// with \p val on the diagonal and zeroes elsewhere
+/// not given, default initialized and thus will not be checked
+/// \return a Tensor<float> containing the Frobenius norms of the tiles of
+/// a DistArray with \p val on the diagonal and zeroes elsewhere
 template <typename RandomAccessIterator>
 std::enable_if_t<is_iterator<RandomAccessIterator>::value, Tensor<float>>
 diagonal_shape(TiledRange const &trange, RandomAccessIterator diagonals_begin,
@@ -221,9 +228,11 @@ write_diag_tiles_to_array_rng(Array &A, RandomAccessIterator diagonals_begin) {
 /// \brief Creates a constant diagonal DistArray
 
 /// Creates an array whose only nonzero values are the (hyper)diagonal elements
-/// (i.e. (n,n,n, ..., n) ), and they are all have the same value \tparam Policy
-/// the policy type of the resulting DistArray \tparam T a numeric type \param
-/// world The world for the array \param[in] trange The trange for the array
+/// (i.e. (n,n,n, ..., n) ), and they are all have the same value
+/// \tparam Policy the policy type of the resulting DistArray
+/// \tparam T a numeric type
+/// \param world The world for the array
+/// \param[in] trange The trange for the array
 /// \param[in] val The value of the diagonal elements
 /// \return a constant diagonal DistArray
 template <typename Array, typename T = double>
@@ -250,13 +259,15 @@ Array diagonal_array(World &world, TiledRange const &trange, T val = 1) {
 
 /// Creates an array whose only nonzero values are the (hyper)diagonal elements
 /// (i.e. (n,n,n, ..., n) ); the values of the diagonal elements are given by an
-/// input range \tparam Array a DistArray type \tparam RandomAccessIterator an
-/// iterator over the range of diagonal elements \param world The world for the
-/// array \param[in] trange The trange for the array \param[in] diagonals_begin
-/// the begin iterator of the range of the diagonals \param[in] diagonals_end
-/// the end iterator of the range of the diagonals; if not given, default
-/// initialized and thus will not be checked \return a constant diagonal
-/// DistArray
+/// input range
+/// \tparam Array a DistArray type
+/// \tparam RandomAccessIterator an iterator over the range of diagonal elements
+/// \param world The world for the array
+/// \param[in] trange The trange for the array
+/// \param[in] diagonals_begin the begin iterator of the range of the diagonals
+/// \param[in] diagonals_end the end iterator of the range of the diagonals;
+///            if not given, default initialized and thus will not be checked
+/// \return a constant diagonal DistArray
 template <typename Array, typename RandomAccessIterator>
 std::enable_if_t<detail::is_iterator<RandomAccessIterator>::value, Array>
 diagonal_array(World &world, TiledRange const &trange,
