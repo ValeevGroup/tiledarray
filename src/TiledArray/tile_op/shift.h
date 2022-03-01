@@ -54,7 +54,7 @@ class Shift {
       Consumable && std::is_same<result_type, argument_type>::value;
 
  private:
-  std::vector<long> range_shift_;
+  container::svector<long> range_shift_;
 
   // Permuting tile evaluation function
   // These operations cannot consume the argument tile since this operation
@@ -105,7 +105,12 @@ class Shift {
   /// Default constructor
 
   /// Construct a no operation that does not permute the result tile
-  Shift(const std::vector<long>& range_shift) : range_shift_(range_shift) {}
+  template <typename IntegralRange,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<IntegralRange>>>
+  Shift(IntegralRange&& range_shift)
+      : range_shift_(std::forward<IntegralRange>(range_shift).begin(),
+                     std::forward<IntegralRange>(range_shift).end()) {}
 
   /// Shift and permute operator
 
@@ -164,8 +169,8 @@ class ScalShift {
       Consumable && std::is_same<result_type, argument_type>::value;
 
  private:
-  std::vector<long> range_shift_;  ///< Range shift array
-  scalar_type factor_;             ///< Scaling factor
+  container::svector<long> range_shift_;  ///< Range shift array
+  scalar_type factor_;                    ///< Scaling factor
 
  public:
   // Permuting tile evaluation function
@@ -214,8 +219,13 @@ class ScalShift {
   /// Default constructor
 
   /// Construct a no operation that does not permute the result tile
-  ScalShift(const std::vector<long>& range_shift, const scalar_type factor)
-      : range_shift_(range_shift), factor_(factor) {}
+  template <typename IntegralRange,
+            typename = std::enable_if_t<
+                TiledArray::detail::is_integral_range_v<IntegralRange>>>
+  ScalShift(IntegralRange&& range_shift, const scalar_type factor)
+      : range_shift_(std::forward<IntegralRange>(range_shift).begin(),
+                     std::forward<IntegralRange>(range_shift).end()),
+        factor_(factor) {}
 
   /// Shift and permute operator
 

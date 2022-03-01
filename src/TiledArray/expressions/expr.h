@@ -498,7 +498,8 @@ class Expr {
     // This step may involve communication when the tiles are moved from the
     // sub-block distribution to the array distribution.
     {
-      const std::vector<long> shift =
+      // N.B. must deep copy
+      const container::svector<long> shift =
           tsr.array().trange().make_tile_range(tsr.lower_bound()).lobound();
 
       std::shared_ptr<op_type> shift_op =

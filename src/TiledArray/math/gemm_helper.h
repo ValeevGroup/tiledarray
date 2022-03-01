@@ -28,6 +28,7 @@
 
 #include <TiledArray/error.h>
 #include <TiledArray/math/blas.h>
+#include <TiledArray/util/vector.h>
 
 #include <vector>
 
@@ -170,7 +171,7 @@ class GemmHelper {
     const auto* MADNESS_RESTRICT const right_upper = right.upbound_data();
 
     // Create the start and finish indices
-    std::vector<std::size_t> lower, upper;
+    TiledArray::container::svector<std::size_t> lower, upper;
     lower.reserve(result_rank_);
     upper.reserve(result_rank_);
 

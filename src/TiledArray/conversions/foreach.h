@@ -348,8 +348,7 @@ inline std::
       shape_type(world, tile_norms, arg.trange(), op_returns_void),
       arg.pmap());  // if Op returns void tile_norms contains scaled norms, so
                     // do not scale again
-  for (typename std::vector<datum_type>::const_iterator it = tiles.begin();
-       it != tiles.end(); ++it) {
+  for (auto it = tiles.begin(); it != tiles.end(); ++it) {
     const auto index = it->first;
     if (!result.is_zero(index)) result.set(it->first, it->second);
   }

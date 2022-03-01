@@ -79,7 +79,8 @@ Tensor<float> diagonal_shape(TiledRange const &trange, T val) {
   // shortest dimension
   while (diag_elem < diag_extent) {
     // Get the tile index corresponding to the current diagonal_elem
-    auto tile_idx = trange.element_to_tile(std::vector<int>(ndim, diag_elem));
+    auto tile_idx =
+        trange.element_to_tile(container::svector<long>(ndim, diag_elem));
     auto tile_range = trange.make_tile_range(tile_idx);
 
     // Compute the range of diagonal elements in the tile
