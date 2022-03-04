@@ -27,7 +27,7 @@ set(TILEDARRAY_HEADER_FILES
 tiledarray.h
 tiledarray_fwd.h
 TiledArray/fwd.h
-TiledArray/config.h
+${PROJECT_BINARY_DIR}/src/TiledArray/config.h
 TiledArray/array_impl.h
 TiledArray/bitset.h
 TiledArray/block_range.h
@@ -55,7 +55,7 @@ TiledArray/transform_iterator.h
 TiledArray/type_traits.h
 TiledArray/utility.h
 TiledArray/val_array.h
-TiledArray/version.h
+${PROJECT_BINARY_DIR}/src/TiledArray/version.h
 TiledArray/zero_tensor.h
 TiledArray/math/linalg/forward.h
 TiledArray/math/linalg/conjgrad.h
