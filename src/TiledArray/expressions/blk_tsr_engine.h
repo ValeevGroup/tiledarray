@@ -180,9 +180,9 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
   trange_type make_trange() const {
     const unsigned int rank = array_.trange().tiles_range().rank();
 
-    std::vector<TiledRange1> trange_data;
+    container::svector<TiledRange1> trange_data;
     trange_data.reserve(rank);
-    std::vector<std::size_t> trange1_data;
+    container::svector<std::size_t> trange1_data;
 
     // Get temporary data pointers
     const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
@@ -215,7 +215,7 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
   trange_type make_trange(const Permutation& perm) const {
     const unsigned int rank = array_.trange().tiles_range().rank();
 
-    std::vector<TiledRange1> trange_data;
+    container::svector<TiledRange1> trange_data;
     trange_data.reserve(rank);
     std::vector<std::size_t> trange1_data;
 
@@ -370,7 +370,7 @@ class BlkTsrEngine
     const unsigned int rank = trange_.tiles_range().rank();
 
     // Construct and allocate memory for the shift range
-    std::vector<long> range_shift;
+    container::svector<long> range_shift;
     range_shift.reserve(rank);
 
     // Get temporary data pointers
@@ -397,7 +397,7 @@ class BlkTsrEngine
     const unsigned int rank = trange_.tiles_range().rank();
 
     // Construct and allocate memory for the shift range
-    std::vector<long> range_shift(rank, 0l);
+    container::svector<long> range_shift(rank, 0l);
 
     // Get temporary data pointers
     const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();
@@ -543,7 +543,7 @@ class ScalBlkTsrEngine
     const unsigned int rank = trange_.tiles_range().rank();
 
     // Construct and allocate memory for the shift range
-    std::vector<long> range_shift(rank, 0l);
+    container::svector<long> range_shift(rank, 0l);
 
     // Get temporary data pointers
     const auto* MADNESS_RESTRICT const trange = array_.trange().data().data();

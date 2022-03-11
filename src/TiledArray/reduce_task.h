@@ -668,6 +668,7 @@ class ReduceTask {
     Future<result_type> result_;  ///< The result of the reduction task
     madness::Spinlock lock_;      ///< Task lock
     madness::CallbackInterface* callback_;  ///< The completion callback
+    int task_id_;                           ///< Task id
 
    public:
     /// Implementation constructor
@@ -675,8 +676,10 @@ class ReduceTask {
     /// \param world The world that owns this task
     /// \param op The reduction operation
     /// \param callback The callback that will be invoked when this task
-    /// has completed
-    ReduceTaskImpl(World& world, opT op, madness::CallbackInterface* callback)
+    ///        has completed
+    /// \param task_id the task id (for debugging)
+    ReduceTaskImpl(World& world, opT op, madness::CallbackInterface* callback,
+                   int task_id = -1)
         : madness::TaskInterface(1, TaskAttributes::hipri()),
           world_(world),
           op_(op),
@@ -684,7 +687,8 @@ class ReduceTask {
           ready_object_(nullptr),
           result_(),
           lock_(),
-          callback_(callback) {}
+          callback_(callback),
+          task_id_(task_id) {}
 
     virtual ~ReduceTaskImpl() {}
 
@@ -745,11 +749,12 @@ class ReduceTask {
 
   /// \param world The world that owns this task
   /// \param op The reduction operation [ default = opT() ]
-  /// \param callback The callback that will be invoked when this task is
-  /// complete
+  /// \param callback The callback that will be invoked when
+  ///        this task is complete
+  /// \param task_id the task id (for debugging)
   ReduceTask(World& world, const opT& op = opT(),
-             madness::CallbackInterface* callback = nullptr)
-      : pimpl_(new ReduceTaskImpl(world, op, callback)), count_(0ul) {}
+             madness::CallbackInterface* callback = nullptr, int task_id = -1)
+      : pimpl_(new ReduceTaskImpl(world, op, callback, task_id)), count_(0ul) {}
 
   /// Move constructor
 
@@ -935,10 +940,12 @@ class ReducePairTask : public ReduceTask<ReducePairOpWrapper<opT> > {
   /// \param world The world that owns this task
   /// \param op The pair reduction operation [ default = opT() ]
   /// \param callback The callback that will be invoked when this task is
-  /// complete
+  ///        complete
+  /// \param task_id the task id (for debugging)
   ReducePairTask(World& world, const opT& op = opT(),
-                 madness::CallbackInterface* callback = nullptr)
-      : ReduceTask_(world, op_type(op), callback) {}
+                 madness::CallbackInterface* callback = nullptr,
+                 int task_id = -1)
+      : ReduceTask_(world, op_type(op), callback, task_id) {}
 
   /// Move constructor
 

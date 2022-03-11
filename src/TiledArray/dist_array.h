@@ -126,6 +126,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
  private:
   std::shared_ptr<impl_type> pimpl_;  ///< Array implementation pointer
+  bool defer_deleter_to_next_fence_ =
+      false;  ///< if true, the impl object is scheduled to be destroyed in the
+              ///< next fence
 
   static madness::AtomicInt cleanup_counter_;
 
@@ -431,8 +434,26 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// This is a distributed lazy destructor. The object will only be deleted
   /// after the last reference to the world object on all nodes has been
-  /// destroyed.
-  ~DistArray() {}
+  /// destroyed and there are no outstanding references to the object's data.
+  /// Use defer_deleter_to_next_fence() to defer the deletion of the destructor
+  /// to the next fence.
+  /// \sa defer_deleter_to_next_fence
+  ~DistArray() {
+    if (defer_deleter_to_next_fence_) {
+      madness::detail::deferred_cleanup(
+          this->world(), pimpl_,
+          /* do_not_check_that_pimpl_is_unique = */ true);
+    }
+  }
+
+  /// Defers deletion to the next fene
+
+  /// By default the destruction of the object's data occurs lazily, when
+  /// all local references to the object are gone and all _remote_ references
+  /// to the local object's data are gone. This is not always sufficient;
+  /// call this at any point during object's lifetime to ensure that the
+  /// lifetime of the object lasts to (just past)the next fence.
+  void defer_deleter_to_next_fence() { defer_deleter_to_next_fence_ = true; }
 
   /// Create a deep copy of this array
 
@@ -458,6 +479,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \return std::weak_ptr to the nonconst implementation object
   std::weak_ptr<impl_type> weak_pimpl() { return pimpl_; }
+
+  /// Checks if this is a unique handle to the implementation object
+
+  /// \return true if this is a unique handle to the implementation object
+  bool is_unique() const { return pimpl_.unique(); }
 
   /// Wait for lazy tile cleanup
 

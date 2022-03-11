@@ -86,7 +86,7 @@ struct ConjugateGradientSolver {
     D PP_i;
     D APP_i = clone(b);
 
-    // approximate the conditio number as the ratio of the min and max elements
+    // approximate the condition number as the ratio of the min and max elements
     // of the preconditioner assuming that preconditioner is the approximate
     // inverse of A in Ax - b =0
     const value_type precond_min = abs_min(preconditioner);
@@ -95,7 +95,7 @@ struct ConjugateGradientSolver {
     // std::cout << "condition number = " << precond_max << " / " << precond_min
     // << " = " << cond_number << std::endl;
     // if convergence target is given, estimate of how tightly the system can be
-    // converge
+    // converged
     if (convergence_target < 0.0) {
       convergence_target = 1e-15 * cond_number;
     } else {  // else warn if the given system is not sufficiently well
