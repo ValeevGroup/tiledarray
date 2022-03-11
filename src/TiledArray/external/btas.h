@@ -98,16 +98,16 @@ inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
 
 template <typename T, typename Range, typename Storage>
 decltype(auto) make_ti(const btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<const T, TiledArray::Range,
+  return TiledArray::detail::TensorInterface<const T, Range,
                                              btas::Tensor<T, Range, Storage>>(
-      TiledArray::detail::make_ta_range(arg.range()), arg.data());
+      arg.range(), arg.data());
 }
 
 template <typename T, typename Range, typename Storage>
 decltype(auto) make_ti(btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<T, TiledArray::Range,
+  return TiledArray::detail::TensorInterface<T, Range,
                                              btas::Tensor<T, Range, Storage>>(
-      TiledArray::detail::make_ta_range(arg.range()), arg.data());
+      arg.range(), arg.data());
 }
 
 template <typename... Args>
@@ -839,9 +839,7 @@ struct Cast<TiledArray::Tensor<T, Allocator>,
   auto operator()(const btas::Tensor<T, Range_, Storage>& arg) const {
     TiledArray::Tensor<T, Allocator> result(detail::make_ta_range(arg.range()));
     using std::begin;
-    using std::cbegin;
-    using std::cend;
-    std::copy(cbegin(arg), cend(arg), begin(result));
+    std::copy(btas::cbegin(arg), btas::cend(arg), begin(result));
     return result;
   }
 };

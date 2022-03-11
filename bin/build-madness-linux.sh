@@ -50,12 +50,8 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     mkdir -p madness
     cd madness
 
-    if [ -n "${MADNESS_OVER_PARSEC}" ]; then
-	MADNESS_BACKEND_OPTION="-DMADNESS_TASK_BACKEND=PaRSEC"
-    fi
-
     # check out the tracked tag of MADNESS
-    git clone https://github.com/TESSEorg/madness.git madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
+    git clone https://github.com/m-a-d-n-e-s-s/madness madness_src && cd madness_src && git checkout ${MADNESS_TAG} && cd ..
 
     cmake madness_src \
       -DCMAKE_TOOLCHAIN_FILE="${TRAVIS_BUILD_DIR}/cmake/toolchains/travis.cmake" \
@@ -75,8 +71,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DENABLE_LIBXC=OFF \
       -DENABLE_GPERFTOOLS=OFF \
       -DASSERTION_TYPE=throw \
-      -DDISABLE_WORLD_GET_DEFAULT=ON \
-      ${MADNESS_BACKEND_OPTION}
+      -DDISABLE_WORLD_GET_DEFAULT=ON
 
     # Build+install MADworld interface
     make -j2 install VERBOSE=1

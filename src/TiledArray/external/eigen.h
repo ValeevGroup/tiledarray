@@ -46,15 +46,13 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 #endif
 
 #include <Eigen/Core>
-#include <unsupported/Eigen/CXX11/Tensor>
 
 #if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)
 #if !EIGEN_VERSION_AT_LEAST(3, 3, 7)
 #error "Eigen3 < 3.3.7 with LAPACKE enabled may give wrong eigenvalue results"
-#error \
-    "Either turn off EIGEN_USE_LAPACKE/EIGEN_USE_LAPACKE_STRICT or use Eigen3 3.3.7"
+#error "Either turn off EIGEN_USE_LAPACKE/EIGEN_USE_LAPACKE_STRICT or use Eigen3 3.3.7"
 #endif
-#endif  // EIGEN_USE_LAPACKE || EIGEN_USE_LAPACKE_STRICT
+#endif // EIGEN_USE_LAPACKE || EIGEN_USE_LAPACKE_STRICT
 
 TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
@@ -94,38 +92,6 @@ struct ArchiveLoadImpl<
         ncols(0);
     ar& nrows& ncols;
     t.resize(nrows, ncols);
-    if (t.size()) ar& madness::archive::wrap(t.data(), t.size());
-  }
-};
-
-template <class Archive, typename Scalar_, int NumIndices_, int Options_,
-          typename IndexType_>
-struct ArchiveStoreImpl<
-    Archive, Eigen::Tensor<Scalar_, NumIndices_, Options_, IndexType_>> {
-  static inline void store(
-      const Archive& ar,
-      const Eigen::Tensor<Scalar_, NumIndices_, Options_, IndexType_>& t) {
-    using idx_t = typename Eigen::Tensor<Scalar_, NumIndices_, Options_,
-                                         IndexType_>::Index;
-    std::array<idx_t, NumIndices_> extents;
-    for (int d = 0; d != NumIndices_; ++d) extents[d] = t.dimension(d);
-    ar& extents;
-    if (t.size()) ar& madness::archive::wrap(t.data(), t.size());
-  }
-};
-
-template <class Archive, typename Scalar_, int NumIndices_, int Options_,
-          typename IndexType_>
-struct ArchiveLoadImpl<
-    Archive, Eigen::Tensor<Scalar_, NumIndices_, Options_, IndexType_>> {
-  static inline void load(
-      const Archive& ar,
-      Eigen::Tensor<Scalar_, NumIndices_, Options_, IndexType_>& t) {
-    using idx_t = typename Eigen::Tensor<Scalar_, NumIndices_, Options_,
-                                         IndexType_>::Index;
-    std::array<idx_t, NumIndices_> extents;
-    ar& extents;
-    t.resize(extents);
     if (t.size()) ar& madness::archive::wrap(t.data(), t.size());
   }
 };

@@ -47,8 +47,10 @@ FetchContent_Declare(
     BINARY_DIR ${${VG_CMAKE_KIT_PREFIX_DIR}}/cmake/vg-build
     SUBBUILD_DIR ${${VG_CMAKE_KIT_PREFIX_DIR}}/cmake/vg-subbuild
 )
-FetchContent_MakeAvailable(vg_cmake_kit)
-list(APPEND CMAKE_MODULE_PATH "${vg_cmake_kit_SOURCE_DIR}/modules")
+FetchContent_GetProperties(vg_cmake_kit)
+if (NOT vg_cmake_kit_POPULATED)
+  FetchContent_MakeAvailable(vg_cmake_kit)
+endif(NOT vg_cmake_kit_POPULATED)
 
 project (TiledArray LANGUAGES)
 enable_language(CXX)
@@ -318,15 +320,34 @@ include(external/umpire.cmake)
 # - no  => BLAS/LAPACK will be discovered by BLAS++/LAPACK++ (loaded by BTAS) which use standard CMake modules or
 #          their custom modules; if needed, ScaLAPACK will be discovered by BLACS++
 if (ENABLE_WFN91_LINALG_DISCOVERY_KIT)
-  include(FetchWfn91LinAlgModules)
-  include(FindLinalg)
+  include("${vg_cmake_kit_SOURCE_DIR}/modules/FetchWfn91LinAlgModules.cmake")
+  if(ENABLE_SCALAPACK)
+    find_package(ScaLAPACK REQUIRED)
+    # Propagate ScaLAPACK -> BLAS/LAPACK if not set
+    # (ScaLAPACK necessarily contains a BLAS/LAPACK linker by standard)
+    # TODO: Tell David to write a macro that hides this verbosity from user space
+    if( NOT BLAS_LIBRARIES )
+      set( BLAS_LIBRARIES "${ScaLAPACK_LIBRARIES}" CACHE STRING "BLAS LIBRARIES" )
+    endif()
+    if( NOT LAPACK_LIBRARIES )
+      set( LAPACK_LIBRARIES "${ScaLAPACK_LIBRARIES}" CACHE STRING "LAPACK LIBRARIES" )
+    endif()
+  else(ENABLE_SCALAPACK)
+    find_package(LAPACK REQUIRED)
+    # Propagate LAPACK -> BLAS if not set
+    # (LAPACK necessarily contains a BLAS linker by standard)
+    # TODO: Tell David to write a macro that hides this verbosity from user space
+    if( NOT BLAS_LIBRARIES )
+      set( BLAS_LIBRARIES "${LAPACK_LIBRARIES}" CACHE STRING "BLAS LIBRARIES" )
+    endif()
+  endif(ENABLE_SCALAPACK)
 endif(ENABLE_WFN91_LINALG_DISCOVERY_KIT)
 # BTAS does a better job of building and checking Boost since it uses Boost::serialization
 # it also memorized the location of its config for use from install tree
 include(FindOrFetchBTAS)
 include(FindOrFetchBoost)
 if(ENABLE_SCALAPACK)
-  include(external/scalapackpp.cmake)
+  include(FindOrFetchScaLAPACK)
 endif()
 if (TA_ENABLE_RANGEV3)
   include(FindOrFetchRangeV3)

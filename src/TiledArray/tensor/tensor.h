@@ -476,6 +476,7 @@ class Tensor {
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   const_reference operator[](const Ordinal ord) const {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(ord));
     return this->data()[ord];
   }
@@ -490,6 +491,7 @@ class Tensor {
   template <typename Ordinal,
             std::enable_if_t<std::is_integral<Ordinal>::value>* = nullptr>
   reference operator[](const Ordinal ord) {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(ord));
     return this->data()[ord];
   }
@@ -504,6 +506,7 @@ class Tensor {
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   const_reference operator[](const Index& i) const {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i));
     return this->data()[this->range_.ordinal(i)];
   }
@@ -518,6 +521,7 @@ class Tensor {
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   reference operator[](const Index& i) {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i));
     return this->data()[this->range_.ordinal(i)];
   }
@@ -532,6 +536,7 @@ class Tensor {
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   const_reference operator[](const std::initializer_list<Integer>& i) const {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i));
     return this->data()[this->range_.ordinal(i)];
   }
@@ -546,6 +551,7 @@ class Tensor {
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   reference operator[](const std::initializer_list<Integer>& i) {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i));
     return this->data()[this->range_.ordinal(i)];
   }
@@ -560,6 +566,7 @@ class Tensor {
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   const_reference operator()(const Index& i) const {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i));
     return this->data()[this->range_.ordinal(i)];
   }
@@ -574,6 +581,7 @@ class Tensor {
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   reference operator()(const Index& i) {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i));
     return this->data()[this->range_.ordinal(i)];
   }
@@ -588,6 +596,7 @@ class Tensor {
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   const_reference operator()(const std::initializer_list<Integer>& i) const {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i));
     return this->data()[this->range_.ordinal(i)];
   }
@@ -602,6 +611,7 @@ class Tensor {
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   reference operator()(const std::initializer_list<Integer>& i) {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i));
     return this->data()[this->range_.ordinal(i)];
   }
@@ -616,6 +626,7 @@ class Tensor {
       typename... Index,
       std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
   const_reference operator()(const Index&... i) const {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i...));
     return this->data()[this->range_.ordinal(i...)];
   }
@@ -630,6 +641,7 @@ class Tensor {
       typename... Index,
       std::enable_if_t<detail::is_integral_list<Index...>::value>* = nullptr>
   reference operator()(const Index&... i) {
+    // TA_ASSERT(pimpl_);
     TA_ASSERT(this->range_.includes(i...));
     return this->data()[this->range_.ordinal(i...)];
   }
@@ -733,6 +745,7 @@ class Tensor {
                                         detail::is_integral_range_v<Index2>>>
   detail::TensorInterface<T, BlockRange> block(const Index1& lower_bound,
                                                const Index2& upper_bound) {
+    // TA_ASSERT(pimpl_);
     return detail::TensorInterface<T, BlockRange>(
         BlockRange(this->range_, lower_bound, upper_bound), this->data());
   }
@@ -742,6 +755,7 @@ class Tensor {
                                         detail::is_integral_range_v<Index2>>>
   detail::TensorInterface<const T, BlockRange> block(
       const Index1& lower_bound, const Index2& upper_bound) const {
+    // TA_ASSERT(pimpl_);
     return detail::TensorInterface<const T, BlockRange>(
         BlockRange(this->range_, lower_bound, upper_bound), this->data());
   }
@@ -772,6 +786,7 @@ class Tensor {
   detail::TensorInterface<T, BlockRange> block(
       const std::initializer_list<Index1>& lower_bound,
       const std::initializer_list<Index2>& upper_bound) {
+    // TA_ASSERT(pimpl_);
     return detail::TensorInterface<T, BlockRange>(
         BlockRange(this->range_, lower_bound, upper_bound), this->data());
   }
@@ -782,6 +797,7 @@ class Tensor {
   detail::TensorInterface<const T, BlockRange> block(
       const std::initializer_list<Index1>& lower_bound,
       const std::initializer_list<Index2>& upper_bound) const {
+    // TA_ASSERT(pimpl_);
     return detail::TensorInterface<const T, BlockRange>(
         BlockRange(this->range_, lower_bound, upper_bound), this->data());
   }
@@ -914,6 +930,7 @@ class Tensor {
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   Tensor& shift_to(const Index& bound_shift) {
+    // TA_ASSERT(pimpl_);
     this->range_.inplace_shift(bound_shift);
     return *this;
   }
@@ -926,6 +943,7 @@ class Tensor {
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   Tensor& shift_to(const std::initializer_list<Integer>& bound_shift) {
+    // TA_ASSERT(pimpl_);
     this->range_.template inplace_shift<std::initializer_list<Integer>>(
         bound_shift);
     return *this;
@@ -939,6 +957,7 @@ class Tensor {
   template <typename Index,
             std::enable_if_t<detail::is_integral_range_v<Index>>* = nullptr>
   Tensor shift(const Index& bound_shift) const {
+    // TA_ASSERT(pimpl_);
     Tensor result = clone();
     result.shift_to(bound_shift);
     return result;
@@ -952,6 +971,7 @@ class Tensor {
   template <typename Integer,
             std::enable_if_t<std::is_integral_v<Integer>>* = nullptr>
   Tensor shift(const std::initializer_list<Integer>& bound_shift) const {
+    // TA_ASSERT(pimpl_);
     Tensor result = clone();
     result.template shift_to<std::initializer_list<Integer>>(bound_shift);
     return result;
@@ -1545,7 +1565,10 @@ class Tensor {
 
   /// \return A copy of this tensor that contains the complex conjugate the
   /// values
-  Tensor conj() const { return scale(detail::conj_op()); }
+  Tensor conj() const {
+    // TA_ASSERT(pimpl_);
+    return scale(detail::conj_op());
+  }
 
   /// Create a complex conjugated and scaled copy of this tensor
 
@@ -1556,6 +1579,7 @@ class Tensor {
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor conj(const Scalar factor) const {
+    // TA_ASSERT(pimpl_);
     return scale(detail::conj_op(factor));
   }
 
@@ -1568,6 +1592,7 @@ class Tensor {
   template <typename Perm,
             typename = std::enable_if_t<detail::is_permutation_v<Perm>>>
   Tensor conj(const Perm& perm) const {
+    // TA_ASSERT(pimpl_);
     return scale(detail::conj_op(), perm);
   }
 
@@ -1584,13 +1609,17 @@ class Tensor {
       typename std::enable_if<detail::is_numeric_v<Scalar> &&
                               detail::is_permutation_v<Perm>>::type* = nullptr>
   Tensor conj(const Scalar factor, const Perm& perm) const {
+    // TA_ASSERT(pimpl_);
     return scale(detail::conj_op(factor), perm);
   }
 
   /// Complex conjugate this tensor
 
   /// \return A reference to this tensor
-  Tensor& conj_to() { return scale_to(detail::conj_op()); }
+  Tensor& conj_to() {
+    // TA_ASSERT(pimpl_);
+    return scale_to(detail::conj_op());
+  }
 
   /// Complex conjugate and scale this tensor
 
@@ -1600,6 +1629,7 @@ class Tensor {
   template <typename Scalar, typename std::enable_if<
                                  detail::is_numeric_v<Scalar>>::type* = nullptr>
   Tensor& conj_to(const Scalar factor) {
+    // TA_ASSERT(pimpl_);
     return scale_to(detail::conj_op(factor));
   }
 
@@ -1770,14 +1800,14 @@ class Tensor {
     TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
     // Check that the inner dimensions of left and right match
-    TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
-                                               right.range().extent_data()));
     TA_ASSERT(ignore_tile_position() ||
               gemm_helper.left_right_congruent(left.range().lobound_data(),
                                                right.range().lobound_data()));
     TA_ASSERT(ignore_tile_position() ||
               gemm_helper.left_right_congruent(left.range().upbound_data(),
                                                right.range().upbound_data()));
+    TA_ASSERT(gemm_helper.left_right_congruent(left.range().extent_data(),
+                                               right.range().extent_data()));
 
     if (this->empty()) {  // initialize, if empty
       *this = Tensor(gemm_helper.make_result_range<range_type>(left.range(),
@@ -1785,25 +1815,25 @@ class Tensor {
     } else {
       // Check that the outer dimensions of left match the corresponding
       // dimensions in result
-      TA_ASSERT(gemm_helper.left_result_congruent(left.range().extent_data(),
-                                                  this->range_.extent_data()));
       TA_ASSERT(ignore_tile_position() ||
                 gemm_helper.left_result_congruent(left.range().lobound_data(),
                                                   this->range_.lobound_data()));
       TA_ASSERT(ignore_tile_position() ||
                 gemm_helper.left_result_congruent(left.range().upbound_data(),
                                                   this->range_.upbound_data()));
+      TA_ASSERT(gemm_helper.left_result_congruent(left.range().extent_data(),
+                                                  this->range_.extent_data()));
 
       // Check that the outer dimensions of right match the corresponding
       // dimensions in result
-      TA_ASSERT(gemm_helper.right_result_congruent(right.range().extent_data(),
-                                                   this->range_.extent_data()));
       TA_ASSERT(ignore_tile_position() ||
                 gemm_helper.right_result_congruent(
                     right.range().lobound_data(), this->range_.lobound_data()));
       TA_ASSERT(ignore_tile_position() ||
                 gemm_helper.right_result_congruent(
                     right.range().upbound_data(), this->range_.upbound_data()));
+      TA_ASSERT(gemm_helper.right_result_congruent(right.range().extent_data(),
+                                                   this->range_.extent_data()));
     }
 
     // Compute gemm dimensions
@@ -2102,35 +2132,35 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
 
     // Check that the outer dimensions of left match the corresponding
     // dimensions in result
-    TA_ASSERT(gemm_helper.left_result_congruent(A.range().extent_data(),
-                                                C.range().extent_data()));
     TA_ASSERT(ignore_tile_position() ||
               gemm_helper.left_result_congruent(A.range().lobound_data(),
                                                 C.range().lobound_data()));
     TA_ASSERT(ignore_tile_position() ||
               gemm_helper.left_result_congruent(A.range().upbound_data(),
                                                 C.range().upbound_data()));
+    TA_ASSERT(gemm_helper.left_result_congruent(A.range().extent_data(),
+                                                C.range().extent_data()));
 
     // Check that the outer dimensions of right match the corresponding
     // dimensions in result
-    TA_ASSERT(gemm_helper.right_result_congruent(B.range().extent_data(),
-                                                 C.range().extent_data()));
     TA_ASSERT(ignore_tile_position() ||
               gemm_helper.right_result_congruent(B.range().lobound_data(),
                                                  C.range().lobound_data()));
     TA_ASSERT(ignore_tile_position() ||
               gemm_helper.right_result_congruent(B.range().upbound_data(),
                                                  C.range().upbound_data()));
+    TA_ASSERT(gemm_helper.right_result_congruent(B.range().extent_data(),
+                                                 C.range().extent_data()));
 
     // Check that the inner dimensions of left and right match
-    TA_ASSERT(gemm_helper.left_right_congruent(A.range().extent_data(),
-                                               B.range().extent_data()));
     TA_ASSERT(ignore_tile_position() ||
               gemm_helper.left_right_congruent(A.range().lobound_data(),
                                                B.range().lobound_data()));
     TA_ASSERT(ignore_tile_position() ||
               gemm_helper.left_right_congruent(A.range().upbound_data(),
                                                B.range().upbound_data()));
+    TA_ASSERT(gemm_helper.left_right_congruent(A.range().extent_data(),
+                                               B.range().extent_data()));
 
     // Compute gemm dimensions
     using integer = TiledArray::math::blas::integer;

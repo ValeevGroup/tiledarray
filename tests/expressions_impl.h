@@ -26,8 +26,6 @@
 #ifndef TILEDARRAY_TEST_EXPRESSIONS_IMPL_H
 #define TILEDARRAY_TEST_EXPRESSIONS_IMPL_H
 
-constexpr int nrepeats = 5;
-
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(tensor_factories, F, Fixtures, F) {
   auto& a = F::a;
   auto& c = F::c;
@@ -593,9 +591,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block, F, Fixtures, F) {
 
   c.fill_local(0.0);
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
-                               2 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             2 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}));
 
   BlockRange block_range(a.trange().tiles_range(), {3, 3, 3}, {5, 5, 5});
 
@@ -614,10 +611,9 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block, F, Fixtures, F) {
     }
   }
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
-                               2 * (a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
-                                    b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             2 * (a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index)) ||
@@ -638,11 +634,9 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block, F, Fixtures, F) {
     }
   }
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
-                               2 *
-                               (3 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
-                                4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             2 * (3 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
+                                  4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index)) ||
@@ -675,9 +669,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_permute_block, F, Fixtures,
   Permutation perm({2, 1, 0});
   BlockRange block_range(a.trange().tiles_range(), {3, 3, 3}, {5, 5, 5});
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
-                               a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     //    const size_t perm_index = block_range.ordinal(perm *
@@ -697,9 +690,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_permute_block, F, Fixtures,
     }
   }
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
-                               2 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             2 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     auto perm_index = perm * block_range.idx(index);
@@ -717,11 +709,9 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_permute_block, F, Fixtures,
     }
   }
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
-                               2 *
-                               (3 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}) +
-                                4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             2 * (3 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}) +
+                                  4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     auto perm_index = perm * block_range.idx(index);
@@ -744,11 +734,9 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_permute_block, F, Fixtures,
     }
   }
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
-                               2 *
-                               (3 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}) +
-                                4 * b("c,b,a").block({3, 3, 3}, {5, 5, 5})));
+  BOOST_REQUIRE_NO_THROW(c("a,b,c").block({3, 3, 3}, {5, 5, 5}) =
+                             2 * (3 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}) +
+                                  4 * b("c,b,a").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     auto perm_index = perm * block_range.idx(index);
@@ -779,10 +767,9 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_contract, F, Fixtures,
   auto& b = F::b;
   auto& w = F::w;
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(w("a,b").block({3, 3}, {5, 5}) =
-                               a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
-                               b("c,d,b").block({2, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3, 3}, {5, 5}) =
+                             a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
+                             b("c,d,b").block({2, 3, 3}, {5, 5, 5}));
 }
 // TODO need to test the correctness here
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_permute_contract, F,
@@ -791,10 +778,9 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_block_permute_contract, F,
   auto& b = F::b;
   auto& w = F::w;
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(w("a,b").block({3, 3}, {5, 5}) =
-                               a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
-                               b("d,c,b").block({3, 2, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(w("a,b").block({3, 3}, {5, 5}) =
+                             a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
+                             b("d,c,b").block({3, 2, 3}, {5, 5, 5}));
 }
 // TODO need to test the correctness here
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_contract, F, Fixtures, F) {
@@ -802,19 +788,16 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_contract, F, Fixtures, F) {
   auto& b = F::b;
   auto& w = F::w;
 
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
-                                      b("c,d,b").block({2, 3, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
+                                    b("c,d,b").block({2, 3, 3}, {5, 5, 5}));
 }
 // TODO need to test the correctness here
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(block_permute_contract, F, Fixtures, F) {
   auto& a = F::a;
   auto& b = F::b;
   auto& w = F::w;
-
-  for (int repeat = 0; repeat != nrepeats; ++repeat)
-    BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
-                                      b("d,c,b").block({3, 2, 3}, {5, 5, 5}));
+  BOOST_REQUIRE_NO_THROW(w("a,b") = a("a,c,d").block({3, 2, 3}, {5, 5, 5}) *
+                                    b("d,c,b").block({3, 2, 3}, {5, 5, 5}));
 }
 
 BOOST_FIXTURE_TEST_CASE_TEMPLATE(add, F, Fixtures, F) {
