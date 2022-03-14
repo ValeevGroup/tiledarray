@@ -22,7 +22,7 @@ std::string join(const small_vector<std::string> &v);
 template<typename T, typename U>
 using enable_if_string = std::enable_if_t< std::is_same_v<T,std::string>, U>;
 
-/// an n-index, with n a runtime parameter
+/// an `n`-index, with `n` a runtime parameter
 template<typename T>
 class Index {
 public:
@@ -36,10 +36,10 @@ public:
   Index(const S &s) : data_(s.begin(), s.end()) {}
 
   template<typename U = void>
-  Index(const std::string &s) : Index(index::tokenize(s)) {}
+  explicit Index(const std::string &s) : Index(index::tokenize(s)) {}
 
   template<typename U = void>
-  Index(const char *s) : Index(std::string(s)) {}
+  explicit Index(const char *s) : Index(std::string(s)) {}
 
   template<typename U = void>
   operator std::string() const { return index::join(data_); }
@@ -65,11 +65,14 @@ public:
 
   const auto& operator[](size_t idx) const { return data_.at(idx); }
 
+  /// @param[in] v element to seek
+  /// @pre `this->contains(v)`
+  /// @return the location of @p v in `*this`
   size_t indexof(const T& v) const {
     for (size_t i = 0; i < this->size(); ++i) {
-      if (this[i] == v) return i;
+      if ((*this)[i] == v) return i;
     }
-    return -1;
+    TA_ASSERT(false);
   }
 
   /// Returns true if argument exists in the Index object, else returns false
