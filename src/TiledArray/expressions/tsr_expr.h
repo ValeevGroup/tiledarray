@@ -101,6 +101,10 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   TsrExpr(array_type& array, const std::string& annotation)
       : array_(array), annotation_(annotation) {}
 
+  operator TsrExpr<const Array>() const {
+    return TsrExpr<const Array>(this->array(), this->annotation());
+  }
+
   /// Expression assignment operator
 
   /// \param other The expression that will be assigned to this array
