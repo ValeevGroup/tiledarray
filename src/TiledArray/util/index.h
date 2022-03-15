@@ -73,6 +73,7 @@ public:
       if ((*this)[i] == v) return i;
     }
     TA_ASSERT(false);
+    return -1;
   }
 
   /// Returns true if argument exists in the Index object, else returns false
