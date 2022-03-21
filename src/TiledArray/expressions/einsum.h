@@ -18,14 +18,12 @@ namespace TiledArray::expressions {
 /// @param[in] B second argument to the product
 /// @warning just as in the plain expression code, reductions are a special
 /// case; use Expr::reduce()
-template <typename Array>
-auto einsum(TsrExpr<Array> A, TsrExpr<Array> B) {
-  printf("einsum(A,B)\n");
+template<typename T, typename U>
+auto einsum(TsrExpr<T> A, TsrExpr<U> B) {
+  //printf("einsum(A,B)\n");
   auto a = std::get<0>(idx(A));
   auto b = std::get<0>(idx(B));
-  Array R;
-  R(a ^ b) = A * B;
-  return R;
+  return einsum(A, B, std::string(a^b));
 }
 
 /// einsum function with result indices explicitly specified
@@ -34,18 +32,20 @@ auto einsum(TsrExpr<Array> A, TsrExpr<Array> B) {
 /// @param[in] r result indices
 /// @warning just as in the plain expression code, reductions are a special
 /// case; use Expr::reduce()
-template<typename Array, typename ... Indices>
+template<typename T, typename U, typename ... Indices>
 auto einsum(
-  TsrExpr<Array> A, TsrExpr<Array> B,
+  TsrExpr<T> A, TsrExpr<U> B,
   const std::string &cs,
   World &world = get_default_world())
 {
-  return einsum(A, B, idx<Array>(cs), world);
+  static_assert(std::is_same<const T, const U>::value);
+  using E = TsrExpr<const T>;
+  return einsum(E(A), E(B), idx<T>(cs), world);
 }
 
 template<typename Array, typename ... Indices>
 auto einsum(
-  TsrExpr<Array> A, TsrExpr<Array> B,
+  TsrExpr<const Array> A, TsrExpr<const Array> B,
   std::tuple<Index,Indices...> cs,
   World &world)
 {

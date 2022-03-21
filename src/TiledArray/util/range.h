@@ -91,7 +91,7 @@ protected:
 
 };
 
-RangeProduct<Range> operator*(Range a, Range b){
+inline RangeProduct<Range> operator*(Range a, Range b){
   return RangeProduct<Range>({a, b});
 };
 
