@@ -207,11 +207,11 @@ struct IndexMap {
     auto it = begin;
     data_.reserve(keys.size());
     for (auto &&key : keys) {
-      assert(it != end);
-      data_.emplace_back(std::pair<K,V>{key, *it});
+      TA_ASSERT(it != end);
+      data_.emplace_back(std::pair<K, V>{key, *it});
       ++it;
     }
-    assert(it == end);
+    TA_ASSERT(it == end);
   }
 
   IndexMap(const small_vector<std::pair<K, V> > &data) : data_(data) { }
@@ -289,7 +289,7 @@ template<typename Array>
 auto idx(const std::string &s) {
   if constexpr (detail::is_tensor_of_tensor_v<typename Array::value_type>) {
     auto semi = std::find(s.begin(), s.end(), ';');
-    assert(semi != s.end());
+    TA_ASSERT(semi != s.end());
     auto first = std::string(s.begin(), semi);
     auto second = std::string(semi+1, s.end());
     return std::tuple<Index,Index>{ first, second };
