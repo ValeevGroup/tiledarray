@@ -163,15 +163,18 @@ Index<T> sorted(const Index<T>& a) {
   return Index<T>(r);
 }
 
-template<typename T>
-Permutation permutation(const Index<T> &s, const Index<T> &p) {
-  assert(sorted(s) == sorted(p));
-  small_vector<size_t> m;
-  m.reserve(p.size());
-  for (size_t i = 0; i != p.size(); ++i) {
-    m.push_back(s.indexof(p[i]));
+/// @param[in] from original (preimage) indices
+/// @param[in] to target (image) indices
+/// @return Permutation mapping @p from to @p to
+template <typename T>
+Permutation permutation(const Index<T> &from, const Index<T> &to) {
+  const auto order = from.size();
+  TA_ASSERT(order == to.size() && sorted(from) == sorted(to));
+  small_vector<size_t> p(order);
+  for (auto &&f : from) {
+    p.push_back(to.indexof(f));
   }
-  return Permutation(m);
+  return Permutation(std::move(p));
 }
 
 template<typename T, bool Inverse>
