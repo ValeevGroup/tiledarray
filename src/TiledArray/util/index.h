@@ -171,7 +171,8 @@ template <typename T>
 Permutation permutation(const Index<T> &from, const Index<T> &to) {
   const auto order = from.size();
   TA_ASSERT(order == to.size() && sorted(from) == sorted(to));
-  small_vector<size_t> p(order);
+  small_vector<size_t> p;
+  p.reserve(order);
   for (auto &&f : from) {
     p.push_back(to.indexof(f));
   }
