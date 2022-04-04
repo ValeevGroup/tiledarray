@@ -116,7 +116,7 @@ struct LinearAlgebraFixture : ReferenceFixture {
 };
 
 TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
-  assert(TA_NBs.size() > 0);
+  TA_ASSERT(TA_NBs.size() > 0);
 
   std::default_random_engine gen(0);
   std::uniform_int_distribution<> dist(0, TA_NBs.size() - 1);

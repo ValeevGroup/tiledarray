@@ -118,7 +118,7 @@ class Singleton {
   /// @param args a parameter pack
   template <typename... Args>
   static void set_instance(Args&&... args) {
-    assert(instance_accessor() == nullptr);
+    TA_ASSERT(instance_accessor() == nullptr);
     instance_accessor() = std::move(
         std::unique_ptr<Derived>(new Derived(std::forward<Args>(args)...)));
   }

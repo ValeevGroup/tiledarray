@@ -5,7 +5,7 @@
 #include "unit_test_config.h"
 
 auto gen_trange1(size_t N, const std::vector<size_t>& TA_NBs) {
-  assert(TA_NBs.size() > 0);
+  TA_ASSERT(TA_NBs.size() > 0);
   static int seed = 0;
 
   std::default_random_engine gen(seed++);
