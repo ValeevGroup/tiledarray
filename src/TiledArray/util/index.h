@@ -174,7 +174,7 @@ Permutation permutation(const Index<T> &from, const Index<T> &to) {
   small_vector<size_t> p;
   p.reserve(order);
   for (auto &&f : from) {
-    p.push_back(to.indexof(f));
+    p.emplace_back(to.indexof(f));
   }
   return Permutation(std::move(p));
 }
