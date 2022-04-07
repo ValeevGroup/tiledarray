@@ -69,7 +69,7 @@ struct ExprTrait<TsrExpr<const Array, false>>;  // <----- This should never
 
 /// Expression wrapper for array objects
 
-/// \tparam Array The \c TiledArray::Array type
+/// \tparam Array The \c TiledArray::DistArray type
 /// \tparam Alias If true, the array tiles should be evaluated as
 /// temporaries before assignment; if false, can reuse the result tiles
 template <typename Array, bool Alias>
@@ -304,7 +304,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
 /// Expression wrapper for const array objects
 
-/// \tparam A The \c TiledArray::Array type
+/// \tparam A The \c TiledArray::DistArray type
 template <typename Array>
 class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
  public:

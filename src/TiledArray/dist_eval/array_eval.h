@@ -55,9 +55,9 @@ class LazyArrayTile {
   using eval_t = typename eval_trait<typename std::decay<T>::type>::type;
 
  public:
-  using conversion_result_type = decltype(
-      ((!Op::is_consumable) && consume_ ? op_->consume(tile_)
-                                        : (*op_)(tile_)));  ///< conversion_type
+  using conversion_result_type = decltype((
+      (!Op::is_consumable) && consume_ ? op_->consume(tile_)
+                                       : (*op_)(tile_)));  ///< conversion_type
 
 #ifdef TILEDARRAY_HAS_CUDA
   // TODO need a better design on how to manage the lifetime of converted Tile
@@ -155,13 +155,13 @@ class LazyArrayTile {
 
 };  // LazyArrayTile
 
-/// Distributed evaluator for \c TiledArray::Array objects
+/// Distributed evaluator for \c TiledArray::DistArray objects
 
 /// This distributed evaluator applies modifications to Array that will be
 /// used as input to other distributed evaluators. Common operations that
 /// may be applied to array objects are scaling, permutation, and lazy tile
 /// evaluation. It also serves as an abstraction layer between
-/// \c TiledArray::Array objects and internal evaluation of expressions. The
+/// \c TiledArray::DistArray objects and internal evaluation of expressions. The
 /// main purpose of this evaluator is to do a lazy evaluation of input tiles
 /// so that the resulting data is only evaluated when the tile is needed by
 /// subsequent operations.

@@ -394,8 +394,8 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 /// TiledArray::TiledRange trange(blocks2.begin(), blocks2.end());
 ///
 /// // Create an Array from an Eigen matrix.
-/// TiledArray::Array<double, 2> array =
-///     eigen_to_array<TiledArray::Array<double, 2> >(world, trange, m);
+/// auto array =
+///     eigen_to_array<TA::TSpArrayD> >(world, trange, m);
 /// \endcode
 /// \tparam A The array type
 /// \tparam Derived The Eigen matrix derived type
@@ -476,7 +476,7 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
 /// object.
 /// Usage:
 /// \code
-/// TiledArray::Array<double, 2> array(world, trange);
+/// TA::TSpArrayD array(world, trange);
 /// // Set tiles of array ...
 ///
 /// Eigen::MatrixXd m = array_to_eigen(array);
@@ -572,8 +572,8 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
 /// TiledArray::TiledRange trange(blocks2.begin(), blocks2.end());
 ///
 /// // Create an Array from an Eigen matrix.
-/// TiledArray::Array<double, 2> array =
-///     row_major_buffer_to_array<TiledArray::Array<double, 2> >(world, trange,
+/// auto array =
+///     row_major_buffer_to_array<TA::TSpArrayD>(world, trange,
 ///     buffer, 100, 100);
 ///
 /// delete [] buffer;
@@ -641,8 +641,8 @@ inline A row_major_buffer_to_array(
 /// TiledArray::TiledRange trange(blocks2.begin(), blocks2.end());
 ///
 /// // Create an Array from an Eigen matrix.
-/// TiledArray::Array<double, 2> array =
-///     column_major_buffer_to_array<TiledArray::Array<double, 2> >(world,
+/// auto array =
+///     column_major_buffer_to_array<TA::TSpArrayD>(world,
 ///     trange, buffer, 100, 100);
 ///
 /// delete [] buffer;
