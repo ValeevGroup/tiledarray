@@ -37,7 +37,7 @@ inline TiledArray::TiledRange prepend_dim_to_trange(
       new_trange1_v.emplace_back(block_counter);
     }
     new_trange1_v.emplace_back(array_rank);
-    new_trange1 = TA::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
+    new_trange1 = TiledArray::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
   }
 
   /// make the new range for N+1 Array
@@ -73,10 +73,10 @@ inline TiledArray::TiledRange prepend_dim_to_trange(
 /// @param[in] num_avg_plus_one Number of tiles with one more than the average block size.
 /// @return SparseShape of fused Array object
 template <typename Tile>
-TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
+TiledArray::SparseShape<float> fuse_tilewise_vector_of_shapes(
         madness::World& global_world,
-        const std::vector<TA::DistArray<Tile, TA::SparsePolicy>>& arrays,
-        const std::size_t array_rank, const TA::TiledRange& fused_trange,
+        const std::vector<TiledArray::DistArray<Tile, TiledArray::SparsePolicy>>& arrays,
+        const std::size_t array_rank, const TiledArray::TiledRange& fused_trange,
         const size_t avg_block_size, const size_t num_avg_plus_one) {
   if (arrays.size() == 0) {
     TiledArray::Tensor<float> fused_tile_norms(fused_trange.tiles_range(), 0.f);
@@ -99,7 +99,7 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
     }
   }
 
-  TA::Tensor<float> fused_tile_norms(
+  TiledArray::Tensor<float> fused_tile_norms(
           fused_trange.tiles_range(), 0.f);  // use nonzeroes for local tiles only
 
   // compute norms of fused tiles
@@ -167,7 +167,7 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
       fused_tile_ord += ntiles_per_array;
     }
   }
-  auto fused_shapes = TA::SparseShape<float>(global_world, fused_tile_norms,
+  auto fused_shapes = TiledArray::SparseShape<float>(global_world, fused_tile_norms,
                                              fused_trange, true);
 
   return fused_shapes;
@@ -192,10 +192,10 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
 template <typename Tile>
 TiledArray::DenseShape fuse_tilewise_vector_of_shapes(
     madness::World&,
-    const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
-    const std::size_t array_rank, const TA::TiledRange& fused_trange,
+    const std::vector<TiledArray::DistArray<Tile, TiledArray::DensePolicy>>& arrays,
+    const std::size_t array_rank, const TiledArray::TiledRange& fused_trange,
     const size_t avg_block_size, const size_t num_avg_plus_one) {
-  return TA::DenseShape(1, fused_trange);
+  return TiledArray::DenseShape(1, fused_trange);
 }
 
 /// @brief extracts the shape of a slice of a fused array created with
@@ -211,9 +211,9 @@ TiledArray::DenseShape fuse_tilewise_vector_of_shapes(
 /// @param[in] tile_size the size of the tile of the leading dimension of the
 /// fused array
 /// @return the Shape of the @c i -th subarray
-inline TA::SparseShape<float> tilewise_slice_of_fused_shape(
-    const TA::TiledRange& split_trange,
-    const TA::SparsePolicy::shape_type& shape, const std::size_t tile_idx,
+inline TiledArray::SparseShape<float> tilewise_slice_of_fused_shape(
+    const TiledArray::TiledRange& split_trange,
+    const TiledArray::SparsePolicy::shape_type& shape, const std::size_t tile_idx,
     const std::size_t split_ntiles, const std::size_t tile_size) {
   TA_ASSERT(split_ntiles == split_trange.tiles_range().volume());
   TiledArray::Tensor<float> split_tile_norms(split_trange.tiles_range());
@@ -327,15 +327,15 @@ class dist_subarray_vec
 ///       The result will live in @c global_world.
 /// @sa detail::fuse_tilewise_vector_of_shapes
 template <typename Tile, typename Policy>
-TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
+TiledArray::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
         madness::World& global_world,
-        const std::vector<TA::DistArray<Tile, Policy>>& array_vec,
+        const std::vector<TiledArray::DistArray<Tile, Policy>>& array_vec,
         const std::size_t fused_dim_extent,
         const TiledArray::TiledRange& array_trange, std::size_t target_block_size = 1) {
     auto nproc = global_world.size();
 
     // make instances of array_vec globally accessible
-    using Array = TA::DistArray<Tile, Policy>;
+    using Array = TiledArray::DistArray<Tile, Policy>;
     detail::dist_subarray_vec<Array> arrays(global_world, array_vec,
                                             fused_dim_extent);
 
@@ -357,11 +357,11 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
             avg_block_size, num_avg_plus_one);
 
     // make fused array
-    TA::DistArray<Tile, Policy> fused_array(global_world, fused_trange,
+    TiledArray::DistArray<Tile, Policy> fused_array(global_world, fused_trange,
                                             fused_shape);
 
     /// copy the data from a sequence of tiles
-    auto make_tile = [](const TA::Range& range,
+    auto make_tile = [](const TiledArray::Range& range,
                         const std::vector<madness::Future<Tile>>& tiles) {
       TA_ASSERT(range.extent(0) == tiles.size());
       Tile result(range);
@@ -446,10 +446,10 @@ TA::DistArray<Tile, Policy> fuse_tilewise_vector_of_arrays(
 /// @sa detail::tilewise_slice_of_fused_shape
 template <typename Tile, typename Policy>
 void split_tilewise_fused_array(
-    madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
+    madness::World& local_world, const TiledArray::DistArray<Tile, Policy>& fused_array,
     std::size_t tile_idx,
-    std::vector<TA::DistArray<Tile, Policy>>& split_arrays,
-    const TA::TiledRange& split_trange) {
+    std::vector<TiledArray::DistArray<Tile, Policy>>& split_arrays,
+    const TiledArray::TiledRange& split_trange) {
   TA_ASSERT(tile_idx < fused_array.trange().dim(0).extent());
   auto arrays_size = split_arrays.size();
 
@@ -464,14 +464,14 @@ void split_tilewise_fused_array(
     auto split_shape = detail::tilewise_slice_of_fused_shape(
         split_trange, shape, tile_idx, split_ntiles, tile_size);
     // create split Array object
-    TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
+    TiledArray::DistArray<Tile, Policy> split_array(local_world, split_trange,
                                             split_shape);
     //split_arrays.push_back(split_array);
     split_arrays.emplace_back(std::move(split_array));
   }
 
   /// copy the data from tile
-  auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
+  auto make_tile = [](const TiledArray::Range& range, const Tile& fused_tile,
                       const size_t i_offset_in_tile) {
     const auto split_tile_volume = range.volume();
     return Tile(range,
@@ -510,7 +510,7 @@ void split_tilewise_fused_array(
 /// @sa detail::tilewise_slice_of_fused_shape
 template <typename Tile, typename Policy>
 void split_insert_tilewise_fused_array(
-    madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
+    madness::World& local_world, const TiledArray::DistArray<Tile, Policy>& fused_array,
     std::size_t tile_idx,
     std::vector<TiledArray::DistArray<Tile, Policy>>& split_arrays,
     const TiledArray::TiledRange& split_trange) {
@@ -530,7 +530,7 @@ void split_insert_tilewise_fused_array(
     auto split_shape = detail::tilewise_slice_of_fused_shape(
         split_trange, shape, tile_idx, split_ntiles, tile_size);
     // create split Array object
-    TA::DistArray<Tile, Policy> split_array(local_world, split_trange,
+    TiledArray::DistArray<Tile, Policy> split_array(local_world, split_trange,
                                             split_shape);
     split_arrays.insert(ptr_split_arrays_end, split_array);
   }
@@ -586,11 +586,11 @@ void split_insert_tilewise_fused_array(
 template <typename Tile, typename Policy>
 void split_contract_tilewise_fused_array(
     madness::World& local_world,
-    const TA::DistArray<Tile, Policy>& fused_arrayL,
-    const TA::DistArray<Tile, Policy>& fused_arrayR,
+    const TiledArray::DistArray<Tile, Policy>& fused_arrayL,
+    const TiledArray::DistArray<Tile, Policy>& fused_arrayR,
     std::size_t tile_idxL, std::size_t tile_idxR,
-    std::vector<TA::DistArray<Tile, Policy>>& split_arrays,
-    const TA::TiledRange& split_trangeL,const TA::TiledRange& split_trangeR,
+    std::vector<TiledArray::DistArray<Tile, Policy>>& split_arrays,
+    const TiledArray::TiledRange& split_trangeL,const TiledArray::TiledRange& split_trangeR,
     const std::string& contract_vars_L, const std::string& contract_vars_R,
     const std::string& contract_vars_final,
     double scal_mult = 1.0, double scal_add = 0.0
@@ -617,12 +617,12 @@ void split_contract_tilewise_fused_array(
   // constructs the rth array in the tile_idx tile of either the left or right fused array
   auto construct_split_array =
       [&local_world = static_cast<const madness::World&>(local_world),
-       &tile_range](const TA::DistArray<Tile, Policy>& fused_array,
-                    TA::DistArray<Tile, Policy>& split_array,
+       &tile_range](const TiledArray::DistArray<Tile, Policy>& fused_array,
+                    TiledArray::DistArray<Tile, Policy>& split_array,
                     std::size_t tile_idx, std::size_t split_ntiles,
                     std::size_t tile_count){
         /// copy the data from tile
-        auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
+        auto make_tile = [](const TiledArray::Range& range, const Tile& fused_tile,
                             const size_t i_offset_in_tile) {
           const auto split_tile_volume = range.volume();
           return Tile(range,
@@ -653,7 +653,7 @@ void split_contract_tilewise_fused_array(
              split_trangeR, shapeR, tile_idxR, split_ntilesR, tile_size);
 
     // create split Array objects and temporary array for contraction
-    TA::DistArray<Tile, Policy> split_arrayL(local_world, split_trangeL
+    TiledArray::DistArray<Tile, Policy> split_arrayL(local_world, split_trangeL
                                              ,split_shapeL),
         split_arrayR(local_world, split_trangeR, split_shapeR),
         mult_array;
@@ -674,13 +674,13 @@ void split_contract_tilewise_fused_array(
 template <typename Tile, typename Policy>
 double split_contract_dot_tilewise_fused_array(
     madness::World& local_world,
-    const TA::DistArray<Tile, Policy>& fused_arrayL,
-    const TA::DistArray<Tile, Policy>& fused_arrayR,
+    const TiledArray::DistArray<Tile, Policy>& fused_arrayL,
+    const TiledArray::DistArray<Tile, Policy>& fused_arrayR,
     std::size_t tile_idxL, std::size_t tile_idxR,
-    const TA::DistArray<Tile, Policy>& dot_array,
+    const TiledArray::DistArray<Tile, Policy>& dot_array,
     std::size_t tile_idx_dot,
-    const TA::TiledRange& split_trangeL,const TA::TiledRange& split_trangeR,
-    const TA::TiledRange& dot_trange,
+    const TiledArray::TiledRange& split_trangeL,const TiledArray::TiledRange& split_trangeR,
+    const TiledArray::TiledRange& dot_trange,
     const std::string& contract_vars_L, const std::string& contract_vars_R,
     const std::string& contract_vars_final, const std::string& dot_vars,
     double scal_mult = 1.0, double scal_add = 0.0
@@ -714,12 +714,12 @@ double split_contract_dot_tilewise_fused_array(
   // constructs the rth array in the tile_idx tile of either the left or right fused array
   auto construct_split_array =
       [&local_world = static_cast<const madness::World&>(local_world),
-       &tile_range](const TA::DistArray<Tile, Policy>& fused_array,
-                    TA::DistArray<Tile, Policy>& split_array,
+       &tile_range](const TiledArray::DistArray<Tile, Policy>& fused_array,
+                    TiledArray::DistArray<Tile, Policy>& split_array,
                     std::size_t tile_idx, std::size_t split_ntiles,
                     std::size_t tile_count){
         /// copy the data from tile
-        auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
+        auto make_tile = [](const TiledArray::Range& range, const Tile& fused_tile,
                             const size_t i_offset_in_tile) {
           const auto split_tile_volume = range.volume();
           return Tile(range,
@@ -750,7 +750,7 @@ double split_contract_dot_tilewise_fused_array(
              dot_trange, shapeD, tile_idx_dot, dot_ntiles, tile_size);
 
     // create split Array objects and temporary array for contraction
-    TA::DistArray<Tile, Policy> split_arrayL(local_world, split_trangeL
+    TiledArray::DistArray<Tile, Policy> split_arrayL(local_world, split_trangeL
                                              ,split_shapeL),
         split_arrayR(local_world, split_trangeR, split_shapeR),
         split_arrayD(local_world, dot_trange, dot_shape),
@@ -763,7 +763,7 @@ double split_contract_dot_tilewise_fused_array(
 
     // contract the arrays of the tiles and insert them into the split arrays
     mult_array(contract_vars_final) = scal_mult * split_arrayL(contract_vars_L) * split_arrayR(contract_vars_R);
-    dot += TA::dot(split_arrayD(dot_vars), mult_array(contract_vars_final));
+    dot += TiledArray::dot(split_arrayD(dot_vars), mult_array(contract_vars_final));
   }
 
   return dot;
@@ -772,11 +772,11 @@ double split_contract_dot_tilewise_fused_array(
 template <typename Tile, typename Policy>
 double split_contract_dot_tilewise_fused_array(
     madness::World& local_world,
-    const TA::DistArray<Tile, Policy>& fused_arrayL,
-    const TA::DistArray<Tile, Policy>& fused_arrayR,
+    const TiledArray::DistArray<Tile, Policy>& fused_arrayL,
+    const TiledArray::DistArray<Tile, Policy>& fused_arrayR,
     std::size_t tile_idxL, std::size_t tile_idxR,
-    typename std::vector<TA::DistArray<Tile, Policy>>::iterator& dot_array_ptr,
-    const TA::TiledRange& split_trangeL,const TA::TiledRange& split_trangeR,
+    typename std::vector<TiledArray::DistArray<Tile, Policy>>::iterator& dot_array_ptr,
+    const TiledArray::TiledRange& split_trangeL,const TiledArray::TiledRange& split_trangeR,
     const std::string& contract_vars_L, const std::string& contract_vars_R,
     const std::string& contract_vars_final, const std::string& dot_vars,
     double scal_mult = 1.0, double scal_add = 0.0) {
@@ -803,12 +803,12 @@ double split_contract_dot_tilewise_fused_array(
 
   // constructs the rth array in the tile_idx tile of either the left or right fused array
   auto construct_split_array =
-      [&local_world = static_cast<const madness::World&>(local_world)](const TA::DistArray<Tile, Policy>& fused_array,
-                    TA::DistArray<Tile, Policy>& split_array,
+      [&local_world = static_cast<const madness::World&>(local_world)](const TiledArray::DistArray<Tile, Policy>& fused_array,
+                                                                       TiledArray::DistArray<Tile, Policy>& split_array,
                     std::size_t tile_idx, std::size_t split_ntiles,
                     std::size_t tile_count){
         /// copy the data from tile
-        auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
+        auto make_tile = [](const TiledArray::Range& range, const Tile& fused_tile,
                             const size_t i_offset_in_tile) {
           const auto split_tile_volume = range.volume();
           return Tile(range,
@@ -837,7 +837,7 @@ double split_contract_dot_tilewise_fused_array(
              split_trangeR, shapeR, tile_idxR, split_ntilesR, tile_size);
 
     // create split Array objects and temporary array for contraction
-    TA::DistArray<Tile, Policy> split_arrayL(local_world, split_trangeL
+    TiledArray::DistArray<Tile, Policy> split_arrayL(local_world, split_trangeL
                                              ,split_shapeL),
         split_arrayR(local_world, split_trangeR, split_shapeR),
         mult_array;
@@ -848,7 +848,7 @@ double split_contract_dot_tilewise_fused_array(
 
     // contract the arrays of the tiles and insert them into the split arrays
     mult_array(contract_vars_final) = scal_mult * split_arrayL(contract_vars_L) * split_arrayR(contract_vars_R);
-    dot += TA::dot((*dot_array_ptr)(dot_vars), mult_array(contract_vars_final));
+    dot += TiledArray::dot((*dot_array_ptr)(dot_vars), mult_array(contract_vars_final));
   }
 
   return dot;
