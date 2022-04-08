@@ -21,11 +21,11 @@ namespace detail {
 /// @param block_size blocking range for the new dimension, the dimension being
 /// fused
 /// @return TiledRange of fused Array object
-inline TA::TiledRange prepend_dim_to_trange(
+inline TiledArray::TiledRange prepend_dim_to_trange(
     std::size_t array_rank, const TiledArray::TiledRange& array_trange,
     std::size_t nblocks, std::size_t avg_block_size, std::size_t num_avg_plus_one) {
   /// make the new TiledRange1 for new dimension
-  TA::TiledRange1 new_trange1;
+  TiledArray::TiledRange1 new_trange1;
   {
     std::vector<std::size_t> new_trange1_v;
     new_trange1_v.reserve(nblocks + 1);
@@ -41,11 +41,12 @@ inline TA::TiledRange prepend_dim_to_trange(
   }
 
   /// make the new range for N+1 Array
-  TA::TiledRange new_trange;
+  TiledArray::TiledRange new_trange;
   {
     auto old_trange1s = array_trange.data();
     old_trange1s.insert(old_trange1s.begin(), new_trange1);
-    new_trange = TA::TiledRange(old_trange1s.begin(), old_trange1s.end());
+    new_trange =
+        TiledArray::TiledRange(old_trange1s.begin(), old_trange1s.end());
   }
 
   return new_trange;
@@ -78,9 +79,9 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
         const std::size_t array_rank, const TA::TiledRange& fused_trange,
         const size_t avg_block_size, const size_t num_avg_plus_one) {
   if (arrays.size() == 0) {
-    TA::Tensor<float> fused_tile_norms(fused_trange.tiles_range(), 0.f);
-    return TA::SparseShape<float>(global_world, fused_tile_norms, fused_trange,
-                                  true);
+    TiledArray::Tensor<float> fused_tile_norms(fused_trange.tiles_range(), 0.f);
+    return TiledArray::SparseShape<float>(global_world, fused_tile_norms,
+                                          fused_trange, true);
   }
   const std::size_t rank = global_world.rank();
   auto size = global_world.size();
@@ -189,7 +190,7 @@ TA::SparseShape<float> fuse_tilewise_vector_of_shapes(
 /// @param[in] num_avg_plus_one Number of tiles with one more than the average block size.
 /// @return DenseShape of fused Array object
 template <typename Tile>
-TA::DenseShape fuse_tilewise_vector_of_shapes(
+TiledArray::DenseShape fuse_tilewise_vector_of_shapes(
     madness::World&,
     const std::vector<TA::DistArray<Tile, TA::DensePolicy>>& arrays,
     const std::size_t array_rank, const TA::TiledRange& fused_trange,
@@ -215,7 +216,7 @@ inline TA::SparseShape<float> tilewise_slice_of_fused_shape(
     const TA::SparsePolicy::shape_type& shape, const std::size_t tile_idx,
     const std::size_t split_ntiles, const std::size_t tile_size) {
   TA_ASSERT(split_ntiles == split_trange.tiles_range().volume());
-  TA::Tensor<float> split_tile_norms(split_trange.tiles_range());
+  TiledArray::Tensor<float> split_tile_norms(split_trange.tiles_range());
 
   // map element i to its tile index
   std::size_t offset = tile_idx * split_ntiles;
@@ -230,7 +231,7 @@ inline TA::SparseShape<float> tilewise_slice_of_fused_shape(
                  [tile_size](const float& elem) { return elem * tile_size; });
 
   auto split_shape =
-      TA::SparseShape<float>(split_tile_norms, split_trange, true);
+      TiledArray::SparseShape<float>(split_tile_norms, split_trange, true);
   return split_shape;
 }
 
@@ -242,11 +243,12 @@ inline TA::SparseShape<float> tilewise_slice_of_fused_shape(
 /// the index of the corresponding tile of the leading dimension)
 /// @param[in] split_trange TiledRange of the target subarray objct
 /// @return the Shape of the @c i -th subarray
-inline TA::DenseShape tilewise_slice_of_fused_shape(
-    const TA::TiledRange& split_trange,
-    const TA::DensePolicy::shape_type& shape, const std::size_t tile_idx,
-    const std::size_t split_ntiles, const std::size_t tile_size) {
-  return TA::DenseShape(tile_size, split_trange);
+inline TiledArray::DenseShape tilewise_slice_of_fused_shape(
+    const TiledArray::TiledRange& split_trange,
+    const TiledArray::DensePolicy::shape_type& shape,
+    const std::size_t tile_idx, const std::size_t split_ntiles,
+    const std::size_t tile_size) {
+  return TiledArray::DenseShape(tile_size, split_trange);
 }
 }  // namespace detail
 
@@ -510,8 +512,8 @@ template <typename Tile, typename Policy>
 void split_insert_tilewise_fused_array(
     madness::World& local_world, const TA::DistArray<Tile, Policy>& fused_array,
     std::size_t tile_idx,
-    std::vector<TA::DistArray<Tile, Policy>>& split_arrays,
-    const TA::TiledRange& split_trange) {
+    std::vector<TiledArray::DistArray<Tile, Policy>>& split_arrays,
+    const TiledArray::TiledRange& split_trange) {
   TA_ASSERT(tile_idx < fused_array.trange().dim(0).extent());
   auto arrays_size = split_arrays.size();
 
@@ -534,7 +536,7 @@ void split_insert_tilewise_fused_array(
   }
 
   /// copy the data from tile
-  auto make_tile = [](const TA::Range& range, const Tile& fused_tile,
+  auto make_tile = [](const TiledArray::Range& range, const Tile& fused_tile,
                       const size_t i_offset_in_tile) {
     const auto split_tile_volume = range.volume();
     return Tile(range,

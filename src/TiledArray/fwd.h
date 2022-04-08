@@ -139,7 +139,9 @@ typedef TSpArray<std::complex<float>> TSpArrayC;
 // DistArray is rank-polymorphic
 template <typename T, unsigned int = 0, typename Tile = Tensor<T>,
           typename Policy = DensePolicy>
-using Array = DistArray<Tile, Policy>;
+using Array
+    [[deprecated("use TiledArray::DistArray or TiledArray::TArray<T>")]] =
+        DistArray<Tile, Policy>;
 
 }  // namespace TiledArray
 

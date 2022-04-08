@@ -206,23 +206,28 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     } else {
       // Validate the process map
       TA_ASSERT(pmap->size() == trange.tiles_range().volume() &&
-                "Array::Array() -- The size of the process map is not "
+                "TiledArray::DistArray::DistArray() -- The size of the process "
+                "map is not "
                 "equal to the number of tiles in the TiledRange object.");
-      TA_ASSERT(
-          pmap->rank() == typename pmap_interface::size_type(world.rank()) &&
-          "Array::Array() -- The rank of the process map is not equal to that "
-          "of the world object.");
-      TA_ASSERT(
-          pmap->procs() == typename pmap_interface::size_type(world.size()) &&
-          "Array::Array() -- The number of processes in the process map is not "
-          "equal to that of the world object.");
+      TA_ASSERT(pmap->rank() ==
+                    typename pmap_interface::size_type(world.rank()) &&
+                "TiledArray::DistArray::DistArray() -- The rank of the process "
+                "map is not equal to that "
+                "of the world object.");
+      TA_ASSERT(pmap->procs() ==
+                    typename pmap_interface::size_type(world.size()) &&
+                "TiledArray::DistArray::DistArray() -- The number of processes "
+                "in the process map is not "
+                "equal to that of the world object.");
     }
 
     // Validate the shape
-    TA_ASSERT(!shape.empty() &&
-              "Array::Array() -- The shape is not initialized.");
+    TA_ASSERT(
+        !shape.empty() &&
+        "TiledArray::DistArray::DistArray() -- The shape is not initialized.");
     TA_ASSERT(shape.validate(trange.tiles_range()) &&
-              "Array::Array() -- The range of the shape is not equal to "
+              "TiledArray::DistArray::DistArray() -- The range of the shape is "
+              "not equal to "
               "the tiles range.");
 
     return std::shared_ptr<impl_type>(new impl_type(world, trange, shape, pmap),

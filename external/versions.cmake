@@ -1,7 +1,7 @@
 # for each dependency track both current and previous id (the variable for the latter must contain PREVIOUS)
 # to be able to auto-update them
 
-set(TA_TRACKED_VGCMAKEKIT_TAG f946aa274745da09702a727492f1cabb843dc9e6)
+set(TA_TRACKED_VGCMAKEKIT_TAG fe6176e5273feba3a3d0f4ec6e50c18b69d79d29)
 
 # Boost explicitly downgraded to 1.59 from 1.68
 set(TA_TRACKED_BOOST_VERSION 1.59)
