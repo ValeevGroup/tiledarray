@@ -495,6 +495,7 @@ void split_tilewise_fused_array(
   return;
 }
 
+/// [[deprecated]] use the TA::expressions::einsum code instead
 /// @brief extracts a subarray of two fused arrays created with
 /// fuse_vector_of_arrays, contracts the arrays and returns a
 /// vector of arrays with the result.
@@ -606,6 +607,32 @@ void split_contract_tilewise_fused_array(
   return;
 }
 
+/// [[deprecated]] use the TA::expressions::einsum code instead
+/// @brief extracts a subarray of two fused arrays created with
+/// fuse_vector_of_arrays, contracts the arrays the dots the
+/// resulting tensor with a subarray extracted from a third tensor.
+
+/// @param[in] local_world The World object where the @i -th subarray is
+///             created
+/// @param[in] fused_arrayL a DistArray created with fuse_vector_of_arrays; LHS of the contraction
+/// @param[in] fused_arrayR a DistArray created with fuse_vector_of_arrays; RHS of the contraction
+/// @param[in] tile_idxL the index of the subarray to be extracted from @c fused_arrayL
+///            (i.e. the index of the corresponding *element* index of the
+///            leading dimension
+/// @param[in] tile_idxR the index of the subarray to be extracted from @c fused_arrayR
+/////            (i.e. the index of the corresponding *element* index of the
+/////            leading dimension))
+/// @param[in] dot_array a DistArray which will be dotted with the result
+/// of @c fused_arrayL and \c fused_arrayR.
+/// @param[in] tile_idx_dot the index of the split array in @c dot_array
+/// @param[in] split_trangeL TiledRange of the split Array object from @c fused_arrayL
+/// @param[in] split_trangeR TiledRange of the split Array object from @c fused_arrayR
+/// @param[in] dot_trange TiledRange of the split Array object from @c dot_array
+/// @param[in] contract_vars_L variable list for the LHS of the contraction
+/// @param[in] contract_vars_R variable list for the RHS of the contraction
+/// @param[in] contract_vars_final variable list for the result of the contraction,
+/// this is also used for the order of the contracted tensor in the dot prduct
+/// @param[in] dot_vars variable list for dot_array in the dot product.
 template <typename Tile, typename Policy>
 double split_contract_dot_tilewise_fused_array(
     madness::World& local_world,
@@ -704,6 +731,33 @@ double split_contract_dot_tilewise_fused_array(
   return dot;
 }
 
+/// [[deprecated]] use the TA::expressions::einsum code instead
+/// @brief extracts a subarray of two fused arrays created with
+/// fuse_vector_of_arrays, contracts the arrays the dots the
+/// resulting tensor with a subarray which has been pre-extracted and stored in
+/// a vector.
+
+/// @param[in] local_world The World object where the @i -th subarray is
+///             created
+/// @param[in] fused_arrayL a DistArray created with fuse_vector_of_arrays; LHS of the contraction
+/// @param[in] fused_arrayR a DistArray created with fuse_vector_of_arrays; RHS of the contraction
+/// @param[in] tile_idxL the index of the subarray to be extracted from @c fused_arrayL
+///            (i.e. the index of the corresponding *element* index of the
+///            leading dimension
+/// @param[in] tile_idxR the index of the subarray to be extracted from @c fused_arrayR
+/////            (i.e. the index of the corresponding *element* index of the
+/////            leading dimension))
+/// @param[in] dot_array_ptr an iterator to a vector of split arrays which will be dotted with the result
+/// of @c fused_arrayL and \c fused_arrayR.
+/// @param[in] tile_idx_dot the index of the split array in @c dot_array
+/// @param[in] split_trangeL TiledRange of the split Array object from @c fused_arrayL
+/// @param[in] split_trangeR TiledRange of the split Array object from @c fused_arrayR
+/// @param[in] dot_trange TiledRange of the split Array object from @c dot_array
+/// @param[in] contract_vars_L variable list for the LHS of the contraction
+/// @param[in] contract_vars_R variable list for the RHS of the contraction
+/// @param[in] contract_vars_final variable list for the result of the contraction,
+/// this is also used for the order of the contracted tensor in the dot prduct
+/// @param[in] dot_vars variable list for dot_array in the dot product.
 template <typename Tile, typename Policy>
 double split_contract_dot_tilewise_fused_array(
     madness::World& local_world,
