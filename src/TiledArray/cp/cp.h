@@ -114,7 +114,7 @@ class CP {
   /// \param[in] W The grammian matrixed used to determine LS solution.
   void cholesky_inverse(TiledArray::DistArray<Tile, Policy> & MtKRP,
                         const TiledArray::DistArray<Tile, Policy> & W){
-
+    MtKRP = TiledArray::math::linalg::cholesky_solve(W, MtKRP);
   }
 
   /// Technically the Least squares problem requires doing a pseudoinverse
@@ -123,8 +123,28 @@ class CP {
   /// Ax = B.
   /// \param[in] W The grammian matrixed used to determine LS solution.
   void pseudo_inverse(TiledArray::DistArray<Tile, Policy> & MtKRP,
-                      const TiledArray::DistArray<Tile, Policy> & W){
+                      const TiledArray::DistArray<Tile, Policy> & W,
+                      double svd_invert_threshold = 1e-12){
+    // compute the SVD of W;
+    auto SVD = TiledArray::svd<SVD::Vectors::AllVectors>(W);
 
+    // Grab references to S, U and Vt
+    auto& S = std::get<0>(SVD),
+        & U = std::get<1>(SVD),
+        & Vt = std::get<2>(SVD);
+
+    // Walk through S and invert diagonal elements
+    TiledArray::foreach_inplace(S, [&, svd_invert_threshold](auto& tile){
+      auto const& range = tile.range();
+      auto const lo = range.lobound_data();
+      auto const up = range.upbound_data();
+      for (auto n = lo[0]; n != up[0]; ++n) {
+        auto& val = tile(n,n);
+        if(val < svd_invert_threshold) continue;
+        val = 1.0 / val;
+      }},true);
+
+    MtKRP("r,n") = (U("r,s") * S("s,sp")) * (Vt("sp,rp") * MtKRP("rp,n"));
   }
 
   /// computes the column normalization of a given factor matrix \c factor
