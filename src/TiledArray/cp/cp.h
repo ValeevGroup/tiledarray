@@ -114,7 +114,7 @@ class CP {
   /// \param[in] W The grammian matrixed used to determine LS solution.
   void cholesky_inverse(TiledArray::DistArray<Tile, Policy> & MtKRP,
                         const TiledArray::DistArray<Tile, Policy> & W){
-    MtKRP = TiledArray::math::linalg::cholesky_solve(W, MtKRP);
+    MtKRP = TiledArray::math::linalg::cholesky_lsolve(W, MtKRP);
   }
 
   /// Technically the Least squares problem requires doing a pseudoinverse
