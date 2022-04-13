@@ -50,6 +50,7 @@ class CP {
   /// \param[in] rank Rank of the CP deccomposition
   /// \param[in] build_rank should CP approximation be built from rank 1
   /// or set.
+  /// \returns the fit: \f$ 1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
   double compute_rank(size_t rank, bool build_rank = false){
     double epsilon = 1.0;
     if(build_rank){
@@ -71,6 +72,7 @@ class CP {
   /// \f$ |T_{\text{exact}} - T_{\text{approx}} | < error \f$
   /// \param[in] error Acceptable error in the CP decomposition
   /// \param[in] max_rank Maximum acceptable rank.
+  /// \returns the fit: \f$1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
   double compute_error(double error, size_t max_rank){
     size_t cur_rank = 1;
     double epsilon = 1.0;
@@ -122,6 +124,7 @@ class CP {
   /// \param[in,out] MtKRP In: Matricized tensor times KRP Out: The solution to
   /// Ax = B.
   /// \param[in] W The grammian matrixed used to determine LS solution.
+  /// \param[in] svd_invert_threshold Don't invert numerical 0 i.e. @c svd_invert_threshold
   void pseudo_inverse(TiledArray::DistArray<Tile, Policy> & MtKRP,
                       const TiledArray::DistArray<Tile, Policy> & W,
                       double svd_invert_threshold = 1e-12){
