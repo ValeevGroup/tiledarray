@@ -7,7 +7,17 @@
 
 #include <tiledarray.h>
 #include <TiledArray/expressions/einsum.h>
+#include <random>
+#include <TiledArray/conversions/btas.h>
+
 namespace TiledArray::cp{
+namespace detail{
+// A seed for the random number generator.
+static inline unsigned int& random_seed_accessor(){
+  static unsigned int value = 3;
+  return value;
+}
+} // namespace TiledArray::cp::detail
 
 /**
  * This is a base class for the canonical polyadic (CP)
@@ -117,6 +127,25 @@ class CP {
   /// \param[in] rank rank of the CP approximation
   virtual void build_guess(const size_t rank);
 
+  TiledArray::DistArray<Tile, Policy>
+      construct_random_factor(const madness::World & world,
+                          size_t rank, size_t mode_size,
+                          TiledArray::TiledRange1 trange1_rank,
+                          TiledArray::TiledRange1 trange1_mode){
+    using Tensor = btas::Tensor<typename TiledArray::DistArray<Tile, Policy>::element_type,
+                                btas::DEFAULT::range, btas::varray<typename Tile::value_type>>;
+    Tensor factor(rank, mode_size);
+    std::mt19937 generator(detail::random_seed_accessor());
+    std::uniform_real_distribution<> distribution(-1.0, 1.0);
+    for(auto ptr = factor.begin(); ptr != factor.end(); ++ptr)
+      *ptr = distribution(generator);
+
+    return TiledArray::btas_tensor_to_array<
+        TiledArray::DistArray<Tile, Policy> >
+        (world,
+         TiledArray::TiledRange({trange1_rank, trange1_mode}),
+         factor, (world.size() != 1));
+  }
   /// This function is specified by the CP solver
   /// optimizes the rank @c rank CP approximation
   /// stored in cp_factors.
