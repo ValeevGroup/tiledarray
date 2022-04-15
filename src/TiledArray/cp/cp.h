@@ -135,10 +135,13 @@ class CP {
     using Tensor = btas::Tensor<typename TiledArray::DistArray<Tile, Policy>::element_type,
                                 btas::DEFAULT::range, btas::varray<typename Tile::value_type>>;
     Tensor factor(rank, mode_size);
-    std::mt19937 generator(detail::random_seed_accessor());
-    std::uniform_real_distribution<> distribution(-1.0, 1.0);
-    for(auto ptr = factor.begin(); ptr != factor.end(); ++ptr)
-      *ptr = distribution(generator);
+    if(world.rank() == 0) {
+      std::mt19937 generator(detail::random_seed_accessor());
+      std::uniform_real_distribution<> distribution(-1.0, 1.0);
+      for (auto ptr = factor.begin(); ptr != factor.end(); ++ptr)
+        *ptr = distribution(generator);
+    }
+    world.gop.broadcast_serializable(factor, 0);
 
     return TiledArray::btas_tensor_to_array<
         TiledArray::DistArray<Tile, Policy> >
