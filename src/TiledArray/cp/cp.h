@@ -50,9 +50,12 @@ class CP {
   /// \param[in] rank Rank of the CP deccomposition
   /// \param[in] build_rank should CP approximation be built from rank 1
   /// or set.
+  /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
   /// \returns the fit: \f$ 1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
-  double compute_rank(size_t rank, bool build_rank = false){
+  double compute_rank(size_t rank, bool build_rank = false,
+                      double epsilonALS= 1e-3){
     double epsilon = 1.0;
+    fit_tol = epsilonALS;
     if(build_rank){
       size_t cur_rank = 1;
       do{
@@ -72,10 +75,13 @@ class CP {
   /// \f$ |T_{\text{exact}} - T_{\text{approx}} | < error \f$
   /// \param[in] error Acceptable error in the CP decomposition
   /// \param[in] max_rank Maximum acceptable rank.
+  /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
   /// \returns the fit: \f$1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
-  double compute_error(double error, size_t max_rank){
+  double compute_error(double error, size_t max_rank,
+                       double epsilonALS = 1e-3){
     size_t cur_rank = 1;
     double epsilon = 1.0;
+    fit_tol = epsilonALS;
     do{
       build_guess(cur_rank);
       ALS(cur_rank);
@@ -90,11 +96,20 @@ class CP {
       cp_factors,                   // the CP factor matrices
       partial_grammian;             // square of the factor matrices (r x r)
   TiledArray::DistArray<Tile, Policy>
-      MTtKRP;                      // matricized tensor times khatri rao product
+      MTtKRP,                      // matricized tensor times
+                                   // khatri rao product for check_fit()
+      unNormalized_Factor;         // The final factor unnormalized
+                                   // so you don't have to
+                                   // deal with lambda for check_fit()
   std::vector<double> lambda;      // Column normalizations
   size_t ndim;                     // number of factor matrices
-  double prev_fit = 1.0,
-         norm_reference;          // used in determining the CP fit.
+  double prev_fit = 1.0,           // The fit of the previous ALS iteration
+         final_fit,                // The final fit of the ALS
+                                   // optimization at fixed rank.
+         fit_tol,                  // Tolerance for the ALS solver
+         converged_num,            // How many times the ALS solver
+                                   // has changed less than the tolerance
+         norm_reference;           // used in determining the CP fit.
 
   /// This function is determined by the specific CP solver.
   /// builds the rank @c rank CP approximation and stores
@@ -124,7 +139,8 @@ class CP {
   /// \param[in,out] MtKRP In: Matricized tensor times KRP Out: The solution to
   /// Ax = B.
   /// \param[in] W The grammian matrixed used to determine LS solution.
-  /// \param[in] svd_invert_threshold Don't invert numerical 0 i.e. @c svd_invert_threshold
+  /// \param[in] svd_invert_threshold Don't invert
+  /// numerical 0 i.e. @c svd_invert_threshold
   void pseudo_inverse(TiledArray::DistArray<Tile, Policy> & MtKRP,
                       const TiledArray::DistArray<Tile, Policy> & W,
                       double svd_invert_threshold = 1e-12){
@@ -178,8 +194,50 @@ class CP {
 
   }
 
-  virtual bool check_fit(){
+  /// This function checks the fit and change in the
+  /// fit for the CP loss function
+  /// \f$ fit = 1.0 - |T - T_{CP}| = 1.0 - T^2 + 2 T T_{CP} - T_{CP}^2\f$
+  /// must have small change in fit 2 times to return true.
+  /// this function can be defined in the derived class if
+  /// nonstandard CP loss function
+  /// \param[in] verbose false; Should the fit and change
+  /// in fit be printed each call?
+  /// \returns bool : is the change in fit less than the ALS tolerance?
+  virtual bool check_fit(bool verbose = false){
+    // Compute the inner product T * T_CP
+    double inner_prod = MTtKRP("r,n").dot(unNormalized_Factor("r,n"));
+    // compute the square of the CP tensor (can use the grammian)
+    auto factor_norm=[&](){
+      auto gram_ptr = partial_grammian.begin();
+      TiledArray::DistArray<Tile, Policy> W(*(gram_ptr));
+      ++gram_ptr;
+      for(size_t i = 0; i < ndim -1; ++i, ++gram_ptr){
+        W("r,rp") *= *(gram_ptr)("r,rp");
+      }
+      return sqrt(W("r,rp").dot((unNormalized_Factor("r,n") * unNormalized_Factor("rp,n"))));
+    };
+    // compute the error in the loss function and find the fit
+    double normFactors = factor_norm(),
+           normResidual = sqrt(norm_reference * norm_reference + normFactors * normFactors - 2.0 * inner_prod),
+           fit = 1.0 - (normResidual / norm_reference),
+           fit_change = abs(prev_fit - fit);
+    prev_fit = fit;
+    // print fit data if required
+    if(verbose){
+      std::cout << fit << "\t" << fit_change << std::endl;
+    }
 
+    // if the change in fit is less than the tolerance try to return true.
+    if(fit_change < fit_tol){
+      converged_num++;
+      if(converged_num == 2){
+        converged_num = 0;
+        final_fit = prev_fit;
+        prev_fit = 1.0;
+        return true;
+      }
+    }
+    return false;
   }
 };
 
