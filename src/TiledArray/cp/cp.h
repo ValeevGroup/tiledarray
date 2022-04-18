@@ -111,7 +111,8 @@ class CP {
       unNormalized_Factor;         // The final factor unnormalized
                                    // so you don't have to
                                    // deal with lambda for check_fit()
-  std::vector<double> lambda;      // Column normalizations
+  TiledArray::DistArray<Tile, Policy>
+      lambda;                      // Column normalizations
   size_t ndim;                     // number of factor matrices
   double prev_fit = 1.0,           // The fit of the previous ALS iteration
          final_fit,                // The final fit of the ALS
@@ -222,8 +223,22 @@ class CP {
   /// Also normalizes the columns of \c factor
   /// \param[in,out] factor in: unnormalized factor matrix, out: column
   /// normalized factor matrix
-  void normCol(TiledArray::DistArray<Tile, Policy> &factor){
-
+  void normCol(TiledArray::DistArray<Tile, Policy> &factor,
+               size_t rank){
+    auto & world = factor.world();
+    lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
+    std::vector<typename Tile::value_type> lambda_vector;
+    lambda_vector.reserve(rank);
+    foreach_inplace(lambda, [&](auto& tile){
+      for(auto & i : tile) {
+        i = sqrt((i));
+        lambda_vector.emplace_back(i);
+      }
+    }, true);
+    auto & tr1_rank = factor.trange().data()[0];
+    diagonal_array<Tile, Policy>(world,
+                                 TiledArray::TiledRange({tr1_rank, tr1_rank}),
+                                 lambda_vector.begin());
   }
 
   /// This function checks the fit and change in the
