@@ -74,7 +74,7 @@ class CP {
         ++cur_rank;
       }while(cur_rank < rank);
     } else{
-      build_guess(rank);
+      build_guess(rank, 100);
       ALS(rank);
     }
     return epsilon;
@@ -94,7 +94,7 @@ class CP {
     fit_tol = epsilonALS;
     do{
       build_guess(cur_rank);
-      ALS(cur_rank);
+      ALS(cur_rank, 100);
       ++cur_rank;
     }while(epsilon > error && cur_rank < max_rank);
 
@@ -154,7 +154,9 @@ class CP {
   /// optimizes the rank @c rank CP approximation
   /// stored in cp_factors.
   /// \param[in] rank rank of the CP approximation
-  virtual void ALS(size_t rank);
+  /// \param[in] max_iter max number of ALS iterations
+  /// \param[in] verbose Should ALS print fit information while running?
+  virtual void ALS(size_t rank, size_t max_iter, bool verbose = false);
 
   /// This function leverages the fact that the grammian (W) is
   /// square and symmetric and solves the least squares (LS) problem Ax = B
