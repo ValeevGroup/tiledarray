@@ -18,6 +18,8 @@ static inline unsigned int& random_seed_accessor(){
   return value;
 }
 
+// given a rank and block size, this computes a
+// trange for the rank dimension to be used to make the CP factors.
 static inline TiledRange1 compute_trange1(size_t rank, size_t rank_block_size){
   std::size_t nblocks =
       (rank + rank_block_size - 1) / rank_block_size;
@@ -71,6 +73,10 @@ class CP {
   CP(size_t n_factors) : ndim(n_factors){
     cp_factors.reserve(n_factors);
     partial_grammian.reserve(n_factors);
+    for(auto i = 0; i < ndim; ++i){
+      DistArray<Tile, Policy> W;
+      partial_grammian.emplace_back(W);
+    }
   }
 
   /// Generic deconstructor
@@ -100,14 +106,14 @@ class CP {
       size_t cur_rank = 1;
       do{
         rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
-        build_guess(cur_rank);
-        ALS(cur_rank);
+        build_guess(cur_rank, rank_trange);
+        ALS(cur_rank, 100);
         ++cur_rank;
       }while(cur_rank < rank);
     } else{
       rank_trange = detail::compute_trange1(rank, rank_block_size);
       build_guess(rank, rank_trange);
-      ALS(rank);
+      ALS(rank, 100);
     }
     return epsilon;
   }
@@ -165,9 +171,11 @@ class CP {
   /// builds the rank @c rank CP approximation and stores
   /// them in cp_factors.
   /// \param[in] rank rank of the CP approximation
+  /// \param[in] rank_trange TiledRange1 of the rank dimension.
   virtual void build_guess(size_t rank,
                       TiledRange1 rank_trange) = 0;
 
+  /// This func
   TiledArray::DistArray<Tile, Policy>
       construct_random_factor(madness::World & world,
                           size_t rank, size_t mode_size,
@@ -278,9 +286,9 @@ class CP {
       }
     }, true);
     auto & tr1_rank = factor.trange().data()[0];
-    diagonal_array<Tile, Policy>(world,
-                                 TiledArray::TiledRange({tr1_rank, tr1_rank}),
-                                 lambda_vector.begin());
+    diagonal_array<DistArray<Tile, Policy>>(world,
+                   TiledArray::TiledRange({tr1_rank, tr1_rank}),
+                   lambda_vector.begin(), lambda_vector.end());
   }
 
   /// This function checks the fit and change in the
