@@ -126,10 +126,11 @@ class CP {
   /// builds the rank @c rank CP approximation and stores
   /// them in cp_factors.
   /// \param[in] rank rank of the CP approximation
-  virtual void build_guess(const size_t rank);
+  virtual void build_guess(size_t rank,
+                      TiledRange1 rank_trange) = 0;
 
   TiledArray::DistArray<Tile, Policy>
-      construct_random_factor(const madness::World & world,
+      construct_random_factor(madness::World & world,
                           size_t rank, size_t mode_size,
                           TiledArray::TiledRange1 trange1_rank,
                           TiledArray::TiledRange1 trange1_mode){
@@ -156,7 +157,7 @@ class CP {
   /// \param[in] rank rank of the CP approximation
   /// \param[in] max_iter max number of ALS iterations
   /// \param[in] verbose Should ALS print fit information while running?
-  virtual void ALS(size_t rank, size_t max_iter, bool verbose = false);
+  virtual void ALS(size_t rank, size_t max_iter, bool verbose = false) = 0;
 
   /// This function leverages the fact that the grammian (W) is
   /// square and symmetric and solves the least squares (LS) problem Ax = B
@@ -261,7 +262,7 @@ class CP {
       TiledArray::DistArray<Tile, Policy> W(*(gram_ptr));
       ++gram_ptr;
       for(size_t i = 0; i < ndim -1; ++i, ++gram_ptr){
-        W("r,rp") *= *(gram_ptr)("r,rp");
+        W("r,rp") *= (*gram_ptr)("r,rp");
       }
       return sqrt(W("r,rp").dot((unNormalized_Factor("r,n") * unNormalized_Factor("rp,n"))));
     };

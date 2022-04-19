@@ -13,11 +13,10 @@ class CP_ALS : public CP<Tile, Policy>{
  public:
   using CP<Tile, Policy>::ndim;
   using CP<Tile, Policy>::cp_factors;
-  CP_ALS() : CP<Tile, Policy>() { }
+  CP_ALS() = default;
 
   CP_ALS(const DistArray<Tile, Policy> & tref) :
-            CP<Tile, Policy>(tref.rank()), reference(tref){
-    world = tref.world();
+            CP<Tile, Policy>(rank(tref)), reference(tref), world(tref.world()){
   }
 
  protected:
@@ -29,7 +28,7 @@ class CP_ALS : public CP<Tile, Policy>{
     if(cp_factors.size() == 0) {
       for (auto i = 0; i < ndim; ++i) {
         cp_factors.emplace_back(this->construct_random_factor(
-            world, rank, reference.trange().tiles_ranges().data()[i],
+            world, rank, reference.trange().tiles_range().extent_data()[i],
             rank_trange, reference.trange().data()[i]));
       }
     } else{
