@@ -17,6 +17,29 @@ static inline unsigned int& random_seed_accessor(){
   static unsigned int value = 3;
   return value;
 }
+
+static inline TiledRange1 compute_trange1(size_t rank, size_t rank_block_size){
+  std::size_t nblocks =
+      (rank + rank_block_size - 1) / rank_block_size;
+  auto dv = std::div((int) (rank + nblocks - 1), (int) nblocks);
+  auto avg_block_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
+
+  TiledArray::TiledRange1 new_trange1;
+  {
+    std::vector<std::size_t> new_trange1_v;
+    new_trange1_v.reserve(nblocks + 1);
+    auto block_counter = 0;
+    for(auto i = 0; i < num_avg_plus_one; ++i, block_counter += avg_block_size + 1){
+      new_trange1_v.emplace_back(block_counter);
+    }
+    for (auto i = num_avg_plus_one; i < nblocks; ++i, block_counter+= avg_block_size) {
+      new_trange1_v.emplace_back(block_counter);
+    }
+    new_trange1_v.emplace_back(rank);
+    new_trange1 = TiledArray::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
+  }
+  return new_trange1;
+}
 } // namespace TiledArray::cp::detail
 
 /**
@@ -58,23 +81,32 @@ class CP {
   /// moving to @c rank else builds an efficient
   /// random guess with rank @c rank
   /// \param[in] rank Rank of the CP deccomposition
+  /// \param[in] rank_block_size 0; What is the size of the blocks
+  /// in the rank mode's TiledRange, will compute TiledRange1 inline.
+  /// if 0 : rank_blocck_size = rank.
   /// \param[in] build_rank should CP approximation be built from rank 1
   /// or set.
   /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
   /// \returns the fit: \f$ 1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
-  double compute_rank(size_t rank, bool build_rank = false,
+  double compute_rank(size_t rank,
+                      size_t rank_block_size = 0,
+                      bool build_rank = false,
                       double epsilonALS= 1e-3){
+    rank_block_size = (rank_block_size == 0 ? rank: rank_block_size);
     double epsilon = 1.0;
     fit_tol = epsilonALS;
+    TiledRange1 rank_trange;
     if(build_rank){
       size_t cur_rank = 1;
       do{
+        rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
         build_guess(cur_rank);
         ALS(cur_rank);
         ++cur_rank;
       }while(cur_rank < rank);
     } else{
-      build_guess(rank, 100);
+      rank_trange = detail::compute_trange1(rank, rank_block_size);
+      build_guess(rank, rank_trange);
       ALS(rank);
     }
     return epsilon;
@@ -85,15 +117,22 @@ class CP {
   /// \f$ |T_{\text{exact}} - T_{\text{approx}} | < error \f$
   /// \param[in] error Acceptable error in the CP decomposition
   /// \param[in] max_rank Maximum acceptable rank.
+  /// \param[in] rank_block_size 0; What is the size of the blocks
+  /// in the rank mode's TiledRange, will compute TiledRange1 inline.
+  /// if 0 : rank_blocck_size = max_rank.
   /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
   /// \returns the fit: \f$1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
-  double compute_error(double error, size_t max_rank,
+  double compute_error(double error,
+                       size_t max_rank,
+                       size_t rank_block_size = 0,
                        double epsilonALS = 1e-3){
+    rank_block_size = (rank_block_size == 0 ? max_rank : rank_block_size);
     size_t cur_rank = 1;
     double epsilon = 1.0;
     fit_tol = epsilonALS;
     do{
-      build_guess(cur_rank);
+      auto rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
+      build_guess(cur_rank, rank_trange);
       ALS(cur_rank, 100);
       ++cur_rank;
     }while(epsilon > error && cur_rank < max_rank);
