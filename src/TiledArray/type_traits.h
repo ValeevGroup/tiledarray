@@ -277,8 +277,8 @@ class LazyArrayTile;
     using No = int;                                                            \
     template <typename... Args_>                                               \
     static auto func(void*)                                                    \
-        -> decltype(std::add_pointer_t<decltype(                               \
-                        ::std::Function(std::declval<Args_>()...))>{},         \
+        -> decltype(std::add_pointer_t<decltype(::std::Function(               \
+                        std::declval<Args_>()...))>{},                         \
                     Yes{});                                                    \
     template <typename...>                                                     \
     static No func(...);                                                       \
@@ -385,7 +385,7 @@ namespace detail {
 /// @brief helper to implement other metafunctions
 /// @c is_type<T>::value is true if @c T is a valid type
 /// @tparam T a type
-template <typename>
+template <typename T>
 struct is_type : public std::true_type {};
 /// @tparam T a type
 /// @c is_type_v<T> is an alias for @c is_type<T>::value

@@ -76,20 +76,19 @@ inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
   }
 }
 
-template<typename P, typename In, typename Out, bool Inverse>
+template <typename P, typename In, typename Out, bool Inverse>
 void permute_n(size_t N, P p, In in, Out out, std::bool_constant<Inverse>) {
   for (size_t k = 0; k < N; ++k) {
     if constexpr (Inverse) {
       out[*p++] = *in++;
-    }
-    else {
+    } else {
       *out++ = in[*p++];
     }
   }
 }
 
-template<typename P, typename S, bool Inverse>
-auto permute(const P &p, const S &s, std::bool_constant<Inverse>) {
+template <typename P, typename S, bool Inverse>
+auto permute(const P& p, const S& s, std::bool_constant<Inverse>) {
   // using std::size;
   // using std::begin;
   // size_t K = size(p);
@@ -97,8 +96,10 @@ auto permute(const P &p, const S &s, std::bool_constant<Inverse>) {
   // detail::permute_n(K, begin(p), begin(s), begin(r), args...);
   // return r;
   if (!p) return s;
-  if constexpr (Inverse) return p.inv()*s;
-  else return p*s;
+  if constexpr (Inverse)
+    return p.inv() * s;
+  else
+    return p * s;
 }
 
 }  // namespace detail
@@ -123,8 +124,6 @@ auto permute(const P &p, const S &s, std::bool_constant<Inverse>) {
    p3 = p1 * p2;      // computes product of permutations of p1 and p2
    p1_inv = p1.inv(); // computes inverse of p1
  \endcode
-
- \note
 
  \par
  Permutation is internally represented in one-line (image) form, e.g.
@@ -631,14 +630,14 @@ inline std::vector<T> operator*(const Permutation& perm,
   return result;
 }
 
-template<typename S>
-S apply(const Permutation &p, const S &s) {
+template <typename S>
+S apply(const Permutation& p, const S& s) {
   using detail::permute;
   return permute(p, s, std::false_type{});
 }
 
-template<typename S>
-S apply_inverse(const Permutation &p, const S &s) {
+template <typename S>
+S apply_inverse(const Permutation& p, const S& s) {
   using detail::permute;
   return permute(p, s, std::true_type{});
 }

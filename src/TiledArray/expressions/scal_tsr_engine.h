@@ -70,7 +70,8 @@ struct EngineTrait<ScalTsrEngine<DistArray<Tile, Policy>, Scalar, Result>> {
 
 /// Scaled tensor expression engine
 
-/// \tparam A The \c Array type
+/// \tparam Array an DistArray type
+/// \tparam Scalar a numeric scalar type
 template <typename Array, typename Scalar, typename Result>
 class ScalTsrEngine : public LeafEngine<ScalTsrEngine<Array, Scalar, Result>> {
  public:

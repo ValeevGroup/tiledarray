@@ -562,7 +562,7 @@ class SparseShape {
 
   /// Compute union of two shapes
 
-  /// \param mask The input shape, hard zeros are used to mask the output.
+  /// \param mask_shape The input shape, hard zeros are used to mask the output.
   /// \return A shape that is masked by the mask.
   SparseShape_ mask(const SparseShape_& mask_shape) const {
     TA_ASSERT(!tile_norms_.empty());

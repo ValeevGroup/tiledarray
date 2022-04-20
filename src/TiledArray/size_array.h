@@ -271,14 +271,19 @@ class SizeArray {
 
   /// Perform an element-wise binary reduction of the data of \c this and \c arg
   /// by executing <tt>join_op(result, reduce_op(*this[i], arg[i]))</tt> for
-  /// each \c i in the index range of \c this . \c result is initialized to \c
-  /// identity . If HAVE_INTEL_TBB is defined the reduction will be executed in
-  /// an undefined order, otherwise will execute in the order of increasing \c i
-  /// . \tparam Arg The right-hand argument type \tparam Result The reduction
-  /// result type \tparam ReduceOp The binary reduction operation type \tparam
-  /// JoinOp The join operation type \param arg The right-hand argument \param
-  /// result The initial value of the reduction \param op The binary reduction
-  /// operation \return The reduced value
+  /// each \c i in the index range of \c this . \c result is initialized to
+  /// \c identity . If `HAVE_INTEL_TBB` is defined the reduction will be
+  /// executed in an undefined order, otherwise will execute in the order
+  /// of increasing \c i .
+  /// \tparam Arg The right-hand argument type
+  /// \tparam Result The reduction result type
+  /// \tparam ReduceOp The binary reduction operation type
+  /// \tparam JoinOp The join operation type
+  /// \param arg The right-hand argument
+  /// \param result The initial value of the reduction
+  /// \param op The binary reduction
+  /// operation
+  /// \return The reduced value
   template <typename Arg, typename Result, typename ReduceOp, typename JoinOp>
   Result reduce(const Arg* const arg, Result result, const ReduceOp& reduce_op,
                 const JoinOp& join_op) const {
@@ -290,13 +295,16 @@ class SizeArray {
 
   /// Perform an element-wise unary reduction of the data by
   /// executing <tt>join_op(result, reduce_op(*this[i]))</tt> for each
-  /// \c i in the index range of \c this . \c result is initialized to \c
-  /// identity . If HAVE_INTEL_TBB is defined the reduction will be executed in
-  /// an undefined order, otherwise will execute in the order of increasing \c i
-  /// . \tparam Result The reduction result type \tparam ReduceOp The binary
-  /// reduction operation type \tparam JoinOp The join operation type \param
-  /// result The initial value of the reduction \param op The unary reduction
-  /// operation \return The reduced value
+  /// \c i in the index range of \c this . \c result is initialized to
+  /// \c identity . If `HAVE_INTEL_TBB` is defined the reduction will be
+  /// executed in an undefined order, otherwise will execute in the order
+  /// of increasing \c i .
+  /// \tparam Result The reduction result type
+  /// \tparam ReduceOp The binary reduction operation type
+  /// \tparam JoinOp The join operation type
+  /// \param result The initial value of the reduction
+  /// \param op The unary reduction operation
+  /// \return The reduced value
   template <typename Result, typename ReduceOp, typename JoinOp>
   Result reduce(Result result, const ReduceOp& reduce_op,
                 const JoinOp& join_op) const {

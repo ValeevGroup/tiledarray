@@ -177,13 +177,13 @@ class MemoryWatchpoint_x86_64 {
     }
   };
 
-  /// @brief creates a MemoryWatchpoint watching memory window @c
-  /// [addr,addr+size) for condition @c cond from threads @c threads
+  /// @brief creates a MemoryWatchpoint watching memory window
+  /// `[addr,addr+size)` for condition @p cond from thread @p thread
   /// @param[in] addr the beginning of the memory window
   /// @param[in] size the size of the memory window
   /// @param[in] cond the condition to watch for
   /// @param[in] dr the debugging register to use
-  /// @param[in] threads the set of threads to watch
+  /// @param[in] thread the thread to watch
   /// @throw std::runtime_error if setting the watchpoint fails (either due to
   /// the lack of available registers or another reason)
   MemoryWatchpoint_x86_64(void *addr, Size size, Condition cond,

@@ -65,7 +65,7 @@ struct ConjugateGradientSolver {
   /// \param a object of type F
   /// \param b RHS
   /// \param x unknown
-  /// \param preconditioner
+  /// \param preconditioner the preconditioner
   /// \param convergence_target The convergence target [default = -1.0]
   /// \return The 2-norm of the residual, a(x) - b, divided by the number of
   /// elements in the residual.
