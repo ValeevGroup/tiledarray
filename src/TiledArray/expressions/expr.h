@@ -157,9 +157,8 @@ class Expr {
     return (*op)(cast_tile);
   }
 
-  /// Task function used to mutate result tiles
+  /// Task function used to mutate evaluated lazy tiles
 
-  /// \tparam R The result type
   /// \tparam T The lazy tile type
   /// \tparam Op Tile operation type
   /// \param tile A forwarding reference to a lazy tile

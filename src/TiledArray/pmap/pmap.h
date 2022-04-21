@@ -80,7 +80,7 @@ class Pmap {
 
   /// \param world The world where the tiles will be mapped
   /// \param size The number of tiles to be mapped
-  /// \param size The number of tiles that maps to this rank
+  /// \param local_size The number of tiles that maps to this rank
   Pmap(World& world, const size_type size, const size_type local_size = 0)
       : rank_(world.rank()),
         procs_(world.size()),
@@ -156,7 +156,7 @@ class Pmap {
   /// overload this and construct Iterator with `use_pmap_advance=true`
   /// if need to implement custom iteration over local indices
   /// \param[in,out] value current index value on input, next value on output
-  /// \param[in[ increment if true, increase \p value, else decrease
+  /// \param[in] increment if true, increase \p value, else decrease
   virtual void advance(size_type& value, bool increment) const {
     if (increment)
       ++value;

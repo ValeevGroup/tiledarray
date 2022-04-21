@@ -986,8 +986,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
   /// \deprecated use DistArray::tiles_range()
-  // TODO: uncomment [[deprecated("use DistArray::tiles_range()")]]
-  const range_type& range() const { return impl_ref().tiles_range(); }
+  [[deprecated("use DistArray::tiles_range()")]] const range_type& range()
+      const {
+    return impl_ref().tiles_range();
+  }
 
   /// Tile range accessor
 
@@ -1546,7 +1548,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     if (!is_initialized()) return;
 
     constexpr bool is_tot = detail::is_tensor_of_tensor_v<value_type>;
-    const auto rank = range().rank();
+    const auto rank = tiles_range().rank();
     // TODO: Make constexpr and use structured bindings when CUDA supports C++17
     if (is_tot) {
       // Make sure the index is capable of being interpreted as a ToT index

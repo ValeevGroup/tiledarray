@@ -816,7 +816,7 @@ void counted_eigen_subtensor_to_tensor(const Eigen_Tensor_* src,
 
 /// Task function for assigning a tensor to an Eigen subtensor
 
-/// \tparam Tensor_ a TiledArray::Tensor type
+/// \tparam TA_Tensor_ a TiledArray::Tensor type
 /// \tparam Eigen_Tensor_ an Eigen::Tensor type
 /// \param src The source tensor
 /// \param dst The destination tensor
