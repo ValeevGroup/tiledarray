@@ -41,7 +41,7 @@ endif()
 FetchContent_Declare(
     vg_cmake_kit
     QUIET
-    GIT_REPOSITORY      https://github.com/ValeevGroup/kit-cmake.git
+    GIT_REPOSITORY      https://github.com/ajaypanyala/kit-cmake.git
     GIT_TAG             ${TA_TRACKED_VGCMAKEKIT_TAG}
     SOURCE_DIR ${${VG_CMAKE_KIT_PREFIX_DIR}}/cmake/vg
     BINARY_DIR ${${VG_CMAKE_KIT_PREFIX_DIR}}/cmake/vg-build
