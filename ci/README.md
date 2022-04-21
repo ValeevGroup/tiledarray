@@ -12,3 +12,4 @@ Running new build of /home/andrey/github/tiledarray on andrey.tiledarray.build
 
 This builds targets `all check` on current Git branch in a docker container named `${USER}.$(basename $PWD).build` 
 
+To use a specific Ubuntu image tag, set environment variable `VALEEVGROUP_UBUNTU_TAG` to one of the [available values](https://hub.docker.com/r/valeevgroup/ubuntu/tags), e.g. `18:04`.
