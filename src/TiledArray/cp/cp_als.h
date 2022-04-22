@@ -33,17 +33,26 @@ class CP_ALS : public CP<Tile, Policy>{
   CP_ALS(const DistArray<Tile, Policy> & tref) :
             CP<Tile, Policy>(rank(tref)), reference(tref), world(tref.world()){
     for(size_t i = 0; i < ndim; ++i){
-      ref_indices += std::to_string(i);
+      ref_indices += detail::intToAlphabet(i);
       if(i + 1 != ndim )
         ref_indices += ",";
     }
-    std::cout << ref_indices << std::endl;
+
+    first_gemm_dim_one = ref_indices;
+    first_gemm_dim_last = ref_indices;
+
+    first_gemm_dim_one.replace(0, 1, 1, detail::intToAlphabet(ndim));
+    first_gemm_dim_last = "," + first_gemm_dim_last;
+    first_gemm_dim_last.insert(0, 1, detail::intToAlphabet(ndim));
+    first_gemm_dim_last.pop_back(); first_gemm_dim_last.pop_back();
+
+    this->norm_reference = norm2(tref);
   }
 
  protected:
   const DistArray<Tile, Policy> & reference;
   madness::World & world;
-  std::string ref_indices;
+  std::string ref_indices, first_gemm_dim_one, first_gemm_dim_last;
 
   /// This function constructs the initial CP facotr matrices
   /// stores them in CP::cp_factors vector.
@@ -58,10 +67,10 @@ class CP_ALS : public CP<Tile, Policy>{
         auto factor = this->construct_random_factor(
                               world, rank, reference.trange().elements_range().extent(i),
                               rank_trange, reference.trange().data()[i]);
-        std::cout << factor << std::endl;
         cp_factors.emplace_back(factor);
+        //std::cout << factor << std::endl;
         this->normCol(factor, rank);
-        std::cout << factor << std::endl;
+        //std::cout << factor << std::endl;
       }
     } else{
       TA_EXCEPTION("Currently no implementation to increase or change rank");
@@ -87,31 +96,65 @@ class CP_ALS : public CP<Tile, Policy>{
         ++ptr;
       }
     }
-    auto factor_begin = cp_factors.data();
+    auto factor_begin = cp_factors.data(),
+         gram_begin = this->partial_grammian.data();
     do{
       for(auto i = 0; i < ndim; ++i){
-        update_factor(i);
+        update_factor(i, rank);
         const auto & a = *(factor_begin + i);
-        (this->partial_grammian[i])("r,rp") = a("r,n") * a("rp,n");
+        (*(gram_begin + i))("r,rp") = a("r,n") * a("rp,n");
       }
       converged = this->check_fit(verbose);
       ++iter;
     }while(iter < max_iter && !converged);
   }
 
-  void update_factor(size_t mode){
-    auto first_contr = (mode == ndim - 1 ? 0 : ndim - 1);
-    std::string contract(char(ndim) + "," + char(first_contr)),
-        final = ref_indices;
-    auto start_erase = 2 * first_contr,
-         end_erase = start_erase + 1;
-    final.erase(start_erase, end_erase);
-    final = std::to_string(ndim) + "," + final;
+  void update_factor(size_t mode, size_t rank){
+    auto mode0 = (mode == 0);
+    if(mode == ndim - 1) this->unNormalized_Factor = *(cp_factors.end() - 1);
+    auto & An = cp_factors[mode];
+    An = DistArray<Tile, Policy>();
+    // Starting to form the Matricized tensor times khatri rao product
+    // MTTKRP
+    // To do this we, in general, contract the reference with the
+    // factor of the first mode unless we are
+    // looking to optimize the first mode factor then we contract the
+    // last mode.
+    auto contracted_index = (mode0 ? ndim - 1 : 0);
+    std::string contract({detail::intToAlphabet(ndim), ',', detail::intToAlphabet(contracted_index)}),
+        final = (mode == 0 ? first_gemm_dim_last : first_gemm_dim_one);
 
-    DistArray<Tile, Policy> An;
-    An(final) = this->reference(ref_indices) * cp_factors[first_contr](contract);
+    TA::DistArray W(this->partial_grammian[contracted_index]);
+    An(final) = this->reference(ref_indices) * cp_factors[contracted_index](contract);
 
-    
+    // next we need to contract (einsum) over all modes not including the
+    // mode we seek to optimize. We do this by modifying the strings
+    std::string mixed_contractions = final;
+    // we are going to use this pointer to remove indices from our string
+    // but if mode == 0, we want to skip the first mode.
+    auto remove_index_start = (mode0 ? 3 : 1), remove_index_end = remove_index_start + 2;
+    auto mcont_ptr = mixed_contractions.begin();
+    auto end = (mode0 ? ndim - 1 : ndim);
+    for(contracted_index = 1; contracted_index < end; ++contracted_index){
+      if(contracted_index == mode) {
+        remove_index_start += 2; remove_index_end +=2;
+        continue;
+      }
+
+      contract.replace(2, 1, 1, detail::intToAlphabet(contracted_index));
+      mixed_contractions.erase(mcont_ptr + remove_index_start,
+                               mcont_ptr + remove_index_end);
+      An = einsum(An(final), cp_factors[contracted_index](contract), mixed_contractions);
+
+      final = mixed_contractions;
+      W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");
+    }
+
+    if(mode == ndim - 1) this->MTtKRP = An;
+
+    this->cholesky_inverse(An, W);
+
+    this->normCol(An, rank);
   }
 };
 } // namespace TiledArray::cp

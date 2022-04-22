@@ -42,6 +42,11 @@ static inline TiledRange1 compute_trange1(size_t rank, size_t rank_block_size){
   }
   return new_trange1;
 }
+
+static inline char intToAlphabet( int i ){
+  return static_cast<char>('a' + i);
+}
+
 } // namespace TiledArray::cp::detail
 
 /**
@@ -214,7 +219,8 @@ class CP {
   /// \param[in] W The grammian matrixed used to determine LS solution.
   void cholesky_inverse(TiledArray::DistArray<Tile, Policy> & MtKRP,
                         const TiledArray::DistArray<Tile, Policy> & W){
-    MtKRP = TiledArray::math::linalg::cholesky_lsolve(W, MtKRP);
+    //auto inv = TiledArray::math::linalg::cholesky_lsolve(NoTranspose,W, MtKRP);
+    MtKRP = math::linalg::cholesky_solve(W, MtKRP);
   }
 
   /// Technically the Least squares problem requires doing a pseudoinverse
