@@ -98,11 +98,13 @@ class CP {
   /// \param[in] build_rank should CP approximation be built from rank 1
   /// or set.
   /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
+  /// \param[in] verbose false; should check fit print fit information.
   /// \returns the fit: \f$ 1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
   double compute_rank(size_t rank,
                       size_t rank_block_size = 0,
                       bool build_rank = false,
-                      double epsilonALS= 1e-3){
+                      double epsilonALS= 1e-3,
+                      bool verbose = false){
     rank_block_size = (rank_block_size == 0 ? rank: rank_block_size);
     double epsilon = 1.0;
     fit_tol = epsilonALS;
@@ -112,13 +114,13 @@ class CP {
       do{
         rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
         build_guess(cur_rank, rank_trange);
-        ALS(cur_rank, 100);
+        ALS(cur_rank, 100, verbose);
         ++cur_rank;
       }while(cur_rank < rank);
     } else{
       rank_trange = detail::compute_trange1(rank, rank_block_size);
       build_guess(rank, rank_trange);
-      ALS(rank, 100);
+      ALS(rank, 100, verbose);
     }
     return epsilon;
   }
@@ -132,11 +134,13 @@ class CP {
   /// in the rank mode's TiledRange, will compute TiledRange1 inline.
   /// if 0 : rank_blocck_size = max_rank.
   /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
+  /// \param[in] verbose false; should check fit print fit information.
   /// \returns the fit: \f$1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
   double compute_error(double error,
                        size_t max_rank,
                        size_t rank_block_size = 0,
-                       double epsilonALS = 1e-3){
+                       double epsilonALS = 1e-3,
+                       bool verbose = false){
     rank_block_size = (rank_block_size == 0 ? max_rank : rank_block_size);
     size_t cur_rank = 1;
     double epsilon = 1.0;
@@ -144,7 +148,7 @@ class CP {
     do{
       auto rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
       build_guess(cur_rank, rank_trange);
-      ALS(cur_rank, 100);
+      ALS(cur_rank, 100, verbose);
       ++cur_rank;
     }while(epsilon > error && cur_rank < max_rank);
 
