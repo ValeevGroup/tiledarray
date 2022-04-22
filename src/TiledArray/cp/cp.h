@@ -286,19 +286,48 @@ class CP {
   void normCol(TiledArray::DistArray<Tile, Policy> &factor,
                size_t rank){
     auto & world = factor.world();
-    lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
-    std::vector<typename Tile::value_type> lambda_vector;
-    lambda_vector.reserve(rank);
-    foreach_inplace(lambda, [&](auto& tile){
-      for(auto & i : tile) {
-        i = sqrt((i));
-        lambda_vector.emplace_back(i);
-      }
-    }, true);
+    //lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
+    //std::vector<typename Tile::value_type> lambda_vector;
+    //lambda_vector.reserve(rank);
+    auto lambda_vector = temp_normCol(factor, rank);
+//    foreach_inplace(lambda, [&](auto& tile){
+//      for(auto & i : tile) {
+//        i = sqrt((i));
+//        lambda_vector.emplace_back(i);
+//      }
+//    }, true);
     auto & tr1_rank = factor.trange().data()[0];
-    diagonal_array<DistArray<Tile, Policy>>(world,
+    auto diag_ = diagonal_array<DistArray<Tile, Policy>>(world,
                    TiledArray::TiledRange({tr1_rank, tr1_rank}),
                    lambda_vector.begin(), lambda_vector.end());
+    //std::cout << factor << std::endl;
+    factor("rp,n") =  diag_("rp,r") * factor("r,n");
+    //std::cout << factor << std::endl;
+  }
+
+  std::vector<double> temp_normCol(DistArray<Tile, Policy> & factor, size_t rank){
+    std::vector<double> lambda(rank);
+    auto & world = factor.world();
+    if(world.rank() == 0) {
+      auto btas_factor = array_to_btas_tensor(factor, 0);
+      TA_ASSERT(rank == btas_factor.extent(0));
+      std::fill(lambda.begin(), lambda.end(), 0.0);
+      auto lambda_ptr = lambda.begin();
+      auto col_dim = btas_factor.extent(1);
+      auto bf_ptr = btas_factor.data();
+      for(auto r = 0; r < rank; ++r, ++lambda_ptr){
+        for(auto n = 0; n < col_dim; ++n) {
+          auto val = *(bf_ptr + n);
+          *(lambda_ptr) += val * val;
+        }
+        auto & val = *(lambda_ptr);
+        val = sqrt(val);
+        val = (val > 1e-12 ? 1/val : val);
+      }
+    }
+    world.gop.broadcast_serializable(lambda, 0);
+    world.gop.fence();
+    return lambda;
   }
 
   /// This function checks the fit and change in the
