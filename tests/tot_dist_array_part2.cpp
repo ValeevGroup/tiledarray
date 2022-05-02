@@ -255,17 +255,17 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(trange, TestParam, test_params) {
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(range, TestParam, test_params) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(tiles_range, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)
-      BOOST_CHECK_THROW(t.range(), TiledArray::Exception);
+      BOOST_CHECK_THROW(t.tiles_range(), TiledArray::Exception);
   }
 
   for (auto tr_t : run_all<TestParam>()) {
     auto& tr = std::get<0>(tr_t);
     auto& corr = std::get<2>(tr_t);
-    bool are_same = corr.range() == tr.tiles_range();
+    bool are_same = corr.tiles_range() == tr.tiles_range();
     BOOST_TEST(are_same);
   }
 }
@@ -344,7 +344,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(call_operator, TestParam, test_params) {
   for (auto tr_t : run_all<TestParam>()) {
     auto inner_rank = std::get<1>(tr_t);
     auto& t = std::get<2>(tr_t);
-    auto outer_rank = t.range().rank();
+    auto outer_rank = t.tiles_range().rank();
     std::string outer_idx = (outer_rank == 1 ? "i" : "i,j");
     std::string inner_idx = (inner_rank == 1 ? "k" : "k,l");
 
@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(const_call_operator, TestParam, test_params) {
   for (auto tr_t : run_all<TestParam>()) {
     auto inner_rank = std::get<1>(tr_t);
     const auto& t = std::get<2>(tr_t);
-    auto outer_rank = t.range().rank();
+    auto outer_rank = t.tiles_range().rank();
     std::string outer_idx = (outer_rank == 1 ? "i" : "i,j");
     std::string inner_idx = (inner_rank == 1 ? "k" : "k,l");
 
@@ -433,8 +433,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(owner, TestParam, test_params) {
       BOOST_CHECK_THROW(corr.owner(bad_idx), TiledArray::Exception);
     }
 
-    for (auto idx : corr.range()) {
-      const auto ordinal = corr.range().ordinal(idx);
+    for (auto idx : corr.tiles_range()) {
+      const auto ordinal = corr.tiles_range().ordinal(idx);
       BOOST_TEST(corr.owner(idx) == corr.pmap()->owner(ordinal));
       BOOST_TEST(corr.owner(ordinal) == corr.pmap()->owner(ordinal));
     }
@@ -468,8 +468,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(owner_init_list, TestParam, test_params) {
       BOOST_CHECK_THROW(corr.owner(il2), except_t);
     }
 
-    for (auto idx : corr.range()) {
-      const auto ordinal = corr.range().ordinal(idx);
+    for (auto idx : corr.tiles_range()) {
+      const auto ordinal = corr.tiles_range().ordinal(idx);
       const auto owner = corr.pmap()->owner(ordinal);
       if (rank == 1) {
         BOOST_TEST(corr.owner({idx[0]}) == owner);
@@ -502,8 +502,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_local, TestParam, test_params) {
       BOOST_CHECK_THROW(corr.is_local(bad_idx), TiledArray::Exception);
     }
 
-    for (auto idx : corr.range()) {
-      const auto ordinal = corr.range().ordinal(idx);
+    for (auto idx : corr.tiles_range()) {
+      const auto ordinal = corr.tiles_range().ordinal(idx);
       BOOST_TEST(corr.is_local(idx) == corr.pmap()->is_local(ordinal));
       BOOST_TEST(corr.is_local(ordinal) == corr.pmap()->is_local(ordinal));
     }
@@ -537,8 +537,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_local_init_list, TestParam, test_params) {
       BOOST_CHECK_THROW(corr.is_local(il2), except_t);
     }
 
-    for (auto idx : corr.range()) {
-      const auto ordinal = corr.range().ordinal(idx);
+    for (auto idx : corr.tiles_range()) {
+      const auto ordinal = corr.tiles_range().ordinal(idx);
       const auto is_local = corr.pmap()->is_local(ordinal);
       if (rank == 1) {
         BOOST_TEST(corr.is_local({idx[0]}) == is_local);
@@ -571,8 +571,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero, TestParam, test_params) {
       BOOST_CHECK_THROW(corr.is_zero(bad_idx), TiledArray::Exception);
     }
 
-    for (auto idx : corr.range()) {
-      const auto ordinal = corr.range().ordinal(idx);
+    for (auto idx : corr.tiles_range()) {
+      const auto ordinal = corr.tiles_range().ordinal(idx);
       BOOST_TEST(corr.is_zero(idx) == corr.shape().is_zero(ordinal));
       BOOST_TEST(corr.owner(ordinal) == corr.pmap()->owner(ordinal));
     }
@@ -606,8 +606,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(is_zero_init_list, TestParam, test_params) {
       BOOST_CHECK_THROW(corr.is_zero(il2), except_t);
     }
 
-    for (auto idx : corr.range()) {
-      const auto ordinal = corr.range().ordinal(idx);
+    for (auto idx : corr.tiles_range()) {
+      const auto ordinal = corr.tiles_range().ordinal(idx);
       const auto is_zero = corr.shape().is_zero(ordinal);
       if (rank == 1) {
         BOOST_TEST(corr.is_zero({idx[0]}) == is_zero);

@@ -264,7 +264,7 @@ struct ToTArrayFixture {
 
       // Same components? Here we make all ranks check all tiles
       bool are_same = true;
-      for (auto idx : lhs.range()) {
+      for (auto idx : lhs.tiles_range()) {
         const auto& lhs_tot = lhs.find(idx).get();
         const auto& rhs_tot = rhs.find(idx).get();
         if (lhs_tot != rhs_tot) {

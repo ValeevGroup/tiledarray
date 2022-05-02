@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE(perm_eval) {
   for (auto index : *dist_eval.pmap()) {
     // Get the original tiles
     const std::size_t arg_index =
-        left.range().ordinal(inv_perm * dist_eval.range().idx(index));
+        left.tiles_range().ordinal(inv_perm * dist_eval.range().idx(index));
     const TArrayI::value_type left_tile = left.find(arg_index);
     const TArrayI::value_type right_tile = right.find(arg_index);
 

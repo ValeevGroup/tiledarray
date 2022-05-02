@@ -234,7 +234,7 @@ class BlkTsrExprBase : public Expr<Derived> {
   BlkTsrExprBase(reference array, const std::string& annotation,
                  const PairRange& bounds)
       : Expr_(), array_(array), annotation_(annotation) {
-    const auto rank = array.range().rank();
+    const auto rank = array.tiles_range().rank();
     lower_bound_.reserve(rank);
     upper_bound_.reserve(rank);
     int d = 0;
