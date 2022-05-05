@@ -363,7 +363,6 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
 
   /// \tparam Index1 An integral type
   /// \tparam Index2 An integral type
-  /// \tparam Index The bound index types
   /// \param lower_bound The lower_bound of the block
   /// \param upper_bound The upper_bound of the block
   template <typename Index1, typename Index2,

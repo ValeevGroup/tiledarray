@@ -143,7 +143,8 @@ class ScalAddExpr : public BinaryExpr<ScalAddExpr<Left, Right, Scalar> > {
 
   /// Expression constructor
 
-  /// \param arg The argument expression
+  /// \param left The left argument expression
+  /// \param right The right argument expression
   /// \param factor The scaling factor
   ScalAddExpr(const left_type& left, const right_type& right,
               const scalar_type factor)

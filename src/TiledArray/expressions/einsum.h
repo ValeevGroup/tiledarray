@@ -43,13 +43,14 @@ auto einsum(
   return einsum(E(A), E(B), idx<T>(cs), world);
 }
 
-template<typename Array, typename ... Indices>
+template<typename Array_, typename ... Indices>
 auto einsum(
-  TsrExpr<const Array> A, TsrExpr<const Array> B,
+  TsrExpr<Array_> A, TsrExpr<Array_> B,
   std::tuple<Index,Indices...> cs,
   World &world)
 {
-
+  using Array = std::remove_cv_t<Array_>;
+  
   auto a = std::get<0>(idx(A));
   auto b = std::get<0>(idx(B));
   Index c = std::get<0>(cs);

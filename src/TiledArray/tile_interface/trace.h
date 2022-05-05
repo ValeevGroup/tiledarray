@@ -26,7 +26,7 @@
 #ifndef TILEDARRAY_TRACE_H__INCLUDED
 #define TILEDARRAY_TRACE_H__INCLUDED
 
-#include <type_traits> // enable_if, true_type, false_type
+#include <type_traits>  // enable_if, true_type, false_type
 
 namespace TiledArray {
 namespace detail {
@@ -69,7 +69,7 @@ using enable_if_trace_is_defined_t = std::enable_if_t<trace_is_defined_v<T>, U>;
 template <typename TileType, typename Enabler = void>
 struct Trace;
 
-} // namespace detail
+}  // namespace detail
 
 /// Helper function for taking the trace of a tensor
 ///
@@ -82,14 +82,12 @@ struct Trace;
 /// detail::trace_is_defined_v<T> is true.
 ///
 /// \tparam T The type of tensor we are trying to take the trace of.
-/// \tparam <anonymous> Template type parameter used for SFINAE. Defaults to
-///                     void when we know how to take the trace of a tensor type
 /// \param[in] t The tensor instance we want the trace of.
 /// \return The results of calling Trace<T>::operator() on \c t.
-/// \throw ??? Any exceptions thrown by Trace<T>::operator() will also be thrown
+/// \throw Any exceptions thrown by Trace<T>::operator() will also be thrown
 ///            by this function with the same throw guarantee.
-template<typename T, typename = detail::enable_if_trace_is_defined_t<T>>
-decltype(auto) trace(const T& t){
+template <typename T, typename = detail::enable_if_trace_is_defined_t<T>>
+decltype(auto) trace(const T& t) {
   detail::Trace<T> tracer;
   return tracer(t);
 }
@@ -98,8 +96,8 @@ decltype(auto) trace(const T& t){
 ///
 /// \tparam T The type of tensor for which we want to know the type resulting
 ///           from tracing it.
-template<typename T>
+template <typename T>
 using result_of_trace_t = decltype(trace(std::declval<T>()));
 
-} // namespace TiledArray
-#endif // TILEDARRAY_TRACE_H__INCLUDED
+}  // namespace TiledArray
+#endif  // TILEDARRAY_TRACE_H__INCLUDED

@@ -1637,7 +1637,7 @@ class Tensor {
 
   /// Contract this tensor with another tensor
 
-  /// \tparam As... Template parameter pack of a tensor type
+  /// \tparam As Template parameter pack of a tensor type
   /// \tparam V The type of \c alpha scalar
   /// \param A The tensor that will be contracted with this tensor
   /// \param alpha Multiply the result by this constant
@@ -1681,15 +1681,14 @@ class Tensor {
   /// contractions. Tensor contractions that do not fit this pattern require
   /// one or more tensor permutation so that the tensors fit the required
   /// pattern.
-  /// \tparam U The left-hand tensor element type
-  /// \tparam AU The left-hand tensor allocator type
-  /// \tparam V The right-hand tensor element type
-  /// \tparam AV The right-hand tensor allocator type
+  /// \tparam As Template parameter pack of the left-hand tensor type
+  /// \tparam Bs Template parameter pack of the right-hand tensor type
   /// \tparam W The type of the scaling factor
-  /// \param left The left-hand tensor that will be contracted
-  /// \param right The right-hand tensor that will be contracted
-  /// \param factor The contraction result will be scaling by this value, then
-  /// accumulated into \c this \param gemm_helper The *GEMM operation meta data
+  /// \param A The left-hand tensor that will be contracted
+  /// \param B The right-hand tensor that will be contracted
+  /// \param alpha The contraction result will be scaled by this value, then
+  /// accumulated into \c this
+  /// \param gemm_helper The *GEMM operation meta data
   /// \return A reference to \c this
   /// \note if this is uninitialized, i.e., if \c this->empty()==true will
   /// this is equivalent to

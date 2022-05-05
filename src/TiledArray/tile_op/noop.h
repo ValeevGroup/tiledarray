@@ -78,7 +78,7 @@ class Noop {
  public:
   /// Permute operator
 
-  /// \tparam A The tile argument type
+  /// \tparam Perm a permutation type
   /// \param arg The tile argument
   /// \param perm The permutation applied to the result tile
   /// \return A permuted copy of `arg`

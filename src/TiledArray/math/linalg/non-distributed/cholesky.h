@@ -112,10 +112,11 @@ auto cholesky(const ContiguousTensor& A) {
  *  Example Usage:
  *
  *  auto Linv     = cholesky_Linv(A, ...)
- *  auto [L,Linv] = cholesky_Linv<decltype(A),true>(A, ...)
+ *  auto [L,Linv] = cholesky_Linv<true>(A, ...)
  *
- *  @tparam Array a DistArray type (i.e., @c is_array_v<Array> is true)
- *  @tparam RetL  Whether or not to return the cholesky factor
+ *  @tparam Both  Whether or not to return the Cholesky factor
+ *  @tparam Array the type of `A`, a DistArray type
+ *          (i.e., @c is_array_v<Array> is true)
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
  *  @param[in] l_trange    TiledRange for resulting inverse Cholesky factor.
