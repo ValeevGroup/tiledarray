@@ -7,7 +7,7 @@ default:
 
 variables:
   MAD_NUM_THREADS : 2
-  TA_TARGETS : "tiledarray examples ta_test check-tiledarray"
+  TA_TARGETS : "tiledarray examples-tiledarray ta_test check-tiledarray"
   # Debug builds with ScaLAPACK=ON need increased TA_UT_CTEST_TIMEOUT
   TA_CONFIG : >
     CMAKE_BUILD_TYPE=${BUILD_TYPE}
@@ -70,4 +70,4 @@ ubuntu:
         CXX: [ g++ ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_CUDA : [ "ENABLE_CUDA=ON" ]
-        TA_TARGETS : [ "tiledarray examples" ]
+        TA_TARGETS : [ "tiledarray examples-tiledarray check_serial-tiledarray" ]
