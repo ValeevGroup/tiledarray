@@ -128,15 +128,16 @@ int main(int argc, char** argv) {
     //
     //
     //    TArray2s D_vo(world, f_a_vo.trange(), f_a_vo.shape());
-    //    for(TArray2s::range_type::const_iterator it = D_vo.range().begin(); it
-    //    != D_vo.range().end(); ++it)
+    //    for(TArray2s::range_type::const_iterator it =
+    //    D_vo.tiles_range().begin(); it
+    //    != D_vo.tiles_range().end(); ++it)
     //      if(D_vo.is_local(*it) && (! D_vo.is_zero(*it)))
     //        D_vo.set(*it, world.taskq.add(data, & InputData::make_D_vo_tile,
     //        D_vo.trange().make_tile_range(*it)));
     //
     //    TArray4s D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.shape());
-    //    for(TArray4s::range_type::const_iterator it = D_vvoo.range().begin();
-    //    it != D_vvoo.range().end(); ++it)
+    //    for(TArray4s::range_type::const_iterator it =
+    //    D_vvoo.tiles_range().begin(); it != D_vvoo.tiles_range().end(); ++it)
     //      if(D_vvoo.is_local(*it) && (! D_vvoo.is_zero(*it)))
     //        D_vvoo.set(*it, world.taskq.add(data, &
     //        InputData::make_D_vvoo_tile,
