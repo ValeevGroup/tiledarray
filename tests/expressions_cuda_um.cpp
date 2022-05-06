@@ -123,7 +123,7 @@ struct UMExpressionsFixture : public TiledRangeFixture {
   TArrayUMD u;
   TArrayUMD v;
   TArrayUMD w;
-  double tolerance = 1.0e-14;
+  static constexpr double tolerance = 5.0e-14;
 };  // UMExpressionsFixture
 
 // Instantiate static variables for fixture
