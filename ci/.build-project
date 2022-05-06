@@ -81,6 +81,8 @@ fi
 if [[ "$vars" =~ \"-D([a-zA-Z]+_)?ENABLE_CUDA=(ON|TRUE|1|YES)\" ]]; then
   cmd "make -C /home/ValeevGroup install/cuda"
   cmd "export CUDACXX=/usr/local/cuda/bin/nvcc"
+  cmd "${CUDACXX} -V"
+  cmd "find / -name \"*nvidia-smi\""
 fi
 section_end preparing_system_section
 
