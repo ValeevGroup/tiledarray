@@ -295,7 +295,8 @@ inline ScalConjTsrExpr<Array, Scalar> operator*(
 /// Scaled-tensor expression factor
 
 /// \tparam Array A `DistArray` type
-/// \tparam Scalar A scalar type
+/// \tparam Scalar1 A scalar type
+/// \tparam Scalar2 A scalar type
 /// \param expr The scaled-tensor expression object
 /// \param factor The scaling factor
 /// \return A scaled-tensor expression object
@@ -312,7 +313,8 @@ inline ScalConjTsrExpr<Array, mult_t<Scalar1, Scalar2> > operator*(
 /// Scaled-tensor expression factor
 
 /// \tparam Array A `DistArray` type
-/// \tparam Scalar A scalar type
+/// \tparam Scalar1 A scalar type
+/// \tparam Scalar2 A scalar type
 /// \param factor The scaling factor
 /// \param expr The scaled-tensor expression object
 /// \return A scaled-tensor expression object

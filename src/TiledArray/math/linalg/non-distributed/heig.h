@@ -26,9 +26,9 @@
 
 #include <TiledArray/config.h>
 
-#include <TiledArray/math/linalg/util.h>
-#include <TiledArray/math/linalg/rank-local.h>
 #include <TiledArray/conversions/eigen.h>
+#include <TiledArray/math/linalg/rank-local.h>
+#include <TiledArray/math/linalg/util.h>
 
 namespace TiledArray::math::linalg::non_distributed {
 
@@ -62,10 +62,7 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
   if (evec_trange.rank() == 0) evec_trange = A.trange();
-  return std::tuple(
-    evals,
-    eigen_to_array<Array>(world, evec_trange, A_eig)
-  );
+  return std::tuple(evals, eigen_to_array<Array>(world, evec_trange, A_eig));
 }
 
 /**
@@ -81,7 +78,9 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
  *
  *  auto [E, X] = heig(A, B, ...)
  *
- *  @tparam Array Input array type
+ *  @tparam ArrayA the type of @p A, i.e., an array type
+ *  @tparam ArrayB the type of @p B, i.e., an array type
+ *  @tparam EVecType an array type to use for returning the eigenvectors
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
  *  @param[in] B           Positive-definite matrix
@@ -92,7 +91,8 @@ auto heig(const Array& A, TiledRange evec_trange = TiledRange()) {
  *  as std::vector and in TA format, respectively.
  */
 template <typename ArrayA, typename ArrayB, typename EVecType = ArrayA>
-auto heig(const ArrayA& A, const ArrayB& B, TiledRange evec_trange = TiledRange()) {
+auto heig(const ArrayA& A, const ArrayB& B,
+          TiledRange evec_trange = TiledRange()) {
   using numeric_type = typename detail::array_traits<ArrayA>::numeric_type;
   (void)detail::array_traits<ArrayB>{};
   World& world = A.world();
@@ -105,12 +105,10 @@ auto heig(const ArrayA& A, const ArrayB& B, TiledRange evec_trange = TiledRange(
   world.gop.broadcast_serializable(A_eig, 0);
   world.gop.broadcast_serializable(evals, 0);
   if (evec_trange.rank() == 0) evec_trange = A.trange();
-  return std::tuple(
-    evals,
-    eigen_to_array<ArrayA>(A.world(), evec_trange, A_eig)
-  );
+  return std::tuple(evals,
+                    eigen_to_array<ArrayA>(A.world(), evec_trange, A_eig));
 }
 
-}  // namespace TiledArray::math::linalg
+}  // namespace TiledArray::math::linalg::non_distributed
 
 #endif  // TILEDARRAY_MATH_LINALG_NON_DISTRIBUTED_HEIG_H__INCLUDED

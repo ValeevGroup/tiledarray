@@ -46,7 +46,8 @@ class TiledRange1 {
   typedef std::vector<range_type>::const_iterator const_iterator;
 
   /// Default constructor creates an empty range (tile and element ranges are
-  /// both [0,0)) \post \code
+  /// both [0,0)) .
+  /// \post \code
   ///   TiledRange1 tr;
   ///   assert(tr.tiles_range() == (TiledRange1::range_type{0,0}));
   ///   assert(tr.elements_range() == (TiledRange1::range_type{0,0}));

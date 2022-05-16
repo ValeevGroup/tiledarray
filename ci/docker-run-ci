@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # build project via docker run, eg
-# usage: docker-run-ci <build-dir> [ VAR=VALUE ... ] [ target ... ]
-# example: ./ci/docker-run-ci ./build-dir MPQC_BUILD_DEPENDENCIES_FROM_SOURCE=OFF ENABLE_CUDA=ON all check
+# usage: docker-run-ci [ VAR=VALUE ... ] [ target ... ]
+# example: ./ci/docker-run-ci TA_PYTHON=OFF ENABLE_CUDA=ON all check
 
 project=$(basename $PWD)
-image=valeevgroup/ubuntu
+image=valeevgroup/ubuntu:${VALEEVGROUP_UBUNTU_TAG:-latest}
 name=$USER.${project}.build
 project_source_dir=$PWD
 

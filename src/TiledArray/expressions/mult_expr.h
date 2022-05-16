@@ -167,7 +167,8 @@ class ScalMultExpr : public BinaryExpr<ScalMultExpr<Left, Right, Scalar> > {
 
   /// Expression constructor
 
-  /// \param arg The argument expression
+  /// \param left The left-hand argument expression
+  /// \param right The right-hand argument expression
   /// \param factor The scaling factor
   ScalMultExpr(const left_type& left, const right_type& right,
                const scalar_type factor)
