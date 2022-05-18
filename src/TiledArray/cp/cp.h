@@ -68,6 +68,7 @@ static inline char intToAlphabet( int i ){
 **/
 template<typename Tile, typename Policy>
 class CP {
+  using Array = DistArray<Tile, Policy>;
  public:
   /// Generic construction class
   CP() = default;
@@ -79,7 +80,7 @@ class CP {
     cp_factors.reserve(n_factors);
     partial_grammian.reserve(n_factors);
     for(auto i = 0; i < ndim; ++i){
-      DistArray<Tile, Policy> W;
+      Array W;
       partial_grammian.emplace_back(W);
     }
   }
@@ -156,16 +157,15 @@ class CP {
   }
 
  protected:
-  std::vector<TiledArray::DistArray<Tile, Policy> >
+  std::vector<Array >
       cp_factors,                   // the CP factor matrices
       partial_grammian;             // square of the factor matrices (r x r)
-  TiledArray::DistArray<Tile, Policy>
+  Array
       MTtKRP,                      // matricized tensor times
                                    // khatri rao product for check_fit()
-      unNormalized_Factor;         // The final factor unnormalized
+      unNormalized_Factor,         // The final factor unnormalized
                                    // so you don't have to
                                    // deal with lambda for check_fit()
-  TiledArray::DistArray<Tile, Policy>
       lambda;                      // Column normalizations
   size_t ndim;                     // number of factor matrices
   double prev_fit = 1.0,           // The fit of the previous ALS iteration
@@ -184,13 +184,21 @@ class CP {
   virtual void build_guess(size_t rank,
                       TiledRange1 rank_trange) = 0;
 
-  /// This func
-  TiledArray::DistArray<Tile, Policy>
+  /// This function uses BTAS to construct a random
+  /// factor matrix which can be used as an initial guess to any CP
+  /// decomposition.
+  /// \param[in] world madness::World of the new DistArray.
+  /// \param[in] rank size of the CP rank.
+  /// \param[in] mode_size size of the mode in the reference tensor(s).
+  /// \param[in] trange1_rank TiledRange1 for the rank dimension.
+  /// \param[in] trange1_mode TiledRange1 for the mode in the reference tensor.
+  /// Should match the TiledRange1 in the reference tensor(s).
+  Array
       construct_random_factor(madness::World & world,
                           size_t rank, size_t mode_size,
                           TiledArray::TiledRange1 trange1_rank,
                           TiledArray::TiledRange1 trange1_mode){
-    using Tensor = btas::Tensor<typename TiledArray::DistArray<Tile, Policy>::element_type,
+    using Tensor = btas::Tensor<typename Array::element_type,
                                 btas::DEFAULT::range, btas::varray<typename Tile::value_type>>;
     Tensor factor(rank, mode_size);
     if(world.rank() == 0) {
@@ -202,7 +210,7 @@ class CP {
     world.gop.broadcast_serializable(factor, 0);
 
     return TiledArray::btas_tensor_to_array<
-        TiledArray::DistArray<Tile, Policy> >
+        Array >
         (world,
          TiledArray::TiledRange({trange1_rank, trange1_mode}),
          factor, (world.size() != 1));
@@ -221,8 +229,8 @@ class CP {
   /// \param[in,out] MtKRP In: Matricized tensor times KRP Out: The solution to
   /// Ax = B.
   /// \param[in] W The grammian matrixed used to determine LS solution.
-  void cholesky_inverse(TiledArray::DistArray<Tile, Policy> & MtKRP,
-                        const TiledArray::DistArray<Tile, Policy> & W){
+  void cholesky_inverse(Array & MtKRP,
+                        const Array & W){
     //auto inv = TiledArray::math::linalg::cholesky_lsolve(NoTranspose,W, MtKRP);
     MtKRP = math::linalg::cholesky_solve(W, MtKRP);
   }
@@ -234,8 +242,8 @@ class CP {
   /// \param[in] W The grammian matrixed used to determine LS solution.
   /// \param[in] svd_invert_threshold Don't invert
   /// numerical 0 i.e. @c svd_invert_threshold
-  void pseudo_inverse(TiledArray::DistArray<Tile, Policy> & MtKRP,
-                      const TiledArray::DistArray<Tile, Policy> & W,
+  void pseudo_inverse(Array & MtKRP,
+                      const Array & W,
                       double svd_invert_threshold = 1e-12){
     // compute the SVD of W;
     auto SVD = TiledArray::svd<SVD::Vectors::AllVectors>(W);
@@ -264,7 +272,7 @@ class CP {
   /// \returns TiledArray::DistArray <Tile,Policy> with grammian values.
   auto compute_grammian(){
     auto trange_rank = cp_factors[0].trange().data()[0];
-    TiledArray::DistArray<Tile, Policy> W(trange_rank, trange_rank);
+    Array W(trange_rank, trange_rank);
     W.fill(1.0);
     if(partial_grammian.empty()){
       for(auto ptr = cp_factors.begin(); ptr != cp_factors.end(); ++ptr){
@@ -283,8 +291,7 @@ class CP {
   /// Also normalizes the columns of \c factor
   /// \param[in,out] factor in: unnormalized factor matrix, out: column
   /// normalized factor matrix
-  void normCol(TiledArray::DistArray<Tile, Policy> &factor,
-               size_t rank){
+  void normCol(Array &factor, size_t rank){
     auto & world = factor.world();
     //lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
     //std::vector<typename Tile::value_type> lambda_vector;
@@ -297,7 +304,7 @@ class CP {
 //      }
 //    }, true);
     auto & tr1_rank = factor.trange().data()[0];
-    auto diag_ = diagonal_array<DistArray<Tile, Policy>>(world,
+    auto diag_ = diagonal_array<Array>(world,
                    TiledArray::TiledRange({tr1_rank, tr1_rank}),
                    lambda_vector.begin(), lambda_vector.end());
     //std::cout << factor << std::endl;
@@ -305,7 +312,8 @@ class CP {
     //std::cout << factor << std::endl;
   }
 
-  std::vector<double> temp_normCol(DistArray<Tile, Policy> & factor, size_t rank){
+  std::vector<double> temp_normCol(Array & factor,
+                                   size_t rank){
     std::vector<double> lambda(rank);
     auto & world = factor.world();
     if(world.rank() == 0) {
@@ -345,7 +353,7 @@ class CP {
     // compute the square of the CP tensor (can use the grammian)
     auto factor_norm=[&](){
       auto gram_ptr = partial_grammian.begin();
-      TiledArray::DistArray<Tile, Policy> W(*(gram_ptr));
+      Array W(*(gram_ptr));
       ++gram_ptr;
       for(size_t i = 0; i < ndim -1; ++i, ++gram_ptr){
         W("r,rp") *= (*gram_ptr)("r,rp");
