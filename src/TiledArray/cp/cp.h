@@ -286,6 +286,27 @@ class CP {
     return W;
   }
 
+  /// Function to column normalize factor matrices
+  /// \param[in, out] factor in: un-normalized factor matrix.
+  /// out: column normalized factor matrix
+  /// \param[in] rank_trange TiledRange for the rank mode
+  /// \returns vector of column normalization factors
+  std::vector<typename Tile::value_type>
+      normalize_factor(Array & factor,
+                   size_t cp_rank,
+                   TiledRange rank_trange){
+    auto & world = factor.world();
+    auto lambda = this->temp_normCol(factor, cp_rank);
+    std::vector<typename Tile::value_type> inv_lambda(lambda);
+    for(auto & i : inv_lambda) i = (i > 1e-12 ? 1 / i : i);
+    auto diag_lambda = diagonal_array<Array>(world, rank_trange,
+                                                               inv_lambda.begin(), inv_lambda.end());
+    factor("rp,n") = diag_lambda("rp,r") * factor("r,n");
+    //std::cout << factor << std::endl;
+    //cp_factors.emplace_back(factor);
+    return lambda;
+  }
+
   /// computes the column normalization of a given factor matrix \c factor
   /// stores the column norms in the lambda vector.
   /// Also normalizes the columns of \c factor
@@ -323,14 +344,17 @@ class CP {
       auto lambda_ptr = lambda.begin();
       auto col_dim = btas_factor.extent(1);
       auto bf_ptr = btas_factor.data();
-      for(auto r = 0; r < rank; ++r, ++lambda_ptr){
+      for(auto r = 0; r < rank; ++r,
+                ++lambda_ptr, bf_ptr+=col_dim){
         for(auto n = 0; n < col_dim; ++n) {
           auto val = *(bf_ptr + n);
           *(lambda_ptr) += val * val;
         }
-        auto & val = *(lambda_ptr);
-        val = sqrt(val);
-        val = (val > 1e-12 ? 1/val : val);
+        *(lambda_ptr) = sqrt(*(lambda_ptr));
+        auto one_over_lam = (*(lambda_ptr) > 1e-12 ? 1/ *(lambda_ptr) : *(lambda_ptr));
+        for(auto n = 0; n < col_dim; ++n){
+          *(bf_ptr + n) *= one_over_lam;
+        }
       }
     }
     world.gop.broadcast_serializable(lambda, 0);
