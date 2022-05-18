@@ -53,6 +53,8 @@ class CP_ALS : public CP<Tile, Policy>{
   const DistArray<Tile, Policy> & reference;
   madness::World & world;
   std::string ref_indices, first_gemm_dim_one, first_gemm_dim_last;
+  std::vector<typename Tile::value_type> lambda;
+  TiledRange1 rank_trange1;
 
   /// This function constructs the initial CP facotr matrices
   /// stores them in CP::cp_factors vector.
@@ -62,15 +64,15 @@ class CP_ALS : public CP<Tile, Policy>{
   /// \param[in] rank_trange TiledRange1 of the rank dimension.
   void build_guess(const size_t rank,
                    const TiledRange1 rank_trange) override{
+    rank_trange1 = rank_trange;
     if(cp_factors.size() == 0) {
       for (auto i = 0; i < ndim; ++i) {
         auto factor = this->construct_random_factor(
                               world, rank, reference.trange().elements_range().extent(i),
                               rank_trange, reference.trange().data()[i]);
+        lambda = this->normalize_factor(factor, rank,
+                                        TiledRange({rank_trange1, rank_trange1}));
         cp_factors.emplace_back(factor);
-        //std::cout << factor << std::endl;
-        this->normCol(factor, rank);
-        //std::cout << factor << std::endl;
       }
     } else{
       TA_EXCEPTION("Currently no implementation to increase or change rank");
@@ -154,7 +156,8 @@ class CP_ALS : public CP<Tile, Policy>{
 
     this->cholesky_inverse(An, W);
 
-    this->normCol(An, rank);
+    lambda = this->normalize_factor(An, rank,
+                                    TiledRange({rank_trange1, rank_trange1}));
   }
 };
 } // namespace TiledArray::cp
