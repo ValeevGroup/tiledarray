@@ -336,8 +336,8 @@ struct SizeTRange {
 #endif
 
 template <typename Op, typename Result, typename... Args,
-          typename std::enable_if<std::is_void<typename std::result_of<
-              Op(Result&, Args...)>::type>::value>::type* = nullptr>
+          std::enable_if_t<std::is_void_v<
+              std::invoke_result_t<Op, Result&, Args...>>>* = nullptr>
 void inplace_vector_op_serial(Op&& op, const std::size_t n,
                               Result* const result, const Args* const... args) {
   std::size_t i = 0ul;
@@ -386,8 +386,8 @@ class ApplyInplaceVectorOp {
 #endif
 
 template <typename Op, typename Result, typename... Args,
-          typename std::enable_if<std::is_void<typename std::result_of<
-              Op(Result&, Args...)>::type>::value>::type* = nullptr>
+          std::enable_if_t<std::is_void_v<
+              std::invoke_result_t<Op, Result&, Args...>>>* = nullptr>
 void inplace_vector_op(Op&& op, const std::size_t n, Result* const result,
                        const Args* const... args) {
 #ifdef HAVE_INTEL_TBB
@@ -413,8 +413,8 @@ void inplace_vector_op(Op&& op, const std::size_t n, Result* const result,
 }
 
 template <typename Op, typename Result, typename... Args,
-          typename std::enable_if<!std::is_void<typename std::result_of<
-              Op(Args...)>::type>::value>::type* = nullptr>
+          std::enable_if_t<
+              !std::is_void_v<std::invoke_result_t<Op, Args...>>>* = nullptr>
 void vector_op_serial(Op&& op, const std::size_t n, Result* const result,
                       const Args* const... args) {
   auto wrapper_op = [&op](Result& res, param_type<Args>... a) {
@@ -467,8 +467,8 @@ class ApplyVectorOp {
 #endif
 
 template <typename Op, typename Result, typename... Args,
-          typename std::enable_if<!std::is_void<typename std::result_of<
-              Op(Args...)>::type>::value>::type* = nullptr>
+          std::enable_if_t<
+              !std::is_void_v<std::invoke_result_t<Op, Args...>>>* = nullptr>
 void vector_op(Op&& op, const std::size_t n, Result* const result,
                const Args* const... args) {
 #ifdef HAVE_INTEL_TBB
