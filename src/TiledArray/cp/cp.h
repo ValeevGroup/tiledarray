@@ -187,9 +187,10 @@ class CP {
   Array
       MTtKRP,                      // matricized tensor times
                                    // khatri rao product for check_fit()
-      unNormalized_Factor,         // The final factor unnormalized
+      unNormalized_Factor;         // The final factor unnormalized
                                    // so you don't have to
                                    // deal with lambda for check_fit()
+  std::vector<typename Tile::value_type>
       lambda;                      // Column normalizations
   size_t ndim;                     // number of factor matrices
   double prev_fit = 1.0,           // The fit of the previous ALS iteration
