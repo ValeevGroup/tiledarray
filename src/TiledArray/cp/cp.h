@@ -156,6 +156,30 @@ class CP {
     return epsilon;
   }
 
+  std::vector< Array > get_factor_matrices(){
+    TA_ASSERT(!cp_factors.empty(),"CP factor matrices have not been computed)");
+    cp_factors.pop_back();
+    cp_factors.emplace_back(unNormalized_Factor);
+    return cp_factors;
+  }
+
+  Array reconstruct(){
+    TA_ASSERT(!cp_factors.empty(),"CP factor matrices have not been computed)");
+    std::string lhs("r,0"), rhs("r,"), final("r,0");
+    Array krp = cp_factors[0];
+    for(size_t i = 1; i < ndim - 1; ++i){
+      rhs += std::to_string(i);
+      final += "," + std::to_string(i);
+      krp = expressions::einsum(krp(lhs), cp_factors[i](rhs), final);
+      lhs = final;
+      rhs.pop_back();
+    }
+    rhs += std::to_string(ndim - 1);
+    final.erase(final.begin(), final.begin() + 2);
+    final += "," + std::to_string(ndim - 1);
+    krp(final) = krp(lhs) * unNormalized_Factor(rhs);
+    return krp;
+  }
  protected:
   std::vector<Array >
       cp_factors,                   // the CP factor matrices
