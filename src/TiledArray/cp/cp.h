@@ -353,9 +353,7 @@ class CP {
     auto diag_ = diagonal_array<Array>(world,
                    TiledArray::TiledRange({tr1_rank, tr1_rank}),
                    lambda_vector.begin(), lambda_vector.end());
-    //std::cout << factor << std::endl;
     factor("rp,n") =  diag_("rp,r") * factor("r,n");
-    //std::cout << factor << std::endl;
   }
 
   std::vector<double> temp_normCol(Array & factor,
