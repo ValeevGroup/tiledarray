@@ -145,7 +145,9 @@ class CP_ALS : public CP<Tile, Policy>{
       contract.replace(2, 1, 1, detail::intToAlphabet(contracted_index));
       mixed_contractions.erase(mcont_ptr + remove_index_start,
                                mcont_ptr + remove_index_end);
+
       An = einsum(An(final), cp_factors[contracted_index](contract), mixed_contractions);
+      //std::cout << An << std::endl;
 
       final = mixed_contractions;
       W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");;
@@ -155,7 +157,7 @@ class CP_ALS : public CP<Tile, Policy>{
 
     this->cholesky_inverse(An, W);
 
-    if(mode == ndim - 1) this->unNormalized_Factor = *(cp_factors.end() - 1);
+    if(mode == ndim - 1) this->unNormalized_Factor = An;
     lambda = this->normalize_factor(An, rank,
                                     TiledRange({rank_trange1, rank_trange1}));
   }

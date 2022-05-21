@@ -327,8 +327,6 @@ class CP {
     auto diag_lambda = diagonal_array<Array>(world, rank_trange,
                                                                inv_lambda.begin(), inv_lambda.end());
     factor("rp,n") = diag_lambda("rp,r") * factor("r,n");
-    //std::cout << factor << std::endl;
-    //cp_factors.emplace_back(factor);
     return lambda;
   }
 
@@ -402,7 +400,7 @@ class CP {
       auto gram_ptr = partial_grammian.begin();
       Array W(*(gram_ptr));
       ++gram_ptr;
-      for(size_t i = 0; i < ndim -1; ++i, ++gram_ptr){
+      for(size_t i = 1; i < ndim -1; ++i, ++gram_ptr){
         W("r,rp") *= (*gram_ptr)("r,rp");
       }
       return sqrt(W("r,rp").dot((unNormalized_Factor("r,n") * unNormalized_Factor("rp,n"))));
