@@ -137,6 +137,10 @@ else()
             INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Umpire will be installed during TiledArray's installation."
             )
 
+    # TiledArray_UMPIRE target depends on existence of these directories to be usable from the build tree at configure time
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_SOURCE_DIR}/src/umpire/tpl/camp/include")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_BUILD_DIR}/include")
+
     # do install of Umpire as part of building TiledArray's install target
     install(CODE
             "execute_process(
