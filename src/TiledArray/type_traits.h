@@ -1299,8 +1299,8 @@ template <typename Enabler, typename F, typename... Args>
 struct is_invocable_void_helper : std::false_type {};
 template <typename F, typename... Args>
 struct is_invocable_void_helper<
-    std::enable_if_t<std::is_void<std::result_of_t<F(Args...)>>::value, void>,
-    F, Args...> : std::true_type {};
+    std::enable_if_t<std::is_void_v<std::invoke_result_t<F, Args...>>, void>, F,
+    Args...> : std::true_type {};
 template <typename F, typename... Args>
 struct is_invocable_void : is_invocable_void_helper<void, F, Args...> {};
 
