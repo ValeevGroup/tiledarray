@@ -10,6 +10,15 @@ if (NOT TARGET Boost::boost)
   if (TARGET Boost::boost)
     message(STATUS "Found Boost ${Boost_VERSION}: ${Boost_INCLUDE_DIRS}")
   endif(TARGET Boost::boost)
+
+  # Boost::* targets by default are not GLOBAL, so to allow users of LINALG_LIBRARIES to safely use them we need to make them global
+  # more discussion here: https://gitlab.kitware.com/cmake/cmake/-/issues/17256
+  foreach(tgt boost;headers)
+    if (TARGET Boost::${tgt})
+      set_target_properties(Boost::${tgt} PROPERTIES IMPORTED_GLOBAL TRUE)
+    endif()
+  endforeach()
+
 endif (NOT TARGET Boost::boost)
 
 # if not found, build via FetchContent
