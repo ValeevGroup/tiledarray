@@ -49,6 +49,19 @@ struct range_traits<TiledArray::Range> {
   using ordinal_type = TiledArray::Range::ordinal_type;
   constexpr static const bool is_general_layout = false;
 };
+
+template <>
+class boxrange_iteration_order<TiledArray::Range> {
+public:
+ enum {
+   row_major = boxrange_iteration_order<void>::row_major,
+   other = boxrange_iteration_order<void>::other,
+   column_major = boxrange_iteration_order<void>::column_major
+ };
+
+ static constexpr int value = row_major;
+};
+
 }  // namespace btas
 
 namespace TiledArray {
@@ -98,16 +111,16 @@ inline bool is_congruent(const btas::RangeNd<Order, Args...>& r1,
 
 template <typename T, typename Range, typename Storage>
 decltype(auto) make_ti(const btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<const T, Range,
-                                             btas::Tensor<T, Range, Storage>>(
-      arg.range(), arg.data());
+ return TiledArray::detail::TensorInterface<const T, TiledArray::Range,
+                                            btas::Tensor<T, Range, Storage>>(
+     TiledArray::detail::make_ta_range(arg.range()), arg.data());
 }
 
 template <typename T, typename Range, typename Storage>
 decltype(auto) make_ti(btas::Tensor<T, Range, Storage>& arg) {
-  return TiledArray::detail::TensorInterface<T, Range,
-                                             btas::Tensor<T, Range, Storage>>(
-      arg.range(), arg.data());
+ return TiledArray::detail::TensorInterface<T, TiledArray::Range,
+                                            btas::Tensor<T, Range, Storage>>(
+     TiledArray::detail::make_ta_range(arg.range()), arg.data());
 }
 
 template <typename... Args>
@@ -636,75 +649,75 @@ inline btas::Tensor<T, Range, Storage> gemm(
 
 template <typename T, typename Range, typename Storage, typename Scalar>
 inline void gemm(btas::Tensor<T, Range, Storage>& result,
-                 const btas::Tensor<T, Range, Storage>& left,
-                 const btas::Tensor<T, Range, Storage>& right, Scalar factor,
-                 const TiledArray::math::GemmHelper& gemm_helper) {
-  // Check that this tensor is not empty and has the correct rank
-  TA_ASSERT(!result.empty());
-  TA_ASSERT(result.range().rank() == gemm_helper.result_rank());
+                const btas::Tensor<T, Range, Storage>& left,
+                const btas::Tensor<T, Range, Storage>& right, Scalar factor,
+                const TiledArray::math::GemmHelper& gemm_helper) {
+ // Check that this tensor is not empty and has the correct rank
+ TA_ASSERT(!result.empty());
+ TA_ASSERT(result.range().rank() == gemm_helper.result_rank());
 
-  // Check that the arguments are not empty and have the correct ranks
-  TA_ASSERT(!left.empty());
-  TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
-  TA_ASSERT(!right.empty());
-  TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
+ // Check that the arguments are not empty and have the correct ranks
+ TA_ASSERT(!left.empty());
+ TA_ASSERT(left.range().rank() == gemm_helper.left_rank());
+ TA_ASSERT(!right.empty());
+ TA_ASSERT(right.range().rank() == gemm_helper.right_rank());
 
-  // Check that the outer dimensions of left match the the corresponding
-  // dimensions in result
-  TA_ASSERT(
-      TiledArray::ignore_tile_position() ||
-      gemm_helper.left_result_congruent(std::cbegin(left.range().lobound()),
-                                        std::cbegin(result.range().lobound())));
-  TA_ASSERT(
-      TiledArray::ignore_tile_position() ||
-      gemm_helper.left_result_congruent(std::cbegin(left.range().upbound()),
-                                        std::cbegin(result.range().upbound())));
-  TA_ASSERT(
-      gemm_helper.left_result_congruent(std::cbegin(left.range().extent()),
+ // Check that the outer dimensions of left match the the corresponding
+ // dimensions in result
+ TA_ASSERT(
+     TiledArray::ignore_tile_position() ||
+     gemm_helper.left_result_congruent(std::cbegin(left.range().lobound()),
+                                       std::cbegin(result.range().lobound())));
+ TA_ASSERT(
+     TiledArray::ignore_tile_position() ||
+     gemm_helper.left_result_congruent(std::cbegin(left.range().upbound()),
+                                       std::cbegin(result.range().upbound())));
+ TA_ASSERT(
+     gemm_helper.left_result_congruent(std::cbegin(left.range().extent()),
+                                       std::cbegin(result.range().extent())));
+
+ // Check that the outer dimensions of right match the the corresponding
+ // dimensions in result
+ TA_ASSERT(TiledArray::ignore_tile_position() ||
+           gemm_helper.right_result_congruent(
+               std::cbegin(right.range().lobound()),
+               std::cbegin(result.range().lobound())));
+ TA_ASSERT(TiledArray::ignore_tile_position() ||
+           gemm_helper.right_result_congruent(
+               std::cbegin(right.range().upbound()),
+               std::cbegin(result.range().upbound())));
+ TA_ASSERT(
+     gemm_helper.right_result_congruent(std::cbegin(right.range().extent()),
                                         std::cbegin(result.range().extent())));
 
-  // Check that the outer dimensions of right match the the corresponding
-  // dimensions in result
-  TA_ASSERT(TiledArray::ignore_tile_position() ||
-            gemm_helper.right_result_congruent(
-                std::cbegin(right.range().lobound()),
-                std::cbegin(result.range().lobound())));
-  TA_ASSERT(TiledArray::ignore_tile_position() ||
-            gemm_helper.right_result_congruent(
-                std::cbegin(right.range().upbound()),
-                std::cbegin(result.range().upbound())));
-  TA_ASSERT(
-      gemm_helper.right_result_congruent(std::cbegin(right.range().extent()),
-                                         std::cbegin(result.range().extent())));
+ // Check that the inner dimensions of left and right match
+ TA_ASSERT(
+     TiledArray::ignore_tile_position() ||
+     gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
+                                      std::cbegin(right.range().lobound())));
+ TA_ASSERT(
+     TiledArray::ignore_tile_position() ||
+     gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
+                                      std::cbegin(right.range().upbound())));
+ TA_ASSERT(gemm_helper.left_right_congruent(
+     std::cbegin(left.range().extent()), std::cbegin(right.range().extent())));
 
-  // Check that the inner dimensions of left and right match
-  TA_ASSERT(
-      TiledArray::ignore_tile_position() ||
-      gemm_helper.left_right_congruent(std::cbegin(left.range().lobound()),
-                                       std::cbegin(right.range().lobound())));
-  TA_ASSERT(
-      TiledArray::ignore_tile_position() ||
-      gemm_helper.left_right_congruent(std::cbegin(left.range().upbound()),
-                                       std::cbegin(right.range().upbound())));
-  TA_ASSERT(gemm_helper.left_right_congruent(
-      std::cbegin(left.range().extent()), std::cbegin(right.range().extent())));
+ // Compute gemm dimensions
+ using integer = TiledArray::math::blas::integer;
+ integer m, n, k;
+ gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
 
-  // Compute gemm dimensions
-  using integer = TiledArray::math::blas::integer;
-  integer m, n, k;
-  gemm_helper.compute_matrix_sizes(m, n, k, left.range(), right.range());
+ // Get the leading dimension for left and right matrices.
+ const integer lda =
+     (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
+ const integer ldb =
+     (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
 
-  // Get the leading dimension for left and right matrices.
-  const integer lda =
-      (gemm_helper.left_op() == TiledArray::math::blas::Op::NoTrans ? k : m);
-  const integer ldb =
-      (gemm_helper.right_op() == TiledArray::math::blas::Op::NoTrans ? n : k);
+ T factor_t(factor);
 
-  T factor_t(factor);
-
-  TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m,
-                               n, k, factor_t, left.data(), lda, right.data(),
-                               ldb, T(1), result.data(), n);
+ TiledArray::math::blas::gemm(gemm_helper.left_op(), gemm_helper.right_op(), m,
+                              n, k, factor_t, left.data(), lda, right.data(),
+                              ldb, T(1), result.data(), n);
 }
 
 // sum of the hyperdiagonal elements
@@ -835,13 +848,15 @@ namespace TiledArray {
 /// \brief converts a btas::Tensor to a TiledArray::Tensor
 template <typename T, typename Allocator, typename Range_, typename Storage>
 struct Cast<TiledArray::Tensor<T, Allocator>,
-            btas::Tensor<T, Range_, Storage>> {
-  auto operator()(const btas::Tensor<T, Range_, Storage>& arg) const {
-    TiledArray::Tensor<T, Allocator> result(detail::make_ta_range(arg.range()));
-    using std::begin;
-    std::copy(btas::cbegin(arg), btas::cend(arg), begin(result));
-    return result;
-  }
+           btas::Tensor<T, Range_, Storage>> {
+ auto operator()(const btas::Tensor<T, Range_, Storage>& arg) const {
+   TiledArray::Tensor<T, Allocator> result(detail::make_ta_range(arg.range()));
+   using std::begin;
+   using std::cbegin;
+   using std::cend;
+   std::copy(cbegin(arg), cend(arg), begin(result));
+   return result;
+ }
 };
 }  // namespace TiledArray
 
