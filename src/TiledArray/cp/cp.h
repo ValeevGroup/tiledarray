@@ -430,21 +430,6 @@ class CP {
   }
 };
 
-/*template<typename Tile, typename Policy>
-auto CP_ALS(TA::DistArray<Tile, Policy> target, TA::TiledRange1 tr1_rank,
-            double epsilon_stop, int num_als = 1000){
-  auto& world = target.world();
-  double norm_target = TA::norm2(target);
-  auto ndim = TA::rank(target);
-  using Array = TA::DistArray<Tile, Policy>;
-  std::vector<Array> factors;
-  factors.reserve(ndim);
-  auto target_trange = target.trange();
-  Array A(world, TA::TiledRange{tr1_rank, target_trange.data()[0]});
-  A.fill_random();
-
-}*/
-
 } // namespace TiledArray::cp
 
 #endif  // TILEDARRAY_CP_CP__H
