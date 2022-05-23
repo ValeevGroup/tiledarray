@@ -115,6 +115,9 @@ else()
             STEP_TARGETS build
             )
 
+    # TiledArray_CUTT target depends on existence of this directory to be usable from the build tree at configure time
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_SOURCE_DIR}/src")
+
     # do install of cuTT as part of building TiledArray's install target
     install(CODE
             "execute_process(

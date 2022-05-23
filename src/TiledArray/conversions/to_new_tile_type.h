@@ -70,7 +70,7 @@ struct cast_then_op<DstTile, SrcTile, Op,
 template <typename Tile, typename ConvTile = Tile, typename Policy, typename Op>
 inline decltype(auto) to_new_tile_type(DistArray<Tile, Policy> const& old_array,
                                        Op&& op) {
-  using OutTileType = typename std::result_of<Op(ConvTile)>::type;
+  using OutTileType = std::invoke_result_t<Op, ConvTile>;
 
   static_assert(!std::is_same<Tile, OutTileType>::value,
                 "Can't call new tile type if tile type does not change.");
