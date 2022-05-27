@@ -69,7 +69,7 @@ Optional prerequisites:
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
   - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 28433942197aee141cd9e96ed1d00f6ec7b902cb); pulls and builds the following additional prerequisite
-  - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS
+    - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS
 - Python3 interpreter -- to test (optionally-built) Python bindings
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20; only used for some unit testing of the functionality anticipated to be supported by future C++ standards.
 

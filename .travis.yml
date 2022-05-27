@@ -4,6 +4,7 @@
 language: cpp
 dist: focal
 cache: ccache
+cache:
   directories:
   - /home/travis/_install
 os: linux
@@ -30,13 +31,13 @@ matrix:
   fast_finish: true
   include:
     - compiler: gcc
-          env: GCC_VERSION=7 BUILD_TYPE=Debug MADNESS_OVER_PARSEC=1
-          addons:
-            apt:
-              packages:
-                - *base_packages
-                - g++-7
-                - gfortran-7
+      env: GCC_VERSION=7 BUILD_TYPE=Debug MADNESS_OVER_PARSEC=1
+      addons:
+        apt:
+          packages:
+           - *base_packages
+           - g++-7
+           - gfortran-7
     - compiler: gcc
       env: GCC_VERSION=7 BUILD_TYPE=Debug
       addons:
@@ -64,11 +65,21 @@ matrix:
     - compiler: gcc
       env: GCC_VERSION=8 BUILD_TYPE=Release
       addons:
-        apt:
+       apt:
           packages:
             - *base_packages
             - g++-8
             - gfortran-8
+    - compiler: gcc
+      env: GCC_VERSION=9 BUILD_TYPE=Debug MADNESS_OVER_PARSEC=1
+      addons:
+        apt:
+          sources:
+            - sourceline: 'ppa:ubuntu-toolchain-r/test'
+          packages:
+            - *base_packages
+            - g++-9
+            - gfortran-9
 
 before_install:
   - env
