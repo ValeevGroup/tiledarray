@@ -34,7 +34,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
 
 - [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.18 or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
-- [Eigen](http://eigen.tuxfamily.org/), version 3.3 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
+- [Eigen](http://eigen.tuxfamily.org/), version 3.3.5 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)
 - [Boost libraries](www.boost.org/), version 1.59 or higher (will be downloaded automatically, if missing). The following principal Boost components are used:
   - Boost.Iterator: header-only
   - Boost.Container: header-only
@@ -65,11 +65,11 @@ Compiling BTAS requires the following prerequisites:
 Optional prerequisites:
 - [CUDA compiler and runtime](https://developer.nvidia.com/cuda-zone) -- for execution on CUDA-enabled accelerators. CUDA 11 or later is required. Support for CUDA also requires the following additional prerequisites, both of which will be built and installed automatically if missing:
   - [cuTT](github.com/ValeevGroup/cutt) -- CUDA transpose library; note that our fork of the [original cuTT repo](github.com/ap-hynninen/cutt) is required to provide thread-safety (tag 0e8685bf82910bc7435835f846e88f1b39f47f09).
-  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag 5201a47a35e3844160dcbecd0916f8c96aa7dd07).
+  - [Umpire](github.com/LLNL/Umpire) -- portable memory manager for heterogeneous platforms (tag f9640e0fa4245691cdd434e4f719ac5f7d455f82).
 - [Doxygen](http://www.doxygen.nl/) -- for building documentation (version 1.8.12 or later).
 - [ScaLAPACK](http://www.netlib.org/scalapack/) -- a distributed-memory linear algebra package. If detected, the following C++ components will also be sought and downloaded, if missing:
-  - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS (tag 88076f1706be083ead882f6ce0bfc6884a72fc03)
-  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 28433942197aee141cd9e96ed1d00f6ec7b902cb)
+  - [scalapackpp](https://github.com/wavefunction91/scalapackpp.git) -- a modern C++ (C++17) wrapper for ScaLAPACK (tag 28433942197aee141cd9e96ed1d00f6ec7b902cb); pulls and builds the following additional prerequisite
+  - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS
 - Python3 interpreter -- to test (optionally-built) Python bindings
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20; only used for some unit testing of the functionality anticipated to be supported by future C++ standards.
 

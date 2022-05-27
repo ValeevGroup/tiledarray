@@ -152,9 +152,6 @@ any_files_changed |= replace_dep_id(topsrc, 'md', 'cuTT', cutt_old_tag, cutt_new
 # Umpire tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'Umpire', umpire_old_tag, umpire_new_tag, '', '')
 
-# BLACSPP tag in INSTALL.md
-any_files_changed |= replace_dep_id(topsrc, 'md', 'BLACSPP', blacspp_old_tag, blacspp_new_tag, '', '')
-
 # SCALAPACKPP tag in INSTALL.md
 any_files_changed |= replace_dep_id(topsrc, 'md', 'SCALAPACKPP', scalapackpp_old_tag, scalapackpp_new_tag, '', '')
 

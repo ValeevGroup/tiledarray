@@ -64,12 +64,14 @@ TiledArray/math/linalg/util.h
 TiledArray/math/linalg/cholesky.h
 TiledArray/math/linalg/heig.h
 TiledArray/math/linalg/lu.h
+TiledArray/math/linalg/qr.h
 TiledArray/math/linalg/svd.h
 TiledArray/math/linalg/scalapack/util.h
 TiledArray/math/linalg/scalapack/block_cyclic.h
 TiledArray/math/linalg/scalapack/cholesky.h
 TiledArray/math/linalg/scalapack/heig.h
 TiledArray/math/linalg/scalapack/lu.h
+TiledArray/math/linalg/scalapack/qr.h
 TiledArray/math/linalg/scalapack/svd.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
@@ -82,6 +84,8 @@ TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/conversions/retile.h
+TiledArray/cp/cp.h
+TiledArray/cp/cp_als.h
 TiledArray/dist_eval/array_eval.h
 TiledArray/dist_eval/binary_eval.h
 TiledArray/dist_eval/contraction_eval.h
@@ -135,6 +139,7 @@ TiledArray/pmap/hash_pmap.h
 TiledArray/pmap/pmap.h
 TiledArray/pmap/replicated_pmap.h
 TiledArray/pmap/round_robin_pmap.h
+TiledArray/pmap/user_pmap.h
 TiledArray/policies/dense_policy.h
 TiledArray/policies/sparse_policy.h
 TiledArray/special/diagonal_array.h

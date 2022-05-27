@@ -679,7 +679,6 @@ inline A column_major_buffer_to_array(
       Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n), replicated,
       pmap);
 }
-
 ///////////////// Eigen::Tensor conversions ////////////////////////////////////
 
 // clang-format off
@@ -1020,7 +1019,6 @@ Tensor array_to_eigen_tensor(const TiledArray::DistArray<Tile, Policy>& src,
   } else  // else
     return result_type{};
 }
-
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_CONVERSIONS_EIGEN_H__INCLUDED

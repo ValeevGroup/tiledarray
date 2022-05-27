@@ -91,8 +91,12 @@ struct Range1Fixture {
 };
 
 struct TiledRangeFixtureBase : public Range1Fixture {
-  TiledRangeFixtureBase() : dims(GlobalFixture::dim, tr1) {}
-  std::vector<TiledRange1> dims;
+  TiledRangeFixtureBase() {
+    std::fill(dims.begin(), dims.end(), tr1);
+    std::fill(extents.begin(), extents.end(), tr1.extent());
+  }
+  std::array<TiledRange1, GlobalFixture::dim> dims;
+  std::array<long, GlobalFixture::dim> extents;
 };  // struct TiledRangeFixtureBase
 
 struct TiledRangeFixture : public RangeFixture, public TiledRangeFixtureBase {

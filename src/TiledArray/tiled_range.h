@@ -1,4 +1,4 @@
-/*
+177/*
  * This file is a part of TiledArray.
  * Copyright (C) 2013  Virginia Tech
  *
@@ -174,7 +174,7 @@ class TiledRange {
   /// \param i The ordinal index of the tile range to be constructed
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
-  /// \note alias to TiledRange::make_tile_range() , introduced for consitency
+  /// \note alias to TiledRange::make_tile_range() , introduced for consistency
   ///       with TiledRange1::tile()
   range_type tile(const index1_type& i) const { return make_tile_range(i); }
 
@@ -194,7 +194,7 @@ class TiledRange {
   /// \param index The index of the tile range to be constructed
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
-  /// \note alias to TiledRange::make_tile_range() , introduced for consitency
+  /// \note alias to TiledRange::make_tile_range() , introduced for consistency
   ///       with TiledRange1::tile()
   template <typename Index>
   typename std::enable_if_t<detail::is_integral_range_v<Index>, range_type>
@@ -233,7 +233,7 @@ class TiledRange {
   /// \param index The tile index, given as a \c std::initializer_list
   /// \throw std::runtime_error Throws if i is not included in the range
   /// \return The constructed range object
-  /// \note alias to TiledRange::make_tile_range() , introduced for consitency
+  /// \note alias to TiledRange::make_tile_range() , introduced for consistency
   ///       with TiledRange1::tile()
   template <typename Integer,
             typename = std::enable_if_t<std::is_integral_v<Integer>>>

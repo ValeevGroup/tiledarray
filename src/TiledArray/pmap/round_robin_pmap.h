@@ -56,6 +56,7 @@ class RoundRobinPmap : public Pmap {
   /// \param tile The tile to be checked
   /// \return \c true if \c tile is owned by this process, otherwise \c false .
   virtual bool is_local(const size_type tile) const {
+    TA_ASSERT(tile < size_);
     return (tile % procs_ == rank_);
   }
 

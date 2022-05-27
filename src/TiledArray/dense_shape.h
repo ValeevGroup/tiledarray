@@ -99,11 +99,6 @@ class DenseShape {
   /// \return The fraction of tiles that are zero tiles.
   static constexpr float sparsity() { return 0.0f; }
 
-  /// Accesses the number of zero entries
-
-  /// \return The number of zero entries
-  static constexpr std::size_t nzeroes() { return 0; }
-
   /// Threshold accessor
 
   /// \return The current threshold
