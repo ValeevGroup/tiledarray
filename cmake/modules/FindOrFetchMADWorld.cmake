@@ -38,7 +38,7 @@ if (NOT TARGET MADworld)
   include(FetchContent)
   FetchContent_Declare(
           MADNESS
-          GIT_REPOSITORY https://github.com/m-a-d-n-e-s-s/madness.git
+              GIT_REPOSITORY https://github.com/m-a-d-n-e-s-s/madness.git
           GIT_TAG ${TA_TRACKED_MADNESS_TAG}
   )
   FetchContent_MakeAvailable(MADNESS)

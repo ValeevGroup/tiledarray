@@ -4,7 +4,6 @@
 language: cpp
 dist: focal
 cache: ccache
-cache:
   directories:
   - /home/travis/_install
 os: linux
@@ -31,6 +30,14 @@ matrix:
   fast_finish: true
   include:
     - compiler: gcc
+          env: GCC_VERSION=7 BUILD_TYPE=Debug MADNESS_OVER_PARSEC=1
+          addons:
+            apt:
+              packages:
+                - *base_packages
+                - g++-7
+                - gfortran-7
+    - compiler: gcc
       env: GCC_VERSION=7 BUILD_TYPE=Debug
       addons:
         apt:
@@ -47,7 +54,7 @@ matrix:
            - g++-7
            - gfortran-7
     - compiler: gcc
-      env: GCC_VERSION=8 BUILD_TYPE=Debug COMPUTE_COVERAGE=1
+      env: GCC_VERSION=8 BUILD_TYPE=Debug COMPUTE_COVERAGE=1 MADNESS_OVER_PARSEC=1
       addons:
         apt:
           packages:
@@ -62,58 +69,6 @@ matrix:
             - *base_packages
             - g++-8
             - gfortran-8
-    - compiler: gcc
-      env: GCC_VERSION=9 BUILD_TYPE=Debug
-      addons:
-        apt:
-          sources:
-            - sourceline: 'ppa:ubuntu-toolchain-r/test'
-          packages:
-            - *base_packages
-            - g++-9
-            - gfortran-9
-    - compiler: gcc
-      env: GCC_VERSION=9 BUILD_TYPE=Release
-      addons:
-        apt:
-          sources:
-            - sourceline: 'ppa:ubuntu-toolchain-r/test'
-          packages:
-            - *base_packages
-            - g++-9
-            - gfortran-9
-  allow_failures:   # travis focal images broken right now: https://travis-ci.community/t/clang-10-was-recently-broken-on-linux-unmet-dependencies-for-clang-10-clang-tidy-10-valgrind/11527
-    - compiler: clang
-      env: CLANG_VERSION=11 GCC_VERSION=8 BUILD_TYPE=Debug
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages:
-            - *base_packages
-            - g++-8
-            - gfortran-8
-            - clang-11
-            - libc++-11-dev
-            - libc++abi-11-dev
-    - compiler: clang
-      env: CLANG_VERSION=11 GCC_VERSION=8 BUILD_TYPE=Release DEPLOY=1
-      addons:
-        apt:
-          sources:
-            - sourceline: 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-11 main'
-              key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
-          packages:
-            - *base_packages
-            - g++-8
-            - gfortran-8
-            - clang-11
-            - libc++-11-dev
-            - libc++abi-11-dev
-            - libclang1-9 # libclang for doxygen
-            - graphviz # provides dot for doxygen graphs
-            - fonts-liberation # recommended by graphviz
 
 before_install:
   - env

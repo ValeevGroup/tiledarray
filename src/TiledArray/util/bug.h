@@ -25,8 +25,8 @@
 // The U.S. Government is granted a limited license as per AL 91-7.
 //
 
-#ifndef MPQC4_SRC_MPQC_UTIL_MISC_BUG_H_
-#define MPQC4_SRC_MPQC_UTIL_MISC_BUG_H_
+#ifndef TILEDARRAY_UTIL_BUG_H_
+#define TILEDARRAY_UTIL_BUG_H_
 
 #include <cassert>
 #include <memory>
@@ -381,7 +381,7 @@ void launch_lldb_xterm();
 
 }  // namespace TiledArray
 
-#endif  // MPQC4_SRC_MPQC_UTIL_MISC_BUG_H_
+#endif // TILEDARRAY_UTIL_BUG_H_
 
 // Local Variables:
 // mode: c++
