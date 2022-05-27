@@ -84,9 +84,7 @@ TiledArray/conversions/sparse_to_dense.h
 TiledArray/conversions/to_new_tile_type.h
 TiledArray/conversions/truncate.h
 TiledArray/conversions/retile.h
-TiledArray/cp/cp.h
-TiledArray/cp/cp_als.h
-TiledArray/dist_eval/array_eval.h
+        TiledArray/dist_eval/array_eval.h
 TiledArray/dist_eval/binary_eval.h
 TiledArray/dist_eval/contraction_eval.h
 TiledArray/dist_eval/dist_eval.h
