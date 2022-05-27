@@ -59,11 +59,12 @@ typedef Eigen::Matrix<std::complex<float>, 1, Eigen::Dynamic> EigenVectorXcf;
 typedef Eigen::Matrix<int, Eigen::Dynamic, 1> EigenVectorXi;
 typedef Eigen::Matrix<long, Eigen::Dynamic, 1> EigenVectorXl;
 
-/// Construct a const Eigen::Map object for a given Tensor object
+/// Construct a const 2-d Eigen::Map object for a given Tensor object
 
-/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
-/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
-/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely,
+///         \c TiledArray::detail::is_contiguous_tensor_v<T> must be true
+/// \tparam Storage the tensor layout, either Eigen::RowMajor (default) or
+///         Eigen::ColMajor
 /// \param tensor The tensor object, laid out according to Storage
 /// \param m The number of rows in the result matrix
 /// \param n The number of columns in the result matrix
@@ -82,11 +83,12 @@ eigen_map(const T& tensor, const std::size_t m, const std::size_t n) {
                     Eigen::AutoAlign>(tensor.data(), m, n);
 }
 
-/// Construct an Eigen::Map object for a given Tensor object
+/// Construct a 2-d Eigen::Map object for a given Tensor object
 
-/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
-/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
-/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely,
+///         \c TiledArray::detail::is_contiguous_tensor_v<T> must be true
+/// \tparam Storage the tensor layout, either Eigen::RowMajor (default) or
+///         Eigen::ColMajor
 /// \param tensor The tensor object, laid out according to Storage
 /// \param m The number of rows in the result matrix
 /// \param n The number of columns in the result matrix
@@ -105,13 +107,14 @@ eigen_map(T& tensor, const std::size_t m, const std::size_t n) {
                     Eigen::AutoAlign>(tensor.data(), m, n);
 }
 
-/// Construct a const Eigen::Map object for a given Tensor object
+/// Construct a const 1-d Eigen::Map object for a given Tensor object
 
-/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
-/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \param tensor The
-/// tensor object \param n The number of elements in the result matrix \return
-/// An n element Eigen vector map for \c tensor \throw TiledArray::Exception
-/// When n is not equal to \c tensor size
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely,
+///         \c TiledArray::detail::is_contiguous_tensor_v<T> must be true
+/// \param tensor The tensor object
+/// \param n The number of elements in the result matrix
+/// \return An n element Eigen vector map for \c tensor
+/// \throw TiledArray::Exception When n is not equal to \c tensor size
 template <typename T,
           std::enable_if_t<detail::is_contiguous_tensor_v<T>>* = nullptr>
 inline Eigen::Map<
@@ -125,7 +128,7 @@ eigen_map(const T& tensor, const std::size_t n) {
       Eigen::AutoAlign>(tensor.data(), n);
 }
 
-/// Construct an Eigen::Map object for a given Tensor object
+/// Construct a 1-d Eigen::Map object for a given Tensor object
 
 /// \tparam T A tensor type, e.g. TiledArray::Tensor
 /// \param tensor The tensor object
@@ -143,12 +146,13 @@ eigen_map(T& tensor, const std::size_t n) {
                     Eigen::AutoAlign>(tensor.data(), n);
 }
 
-/// Construct a const Eigen::Map object for a given Tensor object
+/// Construct a const 2-d Eigen::Map object for a given Tensor object
 
 /// The dimensions of the result tensor are extracted from the tensor itself
-/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
-/// TiledArray::detail::is_contiguous_tensor_v<T> must be true \tparam Storage
-/// the tensor layout, either Eigen::RowMajor (default) or Eigen::ColMajor
+/// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely,
+///         \c TiledArray::detail::is_contiguous_tensor_v<T> must be true
+/// \tparam Storage the tensor layout, either Eigen::RowMajor (default) or
+///         Eigen::ColMajor
 /// \param tensor The tensor object, laid out according to Storage
 /// \return An Eigen matrix map for \c tensor
 /// \throw TiledArray::Exception When \c tensor dimensions are not equal to 2
@@ -167,7 +171,7 @@ eigen_map(const T& tensor) {
       (tensor.range().rank() == 2u ? tensor_extent[1] : 1ul));
 }
 
-/// Construct an Eigen::Map object for a given Tensor object
+/// Construct a 2-d Eigen::Map object for a given Tensor object
 
 /// The dimensions of the result tensor are extracted from the tensor itself
 /// \tparam T A contiguous tensor type, e.g. TiledArray::Tensor ; namely, \c
@@ -399,7 +403,7 @@ void counted_tensor_to_eigen_submatrix(const T& tensor,
 /// \param trange The tiled range of the new array
 /// \param matrix The Eigen matrix to be copied
 /// \param replicated if true, the result will be replicated
-/// [default = true].
+///        [default = false].
 /// \param pmap the process map object [default=null]; initialized to the
 /// default if \p replicated is false, or a replicated pmap if \p replicated
 /// is true; ignored if \p replicated is true and \c world.size()>1
@@ -412,13 +416,13 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
                  std::shared_ptr<typename A::pmap_interface> pmap = {}) {
   typedef typename A::index1_type size_type;
   // Check that trange matches the dimensions of other
-  const auto rank  = trange.tiles_range().rank();
+  const auto rank = trange.tiles_range().rank();
 
-  TA_ASSERT(rank == 1 || rank == 2 && 
-      "TiledArray::eigen_to_array(): The number of dimensions in "
-      "trange must match that of the Eigen matrix.");
+  TA_ASSERT((rank == 1 || rank == 2) &&
+            "TiledArray::eigen_to_array(): The number of dimensions in "
+            "trange must match that of the Eigen matrix.");
 
-  if(rank == 2) {
+  if (rank == 2) {
     TA_ASSERT(
         trange.elements_range().extent(0) == size_type(matrix.rows()) &&
         "TiledArray::eigen_to_array(): The number of rows in trange is not "
@@ -433,7 +437,7 @@ A eigen_to_array(World& world, const typename A::trange_type& trange,
         "TiledArray::eigen_to_array(): The size of trange must be equal to the "
         "matrix size.");
   }
-    
+
   // Create a new tensor
   if (replicated && (world.size() > 1))
     pmap = std::static_pointer_cast<typename A::pmap_interface>(
@@ -501,10 +505,9 @@ array_to_eigen(const DistArray<Tile, Policy>& array) {
   const auto rank = array.trange().tiles_range().rank();
 
   // Check that the array will fit in a matrix or vector
-  TA_ASSERT((rank == 2u) ||
-            (rank == 1u) &&
-                "TiledArray::array_to_eigen(): The array dimensions must be "
-                "equal to 1 or 2.");
+  TA_ASSERT(((rank == 2u) || (rank == 1u)) &&
+            "TiledArray::array_to_eigen(): The array dimensions must be "
+            "equal to 1 or 2.");
 
   // Check that this is not a distributed computing environment or that the
   // array is replicated
@@ -679,6 +682,7 @@ inline A column_major_buffer_to_array(
       Eigen::Map<const matrix_type, Eigen::AutoAlign>(buffer, m, n), replicated,
       pmap);
 }
+
 ///////////////// Eigen::Tensor conversions ////////////////////////////////////
 
 // clang-format off
@@ -1019,6 +1023,7 @@ Tensor array_to_eigen_tensor(const TiledArray::DistArray<Tile, Policy>& src,
   } else  // else
     return result_type{};
 }
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_CONVERSIONS_EIGEN_H__INCLUDED

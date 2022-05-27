@@ -15,6 +15,7 @@ add_compile_options(-Wall)
 pybind11_add_module(python-tiledarray MODULE src/tiledarray.cc)
 
 # mpi c libs need come from tiledarray
+# Eigen and Boost also transitively come from tiledarray
 target_link_libraries(python-tiledarray PRIVATE tiledarray)
 
 # pybind uses sized deallocations when using C++17, clang requires -fsized-deallocation compiler flag to enable them

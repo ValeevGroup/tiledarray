@@ -49,8 +49,9 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
     cd ${BUILD_PREFIX}
     mkdir -p madness
     cd madness
+
     if [ -n "${MADNESS_OVER_PARSEC}" ]; then
-	    MADNESS_BACKEND_OPTION="-DMADNESS_TASK_BACKEND=PaRSEC"
+	MADNESS_BACKEND_OPTION="-DMADNESS_TASK_BACKEND=PaRSEC"
     fi
 
     # check out the tracked tag of MADNESS
@@ -75,7 +76,7 @@ if [ "$BUILD_TYPE" = "Debug" ]; then
       -DENABLE_GPERFTOOLS=OFF \
       -DASSERTION_TYPE=throw \
       -DDISABLE_WORLD_GET_DEFAULT=ON \
-            ${MADNESS_BACKEND_OPTION}
+      ${MADNESS_BACKEND_OPTION}
 
     # Build+install MADworld interface
     make -j2 install VERBOSE=1

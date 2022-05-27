@@ -84,7 +84,7 @@ class ReplicatedPmap : public Pmap {
     return Iterator(*this, 0, this->size_, this->size_, false);
   }
 
-}; // class ReplicatedPmap
+};  // class ReplicatedPmap
 
 }  // namespace detail
 }  // namespace TiledArray

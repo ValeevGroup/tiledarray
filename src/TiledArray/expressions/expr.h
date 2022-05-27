@@ -876,6 +876,6 @@ class Expr {
 
 };  // class Expr
 
-} // namespace TiledArray::expressions
+}  // namespace TiledArray::expressions
 
 #endif  // TILEDARRAY_EXPRESSIONS_EXPR_H__INCLUDED

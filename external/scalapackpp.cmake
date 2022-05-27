@@ -5,9 +5,9 @@ endif()
 
 # built {blacs,scalapack}pp as a subproject?
 if (TARGET blacspp AND TARGET scalapackpp)
-  install( TARGETS blacspp scalapackpp EXPORT tiledarray COMPONENT tiledarray )
-  # Add these dependencies to External
-  add_dependencies(External-tiledarray scalapackpp )
+    install( TARGETS blacspp scalapackpp EXPORT tiledarray COMPONENT tiledarray )
+    # Add these dependencies to External
+    add_dependencies(External-tiledarray scalapackpp )
 endif()
 
 if (TARGET blacspp::blacspp AND TARGET scalapackpp::scalapackpp)

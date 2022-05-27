@@ -11,7 +11,7 @@ namespace TiledArray::math::linalg::non_distributed {
 
 template <bool QOnly, typename ArrayV>
 auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
-                    TiledRange r_trange = TiledRange() ) {
+                     TiledRange r_trange = TiledRange() ) {
 
   (void)detail::array_traits<ArrayV>{};
   auto& world = V.world();

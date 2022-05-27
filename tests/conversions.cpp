@@ -154,23 +154,15 @@ void check_equal(Array& orig, Array& fused) {
 }
 
 TiledArray::TiledRange1 compute_trange1(std::size_t range_size,
-                                        std::size_t target_block_size) {
+                                        std::size_t block_size) {
   if (range_size > 0) {
-    std::size_t nblocks =
-            (range_size + target_block_size - 1) / target_block_size;
-    auto dv = std::div((int) (range_size + nblocks - 1), (int) nblocks);
-    auto avg_block_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
-    std::vector<std::size_t> hashmarks;
-    hashmarks.reserve(nblocks + 1);
-    auto block_counter = 0;
-    for(auto i = 0; i < num_avg_plus_one; ++i, block_counter += avg_block_size + 1){
-      hashmarks.push_back(block_counter);
+    std::vector<std::size_t> blocks;
+    blocks.push_back(0);
+    for (std::size_t i = block_size; i < range_size; i += block_size) {
+      blocks.push_back(i);
     }
-    for (auto i = num_avg_plus_one; i < nblocks; ++i, block_counter+= avg_block_size) {
-      hashmarks.push_back(block_counter);
-    }
-    hashmarks.push_back(range_size);
-    return TA::TiledRange1(hashmarks.begin(), hashmarks.end());
+    blocks.push_back(range_size);
+    return TA::TiledRange1(blocks.begin(), blocks.end());
   } else
     return TA::TiledRange1{};
 }
@@ -294,6 +286,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       auto b_dense_fused = TiledArray::fuse_tilewise_vector_of_arrays(
           world, b_dense_vector, 11, tr_split, 1);
       b_dense_vector.clear();
+
       check_equal(b_dense, b_dense_fused);
     }
   }
@@ -355,7 +348,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
   // Make a tiled range with arbitrary block size
   TiledArray::TiledRange tr;
   TiledArray::TiledRange tr_split;
-  std::size_t block_size = 50;
+  std::size_t block_size = 35;
   std::size_t dim_one = 1336;
   std::size_t dim_two = 552;
   {

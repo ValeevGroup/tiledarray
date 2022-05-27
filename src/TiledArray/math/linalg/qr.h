@@ -14,7 +14,7 @@ namespace TiledArray::math::linalg {
 
 template <bool QOnly, typename ArrayV>
 auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
-                    TiledRange r_trange = TiledRange() ) {
+                     TiledRange r_trange = TiledRange() ) {
   TA_MAX_THREADS;
 #if TILEDARRAY_HAS_SCALAPACK
   if (V.world().size() > 1 && V.elements_range().volume() > 10000000) {
@@ -47,7 +47,7 @@ auto cholesky_qr( const ArrayV& V, TiledRange r_trange = TiledRange() ) {
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
-using TiledArray::math::linalg::householder_qr;
-using TiledArray::math::linalg::cholesky_qr;
+  using TiledArray::math::linalg::householder_qr;
+  using TiledArray::math::linalg::cholesky_qr;
 }  // namespace TiledArray
 #endif

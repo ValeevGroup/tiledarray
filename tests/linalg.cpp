@@ -109,7 +109,7 @@ struct LinearAlgebraFixture : ReferenceFixture {
   static void compare(const char* context, const A& non_dist, const A& result,
                       double e) {
     BOOST_TEST_CONTEXT(context)
-        ;
+    ;
     auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
     BOOST_CHECK_SMALL(diff_with_non_dist, e);
   }
@@ -894,13 +894,13 @@ void householder_qr_q_only_test( const ArrayT& A, double tol ) {
 
   using value_type = typename ArrayT::element_type;
 
-#if TILEDARRAY_HAS_SCALAPACK
+  #if TILEDARRAY_HAS_SCALAPACK
   auto Q = use_scalapack ? scalapack::householder_qr<true>( A ) :
-                         non_dist:: householder_qr<true>( A );
-#else
+                           non_dist:: householder_qr<true>( A );
+  #else
   static_assert(not use_scalapack);
   auto Q = non_dist::householder_qr<true>( A );
-#endif
+  #endif
 
 
   // Make sure the Q is orthogonal at least
@@ -915,13 +915,13 @@ void householder_qr_q_only_test( const ArrayT& A, double tol ) {
 template <bool use_scalapack, typename ArrayT>
 void householder_qr_test( const ArrayT& A, double tol ) {
 
-#if TILEDARRAY_HAS_SCALAPACK
+  #if TILEDARRAY_HAS_SCALAPACK
   auto [Q,R] = use_scalapack ? scalapack::householder_qr<false>( A ) :
-                              non_dist:: householder_qr<false>( A );
-#else
+                               non_dist:: householder_qr<false>( A );
+  #else
   static_assert(not use_scalapack);
   auto [Q,R] = non_dist::householder_qr<false>( A );
-#endif
+  #endif
 
   // Check reconstruction error
   TA::TArray<double> QR_ERROR;
@@ -949,9 +949,9 @@ BOOST_AUTO_TEST_CASE(householder_qr_q_only) {
 
   double tol = N * N * std::numeric_limits<double>::epsilon();
   householder_qr_q_only_test<false>( ref_ta, tol );
-#if TILEDARRAY_HAS_SCALAPACK
+  #if TILEDARRAY_HAS_SCALAPACK
   householder_qr_q_only_test<true>( ref_ta, tol );
-#endif
+  #endif
 
 
   GlobalFixture::world->gop.fence();
@@ -971,9 +971,9 @@ BOOST_AUTO_TEST_CASE(householder_qr) {
 
   double tol = N * N * std::numeric_limits<double>::epsilon();
   householder_qr_test<false>( ref_ta, tol );
-#if TILEDARRAY_HAS_SCALAPACK
+  #if TILEDARRAY_HAS_SCALAPACK
   householder_qr_test<true>( ref_ta, tol );
-#endif
+  #endif
 
   GlobalFixture::world->gop.fence();
 }

@@ -381,7 +381,7 @@ void launch_lldb_xterm();
 
 }  // namespace TiledArray
 
-#endif // TILEDARRAY_UTIL_BUG_H_
+#endif  // TILEDARRAY_UTIL_BUG_H_
 
 // Local Variables:
 // mode: c++

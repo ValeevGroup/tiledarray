@@ -14,9 +14,9 @@ namespace TiledArray::math::linalg::scalapack {
 
 template <bool QOnly, typename ArrayV>
 auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
-                    TiledRange r_trange = TiledRange(),
-                    size_t NB = default_block_size(),
-                    size_t MB = default_block_size()) {
+                     TiledRange r_trange = TiledRange(),
+                     size_t NB = default_block_size(),
+                     size_t MB = default_block_size()) {
 
   using value_type = typename ArrayV::element_type;
 
@@ -35,7 +35,7 @@ auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
 
 
   std::vector<value_type>
-      TAU_local( scalapackpp::local_col_from_desc( K, desc_v ) );
+    TAU_local( scalapackpp::local_col_from_desc( K, desc_v ) );
 
   // Perform QR factorization -> Obtain reflectors + R in UT
   auto info = scalapackpp::pgeqrf( M, N, V_sca.local_mat().data(), 1, 1, desc_v, TAU_local.data() );
@@ -51,8 +51,8 @@ auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
     // Extract R from the upper triangle of V
     R_sca.local_mat().fill(0.);
     scalapackpp::placpy( scalapackpp::Uplo::Upper, K, N, 
-                        V_sca.local_mat().data(), 1, 1, desc_v,
-                        R_sca.local_mat().data(), 1, 1, desc_r );
+      V_sca.local_mat().data(), 1, 1, desc_v,
+      R_sca.local_mat().data(), 1, 1, desc_r );
 
     if (r_trange.rank() == 0) {
       // Generate a TRange based on column tiling of V
@@ -67,7 +67,7 @@ auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
 
   // Generate Q
   info = scalapackpp::generate_q_householder( M, N, K, V_sca.local_mat().data(), 1, 1, desc_v,
-                                             TAU_local.data() );
+    TAU_local.data() );
   if(info) TA_EXCEPTION("GENQ FAILED");
 
   if(q_trange.rank() == 0) q_trange = V.trange();

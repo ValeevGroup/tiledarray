@@ -126,6 +126,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
  private:
   std::shared_ptr<impl_type> pimpl_;  ///< Array implementation pointer
+  bool defer_deleter_to_next_fence_ =
+      false;  ///< if true, the impl object is scheduled to be destroyed in the
+              ///< next fence
 
   static madness::AtomicInt cleanup_counter_;
 
@@ -241,14 +244,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// no tile or meta data. Most of the functions are not available when the
   /// array is uninitialized, but these arrays may be assign via a tensor
   /// expression assignment or the copy construction.
-  DistArray() = default;
 
-  /// Copy ctor
-  /// \note this class has shallow-copy semantics
-  DistArray(const DistArray& other) = default;
+  DistArray() : pimpl_() {}
 
-  /// Move ctor
-  DistArray(DistArray&& other) = default;
+  /// Copy constructor
+
+  /// This is a shallow copy, that is no data is copied.
+  /// \param other The array to be copied
+  DistArray(const DistArray& other) : pimpl_(other.pimpl_) {}
 
   /// Dense array constructor
 
@@ -436,8 +439,26 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// This is a distributed lazy destructor. The object will only be deleted
   /// after the last reference to the world object on all nodes has been
-  /// destroyed.
-  ~DistArray() {}
+  /// destroyed and there are no outstanding references to the object's data.
+  /// Use defer_deleter_to_next_fence() to defer the deletion of the destructor
+  /// to the next fence.
+  /// \sa defer_deleter_to_next_fence
+  ~DistArray() {
+    if (defer_deleter_to_next_fence_) {
+      madness::detail::deferred_cleanup(
+          this->world(), pimpl_,
+          /* do_not_check_that_pimpl_is_unique = */ true);
+    }
+  }
+
+  /// Defers deletion to the next fene
+
+  /// By default the destruction of the object's data occurs lazily, when
+  /// all local references to the object are gone and all _remote_ references
+  /// to the local object's data are gone. This is not always sufficient;
+  /// call this at any point during object's lifetime to ensure that the
+  /// lifetime of the object lasts to (just past)the next fence.
+  void defer_deleter_to_next_fence() { defer_deleter_to_next_fence_ = true; }
 
   /// Create a deep copy of this array
 
@@ -463,6 +484,11 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \return std::weak_ptr to the nonconst implementation object
   std::weak_ptr<impl_type> weak_pimpl() { return pimpl_; }
+
+  /// Checks if this is a unique handle to the implementation object
+
+  /// \return true if this is a unique handle to the implementation object
+  bool is_unique() const { return pimpl_.unique(); }
 
   /// Wait for lazy tile cleanup
 
@@ -491,11 +517,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   }
 
   /// Copy assignment
-  /// \note this class has shallow-copy semantics
-  DistArray& operator=(const DistArray& other) = default;
 
-  /// Move assignment
-  DistArray& operator=(DistArray&& other) = default;
+  /// This is a shallow copy, that is no data is copied.
+  /// \param other The array to be copied
+  DistArray& operator=(const DistArray& other) {
+    pimpl_ = other.pimpl_;
+
+    return *this;
+  }
 
   /// Global object id
 
@@ -990,28 +1019,17 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     return impl_ref().trange().elements_range();
   }
 
-  /// Returns the total number of tiles in the tensor
+  /// Returns the number of tiles in the tensor
 
-  /// This function returns the total number of tiles in the tensor.
+  /// This function returns the number of tiles in the tensor. This is usually
+  /// not the same as the volume of the tensor (i.e., the number of elements in
+  /// the tensor; they are the same only if each tile contains a single
+  /// element).
   ///
-  /// \return The total number of tiles in the tensor.
+  /// \return The number of tiles in the tensor.
   /// \throw TiledArray::Exception if the PIMPL has not been set. Strong throw
   ///                              guarantee.
-  /// \warning This is not the same as the number of elements in the tensor.
   auto size() const { return impl_ref().size(); }
-
-  /// Returns the actual number of tiles in the tensor
-
-  /// This function returns the number of tiles actually stored (i.e., nonzero)
-  /// in the tensor. This is usually not the same as the volume of the tensor
-  /// (i.e., the number of elements in the tensor; they are the same only
-  /// if each tile contains a single element).
-  ///
-  /// \return The actual number of tiles in the tensor.
-  /// \throw TiledArray::Exception if the PIMPL has not been set. Strong throw
-  ///                              guarantee.
-  /// \sa DistArray::size()
-  auto nonzero_size() const { return size() - shape().nzeroes(); }
 
   /// Create a tensor expression
 
