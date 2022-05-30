@@ -1,9 +1,12 @@
+#ifndef TILEDARRAY_EINSUM_RANGE_H__INCLUDED
+#define TILEDARRAY_EINSUM_RANGE_H__INCLUDED
+
 #include <TiledArray/util/vector.h>
 
 #include <vector>
 #include <boost/iterator/counting_iterator.hpp>
 
-namespace TiledArray::range {
+namespace TiledArray::Einsum::range {
 
 template<typename T>
 using small_vector = container::svector<T>;
@@ -127,4 +130,11 @@ void cartesian_foreach(const std::vector<R>& rs, F f) {
   }
 }
 
-}  // namespace TiledArray::expressions
+}  // namespace TiledArray::Einsum::range
+
+namespace TiledArray::Einsum {
+  using range::Range;
+  using range::RangeProduct;
+}
+
+#endif /* TILEDARRAY_EINSUM_RANGE_H__INCLUDED */

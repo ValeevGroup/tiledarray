@@ -1,9 +1,9 @@
 // Samuel R. Powell, 2021
-#include "TiledArray/util/index.h"
+#include "TiledArray/einsum/index.h"
+#include "TiledArray/einsum/string.h"
 #include "TiledArray/util/annotation.h"
-#include "TiledArray/util/string.h"
 
-namespace TiledArray::index {
+namespace TiledArray::Einsum::index {
 
 std::vector<std::string> validate(const std::vector<std::string> &v) {
   return v;
@@ -22,4 +22,4 @@ std::string join(const small_vector<std::string> &v) {
   return string::join(v, ",");
 }
 
-}  // namespace TiledArray::index
+}  // namespace TiledArray::Einsum::index
