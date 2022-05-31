@@ -115,9 +115,9 @@ struct ContractionEvalFixture : public SparseShapeFixture {
                                     const int middle) {
     // Compute the number of rows and columns in the matrix, and a new weight
     // that is bisected the row and column dimensions.
-    std::vector<std::size_t> weight(array.range().rank(), 0ul);
+    std::vector<std::size_t> weight(array.tiles_range().rank(), 0ul);
     std::size_t MN[2] = {1ul, 1ul};
-    const int dim = array.range().rank();
+    const int dim = array.tiles_range().rank();
     int i = dim - 1;
     for (; i >= middle; --i) {
       weight[i] = MN[1];
