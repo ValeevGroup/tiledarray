@@ -513,14 +513,16 @@ void einsum_tiledarray_check(
   using U = typename T::value_type;
   using TC = Tensor<U,NC>;
   auto result = einsum(expr, A, B);
+  auto reference = einsum<TC>(
+    expr,
+    array_to_eigen_tensor<Tensor<U,NA>>(A),
+    array_to_eigen_tensor<Tensor<U,NB>>(B)
+  );
+  BOOST_CHECK(rank(result) == NC);
   BOOST_CHECK(
     isApprox(
       array_to_eigen_tensor<TC>(result),
-      einsum<TC>(
-        expr,
-        array_to_eigen_tensor<Tensor<U,NA>>(A),
-        array_to_eigen_tensor<Tensor<U,NB>>(B)
-      )
+      reference
     )
   );
 }
@@ -589,12 +591,20 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_iah_hib_abh) {
   );
 }
 
-// BOOST_AUTO_TEST_CASE(einsum_tiledarray_hi_hi_h) {
-//   einsum_tiledarray_check<2,2,1>(
-//     random(7,14),
-//     random(7,14),
-//     "hi,hi->h"
-//   );
-// }
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_hi_hi_h) {
+  einsum_tiledarray_check<2,2,1>(
+    random(7,14),
+    random(7,14),
+    "hi,hi->h"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_hji_jih_hj) {
+  einsum_tiledarray_check<3,3,2>(
+    random(14,7,5),
+    random(7,5,14),
+    "hji,jih->hj"
+  );
+}
 
 BOOST_AUTO_TEST_SUITE_END()

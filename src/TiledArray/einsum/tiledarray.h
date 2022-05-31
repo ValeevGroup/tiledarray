@@ -80,8 +80,7 @@ auto einsum(
   // contracted indices
   auto i = (a & b) - h;
 
-  TA_ASSERT(e);
-  TA_ASSERT(h);
+  TA_ASSERT(e || h);
 
   using Einsum::index::small_vector;
   using Range = Einsum::Range;
@@ -141,6 +140,51 @@ auto einsum(
     }
   }
 
+  using Index = Einsum::Index<size_t>;
+  using Tensor = typename Array::value_type;
+
+  if constexpr(std::tuple_size<decltype(cs)>::value > 1) {
+    TA_ASSERT(e);
+  }
+  else if (!e) { // hadamard reduction
+    auto& [A,B] = AB;
+    TiledRange trange(range_map[i]);
+    RangeProduct tiles;
+    for (auto idx : i) {
+      tiles *= Range(range_map[idx].tiles_range());
+    }
+    auto pa = A.permutation;
+    auto pb = B.permutation;
+    for (Index h : H.tiles) {
+      size_t batch = 1;
+      for (size_t i = 0; i < h.size(); ++i) {
+        batch *= H.batch[i].at(h[i]);
+      }
+      Tensor tile(TiledArray::Range{batch});
+      for (Index i : tiles) {
+        auto ai = A.array.find(apply_inverse(pa,h+i)).get();
+        auto bi = B.array.find(apply_inverse(pb,h+i)).get();
+        if (pa) ai = ai.permute(pa);
+        if (pb) bi = bi.permute(pb);
+        auto shape = trange.tile(i);
+        ai = ai.reshape(shape, batch);
+        bi = bi.reshape(shape, batch);
+        for (size_t k = 0; k < batch; ++k) {
+          auto hk = ai.batch(k).dot(bi.batch(k));
+          tile[k] = hk;
+        }
+      }
+      auto pc = C.permutation;
+      auto shape = apply_inverse(pc, C.array.trange().tile(h));
+      tile = tile.reshape(shape);
+      if (pc) tile = tile.permute(pc);
+      C.array.set(h, tile);
+    }
+    return C.array;
+  }
+
+  // generalized contraction
+
   for (auto &term : AB) {
     auto ei = (e+i & term.idx);
     term.local = Array(world, TiledRange(range_map[ei]));
@@ -150,7 +194,6 @@ auto einsum(
   }
 
   // iterates over tiles of hadamard indices
-  using Index = Einsum::Index<size_t>;
   for (Index h : H.tiles) {
     size_t batch = 1;
     for (size_t i = 0; i < h.size(); ++i) {
