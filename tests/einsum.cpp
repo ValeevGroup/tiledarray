@@ -288,8 +288,6 @@ BOOST_AUTO_TEST_SUITE_END()
 
 #include "TiledArray/einsum/eigen.h"
 
-BOOST_AUTO_TEST_SUITE(einsum_eigen)
-
 template<typename TA, typename TB>
 bool isApprox(
   const Eigen::TensorBase<TA,Eigen::ReadOnlyAccessors> &A,
@@ -298,6 +296,9 @@ bool isApprox(
   Eigen::Tensor<bool,0> r = (derived(A) == derived(B)).all();
   return r.coeffRef();
 }
+
+// Eigen einsum expressions
+BOOST_AUTO_TEST_SUITE(einsum_eigen, TA_UT_LABEL_SERIAL)
 
 template<typename T = int, typename ... Args>
 auto random(Args ... args) {
@@ -487,5 +488,113 @@ BOOST_AUTO_TEST_CASE(einsum_eigen_hji_jih_hj) {
   ).reshape(array{nh,nj});
   BOOST_CHECK(isApprox(reference, result));
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// TiledArray einsum expressions
+BOOST_AUTO_TEST_SUITE(einsum_tiledarray, TA_UT_LABEL_SERIAL)
+
+template<typename T = Tensor<int>, typename ... Args>
+auto random(Args ... args) {
+  TiledArray::TiledRange tr{ {0, args}... };
+  auto& world = TiledArray::get_default_world();
+  TiledArray::DistArray<T,TiledArray::SparsePolicy> t(world,tr);
+  t.fill_random();
+  return t;
+}
+
+template<int NA, int NB, int NC, typename T, typename Policy>
+void einsum_tiledarray_check(
+  const TiledArray::DistArray<T,Policy> &A,
+  const TiledArray::DistArray<T,Policy> &B,
+  std::string expr)
+{
+  using Eigen::Tensor;
+  using U = typename T::value_type;
+  using TC = Tensor<U,NC>;
+  auto result = einsum(expr, A, B);
+  BOOST_CHECK(
+    isApprox(
+      array_to_eigen_tensor<TC>(result),
+      einsum<TC>(
+        expr,
+        array_to_eigen_tensor<Tensor<U,NA>>(A),
+        array_to_eigen_tensor<Tensor<U,NB>>(B)
+      )
+    )
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_ak_bk_ab) {
+  einsum_tiledarray_check<2,2,2>(
+    random(11,7),
+    random(13,7),
+    "ak,bk->ab"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_ka_bk_ba) {
+  einsum_tiledarray_check<2,2,2>(
+    random(7,11),
+    random(13,7),
+    "ka,bk->ba"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_abi_cdi_cdab) {
+  einsum_tiledarray_check<3,3,4>(
+    random(21,22,3),
+    random(24,25,3),
+    "abi,cdi->cdab"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_icd_ai_abcd) {
+  einsum_tiledarray_check<3,3,4>(
+    random(3,12,13),
+    random(14,15,3),
+    "icd,bai->abcd"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_cdji_ibja_abcd) {
+  einsum_tiledarray_check<4,4,4>(
+    random(14,15,3,5),
+    random(5,12,3,13),
+    "cdji,ibja->abcd"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_hai_hbi_hab) {
+  einsum_tiledarray_check<3,3,3>(
+    random(7,14,3),
+    random(7,15,3),
+    "hai,hbi->hab"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_iah_hib_bha) {
+  einsum_tiledarray_check<3,3,3>(
+    random(7,14,3),
+    random(3,7,15),
+    "iah,hib->bha"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_iah_hib_abh) {
+  einsum_tiledarray_check<3,3,3>(
+    random(7,14,3),
+    random(3,7,15),
+    "iah,hib->abh"
+  );
+}
+
+// BOOST_AUTO_TEST_CASE(einsum_tiledarray_hi_hi_h) {
+//   einsum_tiledarray_check<2,2,1>(
+//     random(7,14),
+//     random(7,14),
+//     "hi,hi->h"
+//   );
+// }
 
 BOOST_AUTO_TEST_SUITE_END()
