@@ -25,10 +25,14 @@
 
 #ifndef TILEDARRAY_ANNOTATION_H__INCLUDED
 #define TILEDARRAY_ANNOTATION_H__INCLUDED
+
+#include "TiledArray/error.h"
+
 #include <algorithm>
 #include <cstring>
+#include <sstream>
 #include <string>
-#include "TiledArray/error.h"
+#include <vector>
 
 namespace TiledArray::detail {
 
@@ -96,10 +100,12 @@ inline auto tokenize_index(const std::string& s, char delim) {
 /// TiledArray defines a string as being a valid index if each character is one
 /// of the following:
 ///
-/// - Roman letters A through Z (uppercase and lowercase are allowed)
-/// - Base 10 numbers 0 through 9
-/// - Whitespace
-/// - underscore (`_`), prime (<code>'</code>), comma (`,`), or semicolon (`;`)
+/// - Roman letters (`A..Z`, `a..z`)
+/// - decimal digits (`0..9`)
+/// - whitespace (` `)
+/// - comma (`,`)
+/// - semicolon (`;`)
+/// - any of the following characters: `'`_~!@#$%^&*-+./?:|<>[]{}()`
 ///
 /// Additionally the string can not:
 ///
@@ -124,7 +130,7 @@ inline bool is_valid_index(const std::string& idx) {
       "abcdefghijklmnopqrstuvwxyz"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       "1234567890"
-      " _',;";
+      ",; '`_~!@#$%^&*-+./?:|<>[]{}()";
   // Are valid characters
   for (const auto& c : idx)
     if (valid_chars.find(c) == std::string::npos) return false;
