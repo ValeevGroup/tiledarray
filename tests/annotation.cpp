@@ -145,10 +145,15 @@ BOOST_AUTO_TEST_CASE(valid_indices){
       BOOST_CHECK(is_valid_index(idx));
     }
   }
+  // all valid characters forming index name
+  BOOST_CHECK(
+      is_valid_index("abcdefghijklmnopqrstuvwxyz,ABCDEFGHIJKLMNOPQRSTUVWXYZ;'`_"
+                     "~!@#$%^&*-+.,/?:|<>[]{}"));
 }
 
-BOOST_AUTO_TEST_CASE(unallowed_character){
-  BOOST_CHECK(is_valid_index("i,&,j") == false);
+BOOST_AUTO_TEST_CASE(unallowed_character) {
+  BOOST_CHECK(is_valid_index("i,\",j") == false);
+  BOOST_CHECK(is_valid_index("i,\\,j") == false);
 }
 
 BOOST_AUTO_TEST_CASE(multiple_semicolons){
