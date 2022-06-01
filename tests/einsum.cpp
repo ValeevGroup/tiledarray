@@ -28,7 +28,7 @@
 using namespace TiledArray;
 using namespace TiledArray::expressions;
 
-BOOST_AUTO_TEST_SUITE(einsumfxn)
+BOOST_AUTO_TEST_SUITE(einsum_tot)
 
 BOOST_AUTO_TEST_CASE(ik_mn_eq_ij_mn_times_jk_mn){
   using dist_array_t = DistArray<Tensor<Tensor<double>>, DensePolicy>;
@@ -492,7 +492,7 @@ BOOST_AUTO_TEST_CASE(einsum_eigen_hji_jih_hj) {
 BOOST_AUTO_TEST_SUITE_END()
 
 // TiledArray einsum expressions
-BOOST_AUTO_TEST_SUITE(einsum_tiledarray, TA_UT_LABEL_SERIAL)
+BOOST_AUTO_TEST_SUITE(einsum_tiledarray)
 
 template<typename T = Tensor<int>, typename ... Args>
 auto random(Args ... args) {
@@ -505,26 +505,25 @@ auto random(Args ... args) {
 
 template<int NA, int NB, int NC, typename T, typename Policy>
 void einsum_tiledarray_check(
-  const TiledArray::DistArray<T,Policy> &A,
-  const TiledArray::DistArray<T,Policy> &B,
+  TiledArray::DistArray<T,Policy> &&A,
+  TiledArray::DistArray<T,Policy> &&B,
   std::string expr)
 {
   using Eigen::Tensor;
   using U = typename T::value_type;
   using TC = Tensor<U,NC>;
-  auto result = einsum(expr, A, B);
+  auto C = einsum(expr, A, B);
+  BOOST_CHECK(rank(C) == NC);
+  A.make_replicated();
+  B.make_replicated();
+  C.make_replicated();
   auto reference = einsum<TC>(
     expr,
     array_to_eigen_tensor<Tensor<U,NA>>(A),
     array_to_eigen_tensor<Tensor<U,NB>>(B)
   );
-  BOOST_CHECK(rank(result) == NC);
-  BOOST_CHECK(
-    isApprox(
-      array_to_eigen_tensor<TC>(result),
-      reference
-    )
-  );
+  auto result = array_to_eigen_tensor<TC>(C);
+  BOOST_CHECK(isApprox(result, reference));
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_ak_bk_ab) {
