@@ -122,6 +122,11 @@ inline std::unique_ptr<World, decltype(world_resetter)> push_default_world(
                                                           world_resetter);
 }
 
+inline World split(const World& w, int color, int key = 0) {
+  auto comm = w.mpi.comm().Split(color, key);
+  return std::move(comm);
+}
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_EXTERNAL_MADNESS_H__INCLUDED
