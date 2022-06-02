@@ -819,7 +819,9 @@ inline Result& gemm(Result& result, const Left& left, const Right& right,
 /// multiply op operation for tensor elements \return A tile whose element
 /// <tt>result[i,j]</tt> obtained by executing
 ///      `foreach k: element_multiplyadd_op(result[i,j], left[i,k], right[k,j])`
-/// \example For plain tensors GEMM can be implemented (very inefficiently)
+///
+/// _Example:_
+/// For plain tensors GEMM can be implemented (very inefficiently)
 /// using this method as follows:
 /// \code
 ///   gemm(result, left, right, gemm_config,

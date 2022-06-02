@@ -383,9 +383,9 @@ inline std::
 /// Policy::shape_type::value_type and used to construct the shape of the
 /// result, whereas in the former case the shape of the result is computed from
 /// the shapes of the DistArray arguments (e.g. assigned to the shape of the
-/// first DistArray argument). \note \c foreach/foreach_inplace are collective,
-/// with sparse variants synchronizing due to the need to compute and replicate
-/// shapes.
+/// first DistArray argument).
+/// \note \c foreach/foreach_inplace are collective, with sparse variants
+/// synchronizing due to the need to compute and replicate shapes.
 
 /// @{
 
@@ -459,10 +459,12 @@ inline std::enable_if_t<is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// \param op The mutating tile function
 /// \param fence A flag that indicates fencing behavior. If \c true this
 /// function will fence before data is modified.
-/// \warning This function fences by default to avoid data race conditions.
+/// \warning
+/// - This function fences by default to avoid data race conditions.
 /// Only disable the fence if you can ensure, the data is not being read by
 /// another thread.
-/// \warning If there is a another copy of \c arg that was created via (or
+/// \warning
+/// - If there is a another copy of \c arg that was created via (or
 /// arg was created by) the \c Array copy constructor or copy assignment
 /// operator, this function will modify the data of that array since the data
 /// of a tile is held in a \c std::shared_ptr. If you need to ensure other
@@ -509,12 +511,16 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
 ///          const Tile& arg_tile);
 /// \endcode
 /// where in the case of standard Policy (i.e. SparsePolicy) the return value of
-/// \c op is the 2-norm (Frobenius norm) of the result tile. \note This function
-/// should not be used to initialize the tiles of an array object. \tparam
-/// ResultTile The tile type of the result \tparam Tile The tile type of \c arg
+/// \c op is the 2-norm (Frobenius norm) of the result tile.
+/// \note This function should not be used to initialize the tiles of an array
+/// object.
+/// \tparam ResultTile The tile type of the result
+/// \tparam Tile The tile type of \c arg
 /// \tparam Policy The policy type of \c arg; \c is_dense_v<Policy> must be
-/// false \tparam Op Tile operation \param arg The argument array \param op The
-/// tile function
+///         false
+/// \tparam Op Tile operation
+/// \param arg The argument array
+/// \param op The tile function
 template <typename ResultTile, typename ArgTile, typename Policy, typename Op,
           typename = typename std::enable_if<
               !std::is_same<ResultTile, ArgTile>::value>::type>
@@ -567,10 +573,12 @@ inline std::enable_if_t<!is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// \param op The mutating tile function
 /// \param fence A flag that indicates fencing behavior. If \c true this
 /// function will fence before data is modified.
-/// \warning This function fences by default to avoid data race conditions.
+/// \warning
+/// - This function fences by default to avoid data race conditions.
 /// Only disable the fence if you can ensure, the data is not being read by
 /// another thread.
-/// \warning If there is a another copy of \c arg that was created via (or
+/// \warning
+/// - If there is a another copy of \c arg that was created via (or
 /// arg was created by) the \c Array copy constructor or copy assignment
 /// operator, this function will modify the data of that array since the data
 /// of a tile is held in a \c std::shared_ptr. If you need to ensure other
