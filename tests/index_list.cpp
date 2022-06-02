@@ -36,7 +36,7 @@ struct IndexListFixture {
         v_ia("i,a"),
         v_ix("i,x"),
         v_i("i"),
-        v_0("") {}
+        v_0() {}
 
   IndexList v;
   const IndexList v_aib;
@@ -123,10 +123,10 @@ BOOST_AUTO_TEST_CASE(valid_chars) {
   BOOST_CHECK_NO_THROW(IndexList v1("8"));
   BOOST_CHECK_NO_THROW(IndexList v1("9"));
 
-  // Check characters ',', ' ', and '\0'
+  // Check characters other valid (',', ' ', etc.)
   BOOST_CHECK_NO_THROW(IndexList v1("a,b"));
   BOOST_CHECK_NO_THROW(IndexList v1("a ,b"));
-  BOOST_CHECK_NO_THROW(IndexList v1(""));
+  BOOST_CHECK_NO_THROW(IndexList v1("a. ,b * , c$"));
 }
 
 BOOST_AUTO_TEST_CASE(accessors) {
@@ -193,9 +193,9 @@ BOOST_AUTO_TEST_CASE(constructor) {
   BOOST_CHECK_EQUAL(v7.at(7), "h");
   BOOST_CHECK_EQUAL(v7.at(8), "i");
 
-  BOOST_REQUIRE_NO_THROW(IndexList v11(""));  // Check zero length constructor
-  IndexList v11("");
-  BOOST_CHECK_EQUAL(v11.size(), 0u);
+  BOOST_REQUIRE_THROW(
+      IndexList v11(""),
+      TiledArray::Exception);  // Empty string is not permitted constructor
 }
 
 BOOST_AUTO_TEST_CASE(iterator) {

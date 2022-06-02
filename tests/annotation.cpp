@@ -152,7 +152,7 @@ BOOST_AUTO_TEST_CASE(multiple_semicolons) {
   BOOST_CHECK(is_valid_index("i;j;k") == false);
 }
 
-BOOST_AUTO_TEST_CASE(only_whitespace) {
+BOOST_AUTO_TEST_CASE(at_least_one_index) {
   BOOST_CHECK(is_valid_index("") == false);
   BOOST_CHECK(is_valid_index(" ") == false);
   BOOST_CHECK(is_valid_index("     ") == false);
