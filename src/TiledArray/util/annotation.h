@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef TILEDARRAY_ANNOTATION_H__INCLUDED
-#define TILEDARRAY_ANNOTATION_H__INCLUDED
+#ifndef TILEDARRAY_UTIL_ANNOTATION_H__INCLUDED
+#define TILEDARRAY_UTIL_ANNOTATION_H__INCLUDED
 
 #include "TiledArray/error.h"
 
@@ -95,48 +95,46 @@ inline auto tokenize_index(const std::string& s, char delim) {
   return tokens;
 }
 
-/// Checks that the provided index is a valid TiledArray index
+/// Checks that the provided character is a valid character in an
+/// TiledArray index annotation
 ///
-/// TiledArray defines a string as being a valid index if each character is one
-/// of the following:
-///
+/// \param[in] ch a character
+/// \return true if \p ch is any of the following
 /// - Roman letters (`A..Z`, `a..z`)
 /// - decimal digits (`0..9`)
 /// - whitespace (` `)
 /// - comma (`,`)
 /// - semicolon (`;`)
 /// - any of the following characters: `'`_~!@#$%^&*-+./?:|<>[]{}()`
-///
-/// Additionally the string can not:
-///
-/// - be only whitespace
-/// - contain more than one semicolon
-/// - have anonymous index name (i.e. can't have "i,,k" because the middle index
-///   has no name).
-///
-/// \param[in] idx The index whose validity is being questioned.
-/// \return True if the string corresponds to a valid index and false otherwise.
-/// \note This function only tests that the characters making up the index are
-///       valid. The index may still be invalid for a particular tensor. For
-///       example if \c idx is an index for a matrix, but the actual tensor is
-///       rank 3, then \c idx would be an invalid index for that tensor despite
-///       being a valid index.
-/// \throw std::bad_alloc if there is insufficient memory to copy \c idx. Strong
-///                       throw guarantee.
-/// \throw std::bad_alloc if there is insufficient memory to split \c idx into
-///                      tokens. Strong throw guarantee.
-inline bool is_valid_index(const std::string& idx) {
+inline bool is_valid_annotation_character(char ch) {
   const std::string valid_chars =
       "abcdefghijklmnopqrstuvwxyz"
       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
       "1234567890"
       ",; '`_~!@#$%^&*-+./?:|<>[]{}()";
-  // Are valid characters
-  for (const auto& c : idx)
-    if (valid_chars.find(c) == std::string::npos) return false;
+  return valid_chars.find(ch) != std::string::npos;
+}
 
-  // Is not only whitespace
-  auto no_ws = remove_whitespace(idx);
+/// Checks that the provided string is a valid TiledArray index annotation.
+///
+/// Index annotations are used to annotate modes of tensors or tensor
+/// expressions. This function only checks whether an annotation is
+/// syntactically valid. A valid index annotation consists of one or more
+/// sequences of one or more valid (\sa is_valid_annotation_character() )
+/// non-separator nonwhitespace characters separated by separator characters
+/// (`,` and `;`). Only one appearance of the `;` separator is permitted.
+/// Whitespace characters are ignored and removed from \p str before the test.
+///
+/// \param[in] str string to be tested
+/// \return true if \p str is a valid index annotation
+inline bool is_valid_index(const std::string& str) {
+  // to be valid must contain only valid characters
+  for (const auto& c : str)
+    if (!is_valid_annotation_character(c)) return false;
+
+  auto no_ws = remove_whitespace(str);
+
+  // empty annotations are not permitted
   if (no_ws.size() == 0) return false;
 
   // At most one semicolon
@@ -208,4 +206,4 @@ inline auto split_index(const std::string& idx) {
 
 }  // namespace TiledArray::detail
 
-#endif  // TILEDARRAY_ANNOTATION_H__INCLUDED
+#endif  // TILEDARRAY_UTIL_ANNOTATION_H__INCLUDED

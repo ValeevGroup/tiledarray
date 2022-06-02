@@ -117,9 +117,9 @@ class IndexList {
   /// \param str a string containing comma-separated index labels.
   /// All whitespaces are discarded, i.e., "a c" will be converted to "ac"
   /// and will be considered a single index.
-  explicit IndexList(const std::string& str) {
-    if (!str.empty()) init_(str);
-  }
+  /// \throw TiledArray::Exception if
+  /// `TiledArray::detail::is_valid_index(str)==false`
+  explicit IndexList(const std::string& str) { init_(str); }
 
   /// constructs from a range of index labels
 
@@ -267,6 +267,8 @@ class IndexList {
  private:
   /// Initializes from a comma-separated sequence of indices
   void init_(const std::string& str) {
+    if (!TiledArray::detail::is_valid_index(str))
+      TA_EXCEPTION_MESSAGE(__FILE__, __LINE__, "IndexList(str): invalid str");
     std::string::const_iterator start = str.begin();
     std::string::const_iterator finish = str.begin();
     for (; finish != str.end(); ++finish) {
@@ -307,9 +309,7 @@ class IndexList {
   }
 
   static bool valid_char_(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-           (c >= '0' && c <= '9') || (c == ' ') || (c == ',') || (c == '\0') ||
-           (c == '\'') || (c == '_');
+    return TiledArray::detail::is_valid_annotation_character(c);
   }
 
   friend void swap(IndexList&, IndexList&);
@@ -547,7 +547,7 @@ class BipartiteIndexList {
   /// \return A read-only reference to the requested string index.
 #ifdef BOOST_CONTAINER_USE_STD_EXCEPTIONS
   /// \throw std::out_of_range
-#else // BOOST_CONTAINER_USE_STD_EXCEPTIONS
+#else  // BOOST_CONTAINER_USE_STD_EXCEPTIONS
   /// \throw boost::container::out_of_range
 #endif
   ///         if \c n is not in the range [0, dim()). Strong throw guarantee.
