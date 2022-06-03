@@ -171,8 +171,13 @@ auto einsum(
       }
       Tensor tile(TiledArray::Range{batch});
       for (Index i : tiles) {
-        auto ai = A.array.find(apply_inverse(pa,h+i)).get();
-        auto bi = B.array.find(apply_inverse(pb,h+i)).get();
+        // skip this unless both input tiles exist
+        const auto pahi_inv = apply_inverse(pa,h+i);
+        const auto pbhi_inv = apply_inverse(pb,h+i);
+        if (A.array.is_zero(pahi_inv) || B.array.is_zero(pbhi_inv)) continue;
+
+        auto ai = A.array.find(pahi_inv).get();
+        auto bi = B.array.find(pbhi_inv).get();
         if (pa) ai = ai.permute(pa);
         if (pb) bi = bi.permute(pb);
         auto shape = trange.tile(i);
