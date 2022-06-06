@@ -89,6 +89,10 @@ TiledArray/dist_eval/binary_eval.h
 TiledArray/dist_eval/contraction_eval.h
 TiledArray/dist_eval/dist_eval.h
 TiledArray/dist_eval/unary_eval.h
+TiledArray/einsum/index.h
+TiledArray/einsum/index.cpp
+TiledArray/einsum/range.h
+TiledArray/einsum/string.h
 TiledArray/expressions/add_engine.h
 TiledArray/expressions/add_expr.h
 TiledArray/expressions/binary_engine.h
@@ -179,14 +183,10 @@ TiledArray/util/annotation.h
 TiledArray/util/backtrace.h
 TiledArray/util/bug.h
 TiledArray/util/function.h
-TiledArray/util/index.h
-TiledArray/util/index.cpp
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
 TiledArray/util/random.h
-TiledArray/util/range.h
 TiledArray/util/singleton.h
-TiledArray/util/string.h
 TiledArray/util/threads.h
 TiledArray/util/threads.cpp
 TiledArray/util/time.h

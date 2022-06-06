@@ -36,8 +36,8 @@ ArrayFixture::ArrayFixture()
     : shape_tensor(tr.tiles_range(), 0.0),
       world(*GlobalFixture::world),
       a(world, tr) {
-  for (ArrayN::range_type::const_iterator it = a.range().begin();
-       it != a.range().end(); ++it)
+  for (ArrayN::range_type::const_iterator it = a.tiles_range().begin();
+       it != a.tiles_range().end(); ++it)
     if (a.is_local(*it))
       a.set(*it, world.rank() + 1);  // Fill the tile at *it (the index)
 
@@ -46,8 +46,8 @@ ArrayFixture::ArrayFixture()
   }
 
   b = decltype(b)(world, tr, TiledArray::SparseShape<float>(shape_tensor, tr));
-  for (SpArrayN::range_type::const_iterator it = b.range().begin();
-       it != b.range().end(); ++it)
+  for (SpArrayN::range_type::const_iterator it = b.tiles_range().begin();
+       it != b.tiles_range().end(); ++it)
     if (!b.is_zero(*it) && b.is_local(*it))
       b.set(*it, world.rank() + 1);  // Fill the tile at *it (the index)
 
@@ -305,8 +305,8 @@ BOOST_AUTO_TEST_CASE(owner) {
                                          std::default_delete<ProcessID[]>());
 
   ordinal_type o = 0;
-  for (ArrayN::range_type::const_iterator it = a.range().begin();
-       it != a.range().end(); ++it, ++o) {
+  for (ArrayN::range_type::const_iterator it = a.tiles_range().begin();
+       it != a.tiles_range().end(); ++it, ++o) {
     // Check that local ownership agrees
     const int owner = a.owner(*it);
     BOOST_CHECK_EQUAL(a.owner(o), owner);
@@ -334,8 +334,8 @@ BOOST_AUTO_TEST_CASE(is_local) {
   // Test to make sure everyone agrees who owns which tiles.
 
   ordinal_type o = 0;
-  for (ArrayN::range_type::const_iterator it = a.range().begin();
-       it != a.range().end(); ++it, ++o) {
+  for (ArrayN::range_type::const_iterator it = a.tiles_range().begin();
+       it != a.tiles_range().end(); ++it, ++o) {
     // Check that local ownership agrees
     const bool local_tile = a.owner(o) == world.rank();
     BOOST_CHECK_EQUAL(a.is_local(*it), local_tile);
@@ -352,8 +352,8 @@ BOOST_AUTO_TEST_CASE(is_local) {
 }
 
 BOOST_AUTO_TEST_CASE(find_local) {
-  for (ArrayN::range_type::const_iterator it = a.range().begin();
-       it != a.range().end(); ++it) {
+  for (ArrayN::range_type::const_iterator it = a.tiles_range().begin();
+       it != a.tiles_range().end(); ++it) {
     if (a.is_local(*it)) {
       Future<ArrayN::value_type> tile = a.find(*it);
 
@@ -366,7 +366,7 @@ BOOST_AUTO_TEST_CASE(find_local) {
     }
   }
 
-  for (auto&& tile_idx : a.range()) {
+  for (auto&& tile_idx : a.tiles_range()) {
     if (a.is_local(tile_idx)) {
       const Future<ArrayN::value_type>& const_tile_fut = a.find_local(tile_idx);
       Future<ArrayN::value_type>& nonconst_tile_fut = a.find_local(tile_idx);
@@ -393,8 +393,8 @@ BOOST_AUTO_TEST_CASE(find_local) {
 }
 
 BOOST_AUTO_TEST_CASE(find_remote) {
-  for (ArrayN::range_type::const_iterator it = a.range().begin();
-       it != a.range().end(); ++it) {
+  for (ArrayN::range_type::const_iterator it = a.tiles_range().begin();
+       it != a.tiles_range().end(); ++it) {
     if (!a.is_local(*it)) {
       Future<ArrayN::value_type> tile = a.find(*it);
 
@@ -409,8 +409,8 @@ BOOST_AUTO_TEST_CASE(find_remote) {
 BOOST_AUTO_TEST_CASE(fill_tiles) {
   ArrayN a(world, tr);
 
-  for (ArrayN::range_type::const_iterator it = a.range().begin();
-       it != a.range().end(); ++it) {
+  for (ArrayN::range_type::const_iterator it = a.tiles_range().begin();
+       it != a.tiles_range().end(); ++it) {
     if (a.is_local(*it)) {
       a.set(*it, 0);  // Fill the tile at *it (the index) with 0
 
@@ -430,8 +430,8 @@ BOOST_AUTO_TEST_CASE(assign_tiles) {
   std::vector<int> data;
   ArrayN a(world, tr);
 
-  for (ArrayN::range_type::const_iterator it = a.range().begin();
-       it != a.range().end(); ++it) {
+  for (ArrayN::range_type::const_iterator it = a.tiles_range().begin();
+       it != a.tiles_range().end(); ++it) {
     ArrayN::trange_type::range_type range = a.trange().make_tile_range(*it);
     if (a.is_local(*it)) {
       if (data.size() < range.volume()) data.resize(range.volume(), 1);
@@ -500,8 +500,8 @@ BOOST_AUTO_TEST_CASE(truncate) {
   BOOST_CHECK_NO_THROW(b_trunc0.truncate());
   auto b_trunc1 = b.clone();
   BOOST_CHECK_NO_THROW(
-      b_trunc1.truncate(std::numeric_limits<typename decltype(
-                            b)::shape_type::value_type>::max()));
+      b_trunc1.truncate(std::numeric_limits<
+                        typename decltype(b)::shape_type::value_type>::max()));
   BOOST_CHECK(std::distance(b_trunc1.begin(), b_trunc1.end()) == 0);
 }
 
@@ -623,12 +623,12 @@ BOOST_AUTO_TEST_CASE(parallel_serialization) {
   char archive_file_prefix_name[] = "tmp.XXXXXX";
   mktemp(archive_file_prefix_name);
   madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
-                                              nio);
+                                                nio);
   oar& a;
   oar.close();
 
   madness::archive::ParallelInputArchive<> iar(world, archive_file_prefix_name,
-                                             nio);
+                                               nio);
   decltype(a) aread;
   aread.load(world, iar);
 
@@ -647,12 +647,12 @@ BOOST_AUTO_TEST_CASE(parallel_sparse_serialization) {
   char archive_file_prefix_name[] = "tmp.XXXXXX";
   mktemp(archive_file_prefix_name);
   madness::archive::ParallelOutputArchive<> oar(world, archive_file_prefix_name,
-                                              nio);
+                                                nio);
   oar& b;
   oar.close();
 
   madness::archive::ParallelInputArchive<> iar(world, archive_file_prefix_name,
-                                             nio);
+                                               nio);
   decltype(b) bread;
   bread.load(world, iar);
 

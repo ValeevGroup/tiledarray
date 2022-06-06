@@ -16,9 +16,11 @@
 *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
+
+#include "unit_test_config.h"
+
 #include "TiledArray/expressions/einsum.h"
 #include "tiledarray.h"
-#include "unit_test_config.h"
 #include "tot_array_fixture.h"
 
 #include "TiledArray/expressions/contraction_helpers.h"
@@ -281,5 +283,328 @@ BOOST_AUTO_TEST_CASE(xxx) {
   BOOST_CHECK(are_equal);
 }
 
+
+BOOST_AUTO_TEST_SUITE_END()
+
+#include "TiledArray/einsum/eigen.h"
+
+template<typename TA, typename TB>
+bool isApprox(
+  const Eigen::TensorBase<TA,Eigen::ReadOnlyAccessors> &A,
+  const Eigen::TensorBase<TB,Eigen::ReadOnlyAccessors> &B)
+{
+  Eigen::Tensor<bool,0> r = (derived(A) == derived(B)).all();
+  return r.coeffRef();
+}
+
+// Eigen einsum expressions
+BOOST_AUTO_TEST_SUITE(einsum_eigen, TA_UT_LABEL_SERIAL)
+
+template<typename T = int, typename ... Args>
+auto random(Args ... args) {
+  Eigen::Tensor<T,sizeof...(Args)> t(args...);
+  t.setRandom();
+  return t;
+}
+
+template<typename T, int NA, int NB, size_t NI, size_t NC>
+void einsum_eigen_contract_check(
+  Eigen::Tensor<T,NA> A,
+  Eigen::Tensor<T,NB> B,
+  std::string expr,
+  std::array< std::pair<int,int>, NI> i,
+  std::array<int,NC> p)
+{
+  using Eigen::einsum;
+  using std::tuple;
+  static_assert(NC == NA+NB-2*NI);
+  auto C = Eigen::einsum< Eigen::Tensor<T,NC> >(expr, A, B);
+  BOOST_CHECK(isApprox(C, A.contract(B,i).shuffle(p)));
+}
+
+template<typename T, int NA, int NB, size_t NI, size_t NC>
+void einsum_eigen_hadamard_check(
+  Eigen::Tensor<T,NA> A,
+  Eigen::Tensor<T,NB> B,
+  std::string expr,
+  std::array< std::pair<int,int>, NI> i, // contracted pairs
+  std::array< std::pair<int,int>, 1> h, // hadamard pairs
+  std::array<int,NC> p)
+{
+  static_assert(NC == NA+NB-2*NI-1);
+  auto [ha,hb] = h[0];
+  size_t nh = A.dimension(ha);
+  size_t hc = ha;
+  // decrement internal indices above h-index
+  for (auto& [ia,ib] : i) {
+    if (ia < ha) --hc;
+    if (ia > ha) ia -= 1;
+    if (ib > hb) ib -= 1;
+  }
+  // shuffle C to A*B order
+  std::vector<int> p_ab(p.size());
+  for (size_t i = 0; i < p.size(); ++i) {
+    p_ab.at(p[i]) = i;
+  }
+  auto C = Eigen::einsum< Eigen::Tensor<T,NC> >(expr, A, B);
+  // validate h-dims
+  eigen_assert(nh == A.dimension(ha));
+  eigen_assert(nh == B.dimension(hb));
+  eigen_assert(nh == C.dimension(p_ab.at(hc)));
+  // validate
+  for (size_t h = 0; h < nh; ++h) {
+    auto ah = A.chip(h,ha);
+    auto bh = B.chip(h,hb);
+    auto result = C.shuffle(p_ab).chip(h,hc);
+    auto expected = ah.contract(bh,i);
+    BOOST_CHECK(isApprox(result, expected));
+  }
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_ak_bk_ab) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_contract_check(
+    random(11,7),
+    random(13,7),
+    "ak,bk->ab",
+    array{ pair{1,1} },
+    array{ 0, 1 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_ka_bk_ba) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_contract_check(
+    random(7,11),
+    random(13,7),
+    "ka,bk->ba",
+    array{ pair{0,1} },
+    array{ 1, 0 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_abi_cdi_cdab) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_contract_check(
+    random(21,22,3),
+    random(24,25,3),
+    "abi,cdi->cdab",
+    array{ pair{2,2} },
+    array{ 2, 3, 0, 1 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_icd_ai_abcd) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_contract_check(
+    random(3,12,13),
+    random(14,15,3),
+    "icd,bai->abcd",
+    array{ pair{0,2} },
+    array{ 3, 2, 0, 1 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_cdji_ibja_abcd) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_contract_check(
+    random(14,15,3,5),
+    random(5,12,3,13),
+    "cdji,ibja->abcd",
+    array{ pair{3,0}, pair{2,2} },
+    array{ 3, 2, 0, 1 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_hai_hbi_hab) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_hadamard_check(
+    random(7,14,3),
+    random(7,15,3),
+    "hai,hbi->hab",
+    array{ pair{2,2} },
+    array{ pair{ 0, 0 } },
+    array{ 0, 1, 2 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_iah_hib_bha) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_hadamard_check(
+    random(7,14,3),
+    random(3,7,15),
+    "iah,hib->bha",
+    array{ pair{0,1} },
+    array{ pair{ 2, 0 } },
+    array{ 2, 1, 0 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_iah_hib_abh) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_hadamard_check(
+    random(7,14,3),
+    random(3,7,15),
+    "iah,hib->abh",
+    array{ pair{0,1} },
+    array{ pair{ 2, 0 } },
+    array{ 0, 2, 1 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_hi_hi_h) {
+  using std::array;
+  using std::pair;
+  einsum_eigen_hadamard_check(
+    random(7,14),
+    random(7,14),
+    "hi,hi->h",
+    array{ pair{1,1} },
+    array{ pair{ 0, 0 } },
+    array{ 0 }
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_eigen_hji_jih_hj) {
+  using std::array;
+  using T = int;
+  Eigen::Index nh = 3, nj = 5, ni = 4;
+  auto A = random<T>(nh,nj,ni);
+  auto B = random<T>(nj,ni,nh);
+  using R = Eigen::Tensor<T,2>;
+  R result = einsum<R>("hji,jih->hj", A, B);
+  R reference = einsum< Eigen::Tensor<T,1> >(
+    "hi,hi->h",
+    A.shuffle(array{0,1,2}).reshape(array{nh*nj,ni}),
+    B.shuffle(array{2,0,1}).reshape(array{nh*nj,ni})
+  ).reshape(array{nh,nj});
+  BOOST_CHECK(isApprox(reference, result));
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// TiledArray einsum expressions
+BOOST_AUTO_TEST_SUITE(einsum_tiledarray, TA_UT_LABEL_SERIAL)
+
+template<typename T = Tensor<int>, typename ... Args>
+auto random(Args ... args) {
+  TiledArray::TiledRange tr{ {0, args}... };
+  auto& world = TiledArray::get_default_world();
+  TiledArray::DistArray<T,TiledArray::SparsePolicy> t(world,tr);
+  t.fill_random();
+  return t;
+}
+
+template<int NA, int NB, int NC, typename T, typename Policy>
+void einsum_tiledarray_check(
+  const TiledArray::DistArray<T,Policy> &A,
+  const TiledArray::DistArray<T,Policy> &B,
+  std::string expr)
+{
+  using Eigen::Tensor;
+  using U = typename T::value_type;
+  using TC = Tensor<U,NC>;
+  auto result = einsum(expr, A, B);
+  auto reference = einsum<TC>(
+    expr,
+    array_to_eigen_tensor<Tensor<U,NA>>(A),
+    array_to_eigen_tensor<Tensor<U,NB>>(B)
+  );
+  BOOST_CHECK(rank(result) == NC);
+  BOOST_CHECK(
+    isApprox(
+      array_to_eigen_tensor<TC>(result),
+      reference
+    )
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_ak_bk_ab) {
+  einsum_tiledarray_check<2,2,2>(
+    random(11,7),
+    random(13,7),
+    "ak,bk->ab"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_ka_bk_ba) {
+  einsum_tiledarray_check<2,2,2>(
+    random(7,11),
+    random(13,7),
+    "ka,bk->ba"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_abi_cdi_cdab) {
+  einsum_tiledarray_check<3,3,4>(
+    random(21,22,3),
+    random(24,25,3),
+    "abi,cdi->cdab"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_icd_ai_abcd) {
+  einsum_tiledarray_check<3,3,4>(
+    random(3,12,13),
+    random(14,15,3),
+    "icd,bai->abcd"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_cdji_ibja_abcd) {
+  einsum_tiledarray_check<4,4,4>(
+    random(14,15,3,5),
+    random(5,12,3,13),
+    "cdji,ibja->abcd"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_hai_hbi_hab) {
+  einsum_tiledarray_check<3,3,3>(
+    random(7,14,3),
+    random(7,15,3),
+    "hai,hbi->hab"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_iah_hib_bha) {
+  einsum_tiledarray_check<3,3,3>(
+    random(7,14,3),
+    random(3,7,15),
+    "iah,hib->bha"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_iah_hib_abh) {
+  einsum_tiledarray_check<3,3,3>(
+    random(7,14,3),
+    random(3,7,15),
+    "iah,hib->abh"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_hi_hi_h) {
+  einsum_tiledarray_check<2,2,1>(
+    random(7,14),
+    random(7,14),
+    "hi,hi->h"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_hji_jih_hj) {
+  einsum_tiledarray_check<3,3,2>(
+    random(14,7,5),
+    random(7,5,14),
+    "hji,jih->hj"
+  );
+}
 
 BOOST_AUTO_TEST_SUITE_END()

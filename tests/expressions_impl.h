@@ -237,7 +237,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = b("c,b,a"));
 
   for (std::size_t i = 0ul; i < b.size(); ++i) {
-    const std::size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    const std::size_t perm_index =
+        a.tiles_range().ordinal(perm * b.tiles_range().idx(i));
     if (a.is_local(perm_index) && !a.is_zero(perm_index)) {
       auto a_tile = a.find(perm_index).get();
       auto perm_b_tile = perm * b.find(i).get();
@@ -258,7 +259,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(a("a,b,c") = 2 * b("c,b,a"));
 
   for (std::size_t i = 0ul; i < b.size(); ++i) {
-    const std::size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    const std::size_t perm_index =
+        a.tiles_range().ordinal(perm * b.tiles_range().idx(i));
     if (a.is_local(perm_index) && !a.is_zero(perm_index)) {
       auto a_tile = a.find(perm_index).get();
       auto perm_b_tile = perm * b.find(i).get();
@@ -501,7 +503,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    const size_t perm_index = c.range().ordinal(perm * c.range().idx(index));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * c.tiles_range().idx(index));
 
     if (!a.is_zero(block_range.ordinal(perm_index))) {
       auto arg_tile = perm * a.find(block_range.ordinal(perm_index)).get();
@@ -520,7 +523,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
                              2 * a("c,b,a").block({3, 3, 3}, {5, 5, 5}));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    const size_t perm_index = c.range().ordinal(perm * c.range().idx(index));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * c.tiles_range().idx(index));
 
     if (!a.is_zero(block_range.ordinal(perm_index))) {
       auto arg_tile = perm * a.find(block_range.ordinal(perm_index)).get();
@@ -540,7 +544,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
                                   4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    const size_t perm_index = c.range().ordinal(perm * c.range().idx(index));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * c.tiles_range().idx(index));
 
     if (!a.is_zero(block_range.ordinal(perm_index)) ||
         !b.is_zero(block_range.ordinal(index))) {
@@ -565,7 +570,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(permute_block, F, Fixtures, F) {
                                   4 * b("c,b,a").block({3, 3, 3}, {5, 5, 5})));
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
-    const size_t perm_index = c.range().ordinal(perm * c.range().idx(index));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * c.tiles_range().idx(index));
 
     if (!a.is_zero(block_range.ordinal(perm_index)) ||
         !b.is_zero(block_range.ordinal(perm_index))) {
@@ -681,7 +687,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(assign_subblock_permute_block, F, Fixtures,
 
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     //    const size_t perm_index = block_range.ordinal(perm *
-    //    c.range().idx(index));
+    //    c.tiles_range().idx(index));
     auto perm_index = perm * block_range.idx(index);
 
     if (!a.is_zero(block_range.ordinal(perm_index))) {
@@ -961,7 +967,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(add_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) + (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -979,7 +986,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(add_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) + (3 * b("c,b,a")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1098,7 +1106,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_add_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) + (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1116,7 +1125,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_add_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) + (3 * b("c,b,a")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1258,7 +1268,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(sub_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) - (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1276,7 +1287,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(sub_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) - (3 * b("c,b,a")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1377,7 +1389,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_sub_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) - (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1395,7 +1408,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_sub_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) - (3 * b("c,b,a")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1495,7 +1509,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mult_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) * (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1513,7 +1528,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(mult_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = (2 * a("c,b,a")) * (3 * b("c,b,a")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1656,7 +1672,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_mult_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) * (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -1674,7 +1691,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_mult_permute, F, Fixtures, F) {
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) * (3 * b("c,b,a")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
-    const size_t perm_index = c.range().ordinal(perm * a.range().idx(i));
+    const size_t perm_index =
+        c.tiles_range().ordinal(perm * a.tiles_range().idx(i));
     if (!c.is_zero(i)) {
       auto c_tile = c.find(i).get();
       auto a_tile = a.is_zero(perm_index) ? F::make_zero_tile(c_tile.range())
@@ -2794,7 +2812,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
   // Compute the expected value for the dot function.
   typename F::element_type expected = 0;
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    const size_t perm_index =
+        a.tiles_range().ordinal(perm * b.tiles_range().idx(i));
     if (!a.is_zero(i) && !b.is_zero(perm_index)) {
       auto a_tile = a.find(i).get();
       auto b_tile = perm * b.find(perm_index).get();
@@ -2814,7 +2833,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
 
   // Compute the expected value for the dot function.
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    const size_t perm_index =
+        a.tiles_range().ordinal(perm * b.tiles_range().idx(i));
     if (!a.is_zero(i) || !b.is_zero(perm_index)) {
       auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
                                  : a.find(i).get();
@@ -2836,7 +2856,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
 
   // Compute the expected value for the dot function.
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    const size_t perm_index =
+        a.tiles_range().ordinal(perm * b.tiles_range().idx(i));
     if (!a.is_zero(i) && !b.is_zero(perm_index)) {
       auto a_tile = a.find(i).get();
       auto b_tile = perm * b.find(perm_index).get();
@@ -2857,7 +2878,8 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(dot_permute, F, Fixtures, F) {
 
   // Compute the expected value for the dot function.
   for (std::size_t i = 0ul; i < a.size(); ++i) {
-    const size_t perm_index = a.range().ordinal(perm * b.range().idx(i));
+    const size_t perm_index =
+        a.tiles_range().ordinal(perm * b.tiles_range().idx(i));
     if (!a.is_zero(i) || !b.is_zero(perm_index)) {
       auto a_tile = a.is_zero(i) ? F::make_zero_tile(a.trange().tile(i))
                                  : a.find(i).get();
