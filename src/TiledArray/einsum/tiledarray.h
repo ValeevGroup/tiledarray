@@ -207,18 +207,22 @@ auto einsum(
     }
   }
 
+  std::vector< std::shared_ptr<World> > worlds;
+
   // iterates over tiles of hadamard indices
   for (Index h : H.tiles) {
     auto& [A,B] = AB;
     auto own = A.own(h) || B.own(h);
-    auto owners = split(world, own, world.rank());
+    auto comm = world.mpi.comm().Split(own, world.rank());
+    worlds.push_back(std::make_unique<World>(comm));
+    auto &owners = worlds.back();
     if (!own) continue;
     size_t batch = 1;
     for (size_t i = 0; i < h.size(); ++i) {
       batch *= H.batch[i].at(h[i]);
     }
     for (auto &term : AB) {
-      term.ei = Array(owners, term.ei_tiled_range);
+      term.ei = Array(*owners, term.ei_tiled_range);
       const Permutation &P = term.permutation;
       for (Index ei : term.tiles) {
         auto idx = apply_inverse(P, h+ei);
@@ -230,7 +234,7 @@ auto einsum(
         term.ei.set(ei, tile);
       }
     }
-    C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(owners);
+    C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
     for (Index e : C.tiles) {
       if (!C.ei.is_local(e)) continue;
       auto tile = C.ei.find(e).get();
@@ -243,11 +247,14 @@ auto einsum(
       if (P) tile = tile.permute(P);
       C.array.set(c, tile);
     }
-  end:
+    // mark for lazy deletion
     A.ei = Array();
     B.ei = Array();
     C.ei = Array();
-    owners.gop.fence();
+  }
+
+  for (auto &w : worlds) {
+    w->gop.fence();
   }
 
   return C.array;
