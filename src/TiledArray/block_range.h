@@ -384,7 +384,7 @@ class BlockRange : public Range {
 
   /// Serialization Block range
   template <typename Archive>
-  void serialize(const Archive& ar) const {
+  void serialize(Archive& ar) const {
     Range::serialize(ar);
     ar& block_offset_;
   }

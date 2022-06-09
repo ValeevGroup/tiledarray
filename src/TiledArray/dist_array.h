@@ -1275,9 +1275,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// @tparam Archive an Archive type
   /// @warning this does not fence; it is user's responsibility to do that
   template <typename Archive,
-            typename = std::enable_if_t<!Archive::is_parallel_archive &&
-                                        madness::is_output_archive_v<Archive>>>
-  void serialize(const Archive& ar) const {
+            typename = std::enable_if_t<
+                !Archive::is_parallel_archive &&
+                madness::is_output_archive_v<std::decay_t<Archive>>>>
+  void serialize(Archive& ar) const {
     // serialize array type, world size, rank, and pmap type to be able
     // to ensure same data type and same data distribution expected
     ar& typeid(*this).hash_code() & world().size() & world().rank() & trange() &
@@ -1294,9 +1295,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// @tparam Archive an Archive type
   /// @warning this does not fence; it is user's responsibility to do that
   template <typename Archive,
-            typename = std::enable_if_t<!Archive::is_parallel_archive &&
-                                        madness::is_input_archive_v<Archive>>>
-  void serialize(const Archive& ar) {
+            typename = std::enable_if_t<
+                !Archive::is_parallel_archive &&
+                madness::is_input_archive_v<std::decay_t<Archive>>>>
+  void serialize(Archive& ar) {
     auto& world = TiledArray::get_default_world();
 
     std::size_t typeid_hash = 0l;
