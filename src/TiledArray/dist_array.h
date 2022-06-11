@@ -1645,6 +1645,7 @@ extern template class DistArray<Tensor<std::complex<float>>, SparsePolicy>;
 /// \param os The output stream
 /// \param a The array to be put in the output stream
 /// \return A reference to the output stream
+/// \note this is a collective operation
 template <typename Tile, typename Policy>
 inline std::ostream& operator<<(std::ostream& os,
                                 const DistArray<Tile, Policy>& a) {
