@@ -332,7 +332,7 @@ void Debugger::__traceback(const std::string &prefix, const char *reason) {
   std::cout << prefix << "Debugger::traceback(using libunwind):";
 #elif defined(HAVE_BACKTRACE)  // !HAVE_LIBUNWIND
   std::cout << prefix << "Debugger::traceback(using backtrace):";
-#else  // !HAVE_LIBUNWIND && !HAVE_BACKTRACE
+#else                          // !HAVE_LIBUNWIND && !HAVE_BACKTRACE
 #if defined(SIMPLE_STACK)
   std::cout << prefix << "Debugger::traceback:";
 #else
@@ -356,12 +356,13 @@ void Debugger::__traceback(const std::string &prefix, const char *reason) {
 
 void launch_gdb_xterm() {
   auto debugger = std::make_shared<TiledArray::Debugger>();
+  debugger->set_cmd("gdb_xterm");
   debugger->debug("Starting gdb ...");
 }
 
 void launch_lldb_xterm() {
   auto debugger = std::make_shared<TiledArray::Debugger>();
-  debugger->set_cmd("xterm -title \"$(PREFIX)$(EXEC)\" -e lldb -p $(PID) &");
+  debugger->set_cmd("lldb_xterm");
   debugger->debug("Starting lldb ...");
 }
 
