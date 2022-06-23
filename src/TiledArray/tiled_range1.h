@@ -206,16 +206,16 @@ class TiledRange1 {
   }
 
   template <typename Archive,
-            typename std::enable_if<
-                madness::is_input_archive_v<Archive>>::type* = nullptr>
-  void serialize(const Archive& ar) {
+            typename std::enable_if<madness::is_input_archive_v<
+                std::decay_t<Archive>>>::type* = nullptr>
+  void serialize(Archive& ar) {
     ar& range_& elements_range_& tiles_ranges_& elem2tile_;
   }
 
   template <typename Archive,
-            typename std::enable_if<
-                madness::is_output_archive_v<Archive>>::type* = nullptr>
-  void serialize(const Archive& ar) const {
+            typename std::enable_if<madness::is_output_archive_v<
+                std::decay_t<Archive>>>::type* = nullptr>
+  void serialize(Archive& ar) const {
     ar& range_& elements_range_& tiles_ranges_& elem2tile_;
   }
 
