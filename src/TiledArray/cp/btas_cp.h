@@ -44,7 +44,7 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
     TA_ASSERT(Reference.world().size() > decomp_world_rank &&
               "TiledArray::cp::btas_cp_als(): must compute CP decomposition on a  "
               "single rank.");
-    btas_ref = TA::array_to_btas_tensor<Tile, Policy,
+    btas_ref = TA::array_to_btas_tensor<Tile, Policy, btas::DEFAULT::range,
     btas::varray<typename Tile::value_type>>(Reference, 0);
     using Tensor = decltype(btas_ref);
     btas::FitCheck<Tensor> fit(als_threshold);
@@ -122,7 +122,7 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
     TA_ASSERT(Reference.world().size() > decomp_world_rank &&
               "TiledArray::cp::btas_cp_als(): must compute CP decomposition on a  "
               "single rank.");
-    btas_ref = TA::array_to_btas_tensor<Tile, Policy,
+    btas_ref = TA::array_to_btas_tensor<Tile, Policy,  btas::DEFAULT::range,
                                         btas::varray<typename Tile::value_type>>(Reference, 0);
     using Tensor = decltype(btas_ref);
     btas::FitCheck<Tensor> fit(als_threshold);
