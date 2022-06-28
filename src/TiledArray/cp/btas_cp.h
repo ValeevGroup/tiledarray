@@ -7,6 +7,7 @@
 #include <tiledarray.h>
 #include <TiledArray/conversions/btas.h>
 #include <btas/btas.h>
+#include <TiledArray/expressions/einsum.h>
 
 namespace TiledArray::cp {
 /**
@@ -15,7 +16,7 @@ namespace TiledArray::cp {
  * specific rank using alternating least squares (ALS) method in BTAS
  *
  * @param[in] world Madness world which CP will be computed on.
- * @param[in] Reference  Tensor to be CP decomposed.
+ * @param[in] Reference  BTAS_Tensor to be CP decomposed.
  * @param[in] btas_cp_rank The rank of the CP decomposition
  * @param[in, out] rank_trange1 TiledRange1 object used to construct the CP
  * factor matrices from BTAS tensors into TA DistArrays
@@ -32,12 +33,14 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
                  long btas_cp_rank, TA::TiledRange1 rank_trange1,
                  std::size_t decomp_world_rank = 0, double als_threshold = 1e-3,
                  bool verbose = false) {
-  using Tensor = btas::Tensor<typename Tile::value_type, btas::DEFAULT::range,
-               btas::varray<typename Tile::value_type> >;
+  using tile_type = typename DistArray<Tile, Policy>::value_type::value_type;
+  using BTAS_Tensor = btas::Tensor<tile_type, btas::DEFAULT::range,
+               btas::varray<double> >;
+  std::cout.precision(12);
   auto ref_norm = TA::norm2(Reference);
-  Tensor btas_ref;
+  BTAS_Tensor btas_ref;
   auto n_factors = TA::rank(Reference);
-  std::vector<Tensor> btas_factors;
+  std::vector<BTAS_Tensor> btas_factors;
   btas_factors.reserve(n_factors + 1);
 
   if(world.rank() == decomp_world_rank){
@@ -51,7 +54,7 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
     fit.set_norm(ref_norm);
     fit.verbose(verbose);
 
-    btas::CP_ALS<Tensor, btas::FitCheck<Tensor>> CP_ALS(btas_ref);
+    btas::CP_ALS<BTAS_Tensor, btas::FitCheck<BTAS_Tensor>> CP_ALS(btas_ref);
     CP_ALS.compute_rank_random(btas_cp_rank, fit);
     btas_factors = CP_ALS.get_factor_matrices();
 
@@ -93,7 +96,7 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
  * specific rank using a regularized alternating least squares (RALS) method in BTAS
  *
  * @param[in] world Madness world which CP will be computed on.
- * @param[in] Reference  Tensor to be CP decomposed.
+ * @param[in] Reference  BTAS_Tensor to be CP decomposed.
  * @param[in] btas_cp_rank The rank of the CP decomposition
  * @param[in, out] rank_trange1 TiledRange1 object used to construct the CP
  * factor matrices from BTAS tensors into TA DistArrays
@@ -110,12 +113,12 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
                  long btas_cp_rank, TA::TiledRange1 rank_trange1,
                  std::size_t decomp_world_rank = 0, double als_threshold = 1e-3,
                  bool verbose = false) {
-  using Tensor = btas::Tensor<typename Tile::value_type, btas::DEFAULT::range,
+  using BTAS_Tensor = btas::Tensor<typename Tile::value_type, btas::DEFAULT::range,
                               btas::varray<typename Tile::value_type> >;
   auto ref_norm = TA::norm2(Reference);
-  Tensor btas_ref;
+  BTAS_Tensor btas_ref;
   auto n_factors = TA::rank(Reference);
-  std::vector<Tensor> btas_factors;
+  std::vector<BTAS_Tensor> btas_factors;
   btas_factors.reserve(n_factors + 1);
 
   if(world.rank() == decomp_world_rank){
@@ -124,12 +127,11 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
               "single rank.");
     btas_ref = TA::array_to_btas_tensor<Tile, Policy,  btas::DEFAULT::range,
                                         btas::varray<typename Tile::value_type>>(Reference, 0);
-    using Tensor = decltype(btas_ref);
-    btas::FitCheck<Tensor> fit(als_threshold);
+    btas::FitCheck<BTAS_Tensor> fit(als_threshold);
     fit.set_norm(ref_norm);
     fit.verbose(verbose);
 
-    btas::CP_RALS<Tensor, btas::FitCheck<Tensor>> CP_ALS(btas_ref);
+    btas::CP_RALS<BTAS_Tensor, btas::FitCheck<BTAS_Tensor>> CP_ALS(btas_ref);
     CP_ALS.compute_rank_random(btas_cp_rank, fit);
     btas_factors = CP_ALS.get_factor_matrices();
 
@@ -165,6 +167,51 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
   return TA_factors;
 }
 
+//TODO Add this to its own file and then use it in the unit tests
+template <typename Tile, typename Policy>
+auto reconstruct(std::vector<DistArray<Tile, Policy>> cp_factors,
+                 DistArray<Tile, Policy> lambda = DistArray<Tile, Policy>()){
+  using Array = DistArray<Tile, Policy>;
+  TA_ASSERT(!cp_factors.empty(),"CP factor matrices have not been computed");
+  auto ndim = cp_factors.size();
+  std::string lhs("r,0"), rhs("r,"), final("r,0");
+  Array krp = cp_factors[0];
+  for(size_t i = 1; i < ndim - 1; ++i){
+    rhs += std::to_string(i);
+    final += "," + std::to_string(i);
+    krp = expressions::einsum(krp(lhs), cp_factors[i](rhs), final);
+    lhs = final;
+    rhs.pop_back();
+  }
+  rhs += std::to_string(ndim - 1);
+  final.erase(final.begin(), final.begin() + 2);
+  final += "," + std::to_string(ndim - 1);
+  krp(final) = krp(lhs) * cp_factors[ndim - 1](rhs);
+  return krp;
+}
 
+//template <typename Tile, typename Policy>
+//auto reconstruct(madness::World& world, std::vector<DistArray<Tile, Policy>> factors,
+//                 std::vector<size_t> order = std::vector<size_t>()){
+//  auto num_facs = factors.size();
+//  if(order.size() == 0){
+//    order.reserve(num_facs);
+//    for(size_t n = 0; n < num_facs; ++n){
+//      order.emplace_back(n);
+//    }
+//  }
+//
+//  auto order_ptr = order.data();
+//  std::string lhs, rhs, krp;
+//  lhs= std::to_string(*(order_ptr)) + "," + std::to_string(num_facs);
+//  krp = std::to_string(*(order_ptr)) + ",";
+//  ++order_ptr;
+//  rhs = std::to_string(*(order_ptr)) + "," + std::to_string(num_facs);
+//  krp += std::to_string(*(order_ptr)) + "," + std::to_string(num_facs);
+//  ++order_ptr;
+//  for(auto n = 2; n < num_facs - 1; ++n){
+//
+//  }
+//}
 } // namespace TiledArray
 #endif  // TiledArray_CP_BTAS_CP_H
