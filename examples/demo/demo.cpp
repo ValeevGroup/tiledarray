@@ -23,6 +23,8 @@
 #include <tiledarray.h>
 #include <random>
 
+#include <TiledArray/expressions/einsum.h>
+
 auto make_tile(const TA::Range &range) {
   // Construct a tile
   TA::TArrayD::value_type tile(range);
@@ -127,6 +129,11 @@ int main(int argc, char *argv[]) {
   TSpArrayD a8;
   a8("i,j") = a1("i,k") * a5("j,k");
   cout << "a8:\n" << a8 << endl;
+  world.gop.fence();
+
+  TSpArrayD a9;
+  a9 = einsum(a6("i,j"), a5("i,j"), "i");
+  cout << "a9:\n" << a9 << endl;
   world.gop.fence();
 
   auto tile_0_0 = a1.find({0, 0});
