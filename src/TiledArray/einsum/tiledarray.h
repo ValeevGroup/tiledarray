@@ -1,13 +1,14 @@
 #ifndef TILEDARRAY_EINSUM_H__INCLUDED
 #define TILEDARRAY_EINSUM_H__INCLUDED
 
-#include "TiledArray/einsum/index.h"
-#include "TiledArray/einsum/range.h"
 #include "TiledArray/expressions/fwd.h"
 #include "TiledArray/fwd.h"
+
+#include "TiledArray/einsum/index.h"
+#include "TiledArray/einsum/range.h"
 #include "TiledArray/tiled_range.h"
 #include "TiledArray/tiled_range1.h"
-//#include "TiledArray/util/string.h"
+#include "TiledArray/util/function.h"
 
 namespace TiledArray::expressions {
 
@@ -199,13 +200,18 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
   }
 
   std::vector<std::shared_ptr<World> > worlds;
+  auto fence_then_delete = [](World *world) {
+    world->gop.fence();
+    delete world;
+  };
 
   // iterates over tiles of hadamard indices
   for (Index h : H.tiles) {
     auto &[A, B] = AB;
     auto own = A.own(h) || B.own(h);
     auto comm = world.mpi.comm().Split(own, world.rank());
-    worlds.push_back(std::make_unique<World>(comm));
+    worlds.push_back(std::unique_ptr<World, decltype(fence_then_delete)>(
+        new World{comm}, fence_then_delete));
     auto &owners = worlds.back();
     if (!own) continue;
     size_t batch = 1;
@@ -215,36 +221,52 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
     for (auto &term : AB) {
       term.ei = Array(*owners, term.ei_tiled_range);
       const Permutation &P = term.permutation;
+      auto op_reshape =
+          make_op_shared_handle([P, term_ei_trange = term.ei.trange(), batch](
+                                    const auto &intile, const auto &ei) {
+            auto shape = term_ei_trange.tile(ei);
+            return P ? intile.permute(P).reshape(shape, batch)
+                     : intile.reshape(shape, batch);
+          });
       for (Index ei : term.tiles) {
         auto idx = apply_inverse(P, h + ei);
         if (!term.array.is_local(idx)) continue;
-        auto tile = term.array.find(idx).get();
-        if (P) tile = tile.permute(P);
-        auto shape = term.ei.trange().tile(ei);
-        tile = tile.reshape(shape, batch);
-        term.ei.set(ei, tile);
+        auto intile_fut = term.array.find(idx);
+        using Tile = std::decay_t<decltype(intile_fut.get())>;
+        term.ei.set(ei, owners->taskq.add(
+                            // wraps generic callable into nongeneric callable
+                            [op_reshape](const Tile &tile, const Index &idx) {
+                              return op_reshape(tile, idx);
+                            },
+                            intile_fut, ei));
       }
     }
     C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
     for (Index e : C.tiles) {
       if (!C.ei.is_local(e)) continue;
-      auto tile = C.ei.find(e).get();
-      assert(tile.batch_size() == batch);
-      const Permutation &P = C.permutation;
+      const auto &P = C.permutation;
+      auto op_reshape =
+          make_op_shared_handle([P, C_array_trange = C.array.trange(), batch](
+                                    const auto &intile, const auto &c) {
+            assert(intile.batch_size() == batch);
+            auto shape = apply_inverse(P, C_array_trange.tile(c));
+            return P ? intile.reshape(shape).permute(P) : intile.reshape(shape);
+          });
+      auto intile_fut = C.ei.find(e);
+      using Tile = std::decay_t<decltype(intile_fut.get())>;
       auto c = apply(P, h + e);
-      auto shape = C.array.trange().tile(c);
-      shape = apply_inverse(P, shape);
-      tile = tile.reshape(shape);
-      if (P) tile = tile.permute(P);
-      C.array.set(c, tile);
+      C.array.set(c, owners->taskq.add(
+                         // wraps generic callable into nongeneric callable
+                         [op_reshape](const Tile &tile, const Index &idx) {
+                           return op_reshape(tile, idx);
+                         },
+                         intile_fut, c));
     }
     // mark for lazy deletion
     A.ei = Array();
     B.ei = Array();
     C.ei = Array();
   }
-
-  get_default_world().gop.fence();
 
   return C.array;
 }
