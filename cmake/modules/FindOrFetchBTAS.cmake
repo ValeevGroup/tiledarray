@@ -55,7 +55,7 @@ if (NOT TARGET BTAS::BTAS)
       target_compile_definitions(lapackpp PUBLIC -DLAPACK_FORTRAN_UPPER=1)
     else()
       if (NOT LINALG_MANGLING STREQUAL lower_)
-        message(WARNING "Linear algebra libraries' mangling convention not specified; specify -DLINALG_MANGLING={lower,lower_,UPPER}, if needed; will assume lower_")
+        message(WARNING "Linear algebra libraries' mangling convention not specified; specify -DLINALG_MANGLING={lower,lower_,UPPER}, if needed; BLASPP will try to autodetect")
       endif(NOT LINALG_MANGLING STREQUAL lower_)
       # these were needed for some configs at some point in the past? But in most cases they just produce compile noise
 #      target_compile_definitions(blaspp PUBLIC -DBLAS_FORTRAN_ADD_=1)
