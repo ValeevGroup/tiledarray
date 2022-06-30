@@ -57,8 +57,9 @@ if (NOT TARGET BTAS::BTAS)
       if (NOT LINALG_MANGLING STREQUAL lower_)
         message(WARNING "Linear algebra libraries' mangling convention not specified; specify -DLINALG_MANGLING={lower,lower_,UPPER}, if needed; will assume lower_")
       endif(NOT LINALG_MANGLING STREQUAL lower_)
-      target_compile_definitions(blaspp PUBLIC -DBLAS_FORTRAN_ADD_=1)
-      target_compile_definitions(lapackpp PUBLIC -DLAPACK_FORTRAN_ADD_=1)
+      # these were needed for some configs at some point in the past? But in most cases they just produce compile noise
+#      target_compile_definitions(blaspp PUBLIC -DBLAS_FORTRAN_ADD_=1)
+#      target_compile_definitions(lapackpp PUBLIC -DLAPACK_FORTRAN_ADD_=1)
     endif()
   endif (_linalgpp_use_standard_linalg_kits)
 
