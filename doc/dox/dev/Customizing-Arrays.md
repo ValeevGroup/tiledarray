@@ -424,7 +424,7 @@ public:
 
   // MADNESS compliant serialization
   template <typename Archive>
-  void serialize(const Archive&);
+  void serialize(Archive&);
 
 }; // class MyLazyTile
 ```
