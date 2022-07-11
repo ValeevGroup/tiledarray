@@ -83,6 +83,7 @@ auto btas_cp_als(madness::World& world, const DistArray<Tile, Policy> Reference,
 
     auto TA_factor = TiledArray::btas_tensor_to_array<TA::DistArray<Tile, Policy>>(
         world, trange, factor, !one_node);
+    TA_factor("r,a") = TA_factor("a,r");
     TA_factors.emplace_back(TA_factor);
     ++factor_number;
   }
@@ -160,6 +161,7 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
 
     auto TA_factor = TiledArray::btas_tensor_to_array<TA::DistArray<Tile, Policy>>(
         world, trange, factor, !one_node);
+    TA_factor("r,a") = TA_factor("a,r");
     TA_factors.emplace_back(TA_factor);
     ++factor_number;
   }
@@ -173,9 +175,12 @@ auto reconstruct(std::vector<DistArray<Tile, Policy>> cp_factors,
                  DistArray<Tile, Policy> lambda = DistArray<Tile, Policy>()){
   using Array = DistArray<Tile, Policy>;
   TA_ASSERT(!cp_factors.empty(),"CP factor matrices have not been computed");
-  auto ndim = cp_factors.size();
   std::string lhs("r,0"), rhs("r,"), final("r,0");
   Array krp = cp_factors[0];
+  if(lambda.is_initialized()) {
+    krp("r,0") = lambda("r") * krp("r,0");
+  }
+  auto ndim = cp_factors.size();
   for(size_t i = 1; i < ndim - 1; ++i){
     rhs += std::to_string(i);
     final += "," + std::to_string(i);
@@ -189,29 +194,5 @@ auto reconstruct(std::vector<DistArray<Tile, Policy>> cp_factors,
   krp(final) = krp(lhs) * cp_factors[ndim - 1](rhs);
   return krp;
 }
-
-//template <typename Tile, typename Policy>
-//auto reconstruct(madness::World& world, std::vector<DistArray<Tile, Policy>> factors,
-//                 std::vector<size_t> order = std::vector<size_t>()){
-//  auto num_facs = factors.size();
-//  if(order.size() == 0){
-//    order.reserve(num_facs);
-//    for(size_t n = 0; n < num_facs; ++n){
-//      order.emplace_back(n);
-//    }
-//  }
-//
-//  auto order_ptr = order.data();
-//  std::string lhs, rhs, krp;
-//  lhs= std::to_string(*(order_ptr)) + "," + std::to_string(num_facs);
-//  krp = std::to_string(*(order_ptr)) + ",";
-//  ++order_ptr;
-//  rhs = std::to_string(*(order_ptr)) + "," + std::to_string(num_facs);
-//  krp += std::to_string(*(order_ptr)) + "," + std::to_string(num_facs);
-//  ++order_ptr;
-//  for(auto n = 2; n < num_facs - 1; ++n){
-//
-//  }
-//}
 } // namespace TiledArray
 #endif  // TiledArray_CP_BTAS_CP_H
