@@ -7,7 +7,6 @@
 #include <tiledarray.h>
 #include <TiledArray/conversions/btas.h>
 #include <btas/btas.h>
-#include <TiledArray/expressions/einsum.h>
 
 namespace TiledArray::cp {
 /**
