@@ -168,31 +168,5 @@ auto btas_cp_rals(madness::World& world, DistArray<Tile, Policy> Reference,
 
   return TA_factors;
 }
-
-//TODO Add this to its own file and then use it in the unit tests
-template <typename Tile, typename Policy>
-auto reconstruct(std::vector<DistArray<Tile, Policy>> cp_factors,
-                 DistArray<Tile, Policy> lambda = DistArray<Tile, Policy>()){
-  using Array = DistArray<Tile, Policy>;
-  TA_ASSERT(!cp_factors.empty(),"CP factor matrices have not been computed");
-  std::string lhs("r,0"), rhs("r,"), final("r,0");
-  Array krp = cp_factors[0];
-  if(lambda.is_initialized()) {
-    krp("r,0") = lambda("r") * krp("r,0");
-  }
-  auto ndim = cp_factors.size();
-  for(size_t i = 1; i < ndim - 1; ++i){
-    rhs += std::to_string(i);
-    final += "," + std::to_string(i);
-    krp = expressions::einsum(krp(lhs), cp_factors[i](rhs), final);
-    lhs = final;
-    rhs.pop_back();
-  }
-  rhs += std::to_string(ndim - 1);
-  final.erase(final.begin(), final.begin() + 2);
-  final += "," + std::to_string(ndim - 1);
-  krp(final) = krp(lhs) * cp_factors[ndim - 1](rhs);
-  return krp;
-}
 } // namespace TiledArray
 #endif  // TiledArray_CP_BTAS_CP_H
