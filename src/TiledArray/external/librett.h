@@ -78,7 +78,7 @@ inline void permutation_to_col_major(std::vector<int>& perm) {
  */
 template <typename T>
 void librett_permute(T* inData, T* outData, const TiledArray::Range& range,
-                  const TiledArray::Permutation& perm, cudaStream_t stream) {
+                     const TiledArray::Permutation& perm, cudaStream_t stream) {
   auto extent = range.extent();
   std::vector<int> extent_int(extent.begin(), extent.end());
 
@@ -90,12 +90,12 @@ void librett_permute(T* inData, T* outData, const TiledArray::Range& range,
   TiledArray::extent_to_col_major(extent_int);
   TiledArray::permutation_to_col_major(perm_int);
 
-  //librettResult_t status;
+  // librettResult_t status;
   librettResult status;
 
   librettHandle plan;
   status = librettPlan(&plan, range.rank(), extent_int.data(), perm_int.data(),
-                    sizeof(T), stream);
+                       sizeof(T), stream);
 
   TA_ASSERT(status == LIBRETT_SUCCESS);
 
