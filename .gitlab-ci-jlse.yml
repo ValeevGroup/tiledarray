@@ -1,0 +1,95 @@
+# JLSE GitLab CI
+# Each GitLab batch runner is tied to a specific environment variable for the scheduler paramaters
+# The generic batch executors can be used for submitting to any JLSE system. They use JLSE_SCHEDULER_PARAMETERS
+
+# This is a global before script it will be ran as the first part of each job
+before_script:
+  - echo "before script"
+
+stages:
+  - build-cpu-gnu
+  - build-cuda-icpx
+
+# Shell executor will be executed like you are logged in directly to a JLSE login node
+cpu_executor:
+  stage: build-cpu-gnu
+  needs: []
+  tags:
+    - shell
+  script:
+    - echo "Running on $(hostname) with setuid shell runner"
+    - module load oneapi
+    - module load boost
+    - module load cmake
+    - module list
+    - export CC=gcc
+    - export CXX=g++
+    - export FC=gfortran
+    - export BUILDTYPE=RelWithDebInfo
+    - export MAD_NUM_THREADS=8
+    - unset OMP_NUM_THREADS
+    - export MAD_BUFFER_SIZE=128MB
+    - export MPIRUNPATH=`which mpirun`
+    - mkdir build; cd build
+    - cmake -D CMAKE_INSTALL_PREFIX=../install 
+      -D CMAKE_TOOLCHAIN_FILE=../jlse-gnu-mpi-mkl.cmake
+      -D ENABLE_CUDA=OFF 
+      -D ENABLE_TBB=OFF 
+      -D BUILD_SHARED_LIBS=OFF 
+      -D CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+      -D CMAKE_BUILD_TYPE=$BUILDTYPE 
+      -D TA_BUILD_UNITTEST=TRUE 
+      -D TA_UT_CTEST_TIMEOUT=3000
+      -D MPIEXEC_EXECUTABLE=${MPIRUNPATH} 
+      -D TA_TRACE_TASKS=OFF 
+      ..
+    - make 
+    - make install
+    - make check
+
+cuda_executor:
+  variables:
+    JLSE_SCHEDULER_PARAMETERS: "-n 1  -t 60 -q gpu_v100_smx2_debug"
+  stage: build-cuda-icpx
+  needs: []
+  tags:
+    - batch
+  script:
+    - echo "CUDA test start"
+    - module load oneapi
+    - module load boost
+    - module load cuda/11.2.0
+    - module load cmake
+    - module list
+    - export CC=gcc
+    - export CXX=g++
+    - export FC=gfortran
+    - export BUILDTYPE=RelWithDebInfo
+    - export MAD_NUM_THREADS=8
+    - unset OMP_NUM_THREADS
+    - export MAD_BUFFER_SIZE=128MB
+    - export MPIRUNPATH=`which mpirun`
+    - export GCCRUNPATH=`which gcc`
+    - mkdir build; cd build
+    - cmake -D CMAKE_INSTALL_PREFIX=../install
+      -D CMAKE_TOOLCHAIN_FILE=../jlse-gnu-mpi-mkl.cmake
+      -D ENABLE_CUDA=ON
+      -D CMAKE_CUDA_ARCHITECTURES=70
+      -D CMAKE_CUDA_HOST_COMPILER=${GCCRUNPATH}
+      -D ENABLE_TBB=OFF
+      -D BUILD_SHARED_LIBS=OFF
+      -D CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
+      -D CMAKE_BUILD_TYPE=$BUILDTYPE
+      -D TA_BUILD_UNITTEST=TRUE
+      -D TA_UT_CTEST_TIMEOUT=3000
+      -D MPIEXEC_EXECUTABLE=${MPIRUNPATH}
+      -D TA_TRACE_TASKS=OFF
+      ..
+    - make
+    - make install
+    - make check
+    - echo "CUDA test end"
+
+# afer script to be executed after each job
+after_script:
+  - echo "after script"
