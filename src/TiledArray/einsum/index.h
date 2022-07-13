@@ -1,23 +1,24 @@
-// Samuel R. Powell, 2021
+#ifndef TILEDARRAY_EINSUM_INDEX_H__INCLUDED
+#define TILEDARRAY_EINSUM_INDEX_H__INCLUDED
+
 #include "TiledArray/expressions/fwd.h"
 
 #include <TiledArray/error.h>
 #include <TiledArray/permutation.h>
 #include <TiledArray/util/vector.h>
+#include <TiledArray/einsum/string.h>
 
 #include <iosfwd>
 #include <string>
 
-namespace TiledArray::index {
+namespace TiledArray::Einsum::index {
 
 template <typename T>
-using small_vector = container::svector<T>;
+using small_vector = TiledArray::container::svector<T>;
 
 small_vector<std::string> tokenize(const std::string &s);
 
 small_vector<std::string> validate(const small_vector<std::string> &v);
-
-std::string join(const small_vector<std::string> &v);
 
 template <typename T, typename U>
 using enable_if_string = std::enable_if_t<std::is_same_v<T, std::string>, U>;
@@ -43,7 +44,7 @@ class Index {
 
   template <typename U = void>
   operator std::string() const {
-    return index::join(data_);
+    return string::join(data_, ",");
   }
 
   explicit operator bool() const { return !data_.empty(); }
@@ -276,21 +277,23 @@ IndexMap<K, V> operator|(const IndexMap<K, V> &a, const IndexMap<K, V> &b) {
   return IndexMap(d);
 }
 
-}  // namespace TiledArray::index
+}  // namespace TiledArray::Einsum::index
 
-namespace TiledArray {
+namespace TiledArray::Einsum {
 
-using Index = TiledArray::index::Index<std::string>;
-using TiledArray::index::IndexMap;
+using TiledArray::Einsum::index::Index;
+using TiledArray::Einsum::index::IndexMap;
 
 /// converts the annotation of an expression to an Index
 template <typename Array>
 auto idx(const std::string &s) {
+  using Index = Einsum::Index<std::string>;
   if constexpr (detail::is_tensor_of_tensor_v<typename Array::value_type>) {
     auto semi = std::find(s.begin(), s.end(), ';');
     TA_ASSERT(semi != s.end());
-    auto first = std::string(s.begin(), semi);
-    auto second = std::string(semi + 1, s.end());
+    auto [first,second] = string::split2(s, ";");
+    TA_ASSERT(!first.empty());
+    TA_ASSERT(!second.empty());
     return std::tuple<Index, Index>{first, second};
   } else {
     return std::tuple<Index>{s};
@@ -299,8 +302,10 @@ auto idx(const std::string &s) {
 
 /// converts the annotation of an expression to an Index
 template <typename A, bool Alias>
-auto idx(const expressions::TsrExpr<A, Alias> &e) {
+auto idx(const TiledArray::expressions::TsrExpr<A, Alias> &e) {
   return idx<A>(e.annotation());
 }
 
-}  // namespace TiledArray
+}  // namespace TiledArray::Einsum
+
+#endif /* TILEDARRAY_EINSUM_INDEX_H__INCLUDED */

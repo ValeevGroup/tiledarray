@@ -7,7 +7,7 @@
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/cuda/cublas.h>
 #include <TiledArray/external/cuda.h>
-#include <cutt.h>
+#include <librett.h>
 #endif
 
 namespace TiledArray {
@@ -20,14 +20,14 @@ inline void cuda_initialize() {
   cudaEnv::instance();
   //
   cuBLASHandlePool::handle();
-  // initialize cuTT
-  cuttInitialize();
+  // initialize LibreTT
+  librettInitialize();
 }
 
 /// finalize cuda environment
 inline void cuda_finalize() {
   CudaSafeCall(cudaDeviceSynchronize());
-  cuttFinalize();
+  librettFinalize();
   cublasDestroy(cuBLASHandlePool::handle());
   delete &cuBLASHandlePool::handle();
   cudaEnv::instance().reset(nullptr);

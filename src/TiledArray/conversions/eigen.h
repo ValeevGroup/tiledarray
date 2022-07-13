@@ -986,6 +986,9 @@ DistArray_ eigen_tensor_to_array(
 template <typename Tensor, typename Tile, typename Policy>
 Tensor array_to_eigen_tensor(const TiledArray::DistArray<Tile, Policy>& src,
                              int target_rank = -1) {
+
+  TA_ASSERT(src.tiles_range().rank() == Tensor::NumDimensions);
+
   // Test preconditions
   if (target_rank == -1 && src.world().size() > 1 &&
       !src.pmap()->is_replicated())

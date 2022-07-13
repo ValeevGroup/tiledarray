@@ -135,9 +135,11 @@ else()
             BUILD_BYPRODUCTS ${UMPIRE_BUILD_BYPRODUCTS}
             #--Install step---------------
             INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "Umpire will be installed during TiledArray's installation."
-            #--Custom targets-------------
-            STEP_TARGETS build
             )
+
+    # TiledArray_UMPIRE target depends on existence of these directories to be usable from the build tree at configure time
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_SOURCE_DIR}/src/umpire/tpl/camp/include")
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_BUILD_DIR}/include")
 
     # do install of Umpire as part of building TiledArray's install target
     install(CODE
@@ -151,7 +153,7 @@ else()
             ")
 
     # Add Umpire dependency to External
-    add_dependencies(External-tiledarray Umpire-build)
+    add_dependencies(External-tiledarray Umpire)
 
     set(_UMPIRE_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
