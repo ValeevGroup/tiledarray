@@ -30,8 +30,6 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - [Apple Clang](https://en.wikipedia.org/wiki/Xcode), version 9.3 or higher
   - [Intel C++ compiler](https://software.intel.com/en-us/c-compilers), version 19 or higher
 
-  See the current [Travis CI matrix](.travis.yml) for the most up-to-date list of compilers that are known to work.
-
 - [CMake](https://cmake.org/), version 3.15 or higher; if CUDA support is needed, CMake 3.18 or higher is required.
 - [Git](https://git-scm.com/) 1.8 or later (required to obtain TiledArray and MADNESS source code from GitHub)
 - [Eigen](http://eigen.tuxfamily.org/), version 3.3.5 or higher; if CUDA is enabled then 3.3.7 is required (will be downloaded automatically, if missing)

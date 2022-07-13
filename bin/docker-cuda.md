@@ -1,5 +1,5 @@
 # Intro
-These notes describe how to build TiledArray with CUDA support enabled within the latest nvidia/cuda Docker image (https://hub.docker.com/r/nvidia/cuda/). This is useful for experimentation and/or provisioning computational results (e.g. for creating supplementary info for a journal article). If you want to use Docker to run/debug Travis-CI jobs, see [docker-travis.md](docker-travis.md)
+These notes describe how to build TiledArray with CUDA support enabled within the latest nvidia/cuda Docker image (https://hub.docker.com/r/nvidia/cuda/). This is useful for experimentation and/or provisioning computational results (e.g. for creating supplementary info for a journal article).
 
 # Using
 These notes assume that Docker 19.03 and NVIDIA Container Toolkit (https://github.com/NVIDIA/nvidia-docker) are installed on your machine and that you start at the top of the TiledArray source tree.
