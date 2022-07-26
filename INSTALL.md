@@ -72,12 +72,13 @@ Optional prerequisites:
     - [blacspp](https://github.com/wavefunction91/blacspp.git) -- a modern C++ (C++17) wrapper for BLACS
 - Python3 interpreter -- to test (optionally-built) Python bindings
 - [Range-V3](https://github.com/ericniebler/range-v3.git) -- a Ranges library that served as the basis for Ranges component of C++20; only used for some unit testing of the functionality anticipated to be supported by future C++ standards.
+- [TTG](https://github.com/TESSEorg/ttg.git) -- C++ implementation of the Template Task Graph programming model for fine-grained flow-graph composition of distributed memory programs.
 
-Most of the dependencies (except for MADNESS and BTAS) can be installed with a package manager,
+Many of these dependencies can be installed with a package manager,
 such as Homebrew on OS X or apt-get on Debian Linux distributions;
-this is the preferred method. Since on some systems configuring
-and building MADNESS can be difficult even for experts, we recommend letting the
-TiledArray download and build MADNESS for you.
+this is the preferred method. Since configuring and building other
+dependencies (such as MADNESS) can be difficult even for experts,
+we recommend letting the TiledArray download and build them for you.
 
 ## Obtain TiledArray source code
 
@@ -412,6 +413,7 @@ support may be added.
 * `BUILD_TESTING` -- Set of `OFF` to disable building unit tests. The default is `ON`.
 * `TA_TRACE_TASKS` -- Set to `ON` to enable tracing of MADNESS tasks using custom task tracer. Note that standard profilers/tracers are generally useless (except in the trivial cases) with MADWorld-based programs since the submission context of tasks is not captured by standard tracing tools; this makes it impossible in a nontrivial program to attribute tasks to source code. WARNING: task tracing his will greatly increase the memory requirements. [Default=OFF].
 * `TA_RANGEV3` -- Set to `ON` to find or fetch the Range-V3 library and enable additional tests of TA components with constructs anticipated to be supported in the future. [Default=OFF].
+* `TA_TTG` -- Set to `ON` to find or fetch the TTG library. [Default=OFF]. 
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.
 * `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile memory allocations in TA::Tensor.

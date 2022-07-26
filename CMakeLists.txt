@@ -160,6 +160,9 @@ endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 option(TA_RANGEV3 "Enable Range-V3 library" OFF)
 add_feature_info(TA_RANGEV3 TA_RANGEV3 "Range-V3 ranges library")
 
+option(TA_TTG "Enable search/build of TTG library" OFF)
+add_feature_info(TA_TTG TA_TTG "TTG library")
+
 # Enable shared library support options
 redefaultable_option(TA_ASSUMES_ASLR_DISABLED "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled" OFF)
 add_feature_info(ASSUMES_ASLR_DISABLED TA_ASSUMES_ASLR_DISABLED
@@ -341,6 +344,11 @@ endif(CCACHE)
 if (TA_RANGEV3)
   include(FindOrFetchRangeV3)
 endif(TA_RANGEV3)
+# 3. TTG
+# N.B. make sure TA configures MADNESS correctly
+if (TA_TTG)
+  include(FindOrFetchTTG)
+endif(TA_TTG)
 
 ##########################
 # sources
