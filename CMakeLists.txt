@@ -157,8 +157,8 @@ if(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
   set(TA_TILE_OPS_LOG_LEVEL 1)
 endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 
-option(TA_ENABLE_RANGEV3 "Enable Range-V3 library" OFF)
-add_feature_info(ENABLE_RANGEV3 TA_ENABLE_RANGEV3 "Range-V3 ranges library")
+option(TA_RANGEV3 "Enable Range-V3 library" OFF)
+add_feature_info(TA_RANGEV3 TA_RANGEV3 "Range-V3 ranges library")
 
 # Enable shared library support options
 redefaultable_option(TA_ASSUMES_ASLR_DISABLED "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled" OFF)
@@ -328,9 +328,6 @@ include(FindOrFetchBoost)
 if(ENABLE_SCALAPACK)
   include(external/scalapackpp.cmake)
 endif()
-if (TA_ENABLE_RANGEV3)
-  include(FindOrFetchRangeV3)
-endif(TA_ENABLE_RANGEV3)
 
 # optional deps:
 # 1. ccache
@@ -340,6 +337,10 @@ if(CCACHE)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
 endif(CCACHE)
+# 2. range-v3
+if (TA_RANGEV3)
+  include(FindOrFetchRangeV3)
+endif(TA_RANGEV3)
 
 ##########################
 # sources
