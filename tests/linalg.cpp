@@ -29,6 +29,17 @@ namespace scalapack = TA::math::linalg::scalapack;
 #define TILEDARRAY_SCALAPACK_TEST(...)
 #endif
 
+#if TILEDARRAY_HAS_TTG
+#include "TiledArray/math/linalg/ttg/cholesky.h"
+#define TILEDARRAY_TTG_TEST(F, E)                                       \
+  GlobalFixture::world->gop.fence();                                    \
+  compare("TiledArray::ttg", non_dist::F, TA::math::linalg::ttg::F, E); \
+  GlobalFixture::world->gop.fence();                                    \
+  compare("TiledArray", non_dist::F, TiledArray::F, E);
+#else
+#define TILEDARRAY_TTG_TEST(...)
+#endif
+
 struct ReferenceFixture {
   size_t N;
   std::vector<double> htoeplitz_vector;
@@ -108,8 +119,7 @@ struct LinearAlgebraFixture : ReferenceFixture {
   template <class A>
   static void compare(const char* context, const A& non_dist, const A& result,
                       double e) {
-    BOOST_TEST_CONTEXT(context)
-    ;
+    BOOST_TEST_CONTEXT(context);
     auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
     BOOST_CHECK_SMALL(diff_with_non_dist, e);
   }
@@ -603,6 +613,13 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv<false>(Acopy), epsilon);
 
   GlobalFixture::world->gop.fence();
+
+#ifdef TILEDARRAY_HAS_TTG
+  if (false) {
+    TILEDARRAY_TTG_TEST(cholesky_linv<false>(Acopy), epsilon);
+    GlobalFixture::world->gop.fence();
+  }
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
@@ -890,50 +907,48 @@ BOOST_AUTO_TEST_CASE(svd_allvectors) {
 #endif
 
 template <bool use_scalapack, typename ArrayT>
-void householder_qr_q_only_test( const ArrayT& A, double tol ) {
-
+void householder_qr_q_only_test(const ArrayT& A, double tol) {
   using value_type = typename ArrayT::element_type;
 
-  #if TILEDARRAY_HAS_SCALAPACK
-  auto Q = use_scalapack ? scalapack::householder_qr<true>( A ) :
-                           non_dist:: householder_qr<true>( A );
-  #else
+#if TILEDARRAY_HAS_SCALAPACK
+  auto Q = use_scalapack ? scalapack::householder_qr<true>(A)
+                         : non_dist::householder_qr<true>(A);
+#else
   static_assert(not use_scalapack);
-  auto Q = non_dist::householder_qr<true>( A );
-  #endif
-
+  auto Q = non_dist::householder_qr<true>(A);
+#endif
 
   // Make sure the Q is orthogonal at least
-  TA::TArray<double> Iden; Iden("i,j") = Q("k,i") * Q("k,j");
+  TA::TArray<double> Iden;
+  Iden("i,j") = Q("k,i") * Q("k,j");
   Iden.make_replicated();
   auto I_eig = TA::array_to_eigen(Iden);
   const auto N = A.trange().dim(1).extent();
-  BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
-
+  BOOST_CHECK_SMALL((I_eig - decltype(I_eig)::Identity(N, N)).norm(), tol);
 }
 
 template <bool use_scalapack, typename ArrayT>
-void householder_qr_test( const ArrayT& A, double tol ) {
-
-  #if TILEDARRAY_HAS_SCALAPACK
-  auto [Q,R] = use_scalapack ? scalapack::householder_qr<false>( A ) :
-                               non_dist:: householder_qr<false>( A );
-  #else
+void householder_qr_test(const ArrayT& A, double tol) {
+#if TILEDARRAY_HAS_SCALAPACK
+  auto [Q, R] = use_scalapack ? scalapack::householder_qr<false>(A)
+                              : non_dist::householder_qr<false>(A);
+#else
   static_assert(not use_scalapack);
-  auto [Q,R] = non_dist::householder_qr<false>( A );
-  #endif
+  auto [Q, R] = non_dist::householder_qr<false>(A);
+#endif
 
   // Check reconstruction error
   TA::TArray<double> QR_ERROR;
   QR_ERROR("i,j") = A("i,j") - Q("i,k") * R("k,j");
-  BOOST_CHECK_SMALL( QR_ERROR("i,j").norm().get(), tol );
+  BOOST_CHECK_SMALL(QR_ERROR("i,j").norm().get(), tol);
 
   // Check orthonormality of Q
-  TA::TArray<double> Iden; Iden("i,j") = Q("k,i") * Q("k,j");
+  TA::TArray<double> Iden;
+  Iden("i,j") = Q("k,i") * Q("k,j");
   Iden.make_replicated();
   auto I_eig = TA::array_to_eigen(Iden);
   const auto N = A.trange().dim(1).extent();
-  BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
+  BOOST_CHECK_SMALL((I_eig - decltype(I_eig)::Identity(N, N)).norm(), tol);
 }
 
 BOOST_AUTO_TEST_CASE(householder_qr_q_only) {
@@ -948,11 +963,10 @@ BOOST_AUTO_TEST_CASE(householder_qr_q_only) {
       });
 
   double tol = N * N * std::numeric_limits<double>::epsilon();
-  householder_qr_q_only_test<false>( ref_ta, tol );
-  #if TILEDARRAY_HAS_SCALAPACK
-  householder_qr_q_only_test<true>( ref_ta, tol );
-  #endif
-
+  householder_qr_q_only_test<false>(ref_ta, tol);
+#if TILEDARRAY_HAS_SCALAPACK
+  householder_qr_q_only_test<true>(ref_ta, tol);
+#endif
 
   GlobalFixture::world->gop.fence();
 }
@@ -968,54 +982,46 @@ BOOST_AUTO_TEST_CASE(householder_qr) {
         return this->make_ta_reference(t, range);
       });
 
-
   double tol = N * N * std::numeric_limits<double>::epsilon();
-  householder_qr_test<false>( ref_ta, tol );
-  #if TILEDARRAY_HAS_SCALAPACK
-  householder_qr_test<true>( ref_ta, tol );
-  #endif
+  householder_qr_test<false>(ref_ta, tol);
+#if TILEDARRAY_HAS_SCALAPACK
+  householder_qr_test<true>(ref_ta, tol);
+#endif
 
   GlobalFixture::world->gop.fence();
 }
 
-
-
-
-
-
 template <typename ArrayT>
-void cholesky_qr_q_only_test( const ArrayT& A, double tol ) {
-
+void cholesky_qr_q_only_test(const ArrayT& A, double tol) {
   using value_type = typename ArrayT::element_type;
 
-  auto Q = TiledArray::math::linalg::cholesky_qr<true>( A );
-
+  auto Q = TiledArray::math::linalg::cholesky_qr<true>(A);
 
   // Make sure the Q is orthogonal at least
-  TA::TArray<double> Iden; Iden("i,j") = Q("k,i") * Q("k,j");
+  TA::TArray<double> Iden;
+  Iden("i,j") = Q("k,i") * Q("k,j");
   Iden.make_replicated();
   auto I_eig = TA::array_to_eigen(Iden);
   const auto N = A.trange().dim(1).extent();
-  BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
-
+  BOOST_CHECK_SMALL((I_eig - decltype(I_eig)::Identity(N, N)).norm(), tol);
 }
 
 template <typename ArrayT>
-void cholesky_qr_test( const ArrayT& A, double tol ) {
-
-  auto [Q,R] = TiledArray::math::linalg::cholesky_qr<false>( A );
+void cholesky_qr_test(const ArrayT& A, double tol) {
+  auto [Q, R] = TiledArray::math::linalg::cholesky_qr<false>(A);
 
   // Check reconstruction error
   TA::TArray<double> QR_ERROR;
   QR_ERROR("i,j") = A("i,j") - Q("i,k") * R("k,j");
-  BOOST_CHECK_SMALL( QR_ERROR("i,j").norm().get(), tol );
+  BOOST_CHECK_SMALL(QR_ERROR("i,j").norm().get(), tol);
 
   // Check orthonormality of Q
-  TA::TArray<double> Iden; Iden("i,j") = Q("k,i") * Q("k,j");
+  TA::TArray<double> Iden;
+  Iden("i,j") = Q("k,i") * Q("k,j");
   Iden.make_replicated();
   auto I_eig = TA::array_to_eigen(Iden);
   const auto N = A.trange().dim(1).extent();
-  BOOST_CHECK_SMALL( (I_eig - decltype(I_eig)::Identity(N,N)).norm(), tol );
+  BOOST_CHECK_SMALL((I_eig - decltype(I_eig)::Identity(N, N)).norm(), tol);
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_qr_q_only) {
@@ -1030,7 +1036,7 @@ BOOST_AUTO_TEST_CASE(cholesky_qr_q_only) {
       });
 
   double tol = N * N * std::numeric_limits<double>::epsilon();
-  cholesky_qr_q_only_test( ref_ta, tol );
+  cholesky_qr_q_only_test(ref_ta, tol);
 
   GlobalFixture::world->gop.fence();
 }
@@ -1046,9 +1052,8 @@ BOOST_AUTO_TEST_CASE(cholesky_qr) {
         return this->make_ta_reference(t, range);
       });
 
-
   double tol = N * N * std::numeric_limits<double>::epsilon();
-  cholesky_qr_test( ref_ta, tol );
+  cholesky_qr_test(ref_ta, tol);
 
   GlobalFixture::world->gop.fence();
 }

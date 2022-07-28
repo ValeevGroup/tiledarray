@@ -28,6 +28,9 @@
 #if TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/math/linalg/scalapack/cholesky.h>
 #endif
+#if TILEDARRAY_HAS_TTG
+#include <TiledArray/math/linalg/ttg/cholesky.h>
+#endif
 #include <TiledArray/math/linalg/non-distributed/cholesky.h>
 #include <TiledArray/util/threads.h>
 

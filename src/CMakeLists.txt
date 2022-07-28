@@ -74,6 +74,8 @@ TiledArray/math/linalg/scalapack/heig.h
 TiledArray/math/linalg/scalapack/lu.h
 TiledArray/math/linalg/scalapack/qr.h
 TiledArray/math/linalg/scalapack/svd.h
+TiledArray/math/linalg/ttg/cholesky.h
+TiledArray/math/linalg/ttg/util.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h

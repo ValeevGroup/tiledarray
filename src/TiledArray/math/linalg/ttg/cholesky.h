@@ -1,0 +1,97 @@
+/*
+ *  This file is a part of TiledArray.
+ *  Copyright (C) 2020 Virginia Tech
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *  Eduard Valeyev
+ *
+ *  cholesky.h
+ *  Created:    26 July, 2022
+ *
+ */
+
+#ifndef TILEDARRAY_MATH_LINALG_TTG_CHOL_H__INCLUDED
+#define TILEDARRAY_MATH_LINALG_TTG_CHOL_H__INCLUDED
+
+#include <TiledArray/config.h>
+#if TILEDARRAY_HAS_TTG
+
+#include <TiledArray/math/linalg/forward.h>
+#include <TiledArray/math/linalg/ttg/util.h>
+
+#include <ttg/../../examples/potrf/trtri.h>
+
+namespace TiledArray::math::linalg::ttg {
+
+/**
+ *  @brief Compute the inverse of the Cholesky factor of an HPD rank-2 tensor.
+ *  Optionally return the Cholesky factor itself
+ *
+ *  A(i,j) = L(i,k) * conj(L(j,k)) -> compute Linv
+ *
+ *  Example Usage:
+ *
+ *  auto Linv     = cholesky_Linv(A, ...)
+ *  auto [L,Linv] = cholesky_Linv<decltype(A),true>(A, ...)
+ *
+ *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
+ *  @tparam Both  Whether or not to return the cholesky factor
+ *
+ *  @param[in] A           Input array to be diagonalized. Must be rank-2
+ *  @param[in] l_trange    TiledRange for resulting inverse Cholesky factor.
+ *                         If left empty, will default to array.trange()
+ *  @param[in] NB          target block size. Defaults to 128
+ *
+ *  @returns The inverse lower triangular Cholesky factor in TA format
+ */
+template <bool Both, typename Array>
+auto cholesky_linv(const Array& A, TiledRange l_trange = {},
+                   size_t NB = default_block_size()) {
+  static_assert(!Both, "ttg::cholesky_linv<Both> not yet implemented");
+
+  using value_type = typename Array::element_type;
+  using Tile = typename Array::value_type;
+  using Policy = typename Array::policy_type;
+
+  ::ttg::Edge<Key2, MatrixTile<double>> input;
+  ::ttg::Edge<Key2, MatrixTile<double>> output;
+  auto trtri_ttg = trtri::make_trtri_ttg(MatrixDescriptor<Tile, Policy>(A),
+                                         lapack::Diag::NonUnit, input, output,
+                                         /* defer_write = */ true);
+
+  // make result
+  Array Linv(A.world(), A.trange(),
+             A.pmap());  // trtri produces a dense result for now
+  auto store_trtri_ttg =
+      make_writer_ttg(Linv, output, /* defer_write = */ false);
+
+  // "connect" input data to TTG directly ... N.B. reads only lower triangle of
+  // A!!!
+  flow_hltri_to_tt(A, trtri_ttg.get());
+
+  [[maybe_unused]] auto connected = make_graph_executable(trtri_ttg.get());
+  TA_ASSERT(connected);
+  ::ttg::fence();
+
+  // Copy L if needed
+  if constexpr (Both) {
+  } else
+    return Linv;
+}
+
+}  // namespace TiledArray::math::linalg::ttg
+
+#endif  // TILEDARRAY_HAS_TTG
+#endif  // TILEDARRAY_MATH_LINALG_TTG_CHOL_H__INCLUDED
