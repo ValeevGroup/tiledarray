@@ -80,8 +80,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   typedef typename impl_type::ordinal_type ordinal_type;  ///< Ordinal type
   typedef typename impl_type::value_type value_type;      ///< Tile type
   typedef
-      typename impl_type::eval_type eval_type;   ///< The tile evaluation type
-  typedef typename impl_type::reference future;  ///< Future of \c value_type
+      typename impl_type::eval_type eval_type;  ///< The tile evaluation type
+  typedef typename impl_type::future future;    ///< Future of \c value_type
   typedef typename impl_type::reference reference;  ///< \c future type
   typedef
       typename impl_type::const_reference const_reference;  ///< \c future type
