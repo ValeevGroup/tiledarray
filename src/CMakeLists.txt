@@ -255,6 +255,10 @@ if( TARGET TiledArray_SCALAPACK )
 endif()
 list(APPEND _TILEDARRAY_DEPENDENCIES "${LAPACK_LIBRARIES}")
 
+if( TARGET ttg-parsec )
+  list(APPEND _TILEDARRAY_DEPENDENCIES ttg-parsec)
+endif()
+
 # cache deps as TILEDARRAY_PRIVATE_LINK_LIBRARIES
 set(TILEDARRAY_PRIVATE_LINK_LIBRARIES ${_TILEDARRAY_DEPENDENCIES} CACHE STRING "List of libraries on which TiledArray depends on")
 
@@ -295,6 +299,10 @@ add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
   if (LAPACK_COMPILE_DEFINITIONS)
     target_compile_definitions(${targetname} PUBLIC ${LAPACK_COMPILE_DEFINITIONS})
   endif (LAPACK_COMPILE_DEFINITIONS)
+
+if( TARGET ttg-parsec )
+  target_compile_definitions(${targetname} PUBLIC TTG_USE_PARSEC=1)
+endif()
 
 # Add library to the list of installed components
 install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray

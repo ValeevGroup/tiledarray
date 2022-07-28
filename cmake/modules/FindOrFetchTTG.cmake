@@ -1,10 +1,10 @@
-if (NOT TARGET ttg)
+if (NOT TARGET ttg-parsec)
   find_package(ttg CONFIG)
-endif(NOT TARGET ttg)
+endif(NOT TARGET ttg-parsec)
 
-if (TARGET ttg)
+if (TARGET ttg-parsec)
     message(STATUS "Found ttg CONFIG at ${ttg_CONFIG}")
-else (TARGET ttg)
+else (TARGET ttg-parsec)
 
   include(FetchContent)
   FetchContent_Declare(
@@ -18,9 +18,11 @@ else (TARGET ttg)
       BINARY_DIR TTG_BINARY_DIR
       )
 
-endif(TARGET ttg)
+endif(TARGET ttg-parsec)
 
 # postcond check
-if (NOT TARGET ttg)
-message(FATAL_ERROR "FindOrFetchTTG could not make ttg target available")
-endif(NOT TARGET ttg)
+if (NOT TARGET ttg-parsec)
+  message(FATAL_ERROR "FindOrFetchTTG could not make ttg-parsec target available")
+else()
+  set(TILEDARRAY_HAS_TTG 1)
+endif()

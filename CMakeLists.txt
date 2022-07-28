@@ -306,6 +306,9 @@ add_custom_target(External-tiledarray)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
+if (TA_TTG)
+  include(FindOrFetchTTG)
+endif(TA_TTG)
 include(FindOrFetchMADWorld)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
@@ -346,9 +349,9 @@ if (TA_RANGEV3)
 endif(TA_RANGEV3)
 # 3. TTG
 # N.B. make sure TA configures MADNESS correctly
-if (TA_TTG)
-  include(FindOrFetchTTG)
-endif(TA_TTG)
+#if (TA_TTG)
+#  include(FindOrFetchTTG)
+#endif(TA_TTG)
 
 ##########################
 # sources

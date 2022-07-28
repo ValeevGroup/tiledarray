@@ -10,6 +10,10 @@
 #include <cutt.h>
 #endif
 
+#ifdef TILEDARRAY_HAS_TTG
+#include <ttg.h>
+#endif
+
 namespace TiledArray {
 namespace {
 
@@ -98,6 +102,12 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     TiledArray::set_num_threads(1);
     madness::print_meminfo_disable();
     initialized_accessor() = true;
+
+    // if have TTG initialize it also
+#ifdef TILEDARRAY_HAS_TTG
+    ttg::initialize(argc, argv, -1, madness::ParsecRuntime::context());
+#endif
+
     return default_world;
   } else
     throw Exception("TiledArray already initialized");
@@ -119,6 +129,10 @@ void TiledArray::finalize() {
   TiledArray::reset_default_world();
   initialized_accessor() = false;
   finalized_accessor() = true;
+
+#ifdef TILEDARRAY_HAS_TTG
+  ttg::finalize();
+#endif
 }
 
 void TiledArray::ta_abort() { SafeMPI::COMM_WORLD.Abort(); }
