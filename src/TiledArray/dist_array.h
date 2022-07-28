@@ -197,10 +197,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param trange The tiled range object that will be used to set the array
   /// tiling. \param shape The array shape that defines zero and non-zero tiles
   /// \param pmap The tile index -> process map
-  static std::shared_ptr<impl_type> init(World& world,
-                                         const trange_type& trange,
-                                         const shape_type& shape,
-                                         std::shared_ptr<pmap_interface> pmap) {
+  static std::shared_ptr<impl_type> init(
+      World& world, const trange_type& trange, const shape_type& shape,
+      std::shared_ptr<const pmap_interface> pmap) {
     // User level validation of input
 
     if (!pmap) {
@@ -262,8 +261,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param trange The tiled range object that will be used to set the array
   /// tiling. \param pmap The tile index -> process map
   DistArray(World& world, const trange_type& trange,
-            const std::shared_ptr<pmap_interface>& pmap =
-                std::shared_ptr<pmap_interface>())
+            const std::shared_ptr<const pmap_interface>& pmap = {})
       : pimpl_(init(world, trange, shape_type(1, trange), pmap)) {}
 
   /// Sparse array constructor
@@ -276,8 +274,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// tiling. \param shape The array shape that defines zero and non-zero tiles
   /// \param pmap The tile index -> process map
   DistArray(World& world, const trange_type& trange, const shape_type& shape,
-            const std::shared_ptr<pmap_interface>& pmap =
-                std::shared_ptr<pmap_interface>())
+            const std::shared_ptr<const pmap_interface>& pmap =
+                std::shared_ptr<const pmap_interface>())
       : pimpl_(init(world, trange, shape, pmap)) {}
 
   /// \name Initializer list constructors
@@ -1064,16 +1062,27 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   World& world() const { return impl_ref().world(); }
 
   /// \deprecated use DistArray::pmap()
-  [[deprecated]] const std::shared_ptr<pmap_interface>& get_pmap() const {
+  [[deprecated]] const std::shared_ptr<const pmap_interface>& get_pmap() const {
     return pmap();
   }
 
   /// Process map accessor
 
-  /// \return A reference to the process map that owns this array.
+  /// \return A shared_ptr to the process map that owns this array.
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
   ///                              throw guarantee.
-  const std::shared_ptr<pmap_interface>& pmap() const {
+  const std::shared_ptr<const pmap_interface>& pmap() const {
+    return impl_ref().pmap();
+  }
+
+  /// Process map accessor
+
+  /// \note alias to pmap() that mirrors shape_shared(). The use of this
+  ///       alias is recommended
+  /// \return A shared_ptr to the process map that owns this array.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
+  ///                              throw guarantee.
+  const std::shared_ptr<const pmap_interface>& pmap_shared() const {
     return impl_ref().pmap();
   }
 
@@ -1094,6 +1103,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
   inline const shape_type& shape() const { return impl_ref().shape(); }
+
+  /// Shape accessor
+
+  /// Returns shared_ptr to shape object. No communication is required.
+  /// \return shared_ptr to the shape object.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  inline const std::shared_ptr<const shape_type>& shape_shared() const {
+    return impl_ref().shape_shared();
+  }
 
   /// Tile ownership
 

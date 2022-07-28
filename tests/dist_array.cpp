@@ -507,7 +507,7 @@ BOOST_AUTO_TEST_CASE(truncate) {
 
 BOOST_AUTO_TEST_CASE(make_replicated) {
   // Get a copy of the original process map
-  std::shared_ptr<ArrayN::pmap_interface> distributed_pmap = a.pmap();
+  std::shared_ptr<const ArrayN::pmap_interface> distributed_pmap = a.pmap();
 
   // Convert array to a replicated array.
   BOOST_REQUIRE_NO_THROW(a.make_replicated());
