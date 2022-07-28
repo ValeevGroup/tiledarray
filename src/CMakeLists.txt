@@ -40,6 +40,7 @@ TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/proc_grid.h
 TiledArray/range.h
+TiledArray/range1.h
 TiledArray/range_iterator.h
 TiledArray/reduce_task.h
 TiledArray/replicator.h
