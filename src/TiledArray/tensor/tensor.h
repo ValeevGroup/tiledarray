@@ -190,21 +190,11 @@ class Tensor {
     this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
   }
 
-  /// Construct a tensor with a range equal to \c range. The data is
-  /// uninitialized.
-  /// \param range The range of the tensor
-  /// \param batch_size The batch size
-  /// \param data shared pointer to the data
-  Tensor(const range_type& range, size_t batch_size,
-         std::shared_ptr<value_type> data)
-      : range_(range), batch_size_(batch_size), data_(data) {}
-
   range_type range_;  ///< range
   size_t batch_size_ = 1;
   std::shared_ptr<value_type> data_;  ///< Shared pointer to the data
 
  public:
-  // Compiler generated functions
   Tensor() = default;
 
   /// Construct a tensor with a range equal to \c range. The data is
@@ -404,6 +394,14 @@ class Tensor {
       }
     }
   }
+
+  /// Construct a tensor with a range equal to \c range using existing data
+  /// \param range The range of the tensor
+  /// \param batch_size The batch size
+  /// \param data shared pointer to the data
+  Tensor(const range_type& range, size_t batch_size,
+         std::shared_ptr<value_type> data)
+      : range_(range), batch_size_(batch_size), data_(data) {}
 
   /// The batch size accessor
 
