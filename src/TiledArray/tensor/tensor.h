@@ -661,8 +661,18 @@ class Tensor {
 
   /// Mutable access to the data
 
-  /// \return A const pointer to the tensor data
+  /// \return A mutable pointer to the tensor data
   pointer data() { return this->data_.get(); }
+
+  /// Read-only shared_ptr to the data
+
+  /// \return A const shared_ptr to the tensor data
+  std::shared_ptr<const value_type> data_shared() const { return this->data_; }
+
+  /// Mutable shared_ptr to the data
+
+  /// \return A mutable shared_ptr to the tensor data
+  std::shared_ptr<value_type> data_shared() { return this->data_; }
 
   /// Test if the tensor is empty
 

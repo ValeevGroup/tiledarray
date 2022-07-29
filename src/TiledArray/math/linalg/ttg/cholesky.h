@@ -71,12 +71,13 @@ auto cholesky(const Array& A, TiledRange l_trange = {},
   // make result
   Array L(A.world(), A.trange(),
           A.pmap());  // potrf produces a dense result for now
-  auto store_potrf_ttg = make_writer_ttg(L, output, /* defer_write = */ true);
+  auto store_potrf_ttg =
+      make_writer_ttg<true>(L, output, /* defer_write = */ true);
 
   [[maybe_unused]] auto connected = make_graph_executable(potrf_ttg.get());
 
   // uncomment to trace
-  // ::ttg::trace_on();
+  ::ttg::trace_on();
 
   // start
   ::ttg::execute();

@@ -100,7 +100,7 @@ struct LinearAlgebraFixture : ReferenceFixture {
   blacspp::Grid grid;
   scalapack::BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
-  LinearAlgebraFixture(int64_t N = 4, int64_t NB = 4)
+  LinearAlgebraFixture(int64_t N = 4, int64_t NB = 2)
       : ReferenceFixture(N),
         grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
         ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB) {
@@ -547,7 +547,7 @@ BOOST_AUTO_TEST_CASE(heig_generalized) {
 BOOST_AUTO_TEST_CASE(cholesky) {
   GlobalFixture::world->gop.fence();
 
-  auto trange = gen_trange(N, {128ul});
+  auto trange = gen_trange(N, {2ul});
 
   auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
@@ -577,7 +577,7 @@ BOOST_AUTO_TEST_CASE(cholesky) {
 
 #ifdef TILEDARRAY_HAS_TTG
   if (true) {
-    std::cout << "before ttg::cholesky_linv: A:\n"
+    std::cout << "before ttg::cholesky: A:\n"
               << std::setprecision(15) << A << std::endl;
     TILEDARRAY_TTG_TEST(cholesky(A), epsilon);
   }

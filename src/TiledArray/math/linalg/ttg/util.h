@@ -122,11 +122,14 @@ struct ForwardMatrixTile : public madness::CallbackInterface {
         rc_fut(rc_fut) {}
 
   void notify() override {
-    in->send(Key2(r, c), MatrixTile<element_type>(
-                             r_extent, c_extent,
-                             // WARNING: const-smell since all interfaces uses
-                             // MatrixTile<nonconst-T>
-                             const_cast<element_type*>(rc_fut->get().data())));
+    // convert row-major data of TA to col-major data consumed by TTG at the
+    // moment
+    auto tile_permuted = rc_fut->get().permute(Permutation{1, 0});
+    in->send(Key2(r, c),
+             MatrixTile<element_type>(r_extent, c_extent,
+                                      // WARNING: const-smell since all
+                                      // interfaces uses MatrixTile<nonconst-T>
+                                      tile_permuted.data_shared()));
     delete this;
   }
 
@@ -166,7 +169,7 @@ void flow_hltri_to_tt(const DistArray<Tile, Policy>& A, ::ttg::TTBase* tt) {
   }
 }
 
-template <typename Tile, typename Policy>
+template <bool LoTriOnly = false, typename Tile, typename Policy>
 auto make_writer_ttg(
     DistArray<Tile, Policy>& A,
     ::ttg::Edge<Key2, MatrixTile<typename Tile::value_type>>& result,
@@ -182,7 +185,30 @@ auto make_writer_ttg(
     const int I = key.I;
     const int J = key.J;
     auto rng = A.trange().make_tile_range({I, J});
-    A.set({I, J}, Tile(rng, 1, std::move(std::move(tile).yield_data())));
+    if constexpr (LoTriOnly) {
+      if (I != J) {  // zero tile
+        TA_ASSERT(I > J);
+        A.set({J, I}, Tile(A.trange().make_tile_range({J, I}), 0.0));
+      }
+    }
+    // incoming data is col-major for now
+    auto tile_IJ = Tile(rng, 1, std::move(std::move(tile).yield_data()))
+                       .permute(Permutation{1, 0});
+    if constexpr (LoTriOnly) {  // zero out the upper triangle of the diagonal
+                                // tiles if want to write only the strict upper
+                                // triangle
+      if (I == J) {
+        const auto lo = rng.lobound_data()[0];
+        const auto up = rng.upbound_data()[0];
+        Range1::index1_type ij = 1;
+        for (auto i = lo; i != up; ++i, ij += (1 + i - lo)) {
+          for (auto j = i + 1; j != up; ++j, ++ij) {
+            tile_IJ.data()[ij] = 0.0;
+          }
+        }
+      }
+    }
+    A.set({I, J}, std::move(tile_IJ));
     if (::ttg::tracing()) ::ttg::print("WRITE2TA(", key, ")");
   };
 
