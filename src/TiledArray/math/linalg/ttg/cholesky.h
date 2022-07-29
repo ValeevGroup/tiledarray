@@ -31,9 +31,65 @@
 #include <TiledArray/math/linalg/forward.h>
 #include <TiledArray/math/linalg/ttg/util.h>
 
+#include <ttg/../../examples/potrf/potrf.h>
 #include <ttg/../../examples/potrf/trtri.h>
 
 namespace TiledArray::math::linalg::ttg {
+
+/**
+ *  @brief Compute the Cholesky factorization of a HPD rank-2 tensor
+ *
+ *  A(i,j) = L(i,k) * conj(L(j,k))
+ *
+ *  Example Usage:
+ *
+ *  auto L = cholesky(A, ...)
+ *
+ *  @tparam Array Input array type, must be convertible to BlockCyclicMatrix
+ *
+ *  @param[in] A           Input array to be diagonalized. Must be rank-2
+ *  @param[in] l_trange    TiledRange for resulting Cholesky factor. If left
+ * empty, will default to array.trange()
+ *  @param[in] NB          ScaLAPACK block size. Defaults to 128
+ *
+ *  @returns The lower triangular Cholesky factor L in TA format
+ */
+template <typename Array>
+auto cholesky(const Array& A, TiledRange l_trange = {},
+              size_t NB = default_block_size()) {
+  using value_type = typename Array::element_type;
+  using Tile = typename Array::value_type;
+  using Policy = typename Array::policy_type;
+
+  ::ttg::Edge<Key2, MatrixTile<double>> input;
+  ::ttg::Edge<Key2, MatrixTile<double>> output;
+  const auto A_descr = MatrixDescriptor<Tile, Policy>(
+      A);  // make_trtri_ttg keeps references to this, must outlive all work
+  auto potrf_ttg = potrf::make_potrf_ttg(A_descr, input, output,
+                                         /* defer_write = */ true);
+
+  // make result
+  Array L(A.world(), A.trange(),
+          A.pmap());  // potrf produces a dense result for now
+  auto store_potrf_ttg = make_writer_ttg(L, output, /* defer_write = */ true);
+
+  [[maybe_unused]] auto connected = make_graph_executable(potrf_ttg.get());
+
+  // uncomment to trace
+  // ::ttg::trace_on();
+
+  // start
+  ::ttg::execute();
+
+  // *now* "connect" input data to TTG ... N.B. reads only upper/lower triangle
+  // of A, depending whether it's row or col major
+  flow_hltri_to_tt(A, potrf_ttg.get());
+
+  A.world().gop.fence();
+  ::ttg::fence();
+
+  return L;
+}
 
 /**
  *  @brief Compute the inverse of the Cholesky factor of an HPD rank-2 tensor.
@@ -67,22 +123,31 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = {},
 
   ::ttg::Edge<Key2, MatrixTile<double>> input;
   ::ttg::Edge<Key2, MatrixTile<double>> output;
-  auto trtri_ttg = trtri::make_trtri_ttg(MatrixDescriptor<Tile, Policy>(A),
-                                         lapack::Diag::NonUnit, input, output,
-                                         /* defer_write = */ true);
+  const auto A_descr = MatrixDescriptor<Tile, Policy>(
+      A);  // make_trtri_ttg keeps references to this, must outlive all work
+  auto trtri_ttg =
+      trtri::make_trtri_ttg(A_descr, lapack::Diag::NonUnit, input, output,
+                            /* defer_write = */ true);
 
   // make result
   Array Linv(A.world(), A.trange(),
              A.pmap());  // trtri produces a dense result for now
   auto store_trtri_ttg =
-      make_writer_ttg(Linv, output, /* defer_write = */ false);
-
-  // "connect" input data to TTG directly ... N.B. reads only lower triangle of
-  // A!!!
-  flow_hltri_to_tt(A, trtri_ttg.get());
+      make_writer_ttg(Linv, output, /* defer_write = */ true);
 
   [[maybe_unused]] auto connected = make_graph_executable(trtri_ttg.get());
-  TA_ASSERT(connected);
+
+  // uncomment to trace
+  // ::ttg::trace_on();
+
+  // start
+  ::ttg::execute();
+
+  // *now* "connect" input data to TTG ... N.B. reads only upper/lower triangle
+  // of A, depending whether it's row or col major
+  flow_hltri_to_tt(A, trtri_ttg.get());
+
+  A.world().gop.fence();
   ::ttg::fence();
 
   // Copy L if needed

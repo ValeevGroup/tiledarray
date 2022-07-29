@@ -31,11 +31,9 @@ namespace scalapack = TA::math::linalg::scalapack;
 
 #if TILEDARRAY_HAS_TTG
 #include "TiledArray/math/linalg/ttg/cholesky.h"
-#define TILEDARRAY_TTG_TEST(F, E)                                       \
-  GlobalFixture::world->gop.fence();                                    \
-  compare("TiledArray::ttg", non_dist::F, TA::math::linalg::ttg::F, E); \
-  GlobalFixture::world->gop.fence();                                    \
-  compare("TiledArray", non_dist::F, TiledArray::F, E);
+#define TILEDARRAY_TTG_TEST(F, E)    \
+  GlobalFixture::world->gop.fence(); \
+  compare("TiledArray::ttg", non_dist::F, TA::math::linalg::ttg::F, E);
 #else
 #define TILEDARRAY_TTG_TEST(...)
 #endif
@@ -102,7 +100,7 @@ struct LinearAlgebraFixture : ReferenceFixture {
   blacspp::Grid grid;
   scalapack::BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
-  LinearAlgebraFixture(int64_t N = 1000, int64_t NB = 128)
+  LinearAlgebraFixture(int64_t N = 4, int64_t NB = 4)
       : ReferenceFixture(N),
         grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
         ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB) {
@@ -120,6 +118,10 @@ struct LinearAlgebraFixture : ReferenceFixture {
   static void compare(const char* context, const A& non_dist, const A& result,
                       double e) {
     BOOST_TEST_CONTEXT(context);
+    std::cout << "ref non_dist result:\n"
+              << std::setprecision(15) << non_dist << std::endl;
+    std::cout << "received result:\n"
+              << std::setprecision(15) << result << std::endl;
     auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
     BOOST_CHECK_SMALL(diff_with_non_dist, e);
   }
@@ -560,16 +562,26 @@ BOOST_AUTO_TEST_CASE(cholesky) {
   decltype(A) A_minus_LLt;
   A_minus_LLt("i,j") = A("i,j") - L("i,k") * L("j,k").conj();
 
-  BOOST_CHECK_SMALL(A_minus_LLt("i,j").norm().get(),
-                    N * N * std::numeric_limits<double>::epsilon());
+  const double epsilon = N * N * std::numeric_limits<double>::epsilon();
+
+  BOOST_CHECK_SMALL(A_minus_LLt("i,j").norm().get(), epsilon);
 
   // check against NON_DIST also
   auto L_ref = non_dist::cholesky(A);
   decltype(L) L_diff;
   L_diff("i,j") = L("i,j") - L_ref("i,j");
 
-  BOOST_CHECK_SMALL(L_diff("i,j").norm().get(),
-                    N * N * std::numeric_limits<double>::epsilon());
+  BOOST_CHECK_SMALL(L_diff("i,j").norm().get(), epsilon);
+
+  GlobalFixture::world->gop.fence();
+
+#ifdef TILEDARRAY_HAS_TTG
+  if (true) {
+    std::cout << "before ttg::cholesky_linv: A:\n"
+              << std::setprecision(15) << A << std::endl;
+    TILEDARRAY_TTG_TEST(cholesky(A), epsilon);
+  }
+#endif
 
   GlobalFixture::world->gop.fence();
 }
@@ -577,7 +589,7 @@ BOOST_AUTO_TEST_CASE(cholesky) {
 BOOST_AUTO_TEST_CASE(cholesky_linv) {
   GlobalFixture::world->gop.fence();
 
-  auto trange = gen_trange(N, {128ul});
+  auto trange = gen_trange(N, {128});
 
   auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
@@ -610,14 +622,17 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
 
   BOOST_CHECK_SMALL(norm, epsilon);
 
+  std::cout << "before scalapack::cholesky_linv: Acopy:\n"
+            << std::setprecision(15) << Acopy << std::endl;
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv<false>(Acopy), epsilon);
 
   GlobalFixture::world->gop.fence();
 
 #ifdef TILEDARRAY_HAS_TTG
-  if (false) {
+  if (true) {
+    std::cout << "before ttg::cholesky_linv: Acopy:\n"
+              << std::setprecision(15) << Acopy << std::endl;
     TILEDARRAY_TTG_TEST(cholesky_linv<false>(Acopy), epsilon);
-    GlobalFixture::world->gop.fence();
   }
 #endif
 }

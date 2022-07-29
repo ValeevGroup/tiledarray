@@ -179,11 +179,11 @@ auto make_writer_ttg(
   };
 
   auto f = [&A](const Key2& key, MatrixTile<T>&& tile, std::tuple<>& out) {
-    /* write back any tiles that are not in the matrix already */
     const int I = key.I;
     const int J = key.J;
     auto rng = A.trange().make_tile_range({I, J});
     A.set({I, J}, Tile(rng, 1, std::move(std::move(tile).yield_data())));
+    if (::ttg::tracing()) ::ttg::print("WRITE2TA(", key, ")");
   };
 
   auto result_tt = ::ttg::make_tt(f, ::ttg::edges(result), ::ttg::edges(),
