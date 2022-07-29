@@ -72,7 +72,8 @@ auto cholesky(const Array& A, TiledRange l_trange = {},
   Array L(A.world(), A.trange(),
           A.pmap());  // potrf produces a dense result for now
   auto store_potrf_ttg =
-      make_writer_ttg<true>(L, output, /* defer_write = */ true);
+      make_writer_ttg<lapack::Layout::ColMajor, lapack::Uplo::Lower>(
+          L, output, /* defer_write = */ true);
 
   [[maybe_unused]] auto connected = make_graph_executable(potrf_ttg.get());
 
@@ -82,9 +83,10 @@ auto cholesky(const Array& A, TiledRange l_trange = {},
   // start
   ::ttg::execute();
 
-  // *now* "connect" input data to TTG ... N.B. reads only upper/lower triangle
-  // of A, depending whether it's row or col major
-  flow_hltri_to_tt(A, potrf_ttg.get());
+  // *now* "connect" input data to TTG
+  // TTG expect lower triangle of the matrix, and col-major tiles
+  flow_matrix_to_tt<lapack::Layout::ColMajor, lapack::Uplo::Lower>(
+      A, potrf_ttg.get());
 
   A.world().gop.fence();
   ::ttg::fence();
@@ -134,7 +136,8 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = {},
   Array Linv(A.world(), A.trange(),
              A.pmap());  // trtri produces a dense result for now
   auto store_trtri_ttg =
-      make_writer_ttg(Linv, output, /* defer_write = */ true);
+      make_writer_ttg<lapack::Layout::ColMajor, lapack::Uplo::Lower>(
+          Linv, output, /* defer_write = */ true);
 
   [[maybe_unused]] auto connected = make_graph_executable(trtri_ttg.get());
 
@@ -144,9 +147,10 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = {},
   // start
   ::ttg::execute();
 
-  // *now* "connect" input data to TTG ... N.B. reads only upper/lower triangle
-  // of A, depending whether it's row or col major
-  flow_hltri_to_tt(A, trtri_ttg.get());
+  // *now* "connect" input data to TTG
+  // TTG expect lower triangle of the matrix, and col-major tiles
+  flow_matrix_to_tt<lapack::Layout::ColMajor, lapack::Uplo::Lower>(
+      A, trtri_ttg.get());
 
   A.world().gop.fence();
   ::ttg::fence();
