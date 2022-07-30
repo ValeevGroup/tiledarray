@@ -32,7 +32,7 @@
 #include <TiledArray/math/linalg/ttg/util.h>
 
 #include <ttg/../../examples/potrf/potrf.h>
-#include <ttg/../../examples/potrf/trtri.h>
+#include <ttg/../../examples/potrf/trtri_L.h>
 
 namespace TiledArray::math::linalg::ttg {
 
@@ -129,8 +129,8 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = {},
   const auto A_descr = MatrixDescriptor<Tile, Policy>(
       A);  // make_trtri_ttg keeps references to this, must outlive all work
   auto trtri_ttg =
-      trtri::make_trtri_ttg(A_descr, lapack::Diag::NonUnit, input, output,
-                            /* defer_write = */ true);
+      trtri_LOWER::make_trtri_ttg(A_descr, lapack::Diag::NonUnit, input, output,
+                                  /* defer_write = */ true);
 
   // make result
   Array Linv(A.world(), A.trange(),

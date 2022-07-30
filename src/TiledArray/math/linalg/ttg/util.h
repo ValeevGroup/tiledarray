@@ -123,19 +123,23 @@ struct ForwardMatrixTile : public madness::CallbackInterface {
 
   void notify() override {
     if constexpr (Layout == lapack::Layout::RowMajor) {
+      TA_ASSERT(r_extent == rc_fut->get().range().dim(0).extent());
+      TA_ASSERT(c_extent == rc_fut->get().range().dim(1).extent());
       in->send(Key2(r, c),
                MatrixTile<element_type>(
                    r_extent, c_extent,
                    // WARNING: const-smell since all interfaces uses
                    // MatrixTile<nonconst-T>
-                   const_cast<element_type*>(rc_fut->get().data())));
+                   const_cast<element_type*>(rc_fut->get().data()), c_extent));
     } else {
       // convert row-major data of TA to col-major data consumed by TTG at the
       // moment
       auto tile_permuted = rc_fut->get().permute(Permutation{1, 0});
+      TA_ASSERT(c_extent == tile_permuted.range().dim(0).extent());
+      TA_ASSERT(r_extent == tile_permuted.range().dim(1).extent());
       in->send(Key2(r, c),
                MatrixTile<element_type>(r_extent, c_extent,
-                                        tile_permuted.data_shared()));
+                                        tile_permuted.data_shared(), r_extent));
     }
     delete this;
   }
@@ -185,8 +189,12 @@ void flow_matrix_to_tt(const DistArray<Tile, Policy>& A, ::ttg::TTBase* tt) {
         } else {
           static_cast<::ttg::In<Key2, MatrixTile<element_type>>*>(
               tt->template in<0>())
-              ->send(Key2(r, c),
-                     MatrixTile<element_type>(r_extent, c_extent).fill(0.));
+              ->send(
+                  Key2(r, c),
+                  MatrixTile<element_type>(
+                      r_extent, c_extent,
+                      Layout == lapack::Layout::RowMajor ? c_extent : r_extent)
+                      .fill(0.));
         }
       }
     }
@@ -223,6 +231,11 @@ auto make_writer_ttg(
   };
 
   auto f = [&A](const Key2& key, MatrixTile<T>&& tile, std::tuple<>& out) {
+    TA_ASSERT(
+        tile.lda() ==
+        (Layout == lapack::Layout::ColMajor
+             ? tile.rows()
+             : tile.cols()));  // the code below only works if tile's LD == rows
     const int I = key.I;
     const int J = key.J;
     auto rng = A.trange().make_tile_range({I, J});

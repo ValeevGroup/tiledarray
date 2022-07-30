@@ -100,7 +100,7 @@ struct LinearAlgebraFixture : ReferenceFixture {
   blacspp::Grid grid;
   scalapack::BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
-  LinearAlgebraFixture(int64_t N = 4, int64_t NB = 2)
+  LinearAlgebraFixture(int64_t N = 3, int64_t NB = 2)
       : ReferenceFixture(N),
         grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
         ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB) {
