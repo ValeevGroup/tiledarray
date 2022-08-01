@@ -266,14 +266,15 @@ auto make_writer_ttg(
         }
         if constexpr (Uplo == lapack::Uplo::Upper) {  // zero out lower
           TA_ASSERT(I < J);
-          A.set({I, J}, Tile(A.trange().make_tile_range({I, J}), 0.0));
+          A.set({I, J}, Tile(rng, 0.0));
         }
       }
     }
 
     // incoming data is moved if RowMajor, else need to permute
     auto tile_IJ = Layout == lapack::Layout::ColMajor
-                       ? Tile(rng, 1, std::move(std::move(tile).yield_data()))
+                       ? Tile(A.trange().make_tile_range({J, I}), 1,
+                              std::move(std::move(tile).yield_data()))
                              .permute(Permutation{1, 0})
                        : Tile(rng, 1, std::move(std::move(tile).yield_data()));
     // zero out the lower/upper triangle of the diagonal
