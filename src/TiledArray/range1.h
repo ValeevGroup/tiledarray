@@ -49,6 +49,12 @@ struct Range1 {
     TA_ASSERT(second >= first);
   }
 
+  /// @return the lower bound of this range, i.e. first
+  auto lobound() const noexcept { return first; }
+
+  /// @return the upper bound of this range, i.e. second
+  auto upbound() const noexcept { return second; }
+
   /// @return the extent of this range, i.e. second - first
   auto extent() const noexcept { return second - first; }
 
