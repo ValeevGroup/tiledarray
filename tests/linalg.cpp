@@ -33,7 +33,7 @@ namespace scalapack = TA::math::linalg::scalapack;
 #include "TiledArray/math/linalg/ttg/cholesky.h"
 #define TILEDARRAY_TTG_TEST(F, E)    \
   GlobalFixture::world->gop.fence(); \
-  compare("TiledArray::ttg", non_dist::F, TA::math::linalg::ttg::F, E);
+  compare("TiledArray::ttg", non_dist::F, TiledArray::math::linalg::ttg::F, E);
 #else
 #define TILEDARRAY_TTG_TEST(...)
 #endif
