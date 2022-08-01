@@ -64,7 +64,7 @@ auto cholesky(const Array& A, TiledRange l_trange = {},
   ::ttg::Edge<Key2, MatrixTile<double>> input;
   ::ttg::Edge<Key2, MatrixTile<double>> output;
   const auto A_descr = MatrixDescriptor<Tile, Policy>(
-      A);  // make_trtri_ttg keeps references to this, must outlive all work
+      A);  // make_potrf_ttg keeps references to this, must outlive all work
   auto potrf_ttg = potrf::make_potrf_ttg(A_descr, input, output,
                                          /* defer_write = */ true);
 
