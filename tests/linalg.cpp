@@ -589,7 +589,7 @@ BOOST_AUTO_TEST_CASE(cholesky) {
 BOOST_AUTO_TEST_CASE(cholesky_linv) {
   GlobalFixture::world->gop.fence();
 
-  auto trange = gen_trange(N, {128});
+  auto trange = gen_trange(N, {128ul});
 
   auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
