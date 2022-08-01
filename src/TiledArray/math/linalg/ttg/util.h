@@ -122,24 +122,43 @@ struct ForwardMatrixTile : public madness::CallbackInterface {
         rc_fut(rc_fut) {}
 
   void notify() override {
+    const auto& tile = rc_fut->get();
+    const auto tile_range = tile.range();
+    TA_ASSERT(r_extent == tile_range.dim(0).extent());
+    TA_ASSERT(c_extent == tile_range.dim(1).extent());
+
+    // currently TTG assumes col-major tiles
     if constexpr (Layout == lapack::Layout::RowMajor) {
-      TA_ASSERT(r_extent == rc_fut->get().range().dim(0).extent());
-      TA_ASSERT(c_extent == rc_fut->get().range().dim(1).extent());
       in->send(Key2(r, c),
                MatrixTile<element_type>(
                    r_extent, c_extent,
                    // WARNING: const-smell since all interfaces uses
                    // MatrixTile<nonconst-T>
-                   const_cast<element_type*>(rc_fut->get().data()), c_extent));
+                   const_cast<element_type*>(tile.data()), c_extent));
     } else {
-      // convert row-major data of TA to col-major data consumed by TTG at the
-      // moment
-      auto tile_permuted = rc_fut->get().permute(Permutation{1, 0});
-      TA_ASSERT(c_extent == tile_permuted.range().dim(0).extent());
-      TA_ASSERT(r_extent == tile_permuted.range().dim(1).extent());
-      in->send(Key2(r, c),
-               MatrixTile<element_type>(r_extent, c_extent,
-                                        tile_permuted.data_shared(), r_extent));
+      constexpr auto use_uniform_ld = false;
+      if constexpr (!use_uniform_ld) {
+        auto tile_permuted = tile.permute(Permutation{1, 0});
+        in->send(Key2(r, c), MatrixTile<element_type>(
+                                 r_extent, c_extent,
+                                 tile_permuted.data_shared(), r_extent));
+      } else {  // this is only useful for debugging TTG at the moment
+        abort();
+        const auto ld = 2;
+        std::shared_ptr<element_type> data(new element_type[ld * ld],
+                                           [](auto* p) { delete[] p; });
+        const auto& row_range = tile_range.dim(0);
+        const auto& col_range = tile_range.dim(1);
+        for (auto r = 0; r != r_extent; ++r) {
+          const auto rr = r + row_range.lobound();
+          for (auto c = 0; c != c_extent; ++c) {
+            const auto cc = c + col_range.lobound();
+            data.get()[c * ld + r] = tile(rr, cc);
+          }
+        }
+        in->send(Key2(r, c), MatrixTile<element_type>(r_extent, c_extent,
+                                                      std::move(data), ld));
+      }
     }
     delete this;
   }
@@ -265,17 +284,19 @@ auto make_writer_ttg(
         const auto up = rng.upbound_data()[0];
         if constexpr (Uplo == lapack::Uplo::Lower) {  // zero out upper
           Range1::index1_type ij = 1;
+          auto* tile_IJ_data = tile_IJ.data();
           for (auto i = lo; i != up; ++i, ij += (1 + i - lo)) {
             for (auto j = i + 1; j != up; ++j, ++ij) {
-              tile_IJ.data()[ij] = 0.0;
+              tile_IJ_data[ij] = 0.0;
             }
           }
         }
         if constexpr (Uplo == lapack::Uplo::Upper) {  // zero out lower
           Range1::index1_type ij = 0;
+          auto* tile_IJ_data = tile_IJ.data();
           for (auto i = lo; i != up; ++i) {
             for (auto j = lo; j != i; ++j, ++ij) {
-              tile_IJ.data()[ij] = 0.0;
+              tile_IJ_data[ij] = 0.0;
             }
             ij += up - i;
           }
