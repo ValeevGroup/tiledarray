@@ -118,31 +118,47 @@ auto cholesky(const Array& A, TiledRange l_trange = {},
 template <bool Both, typename Array>
 auto cholesky_linv(const Array& A, TiledRange l_trange = {},
                    size_t NB = default_block_size()) {
-  static_assert(!Both, "ttg::cholesky_linv<Both> not yet implemented");
-
   using value_type = typename Array::element_type;
   using Tile = typename Array::value_type;
   using Policy = typename Array::policy_type;
 
   ::ttg::Edge<Key2, MatrixTile<double>> input;
-  ::ttg::Edge<Key2, MatrixTile<double>> output;
+  ::ttg::Edge<Key2, MatrixTile<double>> potrf2trtri;
+  ::ttg::Edge<Key2, MatrixTile<double>> potrf_output;
+  ::ttg::Edge<Key2, MatrixTile<double>> trtri_output;
   const auto A_descr = MatrixDescriptor<Tile, Policy>(
-      A);  // make_trtri_ttg keeps references to this, must outlive all work
-  auto trtri_ttg =
-      trtri_LOWER::make_trtri_ttg(A_descr, lapack::Diag::NonUnit, input, output,
-                                  /* defer_write = */ true);
+      A);  // make_potrf_ttg and make_trtri_ttg keep references to this, must
+           // outlive all work
+  auto portf_out_edge =
+      Both ? ::ttg::fuse(potrf2trtri, potrf_output) : potrf2trtri;
+  auto potrf_ttg = potrf::make_potrf_ttg(A_descr, input, portf_out_edge,
+                                         /* defer_write = */ true);
+  auto trtri_ttg = trtri_LOWER::make_trtri_ttg(A_descr, lapack::Diag::NonUnit,
+                                               potrf2trtri, trtri_output,
+                                               /* defer_write = */ true);
 
-  // make result
+  // make result(s)
+  Array L;
+  if constexpr (Both)
+    L = Array(A.world(), A.trange(),
+              A.pmap());  // trtri produces a dense result for now
   Array Linv(A.world(), A.trange(),
              A.pmap());  // trtri produces a dense result for now
+  std::unique_ptr<::ttg::TTBase> store_potrf_tt_ptr;
+  if constexpr (Both) {
+    auto store_potrf_ttg =
+        make_writer_ttg<lapack::Layout::ColMajor, lapack::Uplo::Lower>(
+            L, potrf_output, /* defer_write = */ true);
+    store_potrf_tt_ptr = std::move(store_potrf_ttg);
+  }
   auto store_trtri_ttg =
       make_writer_ttg<lapack::Layout::ColMajor, lapack::Uplo::Lower>(
-          Linv, output, /* defer_write = */ true);
+          Linv, trtri_output, /* defer_write = */ true);
 
   [[maybe_unused]] auto connected = make_graph_executable(trtri_ttg.get());
 
   // uncomment to trace
-  // ::ttg::trace_on();
+  ::ttg::trace_on();
 
   // start
   ::ttg::execute();
@@ -150,13 +166,15 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = {},
   // *now* "connect" input data to TTG
   // TTG expect lower triangle of the matrix, and col-major tiles
   flow_matrix_to_tt<lapack::Layout::ColMajor, lapack::Uplo::Lower>(
-      A, trtri_ttg.get());
+      A, potrf_ttg.get());
 
   A.world().gop.fence();
   ::ttg::fence();
 
   // Copy L if needed
   if constexpr (Both) {
+    return std::tuple(L, Linv);
+    ;
   } else
     return Linv;
 }
