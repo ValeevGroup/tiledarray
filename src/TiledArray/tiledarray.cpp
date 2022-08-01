@@ -116,6 +116,11 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
 /// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized
 /// when TiledArray::initialize was called).
 void TiledArray::finalize() {
+  // finalize in the reverse order of initialize
+#ifdef TILEDARRAY_HAS_TTG
+  ttg::finalize();
+#endif
+
   // reset number of threads
   TiledArray::set_num_threads(TiledArray::max_threads);
 #ifdef TILEDARRAY_HAS_CUDA
@@ -129,10 +134,6 @@ void TiledArray::finalize() {
   TiledArray::reset_default_world();
   initialized_accessor() = false;
   finalized_accessor() = true;
-
-#ifdef TILEDARRAY_HAS_TTG
-  ttg::finalize();
-#endif
 }
 
 void TiledArray::ta_abort() { SafeMPI::COMM_WORLD.Abort(); }
