@@ -125,6 +125,27 @@ struct LinearAlgebraFixture : ReferenceFixture {
     auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
     BOOST_CHECK_SMALL(diff_with_non_dist, e);
   }
+
+  template <typename T, typename F, int... Is>
+  static void for_each_pair_of_tuples_impl(T&& t1, T&& t2, F f,
+                                           std::integer_sequence<int, Is...>) {
+    auto l = {(f(std::get<Is>(t1), std::get<Is>(t2)), 0)...};
+  }
+
+  template <typename... Ts, typename F>
+  static void for_each_pair_of_tuples(std::tuple<Ts...> const& t1,
+                                      std::tuple<Ts...> const& t2, F f) {
+    for_each_pair_of_tuples_impl(
+        t1, t2, f, std::make_integer_sequence<int, sizeof...(Ts)>());
+  }
+
+  template <class... As>
+  static void compare(const char* context, const std::tuple<As...>& non_dist,
+                      const std::tuple<As...>& result, double e) {
+    for_each_pair_of_tuples(non_dist, result, [&](auto& arg1, auto& arg2) {
+      compare(context, arg1, arg2, e);
+    });
+  }
 #endif
 };
 
@@ -672,9 +693,11 @@ BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
 
   BOOST_CHECK_SMALL(norm, epsilon);
 
-  // TILEDARRAY_SCALAPACK_TEST(cholesky_linv<true>(A), epsilon);
+  TILEDARRAY_SCALAPACK_TEST(cholesky_linv<true>(A), epsilon);
 
-  GlobalFixture::world->gop.fence();
+#ifdef TILEDARRAY_HAS_TTG
+  TILEDARRAY_TTG_TEST(cholesky_linv<true>(A), epsilon);
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_solve) {
