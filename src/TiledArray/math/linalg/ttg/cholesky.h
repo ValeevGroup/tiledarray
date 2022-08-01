@@ -78,7 +78,7 @@ auto cholesky(const Array& A, TiledRange l_trange = {},
   [[maybe_unused]] auto connected = make_graph_executable(potrf_ttg.get());
 
   // uncomment to trace
-  ::ttg::trace_on();
+  //::ttg::trace_on();
 
   // start
   ::ttg::execute();
@@ -158,7 +158,7 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = {},
   [[maybe_unused]] auto connected = make_graph_executable(trtri_ttg.get());
 
   // uncomment to trace
-  ::ttg::trace_on();
+  //::ttg::trace_on();
 
   // start
   ::ttg::execute();

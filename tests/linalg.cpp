@@ -100,7 +100,7 @@ struct LinearAlgebraFixture : ReferenceFixture {
   blacspp::Grid grid;
   scalapack::BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
-  LinearAlgebraFixture(int64_t N = 3, int64_t NB = 2)
+  LinearAlgebraFixture(int64_t N = 1000, int64_t NB = 128)
       : ReferenceFixture(N),
         grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
         ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB) {
@@ -114,14 +114,15 @@ struct LinearAlgebraFixture : ReferenceFixture {
       }
     }
   }
+
   template <class A>
   static void compare(const char* context, const A& non_dist, const A& result,
                       double e) {
     BOOST_TEST_CONTEXT(context);
-    std::cout << "ref non_dist result:\n"
-              << std::setprecision(15) << non_dist << std::endl;
-    std::cout << "received result:\n"
-              << std::setprecision(15) << result << std::endl;
+    //    std::cout << "ref non_dist result:\n"
+    //              << std::setprecision(15) << non_dist << std::endl;
+    //    std::cout << "received result:\n"
+    //              << std::setprecision(15) << result << std::endl;
     auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
     BOOST_CHECK_SMALL(diff_with_non_dist, e);
   }
@@ -568,7 +569,7 @@ BOOST_AUTO_TEST_CASE(heig_generalized) {
 BOOST_AUTO_TEST_CASE(cholesky) {
   GlobalFixture::world->gop.fence();
 
-  auto trange = gen_trange(N, {2ul});
+  auto trange = gen_trange(N, {128ul});
 
   auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
@@ -597,11 +598,7 @@ BOOST_AUTO_TEST_CASE(cholesky) {
   GlobalFixture::world->gop.fence();
 
 #ifdef TILEDARRAY_HAS_TTG
-  if (true) {
-    std::cout << "before ttg::cholesky: A:\n"
-              << std::setprecision(15) << A << std::endl;
-    TILEDARRAY_TTG_TEST(cholesky(A), epsilon);
-  }
+  TILEDARRAY_TTG_TEST(cholesky(A), epsilon);
 #endif
 
   GlobalFixture::world->gop.fence();
@@ -643,18 +640,12 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
 
   BOOST_CHECK_SMALL(norm, epsilon);
 
-  std::cout << "before scalapack::cholesky_linv: Acopy:\n"
-            << std::setprecision(15) << Acopy << std::endl;
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv<false>(Acopy), epsilon);
 
   GlobalFixture::world->gop.fence();
 
 #ifdef TILEDARRAY_HAS_TTG
-  if (true) {
-    std::cout << "before ttg::cholesky_linv: Acopy:\n"
-              << std::setprecision(15) << Acopy << std::endl;
-    TILEDARRAY_TTG_TEST(cholesky_linv<false>(Acopy), epsilon);
-  }
+  TILEDARRAY_TTG_TEST(cholesky_linv<false>(Acopy), epsilon);
 #endif
 }
 
