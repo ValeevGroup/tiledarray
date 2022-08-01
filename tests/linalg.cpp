@@ -595,13 +595,9 @@ BOOST_AUTO_TEST_CASE(cholesky) {
 
   BOOST_CHECK_SMALL(L_diff("i,j").norm().get(), epsilon);
 
-  GlobalFixture::world->gop.fence();
+  TILEDARRAY_SCALAPACK_TEST(cholesky(A), epsilon);
 
-#ifdef TILEDARRAY_HAS_TTG
   TILEDARRAY_TTG_TEST(cholesky(A), epsilon);
-#endif
-
-  GlobalFixture::world->gop.fence();
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_linv) {
@@ -642,11 +638,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
 
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv<false>(Acopy), epsilon);
 
-  GlobalFixture::world->gop.fence();
-
-#ifdef TILEDARRAY_HAS_TTG
   TILEDARRAY_TTG_TEST(cholesky_linv<false>(Acopy), epsilon);
-#endif
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
@@ -686,9 +678,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
 
   TILEDARRAY_SCALAPACK_TEST(cholesky_linv<true>(A), epsilon);
 
-#ifdef TILEDARRAY_HAS_TTG
   TILEDARRAY_TTG_TEST(cholesky_linv<true>(A), epsilon);
-#endif
 }
 
 BOOST_AUTO_TEST_CASE(cholesky_solve) {
