@@ -27,6 +27,8 @@
 
 #include <TiledArray/error.h>
 
+#include <utility>  // std::forward
+
 namespace TiledArray {
 
 /// an integer range
@@ -45,7 +47,7 @@ struct Range1 {
   /// \pre first <= second
   template <typename U1, typename U2>
   explicit Range1(U1&& u1, U2&& u2)
-      : first(_VSTD::forward<U1>(u1)), second(_VSTD::forward<U2>(u2)) {
+      : first(std::forward<U1>(u1)), second(std::forward<U2>(u2)) {
     TA_ASSERT(second >= first);
   }
 
