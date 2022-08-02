@@ -34,12 +34,14 @@
 #include <TiledArray/math/linalg/non-distributed/cholesky.h>
 #include <TiledArray/util/threads.h>
 
+#define TILEDARRAY_ENABLE_USE_OF_TTG 0
+
 namespace TiledArray::math::linalg {
 
 template <typename Array>
 auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
   TA_MAX_THREADS;
-#if 0 && TILEDARRAY_HAS_TTG
+#if TILEDARRAY_ENABLE_USE_OF_TTG && TILEDARRAY_HAS_TTG
   return TiledArray::math::linalg::ttg::cholesky<Array>(A, l_trange);
 #elif TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.elements_range().volume() > 10000000)
@@ -51,7 +53,7 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
 template <bool Both = false, typename Array>
 auto cholesky_linv(const Array& A, TiledRange l_trange = TiledRange()) {
   TA_MAX_THREADS;
-#if 0 && TILEDARRAY_HAS_TTG
+#if TILEDARRAY_ENABLE_USE_OF_TTG && TILEDARRAY_HAS_TTG
   return TiledArray::math::linalg::ttg::cholesky_linv<Both>(A, l_trange);
 #elif TILEDARRAY_HAS_SCALAPACK
   if (A.world().size() > 1 && A.elements_range().volume() > 10000000)
