@@ -494,12 +494,25 @@ BOOST_AUTO_TEST_SUITE_END()
 // TiledArray einsum expressions
 BOOST_AUTO_TEST_SUITE(einsum_tiledarray)
 
-template<typename T = Tensor<int>, typename ... Args>
+using TiledArray::SparsePolicy;
+using TiledArray::DensePolicy;
+
+template<typename Policy, typename T = Tensor<int>, typename ... Args>
 auto random(Args ... args) {
   TiledArray::TiledRange tr{ {0, args}... };
   auto& world = TiledArray::get_default_world();
-  TiledArray::DistArray<T,TiledArray::SparsePolicy> t(world,tr);
+  TiledArray::DistArray<T,Policy> t(world,tr);
   t.fill_random();
+  return t;
+}
+
+template<typename T = Tensor<int>, typename ... Args>
+auto sparse_zero(Args ... args) {
+  TiledArray::TiledRange tr{ {0, args}... };
+  auto& world = TiledArray::get_default_world();
+  TiledArray::SparsePolicy::shape_type shape(0.0f, tr);
+  TiledArray::DistArray<T,TiledArray::SparsePolicy> t(world,tr,shape);
+  t.fill(0);
   return t;
 }
 
@@ -523,85 +536,124 @@ void einsum_tiledarray_check(
     array_to_eigen_tensor<Tensor<U,NB>>(B)
   );
   auto result = array_to_eigen_tensor<TC>(C);
+  //std::cout << "e=" << result << std::endl;
   BOOST_CHECK(isApprox(result, reference));
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_ak_bk_ab) {
   einsum_tiledarray_check<2,2,2>(
-    random(11,7),
-    random(13,7),
+    random<SparsePolicy>(11,7),
+    random<SparsePolicy>(13,7),
     "ak,bk->ab"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_ka_bk_ba) {
   einsum_tiledarray_check<2,2,2>(
-    random(7,11),
-    random(13,7),
+    random<SparsePolicy>(7,11),
+    random<SparsePolicy>(13,7),
     "ka,bk->ba"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_abi_cdi_cdab) {
   einsum_tiledarray_check<3,3,4>(
-    random(21,22,3),
-    random(24,25,3),
+    random<SparsePolicy>(21,22,3),
+    random<SparsePolicy>(24,25,3),
     "abi,cdi->cdab"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_icd_ai_abcd) {
   einsum_tiledarray_check<3,3,4>(
-    random(3,12,13),
-    random(14,15,3),
+    random<SparsePolicy>(3,12,13),
+    random<SparsePolicy>(14,15,3),
     "icd,bai->abcd"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_cdji_ibja_abcd) {
   einsum_tiledarray_check<4,4,4>(
-    random(14,15,3,5),
-    random(5,12,3,13),
+    random<SparsePolicy>(14,15,3,5),
+    random<SparsePolicy>(5,12,3,13),
     "cdji,ibja->abcd"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_hai_hbi_hab) {
   einsum_tiledarray_check<3,3,3>(
-    random(7,14,3),
-    random(7,15,3),
+    random<SparsePolicy>(7,14,3),
+    random<SparsePolicy>(7,15,3),
+    "hai,hbi->hab"
+  );
+  einsum_tiledarray_check<3,3,3>(
+    sparse_zero(7,14,3),
+    sparse_zero(7,15,3),
     "hai,hbi->hab"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_iah_hib_bha) {
   einsum_tiledarray_check<3,3,3>(
-    random(7,14,3),
-    random(3,7,15),
+    random<SparsePolicy>(7,14,3),
+    random<SparsePolicy>(3,7,15),
+    "iah,hib->bha"
+  );
+  einsum_tiledarray_check<3,3,3>(
+    sparse_zero(7,14,3),
+    sparse_zero(3,7,15),
     "iah,hib->bha"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_iah_hib_abh) {
   einsum_tiledarray_check<3,3,3>(
-    random(7,14,3),
-    random(3,7,15),
+    random<SparsePolicy>(7,14,3),
+    random<SparsePolicy>(3,7,15),
     "iah,hib->abh"
+  );
+  einsum_tiledarray_check<3,3,3>(
+    sparse_zero(7,14,3),
+    sparse_zero(3,7,15),
+    "iah,hib->abh"
+  );
+}
+
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_hai_hibc_habc) {
+  einsum_tiledarray_check<3,4,4>(
+    random<SparsePolicy>(9,3,11),
+    random<SparsePolicy>(9,11,5,7),
+    "hai,hibc->habc"
+  );
+  einsum_tiledarray_check<3,4,4>(
+    sparse_zero(9,3,11),
+    sparse_zero(9,11,5,7),
+    "hai,hibc->habc"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_hi_hi_h) {
   einsum_tiledarray_check<2,2,1>(
-    random(7,14),
-    random(7,14),
+    random<SparsePolicy>(7,14),
+    random<SparsePolicy>(7,14),
+    "hi,hi->h"
+  );
+  einsum_tiledarray_check<2,2,1>(
+    sparse_zero(7,14),
+    sparse_zero(7,14),
     "hi,hi->h"
   );
 }
 
 BOOST_AUTO_TEST_CASE(einsum_tiledarray_hji_jih_hj) {
   einsum_tiledarray_check<3,3,2>(
-    random(14,7,5),
-    random(7,5,14),
+    random<SparsePolicy>(14,7,5),
+    random<SparsePolicy>(7,5,14),
+    "hji,jih->hj"
+  );
+  einsum_tiledarray_check<3,3,2>(
+    sparse_zero(14,7,5),
+    sparse_zero(7,5,14),
     "hji,jih->hj"
   );
 }
