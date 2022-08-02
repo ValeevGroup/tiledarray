@@ -74,9 +74,13 @@ BOOST_AUTO_TEST_CASE(constructors) {
 }
 
 BOOST_AUTO_TEST_CASE(accessors) {
-  Range1 r{0, 10};
+  Range1 r{1, 10};
+  BOOST_CHECK_NO_THROW(r.lobound());
+  BOOST_CHECK_EQUAL(r.lobound(), 1);
+  BOOST_CHECK_NO_THROW(r.upbound());
+  BOOST_CHECK_EQUAL(r.upbound(), 10);
   BOOST_CHECK_NO_THROW(r.extent());
-  BOOST_CHECK_EQUAL(r.extent(), 10);
+  BOOST_CHECK_EQUAL(r.extent(), 9);
 }
 
 BOOST_AUTO_TEST_CASE(iteration) {
@@ -106,6 +110,54 @@ BOOST_AUTO_TEST_CASE(iteration) {
   auto end = r.end();
   BOOST_CHECK_EQUAL(*end, 10);
   BOOST_CHECK(it != end);
+}
+
+BOOST_AUTO_TEST_CASE(comparison) {
+  Range1 r1{0, 10};
+  Range1 r2{0, 10};
+  Range1 r3{1, 10};
+  Range1 r4{0, 9};
+  BOOST_CHECK(r1 == r1);
+  BOOST_CHECK(r1 == r2);
+  BOOST_CHECK(r1 != r3);
+  BOOST_CHECK(r1 != r4);
+}
+
+BOOST_AUTO_TEST_CASE(serialization) {
+  Range1 r{1, 10};
+
+  std::size_t buf_size = sizeof(Range1);
+  unsigned char* buf = new unsigned char[buf_size];
+  madness::archive::BufferOutputArchive oar(buf, buf_size);
+  oar& r;
+  std::size_t nbyte = oar.size();
+  oar.close();
+
+  Range1 rs;
+  madness::archive::BufferInputArchive iar(buf, nbyte);
+  iar& rs;
+  iar.close();
+
+  delete[] buf;
+
+  BOOST_CHECK(rs == r);
+}
+
+BOOST_AUTO_TEST_CASE(swap) {
+  Range1 r{0, 10};
+  Range1 empty_range;
+
+  // swap with empty range
+  BOOST_CHECK_NO_THROW(r.swap(empty_range));
+  BOOST_CHECK(r == Range1{});
+
+  // Check that empty_range contains the data of r.
+  BOOST_CHECK(empty_range == Range1(0, 10));
+
+  // Swap the data back
+  BOOST_CHECK_NO_THROW(r.swap(empty_range));
+  BOOST_CHECK(empty_range == Range1{});
+  BOOST_CHECK(r == Range1(0, 10));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

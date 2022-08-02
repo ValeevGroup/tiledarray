@@ -33,8 +33,8 @@ namespace TiledArray {
 /// @note previously represented by std::pair, hence the design
 struct Range1 {
   typedef TA_1INDEX_TYPE index1_type;
-  index1_type first;
-  index1_type second;  //< N.B. second >= first
+  index1_type first = 0;
+  index1_type second = 0;  //< N.B. second >= first
 
   Range1() = default;
   Range1(Range1 const&) = default;
