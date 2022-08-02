@@ -47,7 +47,6 @@ BOOST_AUTO_TEST_CASE(traits) {
   static_assert(detail::is_gpair_range_v<
                 boost::container::small_vector<const Range1, 8>>);
   static_assert(detail::is_gpair_range_v<std::vector<Range1>>);
-  static_assert(detail::is_gpair_range_v<std::vector<const Range1>>);
 }
 
 BOOST_AUTO_TEST_CASE(constructors) {
