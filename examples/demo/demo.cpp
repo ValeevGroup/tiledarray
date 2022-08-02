@@ -23,6 +23,8 @@
 #include <tiledarray.h>
 #include <random>
 
+#include <TiledArray/expressions/einsum.h>
+
 auto make_tile(const TA::Range &range) {
   // Construct a tile
   TA::TArrayD::value_type tile(range);
@@ -74,7 +76,7 @@ int main(int argc, char *argv[]) {
 
   TArray<double> a0(world, TR);
   a0.fill(1.0);
-  if (world.rank() == 0) cout << "a0:\n" << a0 << endl;
+  cout << "a0:\n" << a0 << endl;
   world.gop.fence();
 
   Tensor<float> shape_tensor(TR.tiles_range(), 0.0);
@@ -86,48 +88,52 @@ int main(int argc, char *argv[]) {
   TSpArrayD a1(world, TR, shape);
   a1.fill_random();
 
-  if (world.rank() == 0) cout << "a1:\n" << a1 << endl;
+  cout << "a1:\n" << a1 << endl;
   world.gop.fence();
 
   //  TSpArrayZ a1(world, TR, shape);
   //  a1.fill_random();
-  //  if (world.rank() == 0)
-  //    cout << a1 << endl;
+  //  cout << a1 << endl;
   //  world.gop.fence();
 
   TSpArrayD a2;
   a2("i,j") = a1("i,j") * 2.0;
-  if (world.rank() == 0) cout << "a2:\n" << a2 << endl;
+  cout << "a2:\n" << a2 << endl;
   world.gop.fence();
 
   TSpArrayD a3;
   a3("j,i") = a2("i,j");
-  if (world.rank() == 0) cout << "a3:\n" << a3 << endl;
+  cout << "a3:\n" << a3 << endl;
   world.gop.fence();
 
   TSpArrayD a4;
   a4("j,i") = a3("i,j") * 0.5;
-  if (world.rank() == 0) cout << "a4:\n" << a4 << endl;
+  cout << "a4:\n" << a4 << endl;
   world.gop.fence();
 
   TSpArrayD a5;
   a5("i,j") = a4("i,j") + 2.0 * a4("i,j");
-  if (world.rank() == 0) cout << "a5:\n" << a5 << endl;
+  cout << "a5:\n" << a5 << endl;
   world.gop.fence();
 
   TSpArrayD a6;
   a6("i,j") = a4("i,j") - 2.0 * a4("i,j");
-  if (world.rank() == 0) cout << "a6:\n" << a6 << endl;
+  cout << "a6:\n" << a6 << endl;
   world.gop.fence();
 
   TSpArrayD a7;
   a7("i,j") = a6("i,j") * a5("i,j");
-  if (world.rank() == 0) cout << "a7:\n" << a7 << endl;
+  cout << "a7:\n" << a7 << endl;
   world.gop.fence();
 
   TSpArrayD a8;
   a8("i,j") = a1("i,k") * a5("j,k");
-  if (world.rank() == 0) cout << "a8:\n" << a8 << endl;
+  cout << "a8:\n" << a8 << endl;
+  world.gop.fence();
+
+  TSpArrayD a9;
+  a9 = einsum(a6("i,j"), a5("i,j"), "i");
+  cout << "a9:\n" << a9 << endl;
   world.gop.fence();
 
   auto tile_0_0 = a1.find({0, 0});
