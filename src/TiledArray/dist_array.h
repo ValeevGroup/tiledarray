@@ -35,6 +35,7 @@
 
 #include <madness/world/parallel_archive.h>
 #include <cstdlib>
+#include <tuple>
 
 namespace TiledArray {
 
@@ -1707,6 +1708,38 @@ template <typename Tile, typename Policy>
 auto norm2(const DistArray<Tile, Policy>& a) {
   return std::sqrt(squared_norm(a));
 }
+
+template<typename Array, typename Tiles>
+Array make_array(
+  World &world,
+  const detail::trange_t<Array> &tiled_range,
+  Tiles begin, Tiles end)
+{
+  Array array;
+  using Tuple = std::remove_reference_t<decltype(*begin)>;
+  using Index = std::tuple_element_t<0,Tuple>;
+  using shape_type = typename Array::shape_type;
+  if constexpr (shape_type::is_dense()) {
+    array = Array(world, tiled_range);
+  }
+  else {
+    std::vector< std::pair<Index,float> > tile_norms;
+    for (Tiles it = begin; it != end; ++it) {
+      auto [index,tile] = *it;
+      tile_norms.push_back({index,tile.norm()});
+    }
+    shape_type shape(world, tile_norms, tiled_range);
+    array = Array(world, tiled_range, shape);
+  }
+  for (Tiles it = begin; it != end; ++it) {
+    auto [index,tile] = *it;
+    if (array.is_zero(index)) continue;
+    array.set(index,tile);
+  }
+  return array;
+}
+
+
 
 }  // namespace TiledArray
 
