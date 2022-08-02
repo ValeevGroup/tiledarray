@@ -27,11 +27,9 @@
 
 #include <TiledArray/error.h>
 
-#include <utility>  // std::forward
-
 namespace TiledArray {
 
-/// an integer range
+/// an integer range `[first,second)`
 /// @note previously represented by std::pair, hence the design
 struct Range1 {
   typedef TA_1INDEX_TYPE index1_type;
@@ -44,10 +42,26 @@ struct Range1 {
   Range1& operator=(Range1 const&) = default;
   Range1& operator=(Range1&&) = default;
 
-  /// \pre first <= second
-  template <typename U1, typename U2>
-  explicit Range1(U1&& u1, U2&& u2)
-      : first(std::forward<U1>(u1)), second(std::forward<U2>(u2)) {
+  /// constructs `[0,end)`
+  /// \param[in] end the value immediately past the last value in the range
+  /// \pre 0 <= end
+  template <typename I, typename = std::enable_if_t<
+                            !std::is_same_v<std::decay_t<I>, Range1> &&
+                            std::is_integral_v<I>>>
+  explicit Range1(I end) : second(static_cast<index1_type>(end)) {
+    TA_ASSERT(second >= first);
+  }
+
+  /// constructs `[begin,end)`
+  /// \param[in] begin the first value in the range
+  /// \param[in] end the value immediately past the last value in the range
+  /// \pre begin <= end
+  template <typename I1, typename I2,
+            typename = std::enable_if_t<std::is_integral_v<I1> &&
+                                        std::is_integral_v<I2>>>
+  explicit Range1(I1 begin, I2 end)
+      : first(static_cast<index1_type>(begin)),
+        second(static_cast<index1_type>(end)) {
     TA_ASSERT(second >= first);
   }
 
@@ -176,6 +190,27 @@ constexpr auto get(const Range1& r) {
     return r.first;
   else
     return r.second;
+}
+
+/// constructs `[0,end)`
+/// \param[in] end the value immediately past the last value in the range
+/// \pre 0 <= end
+/// \note syntactic sugar a la boost::irange
+template <typename I>
+Range1 irange(I end) {
+  return Range1{end};
+}
+
+/// constructs `[begin,end)`
+/// \param[in] begin the first value in the range
+/// \param[in] end the value immediately past the last value in the range
+/// \pre begin <= end
+/// \note syntactic sugar a la boost::irange
+template <typename I1, typename I2,
+          typename = std::enable_if_t<std::is_integral_v<I1> &&
+                                      std::is_integral_v<I2>>>
+Range1 irange(I1 begin, I2 end) {
+  return Range1{begin, end};
 }
 
 }  // namespace TiledArray

@@ -55,6 +55,12 @@ BOOST_AUTO_TEST_CASE(constructors) {
   BOOST_CHECK_EQUAL(Range1{}.second, 0);
   // decomposable via structure bindings;
   auto [first, second] = Range1{};
+  BOOST_CHECK_EQUAL(first, Range1{}.first);
+  BOOST_CHECK_EQUAL(second, Range1{}.second);
+
+  BOOST_CHECK_NO_THROW(Range1{1});
+  BOOST_CHECK_EQUAL(Range1{1}.first, 0);
+  BOOST_CHECK_EQUAL(Range1{1}.second, 1);
 
   BOOST_CHECK_NO_THROW((Range1{1, 1}));
   BOOST_CHECK_NO_THROW(Range1(1, 1));
@@ -157,6 +163,15 @@ BOOST_AUTO_TEST_CASE(swap) {
   BOOST_CHECK_NO_THROW(r.swap(empty_range));
   BOOST_CHECK(empty_range == Range1{});
   BOOST_CHECK(r == Range1(0, 10));
+}
+
+BOOST_AUTO_TEST_CASE(irange) {
+  // to avoid ambiguity between test scope and fn
+  BOOST_CHECK_NO_THROW(TA::irange(1));
+  BOOST_CHECK(TA::irange(1) == Range1(1));
+
+  BOOST_CHECK_NO_THROW(TA::irange(1, 2));
+  BOOST_CHECK(TA::irange(1, 2) == Range1(1, 2));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
