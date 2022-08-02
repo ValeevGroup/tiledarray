@@ -67,8 +67,7 @@ struct ReferenceFixture {
     return norm(t);
   };
 
-  ReferenceFixture(int64_t N = 1000)
-      : N(N), htoeplitz_vector(N), exact_evals(N) {
+  ReferenceFixture(int64_t N = 3) : N(N), htoeplitz_vector(N), exact_evals(N) {
     // Generate an hermitian Circulant vector
     std::fill(htoeplitz_vector.begin(), htoeplitz_vector.begin(), 0);
     htoeplitz_vector[0] = 100;
@@ -100,7 +99,7 @@ struct LinearAlgebraFixture : ReferenceFixture {
   blacspp::Grid grid;
   scalapack::BlockCyclicMatrix<double> ref_matrix;  // XXX: Just double is fine?
 
-  LinearAlgebraFixture(int64_t N = 1000, int64_t NB = 128)
+  LinearAlgebraFixture(int64_t N = 3, int64_t NB = 2)
       : ReferenceFixture(N),
         grid(blacspp::Grid::square_grid(MPI_COMM_WORLD)),  // XXX: Is this safe?
         ref_matrix(*GlobalFixture::world, grid, N, N, NB, NB) {
@@ -114,15 +113,16 @@ struct LinearAlgebraFixture : ReferenceFixture {
       }
     }
   }
+#endif
 
   template <class A>
   static void compare(const char* context, const A& non_dist, const A& result,
                       double e) {
     BOOST_TEST_CONTEXT(context);
-    //    std::cout << "ref non_dist result:\n"
-    //              << std::setprecision(15) << non_dist << std::endl;
-    //    std::cout << "received result:\n"
-    //              << std::setprecision(15) << result << std::endl;
+    std::cout << "context=" << context << ": should have obtained:\n"
+              << std::setprecision(15) << non_dist << std::endl;
+    std::cout << "context=" << context << ": what actually obtained:\n"
+              << std::setprecision(15) << result << std::endl;
     auto diff_with_non_dist = (non_dist("i,j") - result("i,j")).norm().get();
     BOOST_CHECK_SMALL(diff_with_non_dist, e);
   }
@@ -147,7 +147,6 @@ struct LinearAlgebraFixture : ReferenceFixture {
       compare(context, arg1, arg2, e);
     });
   }
-#endif
 };
 
 TA::TiledRange gen_trange(size_t N, const std::vector<size_t>& TA_NBs) {
@@ -569,7 +568,7 @@ BOOST_AUTO_TEST_CASE(heig_generalized) {
 BOOST_AUTO_TEST_CASE(cholesky) {
   GlobalFixture::world->gop.fence();
 
-  auto trange = gen_trange(N, {128ul});
+  auto trange = gen_trange(N, {2ul});
 
   auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
@@ -603,7 +602,7 @@ BOOST_AUTO_TEST_CASE(cholesky) {
 BOOST_AUTO_TEST_CASE(cholesky_linv) {
   GlobalFixture::world->gop.fence();
 
-  auto trange = gen_trange(N, {128ul});
+  auto trange = gen_trange(N, {2ul});
 
   auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
@@ -644,7 +643,7 @@ BOOST_AUTO_TEST_CASE(cholesky_linv) {
 BOOST_AUTO_TEST_CASE(cholesky_linv_retl) {
   GlobalFixture::world->gop.fence();
 
-  auto trange = gen_trange(N, {128ul});
+  auto trange = gen_trange(N, {2ul});
 
   auto A = TA::make_array<TA::TArray<double>>(
       *GlobalFixture::world, trange,
