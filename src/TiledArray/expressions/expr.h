@@ -130,7 +130,8 @@ class Expr {
   }
   /// \param pmap the Pmap object to use for the result
   Expr<Derived>& set_pmap(
-      const std::shared_ptr<typename override_type::pmap_interface> pmap) {
+      const std::shared_ptr<const typename override_type::pmap_interface>
+          pmap) {
     if (override_ptr_) {
       override_ptr_->pmap = pmap;
     } else {
