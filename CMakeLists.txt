@@ -26,12 +26,30 @@
 
 cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
 
+# Set TiledArray version =======================================================
+
+# see https://semver.org/
+set(TILEDARRAY_MAJOR_VERSION 1)
+set(TILEDARRAY_MINOR_VERSION 0)
+set(TILEDARRAY_MICRO_VERSION 0)
+set(TILEDARRAY_PRERELEASE_ID )
+
+set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}")
+if (TILEDARRAY_PRERELEASE_ID)
+  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}-${TILEDARRAY_PRERELEASE_ID}")
+else(TILEDARRAY_PRERELEASE_ID)
+  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}")
+endif(TILEDARRAY_PRERELEASE_ID)
+
 # Preload versions/tags of all dependencies ====================================
 include(external/versions.cmake)
 
-###############################################################################
-# Bring ValeevGroup cmake toolkit
-###############################################################################
+# Safety net for dev workflow: accidental install will not affect FindOrFetch*
+if (NOT DEFINED CACHE{CMAKE_FIND_NO_INSTALL_PREFIX})
+  set(CMAKE_FIND_NO_INSTALL_PREFIX ON CACHE BOOL "Whether find_* commands will search CMAKE_INSTALL_PREFIX and CMAKE_STAGING_PREFIX; see https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_NO_INSTALL_PREFIX.html#variable:CMAKE_FIND_NO_INSTALL_PREFIX")
+endif()
+
+# Bring ValeevGroup cmake toolkit ==============================================
 include(FetchContent)
 if (DEFINED PROJECT_BINARY_DIR)
   set(VG_CMAKE_KIT_PREFIX_DIR PROJECT_BINARY_DIR)
@@ -50,23 +68,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(vg_cmake_kit)
 list(APPEND CMAKE_MODULE_PATH "${vg_cmake_kit_SOURCE_DIR}/modules")
 
-project (TiledArray LANGUAGES)
-enable_language(CXX)
-
-# Set TiledArray version =======================================================
-
-# see https://semver.org/
-set(TILEDARRAY_MAJOR_VERSION 1)
-set(TILEDARRAY_MINOR_VERSION 0)
-set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_PRERELEASE_ID )
-
-set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}")
-if (TILEDARRAY_PRERELEASE_ID)
-  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}-${TILEDARRAY_PRERELEASE_ID}")
-else(TILEDARRAY_PRERELEASE_ID)
-  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}")
-endif(TILEDARRAY_PRERELEASE_ID)
+# Declare ourselves ============================================================
+project(TiledArray
+        VERSION ${TILEDARRAY_VERSION}
+        DESCRIPTION "TiledArray: block-sparse tensor framework for modern (distributed-memory and heterogeneous) computing"
+        LANGUAGES CXX
+        HOMEPAGE_URL "https://valeevgroup.github.io/tiledarray/")
+enable_language(C)  # C needed even for basic platform introspection
 
 # Set install paths ============================================================
 
