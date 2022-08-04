@@ -136,29 +136,10 @@ struct ForwardMatrixTile : public madness::CallbackInterface {
                    // MatrixTile<nonconst-T>
                    const_cast<element_type*>(tile.data()), c_extent));
     } else {
-      constexpr auto use_uniform_ld = false;
-      if constexpr (!use_uniform_ld) {
-        auto tile_permuted = tile.permute(Permutation{1, 0});
-        in->send(Key2(r, c), MatrixTile<element_type>(
-                                 r_extent, c_extent,
-                                 tile_permuted.data_shared(), r_extent));
-      } else {  // this is only useful for debugging TTG at the moment
-        abort();
-        const auto ld = 2;
-        std::shared_ptr<element_type> data(new element_type[ld * ld],
-                                           [](auto* p) { delete[] p; });
-        const auto& row_range = tile_range.dim(0);
-        const auto& col_range = tile_range.dim(1);
-        for (auto r = 0; r != r_extent; ++r) {
-          const auto rr = r + row_range.lobound();
-          for (auto c = 0; c != c_extent; ++c) {
-            const auto cc = c + col_range.lobound();
-            data.get()[c * ld + r] = tile(rr, cc);
-          }
-        }
-        in->send(Key2(r, c), MatrixTile<element_type>(r_extent, c_extent,
-                                                      std::move(data), ld));
-      }
+      auto tile_permuted = permute(tile, Permutation{1, 0});
+      in->send(Key2(r, c),
+               MatrixTile<element_type>(r_extent, c_extent,
+                                        tile_permuted.data_shared(), r_extent));
     }
     delete this;
   }
