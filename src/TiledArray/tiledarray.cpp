@@ -10,7 +10,7 @@
 #include <cutt.h>
 #endif
 
-#ifdef TILEDARRAY_HAS_TTG
+#if TILEDARRAY_HAS_TTG
 #include <ttg.h>
 #endif
 
@@ -104,7 +104,7 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     initialized_accessor() = true;
 
     // if have TTG initialize it also
-#ifdef TILEDARRAY_HAS_TTG
+#if TILEDARRAY_HAS_TTG
     ttg::initialize(argc, argv, -1, madness::ParsecRuntime::context());
 #endif
 
@@ -117,7 +117,7 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
 /// when TiledArray::initialize was called).
 void TiledArray::finalize() {
   // finalize in the reverse order of initialize
-#ifdef TILEDARRAY_HAS_TTG
+#if TILEDARRAY_HAS_TTG
   ttg::finalize();
 #endif
 

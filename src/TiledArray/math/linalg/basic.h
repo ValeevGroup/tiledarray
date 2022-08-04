@@ -31,6 +31,75 @@
 
 namespace TiledArray::math::linalg {
 
+/// known linear algebra backends
+enum LinearAlgebraBackend {
+  /// choose the best that's available, taking into consideration the problem
+  /// size and # of ranks
+  BestAvailable,
+  /// LAPACK on rank 0, followed by broadcast
+  LAPACK,
+  /// ScaLAPACK
+  ScaLAPACK,
+  /// TTG (currently only provides cholesky and cholesky_linv)
+  TTG
+};
+
+namespace detail {
+
+inline LinearAlgebraBackend& linalg_backend_accessor() {
+  static LinearAlgebraBackend backend = LinearAlgebraBackend::BestAvailable;
+  return backend;
+}
+
+inline std::size_t& linalg_crossover_to_distributed_accessor() {
+  static std::size_t crossover_to_distributed = 2048 * 2048;
+  return crossover_to_distributed;
+}
+
+}  // namespace detail
+
+/// @return the linear algebra backend to use for matrix algebra
+/// @note the default is LinearAlgebraBackend::BestAvailable
+inline LinearAlgebraBackend get_linalg_backend() {
+  return detail::linalg_backend_accessor();
+}
+
+/// @param[in] b the linear algebra backend to use after this
+/// @note this is a collective call over the default world
+inline void set_linalg_backend(LinearAlgebraBackend b) {
+  get_default_world().gop.fence();
+  detail::linalg_backend_accessor() = b;
+}
+
+/// @return the crossover-to-distributed threshold specifies the matrix volume
+/// for which to switch to the distributed-memory backend (if available) for
+/// linear algebra solvers
+inline std::size_t get_linalg_crossover_to_distributed() {
+  return detail::linalg_crossover_to_distributed_accessor();
+}
+
+/// @param[in] c the crossover-to-distributed threshold to use following this
+/// call
+/// @note this is a collective call over the default world
+inline void set_linalg_crossover_to_distributed(std::size_t c) {
+  get_default_world().gop.fence();
+  detail::linalg_crossover_to_distributed_accessor() = c;
+}
+
+namespace detail {
+
+template <typename Tile, typename Policy>
+inline bool prefer_distributed(const DistArray<Tile, Policy>& matrix) {
+  const auto prefer_distributed =
+      get_linalg_backend() == LinearAlgebraBackend::BestAvailable &&
+      matrix.elements_range().volume() >=
+          get_linalg_crossover_to_distributed() &&
+      matrix.world().size() > 1;
+  return prefer_distributed;
+}
+
+}  // namespace detail
+
 // freestanding adaptors for DistArray needed by solvers like DIIS
 
 template <typename Tile, typename Policy>
@@ -60,7 +129,19 @@ inline void axpy(DistArray<Tile, Policy>& y, S alpha,
   y(vars) = y(vars) + numeric_type(alpha) * x(vars);
 }
 
+namespace non_distributed {}
+namespace scalapack {}
+namespace ttg {}
+
 }  // namespace TiledArray::math::linalg
+
+namespace TiledArray {
+using TiledArray::math::linalg::get_linalg_backend;
+using TiledArray::math::linalg::get_linalg_crossover_to_distributed;
+using TiledArray::math::linalg::LinearAlgebraBackend;
+using TiledArray::math::linalg::set_linalg_backend;
+using TiledArray::math::linalg::set_linalg_crossover_to_distributed;
+}  // namespace TiledArray
 
 namespace Eigen {
 
@@ -108,5 +189,89 @@ inline auto norm2(const Eigen::MatrixBase<Derived>& m) {
 }
 
 }  // namespace Eigen
+
+#ifndef TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG
+#if TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
+#define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)           \
+  TA_MAX_THREADS;                                                   \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG ||          \
+      TiledArray::math::linalg::detail::prefer_distributed(MATRIX)) \
+    return TiledArray::math::linalg::ttg::FN;                       \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK ||    \
+      TiledArray::math::linalg::detail::prefer_distributed(MATRIX)) \
+    return scalapack::FN;                                           \
+  return non_distributed::FN;
+#elif TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
+#define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)               \
+  TA_MAX_THREADS;                                                       \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG ||              \
+      TiledArray::math::linalg::detail::prefer_distributed(MATRIX))     \
+    return TiledArray::math::linalg::ttg::FN;                           \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
+    TA_EXCEPTION("ScaLAPACK lineear algebra backend is not available"); \
+  return non_distributed::FN;
+#elif !TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
+#define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)           \
+  TA_MAX_THREADS;                                                   \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)            \
+    TA_EXCEPTION("TTG linear algebra backend is not available");    \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK ||    \
+      TiledArray::math::linalg::detail::prefer_distributed(MATRIX)) \
+    return scalapack::FN;                                           \
+  return non_distributed::FN;
+#else  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
+#define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)               \
+  TA_MAX_THREADS;                                                       \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)                \
+    TA_EXCEPTION("TTG linear algebra backend is not available");        \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
+    TA_EXCEPTION("ScaLAPACK lineear algebra backend is not available"); \
+  return non_distributed::FN;
+#endif  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
+#endif  // defined(TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG)
+
+#ifndef TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG_STRINGIFY
+#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG_STRINGIFY(FN) #FN
+#endif  // defined(TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG_STRINGIFY)
+
+#ifndef TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG
+#if TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
+#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)          \
+  TA_MAX_THREADS;                                                   \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)            \
+    TA_EXCEPTION(TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG_STRINGIFY(  \
+        FN) " is not provided by the TTG backend");                 \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK ||    \
+      TiledArray::math::linalg::detail::prefer_distributed(MATRIX)) \
+    return scalapack::FN;                                           \
+  return non_distributed::FN;
+#elif TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
+#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)              \
+  TA_MAX_THREADS;                                                       \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)                \
+    TA_EXCEPTION(TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG_STRINGIFY(      \
+        FN) " is not provided by the TTG backend");                     \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
+    TA_EXCEPTION("ScaLAPACK lineear algebra backend is not available"); \
+  return non_distributed::FN;
+#elif !TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
+#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)          \
+  TA_MAX_THREADS;                                                   \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)            \
+    TA_EXCEPTION("TTG linear algebra backend is not available");    \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK ||    \
+      TiledArray::math::linalg::detail::prefer_distributed(MATRIX)) \
+    return scalapack::FN;                                           \
+  return non_distributed::FN;
+#else  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
+#define TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(FN, MATRIX)              \
+  TA_MAX_THREADS;                                                       \
+  if (get_linalg_backend() == LinearAlgebraBackend::TTG)                \
+    TA_EXCEPTION("TTG linear algebra backend is not available");        \
+  if (get_linalg_backend() == LinearAlgebraBackend::ScaLAPACK)          \
+    TA_EXCEPTION("ScaLAPACK lineear algebra backend is not available"); \
+  return non_distributed::FN;
+#endif  // !TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
+#endif  // defined(TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG)
 
 #endif  // TILEDARRAY_MATH_LINALG_BASIC_H__INCLUDED
