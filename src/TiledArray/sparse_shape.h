@@ -1587,9 +1587,9 @@ class SparseShape {
   }
 
   template <typename Archive,
-            typename std::enable_if<
-                madness::is_input_archive_v<Archive>>::type* = nullptr>
-  void serialize(const Archive& ar) {
+            typename std::enable_if<madness::is_input_archive_v<
+                std::decay_t<Archive>>>::type* = nullptr>
+  void serialize(Archive& ar) {
     ar& tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();
     // allocate size_vectors_
@@ -1600,9 +1600,9 @@ class SparseShape {
   }
 
   template <typename Archive,
-            typename std::enable_if<
-                madness::is_output_archive_v<Archive>>::type* = nullptr>
-  void serialize(const Archive& ar) const {
+            typename std::enable_if<madness::is_output_archive_v<
+                std::decay_t<Archive>>>::type* = nullptr>
+  void serialize(Archive& ar) const {
     ar& tile_norms_;
     const unsigned int dim = tile_norms_.range().rank();
     for (unsigned d = 0; d != dim; ++d) ar& size_vectors_.get()[d];

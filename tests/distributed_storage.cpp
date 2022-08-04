@@ -46,7 +46,7 @@ struct DistributeOp {
   void operator()(std::size_t, int) const { ++count; }
 
   template <typename Archive>
-  void serialize(const Archive&) {}
+  void serialize(Archive&) {}
 };
 
 madness::AtomicInt DistributeOp::count;

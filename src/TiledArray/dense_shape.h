@@ -368,7 +368,7 @@ class DenseShape {
   }
 
   template <typename Archive>
-  void serialize(const Archive& ar) const {}
+  void serialize(Archive& ar) const {}
 
  private:
   inline static value_type threshold_ =
