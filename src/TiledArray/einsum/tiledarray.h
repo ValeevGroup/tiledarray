@@ -2,6 +2,7 @@
 #define TILEDARRAY_EINSUM_H__INCLUDED
 
 #include "TiledArray/fwd.h"
+#include "TiledArray/dist_array.h"
 #include "TiledArray/expressions/fwd.h"
 #include "TiledArray/einsum/index.h"
 #include "TiledArray/einsum/range.h"
@@ -53,6 +54,8 @@ auto einsum(
 {
 
   using Array = std::remove_cv_t<Array_>;
+  using Tensor = typename Array::value_type;
+  using Shape = typename Array::shape_type;
 
   auto a = std::get<0>(Einsum::idx(A));
   auto b = std::get<0>(Einsum::idx(B));
@@ -103,6 +106,7 @@ auto einsum(
     TiledRange ei_tiled_range;
     Array ei;
     std::string expr;
+    std::vector< std::pair<Einsum::Index<size_t>,Tensor> > local_tiles;
     bool own(Einsum::Index<size_t> h) const {
       for (Einsum::Index<size_t> ei : tiles) {
         auto idx = apply_inverse(permutation, h+ei);
@@ -149,7 +153,6 @@ auto einsum(
   }
 
   using Index = Einsum::Index<size_t>;
-  using Tensor = typename Array::value_type;
 
   if constexpr(std::tuple_size<decltype(cs)>::value > 1) {
     TA_ASSERT(e);
@@ -169,7 +172,7 @@ auto einsum(
       for (size_t i = 0; i < h.size(); ++i) {
         batch *= H.batch[i].at(h[i]);
       }
-      Tensor tile(TiledArray::Range{batch});
+      Tensor tile(TiledArray::Range{batch}, typename Tensor::value_type());
       for (Index i : tiles) {
         // skip this unless both input tiles exist
         const auto pahi_inv = apply_inverse(pa,h+i);
@@ -208,6 +211,7 @@ auto einsum(
   }
 
   std::vector< std::shared_ptr<World> > worlds;
+  std::vector< std::tuple<Index,Tensor> > local_tiles;
 
   // iterates over tiles of hadamard indices
   for (Index h : H.tiles) {
@@ -222,21 +226,29 @@ auto einsum(
       batch *= H.batch[i].at(h[i]);
     }
     for (auto &term : AB) {
-      term.ei = Array(*owners, term.ei_tiled_range);
+      term.local_tiles.clear();
       const Permutation &P = term.permutation;
       for (Index ei : term.tiles) {
         auto idx = apply_inverse(P, h+ei);
         if (!term.array.is_local(idx)) continue;
+        if (term.array.is_zero(idx)) continue;
         auto tile = term.array.find(idx).get();
         if (P) tile = tile.permute(P);
-        auto shape = term.ei.trange().tile(ei);
+        auto shape = term.ei_tiled_range.tile(ei);
         tile = tile.reshape(shape, batch);
-        term.ei.set(ei, tile);
+        term.local_tiles.push_back({ei, tile});
       }
+      term.ei = TiledArray::make_array<Array>(
+        *owners,
+        term.ei_tiled_range,
+        term.local_tiles.begin(),
+        term.local_tiles.end()
+      );
     }
     C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
     for (Index e : C.tiles) {
       if (!C.ei.is_local(e)) continue;
+      if (C.ei.is_zero(e)) continue;
       auto tile = C.ei.find(e).get();
       assert(tile.batch_size() == batch);
       const Permutation &P = C.permutation;
@@ -245,12 +257,27 @@ auto einsum(
       shape = apply_inverse(P, shape);
       tile = tile.reshape(shape);
       if (P) tile = tile.permute(P);
-      C.array.set(c, tile);
+      local_tiles.push_back({c, tile});
     }
     // mark for lazy deletion
     A.ei = Array();
     B.ei = Array();
     C.ei = Array();
+  }
+
+  if constexpr (!Shape::is_dense()) {
+    TiledRange tiled_range = TiledRange(range_map[c]);
+    std::vector< std::pair<Index,float> > tile_norms;
+    for (auto& [index,tile] : local_tiles) {
+      tile_norms.push_back({index,tile.norm()});
+    }
+    Shape shape(world, tile_norms, tiled_range);
+    C.array = Array(world, TiledRange(range_map[c]), shape);
+  }
+
+  for (auto& [index,tile] : local_tiles) {
+    if (C.array.is_zero(index)) continue;
+    C.array.set(index, tile);
   }
 
   for (auto &w : worlds) {
