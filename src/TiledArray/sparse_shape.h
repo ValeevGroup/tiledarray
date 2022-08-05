@@ -296,11 +296,33 @@ class SparseShape {
         zero_tile_count_(tile_norm < threshold_ ? trange.tiles_range().area()
                                                 : 0ul) {}
 
-  /// "Dense" constructor
+  /// Constructs a SparseShape from a functor returning norm values
 
-  /// This constructor will scale the tile norms, i.e. multiply each tile norm
-  /// by the inverse of its volume.
-  /// \param tile_norms The Frobenius norm of tiles by default
+  /// \tparam Op callable of signature `value_type(const Range::index&)`
+  /// \param tile_norm_op a functor that returns Frobenius norms of tiles
+  /// \param trange The tiled range of the tensor
+  /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
+  /// are already scaled
+  template <typename Op>
+  SparseShape(Op&& tile_norm_op, const TiledRange& trange,
+              bool do_not_scale = false)
+      : tile_norms_(trange.tiles_range(), std::forward<Op>(tile_norm_op)),
+        size_vectors_(initialize_size_vectors(trange)),
+        zero_tile_count_(0ul) {
+    TA_ASSERT(!tile_norms_.empty());
+    TA_ASSERT(tile_norms_.range() == trange.tiles_range());
+
+    if (!do_not_scale) {
+      zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(
+          tile_norms_, size_vectors_.get());
+    } else {
+      zero_tile_count_ = screen_out_zero_tiles();
+    }
+  }
+
+  /// Constructor from a tensor of (scaled/unscaled) norm values
+
+  /// \param tile_norms The Frobenius norm of tiles
   /// \param trange The tiled range of the tensor
   /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
   /// are already scaled

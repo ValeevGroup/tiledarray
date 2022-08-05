@@ -231,6 +231,22 @@ class Tensor {
     detail::tensor_init([value]() -> Value { return value; }, *this);
   }
 
+  /// Construct a tensor with a fill op that takes an element index
+
+  /// \tparam ElementIndexOp callable of signature `value_type(const
+  /// Range::index_type&)` \param range An array with the size of of each
+  /// dimension \param element_idx_op a callable of type ElementIndexOp
+  template <typename ElementIndexOp,
+            typename = std::enable_if_t<std::is_invocable_r_v<
+                value_type, ElementIndexOp, const Range::index_type&>>>
+  Tensor(const range_type& range, const ElementIndexOp& element_idx_op)
+      : Tensor(range, 1, default_construct{false}) {
+    auto* data_ptr = data_.get();
+    for (auto&& element_idx : range) {
+      data_ptr[range.ordinal(element_idx)] = element_idx_op(element_idx);
+    }
+  }
+
   /// Construct an evaluated tensor
   template <typename InIter,
             typename std::enable_if<
