@@ -60,6 +60,8 @@ auto cholesky(const Array& A, TiledRange l_trange = {},
   using value_type = typename Array::element_type;
   using Tile = typename Array::value_type;
   using Policy = typename Array::policy_type;
+  using shape_type = typename Policy::shape_type;
+  constexpr auto is_dense_policy = is_dense_v<Policy>;
 
   ::ttg::Edge<Key2, MatrixTile<double>> input;
   ::ttg::Edge<Key2, MatrixTile<double>> output;
@@ -69,7 +71,13 @@ auto cholesky(const Array& A, TiledRange l_trange = {},
                                          /* defer_write = */ true);
 
   // make result
-  Array L(A.world(), A.trange(),
+  shape_type L_shape;
+  if constexpr (!is_dense_policy)
+    L_shape = shape_type(
+        math::linalg::detail::symmetric_matrix_shape<lapack::Uplo::Lower,
+                                                     float>(1),
+        A.trange());
+  Array L(A.world(), A.trange(), L_shape,
           A.pmap());  // potrf produces a dense result for now
   auto store_potrf_ttg =
       make_writer_ttg<lapack::Layout::ColMajor, lapack::Uplo::Lower>(
@@ -121,6 +129,8 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = {},
   using value_type = typename Array::element_type;
   using Tile = typename Array::value_type;
   using Policy = typename Array::policy_type;
+  using shape_type = typename Policy::shape_type;
+  constexpr auto is_dense_policy = is_dense_v<Policy>;
 
   ::ttg::Edge<Key2, MatrixTile<double>> input;
   ::ttg::Edge<Key2, MatrixTile<double>> potrf2trtri;
@@ -138,11 +148,18 @@ auto cholesky_linv(const Array& A, TiledRange l_trange = {},
                                                /* defer_write = */ true);
 
   // make result(s)
+  shape_type L_shape;
+  if constexpr (!is_dense_policy)
+    L_shape = shape_type(
+        math::linalg::detail::symmetric_matrix_shape<lapack::Uplo::Lower,
+                                                     float>(1),
+        A.trange(),
+        /* per-element norm values already */ true);
   Array L;
   if constexpr (Both)
-    L = Array(A.world(), A.trange(),
+    L = Array(A.world(), A.trange(), L_shape,
               A.pmap());  // trtri produces a dense result for now
-  Array Linv(A.world(), A.trange(),
+  Array Linv(A.world(), A.trange(), L_shape,  // Linv has same shape as L
              A.pmap());  // trtri produces a dense result for now
   std::unique_ptr<::ttg::TTBase> store_potrf_tt_ptr;
   if constexpr (Both) {

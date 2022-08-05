@@ -98,6 +98,23 @@ inline bool prefer_distributed(const DistArray<Tile, Policy>& matrix) {
   return prefer_distributed;
 }
 
+template <lapack::Uplo Uplo, typename T = float>
+struct symmetric_matrix_shape {
+  symmetric_matrix_shape(T v) : v_(v) {}
+  T operator()(const Range::index_type& idx) const {
+    TA_ASSERT(idx.size() == 2);
+    if constexpr (Uplo == lapack::Uplo::Lower) {
+      return (idx[0] >= idx[1]) ? v_ : 0.;
+    } else if constexpr (Uplo == lapack::Uplo::Upper) {
+      return (idx[0] <= idx[1]) ? v_ : 0.;
+    } else {  // Uplo == lapack::Uplo::General
+      return v_;
+    }
+  }
+
+  T v_;
+};
+
 }  // namespace detail
 
 // freestanding adaptors for DistArray needed by solvers like DIIS

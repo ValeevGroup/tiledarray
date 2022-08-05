@@ -224,6 +224,9 @@ auto make_writer_ttg(
     ::ttg::Edge<Key2, MatrixTile<typename Tile::value_type>>& result,
     bool defer_write) {
   using T = typename Tile::value_type;
+  constexpr auto is_dense_policy = is_dense_v<Policy>;
+  constexpr auto is_sparse_policy = !is_dense_policy;
+
   auto keymap2 = [pmap = A.pmap_shared(),
                   range = A.trange().tiles_range()](const Key2& key) {
     const auto IJ = range.ordinal({key.I, key.J});
@@ -240,7 +243,11 @@ auto make_writer_ttg(
     const int J = key.J;
     auto rng = A.trange().make_tile_range({I, J});
     if constexpr (Uplo != lapack::Uplo::General) {
-      if (I != J) {                                   // zero tile
+      if (I != J &&
+          (is_dense_policy ||
+           (is_sparse_policy &&
+            !A.template is_zero(
+                {J, I})))) {  // write zero tiles that A does not know are zero
         if constexpr (Uplo == lapack::Uplo::Lower) {  // zero out upper
           TA_ASSERT(I > J);
           A.set({J, I}, Tile(A.trange().make_tile_range({J, I}), 0.0));
@@ -285,6 +292,9 @@ auto make_writer_ttg(
         }
       }
     }
+    TA_ASSERT(!A.template is_zero(
+        {I, J}));  // make sure that the nonzero tile produced by TTG is known
+                   // to be non-zero by A
     A.set({I, J}, std::move(tile_IJ));
     if (::ttg::tracing()) ::ttg::print("WRITE2TA(", key, ")");
   };
