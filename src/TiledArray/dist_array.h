@@ -259,7 +259,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// assigned by the user.
   /// \param world The world where the array will live.
   /// \param trange The tiled range object that will be used to set the array
-  /// tiling. \param pmap The tile index -> process map
+  /// tiling.
+  /// \param pmap The tile index -> process map
   DistArray(World& world, const trange_type& trange,
             const std::shared_ptr<const pmap_interface>& pmap = {})
       : pimpl_(init(world, trange, shape_type(1, trange), pmap)) {}
