@@ -158,6 +158,21 @@ class TiledRange1 {
   /// \return the number of elements in the range
   index1_type extent() const { return TiledArray::extent(elements_range_); }
 
+  /// Computes hashmarks
+  /// \return the hashmarks of the tiled range, consisting of the following
+  /// values:
+  ///         `{ tile(0).first, tile(0).second, tile(1).second, tile(2).second
+  ///         ... }`
+  std::vector<index1_type> hashmarks() const {
+    std::vector<index1_type> result;
+    result.reserve(tile_extent() + 1);
+    result.push_back(elements_range().first);
+    for (auto& t : tiles_ranges_) {
+      result.push_back(t.second);
+    }
+    return result;
+  }
+
   /// \return the size of the largest tile in the range
   /// \pre `this->tile_extent() > 0`
   index1_type largest_tile_extent() const {
