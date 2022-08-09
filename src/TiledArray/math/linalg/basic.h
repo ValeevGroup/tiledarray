@@ -26,65 +26,12 @@
 #ifndef TILEDARRAY_MATH_LINALG_BASIC_H__INCLUDED
 #define TILEDARRAY_MATH_LINALG_BASIC_H__INCLUDED
 
+#include "TiledArray/math/linalg/forward.h"
+
 #include "TiledArray/dist_array.h"
 #include "TiledArray/external/eigen.h"
 
 namespace TiledArray::math::linalg {
-
-/// known linear algebra backends
-enum LinearAlgebraBackend {
-  /// choose the best that's available, taking into consideration the problem
-  /// size and # of ranks
-  BestAvailable,
-  /// LAPACK on rank 0, followed by broadcast
-  LAPACK,
-  /// ScaLAPACK
-  ScaLAPACK,
-  /// TTG (currently only provides cholesky and cholesky_linv)
-  TTG
-};
-
-namespace detail {
-
-inline LinearAlgebraBackend& linalg_backend_accessor() {
-  static LinearAlgebraBackend backend = LinearAlgebraBackend::BestAvailable;
-  return backend;
-}
-
-inline std::size_t& linalg_crossover_to_distributed_accessor() {
-  static std::size_t crossover_to_distributed = 2048 * 2048;
-  return crossover_to_distributed;
-}
-
-}  // namespace detail
-
-/// @return the linear algebra backend to use for matrix algebra
-/// @note the default is LinearAlgebraBackend::BestAvailable
-inline LinearAlgebraBackend get_linalg_backend() {
-  return detail::linalg_backend_accessor();
-}
-
-/// @param[in] b the linear algebra backend to use after this
-/// @note this is a collective call over the default world
-inline void set_linalg_backend(LinearAlgebraBackend b) {
-  get_default_world().gop.fence();
-  detail::linalg_backend_accessor() = b;
-}
-
-/// @return the crossover-to-distributed threshold specifies the matrix volume
-/// for which to switch to the distributed-memory backend (if available) for
-/// linear algebra solvers
-inline std::size_t get_linalg_crossover_to_distributed() {
-  return detail::linalg_crossover_to_distributed_accessor();
-}
-
-/// @param[in] c the crossover-to-distributed threshold to use following this
-/// call
-/// @note this is a collective call over the default world
-inline void set_linalg_crossover_to_distributed(std::size_t c) {
-  get_default_world().gop.fence();
-  detail::linalg_crossover_to_distributed_accessor() = c;
-}
 
 namespace detail {
 
@@ -208,7 +155,7 @@ inline auto norm2(const Eigen::MatrixBase<Derived>& m) {
 }  // namespace Eigen
 
 #ifndef TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG
-#if TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK
+#if (TILEDARRAY_HAS_TTG && TILEDARRAY_HAS_SCALAPACK)
 #define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)           \
   TA_MAX_THREADS;                                                   \
   if (get_linalg_backend() == LinearAlgebraBackend::TTG ||          \
@@ -218,7 +165,7 @@ inline auto norm2(const Eigen::MatrixBase<Derived>& m) {
       TiledArray::math::linalg::detail::prefer_distributed(MATRIX)) \
     return scalapack::FN;                                           \
   return non_distributed::FN;
-#elif TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK
+#elif (TILEDARRAY_HAS_TTG && !TILEDARRAY_HAS_SCALAPACK)
 #define TILEDARRAY_MATH_LINALG_DISPATCH_W_TTG(FN, MATRIX)               \
   TA_MAX_THREADS;                                                       \
   if (get_linalg_backend() == LinearAlgebraBackend::TTG ||              \

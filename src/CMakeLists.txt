@@ -59,6 +59,7 @@ TiledArray/val_array.h
 ${PROJECT_BINARY_DIR}/src/TiledArray/version.h
 TiledArray/zero_tensor.h
 TiledArray/math/linalg/forward.h
+TiledArray/math/linalg/basic.h
 TiledArray/math/linalg/conjgrad.h
 TiledArray/math/linalg/diis.h
 TiledArray/math/linalg/util.h
@@ -226,6 +227,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
+TiledArray/math/linalg/basic.cpp
 TiledArray/math/linalg/rank-local.cpp
 )
 
