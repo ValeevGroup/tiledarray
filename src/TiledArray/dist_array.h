@@ -1730,14 +1730,22 @@ template<typename Array, typename Tiles>
 Array make_array(
   World &world,
   const detail::trange_t<Array> &tiled_range,
-  Tiles begin, Tiles end)
+  Tiles begin, Tiles end,
+  bool replicated)
 {
   Array array;
   using Tuple = std::remove_reference_t<decltype(*begin)>;
   using Index = std::tuple_element_t<0,Tuple>;
   using shape_type = typename Array::shape_type;
+
+  std::shared_ptr<typename Array::pmap_interface> pmap;
+  if (replicated) {
+    size_t ntiles = tiled_range.tiles_range().volume();
+    pmap = std::make_shared<detail::ReplicatedPmap>(world, ntiles);
+  }
+
   if constexpr (shape_type::is_dense()) {
-    array = Array(world, tiled_range);
+    array = Array(world, tiled_range, pmap);
   }
   else {
     std::vector< std::pair<Index,float> > tile_norms;
@@ -1746,7 +1754,7 @@ Array make_array(
       tile_norms.push_back({index,tile.norm()});
     }
     shape_type shape(world, tile_norms, tiled_range);
-    array = Array(world, tiled_range, shape);
+    array = Array(world, tiled_range, shape, pmap);
   }
   for (Tiles it = begin; it != end; ++it) {
     auto [index,tile] = *it;
