@@ -181,6 +181,7 @@ class Replicator : public madness::WorldObject<Replicator<A> >,
         if (!source.is_zero(*it)) {
           indices_.push_back(*it);
           data_.push_back(source.find(*it));
+          //source.find(*it).get().range();
           destination_.set(*it, data_.back());
         }
     }
