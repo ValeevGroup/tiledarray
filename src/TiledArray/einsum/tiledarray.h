@@ -228,6 +228,7 @@ auto einsum(
     for (auto &term : AB) {
       term.local_tiles.clear();
       const Permutation &P = term.permutation;
+
       for (Index ei : term.tiles) {
         auto idx = apply_inverse(P, h+ei);
         if (!term.array.is_local(idx)) continue;
@@ -238,11 +239,13 @@ auto einsum(
         tile = tile.reshape(shape, batch);
         term.local_tiles.push_back({ei, tile});
       }
+      bool replicated = term.array.pmap()->is_replicated();
       term.ei = TiledArray::make_array<Array>(
         *owners,
         term.ei_tiled_range,
         term.local_tiles.begin(),
-        term.local_tiles.end()
+        term.local_tiles.end(),
+        replicated
       );
     }
     C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
