@@ -181,6 +181,7 @@ auto einsum(
 
         auto ai = A.array.find(pahi_inv).get();
         auto bi = B.array.find(pbhi_inv).get();
+
         if (pa) ai = ai.permute(pa);
         if (pb) bi = bi.permute(pb);
         auto shape = trange.tile(i);
