@@ -43,6 +43,12 @@ namespace TiledArray {
 template <typename, typename>
 class Tensor;
 
+/// Convert a distributed array into a replicated array
+/// \throw TiledArray::Exception if the PIMPL is not initialized.
+/// Strong throw guarantee.
+template<typename T, typename P>
+DistArray<T,P> replicated(DistArray<T,P> a);
+
 /// A (multidimensional) tiled array
 
 /// DistArray is the local representation of a global object. This means that
@@ -1240,23 +1246,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
   void make_replicated() {
-    if ((!impl_ref().pmap()->is_replicated()) && (world().size() > 1)) {
-      // Construct a replicated array
-      auto pmap = std::make_shared<detail::ReplicatedPmap>(world(), size());
-      DistArray result = DistArray(world(), trange(), shape(), pmap);
-
-      // Create the replicator object that will do an all-to-all broadcast of
-      // the local tile data.
-      auto replicator =
-          std::make_shared<detail::Replicator<DistArray>>(*this, result);
-
-      // Put the replicator pointer in the deferred cleanup object so it will
-      // be deleted at the end of the next fence.
-      TA_ASSERT(replicator.unique());  // Required for deferred_cleanup
-      madness::detail::deferred_cleanup(world(), replicator);
-
-      DistArray::operator=(result);
-    }
+    DistArray::operator=(replicated(*this));
   }
 
   /// Update shape data and remove tiles that are below the zero threshold
@@ -1766,7 +1756,32 @@ Array make_array(
   return array;
 }
 
+template<typename T, typename P>
+DistArray<T,P> replicated(DistArray<T,P> a) {
 
+  auto &world = a.world();
+
+  if (a.pmap()->is_replicated() || (world.size() == 1)) {
+    return a;
+  }
+
+  // Construct a replicated array
+  auto pmap = std::make_shared<detail::ReplicatedPmap>(world, a.size());
+  DistArray<T,P> result = DistArray<T,P>(world, a.trange(), a.shape(), pmap);
+
+  // Create the replicator object that will do an all-to-all broadcast of
+  // the local tile data.
+  auto replicator =
+    std::make_shared<detail::Replicator<DistArray<T,P>>>(a, result);
+
+  // Put the replicator pointer in the deferred cleanup object so it will
+  // be deleted at the end of the next fence.
+  TA_ASSERT(replicator.unique());  // Required for deferred_cleanup
+  madness::detail::deferred_cleanup(world, replicator);
+
+  return result;
+
+}
 
 }  // namespace TiledArray
 
