@@ -273,7 +273,8 @@ auto einsum(
     TiledRange tiled_range = TiledRange(range_map[c]);
     std::vector< std::pair<Index,float> > tile_norms;
     for (auto& [index,tile] : local_tiles) {
-      tile_norms.push_back({index,tile.norm()});
+      //tile_norms.push_back({index,tile.norm()});
+      tile_norms.push_back({index,1.0});
     }
     Shape shape(world, tile_norms, tiled_range);
     C.array = Array(world, TiledRange(range_map[c]), shape);
