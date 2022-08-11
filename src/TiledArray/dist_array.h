@@ -438,17 +438,20 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// This is a distributed lazy destructor. The object will only be deleted
   /// after the last reference to the world object on all nodes has been
-  /// destroyed and there are no outstanding references to the object's data.
-  /// Use defer_deleter_to_next_fence() to defer the deletion of the destructor
-  /// to the next fence.
+  /// destroyed and there are no outstanding references to the object's data
+  /// (e.g., obtained by calling `this->find(idx)` for any `idx` with
+  /// `this->is_local(idx)==false`). However other types of references to
+  /// the object may exist (e.g. using references to local tiles),
+  /// and these are generally not tracked automatically.
+  /// In such case to defer the release of the object's data to the next fence
+  /// call `this->defer_deleter_to_next_fence()`.
   /// \sa defer_deleter_to_next_fence
   ~DistArray() { reset_pimpl(); }
 
   /// Defers deletion to the next fence
 
-  /// By default the destruction of the object's data occurs lazily, when
-  /// all local references to the object are gone and all _remote_ references
-  /// to the local object's data are gone. This is not always sufficient;
+  /// By default the destruction of the object's data occurs lazily;
+  /// see DistArray::~DistArray(). This is not always sufficient;
   /// call this at any point during object's lifetime to ensure that the
   /// lifetime of the object lasts to (just past)the next fence.
   void defer_deleter_to_next_fence() { defer_deleter_to_next_fence_ = true; }
@@ -519,10 +522,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     DistArray::wait_for_lazy_cleanup(world());
   }
 
+  // clang-format off
   /// Copy assignment
 
   /// This is a shallow copy, that is no data is copied.
   /// \param other The array to be copied
+  /// \post `other.pimpl()==this->pimpl() && other.deleter_deferred_to_next_fence()==this->deleter_deferred_to_next_fence()`
+  /// \note Hes the same semantics as the destructor w.r.t. when the data destruction occurs: if `this->deleter_deferred_to_next_fence()==true` this object's data will not be deleted until the next fence of this object's world.
+  // clang-format on
   DistArray& operator=(const DistArray& other) {
     // N.B. reset pimpl_ respecting defer_deleter_to_next_fence_
     reset_pimpl();
