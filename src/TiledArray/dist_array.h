@@ -929,6 +929,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         set(index, std::move(tile));
       }
     }
+
+    // N.B. to ensure that refs to pimpl outlive tasks defer pimpl reset to the
+    // netx fence
+    this->defer_deleter_to_next_fence();
   }
 
   /// Initialize elements of local, non-zero tiles with a user provided functor
