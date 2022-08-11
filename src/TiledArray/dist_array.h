@@ -912,10 +912,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
               if (pimpl_ptr)
                 return op_shared_handle(
                     pimpl_ptr->trange().make_tile_range(index));
-              else
+              else {
+                TA_ASSERT(false);
                 return {};
+              }
             });
-        set(index, tile);
+        set(index, std::move(tile));
       }
     }
   }
