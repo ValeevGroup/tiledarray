@@ -450,7 +450,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     }
   }
 
-  /// Defers deletion to the next fene
+  /// Defers deletion to the next fence
 
   /// By default the destruction of the object's data occurs lazily, when
   /// all local references to the object are gone and all _remote_ references
@@ -459,9 +459,19 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// lifetime of the object lasts to (just past)the next fence.
   void defer_deleter_to_next_fence() { defer_deleter_to_next_fence_ = true; }
 
+  /// Queries whether deletion is deferred to the next fence
+
+  /// \return true if deletion pf the object's data is deferred to the next
+  /// fence \sa defer_deleter_to_next_fence()
+  bool deleter_deferred_to_next_fence() const {
+    return defer_deleter_to_next_fence_;
+  }
+
   /// Create a deep copy of this array
 
   /// \return An array that is equal to this array
+  /// \warning `result.deleter_deferred_to_next_fence()` returns false even if
+  /// `this->deleter_deferred_to_next_fence()==true`
   DistArray clone() const { return TiledArray::clone(*this); }
 
   /// Accessor for the (shared_ptr to) implementation object
