@@ -442,13 +442,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Use defer_deleter_to_next_fence() to defer the deletion of the destructor
   /// to the next fence.
   /// \sa defer_deleter_to_next_fence
-  ~DistArray() {
-    if (defer_deleter_to_next_fence_) {
-      madness::detail::deferred_cleanup(
-          this->world(), pimpl_,
-          /* do_not_check_that_pimpl_is_unique = */ true);
-    }
-  }
+  ~DistArray() { reset_pimpl(); }
 
   /// Defers deletion to the next fence
 
@@ -1638,6 +1632,18 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   auto& impl_ref() {
     assert_pimpl();
     return *pimpl_;
+  }
+
+  /// resets pimpl immediately or, if
+  /// `this->deleter_deferred_to_next_fence()==true`, defers that until next
+  /// fence
+  void reset_pimpl() {
+    if (defer_deleter_to_next_fence_) {
+      madness::detail::deferred_cleanup(
+          this->world(), pimpl_,
+          /* do_not_check_that_pimpl_is_unique = */ true);
+    } else
+      pimpl_.reset();
   }
 
 };  // class DistArray
