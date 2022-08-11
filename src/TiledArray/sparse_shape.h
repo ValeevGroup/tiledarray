@@ -303,7 +303,10 @@ class SparseShape {
   /// \param trange The tiled range of the tensor
   /// \param do_not_scale if true, assume that the tile norms in \c tile_norms
   /// are already scaled
-  template <typename Op>
+  template <
+      typename Op,
+      typename = std::enable_if_t<std::is_invocable_r_v<
+          value_type, std::remove_reference_t<Op>, const Range::index_type&>>>
   SparseShape(Op&& tile_norm_op, const TiledRange& trange,
               bool do_not_scale = false)
       : tile_norms_(trange.tiles_range(), std::forward<Op>(tile_norm_op)),
