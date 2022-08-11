@@ -524,7 +524,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// This is a shallow copy, that is no data is copied.
   /// \param other The array to be copied
   DistArray& operator=(const DistArray& other) {
+    // N.B. reset pimpl_ respecting defer_deleter_to_next_fence_
+    reset_pimpl();
     pimpl_ = other.pimpl_;
+    // since *this and other share pimpl_ now makes sense for them to share
+    // defer_deleter_to_next_fence_
+    defer_deleter_to_next_fence_ = other.defer_deleter_to_next_fence_;
 
     return *this;
   }
