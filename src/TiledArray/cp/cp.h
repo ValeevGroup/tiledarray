@@ -187,11 +187,13 @@ class CP {
   Array
       MTtKRP,                      // matricized tensor times
                             // khatri rao product for check_fit()
-      unNormalized_Factor;         // The final factor unnormalized
+      unNormalized_Factor,         // The final factor unnormalized
                             // so you don't have to
                             // deal with lambda for check_fit()
-  std::vector<typename Tile::value_type>
-      lambda;                      // Column normalizations
+      lambda;               // column normalizations
+  //std::vector<typename Tile::value_type>
+  //    lambda;                      // Column normalizations
+
   size_t ndim;                     // number of factor matrices
   double prev_fit = 1.0,           // The fit of the previous ALS iteration
       final_fit,                // The final fit of the ALS
@@ -226,11 +228,25 @@ class CP {
     using Tensor = btas::Tensor<typename Array::element_type,
                                 btas::DEFAULT::range, btas::varray<typename Tile::value_type>>;
     Tensor factor(rank, mode_size);
+    auto lambda = std::vector<typename Tile::value_type>(rank, (typename Tile::value_type) 0);
     if(world.rank() == 0) {
       std::mt19937 generator(detail::random_seed_accessor());
       std::uniform_real_distribution<> distribution(-1.0, 1.0);
-      for (auto ptr = factor.begin(); ptr != factor.end(); ++ptr)
-        *ptr = distribution(generator);
+      auto factor_ptr = factor.data();
+      size_t offset = 0;
+      for(auto r = 0; r < rank; ++r, offset += mode_size){
+        auto lam_ptr = lambda.data() + r;
+        for(auto m = offset; m < offset + mode_size; ++m){
+          auto val = distribution(generator);
+          *(factor_ptr + m) = val;
+          *lam_ptr += val * val;
+        }
+        *lam_ptr = sqrt(*lam_ptr);
+        auto inv = (*lam_ptr < 1e-12 ? 1.0 :  1.0 / (*lam_ptr));
+        for(auto m = 0; m < mode_size; ++m){
+          *(factor_ptr + offset + m) *= inv;
+        }
+      }
     }
     world.gop.broadcast_serializable(factor, 0);
 
