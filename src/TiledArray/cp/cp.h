@@ -327,6 +327,7 @@ class CP {
     return W;
   }
 
+  /*
   /// Function to column normalize factor matrices
   /// \param[in, out] factor in: un-normalized factor matrix.
   /// out: column normalized factor matrix
@@ -345,6 +346,7 @@ class CP {
     factor("rp,n") = diag_lambda("rp,r") * factor("r,n");
     return lambda;
   }
+  */
 
   /// computes the column normalization of a given factor matrix \c factor
   /// stores the column norms in the lambda vector.
@@ -397,6 +399,7 @@ class CP {
     factor.truncate();
   }
 
+  /*
   std::vector<double> temp_normCol(Array & factor,
                                    size_t rank){
     std::vector<double> lambda(rank);
@@ -425,6 +428,7 @@ class CP {
     world.gop.fence();
     return lambda;
   }
+  */
 
   /// This function checks the fit and change in the
   /// fit for the CP loss function
