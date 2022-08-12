@@ -444,15 +444,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Use defer_deleter_to_next_fence() to defer the deletion of the destructor
   /// to the next fence.
   /// \sa defer_deleter_to_next_fence
-  ~DistArray() {
-    if (defer_deleter_to_next_fence_) {
-      madness::detail::deferred_cleanup(
-          this->world(), pimpl_,
-          /* do_not_check_that_pimpl_is_unique = */ true);
-    }
-  }
+  ~DistArray() { reset_pimpl(); }
 
-  /// Defers deletion to the next fene
+  /// Defers deletion to the next fence
 
   /// By default the destruction of the object's data occurs lazily, when
   /// all local references to the object are gone and all _remote_ references
@@ -461,9 +455,19 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// lifetime of the object lasts to (just past)the next fence.
   void defer_deleter_to_next_fence() { defer_deleter_to_next_fence_ = true; }
 
+  /// Queries whether deletion is deferred to the next fence
+
+  /// \return true if deletion pf the object's data is deferred to the next
+  /// fence \sa defer_deleter_to_next_fence()
+  bool deleter_deferred_to_next_fence() const {
+    return defer_deleter_to_next_fence_;
+  }
+
   /// Create a deep copy of this array
 
   /// \return An array that is equal to this array
+  /// \warning `result.deleter_deferred_to_next_fence()` returns false even if
+  /// `this->deleter_deferred_to_next_fence()==true`
   DistArray clone() const { return TiledArray::clone(*this); }
 
   /// Accessor for the (shared_ptr to) implementation object
@@ -522,7 +526,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// This is a shallow copy, that is no data is copied.
   /// \param other The array to be copied
   DistArray& operator=(const DistArray& other) {
+    // N.B. reset pimpl_ respecting defer_deleter_to_next_fence_
+    reset_pimpl();
     pimpl_ = other.pimpl_;
+    // since *this and other share pimpl_ now makes sense for them to share
+    // defer_deleter_to_next_fence_
+    defer_deleter_to_next_fence_ = other.defer_deleter_to_next_fence_;
 
     return *this;
   }
@@ -913,12 +922,18 @@ class DistArray : public madness::archive::ParallelSerializableObject {
               if (pimpl_ptr)
                 return op_shared_handle(
                     pimpl_ptr->trange().make_tile_range(index));
-              else
+              else {
+                TA_ASSERT(false);
                 return {};
+              }
             });
-        set(index, tile);
+        set(index, std::move(tile));
       }
     }
+
+    // N.B. to ensure that refs to pimpl outlive tasks defer pimpl reset to the
+    // netx fence
+    this->defer_deleter_to_next_fence();
   }
 
   /// Initialize elements of local, non-zero tiles with a user provided functor
@@ -1607,6 +1622,18 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   auto& impl_ref() {
     assert_pimpl();
     return *pimpl_;
+  }
+
+  /// resets pimpl immediately or, if
+  /// `this->deleter_deferred_to_next_fence()==true`, defers that until next
+  /// fence
+  void reset_pimpl() {
+    if (defer_deleter_to_next_fence_) {
+      madness::detail::deferred_cleanup(
+          this->world(), pimpl_,
+          /* do_not_check_that_pimpl_is_unique = */ true);
+    } else
+      pimpl_.reset();
   }
 
 };  // class DistArray
