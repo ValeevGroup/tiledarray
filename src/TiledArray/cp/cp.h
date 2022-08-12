@@ -310,25 +310,6 @@ class CP {
     MtKRP("r,n") = (U("r,s") * S("s,sp")) * (Vt("sp,rp") * MtKRP("rp,n"));
   }
 
-  /// Computes the grammian using partial_grammian vector.
-  /// If the partial_grammian vector is empty, compute using factors.
-  /// \returns TiledArray::DistArray <Tile,Policy> with grammian values.
-  auto compute_grammian(){
-    auto trange_rank = cp_factors[0].trange().data()[0];
-    Array W(trange_rank, trange_rank);
-    W.fill(1.0);
-    if(partial_grammian.empty()){
-      for(auto ptr = cp_factors.begin(); ptr != cp_factors.end(); ++ptr){
-        W("r,rp") *= (*ptr)("r,n") * (*ptr)("rp, n");
-      }
-    } else{
-      for(auto ptr = partial_grammian.begin(); ptr != partial_grammian.end(); ++ptr){
-        W("r,rp") *= (*ptr)("r,rp");
-      }
-    }
-    return W;
-  }
-
   /*
   /// Function to column normalize factor matrices
   /// \param[in, out] factor in: un-normalized factor matrix.
