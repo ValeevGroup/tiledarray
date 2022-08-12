@@ -181,7 +181,8 @@ class CP {
     return krp;
   }
  protected:
-  std::vector<Array >
+  std::vector< std::shared_ptr<World> > worlds; // vector of local worlds;
+  std::vector<Array>
       cp_factors,                   // the CP factor matrices
       partial_grammian;             // square of the factor matrices (r x r)
   Array

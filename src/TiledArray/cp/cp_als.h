@@ -46,6 +46,12 @@ class CP_ALS : public CP<Tile, Policy>{
     first_gemm_dim_last.insert(0, 1, detail::intToAlphabet(ndim));
     first_gemm_dim_last.pop_back(); first_gemm_dim_last.pop_back();
 
+    // Construct a vector which holds local worlds.
+    int world_rank =  world.rank();
+    auto comm = world.mpi.comm().Split(world_rank, world_rank);
+    this->worlds.push_back(std::make_unique<World>(comm));
+    world.gop.fence();
+
     this->norm_reference = norm2(tref);
   }
 
