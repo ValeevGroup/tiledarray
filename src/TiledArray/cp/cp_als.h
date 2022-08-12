@@ -76,8 +76,6 @@ class CP_ALS : public CP<Tile, Policy>{
         auto factor = this->construct_random_factor(
             world, rank, reference.trange().elements_range().extent(i),
             rank_trange, reference.trange().data()[i]);
-        lambda = this->normalize_factor(factor, rank,
-                                        TiledRange({rank_trange1, rank_trange1}));
         cp_factors.emplace_back(factor);
       }
     } else{
