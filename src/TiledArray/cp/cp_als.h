@@ -99,6 +99,7 @@ class CP_ALS : public CP<Tile, Policy>{
       auto ptr = this->partial_grammian.begin();
       for (auto& i : cp_factors) {
         (*ptr)("r,rp") = i("r,n") * i("rp, n");
+        (*ptr) = replicated((*ptr));
         ++ptr;
       }
     }
@@ -108,7 +109,9 @@ class CP_ALS : public CP<Tile, Policy>{
       for(auto i = 0; i < ndim; ++i){
         update_factor(i, rank);
         const auto & a = *(factor_begin + i);
-        (*(gram_begin + i))("r,rp") = a("r,n") * a("rp,n");
+        auto & w = *(gram_begin + i);
+        w("r,rp") = a("r,n") * a("rp,n");
+        w = replicated(w);
       }
       converged = this->check_fit(verbose);
       ++iter;
@@ -146,15 +149,16 @@ class CP_ALS : public CP<Tile, Policy>{
         continue;
       }
 
+      set_default_world(*this->worlds.back());
+      W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");
+      set_default_world(world);
       contract.replace(2, 1, 1, detail::intToAlphabet(contracted_index));
       mixed_contractions.erase(mcont_ptr + remove_index_start,
                                mcont_ptr + remove_index_end);
 
       An = einsum(An(final), cp_factors[contracted_index](contract), mixed_contractions);
-      //std::cout << An << std::endl;
 
       final = mixed_contractions;
-      W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");;
     }
 
     if(mode == ndim - 1) this->MTtKRP = An;
