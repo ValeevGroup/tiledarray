@@ -152,6 +152,8 @@ class CP_ALS : public CP<Tile, Policy>{
       set_default_world(*this->worlds.back());
       W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");
       set_default_world(world);
+      world.gop.fence();
+
       contract.replace(2, 1, 1, detail::intToAlphabet(contracted_index));
       mixed_contractions.erase(mcont_ptr + remove_index_start,
                                mcont_ptr + remove_index_end);
@@ -166,8 +168,7 @@ class CP_ALS : public CP<Tile, Policy>{
     this->cholesky_inverse(An, W);
 
     if(mode == ndim - 1) this->unNormalized_Factor = An;
-    lambda = this->normalize_factor(An, rank,
-                                    TiledRange({rank_trange1, rank_trange1}));
+    this->normCol(An, rank);
   }
 };
 } // namespace TiledArray::cp

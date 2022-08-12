@@ -250,6 +250,7 @@ class CP {
       }
     }
     world.gop.broadcast_serializable(factor, 0);
+    world.gop.broadcast_serializable(lambda, 0);
 
     return TiledArray::btas_tensor_to_array<
         Array >
@@ -385,7 +386,6 @@ class CP {
     // The column norms will be computed on each MPI rank to
     // avoid communication.
 
-    std::cout << factor << std::endl;
     auto &owners = worlds.back();
     set_default_world(*owners);
     for (int r = 0; r < r_tiles; ++r) {
@@ -396,8 +396,7 @@ class CP {
     }
     set_default_world(world);
     world.gop.fence();
-    std::cout << factor << std::endl;
-    factor.truncate();
+    factor = replicated(factor);
   }
 
   /*
