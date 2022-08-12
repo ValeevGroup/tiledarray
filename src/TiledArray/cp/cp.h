@@ -351,23 +351,50 @@ class CP {
   /// Also normalizes the columns of \c factor
   /// \param[in,out] factor in: unnormalized factor matrix, out: column
   /// normalized factor matrix
-  void normCol(Array &factor, size_t rank){
-    auto & world = factor.world();
-    //lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
-    //std::vector<typename Tile::value_type> lambda_vector;
-    //lambda_vector.reserve(rank);
-    auto lambda_vector = temp_normCol(factor, rank);
-    //    foreach_inplace(lambda, [&](auto& tile){
-    //      for(auto & i : tile) {
-    //        i = sqrt((i));
-    //        lambda_vector.emplace_back(i);
-    //      }
-    //    }, true);
-    auto & tr1_rank = factor.trange().data()[0];
-    auto diag_ = diagonal_array<Array>(world,
-                                       TiledArray::TiledRange({tr1_rank, tr1_rank}),
-                                       lambda_vector.begin(), lambda_vector.end());
-    factor("rp,n") =  diag_("rp,r") * factor("r,n");
+  void normCol(Array &factor, size_t rank) {
+    auto& world = factor.world();
+    factor = replicated(factor);
+    //lambda = expressions::einsum("rn,rn->r",factor, factor);
+    lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
+    lambda = replicated(lambda);
+    auto text = factor.trange().tiles_range().extent_data();
+    auto r_tiles = text[0], n_tiles = text[1];
+
+    auto scale_factor = [&factor](int r, int n, Tile& tile) {
+      //if (factor.is_zero({r, n})) return 1;
+      auto fac_tile = factor.find({r, n}).get();
+      auto lo = tile.range().lobound_data();
+      auto up = tile.range().upbound_data();
+      auto ptr_tile = tile.begin(), ptr_factor = fac_tile.begin();
+      typename Tile::value_type norm2 = 0.0;
+      for (auto R = lo[0]; R < up[0]; ++R, ++ptr_tile) {
+        norm2 += *ptr_tile;
+        *ptr_tile = sqrt((*ptr_tile));
+        if ((*ptr_tile) < 1e-12) continue;
+        auto val = 1.0 / (*ptr_tile);
+        for (auto N = lo[1]; N < up[1]; ++N, ++ptr_factor) {
+          (*ptr_factor) *= val;
+        }
+      }
+      norm2 = sqrt(norm2);
+      return 1;
+    };
+    // The column norms will be computed on each MPI rank to
+    // avoid communication.
+
+    std::cout << factor << std::endl;
+    auto &owners = worlds.back();
+    set_default_world(*owners);
+    for (int r = 0; r < r_tiles; ++r) {
+      auto tile = lambda.find(r).get();
+      for (int n = 0; n < n_tiles; ++n) {
+        (*owners).taskq.add(scale_factor,r, n, tile);
+      }
+    }
+    set_default_world(world);
+    world.gop.fence();
+    std::cout << factor << std::endl;
+    factor.truncate();
   }
 
   std::vector<double> temp_normCol(Array & factor,
