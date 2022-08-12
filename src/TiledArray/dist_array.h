@@ -921,24 +921,13 @@ class DistArray : public madness::archive::ParallelSerializableObject {
           if (fut.probe()) continue;
         }
         Future<value_type> tile = pimpl_->world().taskq.add(
-            [pimpl = this->weak_pimpl(), index = ordinal_type(index),
+            [pimpl = pimpl_, index = ordinal_type(index),
              op_shared_handle]() -> value_type {
-              auto pimpl_ptr = pimpl.lock();
-              if (pimpl_ptr)
-                return op_shared_handle(
-                    pimpl_ptr->trange().make_tile_range(index));
-              else {
-                TA_ASSERT(false);
-                return {};
-              }
+              return op_shared_handle(pimpl->trange().make_tile_range(index));
             });
         set(index, std::move(tile));
       }
     }
-
-    // N.B. to ensure that refs to pimpl outlive tasks defer pimpl reset to the
-    // netx fence
-    this->defer_deleter_to_next_fence();
   }
 
   /// Initialize elements of local, non-zero tiles with a user provided functor
