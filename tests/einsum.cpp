@@ -695,4 +695,32 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_hji_jih_hj) {
   );
 }
 
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_replicated) {
+  einsum_tiledarray_check<3,3,3>(
+    replicated(random<DensePolicy>(7,14,3)),
+    random<DensePolicy>(7,15,3),
+    "hai,hbi->hab"
+  );
+  einsum_tiledarray_check<3,3,3>(
+    random<DensePolicy>(7,14,3),
+    replicated(random<DensePolicy>(7,15,3)),
+    "hai,hbi->hab"
+  );
+  einsum_tiledarray_check<3,3,3>(
+    replicated(random<DensePolicy>(7,14,3)),
+    replicated(random<DensePolicy>(7,15,3)),
+    "hai,hbi->hab"
+  );
+  einsum_tiledarray_check<2,2,1>(
+    replicated(random<SparsePolicy>(7,14)),
+    random<SparsePolicy>(7,14),
+    "hi,hi->h"
+  );
+  einsum_tiledarray_check<2,2,1>(
+    replicated(random<SparsePolicy>(7,14)),
+    replicated(random<SparsePolicy>(7,14)),
+    "hi,hi->h"
+  );
+}
+
 BOOST_AUTO_TEST_SUITE_END()

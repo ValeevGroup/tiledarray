@@ -33,22 +33,6 @@ set(executable ta_test)
 # N.B. 2: if you want to trim this down you may need to resolve linker errors due to missing fixture deps manually
 set(ta_test_src_files  ta_test.cpp
     range.cpp
-    btas.cpp
-    meta.cpp
-    type_traits.cpp
-    utility.cpp
-    permutation.cpp
-    symm_permutation_group.cpp
-    symm_irrep.cpp
-    symm_representation.cpp
-    block_range.cpp
-    perm_index.cpp
-    transform_iterator.cpp
-    bitset.cpp
-    math_outer.cpp
-    math_partial_reduce.cpp
-    math_transpose.cpp
-    math_blas.cpp
     tensor.cpp
     tensor_of_tensor.cpp
     tensor_tensor_view.cpp
