@@ -47,9 +47,9 @@ class SparsePolicy {
   /// \param world The world of the process map
   /// \param size The number of tiles in the array
   /// \return A shared pointer to a process map
-  static std::shared_ptr<pmap_interface> default_pmap(World& world,
-                                                      const std::size_t size) {
-    return std::make_shared<default_pmap_type>(world, size);
+  static std::shared_ptr<const pmap_interface> default_pmap(
+      World& world, const std::size_t size) {
+    return std::make_shared<const default_pmap_type>(world, size);
   }
 
 };  // class SparsePolicy

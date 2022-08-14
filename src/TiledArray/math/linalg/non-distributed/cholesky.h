@@ -66,6 +66,7 @@ auto rank_local_cholesky(const DistArray<Tile, Policy>& A) {
  *
  *  @returns The lower triangular Cholesky factor L in TA format
  *  @note this is a collective operation with respect to the world of @p A
+ *  @throw TiledArray::Exception if A is not HPD
  */
 template <typename Array,
           typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>
@@ -89,9 +90,10 @@ auto cholesky(const Array& A, TiledRange l_trange = TiledRange()) {
  * is_contiguous_tensor_v<ContiguousTensor> is true)
  *
  *  @param[in] A           Input array to be diagonalized. Must be rank-2
- *  @returns The lower triangular Cholesky factor L as a ContiguousTensor
+ *  @return The lower triangular Cholesky factor L as a DistArray
  *  @note this is a non-collective operation, only computes on the rank on which
  * invoked
+ *  @throw TiledArray::Exception if A is not HPD
  */
 template <typename ContiguousTensor,
           typename = std::enable_if_t<
@@ -122,8 +124,11 @@ auto cholesky(const ContiguousTensor& A) {
  *  @param[in] l_trange    TiledRange for resulting inverse Cholesky factor.
  *                         If left empty, will default to array.trange()
  *
- *  @returns The inverse lower triangular Cholesky factor in TA format
+ *  @returns The inverse of the lower-triangular Cholesky
+ *           factor (i.e., only the lower triangle elements are nonzero)
+ *           as a DistArray
  *  @note this is a collective operation with respect to the world of @p A
+ *  @throw TiledArray::Exception if A is not HPD
  */
 template <bool Both, typename Array,
           typename = std::enable_if_t<TiledArray::detail::is_array_v<Array>>>

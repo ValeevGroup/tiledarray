@@ -49,10 +49,10 @@ class TensorImpl : private NO_DEFAULTS {
       pmap_interface;  ///< Process map interface type
 
  private:
-  World& world_;                          ///< World that contains
-  const trange_type trange_;              ///< Tiled range type
-  const shape_type shape_;                ///< Tensor shape
-  std::shared_ptr<pmap_interface> pmap_;  ///< Process map for tiles
+  World& world_;                                ///< World that contains
+  const trange_type trange_;                    ///< Tiled range type
+  std::shared_ptr<const shape_type> shape_;     ///< Tensor shape
+  std::shared_ptr<const pmap_interface> pmap_;  ///< Process map for tiles
 
  public:
   /// Constructor
@@ -68,14 +68,17 @@ class TensorImpl : private NO_DEFAULTS {
   /// \throw TiledArray::Exception When the size of shape is not equal to
   /// zero
   TensorImpl(World& world, const trange_type& trange, const shape_type& shape,
-             const std::shared_ptr<pmap_interface>& pmap,
+             const std::shared_ptr<const pmap_interface>& pmap,
              bool replicate_shape = true)
-      : world_(world), trange_(trange), shape_(shape), pmap_(pmap) {
+      : world_(world),
+        trange_(trange),
+        shape_(std::make_shared<shape_type>(shape)),
+        pmap_(pmap) {
     // ensure that shapes are identical on every rank
     if (replicate_shape)
-      world.gop.broadcast_serializable(shape_, 0);
+      world.gop.broadcast_serializable(*shape_, 0);
     else
-      TA_ASSERT(is_replicated(world, shape_));
+      TA_ASSERT(is_replicated(world, *shape_));
     // Validate input data.
     TA_ASSERT(pmap_);
     TA_ASSERT(pmap_->size() == trange_.tiles_range().volume());
@@ -83,7 +86,7 @@ class TensorImpl : private NO_DEFAULTS {
               typename pmap_interface::size_type(world_.rank()));
     TA_ASSERT(pmap_->procs() ==
               typename pmap_interface::size_type(world_.size()));
-    TA_ASSERT(shape_.validate(trange_.tiles_range()));
+    TA_ASSERT(shape_->validate(trange_.tiles_range()));
   }
 
   /// Virtual destructor
@@ -93,7 +96,16 @@ class TensorImpl : private NO_DEFAULTS {
 
   /// \return A shared pointer to the process map of this tensor
   /// \throw nothing
-  const std::shared_ptr<pmap_interface>& pmap() const { return pmap_; }
+  const std::shared_ptr<const pmap_interface>& pmap() const { return pmap_; }
+
+  /// Tensor process map accessor
+
+  /// \return A shared pointer to the process map of this tensor
+  /// \note mirrors the shape_shared , the use of this name is recommended, but
+  /// pmap() is not deprecated
+  const std::shared_ptr<const pmap_interface>& pmap_shared() const {
+    return pmap_;
+  }
 
   /// Tiles range accessor
 
@@ -153,20 +165,26 @@ class TensorImpl : private NO_DEFAULTS {
   template <typename Index>
   bool is_zero(const Index& i) const {
     TA_ASSERT(trange_.tiles_range().includes(i));
-    return shape_.is_zero(trange_.tiles_range().ordinal(i));
+    return shape_->is_zero(trange_.tiles_range().ordinal(i));
   }
 
   /// Query the density of the tensor
 
   /// \return \c true if the tensor is dense, otherwise false
   /// \throw nothing
-  bool is_dense() const { return shape_.is_dense(); }
+  bool is_dense() const { return shape_->is_dense(); }
 
   /// Tensor shape accessor
 
   /// \return A reference to the tensor shape map
-  /// \throw TiledArray::Exception When this tensor is dense
-  const shape_type& shape() const { return shape_; }
+  const shape_type& shape() const { return *shape_; }
+
+  /// Tensor shape accessor
+
+  /// \return A reference to the tensor shape shared_ptr object
+  const std::shared_ptr<const shape_type>& shape_shared() const {
+    return shape_;
+  }
 
   /// Tiled range accessor
 
