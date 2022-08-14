@@ -2055,6 +2055,11 @@ class Tensor {
 
 };  // class Tensor
 
+template<typename T>
+Tensor<T> operator*(const Permutation &p, const Tensor<T> &t) {
+  return t.permute(p);
+}
+
 /// Contract two tensors and accumulate the scaled result to this tensor
 
 /// GEMM is limited to matrix like contractions. For example, the following
