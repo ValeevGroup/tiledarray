@@ -346,7 +346,8 @@ class MultEngine : public ContEngine<MultEngine<Left, Right, Result>> {
   /// tensor.
   /// \param world The world were the result will be distributed
   /// \param pmap The process map for the result tensor tiles
-  void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
+  void init_distribution(World* world,
+                         std::shared_ptr<const pmap_interface> pmap) {
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_distribution(world, pmap);
     else
@@ -599,7 +600,8 @@ class ScalMultEngine
   /// tensor.
   /// \param world The world were the result will be distributed
   /// \param pmap The process map for the result tensor tiles
-  void init_distribution(World* world, std::shared_ptr<pmap_interface> pmap) {
+  void init_distribution(World* world,
+                         std::shared_ptr<const pmap_interface> pmap) {
     if (this->product_type() == TensorProduct::Contraction)
       ContEngine_::init_distribution(world, pmap);
     else

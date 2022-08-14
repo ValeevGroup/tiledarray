@@ -21,6 +21,7 @@
 #define TILEDARRAY_RANGE_H__INCLUDED
 
 #include <TiledArray/permutation.h>
+#include <TiledArray/range1.h>
 #include <TiledArray/range_iterator.h>
 #include <TiledArray/size_array.h>
 #include <TiledArray/util/vector.h>
@@ -672,9 +673,9 @@ class Range {
 
   /// \param d the dimension index, a nonnegative integer less than rank()
   /// \return the pair of {lower,upper} bounds for dimension \c d
-  std::pair<index1_type, index1_type> dim(std::size_t d) const {
+  Range1 dim(std::size_t d) const {
     TA_ASSERT(d < rank());
-    return std::make_pair(lobound(d), upbound(d));
+    return Range1(lobound(d), upbound(d));
   }
 
   /// Range lower bound data accessor

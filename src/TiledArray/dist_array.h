@@ -87,8 +87,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   typedef typename impl_type::ordinal_type ordinal_type;  ///< Ordinal type
   typedef typename impl_type::value_type value_type;      ///< Tile type
   typedef
-      typename impl_type::eval_type eval_type;   ///< The tile evaluation type
-  typedef typename impl_type::reference future;  ///< Future of \c value_type
+      typename impl_type::eval_type eval_type;  ///< The tile evaluation type
+  typedef typename impl_type::future future;    ///< Future of \c value_type
   typedef typename impl_type::reference reference;  ///< \c future type
   typedef
       typename impl_type::const_reference const_reference;  ///< \c future type
@@ -204,10 +204,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \param trange The tiled range object that will be used to set the array
   /// tiling. \param shape The array shape that defines zero and non-zero tiles
   /// \param pmap The tile index -> process map
-  static std::shared_ptr<impl_type> init(World& world,
-                                         const trange_type& trange,
-                                         const shape_type& shape,
-                                         std::shared_ptr<pmap_interface> pmap) {
+  static std::shared_ptr<impl_type> init(
+      World& world, const trange_type& trange, const shape_type& shape,
+      std::shared_ptr<const pmap_interface> pmap) {
     // User level validation of input
 
     if (!pmap) {
@@ -267,10 +266,10 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// assigned by the user.
   /// \param world The world where the array will live.
   /// \param trange The tiled range object that will be used to set the array
-  /// tiling. \param pmap The tile index -> process map
+  /// tiling.
+  /// \param pmap The tile index -> process map
   DistArray(World& world, const trange_type& trange,
-            const std::shared_ptr<pmap_interface>& pmap =
-                std::shared_ptr<pmap_interface>())
+            const std::shared_ptr<const pmap_interface>& pmap = {})
       : pimpl_(init(world, trange, shape_type(1, trange), pmap)) {}
 
   /// Sparse array constructor
@@ -283,8 +282,8 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// tiling. \param shape The array shape that defines zero and non-zero tiles
   /// \param pmap The tile index -> process map
   DistArray(World& world, const trange_type& trange, const shape_type& shape,
-            const std::shared_ptr<pmap_interface>& pmap =
-                std::shared_ptr<pmap_interface>())
+            const std::shared_ptr<const pmap_interface>& pmap =
+                std::shared_ptr<const pmap_interface>())
       : pimpl_(init(world, trange, shape, pmap)) {}
 
   /// \name Initializer list constructors
@@ -446,17 +445,20 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// This is a distributed lazy destructor. The object will only be deleted
   /// after the last reference to the world object on all nodes has been
-  /// destroyed and there are no outstanding references to the object's data.
-  /// Use defer_deleter_to_next_fence() to defer the deletion of the destructor
-  /// to the next fence.
+  /// destroyed and there are no outstanding references to the object's data
+  /// (e.g., obtained by calling `this->find(idx)` for any `idx` with
+  /// `this->is_local(idx)==false`). However other types of references to
+  /// the object may exist (e.g. using references to local tiles),
+  /// and these are generally not tracked automatically.
+  /// In such case to defer the release of the object's data to the next fence
+  /// call `this->defer_deleter_to_next_fence()`.
   /// \sa defer_deleter_to_next_fence
   ~DistArray() { reset_pimpl(); }
 
   /// Defers deletion to the next fence
 
-  /// By default the destruction of the object's data occurs lazily, when
-  /// all local references to the object are gone and all _remote_ references
-  /// to the local object's data are gone. This is not always sufficient;
+  /// By default the destruction of the object's data occurs lazily;
+  /// see DistArray::~DistArray(). This is not always sufficient;
   /// call this at any point during object's lifetime to ensure that the
   /// lifetime of the object lasts to (just past)the next fence.
   void defer_deleter_to_next_fence() { defer_deleter_to_next_fence_ = true; }
@@ -527,10 +529,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     DistArray::wait_for_lazy_cleanup(world());
   }
 
+  // clang-format off
   /// Copy assignment
 
   /// This is a shallow copy, that is no data is copied.
   /// \param other The array to be copied
+  /// \post `other.pimpl()==this->pimpl() && other.deleter_deferred_to_next_fence()==this->deleter_deferred_to_next_fence()`
+  /// \note Hes the same semantics as the destructor w.r.t. when the data destruction occurs: if `this->deleter_deferred_to_next_fence()==true` this object's data will not be deleted until the next fence of this object's world.
+  // clang-format on
   DistArray& operator=(const DistArray& other) {
     // N.B. reset pimpl_ respecting defer_deleter_to_next_fence_
     reset_pimpl();
@@ -922,16 +928,9 @@ class DistArray : public madness::archive::ParallelSerializableObject {
           if (fut.probe()) continue;
         }
         Future<value_type> tile = pimpl_->world().taskq.add(
-            [pimpl = this->weak_pimpl(), index = ordinal_type(index),
+            [pimpl = pimpl_, index = ordinal_type(index),
              op_shared_handle]() -> value_type {
-              auto pimpl_ptr = pimpl.lock();
-              if (pimpl_ptr)
-                return op_shared_handle(
-                    pimpl_ptr->trange().make_tile_range(index));
-              else {
-                TA_ASSERT(false);
-                return {};
-              }
+              return op_shared_handle(pimpl->trange().make_tile_range(index));
             });
         set(index, std::move(tile));
       }
@@ -1086,16 +1085,27 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   World& world() const { return impl_ref().world(); }
 
   /// \deprecated use DistArray::pmap()
-  [[deprecated]] const std::shared_ptr<pmap_interface>& get_pmap() const {
+  [[deprecated]] const std::shared_ptr<const pmap_interface>& get_pmap() const {
     return pmap();
   }
 
   /// Process map accessor
 
-  /// \return A reference to the process map that owns this array.
+  /// \return A shared_ptr to the process map that owns this array.
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
   ///                              throw guarantee.
-  const std::shared_ptr<pmap_interface>& pmap() const {
+  const std::shared_ptr<const pmap_interface>& pmap() const {
+    return impl_ref().pmap();
+  }
+
+  /// Process map accessor
+
+  /// \note alias to pmap() that mirrors shape_shared(). The use of this
+  ///       alias is recommended
+  /// \return A shared_ptr to the process map that owns this array.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong
+  ///                              throw guarantee.
+  const std::shared_ptr<const pmap_interface>& pmap_shared() const {
     return impl_ref().pmap();
   }
 
@@ -1116,6 +1126,16 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
   inline const shape_type& shape() const { return impl_ref().shape(); }
+
+  /// Shape accessor
+
+  /// Returns shared_ptr to shape object. No communication is required.
+  /// \return shared_ptr to the shape object.
+  /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
+  ///                              guarantee.
+  inline const std::shared_ptr<const shape_type>& shape_shared() const {
+    return impl_ref().shape_shared();
+  }
 
   /// Tile ownership
 

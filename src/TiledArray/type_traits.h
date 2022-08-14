@@ -73,6 +73,7 @@ class Future;
 }  // namespace madness
 
 namespace TiledArray {
+class Range1;
 template <typename>
 class Tile;
 class DensePolicy;
@@ -878,6 +879,12 @@ constexpr const bool is_gettable_v = is_gettable<I, T>::value;
 template <class T, typename Enabler = void>
 struct is_gettable_pair : std::false_type {};
 
+// specialize for Range1 to avoid dependence on the header order inclusion
+template <>
+struct is_gettable_pair<Range1> : std::true_type {};
+template <>
+struct is_gettable_pair<const Range1> : std::true_type {};
+
 template <typename T>
 struct is_gettable_pair<
     T, std::enable_if_t<is_gettable_v<0, T> && is_gettable_v<1, T>>>
@@ -897,12 +904,17 @@ struct is_integral_pair_<
     typename std::enable_if<std::is_integral<T1>::value &&
                             std::is_integral<T2>::value>::type>
     : std::true_type {};
+template <>
+struct is_integral_pair_<Range1> : std::true_type {};
 /// @tparam T a type
 /// @c is_integral_pair<T>::value is true if @c T is an @c std::pair<T1,T2> and
 /// both @c std::is_integral<T1>::value and @c std::is_integral<T2>::value are
 /// true
 template <class T>
 struct is_integral_pair : is_integral_pair_<T> {};
+
+template <class T>
+struct is_integral_pair<const T> : is_integral_pair<T> {};
 
 /// \c is_integral_pair_v<T> is an alias for \c is_integral_pair<T>::value
 template <typename T>
@@ -1264,7 +1276,8 @@ static constexpr bool is_gpair_range_v = is_gpair_range<T>::value;
 
 /// \c at(pair, i) extracts i-th element from gpair
 template <typename GeneralizedPair,
-          typename = std::enable_if_t<is_gpair_v<GeneralizedPair>>>
+          typename = std::enable_if_t<
+              is_gpair_v<std::remove_reference_t<GeneralizedPair>>>>
 decltype(auto) at(GeneralizedPair&& v, std::size_t idx) {
   assert(idx == 0 || idx == 1);
   if constexpr (is_gettable_pair_v<std::decay_t<decltype(v)>>) {

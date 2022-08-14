@@ -89,9 +89,8 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
       const DistArray<Tile, Policy>& array, TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type&
           shape,
-      const std::shared_ptr<
-          typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>&
-          pmap,
+      const std::shared_ptr<const typename TiledArray::detail::DistEval<
+          Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm, const Op& op) {
     typedef TiledArray::detail::ArrayEvalImpl<DistArray<Tile, Policy>, Op,
                                               Policy>
@@ -111,9 +110,8 @@ struct UnaryEvalImplFixture : public TiledRangeFixture {
       TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type&
           shape,
-      const std::shared_ptr<
-          typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>&
-          pmap,
+      const std::shared_ptr<const typename TiledArray::detail::DistEval<
+          Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm, const Op& op) {
     typedef TiledArray::detail::UnaryEvalImpl<
         TiledArray::detail::DistEval<Tile, Policy>, Op, Policy>

@@ -13,41 +13,39 @@
 namespace TiledArray::math::linalg {
 
 template <bool QOnly, typename ArrayV>
-auto householder_qr( const ArrayV& V, TiledRange q_trange = TiledRange(),
-                     TiledRange r_trange = TiledRange() ) {
-  TA_MAX_THREADS;
-#if TILEDARRAY_HAS_SCALAPACK
-  if (V.world().size() > 1 && V.elements_range().volume() > 10000000) {
-    return scalapack::householder_qr<QOnly>( V, q_trange, r_trange );
-  }
-#endif
-  return non_distributed::householder_qr<QOnly>( V, q_trange, r_trange );
+auto householder_qr(const ArrayV& V, TiledRange q_trange = TiledRange(),
+                    TiledRange r_trange = TiledRange()) {
+  TILEDARRAY_MATH_LINALG_DISPATCH_WO_TTG(
+      householder_qr<QOnly>(V, q_trange, r_trange), V);
 }
 
 template <bool QOnly, typename ArrayV>
-auto cholesky_qr( const ArrayV& V, TiledRange r_trange = TiledRange() ) {
+auto cholesky_qr(const ArrayV& V, TiledRange r_trange = TiledRange()) {
   TA_MAX_THREADS;
   // Form Grammian
-  ArrayV G; G("i,j") = V("k,i").conj() * V("k,j");
+  ArrayV G;
+  G("i,j") = V("k,i").conj() * V("k,j");
 
   // Obtain Cholesky L and its inverse
-  auto [L, Linv] = cholesky_linv<true>( G, r_trange );
+  auto [L, Linv] = cholesky_linv<true>(G, r_trange);
 
   // Q = V * L**-H
-  ArrayV Q; Q("i,j") = V("i,k") * Linv("j,k").conj();
+  ArrayV Q;
+  Q("i,j") = V("i,k") * Linv("j,k").conj();
 
   if constexpr (not QOnly) {
     // R = L**H
-    ArrayV R; R("i,j") = L("j,i");
-    return std::make_tuple( Q, R );
-  } else return Q;
-
+    ArrayV R;
+    R("i,j") = L("j,i");
+    return std::make_tuple(Q, R);
+  } else
+    return Q;
 }
 
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
-  using TiledArray::math::linalg::householder_qr;
-  using TiledArray::math::linalg::cholesky_qr;
+using TiledArray::math::linalg::cholesky_qr;
+using TiledArray::math::linalg::householder_qr;
 }  // namespace TiledArray
 #endif

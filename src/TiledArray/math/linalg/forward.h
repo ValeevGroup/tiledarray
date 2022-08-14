@@ -52,6 +52,25 @@ struct SVD {
   enum Vectors { ValuesOnly, LeftVectors, RightVectors, AllVectors };
 };
 
+/// known linear algebra backends
+enum LinearAlgebraBackend {
+  /// choose the best that's available, taking into consideration the problem
+  /// size and # of ranks
+  BestAvailable,
+  /// LAPACK on rank 0, followed by broadcast
+  LAPACK,
+  /// ScaLAPACK
+  ScaLAPACK,
+  /// TTG (currently only provides cholesky and cholesky_linv)
+  TTG
+};
+
+LinearAlgebraBackend get_linalg_backend();
+void set_linalg_backend(LinearAlgebraBackend b);
+
+std::size_t get_linalg_crossover_to_distributed();
+void set_linalg_crossover_to_distributed(std::size_t c);
+
 }  // namespace TiledArray::math::linalg
 
 namespace TiledArray {
