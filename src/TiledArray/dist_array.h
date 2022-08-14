@@ -1761,6 +1761,8 @@ Array make_array(
     if (array.is_zero(index)) continue;
     array.set(index,tile);
   }
+  // workaround for random madness errors
+  if (replicated) world.gop.fence();
   return array;
 }
 

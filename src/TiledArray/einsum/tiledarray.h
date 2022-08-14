@@ -249,6 +249,9 @@ auto einsum(
       );
     }
     C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
+    A.ei = Array();
+    B.ei = Array();
+    //owners->gop.fence();
     for (Index e : C.tiles) {
       if (!C.ei.is_local(e)) continue;
       if (C.ei.is_zero(e)) continue;
@@ -263,8 +266,6 @@ auto einsum(
       local_tiles.push_back({c, tile});
     }
     // mark for lazy deletion
-    A.ei = Array();
-    B.ei = Array();
     C.ei = Array();
   }
 
