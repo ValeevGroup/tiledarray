@@ -348,12 +348,23 @@ class Debugger {
   /// Set the prefix to the decimal represention of p followed by a ": ".
   virtual void set_prefix(int p);
 
-  /** Sets the command to be exectuted when debug is called.
-      The character sequence "$(EXEC)" is replaced by the executable
-      name (see set_exec), "$(PID)" is replaced by the
-      current process id, and "$(PREFIX)" is replaced by the
-      prefix. */
-  virtual void set_cmd(const char *);
+  // clang-format off
+  /// Sets the command to be executed when debug is called.
+
+  /// \param cmd command line used to invoke the debugger;
+  ///    the following macros can be used:
+  ///    - `$(EXEC)` is replaced by the executable name
+  ///      (see Debugger::set_exec() )
+  ///    - `$(PID)` is replaced by the current process id
+  ///    - `$(PREFIX)` is replaced by the prefix (see Debugger::set_prefix() )
+  ///
+  ///    Following aliases can also be used for \p cmd :
+  ///    -  `gdb_xterm`: creates an xterm window and attaches gdb; equivalent to
+  ///       setting \p cmd to `xterm -title "$(PREFIX)$(EXEC)" -e gdb -ex "set variable debugger_ready_=1" --pid=$(PID) $(EXEC) &`
+  ///    -  `lldb_xterm`: creates an xterm window and attaches lldb; equivalent to
+  ///       setting \p cmd to `xterm -title "$(PREFIX)$(EXEC)" -e lldb -p $(PID) -o "expr debugger_ready_=1" &`
+  // clang-format on
+  virtual void set_cmd(const char *cmd);
   /// Calls set_cmd with a hopefully suitable default.
   virtual void default_cmd();
   /** Set the name of the executable for the current process.
@@ -374,10 +385,34 @@ class Debugger {
   void resolve_cmd_alias();
 };
 
-/// Use this to launch GNU debugger in xterm
-void launch_gdb_xterm();
-/// Use this to launch LLVM debugger in xterm
-void launch_lldb_xterm();
+/// Use this to create a Debugger object and make it the default
+/// (see Debugger::set_default_debugger() )
+
+/// \param cmd debugger command (see Debugger::set_cmd() ;
+///        default is null, which makes the program to wait
+///        for external debugger to attach)
+/// \param exec the executable name, used to annotate the xterm window
+///        (default is to use empty string)
+/// \param rank the process rank, used to annotate the xterm window
+///        (default is to use `TiledArray::get_default_world().rank()`)
+void create_debugger(const char *cmd = nullptr, const char *exec = nullptr,
+                     std::int64_t rank = -1);
+
+/// Use this to create and launch GNU debugger in xterm
+
+/// \param exec the executable name, used to annotate the xterm window
+///        (default is to use empty string)
+/// \param rank the process rank, used to annotate the xterm window
+///        (default is to use `TiledArray::get_default_world().rank()`)
+void launch_gdb_xterm(const char *exec = nullptr, std::int64_t rank = -1);
+
+/// Use this to create and launch LLVM debugger in xterm
+
+/// \param exec the executable name, used to annotate the xterm window
+///        (default is to use empty string)
+/// \param rank the process rank, used to annotate the xterm window
+///        (default is to use `TiledArray::get_default_world().rank()`)
+void launch_lldb_xterm(const char *exec = nullptr, std::int64_t rank = -1);
 
 }  // namespace TiledArray
 
