@@ -31,6 +31,7 @@
 #if TILEDARRAY_HAS_TTG
 #include <TiledArray/math/linalg/ttg/cholesky.h>
 #endif
+#include <TiledArray/math/linalg/basic.h>
 #include <TiledArray/math/linalg/non-distributed/cholesky.h>
 #include <TiledArray/util/threads.h>
 
