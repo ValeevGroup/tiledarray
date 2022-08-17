@@ -28,6 +28,7 @@
 #if TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/math/linalg/scalapack/heig.h>
 #endif
+#include <TiledArray/math/linalg/basic.h>
 #include <TiledArray/math/linalg/non-distributed/heig.h>
 #include <TiledArray/util/threads.h>
 

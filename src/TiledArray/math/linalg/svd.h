@@ -28,6 +28,7 @@
 #if TILEDARRAY_HAS_SCALAPACK
 #include <TiledArray/math/linalg/scalapack/svd.h>
 #endif  // TILEDARRAY_HAS_SCALAPACK
+#include <TiledArray/math/linalg/basic.h>
 #include <TiledArray/math/linalg/non-distributed/svd.h>
 #include <TiledArray/util/threads.h>
 
