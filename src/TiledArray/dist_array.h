@@ -43,6 +43,12 @@ namespace TiledArray {
 template <typename, typename>
 class Tensor;
 
+/// Convert a distributed array into a replicated array
+/// \throw TiledArray::Exception if the PIMPL is not initialized.
+/// Strong throw guarantee.
+template <typename T, typename P>
+DistArray<T, P> replicated(const DistArray<T, P>& a);
+
 /// A (multidimensional) tiled array
 
 /// DistArray is the local representation of a global object. This means that
@@ -532,12 +538,32 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// \note Hes the same semantics as the destructor w.r.t. when the data destruction occurs: if `this->deleter_deferred_to_next_fence()==true` this object's data will not be deleted until the next fence of this object's world.
   // clang-format on
   DistArray& operator=(const DistArray& other) {
-    // N.B. reset pimpl_ respecting defer_deleter_to_next_fence_
-    reset_pimpl();
-    pimpl_ = other.pimpl_;
-    // since *this and other share pimpl_ now makes sense for them to share
-    // defer_deleter_to_next_fence_
-    defer_deleter_to_next_fence_ = other.defer_deleter_to_next_fence_;
+    if (&other != this) {
+      // N.B. reset pimpl_ respecting defer_deleter_to_next_fence_
+      reset_pimpl();
+      pimpl_ = other.pimpl_;
+      // since *this and other share pimpl_ now makes sense for them to share
+      // defer_deleter_to_next_fence_
+      defer_deleter_to_next_fence_ = other.defer_deleter_to_next_fence_;
+    }
+
+    return *this;
+  }
+
+  // clang-format off
+  /// Move assignment
+
+  /// Slight optimization vs copy assignment
+  /// \param other The array to be moved from
+  // clang-format on
+  DistArray& operator=(DistArray&& other) {
+    if (&other != this) {
+      // N.B. reset pimpl_ respecting defer_deleter_to_next_fence_
+      reset_pimpl();
+      pimpl_ = std::move(other.pimpl_);
+      defer_deleter_to_next_fence_ = other.defer_deleter_to_next_fence_;
+      other.defer_deleter_to_next_fence_ = false;
+    }
 
     return *this;
   }
@@ -929,10 +955,6 @@ class DistArray : public madness::archive::ParallelSerializableObject {
         set(index, std::move(tile));
       }
     }
-
-    // N.B. to ensure that refs to pimpl outlive tasks defer pimpl reset to the
-    // netx fence
-    this->defer_deleter_to_next_fence();
   }
 
   /// Initialize elements of local, non-zero tiles with a user provided functor
@@ -1259,25 +1281,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Convert a distributed array into a replicated array
   /// \throw TiledArray::Exception if the PIMPL is not initialized. Strong throw
   ///                              guarantee.
-  void make_replicated() {
-    if ((!impl_ref().pmap()->is_replicated()) && (world().size() > 1)) {
-      // Construct a replicated array
-      auto pmap = std::make_shared<detail::ReplicatedPmap>(world(), size());
-      DistArray result = DistArray(world(), trange(), shape(), pmap);
-
-      // Create the replicator object that will do an all-to-all broadcast of
-      // the local tile data.
-      auto replicator =
-          std::make_shared<detail::Replicator<DistArray>>(*this, result);
-
-      // Put the replicator pointer in the deferred cleanup object so it will
-      // be deleted at the end of the next fence.
-      TA_ASSERT(replicator.unique());  // Required for deferred_cleanup
-      madness::detail::deferred_cleanup(world(), replicator);
-
-      DistArray::operator=(result);
-    }
-  }
+  void make_replicated() { DistArray::operator=(replicated(*this)); }
 
   /// Update shape data and remove tiles that are below the zero threshold
   /// \param[in] thresh the threshold below which the tiles are considered
@@ -1648,12 +1652,15 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// `this->deleter_deferred_to_next_fence()==true`, defers that until next
   /// fence
   void reset_pimpl() {
-    if (defer_deleter_to_next_fence_) {
-      madness::detail::deferred_cleanup(
-          this->world(), pimpl_,
-          /* do_not_check_that_pimpl_is_unique = */ true);
-    } else
-      pimpl_.reset();
+    if (pimpl_) {
+      if (defer_deleter_to_next_fence_) {
+        TA_ASSERT(World::exists(&this->world()));
+        madness::detail::deferred_cleanup(
+            this->world(), pimpl_,
+            /* do_not_check_that_pimpl_is_unique = */ true);
+      } else
+        pimpl_.reset();
+    }
   }
 
 };  // class DistArray
@@ -1756,37 +1763,63 @@ auto norm2(const DistArray<Tile, Policy>& a) {
   return std::sqrt(squared_norm(a));
 }
 
-template<typename Array, typename Tiles>
-Array make_array(
-  World &world,
-  const detail::trange_t<Array> &tiled_range,
-  Tiles begin, Tiles end)
-{
+template <typename Array, typename Tiles>
+Array make_array(World& world, const detail::trange_t<Array>& tiled_range,
+                 Tiles begin, Tiles end, bool replicated) {
   Array array;
   using Tuple = std::remove_reference_t<decltype(*begin)>;
-  using Index = std::tuple_element_t<0,Tuple>;
+  using Index = std::tuple_element_t<0, Tuple>;
   using shape_type = typename Array::shape_type;
-  if constexpr (shape_type::is_dense()) {
-    array = Array(world, tiled_range);
+
+  std::shared_ptr<typename Array::pmap_interface> pmap;
+  if (replicated) {
+    size_t ntiles = tiled_range.tiles_range().volume();
+    pmap = std::make_shared<detail::ReplicatedPmap>(world, ntiles);
   }
-  else {
-    std::vector< std::pair<Index,float> > tile_norms;
+
+  if constexpr (shape_type::is_dense()) {
+    array = Array(world, tiled_range, pmap);
+  } else {
+    std::vector<std::pair<Index, float>> tile_norms;
     for (Tiles it = begin; it != end; ++it) {
-      auto [index,tile] = *it;
-      tile_norms.push_back({index,tile.norm()});
+      auto [index, tile] = *it;
+      tile_norms.push_back({index, tile.norm()});
     }
     shape_type shape(world, tile_norms, tiled_range);
-    array = Array(world, tiled_range, shape);
+    array = Array(world, tiled_range, shape, pmap);
   }
   for (Tiles it = begin; it != end; ++it) {
-    auto [index,tile] = *it;
+    auto [index, tile] = *it;
     if (array.is_zero(index)) continue;
-    array.set(index,tile);
+    array.set(index, tile);
   }
   return array;
 }
 
+template <typename T, typename P>
+DistArray<T, P> replicated(const DistArray<T, P>& a) {
+  auto& world = a.world();
 
+  if (a.pmap()->is_replicated() || (world.size() == 1)) {
+    return a;
+  }
+
+  // Construct a replicated array
+  auto pmap = std::make_shared<detail::ReplicatedPmap>(world, a.size());
+  DistArray<T, P> result = DistArray<T, P>(world, a.trange(), a.shape(), pmap);
+
+  // Create the replicator object that will do an all-to-all broadcast of
+  // the local tile data.
+  auto replicator =
+      std::make_shared<detail::Replicator<DistArray<T, P>>>(a, result);
+
+  // Put the replicator pointer in the deferred cleanup object so it will
+  // be deleted at the end of the next fence.
+  TA_ASSERT(replicator.unique());  // Required for deferred_cleanup
+  madness::detail::deferred_cleanup(world, replicator);
+
+  return result;
+}
 
 }  // namespace TiledArray
 

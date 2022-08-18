@@ -192,12 +192,18 @@ class TensorImpl : private NO_DEFAULTS {
   const trange_type& trange() const { return trange_; }
 
   /// \deprecated use TensorImpl::world()
-  [[deprecated]] World& get_world() const { return world_; }
+  [[deprecated]] World& get_world() const {
+    TA_ASSERT(World::exists(&world_));
+    return world_;
+  }
 
   /// World accessor
 
   /// \return A reference to the world that contains this tensor
-  World& world() const { return world_; }
+  World& world() const {
+    TA_ASSERT(World::exists(&world_));
+    return world_;
+  }
 
 };  // class TensorImpl
 

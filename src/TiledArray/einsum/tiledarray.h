@@ -228,27 +228,38 @@ auto einsum(
     for (auto &term : AB) {
       term.local_tiles.clear();
       const Permutation &P = term.permutation;
+
       for (Index ei : term.tiles) {
         auto idx = apply_inverse(P, h+ei);
         if (!term.array.is_local(idx)) continue;
         if (term.array.is_zero(idx)) continue;
+        // TODO no need for immediate evaluation
         auto tile = term.array.find(idx).get();
         if (P) tile = tile.permute(P);
         auto shape = term.ei_tiled_range.tile(ei);
         tile = tile.reshape(shape, batch);
         term.local_tiles.push_back({ei, tile});
       }
+      bool replicated = term.array.pmap()->is_replicated();
       term.ei = TiledArray::make_array<Array>(
         *owners,
         term.ei_tiled_range,
         term.local_tiles.begin(),
-        term.local_tiles.end()
+        term.local_tiles.end(),
+        replicated
       );
     }
     C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
+    A.ei.defer_deleter_to_next_fence();
+    B.ei.defer_deleter_to_next_fence();
+    A.ei = Array();
+    B.ei = Array();
+    // why omitting this fence leads to deadlock?
+    owners->gop.fence();
     for (Index e : C.tiles) {
       if (!C.ei.is_local(e)) continue;
       if (C.ei.is_zero(e)) continue;
+      // TODO no need for immediate evaluation
       auto tile = C.ei.find(e).get();
       assert(tile.batch_size() == batch);
       const Permutation &P = C.permutation;
@@ -260,8 +271,6 @@ auto einsum(
       local_tiles.push_back({c, tile});
     }
     // mark for lazy deletion
-    A.ei = Array();
-    B.ei = Array();
     C.ei = Array();
   }
 
