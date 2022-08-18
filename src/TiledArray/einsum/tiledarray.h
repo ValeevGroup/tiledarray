@@ -254,7 +254,8 @@ auto einsum(
     B.ei.defer_deleter_to_next_fence();
     A.ei = Array();
     B.ei = Array();
-    //owners->gop.fence();
+    // why omitting this fence leads to deadlock?
+    owners->gop.fence();
     for (Index e : C.tiles) {
       if (!C.ei.is_local(e)) continue;
       if (C.ei.is_zero(e)) continue;
