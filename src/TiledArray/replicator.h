@@ -195,7 +195,7 @@ class Replicator : public madness::WorldObject<Replicator<A> >,
 
   /// Check that the replication is complete
 
-  /// \return \c true when all data has been transfered.
+  /// \return \c true when all data has been transferred.
   bool done() {
     madness::ScopedMutex<madness::Spinlock> locker(this);
     return sent_ == world_.size();

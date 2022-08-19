@@ -451,7 +451,7 @@ class ArrayImpl : public TensorImpl<Policy> {
   /// \throw TiledArray::Exception When the size of shape is not equal to
   /// zero
   ArrayImpl(World& world, const trange_type& trange, const shape_type& shape,
-            const std::shared_ptr<pmap_interface>& pmap)
+            const std::shared_ptr<const pmap_interface>& pmap)
       : TensorImpl_(world, trange, shape, pmap),
         data_(world, trange.tiles_range().volume(), pmap) {}
 
@@ -636,9 +636,7 @@ class ArrayImpl : public TensorImpl<Policy> {
   /// DistributedStorage
 
   /// @return const reference to the atomic counter of live DelayedSet requests
-  const madness::AtomicInt& num_live_ds() const {
-    return data_.num_live_ds();
-  }
+  const madness::AtomicInt& num_live_ds() const { return data_.num_live_ds(); }
 
 };  // class ArrayImpl
 

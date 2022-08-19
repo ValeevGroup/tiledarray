@@ -249,7 +249,7 @@ class BlkTsrEngineBase : public LeafEngine<Derived> {
   }
 
   void init_distribution(World* world,
-                         const std::shared_ptr<pmap_interface>& pmap) {
+                         const std::shared_ptr<const pmap_interface>& pmap) {
     ExprEngine_::init_distribution(
         world,
         (pmap ? pmap

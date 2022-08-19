@@ -283,8 +283,35 @@ BOOST_AUTO_TEST_CASE(xxx) {
   BOOST_CHECK(are_equal);
 }
 
+BOOST_AUTO_TEST_SUITE_END()
+
+
+// Eigen einsum indices
+BOOST_AUTO_TEST_SUITE(einsum_index, TA_UT_LABEL_SERIAL)
+
+#include "TiledArray/einsum/index.h"
+#include "TiledArray/tensor/tensor.h"
+
+BOOST_AUTO_TEST_CASE(einsum_index) {
+  using Einsum::Index;
+  Index<int> src({ 1, 2, 3, 4, 5, 6 });
+  Index<int> dst({ 2, 4, 5, 3, 6, 1 });
+  auto p = permutation(src, dst);
+  BOOST_CHECK(p.size() == 6);
+  BOOST_CHECK(apply(p,src) == dst);
+  BOOST_CHECK(apply_inverse(p,dst) = src);
+  using TiledArray::Tensor;
+  using TiledArray::Range;
+  Tensor<double> t(Range{src});
+  BOOST_CHECK((t.range().rank() == 6));
+  auto u = TiledArray::apply(p,t);
+  BOOST_CHECK((u.range() == Range{dst}));
+  auto v = TiledArray::apply_inverse(p,u);
+  BOOST_CHECK((v.range() == Range{src}));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
+
 
 #include "TiledArray/einsum/eigen.h"
 
@@ -497,9 +524,19 @@ BOOST_AUTO_TEST_SUITE(einsum_tiledarray)
 using TiledArray::SparsePolicy;
 using TiledArray::DensePolicy;
 
+auto tiled_range(std::initializer_list<int> dims) {
+  std::vector<TiledRange1> tr;
+  for (int n : dims) {
+    auto tr1 = (n < 2) ? TiledRange1{ 0, n } : TiledRange1{ 0, n/2, n };
+    //tr1 = TiledRange1{ 0, n };
+    tr.push_back(tr1);
+  }
+  return TiledRange(tr);
+}
+
 template<typename Policy, typename T = Tensor<int>, typename ... Args>
 auto random(Args ... args) {
-  TiledArray::TiledRange tr{ {0, args}... };
+  auto tr = tiled_range({args...});
   auto& world = TiledArray::get_default_world();
   TiledArray::DistArray<T,Policy> t(world,tr);
   t.fill_random();
@@ -508,7 +545,7 @@ auto random(Args ... args) {
 
 template<typename T = Tensor<int>, typename ... Args>
 auto sparse_zero(Args ... args) {
-  TiledArray::TiledRange tr{ {0, args}... };
+  auto tr = tiled_range({args...});
   auto& world = TiledArray::get_default_world();
   TiledArray::SparsePolicy::shape_type shape(0.0f, tr);
   TiledArray::DistArray<T,TiledArray::SparsePolicy> t(world,tr,shape);
@@ -619,16 +656,16 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_iah_hib_abh) {
   );
 }
 
-BOOST_AUTO_TEST_CASE(einsum_tiledarray_hai_hibc_habc) {
-  einsum_tiledarray_check<3,4,4>(
-    random<SparsePolicy>(9,3,11),
-    random<SparsePolicy>(9,11,5,7),
-    "hai,hibc->habc"
+BOOST_AUTO_TEST_CASE(einsum_tiledarray_hiab_hci_habc) {
+  einsum_tiledarray_check<4,3,4>(
+    random<SparsePolicy>(9,5,7,8),
+    random<SparsePolicy>(9,11,5),
+    "hiab,hci->habc"
   );
-  einsum_tiledarray_check<3,4,4>(
-    sparse_zero(9,3,11),
-    sparse_zero(9,11,5,7),
-    "hai,hibc->habc"
+  einsum_tiledarray_check<4,3,4>(
+    sparse_zero(9,5,7,8),
+    sparse_zero(9,11,5),
+    "hiab,hci->habc"
   );
 }
 
@@ -684,12 +721,6 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_replicated) {
     replicated(random<SparsePolicy>(7,14)),
     "hi,hi->h"
   );
-}
-
-BOOST_AUTO_TEST_CASE(make_replicated_bug) {
-  auto A = random<SparsePolicy>(1);
-  auto B = replicated(A);
-  TA_ASSERT(B.find({0}).get().size() != 0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

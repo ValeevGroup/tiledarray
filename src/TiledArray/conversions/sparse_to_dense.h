@@ -39,7 +39,7 @@ to_dense(DistArray<Tile, ArgPolicy> const& sparse_array) {
   ArrayType dense_array(sparse_array.world(), sparse_array.trange());
 
   typedef typename ArrayType::pmap_interface pmap_interface;
-  std::shared_ptr<pmap_interface> const& pmap = dense_array.pmap();
+  auto& pmap = dense_array.pmap();
 
   typename pmap_interface::const_iterator end = pmap->end();
 
