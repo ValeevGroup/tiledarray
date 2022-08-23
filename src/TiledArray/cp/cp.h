@@ -338,7 +338,7 @@ class CP {
   /// normalized factor matrix
   void normCol(Array &factor, size_t rank) {
     auto& world = factor.world();
-    factor = replicated(factor);
+    //factor = replicated(factor);
     //lambda = expressions::einsum("rn,rn->r",factor, factor);
     lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
     lambda = replicated(lambda);
@@ -367,17 +367,18 @@ class CP {
     // The column norms will be computed on each MPI rank to
     // avoid communication.
 
-    auto &owners = worlds.back();
-    set_default_world(*owners);
+    //auto &owners = worlds.back();
+    //set_default_world(*owners);
     for (int r = 0; r < r_tiles; ++r) {
       auto tile = lambda.find(r).get();
       for (int n = 0; n < n_tiles; ++n) {
-        (*owners).taskq.add(scale_factor,r, n, tile);
+        //(*owners).taskq.add(scale_factor,r, n, tile);
+        world.taskq.add(scale_factor, r, n, tile);
       }
     }
-    set_default_world(world);
+    //set_default_world(world);
     world.gop.fence();
-    factor = replicated(factor);
+    factor.truncate();
   }
 
   /*

@@ -108,10 +108,6 @@ class CP_ALS : public CP<Tile, Policy>{
     do{
       for(auto i = 0; i < ndim; ++i){
         update_factor(i, rank);
-        const auto & a = *(factor_begin + i);
-        auto & w = *(gram_begin + i);
-        w("r,rp") = a("r,n") * a("rp,n");
-        w = replicated(w);
       }
       converged = this->check_fit(verbose);
       ++iter;
@@ -120,8 +116,8 @@ class CP_ALS : public CP<Tile, Policy>{
 
   void update_factor(size_t mode, size_t rank){
     auto mode0 = (mode == 0);
-    auto & An = cp_factors[mode];
-    An = DistArray<Tile, Policy>();
+    //auto & An = cp_factors[mode];
+    DistArray<Tile, Policy> An;
     // Starting to form the Matricized tensor times khatri rao product
     // MTTKRP
     // To do this we, in general, contract the reference with the
@@ -132,7 +128,8 @@ class CP_ALS : public CP<Tile, Policy>{
     std::string contract({detail::intToAlphabet(ndim), ',', detail::intToAlphabet(contracted_index)}),
         final = (mode == 0 ? first_gemm_dim_last : first_gemm_dim_one);
 
-    TA::DistArray W(this->partial_grammian[contracted_index]);
+    auto W = this->partial_grammian[contracted_index];
+    W.make_replicated();
     An(final) = this->reference(ref_indices) * cp_factors[contracted_index](contract);
 
     // next we need to contract (einsum) over all modes not including the
@@ -149,10 +146,12 @@ class CP_ALS : public CP<Tile, Policy>{
         continue;
       }
 
-      set_default_world(*this->worlds.back());
+      //set_default_world(*this->worlds.back());
+      std::cout << W << std::endl;
+      std::cout << this->partial_grammian[contracted_index] << std::endl;
       W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");
-      set_default_world(world);
-      world.gop.fence();
+      //set_default_world(world);
+      //world.gop.fence();
 
       contract.replace(2, 1, 1, detail::intToAlphabet(contracted_index));
       mixed_contractions.erase(mcont_ptr + remove_index_start,
@@ -167,8 +166,14 @@ class CP_ALS : public CP<Tile, Policy>{
 
     this->cholesky_inverse(An, W);
 
+    An.make_replicated();
     if(mode == ndim - 1) this->unNormalized_Factor = An;
     this->normCol(An, rank);
+    cp_factors[mode] = An;
+    auto & gram = this->partial_grammian[mode];
+    gram("r,rp") = An("r,n") * An("rp,n");
+    gram = replicated(gram);
+    world.gop.fence();
   }
 };
 } // namespace TiledArray::cp
