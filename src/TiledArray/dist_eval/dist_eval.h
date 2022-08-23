@@ -107,7 +107,7 @@ class DistEvalImpl : public TensorImpl<Policy>,
   /// \note \c trange and \c shape will be permuted by \c perm before
   /// storing the data.
   DistEvalImpl(World& world, const trange_type& trange, const shape_type& shape,
-               const std::shared_ptr<pmap_interface>& pmap,
+               const std::shared_ptr<const pmap_interface>& pmap,
                const Permutation& perm)
       : TensorImpl_(world, trange, shape, pmap),
         id_(world.unique_obj_id()),
@@ -329,7 +329,9 @@ class DistEval {
   /// Tensor process map accessor
 
   /// \return A shared pointer to the process map of this tensor
-  const std::shared_ptr<pmap_interface>& pmap() const { return pimpl_->pmap(); }
+  const std::shared_ptr<const pmap_interface>& pmap() const {
+    return pimpl_->pmap();
+  }
 
   /// Query the density of the tensor
 

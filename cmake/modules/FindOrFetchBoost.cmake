@@ -11,11 +11,15 @@ if (NOT TARGET Boost::boost)
     message(STATUS "Found Boost ${Boost_VERSION}: ${Boost_INCLUDE_DIRS}")
   endif(TARGET Boost::boost)
 
-  # Boost::* targets by default are not GLOBAL, so to allow users of LINALG_LIBRARIES to safely use them we need to make them global
+  # Boost::* targets by default are not GLOBAL, so to allow users of TA to safely use them we need to make them global
   # more discussion here: https://gitlab.kitware.com/cmake/cmake/-/issues/17256
-  foreach(tgt boost;headers)
+  foreach(tgt boost;headers;${Boost_BTAS_DEPS_LIBRARIES})
     if (TARGET Boost::${tgt})
-      set_target_properties(Boost::${tgt} PROPERTIES IMPORTED_GLOBAL TRUE)
+      get_target_property(_boost_tgt_${tgt}_is_imported_global Boost::${tgt} IMPORTED_GLOBAL)
+      if (NOT _boost_tgt_${tgt}_is_imported_global)
+        set_target_properties(Boost::${tgt} PROPERTIES IMPORTED_GLOBAL TRUE)
+      endif()
+      unset(_boost_tgt_${tgt}_is_imported_global)
     endif()
   endforeach()
 

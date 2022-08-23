@@ -17,23 +17,37 @@ bool initialized();
 /// @return true if TiledArray has been finalized at least once
 bool finalized();
 
+// clang-format off
 /// @name TiledArray initialization.
 ///       These functions initialize TiledArray and (if needed) MADWorld
 ///       runtime.
-/// @note the default World object is set to the object returned by these.
-/// @warning MADWorld can only be initialized/finalized once, hence if
-/// TiledArray initializes MADWorld
-///          it can also be initialized/finalized only once.
+// clang-format on
 
 /// @{
 
+// clang-format off
+/// @param[in] argc the number of non-null strings pointed to by @p argv
+/// @param[in] argv array of `argc+1` pointers to strings (the last of which is null)
+///            specifying arguments passed to madness::initialize, MPI_Init_threads, and other similar initializers;
+/// @param[in] comm the MADNESS communicator (an madness::SafeMPI::Intracomm object) to use for TiledArray computation
+/// @param[in] quiet if true, will prevent initializers from writing to standard streams, if possible; the default is true
 /// @throw TiledArray::Exception if TiledArray initialized MADWorld and
 /// TiledArray::finalize() had been called
-World& initialize(
-  int& argc, char**& argv,
-  const SafeMPI::Intracomm& comm,
-  bool quiet = true
-);
+/// @note - `argc` and `argv` are typically the values received by the main() function of the application
+/// @note - variants of initialize that do not take `comm` will construct default communicator
+/// @note - the default World object is set to the object returned by these.
+/// @note - The following environment variables can be used to control TiledArray
+///       initialization:
+///       | Environment Variable | Default| Description |
+///       |----------------------|--------|-------------|
+///       | `TA_LINALG_BACKEND`  | none   | If set, chooses the linear algebra backend to use; valid values are `scalapack` (distributed library ScaLAPACK, only available if configured with `ENABLE_SCALAPACK=ON`), `lapack` (non-distributed library LAPACK, always available), and `ttg` (experimental [TTG](https://github.com/TESSEorg/TTG) backend, only implements Cholesky); the default is to choose best available backend automatically (recommended) |
+///       | `TA_LINALG_DISTRIBUTED_MINSIZE`  | 4194304 | Unless `TA_LINALG_BACKEND` is set, this controls the minimum matrix size (#rows times #columns) for which the distributed backend if chosen when selecting the best available backend |
+/// @warning MADWorld can only be initialized/finalized once, hence if
+///          TiledArray initializes MADWorld
+///          it can also be initialized/finalized only once.
+// clang-format on
+World& initialize(int& argc, char**& argv, const SafeMPI::Intracomm& comm,
+                  bool quiet = true);
 
 inline World& initialize(int& argc, char**& argv, bool quiet = true) {
   return TiledArray::initialize(argc, argv, SafeMPI::COMM_WORLD, quiet);

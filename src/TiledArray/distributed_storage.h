@@ -62,7 +62,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
  private:
   const size_type max_size_;  ///< The maximum number of elements that can be
                               ///< stored by this container
-  std::shared_ptr<pmap_interface>
+  std::shared_ptr<const pmap_interface>
       pmap_;  ///< The process map that defines the element distribution
   mutable container_type data_;     ///< The local data container
   madness::AtomicInt num_live_ds_;  ///< Number of live DelayedSet objects
@@ -72,8 +72,8 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   DistributedStorage_& operator=(const DistributedStorage_&);
 
   template <typename Value>
-  std::enable_if_t<std::is_same_v<std::decay_t<Value>,value_type>, void>
-      set_handler(const size_type i, Value&& value) {
+  std::enable_if_t<std::is_same_v<std::decay_t<Value>, value_type>, void>
+  set_handler(const size_type i, Value&& value) {
     future& f = get_local(i);
 
     // Check that the future has not been set already.
@@ -90,10 +90,13 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   }
 
   template <typename Value>
-  std::enable_if_t<std::is_same_v<std::decay_t<Value>,value_type> || std::is_same_v<std::decay_t<Value>,future>, void>
+  std::enable_if_t<std::is_same_v<std::decay_t<Value>, value_type> ||
+                       std::is_same_v<std::decay_t<Value>, future>,
+                   void>
   set_remote(const size_type i, Value&& value) {
-    WorldObject_::task(owner(i), &DistributedStorage_::set_handler<std::decay_t<value_type>&>, i, std::forward<Value>(value),
-                       madness::TaskAttributes::hipri());
+    WorldObject_::task(
+        owner(i), &DistributedStorage_::set_handler<std::decay_t<value_type>&>,
+        i, std::forward<Value>(value), madness::TaskAttributes::hipri());
   }
 
   struct DelayedSet : public madness::CallbackInterface {
@@ -129,7 +132,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   /// \param max_size The maximum capacity of this container
   /// \param pmap The process map for the container (default = null pointer)
   DistributedStorage(World& world, size_type max_size,
-                     const std::shared_ptr<pmap_interface>& pmap)
+                     const std::shared_ptr<const pmap_interface>& pmap)
       : WorldObject_(world),
         max_size_(max_size),
         pmap_(pmap),
@@ -146,7 +149,8 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   virtual ~DistributedStorage() {
     if (num_live_ds_ != 0) {
       madness::print_error(
-          "DistributedStorage (object id=", this->id(), ") destroyed while "
+          "DistributedStorage (object id=", this->id(),
+          ") destroyed while "
           "outstanding tasks exist. Add a fence() to extend the lifetime of "
           "this object.");
       abort();
@@ -159,7 +163,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
 
   /// \return A shared pointer to the process map.
   /// \throw nothing
-  const std::shared_ptr<pmap_interface>& pmap() const { return pmap_; }
+  const std::shared_ptr<const pmap_interface>& pmap() const { return pmap_; }
 
   /// Element owner
 
@@ -317,9 +321,7 @@ class DistributedStorage : public madness::WorldObject<DistributedStorage<T> > {
   /// Reports the number of live DelayedSet requests
 
   /// @return const reference to the atomic counter of live DelayedSet requests
-  const madness::AtomicInt& num_live_ds() const {
-    return num_live_ds_;
-  }
+  const madness::AtomicInt& num_live_ds() const { return num_live_ds_; }
 };  // class DistributedStorage
 
 }  // namespace detail

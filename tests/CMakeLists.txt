@@ -32,23 +32,8 @@ set(executable ta_test)
 # N.B.: The order of files here represents the order in which the tests are run.
 # N.B. 2: if you want to trim this down you may need to resolve linker errors due to missing fixture deps manually
 set(ta_test_src_files  ta_test.cpp
+    range1.cpp
     range.cpp
-    btas.cpp
-    meta.cpp
-    type_traits.cpp
-    utility.cpp
-    permutation.cpp
-    symm_permutation_group.cpp
-    symm_irrep.cpp
-    symm_representation.cpp
-    block_range.cpp
-    perm_index.cpp
-    transform_iterator.cpp
-    bitset.cpp
-    math_outer.cpp
-    math_partial_reduce.cpp
-    math_transpose.cpp
-    math_blas.cpp
     tensor.cpp
     tensor_of_tensor.cpp
     tensor_tensor_view.cpp
@@ -109,8 +94,8 @@ set(ta_test_src_files  ta_test.cpp
     s_t_t_contract_.cpp
     t_t_t_contract_.cpp
     t_s_t_contract_.cpp
-    # t_tot_tot_contract_.cpp
-    # tot_tot_tot_contract_.cpp
+  # t_tot_tot_contract_.cpp
+  # tot_tot_tot_contract_.cpp
     einsum.cpp
     linalg.cpp
         cp.cpp
