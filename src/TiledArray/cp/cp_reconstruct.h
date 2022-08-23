@@ -42,3 +42,5 @@ auto reconstruct(const std::vector<DistArray<Tile, Policy>> cp_factors,
   return krp;
 }
 
+} // namespace TiledArray::cp
+#endif //TiledArray_CP_CP_RECONSTRUCT_H

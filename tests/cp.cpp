@@ -203,9 +203,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
-
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_dense.trange());
+    auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
@@ -222,8 +220,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_dense.trange());
+    auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d") = b_dense("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
@@ -240,8 +237,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_dense.trange());
+    auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d,e") = b_dense("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
@@ -259,8 +255,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_sparse.trange());
+    auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
     bool accurate = ( TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
@@ -277,8 +272,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_sparse.trange());
+    auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
@@ -295,8 +289,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_sparse.trange());
+    auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
@@ -348,8 +341,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_dense.trange());
+    auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
@@ -366,8 +358,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_dense.trange());
+    auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d") = b_dense("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
@@ -384,8 +375,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_dense.trange());
+    auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
     diff("a,b,c,d,e") = b_dense("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
@@ -403,8 +393,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_sparse.trange());
+    auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
     bool accurate = ( TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
@@ -421,8 +410,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_sparse.trange());
+    auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
@@ -439,8 +427,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
                               compute_trange1(cp_rank, 80),
                               0, 1e-3, false);
 
-    //auto b_cp = cp::reconstruct(factors);
-    auto b_cp = cp::btas_reconstruct(factors, b_sparse.trange());
+    auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
