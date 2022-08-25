@@ -309,14 +309,15 @@ auto einsum_dot(
     expressions::TsrExpr<U> B,
     const std::string &cs,
     expressions::TsrExpr<V> dot,
-    double alpha = 1.0, double beta = 1.0,
+    const double alpha = 1.0, const double beta = 1.0,
     World &world = get_default_world())
 {
   static_assert(std::is_same<const T, const U>::value);
   static_assert(std::is_same<const T, const V>::value);
   using E = expressions::TsrExpr<const T>;
   auto expr = Einsum::idx<T>(cs);
-  return einsum_dot_impl(E(A), E(B), expr,
+  //return dot.dot((einsum(E(A), E(B), Einsum::idx<T>(cs), world))(cs));
+  return einsum_dot_impl(E(A), E(B), std::tuple<Einsum::Index<std::string>>{cs},
       E(dot), alpha, beta, world);
 }
 
@@ -337,32 +338,27 @@ auto einsum_dot_impl(
   using Tensor = typename Array::value_type;
   using Shape = typename Array::shape_type;
 
-  double dot_product = 0.0;
-
   auto a = std::get<0>(Einsum::idx(A));
   auto b = std::get<0>(Einsum::idx(B));
   Einsum::Index<std::string> c = std::get<0>(cs);
-  auto d = std::get<0>(Einsum::idx(D));
 
-
-  struct { std::string a, b, c, d; } inner;
+  struct { std::string a, b, c; } inner;
   if constexpr (std::tuple_size<decltype(cs)>::value == 2) {
     inner.a = ";" + (std::string)std::get<1>(Einsum::idx(A));
     inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
     inner.c = ";" + (std::string)std::get<1>(cs);
-    inner.d = ";" + (std::string)std::get<1>(Einsum::idx(D));
   }
 
   // these are "Hadamard" (fused) indices
-  auto h = a & b & c & d;
+  auto h = a & b & c;
 
-//  // no Hadamard indices => standard contraction (or even outer product)
-//  // same a, b, and c => pure Hadamard
-//  if (!h || (!(a ^ b) && !(b ^ c))) {
-//    Array C;
-//    C(std::string(c) + inner.c) = A*B;
-//    return C(std::string(c) + inner.c).dot(D);
-//  }
+  // no Hadamard indices => standard contraction (or even outer product)
+  // same a, b, and c => pure Hadamard
+  if (!h || (!(a ^ b) && !(b ^ c))) {
+    Array C;
+    C(std::string(c) + inner.c) = A*B;
+    return C(std::get<0>(cs)).dot(D);
+  }
 
   auto e = (a ^ b);
   // contracted indices
@@ -410,10 +406,6 @@ auto einsum_dot_impl(
     }
     term.expr = ei;
   }
-  Term CD = {D.array(), d};
-  if(CD.idx != h + e) {
-    CD.permutation = permutation(CD.idx, h + e);
-  }
 
   Term C = { Array(world, TiledRange(range_map[c])), c };
   for (auto idx : e) {
@@ -427,7 +419,6 @@ auto einsum_dot_impl(
   AB[0].expr += inner.a;
   AB[1].expr += inner.b;
   C.expr += inner.c;
-  CD.expr += inner.d;
 
   struct {
     RangeProduct tiles;
@@ -447,6 +438,48 @@ auto einsum_dot_impl(
   if constexpr(std::tuple_size<decltype(cs)>::value > 1) {
     TA_ASSERT(e);
   }
+  else if (!e) { // hadamard reduction
+    auto& [A,B] = AB;
+    TiledRange trange(range_map[i]);
+    RangeProduct tiles;
+    for (auto idx : i) {
+      tiles *= Range(range_map[idx].tiles_range());
+    }
+    auto pa = A.permutation;
+    auto pb = B.permutation;
+    for (Index h : H.tiles) {
+      if (!C.array.is_local(h)) continue;
+      size_t batch = 1;
+      for (size_t i = 0; i < h.size(); ++i) {
+        batch *= H.batch[i].at(h[i]);
+      }
+      Tensor tile(TiledArray::Range{batch}, typename Tensor::value_type());
+      for (Index i : tiles) {
+        // skip this unless both input tiles exist
+        const auto pahi_inv = apply_inverse(pa,h+i);
+        const auto pbhi_inv = apply_inverse(pb,h+i);
+        if (A.array.is_zero(pahi_inv) || B.array.is_zero(pbhi_inv)) continue;
+
+        auto ai = A.array.find(pahi_inv).get();
+        auto bi = B.array.find(pbhi_inv).get();
+        if (pa) ai = ai.permute(pa);
+        if (pb) bi = bi.permute(pb);
+        auto shape = trange.tile(i);
+        ai = ai.reshape(shape, batch);
+        bi = bi.reshape(shape, batch);
+        for (size_t k = 0; k < batch; ++k) {
+          auto hk = ai.batch(k).dot(bi.batch(k));
+          tile[k] = hk;
+        }
+      }
+      auto pc = C.permutation;
+      auto shape = apply_inverse(pc, C.array.trange().tile(h));
+      tile = tile.reshape(shape);
+      if (pc) tile = tile.permute(pc);
+      C.array.set(h, tile);
+    }
+    return C.array(std::get<0>(cs)).dot(D);
+  }
 
   // generalized contraction
 
@@ -455,13 +488,6 @@ auto einsum_dot_impl(
     term.ei_tiled_range = TiledRange(range_map[ei]);
     for (auto idx : ei) {
       term.tiles *= Range(range_map[idx].tiles_range());
-    }
-  }
-  {
-    auto he = (e & CD.idx);
-    CD.ei_tiled_range = TiledRange(range_map[he]);
-    for(auto idx : he){
-      CD.tiles *= Range(range_map[idx].tiles_range());
     }
   }
 
@@ -511,37 +537,45 @@ auto einsum_dot_impl(
     B.ei = Array();
     // why omitting this fence leads to deadlock?
     owners->gop.fence();
-    for (Index e : CD.tiles) {
-      if (!CD.ei.is_local(e)) continue;
-      if (CD.ei.is_zero(e)) continue;
+    for (Index e : C.tiles) {
+      if (!C.ei.is_local(e)) continue;
+      if (C.ei.is_zero(e)) continue;
       // TODO no need for immediate evaluation
-      auto tile = CD.ei.find(e).get();
+      auto tile = C.ei.find(e).get();
       assert(tile.batch_size() == batch);
-      const Permutation &P = CD.permutation;
+      const Permutation &P = C.permutation;
       auto c = apply(P, h+e);
-      auto shape = CD.array.trange().tile(c);
+      auto shape = C.array.trange().tile(c);
       shape = apply_inverse(P, shape);
       tile = tile.reshape(shape);
       if (P) tile = tile.permute(P);
-      local_tiles.push_back({d, tile});
+      local_tiles.push_back({c, tile});
     }
-    bool replicated = CD.array.pmap()->is_replicated();
-    CD.ei = TiledArray::make_array<Array>(
-        *owners,
-        CD.ei_tiled_range,
-        CD.local_tiles.begin(),
-        CD.local_tiles.end(),
-        replicated
-    );
-    dot_product += C.ei(C.expr).dot(CD.ei(CD.expr));
     // mark for lazy deletion
     C.ei = Array();
-    CD.ei = Array();
-    owners->gop.fence();
   }
-  world.gop.sum(dot_product);
-  world.gop.fence();
-  return dot_product;
+
+  if constexpr (!Shape::is_dense()) {
+    TiledRange tiled_range = TiledRange(range_map[c]);
+    std::vector< std::pair<Index,float> > tile_norms;
+    for (auto& [index,tile] : local_tiles) {
+      tile_norms.push_back({index,tile.norm()});
+    }
+    Shape shape(world, tile_norms, tiled_range);
+    C.array = Array(world, TiledRange(range_map[c]), shape);
+  }
+
+  for (auto& [index,tile] : local_tiles) {
+    if (C.array.is_zero(index)) continue;
+    C.array.set(index, tile);
+  }
+
+  for (auto &w : worlds) {
+    w->gop.fence();
+  }
+
+  return C.array(std::get<0>(cs)).dot(D);
+
 }
 }  // namespace TiledArray::expressions
 
