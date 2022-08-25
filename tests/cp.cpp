@@ -207,6 +207,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
+    if(!accurate) std::cout << "The error in order-3 dense is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
     BOOST_CHECK(accurate);
   }
   // order-4 test
@@ -224,6 +225,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     TArrayD diff;
     diff("a,b,c,d") = b_dense("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
+    if(!accurate) std::cout << "The error in order-4 dense is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
     BOOST_CHECK(accurate);
   }
   // order-5 test
@@ -241,6 +243,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     TArrayD diff;
     diff("a,b,c,d,e") = b_dense("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_dense) < 1e-10);
+    if(!accurate) std::cout << "The error in order-5 dense is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
     BOOST_CHECK(accurate);
   }
 
@@ -259,6 +262,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     TSpArrayD diff;
     diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
     bool accurate = ( TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
+    if(!accurate) std::cout << "The error in order-3 sparse is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
     BOOST_CHECK(accurate);
   }
   // order-4 test
@@ -276,6 +280,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     TSpArrayD diff;
     diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
+    if(!accurate) std::cout << "The error in order-4 sparse is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
     BOOST_CHECK(accurate);
   }
   // order-5 test
@@ -293,6 +298,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
+    if(!accurate) std::cout << "The error in order-5 sparse is : " << TA::norm2(diff) / TA::norm2(b_dense) << std::endl;
     BOOST_CHECK(accurate);
   }
 }
