@@ -32,7 +32,7 @@
 
 #include <TiledArray/cuda/btas_cublas.h>
 #include <TiledArray/cuda/um_storage.h>
-#include <TiledArray/external/ta-librett.h>
+#include <TiledArray/external/librett.h>
 #include <TiledArray/tile.h>
 
 namespace TiledArray {

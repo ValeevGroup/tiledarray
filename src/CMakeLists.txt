@@ -201,7 +201,7 @@ if(CUDA_FOUND)
 
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
-     TiledArray/external/ta-librett.h
+     TiledArray/external/librett.h
      TiledArray/cuda/cublas.h
      TiledArray/cuda/btas_cublas.h
      TiledArray/cuda/btas_um_tensor.h
