@@ -289,16 +289,16 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr5,
                                        &this->init_unit_tile<TensorD>);
-    double cp_rank = 110;
+    double cp_rank = 105;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-4, false);
+                              0, 1e-4, true);
 
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
     bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
-    if(!accurate) std::cout << "The error in order-5 sparse is : " << TA::norm2(diff) / TA::norm2(b_sparse) << std::endl;
+    std::cout << "The error in order-5 sparse is : " << TA::norm2(diff) / TA::norm2(b_sparse) << std::endl;
     BOOST_CHECK(accurate);
   }
 }
