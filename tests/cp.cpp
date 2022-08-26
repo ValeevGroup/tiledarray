@@ -292,13 +292,12 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     double cp_rank = 105;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-4, true);
+                              0, 1e-3, false);
 
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
-    std::cout << "The error in order-5 sparse is : " << TA::norm2(diff) / TA::norm2(b_sparse) << std::endl;
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-9);
     BOOST_CHECK(accurate);
   }
 }
