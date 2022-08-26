@@ -31,16 +31,37 @@ class Index {
   using value_type = typename container_type::value_type;
 
   Index() = default;
-  Index(container_type &&s) : data_(std::move(s)) {}
+  Index(const container_type &s) : data_(s) {}
+  Index(const std::initializer_list<T> &s) : data_(s) {}
 
   template <typename S, typename U = void>
-  Index(const S &s) : data_(s.begin(), s.end()) {}
+  Index(const S &s) {
+    using std::begin;
+    using std::end;
+    data_.assign(begin(s), end(s));
+  }
+
+  template <int N, typename U = void>
+  Index(const char (&s)[N]) : Index(std::string(s)) {}
 
   template <typename U = void>
-  explicit Index(const std::string &s) : Index(index::tokenize(s)) {}
+  explicit Index(const char* &s) : Index(std::string(s)) {}
 
   template <typename U = void>
-  explicit Index(const char *s) : Index(std::string(s)) {}
+  explicit Index(const std::string &s) {
+    static_assert(
+      std::is_same_v<T,char> ||
+      std::is_same_v<T,std::string>
+    );
+    if constexpr (std::is_same_v<T,std::string>) {
+      data_ = index::tokenize(s);
+    }
+    else {
+      using std::begin;
+      using std::end;
+      data_.assign(begin(s), end(s));
+    }
+  }
 
   template <typename U = void>
   operator std::string() const {

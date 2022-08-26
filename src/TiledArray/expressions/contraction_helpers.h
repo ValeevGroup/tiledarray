@@ -57,7 +57,7 @@ auto range_from_annotation(const IndexList_& target_idxs,
                            RHSType&& rhs) {
   using range_type = std::decay_t<decltype(lhs.range())>;
   using size_type = typename range_type::size_type;
-  using extent_type = std::pair<size_type, size_type>;
+  using extent_type = Range1;
 
   container::svector<extent_type> ranges;  // Will be the ranges for each extent
   const auto& lrange = lhs.range();

@@ -61,7 +61,7 @@ struct EngineParamOverride {
       pmap_interface;  ///< Process map interface type
 
   World* world;
-  std::shared_ptr<pmap_interface> pmap;
+  std::shared_ptr<const pmap_interface> pmap;
   const shape_type* shape;
 };
 
@@ -130,7 +130,8 @@ class Expr {
   }
   /// \param pmap the Pmap object to use for the result
   Expr<Derived>& set_pmap(
-      const std::shared_ptr<typename override_type::pmap_interface> pmap) {
+      const std::shared_ptr<const typename override_type::pmap_interface>
+          pmap) {
     if (override_ptr_) {
       override_ptr_->pmap = pmap;
     } else {
@@ -385,7 +386,8 @@ class Expr {
     // Get the output process map.
     // If result's pmap is assigned use it as the initial guess
     // it will be assigned in engine.init
-    std::shared_ptr<typename TsrExpr<A, Alias>::array_type::pmap_interface>
+    std::shared_ptr<
+        const typename TsrExpr<A, Alias>::array_type::pmap_interface>
         pmap;
     if (tsr.array().is_initialized()) pmap = tsr.array().pmap();
 

@@ -70,9 +70,9 @@ namespace TiledArray {
 /// \return An array object of type `Array`
 template <typename Array, typename Op,
           typename std::enable_if<is_dense<Array>::value>::type* = nullptr>
-inline Array make_array(World& world, const detail::trange_t<Array>& trange,
-                        const std::shared_ptr<detail::pmap_t<Array> >& pmap,
-                        Op&& op) {
+inline Array make_array(
+    World& world, const detail::trange_t<Array>& trange,
+    const std::shared_ptr<const detail::pmap_t<Array> >& pmap, Op&& op) {
   typedef typename Array::value_type value_type;
   typedef typename value_type::range_type range_type;
 
@@ -134,9 +134,9 @@ inline Array make_array(World& world, const detail::trange_t<Array>& trange,
 /// \return An array object of type `Array`
 template <typename Array, typename Op,
           typename std::enable_if<!is_dense<Array>::value>::type* = nullptr>
-inline Array make_array(World& world, const detail::trange_t<Array>& trange,
-                        const std::shared_ptr<detail::pmap_t<Array> >& pmap,
-                        Op&& op) {
+inline Array make_array(
+    World& world, const detail::trange_t<Array>& trange,
+    const std::shared_ptr<const detail::pmap_t<Array> >& pmap, Op&& op) {
   typedef typename Array::value_type value_type;
   typedef typename Array::ordinal_type ordinal_type;
   typedef std::pair<ordinal_type, Future<value_type> > datum_type;
@@ -146,8 +146,8 @@ inline Array make_array(World& world, const detail::trange_t<Array>& trange,
   tiles.reserve(pmap->size());
 
   // Construct a tensor to hold updated tile norms for the result shape.
-  TiledArray::Tensor<typename detail::shape_t<Array>::value_type>
-      tile_norms(trange.tiles_range(), 0);
+  TiledArray::Tensor<typename detail::shape_t<Array>::value_type> tile_norms(
+      trange.tiles_range(), 0);
 
   // Construct the task function used to construct the result tiles.
   madness::AtomicInt counter;

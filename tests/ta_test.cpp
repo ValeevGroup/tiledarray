@@ -33,23 +33,18 @@ GlobalFixture::GlobalFixture() {
     world = &TiledArray::initialize(
         boost::unit_test::framework::master_test_suite().argc,
         boost::unit_test::framework::master_test_suite().argv);
-
-    //  N.B. uncomment to create debugger:
-    // using TiledArray::Debugger;
-    // auto debugger = std::make_shared<Debugger>("ta_test");
-    // Debugger::set_default_debugger(debugger);
-    // debugger->set_prefix(world->rank());
-    // choose lldb or gdb
-    // debugger->set_cmd("lldb_xterm");
-    // debugger->set_cmd("gdb_xterm");
-    // to launch a debugger here or elsewhere:
-    // Debugger::default_debugger()->debug("ready to run");
   }
 
   if (world->rank() != 0) {
     boost::unit_test::unit_test_log.set_threshold_level(
         boost::unit_test::log_all_errors);
   }
+
+  // uncomment to create or create+launch debugger
+  // TiledArray::create_debugger("gdb_xterm", "ta_test);
+  // TiledArray::create_debugger("lldb_xterm", "ta_test);
+  // TiledArray::launch_gdb_xterm("ta_test");
+  // TiledArray::launch_lldb_xterm("ta_test");
 }
 
 GlobalFixture::~GlobalFixture() {
