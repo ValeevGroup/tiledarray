@@ -341,12 +341,14 @@ auto einsum_dot_impl(
   auto a = std::get<0>(Einsum::idx(A));
   auto b = std::get<0>(Einsum::idx(B));
   Einsum::Index<std::string> c = std::get<0>(cs);
+  auto d  = std::get<0>(Einsum::idx(D));
 
-  struct { std::string a, b, c; } inner;
+  struct { std::string a, b, c, d; } inner;
   if constexpr (std::tuple_size<decltype(cs)>::value == 2) {
     inner.a = ";" + (std::string)std::get<1>(Einsum::idx(A));
     inner.b = ";" + (std::string)std::get<1>(Einsum::idx(B));
     inner.c = ";" + (std::string)std::get<1>(cs);
+    inner.d = ";" + (std::string)std::get<1>(Einsum::idx(D));
   }
 
   // these are "Hadamard" (fused) indices
@@ -375,6 +377,8 @@ auto einsum_dot_impl(
       RangeMap(a, A.array().trange()) |
       RangeMap(b, B.array().trange())
   );
+
+  auto range_mapD =(RangeMap(d, D.array().trange()));
 
   using TiledArray::Permutation;
   using Einsum::index::permutation;
@@ -415,10 +419,19 @@ auto einsum_dot_impl(
     C.permutation = permutation(h+e, C.idx);
   }
   C.expr = e;
+  Term CD = {D.array(), d};
+  {
+    auto ex = ( e & CD.idx);
+    if(CD.idx != h + ex) {
+      CD.permutation = permutation(CD.idx, h + ex);
+    }
+    CD.expr = ex;
+  }
 
   AB[0].expr += inner.a;
   AB[1].expr += inner.b;
   C.expr += inner.c;
+  CD.expr += inner.d;
 
   struct {
     RangeProduct tiles;
@@ -435,10 +448,13 @@ auto einsum_dot_impl(
 
   using Index = Einsum::Index<size_t>;
 
+  double  dot_product = 0.0;
   if constexpr(std::tuple_size<decltype(cs)>::value > 1) {
     TA_ASSERT(e);
   }
   else if (!e) { // hadamard reduction
+    // in this D is simply a vector so it should be fine to dot it
+    // with C after the other portions are finished.
     auto& [A,B] = AB;
     TiledRange trange(range_map[i]);
     RangeProduct tiles;
@@ -490,6 +506,13 @@ auto einsum_dot_impl(
       term.tiles *= Range(range_map[idx].tiles_range());
     }
   }
+  {
+    auto ex = (e & CD.idx);
+    CD.ei_tiled_range = TiledRange(range_mapD[ex]);
+    for(auto idx : ex){
+      CD.tiles *= Range(range_map[idx].tiles_range());
+    }
+  }
 
   std::vector< std::shared_ptr<World> > worlds;
   std::vector< std::tuple<Index,Tensor> > local_tiles;
@@ -537,6 +560,37 @@ auto einsum_dot_impl(
     B.ei = Array();
     // why omitting this fence leads to deadlock?
     owners->gop.fence();
+
+    own = CD.own(h);
+    if(!own) continue;
+    // dot the resulting tensor with CD
+    CD.local_tiles.clear();
+    const Permutation &P = CD.permutation;
+    for (Index ex : CD.tiles) {
+      auto idx = apply_inverse(P, h+ex);
+      if (!D.array().is_local(idx)) continue;
+      if (D.array().is_zero(idx)) continue;
+      // TODO no need for immediate evaluation
+      auto tile = CD.array.find(idx).get();
+      if (P) tile = tile.permute(P);
+      auto shape = CD.ei_tiled_range.tile(ex);
+      tile = tile.reshape(shape, batch);
+      CD.local_tiles.push_back({ex, tile});
+    }
+    bool replicated = CD.array.pmap()->is_replicated();
+    CD.ei = TiledArray::make_array<Array>(
+        *owners,
+        CD.ei_tiled_range,
+        CD.local_tiles.begin(),
+        CD.local_tiles.end(),
+        replicated
+    );
+    // mark for lazy deletion
+    dot_product += (C.ei(C.expr).dot(CD.ei(CD.expr)));
+    std::cout << dot_product << std::endl;
+    CD.ei = Array();
+    owners->gop.fence();
+
     for (Index e : C.tiles) {
       if (!C.ei.is_local(e)) continue;
       if (C.ei.is_zero(e)) continue;
@@ -551,9 +605,10 @@ auto einsum_dot_impl(
       if (P) tile = tile.permute(P);
       local_tiles.push_back({c, tile});
     }
-    // mark for lazy deletion
     C.ei = Array();
   }
+  world.gop.sum(dot_product);
+  world.gop.fence();
 
   if constexpr (!Shape::is_dense()) {
     TiledRange tiled_range = TiledRange(range_map[c]);
@@ -574,6 +629,10 @@ auto einsum_dot_impl(
     w->gop.fence();
   }
 
+  std::cout << "Final dot : " << dot_product << std::endl;
+  std::cout << "Exact : " << C.array(std::get<0>(cs)).dot(D).get() << std::endl;
+  auto error = dot_product - C.array(std::get<0>(cs)).dot(D);
+  std::cout << "\tError in einsum : " << error << std::endl;
   return C.array(std::get<0>(cs)).dot(D);
 
 }
