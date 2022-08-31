@@ -63,7 +63,11 @@ class DotReduction {
   void operator()(result_type& result, const first_argument_type& left,
                   const second_argument_type& right) const {
     using TiledArray::dot;
-    result += dot(left, right);
+    TA_ASSERT(left.batch_size() == right.batch_size());
+    size_t nb = left.batch_size();
+    for (size_t i = 0; i < nb; ++i) {
+      result += dot(left.batch(i), right.batch(i));
+    }
   }
 
 };  // class DotReduction
