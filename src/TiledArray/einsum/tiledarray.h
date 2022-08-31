@@ -1,5 +1,5 @@
-#ifndef TILEDARRAY_EINSUM_H__INCLUDED
-#define TILEDARRAY_EINSUM_H__INCLUDED
+#ifndef TILEDARRAY_EINSUM_TILEDARRAY_H__INCLUDED
+#define TILEDARRAY_EINSUM_TILEDARRAY_H__INCLUDED
 
 #include "TiledArray/fwd.h"
 #include "TiledArray/dist_array.h"
@@ -8,42 +8,61 @@
 #include "TiledArray/einsum/range.h"
 #include "TiledArray/tiled_range1.h"
 #include "TiledArray/tiled_range.h"
-//#include "TiledArray/util/string.h"
 
-namespace TiledArray::expressions {
+namespace TiledArray::Einsum {
 
-/// einsum function without result indices assumes every index present
-/// in both @p A and @p B is contracted, or, if there are no free indices,
-/// pure Hadamard product is performed.
-/// @param[in] A first argument to the product
-/// @param[in] B second argument to the product
-/// @warning just as in the plain expression code, reductions are a special
-/// case; use Expr::reduce()
-template<typename T, typename U>
-auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B) {
-  //printf("einsum(A,B)\n");
-  auto a = std::get<0>(idx(A));
-  auto b = std::get<0>(idx(B));
-  return einsum(A, B, std::string(a^b));
+using ::Einsum::index::small_vector;
+using Range = ::Einsum::Range;
+using RangeMap = ::Einsum::IndexMap<std::string,TiledRange1>;
+using RangeProduct = ::Einsum::RangeProduct<Range, small_vector<size_t>>;
+
+using ::Einsum::index::Index;
+using ::Einsum::index::IndexMap;
+
+using ::Einsum::index::Permutation;
+using ::Einsum::index::permutation;
+
+/// converts the annotation of an expression to an Index
+template <typename Array>
+auto idx(const std::string &s) {
+  using Index = Einsum::Index<std::string>;
+  if constexpr (detail::is_tensor_of_tensor_v<typename Array::value_type>) {
+    auto semi = std::find(s.begin(), s.end(), ';');
+    TA_ASSERT(semi != s.end());
+    auto [first,second] = ::Einsum::string::split2(s, ";");
+    TA_ASSERT(!first.empty());
+    TA_ASSERT(!second.empty());
+    return std::tuple<Index, Index>{first, second};
+  } else {
+    return std::tuple<Index>{s};
+  }
 }
 
-/// einsum function with result indices explicitly specified
-/// @param[in] A first argument to the product
-/// @param[in] B second argument to the product
-/// @param[in] r result indices
-/// @warning just as in the plain expression code, reductions are a special
-/// case; use Expr::reduce()
-template<typename T, typename U, typename ... Indices>
-auto einsum(
-  expressions::TsrExpr<T> A,
-  expressions::TsrExpr<U> B,
-  const std::string &cs,
-  World &world = get_default_world())
-{
-  static_assert(std::is_same<const T, const U>::value);
-  using E = expressions::TsrExpr<const T>;
-  return einsum(E(A), E(B), Einsum::idx<T>(cs), world);
+/// converts the annotation of an expression to an Index
+template <typename A, bool Alias>
+auto idx(const TiledArray::expressions::TsrExpr<A, Alias> &e) {
+  return idx<A>(e.annotation());
 }
+
+template<typename Array>
+struct ArrayTerm {
+  using Tensor = typename Array::value_type;
+  Array array;
+  Einsum::Index<std::string> idx;
+  Permutation permutation;
+  RangeProduct tiles;
+  TiledRange ei_tiled_range;
+  Array ei;
+  std::string expr;
+  std::vector< std::pair<Einsum::Index<size_t>,Tensor> > local_tiles;
+  bool own(Einsum::Index<size_t> h) const {
+    for (Einsum::Index<size_t> ei : tiles) {
+      auto idx = apply_inverse(permutation, h+ei);
+      if (array.is_local(idx)) return true;
+    }
+    return false;
+  }
+};
 
 template<typename Array_, typename ... Indices>
 auto einsum(
@@ -85,38 +104,15 @@ auto einsum(
 
   TA_ASSERT(e || h);
 
-  using Einsum::index::small_vector;
-  using Range = Einsum::Range;
-  using RangeProduct = Einsum::RangeProduct<Range, small_vector<size_t> >;
-
-  using RangeMap = Einsum::IndexMap<std::string,TiledRange1>;
   auto range_map = (
     RangeMap(a, A.array().trange()) |
     RangeMap(b, B.array().trange())
   );
 
   using TiledArray::Permutation;
-  using Einsum::index::permutation;
+  using ::Einsum::index::permutation;
 
-  struct Term {
-    Array array;
-    Einsum::Index<std::string> idx;
-    Permutation permutation;
-    RangeProduct tiles;
-    TiledRange ei_tiled_range;
-    Array ei;
-    std::string expr;
-    std::vector< std::pair<Einsum::Index<size_t>,Tensor> > local_tiles;
-    bool own(Einsum::Index<size_t> h) const {
-      for (Einsum::Index<size_t> ei : tiles) {
-        auto idx = apply_inverse(permutation, h+ei);
-        if (array.is_local(idx)) return true;
-      }
-      return false;
-    }
-  };
-
-  Term AB[2] = { { A.array(), a }, { B.array(), b } };
+  ArrayTerm<Array> AB[2] = { { A.array(), a }, { B.array(), b } };
 
   for (auto &term : AB) {
     auto ei = (e+i & term.idx);
@@ -126,7 +122,7 @@ auto einsum(
     term.expr = ei;
   }
 
-  Term C = { Array(world, TiledRange(range_map[c])), c };
+  ArrayTerm<Array> C = { Array(world, TiledRange(range_map[c])), c };
   for (auto idx : e) {
     C.tiles *= Range(range_map[idx].tiles_range());
   }
@@ -297,11 +293,48 @@ auto einsum(
 
 }
 
-}  // namespace TiledArray::expressions
+} // tiledarray::expressions
+
+namespace TiledArray::expressions {
+
+/// einsum function without result indices assumes every index present
+/// in both @p A and @p B is contracted, or, if there are no free indices,
+/// pure Hadamard product is performed.
+/// @param[in] A first argument to the product
+/// @param[in] B second argument to the product
+/// @warning just as in the plain expression code, reductions are a special
+/// case; use Expr::reduce()
+template<typename T, typename U>
+auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B) {
+  auto a = std::get<0>(idx(A));
+  auto b = std::get<0>(idx(B));
+  return einsum(A, B, std::string(a^b));
+}
+
+/// einsum function with result indices explicitly specified
+/// @param[in] A first argument to the product
+/// @param[in] B second argument to the product
+/// @param[in] r result indices
+/// @warning just as in the plain expression code, reductions are a special
+/// case; use Expr::reduce()
+template<typename T, typename U, typename ... Indices>
+auto einsum(
+  expressions::TsrExpr<T> A,
+  expressions::TsrExpr<U> B,
+  const std::string &cs,
+  World &world = get_default_world())
+{
+  static_assert(std::is_same<const T, const U>::value);
+  using E = expressions::TsrExpr<const T>;
+  return Einsum::einsum(E(A), E(B), Einsum::idx<T>(cs), world);
+}
+
+} // TiledArray::expressions
 
 namespace TiledArray {
 
 using expressions::einsum;
+using expressions::dot;
 
 template<typename T, typename P>
 auto einsum(
@@ -310,16 +343,17 @@ auto einsum(
   const DistArray<T,P> &B,
   World &world = get_default_world())
 {
-  namespace string = Einsum::string;
+  namespace string = ::Einsum::string;
   auto [lhs,rhs] = string::split2(expr, "->");
   auto [a,b] = string::split2(lhs,",");
   return einsum(
     A(string::join(a,",")),
     B(string::join(b,",")),
-    string::join(rhs,",")
+    string::join(rhs,","),
+    world
   );
 }
 
-}
+}  // namespace TiledArray
 
-#endif /* TILEDARRAY_EINSUM_H__INCLUDED */
+#endif // TILEDARRAY_EINSUM_TILEDARRAY_H__INCLUDED

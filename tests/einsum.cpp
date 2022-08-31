@@ -293,7 +293,7 @@ BOOST_AUTO_TEST_SUITE(einsum_index, TA_UT_LABEL_SERIAL)
 #include "TiledArray/tensor/tensor.h"
 
 BOOST_AUTO_TEST_CASE(einsum_index) {
-  using Einsum::Index;
+  using ::Einsum::Index;
   Index<int> src({ 1, 2, 3, 4, 5, 6 });
   Index<int> dst({ 2, 4, 5, 3, 6, 1 });
   auto p = permutation(src, dst);
