@@ -6,7 +6,16 @@
 #include <TiledArray/external/eigen.h>
 #include <TiledArray/math/linalg/forward.h>
 
+#if defined(LAPACK_COMPLEX_CPP)
+TILEDARRAY_PRAGMA_CLANG(diagnostic push)
+TILEDARRAY_PRAGMA_CLANG(diagnostic ignored "-Wreturn-type-c-linkage")
+#endif  // defined(LAPACK_COMPLEX_CPP)
+
 #include <lapack.hh>
+
+#if defined(LAPACK_COMPLEX_CPP)
+TILEDARRAY_PRAGMA_CLANG(diagnostic pop)
+#endif  // defined(LAPACK_COMPLEX_CPP)
 
 #include <vector>
 
@@ -39,13 +48,13 @@ template <typename T>
 void heig(Matrix<T> &A, Matrix<T> &B, std::vector<T> &W);
 
 template <typename T>
-void svd(Job jobu, Job jobvt, Matrix<T> &A, std::vector<T> &S, Matrix<T> *U, Matrix<T> *VT);
+void svd(Job jobu, Job jobvt, Matrix<T> &A, std::vector<T> &S, Matrix<T> *U,
+         Matrix<T> *VT);
 
 template <typename T>
 void svd(Matrix<T> &A, std::vector<T> &S, Matrix<T> *U, Matrix<T> *VT) {
-  svd( U  ? Job::SomeVec : Job::NoVec, 
-       VT ? Job::SomeVec : Job::NoVec,
-       A, S, U, VT );
+  svd(U ? Job::SomeVec : Job::NoVec, VT ? Job::SomeVec : Job::NoVec, A, S, U,
+      VT);
 }
 
 template <typename T>
@@ -54,8 +63,8 @@ void lu_solve(Matrix<T> &A, Matrix<T> &B);
 template <typename T>
 void lu_inv(Matrix<T> &A);
 
-template <bool QOnly,typename T>
-void householder_qr( Matrix<T> &V, Matrix<T> &R );
+template <bool QOnly, typename T>
+void householder_qr(Matrix<T> &V, Matrix<T> &R);
 
 }  // namespace TiledArray::math::linalg::rank_local
 
