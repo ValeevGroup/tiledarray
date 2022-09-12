@@ -20,7 +20,10 @@
 #ifndef TILEDARRAY_TILED_RANGE1_H__INCLUDED
 #define TILEDARRAY_TILED_RANGE1_H__INCLUDED
 
+#include <TiledArray/config.h>
+
 #include <TiledArray/error.h>
+#include <TiledArray/range1.h>
 #include <TiledArray/type_traits.h>
 #include <TiledArray/utility.h>
 #include <madness/world/archive.h>
@@ -41,9 +44,9 @@ class TiledRange1 {
   struct Enabler {};
 
  public:
-  typedef TA_1INDEX_TYPE index1_type;
-  typedef std::pair<index1_type, index1_type> range_type;
-  typedef std::vector<range_type>::const_iterator const_iterator;
+  using range_type = Range1;
+  using index1_type = range_type::index1_type;
+  using const_iterator = std::vector<range_type>::const_iterator;
 
   /// Default constructor creates an empty range (tile and element ranges are
   /// both [0,0)) .
@@ -148,14 +151,55 @@ class TiledRange1 {
   const range_type& elements_range() const { return elements_range_; }
 
   /// Tile range extent accessor
-  index1_type tile_extent() const { return range_.second - range_.first; }
+  /// \return the number of tiles in the range
+  index1_type tile_extent() const { return TiledArray::extent(range_); }
 
   /// Elements range extent accessor
-  index1_type extent() const {
-    return elements_range_.second - elements_range_.first;
+  /// \return the number of elements in the range
+  index1_type extent() const { return TiledArray::extent(elements_range_); }
+
+  /// Computes hashmarks
+  /// \return the hashmarks of the tiled range, consisting of the following
+  /// values:
+  ///         `{ tile(0).first, tile(0).second, tile(1).second, tile(2).second
+  ///         ... }`
+  std::vector<index1_type> hashmarks() const {
+    std::vector<index1_type> result;
+    result.reserve(tile_extent() + 1);
+    result.push_back(elements_range().first);
+    for (auto& t : tiles_ranges_) {
+      result.push_back(t.second);
+    }
+    return result;
   }
 
-  /// Tile range accessor
+  /// \return the size of the largest tile in the range
+  /// \pre `this->tile_extent() > 0`
+  index1_type largest_tile_extent() const {
+    TA_ASSERT(tile_extent() > 0);
+    using TiledArray::extent;
+    auto largest_tile_it =
+        std::max_element(tiles_ranges_.begin(), tiles_ranges_.end(),
+                         [](const auto& tile1, const auto& tile2) {
+                           return extent(tile1) < extent(tile2);
+                         });
+    return extent(*largest_tile_it);
+  }
+
+  /// \return the size of the smallest tile in the range
+  /// \pre `this->tile_extent() > 0`
+  index1_type smallest_tile_extent() const {
+    TA_ASSERT(tile_extent() > 0);
+    using TiledArray::extent;
+    auto smallest_tile_it =
+        std::min_element(tiles_ranges_.begin(), tiles_ranges_.end(),
+                         [](const auto& tile1, const auto& tile2) {
+                           return extent(tile1) < extent(tile2);
+                         });
+    return extent(*smallest_tile_it);
+  }
+
+  /// Accesses range of a particular tile
 
   /// \param i tile index
   /// \return A const reference to the range of tile \c i
@@ -262,16 +306,17 @@ class TiledRange1 {
 
   /// Initialize elem2tile
   void init_elem2tile_() const {
+    using TiledArray::extent;
     // check for 0 size range.
-    if ((elements_range_.second - elements_range_.first) == 0) return;
+    if (extent(elements_range_) == 0) return;
 
     static std::mutex mtx;
     {
       std::lock_guard<std::mutex> lock(mtx);
       if (elem2tile_.empty()) {
         // initialize elem2tile map
-        elem2tile_.resize(elements_range_.second - elements_range_.first);
-        const auto end = range_.second - range_.first;
+        elem2tile_.resize(extent(elements_range_));
+        const auto end = extent(range_);
         for (index1_type t = 0; t < end; ++t)
           for (index1_type e = tiles_ranges_[t].first;
                e < tiles_ranges_[t].second; ++e)
@@ -340,7 +385,7 @@ inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
       hashmarks.push_back(tile.second);
     }
     for (const auto& tile : r2) {
-      hashmarks.push_back(hashmarks.back() + tile.second - tile.first);
+      hashmarks.push_back(hashmarks.back() + TiledArray::extent(tile));
     }
     return TiledRange1(hashmarks.begin(), hashmarks.end());
   } else {
@@ -357,8 +402,8 @@ inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
 inline bool is_congruent(const TiledRange1& r1, const TiledRange1& r2) {
   return std::equal(r1.begin(), r1.end(), r2.begin(),
                     [](const auto& tile1, const auto& tile2) {
-                      return (tile1.second - tile1.first) ==
-                             (tile2.second - tile2.first);
+                      return TiledArray::extent(tile1) ==
+                             TiledArray::extent(tile2);
                     });
 }
 

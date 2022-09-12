@@ -1,6 +1,8 @@
 #ifndef TILEDARRAY_EINSUM_H__INCLUDED
 #define TILEDARRAY_EINSUM_H__INCLUDED
 
+#include "TiledArray/fwd.h"
+#include "TiledArray/dist_array.h"
 #include "TiledArray/expressions/fwd.h"
 #include "TiledArray/fwd.h"
 
@@ -46,6 +48,8 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
             std::tuple<Einsum::Index<std::string>, Indices...> cs,
             World &world) {
   using Array = std::remove_cv_t<Array_>;
+  using Tensor = typename Array::value_type;
+  using Shape = typename Array::shape_type;
 
   auto a = std::get<0>(Einsum::idx(A));
   auto b = std::get<0>(Einsum::idx(B));
@@ -96,6 +100,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
     TiledRange ei_tiled_range;
     Array ei;
     std::string expr;
+    std::vector< std::pair<Einsum::Index<size_t>,Tensor> > local_tiles;
     bool own(Einsum::Index<size_t> h) const {
       for (Einsum::Index<size_t> ei : tiles) {
         auto idx = apply_inverse(permutation, h + ei);
@@ -142,7 +147,6 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
   }
 
   using Index = Einsum::Index<size_t>;
-  using Tensor = typename Array::value_type;
 
   if constexpr (std::tuple_size<decltype(cs)>::value > 1) {
     TA_ASSERT(e);
@@ -161,7 +165,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
       for (size_t i = 0; i < h.size(); ++i) {
         batch *= H.batch[i].at(h[i]);
       }
-      Tensor tile(TiledArray::Range{batch});
+      Tensor tile(TiledArray::Range{batch}, typename Tensor::value_type());
       for (Index i : tiles) {
         // skip this unless both input tiles exist
         const auto pahi_inv = apply_inverse(pa, h + i);
@@ -199,11 +203,8 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
     }
   }
 
-  std::vector<std::shared_ptr<World> > worlds;
-  auto fence_then_delete = [](World *world) {
-    world->gop.fence();
-    delete world;
-  };
+  std::vector< std::shared_ptr<World> > worlds;
+  std::vector< std::tuple<Index,Tensor> > local_tiles;
 
   // iterates over tiles of hadamard indices
   for (Index h : H.tiles) {
@@ -219,53 +220,70 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
       batch *= H.batch[i].at(h[i]);
     }
     for (auto &term : AB) {
-      term.ei = Array(*owners, term.ei_tiled_range);
+      term.local_tiles.clear();
       const Permutation &P = term.permutation;
-      auto op_reshape =
-          make_op_shared_handle([P, term_ei_trange = term.ei.trange(), batch](
-                                    const auto &intile, const auto &ei) {
-            auto shape = term_ei_trange.tile(ei);
-            return P ? intile.permute(P).reshape(shape, batch)
-                     : intile.reshape(shape, batch);
-          });
       for (Index ei : term.tiles) {
         auto idx = apply_inverse(P, h + ei);
         if (!term.array.is_local(idx)) continue;
-        auto intile_fut = term.array.find(idx);
-        using Tile = std::decay_t<decltype(intile_fut.get())>;
-        term.ei.set(ei, owners->taskq.add(
-                            // wraps generic callable into nongeneric callable
-                            [op_reshape](const Tile &tile, const Index &idx) {
-                              return op_reshape(tile, idx);
-                            },
-                            intile_fut, ei));
+        if (term.array.is_zero(idx)) continue;
+        // TODO no need for immediate evaluation
+        auto tile = term.array.find(idx).get();
+        if (P) tile = tile.permute(P);
+        auto shape = term.ei_tiled_range.tile(ei);
+        tile = tile.reshape(shape, batch);
+        term.local_tiles.push_back({ei, tile});
       }
+      bool replicated = term.array.pmap()->is_replicated();
+      term.ei = TiledArray::make_array<Array>(
+        *owners,
+        term.ei_tiled_range,
+        term.local_tiles.begin(),
+        term.local_tiles.end(),
+        replicated
+      );
     }
     C.ei(C.expr) = (A.ei(A.expr) * B.ei(B.expr)).set_world(*owners);
-    for (Index e : C.tiles) {
-      if (!C.ei.is_local(e)) continue;
-      const auto &P = C.permutation;
-      auto op_reshape =
-          make_op_shared_handle([P, C_array_trange = C.array.trange(), batch](
-                                    const auto &intile, const auto &c) {
-            assert(intile.batch_size() == batch);
-            auto shape = apply_inverse(P, C_array_trange.tile(c));
-            return P ? intile.reshape(shape).permute(P) : intile.reshape(shape);
-          });
-      auto intile_fut = C.ei.find(e);
-      using Tile = std::decay_t<decltype(intile_fut.get())>;
-      auto c = apply(P, h + e);
-      C.array.set(c, owners->taskq.add(
-                         // wraps generic callable into nongeneric callable
-                         [op_reshape](const Tile &tile, const Index &idx) {
-                           return op_reshape(tile, idx);
-                         },
-                         intile_fut, c));
-    }
-    // mark for lazy deletion
+    A.ei.defer_deleter_to_next_fence();
+    B.ei.defer_deleter_to_next_fence();
     A.ei = Array();
     B.ei = Array();
+    // why omitting this fence leads to deadlock?
+    owners->gop.fence();
+    for (Index e : C.tiles) {
+      if (!C.ei.is_local(e)) continue;
+      if (C.ei.is_zero(e)) continue;
+      // TODO no need for immediate evaluation
+      auto tile = C.ei.find(e).get();
+      assert(tile.batch_size() == batch);
+      const Permutation &P = C.permutation;
+      auto c = apply(P, h+e);
+      auto shape = C.array.trange().tile(c);
+      shape = apply_inverse(P, shape);
+      tile = tile.reshape(shape);
+      if (P) tile = tile.permute(P);
+      local_tiles.push_back({c, tile});
+    }
+    // mark for lazy deletion
     C.ei = Array();
+  }
+
+  if constexpr (!Shape::is_dense()) {
+    TiledRange tiled_range = TiledRange(range_map[c]);
+    std::vector< std::pair<Index,float> > tile_norms;
+    for (auto& [index,tile] : local_tiles) {
+      tile_norms.push_back({index,tile.norm()});
+    }
+    Shape shape(world, tile_norms, tiled_range);
+    C.array = Array(world, TiledRange(range_map[c]), shape);
+  }
+
+  for (auto& [index,tile] : local_tiles) {
+    if (C.array.is_zero(index)) continue;
+    C.array.set(index, tile);
+  }
+
+  for (auto &w : worlds) {
+    w->gop.fence();
   }
 
   return C.array;

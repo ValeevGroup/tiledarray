@@ -36,7 +36,8 @@
 #include <iterator>
 #include <sstream>
 
-#include "backtrace.h"
+#include "TiledArray/external/madness.h"
+#include "TiledArray/util/backtrace.h"
 
 // usually in signal.h, but not always.
 #ifndef NSIG
@@ -354,16 +355,23 @@ void Debugger::__traceback(const std::string &prefix, const char *reason) {
     std::cout << result.str(nframes_to_skip) << std::endl;
 }
 
-void launch_gdb_xterm() {
+void create_debugger(const char *cmd, const char *exec, std::int64_t rank) {
   auto debugger = std::make_shared<TiledArray::Debugger>();
-  debugger->set_cmd("gdb_xterm");
-  debugger->debug("Starting gdb ...");
+  if (cmd) debugger->set_cmd(cmd);
+  if (exec) debugger->set_exec(exec);
+  if (rank < 0) rank = TiledArray::get_default_world().rank();
+  debugger->set_prefix(rank);
+  Debugger::set_default_debugger(debugger);
 }
 
-void launch_lldb_xterm() {
-  auto debugger = std::make_shared<TiledArray::Debugger>();
-  debugger->set_cmd("lldb_xterm");
-  debugger->debug("Starting lldb ...");
+void launch_gdb_xterm(const char *exec, std::int64_t rank) {
+  create_debugger("gdb_xterm", exec, rank);
+  Debugger::default_debugger()->debug("Starting gdb ...");
+}
+
+void launch_lldb_xterm(const char *exec, std::int64_t rank) {
+  create_debugger("lldb_xterm", exec, rank);
+  Debugger::default_debugger()->debug("Starting lldb ...");
 }
 
 }  // namespace TiledArray

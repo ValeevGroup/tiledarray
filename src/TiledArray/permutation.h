@@ -79,10 +79,11 @@ inline void permute_array(const Perm& perm, const Arg& arg, Result& result) {
 template <typename P, typename In, typename Out, bool Inverse>
 void permute_n(size_t N, P p, In in, Out out, std::bool_constant<Inverse>) {
   for (size_t k = 0; k < N; ++k) {
+    const auto pk = *p++;
     if constexpr (Inverse) {
-      out[*p++] = *in++;
+      *out++ = in[pk];
     } else {
-      *out++ = in[*p++];
+      out[pk] = *in++;
     }
   }
 }

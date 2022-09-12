@@ -136,7 +136,7 @@ class UnaryEngine : ExprEngine<Derived> {
   /// \param world The world were the result will be distributed
   /// \param pmap The process map for the result tensor tiles
   void init_distribution(World* world,
-                         const std::shared_ptr<pmap_interface>& pmap) {
+                         const std::shared_ptr<const pmap_interface>& pmap) {
     arg_.init_distribution(world, pmap);
     ExprEngine_::init_distribution(world, arg_.pmap());
   }

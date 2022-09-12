@@ -40,6 +40,7 @@ TiledArray/perm_index.h
 TiledArray/permutation.h
 TiledArray/proc_grid.h
 TiledArray/range.h
+TiledArray/range1.h
 TiledArray/range_iterator.h
 TiledArray/reduce_task.h
 TiledArray/replicator.h
@@ -58,6 +59,7 @@ TiledArray/val_array.h
 ${PROJECT_BINARY_DIR}/src/TiledArray/version.h
 TiledArray/zero_tensor.h
 TiledArray/math/linalg/forward.h
+TiledArray/math/linalg/basic.h
 TiledArray/math/linalg/conjgrad.h
 TiledArray/math/linalg/diis.h
 TiledArray/math/linalg/util.h
@@ -73,6 +75,8 @@ TiledArray/math/linalg/scalapack/heig.h
 TiledArray/math/linalg/scalapack/lu.h
 TiledArray/math/linalg/scalapack/qr.h
 TiledArray/math/linalg/scalapack/svd.h
+TiledArray/math/linalg/ttg/cholesky.h
+TiledArray/math/linalg/ttg/util.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
 TiledArray/conversions/dense_to_sparse.h
@@ -226,6 +230,7 @@ TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
+TiledArray/math/linalg/basic.cpp
 TiledArray/math/linalg/rank-local.cpp
 )
 
@@ -256,6 +261,10 @@ if( TARGET TiledArray_SCALAPACK )
   list(APPEND _TILEDARRAY_DEPENDENCIES TiledArray_SCALAPACK)
 endif()
 list(APPEND _TILEDARRAY_DEPENDENCIES "${LAPACK_LIBRARIES}")
+
+if( TARGET ttg-parsec )
+  list(APPEND _TILEDARRAY_DEPENDENCIES ttg-parsec)
+endif()
 
 # cache deps as TILEDARRAY_PRIVATE_LINK_LIBRARIES
 set(TILEDARRAY_PRIVATE_LINK_LIBRARIES ${_TILEDARRAY_DEPENDENCIES} CACHE STRING "List of libraries on which TiledArray depends on")
@@ -297,6 +306,10 @@ add_library(tiledarray ${TILEDARRAY_SOURCE_FILES} ${TILEDARRAY_HEADER_FILES})
   if (LAPACK_COMPILE_DEFINITIONS)
     target_compile_definitions(${targetname} PUBLIC ${LAPACK_COMPILE_DEFINITIONS})
   endif (LAPACK_COMPILE_DEFINITIONS)
+
+if( TARGET ttg-parsec )
+  target_compile_definitions(${targetname} PUBLIC TTG_USE_PARSEC=1)
+endif()
 
 # Add library to the list of installed components
 install(TARGETS tiledarray EXPORT tiledarray COMPONENT tiledarray

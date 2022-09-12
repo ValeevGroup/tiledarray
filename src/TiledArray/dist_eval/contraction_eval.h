@@ -1533,7 +1533,7 @@ class Summa
                                TiledArray::detail::is_permutation_v<Perm>>>
   Summa(const left_type& left, const right_type& right, World& world,
         const trange_type trange, const shape_type& shape,
-        const std::shared_ptr<pmap_interface>& pmap, const Perm& perm,
+        const std::shared_ptr<const pmap_interface>& pmap, const Perm& perm,
         const op_type& op, const ordinal_type k, const ProcGrid& proc_grid)
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         left_(left),
