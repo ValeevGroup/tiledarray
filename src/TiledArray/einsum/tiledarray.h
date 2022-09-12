@@ -325,9 +325,9 @@ auto dot(
 
   TA_ASSERT(sorted(c) == sorted(h + ab_e));
 
-  std::cout << A.array().trange() << std::endl;
-  std::cout << B.array().trange() << std::endl;
-  std::cout << C.array().trange() << std::endl;
+//  std::cout << A.array().trange() << std::endl;
+//  std::cout << B.array().trange() << std::endl;
+//  std::cout << C.array().trange() << std::endl;
 
   auto range_map = (
     RangeMap(a, A.array().trange()) |
@@ -458,7 +458,6 @@ auto dot(expressions::TsrExpr<T> A,
 }
 
 } // TiledArray::expressions
->>>>>>> 7e8616973d9fcc0da0f56db5bac2255ae84861a6
 
 namespace TiledArray {
 
