@@ -187,7 +187,7 @@ class CP {
   Array
       MTtKRP,                      // matricized tensor times
                             // khatri rao product for check_fit()
-      unNormalized_Factor;         // The final factor unnormalized
+      unNormalized_Factor,         // The final factor unnormalized
                             // so you don't have to
                             // deal with lambda for check_fit()
       lambda;               // column normalizations
