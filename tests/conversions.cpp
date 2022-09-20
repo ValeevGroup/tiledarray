@@ -26,6 +26,7 @@
 #include "range_fixture.h"
 #include "tiledarray.h"
 #include "unit_test_config.h"
+#include "compute_trange1.h"
 
 #include "TiledArray/conversions/vector_of_arrays.h"
 
@@ -151,28 +152,6 @@ void check_equal(Array& orig, Array& fused) {
     }
   }
   return;
-}
-
-TiledArray::TiledRange1 compute_trange1(std::size_t range_size,
-                                        std::size_t target_block_size) {
-  if (range_size > 0) {
-    std::size_t nblocks =
-            (range_size + target_block_size - 1) / target_block_size;
-    auto dv = std::div((int) (range_size + nblocks - 1), (int) nblocks);
-    auto avg_block_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
-    std::vector<std::size_t> hashmarks;
-    hashmarks.reserve(nblocks + 1);
-    auto block_counter = 0;
-    for(auto i = 0; i < num_avg_plus_one; ++i, block_counter += avg_block_size + 1){
-      hashmarks.push_back(block_counter);
-    }
-    for (auto i = num_avg_plus_one; i < nblocks; ++i, block_counter+= avg_block_size) {
-      hashmarks.push_back(block_counter);
-    }
-    hashmarks.push_back(range_size);
-    return TA::TiledRange1(hashmarks.begin(), hashmarks.end());
-  } else
-    return TA::TiledRange1{};
 }
 
 BOOST_FIXTURE_TEST_SUITE(conversions_suite, ConversionsFixture)
