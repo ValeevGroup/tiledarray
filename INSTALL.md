@@ -40,7 +40,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag 6ea57f09874f0db282f45855391fd411784af6a6 . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag f1d9eaeaf8f88f54defec991d34c7790c6c45bb2 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 66b199a08bf5f33b1565811fc202a051ec1b0fbb .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
@@ -118,11 +118,11 @@ Note that the `macos-clang-mpi-accelerate` toolchain file is part of the [the Va
 Following are several common examples of configuring TiledArray where instead of a toolchain file
 we specify CMake variables "manually" (on the command line).
 
-* Basic configuration. This will search for dependencies on your system. If the 
-  required dependencies are not found on your system, they will be downloaded 
+* Basic configuration. This will search for dependencies on your system. If the
+  required dependencies are not found on your system, they will be downloaded
   and installed during the build process (this includes Eigen, Boost,
   and MADNESS, but not MPI or TBB). The `CMAKE_PREFIX_PATH` cache variables
-  is a semicolon separated list of search paths. 
+  is a semicolon separated list of search paths.
 
 ```
 $ cmake -D CMAKE_INSTALL_PREFIX=/path/to/install/tiledarray \
@@ -203,8 +203,8 @@ To make things more concrete, consider the following 2 scenarios:
 
 ## MPI
 
-You may choose from MPICH, MVAPICH, OpenMPI, Intel MPI, or your vendor provided 
-MPI implementation. Specify the C and C++ MPI compiler wrappers with the 
+You may choose from MPICH, MVAPICH, OpenMPI, Intel MPI, or your vendor provided
+MPI implementation. Specify the C and C++ MPI compiler wrappers with the
 following CMake cache variables:
 
 * MPI_C_COMPILER -- The MPI C compiler wrapper
@@ -277,7 +277,7 @@ algebra in TA:
   discover BLAS/LAPACK:
   - _the built-in custom discovery kit_; no options exist to provide any control
   - standard CMake [BLAS](https://cmake.org/cmake/help/latest/module/FindBLAS.html)/[LAPACK](https://cmake.org/cmake/help/latest/module/FindLAPACK.html) modules.
-  
+
   The latter is used if CMake cache variable `BLA_VENDOR` is specified:
   - `BLA_VENDOR` -- controls which vendor BLAS/LAPACK library will be sought
     (see [CMake docs](https://cmake.org/cmake/help/latest/module/FindLAPACK.html));
@@ -296,7 +296,7 @@ algebra in TA:
   More information can be found in the installation instructions for
   [BLAS++](https://icl.bitbucket.io/blaspp/md__i_n_s_t_a_l_l.html) and
   [LAPACK++](https://icl.bitbucket.io/lapackpp/md__i_n_s_t_a_l_l.html).
-  
+
   Note that BLAS++/LAPACK++ discover BLAS and LAPACK only; ScaLAPACK
   library is always discovered using the NWChemEx kit.
 
@@ -316,9 +316,9 @@ To discover and configure the use of Intel MKL consider these suggestions:
   - `IntelMKL_OMP_LIBRARY`: which thread library to use, supported values are `Intel`, `GNU`, and `PGI` (default depends on the compile)
 
 - Most common configurations of Intel MKL can also be discovered by BLAS++/LAPACK++ automatically; if needed, specifying `BLA_VENDOR` with [appropriate argument](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables) can be used to force TiledArray to use MKL. Unfortunately it is not possible to specify the use of TBB-based backend for MKL without the use of a toolchain file.
-  
+
 - All MKL-enabled toolchains in [The Valeev Group CMake kit](https://github.com/ValeevGroup/kit-cmake/tree/master/toolchains) can be used to configure TiledArray to use sequential, OpenMP, or TBB backend by setting the `MKL_THREADING` CMake cache variable to `SEQ`, `OMP`, or `TBB`, respectively. The toolchains also respect the user-provided choice of `BLA_STATIC`. If multiple MKL versions are present on your system, specify the apropriate variant of the library by loading the corresponding `mklvars.sh` script to set environment variables `MKLROOT` and, if necessary, `LD_LIBRARY_PATH`/`DYLD_LIBRARY_PATH`.
-  
+
   On 64-bit platforms it is possible to specify whether to use 32-bit (`LP64`, the default) or 64-bit (`ILP64`) integers in BLAS/LAPACK API. To choose the `ILP64` interface when using the VG MKL toolchains set CMake cache variable `INTEGER4` to `OFF`; the same is achieved when using the default BLAS/LAPACK detection by setting `BLA_VENDOR` to [one of the valid `Intel*64ilp*` choices](https://cmake.org/cmake/help/latest/module/FindBLAS.html#input-variables). N.B. Currently `ILP64` variant of BLACS/ScaLAPACK is not supported, due to [a pending issue](https://github.com/wavefunction91/blacspp/issues/5).
 
 Also note that even if OpenMP or TBB backends are used, TiledArray will be default set the number of threads to be used by MKL kernels to 1, regardless of the value of environment variables `MKL_NUM_THREADS`/`OMP_NUM_THREADS`. It is possible to change the number of threads to be used programmatically in your application by calling MKL function `mkl_set_num_threads()`.
@@ -383,7 +383,7 @@ The following environment variables can be used to help discovery of MADNESS dep
 * `LIBUNWIND_DIR` -- the install prefix of libunwind
 
 If you wish to install MADNESS yourself, we recommend downloading the latest
-version from the MADNESS git repository. You should not expect the latest 
+version from the MADNESS git repository. You should not expect the latest
 release version to work correctly with TiledArray. You can specify the install
 directory with:
 
@@ -413,12 +413,12 @@ support may be added.
 * `BUILD_TESTING` -- Set of `OFF` to disable building unit tests. The default is `ON`.
 * `TA_TRACE_TASKS` -- Set to `ON` to enable tracing of MADNESS tasks using custom task tracer. Note that standard profilers/tracers are generally useless (except in the trivial cases) with MADWorld-based programs since the submission context of tasks is not captured by standard tracing tools; this makes it impossible in a nontrivial program to attribute tasks to source code. WARNING: task tracing his will greatly increase the memory requirements. [Default=OFF].
 * `TA_RANGEV3` -- Set to `ON` to find or fetch the Range-V3 library and enable additional tests of TA components with constructs anticipated to be supported in the future. [Default=OFF].
-* `TA_TTG` -- Set to `ON` to find or fetch the TTG library. [Default=OFF]. 
+* `TA_TTG` -- Set to `ON` to find or fetch the TTG library. [Default=OFF].
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.
 * `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile memory allocations in TA::Tensor.
 * `TA_UT_CTEST_TIMEOUT` -- The value (in seconds) of the timeout to use for running the TA unit tests via CTest when building the `check`/`check-tiledarray` targets. The default timeout is 1500s.
- 
+
 # Build TiledArray
 
 ```

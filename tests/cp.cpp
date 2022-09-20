@@ -299,7 +299,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-9);
     BOOST_CHECK(accurate);
   }
 }
@@ -437,7 +437,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
-    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
+    bool accurate = (TA::norm2(diff) / TA::norm2(b_sparse) < 1e-9);
     BOOST_CHECK(accurate);
   }
 }
