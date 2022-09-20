@@ -46,6 +46,12 @@ class CP_ALS : public CP<Tile, Policy>{
     first_gemm_dim_last.insert(0, 1, detail::intToAlphabet(ndim));
     first_gemm_dim_last.pop_back(); first_gemm_dim_last.pop_back();
 
+    // Construct a vector which holds local worlds.
+    int world_rank =  world.rank();
+    auto comm = world.mpi.comm().Split(world_rank, world_rank);
+    this->worlds.push_back(std::make_unique<World>(comm));
+    world.gop.fence();
+
     this->norm_reference = norm2(tref);
   }
 
@@ -70,8 +76,6 @@ class CP_ALS : public CP<Tile, Policy>{
         auto factor = this->construct_random_factor(
             world, rank, reference.trange().elements_range().extent(i),
             rank_trange, reference.trange().data()[i]);
-        lambda = this->normalize_factor(factor, rank,
-                                        TiledRange({rank_trange1, rank_trange1}));
         cp_factors.emplace_back(factor);
       }
     } else{
@@ -95,6 +99,7 @@ class CP_ALS : public CP<Tile, Policy>{
       auto ptr = this->partial_grammian.begin();
       for (auto& i : cp_factors) {
         (*ptr)("r,rp") = i("r,n") * i("rp, n");
+        (*ptr) = replicated((*ptr));
         ++ptr;
       }
     }
@@ -103,8 +108,6 @@ class CP_ALS : public CP<Tile, Policy>{
     do{
       for(auto i = 0; i < ndim; ++i){
         update_factor(i, rank);
-        const auto & a = *(factor_begin + i);
-        (*(gram_begin + i))("r,rp") = a("r,n") * a("rp,n");
       }
       converged = this->check_fit(verbose);
       ++iter;
@@ -113,8 +116,8 @@ class CP_ALS : public CP<Tile, Policy>{
 
   void update_factor(size_t mode, size_t rank){
     auto mode0 = (mode == 0);
-    auto & An = cp_factors[mode];
-    An = DistArray<Tile, Policy>();
+    //auto & An = cp_factors[mode];
+    DistArray<Tile, Policy> An;
     // Starting to form the Matricized tensor times khatri rao product
     // MTTKRP
     // To do this we, in general, contract the reference with the
@@ -125,7 +128,8 @@ class CP_ALS : public CP<Tile, Policy>{
     std::string contract({detail::intToAlphabet(ndim), ',', detail::intToAlphabet(contracted_index)}),
         final = (mode == 0 ? first_gemm_dim_last : first_gemm_dim_one);
 
-    TA::DistArray W(this->partial_grammian[contracted_index]);
+    auto W = this->partial_grammian[contracted_index];
+    W.make_replicated();
     An(final) = this->reference(ref_indices) * cp_factors[contracted_index](contract);
 
     // next we need to contract (einsum) over all modes not including the
@@ -147,7 +151,6 @@ class CP_ALS : public CP<Tile, Policy>{
                                mcont_ptr + remove_index_end);
 
       An = einsum(An(final), cp_factors[contracted_index](contract), mixed_contractions);
-      //std::cout << An << std::endl;
 
       final = mixed_contractions;
       W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");;
@@ -157,9 +160,14 @@ class CP_ALS : public CP<Tile, Policy>{
 
     this->cholesky_inverse(An, W);
 
+    An.make_replicated();
     if(mode == ndim - 1) this->unNormalized_Factor = An;
-    lambda = this->normalize_factor(An, rank,
-                                    TiledRange({rank_trange1, rank_trange1}));
+    this->normCol(An, rank);
+    cp_factors[mode] = An;
+    auto & gram = this->partial_grammian[mode];
+    gram("r,rp") = An("r,n") * An("rp,n");
+    gram = replicated(gram);
+    world.gop.fence();
   }
 };
 } // namespace TiledArray::cp

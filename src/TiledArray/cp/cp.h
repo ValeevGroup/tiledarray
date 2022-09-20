@@ -190,8 +190,10 @@ class CP {
       unNormalized_Factor;         // The final factor unnormalized
                             // so you don't have to
                             // deal with lambda for check_fit()
-  std::vector<typename Tile::value_type>
-      lambda;                      // Column normalizations
+      lambda;               // column normalizations
+  //std::vector<typename Tile::value_type>
+  //    lambda;                      // Column normalizations
+
   size_t ndim;                     // number of factor matrices
   double prev_fit = 1.0,           // The fit of the previous ALS iteration
       final_fit,                // The final fit of the ALS
@@ -226,13 +228,28 @@ class CP {
     using Tensor = btas::Tensor<typename Array::element_type,
                                 btas::DEFAULT::range, btas::varray<typename Tile::value_type>>;
     Tensor factor(rank, mode_size);
+    auto lambda = std::vector<typename Tile::value_type>(rank, (typename Tile::value_type) 0);
     if(world.rank() == 0) {
       std::mt19937 generator(detail::random_seed_accessor());
       std::uniform_real_distribution<> distribution(-1.0, 1.0);
-      for (auto ptr = factor.begin(); ptr != factor.end(); ++ptr)
-        *ptr = distribution(generator);
+      auto factor_ptr = factor.data();
+      size_t offset = 0;
+      for(auto r = 0; r < rank; ++r, offset += mode_size){
+        auto lam_ptr = lambda.data() + r;
+        for(auto m = offset; m < offset + mode_size; ++m){
+          auto val = distribution(generator);
+          *(factor_ptr + m) = val;
+          *lam_ptr += val * val;
+        }
+        *lam_ptr = sqrt(*lam_ptr);
+        auto inv = (*lam_ptr < 1e-12 ? 1.0 :  1.0 / (*lam_ptr));
+        for(auto m = 0; m < mode_size; ++m){
+          *(factor_ptr + offset + m) *= inv;
+        }
+      }
     }
     world.gop.broadcast_serializable(factor, 0);
+    world.gop.broadcast_serializable(lambda, 0);
 
     return TiledArray::btas_tensor_to_array<
         Array >
@@ -292,25 +309,7 @@ class CP {
     MtKRP("r,n") = (U("r,s") * S("s,sp")) * (Vt("sp,rp") * MtKRP("rp,n"));
   }
 
-  /// Computes the grammian using partial_grammian vector.
-  /// If the partial_grammian vector is empty, compute using factors.
-  /// \returns TiledArray::DistArray <Tile,Policy> with grammian values.
-  auto compute_grammian(){
-    auto trange_rank = cp_factors[0].trange().data()[0];
-    Array W(trange_rank, trange_rank);
-    W.fill(1.0);
-    if(partial_grammian.empty()){
-      for(auto ptr = cp_factors.begin(); ptr != cp_factors.end(); ++ptr){
-        W("r,rp") *= (*ptr)("r,n") * (*ptr)("rp, n");
-      }
-    } else{
-      for(auto ptr = partial_grammian.begin(); ptr != partial_grammian.end(); ++ptr){
-        W("r,rp") *= (*ptr)("r,rp");
-      }
-    }
-    return W;
-  }
-
+  /*
   /// Function to column normalize factor matrices
   /// \param[in, out] factor in: un-normalized factor matrix.
   /// out: column normalized factor matrix
@@ -329,31 +328,59 @@ class CP {
     factor("rp,n") = diag_lambda("rp,r") * factor("r,n");
     return lambda;
   }
+  */
 
   /// computes the column normalization of a given factor matrix \c factor
   /// stores the column norms in the lambda vector.
   /// Also normalizes the columns of \c factor
   /// \param[in,out] factor in: unnormalized factor matrix, out: column
   /// normalized factor matrix
-  void normCol(Array &factor, size_t rank){
-    auto & world = factor.world();
-    //lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
-    //std::vector<typename Tile::value_type> lambda_vector;
-    //lambda_vector.reserve(rank);
-    auto lambda_vector = temp_normCol(factor, rank);
-    //    foreach_inplace(lambda, [&](auto& tile){
-    //      for(auto & i : tile) {
-    //        i = sqrt((i));
-    //        lambda_vector.emplace_back(i);
-    //      }
-    //    }, true);
-    auto & tr1_rank = factor.trange().data()[0];
-    auto diag_ = diagonal_array<Array>(world,
-                                       TiledArray::TiledRange({tr1_rank, tr1_rank}),
-                                       lambda_vector.begin(), lambda_vector.end());
-    factor("rp,n") =  diag_("rp,r") * factor("r,n");
+  void normCol(Array &factor, size_t rank) {
+    auto& world = factor.world();
+    //factor = replicated(factor);
+    //lambda = expressions::einsum("rn,rn->r",factor, factor);
+    lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
+    lambda = replicated(lambda);
+    auto text = factor.trange().tiles_range().extent_data();
+    auto r_tiles = text[0], n_tiles = text[1];
+
+    auto scale_factor = [&factor](int r, int n, Tile& tile) {
+      //if (factor.is_zero({r, n})) return 1;
+      auto fac_tile = factor.find({r, n}).get();
+      auto lo = tile.range().lobound_data();
+      auto up = tile.range().upbound_data();
+      auto ptr_tile = tile.begin(), ptr_factor = fac_tile.begin();
+      typename Tile::value_type norm2 = 0.0;
+      for (auto R = lo[0]; R < up[0]; ++R, ++ptr_tile) {
+        norm2 += *ptr_tile;
+        *ptr_tile = sqrt((*ptr_tile));
+        if ((*ptr_tile) < 1e-12) continue;
+        auto val = 1.0 / (*ptr_tile);
+        for (auto N = lo[1]; N < up[1]; ++N, ++ptr_factor) {
+          (*ptr_factor) *= val;
+        }
+      }
+      norm2 = sqrt(norm2);
+      return 1;
+    };
+    // The column norms will be computed on each MPI rank to
+    // avoid communication.
+
+    //auto &owners = worlds.back();
+    //set_default_world(*owners);
+    for (int r = 0; r < r_tiles; ++r) {
+      auto tile = lambda.find(r).get();
+      for (int n = 0; n < n_tiles; ++n) {
+        //(*owners).taskq.add(scale_factor,r, n, tile);
+        world.taskq.add(scale_factor, r, n, tile);
+      }
+    }
+    //set_default_world(world);
+    world.gop.fence();
+    factor.truncate();
   }
 
+  /*
   std::vector<double> temp_normCol(Array & factor,
                                    size_t rank){
     std::vector<double> lambda(rank);
@@ -382,6 +409,7 @@ class CP {
     world.gop.fence();
     return lambda;
   }
+  */
 
   /// This function checks the fit and change in the
   /// fit for the CP loss function
