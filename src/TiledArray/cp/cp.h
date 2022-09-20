@@ -407,7 +407,7 @@ class CP {
     };
     // compute the error in the loss function and find the fit
     double normFactors = factor_norm(),
-           normResidual = sqrt(norm_reference * norm_reference + normFactors * normFactors - 2.0 * inner_prod),
+           normResidual = sqrt(abs(norm_reference * norm_reference + normFactors * normFactors - 2.0 * inner_prod)),
            fit = 1.0 - (normResidual / norm_reference),
            fit_change = abs(prev_fit - fit);
     prev_fit = fit;
