@@ -360,8 +360,7 @@ class CP {
           (*ptr_factor) *= val;
         }
       }
-      norm2 = sqrt(norm2);
-      return 1;
+      return  sqrt(norm2);
     };
     // The column norms will be computed on each MPI rank to
     // avoid communication.
