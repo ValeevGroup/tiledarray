@@ -1,9 +1,10 @@
 if (NOT TARGET scalapackpp::scalapackpp)
-  set(VGCMAKEKIT_TRACKED_SCALAPACKPP_TAG ${TA_TRACKED_SCALAPACKPP_TAG})
+  set(VGCMAKEKIT_TRACKED_SCALAPACKPP_TAG ${TA_TRACKED_SCALAPACKPP_TAG} CACHE STRING "scalapackpp tag")
   include(FindOrFetchScaLAPACKPP)
 endif()
 
-# built {blacs,scalapack}pp as a subproject?
+# built {blacs,scalapack}pp as a subproject? install as part of tiledarray export as well
+# to be able to use TiledArray_SCALAPACK from the build tree
 if (TARGET blacspp AND TARGET scalapackpp)
     install( TARGETS blacspp scalapackpp EXPORT tiledarray COMPONENT tiledarray )
     # Add these dependencies to External

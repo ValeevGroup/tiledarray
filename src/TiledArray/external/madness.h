@@ -53,7 +53,7 @@ struct default_world {
     if (!world()) {
       TA_ASSERT(madness::initialized() &&
                 "TiledArray::detail::default_world::get() called "
-                "before madness::initialize()");
+                "before madness::initialize() OR after madness::finalize()");
       world() = &madness::World::get_default();
     }
     return *world();
@@ -120,6 +120,11 @@ inline std::unique_ptr<World, decltype(world_resetter)> push_default_world(
   set_default_world(world);
   return std::unique_ptr<World, decltype(world_resetter)>(current_world,
                                                           world_resetter);
+}
+
+inline World split(const World& w, int color, int key = 0) {
+  auto comm = w.mpi.comm().Split(color, key);
+  return std::move(comm);
 }
 
 }  // namespace TiledArray

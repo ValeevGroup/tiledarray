@@ -2,6 +2,8 @@
 #include <TiledArray/initialize.h>
 #include <TiledArray/util/threads.h>
 
+#include <TiledArray/math/linalg/basic.h>
+
 #include <madness/world/safempi.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
@@ -9,6 +11,13 @@
 #include <TiledArray/external/cuda.h>
 #include <librett.h>
 #endif
+
+#if TILEDARRAY_HAS_TTG
+#include <ttg.h>
+#endif
+
+#include <cerrno>
+#include <cstdlib>
 
 namespace TiledArray {
 namespace {
@@ -82,7 +91,7 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
       initialized_madworld_accessor() = true;
     } else {  // if MADWorld initialized, we must assume that comm is its
               // default World.
-      if (madness::World::is_default(comm))
+      if (!madness::World::is_default(comm))
         throw Exception(
             "MADWorld initialized before TiledArray::initialize(argc, argv, "
             "comm), but not initialized with comm");
@@ -98,6 +107,44 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
     TiledArray::set_num_threads(1);
     madness::print_meminfo_disable();
     initialized_accessor() = true;
+
+    // if have TTG initialize it also
+#if TILEDARRAY_HAS_TTG
+    ttg::initialize(argc, argv, -1, madness::ParsecRuntime::context());
+#endif
+
+    // check if user specified linear algebra backend + params
+    auto* linalg_backend_cstr = std::getenv("TA_LINALG_BACKEND");
+    if (linalg_backend_cstr) {
+      using namespace std::literals::string_literals;
+      if ("scalapack"s == linalg_backend_cstr) {
+        TiledArray::set_linalg_backend(
+            TiledArray::LinearAlgebraBackend::ScaLAPACK);
+      } else if ("ttg"s == linalg_backend_cstr) {
+        TiledArray::set_linalg_backend(TiledArray::LinearAlgebraBackend::TTG);
+      } else if ("lapack"s == linalg_backend_cstr) {
+        TiledArray::set_linalg_backend(
+            TiledArray::LinearAlgebraBackend::LAPACK);
+      } else
+        TA_EXCEPTION(
+            "TiledArray::initialize: invalid value of environment variable "
+            "TA_LINALG_BACKEND, valid values are \"scalapack\", \"ttg\", and "
+            "\"lapack\"");
+    }
+    const char* linalg_distributed_minsize_cstr =
+        std::getenv("TA_LINALG_DISTRIBUTED_MINSIZE");
+    if (linalg_distributed_minsize_cstr) {
+      char* end;
+      const auto linalg_distributed_minsize =
+          std::strtoul(linalg_distributed_minsize_cstr, &end, 10);
+      if (errno == ERANGE)
+        TA_EXCEPTION(
+            "TiledArray::initialize: invalid value of environment variable "
+            "TA_LINALG_DISTRIBUTED_MINSIZE");
+      TiledArray::set_linalg_crossover_to_distributed(
+          linalg_distributed_minsize);
+    }
+
     return default_world;
   } else
     throw Exception("TiledArray already initialized");
@@ -106,6 +153,11 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
 /// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized
 /// when TiledArray::initialize was called).
 void TiledArray::finalize() {
+  // finalize in the reverse order of initialize
+#if TILEDARRAY_HAS_TTG
+  ttg::finalize();
+#endif
+
   // reset number of threads
   TiledArray::set_num_threads(TiledArray::max_threads);
 #ifdef TILEDARRAY_HAS_CUDA

@@ -387,6 +387,16 @@ constexpr inline bool is_replicated(World& world, const DenseShape& t) {
   return true;
 }
 
+/// Add the shape to an output stream
+
+/// \param os The output stream
+/// \param shape the DenseShape object
+/// \return A reference to the output stream
+inline std::ostream& operator<<(std::ostream& os, const DenseShape& shape) {
+  os << "DenseShape:" << std::endl;
+  return os;
+}
+
 }  // namespace TiledArray
 
 #endif  // TILEDARRAY_DENSE_SHAPE_H__INCLUDED

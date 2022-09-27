@@ -80,7 +80,7 @@ class ExprEngine : private NO_DEFAULTS {
   BipartitePermutation perm_;
   trange_type trange_;  ///< The tiled range of the result tensor
   shape_type shape_;    ///< The shape of the result tensor
-  std::shared_ptr<pmap_interface>
+  std::shared_ptr<const pmap_interface>
       pmap_;  ///< The process map for the result tensor
   std::shared_ptr<EngineParamOverride<Derived> >
       override_ptr_;  ///< The engine params overriding the default
@@ -109,7 +109,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// \param world The world where the expression will be evaluated
   /// \param pmap The process map for the result tensor (may be NULL)
   /// \param target_indices The target index list of the result tensor
-  void init(World& world, std::shared_ptr<pmap_interface> pmap,
+  void init(World& world, std::shared_ptr<const pmap_interface> pmap,
             const BipartiteIndexList& target_indices) {
     if (target_indices.size()) {
       derived().init_indices(target_indices);
@@ -169,7 +169,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// \param world The world were the result will be distributed
   /// \param pmap The process map for the result tensor tiles
   void init_distribution(World* world,
-                         const std::shared_ptr<pmap_interface>& pmap) {
+                         const std::shared_ptr<const pmap_interface>& pmap) {
     TA_ASSERT(world);
     TA_ASSERT(pmap);
     TA_ASSERT(pmap->procs() ==
@@ -241,7 +241,7 @@ class ExprEngine : private NO_DEFAULTS {
   /// Process map accessor
 
   /// \return A const reference to the process map
-  const std::shared_ptr<pmap_interface>& pmap() const { return pmap_; }
+  const std::shared_ptr<const pmap_interface>& pmap() const { return pmap_; }
 
   /// Set the permute tiles flag
 

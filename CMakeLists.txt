@@ -26,12 +26,30 @@
 
 cmake_minimum_required (VERSION 3.15.0) # need list(PREPEND for toolchains
 
+# Set TiledArray version =======================================================
+
+# see https://semver.org/
+set(TILEDARRAY_MAJOR_VERSION 1)
+set(TILEDARRAY_MINOR_VERSION 0)
+set(TILEDARRAY_MICRO_VERSION 0)
+set(TILEDARRAY_PRERELEASE_ID )
+
+set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}")
+if (TILEDARRAY_PRERELEASE_ID)
+  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}-${TILEDARRAY_PRERELEASE_ID}")
+else(TILEDARRAY_PRERELEASE_ID)
+  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}")
+endif(TILEDARRAY_PRERELEASE_ID)
+
 # Preload versions/tags of all dependencies ====================================
 include(external/versions.cmake)
 
-###############################################################################
-# Bring ValeevGroup cmake toolkit
-###############################################################################
+# Safety net for dev workflow: accidental install will not affect FindOrFetch*
+if (NOT DEFINED CACHE{CMAKE_FIND_NO_INSTALL_PREFIX})
+  set(CMAKE_FIND_NO_INSTALL_PREFIX ON CACHE BOOL "Whether find_* commands will search CMAKE_INSTALL_PREFIX and CMAKE_STAGING_PREFIX; see https://cmake.org/cmake/help/latest/variable/CMAKE_FIND_NO_INSTALL_PREFIX.html#variable:CMAKE_FIND_NO_INSTALL_PREFIX")
+endif()
+
+# Bring ValeevGroup cmake toolkit ==============================================
 include(FetchContent)
 if (DEFINED PROJECT_BINARY_DIR)
   set(VG_CMAKE_KIT_PREFIX_DIR PROJECT_BINARY_DIR)
@@ -50,23 +68,13 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(vg_cmake_kit)
 list(APPEND CMAKE_MODULE_PATH "${vg_cmake_kit_SOURCE_DIR}/modules")
 
-project (TiledArray LANGUAGES)
-enable_language(CXX)
-
-# Set TiledArray version =======================================================
-
-# see https://semver.org/
-set(TILEDARRAY_MAJOR_VERSION 1)
-set(TILEDARRAY_MINOR_VERSION 0)
-set(TILEDARRAY_MICRO_VERSION 0)
-set(TILEDARRAY_PRERELEASE_ID )
-
-set(TILEDARRAY_VERSION "${TILEDARRAY_MAJOR_VERSION}.${TILEDARRAY_MINOR_VERSION}.${TILEDARRAY_MICRO_VERSION}")
-if (TILEDARRAY_PRERELEASE_ID)
-  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}-${TILEDARRAY_PRERELEASE_ID}")
-else(TILEDARRAY_PRERELEASE_ID)
-  set(TILEDARRAY_EXT_VERSION "${TILEDARRAY_VERSION}")
-endif(TILEDARRAY_PRERELEASE_ID)
+# Declare ourselves ============================================================
+project(TiledArray
+        VERSION ${TILEDARRAY_VERSION}
+        DESCRIPTION "TiledArray: block-sparse tensor framework for modern (distributed-memory and heterogeneous) computing"
+        LANGUAGES CXX
+        HOMEPAGE_URL "https://valeevgroup.github.io/tiledarray/")
+enable_language(C)  # C needed even for basic platform introspection
 
 # Set install paths ============================================================
 
@@ -157,8 +165,11 @@ if(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
   set(TA_TILE_OPS_LOG_LEVEL 1)
 endif(TA_ENABLE_TILE_OPS_LOGGING AND NOT DEFINED TA_TILE_OPS_LOG_LEVEL)
 
-option(TA_ENABLE_RANGEV3 "Enable Range-V3 library" OFF)
-add_feature_info(ENABLE_RANGEV3 TA_ENABLE_RANGEV3 "Range-V3 ranges library")
+option(TA_RANGEV3 "Enable Range-V3 library" OFF)
+add_feature_info(TA_RANGEV3 TA_RANGEV3 "Range-V3 ranges library")
+
+option(TA_TTG "Enable search/build of TTG library" OFF)
+add_feature_info(TA_TTG TA_TTG "TTG library")
 
 # Enable shared library support options
 redefaultable_option(TA_ASSUMES_ASLR_DISABLED "TiledArray assumes the Address Space Layout Randomization (ASLR) to be disabled" OFF)
@@ -303,6 +314,9 @@ add_custom_target(External-tiledarray)
 if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
+if (TA_TTG)
+  include(FindOrFetchTTG)
+endif(TA_TTG)
 include(FindOrFetchMADWorld)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
@@ -328,9 +342,6 @@ include(FindOrFetchBoost)
 if(ENABLE_SCALAPACK)
   include(external/scalapackpp.cmake)
 endif()
-if (TA_ENABLE_RANGEV3)
-  include(FindOrFetchRangeV3)
-endif(TA_ENABLE_RANGEV3)
 
 # optional deps:
 # 1. ccache
@@ -340,6 +351,15 @@ if(CCACHE)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
 endif(CCACHE)
+# 2. range-v3
+if (TA_RANGEV3)
+  include(FindOrFetchRangeV3)
+endif(TA_RANGEV3)
+# 3. TTG
+# N.B. make sure TA configures MADNESS correctly
+#if (TA_TTG)
+#  include(FindOrFetchTTG)
+#endif(TA_TTG)
 
 ##########################
 # sources
