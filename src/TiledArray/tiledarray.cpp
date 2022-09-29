@@ -91,7 +91,7 @@ TiledArray::World& TiledArray::initialize(int& argc, char**& argv,
       initialized_madworld_accessor() = true;
     } else {  // if MADWorld initialized, we must assume that comm is its
               // default World.
-      if (madness::World::is_default(comm))
+      if (!madness::World::is_default(comm))
         throw Exception(
             "MADWorld initialized before TiledArray::initialize(argc, argv, "
             "comm), but not initialized with comm");

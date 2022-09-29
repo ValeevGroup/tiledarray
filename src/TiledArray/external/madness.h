@@ -53,7 +53,7 @@ struct default_world {
     if (!world()) {
       TA_ASSERT(madness::initialized() &&
                 "TiledArray::detail::default_world::get() called "
-                "before madness::initialize()");
+                "before madness::initialize() OR after madness::finalize()");
       world() = &madness::World::get_default();
     }
     return *world();
