@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
 
   try {
     // Initialize runtime
-    TA::World& world = TA::initialize(argc, argv);
+    TA::World& world = TA_SCOPED_INITIALIZE(argc, argv);
 
     // Get command line arguments
     if (argc < 5) {
@@ -136,9 +136,6 @@ int main(int argc, char** argv) {
     } else {
       cc_abcd<float>(world, trange_occ, trange_uocc, repeat);
     }
-
-    TA::finalize();
-
   } catch (TA::Exception& e) {
     std::cerr << "!! TiledArray exception: " << e.what() << "\n";
     rc = 1;

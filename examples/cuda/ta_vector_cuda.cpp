@@ -258,7 +258,7 @@ using cudaTile = TiledArray::Tile<TiledArray::btasUMTensorVarray<T>>;
 
 int try_main(int argc, char **argv) {
   // Initialize runtime
-  TiledArray::World &world = TiledArray::initialize(argc, argv);
+  auto &world = TA_SCOPED_INITIALIZE(argc, argv);
 
   // Get command line arguments
   if (argc < 4) {
@@ -383,8 +383,6 @@ int try_main(int argc, char **argv) {
     }
     do_main_body<TiledArray::Tensor<float>>(world, Nm, Bm, Nn, Bn, nrepeat);
   }
-
-  TiledArray::finalize();
 
   return 0;
 }

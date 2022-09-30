@@ -39,6 +39,8 @@ inline void cuda_finalize() {
   librettFinalize();
   cublasDestroy(cuBLASHandlePool::handle());
   delete &cuBLASHandlePool::handle();
+  // although TA::cudaEnv is a singleton, must explicitly delete it so
+  // that CUDA runtime is not finalized before the cudaEnv dtor is called
   cudaEnv::instance().reset(nullptr);
 }
 #endif
@@ -172,6 +174,16 @@ void TiledArray::finalize() {
   initialized_accessor() = false;
   finalized_accessor() = true;
 }
+
+TiledArray::detail::Finalizer::~Finalizer() noexcept {
+  static std::mutex mtx;
+  std::scoped_lock lock(mtx);
+  if (TiledArray::initialized()) {
+    TiledArray::finalize();
+  }
+}
+
+TiledArray::detail::Finalizer TiledArray::scoped_finalizer() { return {}; }
 
 void TiledArray::ta_abort() { SafeMPI::COMM_WORLD.Abort(); }
 
