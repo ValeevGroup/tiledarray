@@ -62,6 +62,8 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
   TiledArray::TiledRange  // TRange
       trange(blocking.begin(), blocking.end());
+  TiledArray::TiledRange trange_tr(blocking.rbegin(),
+                                   blocking.rend());  // transposed trange
 
   using value_type = typename Tile::value_type;
   using TArray = TA::DistArray<Tile, TA::DensePolicy>;
@@ -116,7 +118,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     }
 
     TArray a(world, trange);
-    TArray b(world, trange);
+    TArray b(world, trange_tr);
 
     a.fill(val_a);
     b.fill(val_b);
@@ -198,7 +200,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     }
 
     TArray a(world, trange);
-    TArray b(world, trange);
+    TArray b(world, trange_tr);
 
     a.fill(val_a);
     b.fill(val_b);
