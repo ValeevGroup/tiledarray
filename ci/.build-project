@@ -79,15 +79,8 @@ if [[ "$vars" =~ \"-DBLAS_PREFERENCE_LIST=IntelMKL ]]; then
   cmd "echo MKLROOT=\$MKLROOT"
 fi
 if [[ "$vars" =~ \"-D([a-zA-Z]+_)?ENABLE_CUDA=(ON|TRUE|1|YES)\" ]]; then
-  cmd "make -C /home/ValeevGroup install/cuda"
-  cmd "rm -fr /usr/local/bin/nvcc"
   cmd "export CUDACXX=/usr/local/cuda/bin/nvcc"
   cmd "${CUDACXX} -V"
-  # this will be moved to image builder
-  cmd "sudo apt-get -yq update"
-  cmd "sudo apt-get -yq install nvidia-utils-510"
-  cmd "find / -name \"*nvidia-smi\""
-  cmd "nvidia-smi"
 fi
 section_end preparing_system_section
 
