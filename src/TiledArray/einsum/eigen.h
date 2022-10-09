@@ -47,10 +47,10 @@ void einsum(std::string expr,
 
   using Index = TiledArray::Einsum::Index<char>;
   using IndexDims = TiledArray::Einsum::IndexMap<char, size_t>;
-  using TiledArray::Einsum::string::split2;
+  using ::Einsum::string::split2;
 
   auto permutation = [](auto src, auto dst) {
-    return TiledArray::Einsum::index::permutation(dst, src);
+    return TiledArray::Einsum::permutation(dst, src);
   };
 
   Index a, b, c;

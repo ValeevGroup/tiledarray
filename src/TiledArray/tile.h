@@ -590,6 +590,13 @@ class Tile {
     }
   }
 
+  constexpr static size_t batch_size() { return 1; }
+
+  const auto& batch(size_t idx) const {
+    assert(idx == 1);
+    return *this;
+  }
+
 };  // class Tile
 
 // The following functions define the non-intrusive interface used to apply

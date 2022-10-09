@@ -293,7 +293,7 @@ BOOST_AUTO_TEST_SUITE(einsum_index, TA_UT_LABEL_SERIAL)
 #include "TiledArray/tensor/tensor.h"
 
 BOOST_AUTO_TEST_CASE(einsum_index) {
-  using Einsum::Index;
+  using ::Einsum::Index;
   Index<int> src({ 1, 2, 3, 4, 5, 6 });
   Index<int> dst({ 2, 4, 5, 3, 6, 1 });
   auto p = permutation(src, dst);
@@ -722,5 +722,20 @@ BOOST_AUTO_TEST_CASE(einsum_tiledarray_replicated) {
     "hi,hi->h"
   );
 }
+
+// BOOST_AUTO_TEST_CASE(einsum_tiledarray_dot) {
+//   using TiledArray::dot;
+//   auto hik = random<DensePolicy>(4,3,5);
+//   auto hkj = random<DensePolicy>(4,5,6);
+//   auto hji = random<DensePolicy>(4,6,3);
+//   auto hik_hkj_hji = dot("hik,hkj,hji", hik, hkj, hji);
+//   auto hji_hik_hkj = dot("hji,hik,hkj", hji, hik, hkj);
+//   auto hkj_hji_hik = dot("hkj,hji,hik", hkj, hji, hik);
+//   auto AB = einsum("hik,hkj->hji", hik, hkj);
+//   BOOST_CHECK(dot(AB,hji) == hik_hkj_hji);
+//   BOOST_CHECK(hik_hkj_hji == hji_hik_hkj);
+//   BOOST_CHECK(hik_hkj_hji == hji_hik_hkj);
+//   BOOST_CHECK(hik_hkj_hji == hkj_hji_hik);
+// }
 
 BOOST_AUTO_TEST_SUITE_END()

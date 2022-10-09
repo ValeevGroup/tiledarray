@@ -11,7 +11,7 @@
 #include <iosfwd>
 #include <string>
 
-namespace TiledArray::Einsum::index {
+namespace Einsum::index {
 
 template <typename T>
 using small_vector = TiledArray::container::svector<T>;
@@ -65,7 +65,7 @@ class Index {
 
   template <typename U = void>
   operator std::string() const {
-    return string::join(data_, ",");
+    return Einsum::string::join(data_, ",");
   }
 
   explicit operator bool() const { return !data_.empty(); }
@@ -186,6 +186,8 @@ Index<T> sorted(const Index<T> &a) {
   return Index<T>(r);
 }
 
+using Permutation = TiledArray::Permutation;
+
 /// @param[in] from original (preimage) indices
 /// @param[in] to target (image) indices
 /// @return Permutation mapping @p from to @p to
@@ -207,8 +209,11 @@ auto permute(const Permutation &p, const Index<T> &s,
   if (!p) return s;
   using R = typename Index<T>::container_type;
   R r(p.size());
-  detail::permute_n(p.size(), p.begin(), s.begin(), r.begin(),
-                    std::bool_constant<Inverse>{});
+  TiledArray::detail::permute_n(
+    p.size(),
+    p.begin(), s.begin(), r.begin(),
+    std::bool_constant<Inverse>{}
+  );
   return Index<T>{r};
 }
 
@@ -298,35 +303,11 @@ IndexMap<K, V> operator|(const IndexMap<K, V> &a, const IndexMap<K, V> &b) {
   return IndexMap(d);
 }
 
-}  // namespace TiledArray::Einsum::index
+}  // namespace Einsum::index
 
-namespace TiledArray::Einsum {
-
-using TiledArray::Einsum::index::Index;
-using TiledArray::Einsum::index::IndexMap;
-
-/// converts the annotation of an expression to an Index
-template <typename Array>
-auto idx(const std::string &s) {
-  using Index = Einsum::Index<std::string>;
-  if constexpr (detail::is_tensor_of_tensor_v<typename Array::value_type>) {
-    auto semi = std::find(s.begin(), s.end(), ';');
-    TA_ASSERT(semi != s.end());
-    auto [first,second] = string::split2(s, ";");
-    TA_ASSERT(!first.empty());
-    TA_ASSERT(!second.empty());
-    return std::tuple<Index, Index>{first, second};
-  } else {
-    return std::tuple<Index>{s};
-  }
-}
-
-/// converts the annotation of an expression to an Index
-template <typename A, bool Alias>
-auto idx(const TiledArray::expressions::TsrExpr<A, Alias> &e) {
-  return idx<A>(e.annotation());
-}
-
+namespace Einsum {
+  using index::Index;
+  using index::IndexMap;
 }  // namespace TiledArray::Einsum
 
 #endif /* TILEDARRAY_EINSUM_INDEX_H__INCLUDED */
