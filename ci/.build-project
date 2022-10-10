@@ -71,8 +71,6 @@ cmd "cmake -P ci/host_system_info.cmake"
 section_end host_system_info
 
 section_start "preparing_system_section[collapsed=true]" "Preparing system"
-cmd "source ci/openmpi.env"
-cmd "echo 'localhost slots=2' > /etc/openmpi/openmpi-default-hostfile"
 if [[ "$vars" =~ \"-DBLAS_PREFERENCE_LIST=IntelMKL ]]; then
   cmd "make -C /home/ValeevGroup install/intel-mkl"
   cmd "source /opt/intel/mkl/bin/mklvars.sh intel64"
@@ -81,7 +79,13 @@ fi
 if [[ "$vars" =~ \"-D([a-zA-Z]+_)?ENABLE_CUDA=(ON|TRUE|1|YES)\" ]]; then
   cmd "export CUDACXX=/usr/local/cuda/bin/nvcc"
   cmd "${CUDACXX} -V"
+  cmd "lspci"
+  cmd "env"
+  cmd "ls -l /usr/bin"
+  cmd "/usr/bin/nvidia-smi"
 fi
+cmd "source ci/openmpi.env"
+cmd "echo 'localhost slots=2' > /etc/openmpi/openmpi-default-hostfile"
 section_end preparing_system_section
 
 section_start configure_section "Configure"
