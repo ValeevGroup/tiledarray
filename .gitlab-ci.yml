@@ -6,8 +6,7 @@ default:
   interruptible: true
 
 variables:
-  MAD_NUM_THREADS : "2"
-  DOCKER_GPUS : "all"
+  MAD_NUM_THREADS : 2
   TA_TARGETS : "tiledarray examples-tiledarray ta_test check-tiledarray"
   # Debug builds with ScaLAPACK=ON need increased TA_UT_CTEST_TIMEOUT
   TA_CONFIG : >
