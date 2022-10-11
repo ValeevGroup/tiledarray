@@ -28,7 +28,9 @@ before_script:
 
 ubuntu:
   stage: build
-  tags: [ docker ]
+  tags:
+    - docker
+    - ${RUNNER_TAGS}
   timeout: 3h
   image: valeevgroup/${IMAGE}
   variables:
@@ -62,12 +64,15 @@ ubuntu:
         BLA_THREADS : [ "IntelMKL_THREAD_LAYER=tbb" ]
         # ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
         TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
+        RUNNER_TAGS: [ linux ]
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
         CXX: [ g++, clang++-9 ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
+        RUNNER_TAGS: [ linux ]
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
         CXX: [ g++ ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_CUDA : [ "ENABLE_CUDA=ON" ]
         TA_TARGETS : [ "tiledarray examples-tiledarray check_serial-tiledarray" ]
+        RUNNER_TAGS: [ cuda ]
