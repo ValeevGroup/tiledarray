@@ -20,9 +20,8 @@ variables:
     ${ENABLE_SCALAPACK}
 
 before_script:
-  # NB: below tag parsing is not robust
-  - echo "CI_RUNNER_TAGS=$CI_RUNNER_TAGS"
-  - CMAKE_BUILD_PARALLEL_LEVEL=$(echo $CI_RUNNER_TAGS | sed -n 's/CMAKE_BUILD_PARALLEL_LEVEL=\([0-9]\+\).*/\1/p')
+  # NB: if CMAKE_BUILD_PARALLEL_LEVEL is not set (i.e. using shared runner), use 1 to ensure we have enough memory
+  # TODO optimize ta_test build memory consumption
   - export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:=1}
   - echo "CMAKE_BUILD_PARALLEL_LEVEL=$CMAKE_BUILD_PARALLEL_LEVEL"
 

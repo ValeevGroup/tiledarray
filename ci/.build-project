@@ -89,7 +89,7 @@ section_end preparing_system_section
 
 section_start configure_section "Configure"
 cmd mkdir -p ${build_dir}
-time_cmd configure "cmake -B${build_dir} $vars"
+time_cmd configure "cmake -GNinja -B${build_dir} $vars"
 section_end configure_section
 
 for target in ${targets}; do
