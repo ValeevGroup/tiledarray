@@ -528,15 +528,6 @@ BOOST_AUTO_TEST_CASE(scal_add_block) {
                              2 * (3 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
                                   4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5})));
 
-  std::cout << "expr tree for c(\"a,b,c\") =\n"
-               "                             2 * (3 * a(\"a,b,c\").block({3, "
-               "3, 3}, {5, 5, 5}) +\n"
-               "                                  4 * b(\"a,b,c\").block({3, "
-               "3, 3}, {5, 5, 5})):\n"
-            << c("a,b,c")
-            << 2 * (3 * a("a,b,c").block({3, 3, 3}, {5, 5, 5}) +
-                    4 * b("a,b,c").block({3, 3, 3}, {5, 5, 5}));
-
   for (std::size_t index = 0ul; index < block_range.volume(); ++index) {
     if (!a.is_zero(block_range.ordinal(index)) &&
         !b.is_zero(block_range.ordinal(index))) {
@@ -997,10 +988,6 @@ BOOST_AUTO_TEST_CASE(scale_add_permute) {
   Permutation perm({2, 1, 0});
 
   BOOST_REQUIRE_NO_THROW(c("a,b,c") = 5 * (2 * a("c,b,a")) + (3 * b("a,b,c")));
-
-  std::cout << "expr tree for c(\"a,b,c\") = 5 * (2 * a(\"c,b,a\")) + (3 * "
-               "b(\"a,b,c\")))"
-            << c("a,b,c") << (5 * (2 * a("c,b,a")) + (3 * b("a,b,c")));
 
   for (std::size_t i = 0ul; i < c.size(); ++i) {
     TArrayUMD::value_type c_tile = c.find(i).get();
