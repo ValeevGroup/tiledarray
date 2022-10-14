@@ -32,23 +32,8 @@ set(executable ta_test)
 # N.B.: The order of files here represents the order in which the tests are run.
 # N.B. 2: if you want to trim this down you may need to resolve linker errors due to missing fixture deps manually
 set(ta_test_src_files  ta_test.cpp
+    range1.cpp
     range.cpp
-    btas.cpp
-    meta.cpp
-    type_traits.cpp
-    utility.cpp
-    permutation.cpp
-    symm_permutation_group.cpp
-    symm_irrep.cpp
-    symm_representation.cpp
-    block_range.cpp
-    perm_index.cpp
-    transform_iterator.cpp
-    bitset.cpp
-    math_outer.cpp
-    math_partial_reduce.cpp
-    math_transpose.cpp
-    math_blas.cpp
     tensor.cpp
     tensor_of_tensor.cpp
     tensor_tensor_view.cpp
@@ -109,8 +94,8 @@ set(ta_test_src_files  ta_test.cpp
     s_t_t_contract_.cpp
     t_t_t_contract_.cpp
     t_s_t_contract_.cpp
-    # t_tot_tot_contract_.cpp
-    # tot_tot_tot_contract_.cpp
+  # t_tot_tot_contract_.cpp
+  # tot_tot_tot_contract_.cpp
     einsum.cpp
     linalg.cpp
 )
@@ -169,9 +154,11 @@ if(ENABLE_MPI)
         $<TARGET_FILE:${executable}> --log_level=unit_scope ${${executable}_np_${p}_args}
         ${MPIEXEC_POSTFLAGS}
       )
+    # N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
     set_tests_properties(tiledarray/unit/run-np-${p}
             PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
-            ENVIRONMENT MAD_NUM_THREADS=2)
+            ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1"
+            )
 
     if (p GREATER 1)
       set_tests_properties(tiledarray/unit/run-np-${p} PROPERTIES ENVIRONMENT TA_UT_DISTRIBUTED=1)
@@ -180,7 +167,9 @@ if(ENABLE_MPI)
 else()
   add_test(NAME tiledarray/unit/run-np-1
            COMMAND ${executable})
+  # N.B. some CUDA unit tests require TA_CUDA_NUM_STREAMS=1 for now
   set_tests_properties(tiledarray/unit/run-np-1
           PROPERTIES FIXTURES_REQUIRED TA_UNIT_TESTS_EXEC
-          ENVIRONMENT MAD_NUM_THREADS=2)
+          ENVIRONMENT "MAD_NUM_THREADS=2;TA_CUDA_NUM_STREAMS=1"
+          )
 endif()

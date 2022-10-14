@@ -507,10 +507,15 @@ BOOST_AUTO_TEST_CASE(truncate) {
 
 BOOST_AUTO_TEST_CASE(make_replicated) {
   // Get a copy of the original process map
-  std::shared_ptr<ArrayN::pmap_interface> distributed_pmap = a.pmap();
+  std::shared_ptr<const ArrayN::pmap_interface> distributed_pmap = a.pmap();
 
   // Convert array to a replicated array.
   BOOST_REQUIRE_NO_THROW(a.make_replicated());
+
+  // check for cda7b8a33b85f9ebe92bc369d6a362c94f1eae40 bug
+  for (const auto &tile : a) {
+    BOOST_CHECK(tile.get().size() != 0);
+  }
 
   if (GlobalFixture::world->size() == 1)
     BOOST_CHECK(!a.pmap()->is_replicated());
@@ -527,6 +532,7 @@ BOOST_AUTO_TEST_CASE(make_replicated) {
          it != tile.get().end(); ++it)
       BOOST_CHECK_EQUAL(*it, distributed_pmap->owner(i) + 1);
   }
+
 }
 
 BOOST_AUTO_TEST_CASE(serialization_by_tile) {

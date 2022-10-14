@@ -83,9 +83,8 @@ struct BinaryEvalFixture : public TiledRangeFixture {
       const DistArray<Tile, Policy>& array, TiledArray::World& world,
       const typename TiledArray::detail::DistEval<Tile, Policy>::shape_type&
           shape,
-      const std::shared_ptr<
-          typename TiledArray::detail::DistEval<Tile, Policy>::pmap_interface>&
-          pmap,
+      const std::shared_ptr<const typename TiledArray::detail::DistEval<
+          Tile, Policy>::pmap_interface>& pmap,
       const Permutation& perm, const Op& op) {
     typedef TiledArray::detail::ArrayEvalImpl<DistArray<Tile, Policy>, Op,
                                               Policy>
@@ -100,14 +99,15 @@ struct BinaryEvalFixture : public TiledRangeFixture {
 
   template <typename LeftTile, typename RightTile, typename Policy, typename Op>
   static TiledArray::detail::DistEval<typename Op::result_type, Policy>
-  make_binary_eval(const TiledArray::detail::DistEval<LeftTile, Policy>& left,
-                   const TiledArray::detail::DistEval<RightTile, Policy>& right,
-                   TiledArray::World& world,
-                   const typename TiledArray::detail::DistEval<
-                       typename Op::result_type, Policy>::shape_type& shape,
-                   const std::shared_ptr<typename TiledArray::detail::DistEval<
-                       typename Op::result_type, Policy>::pmap_interface>& pmap,
-                   const Permutation& perm, const Op& op) {
+  make_binary_eval(
+      const TiledArray::detail::DistEval<LeftTile, Policy>& left,
+      const TiledArray::detail::DistEval<RightTile, Policy>& right,
+      TiledArray::World& world,
+      const typename TiledArray::detail::DistEval<typename Op::result_type,
+                                                  Policy>::shape_type& shape,
+      const std::shared_ptr<const typename TiledArray::detail::DistEval<
+          typename Op::result_type, Policy>::pmap_interface>& pmap,
+      const Permutation& perm, const Op& op) {
     typedef TiledArray::detail::BinaryEvalImpl<
         TiledArray::detail::DistEval<LeftTile, Policy>,
         TiledArray::detail::DistEval<RightTile, Policy>, Op, Policy>

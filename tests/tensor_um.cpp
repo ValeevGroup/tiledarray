@@ -87,8 +87,7 @@ struct TensorUMFixture {
 
 const TensorUMFixture::range_type TensorUMFixture::r = make_range(81);
 
-BOOST_FIXTURE_TEST_SUITE(tensor_um_suite, TensorUMFixture,
-                         TA_UT_LABEL_SERIAL)
+BOOST_FIXTURE_TEST_SUITE(tensor_um_suite, TensorUMFixture, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(default_constructor) {
   // check constructor
@@ -98,7 +97,6 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK(x.empty());
 
   // Check that range data is correct
-  BOOST_CHECK_EQUAL(x.data(), static_cast<int*>(NULL));
   BOOST_CHECK_EQUAL(x.size(), 0ul);
   BOOST_CHECK_EQUAL(x.range().volume(), 0ul);
 

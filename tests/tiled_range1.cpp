@@ -25,7 +25,7 @@
 
 using namespace TiledArray;
 
-BOOST_FIXTURE_TEST_SUITE(range1_suite, Range1Fixture, TA_UT_LABEL_SERIAL)
+BOOST_FIXTURE_TEST_SUITE(tiled_range1_suite, Range1Fixture, TA_UT_LABEL_SERIAL)
 
 BOOST_AUTO_TEST_CASE(range_accessor) {
   BOOST_CHECK_EQUAL(tr1.tiles_range().first, tiles.first);
@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(constructor) {
     BOOST_CHECK_EQUAL(r.elements_range().first, -1);
     BOOST_CHECK_EQUAL(r.elements_range().second, 28);
   }
-#else  // TA_SIGNED_1INDEX_TYPE
+#else   // TA_SIGNED_1INDEX_TYPE
   BOOST_CHECK_THROW(TiledRange1 r({-1, 0, 2, 5, 10, 17, 28}),
                     TiledArray::Exception);
 #endif  // TA_SIGNED_1INDEX_TYPE

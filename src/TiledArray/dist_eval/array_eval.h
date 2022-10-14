@@ -212,8 +212,8 @@ class ArrayEvalImpl
                                TiledArray::detail::is_permutation_v<Perm>>>
   ArrayEvalImpl(const array_type& array, World& world,
                 const trange_type& trange, const shape_type& shape,
-                const std::shared_ptr<pmap_interface>& pmap, const Perm& perm,
-                const op_type& op)
+                const std::shared_ptr<const pmap_interface>& pmap,
+                const Perm& perm, const op_type& op)
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         array_(array),
         op_(std::make_shared<op_type>(op)),
@@ -239,8 +239,8 @@ class ArrayEvalImpl
                 TiledArray::detail::is_permutation_v<Perm>>>
   ArrayEvalImpl(const array_type& array, World& world,
                 const trange_type& trange, const shape_type& shape,
-                const std::shared_ptr<pmap_interface>& pmap, const Perm& perm,
-                const op_type& op, const Index1& lower_bound,
+                const std::shared_ptr<const pmap_interface>& pmap,
+                const Perm& perm, const op_type& op, const Index1& lower_bound,
                 const Index2& upper_bound)
       : DistEvalImpl_(world, trange, shape, pmap, outer(perm)),
         array_(array),

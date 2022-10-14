@@ -81,6 +81,9 @@
 /* Is TA::Tensor memory profiling enabled? */
 #cmakedefine TA_TENSOR_MEM_PROFILE 1
 
+/* Is TTG available? */
+#cmakedefine TILEDARRAY_HAS_TTG 1
+
 /* Use preprocessor to check if BTAS is available */
 #ifndef TILEDARRAY_HAS_BTAS
 #ifdef __has_include
