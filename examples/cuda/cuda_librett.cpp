@@ -29,7 +29,7 @@
 #include <iostream>
 
 /**
- *  Test cuTT
+ *  Test LibreTT
  */
 
 const std::size_t N = 100;

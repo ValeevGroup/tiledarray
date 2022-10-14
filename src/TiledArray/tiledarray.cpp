@@ -9,7 +9,7 @@
 #ifdef TILEDARRAY_HAS_CUDA
 #include <TiledArray/cuda/cublas.h>
 #include <TiledArray/external/cuda.h>
-#include <cutt.h>
+#include <librett.h>
 #endif
 
 #if TILEDARRAY_HAS_TTG
@@ -29,16 +29,18 @@ inline void cuda_initialize() {
   cudaEnv::instance();
   //
   cuBLASHandlePool::handle();
-  // initialize cuTT
-  cuttInitialize();
+  // initialize LibreTT
+  librettInitialize();
 }
 
 /// finalize cuda environment
 inline void cuda_finalize() {
   CudaSafeCall(cudaDeviceSynchronize());
-  cuttFinalize();
+  librettFinalize();
   cublasDestroy(cuBLASHandlePool::handle());
   delete &cuBLASHandlePool::handle();
+  // although TA::cudaEnv is a singleton, must explicitly delete it so
+  // that CUDA runtime is not finalized before the cudaEnv dtor is called
   cudaEnv::instance().reset(nullptr);
 }
 #endif
@@ -172,6 +174,16 @@ void TiledArray::finalize() {
   initialized_accessor() = false;
   finalized_accessor() = true;
 }
+
+TiledArray::detail::Finalizer::~Finalizer() noexcept {
+  static std::mutex mtx;
+  std::scoped_lock lock(mtx);
+  if (TiledArray::initialized()) {
+    TiledArray::finalize();
+  }
+}
+
+TiledArray::detail::Finalizer TiledArray::scoped_finalizer() { return {}; }
 
 void TiledArray::ta_abort() { SafeMPI::COMM_WORLD.Abort(); }
 

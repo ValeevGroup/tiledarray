@@ -96,27 +96,28 @@ int main(int argc, char** argv) {
 
     TiledArray::TSpArrayD t_aa_vvoo(world, v_aa_vvoo.trange(),
                                     v_aa_vvoo.shape());
-    for (auto it = t_aa_vvoo.range().begin(); it != t_aa_vvoo.range().end();
-         ++it)
+    for (auto it = t_aa_vvoo.tiles_range().begin();
+         it != t_aa_vvoo.tiles_range().end(); ++it)
       if (t_aa_vvoo.is_local(*it) && (!t_aa_vvoo.is_zero(*it)))
         t_aa_vvoo.set(*it, 0.0);
 
     TiledArray::TSpArrayD t_ab_vvoo(world, v_ab_vvoo.trange(),
                                     v_ab_vvoo.shape());
-    for (auto it = t_ab_vvoo.range().begin(); it != t_ab_vvoo.range().end();
-         ++it)
+    for (auto it = t_ab_vvoo.tiles_range().begin();
+         it != t_ab_vvoo.tiles_range().end(); ++it)
       if (t_ab_vvoo.is_local(*it) && (!t_ab_vvoo.is_zero(*it)))
         t_ab_vvoo.set(*it, 0.0);
 
     TiledArray::TSpArrayD t_bb_vvoo(world, v_bb_vvoo.trange(),
                                     v_bb_vvoo.shape());
-    for (auto it = t_bb_vvoo.range().begin(); it != t_bb_vvoo.range().end();
-         ++it)
+    for (auto it = t_bb_vvoo.tiles_range().begin();
+         it != t_bb_vvoo.tiles_range().end(); ++it)
       if (t_bb_vvoo.is_local(*it) && (!t_bb_vvoo.is_zero(*it)))
         t_bb_vvoo.set(*it, 0.0);
 
     TiledArray::TSpArrayD D_vvoo(world, v_ab_vvoo.trange(), v_ab_vvoo.shape());
-    for (auto it = D_vvoo.range().begin(); it != D_vvoo.range().end(); ++it)
+    for (auto it = D_vvoo.tiles_range().begin();
+         it != D_vvoo.tiles_range().end(); ++it)
       if (D_vvoo.is_local(*it) && (!D_vvoo.is_zero(*it)))
         D_vvoo.set(*it, world.taskq.add(data, &InputData::make_D_vvoo_tile,
                                         D_vvoo.trange().make_tile_range(*it)));

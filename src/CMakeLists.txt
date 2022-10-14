@@ -201,7 +201,7 @@ if(CUDA_FOUND)
 
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
-     TiledArray/external/cutt.h
+     TiledArray/external/librett.h
      TiledArray/cuda/cublas.h
      TiledArray/cuda/btas_cublas.h
      TiledArray/cuda/btas_um_tensor.h
@@ -250,7 +250,7 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray depends on
-  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_CUTT)
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_LIBRETT)
 
 endif(CUDA_FOUND)
 

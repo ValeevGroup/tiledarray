@@ -46,7 +46,14 @@ TILEDARRAY_PRAGMA_GCC(system_header)
 #endif
 
 #include <Eigen/Core>
+
+// disable warnings re: ignored attributes on template argument
+// Eigen::PacketType<int, Eigen::DefaultDevice>::type
+// {aka __vector(2) long long int}
+TILEDARRAY_PRAGMA_GCC(diagnostic push)
+TILEDARRAY_PRAGMA_GCC(diagnostic ignored "-Wignored-attributes")
 #include <unsupported/Eigen/CXX11/Tensor>
+TILEDARRAY_PRAGMA_GCC(diagnostic pop)
 
 #if defined(EIGEN_USE_LAPACKE) || defined(EIGEN_USE_LAPACKE_STRICT)
 #if !EIGEN_VERSION_AT_LEAST(3, 3, 7)

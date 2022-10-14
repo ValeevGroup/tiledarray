@@ -300,7 +300,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
 int try_main(int argc, char **argv) {
   // Initialize runtime
-  TiledArray::World &world = TiledArray::initialize(argc, argv);
+  TiledArray::World &world = TA_SCOPED_INITIALIZE(argc, argv);
 
   // Get command line arguments
   if (argc < 6) {
@@ -452,8 +452,6 @@ int try_main(int argc, char **argv) {
   else {
     throw std::runtime_error("Invalid storage type!\n");
   }
-
-  TiledArray::finalize();
 
   return 0;
 }
