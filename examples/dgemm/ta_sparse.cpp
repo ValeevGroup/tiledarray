@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
 
   try {
     // Initialize runtime
-    TiledArray::World& world = TiledArray::initialize(argc, argv);
+    TiledArray::World& world = TA_SCOPED_INITIALIZE(argc, argv);
 
     // Get command line arguments
     if (argc < 2) {
@@ -242,8 +242,6 @@ int main(int argc, char** argv) {
              "-----------------------------------------\nApparent GFLOPS\n";
       print_results(world, app_gflops);
     }
-
-    TiledArray::finalize();
 
   } catch (TiledArray::Exception& e) {
     std::cerr << "!! TiledArray exception: " << e.what() << "\n";

@@ -55,7 +55,7 @@ void print_local(TiledArray::World& world,
 }
 
 int main(int argc, char** argv) {
-  TiledArray::World& world = TiledArray::initialize(argc, argv);
+  TiledArray::World& world = TA_SCOPED_INITIALIZE(argc, argv);
 
   std::size_t m = 20;
   std::size_t n = 10;
@@ -101,7 +101,6 @@ int main(int argc, char** argv) {
   }
 
   print_local(world, hash_pmap);
-  TiledArray::finalize();
 
   return 0;
 }

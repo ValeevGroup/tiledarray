@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 
   try {
     // Initialize runtime
-    TiledArray::World& world = TiledArray::initialize(argc, argv);
+    TiledArray::World& world = TA_SCOPED_INITIALIZE(argc, argv);
 
     // Get command line arguments
     if (argc < 3) {
@@ -101,8 +101,6 @@ int main(int argc, char** argv) {
       gemm_<std::complex<double>>(world, trange, repeat);
     else
       gemm_<double>(world, trange, repeat);
-
-    TiledArray::finalize();
 
   } catch (TiledArray::Exception& e) {
     std::cerr << "!! TiledArray exception: " << e.what() << "\n";

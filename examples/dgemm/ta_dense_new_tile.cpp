@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 
   try {
     // Initialize runtime
-    TiledArray::World& world = TiledArray::initialize(argc, argv);
+    TiledArray::World& world = TA_SCOPED_INITIALIZE(argc, argv);
 
     // Get command line arguments
     if (argc < 2) {
@@ -147,7 +147,6 @@ int main(int argc, char** argv) {
                 << " sec\nAverage GFLOPS      = "
                 << double(repeat) * flop / total_time << "\n";
 
-    TiledArray::finalize();
   } catch (TiledArray::Exception& e) {
     std::cerr << "!! TiledArray exception: " << e.what() << "\n";
     rc = 1;
