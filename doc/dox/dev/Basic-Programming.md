@@ -143,6 +143,39 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 ```
+In complex initialization scenarios it is convenient to be able to introspect whether TiledArray has been initialized and/or finalized. Use `TA::initialized()` and  `TA::finalized()` to query whether TiledArray is currently initialized and it it has been finalized, respectively.
+
+To make initialization of TiledArray easier in presence of exceptions (e.g., within a `try` block) or multiple return statements use macro `TA_SCOPED_INITIALIZE(argc,argv,...)` instead of calling `TA::{initialize,finalize}` explicitly:
+```.cpp
+#include <tiledarray.h>
+
+int main(int argc, char* argv[]) {
+  assert(!TA::initialized());
+  assert(!TA::finalized());
+  
+  try {
+    // Initializes TiledArray
+    auto& world = TA_SCOPED_INITIALIZE(argc, argv);
+
+    // Do some work here.
+    
+    assert(TA::initialized());
+    assert(!TA::finalized());
+  }  // TA::finalize() called when leaving this scope
+  // exceptional return
+  catch (...) {
+    assert(!TA::initialized());
+    assert(TA::finalized());
+    std::cerr << "oops!\n";
+    return 1;
+  }
+
+  // normal return
+  assert(!TA::initialized());
+  assert(TA::finalized());
+  return 0;
+}
+```
 
 ## Construct an array
 To construct a `DistArray` object, you must supply following the meta data:
