@@ -225,10 +225,17 @@ TiledArray/sparse_shape.cpp
 TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
+TiledArray/version.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
 TiledArray/math/linalg/basic.cpp
 TiledArray/math/linalg/rank-local.cpp
+)
+# feed TILEDARRAY_REVISION to TiledArray/version.cpp only to avoid recompiling everything
+set_property(
+        SOURCE TiledArray/version.cpp
+        PROPERTY COMPILE_DEFINITIONS
+        TILEDARRAY_REVISION=\"${TILEDARRAY_REVISION}\"
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
