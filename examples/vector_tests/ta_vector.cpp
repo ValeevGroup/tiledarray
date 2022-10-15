@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
 
   try {
     // Initialize runtime
-    TiledArray::World& world = TiledArray::initialize(argc, argv);
+    TiledArray::World& world = TA_SCOPED_INITIALIZE(argc, argv);
 
     // Get command line arguments
     if (argc < 3) {
@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
 
     if (world.rank() == 0)
       std::cout << "TiledArray: vector ops test..."
-                << "\nGit HASH: " << TILEDARRAY_REVISION
+                << "\nGit HASH: " << TiledArray::revision()
                 << "\nNumber of nodes     = " << world.size()
                 << "\nMatrix size         = " << matrix_size << "x"
                 << matrix_size << "\nBlock size          = " << block_size
@@ -85,8 +85,6 @@ int main(int argc, char** argv) {
     TiledArray::TiledRange trange(blocking2.begin(), blocking2.end());
 
     vector_test<double>(world, trange, repeat);
-
-    TiledArray::finalize();
 
   } catch (TiledArray::Exception& e) {
     std::cerr << "!! TiledArray exception: " << e.what() << "\n";

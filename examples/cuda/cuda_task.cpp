@@ -117,7 +117,7 @@ int try_main(int argc, char** argv) {
 }
 
 int main(int argc, char* argv[]) {
-  TiledArray::World& world = TiledArray::initialize(argc, argv);
+  TiledArray::World& world = TA_SCOPED_INITIALIZE(argc, argv);
   try {
     // Initialize runtime
     try_main(argc, argv);
@@ -131,8 +131,6 @@ int main(int argc, char* argv[]) {
   } catch (...) {
     std::cerr << "unknown exception" << std::endl;
   }
-
-  TiledArray::finalize();
 
   return 0;
 }

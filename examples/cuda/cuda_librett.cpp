@@ -36,12 +36,11 @@ const std::size_t N = 100;
 using namespace TiledArray;
 
 int main(int argc, char* argv[]) {
-  TiledArray::initialize(argc, argv);
+  TA_SCOPED_INITIALIZE(argc, argv);
 
   std::vector<int> extent{N, N};
   std::vector<int> perm{1, 0};
 
-  TiledArray::finalize();
   return 0;
 }
 

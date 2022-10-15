@@ -17,7 +17,7 @@
 #
 
 # List of all complete examples
-set(wikiexamples user-guide-1;user-guide-1a;user-guide-2)
+set(wikiexamples user-guide-1;user-guide-1a;user-guide-1b;user-guide-2)
 
 # if target examples-tiledarray does not exist yet, create it
 if (NOT TARGET examples-tiledarray)
