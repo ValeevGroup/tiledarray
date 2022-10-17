@@ -231,11 +231,11 @@ TiledArray/util/bug.cpp
 TiledArray/math/linalg/basic.cpp
 TiledArray/math/linalg/rank-local.cpp
 )
-# feed TILEDARRAY_REVISION to TiledArray/version.cpp only to avoid recompiling everything
-set_property(
-        SOURCE TiledArray/version.cpp
-        PROPERTY COMPILE_DEFINITIONS
-        TILEDARRAY_REVISION=\"${TILEDARRAY_REVISION}\"
+# feed TILEDARRAY_GIT_REVISION and TILEDARRAY_GIT_DESCRIPTION to TiledArray/version.cpp only to avoid recompiling everything
+set_source_files_properties(
+        TiledArray/version.cpp
+        PROPERTIES COMPILE_DEFINITIONS
+        "TILEDARRAY_GIT_REVISION=\"${TILEDARRAY_GIT_REVISION}\";TILEDARRAY_GIT_DESCRIPTION=\"${TILEDARRAY_GIT_DESCRIPTION}\""
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later

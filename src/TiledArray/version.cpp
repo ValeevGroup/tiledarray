@@ -6,8 +6,13 @@
 
 namespace TiledArray {
 
-const char* revision() noexcept {
-  static const char revision[] = TILEDARRAY_REVISION;
+const char* git_revision() noexcept {
+  static const char revision[] = TILEDARRAY_GIT_REVISION;
+  return revision;
+}
+
+const char* git_description() noexcept {
+  static const char revision[] = TILEDARRAY_GIT_DESCRIPTION;
   return revision;
 }
 

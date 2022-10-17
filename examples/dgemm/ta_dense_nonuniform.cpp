@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
     if (world.rank() == 0)
       std::cout << "TiledArray: dense-nonuniform matrix multiply test..."
-                << "\nGit HASH: " << TiledArray::revision()
+                << "\nGit description: " << TiledArray::git_description()
                 << "\nNumber of nodes     = " << world.size()
                 << "\nMatrix size         = " << matrix_size << "x"
                 << matrix_size << "\nAverage block size  = " << block_size

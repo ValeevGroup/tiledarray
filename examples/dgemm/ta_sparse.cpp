@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
 
     if (world.rank() == 0)
       std::cout << "TiledArray: block-sparse matrix multiply test..."
-                << "\nGit HASH: " << TiledArray::revision()
+                << "\nGit description: " << TiledArray::git_description()
                 << "\nNumber of nodes    = " << world.size()
                 << "\nMatrix size        = " << matrix_size << "x"
                 << matrix_size << "\nBlock size         = " << block_size << "x"
