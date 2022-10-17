@@ -36,8 +36,14 @@
 #define TILEDARRAY_PRERELEASE_ID "@TILEDARRAY_PRERELEASE_ID@"
 
 namespace TiledArray {
-/* \return a string with the Git SHA1 revision hash tag of TiledArray */
-const char* revision() noexcept;
+
+/** \return a string with the Git SHA1 revision hash tag of TiledArray */
+const char* git_revision() noexcept;
+
+/** \return a string with the human-readable description of the current source
+ * tree of TiledArray */
+const char* git_description() noexcept;
+
 }  // namespace TiledArray
 
 #endif // TILEDARRAY_VERSION_H__INCLUDED

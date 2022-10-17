@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
 
     if (world.rank() == 0) {
       std::cout << "TiledArray: CC T2.V term test..."
-                << "\nGit HASH: " << TiledArray::revision()
+                << "\nGit description: " << TiledArray::git_description()
                 << "\nNumber of nodes     = " << world.size()
                 << "\nocc size            = " << n_occ
                 << "\nocc nblocks         = " << nblk_occ
