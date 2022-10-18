@@ -83,11 +83,17 @@ class hostEnv {
 
       auto& rm = umpire::ResourceManager::getInstance();
 
-      // turn off Umpire introspection for non-Debug builds
+      // if the user asked to profile the memory usage always enable the
+      // introspection
+#ifdef TA_TENSOR_MEM_PROFILE
+      constexpr auto introspect = true;
+#else
+      // else turn off Umpire introspection by default for non-Debug builds
 #ifndef NDEBUG
       constexpr auto introspect = true;
 #else
       constexpr auto introspect = false;
+#endif
 #endif
 
       auto host_aligned_alloc =

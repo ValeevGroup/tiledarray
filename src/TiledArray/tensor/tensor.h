@@ -40,13 +40,6 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
 
 namespace detail {
 
-#ifdef TA_TENSOR_MEM_PROFILE
-inline static std::mutex
-    ta_tensor_mem_profile_mtx;  // protects the following statics
-inline static std::uint64_t nbytes_allocated = 0;
-inline static std::uint64_t max_nbytes_allocated = 0;
-#endif  // TA_TENSOR_MEM_PROFILE
-
 /// Signals that we can take the trace of a Tensor<T, A> (for numeric \c T)
 template <typename T, typename A>
 struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
@@ -97,45 +90,6 @@ class Tensor {
   template <typename X>
   using numeric_t = typename TiledArray::detail::numeric_type<X>::type;
 
-#ifdef TA_TENSOR_MEM_PROFILE
-  enum class MemOp { Alloc, Dealloc };
-  void alloc_record(std::uint64_t n, MemOp action) {
-    const double to_MiB = 1 / (1024.0 * 1024.0); /* Convert from bytes to MiB */
-    const auto nbytes = n * sizeof(value_type);
-    {
-      std::scoped_lock lock(detail::ta_tensor_mem_profile_mtx);
-      if (action == MemOp::Alloc) {
-        detail::nbytes_allocated += nbytes;
-        detail::max_nbytes_allocated =
-            std::max(detail::nbytes_allocated, detail::max_nbytes_allocated);
-      } else
-        detail::nbytes_allocated -= nbytes;
-    }
-    char buf[1024];
-    auto value_type_str = []() {
-      if constexpr (std::is_same_v<value_type, double>)
-        return "double";
-      else if constexpr (std::is_same_v<value_type, float>)
-        return "float";
-      else if constexpr (std::is_same_v<value_type, std::complex<double>>)
-        return "zdouble";
-      else if constexpr (std::is_same_v<value_type, std::complex<float>>)
-        return "zfloat";
-      else
-        return "";
-    };
-    std::snprintf(
-        buf, 1023,
-        "TA::Tensor<%s>: %sallocated %lf MiB [wm = %lf MiB hwm = %lf MiB]\n",
-        value_type_str(), (action == MemOp::Dealloc ? "de" : "  "),
-        nbytes * to_MiB, detail::nbytes_allocated * to_MiB,
-        detail::max_nbytes_allocated * to_MiB);
-    auto& os = madness::print_meminfo_ostream();
-    os << buf;
-    os.flush();
-  }
-#endif
-
   template <typename... Ts>
   struct is_tensor {
     static constexpr bool value = detail::is_tensor<Ts...>::value ||
@@ -149,9 +103,6 @@ class Tensor {
     size_t size = range_.volume() * batch_size;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
-#ifdef TA_TENSOR_MEM_PROFILE
-    alloc_record(size, MemOp::Alloc);
-#endif
     if (default_construct) {
       std::uninitialized_default_construct_n(ptr, size);
       // std::uninitialized_value_construct_n(ptr, size);
@@ -160,9 +111,6 @@ class Tensor {
                     size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
       allocator.deallocate(ptr, size);
-#ifdef TA_TENSOR_MEM_PROFILE
-      alloc_record(size, MemOp::Dealloc);
-#endif
     };
     this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
   }
@@ -172,9 +120,6 @@ class Tensor {
     size_t size = range_.volume() * batch_size;
     allocator_type allocator;
     auto* ptr = allocator.allocate(size);
-#ifdef TA_TENSOR_MEM_PROFILE
-    alloc_record(size, MemOp::Alloc);
-#endif
     if (default_construct) {
       std::uninitialized_default_construct_n(ptr, size);
       // std::uninitialized_value_construct_n(ptr, size);
@@ -183,9 +128,6 @@ class Tensor {
                     size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
       allocator.deallocate(ptr, size);
-#ifdef TA_TENSOR_MEM_PROFILE
-      alloc_record(size, MemOp::Dealloc);
-#endif
     };
     this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
   }
@@ -2055,8 +1997,8 @@ class Tensor {
 
 };  // class Tensor
 
-template<typename T>
-Tensor<T> operator*(const Permutation &p, const Tensor<T> &t) {
+template <typename T>
+Tensor<T> operator*(const Permutation& p, const Tensor<T>& t) {
   return t.permute(p);
 }
 
