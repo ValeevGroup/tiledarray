@@ -28,6 +28,7 @@
 
 // for memory management
 #include <umpire/Umpire.hpp>
+#include <umpire/strategy/AlignedAllocator.hpp>
 #include <umpire/strategy/QuickPool.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
 #include <umpire/strategy/ThreadSafeAllocator.hpp>
@@ -87,10 +88,14 @@ class hostEnv {
       constexpr auto introspect = false;
 #endif
 
-      // allocate zero memory for device pool, same grain for subsequent allocs
+      auto host_aligned_alloc =
+          rm.makeAllocator<umpire::strategy::AlignedAllocator, introspect>(
+              "aligned_allocator", rm.getAllocator("HOST"),
+              TILEDARRAY_ALIGN_SIZE);
       auto host_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
-              "size_limited_alloc", rm.getAllocator("HOST"), max_memory_size);
+              "size_limited_alloc", host_aligned_alloc, max_memory_size);
+      // allocate zero memory for device pool, same grain for subsequent allocs
       auto host_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "HostDynamicPool", host_size_limited_alloc, 0, page_size);
