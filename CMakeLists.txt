@@ -235,12 +235,15 @@ endif()
 set(INTEGER4 TRUE CACHE BOOL "If TRUE, use integer*4 Fortran integers in BLAS calls. Otherwise use integer*8.")
 mark_as_advanced(INTEGER4)
 
-# Set the CPU L1 cache line size.
-set(VECTOR_ALIGNMENT "16" CACHE STRING "Set the vector alignment in memory (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
-mark_as_advanced(VECTOR_ALIGNMENT)
-set(TILEDARRAY_ALIGNMENT ${VECTOR_ALIGNMENT})
+# Set the align size
+include(DetectAlignSize)
+if (NOT DEFINED CACHE{TA_ALIGN_SIZE})
+  set(TA_ALIGN_SIZE "${TA_ALIGN_SIZE_DETECTED}" CACHE STRING "Set the default alignment of data buffers used by array tiles (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
+endif()
+mark_as_advanced(TA_ALIGN_SIZE)
+set(TILEDARRAY_ALIGN_SIZE ${TA_ALIGN_SIZE})
 
-# Set the vectory.
+# Set the CPU L1 cache line size.
 set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
 mark_as_advanced(CACHE_LINE_SIZE)
 set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})

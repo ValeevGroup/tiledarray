@@ -393,13 +393,13 @@ directory with:
 
 ## Advanced configure options:
 
-The following CMake cache variables are tuning parameters. You should only
-modify these values if you know the values for your patricular system.
+The following CMake cache variables are for performance tuning. You should only
+modify these values if you know the values for your particular system.
 
-* `VECTOR_ALIGNMENT` -- The alignment of memory for Tensor in bytes [Default=16]
-* `CACHE_LINE_SIZE` -- The cache line size in bytes [Default=64]
+* `TA_ALIGN_SIZE` -- The alignment of memory allocated by TA::Tensor (and other artifacts like TA::host_allocator), in bytes. [Default is platform-specific, if no platform-specific value is found =64]
+* `TA_CACHE_LINE_SIZE` -- The cache line size in bytes [Default=64]
 
-`VECTOR_ALIGNMENT` controls the alignment of Tensor data, and `CACHE_LINE_SIZE`
+`TA_ALIGN_SIZE` controls the alignment of memory allocated for tiles, and `TA_CACHE_LINE_SIZE`
 controls the size of automatic loop unrolling for tensor operations. TiledArray
 does not currently use explicit vector instructions (i.e. intrinsics), but
 the code is written in such a way that compilers can more easily autovectorize
