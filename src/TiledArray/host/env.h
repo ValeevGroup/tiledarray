@@ -70,7 +70,9 @@ class hostEnv {
   static void initialize(World& world,
                          const std::uint64_t max_memory_size = (1ul << 40),
                          const std::uint64_t page_size = (1ul << 22)) {
-    // initialize only when not initialized
+    static std::mutex mtx;  // to make initialize() reentrant
+    std::scoped_lock lock{mtx};
+    // only the winner of the lock race gets to initialize
     if (instance_accessor() == nullptr) {
       // uncomment to debug umpire ops
       //
@@ -90,8 +92,7 @@ class hostEnv {
 
       auto host_aligned_alloc =
           rm.makeAllocator<umpire::strategy::AlignedAllocator, introspect>(
-              "aligned_allocator", rm.getAllocator("HOST"),
-              TILEDARRAY_ALIGN_SIZE);
+              "aligned_alloc", rm.getAllocator("HOST"), TILEDARRAY_ALIGN_SIZE);
       auto host_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
               "size_limited_alloc", host_aligned_alloc, max_memory_size);
