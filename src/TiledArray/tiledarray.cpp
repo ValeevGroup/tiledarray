@@ -162,11 +162,11 @@ void TiledArray::finalize() {
 
   // reset number of threads
   TiledArray::set_num_threads(TiledArray::max_threads);
+  TiledArray::get_default_world().gop.fence();  // this should ensure no pending
+                                                // tasks using cuda allocators
 #ifdef TILEDARRAY_HAS_CUDA
   TiledArray::cuda_finalize();
 #endif
-  TiledArray::get_default_world()
-      .gop.fence();  // TODO remove when madness::finalize() fences
   if (initialized_madworld()) {
     madness::finalize();
   }
