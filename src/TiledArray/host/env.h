@@ -68,13 +68,12 @@ class hostEnv {
 
   /// initialize the instance using explicit params
   /// \param max_memory_size max amount of memory (bytes) that TiledArray
-  ///        can use for
-  ///        storage of TA::Tensor objects (these by default
-  ///        store DistArray tile data and (if sparse) shape
+  ///        can use for storage of TA::Tensor objects (these by default
+  ///        store DistArray tile data and (if sparse) shape [default=2^40]
   /// \param page_size memory added to the pool in chunks of at least
-  ///                  this size (bytes)
+  ///                  this size (bytes) [default=2^25]
   static void initialize(const std::uint64_t max_memory_size = (1ul << 40),
-                         const std::uint64_t page_size = (1ul << 30)) {
+                         const std::uint64_t page_size = (1ul << 25)) {
     static std::mutex mtx;  // to make initialize() reentrant
     std::scoped_lock lock{mtx};
     // only the winner of the lock race gets to initialize
