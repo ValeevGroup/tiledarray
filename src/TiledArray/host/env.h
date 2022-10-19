@@ -43,11 +43,11 @@
 namespace TiledArray {
 
 /**
- * hostEnv set up global environment
+ * hostEnv maintains the (host-side, as opposed to device-side) environment,
+ * such as memory allocators
  *
- * Singleton class
+ * \note this is a Singleton
  */
-
 class hostEnv {
  public:
   ~hostEnv() = default;
@@ -57,8 +57,8 @@ class hostEnv {
   hostEnv& operator=(const hostEnv&) = delete;
   hostEnv& operator=(hostEnv&&) = delete;
 
-  /// access the instance, if not initialized will be initialized using default
-  /// params
+  /// access the singleton instance; if not initialized will be
+  /// initialized via hostEnv::initialize() with the default params
   static std::unique_ptr<hostEnv>& instance() {
     if (!instance_accessor()) {
       initialize();
