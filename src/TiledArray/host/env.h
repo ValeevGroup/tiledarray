@@ -88,30 +88,20 @@ class hostEnv {
 
       auto& rm = umpire::ResourceManager::getInstance();
 
-      // if the user asked to profile the memory usage always enable the
-      // introspection
-#ifdef TA_TENSOR_MEM_PROFILE
-      constexpr auto introspect = true;
-#else
-      // else turn off Umpire introspection by default for non-Debug builds
-#ifndef NDEBUG
-      constexpr auto introspect = true;
-#else
+      // N.B. we don't rely on Umpire introspection (even for profiling)
       constexpr auto introspect = false;
-#endif
-#endif
 
       // use QuickPool for host memory allocation, with min grain of 1 page
       auto host_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
-              "SizeLimited_Host", rm.getAllocator("HOST"), max_memory_size);
+              "SizeLimited_HOST", rm.getAllocator("HOST"), max_memory_size);
       auto host_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
-              "QuickPool_SizeLimited_Host", host_size_limited_alloc, page_size,
+              "QuickPool_SizeLimited_HOST", host_size_limited_alloc, page_size,
               page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
       auto thread_safe_host_aligned_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
-              "ThreadSafe_QuickPool_SizeLimited_Host", host_dynamic_pool);
+              "ThreadSafe_QuickPool_SizeLimited_HOST", host_dynamic_pool);
 
       auto host_env = std::unique_ptr<hostEnv>(
           new hostEnv(TiledArray::get_default_world(),

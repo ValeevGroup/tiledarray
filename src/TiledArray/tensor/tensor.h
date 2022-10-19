@@ -127,7 +127,7 @@ class Tensor {
     auto deleter = [this, allocator = std::move(allocator),
                     size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
-      allocator.deallocate(ptr, size);
+      allocator.deallocate(ptr, size * sizeof(T));
     };
     this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
   }
