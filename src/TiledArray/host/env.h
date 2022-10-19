@@ -96,22 +96,20 @@ class hostEnv {
 #endif
 #endif
 
-      auto host_aligned_alloc =
-          rm.makeAllocator<umpire::strategy::AlignedAllocator, introspect>(
-              "aligned_alloc", rm.getAllocator("HOST"), TILEDARRAY_ALIGN_SIZE);
+      // use QuickPool for host memory allocation, with min grain of 1 page
       auto host_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
-              "size_limited_alloc", host_aligned_alloc, max_memory_size);
-      // allocate zero memory for device pool, same grain for subsequent allocs
+              "SizeLimited_Host", rm.getAllocator("HOST"), max_memory_size);
       auto host_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
-              "HostDynamicPool", host_size_limited_alloc, 0, page_size);
-      auto thread_safe_host_dynamic_pool =
+              "QuickPool_SizeLimited_Host", host_size_limited_alloc, page_size,
+              page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
+      auto thread_safe_host_aligned_dynamic_pool =
           rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
-              "ThreadSafeHostDynamicPool", host_dynamic_pool);
+              "ThreadSafe_QuickPool_SizeLimited_Host", host_dynamic_pool);
 
       auto host_env = std::unique_ptr<hostEnv>(
-          new hostEnv(world, thread_safe_host_dynamic_pool));
+          new hostEnv(world, thread_safe_host_aligned_dynamic_pool));
       instance_accessor() = std::move(host_env);
     }
   }
