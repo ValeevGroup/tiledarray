@@ -61,15 +61,20 @@ class hostEnv {
   /// params
   static std::unique_ptr<hostEnv>& instance() {
     if (!instance_accessor()) {
-      initialize(TiledArray::get_default_world());
+      initialize();
     }
     return instance_accessor();
   }
 
   /// initialize the instance using explicit params
-  static void initialize(World& world,
-                         const std::uint64_t max_memory_size = (1ul << 40),
-                         const std::uint64_t page_size = (1ul << 22)) {
+  /// \param max_memory_size max amount of memory (bytes) that TiledArray
+  ///        can use for
+  ///        storage of TA::Tensor objects (these by default
+  ///        store DistArray tile data and (if sparse) shape
+  /// \param page_size memory added to the pool in chunks of at least
+  ///                  this size (bytes)
+  static void initialize(const std::uint64_t max_memory_size = (1ul << 40),
+                         const std::uint64_t page_size = (1ul << 30)) {
     static std::mutex mtx;  // to make initialize() reentrant
     std::scoped_lock lock{mtx};
     // only the winner of the lock race gets to initialize
@@ -109,7 +114,8 @@ class hostEnv {
               "ThreadSafe_QuickPool_SizeLimited_Host", host_dynamic_pool);
 
       auto host_env = std::unique_ptr<hostEnv>(
-          new hostEnv(world, thread_safe_host_aligned_dynamic_pool));
+          new hostEnv(TiledArray::get_default_world(),
+                      thread_safe_host_aligned_dynamic_pool));
       instance_accessor() = std::move(host_env);
     }
   }
