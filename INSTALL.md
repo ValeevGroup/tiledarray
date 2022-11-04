@@ -42,7 +42,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Range: header-only, *only used for unit testing*
 - [BTAS](http://github.com/ValeevGroup/BTAS), tag fba66ad9881ab29ea8df49ac6a6006cab3fb3ce5 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
-- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 66b199a08bf5f33b1565811fc202a051ec1b0fbb .
+- [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 40d2e38414179a8ebce508c7339fcee21244ffc6 .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
   If usable MADNESS installation is not found, TiledArray will download and compile
   MADNESS from source. *This is the recommended way to compile MADNESS for all users*.
@@ -393,13 +393,13 @@ directory with:
 
 ## Advanced configure options:
 
-The following CMake cache variables are tuning parameters. You should only
-modify these values if you know the values for your patricular system.
+The following CMake cache variables are for performance tuning. You should only
+modify these values if you know the values for your particular system.
 
-* `VECTOR_ALIGNMENT` -- The alignment of memory for Tensor in bytes [Default=16]
-* `CACHE_LINE_SIZE` -- The cache line size in bytes [Default=64]
+* `TA_ALIGN_SIZE` -- The alignment of memory allocated by TA::Tensor (and other artifacts like TA::host_allocator), in bytes. [Default is platform-specific, if no platform-specific value is found =64]
+* `TA_CACHE_LINE_SIZE` -- The cache line size in bytes [Default=64]
 
-`VECTOR_ALIGNMENT` controls the alignment of Tensor data, and `CACHE_LINE_SIZE`
+`TA_ALIGN_SIZE` controls the alignment of memory allocated for tiles, and `TA_CACHE_LINE_SIZE`
 controls the size of automatic loop unrolling for tensor operations. TiledArray
 does not currently use explicit vector instructions (i.e. intrinsics), but
 the code is written in such a way that compilers can more easily autovectorize
@@ -416,7 +416,7 @@ support may be added.
 * `TA_TTG` -- Set to `ON` to find or fetch the TTG library. [Default=OFF]. 
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.
-* `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile memory allocations in TA::Tensor.
+* `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile host memory allocations used by TA::Tensor. This causes the use of Umpire for host memory allocation. This also enables additional tracing facilities provided by Umpire; these can be controlled via [environment variable `UMPIRE_LOG_LEVEL`](https://umpire.readthedocs.io/en/develop/sphinx/features/logging_and_replay.html), but note that the default is to log Umpire info into a file rather than stdout.
 * `TA_UT_CTEST_TIMEOUT` -- The value (in seconds) of the timeout to use for running the TA unit tests via CTest when building the `check`/`check-tiledarray` targets. The default timeout is 1500s.
  
 # Build TiledArray

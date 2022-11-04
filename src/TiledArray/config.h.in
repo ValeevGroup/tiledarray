@@ -66,7 +66,7 @@
 #cmakedefine TILEDARRAY_HAS_LONG_LONG 1
 
 /* Define the default alignment for arrays required by vector operations. */
-#cmakedefine TILEDARRAY_ALIGNMENT @TILEDARRAY_ALIGNMENT@
+#cmakedefine TILEDARRAY_ALIGN_SIZE @TILEDARRAY_ALIGN_SIZE@
 
 /* Define the size of the CPU L1 cache lines. */
 #cmakedefine TILEDARRAY_CACHELINE_SIZE @TILEDARRAY_CACHELINE_SIZE@
@@ -125,11 +125,11 @@
 /* Add macro TILEDARRAY_ALIGNED_STORAGE which forces alignment of variables */
 #if defined(__clang__) || defined(__GNUC__) || defined(__PGI) || defined(__IBMCPP__) || defined(__ARMCC_VERSION)
 
-#define TILEDARRAY_ALIGNED_STORAGE __attribute__((aligned(TILEDARRAY_ALIGNMENT)))
+#define TILEDARRAY_ALIGNED_STORAGE __attribute__((aligned(TILEDARRAY_ALIGN_SIZE)))
 
 #elif (defined _MSC_VER)
 
-#define TILEDARRAY_ALIGNED_STORAGE __declspec(align(TILEDARRAY_ALIGNMENT))
+#define TILEDARRAY_ALIGNED_STORAGE __declspec(align(TILEDARRAY_ALIGN_SIZE))
 
 #else
 
