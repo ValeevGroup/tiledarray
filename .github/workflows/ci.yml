@@ -49,7 +49,7 @@ jobs:
       shell: bash
       run: |
         set -x;
-        cmake -B${{github.workspace}}/build $BUILD_CONFIG
+        cmake -B${{github.workspace}}/build $BUILD_CONFIG || (cat CMakeFiles/CMakeOutput.log && cat CMakeFiles/CMakeError.log)
 
     - name: Build
       working-directory: ${{github.workspace}}/build
