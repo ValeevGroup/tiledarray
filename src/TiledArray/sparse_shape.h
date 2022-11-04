@@ -585,6 +585,12 @@ class SparseShape {
   /// \return \c true when this shape has been initialized.
   bool empty() const { return tile_norms_.empty(); }
 
+  /// Check if the shape is initialized (i.e. !empty())
+
+  /// \return true if the shape is non-default initialized and its data is
+  /// nonnull
+  explicit operator bool() const { return !empty(); }
+
   /// Compute union of two shapes
 
   /// \param mask_shape The input shape, hard zeros are used to mask the output.
