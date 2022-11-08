@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef TILEDARRAY_EXTERNAL_CUTT_H__INCLUDED
-#define TILEDARRAY_EXTERNAL_CUTT_H__INCLUDED
+#ifndef TILEDARRAY_EXTERNAL_LIBRETT_H__INCLUDED
+#define TILEDARRAY_EXTERNAL_LIBRETT_H__INCLUDED
 
 #include <TiledArray/config.h>
 
@@ -31,7 +31,7 @@
 #include <algorithm>
 #include <vector>
 
-#include <cutt.h>
+#include <librett.h>
 
 #include <TiledArray/permutation.h>
 #include <TiledArray/range.h>
@@ -77,38 +77,39 @@ inline void permutation_to_col_major(std::vector<int>& perm) {
  * @param stream  the CUDA stream this permutation will be submitted to
  */
 template <typename T>
-void cutt_permute(T* inData, T* outData, const TiledArray::Range& range,
-                  const TiledArray::Permutation& perm, cudaStream_t stream) {
+void librett_permute(T* inData, T* outData, const TiledArray::Range& range,
+                     const TiledArray::Permutation& perm, cudaStream_t stream) {
   auto extent = range.extent();
   std::vector<int> extent_int(extent.begin(), extent.end());
 
-  // cuTT uses FROM notation
+  // LibreTT uses FROM notation
   auto perm_inv = perm.inv();
   std::vector<int> perm_int(perm_inv.begin(), perm_inv.end());
 
-  // cuTT uses ColMajor
+  // LibreTT uses ColMajor
   TiledArray::extent_to_col_major(extent_int);
   TiledArray::permutation_to_col_major(perm_int);
 
-  cuttResult_t status;
+  // librettResult_t status;
+  librettResult status;
 
-  cuttHandle plan;
-  status = cuttPlan(&plan, range.rank(), extent_int.data(), perm_int.data(),
-                    sizeof(T), stream);
+  librettHandle plan;
+  status = librettPlan(&plan, range.rank(), extent_int.data(), perm_int.data(),
+                       sizeof(T), stream);
 
-  TA_ASSERT(status == CUTT_SUCCESS);
+  TA_ASSERT(status == LIBRETT_SUCCESS);
 
-  status = cuttExecute(plan, inData, outData);
+  status = librettExecute(plan, inData, outData);
 
-  TA_ASSERT(status == CUTT_SUCCESS);
+  TA_ASSERT(status == LIBRETT_SUCCESS);
 
-  status = cuttDestroy(plan);
+  status = librettDestroy(plan);
 
-  TA_ASSERT(status == CUTT_SUCCESS);
+  TA_ASSERT(status == LIBRETT_SUCCESS);
 }
 
 }  // namespace TiledArray
 
 #endif  //  TILEDARRAY_HAS_CUDA
 
-#endif  // TILEDARRAY_EXTERNAL_CUTT_H__INCLUDED
+#endif  // TILEDARRAY_EXTERNAL_LIBRETT_H__INCLUDED

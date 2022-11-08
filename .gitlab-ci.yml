@@ -7,12 +7,12 @@ default:
 
 variables:
   MAD_NUM_THREADS : 2
-  TA_TARGETS : "tiledarray examples ta_test check-tiledarray"
+  TA_TARGETS : "tiledarray examples-tiledarray ta_test check-tiledarray"
   # Debug builds with ScaLAPACK=ON need increased TA_UT_CTEST_TIMEOUT
   TA_CONFIG : >
     CMAKE_BUILD_TYPE=${BUILD_TYPE}
     TA_ASSERT_POLICY=TA_ASSERT_THROW
-    TA_UT_CTEST_TIMEOUT=2000
+    TA_UT_CTEST_TIMEOUT=3000
     ${TA_PYTHON}
     ${ENABLE_CUDA}
     ${BLA_VENDOR}
@@ -20,15 +20,16 @@ variables:
     ${ENABLE_SCALAPACK}
 
 before_script:
-  # NB: below tag parsing is not robust
-  - echo "CI_RUNNER_TAGS=$CI_RUNNER_TAGS"
-  - CMAKE_BUILD_PARALLEL_LEVEL=$(echo $CI_RUNNER_TAGS | sed -n 's/CMAKE_BUILD_PARALLEL_LEVEL=\([0-9]\+\).*/\1/p')
+  # NB: if CMAKE_BUILD_PARALLEL_LEVEL is not set (i.e. using shared runner), use 1 to ensure we have enough memory
+  # TODO optimize ta_test build memory consumption
   - export CMAKE_BUILD_PARALLEL_LEVEL=${CMAKE_BUILD_PARALLEL_LEVEL:=1}
   - echo "CMAKE_BUILD_PARALLEL_LEVEL=$CMAKE_BUILD_PARALLEL_LEVEL"
 
 ubuntu:
   stage: build
-  tags: [ docker ]
+  tags:
+    - docker
+    - ${RUNNER_TAGS}
   timeout: 3h
   image: valeevgroup/${IMAGE}
   variables:
@@ -62,12 +63,15 @@ ubuntu:
         BLA_THREADS : [ "IntelMKL_THREAD_LAYER=tbb" ]
         # ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
         TA_PYTHON : [ "TA_PYTHON=OFF" ] # needs to be fixed for MKL
+        RUNNER_TAGS: [ linux ]
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
         CXX: [ g++, clang++-9 ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_SCALAPACK : [ "ENABLE_SCALAPACK=ON", "ENABLE_SCALAPACK=OFF" ]
+        RUNNER_TAGS: [ linux ]
       - IMAGE : [ "ubuntu:18.04", "ubuntu:20.04" ]
         CXX: [ g++ ]
         BUILD_TYPE : [ "Release", "Debug" ]
         ENABLE_CUDA : [ "ENABLE_CUDA=ON" ]
-        TA_TARGETS : [ "tiledarray examples" ]
+        TA_TARGETS : [ "tiledarray examples-tiledarray check_serial-tiledarray" ]
+        RUNNER_TAGS: [ cuda ]

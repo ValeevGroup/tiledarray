@@ -20,22 +20,30 @@
 #ifndef TILEDARRAY_VERSION_H__INCLUDED
 #define TILEDARRAY_VERSION_H__INCLUDED
 
-/* Defines a string with the Git SHA1 revision hash tag of TiledArray */
-#define TILEDARRAY_REVISION "@TILEDARRAY_REVISION@"
-
-/* TiledArray version X.Y.Z-id */
+/** TiledArray version X.Y.Z-id */
 #define TILEDARRAY_VERSION "@TILEDARRAY_VERSION@"
 
-/* TiledArray major version */
+/** TiledArray major version */
 #define TILEDARRAY_MAJOR_VERSION @TILEDARRAY_MAJOR_VERSION@
 
-/* TiledArray minor version */
+/** TiledArray minor version */
 #define TILEDARRAY_MINOR_VERSION @TILEDARRAY_MINOR_VERSION@
 
-/* TiledArray micro version */
+/** TiledArray micro version */
 #define TILEDARRAY_MICRO_VERSION @TILEDARRAY_MICRO_VERSION@
 
-/* TiledArray prerelease id */
+/** TiledArray prerelease id */
 #define TILEDARRAY_PRERELEASE_ID "@TILEDARRAY_PRERELEASE_ID@"
+
+namespace TiledArray {
+
+/** \return a string with the Git SHA1 revision hash tag of TiledArray */
+const char* git_revision() noexcept;
+
+/** \return a string with the human-readable description of the current source
+ * tree of TiledArray */
+const char* git_description() noexcept;
+
+}  // namespace TiledArray
 
 #endif // TILEDARRAY_VERSION_H__INCLUDED

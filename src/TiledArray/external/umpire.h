@@ -74,15 +74,20 @@ class umpire_allocator_impl {
 
     TA_ASSERT(umpalloc_);
 
-    result = static_cast<pointer>(umpalloc_->allocate(n * sizeof(T)));
+    // this, instead of umpalloc_->allocate(n*sizeof(T)), profiles memory use
+    // even if introspection is off
+    result = static_cast<pointer>(
+        umpalloc_->getAllocationStrategy()->allocate_internal(n * sizeof(T)));
 
     return result;
   }
 
   /// deallocate um memory using umpire dynamic pool
-  void deallocate(pointer ptr, size_t) {
+  void deallocate(pointer ptr, size_t size) {
     TA_ASSERT(umpalloc_);
-    umpalloc_->deallocate(ptr);
+    // this, instead of umpalloc_->deallocate(ptr, size), profiles mmeory use
+    // even if introspection is off
+    umpalloc_->getAllocationStrategy()->deallocate_internal(ptr, size);
   }
 
   const umpire::Allocator* umpire_allocator() const { return umpalloc_; }

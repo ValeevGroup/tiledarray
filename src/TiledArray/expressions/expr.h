@@ -105,16 +105,18 @@ class Expr {
   std::shared_ptr<override_type> override_ptr_;
 
  public:
-  /// \param shape the shape to use for the result
+  /// \param shape the shape to use for the result; if null, this is a no-op
   /// \internal \c shape is taken by const reference, but converted to a
   /// pointer; passing by const ref ensures lifetime management for temporary
   /// shapes
   Expr<Derived>& set_shape(typename override_type::shape_type const& shape) {
-    if (override_ptr_ != nullptr) {
-      override_ptr_->shape = &shape;
-    } else {
-      override_ptr_ = std::make_shared<override_type>();
-      override_ptr_->shape = &shape;
+    if (shape) {
+      if (override_ptr_ != nullptr) {
+        override_ptr_->shape = &shape;
+      } else {
+        override_ptr_ = std::make_shared<override_type>();
+        override_ptr_->shape = &shape;
+      }
     }
     return derived();
   }

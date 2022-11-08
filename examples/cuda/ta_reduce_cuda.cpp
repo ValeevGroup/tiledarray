@@ -62,6 +62,8 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
   TiledArray::TiledRange  // TRange
       trange(blocking.begin(), blocking.end());
+  TiledArray::TiledRange trange_tr(blocking.rbegin(),
+                                   blocking.rend());  // transposed trange
 
   using value_type = typename Tile::value_type;
   using TArray = TA::DistArray<Tile, TA::DensePolicy>;
@@ -116,7 +118,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     }
 
     TArray a(world, trange);
-    TArray b(world, trange);
+    TArray b(world, trange_tr);
 
     a.fill(val_a);
     b.fill(val_b);
@@ -198,7 +200,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     }
 
     TArray a(world, trange);
-    TArray b(world, trange);
+    TArray b(world, trange_tr);
 
     a.fill(val_a);
     b.fill(val_b);
@@ -239,7 +241,7 @@ using cudaTile = TiledArray::Tile<TiledArray::btasUMTensorVarray<T>>;
 
 int try_main(int argc, char **argv) {
   // Initialize runtime
-  TiledArray::World &world = TiledArray::initialize(argc, argv);
+  TiledArray::World &world = TA_SCOPED_INITIALIZE(argc, argv);
 
   // Get command line arguments
   if (argc < 4) {
@@ -364,8 +366,6 @@ int try_main(int argc, char **argv) {
     }
     do_main_body<TiledArray::Tensor<float>>(world, Nm, Bm, Nn, Bn, nrepeat);
   }
-
-  TiledArray::finalize();
 
   return 0;
 }

@@ -229,7 +229,7 @@ auto make_writer_ttg(
 
   auto keymap2 = [pmap = A.pmap_shared(),
                   range = A.trange().tiles_range()](const Key2& key) {
-    const auto IJ = range.ordinal({key.I, key.J});
+    const auto IJ = range.ordinal({key[0], key[1]});
     return pmap->owner(IJ);
   };
 
@@ -239,8 +239,8 @@ auto make_writer_ttg(
         (Layout == lapack::Layout::ColMajor
              ? tile.rows()
              : tile.cols()));  // the code below only works if tile's LD == rows
-    const int I = key.I;
-    const int J = key.J;
+    const int I = key[0];
+    const int J = key[1];
     auto rng = A.trange().make_tile_range({I, J});
     if constexpr (Uplo != lapack::Uplo::General) {
       if (I != J &&

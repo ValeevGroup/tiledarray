@@ -36,7 +36,7 @@
 #define EIGEN_NO_MALLOC
 
 int main(int argc, char** argv) {
-  auto& world = TiledArray::initialize(argc, argv);
+  auto& world = TA_SCOPED_INITIALIZE(argc, argv);
 
   const std::size_t repeat = 100;
   // Allocate some memory for tests
@@ -521,8 +521,6 @@ int main(int argc, char** argv) {
   free(a);
   free(b);
   free(c);
-
-  TiledArray::finalize();
 
   return 0;
 }
