@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
 
   try {
     // Initialize runtime
-    TiledArray::World& world = TiledArray::initialize(argc, argv);
+    TiledArray::World& world = TA_SCOPED_INITIALIZE(argc, argv);
 
     // Get command line arguments
     if (argc < 2) {
@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
 
     if (world.rank() == 0)
       std::cout << "TiledArray: growing, block-sparse matrix multiply test..."
-                << "\nGit HASH: " << TILEDARRAY_REVISION
+                << "\nGit description: " << TiledArray::git_description()
                 << "\nNumber of nodes     = " << world.size()
                 << "\nBlock size          = " << block_size << "x" << block_size
                 << "\nMemory per matrix   = "
@@ -198,8 +198,6 @@ int main(int argc, char** argv) {
                   << ", " << app_speeds[i] << "\n";
       }
     }
-
-    TiledArray::finalize();
 
   } catch (TiledArray::Exception& e) {
     std::cerr << "!! TiledArray exception: " << e.what() << "\n";

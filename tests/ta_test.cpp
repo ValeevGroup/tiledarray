@@ -41,8 +41,8 @@ GlobalFixture::GlobalFixture() {
   }
 
   // uncomment to create or create+launch debugger
-  // TiledArray::create_debugger("gdb_xterm", "ta_test);
-  // TiledArray::create_debugger("lldb_xterm", "ta_test);
+  // TiledArray::create_debugger("gdb_xterm", "ta_test");
+  // TiledArray::create_debugger("lldb_xterm", "ta_test");
   // TiledArray::launch_gdb_xterm("ta_test");
   // TiledArray::launch_lldb_xterm("ta_test");
 }

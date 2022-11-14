@@ -255,7 +255,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(trange, TestParam, test_params) {
   }
 }
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(range, TestParam, test_params) {
+BOOST_AUTO_TEST_CASE_TEMPLATE(tiles_range, TestParam, test_params) {
   {
     tensor_type<TestParam> t;
     if (m_world.nproc() == 1)

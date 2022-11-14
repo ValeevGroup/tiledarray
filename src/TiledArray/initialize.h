@@ -60,9 +60,33 @@ inline World& initialize(int& argc, char**& argv, const MPI_Comm& comm,
 
 /// @}
 
+#ifndef TA_SCOPED_INITIALIZE
+/// calling this will initialize TA and then finalize it when leaving this scope
+#define TA_SCOPED_INITIALIZE(args...) \
+  TiledArray::initialize(args);       \
+  auto finalizer = TiledArray::scoped_finalizer();
+#endif
+
 /// Finalizes TiledArray (and MADWorld runtime, if it had not been initialized
 /// when TiledArray::initialize was called).
 void finalize();
+
+namespace detail {
+struct Finalizer {
+  ~Finalizer() noexcept;
+};
+}  // namespace detail
+
+/// creates an object whose destruction upon leaving this scope will cause
+/// TiledArray::finalize to be called
+detail::Finalizer scoped_finalizer();
+
+#ifndef TA_FINALIZE_AFTER_LEAVING_THIS_SCOPE
+/// calling this will cause TiledArray::finalize() to be called (if needed)
+/// upon leaving this scope
+#define TA_FINALIZE_AFTER_LEAVING_THIS_SCOPE() \
+  auto finalizer = TiledArray::scoped_finalizer();
+#endif
 
 void taskq_wait_busy();
 void taskq_wait_yield();

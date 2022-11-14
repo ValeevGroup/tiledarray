@@ -48,6 +48,13 @@ else()
         set(enable_umpire_asserts ON)
     endif()
 
+    # as of now BLT only supports up to C++17, so limit CMAKE_CXX_STANDARD
+    set(BLT_CXX_STD ${CMAKE_CXX_STANDARD})
+    set(BLT_CXX_STD_MAX 17)
+    if (BLT_CXX_STD GREATER ${BLT_CXX_STD_MAX})
+        set(BLT_CXX_STD ${BLT_CXX_STD_MAX})
+    endif()
+
     set(UMPIRE_CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
         -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
@@ -68,7 +75,7 @@ else()
         -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
         -DCMAKE_CXX_EXTENSIONS=${CMAKE_CXX_EXTENSIONS}
         -DCMAKE_AR=${CMAKE_AR}
-        -DBLT_CXX_STD=c++${CMAKE_CXX_STANDARD}
+        -DBLT_CXX_STD=c++${BLT_CXX_STD}
         -DENABLE_BENCHMARKS=OFF
         -DENABLE_OPENMP=OFF
         -DENABLE_TESTS=OFF

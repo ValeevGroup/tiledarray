@@ -13,9 +13,9 @@ if (NOT TARGET BTAS::BTAS)
   # BTAS will load BLAS++/LAPACK++ ... if those use CMake's FindBLAS/FindLAPACK (as indicated by defined BLA_VENDOR)
   # will need to specify Fortran linkage convention ... manually for now, switching to NWX's linear algebra discovery
   # is necessary to handle all the corner cases for automatic discovery
-  if (DEFINED BLA_VENDOR)
+  if (BLA_VENDOR)
     set(_linalgpp_use_standard_linalg_kits TRUE)
-  endif(DEFINED BLA_VENDOR)
+  endif(BLA_VENDOR)
 
   if (NOT TILEDARRAY_HAS_CUDA)
     # tell BLAS++/LAPACK++ to ignore CUDA

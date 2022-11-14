@@ -42,6 +42,6 @@ message(STATUS "CMAKE Implicit Link Directories: ${CMAKE_CUDA_IMPLICIT_LINK_DIRE
 include(external/umpire.cmake)
 
 ##
-## cuTT
+## LibreTT
 ##
-include(external/cutt.cmake)
+include(external/librett.cmake)

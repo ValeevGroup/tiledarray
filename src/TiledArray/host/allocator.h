@@ -58,7 +58,7 @@ class host_allocator_impl : public umpire_allocator_impl<T> {
   template <typename T1, typename T2>
   friend bool operator==(const host_allocator_impl<T1>& lhs,
                          const host_allocator_impl<T2>& rhs) noexcept;
-};  // class host_allocator
+};  // class host_allocator_impl
 
 template <class T1, class T2>
 bool operator==(const host_allocator_impl<T1>& lhs,

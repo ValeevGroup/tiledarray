@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
 
   try {
     // Initialize runtime
-    TA::World& world = TA::initialize(argc, argv);
+    TA::World& world = TA_SCOPED_INITIALIZE(argc, argv);
 
     // Get command line arguments
     if (argc < 5) {
@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
 
     if (world.rank() == 0) {
       std::cout << "TiledArray: CC T2.V term test..."
-                << "\nGit HASH: " << TILEDARRAY_REVISION
+                << "\nGit description: " << TiledArray::git_description()
                 << "\nNumber of nodes     = " << world.size()
                 << "\nocc size            = " << n_occ
                 << "\nocc nblocks         = " << nblk_occ
@@ -136,9 +136,6 @@ int main(int argc, char** argv) {
     } else {
       cc_abcd<float>(world, trange_occ, trange_uocc, repeat);
     }
-
-    TA::finalize();
-
   } catch (TA::Exception& e) {
     std::cerr << "!! TiledArray exception: " << e.what() << "\n";
     rc = 1;
