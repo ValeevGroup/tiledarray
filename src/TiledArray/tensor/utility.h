@@ -316,8 +316,8 @@ inline typename T::size_type inner_size(const T& tensor) {
 /// This function is used as the termination step for the recursive empty()
 /// function. It also handles the case where there are no tensors in the
 /// list.
-/// \return \c true
-inline constexpr bool empty() { return true; }
+/// \return \c false
+inline constexpr bool empty() { return false; }
 
 /// Test for empty tensors
 
