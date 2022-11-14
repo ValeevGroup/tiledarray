@@ -293,15 +293,22 @@ auto einsum(
 
 }
 
-/// Specialized function to compute the einsum between two tensors
-/// then dot with a third
-template <typename Array_, typename... Indices>
-auto dot(
-  expressions::TsrExpr<Array_> A,
-  expressions::TsrExpr<Array_> B,
-  expressions::TsrExpr<Array_> C,
-  World &world)
-{
+/// Computes ternary tensor product whose result
+/// is a scalar (a ternary dot product). Optimized for the case where
+/// the arguments have common (Hadamard) indices.
+
+/// \tparam Array_ a DistArray type
+/// \param A an annotated Array_
+/// \param B an annotated Array_
+/// \param C an annotated Array_
+/// \param world the World in which to compute the result
+/// \return scalar result
+/// \note if \p A , \p B , and \p C share indices computes `A*B` one slice at
+/// a time and contracts with the corresponding slice `C`; thus storage of
+/// `A*B` is eliminated
+template <typename Array_>
+auto dot(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
+         expressions::TsrExpr<Array_> C, World &world) {
   using Array = std::remove_cv_t<Array_>;
   using Tensor = typename Array::value_type;
   using Shape = typename Array::shape_type;
@@ -441,6 +448,21 @@ auto einsum(
   return Einsum::einsum(E(A), E(B), Einsum::idx<T>(cs), world);
 }
 
+/// Computes ternary tensor product whose result
+/// is a scalar (a ternary dot product). Optimized for the case where
+/// the arguments have common (Hadamard) indices.
+
+/// \tparam T a DistArray type
+/// \tparam U a DistArray type (must be same as \p T )
+/// \tparam V a DistArray type (must be same as \p T )
+/// \param A an annotated array of type T
+/// \param B an annotated array of type U
+/// \param C an annotated array of type V
+/// \param world the World in which to compute the result
+/// \return scalar result
+/// \note if \p A , \p B , and \p C share indices computes `A*B` one slice at
+/// a time and contracts with the corresponding slice `C`; thus storage of
+/// `A*B` is eliminated
 template <typename T, typename U, typename V>
 auto dot(expressions::TsrExpr<T> A,
          expressions::TsrExpr<U> B,
@@ -478,14 +500,24 @@ auto einsum(
   );
 }
 
-template<typename T, typename P>
-auto dot(
-  const std::string &expr,
-  const DistArray<T,P> &A,
-  const DistArray<T,P> &B,
-  const DistArray<T,P> &C,
-  World &world = get_default_world())
-{
+/// Computes ternary tensor product whose result
+/// is a scalar (a ternary dot product). Optimized for the case where
+/// the arguments have common (Hadamard) indices.
+
+/// \tparam T a Tile type
+/// \tparam P a Policy type
+/// \param expr a numpy-like annotation of the ternary product, e.g. "ij,ik,ijk"
+/// will evaluate `(A("i,j")*B("i,k")).dot(C("i,j,k")).get()` \param A a
+/// DistArray<T,P> object \param B a DistArray<T,P> object \param C a
+/// DistArray<T,P> object \param world the World in which to compute the result
+/// \return scalar result
+/// \note if \p A , \p B , and \p C share indices computes `A*B` one slice at
+/// a time and contracts with the corresponding slice `C`; thus storage of
+/// `A*B` is eliminated
+template <typename T, typename P>
+auto dot(const std::string &expr, const DistArray<T, P> &A,
+         const DistArray<T, P> &B, const DistArray<T, P> &C,
+         World &world = get_default_world()) {
   namespace string = ::Einsum::string;
   auto [a,bc] = string::split2(expr,",");
   auto [b,c] = string::split2(bc,",");
