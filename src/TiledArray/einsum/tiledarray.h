@@ -436,13 +436,9 @@ auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B) {
 /// @param[in] r result indices
 /// @warning just as in the plain expression code, reductions are a special
 /// case; use Expr::reduce()
-template<typename T, typename U, typename ... Indices>
-auto einsum(
-  expressions::TsrExpr<T> A,
-  expressions::TsrExpr<U> B,
-  const std::string &cs,
-  World &world = get_default_world())
-{
+template <typename T, typename U>
+auto einsum(expressions::TsrExpr<T> A, expressions::TsrExpr<U> B,
+            const std::string &cs, World &world = get_default_world()) {
   static_assert(std::is_same<const T, const U>::value);
   using E = expressions::TsrExpr<const T>;
   return Einsum::einsum(E(A), E(B), Einsum::idx<T>(cs), world);
