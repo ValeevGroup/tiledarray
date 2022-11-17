@@ -590,6 +590,13 @@ class Tile {
     }
   }
 
+  constexpr static std::size_t batch_size() { return 1; }
+
+  const auto& batch(std::size_t idx) const {
+    TA_ASSERT(idx < this->batch_size());
+    return *this;
+  }
+
 };  // class Tile
 
 // The following functions define the non-intrusive interface used to apply

@@ -6,10 +6,10 @@
 #include <vector>
 #include <boost/iterator/counting_iterator.hpp>
 
-namespace TiledArray::Einsum::range {
+namespace Einsum::range {
 
 template<typename T>
-using small_vector = container::svector<T>;
+using small_vector = TiledArray::container::svector<T>;
 
 struct Range {
   using value_type = int64_t;
@@ -130,9 +130,9 @@ void cartesian_foreach(const std::vector<R>& rs, F f) {
   }
 }
 
-}  // namespace TiledArray::Einsum::range
+}  // namespace Einsum::range
 
-namespace TiledArray::Einsum {
+namespace Einsum {
   using range::Range;
   using range::RangeProduct;
 }
