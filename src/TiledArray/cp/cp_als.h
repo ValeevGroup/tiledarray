@@ -152,6 +152,8 @@ class CP_ALS : public CP<Tile, Policy>{
 
     if(mode == ndim - 1) this->MTtKRP = An;
 
+    // TODO check to see if the Cholesky will fail. If it does
+    // use SVD
     this->cholesky_inverse(An, W);
 
     An.make_replicated();
