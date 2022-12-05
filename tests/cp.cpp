@@ -516,25 +516,28 @@ BOOST_AUTO_TEST_CASE(ta_cp_als){
   }
 
   // sparse test
-//  {
-//    std::vector<TSpArrayD> factors;
-//    // Make an sparse array with tiled range from above.
-//    auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr3,
-//                                          &this->init_rand_tile<TensorD>);
-//    size_t cp_rank = 2;
-//    auto b_cp = compute_cp(b_sparse, cp_rank);
-//    TSpArrayD diff;
-//    diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
-//    bool accurate = ( TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
-//    BOOST_CHECK(accurate);
-//  }
+  // order-3 test
+  {
+    std::vector<TSpArrayD> factors;
+    // Make an sparse array with tiled range from above.
+    auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr3,
+                                          &this->init_rand_tile<TensorD>);
+    b_sparse.truncate();
+    size_t cp_rank = 77;
+    auto b_cp = compute_cp(b_sparse, cp_rank);
+    TSpArrayD diff;
+    diff("a,b,c") = b_sparse("a,b,c") - b_cp("a,b,c");
+    bool accurate = ( TA::norm2(diff) / TA::norm2(b_sparse) < 1e-10);
+    BOOST_CHECK(accurate);
+  }
   // order-4 test
   {
     std::vector<TSpArrayD> factors;
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr4,
                                           &this->init_unit_tile<TensorD>);
-    size_t cp_rank = 100;
+    b_sparse.truncate();
+    size_t cp_rank = 1;
     auto b_cp = compute_cp(b_sparse, cp_rank);
     TSpArrayD diff;
     diff("a,b,c,d") = b_sparse("a,b,c,d") - b_cp("a,b,c,d");
@@ -547,7 +550,7 @@ BOOST_AUTO_TEST_CASE(ta_cp_als){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr5,
                                           &this->init_unit_tile<TensorD>);
-    double cp_rank = 105;
+    double cp_rank = 1;
     auto b_cp = compute_cp(b_sparse, cp_rank);
     TSpArrayD diff;
     diff("a,b,c,d,e") = b_sparse("a,b,c,d,e") - b_cp("a,b,c,d,e");
