@@ -590,10 +590,10 @@ class Tile {
     }
   }
 
-  constexpr static size_t batch_size() { return 1; }
+  constexpr static std::size_t batch_size() { return 1; }
 
-  const auto& batch(size_t idx) const {
-    assert(idx == 1);
+  const auto& batch(std::size_t idx) const {
+    TA_ASSERT(idx < this->batch_size());
     return *this;
   }
 

@@ -636,7 +636,7 @@ class Tensor {
 
   /// \return \c true if this tensor was default constructed (contains no
   /// data), otherwise \c false.
-  bool empty() const { return !this->data_; }
+  bool empty() const { return this->data_.use_count() == 0; }
 
   /// MADNESS serialization function
 
