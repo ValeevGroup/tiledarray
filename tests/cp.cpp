@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     size_t cp_rank = 1;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
     auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
     diff("a,b,c") = b_dense("a,b,c") - b_cp("a,b,c");
@@ -225,7 +225,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     size_t cp_rank = 1;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
@@ -242,7 +242,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     size_t cp_rank = 1;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_dense, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
@@ -257,10 +257,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr3,
                                               &this->init_rand_tile<TensorD>);
-    size_t cp_rank = 100;
+    size_t cp_rank = 77;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
@@ -274,10 +274,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr4,
                                        &this->init_unit_tile<TensorD>);
-    size_t cp_rank = 100;
+    size_t cp_rank = 1;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
@@ -291,10 +291,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_als){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr5,
                                        &this->init_unit_tile<TensorD>);
-    size_t cp_rank = 105;
+    size_t cp_rank = 1;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
@@ -346,7 +346,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
     size_t cp_rank = 1;
     factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
@@ -363,7 +363,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
     size_t cp_rank = 1;
     factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
@@ -380,7 +380,7 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
     size_t cp_rank = 1;
     factors = cp::btas_cp_rals(*GlobalFixture::world, b_dense, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TArrayD diff;
@@ -395,10 +395,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr3,
                                           &this->init_rand_tile<TensorD>);
-    size_t cp_rank = 100;
+    size_t cp_rank = 77;
     factors = cp::btas_cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
@@ -412,10 +412,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr4,
                                           &this->init_unit_tile<TensorD>);
-    size_t cp_rank = 100;
+    size_t cp_rank = 1;
     factors = cp::btas_cp_rals(*GlobalFixture::world, b_sparse, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
@@ -429,10 +429,10 @@ BOOST_AUTO_TEST_CASE(btas_cp_rals){
     // Make an sparse array with tiled range from above.
     auto b_sparse = make_array<TSpArrayD>(*GlobalFixture::world, tr5,
                                           &this->init_unit_tile<TensorD>);
-    size_t cp_rank = 105;
+    size_t cp_rank = 1;
     factors = cp::btas_cp_als(*GlobalFixture::world, b_sparse, cp_rank,
                               compute_trange1(cp_rank, 80),
-                              0, 1e-3, false);
+                              0, 1e-3);
 
     auto b_cp = cp::reconstruct(factors);
     TSpArrayD diff;
