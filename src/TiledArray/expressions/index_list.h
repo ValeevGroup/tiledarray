@@ -267,8 +267,6 @@ class IndexList {
  private:
   /// Initializes from a comma-separated sequence of indices
   void init_(const std::string& str) {
-    if (!TiledArray::detail::is_valid_index(str))
-      TA_EXCEPTION_MESSAGE(__FILE__, __LINE__, "IndexList(str): invalid str");
     std::string::const_iterator start = str.begin();
     std::string::const_iterator finish = str.begin();
     for (; finish != str.end(); ++finish) {
@@ -280,15 +278,16 @@ class IndexList {
     indices_.push_back(trim_spaces_(start, finish));
   }
 
-  /// Returns a string with all the spaces ( ' ' ) removed from the string
-  /// defined by the start and finish iterators.
+  /// Returns a string with all the whitespace ACSII characters( ' ', '\t', '\n'
+  /// ) removed from the string defined by the start and finish iterators.
   static std::string trim_spaces_(std::string::const_iterator first,
                                   std::string::const_iterator last) {
     TA_ASSERT(first != last);
     std::string result = "";
     for (; first != last; ++first) {
-      TA_ASSERT(valid_char_(*first));
-      if (*first != ' ' && *first != '\0') result.append(1, *first);
+      if (*first != ' ' && *first != '\0' && *first != '\n' && *first != '\t' &&
+          *first != '\u0009')
+        result.append(1, *first);
     }
 
     TA_ASSERT(result.length() != 0);
@@ -306,10 +305,6 @@ class IndexList {
     }
 
     return true;
-  }
-
-  static bool valid_char_(char c) {
-    return TiledArray::detail::is_valid_annotation_character(c);
   }
 
   friend void swap(IndexList&, IndexList&);
