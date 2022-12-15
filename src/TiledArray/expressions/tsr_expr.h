@@ -84,7 +84,11 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   using index1_type = TA_1INDEX_TYPE;
 
  private:
-  array_type& array_;       ///< The array that this expression is bound to
+  array_type& array_;  ///< Reference to the array variable this is bound to; if
+                       ///< this is only used as a leaf (i.e. for reading) this
+                       ///< does not need to be valid
+  array_type array_value_;  ///< Copy of the array object (if any) this was
+                            ///< constructed from
   std::string annotation_;  ///< The array annotation
 
  public:
@@ -99,7 +103,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
   /// \param array The array object
   /// \param annotation The annotation for \p array
   TsrExpr(array_type& array, const std::string& annotation)
-      : array_(array), annotation_(annotation) {}
+      : array_(array), array_value_(array), annotation_(annotation) {}
 
   operator TsrExpr<const Array>() const {
     return TsrExpr<const Array>(this->array(), this->annotation());
@@ -107,7 +111,7 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
   /// Expression assignment operator
 
-  /// \param other The expression that will be assigned to this array
+  /// \param other The expression that will be assigned to the array
   array_type& operator=(TsrExpr_& other) {
     other.eval_to(*this);
     return array_;
@@ -168,14 +172,23 @@ class TsrExpr : public Expr<TsrExpr<Array, Alias>> {
 
   /// Array accessor
 
-  /// \return a const reference to this array
+  /// \return a reference to the array variable referred to by this expression
+  /// \warning this may not be valid if the expression refers to variable that
+  /// went out of scope; is this expression is only used for reading, use
+  /// array_value() to read the array
   array_type& array() const { return array_; }
+
+  /// Array value accessor
+
+  /// \return value of the array variable referred to this expression at the
+  /// time of construction
+  array_type array_value() const { return array_value_; }
 
   /// Flag this tensor expression for a non-aliasing assignment
 
   /// \return A non-aliased tensor expression
   TsrExpr<Array, false> no_alias() const {
-    return TsrExpr<Array, false>(array_, annotation_);
+    return TsrExpr<Array, false>(array(), annotation_);
   }
 
   /// immutable Block expression factory
@@ -317,8 +330,12 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
   using index1_type = TA_1INDEX_TYPE;
 
  private:
-  const array_type& array_;  ///< The array that this expression is bound to
-  std::string annotation_;   ///< The array annotation
+  const array_type& array_;  ///< Reference to the array variable this is bound
+                             ///< to; since this is only used as a leaf (i.e.
+                             ///< for reading) this does not need to be valid
+  const array_type array_value_;  ///< Copy of the array object (if any) this
+                                  ///< was constructed from
+  std::string annotation_;        ///< The array annotation
 
   // Not allowed
   TsrExpr_& operator=(TsrExpr_&);
@@ -336,12 +353,19 @@ class TsrExpr<const Array, true> : public Expr<TsrExpr<const Array, true>> {
   /// \param array The array object
   /// \param annotation The annotation for \p array
   TsrExpr(const array_type& array, const std::string& annotation)
-      : Expr_(), array_(array), annotation_(annotation) {}
+      : Expr_(), array_(array), array_value_(array), annotation_(annotation) {}
 
   /// Array accessor
 
-  /// \return a const reference to this array
+  /// \return a const reference to the array variable referred to by this
+  /// expression
   const array_type& array() const { return array_; }
+
+  /// Array value accessor
+
+  /// \return value of the array variable referred to this expression at the
+  /// time of construction
+  array_type array_value() const { return array_value_; }
 
   /// Block expression
 

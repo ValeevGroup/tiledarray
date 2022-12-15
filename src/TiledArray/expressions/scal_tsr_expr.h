@@ -76,9 +76,13 @@ class ScalTsrExpr : public Expr<ScalTsrExpr<Array, Scalar> > {
       scalar_type;  ///< Scalar type
 
  private:
-  const array_type& array_;  ///< The array that this expression is bound to
-  std::string annotation_;   ///< The array annotation
-  scalar_type factor_;       ///< The scaling factor
+  const array_type& array_;  ///< Reference to the array variable this is bound
+                             ///< to; if this is only used as a leaf (i.e. for
+                             ///< reading) this does not need to be valid
+  const array_type array_value_;  ///< Copy of the array object (if any) this
+                                  ///< was constructed from
+  std::string annotation_;        ///< The array annotation
+  scalar_type factor_;            ///< The scaling factor
 
   // Not allowed
   ScalTsrExpr_& operator=(ScalTsrExpr_&);
@@ -98,12 +102,25 @@ class ScalTsrExpr : public Expr<ScalTsrExpr<Array, Scalar> > {
   /// \param factor The scaling factor
   ScalTsrExpr(const array_type& array, const std::string& annotation,
               const scalar_type factor)
-      : Expr_(), array_(array), annotation_(annotation), factor_(factor) {}
+      : Expr_(),
+        array_(array),
+        array_value_(array),
+        annotation_(annotation),
+        factor_(factor) {}
 
   /// Array accessor
 
-  /// \return a const reference to this array
+  /// \return a reference to the array variable referred to by this expression
+  /// \warning this may not be valid if the expression refers to variable that
+  /// went out of scope; is this expression is only used for reading, use
+  /// array_value() to read the array
   const array_type& array() const { return array_; }
+
+  /// Array value accessor
+
+  /// \return value of the array variable referred to this expression at the
+  /// time of construction
+  array_type array_value() const { return array_value_; }
 
   /// Tensor annotation accessor
 
