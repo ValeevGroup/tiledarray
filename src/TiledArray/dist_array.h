@@ -60,7 +60,12 @@ template <typename Tile = Tensor<double>, typename Policy = DensePolicy>
 class DistArray : public madness::archive::ParallelSerializableObject {
  public:
   typedef TiledArray::detail::ArrayImpl<Tile, Policy>
-      impl_type;  ///< The type of the PIMPL
+      impl_type;  ///< The type of the implementation object
+  using pimpl_type =
+      std::shared_ptr<impl_type>;  ///< shared_ptr to implementation object
+  using const_pimpl_type =
+      std::shared_ptr<const impl_type>;  ///< shared_ptr to const implementation
+                                         ///< object
   typedef typename impl_type::policy_type policy_type;  ///< Policy type
 
   /// Type used to hold the components of the tensors in the array. For
@@ -132,7 +137,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
       std::is_same_v<std::decay_t<Value>, value_type>;
 
  private:
-  std::shared_ptr<impl_type> pimpl_;  ///< Array implementation pointer
+  pimpl_type pimpl_;  ///< managed ptr to Array implementation
   bool defer_deleter_to_next_fence_ =
       false;  ///< if true, the impl object is scheduled to be destroyed in the
               ///< next fence
@@ -202,11 +207,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
 
   /// \param world The world where the array will live.
   /// \param trange The tiled range object that will be used to set the array
-  /// tiling. \param shape The array shape that defines zero and non-zero tiles
+  /// tiling.
+  /// \param shape The array shape that defines zero and non-zero tiles
   /// \param pmap The tile index -> process map
-  static std::shared_ptr<impl_type> init(
-      World& world, const trange_type& trange, const shape_type& shape,
-      std::shared_ptr<const pmap_interface> pmap) {
+  static pimpl_type init(World& world, const trange_type& trange,
+                         const shape_type& shape,
+                         std::shared_ptr<const pmap_interface> pmap) {
     // User level validation of input
 
     if (!pmap) {
@@ -239,8 +245,7 @@ class DistArray : public madness::archive::ParallelSerializableObject {
               "not equal to "
               "the tiles range.");
 
-    return std::shared_ptr<impl_type>(new impl_type(world, trange, shape, pmap),
-                                      lazy_deleter);
+    return pimpl_type(new impl_type(world, trange, shape, pmap), lazy_deleter);
   }
 
  public:
@@ -441,6 +446,14 @@ class DistArray : public madness::archive::ParallelSerializableObject {
     *this = foreach<Tile>(other, std::forward<Op>(op));
   }
 
+  /// PIMPL "constructor"
+
+  /// "Constructs" an array from a shared_ptr to its implementation object.
+  /// Since the implementation object already exists, this is a "shallow" ctor,
+  /// in other words this object will refer to an already existing
+  /// (possibly shared) implementation
+  DistArray(pimpl_type pimpl) : pimpl_(std::move(pimpl)) {}
+
   /// Destructor
 
   /// This is a distributed lazy destructor. The object will only be deleted
@@ -481,12 +494,12 @@ class DistArray : public madness::archive::ParallelSerializableObject {
   /// Accessor for the (shared_ptr to) implementation object
 
   /// \return std::shared_ptr to the const implementation object
-  std::shared_ptr<const impl_type> pimpl() const { return pimpl_; }
+  const_pimpl_type pimpl() const { return pimpl_; }
 
   /// Accessor for the (shared_ptr to) implementation object
 
   /// \return std::shared_ptr to the nonconst implementation object
-  std::shared_ptr<impl_type> pimpl() { return pimpl_; }
+  pimpl_type pimpl() { return pimpl_; }
 
   /// Accessor for the (weak_ptr to) implementation object
 

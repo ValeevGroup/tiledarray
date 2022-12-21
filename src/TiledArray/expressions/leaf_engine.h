@@ -86,7 +86,7 @@ class LeafEngine : public ExprEngine<Derived> {
   /// \param expr The argument expression
   template <typename D>
   LeafEngine(const Expr<D>& expr)
-      : ExprEngine_(expr), array_(expr.derived().array()) {
+      : ExprEngine_(expr), array_(expr.derived().array_value()) {
     indices_ = BipartiteIndexList(expr.derived().annotation());
   }
 

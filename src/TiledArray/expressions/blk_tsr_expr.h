@@ -108,7 +108,11 @@ class BlkTsrExprBase : public Expr<Derived> {
   ///< The array reference type
 
  protected:
-  reference array_;         ///< The array that this expression is bound to
+  reference array_;  ///< Reference to the array variable this is bound to; if
+                     ///< this is only used as a leaf (i.e. for reading) this
+                     ///< does not need to be valid
+  array_type array_value_;  ///< Copy of the array object (if any) this was
+                            ///< constructed from
   std::string annotation_;  ///< The array annotation
   container::svector<std::size_t>
       lower_bound_;  ///< Lower bound of the tile block
@@ -116,6 +120,7 @@ class BlkTsrExprBase : public Expr<Derived> {
       upper_bound_;  ///< Upper bound of the tile block
 
   void check_valid() const {
+    TA_ASSERT(array_);
     const unsigned int rank = array_.trange().tiles_range().rank();
     // Check the dimension of the lower block bound
     using std::size;
@@ -212,6 +217,7 @@ class BlkTsrExprBase : public Expr<Derived> {
                  const Index1& lower_bound, const Index2& upper_bound)
       : Expr_(),
         array_(array),
+        array_value_(array),
         annotation_(annotation),
         lower_bound_(std::begin(lower_bound), std::end(lower_bound)),
         upper_bound_(std::begin(upper_bound), std::end(upper_bound)) {
@@ -233,7 +239,7 @@ class BlkTsrExprBase : public Expr<Derived> {
                 TiledArray::detail::is_gpair_range_v<PairRange>>>
   BlkTsrExprBase(reference array, const std::string& annotation,
                  const PairRange& bounds)
-      : Expr_(), array_(array), annotation_(annotation) {
+      : Expr_(), array_(array), array_value_(array), annotation_(annotation) {
     const auto rank = array.tiles_range().rank();
     lower_bound_.reserve(rank);
     upper_bound_.reserve(rank);
@@ -252,8 +258,17 @@ class BlkTsrExprBase : public Expr<Derived> {
 
   /// Array accessor
 
-  /// \return a const reference to this array
+  /// \return a const reference to the array variable referred to by this
+  /// expression \warning this may not be valid if the expression refers to
+  /// variable that went out of scope; is this expression is only used for
+  /// reading, use array_value() to read the array
   reference array() const { return array_; }
+
+  /// Array value accessor
+
+  /// \return value of the array variable referred to this expression at the
+  /// time of construction
+  array_type array_value() const { return array_value_; }
 
   /// Tensor annotation accessor
 
