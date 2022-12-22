@@ -340,9 +340,10 @@ endif()
 # 1. ccache
 find_program(CCACHE ccache)
 if(CCACHE)
+    mark_as_advanced(CCACHE)
     message (STATUS "Found ccache: ${CCACHE}")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C++")
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C")
 endif(CCACHE)
 # 2. range-v3
 if (TA_RANGEV3)
