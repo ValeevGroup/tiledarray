@@ -107,7 +107,7 @@ class Tensor {
       std::uninitialized_default_construct_n(ptr, size);
       // std::uninitialized_value_construct_n(ptr, size);
     }
-    auto deleter = [this, allocator = std::move(allocator),
+    auto deleter = [allocator = std::move(allocator),
                     size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
       allocator.deallocate(ptr, size);
@@ -124,7 +124,7 @@ class Tensor {
       std::uninitialized_default_construct_n(ptr, size);
       // std::uninitialized_value_construct_n(ptr, size);
     }
-    auto deleter = [this, allocator = std::move(allocator),
+    auto deleter = [allocator = std::move(allocator),
                     size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
       allocator.deallocate(ptr, size * sizeof(T));
