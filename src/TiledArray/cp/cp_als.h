@@ -147,7 +147,7 @@ class CP_ALS : public CP<Tile, Policy>{
       An = einsum(An(final), cp_factors[contracted_index](contract), mixed_contractions);
 
       final = mixed_contractions;
-      W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");;
+      W("r,rp") *= this->partial_grammian[contracted_index]("r,rp");
     }
 
     if(mode == ndim - 1) this->MTtKRP = An;
