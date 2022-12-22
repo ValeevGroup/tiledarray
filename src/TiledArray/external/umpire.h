@@ -87,8 +87,11 @@ class umpire_allocator_impl {
   void deallocate(pointer ptr, size_t n) {
     TA_ASSERT(umpalloc_);
     const auto nbytes = n * sizeof(T);
-    // this, instead of umpalloc_->deallocate(ptr, nbytes), profiles mmeory use
+    // this, instead of umpalloc_->deallocate(ptr, nbytes), profiles memory use
     // even if introspection is off
+    // N.B. with multiple threads would have to do this test in
+    // the critical section of Umpire's ThreadSafeAllocator::deallocate
+    // TA_ASSERT(nbytes <= umpalloc_->getCurrentSize());
     umpalloc_->getAllocationStrategy()->deallocate_internal(ptr, nbytes);
   }
 
