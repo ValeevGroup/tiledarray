@@ -68,26 +68,31 @@ class umpire_allocator_impl {
   umpire_allocator_impl(const umpire_allocator_impl<U>& rhs) noexcept
       : umpalloc_(rhs.umpalloc_) {}
 
-  /// allocates um memory using umpire dynamic pool
+  /// allocates memory using umpire dynamic pool
   pointer allocate(size_t n) {
-    pointer result = nullptr;
-
     TA_ASSERT(umpalloc_);
+
+    size_t nbytes = n * sizeof(T);
 
     // this, instead of umpalloc_->allocate(n*sizeof(T)), profiles memory use
     // even if introspection is off
+    pointer result = nullptr;
     result = static_cast<pointer>(
-        umpalloc_->getAllocationStrategy()->allocate_internal(n * sizeof(T)));
+        umpalloc_->getAllocationStrategy()->allocate_internal(nbytes));
 
     return result;
   }
 
-  /// deallocate um memory using umpire dynamic pool
-  void deallocate(pointer ptr, size_t size) {
+  /// deallocate memory using umpire dynamic pool
+  void deallocate(pointer ptr, size_t n) {
     TA_ASSERT(umpalloc_);
-    // this, instead of umpalloc_->deallocate(ptr, size), profiles mmeory use
+    const auto nbytes = n * sizeof(T);
+    // this, instead of umpalloc_->deallocate(ptr, nbytes), profiles memory use
     // even if introspection is off
-    umpalloc_->getAllocationStrategy()->deallocate_internal(ptr, size);
+    // N.B. with multiple threads would have to do this test in
+    // the critical section of Umpire's ThreadSafeAllocator::deallocate
+    // TA_ASSERT(nbytes <= umpalloc_->getCurrentSize());
+    umpalloc_->getAllocationStrategy()->deallocate_internal(ptr, nbytes);
   }
 
   const umpire::Allocator* umpire_allocator() const { return umpalloc_; }
