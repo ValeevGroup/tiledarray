@@ -43,12 +43,23 @@ if (NOT TARGET Boost::boost)
   # current boost-cmake/master does not install boost correctly, so warn that installed TiledArray will not be usable
   # boost-cmake/install_rules https://github.com/Orphis/boost-cmake/pull/45 is supposed to fix it but is inactive
   message(WARNING "Building Boost from source makes TiledArray unusable from the install location! Install Boost using package manager or manually and reconfigure/reinstall TiledArray to fix this")
-  export(EXPORT tiledarray
-      FILE "${PROJECT_BINARY_DIR}/boost-targets.cmake")
-  install(EXPORT tiledarray
-      FILE "boost-targets.cmake"
-      DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
-      COMPONENT boost-libs)
+  if (NOT TARGET Boost::headers)
+    add_library(Boost::headers ALIAS Boost::boost)
+  endif()
+  foreach(_lib serialization regex locale locale_deps thread chrono)  # these are non-header-only components used by MPQC
+    if (TARGET Boost_${_lib})
+      install(TARGETS Boost_${_lib} EXPORT btas COMPONENT boost-libs)
+      if (NOT TARGET Boost::${_lib})
+        add_library(Boost::${_lib} ALIAS Boost_${_lib})
+      endif()
+    endif()
+  endforeach()
+#  export(EXPORT tiledarray
+#      FILE "${PROJECT_BINARY_DIR}/boost-targets.cmake")
+#  install(EXPORT tiledarray
+#      FILE "boost-targets.cmake"
+#      DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
+#      COMPONENT boost-libs)
 
 endif(NOT TARGET Boost::boost)
 
