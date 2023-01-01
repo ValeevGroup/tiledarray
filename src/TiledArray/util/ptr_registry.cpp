@@ -160,12 +160,12 @@ PtrRegistry& PtrRegistry::insert_bt(void* ptr, const std::string& context) {
 
 PtrRegistry& PtrRegistry::erase(void* ptr, std::size_t sz,
                                 const std::string& context) {
-  this->erase(ptr, sz, context, /* backtrace = */ true);
+  this->erase(ptr, sz, context, /* backtrace = */ false);
   return *this;
 }
 
 PtrRegistry& PtrRegistry::erase(void* ptr, const std::string& context) {
-  this->erase(ptr, /* sz = */ 0, context, /* backtrace = */ true);
+  this->erase(ptr, /* sz = */ 0, context, /* backtrace = */ false);
   return *this;
 }
 
