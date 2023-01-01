@@ -67,6 +67,15 @@ struct PtrRegistry {
   /// @return pointer to the active logger; if null, no logging is performed
   std::ostream* log() const;
 
+  /// specifies whether to append backtrace to context provided to insert/erase
+  /// \param if true, calls to insert/erase will append backtrace to the
+  /// provided context by default
+  PtrRegistry& append_backtrace(bool bt);
+
+  /// @return true if backtrace will be appended to context provided to
+  /// insert/erase
+  bool append_backtrace() const;
+
   /// @return reference to the size-ordered containers of sized pointers
   const sized_ptr_container_type& sized_ptrs() const;
 
@@ -144,6 +153,7 @@ struct PtrRegistry {
   std::ostream* log_ = nullptr;
   sized_ptr_container_type ptrs_;
   mutable ptr_container_type* unsized_ptrs_ = nullptr;  // &(ptrs_[0])
+  bool append_backtrace_ = false;
   std::mutex mtx_;
 
   /// inserts \p ptr associated with size \p sz to the registry,

@@ -57,6 +57,13 @@ PtrRegistry& PtrRegistry::log(std::ostream* os_ptr) {
 
 std::ostream* PtrRegistry::log() const { return log_; }
 
+PtrRegistry& PtrRegistry::append_backtrace(bool bt) {
+  append_backtrace_ = bt;
+  return *this;
+}
+
+bool PtrRegistry::append_backtrace() const { return append_backtrace_; }
+
 const PtrRegistry::sized_ptr_container_type& PtrRegistry::sized_ptrs() const {
   return ptrs_;
 }
@@ -138,12 +145,12 @@ void PtrRegistry::erase(void* ptr, std::size_t sz, const std::string& context,
 
 PtrRegistry& PtrRegistry::insert(void* ptr, std::size_t sz,
                                  const std::string& context) {
-  this->insert(ptr, sz, context, /* backtrace = */ false);
+  this->insert(ptr, sz, context, /* backtrace = */ append_backtrace_);
   return *this;
 }
 
 PtrRegistry& PtrRegistry::insert(void* ptr, const std::string& context) {
-  this->insert(ptr, /* sz = */ 0, context, /* backtrace = */ false);
+  this->insert(ptr, /* sz = */ 0, context, /* backtrace = */ append_backtrace_);
   return *this;
 }
 
@@ -160,12 +167,12 @@ PtrRegistry& PtrRegistry::insert_bt(void* ptr, const std::string& context) {
 
 PtrRegistry& PtrRegistry::erase(void* ptr, std::size_t sz,
                                 const std::string& context) {
-  this->erase(ptr, sz, context, /* backtrace = */ false);
+  this->erase(ptr, sz, context, /* backtrace = */ append_backtrace_);
   return *this;
 }
 
 PtrRegistry& PtrRegistry::erase(void* ptr, const std::string& context) {
-  this->erase(ptr, /* sz = */ 0, context, /* backtrace = */ false);
+  this->erase(ptr, /* sz = */ 0, context, /* backtrace = */ append_backtrace_);
   return *this;
 }
 
