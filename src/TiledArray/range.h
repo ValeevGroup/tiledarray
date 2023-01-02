@@ -591,7 +591,9 @@ class Range {
 
   /// Move Constructor
 
-  /// \param other The range to be copied
+  /// \param[in,out] other The range to be copied; set to default (null) state
+  ///                on return
+  /// \post `other == Range{}`
   Range(Range_&& other)
       : datavec_(std::move(other.datavec_)),
         offset_(other.offset_),
@@ -639,7 +641,8 @@ class Range {
 
   /// Move assignment operator
 
-  /// \param other The range to be copied
+  /// \param[in,out] other The range to be copied; set to default (null) state
+  ///                on return
   /// \return A reference to this object
   /// \throw nothing
   Range_& operator=(Range_&& other) {

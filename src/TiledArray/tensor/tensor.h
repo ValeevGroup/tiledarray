@@ -51,7 +51,7 @@ struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
 
 /// An N-dimensional tensor object
 
-/// A contiguous row-major tensor with shallow-copy semantics.
+/// A contiguous row-major tensor with __shallow-copy__ semantics.
 /// As of TiledArray 1.1 Tensor represents a batch of tensors with same Range
 /// (the default batch size = 1).
 /// \tparam T the value type of this tensor
@@ -186,12 +186,22 @@ class Tensor {
 #endif
   }
 
-  range_type range_;  ///< range
+  range_type range_;  ///< Range
+  /// Number of `range_`-sized blocks in `data_`
+  /// \note this is not used for (in)equality comparison
   size_t batch_size_ = 1;
   std::shared_ptr<value_type> data_;  ///< Shared pointer to the data
 
  public:
+  /// constructs an empty (null) Tensor
+  /// \post `this->empty()`
   Tensor() = default;
+
+  /// copy constructor
+
+  /// \param[in] other an object to copy data from
+  /// \post `*this` is a shallow copy of \p other ,
+  /// i.e. `*this == other && this->data()==other.data()`
   Tensor(const Tensor& other)
       : range_(other.range_),
         batch_size_(other.batch_size_),
@@ -204,6 +214,13 @@ class Tensor {
     }
 #endif
   }
+
+  /// move constructor
+
+  /// \param[in,out] other an object to move data from;
+  ///                      on return \p other is in empty (null) but not
+  ///                      necessarily default state
+  /// \post `other.empty()`
   Tensor(Tensor&& other)
       : range_(std::move(other.range_)),
         batch_size_(std::move(other.batch_size_)),
@@ -219,6 +236,7 @@ class Tensor {
     }
 #endif
   }
+
   ~Tensor() {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
@@ -509,6 +527,11 @@ class Tensor {
     return *this;
   }
 
+  /// copy assignment operator
+
+  /// \param[in] other an object to copy data from
+  /// \post `*this` is a shallow copy of \p other ,
+  /// i.e. `*this == other && this->data()==other.data()`
   Tensor& operator=(const Tensor& other) {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
@@ -532,6 +555,12 @@ class Tensor {
     return *this;
   }
 
+  /// move assignment operator
+
+  /// \param[in,out] other an object to move data from;
+  ///                      on return \p other is in empty (null) but not
+  ///                      necessarily default state
+  /// \post `other.empty()`
   Tensor& operator=(Tensor&& other) {
 #ifdef TA_TENSOR_MEM_TRACE
     if (nbytes() >= trace_if_larger_than_) {
@@ -788,9 +817,21 @@ class Tensor {
 
   /// Test if the tensor is empty
 
-  /// \return \c true if this tensor was default constructed (contains no
-  /// data), otherwise \c false.
-  bool empty() const { return this->data_.use_count() == 0; }
+  /// \return \c true if this tensor contains no
+  ///         data, otherwise \c false.
+  /// \note Empty Tensor is defaul_ish_ , i.e. it is *equal* to
+  ///       a default-constructed Tensor
+  ///       (`this->empty()` is equivalent to `*this == Tensor{}`),
+  ///       but is not identical
+  ///       to a default-constructed Tensor (e.g., `this->empty()` does not
+  ///       imply `this->batch_size() == Tensor{}.batch_size()`)
+  bool empty() const {
+    // empty data_ implies default values for range_ (but NOT batch_size_)
+    TA_ASSERT(
+        (this->data_.use_count() == 0 && !this->range_) ||
+        (this->data_.use_count() != 0 && this->range_));  // range is empty
+    return this->data_.use_count() == 0;
+  }
 
   /// MADNESS serialization function
 
@@ -2403,11 +2444,23 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
 // template <typename T, typename A>
 // const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
 
+/// equality comparison
+/// \param[in] a a Tensor object
+/// \param[in] b another Tensor object
+/// \return true if ranges and data of \p a and \p b are equal
+/// \internal this does not compare batch_size  so any
+///           2 empty tensors are equal even if their batch_size
+///           differ
 template <typename T, typename A>
 bool operator==(const Tensor<T, A>& a, const Tensor<T, A>& b) {
   return a.range() == b.range() &&
          std::equal(a.data(), a.data() + a.size(), b.data());
 }
+
+/// inequality comparison
+/// \param[in] a a Tensor object
+/// \param[in] b another Tensor object
+/// \return true if ranges and data of \p a and \p b are not equal
 template <typename T, typename A>
 bool operator!=(const Tensor<T, A>& a, const Tensor<T, A>& b) {
   return !(a == b);
