@@ -57,6 +57,26 @@ PtrRegistry& PtrRegistry::log(std::ostream* os_ptr) {
 
 std::ostream* PtrRegistry::log() const { return log_; }
 
+PtrRegistry& PtrRegistry::log_only(bool tf) {
+  log_only_ = tf;
+  return *this;
+}
+
+bool PtrRegistry::log_only() const { return log_only_; }
+
+PtrRegistry& PtrRegistry::thread_local_logging(bool tf) {
+  thread_local_logging_ = tf;
+  return *this;
+}
+
+bool PtrRegistry::thread_local_logging() const { return thread_local_logging_; }
+
+PtrRegistry& PtrRegistry::thread_local_log_filename_prefix(
+    const std::string& pfx) {
+  thread_local_log_filename_prefix_ = pfx;
+  return *this;
+}
+
 PtrRegistry& PtrRegistry::append_backtrace(bool bt) {
   append_backtrace_ = bt;
   return *this;
@@ -84,7 +104,11 @@ std::size_t PtrRegistry::size() const {
 
 void PtrRegistry::insert(void* ptr, std::size_t sz, const std::string& context,
                          bool backtrace) {
-  std::scoped_lock lock(this->mtx_);
+  auto* log = thread_local_logging_ ? thread_local_log() : log_;
+
+  // early exit
+  if (log_only_ && !log) return;
+
   std::string creation_context = context;
   if (backtrace) {
     detail::Backtrace bt;
@@ -92,30 +116,39 @@ void PtrRegistry::insert(void* ptr, std::size_t sz, const std::string& context,
     detail::remove_linebreaks(bt_str);
     creation_context += ":::::" + bt_str;
   }
-  if (log_) {
-    *log_ << "PtrRegistry::insert():::::" << ptr << ":::::" << creation_context
-          << std::endl
+  if (log) {
+    *log << "PtrRegistry::insert():::::" << ptr << ":::::" << creation_context
+         << std::endl
 #ifdef TA_TENSOR_MEM_PROFILE
-          << "  TA::Tensor allocator status {"
-          << "hw=" << hostEnv::instance()->host_allocator().getHighWatermark()
-          << ","
-          << "cur=" << hostEnv::instance()->host_allocator().getCurrentSize()
-          << ","
-          << "act=" << hostEnv::instance()->host_allocator().getActualSize()
-          << "}"
-          << " bytes" << std::endl
+         << "  TA::Tensor allocator status {"
+         << "hw=" << hostEnv::instance()->host_allocator().getHighWatermark()
+         << ","
+         << "cur=" << hostEnv::instance()->host_allocator().getCurrentSize()
+         << ","
+         << "act=" << hostEnv::instance()->host_allocator().getActualSize()
+         << "}"
+         << " bytes" << std::endl
 #endif  // TA_TENSOR_MEM_PROFILE
         ;
   }
-  auto& sz_ptrs = ptrs_[sz];
-  TA_ASSERT(sz_ptrs.find(ptr) == sz_ptrs.end());
-  sz_ptrs.emplace(ptr, std::move(creation_context));
+
+  // track unless log_only_=true
+  if (!log_only_) {
+    std::scoped_lock lock(this->mtx_);
+    auto& sz_ptrs = ptrs_[sz];
+    TA_ASSERT(sz_ptrs.find(ptr) == sz_ptrs.end());
+    sz_ptrs.emplace(ptr, std::move(creation_context));
+  }
 }
 
 void PtrRegistry::erase(void* ptr, std::size_t sz, const std::string& context,
                         bool backtrace) {
-  std::scoped_lock lock(this->mtx_);
-  if (log_) {
+  auto* log = thread_local_logging_ ? thread_local_log() : log_;
+
+  // early exit
+  if (log_only_ && !log) return;
+
+  if (log) {
     std::string erasure_context = context;
     if (backtrace) {
       detail::Backtrace bt;
@@ -123,24 +156,29 @@ void PtrRegistry::erase(void* ptr, std::size_t sz, const std::string& context,
       detail::remove_linebreaks(bt_str);
       erasure_context += ":::::" + bt_str;
     }
-    *log_ << "PtrRegistry::erase():::::" << ptr << ":::::" << erasure_context
-          << std::endl
+    *log << "PtrRegistry::erase():::::" << ptr << ":::::" << erasure_context
+         << std::endl
 #ifdef TA_TENSOR_MEM_PROFILE
-          << "  TA::Tensor allocator status {"
-          << "hw=" << hostEnv::instance()->host_allocator().getHighWatermark()
-          << ","
-          << "cur=" << hostEnv::instance()->host_allocator().getCurrentSize()
-          << ","
-          << "act=" << hostEnv::instance()->host_allocator().getActualSize()
-          << "}"
-          << " bytes" << std::endl
+         << "  TA::Tensor allocator status {"
+         << "hw=" << hostEnv::instance()->host_allocator().getHighWatermark()
+         << ","
+         << "cur=" << hostEnv::instance()->host_allocator().getCurrentSize()
+         << ","
+         << "act=" << hostEnv::instance()->host_allocator().getActualSize()
+         << "}"
+         << " bytes" << std::endl
 #endif  // TA_TENSOR_MEM_PROFILE
         ;
   }
-  auto& sz_ptrs = ptrs_[sz];
-  auto it = sz_ptrs.find(ptr);
-  TA_ASSERT(it != sz_ptrs.end());
-  sz_ptrs.erase(it);
+
+  // track unless log_only=true
+  if (!log_only_) {
+    std::scoped_lock lock(this->mtx_);
+    auto& sz_ptrs = ptrs_[sz];
+    auto it = sz_ptrs.find(ptr);
+    TA_ASSERT(it != sz_ptrs.end());
+    sz_ptrs.erase(it);
+  }
 }
 
 PtrRegistry& PtrRegistry::insert(void* ptr, std::size_t sz,
@@ -185,6 +223,16 @@ PtrRegistry& PtrRegistry::erase_bt(void* ptr, std::size_t sz,
 PtrRegistry& PtrRegistry::erase_bt(void* ptr, const std::string& context) {
   this->erase(ptr, /* sz = */ 0, context, /* backtrace = */ true);
   return *this;
+}
+
+std::ostream* PtrRegistry::thread_local_log() {
+  static thread_local std::shared_ptr<std::ostream> thread_local_log_ =
+      std::make_shared<std::ofstream>(
+          thread_local_log_filename_prefix_ + ".thread_id=" +
+          std::to_string(
+              std::hash<std::thread::id>{}(std::this_thread::get_id())) +
+          ".trace");
+  return thread_local_log_.get();
 }
 
 }  // namespace TiledArray

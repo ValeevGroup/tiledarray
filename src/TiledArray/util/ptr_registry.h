@@ -68,6 +68,26 @@ struct PtrRegistry {
   /// @return pointer to the active logger; if null, no logging is performed
   std::ostream* log() const;
 
+  /// controls whether this will only do logging
+
+  /// \param tf if true, this will only perform logging and not track the
+  /// pointers \note turning this on will avoid locking in insert/erase
+  PtrRegistry& log_only(bool tf);
+
+  /// @return true, if this will only perform logging and not track the pointers
+  bool log_only() const;
+
+  /// controls whether logging will be on per-thread basis
+  /// \param tf if true, this will perform logging on per-thread basis
+  PtrRegistry& thread_local_logging(bool tf);
+
+  /// @return true, if this will perform logging on per-thread basis
+  bool thread_local_logging() const;
+
+  /// controls filename for storing per-thread logs
+  /// \param pfx specifies the filename prefix for per-thread logs
+  PtrRegistry& thread_local_log_filename_prefix(const std::string& pfx);
+
   /// specifies whether to append backtrace to context provided to insert/erase
   /// \param if true, calls to insert/erase will append backtrace to the
   /// provided context by default
@@ -91,6 +111,7 @@ struct PtrRegistry {
   /// \param sz size of the object pointed to by \p ptr
   /// \param context creation context; stored alongside the pointer
   /// \return `*this`
+  /// \note calls to this are serialized unless `this->log_only()==true`
   PtrRegistry& insert(void* ptr, std::size_t sz,
                       const std::string& context = "");
 
@@ -99,6 +120,7 @@ struct PtrRegistry {
   /// \param context creation context; stored alongside the pointer
   /// \return `*this`
   /// \note equivalent to `this->insert(ptr, 0, context);
+  /// \note calls to this are serialized unless `this->log_only()==true`
   PtrRegistry& insert(void* ptr, const std::string& context = "");
 
   /// inserts \p ptr associated with size \p sz to the registry,
@@ -107,6 +129,7 @@ struct PtrRegistry {
   /// \param sz size of the object pointed to by \p ptr
   /// \param context creation context; stored alongside the pointer
   /// \return `*this`
+  /// \note calls to this are serialized unless `this->log_only()==true`
   PtrRegistry& insert_bt(void* ptr, std::size_t sz,
                          const std::string& context = "");
 
@@ -115,6 +138,7 @@ struct PtrRegistry {
   /// \param ptr pointer to register
   /// \param context creation context; stored alongside the pointer
   /// \return `*this`
+  /// \note calls to this are serialized unless `this->log_only()==true`
   PtrRegistry& insert_bt(void* ptr, const std::string& context = "");
 
   /// erases \p ptr associated with size \p sz from the registry
@@ -122,6 +146,7 @@ struct PtrRegistry {
   /// \param sz size of the object pointed to by \p ptr
   /// \param context erasure context; if logging, will append this to the log
   /// \return `*this`
+  /// \note calls to this are serialized unless `this->log_only()==true`
   PtrRegistry& erase(void* ptr, std::size_t sz,
                      const std::string& context = "");
 
@@ -130,6 +155,7 @@ struct PtrRegistry {
   /// \param context erasure context; if logging, will append this to the log
   /// \return `*this`
   /// \note equivalent to `this->erase(ptr, 0, context);
+  /// \note calls to this are serialized unless `this->log_only()==true`
   PtrRegistry& erase(void* ptr, const std::string& context = "");
 
   /// erases \p ptr associated with size \p sz from the registry
@@ -138,6 +164,7 @@ struct PtrRegistry {
   /// \param sz size of the object pointed to by \p ptr
   /// \param context erasure context; if logging, will append this and the
   /// backtrace of the caller to the log \return `*this`
+  /// \note calls to this are serialized unless `this->log_only()==true`
   PtrRegistry& erase_bt(void* ptr, std::size_t sz,
                         const std::string& context = "");
 
@@ -148,6 +175,7 @@ struct PtrRegistry {
   /// \param context erasure context; if logging, will append this and the
   /// backtrace of the caller to the log \return `*this` \note equivalent to
   /// `this->erase_bt(ptr, 0, context);
+  /// \note calls to this are serialized unless `this->log_only()==true`
   PtrRegistry& erase_bt(void* ptr, const std::string& context = "");
 
  private:
@@ -156,6 +184,11 @@ struct PtrRegistry {
   mutable ptr_container_type* unsized_ptrs_ = nullptr;  // &(ptrs_[0])
   bool append_backtrace_ = false;
   std::mutex mtx_;
+  bool log_only_ = false;
+  bool thread_local_logging_ = false;
+  std::string thread_local_log_filename_prefix_;
+
+  std::ostream* thread_local_log();
 
   /// inserts \p ptr associated with size \p sz to the registry,
   /// \param ptr pointer to register
