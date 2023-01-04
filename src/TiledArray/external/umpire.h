@@ -32,17 +32,43 @@
 #include <umpire/Umpire.hpp>
 #include <umpire/strategy/QuickPool.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
-#include <umpire/strategy/ThreadSafeAllocator.hpp>
 
 #include <memory>
 #include <stdexcept>
 
 namespace TiledArray {
 
-/// wraps Umpire allocator into a standard-compliant allocator,
-/// based on the boilerplate by Howard Hinnant
+namespace detail {
+
+struct NullLock {
+  static void lock() {}
+  static void unlock() {}
+};
+
+template <typename Tag = void>
+class MutexLock {
+  static std::mutex mtx_;
+
+ public:
+  static void lock() { mtx_.lock(); }
+  static void unlock() { mtx_.unlock(); }
+};
+
+template <typename Tag>
+std::mutex MutexLock<Tag>::mtx_;
+
+}  // namespace detail
+
+/// wraps a Umpire allocator into a
+/// *standard-compliant* C++ allocator
+
+/// Optionally can be made thread safe by providing an appropriate \p StaticLock
+/// \details based on the boilerplate by Howard Hinnant
 /// (https://howardhinnant.github.io/allocator_boilerplate.html)
-template <class T>
+/// \tparam T type of allocated objects
+/// \tparam StaticLock a type providing static `lock()` and `unlock()` methods ;
+///         defaults to NullLock which does not lock
+template <class T, class StaticLock = detail::NullLock>
 class umpire_allocator_impl {
  public:
   using value_type = T;
@@ -73,12 +99,16 @@ class umpire_allocator_impl {
     TA_ASSERT(umpalloc_);
 
     size_t nbytes = n * sizeof(T);
+    pointer result = nullptr;
+    auto* allocation_strategy = umpalloc_->getAllocationStrategy();
 
+    // critical section
+    StaticLock::lock();
     // this, instead of umpalloc_->allocate(n*sizeof(T)), profiles memory use
     // even if introspection is off
-    pointer result = nullptr;
-    result = static_cast<pointer>(
-        umpalloc_->getAllocationStrategy()->allocate_internal(nbytes));
+    result =
+        static_cast<pointer>(allocation_strategy->allocate_internal(nbytes));
+    StaticLock::unlock();
 
     return result;
   }
@@ -86,15 +116,21 @@ class umpire_allocator_impl {
   /// deallocate memory using umpire dynamic pool
   void deallocate(pointer ptr, size_t n) {
     TA_ASSERT(umpalloc_);
+
     const auto nbytes = n * sizeof(T);
-    // this, instead of umpalloc_->deallocate(ptr, nbytes), profiles memory use
-    // even if introspection is off
+    auto* allocation_strategy = umpalloc_->getAllocationStrategy();
+
     // N.B. with multiple threads would have to do this test in
     // the critical section of Umpire's ThreadSafeAllocator::deallocate
-    // TA_ASSERT(nbytes <= umpalloc_->getCurrentSize());
-    umpalloc_->getAllocationStrategy()->deallocate_internal(ptr, nbytes);
+    StaticLock::lock();
+    TA_ASSERT(nbytes <= allocation_strategy->getCurrentSize());
+    // this, instead of umpalloc_->deallocate(ptr, nbytes), profiles memory use
+    // even if introspection is off
+    allocation_strategy->deallocate_internal(ptr, nbytes);
+    StaticLock::unlock();
   }
 
+  /// @return the underlying Umpire allocator
   const umpire::Allocator* umpire_allocator() const { return umpalloc_; }
 
  private:
@@ -104,7 +140,7 @@ class umpire_allocator_impl {
 template <class T1, class T2>
 bool operator==(const umpire_allocator_impl<T1>& lhs,
                 const umpire_allocator_impl<T2>& rhs) noexcept {
-  return lhs.um_dynamic_pool() == rhs.um_dynamic_pool();
+  return lhs.umpire_allocator() == rhs.umpire_allocator();
 }
 
 template <class T1, class T2>

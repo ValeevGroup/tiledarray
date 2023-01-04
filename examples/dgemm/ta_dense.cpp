@@ -142,13 +142,12 @@ void gemm_(TiledArray::World& world, const TiledArray::TiledRange& trange,
 #ifdef TA_TENSOR_MEM_PROFILE
     {
       world.gop.fence();
-      std::cout << str << ": TA::Tensor allocated "
-                << umpire::ResourceManager::getInstance()
-                       .getAllocator("HOST")
-                       .getHighWatermark()
-                << " bytes and used "
-                << TA::hostEnv::instance()->host_allocator().getHighWatermark()
-                << " bytes" << std::endl;
+      std::cout
+          << str << ": TA::Tensor allocated "
+          << TA::hostEnv::instance()->host_allocator_getActualHighWatermark()
+          << " bytes and used "
+          << TA::hostEnv::instance()->host_allocator().getHighWatermark()
+          << " bytes" << std::endl;
     }
 #endif
   };

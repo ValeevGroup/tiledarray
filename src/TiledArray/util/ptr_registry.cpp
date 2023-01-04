@@ -121,8 +121,8 @@ void PtrRegistry::insert(void* ptr, std::size_t sz, const std::string& context,
          << std::endl
 #ifdef TA_TENSOR_MEM_PROFILE
          << "  TA::Tensor allocator status {"
-         << "hw=" << hostEnv::instance()->host_allocator().getHighWatermark()
-         << ","
+         << "hw="
+         << hostEnv::instance()->host_allocator_getActualHighWatermark() << ","
          << "cur=" << hostEnv::instance()->host_allocator().getCurrentSize()
          << ","
          << "act=" << hostEnv::instance()->host_allocator().getActualSize()
@@ -160,8 +160,8 @@ void PtrRegistry::erase(void* ptr, std::size_t sz, const std::string& context,
          << std::endl
 #ifdef TA_TENSOR_MEM_PROFILE
          << "  TA::Tensor allocator status {"
-         << "hw=" << hostEnv::instance()->host_allocator().getHighWatermark()
-         << ","
+         << "hw="
+         << hostEnv::instance()->host_allocator_getActualHighWatermark() << ","
          << "cur=" << hostEnv::instance()->host_allocator().getCurrentSize()
          << ","
          << "act=" << hostEnv::instance()->host_allocator().getActualSize()
