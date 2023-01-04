@@ -36,12 +36,12 @@
 
 namespace TiledArray {
 
-/// CUDA UM allocator, based on boilerplate by Howard Hinnant
-/// (https://howardhinnant.github.io/allocator_boilerplate.html)
+/// pooled thread-safe CUDA UM allocator
 template <class T>
-class cuda_um_allocator_impl : public umpire_allocator_impl<T> {
+class cuda_um_allocator_impl
+    : public umpire_allocator_impl<T, detail::MutexLock<cudaEnv>> {
  public:
-  using base_type = umpire_allocator_impl<T>;
+  using base_type = umpire_allocator_impl<T, detail::MutexLock<cudaEnv>>;
   using typename base_type::const_pointer;
   using typename base_type::const_reference;
   using typename base_type::pointer;

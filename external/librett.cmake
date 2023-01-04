@@ -66,6 +66,8 @@ else()
         -DCMAKE_CUDA_STANDARD=${CMAKE_CUDA_STANDARD}
         -DCMAKE_CUDA_EXTENSIONS=${CMAKE_CUDA_EXTENSIONS}
         -DENABLE_UMPIRE=OFF
+        # N.B. ThreadSafeUMDynamicPool this no longer exists!!! Must teach LibreTT to take allocate/deallocate methods
+        # from the user code
         -DLIBRETT_USES_THIS_UMPIRE_ALLOCATOR=ThreadSafeUMDynamicPool
         -DCMAKE_PREFIX_PATH=${_UMPIRE_INSTALL_DIR}
         -DENABLE_NO_ALIGNED_ALLOC=ON

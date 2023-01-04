@@ -31,7 +31,6 @@
 #include <umpire/strategy/AlignedAllocator.hpp>
 #include <umpire/strategy/QuickPool.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
-#include <umpire/strategy/ThreadSafeAllocator.hpp>
 
 #include <TiledArray/external/madness.h>
 #include <madness/world/print.h>
@@ -98,19 +97,19 @@ class hostEnv {
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "QuickPool_SizeLimited_HOST", host_size_limited_alloc, page_size,
               page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
-      auto thread_safe_host_aligned_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
-              "ThreadSafe_QuickPool_SizeLimited_HOST", host_dynamic_pool);
 
       auto host_env = std::unique_ptr<hostEnv>(
-          new hostEnv(TiledArray::get_default_world(),
-                      thread_safe_host_aligned_dynamic_pool));
+          new hostEnv(TiledArray::get_default_world(), host_dynamic_pool));
       instance_accessor() = std::move(host_env);
     }
   }
 
   World& world() const { return *world_; }
 
+  /// @return an Umpire allocator that allocates from a
+  ///         host memory pool
+  /// @warning this is not a thread-safe allocator, should be only used when
+  ///          wrapped into umpire_allocator_impl
   umpire::Allocator& host_allocator() { return host_allocator_; }
 
  protected:
@@ -121,7 +120,8 @@ class hostEnv {
   // the world used to initialize this
   World* world_;
 
-  /// allocates from a thread-safe, dynamic, size-limited host memory pool
+  // allocates from a dynamic, size-limited host memory pool
+  // N.B. not thread safe, so must be wrapped into umpire_allocator_impl
   umpire::Allocator host_allocator_;
 
   inline static std::unique_ptr<hostEnv>& instance_accessor() {

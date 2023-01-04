@@ -255,9 +255,6 @@ class cudaEnv {
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "UMDynamicPool", rm.getAllocator("UM"), mem_total_free.second,
               alloc_grain);
-      auto thread_safe_um_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
-              "ThreadSafeUMDynamicPool", um_dynamic_pool);
 
       // allocate zero memory for device pool, same grain for subsequent allocs
       auto dev_size_limited_alloc =
@@ -267,13 +264,10 @@ class cudaEnv {
       auto dev_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
               "CUDADynamicPool", dev_size_limited_alloc, 0, alloc_grain);
-      auto thread_safe_dev_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
-              "ThreadSafeCUDADynamicPool", dev_dynamic_pool);
 
-      auto cuda_env = std::unique_ptr<cudaEnv>(new cudaEnv(
-          world, num_devices, device_id, num_streams,
-          thread_safe_um_dynamic_pool, thread_safe_dev_dynamic_pool));
+      auto cuda_env = std::unique_ptr<cudaEnv>(
+          new cudaEnv(world, num_devices, device_id, num_streams,
+                      um_dynamic_pool, dev_dynamic_pool));
       instance = std::move(cuda_env);
     }
   }
@@ -335,8 +329,10 @@ class cudaEnv {
     return cuda_streams_[num_cuda_streams_ + 1];
   }
 
+  /// @return a (non-thread-safe) Umpire allocator for CUDA UM
   umpire::Allocator& um_dynamic_pool() { return um_dynamic_pool_; }
 
+  /// @return a (non-thread-safe) Umpire allocator for CUDA device memory
   umpire::Allocator& device_dynamic_pool() { return device_dynamic_pool_; }
 
  protected:
