@@ -112,6 +112,19 @@ class hostEnv {
   ///          wrapped into umpire_allocator_impl
   umpire::Allocator& host_allocator() { return host_allocator_; }
 
+  // clang-format off
+  /// @return the max actual amount of memory held by host_allocator()
+  /// @details returns the value provided by `umpire::strategy::QuickPool::getHighWatermark()`
+  /// @note if there is only 1 Umpire allocator using HOST memory this should be identical to the value returned by `umpire::ResourceManager::getInstance().getAllocator("HOST").getHighWatermark()`
+  // clang-format on
+  std::size_t host_allocator_getActualHighWatermark() {
+    TA_ASSERT(dynamic_cast<umpire::strategy::QuickPool*>(
+                  host_allocator_.getAllocationStrategy()) != nullptr);
+    return dynamic_cast<umpire::strategy::QuickPool*>(
+               host_allocator_.getAllocationStrategy())
+        ->getActualHighwaterMark();
+  }
+
  protected:
   hostEnv(World& world, umpire::Allocator host_alloc)
       : world_(&world), host_allocator_(host_alloc) {}

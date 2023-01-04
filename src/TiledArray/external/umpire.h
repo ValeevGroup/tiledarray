@@ -140,7 +140,7 @@ class umpire_allocator_impl {
 template <class T1, class T2>
 bool operator==(const umpire_allocator_impl<T1>& lhs,
                 const umpire_allocator_impl<T2>& rhs) noexcept {
-  return lhs.um_dynamic_pool() == rhs.um_dynamic_pool();
+  return lhs.umpire_allocator() == rhs.umpire_allocator();
 }
 
 template <class T1, class T2>

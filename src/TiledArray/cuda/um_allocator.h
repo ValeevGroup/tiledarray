@@ -49,7 +49,7 @@ class cuda_um_allocator_impl
   using typename base_type::value_type;
 
   cuda_um_allocator_impl() noexcept
-      : base_type(&cudaEnv::instance()->um_dynamic_pool()) {}
+      : base_type(&cudaEnv::instance()->um_allocator()) {}
 
   template <class U>
   cuda_um_allocator_impl(const cuda_um_allocator_impl<U>& rhs) noexcept

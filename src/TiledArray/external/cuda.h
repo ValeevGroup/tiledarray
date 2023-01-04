@@ -330,17 +330,43 @@ class cudaEnv {
   }
 
   /// @return a (non-thread-safe) Umpire allocator for CUDA UM
-  umpire::Allocator& um_dynamic_pool() { return um_dynamic_pool_; }
+  umpire::Allocator& um_allocator() { return um_allocator_; }
+
+  // clang-format off
+  /// @return the max actual amount of memory held by um_allocator()
+  /// @details returns the value provided by `umpire::strategy::QuickPool::getHighWatermark()`
+  /// @note if there is only 1 Umpire allocator using UM memory should be identical to the value returned by `umpire::ResourceManager::getInstance().getAllocator("UM").getHighWatermark()`
+  // clang-format on
+  std::size_t um_allocator_getActualHighWatermark() {
+    TA_ASSERT(dynamic_cast<umpire::strategy::QuickPool*>(
+                  um_allocator_.getAllocationStrategy()) != nullptr);
+    return dynamic_cast<umpire::strategy::QuickPool*>(
+               um_allocator_.getAllocationStrategy())
+        ->getActualHighwaterMark();
+  }
 
   /// @return a (non-thread-safe) Umpire allocator for CUDA device memory
-  umpire::Allocator& device_dynamic_pool() { return device_dynamic_pool_; }
+  umpire::Allocator& device_allocator() { return device_allocator_; }
+
+  // clang-format off
+  /// @return the max actual amount of memory held by um_allocator()
+  /// @details returns the value provided by `umpire::strategy::QuickPool::getHighWatermark()`
+  /// @note if there is only 1 Umpire allocator using DEVICE memory should be identical to the value returned by `umpire::ResourceManager::getInstance().getAllocator("DEVICE").getHighWatermark()`
+  // clang-format on
+  std::size_t device_allocator_getActualHighWatermark() {
+    TA_ASSERT(dynamic_cast<umpire::strategy::QuickPool*>(
+                  device_allocator_.getAllocationStrategy()) != nullptr);
+    return dynamic_cast<umpire::strategy::QuickPool*>(
+               device_allocator_.getAllocationStrategy())
+        ->getActualHighwaterMark();
+  }
 
  protected:
   cudaEnv(World& world, int num_devices, int device_id, int num_streams,
           umpire::Allocator um_alloc, umpire::Allocator device_alloc)
       : world_(&world),
-        um_dynamic_pool_(um_alloc),
-        device_dynamic_pool_(device_alloc),
+        um_allocator_(um_alloc),
+        device_allocator_(device_alloc),
         num_cuda_devices_(num_devices),
         current_cuda_device_id_(device_id),
         num_cuda_streams_(num_streams) {
@@ -380,10 +406,11 @@ class cudaEnv {
   // the world used to initialize this
   World* world_;
 
-  /// a thread-safe dynamically-sized memory pool for CUDA Unified Memory
-  umpire::Allocator um_dynamic_pool_;
-  /// a thread-safe size-limited dynamically-sized memory pool for CUDA Memory
-  umpire::Allocator device_dynamic_pool_;
+  /// allocator backed by a (non-thread-safe) dynamically-sized pool for CUDA UM
+  umpire::Allocator um_allocator_;
+  /// allocator backed by a (non-thread-safe) dynamically-sized pool for device
+  /// memory
+  umpire::Allocator device_allocator_;
 
   int num_cuda_devices_;
   int current_cuda_device_id_;
