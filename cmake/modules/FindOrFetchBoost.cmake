@@ -5,6 +5,16 @@ endif()
 
 # try find_package
 if (NOT TARGET Boost::boost)
+
+  # detect which Boost targets I already have
+  foreach(tgt boost;headers;${Boost_BTAS_DEPS_LIBRARIES})
+    if (TARGET Boost::${tgt})
+      set(ta_imported_boost_${tgt} 0)
+    else()
+      set(ta_imported_boost_${tgt} 1)
+    endif()
+  endforeach()
+
   include(FindPackageRegimport)
   find_package_regimport(Boost ${TA_TRACKED_BOOST_VERSION} QUIET)
   if (TARGET Boost::boost)
@@ -14,7 +24,7 @@ if (NOT TARGET Boost::boost)
   # Boost::* targets by default are not GLOBAL, so to allow users of TA to safely use them we need to make them global
   # more discussion here: https://gitlab.kitware.com/cmake/cmake/-/issues/17256
   foreach(tgt boost;headers;${Boost_BTAS_DEPS_LIBRARIES})
-    if (TARGET Boost::${tgt})
+    if (TARGET Boost::${tgt} AND ta_imported_boost_${tgt})
       get_target_property(_boost_tgt_${tgt}_is_imported_global Boost::${tgt} IMPORTED_GLOBAL)
       if (NOT _boost_tgt_${tgt}_is_imported_global)
         set_target_properties(Boost::${tgt} PROPERTIES IMPORTED_GLOBAL TRUE)
