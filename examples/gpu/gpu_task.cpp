@@ -2,8 +2,8 @@
 // Created by Chong Peng on 11/14/18.
 //
 
-#include <TiledArray/cuda/btas_um_tensor.h>
-#include <TiledArray/cuda/cuda_task_fn.h>
+#include <TiledArray/gpu/btas_um_tensor.h>
+#include <TiledArray/gpu/gpu_task_fn.h>
 #include <tiledarray.h>
 
 using value_type = double;

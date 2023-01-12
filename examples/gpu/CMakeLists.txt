@@ -25,7 +25,7 @@
 
 if(CUDA_FOUND)
 
-  foreach(_exec cuda_librett cuda_task ta_dense_cuda ta_cc_abcd_cuda ta_vector_cuda ta_reduce_cuda)
+  foreach(_exec gpu_librett gpu_task ta_dense_gpu ta_cc_abcd_gpu ta_vector_gpu ta_reduce_gpu)
 
     # Add executable
     add_ta_executable(${_exec} "${_exec}.cpp" "tiledarray")

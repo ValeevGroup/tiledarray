@@ -15,36 +15,33 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- *  Eduard Valeyev
- *  Department of Chemistry, Virginia Tech
- *  Feb 6, 2018
+ *  Created by Chong Peng on 7/19/18.
  *
  */
 
-
-#include <TiledArray/cuda/um_allocator.h>
-#include <TiledArray/cuda/thrust.h>
+#include <TiledArray/config.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-namespace thrust {
-template<>
-void resize<double,TiledArray::cuda_um_allocator<double>>(
-    thrust::device_vector<double, TiledArray::cuda_um_allocator<double>>& dev_vec,
-    size_t size) {
-    dev_vec.resize(size);
-}
-template<>
-void resize<float,TiledArray::cuda_um_allocator<float>>(
-    thrust::device_vector<float, TiledArray::cuda_um_allocator<float>>& dev_vec,
-    size_t size) {
-    dev_vec.resize(size);
-}
+#include <TiledArray/gpu/btas_um_tensor.h>
+#include <tiledarray.h>
+
+#include <iostream>
+
+/**
+ *  Test LibreTT
+ */
+
+const std::size_t N = 100;
+using namespace TiledArray;
+
+int main(int argc, char* argv[]) {
+  TA_SCOPED_INITIALIZE(argc, argv);
+
+  std::vector<int> extent{N, N};
+  std::vector<int> perm{1, 0};
+
+  return 0;
 }
 
-namespace thrust {
-template class device_vector<double, TiledArray::cuda_um_allocator<double>>;
-template class device_vector<float, TiledArray::cuda_um_allocator<float>>;
-}
-
-#endif //TILEDARRAY_HAS_CUDA
+#endif

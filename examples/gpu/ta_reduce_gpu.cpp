@@ -24,9 +24,7 @@
 // clang-format off
 
 #include <tiledarray.h>
-#include <TiledArray/cuda/btas_um_tensor.h>
-#include "TiledArray/cuda/cpu_cuda_vector.h"
-#include <TiledArray/external/btas.h>
+#include <TiledArray/gpu/btas_um_tensor.h>
 // clang-format on
 
 template <typename Tile>
@@ -36,7 +34,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   const std::size_t Tn = Nn / Bn;
 
   if (world.rank() == 0)
-    std::cout << "TiledArray: dense matrix vector test...\n"
+    std::cout << "TiledArray: dense matrix reduce test...\n"
               << "Number of nodes     = " << world.size()
               << "\nSize of Matrix         = " << Nm << "x" << Nn << " ("
               << double(Nm * Nn * sizeof(double)) / 1.0e9 << " GB)"
@@ -62,20 +60,20 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
   blocking.push_back(
       TiledArray::TiledRange1(blocking_n.begin(), blocking_n.end()));
 
-  TiledArray::TiledRange trange(blocking.begin(), blocking.end());
+  TiledArray::TiledRange  // TRange
+      trange(blocking.begin(), blocking.end());
   TiledArray::TiledRange trange_tr(blocking.rbegin(),
                                    blocking.rend());  // transposed trange
 
   using value_type = typename Tile::value_type;
   using TArray = TA::DistArray<Tile, TA::DensePolicy>;
 
-  TArray c(world, trange);
   value_type val_a = 0.03;
   value_type val_b = 0.02;
 
   {
     if (world.rank() == 0) {
-      std::cout << "\nAdd test: a(m,n) + b(m,n)\n";
+      std::cout << "\nDot test: dot(a(m,n), b(m,n))\n";
     }
 
     TArray a(world, trange);
@@ -90,12 +88,17 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      c("m,n") = a("m,n") + b("m,n");
+      value_type d = TiledArray::dot(a("m,n"), b("m,n"));
+
       double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0)
+      if (world.rank() == 0) {
+        std::cout << "dot result: " << d << std::endl;
         std::cout << "Iteration " << i + 1
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
+      }
+
+      //      TA_ASSERT(d == val_a*val_b*Nm*Nn);
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -104,50 +107,14 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
       std::cout << "Average wall time   = "
                 << (wall_time_stop - wall_time_start) / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
-                << double(nrepeat) * double(Nn * Nm) /
+                << double(nrepeat) * 2 * double(Nn * Nm) /
                        (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   }
 
   {
     if (world.rank() == 0) {
-      std::cout << "\nAdd scale test: 2*a(m,n) + 2*b(m,n)\n";
-    }
-
-    TArray a(world, trange);
-    TArray b(world, trange);
-
-    a.fill(val_a);
-    b.fill(val_b);
-
-    // Start clock
-    const double wall_time_start = madness::wall_time();
-
-    // Do
-    for (int i = 0; i < nrepeat; ++i) {
-      double iter_time_start = madness::wall_time();
-      c("m,n") = 2 * a("m,n") + 2 * b("m,n");
-      double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0)
-        std::cout << "Iteration " << i + 1
-                  << " wall time: " << (iter_time_stop - iter_time_start)
-                  << "\n";
-    }
-    // Stop clock
-    const double wall_time_stop = madness::wall_time();
-
-    if (world.rank() == 0)
-      std::cout << "Average wall time   = "
-                << (wall_time_stop - wall_time_start) / double(nrepeat)
-                << " sec\nAverage GFLOPS      = "
-                << double(nrepeat) * 3 * double(Nn * Nm) /
-                       (wall_time_stop - wall_time_start) / 1.0e9
-                << "\n";
-  }
-
-  {
-    if (world.rank() == 0) {
-      std::cout << "\nAdd permute test: 2*a(m,n) + 2*b(n,m)\n";
+      std::cout << "\nDot permute test: dot(a(m,n), b(n,m))\n";
     }
 
     TArray a(world, trange);
@@ -162,12 +129,17 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      c("m,n") = 2 * a("m,n") + 2 * b("n,m");
+      value_type d = TiledArray::dot(a("m,n"), b("n,m"));
+
       double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0)
+      if (world.rank() == 0) {
+        std::cout << "dot result: " << d << std::endl;
         std::cout << "Iteration " << i + 1
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
+      }
+
+      //      TA_ASSERT(d == val_a*val_b*Nm*Nn);
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -176,14 +148,14 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
       std::cout << "Average wall time   = "
                 << (wall_time_stop - wall_time_start) / double(nrepeat)
                 << " sec\nAverage GFLOPS      = "
-                << double(nrepeat) * 3 * double(Nn * Nm) /
+                << double(nrepeat) * 2 * double(Nn * Nm) /
                        (wall_time_stop - wall_time_start) / 1.0e9
                 << "\n";
   }
 
   {
     if (world.rank() == 0) {
-      std::cout << "\nScale add test: 5*(2*a(m,n) + 3*b(m,n))\n";
+      std::cout << "\nDot scale test: dot(2*a(m,n), 3*b(m,n))\n";
     }
 
     TArray a(world, trange);
@@ -198,12 +170,17 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      c("m,n") = 5 * (2 * a("m,n") + 3 * b("m,n"));
+      value_type d = TiledArray::dot(2 * a("m,n"), 3 * b("m,n"));
+
       double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0)
+      if (world.rank() == 0) {
+        std::cout << "dot result: " << d << std::endl;
         std::cout << "Iteration " << i + 1
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
+      }
+
+      //      TA_ASSERT(d == val_a*val_b*Nm*Nn);
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -219,7 +196,7 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
 
   {
     if (world.rank() == 0) {
-      std::cout << "\nScale add permute test: 5*(2*a(m,n) + 3*b(n,m))\n";
+      std::cout << "\nDot scale permute test: dot(2*a(m,n), 3*b(n,m))\n";
     }
 
     TArray a(world, trange);
@@ -234,12 +211,17 @@ void do_main_body(TiledArray::World &world, const long Nm, const long Bm,
     // Do
     for (int i = 0; i < nrepeat; ++i) {
       double iter_time_start = madness::wall_time();
-      c("m,n") = 5 * (2 * a("m,n") + 3 * b("n,m"));
+      value_type d = TiledArray::dot(2 * a("m,n"), 3 * b("n,m"));
+
       double iter_time_stop = madness::wall_time();
-      if (world.rank() == 0)
+      if (world.rank() == 0) {
+        std::cout << "dot result: " << d << std::endl;
         std::cout << "Iteration " << i + 1
                   << " wall time: " << (iter_time_stop - iter_time_start)
                   << "\n";
+      }
+
+      //      TA_ASSERT(d == val_a*val_b*Nm*Nn);
     }
     // Stop clock
     const double wall_time_stop = madness::wall_time();
@@ -259,7 +241,7 @@ using cudaTile = TiledArray::Tile<TiledArray::btasUMTensorVarray<T>>;
 
 int try_main(int argc, char **argv) {
   // Initialize runtime
-  auto &world = TA_SCOPED_INITIALIZE(argc, argv);
+  TiledArray::World &world = TA_SCOPED_INITIALIZE(argc, argv);
 
   // Get command line arguments
   if (argc < 4) {

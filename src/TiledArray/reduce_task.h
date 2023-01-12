@@ -25,7 +25,7 @@
 #include <TiledArray/external/madness.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/cuda/cuda_task_fn.h>
+#include <TiledArray/gpu/gpu_task_fn.h>
 #include <TiledArray/external/cuda.h>
 #include <TiledArray/tensor/type_traits.h>
 #include <TiledArray/util/time.h>

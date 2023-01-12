@@ -30,8 +30,8 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/cuda/btas_cublas.h>
-#include <TiledArray/cuda/um_storage.h>
+#include <TiledArray/gpu/btas_cublas.h>
+#include <TiledArray/gpu/um_storage.h>
 #include <TiledArray/external/librett.h>
 #include <TiledArray/tile.h>
 

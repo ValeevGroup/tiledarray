@@ -24,15 +24,15 @@
 #ifndef TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
 #define TILEDARRAY_CUDA_UM_VECTOR_H__INCLUDED
 
-#include <TiledArray/cuda/thrust.h>
-#include <TiledArray/cuda/um_allocator.h>
+#include <TiledArray/gpu/thrust.h>
+#include <TiledArray/gpu/um_allocator.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
 
 #include <btas/array_adaptor.h>
 #include <btas/varray/varray.h>
 
-#include <TiledArray/cuda/platform.h>
+#include <TiledArray/gpu/platform.h>
 #include <TiledArray/utility.h>
 
 #include <madness/world/archive.h>

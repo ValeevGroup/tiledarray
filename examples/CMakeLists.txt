@@ -29,7 +29,7 @@ endif()
 
 # Add Subdirectories
 add_subdirectory (cc)
-add_subdirectory (cuda)
+add_subdirectory (gpu)
 add_subdirectory (dgemm)
 add_subdirectory (demo)
 add_subdirectory (scalapack)

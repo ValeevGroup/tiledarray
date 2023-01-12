@@ -24,7 +24,7 @@
 #ifndef TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
 #define TILEDARRAY_BTAS_CUDA_CUBLAS_H__INCLUDED
 
-#include <TiledArray/cuda/cublas.h>
+#include <TiledArray/gpu/cublas.h>
 #include <TiledArray/math/blas.h>
 
 #ifdef TILEDARRAY_HAS_CUDA
@@ -32,10 +32,10 @@
 #include <TiledArray/external/cuda.h>
 #include <btas/tensor.h>
 
-#include <TiledArray/cuda/kernel/mult_kernel.h>
-#include <TiledArray/cuda/kernel/reduce_kernel.h>
-#include <TiledArray/cuda/platform.h>
-#include <TiledArray/cuda/um_storage.h>
+#include <TiledArray/gpu/kernel/mult_kernel.h>
+#include <TiledArray/gpu/kernel/reduce_kernel.h>
+#include <TiledArray/gpu/platform.h>
+#include <TiledArray/gpu/um_storage.h>
 #include <TiledArray/math/gemm_helper.h>
 
 namespace TiledArray {

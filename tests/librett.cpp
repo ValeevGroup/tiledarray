@@ -24,7 +24,7 @@
 
 #ifdef TILEDARRAY_HAS_CUDA
 
-#include <TiledArray/cuda/btas_um_tensor.h>
+#include <TiledArray/gpu/btas_um_tensor.h>
 #include "unit_test_config.h"
 
 struct LibreTTFixture {

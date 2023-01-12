@@ -4,7 +4,7 @@
 
 // clang-format off
 #include <btas/array_adaptor.h>  // provides c++17 features (stds::data, std::size) when compiling CUDA (i.e. c++14)
-#include <TiledArray/cuda/btas_um_tensor.h>
+#include <TiledArray/gpu/btas_um_tensor.h>
 // clang-format on
 
 #ifdef TILEDARRAY_HAS_CUDA

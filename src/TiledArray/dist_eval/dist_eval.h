@@ -26,7 +26,7 @@
 #include <TiledArray/tensor_impl.h>
 #include <TiledArray/type_traits.h>
 #ifdef TILEDARRAY_HAS_CUDA
-#include <TiledArray/cuda/cuda_task_fn.h>
+#include <TiledArray/gpu/gpu_task_fn.h>
 #include <TiledArray/external/cuda.h>
 #endif
 

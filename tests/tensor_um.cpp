@@ -18,7 +18,7 @@
  *  Chong Peng on 9/19/18.
  */
 
-#include <TiledArray/cuda/btas_um_tensor.h>
+#include <TiledArray/gpu/btas_um_tensor.h>
 #include "global_fixture.h"
 #include "unit_test_config.h"
 

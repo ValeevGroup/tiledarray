@@ -4,8 +4,8 @@
 
 #include <btas/array_adaptor.h>
 
-#include <TiledArray/cuda/platform.h>
-#include <TiledArray/cuda/thrust.h>
+#include <TiledArray/gpu/platform.h>
+#include <TiledArray/gpu/thrust.h>
 
 #include <madness/world/archive.h>
 

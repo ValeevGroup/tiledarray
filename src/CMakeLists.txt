@@ -204,19 +204,19 @@ if(CUDA_FOUND)
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
      TiledArray/external/librett.h
-     TiledArray/cuda/cublas.h
-     TiledArray/cuda/btas_cublas.h
-     TiledArray/cuda/btas_um_tensor.h
-     TiledArray/cuda/cpu_cuda_vector.h
-     TiledArray/cuda/cuda_task_fn.h
-     TiledArray/cuda/kernel/mult_kernel.h
-     TiledArray/cuda/kernel/mult_kernel_impl.h
-     TiledArray/cuda/kernel/reduce_kernel.h
-     TiledArray/cuda/kernel/reduce_kernel_impl.h
-     TiledArray/cuda/platform.h
-     TiledArray/cuda/thrust.h
-     TiledArray/cuda/um_allocator.h
-     TiledArray/cuda/um_storage.h)
+     TiledArray/gpu/cublas.h
+     TiledArray/gpu/btas_cublas.h
+     TiledArray/gpu/btas_um_tensor.h
+     TiledArray/gpu/cpu_gpu_vector.h
+     TiledArray/gpu/gpu_task_fn.h
+     TiledArray/gpu/kernel/mult_kernel.h
+     TiledArray/gpu/kernel/mult_kernel_impl.h
+     TiledArray/gpu/kernel/reduce_kernel.h
+     TiledArray/gpu/kernel/reduce_kernel_impl.h
+     TiledArray/gpu/platform.h
+     TiledArray/gpu/thrust.h
+     TiledArray/gpu/um_allocator.h
+     TiledArray/gpu/um_storage.h)
 
 endif(CUDA_FOUND)
 
@@ -248,13 +248,13 @@ set(_TILEDARRAY_DEPENDENCIES MADworld TiledArray_Eigen BTAS::BTAS blaspp_headers
 if(CUDA_FOUND)
 
   list(APPEND TILEDARRAY_SOURCE_FILES
-          TiledArray/cuda/btas_um_tensor.cpp
-          TiledArray/cuda/cpu_cuda_vector.cu
-          TiledArray/cuda/kernel/mult_kernel.cu
-          TiledArray/cuda/kernel/reduce_kernel.cu
-          TiledArray/cuda/um_storage.cu)
+          TiledArray/gpu/btas_um_tensor.cpp
+          TiledArray/gpu/cpu_gpu_vector.cu
+          TiledArray/gpu/kernel/mult_kernel.cu
+          TiledArray/gpu/kernel/reduce_kernel.cu
+          TiledArray/gpu/um_storage.cu)
 
-  set_source_files_properties(TiledArray/cuda/btas_um_tensor.cpp
+  set_source_files_properties(TiledArray/gpu/btas_um_tensor.cpp
           PROPERTIES
           LANGUAGE CUDA)
 
