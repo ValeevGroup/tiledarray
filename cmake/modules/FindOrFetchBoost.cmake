@@ -5,6 +5,16 @@ endif()
 
 # try find_package
 if (NOT TARGET Boost::boost)
+
+  # detect which Boost targets I already have
+  foreach(tgt boost;headers;${Boost_BTAS_DEPS_LIBRARIES})
+    if (TARGET Boost::${tgt})
+      set(ta_imported_boost_${tgt} 0)
+    else()
+      set(ta_imported_boost_${tgt} 1)
+    endif()
+  endforeach()
+
   include(FindPackageRegimport)
   find_package_regimport(Boost ${TA_TRACKED_BOOST_VERSION} QUIET)
   if (TARGET Boost::boost)
@@ -14,7 +24,7 @@ if (NOT TARGET Boost::boost)
   # Boost::* targets by default are not GLOBAL, so to allow users of TA to safely use them we need to make them global
   # more discussion here: https://gitlab.kitware.com/cmake/cmake/-/issues/17256
   foreach(tgt boost;headers;${Boost_BTAS_DEPS_LIBRARIES})
-    if (TARGET Boost::${tgt})
+    if (TARGET Boost::${tgt} AND ta_imported_boost_${tgt})
       get_target_property(_boost_tgt_${tgt}_is_imported_global Boost::${tgt} IMPORTED_GLOBAL)
       if (NOT _boost_tgt_${tgt}_is_imported_global)
         set_target_properties(Boost::${tgt} PROPERTIES IMPORTED_GLOBAL TRUE)
@@ -43,12 +53,23 @@ if (NOT TARGET Boost::boost)
   # current boost-cmake/master does not install boost correctly, so warn that installed TiledArray will not be usable
   # boost-cmake/install_rules https://github.com/Orphis/boost-cmake/pull/45 is supposed to fix it but is inactive
   message(WARNING "Building Boost from source makes TiledArray unusable from the install location! Install Boost using package manager or manually and reconfigure/reinstall TiledArray to fix this")
-  export(EXPORT tiledarray
-      FILE "${PROJECT_BINARY_DIR}/boost-targets.cmake")
-  install(EXPORT tiledarray
-      FILE "boost-targets.cmake"
-      DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
-      COMPONENT boost-libs)
+  if (NOT TARGET Boost::headers)
+    add_library(Boost::headers ALIAS Boost::boost)
+  endif()
+  foreach(_lib serialization regex locale locale_deps thread chrono)  # these are non-header-only components used by MPQC
+    if (TARGET Boost_${_lib})
+      install(TARGETS Boost_${_lib} EXPORT btas COMPONENT boost-libs)
+      if (NOT TARGET Boost::${_lib})
+        add_library(Boost::${_lib} ALIAS Boost_${_lib})
+      endif()
+    endif()
+  endforeach()
+#  export(EXPORT tiledarray
+#      FILE "${PROJECT_BINARY_DIR}/boost-targets.cmake")
+#  install(EXPORT tiledarray
+#      FILE "boost-targets.cmake"
+#      DESTINATION "${TILEDARRAY_INSTALL_CMAKEDIR}"
+#      COMPONENT boost-libs)
 
 endif(NOT TARGET Boost::boost)
 

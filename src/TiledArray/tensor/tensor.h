@@ -20,6 +20,8 @@
 #ifndef TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 #define TILEDARRAY_TENSOR_TENSOR_H__INCLUDED
 
+#include "TiledArray/config.h"
+
 #include "TiledArray/host/allocator.h"
 
 #include "TiledArray/math/blas.h"
@@ -30,6 +32,7 @@
 #include "TiledArray/tile_interface/permute.h"
 #include "TiledArray/tile_interface/trace.h"
 #include "TiledArray/util/logger.h"
+#include "TiledArray/util/ptr_registry.h"
 
 namespace TiledArray {
 
@@ -48,7 +51,7 @@ struct TraceIsDefined<Tensor<T, A>, enable_if_numeric_t<T>> : std::true_type {};
 
 /// An N-dimensional tensor object
 
-/// A contiguous row-major tensor with shallow-copy semantics.
+/// A contiguous row-major tensor with __shallow-copy__ semantics.
 /// As of TiledArray 1.1 Tensor represents a batch of tensors with same Range
 /// (the default batch size = 1).
 /// \tparam T the value type of this tensor
@@ -60,6 +63,15 @@ class Tensor {
   static_assert(
       std::is_assignable<std::add_lvalue_reference_t<T>, T>::value,
       "Tensor<T>: T must be an assignable type (e.g. cannot be const)");
+
+#ifdef TA_TENSOR_MEM_TRACE
+  template <typename... Ts>
+  std::string make_string(Ts&&... ts) {
+    std::ostringstream oss;
+    (oss << ... << ts);
+    return oss.str();
+  }
+#endif
 
  public:
   typedef Range range_type;                              ///< Tensor range type
@@ -107,12 +119,33 @@ class Tensor {
       std::uninitialized_default_construct_n(ptr, size);
       // std::uninitialized_value_construct_n(ptr, size);
     }
-    auto deleter = [this, allocator = std::move(allocator),
-                    size](auto&& ptr) mutable {
+    auto deleter = [
+#ifdef TA_TENSOR_MEM_TRACE
+                       this,
+#endif
+                       allocator = std::move(allocator),
+                       size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
+      // N.B. deregister ptr *before* deallocating to avoid possible race
+      // between reallocation and deregistering
+#ifdef TA_TENSOR_MEM_TRACE
+      const auto nbytes = size * sizeof(T);
+      if (nbytes >= trace_if_larger_than_) {
+        ptr_registry()->erase(ptr, nbytes,
+                              make_string("created by TA::Tensor*=", this));
+      }
+#endif
       allocator.deallocate(ptr, size);
     };
     this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->insert(
+          this, make_string("TA::Tensor::data_.get()=", data_.get()));
+      ptr_registry()->insert(data_.get(), nbytes(),
+                             make_string("created by TA::Tensor*=", this));
+    }
+#endif
   }
 
   Tensor(range_type&& range, size_t batch_size, bool default_construct)
@@ -124,20 +157,94 @@ class Tensor {
       std::uninitialized_default_construct_n(ptr, size);
       // std::uninitialized_value_construct_n(ptr, size);
     }
-    auto deleter = [this, allocator = std::move(allocator),
-                    size](auto&& ptr) mutable {
+    auto deleter = [
+#ifdef TA_TENSOR_MEM_TRACE
+                       this,
+#endif
+                       allocator = std::move(allocator),
+                       size](auto&& ptr) mutable {
       std::destroy_n(ptr, size);
-      allocator.deallocate(ptr, size * sizeof(T));
+      // N.B. deregister ptr *before* deallocating to avoid possible race
+      // between reallocation and deregistering
+#ifdef TA_TENSOR_MEM_TRACE
+      const auto nbytes = size * sizeof(T);
+      if (nbytes >= trace_if_larger_than_) {
+        ptr_registry()->erase(ptr, nbytes,
+                              make_string("created by TA::Tensor*=", this));
+      }
+#endif
+      allocator.deallocate(ptr, size);
     };
     this->data_ = std::shared_ptr<value_type>(ptr, std::move(deleter));
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->insert(
+          this, make_string("TA::Tensor::data_.get()=", data_.get()));
+      ptr_registry()->insert(data_.get(), nbytes(),
+                             make_string("created by TA::Tensor*=", this));
+    }
+#endif
   }
 
-  range_type range_;  ///< range
+  range_type range_;  ///< Range
+  /// Number of `range_`-sized blocks in `data_`
+  /// \note this is not used for (in)equality comparison
   size_t batch_size_ = 1;
   std::shared_ptr<value_type> data_;  ///< Shared pointer to the data
 
  public:
+  /// constructs an empty (null) Tensor
+  /// \post `this->empty()`
   Tensor() = default;
+
+  /// copy constructor
+
+  /// \param[in] other an object to copy data from
+  /// \post `*this` is a shallow copy of \p other ,
+  /// i.e. `*this == other && this->data()==other.data()`
+  Tensor(const Tensor& other)
+      : range_(other.range_),
+        batch_size_(other.batch_size_),
+        data_(other.data_) {
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->insert(
+          this, make_string("TA::Tensor(const Tensor& other)::data_.get()=",
+                            data_.get()));
+    }
+#endif
+  }
+
+  /// move constructor
+
+  /// \param[in,out] other an object to move data from;
+  ///                      on return \p other is in empty (null) but not
+  ///                      necessarily default state
+  /// \post `other.empty()`
+  Tensor(Tensor&& other)
+      : range_(std::move(other.range_)),
+        batch_size_(std::move(other.batch_size_)),
+        data_(std::move(other.data_)) {
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->erase(
+          &other,
+          make_string("TA::Tensor(Tensor&& other)::data_.get()=", data_.get()));
+      ptr_registry()->insert(
+          this,
+          make_string("TA::Tensor(Tensor&& other)::data_.get()=", data_.get()));
+    }
+#endif
+  }
+
+  ~Tensor() {
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->erase(
+          this, make_string("TA::~Tensor()::data_.get()=", data_.get()));
+    }
+#endif
+  }
 
   /// Construct a tensor with a range equal to \c range. The data is
   /// uninitialized.
@@ -359,7 +466,15 @@ class Tensor {
   /// \param data shared pointer to the data
   Tensor(const range_type& range, size_t batch_size,
          std::shared_ptr<value_type> data)
-      : range_(range), batch_size_(batch_size), data_(data) {}
+      : range_(range), batch_size_(batch_size), data_(data) {
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->insert(
+          this, make_string("TA::Tensor(range, batch_size, data)::data_.get()=",
+                            data_.get()));
+    }
+#endif
+  }
 
   /// The batch size accessor
 
@@ -412,6 +527,66 @@ class Tensor {
     return *this;
   }
 
+  /// copy assignment operator
+
+  /// \param[in] other an object to copy data from
+  /// \post `*this` is a shallow copy of \p other ,
+  /// i.e. `*this == other && this->data()==other.data()`
+  Tensor& operator=(const Tensor& other) {
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->erase(
+          this,
+          make_string("TA::Tensor::operator=(const Tensor&)::data_.get()=",
+                      data_.get()));
+    }
+#endif
+    range_ = other.range_;
+    batch_size_ = other.batch_size_;
+    data_ = other.data_;
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->insert(
+          this,
+          make_string("TA::Tensor::operator=(const Tensor&)::data_.get()=",
+                      data_.get()));
+    }
+#endif
+    return *this;
+  }
+
+  /// move assignment operator
+
+  /// \param[in,out] other an object to move data from;
+  ///                      on return \p other is in empty (null) but not
+  ///                      necessarily default state
+  /// \post `other.empty()`
+  Tensor& operator=(Tensor&& other) {
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->erase(
+          this, make_string("TA::Tensor::operator=(Tensor&&)::data_.get()=",
+                            data_.get()));
+    }
+    if (other.nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->erase(
+          &other, make_string("TA::Tensor::operator=(Tensor&&)::data_.get()=",
+                              data_.get()));
+    }
+#endif
+    range_ = std::move(other.range_);
+    batch_size_ = std::move(other.batch_size_);
+    data_ = std::move(other.data_);
+#ifdef TA_TENSOR_MEM_TRACE
+    if (nbytes() >= trace_if_larger_than_) {
+      ptr_registry()->insert(
+          this, make_string("TA::Tensor::operator=(Tensor&&)::data_.get()=",
+                            data_.get()));
+    }
+#endif
+    return *this;
+  }
+
   /// Tensor range object accessor
 
   /// \return The tensor range object
@@ -421,6 +596,14 @@ class Tensor {
 
   /// \return The number of elements in the tensor
   ordinal_type size() const { return (this->range().volume()); }
+
+  /// Tensor data size (in bytes) accessor
+
+  /// \return The number of bytes occupied by this tensor's data
+  /// \warning this only returns valid value if this is a tensor of scalars
+  std::size_t nbytes() const {
+    return this->range().volume() * this->batch_size_ * sizeof(T);
+  }
 
   /// Const element accessor
 
@@ -634,9 +817,21 @@ class Tensor {
 
   /// Test if the tensor is empty
 
-  /// \return \c true if this tensor was default constructed (contains no
-  /// data), otherwise \c false.
-  bool empty() const { return this->data_.use_count() == 0; }
+  /// \return \c true if this tensor contains no
+  ///         data, otherwise \c false.
+  /// \note Empty Tensor is defaul_ish_ , i.e. it is *equal* to
+  ///       a default-constructed Tensor
+  ///       (`this->empty()` is equivalent to `*this == Tensor{}`),
+  ///       but is not identical
+  ///       to a default-constructed Tensor (e.g., `this->empty()` does not
+  ///       imply `this->batch_size() == Tensor{}.batch_size()`)
+  bool empty() const {
+    // empty data_ implies default values for range_ (but NOT batch_size_)
+    TA_ASSERT(
+        (this->data_.use_count() == 0 && !this->range_) ||
+        (this->data_.use_count() != 0 && this->range_));  // range is empty
+    return this->data_.use_count() == 0;
+  }
 
   /// MADNESS serialization function
 
@@ -668,9 +863,35 @@ class Tensor {
 
   /// \param other The tensor to swap with this
   void swap(Tensor& other) {
+#ifdef TA_TENSOR_MEM_TRACE
+    bool this_to_be_traced = false;
+    bool other_to_be_traced = false;
+    if (nbytes() >= trace_if_larger_than_) {
+      this_to_be_traced = true;
+      ptr_registry()->erase(
+          this, make_string("TA::Tensor::swap()::data_.get()=", data_.get()));
+    }
+    if (other.nbytes() >= trace_if_larger_than_) {
+      other_to_be_traced = true;
+      ptr_registry()->erase(
+          &other,
+          make_string("TA::Tensor::swap()::data_.get()=", other.data_.get()));
+    }
+#endif
     std::swap(data_, other.data_);
     std::swap(range_, other.range_);
     std::swap(batch_size_, other.batch_size_);
+#ifdef TA_TENSOR_MEM_TRACE
+    if (other_to_be_traced) {
+      ptr_registry()->insert(
+          this, make_string("TA::Tensor::swap()::data_.get()=", data_.get()));
+    }
+    if (this_to_be_traced) {
+      ptr_registry()->insert(
+          &other,
+          make_string("TA::Tensor::swap()::data_.get()=", other.data_.get()));
+    }
+#endif
   }
 
   // clang-format off
@@ -1995,7 +2216,42 @@ class Tensor {
     return reduce(other, mult_add_op, add_op, numeric_type(0));
   }
 
+  /// @return pointer to the PtrRegistry object used for tracing TA::Tensor
+  /// lifetime
+  /// @warning only nonnull if configured with `TA_TENSOR_MEM_TRACE=ON`
+  static PtrRegistry* ptr_registry() {
+#ifdef TA_TENSOR_MEM_TRACE
+    static PtrRegistry registry;
+    return &registry;
+#else
+    return nullptr;
+#endif
+  }
+
+#ifdef TA_TENSOR_MEM_TRACE
+  /// @param nbytes sets the minimum size of TA::Tensor objects whose lifetime
+  /// will be tracked; must be greater or equal to 1
+  static void trace_if_larger_than(std::size_t nbytes) {
+    TA_ASSERT(nbytes >= 1);
+    trace_if_larger_than_ = nbytes;
+  }
+  /// @return the minimum size of TA::Tensor objects whose lifetime
+  /// will be tracked
+  static std::size_t trace_if_larger_than() { return trace_if_larger_than_; }
+#endif
+
+ private:
+#ifdef TA_TENSOR_MEM_TRACE
+  static std::size_t trace_if_larger_than_;
+#endif
+
 };  // class Tensor
+
+#ifdef TA_TENSOR_MEM_TRACE
+template <typename T, typename A>
+std::size_t Tensor<T, A>::trace_if_larger_than_ =
+    std::numeric_limits<std::size_t>::max();
+#endif
 
 template <typename T>
 Tensor<T> operator*(const Permutation& p, const Tensor<T>& t) {
@@ -2188,11 +2444,23 @@ void gemm(Alpha alpha, const Tensor<As...>& A, const Tensor<Bs...>& B,
 // template <typename T, typename A>
 // const typename Tensor<T, A>::range_type Tensor<T, A>::empty_range_;
 
+/// equality comparison
+/// \param[in] a a Tensor object
+/// \param[in] b another Tensor object
+/// \return true if ranges and data of \p a and \p b are equal
+/// \internal this does not compare batch_size  so any
+///           2 empty tensors are equal even if their batch_size
+///           differ
 template <typename T, typename A>
 bool operator==(const Tensor<T, A>& a, const Tensor<T, A>& b) {
   return a.range() == b.range() &&
          std::equal(a.data(), a.data() + a.size(), b.data());
 }
+
+/// inequality comparison
+/// \param[in] a a Tensor object
+/// \param[in] b another Tensor object
+/// \return true if ranges and data of \p a and \p b are not equal
 template <typename T, typename A>
 bool operator!=(const Tensor<T, A>& a, const Tensor<T, A>& b) {
   return !(a == b);

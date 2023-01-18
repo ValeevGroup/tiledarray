@@ -40,7 +40,7 @@ Both methods are supported. However, for most users we _strongly_ recommend to b
   - Boost.Container: header-only
   - Boost.Test: header-only or (optionally) as a compiled library, *only used for unit testing*
   - Boost.Range: header-only, *only used for unit testing*
-- [BTAS](http://github.com/ValeevGroup/BTAS), tag fba66ad9881ab29ea8df49ac6a6006cab3fb3ce5 . If usable BTAS installation is not found, TiledArray will download and compile
+- [BTAS](http://github.com/ValeevGroup/BTAS), tag 2917aa21465a93ae6f399874f247b5fe31d6b693 . If usable BTAS installation is not found, TiledArray will download and compile
   BTAS from source. *This is the recommended way to compile BTAS for all users*.
 - [MADNESS](https://github.com/m-a-d-n-e-s-s/madness), tag 0b44ef319643cb9721fbe17d294987c146e6460e .
   Only the MADworld runtime and BLAS/LAPACK C API component of MADNESS is used by TiledArray.
@@ -417,6 +417,7 @@ support may be added.
 * `TA_SIGNED_1INDEX_TYPE` -- Set to `OFF` to use unsigned 1-index coordinate type (default for TiledArray 1.0.0-alpha.2 and older). The default is `ON`, which enables the use of negative indices in coordinates.
 * `TA_MAX_SOO_RANK_METADATA` -- Specifies the maximum rank for which to use Small Object Optimization (hence, avoid the use of the heap) for metadata. The default is `8`.
 * `TA_TENSOR_MEM_PROFILE` -- Set to `ON` to profile host memory allocations used by TA::Tensor. This causes the use of Umpire for host memory allocation. This also enables additional tracing facilities provided by Umpire; these can be controlled via [environment variable `UMPIRE_LOG_LEVEL`](https://umpire.readthedocs.io/en/develop/sphinx/features/logging_and_replay.html), but note that the default is to log Umpire info into a file rather than stdout.
+* `TA_TENSOR_MEM_TRACE` -- Set to `ON` to *trace* host memory allocations used by TA::Tensor. This turns on support for tracking memory used by `Tensor` objects; such tracking must be enabled programmatically. This can greatly increase memory consumption by the application and is only intended for expert developers troubleshooting memory use by TiledArray.
 * `TA_UT_CTEST_TIMEOUT` -- The value (in seconds) of the timeout to use for running the TA unit tests via CTest when building the `check`/`check-tiledarray` targets. The default timeout is 1500s.
 
 # Build TiledArray

@@ -116,8 +116,7 @@ BOOST_AUTO_TEST_CASE(copy_constructor) {
 
   BOOST_CHECK_EQUAL(tc.empty(), t.empty());
 
-  // Check that range data is correct
-  BOOST_CHECK_EQUAL(tc.data(), t.data());
+  BOOST_CHECK_EQUAL(tc.data(), t.data());  // N.B. shallow copy!
   BOOST_CHECK_EQUAL(tc.size(), t.size());
   BOOST_CHECK_EQUAL(tc.range(), t.range());
   BOOST_CHECK_EQUAL(tc.begin(), t.begin());
@@ -127,6 +126,28 @@ BOOST_AUTO_TEST_CASE(copy_constructor) {
   BOOST_CHECK_EQUAL(const_cast<const TensorN&>(tc).end(),
                     const_cast<const TensorN&>(t).end());
   BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
+}
+
+BOOST_AUTO_TEST_CASE(move_constructor) {
+  TensorN tc(t);
+  TensorN td(std::move(tc));
+
+  BOOST_CHECK_EQUAL(td.empty(), t.empty());
+
+  // Check that range data is correct
+  BOOST_CHECK_EQUAL(td.data(), t.data());
+  BOOST_CHECK_EQUAL(td.size(), t.size());
+  BOOST_CHECK_EQUAL(td.range(), t.range());
+  BOOST_CHECK_EQUAL(td.begin(), t.begin());
+  BOOST_CHECK_EQUAL(td.end(), t.end());
+  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(td).begin(),
+                    const_cast<const TensorN&>(t).begin());
+  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(td).end(),
+                    const_cast<const TensorN&>(t).end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(td.begin(), td.end(), t.begin(), t.end());
+
+  // check that moved-from object is empty
+  BOOST_CHECK(tc.empty());
 }
 
 BOOST_AUTO_TEST_CASE(permute_constructor) {
@@ -287,6 +308,46 @@ BOOST_AUTO_TEST_CASE(clone) {
   BOOST_CHECK_EQUAL(tc.size(), t.size());
   BOOST_CHECK_EQUAL(tc.range(), t.range());
   BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
+}
+
+BOOST_AUTO_TEST_CASE(copy_assignment_operator) {
+  TensorN tc;
+  tc = t;
+
+  BOOST_CHECK_EQUAL(tc.empty(), t.empty());
+
+  BOOST_CHECK_EQUAL(tc.data(), t.data());  // N.B. shallow copy!
+  BOOST_CHECK_EQUAL(tc.size(), t.size());
+  BOOST_CHECK_EQUAL(tc.range(), t.range());
+  BOOST_CHECK_EQUAL(tc.begin(), t.begin());
+  BOOST_CHECK_EQUAL(tc.end(), t.end());
+  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(tc).begin(),
+                    const_cast<const TensorN&>(t).begin());
+  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(tc).end(),
+                    const_cast<const TensorN&>(t).end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
+}
+
+BOOST_AUTO_TEST_CASE(move_assignment_operator) {
+  TensorN td(t);
+  TensorN tc;
+  tc = std::move(td);
+
+  BOOST_CHECK_EQUAL(tc.empty(), t.empty());
+
+  // Check that range data is correct
+  BOOST_CHECK_EQUAL(tc.data(), t.data());
+  BOOST_CHECK_EQUAL(tc.size(), t.size());
+  BOOST_CHECK_EQUAL(tc.range(), t.range());
+  BOOST_CHECK_EQUAL(tc.begin(), t.begin());
+  BOOST_CHECK_EQUAL(tc.end(), t.end());
+  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(tc).begin(),
+                    const_cast<const TensorN&>(t).begin());
+  BOOST_CHECK_EQUAL(const_cast<const TensorN&>(tc).end(),
+                    const_cast<const TensorN&>(t).end());
+  BOOST_CHECK_EQUAL_COLLECTIONS(tc.begin(), tc.end(), t.begin(), t.end());
+  // moved-from object is empty
+  BOOST_CHECK(td.empty());
 }
 
 BOOST_AUTO_TEST_CASE(range_accessor) {
@@ -532,8 +593,7 @@ BOOST_AUTO_TEST_CASE(gemm) {
       integer m = 1, n = 1, k = 1;
       gemm_helper_nt.compute_matrix_sizes(m, n, k, x.range(), y.range());
       math::blas::gemm(TiledArray::math::blas::Op::NoTrans,
-                       TiledArray::math::blas::Op::Trans,
-                       m, n, k, alpha,
+                       TiledArray::math::blas::Op::Trans, m, n, k, alpha,
                        x.data(), k, y.data(), k, 0, z0_ref.data(), n);
     }
     for (std::size_t i = 0ul; i < z0.size(); ++i)
