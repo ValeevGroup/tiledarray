@@ -25,8 +25,8 @@
 // The U.S. Government is granted a limited license as per AL 91-7.
 //
 
-#ifndef MPQC4_SRC_MPQC_UTIL_CORE_BACKTRACE_H_
-#define MPQC4_SRC_MPQC_UTIL_CORE_BACKTRACE_H_
+#ifndef TILEDARRAY_UTIL_BACKTRACE_H_
+#define TILEDARRAY_UTIL_BACKTRACE_H_
 
 #include <string>
 #include <vector>
@@ -80,4 +80,8 @@ class Backtrace {
 }  // namespace detail
 }  // namespace TiledArray
 
-#endif  // MPQC4_SRC_MPQC_UTIL_CORE_BACKTRACE_H_
+/// dumps backtrace to std::cout
+/// @note this function has C linkage
+extern "C" void tiledarray_dump_backtrace_to_std_cout();
+
+#endif  // TILEDARRAY_UTIL_BACKTRACE_H_
