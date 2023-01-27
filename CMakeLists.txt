@@ -311,13 +311,13 @@ if(ENABLE_CUDA)
   include(external/cuda.cmake)
 endif()
 if (TA_TTG)
-  include(FindOrFetchTTG)
+  include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchTTG.cmake)
 endif(TA_TTG)
-include(FindOrFetchMADWorld)
+include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchMADWorld.cmake)
 detect_MADNESS_configuration()
 include(external/eigen.cmake)
 # the FetchContent-based version will not work due to BLT target name conflicts
-# include(FindOrFetchUmpire)
+# include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchUmpire.cmake)
 # use the ExternalProject-based version
 include(external/umpire.cmake)
 
@@ -333,8 +333,8 @@ if (ENABLE_WFN91_LINALG_DISCOVERY_KIT)
 endif(ENABLE_WFN91_LINALG_DISCOVERY_KIT)
 # BTAS does a better job of building and checking Boost since it uses Boost::serialization
 # it also memorized the location of its config for use from install tree
-include(FindOrFetchBTAS)
-include(FindOrFetchBoost)
+include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBTAS.cmake)
+include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchBoost.cmake)
 if(ENABLE_SCALAPACK)
   include(external/scalapackpp.cmake)
 endif()
@@ -350,12 +350,12 @@ if(CCACHE)
 endif(CCACHE)
 # 2. range-v3
 if (TA_RANGEV3)
-  include(FindOrFetchRangeV3)
+  include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchRangeV3.cmake)
 endif(TA_RANGEV3)
 # 3. TTG
 # N.B. make sure TA configures MADNESS correctly
 #if (TA_TTG)
-#  include(FindOrFetchTTG)
+#  include(${PROJECT_SOURCE_DIR}/cmake/modules/FindOrFetchTTG.cmake)
 #endif(TA_TTG)
 
 ##########################
