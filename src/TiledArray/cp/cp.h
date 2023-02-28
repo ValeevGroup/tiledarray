@@ -5,25 +5,24 @@
 #ifndef TILEDARRAY_CP_CP__H
 #define TILEDARRAY_CP_CP__H
 
-#include <tiledarray.h>
-#include <TiledArray/expressions/einsum.h>
-#include <random>
 #include <TiledArray/conversions/btas.h>
+#include <TiledArray/expressions/einsum.h>
+#include <tiledarray.h>
+#include <random>
 
-namespace TiledArray::cp{
-namespace detail{
+namespace TiledArray::cp {
+namespace detail {
 // A seed for the random number generator.
-static inline unsigned int& random_seed_accessor(){
+static inline unsigned int& random_seed_accessor() {
   static unsigned int value = 3;
   return value;
 }
 
 // given a rank and block size, this computes a
 // trange for the rank dimension to be used to make the CP factors.
-static inline TiledRange1 compute_trange1(size_t rank, size_t rank_block_size){
-  std::size_t nblocks =
-      (rank + rank_block_size - 1) / rank_block_size;
-  auto dv = std::div((int) (rank + nblocks - 1), (int) nblocks);
+static inline TiledRange1 compute_trange1(size_t rank, size_t rank_block_size) {
+  std::size_t nblocks = (rank + rank_block_size - 1) / rank_block_size;
+  auto dv = std::div((int)(rank + nblocks - 1), (int)nblocks);
   auto avg_block_size = dv.quot - 1, num_avg_plus_one = dv.rem + 1;
 
   TiledArray::TiledRange1 new_trange1;
@@ -31,23 +30,24 @@ static inline TiledRange1 compute_trange1(size_t rank, size_t rank_block_size){
     std::vector<std::size_t> new_trange1_v;
     new_trange1_v.reserve(nblocks + 1);
     auto block_counter = 0;
-    for(auto i = 0; i < num_avg_plus_one; ++i, block_counter += avg_block_size + 1){
+    for (auto i = 0; i < num_avg_plus_one;
+         ++i, block_counter += avg_block_size + 1) {
       new_trange1_v.emplace_back(block_counter);
     }
-    for (auto i = num_avg_plus_one; i < nblocks; ++i, block_counter+= avg_block_size) {
+    for (auto i = num_avg_plus_one; i < nblocks;
+         ++i, block_counter += avg_block_size) {
       new_trange1_v.emplace_back(block_counter);
     }
     new_trange1_v.emplace_back(rank);
-    new_trange1 = TiledArray::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
+    new_trange1 =
+        TiledArray::TiledRange1(new_trange1_v.begin(), new_trange1_v.end());
   }
   return new_trange1;
 }
 
-static inline char intToAlphabet( int i ){
-  return static_cast<char>('a' + i);
-}
+static inline char intToAlphabet(int i) { return static_cast<char>('a' + i); }
 
-} // namespace TiledArray::cp::detail
+}  // namespace detail
 
 /**
  * This is a base class for the canonical polyadic (CP)
@@ -65,10 +65,11 @@ static inline char intToAlphabet( int i ){
  *
  * This base class will be constructed by dependent classes
  * which will be used to actually decompose a specific tensor/tensor-network.
-**/
-template<typename Tile, typename Policy>
+ **/
+template <typename Tile, typename Policy>
 class CP {
   using Array = DistArray<Tile, Policy>;
+
  public:
   /// Generic construction class
   CP() = default;
@@ -76,10 +77,10 @@ class CP {
   /// This function should be used by dependent classes
   /// @param[in] n_factors The number of factor matrices in
   /// the CP problem.
-  CP(size_t n_factors) : ndim(n_factors){
+  CP(size_t n_factors) : ndim(n_factors) {
     cp_factors.reserve(n_factors);
     partial_grammian.reserve(n_factors);
-    for(auto i = 0; i < ndim; ++i){
+    for (auto i = 0; i < ndim; ++i) {
       Array W;
       partial_grammian.emplace_back(W);
     }
@@ -101,24 +102,22 @@ class CP {
   /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
   /// \param[in] verbose false; should check fit print fit information.
   /// \returns the fit: \f$ 1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
-  double compute_rank(size_t rank,
-                      size_t rank_block_size = 0,
-                      bool build_rank = false,
-                      double epsilonALS= 1e-3,
-                      bool verbose = false){
-    rank_block_size = (rank_block_size == 0 ? rank: rank_block_size);
+  double compute_rank(size_t rank, size_t rank_block_size = 0,
+                      bool build_rank = false, double epsilonALS = 1e-3,
+                      bool verbose = false) {
+    rank_block_size = (rank_block_size == 0 ? rank : rank_block_size);
     double epsilon = 1.0;
     fit_tol = epsilonALS;
     TiledRange1 rank_trange;
-    if(build_rank){
+    if (build_rank) {
       size_t cur_rank = 1;
-      do{
+      do {
         rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
         build_guess(cur_rank, rank_trange);
         ALS(cur_rank, 100, verbose);
         ++cur_rank;
-      }while(cur_rank < rank);
-    } else{
+      } while (cur_rank < rank);
+    } else {
       rank_trange = detail::compute_trange1(rank, rank_block_size);
       build_guess(rank, rank_trange);
       ALS(rank, 100, verbose);
@@ -137,37 +136,37 @@ class CP {
   /// \param[in] epsilonALS 1e-3; the stopping condition for the ALS solver
   /// \param[in] verbose false; should check fit print fit information.
   /// \returns the fit: \f$1.0 - |T_{\text{exact}} - T_{\text{approx}} | \f$
-  double compute_error(double error,
-                       size_t max_rank,
-                       size_t rank_block_size = 0,
-                       double epsilonALS = 1e-3,
-                       bool verbose = false){
+  double compute_error(double error, size_t max_rank,
+                       size_t rank_block_size = 0, double epsilonALS = 1e-3,
+                       bool verbose = false) {
     rank_block_size = (rank_block_size == 0 ? max_rank : rank_block_size);
     size_t cur_rank = 1;
     double epsilon = 1.0;
     fit_tol = epsilonALS;
-    do{
+    do {
       auto rank_trange = detail::compute_trange1(cur_rank, rank_block_size);
       build_guess(cur_rank, rank_trange);
       ALS(cur_rank, 100, verbose);
       ++cur_rank;
-    }while(epsilon > error && cur_rank < max_rank);
+    } while (epsilon > error && cur_rank < max_rank);
 
     return epsilon;
   }
 
-  std::vector< Array > get_factor_matrices(){
-    TA_ASSERT(!cp_factors.empty(),"CP factor matrices have not been computed)");
+  std::vector<Array> get_factor_matrices() {
+    TA_ASSERT(!cp_factors.empty(),
+              "CP factor matrices have not been computed)");
     cp_factors.pop_back();
     cp_factors.emplace_back(unNormalized_Factor);
     return cp_factors;
   }
 
-  Array reconstruct(){
-    TA_ASSERT(!cp_factors.empty(),"CP factor matrices have not been computed)");
+  Array reconstruct() {
+    TA_ASSERT(!cp_factors.empty(),
+              "CP factor matrices have not been computed)");
     std::string lhs("r,0"), rhs("r,"), final("r,0");
     Array krp = cp_factors[0];
-    for(size_t i = 1; i < ndim - 1; ++i){
+    for (size_t i = 1; i < ndim - 1; ++i) {
       rhs += std::to_string(i);
       final += "," + std::to_string(i);
       krp = expressions::einsum(krp(lhs), cp_factors[i](rhs), final);
@@ -180,36 +179,34 @@ class CP {
     krp(final) = krp(lhs) * unNormalized_Factor(rhs);
     return krp;
   }
- protected:
-  std::vector<Array >
-      cp_factors,                   // the CP factor matrices
-      partial_grammian;             // square of the factor matrices (r x r)
-  Array
-      MTtKRP,                      // matricized tensor times
-                            // khatri rao product for check_fit()
-      unNormalized_Factor,         // The final factor unnormalized
-                            // so you don't have to
-                            // deal with lambda for check_fit()
-      lambda;               // column normalizations
-  //std::vector<typename Tile::value_type>
-  //    lambda;                      // Column normalizations
 
-  size_t ndim;                     // number of factor matrices
-  double prev_fit = 1.0,           // The fit of the previous ALS iteration
-      final_fit,                // The final fit of the ALS
+ protected:
+  std::vector<Array> cp_factors,  // the CP factor matrices
+      partial_grammian;           // square of the factor matrices (r x r)
+  Array MTtKRP,                   // matricized tensor times
+                                  // khatri rao product for check_fit()
+      unNormalized_Factor,        // The final factor unnormalized
+                                  // so you don't have to
+                                  // deal with lambda for check_fit()
+      lambda;                     // column normalizations
+  // std::vector<typename Tile::value_type>
+  //     lambda;                      // Column normalizations
+
+  size_t ndim;            // number of factor matrices
+  double prev_fit = 1.0,  // The fit of the previous ALS iteration
+      final_fit,          // The final fit of the ALS
                           // optimization at fixed rank.
-      fit_tol,                  // Tolerance for the ALS solver
-      converged_num,            // How many times the ALS solver
+      fit_tol,            // Tolerance for the ALS solver
+      converged_num,      // How many times the ALS solver
                           // has changed less than the tolerance
-      norm_reference;           // used in determining the CP fit.
+      norm_reference;     // used in determining the CP fit.
 
   /// This function is determined by the specific CP solver.
   /// builds the rank @c rank CP approximation and stores
   /// them in cp_factors.
   /// \param[in] rank rank of the CP approximation
   /// \param[in] rank_trange TiledRange1 of the rank dimension.
-  virtual void build_guess(size_t rank,
-                           TiledRange1 rank_trange) = 0;
+  virtual void build_guess(size_t rank, TiledRange1 rank_trange) = 0;
 
   /// This function uses BTAS to construct a random
   /// factor matrix which can be used as an initial guess to any CP
@@ -220,30 +217,31 @@ class CP {
   /// \param[in] trange1_rank TiledRange1 for the rank dimension.
   /// \param[in] trange1_mode TiledRange1 for the mode in the reference tensor.
   /// Should match the TiledRange1 in the reference tensor(s).
-  Array
-  construct_random_factor(madness::World & world,
-                          size_t rank, size_t mode_size,
-                          TiledArray::TiledRange1 trange1_rank,
-                          TiledArray::TiledRange1 trange1_mode){
-    using Tensor = btas::Tensor<typename Array::element_type,
-                                btas::DEFAULT::range, btas::varray<typename Tile::value_type>>;
+  Array construct_random_factor(madness::World& world, size_t rank,
+                                size_t mode_size,
+                                TiledArray::TiledRange1 trange1_rank,
+                                TiledArray::TiledRange1 trange1_mode) {
+    using Tensor =
+        btas::Tensor<typename Array::element_type, btas::DEFAULT::range,
+                     btas::varray<typename Tile::value_type>>;
     Tensor factor(rank, mode_size);
-    auto lambda = std::vector<typename Tile::value_type>(rank, (typename Tile::value_type) 0);
-    if(world.rank() == 0) {
+    auto lambda = std::vector<typename Tile::value_type>(
+        rank, (typename Tile::value_type)0);
+    if (world.rank() == 0) {
       std::mt19937 generator(detail::random_seed_accessor());
       std::uniform_real_distribution<> distribution(-1.0, 1.0);
       auto factor_ptr = factor.data();
       size_t offset = 0;
-      for(auto r = 0; r < rank; ++r, offset += mode_size){
+      for (auto r = 0; r < rank; ++r, offset += mode_size) {
         auto lam_ptr = lambda.data() + r;
-        for(auto m = offset; m < offset + mode_size; ++m){
+        for (auto m = offset; m < offset + mode_size; ++m) {
           auto val = distribution(generator);
           *(factor_ptr + m) = val;
           *lam_ptr += val * val;
         }
         *lam_ptr = sqrt(*lam_ptr);
-        auto inv = (*lam_ptr < 1e-12 ? 1.0 :  1.0 / (*lam_ptr));
-        for(auto m = 0; m < mode_size; ++m){
+        auto inv = (*lam_ptr < 1e-12 ? 1.0 : 1.0 / (*lam_ptr));
+        for (auto m = 0; m < mode_size; ++m) {
           *(factor_ptr + offset + m) *= inv;
         }
       }
@@ -251,11 +249,9 @@ class CP {
     world.gop.broadcast_serializable(factor, 0);
     world.gop.broadcast_serializable(lambda, 0);
 
-    return TiledArray::btas_tensor_to_array<
-        Array >
-        (world,
-         TiledArray::TiledRange({trange1_rank, trange1_mode}),
-         factor, (world.size() != 1));
+    return TiledArray::btas_tensor_to_array<Array>(
+        world, TiledArray::TiledRange({trange1_rank, trange1_mode}), factor,
+        (world.size() != 1));
   }
   /// This function is specified by the CP solver
   /// optimizes the rank @c rank CP approximation
@@ -271,9 +267,9 @@ class CP {
   /// \param[in,out] MtKRP In: Matricized tensor times KRP Out: The solution to
   /// Ax = B.
   /// \param[in] W The grammian matrixed used to determine LS solution.
-  void cholesky_inverse(Array & MtKRP,
-                        const Array & W){
-    //auto inv = TiledArray::math::linalg::cholesky_lsolve(NoTranspose,W, MtKRP);
+  void cholesky_inverse(Array& MtKRP, const Array& W) {
+    // auto inv = TiledArray::math::linalg::cholesky_lsolve(NoTranspose,W,
+    // MtKRP);
     MtKRP = math::linalg::cholesky_solve(W, MtKRP);
   }
 
@@ -284,27 +280,28 @@ class CP {
   /// \param[in] W The grammian matrixed used to determine LS solution.
   /// \param[in] svd_invert_threshold Don't invert
   /// numerical 0 i.e. @c svd_invert_threshold
-  void pseudo_inverse(Array & MtKRP,
-                      const Array & W,
-                      double svd_invert_threshold = 1e-12){
+  void pseudo_inverse(Array& MtKRP, const Array& W,
+                      double svd_invert_threshold = 1e-12) {
     // compute the SVD of W;
     auto SVD = TiledArray::svd<SVD::Vectors::AllVectors>(W);
 
     // Grab references to S, U and Vt
-    auto& S = std::get<0>(SVD),
-         & U = std::get<1>(SVD),
-         & Vt = std::get<2>(SVD);
+    auto &S = std::get<0>(SVD), &U = std::get<1>(SVD), &Vt = std::get<2>(SVD);
 
     // Walk through S and invert diagonal elements
-    TiledArray::foreach_inplace(S, [&, svd_invert_threshold](auto& tile){
+    TiledArray::foreach_inplace(
+        S,
+        [&, svd_invert_threshold](auto& tile) {
           auto const& range = tile.range();
           auto const lo = range.lobound_data();
           auto const up = range.upbound_data();
           for (auto n = lo[0]; n != up[0]; ++n) {
-            auto& val = tile(n,n);
-            if(val < svd_invert_threshold) continue;
+            auto& val = tile(n, n);
+            if (val < svd_invert_threshold) continue;
             val = 1.0 / val;
-          }},true);
+          }
+        },
+        true);
 
     MtKRP("r,n") = (U("r,s") * S("s,sp")) * (Vt("sp,rp") * MtKRP("rp,n"));
   }
@@ -324,8 +321,8 @@ class CP {
     std::vector<typename Tile::value_type> inv_lambda(lambda);
     for(auto & i : inv_lambda) i = (i > 1e-12 ? 1 / i : i);
     auto diag_lambda = diagonal_array<Array>(world, rank_trange,
-                                             inv_lambda.begin(), inv_lambda.end());
-    factor("rp,n") = diag_lambda("rp,r") * factor("r,n");
+                                             inv_lambda.begin(),
+  inv_lambda.end()); factor("rp,n") = diag_lambda("rp,r") * factor("r,n");
     return lambda;
   }
   */
@@ -335,17 +332,14 @@ class CP {
   /// Also normalizes the columns of \c factor
   /// \param[in,out] factor in: unnormalized factor matrix, out: column
   /// normalized factor matrix
-  void normCol(Array &factor, size_t rank) {
+  void normCol(Array& factor, size_t rank) {
     auto& world = factor.world();
-    //factor = replicated(factor);
-    //lambda = expressions::einsum("rn,rn->r",factor, factor);
     lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
-    lambda = replicated(lambda);
     auto text = factor.trange().tiles_range().extent_data();
     auto r_tiles = text[0], n_tiles = text[1];
 
     auto scale_factor = [&factor](int r, int n, Tile& tile) {
-      //if (factor.is_zero({r, n})) return 1;
+      // if (factor.is_zero({r, n})) return 1;
       auto fac_tile = factor.find({r, n}).get();
       auto lo = tile.range().lobound_data();
       auto up = tile.range().upbound_data();
@@ -360,13 +354,13 @@ class CP {
           (*ptr_factor) *= val;
         }
       }
-      return  sqrt(norm2);
+      return sqrt(norm2);
     };
     // The column norms will be computed on each MPI rank to
     // avoid communication.
 
-    //auto &owners = worlds.back();
-    //set_default_world(*owners);
+    // auto &owners = worlds.back();
+    // set_default_world(*owners);
     for (int r = 0; r < r_tiles; ++r) {
       auto tile = lambda.find(r).get();
       for (int n = 0; n < n_tiles; ++n) {
@@ -374,7 +368,7 @@ class CP {
         world.taskq.add(scale_factor, r, n, tile);
       }
     }
-    //set_default_world(world);
+    // set_default_world(world);
     world.gop.fence();
     factor.truncate();
   }
@@ -398,8 +392,8 @@ class CP {
           *(lambda_ptr) += val * val;
         }
         *(lambda_ptr) = sqrt(*(lambda_ptr));
-        auto one_over_lam = (*(lambda_ptr) > 1e-12 ? 1/ *(lambda_ptr) : *(lambda_ptr));
-        for(auto n = 0; n < col_dim; ++n){
+        auto one_over_lam = (*(lambda_ptr) > 1e-12 ? 1/ *(lambda_ptr) :
+  *(lambda_ptr)); for(auto n = 0; n < col_dim; ++n){
           *(bf_ptr + n) *= one_over_lam;
         }
       }
@@ -419,34 +413,37 @@ class CP {
   /// \param[in] verbose false; Should the fit and change
   /// in fit be printed each call?
   /// \returns bool : is the change in fit less than the ALS tolerance?
-  virtual bool check_fit(bool verbose = false){
+  virtual bool check_fit(bool verbose = false) {
     // Compute the inner product T * T_CP
     double inner_prod = MTtKRP("r,n").dot(unNormalized_Factor("r,n"));
     // compute the square of the CP tensor (can use the grammian)
-    auto factor_norm=[&](){
+    auto factor_norm = [&]() {
       auto gram_ptr = partial_grammian.begin();
       Array W(*(gram_ptr));
       ++gram_ptr;
-      for(size_t i = 1; i < ndim -1; ++i, ++gram_ptr){
+      for (size_t i = 1; i < ndim - 1; ++i, ++gram_ptr) {
         W("r,rp") *= (*gram_ptr)("r,rp");
       }
-      return sqrt(W("r,rp").dot((unNormalized_Factor("r,n") * unNormalized_Factor("rp,n"))));
+      return sqrt(W("r,rp").dot(
+          (unNormalized_Factor("r,n") * unNormalized_Factor("rp,n"))));
     };
     // compute the error in the loss function and find the fit
     double normFactors = factor_norm(),
-           normResidual = sqrt(abs(norm_reference * norm_reference + normFactors * normFactors - 2.0 * inner_prod)),
+           normResidual =
+               sqrt(abs(norm_reference * norm_reference +
+                        normFactors * normFactors - 2.0 * inner_prod)),
            fit = 1.0 - (normResidual / norm_reference),
            fit_change = abs(prev_fit - fit);
     prev_fit = fit;
     // print fit data if required
-    if(verbose){
+    if (verbose) {
       std::cout << fit << "\t" << fit_change << std::endl;
     }
 
     // if the change in fit is less than the tolerance try to return true.
-    if(fit_change < fit_tol){
+    if (fit_change < fit_tol) {
       converged_num++;
-      if(converged_num == 2){
+      if (converged_num == 2) {
         converged_num = 0;
         final_fit = prev_fit;
         prev_fit = 1.0;
@@ -457,6 +454,6 @@ class CP {
   }
 };
 
-} // namespace TiledArray::cp
+}  // namespace TiledArray::cp
 
 #endif  // TILEDARRAY_CP_CP__H
