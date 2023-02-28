@@ -75,7 +75,7 @@ class TensorImpl : private NO_DEFAULTS {
         shape_(std::make_shared<shape_type>(shape)),
         pmap_(pmap) {
     // ensure that shapes are identical on every rank
-    if (replicate_shape)
+    if (replicate_shape && !shape.is_dense())
       world.gop.broadcast_serializable(*shape_, 0);
     else
       TA_ASSERT(is_replicated(world, *shape_));

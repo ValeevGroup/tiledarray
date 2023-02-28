@@ -256,7 +256,7 @@ BOOST_FIXTURE_TEST_CASE_TEMPLATE(scale_permute, F, Fixtures, F) {
   auto& a = F::a;
   auto& b = F::b;
   Permutation perm({2, 1, 0});
-  BOOST_REQUIRE_NO_THROW(a("a,b,c") = 2 * b("c,b,a"));
+  BOOST_REQUIRE_NO_THROW(a("α,β,γ") = 2 * b("γ,β,α"));
 
   for (std::size_t i = 0ul; i < b.size(); ++i) {
     const std::size_t perm_index =

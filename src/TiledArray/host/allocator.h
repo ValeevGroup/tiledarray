@@ -36,12 +36,12 @@
 
 namespace TiledArray {
 
-/// CUDA UM allocator, based on boilerplate by Howard Hinnant
-/// (https://howardhinnant.github.io/allocator_boilerplate.html)
+/// pooled, thread-safe allocator for host memory
 template <class T>
-class host_allocator_impl : public umpire_allocator_impl<T> {
+class host_allocator_impl
+    : public umpire_allocator_impl<T, detail::MutexLock<hostEnv>> {
  public:
-  using base_type = umpire_allocator_impl<T>;
+  using base_type = umpire_allocator_impl<T, detail::MutexLock<hostEnv>>;
   using typename base_type::const_pointer;
   using typename base_type::const_reference;
   using typename base_type::pointer;
@@ -58,7 +58,7 @@ class host_allocator_impl : public umpire_allocator_impl<T> {
   template <typename T1, typename T2>
   friend bool operator==(const host_allocator_impl<T1>& lhs,
                          const host_allocator_impl<T2>& rhs) noexcept;
-};  // class host_allocator
+};  // class host_allocator_impl
 
 template <class T1, class T2>
 bool operator==(const host_allocator_impl<T1>& lhs,

@@ -28,9 +28,9 @@
 
 // for memory management
 #include <umpire/Umpire.hpp>
+#include <umpire/strategy/AlignedAllocator.hpp>
 #include <umpire/strategy/QuickPool.hpp>
 #include <umpire/strategy/SizeLimiter.hpp>
-#include <umpire/strategy/ThreadSafeAllocator.hpp>
 
 #include <TiledArray/external/madness.h>
 #include <madness/world/print.h>
@@ -42,11 +42,11 @@
 namespace TiledArray {
 
 /**
- * hostEnv set up global environment
+ * hostEnv maintains the (host-side, as opposed to device-side) environment,
+ * such as memory allocators
  *
- * Singleton class
+ * \note this is a Singleton
  */
-
 class hostEnv {
  public:
   ~hostEnv() = default;
@@ -56,20 +56,26 @@ class hostEnv {
   hostEnv& operator=(const hostEnv&) = delete;
   hostEnv& operator=(hostEnv&&) = delete;
 
-  /// access the instance, if not initialized will be initialized using default
-  /// params
+  /// access the singleton instance; if not initialized will be
+  /// initialized via hostEnv::initialize() with the default params
   static std::unique_ptr<hostEnv>& instance() {
     if (!instance_accessor()) {
-      initialize(TiledArray::get_default_world());
+      initialize();
     }
     return instance_accessor();
   }
 
   /// initialize the instance using explicit params
-  static void initialize(World& world,
-                         const std::uint64_t max_memory_size = (1ul << 40),
-                         const std::uint64_t page_size = (1ul << 22)) {
-    // initialize only when not initialized
+  /// \param max_memory_size max amount of memory (bytes) that TiledArray
+  ///        can use for storage of TA::Tensor objects (these by default
+  ///        store DistArray tile data and (if sparse) shape [default=2^40]
+  /// \param page_size memory added to the pool in chunks of at least
+  ///                  this size (bytes) [default=2^25]
+  static void initialize(const std::uint64_t max_memory_size = (1ul << 40),
+                         const std::uint64_t page_size = (1ul << 25)) {
+    static std::mutex mtx;  // to make initialize() reentrant
+    std::scoped_lock lock{mtx};
+    // only the winner of the lock race gets to initialize
     if (instance_accessor() == nullptr) {
       // uncomment to debug umpire ops
       //
@@ -80,33 +86,44 @@ class hostEnv {
 
       auto& rm = umpire::ResourceManager::getInstance();
 
-      // turn off Umpire introspection for non-Debug builds
-#ifndef NDEBUG
-      constexpr auto introspect = true;
-#else
+      // N.B. we don't rely on Umpire introspection (even for profiling)
       constexpr auto introspect = false;
-#endif
 
-      // allocate zero memory for device pool, same grain for subsequent allocs
+      // use QuickPool for host memory allocation, with min grain of 1 page
       auto host_size_limited_alloc =
           rm.makeAllocator<umpire::strategy::SizeLimiter, introspect>(
-              "size_limited_alloc", rm.getAllocator("HOST"), max_memory_size);
+              "SizeLimited_HOST", rm.getAllocator("HOST"), max_memory_size);
       auto host_dynamic_pool =
           rm.makeAllocator<umpire::strategy::QuickPool, introspect>(
-              "HostDynamicPool", host_size_limited_alloc, 0, page_size);
-      auto thread_safe_host_dynamic_pool =
-          rm.makeAllocator<umpire::strategy::ThreadSafeAllocator, introspect>(
-              "ThreadSafeHostDynamicPool", host_dynamic_pool);
+              "QuickPool_SizeLimited_HOST", host_size_limited_alloc, page_size,
+              page_size, /* alignment */ TILEDARRAY_ALIGN_SIZE);
 
       auto host_env = std::unique_ptr<hostEnv>(
-          new hostEnv(world, thread_safe_host_dynamic_pool));
+          new hostEnv(TiledArray::get_default_world(), host_dynamic_pool));
       instance_accessor() = std::move(host_env);
     }
   }
 
   World& world() const { return *world_; }
 
+  /// @return an Umpire allocator that allocates from a
+  ///         host memory pool
+  /// @warning this is not a thread-safe allocator, should be only used when
+  ///          wrapped into umpire_allocator_impl
   umpire::Allocator& host_allocator() { return host_allocator_; }
+
+  // clang-format off
+  /// @return the max actual amount of memory held by host_allocator()
+  /// @details returns the value provided by `umpire::strategy::QuickPool::getHighWatermark()`
+  /// @note if there is only 1 Umpire allocator using HOST memory this should be identical to the value returned by `umpire::ResourceManager::getInstance().getAllocator("HOST").getHighWatermark()`
+  // clang-format on
+  std::size_t host_allocator_getActualHighWatermark() {
+    TA_ASSERT(dynamic_cast<umpire::strategy::QuickPool*>(
+                  host_allocator_.getAllocationStrategy()) != nullptr);
+    return dynamic_cast<umpire::strategy::QuickPool*>(
+               host_allocator_.getAllocationStrategy())
+        ->getActualHighwaterMark();
+  }
 
  protected:
   hostEnv(World& world, umpire::Allocator host_alloc)
@@ -116,7 +133,8 @@ class hostEnv {
   // the world used to initialize this
   World* world_;
 
-  /// allocates from a thread-safe, dynamic, size-limited host memory pool
+  // allocates from a dynamic, size-limited host memory pool
+  // N.B. not thread safe, so must be wrapped into umpire_allocator_impl
   umpire::Allocator host_allocator_;
 
   inline static std::unique_ptr<hostEnv>& instance_accessor() {

@@ -64,8 +64,14 @@ class DensePolicy;
 class SparsePolicy;
 
 // TiledArray Tensors
-// can also use host_allocator<T> and std::allocator<T> for A
-template <typename T, typename A = Eigen::aligned_allocator<T>>
+// can any standard-compliant allocator such as std::allocator<T>
+template <typename T, typename A =
+#ifndef TA_TENSOR_MEM_PROFILE
+                          Eigen::aligned_allocator<T>
+#else
+                          host_allocator<T>
+#endif
+          >
 class Tensor;
 
 typedef Tensor<double> TensorD;

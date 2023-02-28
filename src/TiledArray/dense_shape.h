@@ -114,6 +114,11 @@ class DenseShape {
   /// \return Always \c false
   static constexpr bool empty() { return false; }
 
+  /// Check if the shape is initialized (i.e. !empty())
+
+  /// \return always  \c true
+  constexpr explicit operator bool() const { return !empty(); }
+
   DenseShape mask(const DenseShape&) const { return DenseShape{}; };
 
   template <typename Index1, typename Index2,

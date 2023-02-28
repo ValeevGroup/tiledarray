@@ -1,48 +1,48 @@
 ##
-## find cuTT
+## find LibreTT
 ##
 
-find_path(_CUTT_INSTALL_DIR NAMES include/cutt.h lib/libcutt.a HINTS ${CUTT_INSTALL_DIR})
+find_path(_LIBRETT_INSTALL_DIR NAMES include/librett.h lib/librett.a HINTS ${LIBRETT_INSTALL_DIR})
 
-if( _CUTT_INSTALL_DIR )
+if( _LIBRETT_INSTALL_DIR )
 
-    message(STATUS "cuTT found at ${_CUTT_INSTALL_DIR}")
+    message(STATUS "LibreTT found at ${_LIBRETT_INSTALL_DIR}")
 
 elseif(TA_EXPERT)
 
-    message("** cuTT was not found")
-    message(STATUS "** Downloading and building cuTT is explicitly disabled in EXPERT mode")
+    message("** LibreTT was not found")
+    message(STATUS "** Downloading and building LibreTT is explicitly disabled in EXPERT mode")
 
 else()
 
-    # TODO need to fix the auto installation of cuTT
+    # TODO need to fix the auto installation of LibreTT
 
     include(ExternalProject)
 
     # to pass CMAKE_C_* vars to external project
     enable_language(C)
 
-    # set source and build path for cuTT in the TiledArray project
-    set(EXTERNAL_SOURCE_DIR   ${FETCHCONTENT_BASE_DIR}/cutt-src)
-    # cutt only supports in source build
-    set(EXTERNAL_BUILD_DIR  ${FETCHCONTENT_BASE_DIR}/cutt-build)
+    # set source and build path for LibreTT in the TiledArray project
+    set(EXTERNAL_SOURCE_DIR   ${FETCHCONTENT_BASE_DIR}/librett-src)
+    # librett only supports in source build
+    set(EXTERNAL_BUILD_DIR  ${FETCHCONTENT_BASE_DIR}/librett-build)
     set(EXTERNAL_INSTALL_DIR ${CMAKE_INSTALL_PREFIX})
 
-    if (NOT CUTT_URL)
-        set(CUTT_URL https://github.com/ValeevGroup/cutt.git)
-    endif (NOT CUTT_URL)
-    if (NOT CUTT_TAG)
-        set(CUTT_TAG ${TA_TRACKED_CUTT_TAG})
-    endif (NOT CUTT_TAG)
+    if (NOT LIBRETT_URL)
+        set(LIBRETT_URL https://github.com/victor-anisimov/librett.git)
+    endif (NOT LIBRETT_URL)
+    if (NOT LIBRETT_TAG)
+        set(LIBRETT_TAG ${TA_TRACKED_LIBRETT_TAG})
+    endif (NOT LIBRETT_TAG)
 
-    message("** Will clone cuTT from ${CUTT_URL}")
+    message("** Will clone LibreTT from ${LIBRETT_URL}")
 
     # need to change the separator of list to avoid issues with ExternalProject parsing
 #    set(CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
 #    string(REPLACE ";" "::" CUDA_FLAGS "${CUDA_NVCC_FLAGS}")
     #message(STATUS "CUDA_FLAGS: " "${CUDA_FLAGS}")
 
-    set(CUTT_CMAKE_ARGS
+    set(LIBRETT_CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${EXTERNAL_INSTALL_DIR}
         -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
         -DCMAKE_POSITION_INDEPENDENT_CODE=${CMAKE_POSITION_INDEPENDENT_CODE}
@@ -66,87 +66,90 @@ else()
         -DCMAKE_CUDA_STANDARD=${CMAKE_CUDA_STANDARD}
         -DCMAKE_CUDA_EXTENSIONS=${CMAKE_CUDA_EXTENSIONS}
         -DENABLE_UMPIRE=OFF
-        -DCUTT_USES_THIS_UMPIRE_ALLOCATOR=ThreadSafeUMDynamicPool
+        # N.B. ThreadSafeUMDynamicPool this no longer exists!!! Must teach LibreTT to take allocate/deallocate methods
+        # from the user code
+        -DLIBRETT_USES_THIS_UMPIRE_ALLOCATOR=ThreadSafeUMDynamicPool
         -DCMAKE_PREFIX_PATH=${_UMPIRE_INSTALL_DIR}
         -DENABLE_NO_ALIGNED_ALLOC=ON
         -DCMAKE_CUDA_HOST_COMPILER=${CMAKE_CUDA_HOST_COMPILER}
         -DCUDA_TOOLKIT_ROOT_DIR=${CUDAToolkit_ROOT}
+	-DENABLE_CUDA=ON
         )
     if (DEFINED CMAKE_CUDA_ARCHITECTURES)
-        list(APPEND CUTT_CMAKE_ARGS -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES})
+        list(APPEND LIBRETT_CMAKE_ARGS -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES})
     endif(DEFINED CMAKE_CUDA_ARCHITECTURES)
     if (CMAKE_TOOLCHAIN_FILE)
-        set(CUTT_CMAKE_ARGS "${CUTT_CMAKE_ARGS}"
+        set(LIBRETT_CMAKE_ARGS "${LIBRETT_CMAKE_ARGS}"
             "-DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}")
     endif(CMAKE_TOOLCHAIN_FILE)
 
     if (BUILD_SHARED_LIBS)
-        set(CUTT_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
+        set(LIBRETT_DEFAULT_LIBRARY_SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
     else(BUILD_SHARED_LIBS)
-        set(CUTT_DEFAULT_LIBRARY_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
+        set(LIBRETT_DEFAULT_LIBRARY_SUFFIX ${CMAKE_STATIC_LIBRARY_SUFFIX})
     endif(BUILD_SHARED_LIBS)
 
     # N.B. Ninja needs spelling out the byproducts of custom targets, see https://cmake.org/cmake/help/v3.3/policy/CMP0058.html
-    set(CUTT_BUILD_BYPRODUCTS "${EXTERNAL_BUILD_DIR}/src/libcutt${CUTT_DEFAULT_LIBRARY_SUFFIX}")
-    message(STATUS "custom target cutt is expected to build these byproducts: ${CUTT_BUILD_BYPRODUCTS}")
+    set(LIBRETT_BUILD_BYPRODUCTS "${EXTERNAL_BUILD_DIR}/src/librett${LIBRETT_DEFAULT_LIBRARY_SUFFIX}")
+    message(STATUS "custom target librett is expected to build these byproducts: ${LIBRETT_BUILD_BYPRODUCTS}")
 
-    ExternalProject_Add(cutt
+    ExternalProject_Add(librett
             PREFIX ${CMAKE_INSTALL_PREFIX}
-            STAMP_DIR ${FETCHCONTENT_BASE_DIR}/cutt-ep-artifacts
-            TMP_DIR ${FETCHCONTENT_BASE_DIR}/cutt-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
+            STAMP_DIR ${FETCHCONTENT_BASE_DIR}/librett-ep-artifacts
+            TMP_DIR ${FETCHCONTENT_BASE_DIR}/librett-ep-artifacts  # needed in case CMAKE_INSTALL_PREFIX is not writable
             #--Download step--------------
             DOWNLOAD_DIR ${EXTERNAL_SOURCE_DIR}
-            GIT_REPOSITORY ${CUTT_URL}
-            GIT_TAG ${CUTT_TAG}
+            GIT_REPOSITORY ${LIBRETT_URL}
+            GIT_TAG ${LIBRETT_TAG}
             #--Configure step-------------
             SOURCE_DIR ${EXTERNAL_SOURCE_DIR}
             LIST_SEPARATOR ::
             UPDATE_DISCONNECTED 1
             CMAKE_ARGS
-            ${CUTT_CMAKE_ARGS}
+            ${LIBRETT_CMAKE_ARGS}
             	${EXTERNAL_SOURCE_DIR}
             #--Build step-----------------
             BINARY_DIR ${EXTERNAL_BUILD_DIR}
-            BUILD_COMMAND ${CMAKE_COMMAND} --build . --target cutt -v
-            BUILD_BYPRODUCTS ${CUTT_BUILD_BYPRODUCTS}
+            BUILD_COMMAND ${CMAKE_COMMAND} --build . --target librett -v
+            BUILD_BYPRODUCTS ${LIBRETT_BUILD_BYPRODUCTS}
             #--Install step---------------
-            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "cuTT will be installed during TiledArray's installation."
+            INSTALL_COMMAND ${CMAKE_COMMAND} -E echo "LibreTT will be installed during TiledArray's installation."
             #--Custom targets-------------
             STEP_TARGETS build
             )
 
-    # TiledArray_CUTT target depends on existence of this directory to be usable from the build tree at configure time
+    # TiledArray_LIBRETT target depends on existence of this directory to be usable from the build tree at configure time
     execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory "${EXTERNAL_SOURCE_DIR}/src")
 
-    # do install of cuTT as part of building TiledArray's install target
+    # do install of LibreTT as part of building TiledArray's install target
     install(CODE
             "execute_process(
                COMMAND \"${CMAKE_COMMAND}\" \"--build\" \".\" \"--target\" \"install\"
                WORKING_DIRECTORY \"${EXTERNAL_BUILD_DIR}\"
                RESULT_VARIABLE error_code)
                if(error_code)
-                 message(FATAL_ERROR \"Failed to install cuTT\")
+                 message(FATAL_ERROR \"Failed to install LibreTT\")
                endif()
             ")
 
-    # Add cuTT dependency to External
-    add_dependencies(External-tiledarray cutt-build)
+    # Add LibreTT dependency to External
+    add_dependencies(External-tiledarray librett-build)
 
-    set(_CUTT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
+    set(_LIBRETT_INSTALL_DIR ${EXTERNAL_INSTALL_DIR})
 
-endif(_CUTT_INSTALL_DIR)
+endif(_LIBRETT_INSTALL_DIR)
 
-add_library(TiledArray_CUTT INTERFACE)
+add_library(TiledArray_LIBRETT INTERFACE)
 
-set_target_properties(TiledArray_CUTT
+set_target_properties(TiledArray_LIBRETT
         PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES
-        "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:${_CUTT_INSTALL_DIR}/include>"
+        "$<BUILD_INTERFACE:${EXTERNAL_SOURCE_DIR}/src>;$<INSTALL_INTERFACE:${_LIBRETT_INSTALL_DIR}/include>"
         INTERFACE_LINK_LIBRARIES
-        "$<BUILD_INTERFACE:${CUTT_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_CUTT_INSTALL_DIR}/lib/libcutt.${CUTT_DEFAULT_LIBRARY_SUFFIX}>"
+        "$<BUILD_INTERFACE:${LIBRETT_BUILD_BYPRODUCTS}>;$<INSTALL_INTERFACE:${_LIBRETT_INSTALL_DIR}/lib/librett.${LIBRETT_DEFAULT_LIBRARY_SUFFIX}>"
         )
 
-install(TARGETS TiledArray_CUTT EXPORT tiledarray COMPONENT tiledarray)
+install(TARGETS TiledArray_LIBRETT EXPORT tiledarray COMPONENT tiledarray)
 
 
-#TODO test cuTT
+#TODO test LibreTT

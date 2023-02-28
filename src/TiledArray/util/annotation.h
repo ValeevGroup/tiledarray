@@ -95,32 +95,12 @@ inline auto tokenize_index(const std::string& s, char delim) {
   return tokens;
 }
 
-/// Checks that the provided character is a valid character in an
-/// TiledArray index annotation
-///
-/// \param[in] ch a character
-/// \return true if \p ch is any of the following
-/// - Roman letters (`A..Z`, `a..z`)
-/// - decimal digits (`0..9`)
-/// - whitespace (` `)
-/// - comma (`,`)
-/// - semicolon (`;`)
-/// - any of the following characters: `'`_~!@#$%^&*-+./?:|<>[]{}()`
-inline bool is_valid_annotation_character(char ch) {
-  const std::string valid_chars =
-      "abcdefghijklmnopqrstuvwxyz"
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      "1234567890"
-      ",; '`_~!@#$%^&*-+./?:|<>[]{}()";
-  return valid_chars.find(ch) != std::string::npos;
-}
-
 /// Checks that the provided string is a valid TiledArray index annotation.
 ///
 /// Index annotations are used to annotate modes of tensors or tensor
 /// expressions. This function only checks whether an annotation is
 /// syntactically valid. A valid index annotation consists of one or more
-/// sequences of one or more valid (\sa is_valid_annotation_character() )
+/// sequences of one or more
 /// non-separator nonwhitespace characters separated by separator characters
 /// (`,` and `;`). Only one appearance of the `;` separator is permitted.
 /// Whitespace characters are ignored and removed from \p str before the test.
@@ -128,10 +108,6 @@ inline bool is_valid_annotation_character(char ch) {
 /// \param[in] str string to be tested
 /// \return true if \p str is a valid index annotation
 inline bool is_valid_index(const std::string& str) {
-  // to be valid must contain only valid characters
-  for (const auto& c : str)
-    if (!is_valid_annotation_character(c)) return false;
-
   auto no_ws = remove_whitespace(str);
 
   // empty annotations are not permitted

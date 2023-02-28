@@ -26,11 +26,8 @@
 #ifndef TILEDARRAY_SHARED_BUFFER_H__INCLUDED
 #define TILEDARRAY_SHARED_BUFFER_H__INCLUDED
 
+#include <TiledArray/config.h>
 #include <TiledArray/size_array.h>
-
-#ifndef TILEDARRAY_DEFAULT_ALIGNMENT
-#define TILEDARRAY_DEFAULT_ALIGNMENT 16
-#endif  // TILEDARRAY_ALIGNMENT
 
 namespace TiledArray {
 namespace detail {
@@ -58,7 +55,7 @@ class ValArray : private SizeArray<T> {
   typedef typename SizeArray<T>::const_iterator
       const_iterator;  ///< Const iterator type
 
-  static const std::size_t alignment = TILEDARRAY_DEFAULT_ALIGNMENT;
+  static const std::size_t alignment = TILEDARRAY_ALIGN_SIZE;
 
  private:
   /// The pointer to reference counter
@@ -453,8 +450,7 @@ class ValArray : private SizeArray<T> {
   /// \tparam Archive An output archive type
   /// \param[out] ar an Archive object
   template <typename Archive,
-            typename = std::enable_if_t<
-                madness::is_output_archive_v<Archive>>>
+            typename = std::enable_if_t<madness::is_output_archive_v<Archive>>>
   void serialize(Archive& ar) const {
     // need to write size first to be able to init when deserializing
     ar& size() & madness::archive::wrap(data(), size());
@@ -465,8 +461,7 @@ class ValArray : private SizeArray<T> {
   /// \tparam Archive An input archive type
   /// \param[out] ar an Archive object
   template <typename Archive,
-            typename = std::enable_if_t<
-                madness::is_input_archive_v<Archive>>>
+            typename = std::enable_if_t<madness::is_input_archive_v<Archive>>>
   void serialize(Archive& ar) {
     size_t sz = 0;
     ar& sz;

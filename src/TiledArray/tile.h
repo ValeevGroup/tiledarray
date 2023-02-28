@@ -557,8 +557,8 @@ class Tile {
   // Serialization -----------------------------------------------------------
 
   template <typename Archive,
-            typename std::enable_if<madness::is_output_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_output_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) const {
     // Serialize data for empty tile check
     bool empty = !static_cast<bool>(pimpl_);
@@ -570,8 +570,8 @@ class Tile {
   }
 
   template <typename Archive,
-            typename std::enable_if<madness::is_input_archive_v<
-                Archive>>::type* = nullptr>
+            typename std::enable_if<
+                madness::is_input_archive_v<Archive>>::type* = nullptr>
   void serialize(Archive& ar) {
     // Check for empty tile
     bool empty = false;
@@ -588,6 +588,13 @@ class Tile {
       // Set pimpl to an empty tile
       pimpl_.reset();
     }
+  }
+
+  constexpr static std::size_t batch_size() { return 1; }
+
+  const auto& batch(std::size_t idx) const {
+    TA_ASSERT(idx < this->batch_size());
+    return *this;
   }
 
 };  // class Tile
@@ -1150,7 +1157,7 @@ inline Tile<Left>& inplace_binary(Tile<Left>& left, const Tile<Right>& right,
 
 // Scaling operations --------------------------------------------------------
 
-/// Scalar the tile argument
+/// Scale the tile argument
 
 /// \tparam Arg The tile argument type
 /// \param arg The left-hand argument to be scaled
@@ -1614,10 +1621,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tile<T>& tile) {
 template <typename Allocator, typename T>
 struct Cast<
     TiledArray::Tensor<typename T::value_type, Allocator>, Tile<T>,
-    std::void_t<decltype(
-        std::declval<TiledArray::Cast<
-            TiledArray::Tensor<typename T::value_type, Allocator>, T>>()(
-            std::declval<const T&>()))>> {
+    std::void_t<
+        decltype(std::declval<TiledArray::Cast<
+                     TiledArray::Tensor<typename T::value_type, Allocator>,
+                     T>>()(std::declval<const T&>()))>> {
   auto operator()(const Tile<T>& arg) const {
     return TiledArray::Cast<
         TiledArray::Tensor<typename T::value_type, Allocator>, T>{}(

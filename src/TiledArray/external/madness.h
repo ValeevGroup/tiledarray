@@ -53,7 +53,13 @@ struct default_world {
     if (!world()) {
       TA_ASSERT(madness::initialized() &&
                 "TiledArray::detail::default_world::get() called "
-                "before madness::initialize()");
+                "before madness::initialize() OR after madness::finalize()");
+#if MADNESS_DISABLE_WORLD_GET_DEFAULT
+      TA_EXCEPTION(
+          "TiledArray::set_default_world() must be called before calling "
+          "TiledArray::get_default_world() if MADWorld configured with "
+          "DISABLE_WORLD_GET_DEFAULT=ON");
+#endif
       world() = &madness::World::get_default();
     }
     return *world();

@@ -140,12 +140,8 @@ BOOST_AUTO_TEST_CASE(valid_indices) {
   // all valid characters forming index name
   BOOST_CHECK(
       is_valid_index("abcdefghijklmnopqrstuvwxyz,ABCDEFGHIJKLMNOPQRSTUVWXYZ;'`_"
-                     "~!@#$%^&*-+.,/?:|<>[]{}"));
-}
-
-BOOST_AUTO_TEST_CASE(unallowed_character) {
-  BOOST_CHECK(is_valid_index("i,\",j") == false);
-  BOOST_CHECK(is_valid_index("i,\\,j") == false);
+                     "~!@#$%^&*-+.,/?:|<>[]{}"
+                     "ΑαΒβΓγΔδΕεΖζΗηΘθΙιΚκΛλΜμΝνΞξΟοΠπΡρΣσςΤτΥυΦφΧχΨψΩω"));
 }
 
 BOOST_AUTO_TEST_CASE(multiple_semicolons) {
@@ -212,7 +208,7 @@ BOOST_AUTO_TEST_CASE(non_tot) {
   std::map<std::string, std::pair<string_vector_t, string_vector_t>> inputs{
       {"i", {string_vector_t{"i"}, string_vector_t{}}},
       {"i,j", {string_vector_t{"i", "j"}, string_vector_t{}}},
-      {"i,j,k", {string_vector_t{"i", "j", "k"}, string_vector_t{}}}};
+      {"α,β,γ", {string_vector_t{"α", "β", "γ"}, string_vector_t{}}}};
 
   for (auto& [idx, corr] : inputs) {
     BOOST_CHECK(split_index(idx) == corr);
@@ -223,7 +219,7 @@ BOOST_AUTO_TEST_CASE(tot) {
   std::map<std::string, std::pair<string_vector_t, string_vector_t>> inputs{
       {"i;j", {string_vector_t{"i"}, string_vector_t{"j"}}},
       {"i,j;k", {string_vector_t{"i", "j"}, string_vector_t{"k"}}},
-      {"i;j,k", {string_vector_t{"i"}, string_vector_t{"j", "k"}}}};
+      {"α;β,γ", {string_vector_t{"α"}, string_vector_t{"β", "γ"}}}};
 
   for (auto& [idx, corr] : inputs) BOOST_CHECK(split_index(idx) == corr);
 }

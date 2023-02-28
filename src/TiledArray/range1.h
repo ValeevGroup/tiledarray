@@ -127,22 +127,22 @@ struct Range1 {
   /// Begin local element iterator
 
   /// \return An iterator that points to the beginning of the local element set
-  virtual const_iterator begin() const { return Iterator{first}; }
+  const_iterator begin() const { return Iterator{first}; }
 
   /// End local element iterator
 
   /// \return An iterator that points to the beginning of the local element set
-  virtual const_iterator end() const { return Iterator{second}; }
+  const_iterator end() const { return Iterator{second}; }
 
   /// Begin local element iterator
 
   /// \return An iterator that points to the beginning of the local element set
-  const const_iterator cbegin() const { return begin(); }
+  const_iterator cbegin() const { return begin(); }
 
   /// End local element iterator
 
   /// \return An iterator that points to the beginning of the local element set
-  const const_iterator cend() const { return end(); }
+  const_iterator cend() const { return end(); }
 
   /// @}
 

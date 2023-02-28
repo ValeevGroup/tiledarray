@@ -73,7 +73,7 @@ class Future;
 }  // namespace madness
 
 namespace TiledArray {
-class Range1;
+struct Range1;
 template <typename>
 class Tile;
 class DensePolicy;

@@ -23,6 +23,10 @@
 #include "TiledArray/external/madness.h"
 #include "unit_test_config.h"
 
+#ifdef TA_TENSOR_MEM_TRACE
+#include <TiledArray/tensor.h>
+#endif
+
 #include <TiledArray/error.h>
 #if (TA_ASSERT_POLICY != TA_ASSERT_THROW)
 #error "TiledArray unit tests require TA_ASSERT_POLICY=TA_ASSERT_THROW"
@@ -40,9 +44,26 @@ GlobalFixture::GlobalFixture() {
         boost::unit_test::log_all_errors);
   }
 
+#ifdef TA_TENSOR_MEM_TRACE
+  {
+    TiledArray::Tensor<float>::trace_if_larger_than(1);
+    //  TiledArray::Tensor<float>::ptr_registry()->log(&std::cout);
+    TiledArray::Tensor<std::complex<float>>::trace_if_larger_than(1);
+    //  TiledArray::Tensor<std::complex<float>>::ptr_registry()->log(&std::cout);
+    TiledArray::Tensor<double>::trace_if_larger_than(1);
+    //  TiledArray::Tensor<double>::ptr_registry()->log(&std::cout);
+    TiledArray::Tensor<std::complex<double>>::trace_if_larger_than(1);
+    //  TiledArray::Tensor<std::complex<double>>::ptr_registry()->log(&std::cout);
+    TiledArray::Tensor<int>::trace_if_larger_than(1);
+    //  TiledArray::Tensor<int>::ptr_registry()->log(&std::cout);
+    TiledArray::Tensor<long>::trace_if_larger_than(1);
+    //  TiledArray::Tensor<long>::trace_if_larger_than(1);
+  }
+#endif
+
   // uncomment to create or create+launch debugger
-  // TiledArray::create_debugger("gdb_xterm", "ta_test);
-  // TiledArray::create_debugger("lldb_xterm", "ta_test);
+  // TiledArray::create_debugger("gdb_xterm", "ta_test");
+  // TiledArray::create_debugger("lldb_xterm", "ta_test");
   // TiledArray::launch_gdb_xterm("ta_test");
   // TiledArray::launch_lldb_xterm("ta_test");
 }
@@ -53,6 +74,18 @@ GlobalFixture::~GlobalFixture() {
     TiledArray::finalize();
     world = nullptr;
   }
+#ifdef TA_TENSOR_MEM_TRACE
+  {
+    TA_ASSERT(TiledArray::Tensor<float>::ptr_registry()->size() == 0);
+    TA_ASSERT(TiledArray::Tensor<std::complex<float>>::ptr_registry()->size() ==
+              0);
+    TA_ASSERT(TiledArray::Tensor<double>::ptr_registry()->size() == 0);
+    TA_ASSERT(
+        TiledArray::Tensor<std::complex<double>>::ptr_registry()->size() == 0);
+    TA_ASSERT(TiledArray::Tensor<int>::ptr_registry()->size() == 0);
+    TA_ASSERT(TiledArray::Tensor<long>::ptr_registry()->size() == 0);
+  }
+#endif
 }
 
 TiledArray::World* GlobalFixture::world = nullptr;

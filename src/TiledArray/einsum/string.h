@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace TiledArray::Einsum::string {
+namespace Einsum::string {
 namespace {
 
   // Split delimiter must match completely

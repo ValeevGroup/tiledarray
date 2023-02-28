@@ -144,7 +144,10 @@ if((ENABLE_GPERFTOOLS OR ENABLE_TCMALLOC_MINIMAL) AND CMAKE_SYSTEM_NAME MATCHES 
   add_feature_info(Libunwind ENABLE_LIBUNWIND "Libunwind provides stack unwinding")
 endif()
 
-option(TA_TENSOR_MEM_PROFILE "Turn on instrumented profiling of TA::Tensor memory use" OFF)
+option(TA_TENSOR_MEM_TRACE "Turn on instrumented tracing of TA::Tensor memory use" OFF)
+add_feature_info(TENSOR_MEM_TRACE TA_TENSOR_MEM_TRACE "instrumented tracing of TA::Tensor memory use")
+
+option(TA_TENSOR_MEM_PROFILE "Turn on instrumented profiling of TA::Tensor memory use" ${TA_TENSOR_MEM_TRACE})
 add_feature_info(TENSOR_MEM_PROFILE TA_TENSOR_MEM_PROFILE "instrumented profiling of TA::Tensor memory use")
 
 option(TA_EXPERT "TiledArray Expert mode: disables automatically downloading or building dependencies" OFF)
@@ -235,31 +238,24 @@ endif()
 set(INTEGER4 TRUE CACHE BOOL "If TRUE, use integer*4 Fortran integers in BLAS calls. Otherwise use integer*8.")
 mark_as_advanced(INTEGER4)
 
-# Set the CPU L1 cache line size.
-set(VECTOR_ALIGNMENT "16" CACHE STRING "Set the vector alignment in memory (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
-mark_as_advanced(VECTOR_ALIGNMENT)
-set(TILEDARRAY_ALIGNMENT ${VECTOR_ALIGNMENT})
+# Set the align size
+include(DetectAlignSize)
+if (NOT DEFINED CACHE{TA_ALIGN_SIZE})
+  set(TA_ALIGN_SIZE "${TA_ALIGN_SIZE_DETECTED}" CACHE STRING "Set the default alignment of data buffers used by array tiles (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
+endif()
+mark_as_advanced(TA_ALIGN_SIZE)
+set(TILEDARRAY_ALIGN_SIZE ${TA_ALIGN_SIZE})
 
-# Set the vectory.
+# Set the CPU L1 cache line size.
 set(CACHE_LINE_SIZE "64" CACHE STRING "Set the CPU L1 cache line size in bytes (DO NOT CHANGE THIS VALUE UNLESS YOU KNOW WHAT YOU ARE DOING)")
 mark_as_advanced(CACHE_LINE_SIZE)
 set(TILEDARRAY_CACHELINE_SIZE ${CACHE_LINE_SIZE})
 
 ##########################
-# Get the git revision tag information
+# Get the git metadata
 ##########################
-
-if(EXISTS ${PROJECT_SOURCE_DIR}/.git)
-  find_package(Git REQUIRED)
-  execute_process(
-      COMMAND ${GIT_EXECUTABLE} rev-parse -q HEAD
-      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      OUTPUT_VARIABLE TILEDARRAY_REVISION )
-  string(REGEX MATCH "[0-9a-f]*"
-      TILEDARRAY_REVISION "${TILEDARRAY_REVISION}")
-else()
-  set(TILEDARRAY_REVISION "unknown")
-endif()
+include(GetGitMetadata)
+vgkit_cmake_git_metadata()
 
 ##########################
 # Check compiler features
@@ -347,9 +343,10 @@ endif()
 # 1. ccache
 find_program(CCACHE ccache)
 if(CCACHE)
+    mark_as_advanced(CCACHE)
     message (STATUS "Found ccache: ${CCACHE}")
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ${CCACHE})
-    set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ${CCACHE})
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C++")
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE}" CACHE STRING "Compiler launcher to use for compiling C")
 endif(CCACHE)
 # 2. range-v3
 if (TA_RANGEV3)
@@ -374,14 +371,18 @@ add_subdirectory(doc)
 ##########################
 include(CTest)
 if (BUILD_TESTING)
-  set(_ctest_args -V -R "tiledarray/unit")
+  set(_ctest_args -V -R "tiledarray/unit/run-np.*")
+  set(_ctest_args_serial -V -R "tiledarray/unit/run-np-1")
   if (DEFINED TA_UT_CTEST_TIMEOUT)
     list(APPEND _ctest_args --timeout ${TA_UT_CTEST_TIMEOUT})
+    list(APPEND _ctest_args_serial --timeout ${TA_UT_CTEST_TIMEOUT})
   endif(DEFINED TA_UT_CTEST_TIMEOUT)
   add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} ${_ctest_args})
+  add_custom_target_subproject(tiledarray check_serial USES_TERMINAL COMMAND ${CMAKE_CTEST_COMMAND} ${_ctest_args_serial})
   add_subdirectory(tests)
 else()
   add_custom_target_subproject(tiledarray check USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, give -DBUILD_TESTING=ON to cmake")
+  add_custom_target_subproject(tiledarray check_serial USES_TERMINAL COMMAND echo "WARNING: unit testing disabled. To enable, give -DBUILD_TESTING=ON to cmake")
 endif()
 
 ##########################

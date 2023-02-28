@@ -190,6 +190,8 @@ TiledArray/util/bug.h
 TiledArray/util/function.h
 TiledArray/util/initializer_list.h
 TiledArray/util/logger.h
+TiledArray/util/ptr_registry.cpp
+TiledArray/util/ptr_registry.h
 TiledArray/util/random.h
 TiledArray/util/singleton.h
 TiledArray/util/threads.h
@@ -202,7 +204,7 @@ if(CUDA_FOUND)
 
   list(APPEND TILEDARRAY_HEADER_FILES
      TiledArray/external/cuda.h
-     TiledArray/external/cutt.h
+     TiledArray/external/librett.h
      TiledArray/cuda/cublas.h
      TiledArray/cuda/btas_cublas.h
      TiledArray/cuda/btas_um_tensor.h
@@ -226,10 +228,17 @@ TiledArray/sparse_shape.cpp
 TiledArray/tensor_impl.cpp
 TiledArray/array_impl.cpp
 TiledArray/dist_array.cpp
+TiledArray/version.cpp
 TiledArray/util/backtrace.cpp
 TiledArray/util/bug.cpp
 TiledArray/math/linalg/basic.cpp
 TiledArray/math/linalg/rank-local.cpp
+)
+# feed TILEDARRAY_GIT_REVISION and TILEDARRAY_GIT_DESCRIPTION to TiledArray/version.cpp only to avoid recompiling everything
+set_source_files_properties(
+        TiledArray/version.cpp
+        PROPERTIES COMPILE_DEFINITIONS
+        "TILEDARRAY_GIT_REVISION=\"${TILEDARRAY_GIT_REVISION}\";TILEDARRAY_GIT_DESCRIPTION=\"${TILEDARRAY_GIT_DESCRIPTION}\""
 )
 
 # the list of libraries on which TiledArray depends on, will be cached later
@@ -251,7 +260,7 @@ if(CUDA_FOUND)
           LANGUAGE CUDA)
 
   # the list of libraries on which TiledArray depends on
-  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_CUTT)
+  list(APPEND _TILEDARRAY_DEPENDENCIES CUDA::cublas CUDA::nvToolsExt TiledArray_LIBRETT)
 
 endif(CUDA_FOUND)
 
