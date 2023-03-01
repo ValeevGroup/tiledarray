@@ -20,9 +20,9 @@
 #ifndef TILEDARRAY_RANDOM_H__INCLUDED
 #define TILEDARRAY_RANDOM_H__INCLUDED
 
-#include <complex> // for std::complex
-#include <cstdlib> // for std::rand
-#include <type_traits> // for true_type, false_type, and enable_if
+#include <complex>      // for std::complex
+#include <cstdlib>      // for std::rand
+#include <type_traits>  // for true_type, false_type, and enable_if
 
 namespace TiledArray::detail {
 
@@ -37,28 +37,28 @@ namespace TiledArray::detail {
 /// types. Specific types can be enabled by specializing CanMakeRandom.
 ///
 /// \tparam ValueType The type of random value we are attempting to generate.
-template<typename ValueType>
-struct CanMakeRandom : std::false_type{};
+template <typename ValueType>
+struct CanMakeRandom : std::false_type {};
 
 /// Enables generating random int values
-template<>
-struct CanMakeRandom<int> : std::true_type{};
+template <>
+struct CanMakeRandom<int> : std::true_type {};
 
 /// Enables generating random float values
-template<>
-struct CanMakeRandom<float> : std::true_type{};
+template <>
+struct CanMakeRandom<float> : std::true_type {};
 
 /// Enables generating random double values
-template<>
-struct CanMakeRandom<double> : std::true_type{};
+template <>
+struct CanMakeRandom<double> : std::true_type {};
 
 /// Enables generating random std::complex<float> values
-template<>
-struct CanMakeRandom<std::complex<float>> : std::true_type{};
+template <>
+struct CanMakeRandom<std::complex<float>> : std::true_type {};
 
 /// Enables generating random std::complex<double> values
-template<>
-struct CanMakeRandom<std::complex<double>> : std::true_type{};
+template <>
+struct CanMakeRandom<std::complex<double>> : std::true_type {};
 
 /// Variable for whether or not we can make a random value of type ValueType
 ///
@@ -67,13 +67,13 @@ struct CanMakeRandom<std::complex<double>> : std::true_type{};
 /// example `can_make_random_v<T>` is shorthand for `CanMakeRandom<T>::value`.
 ///
 /// \tparam ValueType the type of random value we are attempting to make.
-template<typename ValueType>
+template <typename ValueType>
 static constexpr auto can_make_random_v = CanMakeRandom<ValueType>::value;
 
 /// Enables a function only when we can generate a random value of type `T`
 ///
 /// \tparam T The type of random value we are attempting to generate.
-template<typename T>
+template <typename T>
 using enable_if_can_make_random_t = std::enable_if_t<can_make_random_v<T>>;
 
 //------------------------------------------------------------------------------
@@ -83,16 +83,36 @@ using enable_if_can_make_random_t = std::enable_if_t<can_make_random_v<T>>;
 /// Struct wrapping the process of generating a random value of type `ValueType`
 ///
 /// MakeRandom contains a single static member function `generate_value`, which
-/// can be called to generate a random value of type `ValueType` between 0
-/// and 1. Users can specialize the MakeRandom class to control how random
+/// generates a random value using `std::rand()`. The default implementation is
+/// only provided for fundamental types:
+/// - for a floating-point type this returns a random value in [-1,1].
+/// - for a signed integral type this returns a random value in [-4,4].
+/// - for an unsigned integral type this returns a random value in [0,8].
+/// Users can specialize the MakeRandom class to control how random
 /// values of other types are formed.
 ///
 /// \tparam ValueType The type of random value to generate
-template<typename ValueType>
+template <typename ValueType>
 struct MakeRandom {
   /// Generates a random value of type ValueType
   static ValueType generate_value() {
-    return static_cast<ValueType>(static_cast<double>(std::rand()) / RAND_MAX);
+    static_assert(std::is_floating_point_v<ValueType> ||
+                  std::is_integral_v<ValueType>);
+    if constexpr (std::is_floating_point_v<ValueType>)
+      return (2 * static_cast<ValueType>(std::rand()) / RAND_MAX) - 1;
+    else if constexpr (std::is_integral_v<ValueType>) {
+      static_assert(RAND_MAX == 2147483647);
+      static_assert(RAND_MAX % 2 == 1);
+      constexpr std::int64_t RAND_MAX_DIVBY_9 =
+          (static_cast<std::int64_t>(RAND_MAX) + 8) / 9;
+      const ValueType v = static_cast<ValueType>(
+          static_cast<std::int64_t>(std::rand()) / RAND_MAX_DIVBY_9);
+      if constexpr (std::is_signed_v<ValueType>) {
+        return v - 4;
+      } else {
+        return v;
+      }
+    }
   }
 };
 
@@ -105,18 +125,20 @@ struct MakeRandom {
 ///
 /// \tparam ScalarType The type used to hold the real and imaginary components
 ///                    of the complex value.
-template<typename ScalarType>
+template <typename ScalarType>
 struct MakeRandom<std::complex<ScalarType>> {
-
   /// Generates a random complex number.
   static auto generate_value() {
+    static_assert(
+        std::is_floating_point_v<ScalarType>);  // std::complex is only defined
+                                                // for fundamental
+                                                // floating-point types
     const ScalarType real = MakeRandom<ScalarType>::generate_value();
     const ScalarType imag = MakeRandom<ScalarType>::generate_value();
     return std::complex<ScalarType>(real, imag);
   }
 };
 
-} // namespace TiledArray::detail
-
+}  // namespace TiledArray::detail
 
 #endif
