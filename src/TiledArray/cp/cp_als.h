@@ -159,6 +159,7 @@ class CP_ALS : public CP<Tile, Policy> {
     this->cholesky_inverse(An, W);
 
     if (mode == ndim - 1) this->unNormalized_Factor = An;
+    // this->normalize_factor(An);
     this->normCol(An, rank);
     cp_factors[mode] = An;
     auto& gram = this->partial_grammian[mode];

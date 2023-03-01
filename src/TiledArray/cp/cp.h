@@ -327,14 +327,67 @@ class CP {
   }
   */
 
+  /// normalizes "columns" (aka rows) of an updated factor matrix
+
+  /// rows of factor matrices produced by least-squares are not unit
+  /// normalized. This takes each row and makes it unit normalized,
+  /// with inverse of the normalization factor stored in this->lambda
+  /// \param[in,out] factor in: unnormalized factor matrix, out:
+  /// normalized factor matrix
+  void normalize_factor(Array& factor) {
+    // std::cout << "normCol v2:\nfactor on input:\n" << factor << std::endl;
+    auto& world = factor.world();
+    // this is what the code should look like, but expressions::einsum seems to
+    // be buggy lambda contains squared norms of rows
+    lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
+
+    // element-wise square root to convert squared norms to norms
+    TiledArray::foreach_inplace(lambda, [](Tile& tile) {
+      auto lo = tile.range().lobound_data();
+      auto up = tile.range().upbound_data();
+      for (auto R = lo[0]; R < up[0]; ++R) {
+        const auto norm_squared_RR = tile(R);
+        using std::sqrt;
+        tile(R) = sqrt(norm_squared_RR);
+      }
+    });
+    world.taskq.fence();
+    // std::cout << "normCol v2:\nrow-wise norm of factor:\n" << lambda <<
+    // std::endl;
+
+    lambda.truncate();
+    lambda.make_replicated();
+    auto lambda_eig = array_to_eigen(lambda);
+
+    TiledArray::foreach_inplace(factor, [&lambda_eig](Tile& tile) {
+      auto lo = tile.range().lobound_data();
+      auto up = tile.range().upbound_data();
+      for (auto R = lo[0]; R < up[0]; ++R) {
+        const auto lambda_R = lambda_eig(R, 0);
+        if (lambda_R < 1e-12) continue;
+        auto scale_by = 1.0 / lambda_R;
+        for (auto N = lo[1]; N < up[1]; ++N) {
+          tile(R, N) *= scale_by;
+        }
+      }
+    });
+    world.taskq.fence();
+    factor.truncate();
+    // std::cout << "normCol v2:\nlambda on output:\n" << lambda << std::endl;
+    // std::cout << "normCol v2:\nfactor on output:\n" << factor << std::endl;
+  }
+
   /// computes the column normalization of a given factor matrix \c factor
   /// stores the column norms in the lambda vector.
   /// Also normalizes the columns of \c factor
   /// \param[in,out] factor in: unnormalized factor matrix, out: column
   /// normalized factor matrix
   void normCol(Array& factor, size_t rank) {
+    // std::cout << "normCol v1:\nfactor on input:\n" << factor << std::endl;
     auto& world = factor.world();
     lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
+    // std::cout << "normCol v1:\nrow-wise squared norm of factor:\n" << lambda
+    // << std::endl;
     auto text = factor.trange().tiles_range().extent_data();
     auto r_tiles = text[0], n_tiles = text[1];
 
@@ -347,6 +400,7 @@ class CP {
       typename Tile::value_type norm2 = 0.0;
       for (auto R = lo[0]; R < up[0]; ++R, ++ptr_tile) {
         norm2 += *ptr_tile;
+        // N.B. this updates tile once per tile of non-rank dimension
         *ptr_tile = sqrt((*ptr_tile));
         if ((*ptr_tile) < 1e-12) continue;
         auto val = 1.0 / (*ptr_tile);
@@ -371,38 +425,9 @@ class CP {
     // set_default_world(world);
     world.gop.fence();
     factor.truncate();
+    // std::cout << "normCol v1:\nlambda on output:\n" << lambda << std::endl;
+    // std::cout << "normCol v1:\nfactor on output:\n" << factor << std::endl;
   }
-
-  /*
-  std::vector<double> temp_normCol(Array & factor,
-                                   size_t rank){
-    std::vector<double> lambda(rank);
-    auto & world = factor.world();
-    if(world.rank() == 0) {
-      auto btas_factor = array_to_btas_tensor(factor, 0);
-      TA_ASSERT(rank == btas_factor.extent(0));
-      std::fill(lambda.begin(), lambda.end(), 0.0);
-      auto lambda_ptr = lambda.begin();
-      auto col_dim = btas_factor.extent(1);
-      auto bf_ptr = btas_factor.data();
-      for(auto r = 0; r < rank; ++r,
-                ++lambda_ptr, bf_ptr+=col_dim){
-        for(auto n = 0; n < col_dim; ++n) {
-          auto val = *(bf_ptr + n);
-          *(lambda_ptr) += val * val;
-        }
-        *(lambda_ptr) = sqrt(*(lambda_ptr));
-        auto one_over_lam = (*(lambda_ptr) > 1e-12 ? 1/ *(lambda_ptr) :
-  *(lambda_ptr)); for(auto n = 0; n < col_dim; ++n){
-          *(bf_ptr + n) *= one_over_lam;
-        }
-      }
-    }
-    world.gop.broadcast_serializable(lambda, 0);
-    world.gop.fence();
-    return lambda;
-  }
-  */
 
   /// This function checks the fit and change in the
   /// fit for the CP loss function
