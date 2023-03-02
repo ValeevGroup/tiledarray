@@ -27,6 +27,7 @@
 #include "tiledarray.h"
 #include "unit_test_config.h"
 
+#include "TiledArray/conversions/concat.h"
 #include "TiledArray/conversions/vector_of_arrays.h"
 
 using namespace TiledArray;
@@ -277,7 +278,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
           TiledArray::split_tilewise_fused_array(this_world, b_dense, r,
-                                                b_dense_vector, tr_split);
+                                                 b_dense_vector, tr_split);
         }
       }
       TA::set_default_world(world);
@@ -309,7 +310,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_array_unit_blocking) {
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
           TiledArray::split_tilewise_fused_array(this_world, b_sparse, r,
-                                                b_sparse_vector, tr_split);
+                                                 b_sparse_vector, tr_split);
         }
       }
       TA::set_default_world(world);
@@ -376,7 +377,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
           TiledArray::split_tilewise_fused_array(this_world, b_dense, r,
-                                                b_dense_vector, tr_split);
+                                                 b_dense_vector, tr_split);
         }
       }
       TA::set_default_world(world);
@@ -412,7 +413,7 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
       for (int r = 0; r < num_mode0_tiles; ++r) {
         if (rank == r % size) {
           TiledArray::split_tilewise_fused_array(this_world, b_sparse, r,
-                                                b_sparse_vector, tr_split);
+                                                 b_sparse_vector, tr_split);
         }
       }
       TA::set_default_world(world);
@@ -429,5 +430,130 @@ BOOST_AUTO_TEST_CASE(tiles_of_arrays_non_unit_blocking) {
   }
 }
 #endif
+
+BOOST_AUTO_TEST_CASE(concat) {
+  // this->tr includes identical tr1's, asymmetric tr
+  TiledRange tr(
+      {this->tr.dim(0), TiledArray::concat(this->tr.dim(0), this->tr.dim(1))});
+  TiledRange tr_t = Permutation{1, 0} * tr;
+
+  // dense
+  auto do_test = [&, this](auto* array_ptr) {
+    using TArray = std::remove_pointer_t<decltype(array_ptr)>;
+    using Tensor = typename TArray::value_type;
+    using Policy = typename TArray::policy_type;
+    auto a = make_array<TArray>(*GlobalFixture::world, tr,
+                                &this->init_rand_tile<Tensor>);
+    const auto a_TR = tr.dim(0).tile_extent();
+    const auto a_TC = tr.dim(1).tile_extent();
+    auto b = make_array<TArray>(*GlobalFixture::world, tr,
+                                &this->init_rand_tile<Tensor>);
+    const auto b_TR = tr.dim(0).tile_extent();
+    const auto b_TC = tr.dim(1).tile_extent();
+    TArray b_t;
+    b_t("i,j") = b("j,i");
+
+    // row-wise concat
+    {
+      BOOST_CHECK_NO_THROW((TiledArray::concat<Tensor, Policy>(
+          {a, b}, std::vector<bool>{true, false})));
+      auto ab = TiledArray::concat<Tensor, Policy>(
+          {a, b}, std::vector<bool>{true, false});
+      BOOST_CHECK_EQUAL(
+          ab.trange().dim(0).extent(),
+          a.trange().dim(0).extent() + b.trange().dim(0).extent());
+      BOOST_CHECK_EQUAL(ab.trange().dim(1).extent(),
+                        a.trange().dim(1).extent());
+      BOOST_CHECK_EQUAL(ab.trange().dim(1).extent(),
+                        b.trange().dim(1).extent());
+      for (auto a_r = 0; a_r != a_TR; ++a_r) {
+        for (auto a_c = 0; a_c != a_TC; ++a_c) {
+          BOOST_CHECK_EQUAL(a.find({a_r, a_c}).get(),
+                            ab.find({a_r, a_c}).get());
+        }
+      }
+      for (auto b_r = 0; b_r != b_TR; ++b_r) {
+        decltype(b_r) ab_r = a_TR + b_r;
+        for (auto b_c = 0; b_c != b_TC; ++b_c) {
+          auto b_rc_tile = b.find({b_r, b_c}).get();
+          auto ab_rc_tile = ab.find({ab_r, b_c}).get();
+          BOOST_CHECK(is_congruent(b_rc_tile.range(), ab_rc_tile.range()));
+          BOOST_CHECK_EQUAL_COLLECTIONS(b_rc_tile.begin(), b_rc_tile.end(),
+                                        ab_rc_tile.begin(), ab_rc_tile.end());
+        }
+      }
+    }
+    // col-wise concat
+    {
+      BOOST_CHECK_NO_THROW((TiledArray::concat<Tensor, Policy>(
+          {a, b}, std::vector<bool>{false, true})));
+      auto ab = TiledArray::concat<Tensor, Policy>(
+          {a, b}, std::vector<bool>{false, true});
+      BOOST_CHECK_EQUAL(ab.trange().dim(0).extent(),
+                        a.trange().dim(0).extent());
+      BOOST_CHECK_EQUAL(ab.trange().dim(0).extent(),
+                        b.trange().dim(0).extent());
+      BOOST_CHECK_EQUAL(
+          ab.trange().dim(1).extent(),
+          a.trange().dim(1).extent() + b.trange().dim(1).extent());
+      for (auto a_r = 0; a_r != a_TR; ++a_r) {
+        for (auto a_c = 0; a_c != a_TC; ++a_c) {
+          BOOST_CHECK_EQUAL(a.find({a_r, a_c}).get(),
+                            ab.find({a_r, a_c}).get());
+        }
+      }
+      for (auto b_r = 0; b_r != b_TR; ++b_r) {
+        for (auto b_c = 0; b_c != b_TC; ++b_c) {
+          decltype(b_c) ab_c = a_TC + b_c;
+          auto b_rc_tile = b.find({b_r, b_c}).get();
+          auto ab_rc_tile = ab.find({b_r, ab_c}).get();
+          BOOST_CHECK(is_congruent(b_rc_tile.range(), ab_rc_tile.range()));
+          BOOST_CHECK_EQUAL_COLLECTIONS(b_rc_tile.begin(), b_rc_tile.end(),
+                                        ab_rc_tile.begin(), ab_rc_tile.end());
+        }
+      }
+    }
+    // block-wise concat
+    {
+      BOOST_CHECK_NO_THROW((TiledArray::concat<Tensor, Policy>(
+          {a, b}, std::vector<bool>{true, true})));
+      auto ab = TiledArray::concat<Tensor, Policy>(
+          {a, b}, std::vector<bool>{true, true});
+      BOOST_CHECK_EQUAL(
+          ab.trange().dim(0).extent(),
+          a.trange().dim(0).extent() + b.trange().dim(0).extent());
+      BOOST_CHECK_EQUAL(
+          ab.trange().dim(1).extent(),
+          a.trange().dim(1).extent() + b.trange().dim(1).extent());
+      for (auto a_r = 0; a_r != a_TR; ++a_r) {
+        for (auto a_c = 0; a_c != a_TC; ++a_c) {
+          BOOST_CHECK_EQUAL(a.find({a_r, a_c}).get(),
+                            ab.find({a_r, a_c}).get());
+        }
+      }
+      for (auto b_r = 0; b_r != b_TR; ++b_r) {
+        decltype(b_r) ab_r = a_TR + b_r;
+        for (auto b_c = 0; b_c != b_TC; ++b_c) {
+          decltype(b_c) ab_c = a_TC + b_c;
+          auto b_rc_tile = b.find({b_r, b_c}).get();
+          auto ab_rc_tile = ab.find({ab_r, ab_c}).get();
+          BOOST_CHECK(is_congruent(b_rc_tile.range(), ab_rc_tile.range()));
+          BOOST_CHECK_EQUAL_COLLECTIONS(b_rc_tile.begin(), b_rc_tile.end(),
+                                        ab_rc_tile.begin(), ab_rc_tile.end());
+        }
+      }
+    }
+    // ranges of non-concatted dims must match
+    BOOST_CHECK_THROW((TiledArray::concat<Tensor, Policy>(
+                          {a, b_t}, std::vector<bool>{false, true})),
+                      TiledArray::Exception);
+    BOOST_CHECK_THROW((TiledArray::concat<Tensor, Policy>(
+                          {a, b_t}, std::vector<bool>{true, false})),
+                      TiledArray::Exception);
+  };
+
+  do_test(static_cast<TArrayI*>(nullptr));
+  do_test(static_cast<TSpArrayI*>(nullptr));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
