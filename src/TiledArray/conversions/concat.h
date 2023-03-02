@@ -95,6 +95,7 @@ DistArray<Tile, Policy> concat(
     result(annot).block(tile_begin_end[i].first, tile_begin_end[i].second) =
         arrays[i](annot);
   }
+  result.world().gop.fence();
 
   return result;
 }
