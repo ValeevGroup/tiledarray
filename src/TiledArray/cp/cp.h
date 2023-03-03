@@ -306,27 +306,6 @@ class CP {
     MtKRP("r,n") = (U("r,s") * S("s,sp")) * (Vt("sp,rp") * MtKRP("rp,n"));
   }
 
-  /*
-  /// Function to column normalize factor matrices
-  /// \param[in, out] factor in: un-normalized factor matrix.
-  /// out: column normalized factor matrix
-  /// \param[in] rank_trange TiledRange for the rank mode
-  /// \returns vector of column normalization factors
-  std::vector<typename Tile::value_type>
-  normalize_factor(Array & factor,
-                   size_t cp_rank,
-                   TiledRange rank_trange){
-    auto & world = factor.world();
-    auto lambda = this->temp_normCol(factor, cp_rank);
-    std::vector<typename Tile::value_type> inv_lambda(lambda);
-    for(auto & i : inv_lambda) i = (i > 1e-12 ? 1 / i : i);
-    auto diag_lambda = diagonal_array<Array>(world, rank_trange,
-                                             inv_lambda.begin(),
-  inv_lambda.end()); factor("rp,n") = diag_lambda("rp,r") * factor("r,n");
-    return lambda;
-  }
-  */
-
   /// normalizes "columns" (aka rows) of an updated factor matrix
 
   /// rows of factor matrices produced by least-squares are not unit
@@ -335,7 +314,6 @@ class CP {
   /// \param[in,out] factor in: unnormalized factor matrix, out:
   /// normalized factor matrix
   void normalize_factor(Array& factor) {
-    // std::cout << "normCol v2:\nfactor on input:\n" << factor << std::endl;
     auto& world = factor.world();
     // this is what the code should look like, but expressions::einsum seems to
     // be buggy lambda contains squared norms of rows
@@ -352,8 +330,6 @@ class CP {
       }
     });
     world.taskq.fence();
-    // std::cout << "normCol v2:\nrow-wise norm of factor:\n" << lambda <<
-    // std::endl;
 
     lambda.truncate();
     lambda.make_replicated();
@@ -373,60 +349,6 @@ class CP {
     });
     world.taskq.fence();
     factor.truncate();
-    // std::cout << "normCol v2:\nlambda on output:\n" << lambda << std::endl;
-    // std::cout << "normCol v2:\nfactor on output:\n" << factor << std::endl;
-  }
-
-  /// computes the column normalization of a given factor matrix \c factor
-  /// stores the column norms in the lambda vector.
-  /// Also normalizes the columns of \c factor
-  /// \param[in,out] factor in: unnormalized factor matrix, out: column
-  /// normalized factor matrix
-  void normCol(Array& factor, size_t rank) {
-    // std::cout << "normCol v1:\nfactor on input:\n" << factor << std::endl;
-    auto& world = factor.world();
-    lambda = expressions::einsum(factor("r,n"), factor("r,n"), "r");
-    // std::cout << "normCol v1:\nrow-wise squared norm of factor:\n" << lambda
-    // << std::endl;
-    auto text = factor.trange().tiles_range().extent_data();
-    auto r_tiles = text[0], n_tiles = text[1];
-
-    auto scale_factor = [&factor](int r, int n, Tile& tile) {
-      // if (factor.is_zero({r, n})) return 1;
-      auto fac_tile = factor.find({r, n}).get();
-      auto lo = tile.range().lobound_data();
-      auto up = tile.range().upbound_data();
-      auto ptr_tile = tile.begin(), ptr_factor = fac_tile.begin();
-      typename Tile::value_type norm2 = 0.0;
-      for (auto R = lo[0]; R < up[0]; ++R, ++ptr_tile) {
-        norm2 += *ptr_tile;
-        // N.B. this updates tile once per tile of non-rank dimension
-        *ptr_tile = sqrt((*ptr_tile));
-        if ((*ptr_tile) < 1e-12) continue;
-        auto val = 1.0 / (*ptr_tile);
-        for (auto N = lo[1]; N < up[1]; ++N, ++ptr_factor) {
-          (*ptr_factor) *= val;
-        }
-      }
-      return sqrt(norm2);
-    };
-    // The column norms will be computed on each MPI rank to
-    // avoid communication.
-
-    // auto &owners = worlds.back();
-    // set_default_world(*owners);
-    for (int r = 0; r < r_tiles; ++r) {
-      auto tile = lambda.find(r).get();
-      for (int n = 0; n < n_tiles; ++n) {
-        //(*owners).taskq.add(scale_factor,r, n, tile);
-        world.taskq.add(scale_factor, r, n, tile);
-      }
-    }
-    // set_default_world(world);
-    world.gop.fence();
-    factor.truncate();
-    // std::cout << "normCol v1:\nlambda on output:\n" << lambda << std::endl;
-    // std::cout << "normCol v1:\nfactor on output:\n" << factor << std::endl;
   }
 
   /// This function checks the fit and change in the
