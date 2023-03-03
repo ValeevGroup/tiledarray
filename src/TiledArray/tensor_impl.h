@@ -119,12 +119,14 @@ class TensorImpl : private NO_DEFAULTS {
   /// \throw nothing
   ordinal_type size() const { return trange_.tiles_range().volume(); }
 
-  /// Local element count
+  /// Max count of local tiles
 
   /// This function is primarily available for debugging  purposes. The
   /// returned value is volatile and may change at any time; you should not
   /// rely on it in your algorithms.
-  /// \return The current number of local tiles stored in the tensor.
+  /// \return The max count of local tiles; for dense array this will be equal
+  /// to the actual number of local tiles stored, but for a sparse array
+  /// the actual number of stored tiles will be less than or equal to this.
   ordinal_type local_size() const {
     return static_cast<ordinal_type>(pmap_->local_size());
   }
