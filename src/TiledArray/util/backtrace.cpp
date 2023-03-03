@@ -28,6 +28,7 @@
 #include <TiledArray/util/backtrace.h>
 
 #include <cstring>
+#include <iostream>
 #include <iterator>
 #include <sstream>
 
@@ -187,3 +188,8 @@ std::string Backtrace::__demangle(const std::string &symbol) {
 
 }  // namespace detail
 }  // namespace TiledArray
+
+extern "C" void tiledarray_dump_backtrace_to_std_cout() {
+  TiledArray::detail::Backtrace bt("tiledarray_dump_backtrace: ");
+  std::cout << bt.str() << std::endl;
+}

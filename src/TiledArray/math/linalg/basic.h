@@ -28,6 +28,7 @@
 
 #include "TiledArray/math/linalg/forward.h"
 
+#include "TiledArray/conversions/concat.h"
 #include "TiledArray/dist_array.h"
 #include "TiledArray/external/eigen.h"
 
@@ -91,6 +92,29 @@ inline void axpy(DistArray<Tile, Policy>& y, S alpha,
   using numeric_type = typename DistArray<Tile, Policy>::numeric_type;
   auto vars = TiledArray::detail::dummy_annotation(rank(y));
   y(vars) = y(vars) + numeric_type(alpha) * x(vars);
+}
+
+/// selector for concat
+enum class Concat : char { Row = 'R', Col = 'C', Both = 'B' };
+
+/// generic TiledArray::concat adapted for matrices
+template <typename Tile, typename Policy>
+inline DistArray<Tile, Policy> concat(const DistArray<Tile, Policy>& a,
+                                      const DistArray<Tile, Policy>& b,
+                                      Concat C) {
+  TA_ASSERT(a.trange().rank() == 2);
+  TA_ASSERT(b.trange().rank() == 2);
+  switch (C) {
+    case Concat::Row:
+      return TiledArray::concat<Tile, Policy>({a, b},
+                                              std::vector<bool>{true, false});
+    case Concat::Col:
+      return TiledArray::concat<Tile, Policy>({a, b},
+                                              std::vector<bool>{false, true});
+    case Concat::Both:
+      return TiledArray::concat<Tile, Policy>({a, b},
+                                              std::vector<bool>{true, true});
+  }
 }
 
 namespace non_distributed {}

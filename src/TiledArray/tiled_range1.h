@@ -344,9 +344,9 @@ inline void swap(TiledRange1& r0, TiledRange1& r1) {  // no throw
 
 /// Equality operator
 inline bool operator==(const TiledRange1& r1, const TiledRange1& r2) {
-  return std::equal(r1.begin(), r1.end(), r2.begin()) &&
-         (r1.tiles_range() == r2.tiles_range()) &&
-         (r1.elements_range() == r2.elements_range());
+  return (r1.tiles_range() == r2.tiles_range()) &&
+         (r1.elements_range() == r2.elements_range()) &&
+         std::equal(r1.begin(), r1.end(), r2.begin());
 }
 
 /// Inequality operator
@@ -400,7 +400,8 @@ inline TiledRange1 concat(const TiledRange1& r1, const TiledRange1& r2) {
 /// \param r1 an TiledRange1 object
 /// \param r2 an TiledRange1 object
 inline bool is_congruent(const TiledRange1& r1, const TiledRange1& r2) {
-  return std::equal(r1.begin(), r1.end(), r2.begin(),
+  return r1.tile_extent() == r2.tile_extent() &&
+         std::equal(r1.begin(), r1.end(), r2.begin(),
                     [](const auto& tile1, const auto& tile2) {
                       return TiledArray::extent(tile1) ==
                              TiledArray::extent(tile2);

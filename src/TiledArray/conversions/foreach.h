@@ -222,7 +222,7 @@ inline std::
               op_caller;
           return op_caller(std::move(op_shared_handle), arg_tile, arg_tiles...);
         },
-        arg.find(index), args.find(index)...);
+        arg.find_local(index), args.find(index)...);
 
     // Store result tile
     result.set(index, tile);
@@ -307,8 +307,8 @@ inline std::
       for (auto index : *(arg.pmap())) {
         if (is_zero_intersection({arg.is_zero(index), args.is_zero(index)...}))
           continue;
-        auto result_tile =
-            world.taskq.add(task, index, arg.find(index), args.find(index)...);
+        auto result_tile = world.taskq.add(task, index, arg.find_local(index),
+                                           args.find(index)...);
         ++task_count;
         tiles.emplace_back(index, std::move(result_tile));
         if (op_returns_void)  // if Op does not evaluate norms, use the (scaled)

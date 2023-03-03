@@ -79,6 +79,7 @@ TiledArray/math/linalg/ttg/cholesky.h
 TiledArray/math/linalg/ttg/util.h
 TiledArray/conversions/btas.h
 TiledArray/conversions/clone.h
+TiledArray/conversions/concat.h
 TiledArray/conversions/dense_to_sparse.h
 TiledArray/conversions/eigen.h
 TiledArray/conversions/foreach.h

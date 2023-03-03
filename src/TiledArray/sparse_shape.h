@@ -253,7 +253,7 @@ class SparseShape {
   }
 
   /// @brief screens out zero tiles by zeroing out the norms of tiles below
-  ///        `my_threshold_`
+  ///        `this->init_threshold()`
   /// @return the number of zero tiles
   auto screen_out_zero_tiles() {
     decltype(zero_tile_count_) zero_tile_count = 0;
@@ -415,7 +415,6 @@ class SparseShape {
     if (!do_not_scale) {
       zero_tile_count_ = scale_tile_norms<ScaleBy::InverseVolume>(
           tile_norms_, size_vectors_.get());
-      ;
     } else {
       zero_tile_count_ = screen_out_zero_tiles();
     }
@@ -507,15 +506,29 @@ class SparseShape {
     return float(zero_tile_count_) / float(tile_norms_.size());
   }
 
-  /// Threshold accessor
+  // clang-format off
+  /// Default threshold accessor
 
-  /// \return The current threshold
+  /// Default threshold is used to initialize new shapes resulting from
+  /// _binary_ (not unary) expressions involving SparseShape;
+  /// \note This threshold is also used to screen binary arithmetic expressions involving DistArray objects
+  /// \return The current default threshold
+  // clang-format on
   static value_type threshold() { return threshold_; }
 
-  /// Set threshold to \c thresh
+  // clang-format off
+  /// Set default threshold to \c thresh
 
-  /// \param thresh The new threshold
+  /// \warning it is only safe to change default threshold after a fence;
+  /// this can be done as e.g. `world.gop.serial_invoke([new_thresh] { SparseShape<T>::threshold(new_thresh); });`
+  /// \param thresh The new default threshold
+  // clang-format on
   static void threshold(const value_type thresh) { threshold_ = thresh; }
+
+  /// Accesses the threshold used to initialize this tile
+
+  /// \return The threshold used to initialize this
+  value_type init_threshold() const { return my_threshold_; }
 
   /// Tile norm accessor
 
@@ -530,12 +543,14 @@ class SparseShape {
 
   /// Transform the norm tensor with an operation
 
-  /// \return A deep copy of the norms of the object having
-  /// performed the operation Op.
-  /// Op should take a const ref to a Tensor<T> and return a Tensor<T>
-  /// Since the input tile norms have already been scaled the output
-  /// norms will be identically scaled, e.g.
-  /// when Op is an identity operation the output
+  /// \tparam Op a functor such that `Op(const Tensor<T>&)` is convertible to
+  /// Tensor<T>
+  /// \param op functor used to transform norms
+  /// \return a transformed shape; i.e., `result.data() == op(this->data())`
+  /// \post `result->init_threshold() == SparseShape::threshold()`
+  /// \note  Since the input tile norms have already been scaled the output
+  ///  norms will be identically scaled, e.g. when Op is an identity operation
+  ///  the output
   /// SparseShape data will have the same values as this.
   template <typename Op>
   SparseShape_ transform(Op&& op) const {
@@ -543,7 +558,7 @@ class SparseShape {
     madness::AtomicInt zero_tile_count;
     zero_tile_count = 0;
 
-    const value_type threshold = threshold_;
+    const value_type threshold = my_threshold_;
     auto apply_threshold = [threshold, &zero_tile_count](value_type& norm) {
       TA_ASSERT(norm >= value_type(0));
       if (norm < threshold) {
@@ -555,7 +570,8 @@ class SparseShape {
     math::inplace_vector_op(apply_threshold, new_norms.range().volume(),
                             new_norms.data());
 
-    return SparseShape_(std::move(new_norms), size_vectors_, zero_tile_count);
+    return SparseShape_(std::move(new_norms), size_vectors_, zero_tile_count,
+                        my_threshold_);
   }
 
   /// Data accessor
@@ -591,21 +607,29 @@ class SparseShape {
   /// nonnull
   explicit operator bool() const { return !empty(); }
 
+  /// \return number of nonzero tiles
+  std::size_t nnz() const {
+    TA_ASSERT(!empty());
+    return tile_norms_.size() - zero_tile_count_;
+  }
+
   /// Compute union of two shapes
 
-  /// \param mask_shape The input shape, hard zeros are used to mask the output.
-  /// \return A shape that is masked by the mask.
+  /// \param mask_shape The input shape used to mask the output; if
+  /// `mask_shape.is_zero(i)` then `result[i]` will be zero \return A shape that
+  /// is masked by the mask \post `result.init_threshold() ==
+  /// this->init_threshold()`
   SparseShape_ mask(const SparseShape_& mask_shape) const {
     TA_ASSERT(!tile_norms_.empty());
     TA_ASSERT(!mask_shape.empty());
     TA_ASSERT(tile_norms_.range() == mask_shape.tile_norms_.range());
 
-    const value_type threshold = threshold_;
     madness::AtomicInt zero_tile_count;
     zero_tile_count = zero_tile_count_;
-    auto op = [threshold, &zero_tile_count](value_type left,
-                                            const value_type right) {
-      if (left >= threshold && right < threshold) {
+    auto op = [this_threshold = this->init_threshold(),
+               mask_threshold = mask_shape.init_threshold(),
+               &zero_tile_count](value_type left, const value_type right) {
+      if (left >= this_threshold && right < mask_threshold) {
         left = value_type(0);
         ++zero_tile_count;
       }
@@ -629,7 +653,8 @@ class SparseShape {
   /// \param upper_bound The upper bound of the sub-block to be updated
   /// \param other The shape that will be used to update the sub-block
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
-  /// the data result_tile_norms of \c other.
+  /// the data result_tile_norms of \c other ; note that result constructed using the same threshold as used to construct this
+  /// \post `result.init_threshold() == this->init_threshold()`
   // clang-format on
   template <typename Index1, typename Index2,
             typename = std::enable_if_t<detail::is_integral_range_v<Index1> &&
@@ -640,7 +665,7 @@ class SparseShape {
 
     auto result_tile_norms_blk =
         result_tile_norms.block(lower_bound, upper_bound);
-    const value_type threshold = threshold_;
+    const value_type threshold = my_threshold_;
     madness::AtomicInt zero_tile_count;
     zero_tile_count = zero_tile_count_;
     result_tile_norms_blk.inplace_binary(
@@ -689,7 +714,8 @@ class SparseShape {
   /// \param bounds The {lower,upper} bounds of the sub-block
   /// \param other The shape that will be used to update the sub-block
   /// \return A new sparse shape object where the sub-block defined by \p lower_bound and \p upper_bound contains
-  /// the data result_tile_norms of \c other.
+  /// the data result_tile_norms of \c other; note that result constructed using the same threshold as used to construct this
+  /// \post `result.init_threshold() == this->init_threshold()`
   // clang-format on
   template <typename PairRange,
             typename = std::enable_if_t<detail::is_gpair_range_v<PairRange>>>
@@ -698,7 +724,7 @@ class SparseShape {
     Tensor<value_type> result_tile_norms = tile_norms_.clone();
 
     auto result_tile_norms_blk = result_tile_norms.block(bounds);
-    const value_type threshold = threshold_;
+    const value_type threshold = my_threshold_;
     madness::AtomicInt zero_tile_count;
     zero_tile_count = zero_tile_count_;
     result_tile_norms_blk.inplace_binary(
@@ -1160,6 +1186,7 @@ class SparseShape {
                         zero_tile_count_, my_threshold_);
   }
 
+  // clang-format off
   /// Scale shape
 
   /// Construct a new scaled shape as:
@@ -1170,12 +1197,14 @@ class SparseShape {
   /// \note expression abs(Scalar) must be well defined (by default, std::abs
   /// will be used)
   /// \param factor The scaling factor
-  /// \return A new, scaled shape
+  /// \return A new, scaled shape initialized using `this->init_threshold()`
+  /// \post `result.init_threshold() == this->init_threshold()`
+  // clang-format on
   template <typename Scalar,
             typename = std::enable_if_t<detail::is_numeric_v<Scalar>>>
   SparseShape_ scale(const Scalar factor) const {
     TA_ASSERT(!tile_norms_.empty());
-    const value_type threshold = threshold_;
+    const value_type threshold = my_threshold_;
     const value_type abs_factor = to_abs_factor(factor);
     madness::AtomicInt zero_tile_count;
     zero_tile_count = 0;
@@ -1194,19 +1223,25 @@ class SparseShape {
                         my_threshold_);
   }
 
+  // clang-format off
   /// Scale and permute shape
 
   /// Compute a new scaled shape is computed as:
   /// \f[
   /// {(\rm{result})}_{ji...} = \rm{perm}(j,i) |(\rm{factor})|
-  /// (\rm{this})_{ij...} \f] \tparam Factor The scaling factor type \note
-  /// expression abs(Factor) must be well defined (by default, std::abs will be
-  /// used) \param factor The scaling factor \param perm The permutation that
-  /// will be applied to this tensor. \return A new, scaled-and-permuted shape
+  /// (\rm{this})_{ij...}
+  /// \f]
+  /// \tparam Factor The scaling factor type
+  /// \note expression abs(Factor) must be well defined (by default, std::abs will be used)
+  /// \param factor The scaling factor
+  /// \param perm The permutation that will be applied to this tensor.
+  /// \return A new, scaled-and-permuted shape initialized using `this->init_threshold()`
+  /// \post `result.init_threshold() == this->init_threshold()`
+  // clang-format on
   template <typename Factor>
   SparseShape_ scale(const Factor factor, const Permutation& perm) const {
     TA_ASSERT(!tile_norms_.empty());
-    const value_type threshold = threshold_;
+    const value_type threshold = my_threshold_;
     const value_type abs_factor = to_abs_factor(factor);
     madness::AtomicInt zero_tile_count;
     zero_tile_count = 0;

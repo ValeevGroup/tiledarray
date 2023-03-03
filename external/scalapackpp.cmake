@@ -1,6 +1,6 @@
 if (NOT TARGET scalapackpp::scalapackpp)
   set(VGCMAKEKIT_TRACKED_SCALAPACKPP_TAG ${TA_TRACKED_SCALAPACKPP_TAG} CACHE STRING "scalapackpp tag")
-  include(FindOrFetchScaLAPACKPP)
+  include(${vg_cmake_kit_SOURCE_DIR}/modules/FindOrFetchScaLAPACKPP.cmake)
 endif()
 
 # built {blacs,scalapack}pp as a subproject? install as part of tiledarray export as well
