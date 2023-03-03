@@ -163,7 +163,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
       for (size_t i = 0; i < h.size(); ++i) {
         batch *= H.batch[i].at(h[i]);
       }
-      Tensor tile(TiledArray::Range{batch}, typename Tensor::value_type());
+      Tensor tile(TiledArray::Range{batch}, typename Tensor::value_type(0));
       for (Index i : tiles) {
         // skip this unless both input tiles exist
         const auto pahi_inv = apply_inverse(pa, h + i);
@@ -179,7 +179,7 @@ auto einsum(expressions::TsrExpr<Array_> A, expressions::TsrExpr<Array_> B,
         bi = bi.reshape(shape, batch);
         for (size_t k = 0; k < batch; ++k) {
           auto hk = ai.batch(k).dot(bi.batch(k));
-          tile[k] = hk;
+          tile[k] += hk;
         }
       }
       auto pc = C.permutation;
