@@ -158,9 +158,8 @@ class CP_ALS : public CP<Tile, Policy> {
     // use SVD
     this->cholesky_inverse(An, W);
 
-    if (mode == ndim - 1) this->unNormalized_Factor = An;
-    // this->normalize_factor(An);
-    this->normCol(An, rank);
+    if (mode == ndim - 1) this->unNormalized_Factor = An.clone();
+    this->normalize_factor(An);
     cp_factors[mode] = An;
     auto& gram = this->partial_grammian[mode];
     gram("r,rp") = An("r,n") * An("rp,n");
