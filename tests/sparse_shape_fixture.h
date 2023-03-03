@@ -43,7 +43,7 @@ struct SparseShapeFixture : public TiledRangeFixture {
         tolerance(0.0001)
 
   {
-    SparseShape<float>::threshold(0.001);
+    SparseShape<float>::threshold(default_threshold);
   }
 
   ~SparseShapeFixture() {}
@@ -84,12 +84,27 @@ struct SparseShapeFixture : public TiledRangeFixture {
     return Permutation(temp.begin(), temp.end());
   }
 
+  static void reset_threshold() {
+    SparseShape<float>::threshold(default_threshold);
+  }
+
+  static auto set_threshold_to_max() {
+    SparseShape<float>::threshold(std::numeric_limits<float>::max());
+    return std::shared_ptr<void>(nullptr, [](void*) { reset_threshold(); });
+  }
+
+  static auto tweak_threshold() {
+    SparseShape<float>::threshold(10 * SparseShape<float>::threshold());
+    return std::shared_ptr<void>(nullptr, [](void*) { reset_threshold(); });
+  }
+
   SparseShape<float> sparse_shape;
   SparseShape<float> left;
   SparseShape<float> right;
   Permutation perm;
   TiledArray::detail::PermIndex perm_index;
   const float tolerance;
+  static constexpr float default_threshold = 0.001;
 };  // SparseShapeFixture
 
 }  // namespace TiledArray
