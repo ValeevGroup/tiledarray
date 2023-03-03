@@ -47,6 +47,9 @@ BOOST_AUTO_TEST_CASE(default_constructor) {
   BOOST_CHECK(x.empty());
   BOOST_CHECK(!x.is_dense());
   BOOST_CHECK(!x.validate(tr.tiles_range()));
+  BOOST_CHECK_EQUAL(x.init_threshold(), SparseShape<float>::threshold());
+
+  BOOST_CHECK_THROW(x.nnz(), Exception);
 
   BOOST_CHECK_THROW(x[0], Exception);
 
@@ -90,6 +93,7 @@ BOOST_AUTO_TEST_CASE(non_comm_constructor) {
   BOOST_CHECK(!x.empty());
   BOOST_CHECK(!x.is_dense());
   BOOST_CHECK(x.validate(tr.tiles_range()));
+  BOOST_CHECK_EQUAL(x.init_threshold(), SparseShape<float>::threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -120,6 +124,7 @@ BOOST_AUTO_TEST_CASE(non_comm_constructor) {
   BOOST_CHECK_CLOSE(x.sparsity(),
                     float(zero_tile_count) / float(tr.tiles_range().volume()),
                     tolerance);
+  BOOST_CHECK(x.nnz() == x.data().size() - zero_tile_count);
 
   // use the sparse ctor
   {
@@ -142,6 +147,8 @@ BOOST_AUTO_TEST_CASE(non_comm_constructor) {
       BOOST_CHECK_CLOSE(x[i], x_sp[i], tolerance);
       BOOST_CHECK_CLOSE(x.tile_norms()[i], x_sp.tile_norms()[i], tolerance);
     }
+
+    BOOST_CHECK_EQUAL(x_sp.nnz(), x_sp.data().size() - zero_tile_count);
   }
 }
 
@@ -165,6 +172,7 @@ BOOST_AUTO_TEST_CASE(comm_constructor) {
   BOOST_CHECK(!x.empty());
   BOOST_CHECK(!x.is_dense());
   BOOST_CHECK(x.validate(tr.tiles_range()));
+  BOOST_CHECK_EQUAL(x.init_threshold(), SparseShape<float>::threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -189,6 +197,7 @@ BOOST_AUTO_TEST_CASE(comm_constructor) {
   BOOST_CHECK_CLOSE(x.sparsity(),
                     float(zero_tile_count) / float(tr.tiles_range().volume()),
                     tolerance);
+  BOOST_CHECK_EQUAL(x.nnz(), x.data().size() - zero_tile_count);
 
   // use the sparse ctor
   {
@@ -211,10 +220,14 @@ BOOST_AUTO_TEST_CASE(comm_constructor) {
     for (Tensor<float>::size_type i = 0ul; i < tile_norms.size(); ++i) {
       BOOST_CHECK_CLOSE(x[i], x_sp[i], tolerance);
     }
+    BOOST_CHECK_EQUAL(x_sp.nnz(), x.nnz());
   }
 }
 
 BOOST_AUTO_TEST_CASE(copy_constructor) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   // Construct the shape
   BOOST_CHECK_NO_THROW(SparseShape<float> y(sparse_shape));
   SparseShape<float> y(sparse_shape);
@@ -231,9 +244,14 @@ BOOST_AUTO_TEST_CASE(copy_constructor) {
   }
 
   BOOST_CHECK_EQUAL(y.sparsity(), sparse_shape.sparsity());
+  BOOST_CHECK_EQUAL(y.init_threshold(), sparse_shape.init_threshold());
+  BOOST_CHECK_EQUAL(y.nnz(), sparse_shape.nnz());
 }
 
 BOOST_AUTO_TEST_CASE(permute) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.perm(perm));
 
@@ -244,9 +262,14 @@ BOOST_AUTO_TEST_CASE(permute) {
   }
 
   BOOST_CHECK_EQUAL(result.sparsity(), sparse_shape.sparsity());
+  BOOST_CHECK_EQUAL(result.init_threshold(), sparse_shape.init_threshold());
+  BOOST_CHECK_EQUAL(result.nnz(), sparse_shape.nnz());
 }
 
 BOOST_AUTO_TEST_CASE(block) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   auto less = std::less<std::size_t>();
 
   for (auto lower_it = tr.tiles_range().begin();
@@ -262,6 +285,9 @@ BOOST_AUTO_TEST_CASE(block) {
         // Check that the block function does not throw an exception
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper));
+
+        BOOST_CHECK_EQUAL(result.init_threshold(),
+                          sparse_shape.init_threshold());
 
         // Check that the block range data is correct
         std::size_t volume = 1ul;
@@ -290,7 +316,7 @@ BOOST_AUTO_TEST_CASE(block) {
                             tolerance);
           BOOST_CHECK_CLOSE(result.data()[i], sparse_shape.data()(arg_index),
                             tolerance);
-          if (result.data()[i] < SparseShape<float>::threshold())
+          if (result.data()[i] < sparse_shape.init_threshold())
             ++zero_tile_count;
         }
         BOOST_CHECK_CLOSE(
@@ -332,6 +358,9 @@ BOOST_AUTO_TEST_CASE(block) {
 }
 
 BOOST_AUTO_TEST_CASE(block_scale) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   auto less = std::less<std::size_t>();
   const float factor = 3.3;
 
@@ -349,6 +378,8 @@ BOOST_AUTO_TEST_CASE(block_scale) {
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(result =
                                    sparse_shape.block(lower, upper, factor));
+        BOOST_CHECK_EQUAL(result.init_threshold(),
+                          sparse_shape.init_threshold());
 
         // Check that the block range data is correct
         std::size_t volume = 1ul;
@@ -377,7 +408,7 @@ BOOST_AUTO_TEST_CASE(block_scale) {
           // Check the result elements
           BOOST_CHECK_CLOSE(result.data()(*it), expected, tolerance);
           BOOST_CHECK_CLOSE(result.data()[i], expected, tolerance);
-          if (result.data()[i] < SparseShape<float>::threshold())
+          if (result.data()[i] < sparse_shape.init_threshold())
             ++zero_tile_count;
         }
         BOOST_CHECK_CLOSE(
@@ -424,6 +455,9 @@ BOOST_AUTO_TEST_CASE(block_scale) {
 }
 
 BOOST_AUTO_TEST_CASE(block_perm) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   auto less = std::less<std::size_t>();
   const auto inv_perm = perm.inv();
 
@@ -440,6 +474,8 @@ BOOST_AUTO_TEST_CASE(block_perm) {
         // Check that the block function does not throw an exception
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(result = sparse_shape.block(lower, upper, perm));
+        BOOST_CHECK_EQUAL(result.init_threshold(),
+                          sparse_shape.init_threshold());
 
         // Check that the block range data is correct
         std::size_t volume = 1ul;
@@ -472,7 +508,7 @@ BOOST_AUTO_TEST_CASE(block_perm) {
                             tolerance);
           BOOST_CHECK_CLOSE(result.data()[i], sparse_shape.data()(arg_index),
                             tolerance);
-          if (result.data()[i] < SparseShape<float>::threshold())
+          if (result.data()[i] < sparse_shape.init_threshold())
             ++zero_tile_count;
         }
         BOOST_CHECK_CLOSE(
@@ -518,6 +554,9 @@ BOOST_AUTO_TEST_CASE(block_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(block_scale_perm) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   auto less = std::less<std::size_t>();
   const float factor = 3.3;
   const auto inv_perm = perm.inv();
@@ -536,6 +575,8 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
         SparseShape<float> result;
         BOOST_REQUIRE_NO_THROW(
             result = sparse_shape.block(lower, upper, factor, perm));
+        BOOST_CHECK_EQUAL(result.init_threshold(),
+                          sparse_shape.init_threshold());
 
         // Check that the block range data is correct
         std::size_t volume = 1ul;
@@ -568,7 +609,7 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
           // Check the result elements
           BOOST_CHECK_CLOSE(result.data()(*it), expected, tolerance);
           BOOST_CHECK_CLOSE(result.data()[i], expected, tolerance);
-          if (result.data()[i] < SparseShape<float>::threshold())
+          if (result.data()[i] < sparse_shape.init_threshold())
             ++zero_tile_count;
         }
         BOOST_CHECK_CLOSE(
@@ -616,6 +657,9 @@ BOOST_AUTO_TEST_CASE(block_scale_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(transform) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   auto op = [](Tensor<float> const& t) {
     Tensor<float> new_t = t.clone();
 
@@ -631,7 +675,9 @@ BOOST_AUTO_TEST_CASE(transform) {
     return new_t;
   };
 
-  SparseShape<float> result = sparse_shape.transform(op);
+  SparseShape<float> result;
+  BOOST_REQUIRE_NO_THROW(result = sparse_shape.transform(op));
+  BOOST_CHECK_EQUAL(result.init_threshold(), sparse_shape.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -645,14 +691,14 @@ BOOST_AUTO_TEST_CASE(transform) {
     } else {
       expected = sparse_shape[i] / 2;
     }
-    if (expected < SparseShape<float>::threshold()) expected = 0.0f;
+    if (expected < sparse_shape.init_threshold()) expected = 0.0f;
 
     const float result_i = result[i];
 
     BOOST_CHECK_CLOSE(result_i, expected, tolerance);
 
     // Check zero threshold
-    if (result_i < SparseShape<float>::threshold()) {
+    if (result_i < sparse_shape.init_threshold()) {
       BOOST_CHECK(result.is_zero(i));
       ++zero_tile_count;
     } else {
@@ -666,8 +712,12 @@ BOOST_AUTO_TEST_CASE(transform) {
 }
 
 BOOST_AUTO_TEST_CASE(mask) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mask(right));
+  BOOST_CHECK_EQUAL(result.init_threshold(), sparse_shape.init_threshold());
 
   size_type zero_tile_count = 0ul;
   for (Tensor<float>::size_type i = 0ul; i < tr.tiles_range().volume(); ++i) {
@@ -678,7 +728,7 @@ BOOST_AUTO_TEST_CASE(mask) {
 
   // Check that all the tiles have been normalized correctly
   for (Tensor<float>::size_type i = 0ul; i < tr.tiles_range().volume(); ++i) {
-    auto threshold = SparseShape<float>::threshold();
+    auto threshold = sparse_shape.init_threshold();
     float expected = left[i];
     if (left[i] >= threshold && right[i] < threshold) {
       expected = 0.f;
@@ -688,7 +738,7 @@ BOOST_AUTO_TEST_CASE(mask) {
     BOOST_CHECK_CLOSE(result[i], expected, tolerance);
 
     // Check zero threshold
-    if (result[i] < SparseShape<float>::threshold()) {
+    if (result[i] < sparse_shape.init_threshold()) {
       BOOST_CHECK(result.is_zero(i));
     } else {
       BOOST_CHECK(!result.is_zero(i));
@@ -701,6 +751,9 @@ BOOST_AUTO_TEST_CASE(mask) {
 }
 
 BOOST_AUTO_TEST_CASE(scale) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.scale(-4.1));
 
@@ -710,14 +763,14 @@ BOOST_AUTO_TEST_CASE(scale) {
   for (Tensor<float>::size_type i = 0ul; i < tr.tiles_range().volume(); ++i) {
     // Compute expected value
     float expected = sparse_shape[i] * 4.1;
-    if (expected < SparseShape<float>::threshold()) expected = 0.0f;
+    if (expected < sparse_shape.init_threshold()) expected = 0.0f;
 
     const float result_i = result[i];
 
     BOOST_CHECK_CLOSE(result_i, expected, tolerance);
 
     // Check zero threshold
-    if (result_i < SparseShape<float>::threshold()) {
+    if (result_i < sparse_shape.init_threshold()) {
       BOOST_CHECK(result.is_zero(i));
       ++zero_tile_count;
     } else {
@@ -731,8 +784,12 @@ BOOST_AUTO_TEST_CASE(scale) {
 }
 
 BOOST_AUTO_TEST_CASE(scale_perm) {
+  // change default threshold to make sure it's not inherited
+  auto resetter = set_threshold_to_max();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.scale(-5.4, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), sparse_shape.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -740,14 +797,14 @@ BOOST_AUTO_TEST_CASE(scale_perm) {
   for (Tensor<float>::size_type i = 0ul; i < tr.tiles_range().volume(); ++i) {
     // Compute expected value
     float expected = sparse_shape[i] * 5.4;
-    if (expected < SparseShape<float>::threshold()) expected = 0.0f;
+    if (expected < sparse_shape.init_threshold()) expected = 0.0f;
 
     const std::size_t pi = perm_index(i);
     const float result_i = result[pi];
     BOOST_CHECK_CLOSE(result_i, expected, tolerance);
 
     // Check zero threshold
-    if (result_i < SparseShape<float>::threshold()) {
+    if (result_i < sparse_shape.init_threshold()) {
       BOOST_CHECK(result.is_zero(pi));
       ++zero_tile_count;
     } else {
@@ -761,8 +818,14 @@ BOOST_AUTO_TEST_CASE(scale_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(add) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.add(right));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -788,11 +851,18 @@ BOOST_AUTO_TEST_CASE(add) {
   BOOST_CHECK_CLOSE(result.sparsity(),
                     float(zero_tile_count) / float(tr.tiles_range().volume()),
                     tolerance);
+  BOOST_CHECK_EQUAL(result.nnz(), result.data().size() - zero_tile_count);
 }
 
 BOOST_AUTO_TEST_CASE(add_scale) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.add(right, -2.2f));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -821,8 +891,14 @@ BOOST_AUTO_TEST_CASE(add_scale) {
 }
 
 BOOST_AUTO_TEST_CASE(add_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.add(right, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -852,8 +928,14 @@ BOOST_AUTO_TEST_CASE(add_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(add_scale_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.add(right, -2.3f, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -883,8 +965,14 @@ BOOST_AUTO_TEST_CASE(add_scale_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(add_const) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.add(-8.8f));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -916,8 +1004,14 @@ BOOST_AUTO_TEST_CASE(add_const) {
 }
 
 BOOST_AUTO_TEST_CASE(add_const_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.add(-1.7, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -949,8 +1043,14 @@ BOOST_AUTO_TEST_CASE(add_const_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(subt) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.subt(right));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -979,8 +1079,14 @@ BOOST_AUTO_TEST_CASE(subt) {
 }
 
 BOOST_AUTO_TEST_CASE(subt_scale) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.subt(right, -2.2f));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1009,8 +1115,14 @@ BOOST_AUTO_TEST_CASE(subt_scale) {
 }
 
 BOOST_AUTO_TEST_CASE(subt_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.subt(right, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1040,8 +1152,14 @@ BOOST_AUTO_TEST_CASE(subt_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(subt_scale_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.subt(right, -2.3f, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1071,8 +1189,14 @@ BOOST_AUTO_TEST_CASE(subt_scale_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(subt_const) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.subt(-8.8f));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1102,8 +1226,14 @@ BOOST_AUTO_TEST_CASE(subt_const) {
 }
 
 BOOST_AUTO_TEST_CASE(subt_const_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = sparse_shape.subt(-1.7, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1136,8 +1266,14 @@ BOOST_AUTO_TEST_CASE(subt_const_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(mult) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mult(right));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1165,8 +1301,14 @@ BOOST_AUTO_TEST_CASE(mult) {
 }
 
 BOOST_AUTO_TEST_CASE(mult_scale) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mult(right, -2.2f));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1194,8 +1336,14 @@ BOOST_AUTO_TEST_CASE(mult_scale) {
 }
 
 BOOST_AUTO_TEST_CASE(mult_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mult(right, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1226,8 +1374,14 @@ BOOST_AUTO_TEST_CASE(mult_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(mult_scale_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.mult(right, -2.3f, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   size_type zero_tile_count = 0ul;
 
@@ -1258,6 +1412,9 @@ BOOST_AUTO_TEST_CASE(mult_scale_perm) {
 }
 
 BOOST_AUTO_TEST_CASE(gemm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   // Create a matrix with the expected output
   const std::size_t m = left.data().range().extent(0);
   const std::size_t n =
@@ -1272,6 +1429,9 @@ BOOST_AUTO_TEST_CASE(gemm) {
       2u, left.data().range().rank(), right.data().range().rank());
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   // Create volumes tensors for the arguments
   Tensor<float> volumes(tr.tiles_range(), 0.0f);
@@ -1315,6 +1475,9 @@ BOOST_AUTO_TEST_CASE(gemm) {
 }
 
 BOOST_AUTO_TEST_CASE(gemm_perm) {
+  // tweak threshold to make sure result inherits default threshold
+  auto resetter = tweak_threshold();
+
   const Permutation perm({1, 0});
 
   // Create a matrix with the expected output
@@ -1331,6 +1494,9 @@ BOOST_AUTO_TEST_CASE(gemm_perm) {
       2u, left.data().range().rank(), right.data().range().rank());
   SparseShape<float> result;
   BOOST_REQUIRE_NO_THROW(result = left.gemm(right, -7.2, gemm_helper, perm));
+  BOOST_CHECK_EQUAL(result.init_threshold(), SparseShape<float>::threshold());
+  BOOST_CHECK_NE(result.init_threshold(), left.init_threshold());
+  BOOST_CHECK_NE(result.init_threshold(), right.init_threshold());
 
   // Create volumes tensors for the arguments
   Tensor<float> volumes(tr.tiles_range(), 0.0f);

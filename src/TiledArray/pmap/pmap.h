@@ -69,7 +69,7 @@ class Pmap {
       local_;  ///< A list of local tiles (may be empty, if not needed)
   size_type local_size_;  ///< The number of tiles mapped to this process (if
                           ///< local_ is not empty, this equals local_.size());
-                          ///< if local_size_known()==false this is not used
+                          ///< if known_local_size()==false this is not used
 
  private:
   Pmap(const Pmap&) = delete;
