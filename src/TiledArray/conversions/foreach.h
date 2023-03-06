@@ -386,6 +386,24 @@ inline std::
 /// first DistArray argument).
 /// \note \c foreach/foreach_inplace are collective, with sparse variants
 /// synchronizing due to the need to compute and replicate shapes.
+/// \warning If in doubt whether whether to use `foreach` or `foreach_inplace`
+/// prefer the former. `fence_inplace` is an expert-only function due to
+/// the difficulty of reasoning through all possible states of data in
+/// presence of an asynchronous task flow. For example, to be able to safely
+/// mutate the data it is necessary to ensure that there are no tasks in-flight
+/// that may use or mutate the tiles \p arg _while_ the tasks of
+/// `foreach_inplace` are executing. Similarly, it is necessary
+/// to ensure that there are no tasks created after `foreach_inplace` that
+/// will read the data before its tasks have finished executing (e.g., consider
+/// a remote rank finishing with `foreach_inplace` and spawning tasks on this
+/// rank that will read \p arg). Lastly, `foreach_inplace`
+/// interferes with the shallow-copy semantics of DistArray objects.
+/// Namely, if there is a another copy of \c arg that was created via (or
+/// arg was created by) the \c DistArray copy constructor or copy assignment
+/// operator, this function will modify the data viewed by that array.
+/// Thus `foreach_inplace` is only to be used
+/// by expert users to optimize memory use in the resource constrained
+/// scenarios.
 
 /// @{
 
@@ -457,19 +475,8 @@ inline std::enable_if_t<is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// \tparam Op Mutating tile operation
 /// \param arg The argument array to be modified
 /// \param op The mutating tile function
-/// \param fence A flag that indicates fencing behavior. If \c true this
-/// function will fence before data is modified.
-/// \warning
-/// - This function fences by default to avoid data race conditions.
-/// Only disable the fence if you can ensure, the data is not being read by
-/// another thread.
-/// \warning
-/// - If there is a another copy of \c arg that was created via (or
-/// arg was created by) the \c Array copy constructor or copy assignment
-/// operator, this function will modify the data of that array since the data
-/// of a tile is held in a \c std::shared_ptr. If you need to ensure other
-/// copies of the data are not modified or this behavior causes problems in
-/// your application, use the \c TiledArray::foreach function instead.
+/// \param fence If \c true this
+/// function will fence before AND after the data is modified
 template <typename Tile, typename Policy, typename Op,
           typename = typename std::enable_if<!TiledArray::detail::is_array<
               typename std::decay<Op>::type>::value>::type>
@@ -481,6 +488,10 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
 
   arg =
       detail::foreach<true, Op, Tile, Tile, Policy>(std::forward<Op>(op), arg);
+
+  // must also fence after to prevent remote ranks start work on unprocessed
+  // tiles
+  if (fence) arg.world().gop.fence();
 }
 
 /// Apply a function to each tile of a sparse Array
@@ -571,19 +582,8 @@ inline std::enable_if_t<!is_dense_v<Policy>, DistArray<Tile, Policy>> foreach (
 /// \tparam Policy The policy type of \c arg; \c is_dense_v<Policy> must be
 /// false \tparam Op Tile operation \param arg The argument array to be modified
 /// \param op The mutating tile function
-/// \param fence A flag that indicates fencing behavior. If \c true this
-/// function will fence before data is modified.
-/// \warning
-/// - This function fences by default to avoid data race conditions.
-/// Only disable the fence if you can ensure, the data is not being read by
-/// another thread.
-/// \warning
-/// - If there is a another copy of \c arg that was created via (or
-/// arg was created by) the \c Array copy constructor or copy assignment
-/// operator, this function will modify the data of that array since the data
-/// of a tile is held in a \c std::shared_ptr. If you need to ensure other
-/// copies of the data are not modified or this behavior causes problems in
-/// your application, use the \c TiledArray::foreach function instead.
+/// \param fence If \c true this
+/// function will fence before AND after the data is modified
 template <typename Tile, typename Policy, typename Op,
           typename = typename std::enable_if<!TiledArray::detail::is_array<
               typename std::decay<Op>::type>::value>::type>
@@ -596,6 +596,10 @@ inline std::enable_if_t<!is_dense_v<Policy>, void> foreach_inplace(
   // Set the arg with the new array
   arg = detail::foreach<true, Op, Tile, Tile, Policy>(
       std::forward<Op>(op), ShapeReductionMethod::Intersect, arg);
+
+  // must also fence after to prevent remote ranks start work on unprocessed
+  // tiles
+  if (fence) arg.world().gop.fence();
 }
 
 /// Apply a function to each tile of dense Arrays
@@ -634,6 +638,10 @@ inline std::enable_if_t<is_dense_v<Policy>, void> foreach_inplace(
 
   left = detail::foreach<true, Op, LeftTile, LeftTile, Policy, RightTile>(
       std::forward<Op>(op), left, right);
+
+  // must also fence after to prevent remote ranks start work on unprocessed
+  // tiles
+  if (fence) left.world().gop.fence();
 }
 
 /// Apply a function to each tile of sparse Arrays
